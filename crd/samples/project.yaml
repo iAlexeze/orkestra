@@ -1,0 +1,61 @@
+apiVersion: "platform.ialexeze.io/v1alpha1"
+kind: "Project"
+metadata:
+  name: "frontend-project"
+  namespace: "ops-team-ns"
+  labels:
+    team: "frontend"
+    environment: "production"
+    tier: "web"
+spec:
+  replicas: 3
+  # Optional fields if you extended the CRD
+  # image: "nginx:latest"
+  # configMap: "frontend-config"
+---
+apiVersion: "platform.ialexeze.io/v1alpha1"
+kind: "Project"
+metadata:
+  name: "backend-project"
+  namespace: "ops-team-ns"
+  labels:
+    team: "backend"
+    environment: "production"
+    tier: "api"
+spec:
+  replicas: 5
+---
+apiVersion: "platform.ialexeze.io/v1alpha1"
+kind: "Project"
+metadata:
+  name: "database-project"
+  namespace: "ops-team-ns"
+  labels:
+    team: "data"
+    environment: "staging"
+    tier: "database"
+spec:
+  replicas: 2
+---
+apiVersion: "platform.ialexeze.io/v1alpha1"
+kind: "Project"
+metadata:
+  name: "cache-project"
+  namespace: "ops-team-ns"
+  labels:
+    team: "platform"
+    environment: "production"
+    tier: "cache"
+spec:
+  replicas: 2
+---
+apiVersion: "platform.ialexeze.io/v1alpha1"
+kind: "Project"
+metadata:
+  name: "monitoring-project"
+  namespace: "ops-team-ns"
+  labels:
+    team: "observability"
+    environment: "production"
+spec:
+  replicas: 1

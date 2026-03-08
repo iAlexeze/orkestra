@@ -1,0 +1,102 @@
+# Basic team namespace with standard quota
+apiVersion: platform.ialexeze.io/v1alpha1
+kind: ManagedNamespace
+metadata:
+  name: platform-team-ns
+spec:
+  team: "platform-team"
+  quota:
+    cpu: "4"
+    memory: "8Gi"
+  networkPolicy: true
+---
+# Development team with smaller quota
+apiVersion: platform.ialexeze.io/v1alpha1
+kind: ManagedNamespace
+metadata:
+  name: dev-team-ns
+spec:
+  team: "development-team"
+  quota:
+    cpu: "2"
+    memory: "4Gi"
+  networkPolicy: true
+---
+# QA team with medium quota
+apiVersion: platform.ialexeze.io/v1alpha1
+kind: ManagedNamespace
+metadata:
+  name: qa-team-ns
+spec:
+  team: "qa-team"
+  quota:
+    cpu: "4"
+    memory: "8Gi"
+  networkPolicy: true
+---
+# Testing team with minimal quota
+apiVersion: platform.ialexeze.io/v1alpha1
+kind: ManagedNamespace
+metadata:
+  name: test-team-ns
+spec:
+  team: "test-team"
+  quota:
+    cpu: "1"
+    memory: "2Gi"
+  networkPolicy: false  # Testing without network policy
+---
+# Marketing team with custom quota
+apiVersion: platform.ialexeze.io/v1alpha1
+kind: ManagedNamespace
+metadata:
+  name: marketing-team-ns
+spec:
+  team: "marketing-team"
+  quota:
+    cpu: "6"
+    memory: "16Gi"
+  networkPolicy: true
+---
+# Research team with extended quota
+apiVersion: platform.ialexeze.io/v1alpha1
+kind: ManagedNamespace
+metadata:
+  name: research-team-ns
+spec:
+  team: "research-team"
+  quota:
+    cpu: "8"
+    memory: "32Gi"
+  networkPolicy: true
+---
+# Operations team - using defaults (quota defaults to 4 CPU, 8Gi)
+apiVersion: platform.ialexeze.io/v1alpha1
+kind: ManagedNamespace
+metadata:
+  name: ops-team-ns
+spec:
+  team: "operations-team"
+  # quota omitted - will use default from CRD
+  networkPolicy: true
+---
+# Security team - no network policy
+apiVersion: platform.ialexeze.io/v1alpha1
+kind: ManagedNamespace
+metadata:
+  name: security-team-ns
+spec:
+  team: "security-team"
+  quota:
+    cpu: "4"
+    memory: "8Gi"
+  networkPolicy: false  # Testing without network policy
+---
+# Invalid test - team name too short (should fail validation)
+apiVersion: platform.ialexeze.io/v1alpha1
+kind: ManagedNamespace
+metadata:
+  name: invalid-team-ns
+spec:
+  team: "a"  # MinLength=1, this might be allowed but test boundary
+  networkPolicy: true
