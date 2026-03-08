@@ -34,12 +34,8 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 		logger.Fatal().Err(err).Msg("scheme creation error")
 	}
 
-	// Initialize components
-	var components []domain.Component
-
 	// health
 	hs := health.NewHealthServer(cfg)
-	components = append(components, hs)
 
 	// kube
 	kube := kubeclient.NewKubeclient(kubeclient.Config{
@@ -47,15 +43,12 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 		Masterurl:  cfg.Cluster().MasterURL,
 		Scheme:     scheme,
 	})
-	components = append(components, kube)
-
+	
 	// events
 	ev := event.NewEvent(kube)
-	components = append(components, ev)
 
 	// queue
 	wq := queue.NewWorkqueue()
-	components = append(components, wq)
 
 	// provider
 	provider := kube.ClientProvider()
@@ -75,7 +68,6 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 		cfg.Cluster().Namespace,
 		cfg.Cluster().DefaultResync,
 	)
-	components = append(components, infFactory)
 
 	// Controller Registry
 	reg := controller.NewControllerRegistry()
@@ -108,8 +100,17 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 		wq,
 		cfg.Cluster().Workers,
 	)
-	components = append(components, ctrl)
 
+	// Add all components
+	components := []domain.Component{
+		hs,
+		kube,
+		ev, 
+		wq, 
+		infFactory, 
+		ctrl,
+	}
+	
 	// manager
 	mgr := manager.NewManager(hs, cfg.Cluster().DefaultResync)
 	mgr.Register(components) // Register all manager components
