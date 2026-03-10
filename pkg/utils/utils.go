@@ -102,29 +102,29 @@ func Exit(err error) {
 
 // LoadFile loads a file from local disk or HTTP(S)
 func LoadFile(path string) ([]byte, error) {
-    if path == "" {
-        return nil, fmt.Errorf("file path is empty")
-    }
+	if path == "" {
+		return nil, fmt.Errorf("file path is empty")
+	}
 
-    // Remote file
-    if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
-        resp, err := http.Get(path)
-        if err != nil {
-            return nil, fmt.Errorf("failed to download %s: %w", path, err)
-        }
-        defer resp.Body.Close()
+	// Remote file
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		resp, err := http.Get(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to download %s: %w", path, err)
+		}
+		defer resp.Body.Close()
 
-        if resp.StatusCode != http.StatusOK {
-            return nil, fmt.Errorf("remote file returned status %d", resp.StatusCode)
-        }
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("remote file returned status %d", resp.StatusCode)
+		}
 
-        return io.ReadAll(resp.Body)
-    }
+		return io.ReadAll(resp.Body)
+	}
 
-    // Local file
-    if _, err := os.Stat(path); os.IsNotExist(err) {
-        return nil, fmt.Errorf("file %s does not exist", path)
-    }
+	// Local file
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil, fmt.Errorf("file %s does not exist", path)
+	}
 
-    return os.ReadFile(path)
+	return os.ReadFile(path)
 }

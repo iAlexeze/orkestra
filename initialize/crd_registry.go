@@ -1,6 +1,8 @@
 package initialize
 
 import (
+	"time"
+
 	managednsTypeV1 "github.com/ialexeze/multi-crd-controller/pkg/config/api/types/managedNamespace/v1alpha1"
 	projectTypev1 "github.com/ialexeze/multi-crd-controller/pkg/config/api/types/project/v1alpha1"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
@@ -27,6 +29,7 @@ func BuildCRDRegistryFromGo() []CRDEntry {
 			Namespace:        "default",
 			Namespaced:       true,
 			Workers:          2,
+			Resync:           10 * time.Minute, // Has to be in time.Duration
 			Scheme:           projectTypev1.AddToScheme,
 			Reconciler: func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
 				return reconciler.NewProjectReconciler(inf, ev)
@@ -45,7 +48,7 @@ func BuildCRDRegistryFromGo() []CRDEntry {
 			Namespace:        "default", // ignored because cluster-scoped
 			Namespaced:       false,     // or false depending on your CRD
 			Scheme:           managednsTypeV1.AddToScheme,
-			Workers:          1,
+			Workers:          1, // Use default resync
 			DependsOn:        []string{"project"},
 			Reconciler: func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
 				return reconciler.NewManagedNamespaceReconciler(kube, inf, ev)

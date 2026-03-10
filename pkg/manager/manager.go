@@ -13,6 +13,8 @@ import (
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
 )
 
+const eventHandler = "event handler"
+
 type Manager struct {
 	components []domain.Component
 	postStart  []postStart
@@ -96,10 +98,19 @@ func (m *Manager) gracefulShutdown(ctx context.Context, cancel context.CancelFun
 			name := comp.Name()
 			logger.Info().Msgf("shutting down: %s...", name)
 			if comp != nil {
+				// Special handling for event recorder - shut it down LAST
+				if name == eventHandler {
+					continue // Skip event handler for now
+				}
 				comp.Shutdown(shutdownCtx)
 			}
 			utils.Sleep(1)
 			logger.Info().Msgf("%s status: %v", name, utils.StatusOffline)
+		}
+
+		ev := m.GetComponent(eventHandler)
+		if ev != nil {
+			ev.Shutdown(shutdownCtx)
 		}
 
 		logger.Info().Msg("✅ All services shut down gracefully")
@@ -130,6 +141,16 @@ func (m *Manager) Register(c []domain.Component) {
 		fmt.Printf("%d. %s\n", n, comp.Name())
 		n++
 	}
+}
+
+// GetComponent returns a component if present
+func (m *Manager) GetComponent(name string) domain.Component {
+	for _, comp := range m.components {
+		if comp.Name() == name {
+			return comp
+		}
+	}
+	return nil
 }
 
 // AddPostStartHook: for services that need to start after manager has started

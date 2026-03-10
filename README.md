@@ -46,7 +46,7 @@ flowchart TB
         R2["ManagedNamespace Entry"]
   end
  subgraph Controller["Controller Layer"]
-        C["Smart Controller"]
+        C["Dependency Controller"]
         W1["Worker 1"]
         W2["Worker 2"]
         W3["Worker N"]
@@ -140,14 +140,20 @@ The `SharedInformerFactory` is the crown jewel of this architecture. It:
 
 ```go
 // One factory to rule them all
-infFactory := informer.SharedInformerFactory(provider, wq, scheme, namespace, resync)
+infFactory := informer.SharedInformerFactory(provider, wq, scheme, namespace, defaultResync)
 
 // Get a fully-configured informer for ANY CRD
-inf := infFactory.For(&yourcrdv1.YourCRD{}, ctx)  // That's it!
+inf := infFactory.For(&yourcrdv1.YourCRD{}, ctx, resyn)  // That's it!
 ```
 
-### 🧠 **Smart Controller**
-A single controller processes events from **all CRDs**, dispatching them to the correct reconciler via the registry.
+### 🧠 **Dependency Controller**
+A single controller processes events from **all CRDs**, respecting dependency order for startup and shutdown:
+
+```yaml
+crds:
+  - name: managednamespace
+    dependsOn: ["project"]  # Starts after project, shuts down before project
+```
 
 ### 🧩 **Modular Components**
 Each subsystem is a standalone, pluggable component:
@@ -155,7 +161,7 @@ Each subsystem is a standalone, pluggable component:
 - **SharedInformerFactory** – automatic informer generation
 - **Event Recorder** – Kubernetes events for visibility
 - **Health Server** – liveness and readiness probes
-- **Shared Workqueue** – rate-limited event processing
+- **Shared Workqueue** – rate-limited event processing with per-CRD metrics
 - **CRD Registry** – central source of truth for all CRDs
 - **Controller Registry** – maps GVKs to informers and reconcilers
 - **Leader Election** – high availability
@@ -190,35 +196,64 @@ Clean separation of reconciliation logic – **the only thing you implement**:
 pkg/reconciler/
 ├── helper.go                 # Shared utilities
 ├── project_reconcile.go      # Project reconciliation (your logic)
-└── managed_ns_reconciler.go  # ManagedNamespace reconciliation (your logic)
+├── managed_ns_reconciler.go  # ManagedNamespace reconciliation (your logic)
+└── registry.go               # Reconciler factory registry
 ```
 
 ### 🧭 **Dual Registry Architecture**
 
 #### **CRD Registry** (`pkg/registry/crd_registry.go`)
-Defines what CRDs exist and how to create them:
+Defines what CRDs exist with **two operation modes**:
+
+**Go Mode (Typed - Default):**
 ```go
-type crd struct {
-    Object     runtime.Object
-    ListObject runtime.Object
-	Scheme func(*runtime.Scheme) error
-    Reconciler reconciler.NewReconcilerFunc
-    Info       CRDInfo
+{
+    Name:        "project",
+    Object:      &projectTypev1.Project{},
+    ListObject:  &projectTypev1.ProjectList{},
+    Group:       projectTypev1.Group,
+    Kind:        projectTypev1.Kind,
+    Version:     projectTypev1.Version,
+    NamePlural:  projectTypev1.NamePlural,
+    Workers:     3,
+    Scheme:      projectTypev1.AddToScheme,
+    Reconciler:  reconciler.NewProjectReconciler,
 }
 ```
 
-#### **Controller Registry** (`pkg/registry/controller_registry.go`)
+**YAML Mode (Dynamic):**
+```yaml
+crds:
+  - name: project
+    group: platform.ialexeze.io
+    version: v1alpha1
+    kind: Project
+    plural: projects
+    workers: 3
+    dependsOn: []
+```
+
+#### **Controller Registry** (`pkg/controller/registry.go`)
 Maps GVKs to running informers and reconcilers at runtime:
 ```go
-reg.Register(
-    gvk,        // GroupVersionKind string
-    crdInfo,    // CRD metadata
-    informer,   // Running informer instance
-    reconciler, // Your reconciler
-)
+reg.Register(gvk, crd, informer, reconciler)
 ```
 
 This separation ensures that **adding a new CRD is just data** – no code changes to the core.
+
+### 📊 **Built-in Prometheus Metrics**
+```
+# HELP controller_queue_depth Current queue depth per CRD
+# HELP controller_reconcile_duration_seconds Duration of reconciliations
+# HELP controller_reconcile_total Total number of reconciliations
+# HELP controller_workers_active Number of active workers per CRD
+```
+
+### 🔄 **Graceful Shutdown with Dependency Order**
+```logs
+shutting down managednamespace  # Depends on project → shuts down first
+shutting down project           # Root dependency → shuts down last
+```
 
 ## 🚀 **Quick Start**
 
@@ -230,17 +265,26 @@ cp .env.example .env
 # Edit .env with your configuration
 ```
 
-### 2. Install CRDs
+### 2. Choose Your Mode
+
+**Go Mode (Default):**
 ```bash
-kubectl apply -f crd/config/bases/
+# Just run - uses built-in CRD registry
+go run ./cmd/
 ```
 
-### 3. Run Locally
+**YAML Mode:**
 ```bash
-# Ensure you're in the right namespace context
-kubectl config set-context --current --namespace=your-namespace
-
+export CRD_REGISTRY_MODE=YAML
+export CRD_REGISTRY=initialize/crd-registry.yaml  # local file
+# or
+export CRD_REGISTRY=https://raw.githubusercontent.com/.../my-crds.yaml  # remote URL
 go run ./cmd/
+```
+
+### 3. Install CRDs
+```bash
+kubectl apply -f crd/config/bases/
 ```
 
 ### 4. Create Resources
@@ -249,7 +293,17 @@ go run ./cmd/
 kubectl apply -f crd/config/samples/
 ```
 
-### 5. Deploy to Production
+### 5. Monitor
+```bash
+# Metrics endpoint
+curl localhost:8080/metrics
+
+# Health checks
+curl localhost:8080/health
+curl localhost:8080/ready
+```
+
+### 6. Deploy to Production
 ```bash
 kubectl apply -f deployment/
 ```
@@ -284,7 +338,7 @@ var (
     Version    = "v1alpha1"
     APIPath    = "/apis"
     Kind       = "YourCRD"
-    NamePlural = "yourcrds"  // Resource plural name
+    NamePlural = "yourcrds"
 
     GroupVersion = schema.GroupVersion{
         Group:   Group,
@@ -354,17 +408,11 @@ Generate deepcopy code:
 controller-gen object paths=./api/types/yourcrd/...
 ```
 
-## **Step 2: Create Your Reconciler**
+---
 
-This is the **only Go code your users write** — their business logic.
+### **Step 2: Create Your Reconciler**
 
-A reconciler receives:
-
-- a `SharedIndexInformer` (for cached reads)
-- an `event.Event` emitter (for status + events)
-- a `key` (`namespace/name`) to reconcile
-
-Example:
+This is the **only Go code you write** — your business logic.
 
 ```go
 // pkg/reconciler/yourcrd_reconciler.go
@@ -395,45 +443,42 @@ func (r *YourCRDReconciler) Reconcile(ctx context.Context, key string) error {
     }
 
     logger.Info().Msgf("Reconciling %s/%s", namespace, name)
-
     // Your business logic here
-
     return nil
 }
 ```
 
 ---
 
-## **Step 3: Register Your Reconciler**
+### **Step 3: Register Your Reconciler**
 
-If you are using **YAML‑based CRD registration**, you must register your reconciler by name:
+If you are using **YAML mode**, you must register your reconciler by name:
 
 ```go
-// pkg/reconciler/reconcile.go
+// pkg/reconciler/registry.go
 func RegisterReconcilers() map[string]NewReconcilerFunc {
     return map[string]NewReconcilerFunc{
         "project": func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
             return NewProjectReconciler(inf, ev)
         },
-
-        "managednamespace": func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
-            return NewManagedNamespaceReconciler(kube, inf, ev)
+        "yourcrd": func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
+            return NewYourCRDReconciler(inf, ev)
         },
     }
 }
 ```
 
-The key (`"project"`, `"managednamespace"`) must match the CRD name in your registry.
+The key (`"yourcrd"`) must match the CRD name in your YAML registry.
 
 ---
 
-## **Step 4: Register Your CRD**
+### **Step 4: Register Your CRD**
 
 You now have **two options**:
 
 ---
 
-### 🟦 **Option A — Go‑based CRD Registration (Typed Mode - Default)**
+### 🟦 **Option A — Go Mode (Typed - Default)**
 
 Add your CRD to the Go registry:
 
@@ -452,6 +497,8 @@ func buildCRDs() []CRDEntry {
             NamePlural:  yourcrdv1.NamePlural,
             Namespace:   "default",
             Namespaced:  false,
+            Workers:     3,
+            Resync:      10 * time.Minute,
             Scheme:      yourcrdv1.AddToScheme,
             Reconciler: func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
                 return reconciler.NewYourCRDReconciler(inf, ev)
@@ -461,84 +508,92 @@ func buildCRDs() []CRDEntry {
 }
 ```
 
-Typed mode gives you:
-
-- full Go structs  
-- no scheme registration  
-- IDE autocompletion  
-- compile‑time safety  
+**Go mode gives you:**
+- ✅ Full Go structs with type safety
+- ✅ No manual scheme registration
+- ✅ IDE autocompletion
+- ✅ Compile-time safety
 
 ---
 
-### 🟩 **Option B — YAML‑based CRD Registration (Dynamic Mode)**
+### 🟩 **Option B — YAML Mode (Dynamic)**
 
 Set the environment variable:
 
 ```bash
+export CRD_REGISTRY_MODE=YAML
 export CRD_REGISTRY=initialize/crd-registry.yaml
 ```
 
 Example YAML:
 
 ```yaml
-# initialize/crd-registry.yaml
-apiVersion: controller.ialexeze.io/v1   # Not required
-kind: Operator      # Not required
-metadata:          # Not required
-  name: platform-operator       # Not required
-
+# initialize/crd_registry.yaml
 crds:
-  - name: yourcrd
-    group: yourgroup.example.com
+  - name: project
+    group: platform.ialexeze.io
     version: v1alpha1
-    kind: YourCRD
-    plural: yourcrds
+    kind: Project
+    plural: projects
+    workers: 3           # Concurrency control
+    dependsOn: []        # Dependencies
+    namespace: default   # Target namespace
+    namespaced: true     # Scope
+    # No resync → uses default
+    
+  - name: managednamespace
+    group: platform.ialexeze.io
+    version: v1alpha1
+    kind: ManagedNamespace
+    plural: managednamespaces
+    workers: 2
+    resync: 10m            # Resync period
+    dependsOn: [project]   # Optional dependencies for startup/shutdown order
     namespace: default
-    namespaced: false
-    workers: 3
-    dependsOn: []
+    # No namespace → cluster-scoped, namespaced is false by default
 ```
 
-This mode gives you:
-
-- dynamic CRD loading  
-- no Go boilerplate  
-- scheme registration  
-- no constructors  
-- no list types  
-- perfect for multi‑CRD orchestration  
+**YAML mode gives you:**
+- ✅ Dynamic CRD loading without recompilation
+- ✅ Support for local files OR remote URLs
+- ✅ Dependency declarations
+- ✅ Perfect for multi-team orchestration
+- ✅ GitOps friendly
 
 ---
 
-## **Step 4b: Register Your Scheme (Yaml Mode Only)**
+### **Step 4b: Register Your Scheme (YAML Mode Only)**
 
-If you are using **Yaml‑based CRD registration**, add your scheme:
+If using **YAML mode**, you must register your scheme:
 
 ```go
-// initialize/scheme-registry.go
+// initialize/scheme_registry.go
 func RegisterScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
     if err := projectTypev1.AddToScheme(scheme); err != nil {
         return nil, fmt.Errorf("failed to register Project scheme: %v", err)
+    }
+    if err := yourcrdv1.AddToScheme(scheme); err != nil {
+        return nil, fmt.Errorf("failed to register YourCRD scheme: %v", err)
     }
     return scheme, nil
 }
 ```
 
-Go mode does **not** require scheme registration.
+**Go mode does not require this step** – it's handled automatically.
 
 ---
 
-# 🎉 **Step 5: Done!**
+## 🎉 **Step 5: Done!**
 
 That's it. The framework automatically:
 - ✅ Creates scheme with your API types
 - ✅ Creates the client using SharedClientFactory
 - ✅ Creates the informer using SharedInformerFactory
 - ✅ Registers with the workqueue
+- ✅ Adds per-CRD metrics
 - ✅ Registers with the controller registry
 - ✅ Integrates with leader election
-- ✅ Integrates with leader election
-- ✅ Handles graceful shutdown
+- ✅ Handles graceful shutdown in dependency order
 
 **No clientset. No informer. No interfaces. Just your API types and reconciler.**
 
@@ -547,7 +602,11 @@ That's it. The framework automatically:
 - ✅ **Zero boilerplate** – No manual clients, informers, or interfaces
 - ✅ **Auto-generated everything** – SharedInformerFactory handles it all
 - ✅ **Type safety** – Each CRD maintains its own types
-- ✅ **Isolation** – One CRD's bugs can't affect others
+- ✅ **Dependency management** – Automatic startup/shutdown ordering
+- ✅ **Per-CRD workers** – Fine-grained concurrency control
+- ✅ **Production metrics** – Prometheus endpoints built-in
+- ✅ **Dual-mode operation** – Go for type safety, YAML for dynamic config
+- ✅ **Remote YAML support** – Load CRD configs from URLs
 - ✅ **Scalability** – Add dozens of CRDs without performance impact
 - ✅ **Maintainability** – Each reconciler is independent
 - ✅ **Testability** – Each reconciler can be tested in isolation
@@ -561,8 +620,42 @@ That's it. The framework automatically:
 | Informer | 100+ lines | 0 (auto) | 100% |
 | Interfaces | 80+ lines | 0 (auto) | 100% |
 | GVK Implementation | 30+ lines | 0 (auto) | 100% |
+| Worker Management | 50+ lines | 0 (auto) | 100% |
+| Dependency Logic | 100+ lines | 0 (auto) | 100% |
 | Registration | 30+ lines | 3 lines | 90% |
-| **TOTAL per CRD** | **~360 lines** | **~50 lines (reconciler)** | **86%** |
+| **TOTAL per CRD** | **~510 lines** | **~50 lines (reconciler)** | **90%** |
+
+
+---
+
+## 🌐 YAML Mode Use Cases & Real‑World Scenarios
+
+YAML mode isn’t just an alternative configuration mechanism — it unlocks an entirely different operational model for this framework. If you want to understand **why YAML mode exists**, **when to use it**, and **how it enables large‑scale platform engineering**, check out the full set of use cases:
+
+👉 **See: [YamlModeUseCases.md](./docs/yaml-use-cases.md)**  
+*A deep dive into real‑world applications including GitOps, multi‑cluster management, canary rollouts, partner integrations, compliance workflows, and more.*
+
+This section covers:
+
+- Centralized operator marketplaces  
+- Organization‑wide standardization  
+- Multi‑cluster fleet management  
+- GitOps pipelines  
+- Canary deployments  
+- Dynamic worker scaling  
+- Multi‑tenant team isolation  
+- Compliance & audit trails  
+- Edge/IoT deployments  
+- Partner/customer integrations  
+- Versioning strategies  
+- Security models  
+- Offline/air‑gapped environments  
+- Progressive delivery  
+- Observability patterns  
+
+If you’re evaluating whether YAML mode is right for your environment, this guide will give you a clear picture of its power and flexibility.
+
+---
 
 ## 🙏 **Acknowledgments**
 

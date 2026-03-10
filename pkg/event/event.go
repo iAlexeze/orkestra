@@ -2,10 +2,12 @@ package event
 
 import (
 	"context"
+	"sync"
 
 	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
 	crderror "github.com/ialexeze/multi-crd-controller/pkg/config/pkg/error"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/kubeclient"
+	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -20,6 +22,9 @@ type Event struct {
 	broadcaster record.EventBroadcaster
 	recorder    record.EventRecorder
 	component   string
+	stopped     bool           // Track state
+	wg          sync.WaitGroup // Track in-flight events
+	mu          sync.Mutex     // Protect shutdown
 }
 
 var _ domain.Component = (*Event)(nil)
@@ -59,9 +64,48 @@ func (r *Event) Start(ctx context.Context) error {
 	return nil
 }
 
-func (r *Event) Shutdown(ctx context.Context) {
-	if r.broadcaster != nil {
-		r.broadcaster.Shutdown()
+// Eventf - track in-flight events
+func (e *Event) Eventf(object runtime.Object, eventtype, reason, messageFmt string, args ...interface{}) {
+	e.mu.Lock()
+	if e.stopped {
+		e.mu.Unlock()
+		return
+	}
+	e.wg.Add(1) // Track this event
+	e.mu.Unlock()
+
+	// Record in goroutine so we don't block
+	go func() {
+		defer e.wg.Done()
+		if e.recorder != nil {
+			e.recorder.Eventf(object, eventtype, reason, messageFmt, args...)
+		}
+	}()
+}
+
+func (e *Event) Shutdown(ctx context.Context) {
+	logger.Info().Msgf("shutting down %s...", e.name)
+
+	e.mu.Lock()
+	e.stopped = true
+	e.mu.Unlock()
+
+	// Wait for in-flight events with timeout
+	done := make(chan struct{})
+	go func() {
+		e.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		logger.Info().Msg("all events flushed")
+	case <-ctx.Done():
+		logger.Warn().Msg("timeout waiting for events to flush")
+	}
+
+	if e.broadcaster != nil {
+		e.broadcaster.Shutdown()
 	}
 }
 

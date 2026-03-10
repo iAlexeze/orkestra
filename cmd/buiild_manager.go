@@ -116,7 +116,10 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 		}
 
 		// 1. Create informer
-		inf := infFactory.For(object, ctx)
+		inf := infFactory.For(object, ctx, informer.Options{
+			Name:   crd.Kind,
+			Resync: crd.Resync,
+		})
 
 		// 2. Create reconciler
 		rec := crd.Reconciler(kube, inf, ev)
@@ -139,7 +142,7 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 		ev,
 		wq,
 		hs,
-		cfg.Cluster().Workers,
+		cfg.Cluster().DefaultWorkers,
 		cfg.CRDRegistry().MaxQueueDepth,
 		registry.NewDependencyGraph(crdRegistry),
 	)

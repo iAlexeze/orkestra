@@ -4,20 +4,16 @@ kind: Operator
 metadata:
   name: platform-operator
 crds:
-  - name: project   # singular unique name
+  - name: project
     group: platform.ialexeze.io
     version: v1alpha1
     kind: Project
     plural: projects
-    workers: 3
-    
-  # - name: application
-  #   group: platform.ialexeze.io
-  #   version: v1alpha1
-  #   kind: Application
-  #   plural: applications
-  #   workers: 10
-  #   dependsOn: [project]
+    workers: 3           # Concurrency control
+    resync: 10m          # Resync period
+    dependsOn: []        # Dependencies
+    namespace: default   # Target namespace
+    namespaced: true     # Scope
     
   - name: managednamespace
     group: platform.ialexeze.io
@@ -25,6 +21,6 @@ crds:
     kind: ManagedNamespace
     plural: managednamespaces
     workers: 2
-    dependsOn: [project]
-
+    dependsOn: [project]  # Startup/shutdown order
+    # No resync → uses default
 #...

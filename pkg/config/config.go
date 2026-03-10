@@ -31,10 +31,10 @@ func Init(filenames ...string) (*Config, error) {
 			Namespace:      GetStrEnv("NAMESPACE", "default"),
 
 			// Workload
-			DefaultResync: GetDurEnvSeconds("DEFAULT_RESYNC", 15),
-			Finalizer:     GetStrEnv("FINALIZER", "alexia.ai/finalizer"),
-			LabelSelector: GetStrEnv("LABEL_SELECTOR", "app=alexia"),
-			Workers:       GetIntEnv("WORKERS", 3),
+			DefaultResync:  GetDurEnvSeconds("DEFAULT_RESYNC", 15),
+			Finalizer:      GetStrEnv("FINALIZER", "alexia.ai/finalizer"),
+			LabelSelector:  GetStrEnv("LABEL_SELECTOR", "app=alexia"),
+			DefaultWorkers: GetIntEnv("DEFAULT_WORKERS", 3),
 		},
 		healthServer: healthServer{
 			Port:         GetStrEnv("PORT", "5000"),

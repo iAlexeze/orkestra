@@ -31,10 +31,10 @@ type clusterConfig struct {
 	Namespace      string `validate:"required"`
 
 	// Worload specific
-	DefaultResync time.Duration
-	LabelSelector string
-	Workers       int
-	Finalizer     string
+	DefaultResync  time.Duration
+	DefaultWorkers int
+	LabelSelector  string
+	Finalizer      string
 }
 
 type crdRegistryConfig struct {

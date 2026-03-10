@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
 	crderror "github.com/ialexeze/multi-crd-controller/pkg/config/pkg/error"
@@ -15,8 +16,13 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+type Options struct {
+	Name   string
+	Resync time.Duration
+}
+
 // For creates or returns an informer for the given type
-func (f *Factory) For(obj runtime.Object, ctx context.Context) cache.SharedIndexInformer {
+func (f *Factory) For(obj runtime.Object, ctx context.Context, opts Options) cache.SharedIndexInformer {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -27,11 +33,18 @@ func (f *Factory) For(obj runtime.Object, ctx context.Context) cache.SharedIndex
 		return inf
 	}
 
+	if opts.Resync == 0 {
+		logger.Warn().Msgf("processing informer for %s with default resync duration: %v", opts.Name, f.resync)
+		opts.Resync = f.resync
+	} else {
+		logger.Info().Msgf("processing informer for %s with resync duration: %v", opts.Name, opts.Resync)
+	}
+
 	// Create new informer - but don't start it yet
 	inf := cache.NewSharedIndexInformer(
 		f.newListWatch(obj),
 		obj,
-		f.resync,
+		opts.Resync,
 		cache.Indexers{},
 	)
 
@@ -49,6 +62,7 @@ func (f *Factory) For(obj runtime.Object, ctx context.Context) cache.SharedIndex
 		go inf.Run(ctx.Done())
 	}
 
+	logger.Info().Msgf("informer for %s created", opts.Name)
 	return inf
 }
 

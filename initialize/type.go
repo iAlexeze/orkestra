@@ -1,6 +1,8 @@
 package initialize
 
 import (
+	"time"
+
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/reconciler"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,5 +33,6 @@ type CRDEntry struct {
 	LabelSelector      string                        `yaml:"labelSelector" validate:"omitempty"`
 	ResyncPeriod       string                        `yaml:"resyncPeriod" validate:"omitempty"`
 	Workers            int                           `yaml:"workers" validate:"omitempty,gte=1,lte=5"`
+	Resync             time.Duration                 `yaml:"resync" validate:"omitempty"`
 	DependsOn          []string                      `yaml:"dependsOn"`
 }
