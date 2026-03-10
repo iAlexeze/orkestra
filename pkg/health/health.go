@@ -9,6 +9,7 @@ import (
 	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/config"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var _ domain.Component = (*HealthServer)(nil)
@@ -75,6 +76,13 @@ func (h *HealthServer) SetReady() {
 	h.ready.Store(true)
 }
 
+func (h *HealthServer) Degraded() bool {
+	if h.ready.Load() {
+		h.ready.Store(false)
+	}
+	return false
+}
+
 func (h *HealthServer) routes() *http.ServeMux {
 	mux := http.NewServeMux()
 
@@ -85,5 +93,7 @@ func (h *HealthServer) routes() *http.ServeMux {
 		mux.HandleFunc("/health", h.healthHandler)
 		mux.HandleFunc("/ready", h.readyHandler)
 	}
+
+	mux.Handle("/metrics", promhttp.Handler())
 	return mux
 }

@@ -6,16 +6,10 @@ import (
 	"fmt"
 
 	mnsTypev1 "github.com/ialexeze/multi-crd-controller/pkg/config/api/types/managedNamespace/v1alpha1"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/event"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/kubeclient"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/cache"
 	// "k8s.io/apimachinery/pkg/types"
 )
-
-type NewReconcilerFunc func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler
 
 func (r *ManagedNamespaceReconciler) patchStatus(
 	ctx context.Context, mn *mnsTypev1.ManagedNamespace,

@@ -2,11 +2,13 @@ package controller
 
 import (
 	"context"
+
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
+	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/metrics"
 )
 
 // runWorker is a long-running function that processes items from the queue
-func (c *Controller) runWorker(ctx context.Context) {
+func (c *Controller) runWorker(ctx context.Context, gvk string, worker int) {
 	for c.processNextItem(ctx) {
 	}
 }
@@ -43,6 +45,63 @@ func (c *Controller) processNextItem(ctx context.Context) bool {
 			Str("key", item.Key).
 			Msg("reconcile failed")
 		wq.AddRateLimited(item)
+		return true
+	}
+
+	wq.Forget(item)
+	return true
+}
+
+// Worker that only processes items for a specific GVK
+func (c *Controller) runWorkerForGVK(ctx context.Context, targetGVK string, workerID int) {
+	logger.Debug().Msgf("worker %d started for %s", workerID, targetGVK)
+
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Debug().Msgf("worker %d for %s stopping", workerID, targetGVK)
+			return
+		default:
+			if !c.processNextItemForGVK(ctx, targetGVK) {
+				return
+			}
+		}
+		depth := float64(c.wq.Depth())
+		metrics.QueueDepth.WithLabelValues(targetGVK).Set(depth)
+	}
+}
+
+// Process next item, but only for the specified GVK
+func (c *Controller) processNextItemForGVK(ctx context.Context, targetGVK string) bool {
+	wq := c.wq.Queue
+
+	// Get item from queue with timeout to allow context cancellation
+	item, shutdown := wq.Get()
+	if shutdown {
+		return false
+	}
+	defer wq.Done(item)
+
+	// Skip if this item isn't for our GVK
+	if item.GVK != targetGVK {
+		// Re-queue? No - put it back for other workers
+		wq.AddRateLimited(item)
+		return true
+	}
+
+	// Find reconciler for this GVK
+	reconciler := c.reconcilers[item.GVK]
+	if reconciler == nil {
+		logger.Error().Str("gvk", item.GVK).Msg("no reconciler found")
+		wq.Forget(item)
+		return true
+	}
+
+	// Reconcile
+	if err := reconciler.Reconcile(ctx, item.Key); err != nil {
+		logger.Error().Err(err).Str("gvk", item.GVK).Str("key", item.Key).Msg("reconcile failed")
+		wq.AddRateLimited(item)
+		c.failed[targetGVK]++ // increment failure to track error rate
 		return true
 	}
 

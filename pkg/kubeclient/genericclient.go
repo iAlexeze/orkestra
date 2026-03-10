@@ -25,10 +25,6 @@ func (k *Kubeclient) NewClient(listType runtime.Object, info CRDInfo) (*Client, 
 		return nil, err
 	}
 
-	if info.ClusterScoped {
-		info.Namespace = ""
-	}
-
 	return &Client{
 		restClient: restClient,
 		listType:   listType,

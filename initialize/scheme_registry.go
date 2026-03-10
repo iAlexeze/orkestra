@@ -1,0 +1,40 @@
+package initialize
+
+import (
+	"fmt"
+
+	managednsTypeV1 "github.com/ialexeze/multi-crd-controller/pkg/config/api/types/managedNamespace/v1alpha1"
+	projectTypev1 "github.com/ialexeze/multi-crd-controller/pkg/config/api/types/project/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime"
+)
+
+// Register Runtime Objects
+func RegisterRuntimeObjects() {
+	// Project
+	ObjectRegistry[projectTypev1.GroupVersionKind] = func() runtime.Object { return &projectTypev1.Project{} }
+	ListRegistry[projectTypev1.GroupVersionKind] = func() runtime.Object { return &projectTypev1.ProjectList{} }
+
+	// ManagedNamespace
+	ObjectRegistry[managednsTypeV1.GroupVersionKind] = func() runtime.Object { return &managednsTypeV1.ManagedNamespace{} }
+	ListRegistry[managednsTypeV1.GroupVersionKind] = func() runtime.Object { return &managednsTypeV1.ManagedNamespaceList{} }
+
+	// ...
+}
+
+// Register all CRDs
+func RegisterScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
+	// Project
+	if err := projectTypev1.AddToScheme(scheme); err != nil {
+		return nil, fmt.Errorf("failed to register Projects scheme %v", err)
+	}
+
+	// ManagedNamespace
+	if err := managednsTypeV1.AddToScheme(scheme); err != nil {
+		return nil, fmt.Errorf("failed to register ManagedNamespace scheme %v", err)
+	}
+
+	// ...
+
+	return scheme, nil
+
+}

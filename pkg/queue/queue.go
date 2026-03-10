@@ -56,3 +56,7 @@ func (q *Workqueue) Shutdown(ctx context.Context) {
 func (q *Workqueue) Name() string {
 	return "queue"
 }
+
+func (q *Workqueue) Depth() int {
+	return q.Queue.Len()
+}

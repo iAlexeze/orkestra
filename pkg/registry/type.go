@@ -3,35 +3,39 @@ package registry
 import (
 	"reflect"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/reconciler"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	"github.com/ialexeze/multi-crd-controller/pkg/config/initialize"
 )
 
-
+// -----------------------------------------------------------------------------
+// Constants
+// -----------------------------------------------------------------------------
 const (
-	DefaultAPIPath = "/apis"
+	GoMode   = "go"
+	YamlMode = "yaml"
 )
 
-type crd struct {
-	Object     runtime.Object
-	ListObject runtime.Object
-	Scheme func(*runtime.Scheme) error
-	Reconciler reconciler.NewReconcilerFunc
-	Info       CRDInfo
+// -----------------------------------------------------------------------------
+// Variables
+// -----------------------------------------------------------------------------
+var (
+	// For updating the CRD instance - needed for lookups
+	resourceTypeMap = map[reflect.Type]string{}
+)
+
+// -----------------------------------------------------------------------------
+// Structs
+// -----------------------------------------------------------------------------
+type CRDRegistry struct {
+	APIVersion string `yaml:"apiVersion"`
+	Kind       string `yaml:"kind"`
+	Metadata   struct {
+		Name string `yaml:"name"`
+	} `yaml:"metadata"`
+	CRDs []initialize.CRDEntry `yaml:"crds"`
+	Mode struct {
+		Go   bool `yaml:"go"`
+		Yaml bool `yaml:"yaml"`
+	} `yaml:"mode"`
+
+	// -
 }
-
-var resourceTypeMap = map[reflect.Type]string{}
-
-type CRDInfo struct {
-	Kind             string                  // Required by Registry
-	Group            string                  // Required if GroupVersion is not specified
-	Version          string                  // Required if GroupVersion is not specified
-	GroupVersion     *schema.GroupVersion    // Optional (can be used if Group and Version are not specified)
-	GroupVersionKind schema.GroupVersionKind //	Useful for some manipulations and Required by Registry
-	NamePlural       string
-	ClusterScoped    bool // Required for cluster-scoped resources
-	APIPath          string
-	Namespace        string
-}
-

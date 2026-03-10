@@ -7,12 +7,14 @@ type Config struct {
 	cluster      clusterConfig
 	leader       leaderElection
 	healthServer healthServer
+	crdRegistry  crdRegistryConfig
 }
 
 type appConfig struct {
-	Name        string
+	Name        string `validate:"required"`
 	Version     string
 	Environment string
+	LogLevel    string
 }
 
 type healthServer struct {
@@ -26,13 +28,19 @@ type clusterConfig struct {
 	MasterURL      string
 	InCluster      bool
 	Name           string
-	Namespace      string
+	Namespace      string `validate:"required"`
 
 	// Worload specific
-	DefaultResync time.Duration
-	LabelSelector string
-	Workers       int
-	Finalizer     string
+	DefaultResync  time.Duration
+	DefaultWorkers int
+	LabelSelector  string
+	Finalizer      string
+}
+
+type crdRegistryConfig struct {
+	Path          string // Path to CRD registry YAML file
+	Mode          string `validate:"required"` // Mode of CRD registry
+	MaxQueueDepth int
 }
 
 type leaderElection struct {
@@ -76,4 +84,19 @@ func (c *Config) Cluster() *clusterConfig {
 // Leader returns app configurations
 func (c *Config) Leader() *leaderElection {
 	return &c.leader
+}
+
+// CRDRegistry returns app configurations
+func (c *Config) CRDRegistry() *crdRegistryConfig {
+	return &c.crdRegistry
+}
+
+// GoMode returns true if crdRegistry is using Go mode
+func (c *Config) GoMode() bool {
+	return c.CRDRegistry().Mode == "go"
+}
+
+// YamlMode returns true if crdRegistry is using yaml mode
+func (c *Config) YamlMode() bool {
+	return c.CRDRegistry().Mode == "yaml"
 }

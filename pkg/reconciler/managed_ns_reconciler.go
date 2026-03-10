@@ -3,12 +3,14 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"time"
 
 	mnsTypev1 "github.com/ialexeze/multi-crd-controller/pkg/config/api/types/managedNamespace/v1alpha1"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/event"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/kubeclient"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
+	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,24 +42,38 @@ func (r *ManagedNamespaceReconciler) ShutDown() {}
 // Reconcile is called for every ManagedNamespace event.
 // key = "name" (cluster-scoped, no namespace prefix).
 func (r *ManagedNamespaceReconciler) Reconcile(ctx context.Context, key string) error {
-	// if err := ctx.Err(); err != nil {
-	// 	return nil // context cancelled — clean exit
-	// }
 	// Check if context is cancelled
-
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 
+	// Log with context
+	ctx = logger.WithRequestID(ctx)
+	ctx = logger.WithCRD(ctx, "managednamespaces")
+	ctx = logger.WithResource(ctx, key)
+
+	start := time.Now()
+
+	logger.FromContext(ctx).Info().Msg("starting reconciliation")
+	// Always record duration
+	defer func() {
+		metrics.ReconcileDuration.
+			WithLabelValues("managednamespace").
+			Observe(time.Since(start).Seconds())
+	}()
+
 	// Read from local cache
 	obj, exists, err := r.informer.GetIndexer().GetByKey(key)
 	if err != nil {
+		// Log metrics to prometheus
+		metrics.ReconcileTotal.WithLabelValues("managednamespace", "error").Inc()
+
 		return fmt.Errorf("failed to get object from store: %w", err)
 	}
 
 	if !exists || obj == nil {
 		// Deleted — child resources cleaned up by owner references
-		logger.Info().Str("name", key).Msg("ManagedNamespace deleted — nothing to do")
+		logger.FromContext(ctx).Info().Str("name", key).Msg("ManagedNamespace deleted — nothing to do")
 		return nil
 	}
 
@@ -104,10 +120,12 @@ func (r *ManagedNamespaceReconciler) Reconcile(ctx context.Context, key string) 
 
 	// Return original reconcile error
 	if reconcileErr != nil {
+		metrics.ReconcileTotal.WithLabelValues("managednamespace", "error").Inc()
+
 		return fmt.Errorf("reconciling namespace for %q: %w", key, err)
 	}
 
-	logger.Info().
+	logger.FromContext(ctx).Info().
 		Str("name", mn.Name).
 		Str("team", mn.Spec.Team).
 		Msg("reconciling ManagedNamespace")
@@ -126,9 +144,11 @@ func (r *ManagedNamespaceReconciler) Reconcile(ctx context.Context, key string) 
 			"ManagedNamespace %s reconciled successfully", mn.Name,
 		)
 
-	logger.Info().
+	logger.FromContext(ctx).Info().
 		Str("name", mn.Name).
 		Msg("ManagedNamespace reconciled successfully")
+
+	metrics.ReconcileTotal.WithLabelValues("managednamespace", "success").Inc()
 	return nil
 }
 
@@ -182,7 +202,7 @@ func (r *ManagedNamespaceReconciler) reconcileNamespace(ctx context.Context, mn 
 			return fmt.Errorf("creating namespace %q: %w", nsName, err)
 		}
 
-		logger.Info().Str("namespace", nsName).Msg("namespace created")
+		logger.FromContext(ctx).Info().Str("namespace", nsName).Msg("namespace created")
 		return nil
 	}
 
@@ -192,7 +212,7 @@ func (r *ManagedNamespaceReconciler) reconcileNamespace(ctx context.Context, mn 
 		if _, err := r.kube.Clientset().CoreV1().Namespaces().Update(ctx, existing, metav1.UpdateOptions{}); err != nil {
 			return fmt.Errorf("updating namespace %q labels: %w", nsName, err)
 		}
-		logger.Info().Str("namespace", nsName).Msg("namespace labels updated")
+		logger.FromContext(ctx).Info().Str("namespace", nsName).Msg("namespace labels updated")
 	}
 
 	return nil

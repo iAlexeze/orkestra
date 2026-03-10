@@ -18,7 +18,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
 
-type leaderElection struct {
+type LeaderElection struct {
 	name       string
 	kube       *kubeclient.Kubeclient
 	event      *event.Event
@@ -44,19 +44,19 @@ type Options struct {
 	Annotations map[string]string
 }
 
-var _ domain.Component = (*leaderElection)(nil)
+var _ domain.Component = (*LeaderElection)(nil)
 
 func NewLeaderElection(
 	kube *kubeclient.Kubeclient,
 	event *event.Event,
 	run func(context.Context),
 	opts Options,
-) *leaderElection {
+) *LeaderElection {
 	if opts.Namespace == "" {
 		opts.Namespace = "default"
 	}
 
-	le := &leaderElection{
+	le := &LeaderElection{
 		name:  "resource-leader",
 		event: event,
 		kube:  kube,
@@ -70,7 +70,7 @@ func NewLeaderElection(
 	return le
 }
 
-func (le *leaderElection) Start(ctx context.Context) error {
+func (le *LeaderElection) Start(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func (le *leaderElection) Start(ctx context.Context) error {
 	return nil
 }
 
-func (le *leaderElection) Shutdown(ctx context.Context) {
+func (le *LeaderElection) Shutdown(ctx context.Context) {
 	logger.Info().Msg("🛑 Shutting down leader election...")
 
 	// Cancel the leader election context
@@ -98,17 +98,17 @@ func (le *leaderElection) Shutdown(ctx context.Context) {
 	logger.Info().Msg("✅ Leader election shut down")
 }
 
-func (le *leaderElection) Name() string {
+func (le *LeaderElection) Name() string {
 	return le.name
 }
 
-func (le *leaderElection) kind() string {
+func (le *LeaderElection) kind() string {
 	return "Lease"
 }
 
 // Helpers
 // Lease configuration
-func (le *leaderElection) leaseConfig() leaderelection.LeaderElectionConfig {
+func (le *LeaderElection) leaseConfig() leaderelection.LeaderElectionConfig {
 	return leaderelection.LeaderElectionConfig{
 		Name:            le.Name(),
 		Lock:            le.leaseLock(),
@@ -121,7 +121,7 @@ func (le *leaderElection) leaseConfig() leaderelection.LeaderElectionConfig {
 }
 
 // Lease lock
-func (le *leaderElection) leaseLock() *resourcelock.LeaseLock {
+func (le *LeaderElection) leaseLock() *resourcelock.LeaseLock {
 	opts := le.opts
 	return &resourcelock.LeaseLock{
 		LeaseMeta: metav1.ObjectMeta{
@@ -139,7 +139,7 @@ func (le *leaderElection) leaseLock() *resourcelock.LeaseLock {
 }
 
 // Build callbacks
-func (le *leaderElection) callbacks() leaderelection.LeaderCallbacks {
+func (le *LeaderElection) callbacks() leaderelection.LeaderCallbacks {
 	return leaderelection.LeaderCallbacks{
 		OnStartedLeading: func(ctx context.Context) {
 			if le.event.Recorder() != nil {
@@ -205,6 +205,6 @@ func hostname() string {
 }
 
 // Leader returns the instance that won the leader election
-func (le *leaderElection) Leader() string {
+func (le *LeaderElection) Leader() string {
 	return le.election.leader
 }
