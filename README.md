@@ -143,7 +143,7 @@ The `SharedInformerFactory` is the crown jewel of this architecture. It:
 infFactory := informer.SharedInformerFactory(provider, wq, scheme, namespace, defaultResync)
 
 // Get a fully-configured informer for ANY CRD
-inf := infFactory.For(&yourcrdv1.YourCRD{}, ctx, resyn)  // That's it!
+inf := infFactory.For(&yourcrdv1.YourCRD{}, ctx, resync)  // That's it!
 ```
 
 ### 🧠 **Dependency Controller**
