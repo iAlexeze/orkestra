@@ -30,6 +30,13 @@ var (
 		Version: Version,
 	}
 
+	// GroupVersionKind is the group, version, and kind of your API
+	GroupVersionKind = schema.GroupVersionKind{
+		Group:   Group,
+		Version: Version,
+		Kind:    Kind,
+	}
+
 	// API PATH
 	APIPath = "/apis"
 

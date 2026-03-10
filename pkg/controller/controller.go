@@ -7,14 +7,13 @@ import (
 	"time"
 
 	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
+	"github.com/ialexeze/multi-crd-controller/pkg/config/initialize"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/event"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/informer"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/kubeclient"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/queue"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/registry"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 var _ domain.Component = (*Controller)(nil)
@@ -25,19 +24,22 @@ type Controller struct {
 	event           *event.Event
 	registry        *ResourceRegistry
 	wq              *queue.Workqueue
-	wg              sync.WaitGroup
-	workers         int
+	defaultWorkers  int
+	started         map[string]bool
+	cancelFuncs     map[string]context.CancelFunc
+	wgs             map[string]*sync.WaitGroup
+	mu              sync.RWMutex
 	reconcilers     map[string]domain.Reconciler
-	crds            []registry.CRDInfo
+	crds            []initialize.CRDEntry
 }
 
-func NewControllerManager(
+func NewController(
 	kube *kubeclient.Kubeclient,
 	informerFactory *informer.Factory,
 	registry *ResourceRegistry,
 	event *event.Event,
 	wq *queue.Workqueue,
-	workers int,
+	defaultWorkers int,
 ) *Controller {
 	c := &Controller{
 		kube:            kube,
@@ -45,7 +47,10 @@ func NewControllerManager(
 		registry:        registry,
 		event:           event,
 		wq:              wq,
-		workers:         workers,
+		defaultWorkers:  defaultWorkers,
+		started:         make(map[string]bool),
+		cancelFuncs:     make(map[string]context.CancelFunc),
+		wgs:             make(map[string]*sync.WaitGroup),
 		reconcilers:     make(map[string]domain.Reconciler),
 	}
 
@@ -93,20 +98,34 @@ func (c *Controller) Start(ctx context.Context) error {
 	return nil
 }
 
+// Deprecated: Now handled by dependency graph
 func (c *Controller) RunOrDie(ctx context.Context) {
-	logger.Info().Msgf("starting %d workers", c.workers)
+	// Get all registered GVKs
+	gvks := c.registry.ListGVKs()
 
-	// Start workers
-	for i := 0; i < c.workers; i++ {
-		c.wg.Add(1)
-		go func() {
-			defer c.wg.Done()
-			wait.UntilWithContext(
-				ctx,
-				func(ctx context.Context) {
-					c.runWorker(ctx)
-				}, time.Second)
-		}()
+	// Start per-CRD worker pools
+	for _, gvk := range gvks {
+		workers := c.registry.GetWorkers(gvk, c.defaultWorkers)
+
+		// Create a cancellable context for this CRD
+		crdCtx, cancel := context.WithCancel(ctx)
+
+		c.mu.Lock()
+		c.cancelFuncs[gvk] = cancel
+		wg := &sync.WaitGroup{}
+		c.wgs[gvk] = wg
+		c.started[gvk] = true
+		c.mu.Unlock()
+
+		// Start workers for this CRD
+		logger.Info().Msgf("starting %d workers for %s", workers, gvk)
+		for i := 0; i < workers; i++ {
+			wg.Add(1)
+			go func(workerID int) {
+				defer wg.Done()
+				c.runWorkerForGVK(crdCtx, gvk, workerID)
+			}(i)
+		}
 	}
 
 	// BLOCK until leadership is lost
@@ -117,8 +136,21 @@ func (c *Controller) RunOrDie(ctx context.Context) {
 	// Stop accepting new items
 	c.wq.Shutdown(ctx)
 
-	// Wait for all workers to finish
-	c.wg.Wait()
+	// Cancel all CRD contexts and wait for their workers
+	c.mu.RLock()
+	for gvk, cancel := range c.cancelFuncs {
+		logger.Info().Msgf("cancelling workers for %s", gvk)
+		cancel()
+	}
+	c.mu.RUnlock()
+
+	// Wait for all CRD worker pools to finish
+	c.mu.RLock()
+	for gvk, wg := range c.wgs {
+		logger.Info().Msgf("waiting for %s workers to drain...", gvk)
+		wg.Wait()
+	}
+	c.mu.RUnlock()
 
 	logger.Info().Msg("controller drained and stopped")
 }

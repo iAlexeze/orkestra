@@ -77,3 +77,11 @@ func RetryBackoff(fn func() error, attempts int, base time.Duration) error {
 
 	return nil
 }
+
+func Reversed[T any](s []T) []T {
+	out := make([]T, len(s))
+	for i := range s {
+		out[len(s)-1-i] = s[i]
+	}
+	return out
+}

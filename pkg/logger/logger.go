@@ -1,6 +1,8 @@
 package logger
 
 import (
+	"context"
+
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/config"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -20,6 +22,25 @@ func Init(cfg *config.Config) {
 	default:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
+}
+
+func FromContext(ctx context.Context) *zerolog.Logger {
+	l := log.With()
+
+	if reqID, ok := ctx.Value(RequestIDKey).(string); ok {
+		l = l.Str(RequestIDKey.String(), reqID)
+	}
+
+	if crd, ok := ctx.Value(CRDKey).(string); ok {
+		l = l.Str(CRDKey.String(), crd)
+	}
+
+	if res, ok := ctx.Value(ResourceKey).(string); ok {
+		l = l.Str(ResourceKey.String(), res)
+	}
+
+	logger := l.Logger()
+	return &logger
 }
 
 func Debug() *zerolog.Event {

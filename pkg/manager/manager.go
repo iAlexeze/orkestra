@@ -88,7 +88,7 @@ func (m *Manager) gracefulShutdown(ctx context.Context, cancel context.CancelFun
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), m.timeout)
 		defer shutdownCancel()
 
-		for _, comp := range m.components {
+		for _, comp := range utils.Reversed(m.components) {
 			name := comp.Name()
 			logger.Info().Msgf("shutting down: %s...", name)
 			if comp != nil {

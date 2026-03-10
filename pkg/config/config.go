@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 )
 
@@ -47,6 +48,10 @@ func Init(filenames ...string) (*Config, error) {
 			RenewDeadline: GetDurEnvSeconds("RENEW_DEADLINE", 40),
 			RetryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),
 		},
+		crdRegistry: crdRegistryConfig{
+			Mode: GetStrEnv("CRD_REGISTRY_MODE", "go"),
+			Path: GetStrEnv("CRD_REGISTRY", "initialize/crd-registry.yaml"),
+		},
 	}
 
 	// Normalize app environment
@@ -62,7 +67,15 @@ func Init(filenames ...string) (*Config, error) {
 
 	}
 
-	if err := cfg.validate(); err != nil {
+	if strings.ToLower(cfg.crdRegistry.Mode) == "" {
+		cfg.crdRegistry.Mode = "go"
+	}
+	if strings.ToLower(cfg.crdRegistry.Mode) != "go" && strings.ToLower(cfg.crdRegistry.Mode) != "yaml" {
+		return nil, fmt.Errorf("invalid CRD registry mode: %s", cfg.crdRegistry.Mode)
+	}
+
+	// validate struct
+	if err = Validate().Struct(cfg); err != nil {
 		return nil, err
 	}
 
@@ -104,18 +117,8 @@ func GetIntEnv(key string, def int) int {
 	return def
 }
 
-// validate validates required values:
-// To be replaced by more advaced validation framework when needed
-func (c *Config) validate() error {
-	required := map[string]string{
-		c.App().Name:               "APP_NAME",
-		c.Cluster().KubeconfigPath: "KUBECONFIG",
-	}
-
-	for k, v := range required {
-		if v == "" {
-			return fmt.Errorf("%s is not set", k)
-		}
-	}
-	return nil
+// -----------------------------------------------------------------------------
+func Validate() *validator.Validate {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	return validate
 }

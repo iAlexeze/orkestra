@@ -15,10 +15,12 @@ import (
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/queue"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/registry"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type startupCfg struct {
-	controller *controller.Controller
+	// controller *controller.Controller
+	controller *controller.DependencyController
 	event      *event.Event
 	kube       *kubeclient.Kubeclient
 	manager    *manager.Manager
@@ -26,10 +28,10 @@ type startupCfg struct {
 
 func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 	// crd registry
-	crdRegistry := registry.NewCRDRegistry()
+	crdRegistry := registry.NewCRDRegistry(cfg.CRDRegistry().Mode, cfg.CRDRegistry().Path)
 
 	// scheme registry
-	scheme, err := registry.NewSchemeRegistry()
+	scheme, err := registry.NewSchemeRegistry(crdRegistry)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("scheme creation error")
 	}
@@ -61,9 +63,31 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 	provider := kube.ClientProvider()
 
 	// Register CRD clients to provider - for automatic client  and informer generation
-	for _, crd := range crdRegistry {
-		provider.Register(crd.Object, func(k *kubeclient.Kubeclient) (informer.GenericClient, error) {
-			return k.NewClient(crd.ListObject, kubeclient.CRDInfo(crd.Info))
+	for _, crd := range crdRegistry.CRDs {
+		var object runtime.Object
+		var list runtime.Object
+
+		if crdRegistry.Mode.Yaml {
+			object = crd.ObjectYamlMode()
+			list = crd.ListObjectYamlMode()
+		} else if crdRegistry.Mode.Go {
+			object = crd.ObjectGoMode
+			list = crd.ListObjectGoMode
+		} else {
+			panic("must specify either Go or YAML CRD registry mode")
+		}
+
+		// 3. Register in controller registry
+		logger.Debug().Str("GVK", utils.SetGroupVersionKindObj(crd.GroupVersionKind)).Msg("registering CRD")
+
+		provider.Register(object, func(k *kubeclient.Kubeclient) (informer.GenericClient, error) {
+			return k.NewClient(list, kubeclient.CRDInfo{
+				APIPath:      crd.APIPath,
+				GroupVersion: crd.GroupVersion,
+				NamePlural:   crd.NamePlural,
+				Namespace:    crd.Namespace,
+				Namespaced:   crd.Namespaced,
+			})
 		})
 	}
 
@@ -82,31 +106,42 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 
 	// Register CRDs to controller registry
 	logger.Info().Msg("registering CRDs...")
-	for _, crd := range crdRegistry {
+	for _, crd := range crdRegistry.CRDs {
 		// 1. Create informer
-		inf := infFactory.For(crd.Object, ctx)
+		var object runtime.Object
+		// var list runtime.Object
+
+		if crdRegistry.Mode.Yaml {
+			object = crd.ObjectYamlMode()
+		} else if crdRegistry.Mode.Go {
+			object = crd.ObjectGoMode
+		} else {
+			panic("must specify either Go or YAML CRD registry mode")
+		}
+		inf := infFactory.For(object, ctx)
 
 		// 2. Create reconciler
 		rec := crd.Reconciler(kube, inf, ev)
 
 		// 3. Register in controller registry
-		logger.Debug().Str("GVK", utils.SetGroupVersionKindObj(crd.Info.GroupVersionKind)).Msg("registering CRD")
+		logger.Debug().Str("GVK", utils.SetGroupVersionKindObj(crd.GroupVersionKind)).Msg("registering CRD")
 		reg.Register(
-			utils.SetGroupVersionKindObj(crd.Info.GroupVersionKind),
-			crd.Info,
+			utils.SetGroupVersionKindObj(crd.GroupVersionKind),
+			crd,
 			inf,
 			rec,
 		)
 	}
 
 	// controller manager
-	ctrl := controller.NewControllerManager(
+	ctrl := controller.NewDependencyController(
 		kube,
 		infFactory,
 		reg,
 		ev,
 		wq,
 		cfg.Cluster().Workers,
+		registry.NewDependencyGraph(crdRegistry),
 	)
 	components = append(components, ctrl)
 

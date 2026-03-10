@@ -354,9 +354,17 @@ Generate deepcopy code:
 controller-gen object paths=./api/types/yourcrd/...
 ```
 
-### **Step 2: Create Your Reconciler**
+## **Step 2: Create Your Reconciler**
 
-This is the **only code you write** – your business logic:
+This is the **only Go code your users write** — their business logic.
+
+A reconciler receives:
+
+- a `SharedIndexInformer` (for cached reads)
+- an `event.Event` emitter (for status + events)
+- a `key` (`namespace/name`) to reconcile
+
+Example:
 
 ```go
 // pkg/reconciler/yourcrd_reconciler.go
@@ -364,7 +372,7 @@ package reconciler
 
 import (
     "context"
-    
+
     "github.com/ialexeze/multi-crd-controller/pkg/config/pkg/event"
     "github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
     "k8s.io/client-go/tools/cache"
@@ -374,7 +382,7 @@ type YourCRDReconciler struct {
     events *event.Event
 }
 
-func NewYourCRDReconciler(events *event.Event) *YourCRDReconciler {
+func NewYourCRDReconciler(inf cache.SharedIndexInformer, events *event.Event) *YourCRDReconciler {
     return &YourCRDReconciler{
         events: events,
     }
@@ -385,43 +393,142 @@ func (r *YourCRDReconciler) Reconcile(ctx context.Context, key string) error {
     if err != nil {
         return err
     }
-    
+
     logger.Info().Msgf("Reconciling %s/%s", namespace, name)
+
     // Your business logic here
-    
+
     return nil
 }
 ```
 
-### **Step 4: Register Your CRD**
+---
 
-Add your new CRD to the CRD registry – **this is it!**:
+## **Step 3: Register Your Reconciler**
+
+If you are using **YAML‑based CRD registration**, you must register your reconciler by name:
 
 ```go
-// In pkg/registry/crd_registry.go
-func buildCRDs(kube *kubeclient.Kubeclient) []crd {
-    return []crd{
-        // ... existing CRDs ...
-        
-        newCRD(
-            &yourcrdv1.YourCRD{},           // Object type
-            &yourcrdv1.YourCRDList{},       // List type
-            CRDInfoFrom(
-                yourcrdv1.Group,
-                yourcrdv1.Version,
-                yourcrdv1.Kind,
-                yourcrdv1.APIPath,
-                yourcrdv1.NamePlural,
-                false,                       // IsNamespaced
-            ),
-            yourcrdv1.AddToScheme(scheme)   // Scheme builder function
-            reconciler.NewYourCRDReconciler, // Your reconciler factory
-        ),
+// pkg/reconciler/reconcile.go
+func RegisterReconcilers() map[string]NewReconcilerFunc {
+    return map[string]NewReconcilerFunc{
+        "project": func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
+            return NewProjectReconciler(inf, ev)
+        },
+
+        "managednamespace": func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
+            return NewManagedNamespaceReconciler(kube, inf, ev)
+        },
     }
 }
 ```
 
-### **Step 5: Done! 🎉**
+The key (`"project"`, `"managednamespace"`) must match the CRD name in your registry.
+
+---
+
+## **Step 4: Register Your CRD**
+
+You now have **two options**:
+
+---
+
+### 🟦 **Option A — Go‑based CRD Registration (Typed Mode - Default)**
+
+Add your CRD to the Go registry:
+
+```go
+// pkg/registry/crd_registry.go
+func buildCRDs() []CRDEntry {
+    return []CRDEntry{
+        {
+            Name:        "yourcrd",
+            Object:      &yourcrdv1.YourCRD{},
+            ListObject:  &yourcrdv1.YourCRDList{},
+            Group:       yourcrdv1.Group,
+            Kind:        yourcrdv1.Kind,
+            Version:     yourcrdv1.Version,
+            APIPath:     yourcrdv1.APIPath,
+            NamePlural:  yourcrdv1.NamePlural,
+            Namespace:   "default",
+            Namespaced:  false,
+            Scheme:      yourcrdv1.AddToScheme,
+            Reconciler: func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
+                return reconciler.NewYourCRDReconciler(inf, ev)
+            },
+        },
+    }
+}
+```
+
+Typed mode gives you:
+
+- full Go structs  
+- no scheme registration  
+- IDE autocompletion  
+- compile‑time safety  
+
+---
+
+### 🟩 **Option B — YAML‑based CRD Registration (Dynamic Mode)**
+
+Set the environment variable:
+
+```bash
+export CRD_REGISTRY=initialize/crd-registry.yaml
+```
+
+Example YAML:
+
+```yaml
+# initialize/crd-registry.yaml
+apiVersion: controller.ialexeze.io/v1   # Not required
+kind: Operator      # Not required
+metadata:          # Not required
+  name: platform-operator       # Not required
+
+crds:
+  - name: yourcrd
+    group: yourgroup.example.com
+    version: v1alpha1
+    kind: YourCRD
+    plural: yourcrds
+    namespace: default
+    namespaced: false
+    workers: 3
+    dependsOn: []
+```
+
+This mode gives you:
+
+- dynamic CRD loading  
+- no Go boilerplate  
+- scheme registration  
+- no constructors  
+- no list types  
+- perfect for multi‑CRD orchestration  
+
+---
+
+## **Step 4b: Register Your Scheme (Yaml Mode Only)**
+
+If you are using **Yaml‑based CRD registration**, add your scheme:
+
+```go
+// initialize/scheme-registry.go
+func RegisterScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
+    if err := projectTypev1.AddToScheme(scheme); err != nil {
+        return nil, fmt.Errorf("failed to register Project scheme: %v", err)
+    }
+    return scheme, nil
+}
+```
+
+Go mode does **not** require scheme registration.
+
+---
+
+# 🎉 **Step 5: Done!**
 
 That's it. The framework automatically:
 - ✅ Creates scheme with your API types
