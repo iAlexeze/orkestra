@@ -8,7 +8,7 @@ The YAML mode in this framework transforms how operators are deployed, configure
 
 ```bash
 # Deploy a production-ready Prometheus operator instantly
-export CRD_REGISTRY=https://hub.ialexeze.io/crds/prometheus-operator.yaml
+export CRD_REGISTRY=https://hub.orkestra.io/crds/prometheus-operator.yaml
 ./my-kontroller
 ```
 
@@ -22,7 +22,7 @@ export CRD_REGISTRY=https://hub.ialexeze.io/crds/prometheus-operator.yaml
 
 **Example Hub Structure:**
 ```
-https://hub.ialexeze.io/crds/
+https://hub.orkestra.io/crds/
 ├── monitoring/
 │   ├── prometheus-operator.yaml
 │   ├── grafana-operator.yaml
@@ -389,7 +389,7 @@ Every remote fetch is logged:
 {
   "level":"info",
   "time":1773117835,
-  "url":"https://hub.ialexeze.io/crds/prometheus.yaml",
+  "url":"https://hub.orkestra.io/crds/prometheus.yaml",
   "checksum":"8f3c9a1b2e...",
   "message":"CRD registry loaded"
 }
@@ -409,22 +409,22 @@ YAML mode supports multiple release channels, similar to Kubernetes itself:
 
 ### **Stable (Production Ready)**
 ```
-https://hub.ialexeze.io/crds/prometheus/stable.yaml
+https://hub.orkestra.io/crds/prometheus/stable.yaml
 ```
 
 ### **Beta (Pre-release Testing)**
 ```
-https://hub.ialexeze.io/crds/prometheus/beta.yaml
+https://hub.orkestra.io/crds/prometheus/beta.yaml
 ```
 
 ### **Nightly (Latest Development)**
 ```
-https://hub.ialexeze.io/crds/prometheus/nightly.yaml
+https://hub.orkestra.io/crds/prometheus/nightly.yaml
 ```
 
 ### **Pinned Version (Deterministic)**
 ```
-https://hub.ialexeze.io/crds/prometheus/v1.4.2.yaml
+https://hub.orkestra.io/crds/prometheus/v1.4.2.yaml
 ```
 
 ### **Git Commit SHA (Maximum Reproducibility)**
@@ -518,7 +518,7 @@ kontroller --bundle crds.tar.gz
 ### **Pre‑loaded Cache**
 Pre-download all configurations during build:
 ```dockerfile
-ADD https://hub.ialexeze.io/crds/production.yaml /etc/kontroller/crds.yaml
+ADD https://hub.orkestra.io/crds/production.yaml /etc/kontroller/crds.yaml
 ```
 
 **This makes the framework viable in the most restrictive environments** – government, finance, healthcare, and defense.

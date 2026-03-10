@@ -47,8 +47,8 @@ This is operator engineering without the pain.
 
 | Resource           | API Group               | Version     | Status |
 |-------------------|--------------------------|-------------|--------|
-| `Project`          | `platform.ialexeze.io`  | `v1alpha1`  | ✅ Production Ready |
-| `ManagedNamespace` | `platform.ialexeze.io`  | `v1alpha1`  | ✅ Production Ready |
+| `Project`          | `platform.orkestra.io`  | `v1alpha1`  | ✅ Production Ready |
+| `ManagedNamespace` | `platform.orkestra.io`  | `v1alpha1`  | ✅ Production Ready |
 
 Adding new CRDs takes **minutes**, not days.
 
