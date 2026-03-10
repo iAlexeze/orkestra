@@ -1,5 +1,5 @@
-# 🎼 **Orkestra — The Universal CRD Runtime for Kubernetes**  
-### *Compose. Conduct. Orchestrate.*
+# 🎼 **OrKestra — The Universal CRD Runtime for Kubernetes**  
+### *Kompose. Konduct. OrKestrate.*
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8.svg)](https://golang.org/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.28+-326CE5.svg)](https://kubernetes.io/)
