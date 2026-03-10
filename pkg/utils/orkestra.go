@@ -23,7 +23,7 @@ var OrkestraLogo = `
            /____/     O R K E S T R A  R U N T I M E
 `
 
-var OrkestraHelpLogo = `
+var OrkestraLogoCLI = `
   ___       _              _        
  / _ \ _  _| |___ _ _  ___| |_ _ _  
 | (_) | || | / -_) ' \/ -_)  _| ' \ 

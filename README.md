@@ -235,6 +235,8 @@ Prometheus metrics include:
 - drains workers  
 - shuts down CRDs in dependency order  
 
+**👉 See:** [Startup & Shutdown](./images/)
+
 ---
 
 # 🚀 Quick Start
@@ -308,7 +310,7 @@ YAML mode unlocks:
 - edge/IoT deployments  
 - partner integrations  
 
-👉 See: `docs/yaml-mode-use-cases.md`
+**👉 See:** [YAML Mode Use Cases](./docs/yaml-mode-use-cases.md)
 
 ---
 

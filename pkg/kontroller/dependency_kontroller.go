@@ -23,8 +23,7 @@ type DependencyKontroller struct {
 
 	depGraph       *registry.DependencyGraph
 	defaultWorkers int
-	bannKfg           *BannerKonfig
-
+	bannKfg        *BannerKonfig
 
 	// readyCh[name] is closed when a CRD has fully started its workers.
 	readyCh map[string]chan struct{}
@@ -50,7 +49,7 @@ func NewDependencyKontroller(
 		Controller:     NewController(kube, factory, registry, events, wq, hs, defaultWorkers, maxQueueDepth),
 		depGraph:       depGraph,
 		defaultWorkers: defaultWorkers,
-		bannKfg:           bannKfg,
+		bannKfg:        bannKfg,
 		readyCh:        make(map[string]chan struct{}),
 	}
 }
