@@ -13,6 +13,8 @@ var ListRegistry = map[schema.GroupVersionKind]func() runtime.Object{}
 
 type CRDEntry struct {
 	Name               string                        `yaml:"name" validate:"required,hostname_rfc1123"`
+	Enabled            bool                          `yaml:"enabled"`
+	Description        string                        `yaml:"description" validate:"required"`
 	ObjectGoMode       runtime.Object                `yaml:"-"`
 	ListObjectGoMode   runtime.Object                `yaml:"-"`
 	ObjectYamlMode     func() runtime.Object         `yaml:"-"`
@@ -24,7 +26,7 @@ type CRDEntry struct {
 	Kind               string                        `yaml:"kind" validate:"required"`
 	GroupVersion       *schema.GroupVersion          `yaml:"groupVersion" validate:"omitempty"`     // Optional (can be used if Group and Version are not specified)
 	GroupVersionKind   schema.GroupVersionKind       `yaml:"groupVersionKind" validate:"omitempty"` //	Useful for some manipulations and Required by Registry
-	NamePlural         string                        `yaml:"plural" validate:"required"`
+	Plural             string                        `yaml:"plural" validate:"required"`
 	APIPath            string                        `yaml:"apiPath" validate:"omitempty"`
 	Package            string                        `yaml:"package" validate:"required"` // Example: 'platform.orkestra.io/v1alpha1'. Needed to construct scheme
 	Namespaced         bool                          `yaml:"namespaced"`

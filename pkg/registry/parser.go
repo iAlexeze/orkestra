@@ -2,6 +2,8 @@
 package registry
 
 import (
+	"fmt"
+
 	"github.com/ialexeze/orkestra/initialize"
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
@@ -15,18 +17,36 @@ import (
 //
 // -----------------------------------------------------------------------------
 func (r *CRDRegistry) buildCRDRegistryFromYaml(path string) ([]initialize.CRDEntry, error) {
-	// Read the YAML file
 	data, err := utils.LoadFile(path)
 	if err != nil {
-		logger.Error().Err(err).Msgf("Error reading YAML file: %v", err)
 		return nil, err
 	}
 
-	// Parse the YAML data
 	if err := yaml.Unmarshal(data, r); err != nil {
 		return nil, err
 	}
 
+	if r.Empty() {
+		return nil, fmt.Errorf("CRDRegistry is empty")
+	}
+
+	// Populate All crds
+	r.AllCRDs = r.CRDs
+
+	// Filter enabled CRDs
+	for _, crd := range r.CRDs {
+		if crd.Enabled {
+			r.EnabledCRDs = append(r.EnabledCRDs, crd)
+		} else {
+			logger.Warn().Msgf("%s disabled. skipping...", crd.Name)
+		}
+	}
+
+	if r.EnabledEmpty() {
+		return nil, fmt.Errorf("no enabled CRDs found")
+	}
+
+	r.CRDs = r.EnabledCRDs
 	r.Mode.Yaml = true
 	return r.CRDs, nil
 }
@@ -71,9 +91,10 @@ func (r *CRDRegistry) validateConfig(crds []initialize.CRDEntry) (*CRDRegistry, 
 	}
 
 	// -------------------------------------------------------------------------
-	// 4. Set GroupVersionKind
+	// 4. Set GroupVersionKind and Defaults
 	// -------------------------------------------------------------------------
 	r.SetGroupVersionKind()
+	r.SetDefaults()
 
 	if r.Mode.Yaml {
 		// -------------------------------------------------------------------------
@@ -94,4 +115,21 @@ func (r *CRDRegistry) validateConfig(crds []initialize.CRDEntry) (*CRDRegistry, 
 	}
 
 	return r, nil
+}
+
+// Helpers
+func (r *CRDRegistry) Empty() bool {
+	return len(r.CRDs) == 0
+}
+
+func (r *CRDRegistry) EnabledEmpty() bool {
+	return len(r.EnabledCRDs) == 0
+}
+
+func (r *CRDRegistry) List() []initialize.CRDEntry {
+	return r.AllCRDs
+}
+
+func (r *CRDRegistry) EnabledList() []initialize.CRDEntry {
+	return r.EnabledCRDs
 }

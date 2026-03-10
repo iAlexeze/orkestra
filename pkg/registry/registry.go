@@ -36,6 +36,10 @@ func NewCRDRegistry(mode, path string) *CRDRegistry {
 		utils.Exit(fmt.Errorf("must be 'go' or 'yaml' invalid CRD registry mode: %s", mode))
 	}
 
+	if len(entries) == 0 {
+		utils.Exit(fmt.Errorf("validation error: CRD registry empty"))
+	}
+
 	reg, err := registry.validateConfig(entries)
 	if err != nil {
 		utils.Exit(err)

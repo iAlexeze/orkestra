@@ -43,7 +43,7 @@ This is operator engineering without the pain.
 
 ---
 
-# 🎯 Supported CRDs (Example)
+# 🎯 Example CRDs
 
 | Resource           | API Group               | Version     | Status |
 |-------------------|--------------------------|-------------|--------|
@@ -58,99 +58,102 @@ Adding new CRDs takes **minutes**, not days.
 
 ```mermaid
 flowchart TB
- subgraph CRDs["Custom Resources"]
-        P["Project CRD"]
-        M["ManagedNamespace CRD"]
+ subgraph CRDs["Custom Resources (Configurable)"]
+        P["Project CRD<br>(enabled: true, workers: 3, resync: 10m)"]
+        M["ManagedNamespace CRD<br>(enabled: true, workers: 2, resync: 30s, dependsOn: project)"]
+        D["Disabled CRD<br>(enabled: false)"]
   end
  subgraph API["Kubernetes API Server"]
   end
- subgraph Core["Core Components"]
+ subgraph Core["Core Komponents"]
         KC["KubeClient"]
         FC["SharedClientFactory"]
         EV["Event Recorder"]
         HS["Health Server"]
         WQ["Workqueue (Shared)"]
   end
- subgraph Informers["Informer Layer"]
+ subgraph Informers["Informer Factory"]
+    direction LR
         SIF["SharedInformerFactory"]
-        PI["Project Informer"]
-        MI["ManagedNamespace Informer"]
-        STORE[("Shared Store")]
+        PI["Project Informer<br>resync: 10m"]
+        MI["ManagedNamespace Informer<br>resync: 30s"]
   end
- subgraph Registry["CRD Registry"]
+ subgraph Registry["Runtime Registry"]
         REG["Kontroller Registry"]
-        R1["Project Entry"]
-        R2["ManagedNamespace Entry"]
+        R1["Project Entry<br>GVK → Reconciler"]
+        R2["ManagedNamespace Entry<br>GVK → Reconciler"]
   end
- subgraph Kontroller["Kontroller Layer"]
+ subgraph Workers["Per-CRD Worker Pools"]
+        W1["Project Workers<br>(3)"]
+        W2["ManagedNamespace Workers<br>(2)"]
+  end
+ subgraph Kontroller["Kontroller (Dependency-Aware)"]
+    direction LR
         C["Dependency Kontroller"]
-        W1["Worker 1"]
-        W2["Worker 2"]
-        W3["Worker N"]
-        DISPATCH["Dispatch Logic"]
+        Workers
+        DISPATCH["GVK Dispatch Logic"]
   end
  subgraph HA["High Availability"]
         LE["Leader Election"]
   end
- subgraph Reconcilers["Reconciler Layer"]
+ subgraph Reconcilers["Reconciler Registry"]
         PR["Project Reconciler"]
         MR["ManagedNamespace Reconciler"]
   end
-    CRDs --> API
-    API --> KC
+    CRDs L_CRDs_API_0@--> API
+    API L_API_KC_0@--> KC
     KC --> FC
-    FC --> SIF
-    SIF --> PI & MI
-    PI --> STORE & WQ
-    MI --> STORE & WQ
-    WQ --> C
-    C --> W1 & W2 & W3 & HS
-    W1 --> DISPATCH
-    W2 --> DISPATCH
-    W3 --> DISPATCH
-    DISPATCH --> REG
-    REG --> R1 & R2
-    R1 --> PR
-    R2 --> MR
-    PR --> EV
-    MR --> EV
-    LE --> C
-    EV --> API
+    FC L_FC_SIF_0@--> SIF
+    SIF L_SIF_PI_0@-. enabled: true .-> PI & MI
+    SIF L_SIF_DI_0@-. enabled: false .-> DI["(Skipped)"]
+    PI L_PI_STORE_0@--> STORE[("Shared Store")] & WQ
+    MI L_MI_STORE_0@--> STORE & WQ
+    WQ L_WQ_C_0@--> C
+    C L_C_Workers_0@--> Workers & HS
+    Workers L_Workers_DISPATCH_0@--> DISPATCH
+    DISPATCH L_DISPATCH_REG_0@--> REG
+    REG L_REG_R1_0@--> R1 & R2
+    R1 L_R1_PR_0@-.-> PR
+    R2 L_R2_MR_0@-.-> MR
+    PR L_PR_EV_0@--> EV
+    MR L_MR_EV_0@--> EV
+    LE L_LE_C_0@--> C
+    EV L_EV_API_0@--> API
 
+     D:::disabled
+     DI:::disabled
+    classDef disabled fill:#FFB3B3,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+    style D fill:#FFB3B3,stroke:#333,stroke-width:2px
     style KC fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
     style FC fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
     style SIF fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
     style REG fill:#FF6D00,stroke:#333,stroke-width:4px,color:#FFFFFF
     style C fill:#FF6D00,stroke:#333,stroke-width:4px,color:#FFFFFF
+    style Workers fill:#FFD966,stroke:#333,stroke-width:2px
     style LE fill:#FF6D00,stroke:#333,stroke-width:2px
     style PR fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
     style MR fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
-    style CRDs fill:transparent,stroke:#333,stroke-width:2px
-    style API fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
+    style DI fill:#FFB3B3,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
 
     L_CRDs_API_0@{ animation: fast } 
     L_API_KC_0@{ animation: fast } 
-    L_KC_FC_0@{ animation: fast } 
     L_FC_SIF_0@{ animation: fast } 
     L_SIF_PI_0@{ animation: fast } 
     L_SIF_MI_0@{ animation: fast } 
+    L_SIF_DI_0@{ animation: fast } 
     L_PI_STORE_0@{ animation: fast } 
     L_PI_WQ_0@{ animation: fast } 
     L_MI_STORE_0@{ animation: fast } 
     L_MI_WQ_0@{ animation: fast } 
     L_WQ_C_0@{ animation: fast } 
-    L_C_W1_0@{ animation: fast } 
-    L_C_W2_0@{ animation: fast } 
-    L_C_W3_0@{ animation: fast } 
+    L_C_Workers_0@{ animation: fast } 
     L_C_HS_0@{ animation: fast } 
-    L_W1_DISPATCH_0@{ animation: fast } 
-    L_W2_DISPATCH_0@{ animation: fast } 
-    L_W3_DISPATCH_0@{ animation: fast } 
+    L_Workers_DISPATCH_0@{ animation: fast } 
     L_DISPATCH_REG_0@{ animation: fast } 
     L_REG_R1_0@{ animation: fast } 
     L_REG_R2_0@{ animation: fast } 
-    L_R1_PR_0@{ animation: fast } 
-    L_R2_MR_0@{ animation: fast } 
+    L_R1_PR_0@{ animation: slow } 
+    L_R2_MR_0@{ animation: slow } 
     L_PR_EV_0@{ animation: fast } 
     L_MR_EV_0@{ animation: fast } 
     L_LE_C_0@{ animation: fast } 

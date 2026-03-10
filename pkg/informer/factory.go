@@ -184,7 +184,7 @@ func (f *Factory) IsReady() bool {
 	}
 }
 
-// Implement the component part
+// Implement the komponent part
 var _ domain.Komponent = (*Factory)(nil)
 
 func (f *Factory) Started() bool {

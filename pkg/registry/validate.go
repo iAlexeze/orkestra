@@ -82,7 +82,7 @@ func (r *CRDRegistry) validateDependsOn() error {
 				return fmt.Errorf("CRD '%s' cannot depend on itself", crd.Name)
 			}
 			if !exists[dep] {
-				return fmt.Errorf("CRD '%s' depends on unknown CRD '%s'", crd.Name, dep)
+				return fmt.Errorf("CRD '%s' depends on unknown or disabled CRD '%s'", crd.Name, dep)
 			}
 		}
 	}
@@ -153,25 +153,43 @@ func (r *CRDRegistry) SetGroupVersionKind() error {
 			Version: crd.Version,
 		}
 
+		if crd.GroupVersionKind.Empty() {
+			return fmt.Errorf("GroupVersionKind is empty. Enter a valid Group, Version and Kind for the CRD")
+		}
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------------
+//
+// Set SetDefaults
+func (r *CRDRegistry) SetDefaults() error {
+	for i := range r.CRDs {
+		crd := &r.CRDs[i]
+
+		// Handle namespaced and cluster-scoped crds
 		if !crd.Namespaced && crd.Namespace != "" {
 			logger.Warn().Msgf("%s is clusterscoped. Namespace %s will be ignored", crd.Kind, crd.Namespace)
 			crd.Namespace = ""
 		}
 
+		// Handle API path
 		if crd.APIPath == "" {
 			logger.Warn().Msgf("API path for Kind=%s is empty. Setting to '/apis'", crd.Kind)
 			crd.APIPath = "/apis"
 		}
 
+		// Handle plural name
 		crd.Name = strings.ToLower(crd.Name)
 
-		if crd.NamePlural == "" {
+		if crd.Plural == "" {
 			logger.Warn().Msgf("Plural name for %s is empty. Setting to '%ss'", crd.Kind, crd.Name)
-			crd.NamePlural = fmt.Sprintf("%ss", strings.ToLower(crd.Name))
+			crd.Plural = fmt.Sprintf("%ss", strings.ToLower(crd.Name))
 		}
 
-		if crd.GroupVersionKind.Empty() {
-			return fmt.Errorf("GroupVersionKind is empty. Enter a valid Group, Version and Kind for the CRD")
+		// Handle description
+		if crd.Description == "" {
+			crd.Description = fmt.Sprintf("%s CRD, GVK: %s", crd.Kind, crd.GroupVersionKind.String())
 		}
 	}
 	return nil

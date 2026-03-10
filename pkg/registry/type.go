@@ -31,11 +31,13 @@ type CRDRegistry struct {
 	Metadata   struct {
 		Name string `yaml:"name"`
 	} `yaml:"metadata"`
-	CRDs []initialize.CRDEntry `yaml:"crds"`
+
+	CRDs        []initialize.CRDEntry `yaml:"crds"` // raw from YAML
+	EnabledCRDs []initialize.CRDEntry `yaml:"-"`    // filtered
+	AllCRDs     []initialize.CRDEntry `yaml:"-"`    // documentation - CLI
+
 	Mode struct {
 		Go   bool `yaml:"go"`
 		Yaml bool `yaml:"yaml"`
 	} `yaml:"mode"`
-
-	// -
 }

@@ -23,7 +23,7 @@ type startupCfg struct {
 	event      *event.Event
 	kube       *kubeclient.Kubeclient
 	manager    *manager.Manager
-	comp       *[]domain.Komponent
+	komp       *[]domain.Komponent
 }
 
 func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
@@ -78,7 +78,7 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 				Version:      crd.Version,
 				APIPath:      crd.APIPath,
 				GroupVersion: crd.GroupVersion,
-				NamePlural:   crd.NamePlural,
+				Plural:       crd.Plural,
 				Namespace:    crd.Namespace,
 				Namespaced:   crd.Namespaced,
 			})
@@ -126,8 +126,8 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 		)
 	}
 
-	// Add all components
-	components := []domain.Komponent{
+	// Add all komponents
+	komponents := []domain.Komponent{
 		hs,
 		kube,
 		ev,
@@ -147,24 +147,25 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 		kfg.CRDRegistry().MaxQueueDepth,
 		registry.NewDependencyGraph(crdRegistry),
 		&kontroller.BannerKonfig{
+			AllCRDs:    crdRegistry.List(),
 			Konfig:     kfg,
-			Komponents: components,
+			Komponents: komponents,
 			Leader:     "",
 		},
 	)
 
 	// Add kontroller
-	components = append(components, ktrl)
+	komponents = append(komponents, ktrl)
 
 	// manager
 	mgr := manager.NewManager(kfg.Cluster().DefaultResync)
-	mgr.Register(components) // Register all manager components
+	mgr.Register(komponents) // Register all manager komponents
 
 	return &startupCfg{
 		event:      ev,
 		kontroller: ktrl,
 		kube:       kube,
-		comp:       &components,
+		komp:       &komponents,
 		manager:    mgr,
 	}
 }

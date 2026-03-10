@@ -41,7 +41,7 @@ var (
 	APIPath = "/apis"
 
 	// spec.names.plural
-	NamePlural = "managednamespaces"
+	Plural = "managednamespaces"
 
 	// SchemeBuilder is used to add Go types to the GroupVersionKind scheme
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)

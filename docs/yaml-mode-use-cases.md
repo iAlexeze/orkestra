@@ -469,7 +469,7 @@ New team members can contribute by editing YAML, not navigating complex Go codeb
 
 YAML mode effectively turns your kontroller into a **mini control plane**:
 
-| Component | Analogy |
+| Komponent | Analogy |
 |----------|---------|
 | CRDs | Packages |
 | Dependencies | Service graphs |

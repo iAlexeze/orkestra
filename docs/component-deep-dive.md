@@ -1,7 +1,7 @@
-# 🏗️ **Component Deep Dive**  
+# 🏗️ **Komponent Deep Dive**  
 ### *Inside the Runtime‑Composable, Dependency‑Aware Multi‑CRD Kontroller Framework*
 
-This document provides a detailed breakdown of every major component in the Multi‑CRD Kontroller Framework. It explains how each subsystem contributes to a **dynamic, dependency‑aware, zero‑boilerplate operator runtime** capable of managing any number of CRDs through Go or YAML configuration.
+This document provides a detailed breakdown of every major komponent in the Multi‑CRD Kontroller Framework. It explains how each subsystem contributes to a **dynamic, dependency‑aware, zero‑boilerplate operator runtime** capable of managing any number of CRDs through Go or YAML configuration.
 
 ---
 
@@ -60,9 +60,9 @@ flowchart TB
 
 ---
 
-# 📋 **Component Index**
+# 📋 **Komponent Index**
 
-| Component | Package | Responsibility |
+| Komponent | Package | Responsibility |
 |----------|----------|----------------|
 | [1. Configuration](#1-configuration) | `pkg/config` | Loads env + YAML registry mode |
 | [2. Health Server](#2-health-server) | `pkg/health` | Liveness/readiness |
@@ -74,7 +74,7 @@ flowchart TB
 | [8. Dependency Graph](#8-dependency-graph) | `pkg/registry` | DAG validation + ordering |
 | [9. Client Provider](#9-client-provider) | `pkg/kubeclient` | Creates CRD clients |
 | [10. SharedInformerFactory](#10-sharedinformerfactory) | `pkg/informer` | Auto‑creates informers |
-| [11. Kontroller Registry](#11-kontroller-registry) | `pkg/kontroller` | Maps GVK → runtime components |
+| [11. Kontroller Registry](#11-kontroller-registry) | `pkg/kontroller` | Maps GVK → runtime komponent |
 | [12. Reconcilers](#12-reconcilers) | `pkg/reconciler` | Business logic |
 | [13. Dependency‑Aware Kontroller](#13-dependency-aware-kontroller) | `pkg/kontroller` | Per‑CRD workers + dispatch |
 | [14. Leader Election](#14-leader-election) | `pkg/leader` | HA model |
@@ -115,7 +115,7 @@ crds:
 # 2. **Health Server**
 
 - `/health` – always 200 when running  
-- `/ready` – only 200 after all components start  
+- `/ready` – only 200 after all komponent start  
 - Silent in production  
 - First to start, last to stop  
 
@@ -322,8 +322,8 @@ reconciler := registry.Get(item.GVK)
 The Orkestrator.
 
 ### Responsibilities:
-- Register components  
-- Start components in order  
+- Register komponent  
+- Start komponent in order  
 - Run post‑start hooks (leader election)  
 - Mark health server ready  
 - Handle SIGTERM  
