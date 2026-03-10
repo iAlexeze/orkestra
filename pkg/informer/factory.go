@@ -7,9 +7,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	crderror "github.com/ialexeze/multi-crd-controller/pkg/config/pkg/error"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
+	"github.com/ialexeze/orkestra/domain"
+	crderror "github.com/ialexeze/orkestra/pkg/error"
+	"github.com/ialexeze/orkestra/pkg/logger"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
@@ -185,7 +185,11 @@ func (f *Factory) IsReady() bool {
 }
 
 // Implement the component part
-var _ domain.Component = (*Factory)(nil)
+var _ domain.Komponent = (*Factory)(nil)
+
+func (f *Factory) Started() bool {
+	return f.started
+}
 
 func (f *Factory) Shutdown(ctx context.Context) {
 	f.mu.Lock()
@@ -197,5 +201,5 @@ func (f *Factory) Shutdown(ctx context.Context) {
 }
 
 func (f *Factory) Name() string {
-	return "shared informer factory"
+	return "informer factory"
 }

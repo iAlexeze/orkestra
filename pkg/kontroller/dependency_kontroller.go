@@ -1,37 +1,39 @@
-// pkg/controller/dependency_controller.go
-package controller
+// pkg/kontroller/dependency_kontroller.go
+package kontroller
 
 import (
 	"context"
 	"strings"
 	"sync"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/event"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/health"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/informer"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/kubeclient"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/metrics"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/queue"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/registry"
+	"github.com/ialexeze/orkestra/pkg/event"
+	"github.com/ialexeze/orkestra/pkg/health"
+	"github.com/ialexeze/orkestra/pkg/informer"
+	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/metrics"
+	"github.com/ialexeze/orkestra/pkg/queue"
+	"github.com/ialexeze/orkestra/pkg/registry"
 )
 
-// DependencyController extends the base Controller with dependency‑aware startup.
+// DependencyKontroller extends the base Controller with dependency‑aware startup.
 // It ensures CRDs start in topological order and shut down in reverse order.
-type DependencyController struct {
+type DependencyKontroller struct {
 	*Controller
 
 	depGraph       *registry.DependencyGraph
 	defaultWorkers int
+	bannKfg           *BannerKonfig
+
 
 	// readyCh[name] is closed when a CRD has fully started its workers.
 	readyCh map[string]chan struct{}
 }
 
-// NewDependencyController constructs a dependency‑aware controller.
-// It embeds the base Controller so all worker logic, queue handling,
+// NewDependencyKontroller constructs a dependency‑aware controller.
+// It embeds the base Kontroller so all worker logic, queue handling,
 // and reconciler dispatching remain unchanged.
-func NewDependencyController(
+func NewDependencyKontroller(
 	kube *kubeclient.Kubeclient,
 	factory *informer.Factory,
 	registry *ResourceRegistry,
@@ -41,19 +43,21 @@ func NewDependencyController(
 	defaultWorkers int,
 	maxQueueDepth int,
 	depGraph *registry.DependencyGraph,
-) *DependencyController {
+	bannKfg *BannerKonfig,
+) *DependencyKontroller {
 
-	return &DependencyController{
+	return &DependencyKontroller{
 		Controller:     NewController(kube, factory, registry, events, wq, hs, defaultWorkers, maxQueueDepth),
 		depGraph:       depGraph,
 		defaultWorkers: defaultWorkers,
+		bannKfg:           bannKfg,
 		readyCh:        make(map[string]chan struct{}),
 	}
 }
 
 // RunOrDie starts CRDs in dependency order and blocks until leadership is lost.
 // When leadership ends, it shuts down CRDs in reverse dependency order.
-func (c *DependencyController) RunOrDie(ctx context.Context) {
+func (c *DependencyKontroller) RunOrDie(ctx context.Context) {
 	logger.Info().Msgf("dependency controller starting in %s mode...", c.depGraph.GetMode())
 
 	// 1. Compute topological startup order (A → B → C)
@@ -99,9 +103,22 @@ func (c *DependencyController) RunOrDie(ctx context.Context) {
 		close(c.readyCh[name])
 	}
 
+	// Mark as started
+	c.healthy = true
+	c.hs.SetReady()
+
+	c.bannKfg.Komponents = append(c.bannKfg.Komponents, c)
+
+	// Print banner
+	c.printBanner(c.bannKfg)
+
 	// 4. Block until leadership is lost
 	<-ctx.Done()
 	logger.Info().Msg("leadership lost — beginning dependency‑aware shutdown")
+
+	// Mark as degraded
+	c.healthy = false
+	c.hs.Degraded()
 
 	// 5. Shutdown CRDs in reverse dependency order
 	shutdownOrder := c.depGraph.ShutdownOrder()
@@ -115,7 +132,7 @@ func (c *DependencyController) RunOrDie(ctx context.Context) {
 
 // startCRDWorkers starts a worker pool for a specific CRD.
 // It mirrors the logic in Controller.RunOrDie but is invoked in dependency order.
-func (c *DependencyController) startCRDWorkers(ctx context.Context, gvk string, workers int) {
+func (c *DependencyKontroller) startCRDWorkers(ctx context.Context, gvk string, workers int) {
 	crdCtx, cancel := context.WithCancel(ctx)
 
 	c.mu.Lock()
@@ -136,7 +153,7 @@ func (c *DependencyController) startCRDWorkers(ctx context.Context, gvk string, 
 }
 
 // stopCRDWorkers cancels the CRD context and waits for all workers to drain.
-func (c *DependencyController) stopCRDWorkers(name string) {
+func (c *DependencyKontroller) stopCRDWorkers(name string) {
 	gvk := c.depGraph.GetNode(name).CRD.GroupVersionKind.String()
 
 	c.mu.RLock()

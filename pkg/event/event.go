@@ -4,11 +4,11 @@ import (
 	"context"
 	"sync"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	crderror "github.com/ialexeze/multi-crd-controller/pkg/config/pkg/error"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/kubeclient"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
+	"github.com/ialexeze/orkestra/domain"
+	crderror "github.com/ialexeze/orkestra/pkg/error"
+	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -25,9 +25,10 @@ type Event struct {
 	stopped     bool           // Track state
 	wg          sync.WaitGroup // Track in-flight events
 	mu          sync.Mutex     // Protect shutdown
+	started     bool
 }
 
-var _ domain.Component = (*Event)(nil)
+var _ domain.Komponent = (*Event)(nil)
 
 func NewEvent(kube *kubeclient.Kubeclient) *Event {
 	if kube.Scheme() == nil {
@@ -36,31 +37,33 @@ func NewEvent(kube *kubeclient.Kubeclient) *Event {
 
 	return &Event{
 		name:      "event handler",
-		component: "multi-crd-controller",
+		component: "orkestra",
 		kube:      kube,
 		scheme:    kube.Scheme(),
 	}
 }
 
-func (r *Event) Start(ctx context.Context) error {
+func (e *Event) Start(ctx context.Context) error {
 	// Check if context is cancelled
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 
 	// Create event broadcaster
-	r.broadcaster = record.NewBroadcaster(record.WithContext(ctx))
-	r.broadcaster.StartRecordingToSink(
+	e.broadcaster = record.NewBroadcaster(record.WithContext(ctx))
+	e.broadcaster.StartRecordingToSink(
 		&typedcorev1.EventSinkImpl{
-			Interface: r.kube.Clientset().CoreV1().Events(""),
+			Interface: e.kube.Clientset().CoreV1().Events(""),
 		})
 
 	// Create event recorder
-	r.recorder = r.broadcaster.NewRecorder(
-		r.scheme,
+	e.recorder = e.broadcaster.NewRecorder(
+		e.scheme,
 		corev1.EventSource{
-			Component: r.component,
+			Component: e.component,
 		})
+
+	e.started = true
 	return nil
 }
 
@@ -109,14 +112,17 @@ func (e *Event) Shutdown(ctx context.Context) {
 	}
 }
 
-func (r *Event) Name() string {
-	return r.name
+// Healthy mark on startup
+func (e *Event) Started() bool { return e.started }
+
+func (e *Event) Name() string {
+	return e.name
 }
 
-func (r *Event) Broadcaster() record.EventBroadcaster {
-	return r.broadcaster
+func (e *Event) Broadcaster() record.EventBroadcaster {
+	return e.broadcaster
 }
 
-func (r *Event) Recorder() record.EventRecorder {
-	return r.recorder
+func (e *Event) Recorder() record.EventRecorder {
+	return e.recorder
 }

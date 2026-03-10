@@ -2,7 +2,7 @@ package domain
 
 import "context"
 
-type Component interface {
+type Komponent interface {
 
 	// Start() starts the compnent
 	Start(context.Context) error
@@ -12,6 +12,9 @@ type Component interface {
 
 	// Name() returns the name of the component
 	Name() string
+
+	// Started() is set when manager starts a component
+	Started() bool
 }
 
 type Reconciler interface {

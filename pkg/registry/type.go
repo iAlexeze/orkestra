@@ -3,7 +3,7 @@ package registry
 import (
 	"reflect"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/initialize"
+	"github.com/ialexeze/orkestra/initialize"
 )
 
 // -----------------------------------------------------------------------------

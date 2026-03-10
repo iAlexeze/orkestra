@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	crderror "github.com/ialexeze/multi-crd-controller/pkg/config/pkg/error"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
+	"github.com/ialexeze/orkestra/domain"
+	crderror "github.com/ialexeze/orkestra/pkg/error"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/dynamic"
@@ -24,6 +24,7 @@ type Kubeclient struct {
 	scheme     *runtime.Scheme
 	Config     Config
 	Info       CRDInfo
+	started    bool
 }
 
 type Config struct {
@@ -32,7 +33,7 @@ type Config struct {
 	Scheme     *runtime.Scheme // REQUIRED
 }
 
-var _ domain.Component = (*Kubeclient)(nil)
+var _ domain.Komponent = (*Kubeclient)(nil)
 
 func NewKubeclient(cfg Config) *Kubeclient {
 	if cfg.Scheme == nil {
@@ -69,6 +70,7 @@ func (k *Kubeclient) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to create dynamic client: %w", err)
 	}
 
+	k.started = true
 	return nil
 }
 
@@ -99,6 +101,8 @@ func (k *Kubeclient) buildConfig() (*rest.Config, error) {
 
 	return restCfg, nil
 }
+
+func (k *Kubeclient) Started() bool { return k.started }
 
 func (k *Kubeclient) Shutdown(ctx context.Context) {}
 

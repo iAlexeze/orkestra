@@ -3,32 +3,32 @@ package main
 import (
 	"context"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/config"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/controller"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/event"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/health"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/informer"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/kubeclient"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/manager"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/queue"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/registry"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/konfig"
+	"github.com/ialexeze/orkestra/pkg/event"
+	"github.com/ialexeze/orkestra/pkg/health"
+	"github.com/ialexeze/orkestra/pkg/informer"
+	"github.com/ialexeze/orkestra/pkg/kontroller"
+	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/manager"
+	"github.com/ialexeze/orkestra/pkg/queue"
+	"github.com/ialexeze/orkestra/pkg/registry"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type startupCfg struct {
-	// controller *controller.Controller
-	controller *controller.DependencyController
+	kontroller *kontroller.DependencyKontroller
 	event      *event.Event
 	kube       *kubeclient.Kubeclient
 	manager    *manager.Manager
+	comp       *[]domain.Komponent
 }
 
-func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
+func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 	// crd registry
-	crdRegistry := registry.NewCRDRegistry(cfg.CRDRegistry().Mode, cfg.CRDRegistry().Path)
+	crdRegistry := registry.NewCRDRegistry(kfg.CRDRegistry().Mode, kfg.CRDRegistry().Path)
 
 	// scheme registry
 	scheme, err := registry.NewSchemeRegistry(crdRegistry)
@@ -37,15 +37,15 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 	}
 
 	// health
-	hs := health.NewHealthServer(cfg)
+	hs := health.NewHealthServer(kfg)
 
 	// kube
 	kube := kubeclient.NewKubeclient(kubeclient.Config{
-		Kubeconfig: cfg.Cluster().KubeconfigPath,
-		Masterurl:  cfg.Cluster().MasterURL,
+		Kubeconfig: kfg.Cluster().KubekonfigPath,
+		Masterurl:  kfg.Cluster().MasterURL,
 		Scheme:     scheme,
 	})
-	
+
 	// events
 	ev := event.NewEvent(kube)
 
@@ -60,15 +60,15 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 		var object runtime.Object
 		var list runtime.Object
 
-		if cfg.YamlMode() {
+		if kfg.YamlMode() {
 			object = crd.ObjectYamlMode()
 			list = crd.ListObjectYamlMode()
-		} else if cfg.GoMode() {
+		} else if kfg.GoMode() {
 			object = crd.ObjectGoMode
 			list = crd.ListObjectGoMode
 		}
 
-		// 3. Register in controller registry
+		// 3. Register in kontroller registry
 		logger.Debug().Str("GVK", utils.SetGroupVersionKindObj(crd.GroupVersionKind)).Msg("registering CRD")
 
 		provider.Register(object, func(k *kubeclient.Kubeclient) (informer.GenericClient, error) {
@@ -90,20 +90,20 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 		provider,
 		wq,
 		scheme,
-		cfg.Cluster().Namespace,
-		cfg.Cluster().DefaultResync,
+		kfg.Cluster().Namespace,
+		kfg.Cluster().DefaultResync,
 	)
 
-	// Controller Registry
-	reg := controller.NewControllerRegistry()
+	// Kontroller Registry
+	reg := kontroller.NewKontrollerRegistry()
 
-	// Register CRDs to controller registry
+	// Register CRDs to kontroller registry
 	logger.Info().Msg("registering CRDs...")
 	for _, crd := range crdRegistry.CRDs {
 		var object runtime.Object
-		if cfg.YamlMode() {
+		if kfg.YamlMode() {
 			object = crd.ObjectYamlMode()
-		} else if cfg.GoMode() {
+		} else if kfg.GoMode() {
 			object = crd.ObjectGoMode
 		}
 
@@ -116,7 +116,7 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 		// 2. Create reconciler
 		rec := crd.Reconciler(kube, inf, ev)
 
-		// 3. Register in controller registry
+		// 3. Register in kontroller registry
 		logger.Debug().Str("GVK", utils.SetGroupVersionKindObj(crd.GroupVersionKind)).Msg("registering CRD")
 		reg.Register(
 			utils.SetGroupVersionKindObj(crd.GroupVersionKind),
@@ -126,37 +126,45 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 		)
 	}
 
-	// controller manager
-	ctrl := controller.NewDependencyController(
+	// Add all components
+	components := []domain.Komponent{
+		hs,
+		kube,
+		ev,
+		wq,
+		infFactory,
+	}
+
+	// kontroller manager
+	ktrl := kontroller.NewDependencyKontroller(
 		kube,
 		infFactory,
 		reg,
 		ev,
 		wq,
 		hs,
-		cfg.Cluster().DefaultWorkers,
-		cfg.CRDRegistry().MaxQueueDepth,
+		kfg.Cluster().DefaultWorkers,
+		kfg.CRDRegistry().MaxQueueDepth,
 		registry.NewDependencyGraph(crdRegistry),
+		&kontroller.BannerKonfig{
+			Konfig:     kfg,
+			Komponents: components,
+			Leader:     "",
+		},
 	)
 
-	// Add all components
-	components := []domain.Component{
-		hs,
-		kube,
-		ev, 
-		wq, 
-		infFactory, 
-		ctrl,
-	}
-	
+	// Add kontroller
+	components = append(components, ktrl)
+
 	// manager
-	mgr := manager.NewManager(cfg.Cluster().DefaultResync)
+	mgr := manager.NewManager(kfg.Cluster().DefaultResync)
 	mgr.Register(components) // Register all manager components
 
 	return &startupCfg{
 		event:      ev,
-		controller: ctrl,
+		kontroller: ktrl,
 		kube:       kube,
+		comp:       &components,
 		manager:    mgr,
 	}
 }

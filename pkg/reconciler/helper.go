@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	mnsTypev1 "github.com/ialexeze/multi-crd-controller/pkg/config/api/types/managedNamespace/v1alpha1"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
+	mnsTypev1 "github.com/ialexeze/orkestra/api/types/managedNamespace/v1alpha1"
+	"github.com/ialexeze/orkestra/pkg/logger"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	// "k8s.io/apimachinery/pkg/types"
 )

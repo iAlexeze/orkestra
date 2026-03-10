@@ -4,8 +4,8 @@ package registry
 import (
 	"fmt"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/initialize"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
+	"github.com/ialexeze/orkestra/initialize"
+	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
 type DependencyGraph struct {

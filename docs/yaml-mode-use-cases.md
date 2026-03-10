@@ -9,7 +9,7 @@ The YAML mode in this framework transforms how operators are deployed, configure
 ```bash
 # Deploy a production-ready Prometheus operator instantly
 export CRD_REGISTRY=https://hub.ialexeze.io/crds/prometheus-operator.yaml
-./my-controller
+./my-kontroller
 ```
 
 **The Vision:** A community-driven hub where pre-configured CRD sets for popular tools (Prometheus, Cert-Manager, Istio, etc.) can be shared and consumed with zero setup.
@@ -66,11 +66,11 @@ crds:
 ```bash
 # Team A's cluster
 export CRD_REGISTRY=https://internal-git.company.com/platform/crds/standard.yaml
-./controller
+./kontroller
 
 # Team B's cluster – same config, same behavior
 export CRD_REGISTRY=https://internal-git.company.com/platform/crds/standard.yaml
-./controller
+./kontroller
 ```
 
 ---
@@ -88,21 +88,21 @@ https://git.company.com/fleet/
     └── crds.yaml     # 2 workers, debug enabled
 ```
 
-**The Scenario:** Organizations running hundreds of Kubernetes clusters need environment-specific tuning without maintaining separate controller builds.
+**The Scenario:** Organizations running hundreds of Kubernetes clusters need environment-specific tuning without maintaining separate kontroller builds.
 
 **How it works:**
 ```bash
 # Production fleet (high throughput)
 export CRD_REGISTRY=https://git.company.com/fleet/production/crds.yaml
-./controller
+./kontroller
 
 # Staging fleet (moderate load)
 export CRD_REGISTRY=https://git.company.com/fleet/staging/crds.yaml
-./controller
+./kontroller
 
 # Development fleet (minimal resources)
 export CRD_REGISTRY=https://git.company.com/fleet/dev/crds.yaml
-./controller
+./kontroller
 ```
 
 **Production YAML example:**
@@ -123,7 +123,7 @@ crds:
 ## 🔄 **4. GitOps / Continuous Delivery**
 
 ```yaml
-# https://github.com/myorg/infra/blob/main/crds/controller.yaml
+# https://github.com/myorg/infra/blob/main/crds/kontroller.yaml
 # (raw GitHub URL)
 ```
 
@@ -133,7 +133,7 @@ crds:
 2. **CI Pipeline** validates YAML syntax and dependencies
 3. **Pull Request** reviewed by peers
 4. **Merge to main** triggers automated deployment
-5. **Controllers restart** (via rollout) and pick up new config
+5. **Kontrollers restart** (via rollout) and pick up new config
 6. **Zero manual intervention**
 
 **Benefits:**
@@ -313,7 +313,7 @@ https://api.company.com/partners/acme/crds.yaml
 
 **Partner workflow:**
 1. Partner receives authenticated URL
-2. Controller fetches partner-specific YAML
+2. Kontroller fetches partner-specific YAML
 3. Partner runs their own instance with your configuration
 4. You control the CRD definitions remotely
 
@@ -336,7 +336,7 @@ https://api.company.com/partners/acme/crds.yaml
 
 ## 🏁 **The Ultimate Vision**
 
-With remote YAML support, your controller becomes:
+With remote YAML support, your kontroller becomes:
 
 > *"A single binary that can be configured to manage ANY set of CRDs, with ANY dependencies, on ANY cluster, controlled by ANY Git repository, deployed by ANY team, audited by ANY compliance officer."*
 
@@ -450,7 +450,7 @@ YAML mode isn't just for production — it's perfect for developers too.
 export CRD_REGISTRY=./crds/dev.yaml
 go run ./cmd
 
-# Edit dev.yaml, restart controller, see changes instantly
+# Edit dev.yaml, restart kontroller, see changes instantly
 ```
 
 ### **Team Collaboration**
@@ -467,7 +467,7 @@ New team members can contribute by editing YAML, not navigating complex Go codeb
 
 # 🧱 **15. Architecture: YAML Mode as a Control Plane**
 
-YAML mode effectively turns your controller into a **mini control plane**:
+YAML mode effectively turns your kontroller into a **mini control plane**:
 
 | Component | Analogy |
 |----------|---------|
@@ -484,7 +484,7 @@ This mirrors proven architectures:
 - **OperatorHub.io** – Curated operator catalog
 
 **But with a critical differentiator:**  
-Runtime dependency orchestration that none of those provide.
+Runtime dependency orkestration that none of those provide.
 
 ---
 
@@ -501,7 +501,7 @@ YAML mode supports them all:
 
 ### **Local File Mode**
 ```bash
-export CRD_REGISTRY=/etc/controller/cache/crds.yaml
+export CRD_REGISTRY=/etc/kontroller/cache/crds.yaml
 ```
 
 ### **Mirrored Registry**
@@ -512,13 +512,13 @@ export CRD_REGISTRY=https://mirror.company.com/crds.yaml
 ### **Bundle Mode**
 Package all CRDs into a single tarball:
 ```bash
-controller --bundle crds.tar.gz
+kontroller --bundle crds.tar.gz
 ```
 
 ### **Pre‑loaded Cache**
 Pre-download all configurations during build:
 ```dockerfile
-ADD https://hub.ialexeze.io/crds/production.yaml /etc/controller/crds.yaml
+ADD https://hub.ialexeze.io/crds/production.yaml /etc/kontroller/crds.yaml
 ```
 
 **This makes the framework viable in the most restrictive environments** – government, finance, healthcare, and defense.
@@ -527,7 +527,7 @@ ADD https://hub.ialexeze.io/crds/production.yaml /etc/controller/crds.yaml
 
 # 🧭 **17. Self‑Validation & Safety Guarantees**
 
-Before starting, the controller validates:
+Before starting, orkestra validates:
 
 | Validation | What It Checks |
 |-----------|----------------|
@@ -539,7 +539,7 @@ Before starting, the controller validates:
 | **GVK correctness** | Do Group/Version/Kinds match registered schemes? |
 | **Remote availability** | Is the remote registry URL accessible? |
 
-If anything is invalid, the controller **fails fast** with a clear error:
+If anything is invalid, orkestra **fails fast** with a clear error:
 
 ```bash
 Error: circular dependency detected: project → application → project
@@ -577,12 +577,12 @@ clusters N–Z → v2
 If error rate spikes after deployment:
 1. Detect anomaly via metrics
 2. Revert to previous YAML URL
-3. Restart controller
+3. Restart kontroller
 4. Restore stable behavior
 
 **This is the same pattern used by:**
 - Service meshes (Istio, Linkerd)
-- Deployment controllers (Argo Rollouts)
+- Deployment kontrollers (Argo Rollouts)
 - Feature flag systems (LaunchDarkly)
 
 ---
@@ -616,7 +616,7 @@ YAML mode makes cluster migration trivial:
 ```bash
 # Rebuild a cluster from scratch
 export CRD_REGISTRY=https://git.company.com/platform/crds/prod.yaml
-./controller --kubeconfig new-cluster.yaml
+./kontroller --kubekonfig new-cluster.yaml
 ```
 
 **Use cases:**
@@ -652,4 +652,4 @@ export CRD_REGISTRY=https://git.company.com/platform/crds/prod.yaml
 | **Observability** | Metrics for every operation |
 | **Disaster recovery** | Rebuild from YAML alone |
 
-**YAML mode transforms your controller from a tool into a platform.** 🚀
+**YAML mode transforms your kontroller from a tool into a platform.** 🚀

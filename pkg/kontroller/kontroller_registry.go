@@ -1,11 +1,11 @@
-// pkg/config/pkg/controller/registry.go
-package controller
+// pkg/config/pkg/kontroller/registry.go
+package kontroller
 
 import (
 	"sync"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/initialize"
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/initialize"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -20,7 +20,7 @@ type ResourceRegistry struct {
 	entries map[string]RegistryEntry
 }
 
-func NewControllerRegistry() *ResourceRegistry {
+func NewKontrollerRegistry() *ResourceRegistry {
 	return &ResourceRegistry{
 		entries: make(map[string]RegistryEntry),
 	}

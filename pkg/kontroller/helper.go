@@ -1,10 +1,10 @@
-package controller
+package kontroller
 
 import (
 	"context"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/metrics"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/metrics"
 )
 
 // runWorker is a long-running function that processes items from the queue

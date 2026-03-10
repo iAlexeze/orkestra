@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	mnsTypev1 "github.com/ialexeze/multi-crd-controller/pkg/config/api/types/managedNamespace/v1alpha1"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/event"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/kubeclient"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/metrics"
+	mnsTypev1 "github.com/ialexeze/orkestra/api/types/managedNamespace/v1alpha1"
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/event"
+	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -179,7 +179,7 @@ func (r *ManagedNamespaceReconciler) reconcileNamespace(ctx context.Context, mn 
 				Labels: map[string]string{
 					"managed-by":                   "kube-controller",
 					"team":                         mn.Spec.Team,
-					"platform.ialexeze.io/managed": "true",
+					"platform.orkestra.io/managed": "true",
 				},
 				// Owner reference — when ManagedNamespace is deleted,
 				// k8s GC deletes this Namespace automatically.

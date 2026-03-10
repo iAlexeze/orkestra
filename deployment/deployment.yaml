@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: multi-crd-controller
+  name: orkestra
   namespace: ops-team-ns
 spec:
   replicas: 2  # High availability
@@ -13,18 +13,18 @@ spec:
       maxUnavailable: 0  # Ensure at least one pod is always running
   selector:
     matchLabels:
-      app: multi-crd-controller
+      app: orkestra
   template:
     metadata:
       labels:
-        app: multi-crd-controller
+        app: orkestra
     spec:
       terminationGracePeriodSeconds: 30  # Give time to release lease
-      serviceAccountName: multi-crd-controller
+      serviceAccountName: orkestra
       containers:
       - name: controller
         resources: {}
-        image: ialexeze/multi-crd-controller:1.0.0
+        image: ialexeze/orkestra:1.0.0
         imagePullPolicy: "Always"
         lifecycle:
           preStop:

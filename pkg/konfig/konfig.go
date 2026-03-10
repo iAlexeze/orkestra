@@ -1,4 +1,4 @@
-package config
+package konfig
 
 import (
 	"log"
@@ -9,22 +9,22 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func Init(filenames ...string) (*Config, error) {
+func Init(filenames ...string) (*Konfig, error) {
 	err := godotenv.Load(filenames...)
 	if err != nil {
 		log.Printf("failed to load env from file: %v", err)
 		log.Print("Defaulting to system defined variables...")
 	}
 
-	cfg := &Config{
-		app: appConfig{
-			Name:        GetStrEnv("APP_NAME", "multi-crd-controller"),
+	cfg := &Konfig{
+		app: appKonfig{
+			Name:        GetStrEnv("APP_NAME", "orkestra"),
 			Version:     GetStrEnv("APP_VERSION", "1.0.0"),
 			Environment: GetStrEnv("APP_ENV", "development"),
 			LogLevel:    GetStrEnv("LOG_LEVEL", "info"),
 		},
-		cluster: clusterConfig{
-			KubeconfigPath: GetStrEnv("KUBECONFIG", ""),
+		cluster: clusterKonfig{
+			KubekonfigPath: GetStrEnv("KUBEKONFIG", ""),
 			MasterURL:      GetStrEnv("MASTER_URL", ""),
 			InCluster:      GetBoolEnv("IN_CLUSTER", false),
 			Name:           GetStrEnv("CLUSTER_NAME", "kubernetes-crd-example"),
@@ -46,7 +46,7 @@ func Init(filenames ...string) (*Config, error) {
 			RenewDeadline: GetDurEnvSeconds("RENEW_DEADLINE", 40),
 			RetryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),
 		},
-		crdRegistry: crdRegistryConfig{
+		crdRegistry: crdRegistryKonfig{
 			MaxQueueDepth: GetIntEnv("MAX_QUEUE_DEPTH", 1000),
 			Mode:          GetStrEnv("CRD_REGISTRY_MODE", "go"),
 			Path:          GetStrEnv("CRD_REGISTRY", ""),
@@ -56,8 +56,8 @@ func Init(filenames ...string) (*Config, error) {
 	// normalize environment
 	cfg.normalizeEnvironment()
 
-	// validate crd config
-	if err = cfg.validateCRDConfig(); err != nil {
+	// validate crd konfig
+	if err = cfg.validateCRDKonfig(); err != nil {
 		return nil, err
 	}
 

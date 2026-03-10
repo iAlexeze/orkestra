@@ -1,19 +1,19 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: multi-crd-controller
+  name: orkestra
   namespace: ops-team-ns
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: multi-crd-controller
+  name: orkestra
 rules:
-- apiGroups: ["platform.ialexeze.io"]
+- apiGroups: ["platform.orkestra.io"]
   resources: ["projects", "managednamespaces"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
-- apiGroups: ["platform.ialexeze.io"]
+- apiGroups: ["platform.orkestra.io"]
   resources: ["projects/status", "managednamespaces/status"]
   verbs: ["get", "update", "patch"]
 
@@ -28,12 +28,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: multi-crd-controller
+  name: orkestra
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: multi-crd-controller
+  name: orkestra
 subjects:
 - kind: ServiceAccount
-  name: multi-crd-controller
+  name: orkestra
   namespace: ops-team-ns

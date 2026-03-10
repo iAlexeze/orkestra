@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/informer"
+	"github.com/ialexeze/orkestra/pkg/informer"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 

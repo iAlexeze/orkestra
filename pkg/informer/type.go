@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/queue"
+	"github.com/ialexeze/orkestra/pkg/queue"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"

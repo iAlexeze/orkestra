@@ -2,10 +2,10 @@
 package registry
 
 import (
-	"github.com/ialexeze/multi-crd-controller/pkg/config/initialize"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/config"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
+	"github.com/ialexeze/orkestra/initialize"
+	"github.com/ialexeze/orkestra/pkg/konfig"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -49,7 +49,7 @@ func (r *CRDRegistry) validateConfig(crds []initialize.CRDEntry) (*CRDRegistry, 
 	// -------------------------------------------------------------------------
 	// 1. Field-level validation (required, DNS group, workers <= 5, etc.)
 	// -------------------------------------------------------------------------
-	if valErr := config.Validate().Struct(r); valErr != nil {
+	if valErr := konfig.Validate().Struct(r); valErr != nil {
 		r.handleValidationErrors(valErr)
 		return nil, valErr
 	}
