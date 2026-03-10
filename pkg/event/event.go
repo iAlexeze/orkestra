@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
+	crderror "github.com/ialexeze/multi-crd-controller/pkg/config/pkg/error"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/kubeclient"
+	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -24,7 +26,7 @@ var _ domain.Component = (*Event)(nil)
 
 func NewEvent(kube *kubeclient.Kubeclient) *Event {
 	if kube.Scheme() == nil {
-		panic("scheme cannot be nil")
+		utils.Exit(crderror.ErrSchemeNill)
 	}
 
 	return &Event{

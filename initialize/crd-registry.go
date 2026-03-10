@@ -20,13 +20,13 @@ func BuildCRDRegistryFromGo() []CRDEntry {
 			ObjectGoMode:     &projectTypev1.Project{},
 			ListObjectGoMode: &projectTypev1.ProjectList{},
 			Group:            projectTypev1.Group,
-			GroupVersionKind: projectTypev1.GroupVersionKind,
 			Kind:             projectTypev1.Kind,
 			Version:          projectTypev1.Version,
 			APIPath:          projectTypev1.APIPath,
 			NamePlural:       projectTypev1.NamePlural,
 			Namespace:        "default",
-			Namespaced:       false,
+			Namespaced:       true,
+			Workers:          2,
 			Scheme:           projectTypev1.AddToScheme,
 			Reconciler: func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
 				return reconciler.NewProjectReconciler(inf, ev)
@@ -40,12 +40,13 @@ func BuildCRDRegistryFromGo() []CRDEntry {
 			Group:            managednsTypeV1.Group,
 			Kind:             managednsTypeV1.Kind,
 			Version:          managednsTypeV1.Version,
-			GroupVersionKind: managednsTypeV1.GroupVersionKind,
 			APIPath:          managednsTypeV1.APIPath,
 			NamePlural:       managednsTypeV1.NamePlural,
 			Namespace:        "default", // ignored because cluster-scoped
-			Namespaced:       true,      // or false depending on your CRD
+			Namespaced:       false,     // or false depending on your CRD
 			Scheme:           managednsTypeV1.AddToScheme,
+			Workers:          1,
+			DependsOn:        []string{"project"},
 			Reconciler: func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
 				return reconciler.NewManagedNamespaceReconciler(kube, inf, ev)
 			},

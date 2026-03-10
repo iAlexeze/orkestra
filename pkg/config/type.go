@@ -14,6 +14,7 @@ type appConfig struct {
 	Name        string `validate:"required"`
 	Version     string
 	Environment string
+	LogLevel    string
 }
 
 type healthServer struct {
@@ -37,8 +38,9 @@ type clusterConfig struct {
 }
 
 type crdRegistryConfig struct {
-	Path string // Path to CRD registry YAML file
-	Mode string `validate:"required"` // Mode of CRD registry
+	Path          string // Path to CRD registry YAML file
+	Mode          string `validate:"required"` // Mode of CRD registry
+	MaxQueueDepth int
 }
 
 type leaderElection struct {

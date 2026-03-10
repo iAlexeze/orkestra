@@ -2,25 +2,31 @@ package logger
 
 import (
 	"context"
+	"strings"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/config"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
-func Init(cfg *config.Config) {
+func Init(level string) {
 	// UNIX Time is faster and smaller than most timestamps
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
-	switch {
-	case cfg.IsDev():
+	switch strings.ToLower(level) {
+	case "debug":
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case cfg.IsStaging():
+	case "info":
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	case cfg.IsProduction():
+	case "warn":
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	case "error":
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	case "fatal":
+		zerolog.SetGlobalLevel(zerolog.FatalLevel)
+	case "panic":
+		zerolog.SetGlobalLevel(zerolog.PanicLevel)
 	default:
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 }
 

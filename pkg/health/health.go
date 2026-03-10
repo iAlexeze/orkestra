@@ -76,6 +76,13 @@ func (h *HealthServer) SetReady() {
 	h.ready.Store(true)
 }
 
+func (h *HealthServer) Degraded() bool {
+	if h.ready.Load() {
+		h.ready.Store(false)
+	}
+	return false
+}
+
 func (h *HealthServer) routes() *http.ServeMux {
 	mux := http.NewServeMux()
 

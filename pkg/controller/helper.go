@@ -2,7 +2,9 @@ package controller
 
 import (
 	"context"
+
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
+	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/metrics"
 )
 
 // runWorker is a long-running function that processes items from the queue
@@ -64,6 +66,8 @@ func (c *Controller) runWorkerForGVK(ctx context.Context, targetGVK string, work
 				return
 			}
 		}
+		depth := float64(c.wq.Depth())
+		metrics.QueueDepth.WithLabelValues(targetGVK).Set(depth)
 	}
 }
 
@@ -97,6 +101,7 @@ func (c *Controller) processNextItemForGVK(ctx context.Context, targetGVK string
 	if err := reconciler.Reconcile(ctx, item.Key); err != nil {
 		logger.Error().Err(err).Str("gvk", item.GVK).Str("key", item.Key).Msg("reconcile failed")
 		wq.AddRateLimited(item)
+		c.failed[targetGVK]++ // increment failure to track error rate
 		return true
 	}
 

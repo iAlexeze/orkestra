@@ -3,12 +3,15 @@ package controller
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/event"
+	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/health"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/informer"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/kubeclient"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
+	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/metrics"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/queue"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/registry"
 )
@@ -34,12 +37,14 @@ func NewDependencyController(
 	registry *ResourceRegistry,
 	events *event.Event,
 	wq *queue.Workqueue,
+	hs *health.HealthServer,
 	defaultWorkers int,
+	maxQueueDepth int,
 	depGraph *registry.DependencyGraph,
 ) *DependencyController {
 
 	return &DependencyController{
-		Controller:     NewController(kube, factory, registry, events, wq, defaultWorkers),
+		Controller:     NewController(kube, factory, registry, events, wq, hs, defaultWorkers, maxQueueDepth),
 		depGraph:       depGraph,
 		defaultWorkers: defaultWorkers,
 		readyCh:        make(map[string]chan struct{}),
@@ -65,7 +70,11 @@ func (c *DependencyController) RunOrDie(ctx context.Context) {
 		crd := node.CRD
 		gvk := crd.GroupVersionKind.String()
 
-		logger.Info().Msgf("starting %s (depends on: %v)", name, crd.DependsOn)
+		if len(crd.DependsOn) > 0 {
+			logger.Info().Msgf("starting %s (depends on: %s)", name, strings.Join(crd.DependsOn, ", "))
+		} else {
+			logger.Info().Msgf("starting %s", name)
+		}
 
 		// 3a. Wait for all dependencies to signal readiness
 		for _, dep := range crd.DependsOn {
@@ -83,7 +92,10 @@ func (c *DependencyController) RunOrDie(ctx context.Context) {
 
 		c.startCRDWorkers(ctx, gvk, workers)
 
-		// 3c. Signal that this CRD is ready
+		// 3c Send metrics to prometheus
+		metrics.WorkersActive.WithLabelValues(gvk).Set(float64(workers))
+
+		// 3d. Signal that this CRD is ready
 		close(c.readyCh[name])
 	}
 
@@ -111,6 +123,7 @@ func (c *DependencyController) startCRDWorkers(ctx context.Context, gvk string, 
 	wg := &sync.WaitGroup{}
 	c.wgs[gvk] = wg
 	c.started[gvk] = true
+	c.total[gvk]++
 	c.mu.Unlock()
 
 	for i := 0; i < workers; i++ {

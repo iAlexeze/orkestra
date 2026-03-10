@@ -1,14 +1,11 @@
 package config
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 )
 
@@ -24,6 +21,7 @@ func Init(filenames ...string) (*Config, error) {
 			Name:        GetStrEnv("APP_NAME", "multi-crd-controller"),
 			Version:     GetStrEnv("APP_VERSION", "1.0.0"),
 			Environment: GetStrEnv("APP_ENV", "development"),
+			LogLevel:    GetStrEnv("LOG_LEVEL", "info"),
 		},
 		cluster: clusterConfig{
 			KubeconfigPath: GetStrEnv("KUBECONFIG", ""),
@@ -49,29 +47,18 @@ func Init(filenames ...string) (*Config, error) {
 			RetryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),
 		},
 		crdRegistry: crdRegistryConfig{
-			Mode: GetStrEnv("CRD_REGISTRY_MODE", "go"),
-			Path: GetStrEnv("CRD_REGISTRY", "initialize/crd-registry.yaml"),
+			MaxQueueDepth: GetIntEnv("MAX_QUEUE_DEPTH", 1000),
+			Mode:          GetStrEnv("CRD_REGISTRY_MODE", "go"),
+			Path:          GetStrEnv("CRD_REGISTRY", ""),
 		},
 	}
 
-	// Normalize app environment
-	switch strings.ToLower(cfg.app.Environment) {
-	case "dev", "development":
-		cfg.app.Environment = "development"
-	case "uat", "staging":
-		cfg.app.Environment = "staging"
-	case "live", "prod", "production":
-		cfg.app.Environment = "production"
-	default:
-		cfg.app.Environment = "development"
+	// normalize environment
+	cfg.normalizeEnvironment()
 
-	}
-
-	if strings.ToLower(cfg.crdRegistry.Mode) == "" {
-		cfg.crdRegistry.Mode = "go"
-	}
-	if strings.ToLower(cfg.crdRegistry.Mode) != "go" && strings.ToLower(cfg.crdRegistry.Mode) != "yaml" {
-		return nil, fmt.Errorf("invalid CRD registry mode: %s", cfg.crdRegistry.Mode)
+	// validate crd config
+	if err = cfg.validateCRDConfig(); err != nil {
+		return nil, err
 	}
 
 	// validate struct
@@ -115,10 +102,4 @@ func GetIntEnv(key string, def int) int {
 		return valInt
 	}
 	return def
-}
-
-// -----------------------------------------------------------------------------
-func Validate() *validator.Validate {
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	return validate
 }

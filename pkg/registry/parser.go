@@ -2,11 +2,10 @@
 package registry
 
 import (
-	"os"
-
 	"github.com/ialexeze/multi-crd-controller/pkg/config/initialize"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/config"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
+	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -16,14 +15,10 @@ import (
 //
 // -----------------------------------------------------------------------------
 func (r *CRDRegistry) buildCRDRegistryFromYaml(path string) ([]initialize.CRDEntry, error) {
-	// Check if the file exists
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return nil, err
-	}
-
 	// Read the YAML file
-	data, err := os.ReadFile(path)
+	data, err := utils.LoadFile(path)
 	if err != nil {
+		logger.Error().Err(err).Msgf("Error reading YAML file: %v", err)
 		return nil, err
 	}
 

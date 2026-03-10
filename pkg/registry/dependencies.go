@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ialexeze/multi-crd-controller/pkg/config/initialize"
+	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
 )
 
 type DependencyGraph struct {
@@ -40,7 +41,7 @@ func NewDependencyGraph(registry *CRDRegistry) *DependencyGraph {
 	for _, crd := range crds {
 		for _, dep := range crd.DependsOn {
 			if _, exists := g.nodes[dep]; !exists {
-				panic(fmt.Sprintf("dependency %s not found for %s", dep, crd.Name))
+				utils.Exit(fmt.Errorf("dependency %s not found for %s", dep, crd.Name))
 			}
 			g.edges[dep] = append(g.edges[dep], crd.Name)
 			g.nodes[crd.Name].InDegree++
@@ -77,7 +78,7 @@ func (g *DependencyGraph) StartupOrder() []string {
 	}
 
 	if len(order) != len(g.nodes) {
-		panic("circular dependency detected")
+		utils.Exit(fmt.Errorf("circular dependency detected"))
 	}
 
 	return order
@@ -85,53 +86,21 @@ func (g *DependencyGraph) StartupOrder() []string {
 
 // Reverse topological sort for shutdown order
 func (g *DependencyGraph) ShutdownOrder() []string {
-	order := g.StartupOrder()
 	// Reverse it
-	for i := len(order)/2 - 1; i >= 0; i-- {
-		opp := len(order) - 1 - i
-		order[i], order[opp] = order[opp], order[i]
-	}
-	return order
+	return utils.Reversed(g.StartupOrder())
 }
 
 // Constructors
 func (g *DependencyGraph) GetMode() string {
-	if g.registry.Mode.Go {
+	switch {
+	case g.registry.Mode.Go:
 		return "Go"
-	} else if g.registry.Mode.Yaml {
+	case g.registry.Mode.Yaml:
 		return "YAML"
-	} else {
-		return ""
 	}
+	return ""
 }
+
 func (g *DependencyGraph) GetNode(name string) *Node {
 	return g.nodes[name]
-}
-
-func (g *DependencyGraph) GetEdge(name string) []string {
-	return g.edges[name]
-}
-
-func (g *DependencyGraph) GetInDegree(name string) int {
-	return g.nodes[name].InDegree
-}
-
-func (g *DependencyGraph) GetOutDegree(name string) int {
-	return g.nodes[name].OutDegree
-}
-
-func (g *DependencyGraph) GetCRD(name string) initialize.CRDEntry {
-	return g.nodes[name].CRD
-}
-
-func (g *DependencyGraph) GetName(name string) string {
-	return g.nodes[name].Name
-}
-
-func (g *DependencyGraph) GetNodes() map[string]*Node {
-	return g.nodes
-}
-
-func (g *DependencyGraph) GetEdges() map[string][]string {
-	return g.edges
 }

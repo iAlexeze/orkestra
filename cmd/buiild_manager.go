@@ -67,14 +67,12 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 		var object runtime.Object
 		var list runtime.Object
 
-		if crdRegistry.Mode.Yaml {
+		if cfg.YamlMode() {
 			object = crd.ObjectYamlMode()
 			list = crd.ListObjectYamlMode()
-		} else if crdRegistry.Mode.Go {
+		} else if cfg.GoMode() {
 			object = crd.ObjectGoMode
 			list = crd.ListObjectGoMode
-		} else {
-			panic("must specify either Go or YAML CRD registry mode")
 		}
 
 		// 3. Register in controller registry
@@ -82,6 +80,9 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 
 		provider.Register(object, func(k *kubeclient.Kubeclient) (informer.GenericClient, error) {
 			return k.NewClient(list, kubeclient.CRDInfo{
+				Kind:         crd.Kind,
+				Group:        crd.Group,
+				Version:      crd.Version,
 				APIPath:      crd.APIPath,
 				GroupVersion: crd.GroupVersion,
 				NamePlural:   crd.NamePlural,
@@ -107,17 +108,14 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 	// Register CRDs to controller registry
 	logger.Info().Msg("registering CRDs...")
 	for _, crd := range crdRegistry.CRDs {
-		// 1. Create informer
 		var object runtime.Object
-		// var list runtime.Object
-
-		if crdRegistry.Mode.Yaml {
+		if cfg.YamlMode() {
 			object = crd.ObjectYamlMode()
-		} else if crdRegistry.Mode.Go {
+		} else if cfg.GoMode() {
 			object = crd.ObjectGoMode
-		} else {
-			panic("must specify either Go or YAML CRD registry mode")
 		}
+
+		// 1. Create informer
 		inf := infFactory.For(object, ctx)
 
 		// 2. Create reconciler
@@ -140,13 +138,15 @@ func buildManager(cfg *config.Config, ctx context.Context) *startupCfg {
 		reg,
 		ev,
 		wq,
+		hs,
 		cfg.Cluster().Workers,
+		cfg.CRDRegistry().MaxQueueDepth,
 		registry.NewDependencyGraph(crdRegistry),
 	)
 	components = append(components, ctrl)
 
 	// manager
-	mgr := manager.NewManager(hs, cfg.Cluster().DefaultResync)
+	mgr := manager.NewManager(cfg.Cluster().DefaultResync)
 	mgr.Register(components) // Register all manager components
 
 	return &startupCfg{

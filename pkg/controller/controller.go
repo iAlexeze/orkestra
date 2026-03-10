@@ -9,6 +9,7 @@ import (
 	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/initialize"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/event"
+	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/health"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/informer"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/kubeclient"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
@@ -18,12 +19,14 @@ import (
 
 var _ domain.Component = (*Controller)(nil)
 
+// Every map has the same key GVK
 type Controller struct {
 	kube            *kubeclient.Kubeclient
 	informerFactory *informer.Factory
 	event           *event.Event
 	registry        *ResourceRegistry
 	wq              *queue.Workqueue
+	hs              *health.HealthServer
 	defaultWorkers  int
 	started         map[string]bool
 	cancelFuncs     map[string]context.CancelFunc
@@ -31,6 +34,11 @@ type Controller struct {
 	mu              sync.RWMutex
 	reconcilers     map[string]domain.Reconciler
 	crds            []initialize.CRDEntry
+
+	// Error rate
+	total         map[string]int
+	failed        map[string]int
+	maxQueueDepth int
 }
 
 func NewController(
@@ -39,7 +47,9 @@ func NewController(
 	registry *ResourceRegistry,
 	event *event.Event,
 	wq *queue.Workqueue,
+	hs *health.HealthServer,
 	defaultWorkers int,
+	maxQueueDepth int,
 ) *Controller {
 	c := &Controller{
 		kube:            kube,
@@ -47,9 +57,13 @@ func NewController(
 		registry:        registry,
 		event:           event,
 		wq:              wq,
+		hs:              hs,
 		defaultWorkers:  defaultWorkers,
+		maxQueueDepth:   maxQueueDepth,
 		started:         make(map[string]bool),
 		cancelFuncs:     make(map[string]context.CancelFunc),
+		total:           make(map[string]int),
+		failed:          make(map[string]int),
 		wgs:             make(map[string]*sync.WaitGroup),
 		reconcilers:     make(map[string]domain.Reconciler),
 	}
@@ -156,12 +170,21 @@ func (c *Controller) RunOrDie(ctx context.Context) {
 }
 
 // Shutdown gracefully stops the Controller
-func (c *Controller) Shutdown(ctx context.Context) {
-	logger.Info().Msg("shutting down Controller")
-	c.wq.Shutdown(ctx)
-}
+func (c *Controller) Shutdown(ctx context.Context) {}
 
 // Controller name
 func (c *Controller) Name() string {
 	return "smart controller"
+}
+
+// Errorrate
+func (c *Controller) errorRate(gvk string) float64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	if c.total[gvk] == 0 {
+		return 0
+	}
+
+	return float64(c.failed[gvk] / c.total[gvk])
 }

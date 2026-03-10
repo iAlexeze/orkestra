@@ -5,7 +5,9 @@ import (
 	"fmt"
 
 	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
+	crderror "github.com/ialexeze/multi-crd-controller/pkg/config/pkg/error"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
+	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/dynamic"
@@ -34,7 +36,7 @@ var _ domain.Component = (*Kubeclient)(nil)
 
 func NewKubeclient(cfg Config) *Kubeclient {
 	if cfg.Scheme == nil {
-		panic("kubeclient.Config.Scheme cannot be nil")
+		utils.Exit(crderror.ErrSchemeNill)
 	}
 
 	return &Kubeclient{

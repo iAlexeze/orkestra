@@ -2,6 +2,7 @@ package registry
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/initialize"
@@ -137,7 +138,7 @@ func (r *CRDRegistry) detectDependencyCycles() error {
 // ---------------------------------------------------------------------------------
 //
 // Set GroupVersionKind
-func (r *CRDRegistry) SetGroupVersionKind() {
+func (r *CRDRegistry) SetGroupVersionKind() error {
 	for i := range r.CRDs {
 		crd := &r.CRDs[i]
 
@@ -151,7 +152,29 @@ func (r *CRDRegistry) SetGroupVersionKind() {
 			Group:   crd.Group,
 			Version: crd.Version,
 		}
+
+		if !crd.Namespaced && crd.Namespace != "" {
+			logger.Warn().Msgf("%s is clusterscoped. Namespace %s will be ignored", crd.Kind, crd.Namespace)
+			crd.Namespace = ""
+		}
+
+		if crd.APIPath == "" {
+			logger.Warn().Msgf("API path for Kind=%s is empty. Setting to '/apis'", crd.Kind)
+			crd.APIPath = "/apis"
+		}
+
+		crd.Name = strings.ToLower(crd.Name)
+
+		if crd.NamePlural == "" {
+			logger.Warn().Msgf("Plural name for %s is empty. Setting to '%ss'", crd.Kind, crd.Name)
+			crd.NamePlural = fmt.Sprintf("%ss", strings.ToLower(crd.Name))
+		}
+
+		if crd.GroupVersionKind.Empty() {
+			return fmt.Errorf("GroupVersionKind is empty. Enter a valid Group, Version and Kind for the CRD")
+		}
 	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------------

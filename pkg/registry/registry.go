@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/ialexeze/multi-crd-controller/pkg/config/initialize"
+	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -29,15 +30,15 @@ func NewCRDRegistry(mode, path string) *CRDRegistry {
 		var err error
 		entries, err = registry.buildCRDRegistryFromYaml(path)
 		if err != nil {
-			panic(err)
+			utils.Exit(err)
 		}
 	default:
-		panic("must specify either Go or YAML CRD registry mode")
+		utils.Exit(fmt.Errorf("must be 'go' or 'yaml' invalid CRD registry mode: %s", mode))
 	}
 
 	reg, err := registry.validateConfig(entries)
 	if err != nil {
-		panic(err)
+		utils.Exit(err)
 	}
 
 	return reg.updateResourceMapAndReturn()
@@ -79,8 +80,6 @@ func (r *CRDRegistry) updateResourceMapAndReturn() *CRDRegistry {
 			resourceTypeMap[reflect.TypeOf(c.ObjectYamlMode)] = c.GroupVersionKind.String()
 		} else if r.Mode.Go {
 			resourceTypeMap[reflect.TypeOf(c.ObjectGoMode)] = c.GroupVersionKind.String()
-		} else {
-			panic("must specify either Go or YAML CRD registry mode")
 		}
 	}
 

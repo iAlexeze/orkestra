@@ -9,23 +9,25 @@ import (
 	"time"
 
 	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/health"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
 	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
 )
 
 type Manager struct {
 	components []domain.Component
-	postStart  []func(context.Context)
+	postStart  []postStart
 	timeout    time.Duration
 	done       chan struct{}
-	hs         *health.HealthServer
 }
 
-func NewManager(hs *health.HealthServer, timeout time.Duration) *Manager {
+type postStart struct {
+	hook func(context.Context)
+	comp domain.Component
+}
+
+func NewManager(timeout time.Duration) *Manager {
 	return &Manager{
 		timeout: timeout,
-		hs:      hs,
 		done:    make(chan struct{}),
 	}
 }
@@ -48,26 +50,28 @@ func (m *Manager) Start(ctx context.Context) error {
 		logger.Info().Msgf("%s status: %v", name, utils.StatusOnline)
 	}
 
+	// Run post-start hooks (leader election goes here)
+	logger.Info().Msg("Running post-start hooks...")
+	for _, p := range m.postStart {
+		go p.hook(mCtx)
+	}
+
 	logger.Info().Msg("✅ All services started successfully")
 
 	// Display started components
-	fmt.Println("======================")
+	fmt.Println("===============================")
 	fmt.Println("STARTED COMPONENTS:")
 	n := 1
 	for _, comp := range m.components {
 		fmt.Printf("%d. %s\n", n, comp.Name())
 		n++
 	}
-	fmt.Println("======================")
 
-	// Run post-start hooks (leader election goes here)
-	logger.Info().Msg("Running post-start hooks...")
-	for _, hook := range m.postStart {
-		go hook(mCtx)
+	for _, p := range m.postStart {
+		fmt.Printf("%d. %s\n", n, p.comp.Name())
+		n++
 	}
-
-	m.setReady()
-	logger.Info().Msg("controller is ready...")
+	fmt.Println("===============================")
 
 	m.gracefulShutdown(mCtx, mCancel)
 	return nil
@@ -94,6 +98,7 @@ func (m *Manager) gracefulShutdown(ctx context.Context, cancel context.CancelFun
 			if comp != nil {
 				comp.Shutdown(shutdownCtx)
 			}
+			utils.Sleep(1)
 			logger.Info().Msgf("%s status: %v", name, utils.StatusOffline)
 		}
 
@@ -118,7 +123,7 @@ func (m *Manager) Register(c []domain.Component) {
 	logger.Info().Msg("✅ All services registered successfully")
 
 	// Display registered components
-	fmt.Println("======================")
+	fmt.Println("==================================")
 	fmt.Println("REGISTERED COMPONENTS:")
 	n := 1
 	for _, comp := range m.components {
@@ -128,13 +133,11 @@ func (m *Manager) Register(c []domain.Component) {
 }
 
 // AddPostStartHook: for services that need to start after manager has started
-func (m *Manager) AddPostStartHook(hook func(context.Context)) {
-	m.postStart = append(m.postStart, hook)
-}
-
-// setReady sets the controller ready after all startup is completed
-func (m *Manager) setReady() {
-	m.hs.SetReady()
+func (m *Manager) AddPostStartHook(comp domain.Component, hook func(context.Context)) {
+	m.postStart = append(m.postStart, postStart{
+		hook: hook,
+		comp: comp,
+	})
 }
 
 // Listening to done channel
