@@ -1,5 +1,5 @@
-// pkg/controller/degraded.go
-package controller
+// pkg/kontroller/degraded.go
+package kontroller
 
 func (c *Controller) IsDegraded(gvk string) bool {
 	// Check if queue depth is too high

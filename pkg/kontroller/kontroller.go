@@ -1,4 +1,4 @@
-package controller
+package kontroller
 
 import (
 	"context"
@@ -6,18 +6,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/initialize"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/event"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/health"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/informer"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/kubeclient"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/queue"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/initialize"
+	"github.com/ialexeze/orkestra/pkg/event"
+	"github.com/ialexeze/orkestra/pkg/health"
+	"github.com/ialexeze/orkestra/pkg/informer"
+	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/queue"
+	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
-var _ domain.Component = (*Controller)(nil)
+var _ domain.Komponent = (*Controller)(nil)
 
 // Every map has the same key GVK
 type Controller struct {
@@ -28,6 +28,7 @@ type Controller struct {
 	wq              *queue.Workqueue
 	hs              *health.HealthServer
 	defaultWorkers  int
+	healthy         bool
 	started         map[string]bool
 	cancelFuncs     map[string]context.CancelFunc
 	wgs             map[string]*sync.WaitGroup
@@ -169,12 +170,15 @@ func (c *Controller) RunOrDie(ctx context.Context) {
 	logger.Info().Msg("controller drained and stopped")
 }
 
-// Shutdown gracefully stops the Controller
+// Healthy mark on startup
+func (c *Controller) Started() bool { return c.healthy }
+
+// Shutdown gracefully stops orkestra
 func (c *Controller) Shutdown(ctx context.Context) {}
 
 // Controller name
 func (c *Controller) Name() string {
-	return "smart controller"
+	return "orkestra kontroller"
 }
 
 // Errorrate

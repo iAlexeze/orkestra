@@ -1,5 +1,5 @@
 # Basic team namespace with standard quota
-apiVersion: platform.ialexeze.io/v1alpha1
+apiVersion: platform.orkestra.io/v1alpha1
 kind: ManagedNamespace
 metadata:
   name: platform-team-ns
@@ -11,7 +11,7 @@ spec:
   networkPolicy: true
 ---
 # Development team with smaller quota
-apiVersion: platform.ialexeze.io/v1alpha1
+apiVersion: platform.orkestra.io/v1alpha1
 kind: ManagedNamespace
 metadata:
   name: dev-team-ns
@@ -23,7 +23,7 @@ spec:
   networkPolicy: true
 ---
 # QA team with medium quota
-apiVersion: platform.ialexeze.io/v1alpha1
+apiVersion: platform.orkestra.io/v1alpha1
 kind: ManagedNamespace
 metadata:
   name: qa-team-ns
@@ -35,7 +35,7 @@ spec:
   networkPolicy: true
 ---
 # Testing team with minimal quota
-apiVersion: platform.ialexeze.io/v1alpha1
+apiVersion: platform.orkestra.io/v1alpha1
 kind: ManagedNamespace
 metadata:
   name: test-team-ns
@@ -47,7 +47,7 @@ spec:
   networkPolicy: false  # Testing without network policy
 ---
 # Marketing team with custom quota
-apiVersion: platform.ialexeze.io/v1alpha1
+apiVersion: platform.orkestra.io/v1alpha1
 kind: ManagedNamespace
 metadata:
   name: marketing-team-ns
@@ -59,7 +59,7 @@ spec:
   networkPolicy: true
 ---
 # Research team with extended quota
-apiVersion: platform.ialexeze.io/v1alpha1
+apiVersion: platform.orkestra.io/v1alpha1
 kind: ManagedNamespace
 metadata:
   name: research-team-ns
@@ -71,7 +71,7 @@ spec:
   networkPolicy: true
 ---
 # Operations team - using defaults (quota defaults to 4 CPU, 8Gi)
-apiVersion: platform.ialexeze.io/v1alpha1
+apiVersion: platform.orkestra.io/v1alpha1
 kind: ManagedNamespace
 metadata:
   name: ops-team-ns
@@ -81,7 +81,7 @@ spec:
   networkPolicy: true
 ---
 # Security team - no network policy
-apiVersion: platform.ialexeze.io/v1alpha1
+apiVersion: platform.orkestra.io/v1alpha1
 kind: ManagedNamespace
 metadata:
   name: security-team-ns
@@ -93,7 +93,7 @@ spec:
   networkPolicy: false  # Testing without network policy
 ---
 # Invalid test - team name too short (should fail validation)
-apiVersion: platform.ialexeze.io/v1alpha1
+apiVersion: platform.orkestra.io/v1alpha1
 kind: ManagedNamespace
 metadata:
   name: invalid-team-ns

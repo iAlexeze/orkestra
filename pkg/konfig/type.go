@@ -1,16 +1,16 @@
-package config
+package konfig
 
 import "time"
 
-type Config struct {
-	app          appConfig
-	cluster      clusterConfig
+type Konfig struct {
+	app          appKonfig
+	cluster      clusterKonfig
 	leader       leaderElection
 	healthServer healthServer
-	crdRegistry  crdRegistryConfig
+	crdRegistry  crdRegistryKonfig
 }
 
-type appConfig struct {
+type appKonfig struct {
 	Name        string `validate:"required"`
 	Version     string
 	Environment string
@@ -23,8 +23,8 @@ type healthServer struct {
 	WriteTimeout time.Duration
 }
 
-type clusterConfig struct {
-	KubeconfigPath string
+type clusterKonfig struct {
+	KubekonfigPath string
 	MasterURL      string
 	InCluster      bool
 	Name           string
@@ -37,7 +37,7 @@ type clusterConfig struct {
 	Finalizer      string
 }
 
-type crdRegistryConfig struct {
+type crdRegistryKonfig struct {
 	Path          string // Path to CRD registry YAML file
 	Mode          string `validate:"required"` // Mode of CRD registry
 	MaxQueueDepth int
@@ -52,51 +52,51 @@ type leaderElection struct {
 // Methods
 
 // IsDev returns true for development environment
-func (c *Config) IsDev() bool {
+func (c *Konfig) IsDev() bool {
 	return c.App().Environment == "devlopment"
 }
 
 // IsDev returns true for staging environment
-func (c *Config) IsStaging() bool {
+func (c *Konfig) IsStaging() bool {
 	return c.App().Environment == "staging"
 }
 
 // IsDev returns true for production environment
-func (c *Config) IsProduction() bool {
+func (c *Konfig) IsProduction() bool {
 	return c.App().Environment == "production"
 }
 
-// Health returns health configurations
-func (c *Config) Health() *healthServer {
+// Health returns health konfigurations
+func (c *Konfig) Health() *healthServer {
 	return &c.healthServer
 }
 
-// App returns app configurations
-func (c *Config) App() *appConfig {
+// App returns app Konfigurations
+func (c *Konfig) App() *appKonfig {
 	return &c.app
 }
 
-// Cluster returns app configurations
-func (c *Config) Cluster() *clusterConfig {
+// Cluster returns app Konfigurations
+func (c *Konfig) Cluster() *clusterKonfig {
 	return &c.cluster
 }
 
-// Leader returns app configurations
-func (c *Config) Leader() *leaderElection {
+// Leader returns app Konfigurations
+func (c *Konfig) Leader() *leaderElection {
 	return &c.leader
 }
 
-// CRDRegistry returns app configurations
-func (c *Config) CRDRegistry() *crdRegistryConfig {
+// CRDRegistry returns app Konfigurations
+func (c *Konfig) CRDRegistry() *crdRegistryKonfig {
 	return &c.crdRegistry
 }
 
 // GoMode returns true if crdRegistry is using Go mode
-func (c *Config) GoMode() bool {
+func (c *Konfig) GoMode() bool {
 	return c.CRDRegistry().Mode == "go"
 }
 
 // YamlMode returns true if crdRegistry is using yaml mode
-func (c *Config) YamlMode() bool {
+func (c *Konfig) YamlMode() bool {
 	return c.CRDRegistry().Mode == "yaml"
 }

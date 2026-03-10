@@ -4,12 +4,25 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
 // healthHandler handles health checks -> /health
 func (h *HealthServer) healthHandler(w http.ResponseWriter, r *http.Request) {
+	if !h.ready.Load() {
+		h.writeResponse(responseReq{
+			writer:  w,
+			message: h.client + " is " + string(utils.StatusNotHealthy),
+			status:  http.StatusInternalServerError,
+			details: utils.H{
+				"service": h.client,
+				"status":  utils.StatusNotHealthy,
+			},
+		})
+		return
+	}
+
 	h.writeResponse(responseReq{
 		writer:  w,
 		message: h.client + " is " + string(utils.StatusHealthy),

@@ -1,4 +1,4 @@
-package config
+package konfig
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ func Validate() *validator.Validate {
 }
 
 // Normalize environment
-func (c *Config) normalizeEnvironment() {
+func (c *Konfig) normalizeEnvironment() {
 	// Normalize app environment
 	switch strings.ToLower(c.app.Environment) {
 	case "dev", "development":
@@ -28,8 +28,8 @@ func (c *Config) normalizeEnvironment() {
 	}
 }
 
-// Validate CRD registry configuration
-func (c *Config) validateCRDConfig() error {
+// Validate CRD registry Konfiguration
+func (c *Konfig) validateCRDKonfig() error {
 	mode := strings.ToLower(c.crdRegistry.Mode)
 	if mode == "" {
 		c.crdRegistry.Mode = "go"

@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/event"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/kubeclient"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/event"
+	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/leaderelection"
@@ -27,6 +27,7 @@ type LeaderElection struct {
 
 	election theElection
 	opts     Options
+	started  bool
 }
 
 type theElection struct {
@@ -44,7 +45,7 @@ type Options struct {
 	Annotations map[string]string
 }
 
-var _ domain.Component = (*LeaderElection)(nil)
+var _ domain.Komponent = (*LeaderElection)(nil)
 
 func NewLeaderElection(
 	kube *kubeclient.Kubeclient,
@@ -82,8 +83,12 @@ func (le *LeaderElection) Start(ctx context.Context) error {
 	go func() {
 		leaderelection.RunOrDie(leaderCtx, le.leaseConfig())
 	}()
+
+	le.started = true
 	return nil
 }
+
+func (le *LeaderElection) Started() bool { return le.started }
 
 func (le *LeaderElection) Shutdown(ctx context.Context) {
 	logger.Info().Msg("🛑 Shutting down leader election...")

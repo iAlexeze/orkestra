@@ -1,531 +1,362 @@
-# Architectural Deep Dive
+# 🧱 **Architectural Deep Dive (New Edition)**  
+### *A Runtime‑Composable, Multi‑CRD Kubernetes Operator Framework*
 
-This document explains the internal architecture of the Multi‑CRD Controller Framework in detail. It covers the control loop, component lifecycle, leader election model, registry‑based dispatch, and the design decisions that make the controller **highly available**, **extensible**, and **production‑ready**.
+This document provides a complete, modern overview of the internal architecture of the Multi‑CRD Kontroller Framework. It explains how CRDs are loaded (Go or YAML), how dependency graphs shape kontroller lifecycle, how informers and clients are generated dynamically, and how Orkestra achieves high availability, observability, and zero‑boilerplate extensibility.
 
----
-
-## 🧠 **Core Design Philosophy**
-
-The framework is built on three fundamental principles:
-
-1. **Separation of Concerns** – Each component has a single, well‑defined responsibility.
-2. **Registry‑Driven Dispatch** – Multiple registries work together to route events to the correct reconciler with zero boilerplate.
-3. **Lifecycle Clarity** – Bootstrap vs. reconciliation phases are cleanly separated.
-
-This approach allows the controller to manage **any number of CRDs** without changes to core components – new CRDs become **data, not code**.
+This is not a traditional operator.  
+It is a **universal operator runtime**.
 
 ---
 
-## 🏛️ **The Three-Registry Architecture**
+# 🧠 **Core Design Principles**
 
-The framework's power comes from three distinct registries, each with a specific role:
+The framework is built on four foundational ideas:
+
+### **1. CRDs Are Data, Not Code**
+CRDs are defined declaratively (Go or YAML).  
+Orkestra runtime constructs everything else dynamically.
+
+### **2. Runtime Composition**
+Clients, informers, reconcilers, workers, and resync intervals are all created at runtime based on registry entries.
+
+### **3. Dependency‑Aware Lifecycle**
+CRDs declare dependencies.  
+Orkestra starts and stops them in topological order.
+
+### **4. Zero Boilerplate**
+No clientsets.  
+No informers.  
+No wiring.  
+Just API types + your reconciler.
+
+---
+
+# 🧩 **High‑Level Architecture**
 
 ```mermaid
 flowchart TB
- subgraph subGraph0["Design Time (Data)"]
-        CR["CRD Registry<br>(pkg/registry/crd_registry.go)"]
-        SR["Scheme Registry<br>(pkg/registry/scheme_registry.go)"]
-  end
- subgraph subGraph1["Runtime (Execution)"]
-        CTR["Controller Registry<br>(pkg/controller/registry.go)"]
-  end
- subgraph subGraph2["Framework Components"]
-        KC["KubeClient"]
-        SIF["SharedInformerFactory"]
-        C["Controller"]
-  end
-    CR L_CR_SR_0@--> SR
-    SR L_SR_KC_0@--> KC
-    KC L_KC_SIF_0@--> SIF
-    SIF L_SIF_CTR_0@--> CTR
-    CTR L_CTR_C_0@--> C
-
-    style CR fill:#424242,stroke:#333,stroke-width:2px,color:#FFFFFF
-    style SR fill:transparent,stroke:#333,stroke-width:2px
-    style CTR fill:#FF6D00,stroke:#333,stroke-width:4px,color:#FFFFFF
-    style KC fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
-    style SIF fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
-    style C fill:#FF6D00,stroke:#333,stroke-width:4px,color:#FFFFFF
-
-    L_CR_SR_0@{ animation: fast } 
-    L_SR_KC_0@{ animation: fast } 
-    L_KC_SIF_0@{ animation: fast } 
-    L_SIF_CTR_0@{ animation: fast } 
-    L_CTR_C_0@{ animation: fast }
-```
-
-### **1. CRD Registry** (`pkg/registry/crd_registry.go`) – **Your Only Modification Point**
-```go
-// This is the ONLY file you modify to add a new CRD
-func buildCRDs() []crd {
-    return []crd{
-        newCRD(
-            &projectTypev1.Project{},
-            &projectTypev1.ProjectList{},
-            CRDInfoFrom(projectTypev1.Group, projectTypev1.Version, 
-                       projectTypev1.Kind, projectTypev1.APIPath, 
-                       projectTypev1.NamePlural, "default", false),
-            projectTypev1.AddToScheme,  // Your CRD's scheme registration
-            reconciler.NewProjectReconciler,
-        ),
-    }
-}
-```
-Each entry includes your CRD's types, metadata, scheme registration, and reconciler factory. **This is pure data** – no runtime dependencies.
-
-### **2. Scheme Registry** (`pkg/registry/registry.go`) – **Auto-Built**
-```go
-scheme, err := registry.NewSchemeRegistry()  // Reads crd_registry.go automatically
-```
-Walks through all CRDs in `crd_registry.go`, calls their `AddToScheme` functions, and builds the complete scheme. **Zero manual registration needed.**
-
-### **3. Controller Registry** (`pkg/controller/registry.go`) – **Runtime Dispatch**
-```go
-reg := controller.NewControllerRegistry()  // Maps GVKs → running informers/reconcilers
-```
-Populated at runtime after informers are created. Used by the controller to dispatch events to the correct reconciler based on GVK.
-
-## 🔄 **Controller Lifecycle**
-
-The controller follows a clear separation between **bootstrap** and **reconciliation** phases.
-
-### Bootstrap Phase (`Start()`)
-
-The bootstrap phase runs in **every pod**, regardless of leadership:
-
-```go
-func (c *Controller) Start(ctx context.Context) error {
-    // 1. CRD Registry (pure data) is already loaded
-    // 2. Scheme Registry built the complete scheme
-    // 3. KubeClient initialized with that scheme
-    // 4. SharedInformerFactory creates informers for all CRDs
-    
-    // Start all informers
-    for _, informer := range c.informerFactory.ListInformers() {
-        go informer.Run(ctx.Done())
-    }
-    
-    // Wait for ALL caches to sync
-    if !cache.WaitForCacheSync(ctx.Done(), 
-        c.informerFactory.HasSyncedFunctions()...) {
-        return fmt.Errorf("cache sync failed")
-    }
-    
-    return nil
-}
-```
-
-This design ensures that when a new leader is elected, it can begin reconciling immediately with warm caches.
-
-### Reconciliation Phase (`RunOrDie()`) [controller.go](../pkg/controller/controller.go)
-
-The reconciliation phase runs **only in the leader**:
-
-```go
-//  Start workers
-for i := 0; i < c.workers; i++ {
-    c.wg.Add(1)
-    go func() {
-        defer c.wg.Done()
-        wait.UntilWithContext(
-            ctx,
-            func(ctx context.Context) {
-                c.runWorker(ctx)
-            }, time.Second)
-    }()
-}
-
-// BLOCK until leadership is lost
-<-ctx.Done()
-
-logger.Info().Msg("leadership lost — draining workers...")
-
-// Stop accepting new items
-c.wq.Shutdown(ctx)
-
-// Wait for all workers to finish
-c.wg.Wait()
-```
-
-Workers stop cleanly when leadership is lost, ensuring no partial reconciliations.
-
----
-
-## 📦 **Component Deep Dive**
-
-### 1. **Configuration Layer** (`pkg/config`)
-
-Environment‑based configuration with `.env` support:
-
-```go
-cfg, err := config.Init() // Automatically loads .env file, falls back to system env
-```
-
-The configuration system validates required fields and normalizes environment names (dev/staging/prod) for consistent behavior across deployments.
-
-### 2. **Health Server** (`pkg/health`)
-
-Provides Kubernetes liveness and readiness endpoints with environment‑aware logging:
-
-- `/health` – Returns 200 when running (no logs in production)
-- `/ready` – Returns 200 only after all components are ready
-
-Conditional logging prevents noisy probe logs in production (`APP_ENV=production`).
-
-### 3. **Generic KubeClient** (`pkg/kubeclient`)
-
-A **truly generic** Kubernetes client that powers all CRD operations:
-
-```go
-kube := kubeclient.NewKubeclient(kubeclient.Config{
-    Kubeconfig: cfg.Cluster().KubeconfigPath,
-    Masterurl:  cfg.Cluster().MasterURL,
-    Scheme:     scheme,  // Complete scheme from Scheme Registry
-})
-```
-
-**Key features:**
-- `Clientset()` – For built‑in Kubernetes types
-- `DynamicClient()` – For unstructured operations
-- `RESTClient()` – Configured with the complete scheme
-- **SharedClientFactory** – Generates clients for any CRD on demand
-
-### 4. **Shared Workqueue** (`pkg/queue`)
-
-A single, rate‑limited workqueue that **all informers feed into**:
-
-```go
-type QueueItem struct {
-    Key      string            // namespace/name
-    GVK      string            // GroupVersionKind for dispatch
-}
-
-wq := queue.NewWorkqueue()
-```
-
-Features:
-- Rate limiting with exponential backoff
-- Deduplication of keys
-- Shutdown‑aware draining
-- GVK attachment for registry dispatch
-
-### 5. **Client Provider** (`pkg/kubeclient/provider.go`)
-
-The bridge between CRD definitions and runtime clients:
-
-```go
-provider := kube.ClientProvider()
-
-// Register each CRD's client factory
-for _, crd := range crdRegistry {
-    provider.Register(crd.Object, func(k *kubeclient.Kubeclient) (informer.GenericClient, error) {
-        return k.NewClient(crd.ListObject, kubeclient.CRDInfo(crd.Info))
-    })
-}
-```
-
-The provider can generate a client for **any registered CRD** on demand.
-
-### 6. **SharedInformerFactory** (`pkg/informer/factory.go`)
-
-The **crown jewel** of the framework – automatically creates informers for any CRD:
-
-```go
-infFactory := informer.SharedInformerFactory(
-    provider,  // Knows how to create clients
-    wq,        // Shared workqueue
-    scheme,    // Complete scheme
-    cfg.Cluster().Namespace,
-    cfg.Cluster().DefaultResync,
-)
-
-// Get a fully-configured informer for ANY CRD
-inf := infFactory.For(&yourcrdv1.YourCRD{}, ctx)  // That's it!
-```
-
-What the factory does:
-1. Uses the provider to get a client for the CRD type
-2. Creates a ListWatch with proper List/Watch functions
-3. Builds a SharedIndexInformer with the correct type
-4. Adds event handlers that enqueue to the workqueue with GVK
-5. Caches informers for future requests
-
-### 7. **Event Recorder** (`pkg/event`)
-
-Broadcasts Kubernetes events for controller visibility:
-
-```go
-ev := event.NewEvent(kube)
-```
-
-Used by:
-- Leader election to emit leadership events
-- Reconcilers to emit resource events
-- Appears in `kubectl describe` and `kubectl get events`
-
-### 8. **Per‑CRD Reconcilers** (`pkg/reconciler/`)
-
-The **only code you write** – your business logic:
-
-```
-pkg/reconciler/
-├── helper.go                 # Shared utilities
-├── project_reconcile.go      # Project reconciliation
-├── managed_ns_reconciler.go  # ManagedNamespace reconciliation
-└── application_reconcile.go  # Application reconciliation
-```
-
-Each reconciler implements a simple interface:
-
-```go
-type Reconciler interface {
-    Reconcile(ctx context.Context, key string) error
-}
-```
-
-The framework provides the informer store – reconcilers just fetch their object and execute logic.
-
-### 9. **Controller Registry** (`pkg/controller/registry.go`)
-
-The **runtime dispatch** registry:
-
-```go
-reg := controller.NewControllerRegistry()
-
-// Register each CRD's runtime components
-for _, crd := range crdRegistry {
-    inf := infFactory.For(crd.Object, ctx)
-    rec := crd.Reconciler(kube, inf, ev)
-    
-    reg.Register(
-        utils.SetGroupVersionKindObj(crd.Info.GroupVersionKind),
-        crd.Info,
-        inf,
-        rec,
-    )
-}
-```
-
-This registry maps GVK strings to:
-- The running informer (for store access)
-- The reconciler (for business logic)
-
-### 10. **Controller Manager** (`pkg/controller/manager.go`)
-
-A **single controller** that processes events for **all CRDs**:
-
-```go
-ctrl := controller.NewControllerManager(
-    kube,
-    infFactory,
-    reg,
-    ev,
-    wq,
-    cfg.Cluster().Workers,
-)
-```
-
-The dispatch logic is beautifully simple:
-
-```go
-func (c *Controller) processNextItem(ctx context.Context) bool {
-    item, shutdown := c.q.Queue.Get()
-    if shutdown {
-        return false
-    }
-    defer c.q.Queue.Done(item)
-
-    // Look up reconciler by GVK (attached when enqueued)
-    reconciler := c.reconcilers[tem.GVK]
-    if reconciler == nil {
-        logger.Error().Str("gvk", item.GVK).Msg("no reconciler found")
-        c.q.Queue.Forget(item)
-        return true
-    }
-
-    if err := reconciler.Reconcile(ctx, item.Key); err != nil {
-        c.q.Queue.AddRateLimited(item)
-        return true
-    }
-
-    c.q.Queue.Forget(item)
-    return true
-}
-```
-
-### 11. **Leader Election** (`pkg/leader`)
-
-Ensures only one instance reconciles:
-
-```go
-leader := leader.NewLeaderElection(
-    kube,
-    ev,
-    func(ctx context.Context) { ctrl.RunOrDie(ctx) },
-    leader.Options{
-        Namespace:     cfg.Cluster().Namespace,
-        LeaseDuration: cfg.Leader().LeaseDuration,
-        RenewDeadline: cfg.Leader().RenewDeadline,
-        RetryPeriod:   cfg.Leader().RetryPeriod,
-    })
-```
-
-Features:
-- Acquires lease via Kubernetes Coordination API
-- **Only leader runs workers**
-- Releases lease on graceful shutdown (`ReleaseOnCancel: true`)
-- Followers maintain warm caches for instant failover
-
-### 12. **Manager** (`pkg/manager`)
-
-The orchestrator that brings everything together:
-
-```go
-mgr := manager.NewManager(hs, cfg.Cluster().DefaultResync)
-
-// Register all components at once
-mgr.Register(components)
-
-// Start all components in order
-mgr.Start(ctx)
-
-// Wait for shutdown
-mgr.Wait()
-```
-
-The manager:
-- Registers all components (health, kube, queue, factory, controller, leader)
-- Starts them in the correct order
-- Handles graceful shutdown on SIGINT/SIGTERM
-- Sets health server ready only after all components are running
-- Shuts down components in **reverse order** (leader election first!)
-
----
-
-## 🎯 **How It All Works Together**
-
-```mermaid
-sequenceDiagram
-    participant M as Manager
-    participant CR as CRD Registry
-    participant SR as Scheme Registry
-    participant K as KubeClient
-    participant P as ClientProvider
-    participant F as SharedInformerFactory
-    participant CTR as Controller Registry
-    participant C as Controller
-    participant LE as Leader Election
-    
-    Note over M,LE: 1. Design Time (Data)
-    CR->>SR: Provide CRD definitions
-    SR->>SR: Build complete scheme
-    
-    Note over M,LE: 2. Runtime Initialization
-    M->>K: Start with scheme
-    K->>P: Create provider
-    P->>P: Register client factories
-    
-    M->>F: Create with provider & queue
-    M->>CTR: Create empty registry
-    
-    loop For each CRD
-        F->>F: For(type) creates informer
-        F->>CTR: Register informer
-        CR->>CTR: Register reconciler
+    subgraph Registry["CRD Registry (Go/YAML)"]
+        CRD["CRD Entries"]
+        DEP["Dependencies"]
+        RESYNC["Resync Intervals"]
     end
-    
-    M->>LE: Start leader election
-    LE->>C: Run() (leader only)
-    C->>F: List informers
-    C->>C: Start workers
-    
-    Note over F,K: 3. Event Processing
-    K-->>F: Watch events
-    F->>C: Enqueue with GVK
-    C->>CTR: Lookup reconciler by GVK
-    CTR-->>C: Return reconciler
-    C->>C: Reconcile()
+
+    subgraph Scheme["Scheme Registry"]
+        SCH["AddToScheme()"]
+    end
+
+    subgraph Runtime["Runtime Construction"]
+        CPF["SharedClientFactory"]
+        INF["SharedInformerFactory"]
+        CREC["Reconciler Factory"]
+        CREG["Kontroller Registry"]
+    end
+
+    subgraph Control["Dependency Kontroller"]
+        START["Start CRDs in dependency order"]
+        STOP["Shutdown in reverse order"]
+        WORK["Per‑CRD Workers"]
+    end
+
+    subgraph HA["High Availability"]
+        LE["Leader Election"]
+        CACHE["Warm Informer Caches"]
+    end
+
+    CRD --> SCH
+    SCH --> CPF
+    CPF --> INF
+    INF --> CREG
+    CREG --> Control
+    Control --> HA
 ```
 
 ---
 
-## ⚡ **Leader Election Model**
+# 📦 **1. CRD Registry (Go Mode + YAML Mode)**
 
-### Key Properties
+The CRD Registry is the **source of truth** for all CRDs Orkestra manages.
 
-- **Only the leader runs workers** (`Run()`)
-- **All pods run informers** (`Start()`) – warm caches everywhere
-- **Failover is instant** – followers already have synced caches
-- **Lease is released on shutdown** – fast leadership transitions
-- **Events emitted** – visibility into leadership changes
-
-### Leadership Loss and Draining
-When leadership is lost:
-1. Context cancelled
-2. Workers stop accepting new items
-3. In‑flight reconciliations finish
-4. Controller exits cleanly
-
-**No double-processing. No partial state.**
+It supports two modes:
 
 ---
 
-## 🧪 **Why Raw client‑go?**
+## **Go Mode (Typed, Default)**
 
-This framework intentionally uses **client‑go** directly rather than controller‑runtime for:
+CRDs are defined in Go:
 
-- **Full visibility** – Every line of control loop is explicit
-- **Educational value** – Understand how controllers really work
-- **No magic** – No hidden informers, queues, or caches
-- **Lightweight** – Minimal dependencies
-- **Flexible** – Custom lifecycle behavior (three-registry pattern)
-- **Debugging** – Stack traces point to your code, not abstractions
+```go
+{
+    Name:       "project",
+    Object:     &projectv1.Project{},
+    ListObject: &projectv1.ProjectList{},
+    Group:      projectv1.Group,
+    Version:    projectv1.Version,
+    Kind:       projectv1.Kind,
+    Plural:     projectv1.NamePlural,
+    Workers:    3,
+    Resync:     0, // uses default
+    Scheme:     projectv1.AddToScheme,
+    Reconciler: reconciler.NewProjectReconciler,
+}
+```
 
-controller‑runtime is excellent for production operators, but this framework is ideal for **understanding** and **controlling** the underlying mechanics.
-
----
-
-## 📈 **Performance and Scaling**
-
-### Horizontal Scaling
-- Multiple replicas run simultaneously
-- Only one leader reconciles
-- Followers maintain warm caches
-- **Failover is instant** (sub-second)
-
-### Vertical Scaling
-- Configurable workers (`WORKERS`)
-- Tune resync period (`DEFAULT_RESYNC`)
-- Queue rate limiting prevents storms
-- Per-CRD concurrency control
-
-### Queue Behavior
-- Exponential backoff on errors
-- Key deduplication
-- Shutdown‑aware draining
-- GVK attachment for dispatch
+### Benefits
+- Full type safety  
+- No manual scheme registration  
+- IDE autocompletion  
 
 ---
 
-## 🎯 **The End Result**
+## **YAML Mode (Dynamic)**
 
-This architecture delivers:
+CRDs are loaded from a YAML file (local or remote):
 
-| Requirement | Implementation |
-|-------------|----------------|
-| **Multi‑CRD support** | Three-registry pattern |
-| **Zero boilerplate** | SharedInformerFactory auto-generates everything |
-| **Extensibility** | Add CRDs in minutes – just data |
-| **High availability** | Leader election + warm caches |
-| **Production readiness** | Health checks, graceful shutdown |
-| **Observability** | Events, structured logs, GVK tracking |
-| **Performance** | Shared queue, rate limiting, workers |
-| **Testability** | Clean interfaces, fake implementations |
+```yaml
+crds:
+  - name: project
+    group: platform.orkestra.io
+    version: v1alpha1
+    kind: Project
+    plural: projects
+    workers: 3
+    resync: 10m
+    dependsOn: []
+```
 
-**Adding a new CRD is now just:**
-1. Generate API types (controller-gen)
-2. Write your reconciler (business logic)
-3. Add **one entry** to the CRD registry
-4. Done!
+### Benefits
+- No recompilation  
+- GitOps‑friendly  
+- Multi‑cluster Orkestration  
+- Canary rollouts  
+- Partner integrations  
 
-The framework handles **clients, informers, queues, dispatch, and lifecycle** automatically.
+---
+
+# 🧬 **2. Dependency Graph**
+
+Each CRD may declare dependencies:
+
+```yaml
+dependsOn: ["project"]
+```
+
+The framework builds a **directed acyclic graph (DAG)** and validates:
+
+- No cycles  
+- All dependencies exist  
+- No self‑dependencies  
+
+### Why this matters
+- CRDs start in correct order  
+- Shutdown happens in reverse order  
+- Reconcilers never run before their prerequisites  
+- Multi‑CRD operators behave predictably  
+
+---
+
+# 🔁 **3. Dynamic Resync Per CRD**
+
+Each CRD can define its own resync interval:
+
+```yaml
+resync: 10m
+```
+
+If omitted, Orkestra uses the global default.
+
+### What this enables
+- High‑frequency reconciliation for volatile CRDs  
+- Low‑frequency reconciliation for stable CRDs  
+- Environment‑specific tuning (dev vs prod)  
+- Fine‑grained performance control  
+
+Logs clearly show the behavior:
+
+```
+processing informer for Project with resync duration: 10m0s
+processing informer for ManagedNamespace with default resync duration: 30s
+```
+
+---
+
+# 🧱 **4. Scheme Registry**
+
+The Scheme Registry builds the runtime scheme:
+
+- In Go mode: automatic  
+- In YAML mode: user registers schemes manually  
+
+This ensures:
+- REST clients know how to encode/decode CRDs  
+- Informers can deserialize objects  
+- Events and status updates work correctly  
+
+---
+
+# 🧩 **5. SharedClientFactory**
+
+A generic factory that creates REST clients for **any CRD**:
+
+- Uses CRD metadata (group, version, plural, API path)  
+- Configures serializers from the scheme  
+- Produces typed or unstructured clients  
+
+This is the foundation for dynamic CRD support.
+
+---
+
+# 🔍 **6. SharedInformerFactory**
+
+The heart of the framework.
+
+For each CRD, it:
+
+1. Creates a ListWatch  
+2. Builds a SharedIndexInformer  
+3. Applies the CRD’s resync interval  
+4. Registers event handlers  
+5. Enqueues events into the shared workqueue with GVK attached  
+
+This is how Orkestra achieves **zero boilerplate**.
+
+---
+
+# 🧭 **7. Kontroller Registry**
+
+At runtime, the framework registers:
+
+- The informer  
+- The reconciler  
+- The CRD metadata  
+
+Mapped by GVK.
+
+This allows Orkestra to dispatch events dynamically:
+
+```go
+reconciler := registry.Get(item.GVK)
+```
+
+---
+
+# 🔄 **8. Dependency‑Aware Kontroller**
+
+Orkestra is no longer a simple loop.  
+It is a **dependency‑aware Orkestrator**.
+
+### Startup
+- Topologically sorted CRDs start first  
+- Informers run  
+- Caches sync  
+- Workers start per CRD  
+
+### Shutdown
+- Reverse dependency order  
+- Workers drain  
+- Informers stop  
+- Leader election releases lease  
+
+This ensures correctness across multi‑CRD systems.
+
+---
+
+# 🧵 **9. Per‑CRD Workers**
+
+Each CRD defines its own worker count:
+
+```yaml
+workers: 5
+```
+
+Workers are isolated per GVK:
+
+- No CRD starves another  
+- No CRD overloads the queue  
+- High‑throughput CRDs scale independently  
+
+---
+
+# 🛡 **10. High Availability Model**
+
+The framework uses Kubernetes leader election:
+
+- All pods run informers  
+- Only the leader runs workers  
+- Followers maintain warm caches  
+- Failover is instant  
+
+This is the same model used by kube‑controller‑manager.
+
+---
+
+# 📊 **11. Observability**
+
+Built‑in Prometheus metrics:
+
+- Queue depth per CRD  
+- Worker count per CRD  
+- Reconcile duration histogram  
+- Reconcile total counter  
+- Error rate per GVK  
+
+This enables:
+- Canary analysis  
+- Performance tuning  
+- Capacity planning  
+
+---
+
+# 🧹 **12. Graceful Shutdown**
+
+On SIGTERM or leadership loss:
+
+1. Stop accepting new items  
+2. Drain workers  
+3. Shutdown CRDs in reverse dependency order  
+4. Release leader lease  
+5. Exit cleanly  
+
+No partial reconciliations.  
+No double processing.
+
+---
+
+# 🧪 **13. Why This Architecture Works**
+
+This architecture gives you:
+
+| Feature | How |
+|--------|-----|
+| Multi‑CRD support | Registry + dynamic factories |
+| Zero boilerplate | Auto‑generated clients/informers |
+| High availability | Leader election + warm caches |
+| Extensibility | CRDs are data, not code |
+| Performance | Per‑CRD workers + resync |
+| Safety | Dependency graph + ordered lifecycle |
+| GitOps | YAML mode + remote registries |
+| Observability | Built‑in metrics |
+
+---
+
+# 🏁 **Conclusion**
+
+This framework is no longer just a controller.  
+It is a **runtime‑composable operator platform** that:
+
+- Loads CRDs dynamically  
+- Builds clients and informers automatically  
+- Orkestrates CRDs through dependency graphs  
+- Supports per‑CRD resync and workers  
+- Runs with high availability  
+- Provides deep observability  
+- Requires zero boilerplate  
+
+Adding a new CRD is now:
+
+1. Write API types  
+2. Write reconciler  
+3. Add registry entry (Go or YAML)  
+4. Done  
+
+Everything else — clients, informers, workers, lifecycle, metrics — is handled by the runtime.

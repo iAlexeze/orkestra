@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/initialize"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/reconciler"
+	"github.com/ialexeze/orkestra/initialize"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/reconciler"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 

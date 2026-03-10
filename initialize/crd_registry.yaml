@@ -1,11 +1,11 @@
 # intiailize/crd-registry.yaml
-apiVersion: controller.ialexeze.io/v1
-kind: Operator
+apiVersion: controller.orkestra.io/v1
+kind: Orkestra
 metadata:
   name: platform-operator
 crds:
   - name: project
-    group: platform.ialexeze.io
+    group: platform.orkestra.io
     version: v1alpha1
     kind: Project
     plural: projects
@@ -16,7 +16,7 @@ crds:
     namespaced: true     # Scope
     
   - name: managednamespace
-    group: platform.ialexeze.io
+    group: platform.orkestra.io
     version: v1alpha1
     kind: ManagedNamespace
     plural: managednamespaces

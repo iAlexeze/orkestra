@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
+	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
 type responseReq struct {

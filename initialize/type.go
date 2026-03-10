@@ -3,7 +3,7 @@ package initialize
 import (
 	"time"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/reconciler"
+	"github.com/ialexeze/orkestra/pkg/reconciler"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -26,7 +26,7 @@ type CRDEntry struct {
 	GroupVersionKind   schema.GroupVersionKind       `yaml:"groupVersionKind" validate:"omitempty"` //	Useful for some manipulations and Required by Registry
 	NamePlural         string                        `yaml:"plural" validate:"required"`
 	APIPath            string                        `yaml:"apiPath" validate:"omitempty"`
-	Package            string                        `yaml:"package" validate:"required"` // Example: 'platform.ialexeze.io/v1alpha1'. Needed to construct scheme
+	Package            string                        `yaml:"package" validate:"required"` // Example: 'platform.orkestra.io/v1alpha1'. Needed to construct scheme
 	Namespaced         bool                          `yaml:"namespaced"`
 	Namespace          string                        `yaml:"namespace"`
 	Finalizer          string                        `yaml:"finalizer" validate:"omitempty"`

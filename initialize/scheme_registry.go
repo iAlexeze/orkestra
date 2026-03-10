@@ -3,8 +3,8 @@ package initialize
 import (
 	"fmt"
 
-	managednsTypeV1 "github.com/ialexeze/multi-crd-controller/pkg/config/api/types/managedNamespace/v1alpha1"
-	projectTypev1 "github.com/ialexeze/multi-crd-controller/pkg/config/api/types/project/v1alpha1"
+	managednsTypeV1 "github.com/ialexeze/orkestra/api/types/managedNamespace/v1alpha1"
+	projectTypev1 "github.com/ialexeze/orkestra/api/types/project/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 

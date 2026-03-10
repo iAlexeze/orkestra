@@ -8,15 +8,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
 const eventHandler = "event handler"
 
 type Manager struct {
-	components []domain.Component
+	components []domain.Komponent
 	postStart  []postStart
 	timeout    time.Duration
 	done       chan struct{}
@@ -24,7 +24,7 @@ type Manager struct {
 
 type postStart struct {
 	hook func(context.Context)
-	comp domain.Component
+	comp domain.Komponent
 }
 
 func NewManager(timeout time.Duration) *Manager {
@@ -124,7 +124,7 @@ func (m *Manager) gracefulShutdown(ctx context.Context, cancel context.CancelFun
 }
 
 // Register all components
-func (m *Manager) Register(c []domain.Component) {
+func (m *Manager) Register(c []domain.Komponent) {
 	fmt.Println("==================================")
 	fmt.Println("REGISTERING MANAGER COMPONENTS...")
 	for _, comp := range c {
@@ -144,7 +144,7 @@ func (m *Manager) Register(c []domain.Component) {
 }
 
 // GetComponent returns a component if present
-func (m *Manager) GetComponent(name string) domain.Component {
+func (m *Manager) GetComponent(name string) domain.Komponent {
 	for _, comp := range m.components {
 		if comp.Name() == name {
 			return comp
@@ -154,7 +154,7 @@ func (m *Manager) GetComponent(name string) domain.Component {
 }
 
 // AddPostStartHook: for services that need to start after manager has started
-func (m *Manager) AddPostStartHook(comp domain.Component, hook func(context.Context)) {
+func (m *Manager) AddPostStartHook(comp domain.Komponent, hook func(context.Context)) {
 	m.postStart = append(m.postStart, postStart{
 		hook: hook,
 		comp: comp,

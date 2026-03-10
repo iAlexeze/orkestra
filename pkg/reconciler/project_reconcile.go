@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	projectTypev1 "github.com/ialexeze/multi-crd-controller/pkg/config/api/types/project/v1alpha1"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/event"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/metrics"
+	projectTypev1 "github.com/ialexeze/orkestra/api/types/project/v1alpha1"
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/event"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 )

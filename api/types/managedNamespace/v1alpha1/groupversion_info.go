@@ -18,7 +18,7 @@ const (
 	Progressing ManagedNamespaceConditionType = "Progressing"
 	Reconciled  ManagedNamespaceConditionType = "Reconciled"
 
-	Group   = "platform.ialexeze.io"
+	Group   = "platform.orkestra.io"
 	Version = "v1alpha1"
 	Kind    = "ManagedNamespace"
 )
