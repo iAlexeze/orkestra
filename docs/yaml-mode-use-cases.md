@@ -1,4 +1,4 @@
-# 🎯 **YAML Registry: Use Cases & Scenarios**
+# 🎯 **YAML Katalog: Use Cases & Scenarios**
 
 The YAML mode in this framework transforms how operators are deployed, configured, and shared. By loading CRD configurations from local files or remote URLs, you unlock powerful operational patterns that are simply not possible with traditional Go-only approaches.
 
@@ -8,7 +8,7 @@ The YAML mode in this framework transforms how operators are deployed, configure
 
 ```bash
 # Deploy a production-ready Prometheus operator instantly
-export CRD_REGISTRY=https://hub.orkestra.io/crds/prometheus-operator.yaml
+export KATALOG_PATH=https://hub.orkestra.io/crds/prometheus-operator.yaml
 ./my-kontroller
 ```
 
@@ -65,11 +65,11 @@ crds:
 **Deployment by teams:**
 ```bash
 # Team A's cluster
-export CRD_REGISTRY=https://internal-git.company.com/platform/crds/standard.yaml
+export KATALOG_PATH=https://internal-git.company.com/platform/crds/standard.yaml
 ./kontroller
 
 # Team B's cluster – same config, same behavior
-export CRD_REGISTRY=https://internal-git.company.com/platform/crds/standard.yaml
+export KATALOG_PATH=https://internal-git.company.com/platform/crds/standard.yaml
 ./kontroller
 ```
 
@@ -93,15 +93,15 @@ https://git.company.com/fleet/
 **How it works:**
 ```bash
 # Production fleet (high throughput)
-export CRD_REGISTRY=https://git.company.com/fleet/production/crds.yaml
+export KATALOG_PATH=https://git.company.com/fleet/production/crds.yaml
 ./kontroller
 
 # Staging fleet (moderate load)
-export CRD_REGISTRY=https://git.company.com/fleet/staging/crds.yaml
+export KATALOG_PATH=https://git.company.com/fleet/staging/crds.yaml
 ./kontroller
 
 # Development fleet (minimal resources)
-export CRD_REGISTRY=https://git.company.com/fleet/dev/crds.yaml
+export KATALOG_PATH=https://git.company.com/fleet/dev/crds.yaml
 ./kontroller
 ```
 
@@ -188,10 +188,10 @@ crds:
 **Deployment strategy:**
 ```bash
 # 95% of clusters
-export CRD_REGISTRY=https://config.company.com/stable/crds.yaml
+export KATALOG_PATH=https://config.company.com/stable/crds.yaml
 
 # 5% of clusters (canary)
-export CRD_REGISTRY=https://config.company.com/canary/crds.yaml
+export KATALOG_PATH=https://config.company.com/canary/crds.yaml
 ```
 
 **Monitor metrics:**
@@ -260,7 +260,7 @@ crds:
 
 ```yaml
 # Corporate proxy with authentication
-export CRD_REGISTRY=https://corporate-git.company.com/approved/crds.yaml
+export KATALOG_PATH=https://corporate-git.company.com/approved/crds.yaml
 ```
 
 **Security benefits:**
@@ -298,7 +298,7 @@ crds:
 - ✅ Small footprint – Minimal YAML instead of full Go code
 - ✅ Remote updates – Push new configs without SSH
 - ✅ Gradual rollout – Update edge devices in phases
-- ✅ Offline capability – Cache registry locally
+- ✅ Offline capability – Cache katalog locally
 
 ---
 
@@ -367,7 +367,7 @@ YAML mode enables a secure, governed configuration pipeline.
 ### **Domain Allowlisting**
 Control which sources are trusted:
 ```bash
-export CRD_REGISTRY_ALLOWED_DOMAINS="*.company.com,*.github.com"
+export KATALOG_PATH_ALLOWED_DOMAINS="*.company.com,*.github.com"
 ```
 
 ### **Checksum Verification**
@@ -380,7 +380,7 @@ Prevent tampering with SHA256 verification:
 ### **Immutable Versioning**
 Pin to exact Git commit SHAs for reproducibility:
 ```bash
-export CRD_REGISTRY=https://raw.githubusercontent.com/org/repo/8f3c9a1/crds.yaml
+export KATALOG_PATH=https://raw.githubusercontent.com/org/repo/8f3c9a1/crds.yaml
 ```
 
 ### **Audit Logging**
@@ -391,7 +391,7 @@ Every remote fetch is logged:
   "time":1773117835,
   "url":"https://hub.orkestra.io/crds/prometheus.yaml",
   "checksum":"8f3c9a1b2e...",
-  "message":"CRD registry loaded"
+  "message":"katalog loaded"
 }
 ```
 
@@ -447,7 +447,7 @@ YAML mode isn't just for production — it's perfect for developers too.
 ### **Local Iteration Loop**
 ```bash
 # Point to local YAML file
-export CRD_REGISTRY=./crds/dev.yaml
+export KATALOG_PATH=./crds/dev.yaml
 go run ./cmd
 
 # Edit dev.yaml, restart kontroller, see changes instantly
@@ -501,12 +501,12 @@ YAML mode supports them all:
 
 ### **Local File Mode**
 ```bash
-export CRD_REGISTRY=/etc/kontroller/cache/crds.yaml
+export KATALOG_PATH=/etc/kontroller/cache/crds.yaml
 ```
 
-### **Mirrored Registry**
+### **Mirrored Katalog**
 ```bash
-export CRD_REGISTRY=https://mirror.company.com/crds.yaml
+export KATALOG_PATH=https://mirror.company.com/crds.yaml
 ```
 
 ### **Bundle Mode**
@@ -537,7 +537,7 @@ Before starting, orkestra validates:
 | **Worker configuration** | Are worker counts positive integers? |
 | **Namespace scoping** | Do namespaced CRDs have valid namespaces? |
 | **GVK correctness** | Do Group/Version/Kinds match registered schemes? |
-| **Remote availability** | Is the remote registry URL accessible? |
+| **Remote availability** | Is the remote katalog URL accessible? |
 
 If anything is invalid, orkestra **fails fast** with a clear error:
 
@@ -560,10 +560,10 @@ YAML mode enables sophisticated rollout strategies:
 ### **Blue/Green Deployment**
 ```bash
 # Blue (current)
-cluster-1: export CRD_REGISTRY=https://config.company.com/v1.yaml
+cluster-1: export KATALOG_PATH=https://config.company.com/v1.yaml
 
 # Green (candidate)  
-cluster-2: export CRD_REGISTRY=https://config.company.com/v2.yaml
+cluster-2: export KATALOG_PATH=https://config.company.com/v2.yaml
 ```
 
 ### **Weighted Rollout**
@@ -592,8 +592,8 @@ If error rate spikes after deployment:
 YAML mode integrates seamlessly with Prometheus metrics:
 
 ```
-# HELP crd_registry_fetch_total Total number of registry fetches
-# HELP crd_registry_fetch_duration Duration of registry fetches
+# HELP katalog_fetch_total Total number of katalog fetches
+# HELP katalog_PATH_fetch_duration Duration of katalog fetches
 # HELP crd_config_valid Configuration validation status (1=valid, 0=invalid)
 ```
 
@@ -615,7 +615,7 @@ YAML mode makes cluster migration trivial:
 
 ```bash
 # Rebuild a cluster from scratch
-export CRD_REGISTRY=https://git.company.com/platform/crds/prod.yaml
+export KATALOG_PATH=https://git.company.com/platform/crds/prod.yaml
 ./kontroller --kubekonfig new-cluster.yaml
 ```
 

@@ -122,24 +122,6 @@ func (k *Katalog) enabledEmpty() bool {
 	return len(k.enabledCRDs) == 0
 }
 
-func (k *Katalog) List() []initialize.CRDEntry {
-	return k.CRDs
-}
-
-func (k *Katalog) Enabled() []initialize.CRDEntry {
-	return k.enabledCRDs
-}
-
-// Get tries to get an enabled crd
-func (k *Katalog) Get(name string) (*initialize.CRDEntry, error) {
-	for _, crd := range k.enabledCRDs {
-		if crd.Name == name {
-			return &crd, nil
-		}
-	}
-	return nil, fmt.Errorf("crd not found in katalog")
-}
-
 // Filter enabled CRDs
 func (k *Katalog) filterEnabled() error {
 	if k.empty() {

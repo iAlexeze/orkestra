@@ -27,7 +27,7 @@ Traditional operator frameworks require:
 - controller‑runtime magic  
 - one controller per CRD  
 
-Orkestra replaces all of that with a **declarative registry** and a **runtime engine** that:
+Orkestra replaces all of that with a **declarative katalog** and a **runtime engine** that:
 
 - loads CRDs dynamically (Go or YAML)  
 - builds clients and informers automatically  
@@ -78,8 +78,8 @@ flowchart TB
         PI["Project Informer<br>resync: 10m"]
         MI["ManagedNamespace Informer<br>resync: 30s"]
   end
- subgraph Registry["Runtime Registry"]
-        REG["Kontroller Registry"]
+ subgraph Katalog["Runtime Katalog"]
+        REG["Kontroller Katalog"]
         R1["Project Entry<br>GVK → Reconciler"]
         R2["ManagedNamespace Entry<br>GVK → Reconciler"]
   end
@@ -96,7 +96,7 @@ flowchart TB
  subgraph HA["High Availability"]
         LE["Leader Election"]
   end
- subgraph Reconcilers["Reconciler Registry"]
+ subgraph Reconcilers["Reconciler Katalog"]
         PR["Project Reconciler"]
         MR["ManagedNamespace Reconciler"]
   end
@@ -205,7 +205,7 @@ workers: 5
 
 High‑throughput CRDs scale independently.
 
-## 🧩 Dual Registry Architecture (Go + YAML)
+## 🧩 Dual Katalog Architecture (Go + YAML)
 Two modes:
 
 ### **Go Mode (Typed)**
@@ -217,8 +217,7 @@ Two modes:
 - GitOps‑friendly  
 - perfect for multi‑cluster orchestration  
 
-**👉 See:** [YAML Mode Use Cases](./docs/yaml-mode-use-cases.md)
-
+**👉 See:** [What is a Katalog](./docs/katalog.md) for a full breakdown.
 
 ## 📊 Built‑in Metrics
 Prometheus metrics include:
@@ -260,8 +259,8 @@ go run ./cmd/
 
 ### YAML Mode
 ```bash
-export CRD_REGISTRY_MODE=YAML
-export CRD_REGISTRY=initialize/crd-registry.yaml
+export KATALOG_MODE=YAML
+export KATALOG_PATH=initialize/crd-katalog.yaml
 go run ./cmd/
 ```
 
@@ -284,13 +283,29 @@ curl localhost:8080/ready
 
 ---
 
+# 🖥️ **Orkestra CLI**
+
+Orkestra ships with a powerful command‑line interface (`ork`) that lets you explore, visualize, and interact with the Katalog and the running controller runtime.  
+It’s designed to feel as natural as `kubectl`, but focused entirely on CRDs, reconcilers, and dependency orchestration.
+
+The CLI supports:
+
+- inspecting the Katalog  
+- visualizing dependency graphs  
+- exploring CRD metadata  
+- listing active controllers  
+- understanding how Orkestra wires your CRDs internally  
+
+Full documentation is available in **[Orkestra CLI](./docs/cli.md)**.
+
+
 # 🔧 Extending Orkestra: Add a New CRD in Minutes
 
 You only write:
 
 1. API types  
 2. Reconciler  
-3. Registry entry (Go or YAML)  
+3. Katalog entry (Go or YAML)  
 
 Everything else is generated.
 
