@@ -61,7 +61,7 @@ func NewKatalog(mode, path string) *Katalog {
 }
 
 // NewSchemeRegistry returns a new scheme
-func NewSchemeRegistry(r *Katalog) (*runtime.Scheme, error) {
+func NewSchemeRegistry(k *Katalog) (*runtime.Scheme, error) {
 	scheme := runtime.NewScheme()
 
 	// 1. Register built-in Kubernetes types
@@ -74,12 +74,12 @@ func NewSchemeRegistry(r *Katalog) (*runtime.Scheme, error) {
 
 	// 3. Register CRDs
 	var err error
-	if r.mode.Yaml {
+	if k.mode.Yaml {
 		if scheme, err = initialize.RegisterScheme(scheme); err != nil {
 			return nil, err
 		}
-	} else if r.mode.Go {
-		if scheme, err = r.registerGoScheme(scheme); err != nil {
+	} else if k.mode.Go {
+		if scheme, err = k.registerGoScheme(scheme); err != nil {
 			return nil, err
 		}
 	}
@@ -89,28 +89,28 @@ func NewSchemeRegistry(r *Katalog) (*runtime.Scheme, error) {
 
 // Helpers
 // Update resource map
-func (r *Katalog) updateResourceMapAndReturn() (*Katalog, error) {
+func (k *Katalog) updateResourceMapAndReturn() (*Katalog, error) {
 	// Map the type of the object
-	for _, c := range r.enabledCRDs {
-		if r.enabledEmpty() {
+	for _, c := range k.enabledCRDs {
+		if k.enabledEmpty() {
 			return nil, fmt.Errorf("no enabled CRDs found")
 		}
 
-		if r.mode.Yaml {
+		if k.mode.Yaml {
 			// Map the type of the object
 			logger.Debug().Msgf("updating resource map for %s", c.GroupVersionKind.String())
 			resourceTypeMap[reflect.TypeOf(c.ObjectYamlMode)] = c.GroupVersionKind.String()
-		} else if r.mode.Go {
+		} else if k.mode.Go {
 			resourceTypeMap[reflect.TypeOf(c.ObjectGoMode)] = c.GroupVersionKind.String()
 		}
 	}
 
-	return r, nil
+	return k, nil
 }
 
-func (r *Katalog) registerGoScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
-	for _, c := range r.enabledCRDs {
-		if r.enabledEmpty() {
+func (k *Katalog) registerGoScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
+	for _, c := range k.enabledCRDs {
+		if k.enabledEmpty() {
 			return nil, fmt.Errorf("no enabled CRDs found")
 		}
 

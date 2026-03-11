@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/initialize"
+	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
@@ -14,7 +14,7 @@ type BannerKonfig struct {
 	Konfig     *konfig.Konfig
 	Komponents []domain.Komponent
 	Leader     string
-	AllCRDs    []initialize.CRDEntry
+	Katalog    *katalog.Katalog
 }
 
 func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
@@ -25,6 +25,7 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 
 	fmt.Println("====================================================")
 	fmt.Printf("%s        Orkestra Runtime%s (v%s)\n", utils.ColorMagenta, utils.ColorReset, b.Konfig.App().Version)
+	fmt.Printf("        Mode: %s%s%s\n", utils.ColorCyan, strings.ToUpper(b.Konfig.Mode()), utils.ColorReset)
 	fmt.Printf("        Environment: %s%s%s\n", utils.ColorBlue, b.Konfig.App().Environment, utils.ColorReset)
 	fmt.Printf("        Listening on: %s:%s%s\n", utils.ColorGreen, b.Konfig.Health().Port, utils.ColorReset)
 
@@ -56,7 +57,7 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 
 	// CRDs
 	fmt.Println("CRDs:")
-	for _, crd := range b.AllCRDs {
+	for _, crd := range b.Katalog.CRDs {
 		fmt.Printf("- %s%s%s\n", utils.ColorCyan, crd.Kind, utils.ColorReset)
 		fmt.Printf("  %sGroup:%s       %s\n", utils.ColorYellow, utils.ColorReset, crd.Group)
 		fmt.Printf("  %sVersion:%s     %s\n", utils.ColorYellow, utils.ColorReset, crd.Version)

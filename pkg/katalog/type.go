@@ -32,7 +32,7 @@ type Katalog struct {
 		Name string `yaml:"name"`
 	} `yaml:"metadata"`
 
-	crds        []initialize.CRDEntry `yaml:"crds"` // raw from YAML - documentation - CLI
+	CRDs        []initialize.CRDEntry `yaml:"crds"` // raw from YAML - documentation - CLI
 	enabledCRDs []initialize.CRDEntry `yaml:"-"`    // filtered
 	mode        struct {
 		Go   bool `yaml:"go"`

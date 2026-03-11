@@ -15,7 +15,6 @@ import (
 	"github.com/ialexeze/orkestra/pkg/manager"
 	"github.com/ialexeze/orkestra/pkg/queue"
 	"github.com/ialexeze/orkestra/pkg/utils"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type startupCfg struct {
@@ -57,15 +56,7 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 
 	// Register CRD clients to provider - for automatic client  and informer generation
 	for _, crd := range crdKatalog.Enabled() {
-		// object, list := crd.GetRuntimeObjects(kfg.Mode())
-		var object, list runtime.Object
-		if kfg.Mode() == "go" {
-			object = crd.ObjectGoMode
-			list = crd.ListObjectGoMode
-		} else if kfg.Mode() == "yaml" {
-			object = crd.ObjectYamlMode()
-			list = crd.ListObjectYamlMode()
-		}
+		object, list := crd.GetRuntimeObjects(kfg.Mode())
 
 		logger.Debug().Msgf("Mode: %s", kfg.Mode())
 
@@ -100,12 +91,7 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 	// Register CRDs to kontroller registry
 	logger.Info().Msg("registering CRDs...")
 	for _, crd := range crdKatalog.Enabled() {
-		var object runtime.Object
-		if kfg.Mode() == "go" {
-			object = crd.ObjectGoMode
-		} else if kfg.Mode() == "yaml" {
-			object = crd.ObjectYamlMode()
-		}
+		object, _ := crd.GetRuntimeObjects(kfg.Mode())
 
 		// 1. Create informer
 		logger.Debug().Msgf("creating informer for %s", utils.SetGroupVersionKindObj(crd.GroupVersionKind))
@@ -149,7 +135,7 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 		kfg.Katalog().MaxQueueDepth,
 		katalog.NewDependencyGraph(crdKatalog),
 		&kontroller.BannerKonfig{
-			AllCRDs:    crdKatalog.List(),
+			Katalog:    crdKatalog,
 			Konfig:     kfg,
 			Komponents: komponents,
 			Leader:     "",

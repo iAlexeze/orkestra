@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/ialexeze/orkestra/pkg/event"
 	"github.com/ialexeze/orkestra/pkg/health"
 	"github.com/ialexeze/orkestra/pkg/informer"
@@ -144,10 +145,10 @@ func (c *DependencyKontroller) startCRDWorkers(ctx context.Context, gvk string, 
 
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
-		go func(workerID int) {
+		go func(workerID string) {
 			defer wg.Done()
 			c.runWorkerForGVK(crdCtx, gvk, workerID)
-		}(i)
+		}(uuid.New().String())
 	}
 }
 
