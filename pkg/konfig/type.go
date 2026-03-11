@@ -7,7 +7,7 @@ type Konfig struct {
 	cluster      clusterKonfig
 	leader       leaderElection
 	healthServer healthServer
-	crdRegistry  crdRegistryKonfig
+	katalog      katalogKonfig
 }
 
 type appKonfig struct {
@@ -37,7 +37,7 @@ type clusterKonfig struct {
 	Finalizer      string
 }
 
-type crdRegistryKonfig struct {
+type katalogKonfig struct {
 	Path          string // Path to CRD registry YAML file
 	Mode          string `validate:"required"` // Mode of CRD registry
 	MaxQueueDepth int
@@ -86,17 +86,22 @@ func (c *Konfig) Leader() *leaderElection {
 	return &c.leader
 }
 
-// CRDRegistry returns app Konfigurations
-func (c *Konfig) CRDRegistry() *crdRegistryKonfig {
-	return &c.crdRegistry
+// Katalog returns app Konfigurations
+func (c *Konfig) Katalog() *katalogKonfig {
+	return &c.katalog
 }
 
-// GoMode returns true if crdRegistry is using Go mode
-func (c *Konfig) GoMode() bool {
-	return c.CRDRegistry().Mode == "go"
-}
+const (
+	ModeGo   = "go"
+	ModeYaml = "yaml"
+)
 
-// YamlMode returns true if crdRegistry is using yaml mode
-func (c *Konfig) YamlMode() bool {
-	return c.CRDRegistry().Mode == "yaml"
+// Mode returns the mode in use
+func (c *Konfig) Mode() string {
+	if c.Katalog().Mode == "yaml" {
+		return "yaml"
+	} else if c.Katalog().Mode == "go" {
+		return "go"
+	}
+	return ""
 }

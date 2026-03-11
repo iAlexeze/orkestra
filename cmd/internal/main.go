@@ -10,10 +10,10 @@ import (
 )
 
 func Start(kfg *konfig.Konfig, ctx context.Context) {
-	// create domain components and build manager
+	// create domain komponent and build manager
 	startup := buildManager(kfg, ctx)
 
-	// Start all manager components
+	// Start all manager komponent
 	go func() {
 		if err := startup.manager.Start(ctx); err != nil {
 			logger.Fatal().AnErr("manager startup error", err)

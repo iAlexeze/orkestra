@@ -16,7 +16,7 @@ import (
 const eventHandler = "event handler"
 
 type Manager struct {
-	components []domain.Komponent
+	komponents []domain.Komponent
 	postStart  []postStart
 	timeout    time.Duration
 	done       chan struct{}
@@ -39,8 +39,8 @@ func (m *Manager) Start(ctx context.Context) error {
 	defer mCancel()
 
 	fmt.Println("===============================")
-	fmt.Println("STARTING MANAGER COMPONENTS...")
-	for _, comp := range m.components {
+	fmt.Println("STARTING MANAGER KOMPONENTS...")
+	for _, comp := range m.komponents {
 		name := comp.Name()
 
 		logger.Info().Msgf("[%s] starting...", name)
@@ -60,11 +60,11 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	logger.Info().Msg("✅ All services started successfully")
 
-	// Display started components
+	// Display started komponents
 	fmt.Println("===============================")
-	fmt.Println("STARTED COMPONENTS:")
+	fmt.Println("STARTED KOMPONENTS:")
 	n := 1
-	for _, comp := range m.components {
+	for _, comp := range m.komponents {
 		fmt.Printf("%d. %s\n", n, comp.Name())
 		n++
 	}
@@ -90,11 +90,11 @@ func (m *Manager) gracefulShutdown(ctx context.Context, cancel context.CancelFun
 		logger.Info().Msgf("recieved shutdown signal: %v", sig)
 		cancel()
 
-		// shutdown components
+		// shutdown komponents
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), m.timeout)
 		defer shutdownCancel()
 
-		for _, comp := range utils.Reversed(m.components) {
+		for _, comp := range utils.Reversed(m.komponents) {
 			name := comp.Name()
 			logger.Info().Msgf("shutting down: %s...", name)
 			if comp != nil {
@@ -108,7 +108,7 @@ func (m *Manager) gracefulShutdown(ctx context.Context, cancel context.CancelFun
 			logger.Info().Msgf("%s status: %v", name, utils.StatusOffline)
 		}
 
-		ev := m.GetComponent(eventHandler)
+		ev := m.GetKomponent(eventHandler)
 		if ev != nil {
 			ev.Shutdown(shutdownCtx)
 		}
@@ -123,29 +123,29 @@ func (m *Manager) gracefulShutdown(ctx context.Context, cancel context.CancelFun
 	}
 }
 
-// Register all components
+// Register all komponents
 func (m *Manager) Register(c []domain.Komponent) {
 	fmt.Println("==================================")
-	fmt.Println("REGISTERING MANAGER COMPONENTS...")
+	fmt.Println("REGISTERING MANAGER KOMPONENTS...")
 	for _, comp := range c {
-		m.components = append(m.components, comp)
+		m.komponents = append(m.komponents, comp)
 		logger.Info().Msgf("[%s] registered", comp.Name())
 	}
 	logger.Info().Msg("✅ All services registered successfully")
 
-	// Display registered components
+	// Display registered komponents
 	fmt.Println("==================================")
-	fmt.Println("REGISTERED COMPONENTS:")
+	fmt.Println("REGISTERED KOMPONENTS:")
 	n := 1
-	for _, comp := range m.components {
+	for _, comp := range m.komponents {
 		fmt.Printf("%d. %s\n", n, comp.Name())
 		n++
 	}
 }
 
-// GetComponent returns a component if present
-func (m *Manager) GetComponent(name string) domain.Komponent {
-	for _, comp := range m.components {
+// GetKomponent returns a komponent if present
+func (m *Manager) GetKomponent(name string) domain.Komponent {
+	for _, comp := range m.komponents {
 		if comp.Name() == name {
 			return comp
 		}

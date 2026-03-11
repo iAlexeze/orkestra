@@ -1,7 +1,7 @@
-# 🏗️ **Component Deep Dive**  
+# 🏗️ **Komponent Deep Dive**  
 ### *Inside the Runtime‑Composable, Dependency‑Aware Multi‑CRD Kontroller Framework*
 
-This document provides a detailed breakdown of every major component in the Multi‑CRD Kontroller Framework. It explains how each subsystem contributes to a **dynamic, dependency‑aware, zero‑boilerplate operator runtime** capable of managing any number of CRDs through Go or YAML configuration.
+This document provides a detailed breakdown of every major komponent in the Multi‑CRD Kontroller Framework. It explains how each subsystem contributes to a **dynamic, dependency‑aware, zero‑boilerplate operator runtime** capable of managing any number of CRDs through Go or YAML configuration.
 
 ---
 
@@ -22,13 +22,13 @@ Here’s the high‑level flow:
 
 ```mermaid
 flowchart TB
-    subgraph Registry["CRD Registry (Go/YAML)"]
+    subgraph Katalog["CRD Katalog (Go/YAML)"]
         CRD["CRD Entries"]
         DEP["Dependencies"]
         RESYNC["Resync Intervals"]
     end
 
-    subgraph Scheme["Scheme Registry"]
+    subgraph Scheme["Scheme Katalog"]
         SCH["AddToScheme()"]
     end
 
@@ -36,7 +36,7 @@ flowchart TB
         CPF["SharedClientFactory"]
         INF["SharedInformerFactory"]
         CREC["Reconciler Factory"]
-        CREG["Kontroller Registry"]
+        CREG["Kontroller Katalog"]
     end
 
     subgraph Control["Dependency Kontroller"]
@@ -60,21 +60,21 @@ flowchart TB
 
 ---
 
-# 📋 **Component Index**
+# 📋 **Komponent Index**
 
-| Component | Package | Responsibility |
+| Komponent | Package | Responsibility |
 |----------|----------|----------------|
-| [1. Configuration](#1-configuration) | `pkg/config` | Loads env + YAML registry mode |
+| [1. Configuration](#1-configuration) | `pkg/config` | Loads env + YAML Katalog mode |
 | [2. Health Server](#2-health-server) | `pkg/health` | Liveness/readiness |
 | [3. KubeClient](#3-kubeclient) | `pkg/kubeclient` | Generic client + SharedClientFactory |
 | [4. Workqueue](#4-workqueue) | `pkg/queue` | Shared queue with GVK routing |
 | [5. Event Recorder](#5-event-recorder) | `pkg/event` | Kubernetes events |
-| [6. CRD Registry](#6-crd-registry) | `pkg/registry` | CRD definitions (Go/YAML) |
-| [7. Scheme Registry](#7-scheme-registry) | `pkg/registry` | Builds runtime scheme |
-| [8. Dependency Graph](#8-dependency-graph) | `pkg/registry` | DAG validation + ordering |
+| [6. Katalog](#6-katalog) | `pkg/katalog` | CRD definitions (Go/YAML) |
+| [7. Scheme Katalog](#7-scheme-katalog) | `pkg/katalog` | Builds runtime scheme |
+| [8. Dependency Graph](#8-dependency-graph) | `pkg/katalog` | DAG validation + ordering |
 | [9. Client Provider](#9-client-provider) | `pkg/kubeclient` | Creates CRD clients |
 | [10. SharedInformerFactory](#10-sharedinformerfactory) | `pkg/informer` | Auto‑creates informers |
-| [11. Kontroller Registry](#11-kontroller-registry) | `pkg/kontroller` | Maps GVK → runtime components |
+| [11. Kontroller Katalog](#11-kontroller-katalog) | `pkg/kontroller` | Maps GVK → runtime komponent |
 | [12. Reconcilers](#12-reconcilers) | `pkg/reconciler` | Business logic |
 | [13. Dependency‑Aware Kontroller](#13-dependency-aware-kontroller) | `pkg/kontroller` | Per‑CRD workers + dispatch |
 | [14. Leader Election](#14-leader-election) | `pkg/leader` | HA model |
@@ -87,7 +87,7 @@ flowchart TB
 Supports two modes:
 
 ### **Go Mode**
-- Uses built‑in CRD registry  
+- Uses built‑in katalog  
 - Full type safety  
 
 ### **YAML Mode**
@@ -115,7 +115,7 @@ crds:
 # 2. **Health Server**
 
 - `/health` – always 200 when running  
-- `/ready` – only 200 after all components start  
+- `/ready` – only 200 after all komponent start  
 - Silent in production  
 - First to start, last to stop  
 
@@ -165,7 +165,7 @@ Appears in `kubectl describe`.
 
 ---
 
-# 6. **CRD Registry**
+# 6. **Katalog**
 
 The **source of truth** for all CRDs.
 
@@ -190,7 +190,7 @@ Each entry includes:
 
 ---
 
-# 7. **Scheme Registry**
+# 7. **Scheme Katalog**
 
 Builds the runtime scheme:
 
@@ -243,7 +243,7 @@ This eliminates all informer boilerplate.
 
 ---
 
-# 11. **Kontroller Registry**
+# 11. **Kontroller Katalog**
 
 Maps:
 
@@ -302,7 +302,7 @@ resync: 10m
 Events are routed by GVK:
 
 ```go
-reconciler := registry.Get(item.GVK)
+reconciler := c.reconcilers[item.GVK]
 ```
 
 ---
@@ -322,8 +322,8 @@ reconciler := registry.Get(item.GVK)
 The Orkestrator.
 
 ### Responsibilities:
-- Register components  
-- Start components in order  
+- Register komponent  
+- Start komponent in order  
 - Run post‑start hooks (leader election)  
 - Mark health server ready  
 - Handle SIGTERM  
@@ -339,7 +339,7 @@ The Orkestrator.
 | Zero boilerplate | Auto‑generated clients/informers |
 | Dependency ordering | DAG + dependency kontroller |
 | Per‑CRD tuning | Workers + resync |
-| YAML mode | Remote/local registry |
+| YAML mode | Remote/local katalog |
 | GitOps | YAML + remote URLs |
 | HA | Leader election + warm caches |
 | Observability | Metrics + events |
@@ -363,7 +363,7 @@ Adding a new CRD is now:
 
 1. Write API types  
 2. Write reconciler  
-3. Add registry entry (Go or YAML)  
+3. Add katalog entry (Go or YAML)  
 4. Done  
 
 Everything else is handled by the runtime.

@@ -30,9 +30,9 @@ func (c *Konfig) normalizeEnvironment() {
 
 // Validate CRD registry Konfiguration
 func (c *Konfig) validateCRDKonfig() error {
-	mode := strings.ToLower(c.crdRegistry.Mode)
+	mode := strings.ToLower(c.katalog.Mode)
 	if mode == "" {
-		c.crdRegistry.Mode = "go"
+		c.katalog.Mode = "go"
 	}
 
 	if mode != "go" && mode != "yaml" {
@@ -41,11 +41,11 @@ func (c *Konfig) validateCRDKonfig() error {
 
 	// Be sure yaml has file path
 	if mode == "yaml" {
-		if c.crdRegistry.Path == "" {
-			return fmt.Errorf("CRD registry path must be specified for yaml mode. Use 'CRD_REGISTRY' env variable")
+		if c.katalog.Path == "" {
+			return fmt.Errorf("CRD registry path must be specified for yaml mode. Use 'KATALOG_PATH' env variable")
 		}
 	}
 
-	c.crdRegistry.Mode = mode
+	c.katalog.Mode = mode
 	return nil
 }

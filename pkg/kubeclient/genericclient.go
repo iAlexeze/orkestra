@@ -29,7 +29,7 @@ func (k *Kubeclient) NewClient(listType runtime.Object, info CRDInfo) (*Client, 
 		restClient: restClient,
 		listType:   listType,
 		namespace:  info.Namespace,
-		plural:     info.NamePlural,
+		plural:     info.Plural,
 		codec:      k.RuntimeParameterCodec(),
 	}, nil
 }

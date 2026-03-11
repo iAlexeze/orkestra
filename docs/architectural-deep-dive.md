@@ -116,6 +116,11 @@ CRDs are loaded from a YAML file (local or remote):
 crds:
   - name: project
     group: platform.orkestra.io
+    enabled: false
+    description: >-
+      Defines an isolated logical boundary for applications, teams, or workloads.
+      Similar in concept to ArgoCD Projects, it provides a high‑level grouping
+      mechanism for managing access, policies, and resource scoping.
     version: v1alpha1
     kind: Project
     plural: projects
@@ -129,7 +134,8 @@ crds:
 - GitOps‑friendly  
 - Multi‑cluster Orkestration  
 - Canary rollouts  
-- Partner integrations  
+- Partner integrations
+- Easy to deactivate and reactivate
 
 ---
 

@@ -13,7 +13,7 @@ type CRDInfo struct {
 	Version          string                  // Required if GroupVersion is not specified
 	GroupVersion     *schema.GroupVersion    // Optional (can be used if Group and Version are not specified)
 	GroupVersionKind schema.GroupVersionKind //	Useful for some manipulations
-	NamePlural       string
+	Plural           string
 	Namespaced       bool // Required for cluster-scoped resources
 	APIPath          string
 	Namespace        string

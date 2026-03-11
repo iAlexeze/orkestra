@@ -6,14 +6,15 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/ialexeze/orkestra/pkg/event"
 	"github.com/ialexeze/orkestra/pkg/health"
 	"github.com/ialexeze/orkestra/pkg/informer"
+	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/metrics"
 	"github.com/ialexeze/orkestra/pkg/queue"
-	"github.com/ialexeze/orkestra/pkg/registry"
 )
 
 // DependencyKontroller extends the base Controller with dependency‑aware startup.
@@ -21,7 +22,7 @@ import (
 type DependencyKontroller struct {
 	*Controller
 
-	depGraph       *registry.DependencyGraph
+	depGraph       *katalog.DependencyGraph
 	defaultWorkers int
 	bannKfg        *BannerKonfig
 
@@ -35,18 +36,18 @@ type DependencyKontroller struct {
 func NewDependencyKontroller(
 	kube *kubeclient.Kubeclient,
 	factory *informer.Factory,
-	registry *ResourceRegistry,
+	katalog *ResourceKatalog,
 	events *event.Event,
 	wq *queue.Workqueue,
 	hs *health.HealthServer,
 	defaultWorkers int,
 	maxQueueDepth int,
-	depGraph *registry.DependencyGraph,
+	depGraph *katalog.DependencyGraph,
 	bannKfg *BannerKonfig,
 ) *DependencyKontroller {
 
 	return &DependencyKontroller{
-		Controller:     NewController(kube, factory, registry, events, wq, hs, defaultWorkers, maxQueueDepth),
+		Controller:     NewController(kube, factory, katalog, events, wq, hs, defaultWorkers, maxQueueDepth),
 		depGraph:       depGraph,
 		defaultWorkers: defaultWorkers,
 		bannKfg:        bannKfg,
@@ -90,7 +91,7 @@ func (c *DependencyKontroller) RunOrDie(ctx context.Context) {
 		}
 
 		// 3b. Start workers for this CRD
-		workers := c.registry.GetWorkers(gvk, c.defaultWorkers)
+		workers := c.katalog.GetWorkers(gvk, c.defaultWorkers)
 		logger.Info().Msgf("starting %d workers for %s", workers, gvk)
 
 		c.startCRDWorkers(ctx, gvk, workers)
@@ -144,10 +145,10 @@ func (c *DependencyKontroller) startCRDWorkers(ctx context.Context, gvk string, 
 
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
-		go func(workerID int) {
+		go func(workerID string) {
 			defer wg.Done()
 			c.runWorkerForGVK(crdCtx, gvk, workerID)
-		}(i)
+		}(uuid.New().String())
 	}
 }
 

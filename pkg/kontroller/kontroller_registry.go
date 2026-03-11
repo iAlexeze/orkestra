@@ -15,18 +15,18 @@ type RegistryEntry struct {
 	Reconciler domain.Reconciler
 }
 
-type ResourceRegistry struct {
+type ResourceKatalog struct {
 	mu      sync.Mutex
 	entries map[string]RegistryEntry
 }
 
-func NewKontrollerRegistry() *ResourceRegistry {
-	return &ResourceRegistry{
+func NewKontrollerRegistry() *ResourceKatalog {
+	return &ResourceKatalog{
 		entries: make(map[string]RegistryEntry),
 	}
 }
 
-func (r *ResourceRegistry) Register(
+func (r *ResourceKatalog) Register(
 	gvk string,
 	crd initialize.CRDEntry,
 	inf cache.SharedIndexInformer,
@@ -42,14 +42,14 @@ func (r *ResourceRegistry) Register(
 	}
 }
 
-func (r *ResourceRegistry) Unregister(gvk string) {
+func (r *ResourceKatalog) Unregister(gvk string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	delete(r.entries, gvk)
 }
 
-func (r *ResourceRegistry) Get(gvk string) (RegistryEntry, bool) {
+func (r *ResourceKatalog) Get(gvk string) (RegistryEntry, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -57,7 +57,7 @@ func (r *ResourceRegistry) Get(gvk string) (RegistryEntry, bool) {
 	return entry, ok
 }
 
-func (r *ResourceRegistry) ListGVKs() []string {
+func (r *ResourceKatalog) ListGVKs() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -68,7 +68,7 @@ func (r *ResourceRegistry) ListGVKs() []string {
 	return gvkList
 }
 
-func (r *ResourceRegistry) GetWorkers(gvk string, defaultWorkers int) int {
+func (r *ResourceKatalog) GetWorkers(gvk string, defaultWorkers int) int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -79,6 +79,6 @@ func (r *ResourceRegistry) GetWorkers(gvk string, defaultWorkers int) int {
 	return entry.CRD.Workers
 }
 
-func (r *ResourceRegistry) Entries() map[string]RegistryEntry {
+func (r *ResourceKatalog) Entries() map[string]RegistryEntry {
 	return r.entries
 }

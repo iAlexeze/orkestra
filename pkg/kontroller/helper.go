@@ -53,8 +53,8 @@ func (c *Controller) processNextItem(ctx context.Context) bool {
 }
 
 // Worker that only processes items for a specific GVK
-func (c *Controller) runWorkerForGVK(ctx context.Context, targetGVK string, workerID int) {
-	logger.Debug().Msgf("worker %d started for %s", workerID, targetGVK)
+func (c *Controller) runWorkerForGVK(ctx context.Context, targetGVK string, workerID string) {
+	logger.Debug().Msgf("worker %s started for %s", workerID, targetGVK)
 
 	for {
 		select {

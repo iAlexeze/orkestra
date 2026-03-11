@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
@@ -13,6 +14,7 @@ type BannerKonfig struct {
 	Konfig     *konfig.Konfig
 	Komponents []domain.Komponent
 	Leader     string
+	Katalog    *katalog.Katalog
 }
 
 func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
@@ -23,6 +25,7 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 
 	fmt.Println("====================================================")
 	fmt.Printf("%s        Orkestra Runtime%s (v%s)\n", utils.ColorMagenta, utils.ColorReset, b.Konfig.App().Version)
+	fmt.Printf("        Mode: %s%s%s\n", utils.ColorCyan, strings.ToUpper(b.Konfig.Mode()), utils.ColorReset)
 	fmt.Printf("        Environment: %s%s%s\n", utils.ColorBlue, b.Konfig.App().Environment, utils.ColorReset)
 	fmt.Printf("        Listening on: %s:%s%s\n", utils.ColorGreen, b.Konfig.Health().Port, utils.ColorReset)
 
@@ -54,11 +57,18 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 
 	// CRDs
 	fmt.Println("CRDs:")
-	for _, crd := range c.crds {
+	for _, crd := range b.Katalog.CRDs {
 		fmt.Printf("- %s%s%s\n", utils.ColorCyan, crd.Kind, utils.ColorReset)
 		fmt.Printf("  %sGroup:%s       %s\n", utils.ColorYellow, utils.ColorReset, crd.Group)
 		fmt.Printf("  %sVersion:%s     %s\n", utils.ColorYellow, utils.ColorReset, crd.Version)
-		fmt.Printf("  %sNamespace:%s   %s\n", utils.ColorYellow, utils.ColorReset, crd.Namespace)
+		if crd.Enabled {
+			fmt.Printf("  %sEnabled:%s     %s\n", utils.ColorYellow, utils.ColorReset, "Yes")
+		} else {
+			fmt.Printf("  %sEnabled:%s     %s\n", utils.ColorYellow, utils.ColorReset, "No")
+		}
+		if crd.Namespace != "" {
+			fmt.Printf("  %sNamespace:%s   %s\n", utils.ColorYellow, utils.ColorReset, crd.Namespace)
+		}
 		fmt.Printf("  %sNamespaced:%s  %v\n", utils.ColorYellow, utils.ColorReset, crd.Namespaced)
 		fmt.Printf("  %sWorkers:%s     %d\n", utils.ColorYellow, utils.ColorReset, crd.Workers)
 
@@ -74,6 +84,7 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 			fmt.Printf("  %sDependsOn:%s   No dependencies\n", utils.ColorYellow, utils.ColorReset)
 		}
 
+		fmt.Printf("  %sDescription:%s         %s\n", utils.ColorYellow, utils.ColorReset, crd.Description)
 		fmt.Println()
 	}
 	fmt.Println("====================================================")

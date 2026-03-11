@@ -1,7 +1,9 @@
-// pkg/registry/parser.go
-package registry
+// pkg/katalog/parsek.go
+package katalog
 
 import (
+	"fmt"
+
 	"github.com/ialexeze/orkestra/initialize"
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
@@ -14,21 +16,23 @@ import (
 //	YAML Builder
 //
 // -----------------------------------------------------------------------------
-func (r *CRDRegistry) buildCRDRegistryFromYaml(path string) ([]initialize.CRDEntry, error) {
-	// Read the YAML file
+func (k *Katalog) buildKatalogFromYaml(path string) ([]initialize.CRDEntry, error) {
 	data, err := utils.LoadFile(path)
 	if err != nil {
-		logger.Error().Err(err).Msgf("Error reading YAML file: %v", err)
 		return nil, err
 	}
 
-	// Parse the YAML data
-	if err := yaml.Unmarshal(data, r); err != nil {
+	if err := yaml.Unmarshal(data, k); err != nil {
 		return nil, err
 	}
 
-	r.Mode.Yaml = true
-	return r.CRDs, nil
+	// Filter enabled CRDs
+	if err := k.filterEnabled(); err != nil {
+		return nil, err
+	}
+
+	k.mode.Yaml = true
+	return k.enabledCRDs, nil
 }
 
 // -----------------------------------------------------------------------------
@@ -36,28 +40,33 @@ func (r *CRDRegistry) buildCRDRegistryFromYaml(path string) ([]initialize.CRDEnt
 //	GO Builder
 //
 // -----------------------------------------------------------------------------
-func (r *CRDRegistry) buildCRDRegistryFromGo() []initialize.CRDEntry {
-	r.Mode.Go = true
-	return initialize.BuildCRDRegistryFromGo()
+func (k *Katalog) buildKatalogFromGo() ([]initialize.CRDEntry, error) {
+	k.CRDs = initialize.BuildKatalogFromGo()
+
+	// Filter
+	if err := k.filterEnabled(); err != nil {
+		return nil, err
+	}
+
+	k.mode.Go = true
+	return k.enabledCRDs, nil
 }
 
 // Validate Config
-func (r *CRDRegistry) validateConfig(crds []initialize.CRDEntry) (*CRDRegistry, error) {
-	r.CRDs = crds
-
+func (k *Katalog) validateConfig() (*Katalog, error) {
 	// Validate config
 	// -------------------------------------------------------------------------
 	// 1. Field-level validation (required, DNS group, workers <= 5, etc.)
 	// -------------------------------------------------------------------------
-	if valErr := konfig.Validate().Struct(r); valErr != nil {
-		r.handleValidationErrors(valErr)
+	if valErr := konfig.Validate().Struct(k); valErr != nil {
+		k.handleValidationErrors(valErr)
 		return nil, valErr
 	}
 
 	// -------------------------------------------------------------------------
 	// 2. GVK uniqueness validation
 	// -------------------------------------------------------------------------
-	if err := r.validateGVKUniqueness(); err != nil {
+	if err := k.validateGVKUniqueness(); err != nil {
 		logger.Error().Err(err).Msgf("GVK uniqueness error: %v", err)
 		return nil, err
 	}
@@ -65,21 +74,29 @@ func (r *CRDRegistry) validateConfig(crds []initialize.CRDEntry) (*CRDRegistry, 
 	// -------------------------------------------------------------------------
 	// 3. dependsOn validation (existence + cycle detection)
 	// -------------------------------------------------------------------------
-	if err := r.validateDependsOn(); err != nil {
+	if err := k.validateDependsOn(); err != nil {
 		logger.Error().Err(err).Msgf("dependsOn validation error: %v", err)
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 4. Set GroupVersionKind
+	// 4. Set GroupVersionKind and Defaults
 	// -------------------------------------------------------------------------
-	r.SetGroupVersionKind()
+	if err := k.SetGroupVersionKind(); err != nil {
+		logger.Error().Err(err).Msgf("Set GroupVersionKind error: %v", err)
+		return nil, err
+	}
 
-	if r.Mode.Yaml {
+	if err := k.SetDefaults(); err != nil {
+		logger.Error().Err(err).Msgf("Set Defaults error: %v", err)
+		return nil, err
+	}
+
+	if k.mode.Yaml {
 		// -------------------------------------------------------------------------
 		// 5. Add Reconcilers
 		// -------------------------------------------------------------------------
-		if err := r.addReconcilers(); err != nil {
+		if err := k.addReconcilers(); err != nil {
 			logger.Error().Err(err).Msgf("Add Reconcilers error: %v", err)
 			return nil, err
 		}
@@ -87,11 +104,42 @@ func (r *CRDRegistry) validateConfig(crds []initialize.CRDEntry) (*CRDRegistry, 
 		// -------------------------------------------------------------------------
 		// 6. Add RuntimeObjects
 		// -------------------------------------------------------------------------
-		if err := r.addRuntimeObjects(); err != nil {
+		if err := k.addRuntimeObjects(); err != nil {
 			logger.Error().Err(err).Msgf("Add RuntimeObjects error: %v", err)
 			return nil, err
 		}
 	}
 
-	return r, nil
+	return k, nil
+}
+
+// Helpers
+func (k *Katalog) empty() bool {
+	return len(k.CRDs) == 0
+}
+
+func (k *Katalog) enabledEmpty() bool {
+	return len(k.enabledCRDs) == 0
+}
+
+// Filter enabled CRDs
+func (k *Katalog) filterEnabled() error {
+	if k.empty() {
+		return fmt.Errorf("Katalog is empty")
+	}
+
+	// Filter enabled CRDs
+	for _, crd := range k.CRDs {
+		if crd.Enabled {
+			k.enabledCRDs = append(k.enabledCRDs, crd)
+		} else {
+			logger.Warn().Msgf("%s disabled. skipping...", crd.Name)
+		}
+	}
+
+	if k.enabledEmpty() {
+		return fmt.Errorf("no enabled CRDs found")
+	}
+
+	return nil
 }

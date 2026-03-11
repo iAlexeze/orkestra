@@ -24,7 +24,7 @@ type Controller struct {
 	kube            *kubeclient.Kubeclient
 	informerFactory *informer.Factory
 	event           *event.Event
-	registry        *ResourceRegistry
+	katalog         *ResourceKatalog
 	wq              *queue.Workqueue
 	hs              *health.HealthServer
 	defaultWorkers  int
@@ -45,7 +45,7 @@ type Controller struct {
 func NewController(
 	kube *kubeclient.Kubeclient,
 	informerFactory *informer.Factory,
-	registry *ResourceRegistry,
+	katalog *ResourceKatalog,
 	event *event.Event,
 	wq *queue.Workqueue,
 	hs *health.HealthServer,
@@ -55,7 +55,7 @@ func NewController(
 	c := &Controller{
 		kube:            kube,
 		informerFactory: informerFactory,
-		registry:        registry,
+		katalog:         katalog,
 		event:           event,
 		wq:              wq,
 		hs:              hs,
@@ -70,7 +70,7 @@ func NewController(
 	}
 
 	// Load registry entries
-	for gvk, entry := range registry.Entries() {
+	for gvk, entry := range katalog.Entries() {
 		c.reconcilers[gvk] = entry.Reconciler
 		c.crds = append(c.crds, entry.CRD)
 	}
@@ -111,63 +111,6 @@ func (c *Controller) Start(ctx context.Context) error {
 	logger.Info().Msg("all informer caches synced")
 
 	return nil
-}
-
-// Deprecated: Now handled by dependency graph
-func (c *Controller) RunOrDie(ctx context.Context) {
-	// Get all registered GVKs
-	gvks := c.registry.ListGVKs()
-
-	// Start per-CRD worker pools
-	for _, gvk := range gvks {
-		workers := c.registry.GetWorkers(gvk, c.defaultWorkers)
-
-		// Create a cancellable context for this CRD
-		crdCtx, cancel := context.WithCancel(ctx)
-
-		c.mu.Lock()
-		c.cancelFuncs[gvk] = cancel
-		wg := &sync.WaitGroup{}
-		c.wgs[gvk] = wg
-		c.started[gvk] = true
-		c.mu.Unlock()
-
-		// Start workers for this CRD
-		logger.Info().Msgf("starting %d workers for %s", workers, gvk)
-		for i := 0; i < workers; i++ {
-			wg.Add(1)
-			go func(workerID int) {
-				defer wg.Done()
-				c.runWorkerForGVK(crdCtx, gvk, workerID)
-			}(i)
-		}
-	}
-
-	// BLOCK until leadership is lost
-	<-ctx.Done()
-
-	logger.Info().Msg("leadership lost — draining workers...")
-
-	// Stop accepting new items
-	c.wq.Shutdown(ctx)
-
-	// Cancel all CRD contexts and wait for their workers
-	c.mu.RLock()
-	for gvk, cancel := range c.cancelFuncs {
-		logger.Info().Msgf("cancelling workers for %s", gvk)
-		cancel()
-	}
-	c.mu.RUnlock()
-
-	// Wait for all CRD worker pools to finish
-	c.mu.RLock()
-	for gvk, wg := range c.wgs {
-		logger.Info().Msgf("waiting for %s workers to drain...", gvk)
-		wg.Wait()
-	}
-	c.mu.RUnlock()
-
-	logger.Info().Msg("controller drained and stopped")
 }
 
 // Healthy mark on startup

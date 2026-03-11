@@ -21,7 +21,7 @@ type Event struct {
 	scheme      *runtime.Scheme
 	broadcaster record.EventBroadcaster
 	recorder    record.EventRecorder
-	component   string
+	komponent   string
 	stopped     bool           // Track state
 	wg          sync.WaitGroup // Track in-flight events
 	mu          sync.Mutex     // Protect shutdown
@@ -37,7 +37,7 @@ func NewEvent(kube *kubeclient.Kubeclient) *Event {
 
 	return &Event{
 		name:      "event handler",
-		component: "orkestra",
+		komponent: "orkestra runtime",
 		kube:      kube,
 		scheme:    kube.Scheme(),
 	}
@@ -60,7 +60,7 @@ func (e *Event) Start(ctx context.Context) error {
 	e.recorder = e.broadcaster.NewRecorder(
 		e.scheme,
 		corev1.EventSource{
-			Component: e.component,
+			Component: e.komponent,
 		})
 
 	e.started = true

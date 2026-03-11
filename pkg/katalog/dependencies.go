@@ -1,5 +1,5 @@
-// pkg/registry/dependencies.go
-package registry
+// pkg/katalog/dependencies.go
+package katalog
 
 import (
 	"fmt"
@@ -9,9 +9,9 @@ import (
 )
 
 type DependencyGraph struct {
-	nodes    map[string]*Node
-	edges    map[string][]string
-	registry *CRDRegistry
+	nodes   map[string]*Node
+	edges   map[string][]string
+	katalog *Katalog
 }
 
 type Node struct {
@@ -21,12 +21,12 @@ type Node struct {
 	OutDegree int
 }
 
-func NewDependencyGraph(registry *CRDRegistry) *DependencyGraph {
-	crds := registry.CRDs
+func NewDependencyGraph(katalog *Katalog) *DependencyGraph {
+	crds := katalog.enabledCRDs
 	g := &DependencyGraph{
-		nodes:    make(map[string]*Node),
-		edges:    make(map[string][]string),
-		registry: registry,
+		nodes:   make(map[string]*Node),
+		edges:   make(map[string][]string),
+		katalog: katalog,
 	}
 
 	// Create nodes
@@ -93,9 +93,9 @@ func (g *DependencyGraph) ShutdownOrder() []string {
 // Constructors
 func (g *DependencyGraph) GetMode() string {
 	switch {
-	case g.registry.Mode.Go:
+	case g.katalog.mode.Go:
 		return "Go"
-	case g.registry.Mode.Yaml:
+	case g.katalog.mode.Yaml:
 		return "YAML"
 	}
 	return ""

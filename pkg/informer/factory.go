@@ -33,11 +33,13 @@ func (f *Factory) For(obj runtime.Object, ctx context.Context, opts Options) cac
 		return inf
 	}
 
-	if opts.Resync == 0 {
-		logger.Warn().Msgf("processing informer for %s with default resync duration: %v", opts.Name, f.resync)
-		opts.Resync = f.resync
+	f.opts = opts
+
+	if f.opts.Resync == 0 {
+		logger.Warn().Msgf("processing informer for %s with default resync duration: %v", f.opts.Name, f.resync)
+		f.opts.Resync = f.resync
 	} else {
-		logger.Info().Msgf("processing informer for %s with resync duration: %v", opts.Name, opts.Resync)
+		logger.Info().Msgf("processing informer for %s with resync duration: %v", f.opts.Name, f.opts.Resync)
 	}
 
 	// Create new informer - but don't start it yet
@@ -135,9 +137,10 @@ func (f *Factory) Start(ctx context.Context) error {
 	logger.Info().Msgf("starting %v informers...", len(f.informers))
 	for _, inf := range f.informers {
 		if inf == nil {
+			logger.Debug().Msgf("informer: %s, type: nil", f.opts.Name)
 			continue
 		}
-		logger.Debug().Msgf("informer type: %T", inf)
+		logger.Debug().Msgf("informer: %s, type: %T", f.opts.Name, inf)
 		go inf.Run(ctx.Done())
 	}
 
@@ -184,7 +187,7 @@ func (f *Factory) IsReady() bool {
 	}
 }
 
-// Implement the component part
+// Implement the komponent part
 var _ domain.Komponent = (*Factory)(nil)
 
 func (f *Factory) Started() bool {

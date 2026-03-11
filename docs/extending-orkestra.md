@@ -17,7 +17,7 @@ To add a new CRD to Orkestra, you only need to supply:
 
 1. **API Types**  
 2. **Reconciler**  
-3. **Registry Entry** (Go or YAML)  
+3. **Katalog Entry** (Go or YAML)  
 4. *(YAML mode only)* Scheme registration
 
 Everything else — clients, informers, workers, resync intervals, dependency ordering, lifecycle orchestration — is generated automatically.
@@ -156,7 +156,7 @@ You can register CRDs in **Go mode** or **YAML mode**.
 
 ## 🟦 Option A — Go Mode (Typed)
 
-Add your CRD to the Go registry: [crd-registry](../initialize/crd_registry.go)
+Add your CRD to the Go katalog: [crd-katalog](../initialize/katalog.go)
 
 ```go
 {
@@ -191,8 +191,8 @@ Add your CRD to the Go registry: [crd-registry](../initialize/crd_registry.go)
 Enable YAML mode:
 
 ```bash
-export CRD_REGISTRY_MODE=YAML
-export CRD_REGISTRY=initialize/crd-registry.yaml    # or remote URL
+export KATALOG_PATH_MODE=YAML
+export KATALOG_PATH=initialize/katalog.yaml    # or remote URL
 ```
 
 Add your CRD:
@@ -222,7 +222,7 @@ crds:
 
 # 🎼 Step 4 — Register Your Reconciler (YAML Mode Only)
 
-YAML mode uses a name‑based reconciler registry: [reconciler-registry](../pkg/reconciler/reconcile.go)
+YAML mode uses a name‑based reconciler katalog: [reconciler-katalog](../pkg/reconciler/reconcile.go)
 
 ```go
 func RegisterReconcilers() map[string]NewReconcilerFunc {
@@ -239,7 +239,7 @@ The key (`yourcrd`) must match the YAML `name:` field.
 ---
 
 # 🎻 Step 5 — Register Your Scheme (YAML Mode Only)
-YAML mode scheme registry: [scheme-registry](../initialize/scheme_registry.go)
+YAML mode scheme katalog: [scheme-katalog](../initialize/scheme_katalog.go)
 
 ```go
 func RegisterScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {

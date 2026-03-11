@@ -1,4 +1,4 @@
-package registry
+package katalog
 
 import (
 	"fmt"
@@ -19,18 +19,18 @@ import (
 // Validation: Pretty error reporting
 // -----------------------------------------------------------------------------
 
-func (r *CRDRegistry) handleValidationErrors(err error) {
+func (k *Katalog) handleValidationErrors(err error) {
 	logger.Info().Msg("Validation error:")
 
 	if errs, ok := err.(validator.ValidationErrors); ok {
 		for _, e := range errs {
-			// Extract index from namespace: CRDRegistry.CRDs[3].Workers
+			// Extract index from namespace: Katalog.CRDs[3].Workers
 			var index int
-			fmt.Sscanf(e.StructNamespace(), "CRDRegistry.CRDs[%d]", &index)
+			fmt.Sscanf(e.StructNamespace(), "Katalog.CRDs[%d]", &index)
 
 			crdName := "(unknown)"
-			if index >= 0 && index < len(r.CRDs) {
-				crdName = r.CRDs[index].Name
+			if index >= 0 && index < len(k.enabledCRDs) {
+				crdName = k.enabledCRDs[index].Name
 			}
 
 			fmt.Printf("CRD '%s': field '%s' failed on '%s'\n",
@@ -45,10 +45,10 @@ func (r *CRDRegistry) handleValidationErrors(err error) {
 // Validation: GVK uniqueness
 // -----------------------------------------------------------------------------
 
-func (r *CRDRegistry) validateGVKUniqueness() error {
+func (k *Katalog) validateGVKUniqueness() error {
 	seen := make(map[string]string) // key -> name
 
-	for _, crd := range r.CRDs {
+	for _, crd := range k.enabledCRDs {
 		key := fmt.Sprintf("%s/%s/%s", crd.Group, crd.Version, crd.Kind)
 
 		if existing, ok := seen[key]; ok {
@@ -68,36 +68,36 @@ func (r *CRDRegistry) validateGVKUniqueness() error {
 // Validation: dependsOn existence + cycle detection
 // -----------------------------------------------------------------------------
 
-func (r *CRDRegistry) validateDependsOn() error {
+func (k *Katalog) validateDependsOn() error {
 	// Build lookup map
 	exists := make(map[string]bool)
-	for _, crd := range r.CRDs {
+	for _, crd := range k.enabledCRDs {
 		exists[crd.Name] = true
 	}
 
 	// Validate references
-	for _, crd := range r.CRDs {
+	for _, crd := range k.enabledCRDs {
 		for _, dep := range crd.DependsOn {
 			if dep == crd.Name {
 				return fmt.Errorf("CRD '%s' cannot depend on itself", crd.Name)
 			}
 			if !exists[dep] {
-				return fmt.Errorf("CRD '%s' depends on unknown CRD '%s'", crd.Name, dep)
+				return fmt.Errorf("CRD '%s' depends on unknown or disabled CRD '%s'", crd.Name, dep)
 			}
 		}
 	}
 
 	// Detect cycles
-	return r.detectDependencyCycles()
+	return k.detectDependencyCycles()
 }
 
 // -----------------------------------------------------------------------------
 // Cycle detection (DFS)
 // -----------------------------------------------------------------------------
 
-func (r *CRDRegistry) detectDependencyCycles() error {
+func (k *Katalog) detectDependencyCycles() error {
 	graph := make(map[string][]string)
-	for _, crd := range r.CRDs {
+	for _, crd := range k.enabledCRDs {
 		graph[crd.Name] = crd.DependsOn
 	}
 
@@ -138,9 +138,9 @@ func (r *CRDRegistry) detectDependencyCycles() error {
 // ---------------------------------------------------------------------------------
 //
 // Set GroupVersionKind
-func (r *CRDRegistry) SetGroupVersionKind() error {
-	for i := range r.CRDs {
-		crd := &r.CRDs[i]
+func (k *Katalog) SetGroupVersionKind() error {
+	for i := range k.enabledCRDs {
+		crd := &k.enabledCRDs[i]
 
 		crd.GroupVersionKind = schema.GroupVersionKind{
 			Group:   crd.Group,
@@ -153,23 +153,6 @@ func (r *CRDRegistry) SetGroupVersionKind() error {
 			Version: crd.Version,
 		}
 
-		if !crd.Namespaced && crd.Namespace != "" {
-			logger.Warn().Msgf("%s is clusterscoped. Namespace %s will be ignored", crd.Kind, crd.Namespace)
-			crd.Namespace = ""
-		}
-
-		if crd.APIPath == "" {
-			logger.Warn().Msgf("API path for Kind=%s is empty. Setting to '/apis'", crd.Kind)
-			crd.APIPath = "/apis"
-		}
-
-		crd.Name = strings.ToLower(crd.Name)
-
-		if crd.NamePlural == "" {
-			logger.Warn().Msgf("Plural name for %s is empty. Setting to '%ss'", crd.Kind, crd.Name)
-			crd.NamePlural = fmt.Sprintf("%ss", strings.ToLower(crd.Name))
-		}
-
 		if crd.GroupVersionKind.Empty() {
 			return fmt.Errorf("GroupVersionKind is empty. Enter a valid Group, Version and Kind for the CRD")
 		}
@@ -179,10 +162,45 @@ func (r *CRDRegistry) SetGroupVersionKind() error {
 
 // ---------------------------------------------------------------------------------
 //
+// Set SetDefaults
+func (k *Katalog) SetDefaults() error {
+	for i := range k.enabledCRDs {
+		crd := &k.enabledCRDs[i]
+
+		// Handle namespaced and cluster-scoped crds
+		if !crd.Namespaced && crd.Namespace != "" {
+			logger.Warn().Msgf("%s is clusterscoped. Namespace %s will be ignored", crd.Kind, crd.Namespace)
+			crd.Namespace = ""
+		}
+
+		// Handle API path
+		if crd.APIPath == "" {
+			logger.Warn().Msgf("API path for Kind=%s is empty. Setting to '/apis'", crd.Kind)
+			crd.APIPath = "/apis"
+		}
+
+		// Handle plural name
+		crd.Name = strings.ToLower(crd.Name)
+
+		if crd.Plural == "" {
+			logger.Warn().Msgf("Plural name for %s is empty. Setting to '%ss'", crd.Kind, crd.Name)
+			crd.Plural = fmt.Sprintf("%ss", strings.ToLower(crd.Name))
+		}
+
+		// Handle description
+		if crd.Description == "" {
+			crd.Description = fmt.Sprintf("%s CRD, GVK: %s", crd.Kind, crd.GroupVersionKind.String())
+		}
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------------
+//
 // Add RuntimeObjects
-func (r *CRDRegistry) addRuntimeObjects() error {
-	for i := range r.CRDs {
-		crd := &r.CRDs[i]
+func (k *Katalog) addRuntimeObjects() error {
+	for i := range k.enabledCRDs {
+		crd := &k.enabledCRDs[i]
 		gvk := crd.GroupVersionKind
 
 		objFn, ok := initialize.ObjectRegistry[gvk]
@@ -204,11 +222,11 @@ func (r *CRDRegistry) addRuntimeObjects() error {
 
 // ---------------------------------------------------------------------------------
 // Add reconcilers
-func (r *CRDRegistry) addReconcilers() error {
+func (k *Katalog) addReconcilers() error {
 	recs := reconciler.RegisterReconcilers()
 
-	for i := range r.CRDs {
-		crd := &r.CRDs[i]
+	for i := range k.enabledCRDs {
+		crd := &k.enabledCRDs[i]
 
 		fn, ok := recs[crd.Name]
 		if !ok {

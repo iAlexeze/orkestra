@@ -8,7 +8,7 @@ import (
 
 var generateCmd = &cobra.Command{
 	Use:   "generate",
-	Short: "Generate Orkestra components",
+	Short: "Generate Orkestra komponents",
 }
 
 var generateCRDCmd = &cobra.Command{
