@@ -18,7 +18,7 @@ const (
 	Progressing ManagedNamespaceConditionType = "Progressing"
 	Reconciled  ManagedNamespaceConditionType = "Reconciled"
 
-	Group   = "platform.ialexeze.io"
+	Group   = "platform.orkestra.io"
 	Version = "v1alpha1"
 	Kind    = "ManagedNamespace"
 )
@@ -30,11 +30,18 @@ var (
 		Version: Version,
 	}
 
+	// GroupVersionKind is the group, version, and kind of your API
+	GroupVersionKind = schema.GroupVersionKind{
+		Group:   Group,
+		Version: Version,
+		Kind:    Kind,
+	}
+
 	// API PATH
 	APIPath = "/apis"
 
 	// spec.names.plural
-	NamePlural = "managednamespaces"
+	Plural = "managednamespaces"
 
 	// SchemeBuilder is used to add Go types to the GroupVersionKind scheme
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)

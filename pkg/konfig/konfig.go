@@ -1,41 +1,40 @@
-package config
+package konfig
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
 )
 
-func Init(filenames ...string) (*Config, error) {
+func Init(filenames ...string) (*Konfig, error) {
 	err := godotenv.Load(filenames...)
 	if err != nil {
 		log.Printf("failed to load env from file: %v", err)
 		log.Print("Defaulting to system defined variables...")
 	}
 
-	cfg := &Config{
-		app: appConfig{
-			Name:        GetStrEnv("APP_NAME", "multi-crd-controller"),
+	cfg := &Konfig{
+		app: appKonfig{
+			Name:        GetStrEnv("APP_NAME", "orkestra"),
 			Version:     GetStrEnv("APP_VERSION", "1.0.0"),
 			Environment: GetStrEnv("APP_ENV", "development"),
+			LogLevel:    GetStrEnv("LOG_LEVEL", "info"),
 		},
-		cluster: clusterConfig{
-			KubeconfigPath: GetStrEnv("KUBECONFIG", ""),
+		cluster: clusterKonfig{
+			KubekonfigPath: GetStrEnv("KUBEKONFIG", ""),
 			MasterURL:      GetStrEnv("MASTER_URL", ""),
 			InCluster:      GetBoolEnv("IN_CLUSTER", false),
 			Name:           GetStrEnv("CLUSTER_NAME", "kubernetes-crd-example"),
 			Namespace:      GetStrEnv("NAMESPACE", "default"),
 
 			// Workload
-			DefaultResync: GetDurEnvSeconds("DEFAULT_RESYNC", 15),
-			Finalizer:     GetStrEnv("FINALIZER", "alexia.ai/finalizer"),
-			LabelSelector: GetStrEnv("LABEL_SELECTOR", "app=alexia"),
-			Workers:       GetIntEnv("WORKERS", 3),
+			DefaultResync:  GetDurEnvSeconds("DEFAULT_RESYNC", 15),
+			Finalizer:      GetStrEnv("FINALIZER", "alexia.ai/finalizer"),
+			LabelSelector:  GetStrEnv("LABEL_SELECTOR", "app=alexia"),
+			DefaultWorkers: GetIntEnv("DEFAULT_WORKERS", 3),
 		},
 		healthServer: healthServer{
 			Port:         GetStrEnv("PORT", "5000"),
@@ -47,22 +46,23 @@ func Init(filenames ...string) (*Config, error) {
 			RenewDeadline: GetDurEnvSeconds("RENEW_DEADLINE", 40),
 			RetryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),
 		},
+		katalog: katalogKonfig{
+			MaxQueueDepth: GetIntEnv("MAX_QUEUE_DEPTH", 1000),
+			Mode:          GetStrEnv("KATALOG_MODE", "go"),
+			Path:          GetStrEnv("KATALOG_PATH", ""),
+		},
 	}
 
-	// Normalize app environment
-	switch strings.ToLower(cfg.app.Environment) {
-	case "dev", "development":
-		cfg.app.Environment = "development"
-	case "uat", "staging":
-		cfg.app.Environment = "staging"
-	case "live", "prod", "production":
-		cfg.app.Environment = "production"
-	default:
-		cfg.app.Environment = "development"
+	// normalize environment
+	cfg.normalizeEnvironment()
 
+	// validate crd konfig
+	if err = cfg.validateCRDKonfig(); err != nil {
+		return nil, err
 	}
 
-	if err := cfg.validate(); err != nil {
+	// validate struct
+	if err = Validate().Struct(cfg); err != nil {
 		return nil, err
 	}
 
@@ -102,20 +102,4 @@ func GetIntEnv(key string, def int) int {
 		return valInt
 	}
 	return def
-}
-
-// validate validates required values:
-// To be replaced by more advaced validation framework when needed
-func (c *Config) validate() error {
-	required := map[string]string{
-		c.App().Name:               "APP_NAME",
-		c.Cluster().KubeconfigPath: "KUBECONFIG",
-	}
-
-	for k, v := range required {
-		if v == "" {
-			return fmt.Errorf("%s is not set", k)
-		}
-	}
-	return nil
 }

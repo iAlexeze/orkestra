@@ -3,8 +3,8 @@ package queue
 import (
 	"context"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/logger"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -16,7 +16,8 @@ type QueueItem struct {
 }
 
 type Workqueue struct {
-	Queue workqueue.TypedRateLimitingInterface[QueueItem]
+	Queue   workqueue.TypedRateLimitingInterface[QueueItem]
+	started bool
 }
 
 func NewWorkqueue() *Workqueue {
@@ -41,12 +42,16 @@ func (q *Workqueue) Enqueue(obj interface{}, gvk string) {
 }
 
 // Methods
-var _ domain.Component = (*Workqueue)(nil)
+var _ domain.Komponent = (*Workqueue)(nil)
 
 func (q *Workqueue) Start(ctx context.Context) error {
 	logger.Info().Msg("right here in queue")
+	q.started = true
 	return nil
 }
+
+func (q *Workqueue) Started() bool { return q.started }
+
 func (q *Workqueue) Shutdown(ctx context.Context) {
 	if q.Queue != nil {
 		q.Queue.ShutDown()
@@ -55,4 +60,8 @@ func (q *Workqueue) Shutdown(ctx context.Context) {
 
 func (q *Workqueue) Name() string {
 	return "queue"
+}
+
+func (q *Workqueue) Depth() int {
+	return q.Queue.Len()
 }

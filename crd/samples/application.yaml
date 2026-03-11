@@ -1,4 +1,4 @@
-apiVersion: platform.ialexeze.io/v1alpha1
+apiVersion: platform.orkestra.io/v1alpha1
 kind: Application
 metadata:
   name: guestbook

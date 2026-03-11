@@ -1,25 +1,52 @@
 package logger
 
 import (
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/config"
+	"context"
+	"strings"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
-func Init(cfg *config.Config) {
+func Init(level string) {
 	// UNIX Time is faster and smaller than most timestamps
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
-	switch {
-	case cfg.IsDev():
+	switch strings.ToLower(level) {
+	case "debug":
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case cfg.IsStaging():
+	case "info":
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	case cfg.IsProduction():
+	case "warn":
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	case "error":
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+	case "fatal":
+		zerolog.SetGlobalLevel(zerolog.FatalLevel)
+	case "panic":
+		zerolog.SetGlobalLevel(zerolog.PanicLevel)
 	default:
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
+}
+
+func FromContext(ctx context.Context) *zerolog.Logger {
+	l := log.With()
+
+	if reqID, ok := ctx.Value(RequestIDKey).(string); ok {
+		l = l.Str(RequestIDKey.String(), reqID)
+	}
+
+	if crd, ok := ctx.Value(CRDKey).(string); ok {
+		l = l.Str(CRDKey.String(), crd)
+	}
+
+	if res, ok := ctx.Value(ResourceKey).(string); ok {
+		l = l.Str(ResourceKey.String(), res)
+	}
+
+	logger := l.Logger()
+	return &logger
 }
 
 func Debug() *zerolog.Event {

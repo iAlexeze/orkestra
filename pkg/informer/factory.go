@@ -5,18 +5,24 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	crderror "github.com/ialexeze/multi-crd-controller/pkg/config/pkg/error"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
+	"github.com/ialexeze/orkestra/domain"
+	crderror "github.com/ialexeze/orkestra/pkg/error"
+	"github.com/ialexeze/orkestra/pkg/logger"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 )
 
+type Options struct {
+	Name   string
+	Resync time.Duration
+}
+
 // For creates or returns an informer for the given type
-func (f *Factory) For(obj runtime.Object, ctx context.Context) cache.SharedIndexInformer {
+func (f *Factory) For(obj runtime.Object, ctx context.Context, opts Options) cache.SharedIndexInformer {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -27,11 +33,20 @@ func (f *Factory) For(obj runtime.Object, ctx context.Context) cache.SharedIndex
 		return inf
 	}
 
+	f.opts = opts
+
+	if f.opts.Resync == 0 {
+		logger.Warn().Msgf("processing informer for %s with default resync duration: %v", f.opts.Name, f.resync)
+		f.opts.Resync = f.resync
+	} else {
+		logger.Info().Msgf("processing informer for %s with resync duration: %v", f.opts.Name, f.opts.Resync)
+	}
+
 	// Create new informer - but don't start it yet
 	inf := cache.NewSharedIndexInformer(
 		f.newListWatch(obj),
 		obj,
-		f.resync,
+		opts.Resync,
 		cache.Indexers{},
 	)
 
@@ -49,6 +64,7 @@ func (f *Factory) For(obj runtime.Object, ctx context.Context) cache.SharedIndex
 		go inf.Run(ctx.Done())
 	}
 
+	logger.Info().Msgf("informer for %s created", opts.Name)
 	return inf
 }
 
@@ -121,9 +137,10 @@ func (f *Factory) Start(ctx context.Context) error {
 	logger.Info().Msgf("starting %v informers...", len(f.informers))
 	for _, inf := range f.informers {
 		if inf == nil {
+			logger.Debug().Msgf("informer: %s, type: nil", f.opts.Name)
 			continue
 		}
-		logger.Debug().Msgf("informer type: %T", inf)
+		logger.Debug().Msgf("informer: %s, type: %T", f.opts.Name, inf)
 		go inf.Run(ctx.Done())
 	}
 
@@ -170,8 +187,12 @@ func (f *Factory) IsReady() bool {
 	}
 }
 
-// Implement the component part
-var _ domain.Component = (*Factory)(nil)
+// Implement the komponent part
+var _ domain.Komponent = (*Factory)(nil)
+
+func (f *Factory) Started() bool {
+	return f.started
+}
 
 func (f *Factory) Shutdown(ctx context.Context) {
 	f.mu.Lock()
@@ -183,5 +204,5 @@ func (f *Factory) Shutdown(ctx context.Context) {
 }
 
 func (f *Factory) Name() string {
-	return "shared informer factory"
+	return "informer factory"
 }

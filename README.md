@@ -1,472 +1,343 @@
-# 🚀 Multi-CRD Kubernetes Controller Framework
+# 🎼 **OrKestra — The Universal CRD Runtime for Kubernetes**  
+### *Kompose. Konduct. OrKestrate.*
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8.svg)](https://golang.org/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.28+-326CE5.svg)](https://kubernetes.io/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A **production-grade, multi-CRD Kubernetes controller framework** that manages multiple custom resources through a clean, registry-driven architecture. Built from scratch without controller-runtime, demonstrating deep understanding of Kubernetes internals.
+**Orkestra** is a **runtime‑composable, dependency‑aware, multi‑CRD operator engine** for Kubernetes.  
+It eliminates boilerplate by generating clients, informers, reconcilers, workers, and lifecycle orchestration **dynamically at runtime** — from Go or YAML definitions.
 
-Originally inspired by [@martin-helmich](https://github.com/martin-helmich/kubernetes-crd-example), this project has evolved into a **scalable, extensible operator platform** capable of managing any number of CRDs with **zero boilerplate** – just API types and your business logic.
+You write **API types** and **reconcilers**.  
+Orkestra builds everything else.
 
-## 🎯 **Current CRDs Supported**
+It is not just a controller.  
+It is a **universal CRD runtime**.
 
-| Resource | API Group | Version | Status |
-|----------|-----------|---------|--------|
-| `Project` | `platform.ialexeze.io` | `v1alpha1` | ✅ Production Ready |
-| `ManagedNamespace` | `platform.ialexeze.io` | `v1alpha1` | ✅ Production Ready |
+---
 
-Adding more CRDs takes **minutes** – no controller rewrites, no code duplication, no manual client or informer implementation.
+# 🚀 Why Orkestra?
 
-## 🏗️ **Architecture**
+Traditional operator frameworks require:
+
+- hand‑rolled clients  
+- hand‑rolled informers  
+- repetitive boilerplate  
+- static wiring  
+- controller‑runtime magic  
+- one controller per CRD  
+
+Orkestra replaces all of that with a **declarative katalog** and a **runtime engine** that:
+
+- loads CRDs dynamically (Go or YAML)  
+- builds clients and informers automatically  
+- constructs a dependency graph  
+- assigns per‑CRD workers  
+- applies per‑CRD resync intervals  
+- dispatches events by GVK  
+- orchestrates startup/shutdown in dependency order  
+- exposes built‑in metrics  
+- runs with high availability  
+
+This is operator engineering without the pain.
+
+---
+
+# 🎯 Example CRDs
+
+| Resource           | API Group               | Version     | Status |
+|-------------------|--------------------------|-------------|--------|
+| `Project`          | `platform.orkestra.io`  | `v1alpha1`  | ✅ Production Ready |
+| `ManagedNamespace` | `platform.orkestra.io`  | `v1alpha1`  | ✅ Production Ready |
+
+Adding new CRDs takes **minutes**, not days.
+
+---
+
+# 🏗️ Architecture Overview
 
 ```mermaid
 flowchart TB
- subgraph CRDs["Custom Resources"]
-        P["Project CRD"]
-        M["ManagedNamespace CRD"]
+ subgraph CRDs["Custom Resources (Configurable)"]
+        P["Project CRD<br>(enabled: true, workers: 3, resync: 10m)"]
+        M["ManagedNamespace CRD<br>(enabled: true, workers: 2, resync: 30s, dependsOn: project)"]
+        D["Disabled CRD<br>(enabled: false)"]
   end
  subgraph API["Kubernetes API Server"]
   end
- subgraph Core["Core Components"]
+ subgraph Core["Core Komponents"]
         KC["KubeClient"]
         FC["SharedClientFactory"]
         EV["Event Recorder"]
         HS["Health Server"]
         WQ["Workqueue (Shared)"]
   end
- subgraph Informers["Informer Layer"]
+ subgraph Informers["Informer Factory"]
+    direction LR
         SIF["SharedInformerFactory"]
-        PI["Project Informer"]
-        MI["ManagedNamespace Informer"]
-        STORE[("Shared Store")]
+        PI["Project Informer<br>resync: 10m"]
+        MI["ManagedNamespace Informer<br>resync: 30s"]
   end
- subgraph Registry["CRD Registry"]
-        REG["Controller Registry"]
-        R1["Project Entry"]
-        R2["ManagedNamespace Entry"]
+ subgraph Katalog["Runtime Katalog"]
+        REG["Kontroller Katalog"]
+        R1["Project Entry<br>GVK → Reconciler"]
+        R2["ManagedNamespace Entry<br>GVK → Reconciler"]
   end
- subgraph Controller["Controller Layer"]
-        C["Smart Controller"]
-        W1["Worker 1"]
-        W2["Worker 2"]
-        W3["Worker N"]
-        DISPATCH["Dispatch Logic"]
+ subgraph Workers["Per-CRD Worker Pools"]
+        W1["Project Workers<br>(3)"]
+        W2["ManagedNamespace Workers<br>(2)"]
+  end
+ subgraph Kontroller["Kontroller (Dependency-Aware)"]
+    direction LR
+        C["Dependency Kontroller"]
+        Workers
+        DISPATCH["GVK Dispatch Logic"]
   end
  subgraph HA["High Availability"]
         LE["Leader Election"]
   end
- subgraph Reconcilers["Reconciler Layer"]
+ subgraph Reconcilers["Reconciler Katalog"]
         PR["Project Reconciler"]
         MR["ManagedNamespace Reconciler"]
   end
-    CRDs --> API
-    API --> KC
+    CRDs L_CRDs_API_0@--> API
+    API L_API_KC_0@--> KC
     KC --> FC
-    FC --> SIF
-    SIF --> PI & MI
-    PI --> STORE & WQ
-    MI --> STORE & WQ
-    WQ --> C
-    C --> W1 & W2 & W3 & HS
-    W1 --> DISPATCH
-    W2 --> DISPATCH
-    W3 --> DISPATCH
-    DISPATCH --> REG
-    REG --> R1 & R2
-    R1 --> PR
-    R2 --> MR
-    PR --> EV
-    MR --> EV
-    LE --> C
-    EV --> API
+    FC L_FC_SIF_0@--> SIF
+    SIF L_SIF_PI_0@-. enabled: true .-> PI & MI
+    SIF L_SIF_DI_0@-. enabled: false .-> DI["(Skipped)"]
+    PI L_PI_STORE_0@--> STORE[("Shared Store")] & WQ
+    MI L_MI_STORE_0@--> STORE & WQ
+    WQ L_WQ_C_0@--> C
+    C L_C_Workers_0@--> Workers & HS
+    Workers L_Workers_DISPATCH_0@--> DISPATCH
+    DISPATCH L_DISPATCH_REG_0@--> REG
+    REG L_REG_R1_0@--> R1 & R2
+    R1 L_R1_PR_0@-.-> PR
+    R2 L_R2_MR_0@-.-> MR
+    PR L_PR_EV_0@--> EV
+    MR L_MR_EV_0@--> EV
+    LE L_LE_C_0@--> C
+    EV L_EV_API_0@--> API
 
+     D:::disabled
+     DI:::disabled
+    classDef disabled fill:#FFB3B3,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+    style D fill:#FFB3B3,stroke:#333,stroke-width:2px
     style KC fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
     style FC fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
     style SIF fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
     style REG fill:#FF6D00,stroke:#333,stroke-width:4px,color:#FFFFFF
     style C fill:#FF6D00,stroke:#333,stroke-width:4px,color:#FFFFFF
+    style Workers fill:#FFD966,stroke:#333,stroke-width:2px
     style LE fill:#FF6D00,stroke:#333,stroke-width:2px
     style PR fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
     style MR fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
-    style CRDs fill:transparent,stroke:#333,stroke-width:2px
-    style API fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
+    style DI fill:#FFB3B3,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
 
     L_CRDs_API_0@{ animation: fast } 
     L_API_KC_0@{ animation: fast } 
-    L_KC_FC_0@{ animation: fast } 
     L_FC_SIF_0@{ animation: fast } 
     L_SIF_PI_0@{ animation: fast } 
     L_SIF_MI_0@{ animation: fast } 
+    L_SIF_DI_0@{ animation: fast } 
     L_PI_STORE_0@{ animation: fast } 
     L_PI_WQ_0@{ animation: fast } 
     L_MI_STORE_0@{ animation: fast } 
     L_MI_WQ_0@{ animation: fast } 
     L_WQ_C_0@{ animation: fast } 
-    L_C_W1_0@{ animation: fast } 
-    L_C_W2_0@{ animation: fast } 
-    L_C_W3_0@{ animation: fast } 
+    L_C_Workers_0@{ animation: fast } 
     L_C_HS_0@{ animation: fast } 
-    L_W1_DISPATCH_0@{ animation: fast } 
-    L_W2_DISPATCH_0@{ animation: fast } 
-    L_W3_DISPATCH_0@{ animation: fast } 
+    L_Workers_DISPATCH_0@{ animation: fast } 
     L_DISPATCH_REG_0@{ animation: fast } 
     L_REG_R1_0@{ animation: fast } 
     L_REG_R2_0@{ animation: fast } 
-    L_R1_PR_0@{ animation: fast } 
-    L_R2_MR_0@{ animation: fast } 
+    L_R1_PR_0@{ animation: slow } 
+    L_R2_MR_0@{ animation: slow } 
     L_PR_EV_0@{ animation: fast } 
     L_MR_EV_0@{ animation: fast } 
     L_LE_C_0@{ animation: fast } 
     L_EV_API_0@{ animation: fast }
 ```
 
-## ✨ **Key Features**
+👉 **See:** [Archtecture Deep Dive](./docs/architectural-deep-dive.md) for a full breakdown.
 
-### 🔥 **Multi-CRD Support with Zero Boilerplate**
-A **registry-driven design** allows the controller to manage any number of CRDs. Each CRD contributes:
-- Its own API types (generated by controller-gen)
-- Its own reconciler (your business logic)
+---
 
-**Everything else is automated** – clients, informers, and registration are handled by the framework.
+# ✨ Key Features
 
-### 🏭 **SharedInformerFactory – The Heart of the Framework**
-The `SharedInformerFactory` is the crown jewel of this architecture. It:
-- **Automatically creates clients** for any registered CRD via the SharedClientFactory
-- **Automatically creates informers** with proper List/Watch functions
-- **Maintains a shared store** for all resources
-- **Feeds events into a single workqueue** for unified processing
-- **Handles cache synchronization** automatically
-- **Requires zero per-CRD code** – just register your type and it works
+## 🔥 Multi‑CRD Support with Zero Boilerplate
+Each CRD contributes only:
 
-```go
-// One factory to rule them all
-infFactory := informer.SharedInformerFactory(provider, wq, scheme, namespace, resync)
+- API types  
+- Reconciler  
 
-// Get a fully-configured informer for ANY CRD
-inf := infFactory.For(&yourcrdv1.YourCRD{}, ctx)  // That's it!
+Everything else is generated dynamically.
+
+## 🧠 Dependency‑Aware Kontroller
+CRDs declare dependencies:
+
+```yaml
+dependsOn: ["project"]
 ```
 
-### 🧠 **Smart Controller**
-A single controller processes events from **all CRDs**, dispatching them to the correct reconciler via the registry.
+Orkestra:
 
-### 🧩 **Modular Components**
-Each subsystem is a standalone, pluggable component:
-- **KubeClient** with SharedClientFactory – generic Kubernetes client
-- **SharedInformerFactory** – automatic informer generation
-- **Event Recorder** – Kubernetes events for visibility
-- **Health Server** – liveness and readiness probes
-- **Shared Workqueue** – rate-limited event processing
-- **CRD Registry** – central source of truth for all CRDs
-- **Controller Registry** – maps GVKs to informers and reconcilers
-- **Leader Election** – high availability
-- **Manager** – orchestrates startup and graceful shutdown
+- starts CRDs in topological order  
+- shuts them down in reverse order  
+- ensures correctness across multi‑CRD systems  
 
-### ⚙️ **Generic KubeClient with SharedClientFactory**
-One kubeclient powers **all** CRD operations. The `SharedClientFactory` generates properly configured REST clients for any CRD on demand.
+## 🔁 Per‑CRD Resync Intervals
+Each CRD can define its own resync:
 
-### 📦 **Clean CRD Packages**
-Each CRD lives in its own well-organized package – **and that's all you need to write**:
-
-```
-api/types/
-├── project/
-│   └── v1alpha1/
-│       ├── groupversion_info.go
-│       ├── project_types.go
-│       └── zz_generated.deepcopy.go
-└── managedNamespace/
-    └── v1alpha1/
-        ├── groupversion_info.go
-        ├── managednamespace_types.go
-        └── zz_generated.deepcopy.go
+```yaml
+resync: 10m
 ```
 
-**No clientset. No informer. Just your API types.**
+Orkestra applies it automatically when creating informers.
 
-### 🔁 **Per-CRD Reconcilers**
-Clean separation of reconciliation logic – **the only thing you implement**:
+## 🧵 Per‑CRD Worker Pools
+Each CRD defines its own concurrency:
 
-```
-pkg/reconciler/
-├── helper.go                 # Shared utilities
-├── project_reconcile.go      # Project reconciliation (your logic)
-└── managed_ns_reconciler.go  # ManagedNamespace reconciliation (your logic)
+```yaml
+workers: 5
 ```
 
-### 🧭 **Dual Registry Architecture**
+High‑throughput CRDs scale independently.
 
-#### **CRD Registry** (`pkg/registry/crd_registry.go`)
-Defines what CRDs exist and how to create them:
-```go
-type crd struct {
-    Object     runtime.Object
-    ListObject runtime.Object
-	Scheme func(*runtime.Scheme) error
-    Reconciler reconciler.NewReconcilerFunc
-    Info       CRDInfo
-}
-```
+## 🧩 Dual Katalog Architecture (Go + YAML)
+Two modes:
 
-#### **Controller Registry** (`pkg/registry/controller_registry.go`)
-Maps GVKs to running informers and reconcilers at runtime:
-```go
-reg.Register(
-    gvk,        // GroupVersionKind string
-    crdInfo,    // CRD metadata
-    informer,   // Running informer instance
-    reconciler, // Your reconciler
-)
-```
+### **Go Mode (Typed)**
+- full type safety  
+- automatic scheme registration  
 
-This separation ensures that **adding a new CRD is just data** – no code changes to the core.
+### **YAML Mode (Dynamic)**
+- load CRDs from local or remote YAML  
+- GitOps‑friendly  
+- perfect for multi‑cluster orchestration  
 
-## 🚀 **Quick Start**
+**👉 See:** [What is a Katalog](./docs/katalog.md) for a full breakdown.
 
-### 1. Clone and Configure
+## 📊 Built‑in Metrics
+Prometheus metrics include:
+
+- queue depth per CRD  
+- reconcile duration  
+- reconcile totals  
+- worker utilization  
+
+## 🛡 High Availability
+- leader election  
+- warm caches in all replicas  
+- instant failover  
+
+## 🧹 Graceful Shutdown
+- stops accepting new items  
+- drains workers  
+- shuts down CRDs in dependency order  
+
+**👉 See:** [Startup & Shutdown](./images/)
+
+---
+
+# 🚀 Quick Start
+
+## 1. Clone and Configure
 ```bash
-git clone https://github.com/ialexeze/multi-crd-controller.git
-cd multi-crd-controller
+git clone https://github.com/ialexeze/orkestra.git
+cd orkestra
 cp .env.example .env
-# Edit .env with your configuration
 ```
 
-### 2. Install CRDs
+## 2. Choose Your Mode
+
+### Go Mode (default)
+```bash
+go run ./cmd/
+```
+
+### YAML Mode
+```bash
+export KATALOG_MODE=YAML
+export KATALOG_PATH=initialize/crd-katalog.yaml
+go run ./cmd/
+```
+
+## 3. Install CRDs
 ```bash
 kubectl apply -f crd/config/bases/
 ```
 
-### 3. Run Locally
+## 4. Apply Sample Resources
 ```bash
-# Ensure you're in the right namespace context
-kubectl config set-context --current --namespace=your-namespace
-
-go run ./cmd/
-```
-
-### 4. Create Resources
-```bash
-# Create projects and managed namespaces
 kubectl apply -f crd/config/samples/
 ```
 
-### 5. Deploy to Production
+## 5. Monitor
 ```bash
-kubectl apply -f deployment/
+curl localhost:8080/metrics
+curl localhost:8080/health
+curl localhost:8080/ready
 ```
-
-## 🔧 **Extending the Controller: Add a New CRD in Minutes**
-
-This is where the framework truly shines. Adding a new CRD requires **zero boilerplate** – just your API types and reconciler.
-
-### **Step 1: Generate API Types**
-
-Create the API package structure:
-
-```
-api/types/yourcrd/v1alpha1/
-├── groupversion_info.go
-├── yourcrd_types.go
-└── zz_generated.deepcopy.go
-```
-
-**groupversion_info.go:**
-```go
-package v1alpha1
-
-import (
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-    "k8s.io/apimachinery/pkg/runtime"
-    "k8s.io/apimachinery/pkg/runtime/schema"
-)
-
-var (
-    Group      = "yourgroup.example.com"
-    Version    = "v1alpha1"
-    APIPath    = "/apis"
-    Kind       = "YourCRD"
-    NamePlural = "yourcrds"  // Resource plural name
-
-    GroupVersion = schema.GroupVersion{
-        Group:   Group,
-        Version: Version,
-    }
-
-    SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
-    AddToScheme   = SchemeBuilder.AddToScheme
-)
-
-func addKnownTypes(scheme *runtime.Scheme) error {
-    scheme.AddKnownTypes(GroupVersion,
-        &YourCRD{},
-        &YourCRDList{},
-    )
-
-    scheme.AddKnownTypes(schema.GroupVersion{
-        Group:   Group,
-        Version: runtime.APIVersionInternal,
-    },
-        &YourCRD{},
-        &YourCRDList{},
-    )
-
-    metav1.AddToGroupVersion(scheme, GroupVersion)
-    return nil
-}
-```
-
-**yourcrd_types.go:**
-```go
-package v1alpha1
-
-import (
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type YourCRD struct {
-    metav1.TypeMeta   `json:",inline"`
-    metav1.ObjectMeta `json:"metadata,omitempty"`
-    Spec              YourCRDSpec   `json:"spec"`
-    Status            YourCRDStatus `json:"status,omitempty"`
-}
-
-type YourCRDSpec struct {
-    Replicas int `json:"replicas"`
-}
-
-type YourCRDStatus struct {
-    Phase string `json:"phase,omitempty"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type YourCRDList struct {
-    metav1.TypeMeta `json:",inline"`
-    metav1.ListMeta `json:"metadata,omitempty"`
-    Items           []YourCRD `json:"items"`
-}
-```
-
-Generate deepcopy code:
-```bash
-controller-gen object paths=./api/types/yourcrd/...
-```
-
-### **Step 2: Create Your Reconciler**
-
-This is the **only code you write** – your business logic:
-
-```go
-// pkg/reconciler/yourcrd_reconciler.go
-package reconciler
-
-import (
-    "context"
-    
-    "github.com/ialexeze/multi-crd-controller/pkg/config/pkg/event"
-    "github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-    "k8s.io/client-go/tools/cache"
-)
-
-type YourCRDReconciler struct {
-    events *event.Event
-}
-
-func NewYourCRDReconciler(events *event.Event) *YourCRDReconciler {
-    return &YourCRDReconciler{
-        events: events,
-    }
-}
-
-func (r *YourCRDReconciler) Reconcile(ctx context.Context, key string) error {
-    namespace, name, err := cache.SplitMetaNamespaceKey(key)
-    if err != nil {
-        return err
-    }
-    
-    logger.Info().Msgf("Reconciling %s/%s", namespace, name)
-    // Your business logic here
-    
-    return nil
-}
-```
-
-### **Step 4: Register Your CRD**
-
-Add your new CRD to the CRD registry – **this is it!**:
-
-```go
-// In pkg/registry/crd_registry.go
-func buildCRDs(kube *kubeclient.Kubeclient) []crd {
-    return []crd{
-        // ... existing CRDs ...
-        
-        newCRD(
-            &yourcrdv1.YourCRD{},           // Object type
-            &yourcrdv1.YourCRDList{},       // List type
-            CRDInfoFrom(
-                yourcrdv1.Group,
-                yourcrdv1.Version,
-                yourcrdv1.Kind,
-                yourcrdv1.APIPath,
-                yourcrdv1.NamePlural,
-                false,                       // IsNamespaced
-            ),
-            yourcrdv1.AddToScheme(scheme)   // Scheme builder function
-            reconciler.NewYourCRDReconciler, // Your reconciler factory
-        ),
-    }
-}
-```
-
-### **Step 5: Done! 🎉**
-
-That's it. The framework automatically:
-- ✅ Creates scheme with your API types
-- ✅ Creates the client using SharedClientFactory
-- ✅ Creates the informer using SharedInformerFactory
-- ✅ Registers with the workqueue
-- ✅ Registers with the controller registry
-- ✅ Integrates with leader election
-- ✅ Integrates with leader election
-- ✅ Handles graceful shutdown
-
-**No clientset. No informer. No interfaces. Just your API types and reconciler.**
-
-## 📋 **What You Get**
-
-- ✅ **Zero boilerplate** – No manual clients, informers, or interfaces
-- ✅ **Auto-generated everything** – SharedInformerFactory handles it all
-- ✅ **Type safety** – Each CRD maintains its own types
-- ✅ **Isolation** – One CRD's bugs can't affect others
-- ✅ **Scalability** – Add dozens of CRDs without performance impact
-- ✅ **Maintainability** – Each reconciler is independent
-- ✅ **Testability** – Each reconciler can be tested in isolation
-- ✅ **Production ready** – Leader election, health checks, graceful shutdown
-
-## 📊 **Code Reduction**
-
-| Component | Traditional Approach | This Framework | Reduction |
-|-----------|---------------------|----------------|-----------|
-| Client | 120+ lines | 0 (auto) | 100% |
-| Informer | 100+ lines | 0 (auto) | 100% |
-| Interfaces | 80+ lines | 0 (auto) | 100% |
-| GVK Implementation | 30+ lines | 0 (auto) | 100% |
-| Registration | 30+ lines | 3 lines | 90% |
-| **TOTAL per CRD** | **~360 lines** | **~50 lines (reconciler)** | **86%** |
-
-## 🙏 **Acknowledgments**
-
-This project builds upon the excellent work of:
-- [**@martin-helmich**](https://github.com/martin-helmich) – for the foundational CRD example
-- **Kubernetes community** – for the client-go libraries and patterns
-
-## 📄 **License**
-
-MIT License – see [LICENSE](LICENSE)
 
 ---
 
-**Built with ❤️ and a deep understanding of Kubernetes internals**
+# 🖥️ **Orkestra CLI**
+
+Orkestra ships with a powerful command‑line interface (`ork`) that lets you explore, visualize, and interact with the Katalog and the running controller runtime.  
+It’s designed to feel as natural as `kubectl`, but focused entirely on CRDs, reconcilers, and dependency orchestration.
+
+The CLI supports:
+
+- inspecting the Katalog  
+- visualizing dependency graphs  
+- exploring CRD metadata  
+- listing active controllers  
+- understanding how Orkestra wires your CRDs internally  
+
+Full documentation is available in **[Orkestra CLI](./docs/cli.md)**.
+
+
+# 🔧 Extending Orkestra: Add a New CRD in Minutes
+
+You only write:
+
+1. API types  
+2. Reconciler  
+3. Katalog entry (Go or YAML)  
+
+Everything else is generated.
+
+**👉 Full guide:** [Extending Orkestra](./docs/extending-orchestra.md)
+
+---
+
+# 🌐 YAML Mode Use Cases
+
+YAML mode unlocks:
+
+- centralized operator marketplaces  
+- organization‑wide standardization  
+- multi‑cluster fleet management  
+- GitOps pipelines  
+- canary deployments  
+- dynamic worker scaling  
+- multi‑tenant isolation  
+- compliance & audit trails  
+- edge/IoT deployments  
+- partner integrations  
+
+**👉 See:** [YAML Mode Use Cases](./docs/yaml-mode-use-cases.md)
+
+---
+
+# 🙏 Acknowledgments
+
+Built on top of the Kubernetes `client-go` libraries and inspired by the patterns used in the Kubernetes controller manager.
+
+---
+
+# 📄 License
+
+MIT License — see [LICENSE](./LICENSE).

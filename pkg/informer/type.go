@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/queue"
+	"github.com/ialexeze/orkestra/pkg/queue"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
@@ -33,6 +33,7 @@ type Factory struct {
 	started        bool
 	mu             sync.RWMutex  // Mmutex for thread safety
 	ready          chan struct{} // Signal when factory is ready
+	opts           Options
 }
 
 func SharedInformerFactory(cp ClientProvider, wq *queue.Workqueue, scheme *runtime.Scheme, namespace string, resync time.Duration) *Factory {

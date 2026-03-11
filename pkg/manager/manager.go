@@ -8,24 +8,28 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/health"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/utils"
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
+const eventHandler = "event handler"
+
 type Manager struct {
-	components []domain.Component
-	postStart  []func(context.Context)
+	komponents []domain.Komponent
+	postStart  []postStart
 	timeout    time.Duration
 	done       chan struct{}
-	hs         *health.HealthServer
 }
 
-func NewManager(hs *health.HealthServer, timeout time.Duration) *Manager {
+type postStart struct {
+	hook func(context.Context)
+	comp domain.Komponent
+}
+
+func NewManager(timeout time.Duration) *Manager {
 	return &Manager{
 		timeout: timeout,
-		hs:      hs,
 		done:    make(chan struct{}),
 	}
 }
@@ -35,8 +39,8 @@ func (m *Manager) Start(ctx context.Context) error {
 	defer mCancel()
 
 	fmt.Println("===============================")
-	fmt.Println("STARTING MANAGER COMPONENTS...")
-	for _, comp := range m.components {
+	fmt.Println("STARTING MANAGER KOMPONENTS...")
+	for _, comp := range m.komponents {
 		name := comp.Name()
 
 		logger.Info().Msgf("[%s] starting...", name)
@@ -48,26 +52,28 @@ func (m *Manager) Start(ctx context.Context) error {
 		logger.Info().Msgf("%s status: %v", name, utils.StatusOnline)
 	}
 
+	// Run post-start hooks (leader election goes here)
+	logger.Info().Msg("Running post-start hooks...")
+	for _, p := range m.postStart {
+		go p.hook(mCtx)
+	}
+
 	logger.Info().Msg("✅ All services started successfully")
 
-	// Display started components
-	fmt.Println("======================")
-	fmt.Println("STARTED COMPONENTS:")
+	// Display started komponents
+	fmt.Println("===============================")
+	fmt.Println("STARTED KOMPONENTS:")
 	n := 1
-	for _, comp := range m.components {
+	for _, comp := range m.komponents {
 		fmt.Printf("%d. %s\n", n, comp.Name())
 		n++
 	}
-	fmt.Println("======================")
 
-	// Run post-start hooks (leader election goes here)
-	logger.Info().Msg("Running post-start hooks...")
-	for _, hook := range m.postStart {
-		go hook(mCtx)
+	for _, p := range m.postStart {
+		fmt.Printf("%d. %s\n", n, p.comp.Name())
+		n++
 	}
-
-	m.setReady()
-	logger.Info().Msg("controller is ready...")
+	fmt.Println("===============================")
 
 	m.gracefulShutdown(mCtx, mCancel)
 	return nil
@@ -84,17 +90,27 @@ func (m *Manager) gracefulShutdown(ctx context.Context, cancel context.CancelFun
 		logger.Info().Msgf("recieved shutdown signal: %v", sig)
 		cancel()
 
-		// shutdown components
+		// shutdown komponents
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), m.timeout)
 		defer shutdownCancel()
 
-		for _, comp := range m.components {
+		for _, comp := range utils.Reversed(m.komponents) {
 			name := comp.Name()
 			logger.Info().Msgf("shutting down: %s...", name)
 			if comp != nil {
+				// Special handling for event recorder - shut it down LAST
+				if name == eventHandler {
+					continue // Skip event handler for now
+				}
 				comp.Shutdown(shutdownCtx)
 			}
+			utils.Sleep(1)
 			logger.Info().Msgf("%s status: %v", name, utils.StatusOffline)
+		}
+
+		ev := m.GetKomponent(eventHandler)
+		if ev != nil {
+			ev.Shutdown(shutdownCtx)
 		}
 
 		logger.Info().Msg("✅ All services shut down gracefully")
@@ -107,34 +123,42 @@ func (m *Manager) gracefulShutdown(ctx context.Context, cancel context.CancelFun
 	}
 }
 
-// Register all components
-func (m *Manager) Register(c []domain.Component) {
+// Register all komponents
+func (m *Manager) Register(c []domain.Komponent) {
 	fmt.Println("==================================")
-	fmt.Println("REGISTERING MANAGER COMPONENTS...")
+	fmt.Println("REGISTERING MANAGER KOMPONENTS...")
 	for _, comp := range c {
-		m.components = append(m.components, comp)
+		m.komponents = append(m.komponents, comp)
 		logger.Info().Msgf("[%s] registered", comp.Name())
 	}
 	logger.Info().Msg("✅ All services registered successfully")
 
-	// Display registered components
-	fmt.Println("======================")
-	fmt.Println("REGISTERED COMPONENTS:")
+	// Display registered komponents
+	fmt.Println("==================================")
+	fmt.Println("REGISTERED KOMPONENTS:")
 	n := 1
-	for _, comp := range m.components {
+	for _, comp := range m.komponents {
 		fmt.Printf("%d. %s\n", n, comp.Name())
 		n++
 	}
 }
 
-// AddPostStartHook: for services that need to start after manager has started
-func (m *Manager) AddPostStartHook(hook func(context.Context)) {
-	m.postStart = append(m.postStart, hook)
+// GetKomponent returns a komponent if present
+func (m *Manager) GetKomponent(name string) domain.Komponent {
+	for _, comp := range m.komponents {
+		if comp.Name() == name {
+			return comp
+		}
+	}
+	return nil
 }
 
-// setReady sets the controller ready after all startup is completed
-func (m *Manager) setReady() {
-	m.hs.SetReady()
+// AddPostStartHook: for services that need to start after manager has started
+func (m *Manager) AddPostStartHook(comp domain.Komponent, hook func(context.Context)) {
+	m.postStart = append(m.postStart, postStart{
+		hook: hook,
+		comp: comp,
+	})
 }
 
 // Listening to done channel

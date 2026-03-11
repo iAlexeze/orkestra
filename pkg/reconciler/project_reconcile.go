@@ -3,11 +3,13 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"time"
 
-	projectTypev1 "github.com/ialexeze/multi-crd-controller/pkg/config/api/types/project/v1alpha1"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/event"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
+	projectTypev1 "github.com/ialexeze/orkestra/api/types/project/v1alpha1"
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/event"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -38,6 +40,21 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, key string) error {
 		return err
 	}
 
+	// Log with context
+	ctx = logger.WithRequestID(ctx)
+	ctx = logger.WithCRD(ctx, "projects")
+	ctx = logger.WithResource(ctx, key)
+
+	start := time.Now()
+
+	logger.FromContext(ctx).Info().Msg("starting reconciliation")
+	// Always record duration
+	defer func() {
+		metrics.ReconcileDuration.
+			WithLabelValues("project").
+			Observe(time.Since(start).Seconds())
+	}()
+
 	// Split the key into namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -47,12 +64,15 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, key string) error {
 	// Get the object from the store
 	obj, exists, err := r.informer.GetIndexer().GetByKey(key)
 	if err != nil {
+		// Log metrics to prometheus
+		metrics.ReconcileTotal.WithLabelValues("project", "error").Inc()
+
 		return fmt.Errorf("failed to get object from store: %w", err)
 	}
 
 	if !exists {
 		// Object was deleted
-		logger.Info().Msgf("Project %s/%s has been deleted", namespace, name)
+		logger.FromContext(ctx).Info().Msgf("Project %s/%s has been deleted", namespace, name)
 		// Perform any cleanup logic here
 		return nil
 	}
@@ -64,7 +84,7 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, key string) error {
 	}
 
 	// Your reconciliation logic here
-	logger.Info().Msgf("Reconciling project %s/%s (replicas: %d)",
+	logger.FromContext(ctx).Info().Msgf("Reconciling project %s/%s (replicas: %d)",
 		namespace, name, project.Spec.Replicas)
 
 	// Example: Check if project needs finalizer
@@ -74,6 +94,7 @@ func (r *ProjectReconciler) Reconcile(ctx context.Context, key string) error {
 	}
 
 	// Normal reconciliation
+	metrics.ReconcileTotal.WithLabelValues("project", "success").Inc()
 	return r.reconcileNormal(ctx, project)
 }
 
@@ -94,7 +115,7 @@ func (r *ProjectReconciler) reconcileNormal(ctx context.Context, project *projec
 }
 
 func (r *ProjectReconciler) handleDeletion(ctx context.Context, project *projectTypev1.Project) error {
-	logger.Info().Msgf("Handling deletion for %s", project.Name)
+	logger.FromContext(ctx).Info().Msgf("Handling deletion for %s", project.Name)
 	// Add cleanup logic here
 	// e.g., delete external resources, remove finalizers
 

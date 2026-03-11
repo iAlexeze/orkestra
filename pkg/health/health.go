@@ -6,34 +6,36 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/ialexeze/multi-crd-controller/pkg/config/domain"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/config"
-	"github.com/ialexeze/multi-crd-controller/pkg/config/pkg/logger"
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/konfig"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-var _ domain.Component = (*HealthServer)(nil)
+var _ domain.Komponent = (*HealthServer)(nil)
 
 type HealthServer struct {
 	server *http.Server
 	ready  atomic.Bool
 	port   string
 	client string
-	cfg    *config.Config
+	kfg    *konfig.Konfig
 }
 
-func NewHealthServer(cfg *config.Config) *HealthServer {
-	client := cfg.App().Name
+func NewHealthServer(kfg *konfig.Konfig) *HealthServer {
+	client := kfg.App().Name
 	if client == "" {
 		client = "service"
 	}
 
 	hs := &HealthServer{
 		client: client,
-		port:   cfg.Health().Port,
-		cfg:    cfg,
+		port:   kfg.Health().Port,
+		kfg:    kfg,
 	}
 
-	// server is not ready on startup. modified when client is ready to process requests
+	// server is not healthy or ready on startup.
+	// modified when client is ready to process requests
 	hs.ready.Store(false)
 	return hs
 }
@@ -75,15 +77,28 @@ func (h *HealthServer) SetReady() {
 	h.ready.Store(true)
 }
 
+func (h *HealthServer) Started() bool {
+	return h.ready.Load()
+}
+
+func (h *HealthServer) Degraded() bool {
+	if h.ready.Load() {
+		h.ready.Store(false)
+	}
+	return false
+}
+
 func (h *HealthServer) routes() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	if h.cfg.IsDev() {
+	if h.kfg.IsDev() {
 		mux.Handle("/health", h.logRouteMiddleware(http.HandlerFunc(h.healthHandler)))
 		mux.Handle("/ready", h.logRouteMiddleware(http.HandlerFunc(h.readyHandler)))
 	} else {
 		mux.HandleFunc("/health", h.healthHandler)
 		mux.HandleFunc("/ready", h.readyHandler)
 	}
+
+	mux.Handle("/metrics", promhttp.Handler())
 	return mux
 }
