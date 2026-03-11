@@ -46,10 +46,10 @@ func Init(filenames ...string) (*Konfig, error) {
 			RenewDeadline: GetDurEnvSeconds("RENEW_DEADLINE", 40),
 			RetryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),
 		},
-		crdRegistry: crdRegistryKonfig{
+		katalog: katalogKonfig{
 			MaxQueueDepth: GetIntEnv("MAX_QUEUE_DEPTH", 1000),
-			Mode:          GetStrEnv("CRD_REGISTRY_MODE", "go"),
-			Path:          GetStrEnv("CRD_REGISTRY", ""),
+			Mode:          GetStrEnv("KATALOG_MODE", "go"),
+			Path:          GetStrEnv("KATALOG_PATH", ""),
 		},
 	}
 

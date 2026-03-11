@@ -1,8 +1,8 @@
 # intiailize/crd-registry.yaml
 apiVersion: controller.orkestra.io/v1
-kind: Orkestra
+kind: Katalog
 metadata:
-  name: platform-operator
+  name: platform-katalog
   description: >- 
     All CRDs are disabled by default. To enable, set enabled to true.
 crds:

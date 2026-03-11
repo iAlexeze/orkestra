@@ -7,13 +7,13 @@ import (
 	"github.com/ialexeze/orkestra/pkg/event"
 	"github.com/ialexeze/orkestra/pkg/health"
 	"github.com/ialexeze/orkestra/pkg/informer"
+	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/kontroller"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/manager"
 	"github.com/ialexeze/orkestra/pkg/queue"
-	"github.com/ialexeze/orkestra/pkg/registry"
 	"github.com/ialexeze/orkestra/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -27,11 +27,11 @@ type startupCfg struct {
 }
 
 func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
-	// crd registry
-	crdRegistry := registry.NewCRDRegistry(kfg.CRDRegistry().Mode, kfg.CRDRegistry().Path)
+	// crd katalog
+	crdKatalog := katalog.NewKatalog(kfg.Katalog().Mode, kfg.Katalog().Path)
 
 	// scheme registry
-	scheme, err := registry.NewSchemeRegistry(crdRegistry)
+	scheme, err := katalog.NewSchemeRegistry(crdKatalog)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("scheme creation error")
 	}
@@ -56,19 +56,19 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 	provider := kube.ClientProvider()
 
 	// Register CRD clients to provider - for automatic client  and informer generation
-	for _, crd := range crdRegistry.CRDs {
-		var object runtime.Object
-		var list runtime.Object
-
-		if kfg.YamlMode() {
-			object = crd.ObjectYamlMode()
-			list = crd.ListObjectYamlMode()
-		} else if kfg.GoMode() {
+	for _, crd := range crdKatalog.Enabled() {
+		// object, list := crd.GetRuntimeObjects(kfg.Mode())
+		var object, list runtime.Object
+		if kfg.Mode() == "go" {
 			object = crd.ObjectGoMode
 			list = crd.ListObjectGoMode
+		} else if kfg.Mode() == "yaml" {
+			object = crd.ObjectYamlMode()
+			list = crd.ListObjectYamlMode()
 		}
 
-		// 3. Register in kontroller registry
+		logger.Debug().Msgf("Mode: %s", kfg.Mode())
+
 		logger.Debug().Str("GVK", utils.SetGroupVersionKindObj(crd.GroupVersionKind)).Msg("registering CRD")
 
 		provider.Register(object, func(k *kubeclient.Kubeclient) (informer.GenericClient, error) {
@@ -99,21 +99,23 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 
 	// Register CRDs to kontroller registry
 	logger.Info().Msg("registering CRDs...")
-	for _, crd := range crdRegistry.CRDs {
+	for _, crd := range crdKatalog.Enabled() {
 		var object runtime.Object
-		if kfg.YamlMode() {
-			object = crd.ObjectYamlMode()
-		} else if kfg.GoMode() {
+		if kfg.Mode() == "go" {
 			object = crd.ObjectGoMode
+		} else if kfg.Mode() == "yaml" {
+			object = crd.ObjectYamlMode()
 		}
 
 		// 1. Create informer
+		logger.Debug().Msgf("creating informer for %s", utils.SetGroupVersionKindObj(crd.GroupVersionKind))
 		inf := infFactory.For(object, ctx, informer.Options{
 			Name:   crd.Kind,
 			Resync: crd.Resync,
 		})
 
 		// 2. Create reconciler
+		logger.Debug().Msgf("creating reconciler for %s", utils.SetGroupVersionKindObj(crd.GroupVersionKind))
 		rec := crd.Reconciler(kube, inf, ev)
 
 		// 3. Register in kontroller registry
@@ -144,10 +146,10 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 		wq,
 		hs,
 		kfg.Cluster().DefaultWorkers,
-		kfg.CRDRegistry().MaxQueueDepth,
-		registry.NewDependencyGraph(crdRegistry),
+		kfg.Katalog().MaxQueueDepth,
+		katalog.NewDependencyGraph(crdKatalog),
 		&kontroller.BannerKonfig{
-			AllCRDs:    crdRegistry.List(),
+			AllCRDs:    crdKatalog.List(),
 			Konfig:     kfg,
 			Komponents: komponents,
 			Leader:     "",

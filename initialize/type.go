@@ -38,3 +38,10 @@ type CRDEntry struct {
 	Resync             time.Duration                 `yaml:"resync" validate:"omitempty"`
 	DependsOn          []string                      `yaml:"dependsOn"`
 }
+
+func (c *CRDEntry) GetRuntimeObjects(mode string) (runtime.Object, runtime.Object) {
+	if mode == "yaml" {
+		return c.ObjectYamlMode(), c.ListObjectYamlMode()
+	}
+	return c.ObjectGoMode, c.ListObjectGoMode
+}

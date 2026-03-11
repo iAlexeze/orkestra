@@ -1,4 +1,4 @@
-package registry
+package katalog
 
 import (
 	"reflect"
@@ -25,18 +25,16 @@ var (
 // -----------------------------------------------------------------------------
 // Structs
 // -----------------------------------------------------------------------------
-type CRDRegistry struct {
-	APIVersion string `yaml:"apiVersion"`
-	Kind       string `yaml:"kind"`
-	Metadata   struct {
+type Katalog struct {
+	aPIVersion string `yaml:"apiVersion"`
+	kind       string `yaml:"kind"`
+	metadata   struct {
 		Name string `yaml:"name"`
 	} `yaml:"metadata"`
 
-	CRDs        []initialize.CRDEntry `yaml:"crds"` // raw from YAML
-	EnabledCRDs []initialize.CRDEntry `yaml:"-"`    // filtered
-	AllCRDs     []initialize.CRDEntry `yaml:"-"`    // documentation - CLI
-
-	Mode struct {
+	crds        []initialize.CRDEntry `yaml:"crds"` // raw from YAML - documentation - CLI
+	enabledCRDs []initialize.CRDEntry `yaml:"-"`    // filtered
+	mode        struct {
 		Go   bool `yaml:"go"`
 		Yaml bool `yaml:"yaml"`
 	} `yaml:"mode"`

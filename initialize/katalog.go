@@ -15,7 +15,7 @@ import (
 // buildCRDs returns a list of CRDs.
 //
 // You can add as many CRDs as needed following the same pattern
-func BuildCRDRegistryFromGo() []CRDEntry {
+func BuildKatalogFromGo() []CRDEntry {
 	return []CRDEntry{
 		{
 			Name:             "project",

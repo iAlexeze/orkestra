@@ -1,4 +1,4 @@
-package registry
+package katalog
 
 import (
 	"fmt"
@@ -19,18 +19,18 @@ import (
 // Validation: Pretty error reporting
 // -----------------------------------------------------------------------------
 
-func (r *CRDRegistry) handleValidationErrors(err error) {
+func (r *Katalog) handleValidationErrors(err error) {
 	logger.Info().Msg("Validation error:")
 
 	if errs, ok := err.(validator.ValidationErrors); ok {
 		for _, e := range errs {
-			// Extract index from namespace: CRDRegistry.CRDs[3].Workers
+			// Extract index from namespace: Katalog.CRDs[3].Workers
 			var index int
-			fmt.Sscanf(e.StructNamespace(), "CRDRegistry.CRDs[%d]", &index)
+			fmt.Sscanf(e.StructNamespace(), "Katalog.CRDs[%d]", &index)
 
 			crdName := "(unknown)"
-			if index >= 0 && index < len(r.CRDs) {
-				crdName = r.CRDs[index].Name
+			if index >= 0 && index < len(r.enabledCRDs) {
+				crdName = r.enabledCRDs[index].Name
 			}
 
 			fmt.Printf("CRD '%s': field '%s' failed on '%s'\n",
@@ -45,10 +45,10 @@ func (r *CRDRegistry) handleValidationErrors(err error) {
 // Validation: GVK uniqueness
 // -----------------------------------------------------------------------------
 
-func (r *CRDRegistry) validateGVKUniqueness() error {
+func (r *Katalog) validateGVKUniqueness() error {
 	seen := make(map[string]string) // key -> name
 
-	for _, crd := range r.CRDs {
+	for _, crd := range r.enabledCRDs {
 		key := fmt.Sprintf("%s/%s/%s", crd.Group, crd.Version, crd.Kind)
 
 		if existing, ok := seen[key]; ok {
@@ -68,15 +68,15 @@ func (r *CRDRegistry) validateGVKUniqueness() error {
 // Validation: dependsOn existence + cycle detection
 // -----------------------------------------------------------------------------
 
-func (r *CRDRegistry) validateDependsOn() error {
+func (r *Katalog) validateDependsOn() error {
 	// Build lookup map
 	exists := make(map[string]bool)
-	for _, crd := range r.CRDs {
+	for _, crd := range r.enabledCRDs {
 		exists[crd.Name] = true
 	}
 
 	// Validate references
-	for _, crd := range r.CRDs {
+	for _, crd := range r.enabledCRDs {
 		for _, dep := range crd.DependsOn {
 			if dep == crd.Name {
 				return fmt.Errorf("CRD '%s' cannot depend on itself", crd.Name)
@@ -95,9 +95,9 @@ func (r *CRDRegistry) validateDependsOn() error {
 // Cycle detection (DFS)
 // -----------------------------------------------------------------------------
 
-func (r *CRDRegistry) detectDependencyCycles() error {
+func (r *Katalog) detectDependencyCycles() error {
 	graph := make(map[string][]string)
-	for _, crd := range r.CRDs {
+	for _, crd := range r.enabledCRDs {
 		graph[crd.Name] = crd.DependsOn
 	}
 
@@ -138,9 +138,9 @@ func (r *CRDRegistry) detectDependencyCycles() error {
 // ---------------------------------------------------------------------------------
 //
 // Set GroupVersionKind
-func (r *CRDRegistry) SetGroupVersionKind() error {
-	for i := range r.CRDs {
-		crd := &r.CRDs[i]
+func (r *Katalog) SetGroupVersionKind() error {
+	for i := range r.enabledCRDs {
+		crd := &r.enabledCRDs[i]
 
 		crd.GroupVersionKind = schema.GroupVersionKind{
 			Group:   crd.Group,
@@ -163,9 +163,9 @@ func (r *CRDRegistry) SetGroupVersionKind() error {
 // ---------------------------------------------------------------------------------
 //
 // Set SetDefaults
-func (r *CRDRegistry) SetDefaults() error {
-	for i := range r.CRDs {
-		crd := &r.CRDs[i]
+func (r *Katalog) SetDefaults() error {
+	for i := range r.enabledCRDs {
+		crd := &r.enabledCRDs[i]
 
 		// Handle namespaced and cluster-scoped crds
 		if !crd.Namespaced && crd.Namespace != "" {
@@ -198,9 +198,9 @@ func (r *CRDRegistry) SetDefaults() error {
 // ---------------------------------------------------------------------------------
 //
 // Add RuntimeObjects
-func (r *CRDRegistry) addRuntimeObjects() error {
-	for i := range r.CRDs {
-		crd := &r.CRDs[i]
+func (r *Katalog) addRuntimeObjects() error {
+	for i := range r.enabledCRDs {
+		crd := &r.enabledCRDs[i]
 		gvk := crd.GroupVersionKind
 
 		objFn, ok := initialize.ObjectRegistry[gvk]
@@ -222,11 +222,11 @@ func (r *CRDRegistry) addRuntimeObjects() error {
 
 // ---------------------------------------------------------------------------------
 // Add reconcilers
-func (r *CRDRegistry) addReconcilers() error {
+func (r *Katalog) addReconcilers() error {
 	recs := reconciler.RegisterReconcilers()
 
-	for i := range r.CRDs {
-		crd := &r.CRDs[i]
+	for i := range r.enabledCRDs {
+		crd := &r.enabledCRDs[i]
 
 		fn, ok := recs[crd.Name]
 		if !ok {

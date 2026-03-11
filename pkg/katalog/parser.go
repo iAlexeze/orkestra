@@ -1,5 +1,5 @@
-// pkg/registry/parser.go
-package registry
+// pkg/katalog/parser.go
+package katalog
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ import (
 //	YAML Builder
 //
 // -----------------------------------------------------------------------------
-func (r *CRDRegistry) buildCRDRegistryFromYaml(path string) ([]initialize.CRDEntry, error) {
+func (r *Katalog) buildKatalogFromYaml(path string) ([]initialize.CRDEntry, error) {
 	data, err := utils.LoadFile(path)
 	if err != nil {
 		return nil, err
@@ -26,29 +26,13 @@ func (r *CRDRegistry) buildCRDRegistryFromYaml(path string) ([]initialize.CRDEnt
 		return nil, err
 	}
 
-	if r.Empty() {
-		return nil, fmt.Errorf("CRDRegistry is empty")
-	}
-
-	// Populate All crds
-	r.AllCRDs = r.CRDs
-
 	// Filter enabled CRDs
-	for _, crd := range r.CRDs {
-		if crd.Enabled {
-			r.EnabledCRDs = append(r.EnabledCRDs, crd)
-		} else {
-			logger.Warn().Msgf("%s disabled. skipping...", crd.Name)
-		}
+	if err := r.filterEnabled(); err != nil {
+		return nil, err
 	}
 
-	if r.EnabledEmpty() {
-		return nil, fmt.Errorf("no enabled CRDs found")
-	}
-
-	r.CRDs = r.EnabledCRDs
-	r.Mode.Yaml = true
-	return r.CRDs, nil
+	r.mode.Yaml = true
+	return r.enabledCRDs, nil
 }
 
 // -----------------------------------------------------------------------------
@@ -56,15 +40,20 @@ func (r *CRDRegistry) buildCRDRegistryFromYaml(path string) ([]initialize.CRDEnt
 //	GO Builder
 //
 // -----------------------------------------------------------------------------
-func (r *CRDRegistry) buildCRDRegistryFromGo() []initialize.CRDEntry {
-	r.Mode.Go = true
-	return initialize.BuildCRDRegistryFromGo()
+func (r *Katalog) buildKatalogFromGo() ([]initialize.CRDEntry, error) {
+	r.crds = initialize.BuildKatalogFromGo()
+
+	// Filter
+	if err := r.filterEnabled(); err != nil {
+		return nil, err
+	}
+
+	r.mode.Go = true
+	return r.enabledCRDs, nil
 }
 
 // Validate Config
-func (r *CRDRegistry) validateConfig(crds []initialize.CRDEntry) (*CRDRegistry, error) {
-	r.CRDs = crds
-
+func (r *Katalog) validateConfig() (*Katalog, error) {
 	// Validate config
 	// -------------------------------------------------------------------------
 	// 1. Field-level validation (required, DNS group, workers <= 5, etc.)
@@ -93,10 +82,17 @@ func (r *CRDRegistry) validateConfig(crds []initialize.CRDEntry) (*CRDRegistry, 
 	// -------------------------------------------------------------------------
 	// 4. Set GroupVersionKind and Defaults
 	// -------------------------------------------------------------------------
-	r.SetGroupVersionKind()
-	r.SetDefaults()
+	if err := r.SetGroupVersionKind(); err != nil {
+		logger.Error().Err(err).Msgf("Set GroupVersionKind error: %v", err)
+		return nil, err
+	}
 
-	if r.Mode.Yaml {
+	if err := r.SetDefaults(); err != nil {
+		logger.Error().Err(err).Msgf("Set Defaults error: %v", err)
+		return nil, err
+	}
+
+	if r.mode.Yaml {
 		// -------------------------------------------------------------------------
 		// 5. Add Reconcilers
 		// -------------------------------------------------------------------------
@@ -118,18 +114,39 @@ func (r *CRDRegistry) validateConfig(crds []initialize.CRDEntry) (*CRDRegistry, 
 }
 
 // Helpers
-func (r *CRDRegistry) Empty() bool {
-	return len(r.CRDs) == 0
+func (r *Katalog) empty() bool {
+	return len(r.crds) == 0
 }
 
-func (r *CRDRegistry) EnabledEmpty() bool {
-	return len(r.EnabledCRDs) == 0
+func (r *Katalog) enabledEmpty() bool {
+	return len(r.enabledCRDs) == 0
 }
 
-func (r *CRDRegistry) List() []initialize.CRDEntry {
-	return r.AllCRDs
+func (r *Katalog) List() []initialize.CRDEntry {
+	return r.crds
 }
 
-func (r *CRDRegistry) EnabledList() []initialize.CRDEntry {
-	return r.EnabledCRDs
+func (r *Katalog) Enabled() []initialize.CRDEntry {
+	return r.enabledCRDs
+}
+
+func (r *Katalog) filterEnabled() error {
+	if r.empty() {
+		return fmt.Errorf("Katalog is empty")
+	}
+
+	// Filter enabled CRDs
+	for _, crd := range r.crds {
+		if crd.Enabled {
+			r.enabledCRDs = append(r.enabledCRDs, crd)
+		} else {
+			logger.Warn().Msgf("%s disabled. skipping...", crd.Name)
+		}
+	}
+
+	if r.enabledEmpty() {
+		return fmt.Errorf("no enabled CRDs found")
+	}
+
+	return nil
 }

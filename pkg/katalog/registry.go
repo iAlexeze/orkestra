@@ -1,10 +1,11 @@
-package registry
+package katalog
 
 import (
 	"fmt"
 	"reflect"
 
 	"github.com/ialexeze/orkestra/initialize"
+	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -15,41 +16,52 @@ import (
 // Entry point
 // -----------------------------------------------------------------------------
 
-// NewCRDRegistry returns a list of CRD data
-func NewCRDRegistry(mode, path string) *CRDRegistry {
-	registry := &CRDRegistry{}
+// NewKatalog returns a list of CRD data
+func NewKatalog(mode, path string) *Katalog {
+	katalog := &Katalog{}
 	var entries []initialize.CRDEntry
+	var err error
 
 	switch mode {
 	case GoMode:
-		entries = registry.buildCRDRegistryFromGo()
+		entries, err = katalog.buildKatalogFromGo()
+		if err != nil {
+			utils.Exit(err)
+		}
 	case YamlMode:
 		// Register runtime objects
 		initialize.RegisterRuntimeObjects()
 		// Build CRDs
-		var err error
-		entries, err = registry.buildCRDRegistryFromYaml(path)
+		entries, err = katalog.buildKatalogFromYaml(path)
 		if err != nil {
 			utils.Exit(err)
 		}
 	default:
-		utils.Exit(fmt.Errorf("must be 'go' or 'yaml' invalid CRD registry mode: %s", mode))
+		utils.Exit(fmt.Errorf("must be 'go' or 'yaml' invalid katalog mode: %s", mode))
 	}
 
 	if len(entries) == 0 {
-		utils.Exit(fmt.Errorf("validation error: CRD registry empty"))
+		utils.Exit(fmt.Errorf("validation error: katalog empty"))
 	}
 
-	reg, err := registry.validateConfig(entries)
+	// Pass to enabled
+	katalog.enabledCRDs = entries
+
+	kat, err := katalog.validateConfig()
 	if err != nil {
 		utils.Exit(err)
 	}
 
-	return reg.updateResourceMapAndReturn()
+	kat, err = kat.updateResourceMapAndReturn()
+	if err != nil {
+		utils.Exit(err)
+	}
+
+	return kat
 }
 
 // NewSchemeRegistry returns a new scheme
-func NewSchemeRegistry(r *CRDRegistry) (*runtime.Scheme, error) {
+func NewSchemeRegistry(r *Katalog) (*runtime.Scheme, error) {
 	scheme := runtime.NewScheme()
 
 	// 1. Register built-in Kubernetes types
@@ -62,11 +74,11 @@ func NewSchemeRegistry(r *CRDRegistry) (*runtime.Scheme, error) {
 
 	// 3. Register CRDs
 	var err error
-	if r.Mode.Yaml {
+	if r.mode.Yaml {
 		if scheme, err = initialize.RegisterScheme(scheme); err != nil {
 			return nil, err
 		}
-	} else if r.Mode.Go {
+	} else if r.mode.Go {
 		if scheme, err = r.registerGoScheme(scheme); err != nil {
 			return nil, err
 		}
@@ -77,21 +89,31 @@ func NewSchemeRegistry(r *CRDRegistry) (*runtime.Scheme, error) {
 
 // Helpers
 // Update resource map
-func (r *CRDRegistry) updateResourceMapAndReturn() *CRDRegistry {
+func (r *Katalog) updateResourceMapAndReturn() (*Katalog, error) {
 	// Map the type of the object
-	for _, c := range r.CRDs {
-		if r.Mode.Yaml {
+	for _, c := range r.enabledCRDs {
+		if r.enabledEmpty() {
+			return nil, fmt.Errorf("no enabled CRDs found")
+		}
+
+		if r.mode.Yaml {
+			// Map the type of the object
+			logger.Debug().Msgf("updating resource map for %s", c.GroupVersionKind.String())
 			resourceTypeMap[reflect.TypeOf(c.ObjectYamlMode)] = c.GroupVersionKind.String()
-		} else if r.Mode.Go {
+		} else if r.mode.Go {
 			resourceTypeMap[reflect.TypeOf(c.ObjectGoMode)] = c.GroupVersionKind.String()
 		}
 	}
 
-	return r
+	return r, nil
 }
 
-func (r *CRDRegistry) registerGoScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
-	for _, c := range r.CRDs {
+func (r *Katalog) registerGoScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
+	for _, c := range r.enabledCRDs {
+		if r.enabledEmpty() {
+			return nil, fmt.Errorf("no enabled CRDs found")
+		}
+
 		if err := c.Scheme(scheme); err != nil {
 			return nil, fmt.Errorf("failed to register %s: %w", c.GroupVersionKind, err)
 		}
