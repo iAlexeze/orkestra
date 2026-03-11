@@ -1,4 +1,4 @@
-# 🎛️ **Orkestra CLI Guide**
+# **Orkestra CLI Guide**
 ### *Interact with the Katalog. Visualize dependencies. Explore your runtime.*
 
 The `ork` CLI is the command‑line interface for Orkestra.  
@@ -14,7 +14,7 @@ This document covers all available commands with examples.
 
 ---
 
-# 📦 **Katalog Commands**
+# **Katalog Commands**
 
 The **Katalog** is the declarative bundle that defines:
 
@@ -83,7 +83,7 @@ This is the Orkestra equivalent of `kubectl explain`.
 
 ---
 
-# 🔍 **Graph Commands**
+# **Graph Commands**
 
 Orkestra builds a dependency graph from the Katalog.  
 The CLI lets you visualize it in multiple formats.
@@ -150,7 +150,7 @@ project
 
 ---
 
-# 📘 **Get Commands**
+# **Get Commands**
 
 These commands reflect the **runtime state**, not just the katalog.
 
@@ -182,7 +182,7 @@ Controllers:
 
 ---
 
-# 🧪 **Version**
+# **Version**
 
 ```bash
 $ ork version
@@ -193,7 +193,7 @@ Katalog: initialize/katalog.go
 
 ---
 
-# 📄 **Summary**
+# **Summary**
 
 The Orkestra CLI gives you:
 

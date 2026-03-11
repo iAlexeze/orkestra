@@ -16,7 +16,7 @@ It is a **universal CRD runtime**.
 
 ---
 
-# 🚀 Why Orkestra?
+# Why Orkestra?
 
 Traditional operator frameworks require:
 
@@ -43,7 +43,7 @@ This is operator engineering without the pain.
 
 ---
 
-# 🎯 Example CRDs
+# Example CRDs
 
 | Resource           | API Group               | Version     | Status |
 |-------------------|--------------------------|-------------|--------|
@@ -54,7 +54,7 @@ Adding new CRDs takes **minutes**, not days.
 
 ---
 
-# 🏗️ Architecture Overview
+# Architecture Overview
 
 ```mermaid
 flowchart TB
@@ -164,9 +164,9 @@ flowchart TB
 
 ---
 
-# ✨ Key Features
+# Key Features
 
-## 🔥 Multi‑CRD Support with Zero Boilerplate
+## Multi‑CRD Support with Zero Boilerplate
 Each CRD contributes only:
 
 - API types  
@@ -174,7 +174,7 @@ Each CRD contributes only:
 
 Everything else is generated dynamically.
 
-## 🧠 Dependency‑Aware Kontroller
+## Dependency‑Aware Kontroller
 CRDs declare dependencies:
 
 ```yaml
@@ -187,7 +187,7 @@ Orkestra:
 - shuts them down in reverse order  
 - ensures correctness across multi‑CRD systems  
 
-## 🔁 Per‑CRD Resync Intervals
+## Per‑CRD Resync Intervals
 Each CRD can define its own resync:
 
 ```yaml
@@ -196,7 +196,7 @@ resync: 10m
 
 Orkestra applies it automatically when creating informers.
 
-## 🧵 Per‑CRD Worker Pools
+## Per‑CRD Worker Pools
 Each CRD defines its own concurrency:
 
 ```yaml
@@ -205,7 +205,7 @@ workers: 5
 
 High‑throughput CRDs scale independently.
 
-## 🧩 Dual Katalog Architecture (Go + YAML)
+## Dual Katalog Architecture (Go + YAML)
 Two modes:
 
 ### **Go Mode (Typed)**
@@ -219,7 +219,7 @@ Two modes:
 
 **👉 See:** [What is a Katalog](./docs/katalog.md) for a full breakdown.
 
-## 📊 Built‑in Metrics
+## Built‑in Metrics
 Prometheus metrics include:
 
 - queue depth per CRD  
@@ -227,21 +227,21 @@ Prometheus metrics include:
 - reconcile totals  
 - worker utilization  
 
-## 🛡 High Availability
+## High Availability
 - leader election  
 - warm caches in all replicas  
 - instant failover  
 
-## 🧹 Graceful Shutdown
+## Graceful Shutdown
 - stops accepting new items  
 - drains workers  
 - shuts down CRDs in dependency order  
 
-**👉 See:** [Startup & Shutdown](./images/)
+**👉 See:** [Startup & Shutdown](./docs/startup-shutdown.md) for a full breakdown)
 
 ---
 
-# 🚀 Quick Start
+# Quick Start
 
 ## 1. Clone and Configure
 ```bash

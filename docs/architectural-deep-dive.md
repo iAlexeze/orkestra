@@ -1,4 +1,4 @@
-# 🧱 **Architectural Deep Dive (New Edition)**  
+# **Architectural Deep Dive (New Edition)**  
 ### *A Runtime‑Composable, Multi‑CRD Kubernetes Operator Framework*
 
 This document provides a complete, modern overview of the internal architecture of the Multi‑CRD Kontroller Framework. It explains how CRDs are loaded (Go or YAML), how dependency graphs shape kontroller lifecycle, how informers and clients are generated dynamically, and how Orkestra achieves high availability, observability, and zero‑boilerplate extensibility.
@@ -8,7 +8,7 @@ It is a **universal operator runtime**.
 
 ---
 
-# 🧠 **Core Design Principles**
+# **Core Design Principles**
 
 The framework is built on four foundational ideas:
 
@@ -31,7 +31,7 @@ Just API types + your reconciler.
 
 ---
 
-# 🧩 **High‑Level Architecture**
+# **High‑Level Architecture**
 
 ```mermaid
 flowchart TB
@@ -73,7 +73,7 @@ flowchart TB
 
 ---
 
-# 📦 **1. CRD Registry (Go Mode + YAML Mode)**
+# **1. CRD Registry (Go Mode + YAML Mode)**
 
 The CRD Registry is the **source of truth** for all CRDs Orkestra manages.
 
@@ -139,7 +139,7 @@ crds:
 
 ---
 
-# 🧬 **2. Dependency Graph**
+# **2. Dependency Graph**
 
 Each CRD may declare dependencies:
 
@@ -161,7 +161,7 @@ The framework builds a **directed acyclic graph (DAG)** and validates:
 
 ---
 
-# 🔁 **3. Dynamic Resync Per CRD**
+# **3. Dynamic Resync Per CRD**
 
 Each CRD can define its own resync interval:
 
@@ -186,7 +186,7 @@ processing informer for ManagedNamespace with default resync duration: 30s
 
 ---
 
-# 🧱 **4. Scheme Registry**
+# **4. Scheme Registry**
 
 The Scheme Registry builds the runtime scheme:
 
@@ -200,7 +200,7 @@ This ensures:
 
 ---
 
-# 🧩 **5. SharedClientFactory**
+# **5. SharedClientFactory**
 
 A generic factory that creates REST clients for **any CRD**:
 
@@ -212,7 +212,7 @@ This is the foundation for dynamic CRD support.
 
 ---
 
-# 🔍 **6. SharedInformerFactory**
+# **6. SharedInformerFactory**
 
 The heart of the framework.
 
@@ -228,7 +228,7 @@ This is how Orkestra achieves **zero boilerplate**.
 
 ---
 
-# 🧭 **7. Kontroller Registry**
+# **7. Kontroller Registry**
 
 At runtime, the framework registers:
 
@@ -246,7 +246,7 @@ reconciler := registry.Get(item.GVK)
 
 ---
 
-# 🔄 **8. Dependency‑Aware Kontroller**
+# **8. Dependency‑Aware Kontroller**
 
 Orkestra is no longer a simple loop.  
 It is a **dependency‑aware Orkestrator**.
@@ -267,7 +267,7 @@ This ensures correctness across multi‑CRD systems.
 
 ---
 
-# 🧵 **9. Per‑CRD Workers**
+# **9. Per‑CRD Workers**
 
 Each CRD defines its own worker count:
 
@@ -296,7 +296,7 @@ This is the same model used by kube‑controller‑manager.
 
 ---
 
-# 📊 **11. Observability**
+# **11. Observability**
 
 Built‑in Prometheus metrics:
 
@@ -313,7 +313,7 @@ This enables:
 
 ---
 
-# 🧹 **12. Graceful Shutdown**
+# **12. Graceful Shutdown**
 
 On SIGTERM or leadership loss:
 
@@ -328,7 +328,7 @@ No double processing.
 
 ---
 
-# 🧪 **13. Why This Architecture Works**
+# **13. Why This Architecture Works**
 
 This architecture gives you:
 
@@ -345,7 +345,7 @@ This architecture gives you:
 
 ---
 
-# 🏁 **Conclusion**
+# **Conclusion**
 
 This framework is no longer just a controller.  
 It is a **runtime‑composable operator platform** that:
