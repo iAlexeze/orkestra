@@ -14,7 +14,9 @@ import (
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/manager"
 	"github.com/ialexeze/orkestra/pkg/queue"
+	"github.com/ialexeze/orkestra/pkg/reconciler"
 	"github.com/ialexeze/orkestra/pkg/utils"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type startupCfg struct {
@@ -89,20 +91,32 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 	reg := kontroller.NewKontrollerRegistry()
 
 	// Register CRDs to kontroller registry
-	logger.Info().Msg("registering CRDs...")
+	logger.Debug().Msg("registering CRDs...")
 	for _, crd := range crdKatalog.Enabled() {
+		gvk := utils.SetGroupVersionKindObj(crd.GroupVersionKind)
 		object, _ := crd.GetRuntimeObjects(kfg.Mode())
 
 		// 1. Create informer
-		logger.Debug().Msgf("creating informer for %s", utils.SetGroupVersionKindObj(crd.GroupVersionKind))
+		logger.Debug().Msgf("creating informer for %s", gvk)
 		inf := infFactory.For(object, ctx, informer.Options{
 			Name:   crd.Kind,
 			Resync: crd.Resync,
 		})
 
 		// 2. Create reconciler
-		logger.Debug().Msgf("creating reconciler for %s", utils.SetGroupVersionKindObj(crd.GroupVersionKind))
-		rec := crd.Reconciler(kube, inf, ev)
+		logger.Debug().Msgf("creating reconciler for %s", gvk)
+		var rec domain.Reconciler
+		if crd.ReconcilerConfig.Default {
+			rec = reconciler.NewGenericReconciler(
+				gvk,
+				inf,
+				ev,
+				kube,
+				domain.ReconcileHooks[runtime.Object]{}, 
+				func() runtime.Object { return object })
+		} else {
+			rec = crd.ReconcilerConfig.Constructor(kube, inf, ev)
+		}
 
 		// 3. Register in kontroller registry
 		logger.Debug().Str("GVK", utils.SetGroupVersionKindObj(crd.GroupVersionKind)).Msg("registering CRD")

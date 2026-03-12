@@ -223,18 +223,23 @@ func (k *Katalog) addRuntimeObjects() error {
 // ---------------------------------------------------------------------------------
 // Add reconcilers
 func (k *Katalog) addReconcilers() error {
-	recs := reconciler.RegisterReconcilers()
+    recs := reconciler.RegisterReconcilers()
 
-	for i := range k.enabledCRDs {
-		crd := &k.enabledCRDs[i]
+    for i := range k.enabledCRDs {
+        crd := &k.enabledCRDs[i]
 
-		fn, ok := recs[crd.Name]
-		if !ok {
-			return fmt.Errorf("CRD '%s' has no registered reconciler", crd.Name)
-		}
+        // Default → skip registry lookup
+        if crd.ReconcilerConfig.Default {
+            continue
+        }
 
-		crd.Reconciler = fn
-	}
+        fn, ok := recs[crd.Name]
+        if !ok {
+            return fmt.Errorf("CRD '%s' has no registered reconciler", crd.Name)
+        }
 
-	return nil
+        crd.ReconcilerConfig.Constructor = fn
+    }
+
+    return nil
 }

@@ -95,7 +95,7 @@ var getControllersCmd = &cobra.Command{
 
 		fmt.Println("Controllers:")
 		for _, crd := range k.Enabled() {
-			if crd.Reconciler != nil {
+			if crd.ReconcilerConfig.Default && crd.ReconcilerConfig.Constructor != nil {
 				fmt.Printf("- %s\n", crd.Name)
 			}
 		}

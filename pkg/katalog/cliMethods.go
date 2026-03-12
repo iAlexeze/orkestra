@@ -75,7 +75,11 @@ func (k *Katalog) Explain(name string) (string, error) {
 	fmt.Fprintf(b, "GVK:          %s\n", crd.GroupVersionKind.String())
 	fmt.Fprint(b, "List Type:    runtime.Object")
 	fmt.Fprint(b, "Object Type:  runtime.Object")
-	fmt.Fprintf(b, "Reconciler:   %T\n", crd.Reconciler)
+	if crd.ReconcilerConfig.Default {
+		fmt.Fprint(b, "Reconciler:   Default\n")
+	} else {
+		fmt.Fprintf(b, "Reconciler:   %T\n", crd.ReconcilerConfig.Constructor)
+	}
 	fmt.Fprintf(b, "Informer:     LIST, WATCH\n") // later: dynamic
 
 	if len(crd.DependsOn) > 0 {
@@ -107,7 +111,7 @@ func (k *Katalog) Order() []string {
 func (k *Katalog) Controllers() []string {
 	var out []string
 	for _, crd := range k.enabledCRDs {
-		if crd.Reconciler != nil {
+		if crd.ReconcilerConfig.Constructor != nil && crd.ReconcilerConfig.Default {
 			out = append(out, crd.Name)
 		}
 	}

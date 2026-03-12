@@ -2,14 +2,19 @@ package kubeclient
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/ialexeze/orkestra/domain"
 	crderror "github.com/ialexeze/orkestra/pkg/error"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/utils"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -97,10 +102,87 @@ func (k *Kubeclient) buildConfig() (*rest.Config, error) {
 	}
 
 	// Ensure the config uses our global scheme
-	restCfg.NegotiatedSerializer = serializer.NewCodecFactory(k.scheme)
+	// restCfg.NegotiatedSerializer = serializer.NewCodecFactory(k.scheme)
 
 	return restCfg, nil
 }
+
+// On-demand rest client
+func (k *Kubeclient) RestClientFor(apiPath, group, version string) (*rest.RESTClient, error) {
+	if k.restConfig == nil {
+		return nil, fmt.Errorf("kubeclient not started — restConfig is nil")
+	}
+
+	// Copy — never mutate the base config
+	cfg := rest.CopyConfig(k.restConfig)
+	cfg.GroupVersion = &schema.GroupVersion{
+		Group:   group,
+		Version: version,
+	}
+	cfg.APIPath = apiPath
+	cfg.ContentType = runtime.ContentTypeJSON
+	cfg.NegotiatedSerializer = serializer.NewCodecFactory(k.scheme).WithoutConversion()
+
+	return rest.RESTClientFor(cfg)
+}
+
+func (k *Kubeclient) PatchFinalizers(
+	ctx context.Context,
+	obj runtime.Object,
+	gvr schema.GroupVersionResource,
+	finalizers []string,
+) error {
+	accessor, err := meta.Accessor(obj)
+	if err != nil {
+		return fmt.Errorf("getting accessor: %w", err)
+	}
+
+	// Build a minimal merge patch — only touch finalizers
+	// Never send the full object — avoids resourceVersion conflicts
+	patch := map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"finalizers": finalizers,
+		},
+	}
+
+	body, err := json.Marshal(patch)
+	if err != nil {
+		return fmt.Errorf("marshalling finalizer patch: %w", err)
+	}
+
+	namespace := accessor.GetNamespace()
+	name := accessor.GetName()
+
+	if namespace == "" {
+		// Cluster-scoped resource
+		_, err = k.dynamic.Resource(gvr).Patch(
+			ctx,
+			name,
+			types.MergePatchType,
+			body,
+			metav1.PatchOptions{},
+		)
+	} else {
+		// Namespace-scoped resource
+		_, err = k.dynamic.Resource(gvr).Namespace(namespace).Patch(
+			ctx,
+			name,
+			types.MergePatchType,
+			body,
+			metav1.PatchOptions{},
+		)
+	}
+
+	return err
+}
+
+// Notes
+// Why merge patch and not strategic merge patch or Update? Three reasons:
+// 1. First, you only touch metadata.finalizers — the rest of the object is untouched,
+// which avoids resourceVersion conflicts if the object was updated between your cache read and this call.
+// 2. Second, strategic merge patch requires the object type to be registered and understood by the API server's
+// strategy engine — dynamic clients should use merge patch.
+// 3. Third, Update sends the full object and requires a current resourceVersion — more fragile, more data over the wire.
 
 func (k *Kubeclient) Started() bool { return k.started }
 

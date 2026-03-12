@@ -6,9 +6,8 @@ import (
 	"fmt"
 
 	mnsTypev1 "github.com/ialexeze/orkestra/api/types/managedNamespace/v1alpha1"
-	"github.com/ialexeze/orkestra/pkg/logger"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	// "k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func (r *ManagedNamespaceReconciler) patchStatus(
@@ -29,15 +28,18 @@ func (r *ManagedNamespaceReconciler) patchStatus(
 		return fmt.Errorf("marshalling status patch: %w", err)
 	}
 
-	logger.Debug().Msgf("patching status: %s", string(body))
-	return nil
-	// return r.kube.RestClient().Patch(types.MergePatchType).
-	// 	Resource(mnsTypev1.NamePlural). // ← must match spec.names.plural in the CRD YAML
-	// 	Name(mn.Name).
-	// 	SubResource("status"). // ← /status endpoint, not the main object
-	// 	Body(body).
-	// 	Do(ctx).
-	// 	Error()
+	restClient, err := r.kube.RestClientFor(r.kube.Info.APIPath, r.kube.Info.Group, r.kube.Info.Version)
+	if err != nil {
+		return fmt.Errorf("getting rest client: %w", err)
+	}
+
+	return restClient.Patch(types.MergePatchType).
+		Resource(r.kube.Info.Plural). // ← must match spec.names.plural in the CRD YAML
+		Name(mn.Name).
+		SubResource("status"). // ← /status endpoint, not the main object
+		Body(body).
+		Do(ctx).
+		Error()
 }
 
 // Helper to set conditions

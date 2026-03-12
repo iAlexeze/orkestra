@@ -9,6 +9,7 @@ import (
 	"github.com/ialexeze/orkestra/pkg/event"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/reconciler"
+	"github.com/ialexeze/orkestra/pkg/reconciler/hooks"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -32,8 +33,11 @@ func BuildKatalogFromGo() []CRDEntry {
 			Workers:          2,
 			Resync:           10 * time.Minute, // Has to be in time.Duration
 			Scheme:           projectTypev1.AddToScheme,
-			Reconciler: func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
-				return reconciler.NewProjectReconciler(inf, ev)
+			ReconcilerConfig: ReconcilerConfig{
+				Default: true,
+				HookFactory: func() domain.AnyReconcileHooks {
+					return hooks.ProjectHooks()
+				},
 			},
 			Description: `
 				Defines an isolated logical boundary for applications, teams, or workloads.
@@ -57,9 +61,12 @@ func BuildKatalogFromGo() []CRDEntry {
 			Scheme:           managednsTypeV1.AddToScheme,
 			Workers:          1, // Use default resync
 			DependsOn:        []string{"project"},
-			Reconciler: func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
-				return reconciler.NewManagedNamespaceReconciler(kube, inf, ev)
+			ReconcilerConfig: ReconcilerConfig{
+				Constructor: func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
+					return reconciler.NewManagedNamespaceReconciler(kube, inf, ev)
+				}, // existing custom path
 			},
+
 			Description: `
 				Represents a namespace managed by Orkestra. Useful for provisioning
 				standardized namespaces with quotas, network policies, RBAC bindings,

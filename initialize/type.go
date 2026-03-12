@@ -3,6 +3,7 @@ package initialize
 import (
 	"time"
 
+	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/reconciler"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -11,15 +12,29 @@ import (
 var ObjectRegistry = map[schema.GroupVersionKind]func() runtime.Object{}
 var ListRegistry = map[schema.GroupVersionKind]func() runtime.Object{}
 
+type ReconcilerConfig struct {
+	// Default: true → use GenericReconciler with whatever HookFactory returns
+	Default bool
+
+	// Custom constructor — used when Default: false
+	// signature matches what buildManager already calls
+	Constructor reconciler.NewReconcilerFunc
+
+	// HookFactory — called by buildManager to get hooks for GenericReconciler
+	// Only used when Default: true
+	// If nil AND Default: true → empty hooks (pure watch/list)
+	HookFactory func() domain.AnyReconcileHooks
+}
+
 type CRDEntry struct {
 	Name               string                        `yaml:"name" validate:"required,hostname_rfc1123"`
 	Enabled            bool                          `yaml:"enabled"`
-	Description        string                        `yaml:"description" validate:"required"`
+	Description        string                        `yaml:"description"`
 	ObjectGoMode       runtime.Object                `yaml:"-"`
 	ListObjectGoMode   runtime.Object                `yaml:"-"`
 	ObjectYamlMode     func() runtime.Object         `yaml:"-"`
 	ListObjectYamlMode func() runtime.Object         `yaml:"-"`
-	Reconciler         reconciler.NewReconcilerFunc  `yaml:"-"`
+	ReconcilerConfig   ReconcilerConfig              `yaml:"reconciler" validate:"required`
 	Scheme             func(s *runtime.Scheme) error `yaml:"-"`
 	Group              string                        `yaml:"group" validate:"required,hostname_rfc1123"`
 	Version            string                        `yaml:"version" validate:"required"`

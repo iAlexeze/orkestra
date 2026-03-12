@@ -21,6 +21,8 @@ crds:
     dependsOn: []           # Dependencies
     namespace: project-ns   # Target namespace
     namespaced: true        # Scope
+    reconciler:
+      default: true         # Uses default Generic reconciler: no code required
     
   - name: managednamespace
     enabled: true

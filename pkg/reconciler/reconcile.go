@@ -19,10 +19,6 @@ var registry = map[string]NewReconcilerFunc{}
 
 func RegisterReconcilers() map[string]NewReconcilerFunc {
 	return map[string]NewReconcilerFunc{
-		"project": func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
-			return NewProjectReconciler(inf, ev)
-		},
-
 		"managednamespace": func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
 			return NewManagedNamespaceReconciler(kube, inf, ev)
 		},
