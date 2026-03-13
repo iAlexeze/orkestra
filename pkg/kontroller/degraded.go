@@ -2,8 +2,9 @@
 package kontroller
 
 func (c *Controller) IsDegraded(gvk string) bool {
-	// Check if queue depth is too high
-	if c.wq.Depth() > c.maxQueueDepth {
+	wq, _ := c.queueRegistry.For(gvk)
+
+	if wq.Depth() > wq.MaxQueueDepth() {
 		return true
 	}
 
@@ -12,6 +13,5 @@ func (c *Controller) IsDegraded(gvk string) bool {
 		return true
 	}
 
-	c.hs.Degraded()
 	return false
 }

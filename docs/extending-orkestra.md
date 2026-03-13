@@ -1,4 +1,4 @@
-# 🎼 **Extending Orkestra**  
+# **Extending Orkestra**  
 ### *How to Add New CRDs, Reconcilers, and Runtime Behavior*
 
 Orkestra is designed so that extending it is **fast**, **predictable**, and **boilerplate‑free**.  
@@ -11,7 +11,7 @@ This guide walks you through the full process.
 
 ---
 
-# 🧩 **Overview: What You Need to Provide**
+# **Overview: What You Need to Provide**
 
 To add a new CRD to Orkestra, you only need to supply:
 
@@ -24,7 +24,7 @@ Everything else — clients, informers, workers, resync intervals, dependency or
 
 ---
 
-# 🏗️ Step 1 — Create API Types
+# Step 1 — Create API Types
 
 Create a new directory for your CRD:
 
@@ -109,7 +109,7 @@ controller-gen object paths=./api/types/yourcrd/...
 
 ---
 
-# 🧠 Step 2 — Write Your Reconciler
+# Step 2 — Write Your Reconciler
 
 Your reconciler is the **only Go logic** you write.
 
@@ -148,13 +148,13 @@ func (r *YourCRDReconciler) Reconcile(ctx context.Context, key string) error {
 
 ---
 
-# 🧭 Step 3 — Register Your CRD
+# Step 3 — Register Your CRD
 
 You can register CRDs in **Go mode** or **YAML mode**.
 
 ---
 
-## 🟦 Option A — Go Mode (Typed)
+## Option A — Go Mode (Typed)
 
 Add your CRD to the Go katalog: [crd-katalog](../initialize/katalog.go)
 
@@ -186,7 +186,7 @@ Add your CRD to the Go katalog: [crd-katalog](../initialize/katalog.go)
 
 ---
 
-## 🟩 Option B — YAML Mode (Dynamic)
+## Option B — YAML Mode (Dynamic)
 
 Enable YAML mode:
 
@@ -220,7 +220,7 @@ crds:
 
 ---
 
-# 🎼 Step 4 — Register Your Reconciler (YAML Mode Only)
+# Step 4 — Register Your Reconciler (YAML Mode Only)
 
 YAML mode uses a name‑based reconciler katalog: [reconciler-katalog](../pkg/reconciler/reconcile.go)
 
@@ -238,7 +238,7 @@ The key (`yourcrd`) must match the YAML `name:` field.
 
 ---
 
-# 🎻 Step 5 — Register Your Scheme (YAML Mode Only)
+# Step 5 — Register Your Scheme (YAML Mode Only)
 YAML mode scheme katalog: [scheme-katalog](../initialize/scheme_katalog.go)
 
 ```go
@@ -252,7 +252,7 @@ func RegisterScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
 
 ---
 
-# 🎉 Step 6 — Done!
+# Step 6 — Done!
 
 Orkestra now automatically:
 
@@ -272,7 +272,7 @@ Orkestra generated **~500 lines of runtime behavior**.
 
 ---
 
-# 🧪 Testing Your CRD
+# Testing Your CRD
 
 You can test your reconciler in isolation:
 
@@ -285,7 +285,7 @@ Orkestra’s clean interfaces make this trivial.
 
 ---
 
-# 🏁 Summary
+# Summary
 
 Adding a new CRD to Orkestra is:
 

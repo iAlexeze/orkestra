@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"time"
+	"strings"
 
 	"github.com/ialexeze/orkestra/domain"
 	crderror "github.com/ialexeze/orkestra/pkg/error"
@@ -16,50 +16,57 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-type Options struct {
-	Name   string
-	Resync time.Duration
-}
-
-// For creates or returns an informer for the given type
+// For creates or returns a SharedIndexInformer for the given object type.
+// Each type gets exactly one informer — subsequent calls return the cached one.
+// The informer is not started here — Start() starts all registered informers.
 func (f *Factory) For(obj runtime.Object, ctx context.Context, opts Options) cache.SharedIndexInformer {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
 	t := reflect.TypeOf(obj)
 
-	// Return existing informer if already created
-	if inf, ok := f.informers[t]; ok {
-		return inf
+	// Return existing informer — idempotent
+	if entry, ok := f.informers[t]; ok {
+		logger.Debug().Msgf("informer for %s already exists — reusing", opts.Name)
+		return entry.informer
 	}
 
-	f.opts = opts
-
-	if f.opts.Resync == 0 {
-		logger.Warn().Msgf("processing informer for %s with default resync duration: %v", f.opts.Name, f.resync)
-		f.opts.Resync = f.resync
+	// Resolve resync — per-CRD takes priority, fall back to factory default
+	resync := opts.Resync
+	if resync == 0 {
+		logger.Warn().Msgf(
+			"processing informer for %s with default resync duration: %v",
+			opts.Name, f.resync,
+		)
+		resync = f.resync
 	} else {
-		logger.Info().Msgf("processing informer for %s with resync duration: %v", f.opts.Name, f.opts.Resync)
+		logger.Info().Msgf(
+			"processing informer for %s with resync duration: %v",
+			opts.Name, resync,
+		)
 	}
 
-	// Create new informer - but don't start it yet
 	inf := cache.NewSharedIndexInformer(
 		f.newListWatch(obj),
 		obj,
-		opts.Resync,
+		resync,
 		cache.Indexers{},
 	)
 
-	// Add event handlers
 	inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    func(obj interface{}) { f.handleEvent(obj) },
-		UpdateFunc: func(old, new interface{}) { f.handleEvent(new) },
+		UpdateFunc: func(_, newObj interface{}) { f.handleEvent(newObj) },
 		DeleteFunc: func(obj interface{}) { f.handleEvent(obj) },
 	})
 
-	f.informers[t] = inf
+	// Store with per-informer metadata — no shared opts field
+	f.informers[t] = &informerEntry{
+		informer: inf,
+		name:     opts.Name,
+		resync:   resync,
+	}
 
-	// If factory is already started, start this informer immediately
+	// If factory already started (dynamic CRD registration), start immediately
 	if f.started {
 		go inf.Run(ctx.Done())
 	}
@@ -68,9 +75,11 @@ func (f *Factory) For(obj runtime.Object, ctx context.Context, opts Options) cac
 	return inf
 }
 
-// handleEvent safely enqueues events with proper type detection
+// handleEvent resolves the GVK from the scheme and routes the event
+// to the correct per-CRD queue. Falls back to the default queue if
+// no per-CRD queue is registered for this GVK.
 func (f *Factory) handleEvent(obj interface{}) {
-	// Wait for factory to be ready before processing events
+	// Block until factory is ready — List/Watch have started
 	<-f.ready
 
 	runtimeObj, ok := obj.(runtime.Object)
@@ -79,49 +88,62 @@ func (f *Factory) handleEvent(obj interface{}) {
 		return
 	}
 
-	// Important queuing pattern
-	gvk := runtimeObj.GetObjectKind().GroupVersionKind()
+	// Resolve GVK from scheme — cached objects have TypeMeta stripped,
+	// so GetObjectKind().GroupVersionKind() returns empty. Scheme lookup is correct.
+	gvks, _, err := f.scheme.ObjectKinds(runtimeObj)
+	if err != nil || len(gvks) == 0 {
+		logger.Error().Err(err).Msgf("failed to resolve GVK for %T — event dropped", obj)
+		return
+	}
 
-	f.queue.Enqueue(obj, gvk.String())
+	gvk := gvks[0].String()
+
+	// Route to per-CRD queue if registered, otherwise fall back to default
+	wq, ok := f.queueRegistry.For(gvk)
+	if !ok {
+		logger.Warn().
+			Str("gvk", gvk).
+			Msg("no per-CRD queue registered — falling back to default queue")
+		f.defaultWq.Enqueue(obj, gvk)
+		return // ← return here — do not also enqueue below
+	}
+
+	wq.Enqueue(obj, gvk)
 }
 
-// newListWatch returns a new ListWatch for the given type
+// newListWatch returns a ListWatch for the given object type.
+// Both List and Watch block on f.ready so they never run before Start().
 func (f *Factory) newListWatch(obj runtime.Object) *cache.ListWatch {
 	return &cache.ListWatch{
 		ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
-			// check if context is cancelled
 			if ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
-
-			// Wait for factory to be ready
 			<-f.ready
 
 			client, err := f.clientProvider.For(obj)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get client for %T: %w", obj, err)
+				return nil, fmt.Errorf("list: failed to get client for %T: %w", obj, err)
 			}
 			return client.List(ctx, options)
 		},
 		WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
-			// check if context is cancelled
 			if ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
-
-			// Wait for factory to be ready
 			<-f.ready
 
 			client, err := f.clientProvider.For(obj)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get client for %T: %w", obj, err)
+				return nil, fmt.Errorf("watch: failed to get client for %T: %w", obj, err)
 			}
 			return client.Watch(ctx, options)
 		},
 	}
 }
 
-// Start now signals readiness and starts all informers
+// Start signals readiness and starts all registered informers.
+// Must be called exactly once — enforced by ErrFactoryAlreadyStarted.
 func (f *Factory) Start(ctx context.Context) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -130,54 +152,72 @@ func (f *Factory) Start(ctx context.Context) error {
 		return crderror.ErrFactoryAlreadyStarted
 	}
 
-	// First, mark factory as ready so List/Watch can proceed
+	// Signal readiness first — unblocks any List/Watch already waiting
 	close(f.ready)
 
-	// Then start all informers
-	logger.Info().Msgf("starting %v informers...", len(f.informers))
-	for _, inf := range f.informers {
-		if inf == nil {
-			logger.Debug().Msgf("informer: %s, type: nil", f.opts.Name)
+	logger.Info().Msgf("starting %d informers...", len(f.informers))
+
+	for t, entry := range f.informers {
+		if entry == nil || entry.informer == nil {
+			logger.Warn().Msgf("nil informer entry for type %s — skipping", t)
 			continue
 		}
-		logger.Debug().Msgf("informer: %s, type: %T", f.opts.Name, inf)
-		go inf.Run(ctx.Done())
+		// Each informer gets its own correct name — no shared opts field
+		logger.Debug().
+			Str("name", entry.name).
+			Str("type", t.String()).
+			Dur("resync", entry.resync).
+			Msg("starting informer")
+		go entry.informer.Run(ctx.Done())
 	}
 
 	f.started = true
-	logger.Info().Msg("Factory started and ready")
+	logger.Info().Msg("informer factory started and ready")
 	return nil
 }
 
-// WaitForCacheSync waits for all informers to sync
+// WaitForCacheSync blocks until all informer caches have synced or ctx is done.
 func (f *Factory) WaitForCacheSync(ctx context.Context) bool {
-	f.mu.RLock()
-	defer f.mu.RUnlock()
-
-	// First wait for factory to be ready
+	// Wait for factory to be ready — safe to call before Start() returns
 	select {
 	case <-f.ready:
-		// Factory is ready
 	case <-ctx.Done():
 		return false
 	}
 
-	hasSynced := func() bool {
-		for _, inf := range f.informers {
-			if inf == nil {
-				continue
-			}
-			if !inf.HasSynced() {
-				return false
-			}
+	f.mu.RLock()
+	// Build hasSynced funcs slice — one per informer
+	syncFuncs := make([]cache.InformerSynced, 0, len(f.informers))
+	for _, entry := range f.informers {
+		if entry != nil && entry.informer != nil {
+			syncFuncs = append(syncFuncs, entry.informer.HasSynced)
 		}
-		return true
 	}
+	f.mu.RUnlock()
 
-	return cache.WaitForCacheSync(ctx.Done(), hasSynced)
+	return cache.WaitForCacheSync(ctx.Done(), syncFuncs...)
 }
 
-// IsReady returns true if the factory has been started
+// Status returns a summary of all informers and their sync state.
+// Used by the health server /katalog endpoint.
+func (f *Factory) Status() string {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+
+	names := make([]string, 0, len(f.informers))
+	for _, entry := range f.informers {
+		if entry != nil {
+			synced := "not synced"
+			if entry.informer.HasSynced() {
+				synced = "synced"
+			}
+			names = append(names, fmt.Sprintf("%s(%s)", entry.name, synced))
+		}
+	}
+	return strings.Join(names, ", ")
+}
+
+// IsReady returns true if the factory has been started.
 func (f *Factory) IsReady() bool {
 	select {
 	case <-f.ready:
@@ -187,22 +227,18 @@ func (f *Factory) IsReady() bool {
 	}
 }
 
-// Implement the komponent part
+// ── Komponent ─────────────────────────────────────────────────────────────────
+
 var _ domain.Komponent = (*Factory)(nil)
 
-func (f *Factory) Started() bool {
-	return f.started
-}
+func (f *Factory) Started() bool { return f.started }
 
 func (f *Factory) Shutdown(ctx context.Context) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-
-	// Stop all informers (they'll stop when ctx is done)
+	// Informers stop when their ctx.Done() channel closes — handled by caller.
+	// We just mark the factory as stopped.
 	f.started = false
-	// Note: We don't close ready again as it's already closed to signal ready
 }
 
-func (f *Factory) Name() string {
-	return "informer factory"
-}
+func (f *Factory) Name() string { return "informer factory" }

@@ -1,11 +1,11 @@
-# 🏗️ **Komponent Deep Dive**  
+# **Komponent Deep Dive**  
 ### *Inside the Runtime‑Composable, Dependency‑Aware Multi‑CRD Kontroller Framework*
 
 This document provides a detailed breakdown of every major komponent in the Multi‑CRD Kontroller Framework. It explains how each subsystem contributes to a **dynamic, dependency‑aware, zero‑boilerplate operator runtime** capable of managing any number of CRDs through Go or YAML configuration.
 
 ---
 
-# 🧩 **Architecture Overview**
+# **Architecture Overview**
 
 The framework is built around **runtime composition**. CRDs are defined as data (Go or YAML), and the runtime constructs:
 
@@ -60,7 +60,7 @@ flowchart TB
 
 ---
 
-# 📋 **Komponent Index**
+# **Komponent Index**
 
 | Komponent | Package | Responsibility |
 |----------|----------|----------------|
@@ -331,7 +331,7 @@ The Orkestrator.
 
 ---
 
-# 🎯 **What This Architecture Enables**
+# **What This Architecture Enables**
 
 | Feature | How |
 |--------|-----|
@@ -347,7 +347,7 @@ The Orkestrator.
 
 ---
 
-# 🏁 **Conclusion**
+# **Conclusion**
 
 This framework is a **runtime‑composable operator platform** that:
 

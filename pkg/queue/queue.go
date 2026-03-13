@@ -16,8 +16,9 @@ type QueueItem struct {
 }
 
 type Workqueue struct {
-	Queue   workqueue.TypedRateLimitingInterface[QueueItem]
-	started bool
+	Queue         workqueue.TypedRateLimitingInterface[QueueItem]
+	started       bool
+	maxQueueDepth int
 }
 
 func NewWorkqueue() *Workqueue {
@@ -65,3 +66,5 @@ func (q *Workqueue) Name() string {
 func (q *Workqueue) Depth() int {
 	return q.Queue.Len()
 }
+
+func (r *Workqueue) MaxQueueDepth() int { return r.maxQueueDepth }

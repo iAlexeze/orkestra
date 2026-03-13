@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 
 	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -15,23 +14,24 @@ import (
 var _ domain.Komponent = (*HealthServer)(nil)
 
 type HealthServer struct {
-	server *http.Server
-	ready  atomic.Bool
-	port   string
-	client string
-	kfg    *konfig.Konfig
+	server   *http.Server
+	mux      *http.ServeMux
+	ready    atomic.Bool
+	port     string
+	client   string
+	logLevel string
 }
 
-func NewHealthServer(kfg *konfig.Konfig) *HealthServer {
-	client := kfg.App().Name
+func NewHealthServer(client, port, logLevel string) *HealthServer {
 	if client == "" {
 		client = "service"
 	}
 
 	hs := &HealthServer{
-		client: client,
-		port:   kfg.Health().Port,
-		kfg:    kfg,
+		client:   client,
+		port:     port,
+		mux:      http.NewServeMux(),
+		logLevel: logLevel,
 	}
 
 	// server is not healthy or ready on startup.
@@ -40,15 +40,32 @@ func NewHealthServer(kfg *konfig.Konfig) *HealthServer {
 	return hs
 }
 
+// Register adds a route to the health server mux.
+// Must be called before Start() — routes registered after Start()
+// are not guaranteed to be visible depending on ServeMux implementation.
+func (hs *HealthServer) Register(path string, handler http.HandlerFunc) {
+	hs.mux.Handle(path, hs.logRoutesMiddleware(handler))
+}
+
 func (h *HealthServer) Start(ctx context.Context) error {
 	if !strings.HasPrefix(h.port, ":") {
-		logger.Debug().Msgf("normalizing port from %s to :%s", h.port, h.port)
 		h.port = ":" + h.port
 	}
 
+	// Register built-in routes on h.mux — same mux Register() uses
+	if strings.ToLower(h.logLevel) == "debug" {
+		h.mux.Handle("/health", h.logRoutesMiddleware(http.HandlerFunc(h.healthHandler)))
+		h.mux.Handle("/ready", h.logRoutesMiddleware(http.HandlerFunc(h.readyHandler)))
+	} else {
+		h.mux.HandleFunc("/health", h.healthHandler)
+		h.mux.HandleFunc("/ready", h.readyHandler)
+	}
+	h.mux.Handle("/metrics", promhttp.Handler())
+
+	// h.mux now has: /health, /ready, /metrics + all /katalog/* routes
 	h.server = &http.Server{
 		Addr:    h.port,
-		Handler: h.routes(),
+		Handler: h.mux,
 	}
 
 	go func() {
@@ -86,19 +103,4 @@ func (h *HealthServer) Degraded() bool {
 		h.ready.Store(false)
 	}
 	return false
-}
-
-func (h *HealthServer) routes() *http.ServeMux {
-	mux := http.NewServeMux()
-
-	if h.kfg.IsDev() {
-		mux.Handle("/health", h.logRouteMiddleware(http.HandlerFunc(h.healthHandler)))
-		mux.Handle("/ready", h.logRouteMiddleware(http.HandlerFunc(h.readyHandler)))
-	} else {
-		mux.HandleFunc("/health", h.healthHandler)
-		mux.HandleFunc("/ready", h.readyHandler)
-	}
-
-	mux.Handle("/metrics", promhttp.Handler())
-	return mux
 }

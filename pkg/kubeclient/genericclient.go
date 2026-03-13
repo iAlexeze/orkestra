@@ -20,7 +20,7 @@ type Client struct {
 }
 
 func (k *Kubeclient) NewClient(listType runtime.Object, info CRDInfo) (*Client, error) {
-	restClient, err := k.SharedClientFactory(info)
+	restClient, err := k.SharedClientFactory(info.APIPath, info.Group, info.Version)
 	if err != nil {
 		return nil, err
 	}

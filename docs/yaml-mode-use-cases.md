@@ -1,10 +1,10 @@
-# 🎯 **YAML Katalog: Use Cases & Scenarios**
+# **YAML Katalog: Use Cases & Scenarios**
 
 The YAML mode in this framework transforms how operators are deployed, configured, and shared. By loading CRD configurations from local files or remote URLs, you unlock powerful operational patterns that are simply not possible with traditional Go-only approaches.
 
 ---
 
-## 📦 **1. Centralized Operator Marketplace**
+## **1. Centralized Operator Marketplace**
 
 ```bash
 # Deploy a production-ready Prometheus operator instantly
@@ -38,7 +38,7 @@ https://hub.orkestra.io/crds/
 
 ---
 
-## 🏢 **2. Organization-Wide Standardization**
+## **2. Organization-Wide Standardization**
 
 ```yaml
 # https://internal-git.company.com/platform/crds/standard.yaml
@@ -120,7 +120,7 @@ crds:
 
 ---
 
-## 🔄 **4. GitOps / Continuous Delivery**
+## **4. GitOps / Continuous Delivery**
 
 ```yaml
 # https://github.com/myorg/infra/blob/main/crds/kontroller.yaml
@@ -161,7 +161,7 @@ infrastructure/
 
 ---
 
-## 🧪 **5. Canary Deployments & A/B Testing**
+## **5. Canary Deployments & A/B Testing**
 
 ```yaml
 # Control group (95% of clusters)
@@ -202,7 +202,7 @@ export KATALOG_PATH=https://config.company.com/canary/crds.yaml
 
 ---
 
-## 🔧 **6. Dynamic Worker Scaling Based on Environment**
+## **6. Dynamic Worker Scaling Based on Environment**
 
 ```yaml
 # Small cluster (development)
@@ -229,7 +229,7 @@ crds:
 
 ---
 
-## 👥 **7. Multi-Tenant / Team Isolation**
+## **7. Multi-Tenant / Team Isolation**
 
 ```yaml
 # https://config.company.com/teams/frontend/crds.yaml
@@ -256,7 +256,7 @@ crds:
 
 ---
 
-## 🔐 **8. Compliance & Audit Trails**
+## **8. Compliance & Audit Trails**
 
 ```yaml
 # Corporate proxy with authentication
@@ -278,7 +278,7 @@ export KATALOG_PATH=https://corporate-git.company.com/approved/crds.yaml
 
 ---
 
-## 🌐 **9. Edge Deployments & IoT**
+## **9. Edge Deployments & IoT**
 
 ```yaml
 # Lightweight config for resource-constrained edge devices
@@ -302,7 +302,7 @@ crds:
 
 ---
 
-## 🎯 **10. Partner & Customer Integrations**
+## **10. Partner & Customer Integrations**
 
 ```yaml
 # Expose to external partners
@@ -319,7 +319,7 @@ https://api.company.com/partners/acme/crds.yaml
 
 ---
 
-## 📊 **Comparison: Local vs Remote YAML**
+## **Comparison: Local vs Remote YAML**
 
 | Feature | Local YAML | Remote YAML |
 |---------|------------|-------------|
@@ -334,14 +334,14 @@ https://api.company.com/partners/acme/crds.yaml
 
 ---
 
-## 🏁 **The Ultimate Vision**
+## **The Ultimate Vision**
 
 With remote YAML support, your kontroller becomes:
 
 > *"A single binary that can be configured to manage ANY set of CRDs, with ANY dependencies, on ANY cluster, controlled by ANY Git repository, deployed by ANY team, audited by ANY compliance officer."*
 
 
-# 🧩 **11. Why YAML Mode Exists (The Philosophy)**
+# **11. Why YAML Mode Exists (The Philosophy)**
 
 Go mode is perfect for **framework developers**.  
 YAML mode is perfect for **platform operators**.
@@ -360,7 +360,7 @@ This separation of concerns is what makes your framework scalable across organiz
 
 ---
 
-# 🔐 **12. Security Model & Governance**
+# **12. Security Model & Governance**
 
 YAML mode enables a secure, governed configuration pipeline.
 
@@ -403,7 +403,7 @@ Every remote fetch is logged:
 
 ---
 
-# 🧪 **13. Versioning Strategy & Release Channels**
+# **13. Versioning Strategy & Release Channels**
 
 YAML mode supports multiple release channels, similar to Kubernetes itself:
 
@@ -440,7 +440,7 @@ https://raw.githubusercontent.com/org/repo/8f3c9a1/crds.yaml
 
 ---
 
-# 🧑‍💻 **14. Local Development Workflow**
+# **14. Local Development Workflow**
 
 YAML mode isn't just for production — it's perfect for developers too.
 
@@ -465,7 +465,7 @@ New team members can contribute by editing YAML, not navigating complex Go codeb
 
 ---
 
-# 🧱 **15. Architecture: YAML Mode as a Control Plane**
+# **15. Architecture: YAML Mode as a Control Plane**
 
 YAML mode effectively turns your kontroller into a **mini control plane**:
 
@@ -476,19 +476,9 @@ YAML mode effectively turns your kontroller into a **mini control plane**:
 | Workers | Execution units |
 | YAML | Desired state |
 
-This mirrors proven architectures:
-
-- **Crossplane** – Packages as CRDs
-- **Kubernetes API aggregation** – Multiple APIs served by one apiserver
-- **Helm charts** – Parameterized package definitions
-- **OperatorHub.io** – Curated operator catalog
-
-**But with a critical differentiator:**  
-Runtime dependency orkestration that none of those provide.
-
 ---
 
-# 🧲 **16. Offline & Air‑Gapped Environments**
+# **16. Offline & Air‑Gapped Environments**
 
 Many enterprises run clusters in restricted environments:
 
@@ -525,7 +515,7 @@ ADD https://hub.orkestra.io/crds/production.yaml /etc/kontroller/crds.yaml
 
 ---
 
-# 🧭 **17. Self‑Validation & Safety Guarantees**
+# **17. Self‑Validation & Safety Guarantees**
 
 Before starting, orkestra validates:
 
@@ -587,7 +577,7 @@ If error rate spikes after deployment:
 
 ---
 
-# 🧠 **19. Observability & Metrics Integration**
+# **19. Observability & Metrics Integration**
 
 YAML mode integrates seamlessly with Prometheus metrics:
 
@@ -636,7 +626,7 @@ export KATALOG_PATH=https://git.company.com/platform/crds/prod.yaml
 
 ---
 
-## 🏁 **Summary: Why YAML Mode Matters**
+## **Summary: Why YAML Mode Matters**
 
 | Capability | What It Enables |
 |-----------|-----------------|
@@ -652,4 +642,4 @@ export KATALOG_PATH=https://git.company.com/platform/crds/prod.yaml
 | **Observability** | Metrics for every operation |
 | **Disaster recovery** | Rebuild from YAML alone |
 
-**YAML mode transforms your kontroller from a tool into a platform.** 🚀
+**YAML mode transforms your kontroller from a tool into a platform.**

@@ -26,14 +26,23 @@ var (
 // Structs
 // -----------------------------------------------------------------------------
 type Katalog struct {
-	aPIVersion string `yaml:"apiVersion"`
-	kind       string `yaml:"kind"`
-	metadata   struct {
-		Name string `yaml:"name"`
+	APIVersion string `yaml:"apiVersion"`
+	Kind       string `yaml:"kind"`
+	Metadata   struct {
+		Name        string `yaml:"name"`
+		Description string `yaml:"description"`
+		Version     string `yaml:"version"`
+		Author      string `yaml:"author"`
+		Website     string `yaml:"website"`
+		Email       string `yaml:"email"`
 	} `yaml:"metadata"`
+	Spec struct {
+		Finalizers []string              `yaml:"finalizers"`
+		CRDs       []initialize.CRDEntry `yaml:"crds"` // raw from YAML - documentation - CLI
+	} `yaml:"spec"`
 
-	CRDs        []initialize.CRDEntry `yaml:"crds"` // raw from YAML - documentation - CLI
-	enabledCRDs []initialize.CRDEntry `yaml:"-"`    // filtered
+	// Internal
+	enabledCRDs []initialize.CRDEntry `yaml:"-"` // filtered
 	mode        struct {
 		Go   bool `yaml:"go"`
 		Yaml bool `yaml:"yaml"`

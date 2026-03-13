@@ -30,8 +30,6 @@ const (
 	JSONContentType = "application/json"
 )
 
-type H map[string]interface{}
-
 func Sleep(n int) {
 	time.Sleep(time.Duration(n) * time.Second)
 }

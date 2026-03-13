@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/katalog"
+	"github.com/ialexeze/orkestra/initialize"
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
@@ -14,7 +14,7 @@ type BannerKonfig struct {
 	Konfig     *konfig.Konfig
 	Komponents []domain.Komponent
 	Leader     string
-	Katalog    *katalog.Katalog
+	Katalog    []initialize.CRDEntry
 }
 
 func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
@@ -57,7 +57,7 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 
 	// CRDs
 	fmt.Println("CRDs:")
-	for _, crd := range b.Katalog.CRDs {
+	for _, crd := range b.Katalog {
 		fmt.Printf("- %s%s%s\n", utils.ColorCyan, crd.Kind, utils.ColorReset)
 		fmt.Printf("  %sGroup:%s       %s\n", utils.ColorYellow, utils.ColorReset, crd.Group)
 		fmt.Printf("  %sVersion:%s     %s\n", utils.ColorYellow, utils.ColorReset, crd.Version)
@@ -71,6 +71,12 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 		}
 		fmt.Printf("  %sNamespaced:%s  %v\n", utils.ColorYellow, utils.ColorReset, crd.Namespaced)
 		fmt.Printf("  %sWorkers:%s     %d\n", utils.ColorYellow, utils.ColorReset, crd.Workers)
+
+		if crd.Queue.MaxQueueDepth > 0 {
+			fmt.Printf("  %sMaxQueueDepth:%s      %v\n", utils.ColorYellow, utils.ColorReset, crd.Queue.MaxQueueDepth)
+		} else {
+			fmt.Printf("  %sQueue:%s      %v(default)\n", utils.ColorYellow, utils.ColorReset, b.Konfig.Katalog().DefaultMaxQueueDepth)
+		}
 
 		if crd.Resync != 0 {
 			fmt.Printf("  %sResync:%s      %s\n", utils.ColorYellow, utils.ColorReset, crd.Resync.String())

@@ -1,4 +1,4 @@
-# 🎼 **The Orkestra Katalog**
+# **The Orkestra Katalog**
 ### *A Declarative Bundle for CRDs, Behavior, and Runtime Orchestration*
 
 The **Katalog** is the heart of Orkestra’s architecture.  
@@ -17,7 +17,7 @@ the **Katalog is the control plane** for Orkestra.
 
 ---
 
-# 🌟 What Is a Katalog?
+# What Is a Katalog?
 
 A **Katalog** is a structured definition that contains one or more **CRD entries**.  
 Each entry describes:
@@ -39,7 +39,7 @@ but for CRDs, controllers, and runtime behavior.**
 
 ---
 
-# 🧩 Why the Katalog Exists
+# Why the Katalog Exists
 
 Traditional operator frameworks require:
 
@@ -53,27 +53,27 @@ Orkestra replaces all of that with a **single declarative bundle**.
 
 The Katalog enables:
 
-### ✔️ Dynamic CRD loading  
+### 🔹 Dynamic CRD loading  
 Go or YAML — local or remote.
 
-### ✔️ Automatic client + informer generation  
+### 🔹 Automatic client + informer generation  
 No boilerplate, no codegen, no controller‑runtime magic.
 
-### ✔️ Dependency‑aware orchestration  
+### 🔹 Dependency‑aware orchestration  
 CRDs start in topological order and shut down in reverse order.
 
-### ✔️ Per‑CRD workers and resync  
+### 🔹 Per‑CRD workers and resync  
 Each CRD defines its own concurrency and refresh interval.
 
-### ✔️ Pluggable reconcilers  
+### 🔹 Pluggable reconcilers  
 Use the generic reconciler or provide your own.
 
-### ✔️ Multi‑CRD operator composition  
+### 🔹 Multi‑CRD operator composition  
 Build operators with 2, 5, or 50 CRDs — all from one Katalog.
 
 ---
 
-# 🏗️ Katalog Structure
+# Katalog Structure
 
 A Katalog is composed of **CRD entries**:
 
@@ -110,7 +110,7 @@ This is the declarative definition that Orkestra uses to build the runtime.
 
 ---
 
-# 🔧 How Orkestra Uses the Katalog
+# How Orkestra Uses the Katalog
 
 When Orkestra starts:
 
@@ -129,7 +129,7 @@ Everything is driven by the Katalog.
 
 ---
 
-# 🔍 Go Mode vs YAML Mode
+# Go Mode vs YAML Mode
 
 The Katalog supports two modes:
 
@@ -149,7 +149,7 @@ Both modes produce the same runtime behavior.
 
 ---
 
-# 🧠 Dependency Graph
+# Dependency Graph
 
 Each CRD can declare:
 
@@ -169,7 +169,7 @@ This is essential for multi‑CRD operators.
 
 ---
 
-# 🧭 CLI Integration
+# CLI Integration
 
 The Katalog is fully introspectable via the CLI:
 
@@ -188,7 +188,7 @@ See **[Orkestra CLI](./cli.md)** for full details.
 
 ---
 
-# 🚀 Future Thoughts & Roadmap
+# Future Thoughts & Roadmap
 
 The Katalog unlocks a new era of operator design.  
 Here are some future directions already on the horizon:
@@ -236,7 +236,7 @@ A dashboard that visualizes:
 
 ---
 
-# 📄 Summary
+# Summary
 
 The **Katalog** is the foundation of Orkestra’s runtime.  
 It is:
