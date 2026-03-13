@@ -3,13 +3,14 @@ package kontroller
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/initialize"
 	"github.com/ialexeze/orkestra/pkg/event"
-	"github.com/ialexeze/orkestra/pkg/health"
+	// "github.com/ialexeze/orkestra/pkg/health"
 	"github.com/ialexeze/orkestra/pkg/informer"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
@@ -21,25 +22,27 @@ var _ domain.Komponent = (*Controller)(nil)
 
 // Every map has the same key GVK
 type Controller struct {
-	kube            *kubeclient.Kubeclient
-	informerFactory *informer.Factory
-	event           *event.Event
-	katalog         *ResourceKatalog
-	wq              *queue.Workqueue
-	hs              *health.HealthServer
-	defaultWorkers  int
-	healthy         bool
-	started         map[string]bool
-	cancelFuncs     map[string]context.CancelFunc
-	wgs             map[string]*sync.WaitGroup
-	mu              sync.RWMutex
-	reconcilers     map[string]domain.Reconciler
-	crds            []initialize.CRDEntry
+	kube             *kubeclient.Kubeclient
+	informerFactory  *informer.Factory
+	event            *event.Event
+	katalog          *ResourceKatalog
+	queueRegistry    *queue.QueueRegistry
+	defaultWorkqueue *queue.Workqueue
+	crdHealth        map[string]*CRDHealth
+	degradeThreshold map[string]int
+
+	defaultWorkers int
+	healthy        bool
+	started        map[string]bool
+	cancelFuncs    map[string]context.CancelFunc
+	wgs            map[string]*sync.WaitGroup
+	mu             sync.RWMutex
+	reconcilers    map[string]domain.Reconciler
+	crds           []initialize.CRDEntry
 
 	// Error rate
-	total         map[string]int
-	failed        map[string]int
-	maxQueueDepth int
+	total  map[string]int
+	failed map[string]int
 }
 
 func NewController(
@@ -47,68 +50,121 @@ func NewController(
 	informerFactory *informer.Factory,
 	katalog *ResourceKatalog,
 	event *event.Event,
-	wq *queue.Workqueue,
-	hs *health.HealthServer,
+	queueRegistry *queue.QueueRegistry,
+	defaultWorkqueue *queue.Workqueue,
 	defaultWorkers int,
-	maxQueueDepth int,
 ) *Controller {
 	c := &Controller{
-		kube:            kube,
-		informerFactory: informerFactory,
-		katalog:         katalog,
-		event:           event,
-		wq:              wq,
-		hs:              hs,
-		defaultWorkers:  defaultWorkers,
-		maxQueueDepth:   maxQueueDepth,
-		started:         make(map[string]bool),
-		cancelFuncs:     make(map[string]context.CancelFunc),
-		total:           make(map[string]int),
-		failed:          make(map[string]int),
-		wgs:             make(map[string]*sync.WaitGroup),
-		reconcilers:     make(map[string]domain.Reconciler),
+		kube:             kube,
+		informerFactory:  informerFactory,
+		katalog:          katalog,
+		event:            event,
+		queueRegistry:    queueRegistry,
+		defaultWorkers:   defaultWorkers,
+		started:          make(map[string]bool),
+		cancelFuncs:      make(map[string]context.CancelFunc),
+		total:            make(map[string]int),
+		failed:           make(map[string]int),
+		wgs:              make(map[string]*sync.WaitGroup),
+		reconcilers:      make(map[string]domain.Reconciler),
+		crdHealth:        make(map[string]*CRDHealth),
+		degradeThreshold: make(map[string]int),
 	}
 
 	// Load registry entries
 	for gvk, entry := range katalog.Entries() {
-		c.reconcilers[gvk] = entry.Reconciler
 		c.crds = append(c.crds, entry.CRD)
+		c.degradeThreshold[gvk] = entry.CRD.Queue.DegradeThreshold
 	}
 
 	return c
 }
 
 func (c *Controller) Start(ctx context.Context) error {
-	// CRD check (you may later generalize this per-CRD)
+	// Run CRD checks in parallel, respecting dependency order
+	var wg sync.WaitGroup
+	errCh := make(chan error, len(c.crds))
+
+	// readyCh per CRD — same pattern as DependencyKontroller
+	readyCh := make(map[string]chan struct{}, len(c.crds))
 	for _, crd := range c.crds {
-		logger.Info().Msgf("checking CRD %s/%s (%s)...", crd.Group, crd.Version, crd.Kind)
-
-		err := utils.RetryBackoff(
-			func() error {
-				return utils.WaitForCRD(
-					c.kube.RestConfig(),
-					crd.Group,
-					crd.Kind,
-					crd.Version,
-				)
-			},
-			5,
-			2*time.Second,
-		)
-
-		if err != nil {
-			return fmt.Errorf("CRD %s/%s (%s) not found: %w",
-				crd.Group, crd.Version, crd.Kind, err)
-		}
-
-		logger.Info().Msgf("CRD %s/%s (%s) detected", crd.Group, crd.Version, crd.Kind)
+		readyCh[crd.Name] = make(chan struct{})
 	}
 
+	for _, crd := range c.crds {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			// Wait for all dependencies to be confirmed present first
+			for _, dep := range crd.DependsOn {
+				select {
+				case <-readyCh[dep]:
+					// dependency confirmed — proceed
+				case <-ctx.Done():
+					errCh <- fmt.Errorf("context cancelled waiting for dependency %q", dep)
+					return
+				}
+			}
+
+			logger.Info().Msgf("checking CRD %s/%s (%s)...", crd.Group, crd.Version, crd.Kind)
+
+			err := utils.RetryBackoff(
+				func() error {
+					return utils.WaitForCRD(
+						c.kube.RestConfig(),
+						crd.Group,
+						crd.Kind,
+						crd.Version,
+					)
+				},
+				5,
+				2*time.Second,
+			)
+
+			if err != nil {
+				errCh <- fmt.Errorf("CRD %s/%s (%s) not found: %w",
+					crd.Group, crd.Version, crd.Kind, err)
+				return
+			}
+
+			logger.Info().Msgf("CRD %s/%s (%s) detected", crd.Group, crd.Version, crd.Kind)
+
+			// Signal dependents that this CRD is confirmed
+			close(readyCh[crd.Name])
+		}()
+	}
+
+	// Wait for all checks to complete
+	wg.Wait()
+	close(errCh)
+
+	// Collect any errors
+	var errs []string
+	for err := range errCh {
+		errs = append(errs, err.Error())
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("CRD checks failed:\n%s", strings.Join(errs, "\n"))
+	}
+
+	// All CRDs confirmed — now sync caches
 	logger.Debug().Msg("waiting for all informer caches to sync...")
 	if !c.informerFactory.WaitForCacheSync(ctx) {
 		return fmt.Errorf("failed to sync one or more informer caches")
 	}
 	logger.Info().Msg("all informer caches synced")
+
+	// Build reconcilers now — kube, ev, and REST clients are all live
+	logger.Debug().Msg("building reconcilers...")
+	for gvk, entry := range c.katalog.Entries() {
+		rec := entry.ReconcilerFactory() // ← safe here, manager has started everything
+		c.mu.Lock()
+		c.reconcilers[gvk] = rec
+		c.mu.Unlock()
+		logger.Debug().Str("gvk", gvk).Msg("reconciler built")
+	}
 
 	return nil
 }

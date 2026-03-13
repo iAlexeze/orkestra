@@ -1,15 +1,11 @@
 // domain/generic.go
 package domain
 
-import (
-	"context"
-
-	"k8s.io/apimachinery/pkg/runtime"
-)
+import "context"
 
 // ReconcileHooks contains the user-provided business logic.
 // Only implement the hooks you need — all are optional.
-type ReconcileHooks[T runtime.Object] struct {
+type ReconcileHooks[T Object] struct {
 	// OnReconcile is called for every create/update event.
 	// obj is already type-asserted and deep-copied.
 	// Return an error to requeue with backoff.

@@ -4,6 +4,7 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
@@ -11,24 +12,29 @@ import (
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/metrics"
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 )
 
-type GenericReconciler[T runtime.Object] struct {
-	informer  cache.SharedIndexInformer
-	event     *event.Event
-	kube      *kubeclient.Kubeclient
-	gvk       string
-	hooks     domain.ReconcileHooks[T]
-	newObj    func() T // factory — returns a zero-value T for type assertion
-	finalizer string
+type GenericReconciler[T domain.Object] struct {
+	informer cache.SharedIndexInformer
+	event    *event.Event
+	kube     *kubeclient.Kubeclient
+	hooks    domain.ReconcileHooks[T]
+	newObj   func() T // factory — returns a zero-value T for type assertion
+	crd      CRDInfo
 }
 
-func NewGenericReconciler[T runtime.Object](
-	gvk string,
+type CRDInfo struct {
+	Kind       string
+	GVK        string
+	GVR        schema.GroupVersionResource
+	Finalizers []string
+}
+
+func NewGenericReconciler[T domain.Object](
+	crd CRDInfo,
 	informer cache.SharedIndexInformer,
 	ev *event.Event,
 	kube *kubeclient.Kubeclient,
@@ -41,7 +47,8 @@ func NewGenericReconciler[T runtime.Object](
 	if anyHooks != nil {
 		typed, ok := anyHooks.(domain.ReconcileHooks[T])
 		if !ok {
-			// This is a programming error — hooks were registered for wrong type
+			// Programming error — hooks registered for wrong type.
+			// Panic at startup, not silently at runtime.
 			panic(fmt.Sprintf(
 				"GenericReconciler[%T]: hooks type mismatch — got %T",
 				newObj(), anyHooks,
@@ -51,57 +58,30 @@ func NewGenericReconciler[T runtime.Object](
 	}
 
 	return &GenericReconciler[T]{
-		gvk:       gvk,
-		informer:  informer,
-		event:     ev,
-		kube:      kube,
-		hooks:     hooks,
-		newObj:    newObj,
-		finalizer: "orkestra.io/finalizer",
+		crd:      crd,
+		informer: informer,
+		event:    ev,
+		kube:     kube,
+		hooks:    hooks,
+		newObj:   newObj,
 	}
 }
 
-/*
-The panic here is intentional — a hooks type mismatch is a wiring bug, not a runtime error. It should be caught immediately on startup, not silently produce wrong behavior.
-
----
-
-### The full picture
-
-User writes ProjectHooks()          → ReconcileHooks[*projectv1.Project]
-                │
-                ▼
-Katalog entry wraps it              → HookFactory: func() AnyReconcileHooks
-                │
-                ▼
-buildManager calls HookFactory()    → AnyReconcileHooks (type-erased)
-                │
-                ▼
-NewGenericReconcilerFromHooks[T]    → type assertion back to ReconcileHooks[T]
-                │                     panics at startup if wrong type
-                ▼
-GenericReconciler[*projectv1.Project] owns typed hooks
-                │
-                ▼
-Reconcile() calls hooks.OnReconcile(ctx, obj *projectv1.Project)
-*/
-
-var _ domain.Reconciler = (*GenericReconciler[runtime.Object])(nil)
+var _ domain.Reconciler = (*GenericReconciler[domain.Object])(nil)
 
 func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error {
 	if err := ctx.Err(); err != nil {
 		return nil
 	}
 
-	// Context enrichment — same as your ProjectReconciler
 	ctx = logger.WithRequestID(ctx)
-	ctx = logger.WithCRD(ctx, r.gvk)
+	ctx = logger.WithCRD(ctx, r.crd.GVK)
 	ctx = logger.WithResource(ctx, key)
 
 	start := time.Now()
 	defer func() {
 		metrics.ReconcileDuration.
-			WithLabelValues(r.gvk).
+			WithLabelValues(r.crd.GVK).
 			Observe(time.Since(start).Seconds())
 	}()
 
@@ -111,10 +91,10 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 	}
 	_ = namespace
 
-	// Read from cache
+	// Read from cache — never hits the API server
 	raw, exists, err := r.informer.GetIndexer().GetByKey(key)
 	if err != nil {
-		metrics.ReconcileTotal.WithLabelValues(r.gvk, "error").Inc()
+		metrics.ReconcileTotal.WithLabelValues(r.crd.GVK, "error").Inc()
 		return fmt.Errorf("getting %q from store: %w", key, err)
 	}
 
@@ -132,99 +112,182 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 		return fmt.Errorf("expected %T, got %T", r.newObj(), raw)
 	}
 
-	// Work on a deep copy — never mutate the cache
+	// Always work on a deep copy — never mutate the cached object
 	obj = obj.DeepCopyObject().(T)
 
-	// Ensure TypeMeta is set — lister strips it
-	// The caller is responsible for setting this via a hook or we do it via GVK lookup
-	accessor, err := meta.Accessor(obj)
-	if err != nil {
-		return fmt.Errorf("getting accessor: %w", err)
-	}
-
-	// Deletion path
-	if accessor.GetDeletionTimestamp() != nil {
+	// Deletion path — obj.GetDeletionTimestamp() directly, no accessor needed
+	if obj.GetDeletionTimestamp() != nil {
 		logger.FromContext(ctx).Info().
-			Str("name", accessor.GetName()).
-			Msgf("deletion handler called")
-		return r.handleDeletion(ctx, obj, accessor)
+			Str("name", obj.GetName()).
+			Str("namespace", obj.GetNamespace()).
+			Msgf("deletion handler called for %s", r.crd.GVK)
+
+		r.event.Eventf(obj, corev1.EventTypeNormal, "Deleting",
+			fmt.Sprintf("Deleting %s %s/%s", r.crd.GVK, obj.GetNamespace(), obj.GetName()))
+
+		return r.handleDeletion(ctx, obj)
 	}
 
-	// Ensure finalizer is present
-	if err := r.ensureFinalizer(ctx, obj, accessor); err != nil {
+	// Ensure finalizers are present before any reconcile logic
+	if err := r.ensureFinalizers(ctx, obj); err != nil {
+		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"FinalizerError",
+			fmt.Sprintf("Failed to add finalizers: %v", err))
 		return err
 	}
 
-	// Normal reconcile — call the hook
+	// Normal reconcile — call the hook if provided
 	if r.hooks.OnReconcile != nil {
 		if err := r.hooks.OnReconcile(ctx, obj); err != nil {
-			metrics.ReconcileTotal.WithLabelValues(r.gvk, "error").Inc()
+			metrics.ReconcileTotal.WithLabelValues(r.crd.GVK, "error").Inc()
 
 			logger.FromContext(ctx).Error().Err(err).
-				Str("name", accessor.GetName()).
-				Msgf("reconciliation failed for %s", r.gvk)
+				Str("name", obj.GetName()).
+				Str("namespace", obj.GetNamespace()).
+				Msgf("reconciliation failed for %s", r.crd.GVK)
+
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"ReconcileError",
+				fmt.Sprintf("Failed to reconcile %s %s/%s: %v",
+					r.crd.GVK, obj.GetNamespace(), obj.GetName(), err))
+
 			return err
 		}
+
+		r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.Kind+"Reconciled",
+			fmt.Sprintf("Successfully reconciled %s %s/%s",
+				r.crd.GVK, obj.GetNamespace(), obj.GetName()))
 	}
 
 	logger.FromContext(ctx).Info().
-		Str("name", accessor.GetName()).
-		Msgf("reconciled %s", r.gvk)
+		Str("name", obj.GetName()).
+		Str("namespace", obj.GetNamespace()).
+		Msgf("reconciled %s", r.crd.GVK)
 
-	metrics.ReconcileTotal.WithLabelValues(r.gvk, "success").Inc()
+	metrics.ReconcileTotal.WithLabelValues(r.crd.GVK, "success").Inc()
 	return nil
 }
 
-func (r *GenericReconciler[T]) handleDeletion(
-	ctx context.Context,
-	obj T,
-	accessor metav1.Object,
-) error {
-	// Call user hook first — cleanup external resources
+func (r *GenericReconciler[T]) handleDeletion(ctx context.Context, obj T) error {
+	// Call user hook first — cleanup external resources before finalizer is removed
 	if r.hooks.OnDelete != nil {
 		if err := r.hooks.OnDelete(ctx, obj); err != nil {
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"DeleteError",
+				fmt.Sprintf("Deletion hook failed: %v", err))
 			return fmt.Errorf("deletion hook: %w", err)
 		}
 	}
 
-	// Remove finalizer — unblocks Kubernetes GC
-	return r.removeFinalizer(ctx, obj, accessor)
+	// Remove our finalizers — unblocks Kubernetes GC
+	if err := r.removeFinalizers(ctx, obj); err != nil {
+		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"FinalizerRemovalError",
+			fmt.Sprintf("Failed to remove finalizers: %v", err))
+		return err
+	}
+
+	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.Kind+"Deleted",
+		fmt.Sprintf("Successfully deleted %s %s/%s",
+			r.crd.GVK, obj.GetNamespace(), obj.GetName()))
+
+	return nil
 }
 
-func (r *GenericReconciler[T]) removeFinalizer(
-	ctx context.Context,
-	obj T,
-	accessor metav1.Object,
-) error {
-	finalizers := accessor.GetFinalizers()
-	for i := 0; i < len(finalizers); i++ {
-		if finalizers[i] == r.finalizer {
-			finalizers = append(finalizers[:i], finalizers[i+1:]...)
+func (r *GenericReconciler[T]) ensureFinalizers(ctx context.Context, obj T) error {
+	if len(r.crd.Finalizers) == 0 {
+		return nil // no finalizers configured for this CRD
+	}
+
+	needsUpdate := false
+	for _, f := range r.crd.Finalizers {
+		if !ContainsFinalizer(obj, f) {
+			needsUpdate = true
 			break
 		}
 	}
 
-	if len(finalizers) == 0 {
+	if !needsUpdate {
+		return nil // all finalizers already present
+	}
+
+	// Add any missing finalizers
+	newFinalizers := obj.GetFinalizers()
+	for _, f := range r.crd.Finalizers {
+		if !ContainsFinalizer(obj, f) {
+			newFinalizers = append(newFinalizers, f)
+		}
+	}
+
+	logger.Debug().
+		Str("gvr", r.crd.GVR.String()).
+		Str("name", obj.GetName()).
+		Str("namespace", obj.GetNamespace()).
+		Msgf("adding finalizers: %v -> %v", obj.GetFinalizers(), newFinalizers)
+
+	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.Kind+"FinalizerAdded",
+		fmt.Sprintf("Added finalizers to %s %s/%s",
+			r.crd.GVK, obj.GetNamespace(), obj.GetName()))
+
+	return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR, newFinalizers)
+}
+
+func (r *GenericReconciler[T]) removeFinalizers(ctx context.Context, obj T) error {
+	if len(obj.GetFinalizers()) == 0 {
 		return nil
 	}
 
-	accessor.SetFinalizers(finalizers)
-	return r.kube.PatchFinalizers(ctx, obj, r.kube.Info.GroupVersion.WithResource(r.kube.Info.Plural), finalizers)
-}
-
-func (r *GenericReconciler[T]) ensureFinalizer(
-	ctx context.Context,
-	obj T,
-	accessor metav1.Object,
-) error {
-	finalizers := accessor.GetFinalizers()
-	for _, f := range finalizers {
-		if f == r.finalizer {
-			return nil // already present
+	// Keep only finalizers that aren't ours
+	newFinalizers := make([]string, 0, len(obj.GetFinalizers()))
+	for _, f := range obj.GetFinalizers() {
+		if !slices.Contains(r.crd.Finalizers, f) {
+			newFinalizers = append(newFinalizers, f)
 		}
 	}
-	// Add and patch via crdClient
-	finalizers = append(finalizers, r.finalizer)
-	accessor.SetFinalizers(finalizers)
-	return r.kube.PatchFinalizers(ctx, obj, r.kube.Info.GroupVersion.WithResource(r.kube.Info.Plural), finalizers)
+
+	// Nothing changed — all finalizers were foreign, nothing to remove
+	if len(newFinalizers) == len(obj.GetFinalizers()) {
+		return nil
+	}
+
+	logger.Debug().
+		Str("gvr", r.crd.GVR.String()).
+		Str("name", obj.GetName()).
+		Str("namespace", obj.GetNamespace()).
+		Msgf("removing finalizers: %v -> %v", obj.GetFinalizers(), newFinalizers)
+
+	return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR, newFinalizers)
+}
+
+// ── Finalizer helpers ─────────────────────────────────────────────────────────
+// Exported so custom reconcilers can use them directly without going through
+// the GenericReconciler.
+
+// AddFinalizer adds the finalizer to obj if not already present.
+// Returns true if the finalizer list was modified.
+func AddFinalizer(o domain.Object, finalizer string) (updated bool) {
+	if ContainsFinalizer(o, finalizer) {
+		return false
+	}
+	o.SetFinalizers(append(o.GetFinalizers(), finalizer))
+	return true
+}
+
+// RemoveFinalizer removes the finalizer from obj if present.
+// Returns true if the finalizer list was modified.
+func RemoveFinalizer(o domain.Object, finalizer string) (updated bool) {
+	f := o.GetFinalizers()
+	length := len(f)
+
+	index := 0
+	for i := range length {
+		if f[i] == finalizer {
+			continue
+		}
+		f[index] = f[i]
+		index++
+	}
+	o.SetFinalizers(f[:index])
+	return length != index
+}
+
+// ContainsFinalizer returns true if obj has the given finalizer.
+func ContainsFinalizer(o domain.Object, finalizer string) bool {
+	return slices.Contains(o.GetFinalizers(), finalizer)
 }

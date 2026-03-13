@@ -8,7 +8,6 @@ import (
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/utils"
-	"gopkg.in/yaml.v3"
 )
 
 // -----------------------------------------------------------------------------
@@ -22,7 +21,7 @@ func (k *Katalog) buildKatalogFromYaml(path string) ([]initialize.CRDEntry, erro
 		return nil, err
 	}
 
-	if err := yaml.Unmarshal(data, k); err != nil {
+	if err := utils.StrictUnmarshal(data, k); err != nil {
 		return nil, err
 	}
 
@@ -41,7 +40,7 @@ func (k *Katalog) buildKatalogFromYaml(path string) ([]initialize.CRDEntry, erro
 //
 // -----------------------------------------------------------------------------
 func (k *Katalog) buildKatalogFromGo() ([]initialize.CRDEntry, error) {
-	k.CRDs = initialize.BuildKatalogFromGo()
+	k.Spec.CRDs = initialize.BuildKatalogFromGo()
 
 	// Filter
 	if err := k.filterEnabled(); err != nil {
@@ -82,12 +81,12 @@ func (k *Katalog) validateConfig() (*Katalog, error) {
 	// -------------------------------------------------------------------------
 	// 4. Set GroupVersionKind and Defaults
 	// -------------------------------------------------------------------------
-	if err := k.SetGroupVersionKind(); err != nil {
+	if err := k.setGroupVersionKind(); err != nil {
 		logger.Error().Err(err).Msgf("Set GroupVersionKind error: %v", err)
 		return nil, err
 	}
 
-	if err := k.SetDefaults(); err != nil {
+	if err := k.setDefaults(); err != nil {
 		logger.Error().Err(err).Msgf("Set Defaults error: %v", err)
 		return nil, err
 	}
@@ -115,7 +114,7 @@ func (k *Katalog) validateConfig() (*Katalog, error) {
 
 // Helpers
 func (k *Katalog) empty() bool {
-	return len(k.CRDs) == 0
+	return len(k.Spec.CRDs) == 0
 }
 
 func (k *Katalog) enabledEmpty() bool {
@@ -129,7 +128,7 @@ func (k *Katalog) filterEnabled() error {
 	}
 
 	// Filter enabled CRDs
-	for _, crd := range k.CRDs {
+	for _, crd := range k.Spec.CRDs {
 		if crd.Enabled {
 			k.enabledCRDs = append(k.enabledCRDs, crd)
 		} else {

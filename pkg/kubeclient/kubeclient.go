@@ -13,7 +13,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -28,7 +27,7 @@ type Kubeclient struct {
 	dynamic    dynamic.Interface
 	scheme     *runtime.Scheme
 	Config     Config
-	Info       CRDInfo
+	Info       *CRDInfo
 	started    bool
 }
 
@@ -109,21 +108,7 @@ func (k *Kubeclient) buildConfig() (*rest.Config, error) {
 
 // On-demand rest client
 func (k *Kubeclient) RestClientFor(apiPath, group, version string) (*rest.RESTClient, error) {
-	if k.restConfig == nil {
-		return nil, fmt.Errorf("kubeclient not started — restConfig is nil")
-	}
-
-	// Copy — never mutate the base config
-	cfg := rest.CopyConfig(k.restConfig)
-	cfg.GroupVersion = &schema.GroupVersion{
-		Group:   group,
-		Version: version,
-	}
-	cfg.APIPath = apiPath
-	cfg.ContentType = runtime.ContentTypeJSON
-	cfg.NegotiatedSerializer = serializer.NewCodecFactory(k.scheme).WithoutConversion()
-
-	return rest.RESTClientFor(cfg)
+	return k.SharedClientFactory(apiPath, group, version)
 }
 
 func (k *Kubeclient) PatchFinalizers(

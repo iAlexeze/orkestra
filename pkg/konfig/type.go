@@ -38,9 +38,10 @@ type clusterKonfig struct {
 }
 
 type katalogKonfig struct {
-	Path          string // Path to CRD registry YAML file
-	Mode          string `validate:"required"` // Mode of CRD registry
-	MaxQueueDepth int
+	Path                    string // Path to CRD registry YAML file
+	Mode                    string `validate:"required"` // Mode of CRD registry
+	DefaultMaxQueueDepth    int
+	DefaultDegradeThreshold int `validate:"required"`
 }
 
 type leaderElection struct {

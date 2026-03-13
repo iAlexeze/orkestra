@@ -1,57 +1,75 @@
-# intiailize/crd-registry.yaml
+# intiailize/katalog.yaml
 apiVersion: controller.orkestra.io/v1
 kind: Katalog
 metadata:
   name: platform-katalog
   description: >- 
     All CRDs are disabled by default. To enable, set enabled to true.
-crds:
-  - name: project
-    enabled: true
-    description: >-
-      Defines an isolated logical boundary for applications, teams, or workloads.
-      Similar in concept to ArgoCD Projects, it provides a high‑level grouping
-      mechanism for managing access, policies, and resource scoping.
-    group: platform.orkestra.io
-    version: v1alpha1
-    kind: Project
-    plural: projects
-    workers: 3              # Concurrency control
-    resync: 10m             # Resync period
-    dependsOn: []           # Dependencies
-    namespace: project-ns   # Target namespace
-    namespaced: true        # Scope
-    reconciler:
-      default: true         # Uses default Generic reconciler: no code required
+spec:
+  finalizers:
+    - my-default-finalizer/platform-katalog                # optional -> can be overwritten by CRD finalizer
+  crds:
+    - name: project
+      enabled: true
+      critical: true
+      description: >-
+        Defines an isolated logical boundary for applications, teams, or workloads.
+        Similar in concept to ArgoCD Projects, it provides a high‑level grouping
+        mechanism for managing access, policies, and resource scoping.
+      group: platform.orkestra.io
+      version: v1alpha1
+      kind: Project
+      plural: projects
+      workers: 3              # Concurrency control
+      resync: 10m             # Resync period
+      dependsOn: []           # Dependencies
+      namespace: default   # Target namespace
+      namespaced: true        # Scope
+      reconciler:
+        default: true         # Uses default Generic reconciler: no code required
+      queue:
+        maxQueueDepth: 1000   # optional, defaults to defaultMaxQueueDepth set by the controller using the env: 'MAX_QUEUE_DEPTH'
+      
+    - name: managednamespace
+      enabled: true
+      description: >-
+        Represents a namespace managed by Orkestra. Useful for provisioning
+        standardized namespaces with quotas, network policies, RBAC bindings,
+        and other baseline configurations required for multi‑tenant platforms.
+      group: platform.orkestra.io
+      version: v1alpha1
+      kind: ManagedNamespace
+      plural: managednamespaces
+      workers: 2
+      dependsOn: [project]  # Startup/shutdown order
+      # No resync → uses default
+      # No reconciler → uses custom
+      # No maxQueueDepth → uses default
     
-  - name: managednamespace
-    enabled: true
-    description: >-
-      Represents a namespace managed by Orkestra. Useful for provisioning
-      standardized namespaces with quotas, network policies, RBAC bindings,
-      and other baseline configurations required for multi‑tenant platforms.
-    group: platform.orkestra.io
-    version: v1alpha1
-    kind: ManagedNamespace
-    plural: managednamespaces
-    workers: 2
-    dependsOn: [project]  # Startup/shutdown order
-    # No resync → uses default
-  
-  - name: application
-    description: >-
-      Legacy Application CRD. Retained for compatibility and future migration
-      scenarios but disabled by default. Can be re‑enabled when transitioning
-      older workloads or performing controlled rollouts.
-    group: platform.ialexeze.io
-    version: v1alpha1
-    kind: Application
-    plural: applications
-    workers: 10
-    resync: 30m
-    dependsOn: 
-    - project
-    - managednamespace    
-    # No enabled → so will be ignored at runtime
+    - name: application
+      enabled: true
+      description: >-
+        Legacy Application CRD. Retained for compatibility and future migration
+        scenarios but disabled by default. Can be re‑enabled when transitioning
+        older workloads or performing controlled rollouts.
+      group: platform.orkestra.io
+      version: v1alpha1
+      kind: Application
+      plural: applications
+      workers: 2
+      resync: 3s
+      namespace: default
+      namespaced: true
+      dependsOn: 
+      - project
+      - managednamespace    
+      reconciler:
+        default: true         # Uses default Generic reconciler: no code required
+        finalizers: 
+          - "my-finalizer/application"
+      queue:
+        default: true         # Uses default queue
+        maxQueueDepth: 500   # optional
+      # No enabled → so will be ignored at runtime
 
-#...
+  #...

@@ -10,9 +10,10 @@ import (
 )
 
 type RegistryEntry struct {
-	CRD        initialize.CRDEntry
-	Informer   cache.SharedIndexInformer
-	Reconciler domain.Reconciler
+	CRD               initialize.CRDEntry
+	Informer          cache.SharedIndexInformer
+	ReconcilerFactory func() domain.Reconciler // factory lives here
+	DegradeThreshold  int
 }
 
 type ResourceKatalog struct {
@@ -30,15 +31,15 @@ func (r *ResourceKatalog) Register(
 	gvk string,
 	crd initialize.CRDEntry,
 	inf cache.SharedIndexInformer,
-	rec domain.Reconciler,
+	rec func() domain.Reconciler,
 ) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	r.entries[gvk] = RegistryEntry{
-		CRD:        crd,
-		Informer:   inf,
-		Reconciler: rec,
+		CRD:               crd,
+		Informer:          inf,
+		ReconcilerFactory: rec,
 	}
 }
 

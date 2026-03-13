@@ -3,24 +3,30 @@ package hooks
 
 import (
 	"context"
+	"fmt"
 
 	projectv1 "github.com/ialexeze/orkestra/api/types/project/v1alpha1"
 	"github.com/ialexeze/orkestra/domain"
 )
 
-func ProjectHooks() domain.ReconcileHooks[*projectv1.Project] {
-	return domain.ReconcileHooks[*projectv1.Project]{
-
-		OnReconcile: func(ctx context.Context, obj *projectv1.Project) error {
-			// custom logic — ensure a ConfigMap exists, call an external API, etc.
+func ProjectHooks() domain.ReconcileHooks[domain.Object] {
+	return domain.ReconcileHooks[domain.Object]{
+		OnReconcile: func(ctx context.Context, obj domain.Object) error {
+			project, ok := obj.(*projectv1.Project)
+			if !ok {
+				return fmt.Errorf("expected *Project, got %T", obj)
+			}
+			// your logic here — project is correctly typed
+			_ = project
 			return nil
 		},
-
-		OnDelete: func(ctx context.Context, obj *projectv1.Project) error {
-			// cleanup before finalizer is removed
+		OnDelete: func(ctx context.Context, obj domain.Object) error {
+			project, ok := obj.(*projectv1.Project)
+			if !ok {
+				return fmt.Errorf("expected *Project, got %T", obj)
+			}
+			_ = project
 			return nil
 		},
-
-		// OnNotFound left nil — default no-op is fine
 	}
 }

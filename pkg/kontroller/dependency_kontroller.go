@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ialexeze/orkestra/pkg/event"
-	"github.com/ialexeze/orkestra/pkg/health"
+	// "github.com/ialexeze/orkestra/pkg/health"
 	"github.com/ialexeze/orkestra/pkg/informer"
 	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
@@ -27,7 +27,8 @@ type DependencyKontroller struct {
 	bannKfg        *BannerKonfig
 
 	// readyCh[name] is closed when a CRD has fully started its workers.
-	readyCh map[string]chan struct{}
+	readyCh      map[string]chan struct{}
+	crdHealthMap map[string]*CRDHealth
 }
 
 // NewDependencyKontroller constructs a dependency‑aware controller.
@@ -38,18 +39,19 @@ func NewDependencyKontroller(
 	factory *informer.Factory,
 	katalog *ResourceKatalog,
 	events *event.Event,
-	wq *queue.Workqueue,
-	hs *health.HealthServer,
+	queueRegistry *queue.QueueRegistry,
+	defaultWorkqueue *queue.Workqueue,
+	crdHealthMap map[string]*CRDHealth,
 	defaultWorkers int,
-	maxQueueDepth int,
 	depGraph *katalog.DependencyGraph,
 	bannKfg *BannerKonfig,
 ) *DependencyKontroller {
 
 	return &DependencyKontroller{
-		Controller:     NewController(kube, factory, katalog, events, wq, hs, defaultWorkers, maxQueueDepth),
+		Controller:     NewController(kube, factory, katalog, events, queueRegistry, defaultWorkqueue, defaultWorkers),
 		depGraph:       depGraph,
 		defaultWorkers: defaultWorkers,
+		crdHealthMap:   crdHealthMap,
 		bannKfg:        bannKfg,
 		readyCh:        make(map[string]chan struct{}),
 	}
@@ -105,7 +107,7 @@ func (c *DependencyKontroller) RunOrDie(ctx context.Context) {
 
 	// Mark as started
 	c.healthy = true
-	c.hs.SetReady()
+	// c.hs.SetReady()
 
 	c.bannKfg.Komponents = append(c.bannKfg.Komponents, c)
 
@@ -118,7 +120,7 @@ func (c *DependencyKontroller) RunOrDie(ctx context.Context) {
 
 	// Mark as degraded
 	c.healthy = false
-	c.hs.Degraded()
+	// c.hs.Degraded()
 
 	// 5. Shutdown CRDs in reverse dependency order
 	shutdownOrder := c.depGraph.ShutdownOrder()
@@ -133,9 +135,19 @@ func (c *DependencyKontroller) RunOrDie(ctx context.Context) {
 // startCRDWorkers starts a worker pool for a specific CRD.
 // It mirrors the logic in Controller.RunOrDie but is invoked in dependency order.
 func (c *DependencyKontroller) startCRDWorkers(ctx context.Context, gvk string, workers int) {
+	// Build reconciler once here — kube and ev are started by now
+	entry, ok := c.katalog.Get(gvk)
+	if !ok {
+		logger.Fatal().Str("gvk", gvk).Msg("no katalog entry found")
+		return
+	}
+
 	crdCtx, cancel := context.WithCancel(ctx)
 
+	rec := entry.ReconcilerFactory() // ← once, not per item
+
 	c.mu.Lock()
+	c.reconcilers[gvk] = rec // ← stored here
 	c.cancelFuncs[gvk] = cancel
 	wg := &sync.WaitGroup{}
 	c.wgs[gvk] = wg

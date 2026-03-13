@@ -8,18 +8,18 @@ import (
 )
 
 func (k *Katalog) List() []initialize.CRDEntry {
-	return k.CRDs
+	return k.Spec.CRDs
 }
 
 // All returns every CRD in the katalog, including disabled ones.
 // Useful for CLI commands like `ork katalog list --all`.
 func (k *Katalog) All() []initialize.CRDEntry {
-	return k.CRDs
+	return k.Spec.CRDs
 }
 
 // Exists returns true if a CRD with the given name exists in the katalog.
 func (k *Katalog) Exists(name string) bool {
-	for _, crd := range k.CRDs {
+	for _, crd := range k.Spec.CRDs {
 		if crd.Name == name {
 			return true
 		}

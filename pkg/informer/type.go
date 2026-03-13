@@ -14,7 +14,6 @@ import (
 )
 
 type ClientProvider interface {
-	// Returns a client that knows how to List/Watch a specific type
 	For(obj runtime.Object) (GenericClient, error)
 }
 
@@ -23,27 +22,49 @@ type GenericClient interface {
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
 }
 
-type Factory struct {
-	clientProvider ClientProvider
-	queue          *queue.Workqueue
-	namespace      string
-	scheme         *runtime.Scheme
-	resync         time.Duration
-	informers      map[reflect.Type]cache.SharedIndexInformer
-	started        bool
-	mu             sync.RWMutex  // Mmutex for thread safety
-	ready          chan struct{} // Signal when factory is ready
-	opts           Options
+type Options struct {
+	Name   string
+	Resync time.Duration
+	Wq     *queue.Workqueue
 }
 
-func SharedInformerFactory(cp ClientProvider, wq *queue.Workqueue, scheme *runtime.Scheme, namespace string, resync time.Duration) *Factory {
+// informerEntry holds an informer and its metadata — avoids storing
+// a single shared opts on the factory which caused the name bug.
+type informerEntry struct {
+	informer cache.SharedIndexInformer
+	name     string
+	resync   time.Duration
+}
+
+type Factory struct {
+	clientProvider ClientProvider
+	defaultWq      *queue.Workqueue
+	queueRegistry  *queue.QueueRegistry
+	namespace      string
+	scheme         *runtime.Scheme
+	resync         time.Duration                   // factory-level default
+	informers      map[reflect.Type]*informerEntry // per-type entry — not a shared opts
+	started        bool
+	mu             sync.RWMutex
+	ready          chan struct{}
+}
+
+func SharedInformerFactory(
+	cp ClientProvider,
+	queueRegistry *queue.QueueRegistry,
+	defaultWq *queue.Workqueue,
+	scheme *runtime.Scheme,
+	namespace string,
+	resync time.Duration,
+) *Factory {
 	return &Factory{
 		clientProvider: cp,
-		queue:          wq,
+		queueRegistry:  queueRegistry,
+		defaultWq:      defaultWq,
 		namespace:      namespace,
 		scheme:         scheme,
 		resync:         resync,
-		informers:      make(map[reflect.Type]cache.SharedIndexInformer),
+		informers:      make(map[reflect.Type]*informerEntry),
 		ready:          make(chan struct{}),
 	}
 }

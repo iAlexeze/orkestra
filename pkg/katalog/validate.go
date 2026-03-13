@@ -138,7 +138,7 @@ func (k *Katalog) detectDependencyCycles() error {
 // ---------------------------------------------------------------------------------
 //
 // Set GroupVersionKind
-func (k *Katalog) SetGroupVersionKind() error {
+func (k *Katalog) setGroupVersionKind() error {
 	for i := range k.enabledCRDs {
 		crd := &k.enabledCRDs[i]
 
@@ -146,6 +146,11 @@ func (k *Katalog) SetGroupVersionKind() error {
 			Group:   crd.Group,
 			Version: crd.Version,
 			Kind:    crd.Kind,
+		}
+		crd.GroupVersionResource = schema.GroupVersionResource{
+			Group:    crd.Group,
+			Version:  crd.Version,
+			Resource: crd.Plural,
 		}
 
 		crd.GroupVersion = &schema.GroupVersion{
@@ -163,7 +168,7 @@ func (k *Katalog) SetGroupVersionKind() error {
 // ---------------------------------------------------------------------------------
 //
 // Set SetDefaults
-func (k *Katalog) SetDefaults() error {
+func (k *Katalog) setDefaults() error {
 	for i := range k.enabledCRDs {
 		crd := &k.enabledCRDs[i]
 
@@ -191,6 +196,11 @@ func (k *Katalog) SetDefaults() error {
 		if crd.Description == "" {
 			crd.Description = fmt.Sprintf("%s CRD, GVK: %s", crd.Kind, crd.GroupVersionKind.String())
 		}
+
+		// Handle finalizers
+		if len(crd.ReconcilerConfig.Finalizers) == 0 {
+			crd.ReconcilerConfig.Finalizers = k.Spec.Finalizers
+		}
 	}
 	return nil
 }
@@ -205,12 +215,12 @@ func (k *Katalog) addRuntimeObjects() error {
 
 		objFn, ok := initialize.ObjectRegistry[gvk]
 		if !ok {
-			return fmt.Errorf("no object constructor registered for %s", gvk)
+			return fmt.Errorf("addRuntime Error: no object constructor registered for %s", gvk)
 		}
 
 		listFn, ok := initialize.ListRegistry[gvk]
 		if !ok {
-			return fmt.Errorf("no list constructor registered for %s", gvk)
+			return fmt.Errorf("addRuntime Error: no list constructor registered for %s", gvk)
 		}
 
 		crd.ObjectYamlMode = objFn
@@ -223,23 +233,23 @@ func (k *Katalog) addRuntimeObjects() error {
 // ---------------------------------------------------------------------------------
 // Add reconcilers
 func (k *Katalog) addReconcilers() error {
-    recs := reconciler.RegisterReconcilers()
+	recs := reconciler.RegisterReconcilers()
 
-    for i := range k.enabledCRDs {
-        crd := &k.enabledCRDs[i]
+	for i := range k.enabledCRDs {
+		crd := &k.enabledCRDs[i]
 
-        // Default → skip registry lookup
-        if crd.ReconcilerConfig.Default {
-            continue
-        }
+		// Default → skip registry lookup
+		if crd.ReconcilerConfig.Default {
+			continue
+		}
 
-        fn, ok := recs[crd.Name]
-        if !ok {
-            return fmt.Errorf("CRD '%s' has no registered reconciler", crd.Name)
-        }
+		fn, ok := recs[crd.Name]
+		if !ok {
+			return fmt.Errorf("CRD '%s' has no registered reconciler", crd.Name)
+		}
 
-        crd.ReconcilerConfig.Constructor = fn
-    }
+		crd.ReconcilerConfig.Constructor = fn
+	}
 
-    return nil
+	return nil
 }

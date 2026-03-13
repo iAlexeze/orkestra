@@ -28,13 +28,13 @@ func (r *ManagedNamespaceReconciler) patchStatus(
 		return fmt.Errorf("marshalling status patch: %w", err)
 	}
 
-	restClient, err := r.kube.RestClientFor(r.kube.Info.APIPath, r.kube.Info.Group, r.kube.Info.Version)
+	restClient, err := r.kube.RestClientFor(mnsTypev1.APIPath, mnsTypev1.Group, mnsTypev1.Version)
 	if err != nil {
 		return fmt.Errorf("getting rest client: %w", err)
 	}
 
 	return restClient.Patch(types.MergePatchType).
-		Resource(r.kube.Info.Plural). // ← must match spec.names.plural in the CRD YAML
+		Resource(mnsTypev1.Plural). // ← must match spec.names.plural in the CRD YAML
 		Name(mn.Name).
 		SubResource("status"). // ← /status endpoint, not the main object
 		Body(body).

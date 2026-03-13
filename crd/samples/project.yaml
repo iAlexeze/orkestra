@@ -2,7 +2,7 @@ apiVersion: "platform.orkestra.io/v1alpha1"
 kind: "Project"
 metadata:
   name: "frontend-project"
-  namespace: "ops-team-ns"
+  namespace: default
   labels:
     team: "frontend"
     environment: "production"
@@ -17,7 +17,7 @@ apiVersion: "platform.orkestra.io/v1alpha1"
 kind: "Project"
 metadata:
   name: "backend-project"
-  namespace: "ops-team-ns"
+  namespace: default
   labels:
     team: "backend"
     environment: "production"
@@ -29,7 +29,7 @@ apiVersion: "platform.orkestra.io/v1alpha1"
 kind: "Project"
 metadata:
   name: "database-project"
-  namespace: "ops-team-ns"
+  namespace: default
   labels:
     team: "data"
     environment: "staging"
@@ -41,7 +41,7 @@ apiVersion: "platform.orkestra.io/v1alpha1"
 kind: "Project"
 metadata:
   name: "cache-project"
-  namespace: "ops-team-ns"
+  namespace: default
   labels:
     team: "platform"
     environment: "production"
@@ -53,7 +53,7 @@ apiVersion: "platform.orkestra.io/v1alpha1"
 kind: "Project"
 metadata:
   name: "monitoring-project"
-  namespace: "ops-team-ns"
+  namespace: default
   labels:
     team: "observability"
     environment: "production"
