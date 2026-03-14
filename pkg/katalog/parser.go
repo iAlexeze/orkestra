@@ -4,6 +4,7 @@ package katalog
 import (
 	"fmt"
 
+	"github.com/ialexeze/orkestra/crdkatalog"
 	"github.com/ialexeze/orkestra/initialize"
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
@@ -15,7 +16,7 @@ import (
 //	YAML Builder
 //
 // -----------------------------------------------------------------------------
-func (k *Katalog) buildKatalogFromYaml(path string) ([]initialize.CRDEntry, error) {
+func (k *Katalog) KomposeKatalogFromYaml(path string) ([]initialize.CRDEntry, error) {
 	data, err := utils.LoadFile(path)
 	if err != nil {
 		return nil, err
@@ -39,8 +40,8 @@ func (k *Katalog) buildKatalogFromYaml(path string) ([]initialize.CRDEntry, erro
 //	GO Builder
 //
 // -----------------------------------------------------------------------------
-func (k *Katalog) buildKatalogFromGo() ([]initialize.CRDEntry, error) {
-	k.Spec.CRDs = initialize.BuildKatalogFromGo()
+func (k *Katalog) KomposeKatalogFromGo() ([]initialize.CRDEntry, error) {
+	k.Spec.CRDs = crdkatalog.KomposeKatalogFromGo()
 
 	// Filter
 	if err := k.filterEnabled(); err != nil {

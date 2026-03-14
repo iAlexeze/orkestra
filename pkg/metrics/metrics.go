@@ -18,6 +18,11 @@ var (
 		Buckets: prometheus.DefBuckets,
 	}, []string{"crd"})
 
+	ResourceCount = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "controller_resource_count",
+		Help: "Number of custom resources (CR) per CRD",
+	}, []string{"crd"})
+
 	QueueDepth = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "controller_queue_depth",
 		Help: "Current queue depth per CRD",

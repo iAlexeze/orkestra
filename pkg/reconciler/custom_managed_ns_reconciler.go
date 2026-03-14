@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	mnsTypev1 "github.com/ialexeze/orkestra/api/types/managedNamespace/v1alpha1"
 	"github.com/ialexeze/orkestra/domain"
+	mnsTypev1 "github.com/ialexeze/orkestra/example-crds/api/types/managedNamespace/v1alpha1"
 	"github.com/ialexeze/orkestra/pkg/event"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"

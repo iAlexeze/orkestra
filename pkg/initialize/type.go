@@ -158,14 +158,6 @@ func (c *CRDEntry) SetMaxQueueDepth(def int) int {
 	return c.Queue.MaxQueueDepth
 }
 
-// SeWorkers returns the per-CRD depth if set, otherwise the Orkestra default.
-func (c *CRDEntry) SetWorkers(def int) int {
-	if c.Workers == 0 {
-		return def
-	}
-	return c.Workers
-}
-
 // GVK returns the computed GroupVersionKind — shorthand for use in logging and routing.
 func (c *CRDEntry) GVK() schema.GroupVersionKind {
 	return c.GroupVersionKind

@@ -41,7 +41,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			ReadTimeout:  GetDurEnvSeconds("SRV_READ_TIMEOUT", 5),
 			WriteTimeout: GetDurEnvSeconds("SRV_WRITE_TIMEOUT", 20),
 		},
-		leader: leaderElection{
+		konductor: konductorElection{
 			LeaseDuration: GetDurEnvSeconds("LEASE_DURATION", 60),
 			RenewDeadline: GetDurEnvSeconds("RENEW_DEADLINE", 40),
 			RetryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),

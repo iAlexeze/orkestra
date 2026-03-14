@@ -7,11 +7,11 @@ import (
 )
 
 var (
-	Group      = "platform.orkestra.io" // Using same group as existing CRDs
-	Version    = "v1alpha1"
-	APIPath    = "/apis"
-	Kind       = "Application"
-	NamePlural = "applications"
+	Group   = "platform.orkestra.io" // Using same group as existing CRDs
+	Version = "v1alpha1"
+	APIPath = "/apis"
+	Kind    = "Application"
+	Plural  = "applications"
 
 	GroupVersion = schema.GroupVersion{
 		Group:   Group,

@@ -4,14 +4,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/kontroller"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
 // healthHandler handles health checks -> /health
 func (h *HealthServer) healthHandler(w http.ResponseWriter, r *http.Request) {
-	if !h.ready.Load() {
+	if !h.healthy.Load() {
 		h.writeResponse(responseReq{
 			writer:  w,
 			message: h.client + " is " + string(utils.StatusNotHealthy),
@@ -75,35 +74,5 @@ func (h *HealthServer) logRoutesMiddleware(next http.Handler) http.HandlerFunc {
 			Str("userAgent", r.UserAgent()).
 			Dur("duration", time.Since(start)).
 			Msg("request processed")
-	}
-}
-
-// 200 if healthy, 503 if degraded
-func (h *HealthServer) crdHealthHandler(crdName string, health *kontroller.CRDHealth) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if !health.IsHealthy() {
-			h.writeResponse(responseReq{
-				writer:  w,
-				status:  http.StatusServiceUnavailable,
-				message: crdName + " degraded",
-				details: utils.H{
-					"errorRate":        health.ErrorRate(),
-					"consecutiveFails": health.ConsecutiveFails(),
-					"lastError":        health.LastError(),
-					"lastReconcile":    health.LastReconcile(),
-				},
-			})
-			return
-		}
-		h.writeResponse(responseReq{
-			writer:  w,
-			status:  http.StatusOK,
-			message: crdName + " healthy",
-			details: utils.H{
-				"errorRate":       health.ErrorRate(),
-				"totalReconciles": health.TotalReconciles(),
-				"lastReconcile":   health.LastReconcile(),
-			},
-		})
 	}
 }

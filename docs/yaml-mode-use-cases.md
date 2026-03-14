@@ -1,6 +1,6 @@
 # **YAML Katalog: Use Cases & Scenarios**
 
-The YAML mode in this framework transforms how operators are deployed, configured, and shared. By loading CRD configurations from local files or remote URLs, you unlock powerful operational patterns that are simply not possible with traditional Go-only approaches.
+The YAML mode in Orkestra transforms how operators are deployed, configured, and shared. By loading CRD configurations from local files or remote URLs, you unlock powerful operational patterns that are simply not possible with traditional Go-only approaches.
 
 ---
 
@@ -9,7 +9,7 @@ The YAML mode in this framework transforms how operators are deployed, configure
 ```bash
 # Deploy a production-ready Prometheus operator instantly
 export KATALOG_PATH=https://hub.orkestra.io/crds/prometheus-operator.yaml
-./my-kontroller
+./orkestra
 ```
 
 **The Vision:** A community-driven hub where pre-configured CRD sets for popular tools (Prometheus, Cert-Manager, Istio, etc.) can be shared and consumed with zero setup.
@@ -66,11 +66,11 @@ crds:
 ```bash
 # Team A's cluster
 export KATALOG_PATH=https://internal-git.company.com/platform/crds/standard.yaml
-./kontroller
+./orkestra
 
 # Team B's cluster – same config, same behavior
 export KATALOG_PATH=https://internal-git.company.com/platform/crds/standard.yaml
-./kontroller
+./orkestra
 ```
 
 ---
@@ -88,21 +88,21 @@ https://git.company.com/fleet/
     └── crds.yaml     # 2 workers, debug enabled
 ```
 
-**The Scenario:** Organizations running hundreds of Kubernetes clusters need environment-specific tuning without maintaining separate kontroller builds.
+**The Scenario:** Organizations running hundreds of Kubernetes clusters need environment-specific tuning without maintaining separate orkestra builds.
 
 **How it works:**
 ```bash
 # Production fleet (high throughput)
 export KATALOG_PATH=https://git.company.com/fleet/production/crds.yaml
-./kontroller
+./orkestra
 
 # Staging fleet (moderate load)
 export KATALOG_PATH=https://git.company.com/fleet/staging/crds.yaml
-./kontroller
+./orkestra
 
 # Development fleet (minimal resources)
 export KATALOG_PATH=https://git.company.com/fleet/dev/crds.yaml
-./kontroller
+./orkestra
 ```
 
 **Production YAML example:**
@@ -123,7 +123,7 @@ crds:
 ## **4. GitOps / Continuous Delivery**
 
 ```yaml
-# https://github.com/myorg/infra/blob/main/crds/kontroller.yaml
+# https://github.com/myorg/infra/blob/main/crds/orkestra.yaml
 # (raw GitHub URL)
 ```
 
@@ -133,7 +133,7 @@ crds:
 2. **CI Pipeline** validates YAML syntax and dependencies
 3. **Pull Request** reviewed by peers
 4. **Merge to main** triggers automated deployment
-5. **Kontrollers restart** (via rollout) and pick up new config
+5. **Orkestra instances restart** (via rollout) and pick up new config
 6. **Zero manual intervention**
 
 **Benefits:**
@@ -313,35 +313,13 @@ https://api.company.com/partners/acme/crds.yaml
 
 **Partner workflow:**
 1. Partner receives authenticated URL
-2. Kontroller fetches partner-specific YAML
+2. Orkestra fetches partner-specific YAML
 3. Partner runs their own instance with your configuration
 4. You control the CRD definitions remotely
 
 ---
 
-## **Comparison: Local vs Remote YAML**
-
-| Feature | Local YAML | Remote YAML |
-|---------|------------|-------------|
-| **Configuration source** | File system | Any HTTPS URL |
-| **Update mechanism** | File replace | GitOps / CI/CD |
-| **Multi-cluster sync** | Manual copy | Centralized |
-| **Version control** | Optional | Native (Git) |
-| **Access control** | Filesystem permissions | Corporate auth |
-| **Audit trail** | Limited | Full Git history |
-| **Team autonomy** | Per cluster | Per repository |
-| **Canary testing** | Manual | Automatic with URLs |
-
----
-
-## **The Ultimate Vision**
-
-With remote YAML support, your kontroller becomes:
-
-> *"A single binary that can be configured to manage ANY set of CRDs, with ANY dependencies, on ANY cluster, controlled by ANY Git repository, deployed by ANY team, audited by ANY compliance officer."*
-
-
-# **11. Why YAML Mode Exists (The Philosophy)**
+## **11. Why YAML Mode Exists (The Philosophy)**
 
 Go mode is perfect for **framework developers**.  
 YAML mode is perfect for **platform operators**.
@@ -356,18 +334,50 @@ The two modes serve different audiences:
 **YAML mode exists because configuration is not code.**  
 It changes faster, is owned by different teams, and must be deployable without recompiling binaries.
 
-This separation of concerns is what makes your framework scalable across organizations.
+This separation of concerns is what makes Orkestra scalable across organizations.
 
 ---
 
-# **12. Security Model & Governance**
+## **12. Remote API Types & Hooks**
+
+YAML mode goes beyond just CRD definitions – it can fetch **API types and hooks** from remote repositories:
+
+```yaml
+crds:
+  - name: project
+    apiTypes:
+      location: github.com/yourorg/project-api/types/v1alpha1
+    
+    reconciler:
+      default: true
+      hooks:
+        location: github.com/yourorg/project-hooks
+        package: hooks.ProjectHooks
+```
+
+**How it works:**
+1. `ork generate registry` reads the Katalog
+2. Runs `go get` for each `apiTypes.location`
+3. Runs `go get` for each `hooks.location`
+4. Generates `initialize/registry.go` with all bindings
+5. Run `go mod tidy` once – done!
+
+**This means:**
+- ✅ API types can be versioned independently
+- ✅ Hooks can be developed in separate repos
+- ✅ Teams own their own CRD logic
+- ✅ Platform teams own the orchestration
+
+---
+
+## **13. Security Model & Governance**
 
 YAML mode enables a secure, governed configuration pipeline.
 
 ### **Domain Allowlisting**
 Control which sources are trusted:
 ```bash
-export KATALOG_PATH_ALLOWED_DOMAINS="*.company.com,*.github.com"
+export KATALOG_ALLOWED_DOMAINS="*.company.com,*.github.com"
 ```
 
 ### **Checksum Verification**
@@ -403,7 +413,7 @@ Every remote fetch is logged:
 
 ---
 
-# **13. Versioning Strategy & Release Channels**
+## **14. Versioning Strategy & Release Channels**
 
 YAML mode supports multiple release channels, similar to Kubernetes itself:
 
@@ -440,7 +450,7 @@ https://raw.githubusercontent.com/org/repo/8f3c9a1/crds.yaml
 
 ---
 
-# **14. Local Development Workflow**
+## **15. Local Development Workflow**
 
 YAML mode isn't just for production — it's perfect for developers too.
 
@@ -450,7 +460,7 @@ YAML mode isn't just for production — it's perfect for developers too.
 export KATALOG_PATH=./crds/dev.yaml
 go run ./cmd
 
-# Edit dev.yaml, restart kontroller, see changes instantly
+# Edit dev.yaml, restart orkestra, see changes instantly
 ```
 
 ### **Team Collaboration**
@@ -461,13 +471,13 @@ go run ./cmd
 ### **Fast Onboarding**
 New team members can contribute by editing YAML, not navigating complex Go codebases.
 
-**This makes the framework accessible to non-Go engineers** – SREs, DevOps, and platform engineers can all participate.
+**This makes Orkestra accessible to non-Go engineers** – SREs, DevOps, and platform engineers can all participate.
 
 ---
 
-# **15. Architecture: YAML Mode as a Control Plane**
+## **16. Architecture: YAML Mode as a Control Plane**
 
-YAML mode effectively turns your kontroller into a **mini control plane**:
+YAML mode effectively turns your orkestra into a **mini control plane**:
 
 | Komponent | Analogy |
 |----------|---------|
@@ -478,7 +488,7 @@ YAML mode effectively turns your kontroller into a **mini control plane**:
 
 ---
 
-# **16. Offline & Air‑Gapped Environments**
+## **17. Offline & Air‑Gapped Environments**
 
 Many enterprises run clusters in restricted environments:
 
@@ -491,7 +501,7 @@ YAML mode supports them all:
 
 ### **Local File Mode**
 ```bash
-export KATALOG_PATH=/etc/kontroller/cache/crds.yaml
+export KATALOG_PATH=/etc/orkestra/cache/crds.yaml
 ```
 
 ### **Mirrored Katalog**
@@ -502,22 +512,22 @@ export KATALOG_PATH=https://mirror.company.com/crds.yaml
 ### **Bundle Mode**
 Package all CRDs into a single tarball:
 ```bash
-kontroller --bundle crds.tar.gz
+orkestra --bundle crds.tar.gz
 ```
 
 ### **Pre‑loaded Cache**
 Pre-download all configurations during build:
 ```dockerfile
-ADD https://hub.orkestra.io/crds/production.yaml /etc/kontroller/crds.yaml
+ADD https://hub.orkestra.io/crds/production.yaml /etc/orkestra/crds.yaml
 ```
 
-**This makes the framework viable in the most restrictive environments** – government, finance, healthcare, and defense.
+**This makes Orkestra viable in the most restrictive environments** – government, finance, healthcare, and defense.
 
 ---
 
-# **17. Self‑Validation & Safety Guarantees**
+## **18. Self‑Validation & Safety Guarantees**
 
-Before starting, orkestra validates:
+Before starting, Orkestra validates:
 
 | Validation | What It Checks |
 |-----------|----------------|
@@ -528,8 +538,10 @@ Before starting, orkestra validates:
 | **Namespace scoping** | Do namespaced CRDs have valid namespaces? |
 | **GVK correctness** | Do Group/Version/Kinds match registered schemes? |
 | **Remote availability** | Is the remote katalog URL accessible? |
+| **API type fetch** | Can API types be fetched from `apiTypes.location`? |
+| **Hook fetch** | Can hooks be fetched from `hooks.location`? |
 
-If anything is invalid, orkestra **fails fast** with a clear error:
+If anything is invalid, Orkestra **fails fast** with a clear error:
 
 ```bash
 Error: circular dependency detected: project → application → project
@@ -543,7 +555,7 @@ Error: circular dependency detected: project → application → project
 
 ---
 
-# 🧨 **18. Progressive Delivery for CRD Configurations**
+## 🧨 **19. Progressive Delivery for CRD Configurations**
 
 YAML mode enables sophisticated rollout strategies:
 
@@ -567,23 +579,23 @@ clusters N–Z → v2
 If error rate spikes after deployment:
 1. Detect anomaly via metrics
 2. Revert to previous YAML URL
-3. Restart kontroller
+3. Restart orkestra
 4. Restore stable behavior
 
 **This is the same pattern used by:**
 - Service meshes (Istio, Linkerd)
-- Deployment kontrollers (Argo Rollouts)
+- Deployment controllers (Argo Rollouts)
 - Feature flag systems (LaunchDarkly)
 
 ---
 
-# **19. Observability & Metrics Integration**
+## **20. Observability & Metrics Integration**
 
 YAML mode integrates seamlessly with Prometheus metrics:
 
 ```
 # HELP katalog_fetch_total Total number of katalog fetches
-# HELP katalog_PATH_fetch_duration Duration of katalog fetches
+# HELP katalog_fetch_duration_seconds Duration of katalog fetches
 # HELP crd_config_valid Configuration validation status (1=valid, 0=invalid)
 ```
 
@@ -599,14 +611,14 @@ This allows platform teams to:
 
 ---
 
-# 🛡 **20. Disaster Recovery & Cluster Migration**
+## 🛡 **21. Disaster Recovery & Cluster Migration**
 
 YAML mode makes cluster migration trivial:
 
 ```bash
 # Rebuild a cluster from scratch
 export KATALOG_PATH=https://git.company.com/platform/crds/prod.yaml
-./kontroller --kubekonfig new-cluster.yaml
+./orkestra --kubeconfig new-cluster.yaml
 ```
 
 **Use cases:**
@@ -626,12 +638,31 @@ export KATALOG_PATH=https://git.company.com/platform/crds/prod.yaml
 
 ---
 
+## **22. Comparison: Local vs Remote YAML**
+
+| Feature | Local YAML | Remote YAML |
+|---------|------------|-------------|
+| **Configuration source** | File system | Any HTTPS URL |
+| **Update mechanism** | File replace | GitOps / CI/CD |
+| **Multi-cluster sync** | Manual copy | Centralized |
+| **Version control** | Optional | Native (Git) |
+| **Access control** | Filesystem permissions | Corporate auth |
+| **Audit trail** | Limited | Full Git history |
+| **Team autonomy** | Per cluster | Per repository |
+| **Canary testing** | Manual | Automatic with URLs |
+| **API type fetching** | Manual `go get` | Automatic via `ork generate` |
+| **Hook fetching** | Manual `go get` | Automatic via `ork generate` |
+
+---
+
 ## **Summary: Why YAML Mode Matters**
 
 | Capability | What It Enables |
 |-----------|-----------------|
 | **Configuration as data** | No rebuilds for CRD changes |
 | **Remote loading** | Centralized management, GitOps |
+| **Remote API types** | Independent versioning of CRDs |
+| **Remote hooks** | Business logic in separate repos |
 | **Dependency graphs** | Safe startup/shutdown ordering |
 | **Per-CRD workers** | Fine-grained resource control |
 | **Security & governance** | Domain allowlisting, checksums |
@@ -642,4 +673,4 @@ export KATALOG_PATH=https://git.company.com/platform/crds/prod.yaml
 | **Observability** | Metrics for every operation |
 | **Disaster recovery** | Rebuild from YAML alone |
 
-**YAML mode transforms your kontroller from a tool into a platform.**
+**YAML mode transforms Orkestra from a tool into a platform – where CRDs become data, configuration becomes code, and operators become truly composable.** 🚀

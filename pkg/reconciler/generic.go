@@ -5,13 +5,11 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/event"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
@@ -78,13 +76,6 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 	ctx = logger.WithCRD(ctx, r.crd.GVK)
 	ctx = logger.WithResource(ctx, key)
 
-	start := time.Now()
-	defer func() {
-		metrics.ReconcileDuration.
-			WithLabelValues(r.crd.GVK).
-			Observe(time.Since(start).Seconds())
-	}()
-
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return fmt.Errorf("invalid key %q: %w", key, err)
@@ -94,7 +85,6 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 	// Read from cache — never hits the API server
 	raw, exists, err := r.informer.GetIndexer().GetByKey(key)
 	if err != nil {
-		metrics.ReconcileTotal.WithLabelValues(r.crd.GVK, "error").Inc()
 		return fmt.Errorf("getting %q from store: %w", key, err)
 	}
 
@@ -138,7 +128,6 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 	// Normal reconcile — call the hook if provided
 	if r.hooks.OnReconcile != nil {
 		if err := r.hooks.OnReconcile(ctx, obj); err != nil {
-			metrics.ReconcileTotal.WithLabelValues(r.crd.GVK, "error").Inc()
 
 			logger.FromContext(ctx).Error().Err(err).
 				Str("name", obj.GetName()).
@@ -162,7 +151,6 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 		Str("namespace", obj.GetNamespace()).
 		Msgf("reconciled %s", r.crd.GVK)
 
-	metrics.ReconcileTotal.WithLabelValues(r.crd.GVK, "success").Inc()
 	return nil
 }
 

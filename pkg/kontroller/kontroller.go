@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/initialize"
 	"github.com/ialexeze/orkestra/pkg/event"
+
 	// "github.com/ialexeze/orkestra/pkg/health"
 	"github.com/ialexeze/orkestra/pkg/informer"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
@@ -28,11 +30,13 @@ type Controller struct {
 	katalog          *ResourceKatalog
 	queueRegistry    *queue.QueueRegistry
 	defaultWorkqueue *queue.Workqueue
-	crdHealth        map[string]*CRDHealth
 	degradeThreshold map[string]int
 
+	hs           domain.Health
+	crdHealthMap map[string]*CRDHealth
+
 	defaultWorkers int
-	healthy        bool
+	startedKtrl    atomic.Bool
 	started        map[string]bool
 	cancelFuncs    map[string]context.CancelFunc
 	wgs            map[string]*sync.WaitGroup
@@ -45,11 +49,13 @@ type Controller struct {
 	failed map[string]int
 }
 
-func NewController(
+func NewKontroller(
 	kube *kubeclient.Kubeclient,
 	informerFactory *informer.Factory,
 	katalog *ResourceKatalog,
 	event *event.Event,
+	hs domain.Health,
+	crdHealthMap map[string]*CRDHealth,
 	queueRegistry *queue.QueueRegistry,
 	defaultWorkqueue *queue.Workqueue,
 	defaultWorkers int,
@@ -59,6 +65,8 @@ func NewController(
 		informerFactory:  informerFactory,
 		katalog:          katalog,
 		event:            event,
+		hs:               hs,
+		defaultWorkqueue: defaultWorkqueue,
 		queueRegistry:    queueRegistry,
 		defaultWorkers:   defaultWorkers,
 		started:          make(map[string]bool),
@@ -67,7 +75,7 @@ func NewController(
 		failed:           make(map[string]int),
 		wgs:              make(map[string]*sync.WaitGroup),
 		reconcilers:      make(map[string]domain.Reconciler),
-		crdHealth:        make(map[string]*CRDHealth),
+		crdHealthMap:     crdHealthMap,
 		degradeThreshold: make(map[string]int),
 	}
 
@@ -108,15 +116,15 @@ func (c *Controller) Start(ctx context.Context) error {
 				}
 			}
 
-			logger.Info().Msgf("checking CRD %s/%s (%s)...", crd.Group, crd.Version, crd.Kind)
+			logger.Info().Msgf("checking CRD %s/%s (%s)...", crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind)
 
 			err := utils.RetryBackoff(
 				func() error {
 					return utils.WaitForCRD(
 						c.kube.RestConfig(),
-						crd.Group,
-						crd.Kind,
-						crd.Version,
+						crd.APITypes.Group,
+						crd.APITypes.Kind,
+						crd.APITypes.Version,
 					)
 				},
 				5,
@@ -125,11 +133,11 @@ func (c *Controller) Start(ctx context.Context) error {
 
 			if err != nil {
 				errCh <- fmt.Errorf("CRD %s/%s (%s) not found: %w",
-					crd.Group, crd.Version, crd.Kind, err)
+					crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind, err)
 				return
 			}
 
-			logger.Info().Msgf("CRD %s/%s (%s) detected", crd.Group, crd.Version, crd.Kind)
+			logger.Info().Msgf("CRD %s/%s (%s) detected", crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind)
 
 			// Signal dependents that this CRD is confirmed
 			close(readyCh[crd.Name])
@@ -169,8 +177,18 @@ func (c *Controller) Start(ctx context.Context) error {
 	return nil
 }
 
+// Set the controller ready
+func (c *Controller) SetReady(h domain.Health) {
+	h.SetReady()
+}
+
+// Set the controller to degraded
+func (c *Controller) Degraded(h domain.Health) {
+	h.Degraded()
+}
+
 // Healthy mark on startup
-func (c *Controller) Started() bool { return c.healthy }
+func (c *Controller) Started() bool { return c.startedKtrl.Load() }
 
 // Shutdown gracefully stops orkestra
 func (c *Controller) Shutdown(ctx context.Context) {}

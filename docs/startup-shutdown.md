@@ -28,7 +28,7 @@ This phase is entirely in-memory. No API server calls are made yet. If the depen
 
 ### Phase 2 — Komponent Startup (in order)
 
-The Manager starts each komponent sequentially. Each one must reach `AVAILABLE` before the next begins. The order is fixed and intentional:
+Orkestra starts each komponent sequentially. Each one must reach `AVAILABLE` before the next begins. The order is fixed and intentional:
 
 ```
 health server     → receives traffic immediately, reports not-ready until cache sync
@@ -41,7 +41,7 @@ orkestra kontroller → dependency graph evaluated, CRDs started in topological 
 
 ![Orkestra startup — komponents reporting AVAILABLE](./images/startup_komponents.png)
 
-Every komponent logs its transition to `AVAILABLE`. If any komponent fails to start, the manager returns the error immediately and the process exits — there is no partial-start state.
+Every komponent logs its transition to `AVAILABLE`. If any komponent fails to start, orkestra returns the error immediately and the process exits — there is no partial-start state.
 
 ### Phase 3 — CRD Banner & Dependency Display
 

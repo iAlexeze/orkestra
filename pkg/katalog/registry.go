@@ -24,15 +24,24 @@ func NewKatalog(mode, path string) *Katalog {
 
 	switch mode {
 	case GoMode:
-		entries, err = katalog.buildKatalogFromGo()
+		entries, err = katalog.KomposeKatalogFromGo()
 		if err != nil {
 			utils.Exit(err)
 		}
 	case YamlMode:
 		// Register runtime objects
 		initialize.RegisterRuntimeObjects()
+
+		// Guard: if ObjectRegistry is empty, user forgot to run ork generate
+		if len(initialize.ObjectRegistry) == 0 {
+			utils.Exit(fmt.Errorf(
+				"ObjectRegistry is empty — run 'ork generate registry --katalog %s' first",
+				path,
+			))
+		}
+
 		// Build CRDs
-		entries, err = katalog.buildKatalogFromYaml(path)
+		entries, err = katalog.KomposeKatalogFromYaml(path)
 		if err != nil {
 			utils.Exit(err)
 		}
