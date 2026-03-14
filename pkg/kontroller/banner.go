@@ -67,36 +67,45 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 	fmt.Println("CRDs:")
 	for _, crd := range b.Katalog {
 		fmt.Printf("- %s%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset)
-		fmt.Printf("  %sGroup:%s       %s\n", utils.ColorYellow, utils.ColorReset, crd.APITypes.Group)
-		fmt.Printf("  %sVersion:%s     %s\n", utils.ColorYellow, utils.ColorReset, crd.APITypes.Version)
-		if crd.Enabled {
-			fmt.Printf("  %sEnabled:%s     %s\n", utils.ColorYellow, utils.ColorReset, "Yes")
-		} else {
-			fmt.Printf("  %sEnabled:%s     %s\n", utils.ColorYellow, utils.ColorReset, "No")
-		}
+
+		fmt.Printf("  %sGroup:%s         %s\n", utils.ColorYellow, utils.ColorReset, crd.APITypes.Group)
+		fmt.Printf("  %sVersion:%s       %s\n", utils.ColorYellow, utils.ColorReset, crd.APITypes.Version)
+
+		fmt.Printf("  %sEnabled:%s       %s\n", utils.ColorYellow, utils.ColorReset,
+			map[bool]string{true: "Yes", false: "No"}[crd.Enabled],
+		)
+
 		if crd.Namespace != "" {
-			fmt.Printf("  %sNamespace:%s   %s\n", utils.ColorYellow, utils.ColorReset, crd.Namespace)
+			fmt.Printf("  %sNamespace:%s     %s\n", utils.ColorYellow, utils.ColorReset, crd.Namespace)
 		}
-		fmt.Printf("  %sNamespaced:%s  %v\n", utils.ColorYellow, utils.ColorReset, crd.Namespaced)
-		fmt.Printf("  %sWorkers:%s     %d\n", utils.ColorYellow, utils.ColorReset, crd.Workers)
 
+		fmt.Printf("  %sNamespaced:%s    %v\n", utils.ColorYellow, utils.ColorReset, crd.Namespaced)
+		fmt.Printf("  %sWorkers:%s       %d\n", utils.ColorYellow, utils.ColorReset, crd.Workers)
+
+		// Queue depth
 		if crd.Queue.MaxQueueDepth > 0 {
-			fmt.Printf("  %sMaxQueueDepth:%s      %v\n", utils.ColorYellow, utils.ColorReset, crd.Queue.MaxQueueDepth)
+			fmt.Printf("  %sMaxQueueDepth:%s %v\n", utils.ColorYellow, utils.ColorReset, crd.Queue.MaxQueueDepth)
 		} else {
-			fmt.Printf("  %sQueue:%s      %v(default)\n", utils.ColorYellow, utils.ColorReset, b.Konfig.Katalog().DefaultMaxQueueDepth)
+			fmt.Printf("  %sMaxQueueDepth:%s %v (default)\n",
+				utils.ColorYellow, utils.ColorReset, b.Konfig.Katalog().DefaultMaxQueueDepth)
 		}
 
+		// Resync
 		if crd.Resync != 0 {
-			fmt.Printf("  %sResync:%s      %s\n", utils.ColorYellow, utils.ColorReset, crd.Resync.String())
+			fmt.Printf("  %sResync:%s        %s\n", utils.ColorYellow, utils.ColorReset, crd.Resync.String())
 		} else {
-			fmt.Printf("  %sResync:%s      %s(default)\n", utils.ColorYellow, utils.ColorReset, b.Konfig.Cluster().DefaultResync)
+			fmt.Printf("  %sResync:%s        %s (default)\n",
+				utils.ColorYellow, utils.ColorReset, b.Konfig.Cluster().DefaultResync)
 		}
 
+		// DependsOn
 		if len(crd.DependsOn) > 0 {
-			fmt.Printf("  %sDependsOn:%s   %v\n", utils.ColorYellow, utils.ColorReset, strings.Join(crd.DependsOn, ", "))
+			fmt.Printf("  %sDependsOn:%s     %s\n",
+				utils.ColorYellow, utils.ColorReset, strings.Join(crd.DependsOn, ", "))
 		} else {
-			fmt.Printf("  %sDependsOn:%s   No dependencies\n", utils.ColorYellow, utils.ColorReset)
+			fmt.Printf("  %sDependsOn:%s     No dependencies\n", utils.ColorYellow, utils.ColorReset)
 		}
+
 		fmt.Println()
 	}
 	fmt.Println("====================================================")

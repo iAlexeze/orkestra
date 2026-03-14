@@ -40,8 +40,7 @@ func (o *Orkestra) Start(ctx context.Context) error {
 	mCtx, mCancel := context.WithCancel(ctx)
 	defer mCancel()
 
-	fmt.Println("===============================")
-	fmt.Println("STARTING ORKESTRA KOMPONENTS...")
+	logger.Info().Msg("Starting orkestra...")
 	for _, comp := range o.komponents {
 		name := comp.Name()
 
@@ -60,7 +59,7 @@ func (o *Orkestra) Start(ctx context.Context) error {
 		go p.hook(mCtx)
 	}
 
-	logger.Info().Msg("✅ All services started successfully")
+	logger.Info().Msg("✅ All komponents started successfully")
 
 	if strings.ToLower(o.logLevel) == "debug" {
 		// Display started komponents
@@ -94,6 +93,7 @@ func (o *Orkestra) gracefulShutdown(ctx context.Context, cancel context.CancelFu
 	select {
 	case sig := <-sigCh:
 		logger.Warn().Msgf("recieved shutdown signal: %v", sig)
+		logger.Warn().Msg("Shutting down orkestra...")
 		cancel()
 
 		// shutdown komponents
@@ -117,9 +117,10 @@ func (o *Orkestra) gracefulShutdown(ctx context.Context, cancel context.CancelFu
 		ev := o.GetKomponent(eventHandler)
 		if ev != nil {
 			ev.Shutdown(shutdownCtx)
+			logger.Warn().Msgf("%s status: %v", ev.Name(), utils.StatusOffline)
 		}
 
-		logger.Warn().Msg("✅ All services shut down gracefully")
+		logger.Warn().Msg("✅ All komponents shut down gracefully")
 
 		// Notify Wait() to terminate
 		close(o.done)
@@ -131,13 +132,12 @@ func (o *Orkestra) gracefulShutdown(ctx context.Context, cancel context.CancelFu
 
 // Register all komponents
 func (o *Orkestra) Register(c []domain.Komponent) {
-	fmt.Println("==================================")
-	fmt.Println("REGISTERING ORKESTRA KOMPONENTS...")
+	logger.Info().Msg("Registering orkestra komponents...")
 	for _, comp := range c {
 		o.komponents = append(o.komponents, comp)
 		logger.Info().Msgf("[%s] registered", comp.Name())
 	}
-	logger.Info().Msg("✅ All services registered successfully")
+	logger.Info().Msg("✅ All komponents registered successfully")
 
 	if strings.ToLower(o.logLevel) == "debug" {
 		// Display registered komponents

@@ -1,4 +1,10 @@
-# initialize/crd-katalog.yaml
+# crdkatalog/crd-katalog.yaml
+#
+# EXAMPLE Katalog shipped with Orkestra.
+# Replace these entries with your own CRDs.
+# Run "ork generate registry --katalog <path>" after updating.
+# 
+# 
 #
 # Orkestra Katalog — declarative CRD runtime configuration.
 #

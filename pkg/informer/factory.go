@@ -34,7 +34,7 @@ func (f *Factory) For(obj runtime.Object, ctx context.Context, opts Options) cac
 	// Resolve resync — per-CRD takes priority, fall back to factory default
 	resync := opts.Resync
 	if resync == 0 {
-		logger.Warn().Msgf(
+		logger.Info().Msgf(
 			"processing informer for %s with default resync duration: %v",
 			opts.Name, f.resync,
 		)
@@ -46,6 +46,7 @@ func (f *Factory) For(obj runtime.Object, ctx context.Context, opts Options) cac
 		)
 	}
 
+	// Create new informer but don't start yet
 	inf := cache.NewSharedIndexInformer(
 		f.newListWatch(obj),
 		obj,
@@ -59,7 +60,7 @@ func (f *Factory) For(obj runtime.Object, ctx context.Context, opts Options) cac
 		DeleteFunc: func(obj interface{}) { f.handleEvent(obj) },
 	})
 
-	// Store with per-informer metadata — no shared opts field
+	// Store with per-informer metadata
 	f.informers[t] = &informerEntry{
 		informer: inf,
 		name:     opts.Name,

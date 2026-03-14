@@ -1,5 +1,10 @@
-// initialize/katalog.go
-package initialize
+// crdkatalog/katalog.go
+
+// KomposeKatalogFromGo returns your CRD entries.
+//
+// The entries below are EXAMPLES shipped with Orkestra.
+// Replace them with your own CRDs before running in production.
+package crdkatalog
 
 import (
 	"time"
@@ -8,6 +13,7 @@ import (
 	managednsTypeV1 "github.com/ialexeze/orkestra/api/types/managedNamespace/v1alpha1"
 	projectTypev1 "github.com/ialexeze/orkestra/api/types/project/v1alpha1"
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/initialize"
 	"github.com/ialexeze/orkestra/pkg/reconciler/hooks"
 )
 
@@ -23,8 +29,8 @@ import (
 //   - Disabled CRDs (Enabled: false) never enter the runtime — safe to leave in place.
 //   - APITypes mirrors the YAML apiTypes block — ork generate reads this in YAML mode.
 //     In Go mode it drives setGroupVersionKind() and scheme registration.
-func KomposeKatalogFromGo() []CRDEntry {
-	return []CRDEntry{
+func KomposeKatalogFromGo() []initialize.CRDEntry {
+	return []initialize.CRDEntry{
 
 		// ── PROJECT ───────────────────────────────────────────────────────────
 		// Root CRD — no dependencies.
@@ -43,7 +49,7 @@ func KomposeKatalogFromGo() []CRDEntry {
 
 			// APITypes mirrors crd-katalog.yaml apiTypes block.
 			// setGroupVersionKind() derives GroupVersionKind/GroupVersionResource from here.
-			APITypes: APITypes{
+			APITypes: initialize.APITypes{
 				Object:   projectTypev1.Kind,
 				List:     projectTypev1.Kind + "List",
 				Alias:    "projv1",
@@ -61,7 +67,7 @@ func KomposeKatalogFromGo() []CRDEntry {
 			ListObjectGoMode: &projectTypev1.ProjectList{},
 			Scheme:           projectTypev1.AddToScheme,
 
-			ReconcilerConfig: ReconcilerConfig{
+			ReconcilerConfig: initialize.ReconcilerConfig{
 				Default: true,
 				Finalizers: []string{
 					"my-default-finalizer/platform-katalog",
@@ -74,7 +80,7 @@ func KomposeKatalogFromGo() []CRDEntry {
 				},
 			},
 
-			Queue: Queue{
+			Queue: initialize.Queue{
 				MaxQueueDepth: 1000,
 			},
 		},
@@ -92,7 +98,7 @@ func KomposeKatalogFromGo() []CRDEntry {
 			Description: "Represents a namespace managed by Orkestra.",
 			// No Resync — uses Orkestra-level default (DEFAULT_RESYNC env var)
 
-			APITypes: APITypes{
+			APITypes: initialize.APITypes{
 				Object:   managednsTypeV1.Kind,
 				List:     managednsTypeV1.Kind + "List",
 				Alias:    "mnsv1",
@@ -108,13 +114,13 @@ func KomposeKatalogFromGo() []CRDEntry {
 			ListObjectGoMode: &managednsTypeV1.ManagedNamespaceList{},
 			Scheme:           managednsTypeV1.AddToScheme,
 
-			ReconcilerConfig: ReconcilerConfig{
+			ReconcilerConfig: initialize.ReconcilerConfig{
 				Default: true,
 				// No HookFactory — GenericReconciler runs silently:
 				// finalizers managed, events emitted, metrics recorded. Zero code.
 			},
 
-			Queue: Queue{
+			Queue: initialize.Queue{
 				MaxQueueDepth: 2000,
 			},
 		},
@@ -134,7 +140,7 @@ func KomposeKatalogFromGo() []CRDEntry {
 			DependsOn:   []string{"project", "managednamespace"},
 			Description: "Represents a deployable application workload managed by Orkestra.",
 
-			APITypes: APITypes{
+			APITypes: initialize.APITypes{
 				Object:   applicationTypev1.Kind,
 				List:     applicationTypev1.Kind + "List",
 				Alias:    "appv1",
@@ -150,7 +156,7 @@ func KomposeKatalogFromGo() []CRDEntry {
 			ListObjectGoMode: &applicationTypev1.ApplicationList{},
 			Scheme:           applicationTypev1.AddToScheme,
 
-			ReconcilerConfig: ReconcilerConfig{
+			ReconcilerConfig: initialize.ReconcilerConfig{
 				Default: true,
 				Finalizers: []string{
 					"my-finalizer/application",
@@ -162,7 +168,7 @@ func KomposeKatalogFromGo() []CRDEntry {
 				// },
 			},
 
-			Queue: Queue{
+			Queue: initialize.Queue{
 				Default:       true, // shared default queue — no per-CRD queue isolation
 				MaxQueueDepth: 500,
 			},
