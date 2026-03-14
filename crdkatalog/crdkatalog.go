@@ -9,10 +9,10 @@ package crdkatalog
 import (
 	"time"
 
-	applicationTypev1 "github.com/ialexeze/orkestra/api/types/application/v1alpha1"
-	managednsTypeV1 "github.com/ialexeze/orkestra/api/types/managedNamespace/v1alpha1"
-	projectTypev1 "github.com/ialexeze/orkestra/api/types/project/v1alpha1"
 	"github.com/ialexeze/orkestra/domain"
+	applicationTypev1 "github.com/ialexeze/orkestra/example-crds/api/types/application/v1alpha1"
+	managednsTypeV1 "github.com/ialexeze/orkestra/example-crds/api/types/managedNamespace/v1alpha1"
+	projectTypev1 "github.com/ialexeze/orkestra/example-crds/api/types/project/v1alpha1"
 	"github.com/ialexeze/orkestra/initialize"
 	"github.com/ialexeze/orkestra/pkg/reconciler/hooks"
 )
@@ -58,7 +58,7 @@ func KomposeKatalogFromGo() []initialize.CRDEntry {
 				Kind:     projectTypev1.Kind,
 				Plural:   projectTypev1.Plural,
 				APIPath:  projectTypev1.APIPath,
-				Location: "github.com/ialexeze/orkestra/api/types/project/v1alpha1",
+				Location: "github.com/ialexeze/orkestra/example-crds/api/types/project/v1alpha1",
 			},
 
 			// Go mode runtime objects — set directly here.
@@ -107,7 +107,7 @@ func KomposeKatalogFromGo() []initialize.CRDEntry {
 				Kind:     managednsTypeV1.Kind,
 				Plural:   managednsTypeV1.Plural,
 				APIPath:  managednsTypeV1.APIPath,
-				Location: "github.com/ialexeze/orkestra/api/types/managedNamespace/v1alpha1",
+				Location: "github.com/ialexeze/orkestra/example-crds/api/types/managedNamespace/v1alpha1",
 			},
 
 			ObjectGoMode:     &managednsTypeV1.ManagedNamespace{},
@@ -141,15 +141,15 @@ func KomposeKatalogFromGo() []initialize.CRDEntry {
 			Description: "Represents a deployable application workload managed by Orkestra.",
 
 			APITypes: initialize.APITypes{
-				Object:   applicationTypev1.Kind,
-				List:     applicationTypev1.Kind + "List",
-				Alias:    "appv1",
-				Group:    applicationTypev1.Group,
-				Version:  applicationTypev1.Version,
-				Kind:     applicationTypev1.Kind,
-				Plural:   applicationTypev1.Plural,
-				APIPath:  applicationTypev1.APIPath,
-				Location: "github.com/ialexeze/orkestra/api/types/application/v1alpha1",
+				Object:  applicationTypev1.Kind,
+				List:    applicationTypev1.Kind + "List",
+				Alias:   "appv1",
+				Group:   applicationTypev1.Group,
+				Version: applicationTypev1.Version,
+				Kind:    applicationTypev1.Kind,
+				Plural:  applicationTypev1.Plural,
+				APIPath: applicationTypev1.APIPath,
+				// Location: "github.com/ialexeze/orkestra/example-crds/api/types/application/v1alpha1",  // Optional if scheme is already defined
 			},
 
 			ObjectGoMode:     &applicationTypev1.Application{},

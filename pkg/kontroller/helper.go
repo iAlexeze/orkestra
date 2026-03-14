@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"time"
 
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/logger"
@@ -33,13 +34,17 @@ func (c *Controller) runWorkerForGVK(ctx context.Context, gvk string, workerID s
 		}
 		depth := float64(wq.Depth())
 		metrics.QueueDepth.WithLabelValues(gvk).Set(depth)
+
+		// Resource count — read from this CRD's informer cache
+		if entry, ok := c.katalog.Get(gvk); ok && entry.Informer != nil {
+			count := float64(len(entry.Informer.GetIndexer().List()))
+			metrics.ResourceCount.WithLabelValues(gvk).Set(count)
+		}
 	}
 }
 
 // Process next item, but only for the specified GVK
 func (c *Controller) processNextItemForGVK(ctx context.Context, gvk string) bool {
-	c.crdHealth[gvk] = NewCRDHealth(gvk)
-
 	// Resolve queue — per-CRD if registered, default otherwise
 	wq, ok := c.queueRegistry.For(gvk)
 	if !ok {
@@ -83,7 +88,7 @@ func (c *Controller) processNextItemForGVK(ctx context.Context, gvk string) bool
 	}
 
 	// safeReconcile catches panics
-	if err := c.safeReconcile(rec, c.crdHealth[gvk], ctx, item.Key); err != nil {
+	if err := c.safeReconcile(rec, c.crdHealthMap[gvk], ctx, item.Key, gvk); err != nil {
 		logger.Error().Err(err).Str("gvk", gvk).Str("key", item.Key).Msg("reconcile failed")
 		wq.Queue.AddRateLimited(item)
 		c.failed[gvk]++
@@ -99,8 +104,16 @@ func (c *Controller) safeReconcile(
 	health *CRDHealth,
 	ctx context.Context,
 	key string,
+	gvk string,
 ) (err error) {
+
+	// record duration
+	start := time.Now()
 	defer func() {
+		metrics.ReconcileDuration.
+			WithLabelValues(gvk).
+			Observe(time.Since(start).Seconds())
+
 		if r := recover(); r != nil {
 			buf := make([]byte, 4096)
 			n := runtime.Stack(buf, false)
@@ -114,12 +127,12 @@ func (c *Controller) safeReconcile(
 
 	err = rec.Reconcile(ctx, key)
 	if err != nil {
-		health.RecordFailure(err, c.degradeThreshold[key])
-		metrics.ReconcileTotal.WithLabelValues(health.name, "error").Inc()
+		health.RecordFailure(err, c.degradeThreshold[gvk])
+		metrics.ReconcileTotal.WithLabelValues(gvk, "error").Inc()
 		return err
 	}
 
 	health.RecordSuccess()
-	metrics.ReconcileTotal.WithLabelValues(health.name, "success").Inc()
+	metrics.ReconcileTotal.WithLabelValues(gvk, "success").Inc()
 	return nil
 }

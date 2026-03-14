@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 
-	projectv1 "github.com/ialexeze/orkestra/api/types/project/v1alpha1"
 	"github.com/ialexeze/orkestra/domain"
+	projectv1 "github.com/ialexeze/orkestra/example-crds/api/types/project/v1alpha1"
 )
 
 func ProjectHooks() domain.ReconcileHooks[domain.Object] {

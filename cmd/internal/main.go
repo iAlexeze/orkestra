@@ -3,8 +3,8 @@ package internal
 import (
 	"context"
 
+	"github.com/ialexeze/orkestra/pkg/konductor"
 	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/leader"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
@@ -21,21 +21,25 @@ func Konduct(kfg *konfig.Konfig, ctx context.Context) {
 		}
 	}()
 
-	leader := leader.NewLeaderElection(
+	ko := konductor.NewKonductorElection(
 		startup.kube,
 		startup.event,
 		func(ctx context.Context) { startup.kontroller.RunOrDie(ctx) }, // kontroller run
-		leader.Options{
+		func(konductor string) {
+			// Banner prints here — Leader is the actual winner
+			printBanner(startup, konductor)
+		},
+		konductor.Options{
 			Namespace:     kfg.Cluster().Namespace,
-			LeaseDuration: kfg.Leader().LeaseDuration,
-			RenewDeadline: kfg.Leader().RenewDeadline,
-			RetryPeriod:   kfg.Leader().RetryPeriod,
+			LeaseDuration: kfg.Konductor().LeaseDuration,
+			RenewDeadline: kfg.Konductor().RenewDeadline,
+			RetryPeriod:   kfg.Konductor().RetryPeriod,
 		})
 
-	// start leader election as postStartHook AFTER orkestra is ready
-	startup.orkestra.AddPostStartHook(leader, func(ctx context.Context) {
-		logger.Info().Msg("starting leader election...")
-		leader.Start(ctx)
+	// start konductor election as postStartHook AFTER orkestra is ready
+	startup.orkestra.AddPostStartHook(ko, func(ctx context.Context) {
+		logger.Info().Msg("starting konductor election...")
+		ko.Start(ctx)
 	})
 
 	// Keep running until cancelled

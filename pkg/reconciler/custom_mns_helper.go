@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	mnsTypev1 "github.com/ialexeze/orkestra/api/types/managedNamespace/v1alpha1"
+	mnsTypev1 "github.com/ialexeze/orkestra/example-crds/api/types/managedNamespace/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -76,7 +76,7 @@ func (r *ManagedNamespaceReconciler) setCondition(
 		ObservedGeneration: mn.Generation,
 	})
 
-	// Alex notes:
+	// Notes:
 	// ObservedGeneration on the condition tells observers
 	// which version of the spec this condition reflects.
 	// Always set it.

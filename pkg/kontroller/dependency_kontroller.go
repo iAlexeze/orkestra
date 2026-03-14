@@ -7,7 +7,9 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/event"
+
 	// "github.com/ialexeze/orkestra/pkg/health"
 	"github.com/ialexeze/orkestra/pkg/informer"
 	"github.com/ialexeze/orkestra/pkg/katalog"
@@ -24,11 +26,9 @@ type DependencyKontroller struct {
 
 	depGraph       *katalog.DependencyGraph
 	defaultWorkers int
-	bannKfg        *BannerKonfig
 
 	// readyCh[name] is closed when a CRD has fully started its workers.
-	readyCh      map[string]chan struct{}
-	crdHealthMap map[string]*CRDHealth
+	readyCh map[string]chan struct{}
 }
 
 // NewDependencyKontroller constructs a dependency‑aware controller.
@@ -39,20 +39,18 @@ func NewDependencyKontroller(
 	factory *informer.Factory,
 	katalog *ResourceKatalog,
 	events *event.Event,
+	hs domain.Health,
 	queueRegistry *queue.QueueRegistry,
 	defaultWorkqueue *queue.Workqueue,
 	crdHealthMap map[string]*CRDHealth,
 	defaultWorkers int,
 	depGraph *katalog.DependencyGraph,
-	bannKfg *BannerKonfig,
 ) *DependencyKontroller {
 
 	return &DependencyKontroller{
-		Controller:     NewKontroller(kube, factory, katalog, events, queueRegistry, defaultWorkqueue, defaultWorkers),
+		Controller:     NewKontroller(kube, factory, katalog, events, hs, crdHealthMap, queueRegistry, defaultWorkqueue, defaultWorkers),
 		depGraph:       depGraph,
 		defaultWorkers: defaultWorkers,
-		crdHealthMap:   crdHealthMap,
-		bannKfg:        bannKfg,
 		readyCh:        make(map[string]chan struct{}),
 	}
 }
@@ -105,21 +103,18 @@ func (c *DependencyKontroller) RunOrDie(ctx context.Context) {
 		close(c.readyCh[name])
 	}
 
-	// Mark as started
-	c.startedKtrl = true
-	// c.hs.SetReady()
+	logger.Info().Msg("dependency controller started")
 
-	c.bannKfg.Komponents = append(c.bannKfg.Komponents, c)
-
-	// Print banner
-	c.printBanner(c.bannKfg)
+	// Mark as started and set as ready to start accepting traffic
+	c.startedKtrl.Store(true)
+	c.hs.SetReady()
 
 	// 4. Block until leadership is lost
 	<-ctx.Done()
 	logger.Info().Msg("leadership lost — beginning dependency‑aware shutdown")
 
-	// Mark as degraded
-	// c.hs.Degraded()
+	// Mark as unhealthy
+	c.hs.Unhealthy()
 
 	// 5. Shutdown CRDs in reverse dependency order
 	shutdownOrder := c.depGraph.ShutdownOrder()
@@ -141,25 +136,39 @@ func (c *DependencyKontroller) startCRDWorkers(ctx context.Context, gvk string, 
 		return
 	}
 
+	// CRD context
 	crdCtx, cancel := context.WithCancel(ctx)
 
 	rec := entry.ReconcilerFactory() // ← once, not per item
 
 	c.mu.Lock()
-	c.reconcilers[gvk] = rec // ← stored here
+
+	// create crd health for each CRD
+	if c.crdHealthMap[gvk] == nil {
+		c.crdHealthMap[gvk] = NewCRDHealth(gvk) // ← once, not per item
+	}
+
+	c.reconcilers[gvk] = rec // ← reconciler stored here
+
+	// cancel func for each
 	c.cancelFuncs[gvk] = cancel
+
+	// wait group for each
 	wg := &sync.WaitGroup{}
 	c.wgs[gvk] = wg
+
+	// compute started for each
 	c.started[gvk] = true
 	c.total[gvk]++
+
 	c.mu.Unlock()
 
 	for i := 0; i < workers; i++ {
-		wg.Add(1)
+		wg.Add(1) // ← one crd at a time
 		go func(workerID string) {
 			defer wg.Done()
 			c.runWorkerForGVK(crdCtx, gvk, workerID)
-		}(uuid.New().String())
+		}(uuid.New().String()) // ← for tracing
 	}
 }
 
@@ -172,9 +181,12 @@ func (c *DependencyKontroller) stopCRDWorkers(name string) {
 	wg, okWG := c.wgs[gvk]
 	c.mu.RUnlock()
 
+	// cancel if seen
 	if okCancel {
 		cancel()
 	}
+
+	// wait if seen
 	if okWG {
 		wg.Wait()
 	}

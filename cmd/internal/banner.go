@@ -1,39 +1,29 @@
-package kontroller
+package internal
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/initialize"
-	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
-type BannerKonfig struct {
-	Konfig     *konfig.Konfig
-	Komponents []domain.Komponent
-	Leader     string
-	Katalog    []initialize.CRDEntry
-}
-
-func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
+func printBanner(kfg *orkestraKfg, leader string) {
 	// Logo
 	fmt.Print(utils.ColorCyan)
 	fmt.Println(utils.Center(utils.OrkestraLogo))
 	fmt.Print(utils.ColorReset)
 
 	fmt.Println("====================================================")
-	fmt.Printf("%s        Orkestra Runtime%s (v%s)\n", utils.ColorMagenta, utils.ColorReset, b.Konfig.App().Version)
-	fmt.Printf("        Mode: %s%s%s\n", utils.ColorCyan, strings.ToUpper(b.Konfig.Mode()), utils.ColorReset)
-	fmt.Printf("        Environment: %s%s%s\n", utils.ColorBlue, b.Konfig.App().Environment, utils.ColorReset)
-	fmt.Printf("        Listening on: %s:%s%s\n", utils.ColorGreen, b.Konfig.Health().Port, utils.ColorReset)
+	fmt.Printf("%s        Orkestra Runtime%s (v%s)\n", utils.ColorMagenta, utils.ColorReset, kfg.konfig.App().Version)
+	fmt.Printf("        Mode: %s%s%s\n", utils.ColorCyan, strings.ToUpper(kfg.konfig.Mode()), utils.ColorReset)
+	fmt.Printf("        Environment: %s%s%s\n", utils.ColorBlue, kfg.konfig.App().Environment, utils.ColorReset)
+	fmt.Printf("        Listening on: %s:%s%s\n", utils.ColorGreen, kfg.konfig.Health().Port, utils.ColorReset)
 
-	// if b.Leader != "" {
-	//     fmt.Printf("        Leader: %s%s%s\n", utils.ColorYellow, b.Leader, utils.ColorReset)
-	// } else {
-	//     fmt.Printf("        Leader: %sPENDING%s\n", utils.ColorRed, utils.ColorReset)
-	// }
+	if leader != "" {
+		fmt.Printf("        Leader: %s%s%s\n", utils.ColorYellow, leader, utils.ColorReset)
+	} else {
+		fmt.Printf("        Leader: %sPENDING%s\n", utils.ColorRed, utils.ColorReset)
+	}
 
 	fmt.Println("====================================================")
 
@@ -46,7 +36,7 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 	fmt.Println()
 	fmt.Println("Katalog Endpoints:")
 	fmt.Printf("- Katalog:  %s/katalog%s\n", utils.ColorGreen, utils.ColorReset)
-	for _, crd := range b.Katalog {
+	for _, crd := range kfg.katalog.Enabled() {
 		fmt.Printf("  - %s%s%s:  %s/katalog/%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
 		fmt.Printf("  - %s%s%s:  %s/katalog/%s/health%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
 	}
@@ -54,9 +44,11 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 
 	// Komponents
 	fmt.Println("Komponents:")
-	for _, c := range b.Komponents {
+	for _, c := range *kfg.komp {
 		if c.Started() {
 			fmt.Printf("- %-20s %sAVAILABLE%s\n", c.Name(), utils.ColorGreen, utils.ColorReset)
+		} else if c.Name() == "orkestra kontroller" {
+			fmt.Printf("- %-20s %sSTARTING%s\n", c.Name(), utils.ColorBlue, utils.ColorReset)
 		} else {
 			fmt.Printf("- %-20s %sUNAVAILABLE%s\n", c.Name(), utils.ColorRed, utils.ColorReset)
 		}
@@ -65,7 +57,7 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 
 	// CRDs
 	fmt.Println("CRDs:")
-	for _, crd := range b.Katalog {
+	for _, crd := range kfg.katalog.Enabled() {
 		fmt.Printf("- %s%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset)
 
 		fmt.Printf("  %sGroup:%s         %s\n", utils.ColorYellow, utils.ColorReset, crd.APITypes.Group)
@@ -87,7 +79,7 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 			fmt.Printf("  %sMaxQueueDepth:%s %v\n", utils.ColorYellow, utils.ColorReset, crd.Queue.MaxQueueDepth)
 		} else {
 			fmt.Printf("  %sMaxQueueDepth:%s %v (default)\n",
-				utils.ColorYellow, utils.ColorReset, b.Konfig.Katalog().DefaultMaxQueueDepth)
+				utils.ColorYellow, utils.ColorReset, kfg.konfig.Katalog().DefaultMaxQueueDepth)
 		}
 
 		// Resync
@@ -95,7 +87,7 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 			fmt.Printf("  %sResync:%s        %s\n", utils.ColorYellow, utils.ColorReset, crd.Resync.String())
 		} else {
 			fmt.Printf("  %sResync:%s        %s (default)\n",
-				utils.ColorYellow, utils.ColorReset, b.Konfig.Cluster().DefaultResync)
+				utils.ColorYellow, utils.ColorReset, kfg.konfig.Cluster().DefaultResync)
 		}
 
 		// DependsOn

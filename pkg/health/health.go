@@ -14,9 +14,18 @@ import (
 var _ domain.Komponent = (*HealthServer)(nil)
 
 type HealthServer struct {
-	server   *http.Server
-	mux      *http.ServeMux
-	ready    atomic.Bool
+	server *http.Server
+	mux    *http.ServeMux
+
+	// startup probes
+	started atomic.Bool
+
+	// health probes
+	healthy atomic.Bool
+
+	// readiness probes
+	ready atomic.Bool
+
 	port     string
 	client   string
 	logLevel string
@@ -37,6 +46,8 @@ func NewHealthServer(client, port, logLevel string) *HealthServer {
 	// server is not healthy or ready on startup.
 	// modified when client is ready to process requests
 	hs.ready.Store(false)
+	hs.started.Store(false)
+	hs.healthy.Store(false)
 	return hs
 }
 
@@ -68,7 +79,10 @@ func (h *HealthServer) Start(ctx context.Context) error {
 		Handler: h.mux,
 	}
 
+	h.started.Store(true)
+	h.healthy.Store(true)
 	go func() {
+		logger.Info().Msgf("health server listening on %s", h.port)
 		if err := h.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error().Err(err).Msg("health server error")
 		}
@@ -84,6 +98,7 @@ func (h *HealthServer) Shutdown(ctx context.Context) {
 		}
 	}
 	h.ready.Store(false)
+	h.healthy.Store(false)
 }
 
 func (h *HealthServer) Name() string {
@@ -94,13 +109,28 @@ func (h *HealthServer) SetReady() {
 	h.ready.Store(true)
 }
 
-func (h *HealthServer) Started() bool {
-	return h.ready.Load()
-}
-
-func (h *HealthServer) Degraded() bool {
+func (h *HealthServer) Degraded() {
 	if h.ready.Load() {
 		h.ready.Store(false)
 	}
-	return false
+}
+
+func (h *HealthServer) Unhealthy() {
+	h.healthy.Store(false)
+}
+
+func (h *HealthServer) Started() bool {
+	return h.started.Load()
+}
+
+func (h *HealthServer) SetStarted() {
+	h.started.Store(true)
+}
+
+func (h *HealthServer) Healthy() bool {
+	return h.healthy.Load()
+}
+
+func (h *HealthServer) Ready() bool {
+	return h.ready.Load()
 }

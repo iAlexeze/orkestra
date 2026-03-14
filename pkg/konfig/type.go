@@ -5,7 +5,7 @@ import "time"
 type Konfig struct {
 	app          appKonfig
 	cluster      clusterKonfig
-	leader       leaderElection
+	konductor    konductorElection
 	healthServer healthServer
 	katalog      katalogKonfig
 }
@@ -44,7 +44,7 @@ type katalogKonfig struct {
 	DefaultDegradeThreshold int `validate:"required"`
 }
 
-type leaderElection struct {
+type konductorElection struct {
 	LeaseDuration time.Duration
 	RenewDeadline time.Duration
 	RetryPeriod   time.Duration
@@ -82,9 +82,9 @@ func (c *Konfig) Cluster() *clusterKonfig {
 	return &c.cluster
 }
 
-// Leader returns app Konfigurations
-func (c *Konfig) Leader() *leaderElection {
-	return &c.leader
+// Konductor returns app Konfigurations
+func (c *Konfig) Konductor() *konductorElection {
+	return &c.konductor
 }
 
 // Katalog returns app Konfigurations

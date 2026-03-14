@@ -19,12 +19,14 @@ import (
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
-type OrkestraKfg struct {
-	kontroller *kontroller.DependencyKontroller
+type orkestraKfg struct {
+	konfig     *konfig.Konfig
+	katalog    *katalog.Katalog
+	komp       *[]domain.Komponent
 	event      *event.Event
 	kube       *kubeclient.Kubeclient
+	kontroller *kontroller.DependencyKontroller
 	orkestra   *ork.Orkestra
-	komp       *[]domain.Komponent
 }
 
 // konstructOrkestra wires the entire Orkestra runtime.
@@ -40,7 +42,7 @@ type OrkestraKfg struct {
 // IMPORTANT: Nothing that requires a live kube connection runs here.
 // Reconciler factories are closures — called in startCRDWorkers after
 // orkestra.Start() has initialised kube, ev, and all REST clients.
-func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *OrkestraKfg {
+func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 
 	// ── 1. Katalog ────────────────────────────────────────────────────────────
 	crdKatalog := katalog.NewKatalog(kfg.Katalog().Mode, kfg.Katalog().Path)
@@ -131,6 +133,7 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *OrkestraKfg {
 		crd := crd
 		gvk := utils.SetGroupVersionKindObj(crd.GroupVersionKind)
 		gvr := crd.GroupVersionResource
+		crd.Workers = crd.SetWorkers(kfg.Cluster().DefaultWorkers)
 
 		// GetRuntimeObjects abstracts Go vs YAML mode —
 		// ObjectYamlMode is already populated by addRuntimeObjects() during validation.
@@ -228,6 +231,10 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *OrkestraKfg {
 		crdHealth := crdHealthMap[gvk]
 		crdName := strings.ToLower(crd.Name)
 
+		// Get the informer for this CRD from the registry
+		entry, _ := ktrlRegistry.Get(gvk)
+		inf := entry.Informer // already stored on RegistryEntry
+
 		// GET /katalog/{crd}/health — 200 healthy, 503 degraded
 		hs.Register(
 			"/katalog/"+crdName+"/health",
@@ -237,7 +244,7 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *OrkestraKfg {
 		// GET /katalog/{crd} — CRD config + live reconcile stats
 		hs.Register(
 			"/katalog/"+crdName,
-			kontroller.BuildCRDInfoHandler(crd, crdHealth),
+			kontroller.BuildCRDInfoHandler(crd, kfg, inf, crdHealth),
 		)
 
 		logger.Debug().
@@ -247,20 +254,9 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *OrkestraKfg {
 	}
 
 	// GET /katalog — aggregate view: all CRDs, dependency graph, health summary
-	hs.Register("/katalog", kontroller.BuildKatalogHandler(crdKatalog, crdHealthMap))
+	hs.Register("/katalog", kontroller.BuildKatalogHandler(crdKatalog, kfg, ktrlRegistry, crdHealthMap))
 
-	// ── 6. Komponent list ─────────────────────────────────────────────────────
-	// Orkestra starts these in order. Shutdown runs in reverse.
-	komponents := []domain.Komponent{
-		hs,            // 1. health server  — routes already registered above
-		kube,          // 2. kubeclient     — REST config, dynamic client, clientset
-		ev,            // 3. event recorder — depends on kube being started
-		queueRegistry, // 4. per-CRD queues
-		defaultWq,     // 5. default fallback queue
-		infFactory,    // 6. informer factory — starts informers, closes ready channel
-	}
-
-	// ── 7. Dependency kontroller ──────────────────────────────────────────────
+	// ── 6. Dependency kontroller ──────────────────────────────────────────────
 	// Starts CRD workers in topological dependency order.
 	// Calls ReconcilerFactory() per CRD after infFactory is live.
 	// Passes crdHealthMap — health state updated per reconcile result.
@@ -269,21 +265,25 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *OrkestraKfg {
 		infFactory,
 		ktrlRegistry,
 		ev,
+		hs,
 		queueRegistry,
 		defaultWq,
 		crdHealthMap,
 		kfg.Cluster().DefaultWorkers,
 		katalog.NewDependencyGraph(crdKatalog),
-		&kontroller.BannerKonfig{
-			Katalog:    crdKatalog.Enabled(),
-			Konfig:     kfg,
-			Komponents: komponents,
-			Leader:     "",
-		},
 	)
 
-	// Kontroller is last — depends on everything above being started first.
-	komponents = append(komponents, ktrl)
+	// ── 7 Komponent list ─────────────────────────────────────────────────────
+	// Orkestra starts these in order. Shutdown runs in reverse.
+	komponents := []domain.Komponent{
+		hs,            // 1. health server  — routes already registered above
+		kube,          // 2. kubeclient     — REST config, dynamic client, clientset
+		ev,            // 3. event recorder — depends on kube being started
+		queueRegistry, // 4. per-CRD queues
+		defaultWq,     // 5. default fallback queue
+		infFactory,    // 6. informer factory — starts informers, closes ready channel
+		ktrl,          // Kontroller is last — depends on everything above being started first.
+	}
 
 	// ── 8. Orkestra ────────────────────────────────────────────────────────────
 	// Owns the full lifecycle of all komponents.
@@ -292,11 +292,13 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *OrkestraKfg {
 	o := ork.NewOrkestra(kfg.Cluster().DefaultResync, kfg.App().LogLevel)
 	o.Register(komponents)
 
-	return &OrkestraKfg{
-		event:      ev,
-		kontroller: ktrl,
-		kube:       kube,
+	return &orkestraKfg{
+		konfig:     kfg,
+		katalog:    crdKatalog,
 		komp:       &komponents,
+		event:      ev,
+		kube:       kube,
+		kontroller: ktrl,
 		orkestra:   o,
 	}
 }
