@@ -13,34 +13,34 @@ import (
 	"github.com/ialexeze/orkestra/pkg/kontroller"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/manager"
+	ork "github.com/ialexeze/orkestra/pkg/orkestra"
 	"github.com/ialexeze/orkestra/pkg/queue"
 	"github.com/ialexeze/orkestra/pkg/reconciler"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
-type startupCfg struct {
+type OrkestraKfg struct {
 	kontroller *kontroller.DependencyKontroller
 	event      *event.Event
 	kube       *kubeclient.Kubeclient
-	manager    *manager.Manager
+	orkestra   *ork.Orkestra
 	komp       *[]domain.Komponent
 }
 
-// buildManager wires the entire Orkestra runtime.
+// konstructOrkestra wires the entire Orkestra runtime.
 //
 // Sequence:
 //  1. Load and validate the Katalog — only enabled, validated CRD entries reach here
 //  2. Register schemes so Go types can decode API server responses
-//  3. Create all komponents (nothing starts yet — manager starts them in order)
+//  3. Create all komponents (nothing starts yet — orkestra starts them in order)
 //  4. Register per-CRD client providers, informers, and reconciler factories
 //  5. Register health and Katalog API routes
-//  6. Hand everything to the manager
+//  6. Hand everything to orkestra
 //
 // IMPORTANT: Nothing that requires a live kube connection runs here.
 // Reconciler factories are closures — called in startCRDWorkers after
-// manager.Start() has initialised kube, ev, and all REST clients.
-func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
+// orkestra.Start() has initialised kube, ev, and all REST clients.
+func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *OrkestraKfg {
 
 	// ── 1. Katalog ────────────────────────────────────────────────────────────
 	crdKatalog := katalog.NewKatalog(kfg.Katalog().Mode, kfg.Katalog().Path)
@@ -54,7 +54,7 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 	}
 
 	// ── 3. Core komponents ────────────────────────────────────────────────────
-	// None of these are started here. The manager calls Start() in declaration order.
+	// None of these are started here. Orkestra calls Start() in declaration order.
 
 	// Health server — created first so routes can be registered before Start().
 	hs := health.NewHealthServer(
@@ -63,7 +63,7 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 		kfg.App().LogLevel,
 	)
 
-	// Kubeclient — not live until manager calls kube.Start().
+	// Kubeclient — not live until orkestra calls kube.Start().
 	kube := kubeclient.NewKubeclient(kubeclient.Config{
 		Kubeconfig: kfg.Cluster().KubekonfigPath,
 		Masterurl:  kfg.Cluster().MasterURL,
@@ -95,12 +95,12 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 
 		provider.Register(object, func(k *kubeclient.Kubeclient) (informer.GenericClient, error) {
 			return k.NewClient(list, kubeclient.CRDInfo{
-				Kind:         crd.Kind,
-				Group:        crd.Group,
-				Version:      crd.Version,
-				APIPath:      crd.APIPath,
+				Kind:         crd.APITypes.Kind,
+				Group:        crd.APITypes.Group,
+				Version:      crd.APITypes.Version,
+				APIPath:      crd.APITypes.APIPath,
 				GroupVersion: crd.GroupVersion,
-				Plural:       crd.Plural,
+				Plural:       crd.APITypes.Plural,
 				Namespace:    crd.Namespace,
 				Namespaced:   crd.Namespaced,
 			})
@@ -109,7 +109,7 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 
 	// ── 4b. Shared informer factory ───────────────────────────────────────────
 	// Routes API server events into the correct per-CRD queue via handleEvent.
-	// Not started here — infFactory.Start() is called by the manager.
+	// Not started here — infFactory.Start() is called by orkestra.
 	infFactory := informer.SharedInformerFactory(
 		provider,
 		queueRegistry,
@@ -122,8 +122,8 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 	// ── 4c. Kontroller registry + per-CRD wiring ──────────────────────────────
 	// Registers informers and reconciler factories per CRD.
 	// Factories are closures — NewGenericReconciler / Constructor called
-	// only after manager starts, guaranteeing kube and ev are live.
-	reg := kontroller.NewKontrollerRegistry()
+	// only after orkestra starts, guaranteeing kube and ev are live.
+	ktrlRegistry := kontroller.NewKontrollerRegistry()
 
 	logger.Debug().Msg("wiring CRDs into kontroller registry...")
 
@@ -141,7 +141,7 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 		))
 
 		opts := informer.Options{
-			Name:   crd.Kind,
+			Name:   crd.APITypes.Kind,
 			Resync: crd.Resync,
 		}
 
@@ -155,7 +155,7 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 		inf := infFactory.For(object, ctx, opts)
 
 		crdInfo := reconciler.CRDInfo{
-			Kind:       crd.Kind,
+			Kind:       crd.APITypes.Kind,
 			GVK:        gvk,
 			GVR:        gvr,
 			Finalizers: crd.ReconcilerConfig.Finalizers,
@@ -206,7 +206,7 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 			}
 		}
 
-		reg.Register(gvk, crd, inf, factory)
+		ktrlRegistry.Register(gvk, crd, inf, factory)
 		logger.Debug().Str("gvk", gvk).Msg("CRD registered")
 	}
 	// ── 5a. Per-CRD health map ────────────────────────────────────────────────
@@ -250,7 +250,7 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 	hs.Register("/katalog", kontroller.BuildKatalogHandler(crdKatalog, crdHealthMap))
 
 	// ── 6. Komponent list ─────────────────────────────────────────────────────
-	// Manager starts these in order. Shutdown runs in reverse.
+	// Orkestra starts these in order. Shutdown runs in reverse.
 	komponents := []domain.Komponent{
 		hs,            // 1. health server  — routes already registered above
 		kube,          // 2. kubeclient     — REST config, dynamic client, clientset
@@ -267,7 +267,7 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 	ktrl := kontroller.NewDependencyKontroller(
 		kube,
 		infFactory,
-		reg,
+		ktrlRegistry,
 		ev,
 		queueRegistry,
 		defaultWq,
@@ -285,18 +285,18 @@ func buildManager(kfg *konfig.Konfig, ctx context.Context) *startupCfg {
 	// Kontroller is last — depends on everything above being started first.
 	komponents = append(komponents, ktrl)
 
-	// ── 8. Manager ────────────────────────────────────────────────────────────
+	// ── 8. Orkestra ────────────────────────────────────────────────────────────
 	// Owns the full lifecycle of all komponents.
 	// Start  : sequential, in registration order.
 	// Shutdown: reverse order, on OS signal or fatal error.
-	mgr := manager.NewManager(kfg.Cluster().DefaultResync)
-	mgr.Register(komponents)
+	o := ork.NewOrkestra(kfg.Cluster().DefaultResync, kfg.App().LogLevel)
+	o.Register(komponents)
 
-	return &startupCfg{
+	return &OrkestraKfg{
 		event:      ev,
 		kontroller: ktrl,
 		kube:       kube,
 		komp:       &komponents,
-		manager:    mgr,
+		orkestra:   o,
 	}
 }

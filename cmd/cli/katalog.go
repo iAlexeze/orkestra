@@ -1,4 +1,4 @@
-package ork
+package cli
 
 import (
 	"fmt"
@@ -79,7 +79,7 @@ var getCRDsCmd = &cobra.Command{
 
 		fmt.Println("Enabled CRDs:")
 		for _, crd := range k.Enabled() {
-			fmt.Printf("- %s (%s/%s)\n", crd.Name, crd.Group, crd.Version)
+			fmt.Printf("- %s (%s/%s)\n", crd.Name, crd.APITypes.Group, crd.APITypes.Version)
 		}
 
 		return nil

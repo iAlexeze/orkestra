@@ -7,7 +7,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/ialexeze/orkestra/initialize"
 	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/reconciler"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -49,12 +48,12 @@ func (k *Katalog) validateGVKUniqueness() error {
 	seen := make(map[string]string) // key -> name
 
 	for _, crd := range k.enabledCRDs {
-		key := fmt.Sprintf("%s/%s/%s", crd.Group, crd.Version, crd.Kind)
+		key := fmt.Sprintf("%s/%s/%s", crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind)
 
 		if existing, ok := seen[key]; ok {
 			return fmt.Errorf(
 				"duplicate GVK detected: %s/%s, Kind=%s (CRDs: %s and %s)",
-				crd.Group, crd.Version, crd.Kind, existing, crd.Name,
+				crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind, existing, crd.Name,
 			)
 		}
 
@@ -143,19 +142,19 @@ func (k *Katalog) setGroupVersionKind() error {
 		crd := &k.enabledCRDs[i]
 
 		crd.GroupVersionKind = schema.GroupVersionKind{
-			Group:   crd.Group,
-			Version: crd.Version,
-			Kind:    crd.Kind,
+			Group:   crd.APITypes.Group,
+			Version: crd.APITypes.Version,
+			Kind:    crd.APITypes.Kind,
 		}
 		crd.GroupVersionResource = schema.GroupVersionResource{
-			Group:    crd.Group,
-			Version:  crd.Version,
-			Resource: crd.Plural,
+			Group:    crd.APITypes.Group,
+			Version:  crd.APITypes.Version,
+			Resource: crd.APITypes.Plural,
 		}
 
 		crd.GroupVersion = &schema.GroupVersion{
-			Group:   crd.Group,
-			Version: crd.Version,
+			Group:   crd.APITypes.Group,
+			Version: crd.APITypes.Version,
 		}
 
 		if crd.GroupVersionKind.Empty() {
@@ -174,27 +173,27 @@ func (k *Katalog) setDefaults() error {
 
 		// Handle namespaced and cluster-scoped crds
 		if !crd.Namespaced && crd.Namespace != "" {
-			logger.Warn().Msgf("%s is clusterscoped. Namespace %s will be ignored", crd.Kind, crd.Namespace)
+			logger.Warn().Msgf("%s is clusterscoped. Namespace %s will be ignored", crd.APITypes.Kind, crd.Namespace)
 			crd.Namespace = ""
 		}
 
 		// Handle API path
-		if crd.APIPath == "" {
-			logger.Warn().Msgf("API path for Kind=%s is empty. Setting to '/apis'", crd.Kind)
-			crd.APIPath = "/apis"
+		if crd.APITypes.APIPath == "" {
+			logger.Warn().Msgf("API path for Kind=%s is empty. Setting to '/apis'", crd.APITypes.Kind)
+			crd.APITypes.APIPath = "/apis"
 		}
 
 		// Handle plural name
 		crd.Name = strings.ToLower(crd.Name)
 
-		if crd.Plural == "" {
-			logger.Warn().Msgf("Plural name for %s is empty. Setting to '%ss'", crd.Kind, crd.Name)
-			crd.Plural = fmt.Sprintf("%ss", strings.ToLower(crd.Name))
+		if crd.APITypes.Plural == "" {
+			logger.Warn().Msgf("Plural name for %s is empty. Setting to '%ss'", crd.APITypes.Kind, crd.Name)
+			crd.APITypes.Plural = fmt.Sprintf("%ss", strings.ToLower(crd.Name))
 		}
 
 		// Handle description
 		if crd.Description == "" {
-			crd.Description = fmt.Sprintf("%s CRD, GVK: %s", crd.Kind, crd.GroupVersionKind.String())
+			crd.Description = fmt.Sprintf("%s CRD, GVK: %s", crd.APITypes.Kind, crd.GroupVersionKind.String())
 		}
 
 		// Handle finalizers
@@ -233,7 +232,7 @@ func (k *Katalog) addRuntimeObjects() error {
 // ---------------------------------------------------------------------------------
 // Add reconcilers
 func (k *Katalog) addReconcilers() error {
-	recs := reconciler.RegisterReconcilers()
+	// recs := reconciler.RegisterReconcilers()
 
 	for i := range k.enabledCRDs {
 		crd := &k.enabledCRDs[i]
@@ -243,12 +242,12 @@ func (k *Katalog) addReconcilers() error {
 			continue
 		}
 
-		fn, ok := recs[crd.Name]
-		if !ok {
-			return fmt.Errorf("CRD '%s' has no registered reconciler", crd.Name)
-		}
+		// fn, ok := recs[crd.Name]
+		// if !ok {
+		// 	return fmt.Errorf("CRD '%s' has no registered reconciler", crd.Name)
+		// }
 
-		crd.ReconcilerConfig.Constructor = fn
+		// crd.ReconcilerConfig.Constructor = fn
 	}
 
 	return nil

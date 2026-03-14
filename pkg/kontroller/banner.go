@@ -38,10 +38,18 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 	fmt.Println("====================================================")
 
 	// Endpoints
-	fmt.Println("Endpoints:")
+	fmt.Println("Orkestra Endpoints:")
 	fmt.Printf("- Health:   %s/health%s\n", utils.ColorGreen, utils.ColorReset)
 	fmt.Printf("- Ready:    %s/ready%s\n", utils.ColorGreen, utils.ColorReset)
 	fmt.Printf("- Metrics:  %s/metrics%s\n", utils.ColorGreen, utils.ColorReset)
+
+	fmt.Println()
+	fmt.Println("Katalog Endpoints:")
+	fmt.Printf("- Katalog:  %s/katalog%s\n", utils.ColorGreen, utils.ColorReset)
+	for _, crd := range b.Katalog {
+		fmt.Printf("  - %s%s%s:  %s/katalog/%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
+		fmt.Printf("  - %s%s%s:  %s/katalog/%s/health%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
+	}
 	fmt.Println("====================================================")
 
 	// Komponents
@@ -58,9 +66,9 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 	// CRDs
 	fmt.Println("CRDs:")
 	for _, crd := range b.Katalog {
-		fmt.Printf("- %s%s%s\n", utils.ColorCyan, crd.Kind, utils.ColorReset)
-		fmt.Printf("  %sGroup:%s       %s\n", utils.ColorYellow, utils.ColorReset, crd.Group)
-		fmt.Printf("  %sVersion:%s     %s\n", utils.ColorYellow, utils.ColorReset, crd.Version)
+		fmt.Printf("- %s%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset)
+		fmt.Printf("  %sGroup:%s       %s\n", utils.ColorYellow, utils.ColorReset, crd.APITypes.Group)
+		fmt.Printf("  %sVersion:%s     %s\n", utils.ColorYellow, utils.ColorReset, crd.APITypes.Version)
 		if crd.Enabled {
 			fmt.Printf("  %sEnabled:%s     %s\n", utils.ColorYellow, utils.ColorReset, "Yes")
 		} else {
@@ -89,11 +97,9 @@ func (c *DependencyKontroller) printBanner(b *BannerKonfig) {
 		} else {
 			fmt.Printf("  %sDependsOn:%s   No dependencies\n", utils.ColorYellow, utils.ColorReset)
 		}
-
-		fmt.Printf("  %sDescription:%s         %s\n", utils.ColorYellow, utils.ColorReset, crd.Description)
 		fmt.Println()
 	}
 	fmt.Println("====================================================")
 
-	fmt.Printf("%sOrkestra is conducting your CRDs...%s\n", utils.ColorMagenta, utils.ColorReset)
+	fmt.Printf("%sOrkestra is konducting your CRDs...%s\n", utils.ColorMagenta, utils.ColorReset)
 }

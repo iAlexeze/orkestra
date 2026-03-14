@@ -32,7 +32,7 @@ type Controller struct {
 	degradeThreshold map[string]int
 
 	defaultWorkers int
-	healthy        bool
+	startedKtrl    bool
 	started        map[string]bool
 	cancelFuncs    map[string]context.CancelFunc
 	wgs            map[string]*sync.WaitGroup
@@ -45,7 +45,7 @@ type Controller struct {
 	failed map[string]int
 }
 
-func NewController(
+func NewKontroller(
 	kube *kubeclient.Kubeclient,
 	informerFactory *informer.Factory,
 	katalog *ResourceKatalog,
@@ -108,15 +108,15 @@ func (c *Controller) Start(ctx context.Context) error {
 				}
 			}
 
-			logger.Info().Msgf("checking CRD %s/%s (%s)...", crd.Group, crd.Version, crd.Kind)
+			logger.Info().Msgf("checking CRD %s/%s (%s)...", crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind)
 
 			err := utils.RetryBackoff(
 				func() error {
 					return utils.WaitForCRD(
 						c.kube.RestConfig(),
-						crd.Group,
-						crd.Kind,
-						crd.Version,
+						crd.APITypes.Group,
+						crd.APITypes.Kind,
+						crd.APITypes.Version,
 					)
 				},
 				5,
@@ -125,11 +125,11 @@ func (c *Controller) Start(ctx context.Context) error {
 
 			if err != nil {
 				errCh <- fmt.Errorf("CRD %s/%s (%s) not found: %w",
-					crd.Group, crd.Version, crd.Kind, err)
+					crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind, err)
 				return
 			}
 
-			logger.Info().Msgf("CRD %s/%s (%s) detected", crd.Group, crd.Version, crd.Kind)
+			logger.Info().Msgf("CRD %s/%s (%s) detected", crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind)
 
 			// Signal dependents that this CRD is confirmed
 			close(readyCh[crd.Name])
@@ -170,7 +170,7 @@ func (c *Controller) Start(ctx context.Context) error {
 }
 
 // Healthy mark on startup
-func (c *Controller) Started() bool { return c.healthy }
+func (c *Controller) Started() bool { return c.startedKtrl }
 
 // Shutdown gracefully stops orkestra
 func (c *Controller) Shutdown(ctx context.Context) {}

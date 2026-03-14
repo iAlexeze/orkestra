@@ -37,10 +37,10 @@ func (k *Katalog) Describe(name string) (string, error) {
 
 	b := &strings.Builder{}
 	fmt.Fprintf(b, "Name:        %s\n", crd.Name)
-	fmt.Fprintf(b, "Group:       %s\n", crd.Group)
-	fmt.Fprintf(b, "Version:     %s\n", crd.Version)
-	fmt.Fprintf(b, "Kind:        %s\n", crd.Kind)
-	fmt.Fprintf(b, "Plural:      %s\n", crd.Plural)
+	fmt.Fprintf(b, "Group:       %s\n", crd.APITypes.Group)
+	fmt.Fprintf(b, "Version:     %s\n", crd.APITypes.Version)
+	fmt.Fprintf(b, "Kind:        %s\n", crd.APITypes.Kind)
+	fmt.Fprintf(b, "Plural:      %s\n", crd.APITypes.Plural)
 	fmt.Fprintf(b, "Namespaced:  %v\n", crd.Namespaced)
 	if crd.Namespaced {
 		fmt.Fprintf(b, "Namespace:   %s\n", crd.Namespace)
@@ -69,9 +69,9 @@ func (k *Katalog) Explain(name string) (string, error) {
 	}
 
 	b := &strings.Builder{}
-	fmt.Fprintf(b, "%s (%s/%s)\n", crd.Kind, crd.Group, crd.Version)
+	fmt.Fprintf(b, "%s (%s/%s)\n", crd.APITypes.Kind, crd.APITypes.Group, crd.APITypes.Version)
 	fmt.Fprintf(b, "----------------------------------------\n")
-	fmt.Fprintf(b, "API Path:     %s\n", crd.APIPath)
+	fmt.Fprintf(b, "API Path:     %s\n", crd.APITypes.APIPath)
 	fmt.Fprintf(b, "GVK:          %s\n", crd.GroupVersionKind.String())
 	fmt.Fprint(b, "List Type:    runtime.Object")
 	fmt.Fprint(b, "Object Type:  runtime.Object")

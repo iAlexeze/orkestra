@@ -9,14 +9,14 @@ import (
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
-func Start(kfg *konfig.Konfig, ctx context.Context) {
-	// create domain komponent and build manager
-	startup := buildManager(kfg, ctx)
+func Konduct(kfg *konfig.Konfig, ctx context.Context) {
+	// create domain komponent and build orkestra
+	startup := konstructOrkestra(kfg, ctx)
 
-	// Start all manager komponent
+	// Start all orkestra komponent
 	go func() {
-		if err := startup.manager.Start(ctx); err != nil {
-			logger.Fatal().AnErr("manager startup error", err)
+		if err := startup.orkestra.Start(ctx); err != nil {
+			logger.Fatal().AnErr("orkestra startup error", err)
 			utils.Exit(err)
 		}
 	}()
@@ -32,12 +32,12 @@ func Start(kfg *konfig.Konfig, ctx context.Context) {
 			RetryPeriod:   kfg.Leader().RetryPeriod,
 		})
 
-	// start leader election as postStartHook AFTER manager is ready
-	startup.manager.AddPostStartHook(leader, func(ctx context.Context) {
+	// start leader election as postStartHook AFTER orkestra is ready
+	startup.orkestra.AddPostStartHook(leader, func(ctx context.Context) {
 		logger.Info().Msg("starting leader election...")
 		leader.Start(ctx)
 	})
 
 	// Keep running until cancelled
-	startup.manager.Wait()
+	startup.orkestra.Wait()
 }

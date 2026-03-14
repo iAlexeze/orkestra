@@ -48,7 +48,7 @@ func NewDependencyKontroller(
 ) *DependencyKontroller {
 
 	return &DependencyKontroller{
-		Controller:     NewController(kube, factory, katalog, events, queueRegistry, defaultWorkqueue, defaultWorkers),
+		Controller:     NewKontroller(kube, factory, katalog, events, queueRegistry, defaultWorkqueue, defaultWorkers),
 		depGraph:       depGraph,
 		defaultWorkers: defaultWorkers,
 		crdHealthMap:   crdHealthMap,
@@ -106,7 +106,7 @@ func (c *DependencyKontroller) RunOrDie(ctx context.Context) {
 	}
 
 	// Mark as started
-	c.healthy = true
+	c.startedKtrl = true
 	// c.hs.SetReady()
 
 	c.bannKfg.Komponents = append(c.bannKfg.Komponents, c)
@@ -119,7 +119,6 @@ func (c *DependencyKontroller) RunOrDie(ctx context.Context) {
 	logger.Info().Msg("leadership lost — beginning dependency‑aware shutdown")
 
 	// Mark as degraded
-	c.healthy = false
 	// c.hs.Degraded()
 
 	// 5. Shutdown CRDs in reverse dependency order

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/ialexeze/orkestra/cmd/ork"
+	"github.com/ialexeze/orkestra/cmd/cli"
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/utils"
@@ -23,5 +23,5 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	ork.Execute(kfg, ctx)
+	cli.Execute(kfg, ctx)
 }
