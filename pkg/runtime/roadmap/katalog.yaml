@@ -1,0 +1,234 @@
+# crdkatalog/crd-katalog.yaml
+#
+# EXAMPLE Katalog shipped with Orkestra.
+# Replace these entries with your own CRDs.
+# Run "ork generate registry --katalog <path>" after any change.
+#
+# Reconciler modes:
+#   typed        — compiled API types required (apiTypes.location must be set)
+#                  full type safety, Go hooks, deep copy via generated methods
+#   unstructured — no compiled types needed, works with any CRD
+#                  required for declarative hook templates (onCreate, onDelete, etc.)
+#                  fields accessed via: "{{ .spec.replicas }}", "{{ .metadata.name }}"
+#
+# What ork generate reads per CRD:
+#   apiTypes              → ObjectRegistry + ListRegistry + scheme  (typed mode)
+#   reconciler.hooks      → HookRegistry                            (optional, typed mode)
+#   reconciler.constructor → ReconcilerRegistry                     (required, default: false)
+#   reconciler.onCreate   → generated OnCreate hook implementation  (unstructured mode)
+#   reconciler.onReconcile → generated OnReconcile hook             (unstructured mode)
+#   reconciler.onDelete   → generated OnDelete hook                 (unstructured mode)
+
+apiVersion: controller.orkestra.io/v1
+kind: Katalog
+metadata:
+  name: platform-katalog
+  description: >-
+    Platform Katalog — defines all CRDs managed by this Orkestra instance.
+
+spec:
+  finalizers:
+    - my-default-finalizer/platform-katalog
+
+  crds:
+
+    # ── PROJECT ───────────────────────────────────────────────────────────────
+    # Typed mode — compiled API types, Go hooks.
+    # ork generate emits: ObjectRegistry + ListRegistry + HookRegistry entries.
+    - name: project
+      enabled: true
+      critical: true
+      workers: 3
+      resync: 10m
+      dependsOn: []
+      namespace: default
+      namespaced: true
+
+      apiTypes:
+        object: Project
+        list: ProjectList
+        alias: projv1
+        group: platform.orkestra.io
+        version: v1alpha1
+        kind: Project
+        plural: projects
+        apiPath: /apis
+        location: github.com/ialexeze/orkestra/example-crds/api/types/project/v1alpha1
+
+      reconciler:
+        default: true
+        mode: typed                                                        # compiled types — full type safety
+        hooks:
+          location: github.com/ialexeze/orkestra/pkg/reconciler/hooks     # local or remote Go package
+          function: ProjectHooks                                           # func() domain.AnyReconcileHooks
+          alias: projecthooks                                              # optional — auto-derived if omitted
+
+      queue:
+        maxQueueDepth: 1000
+
+      description: >-
+        Defines an isolated logical boundary for applications, teams, or workloads.
+
+
+    # ── MANAGED NAMESPACE ─────────────────────────────────────────────────────
+    # Custom reconciler — full control, no templates.
+    # ork generate emits: ReconcilerRegistry entry only.
+    - name: managednamespace
+      enabled: true
+      workers: 2
+      dependsOn: [project]
+      namespaced: false
+
+      apiTypes:
+        object: ManagedNamespace
+        list: ManagedNamespaceList
+        alias: mnsv1
+        group: platform.orkestra.io
+        version: v1alpha1
+        kind: ManagedNamespace
+        plural: managednamespaces
+        location: github.com/ialexeze/orkestra/example-crds/api/types/managedNamespace/v1alpha1
+
+      reconciler:
+        default: false                                                     # custom reconciler
+        constructor:
+          location: github.com/ialexeze/orkestra/pkg/reconciler           # local or remote
+          function: NewManagedNamespaceReconciler                         # NewReconcilerFunc signature
+          alias: mnsreconciler                                            # optional
+
+      queue:
+        maxQueueDepth: 2000
+
+      description: >-
+        Represents a namespace managed by Orkestra.
+
+
+    # ── APPLICATION (unstructured, declarative templates) ─────────────────────
+    # Unstructured mode — no compiled types needed.
+    # Declarative hook templates — ork generate emits hook implementations
+    # from OrkestraRegistry. Zero Go code required.
+    #
+    # Field values support Go text/template expressions:
+    #   Static:  replicas: 3
+    #   Dynamic: replicas: "{{ .spec.replicas }}"
+    #            name:     "{{ .metadata.name }}-app"
+    #            namespace:"{{ .metadata.namespace }}"
+    #
+    # All created resources are owned by the CR — cascade deletion is automatic.
+    - name: application
+      enabled: true
+      workers: 2
+      resync: 3s
+      namespace: default
+      namespaced: true
+      dependsOn:
+        - project
+        - managednamespace
+
+      apiTypes:
+        # location not required in unstructured mode —
+        # but group/version/kind/plural still needed for informer registration
+        group: platform.orkestra.io
+        version: v1alpha1
+        kind: Application
+        plural: applications
+
+      reconciler:
+        default: true
+        mode: unstructured                                                 # no compiled types needed
+
+        finalizers:
+          - test-finalizer/application
+
+        # onCreate — resources created when the CR is first reconciled.
+        # Orkestra checks existence before creating — always idempotent.
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-app"                           # dynamic — from CR metadata
+              replicas: "{{ .spec.replicas }}"                           # dynamic — from CR spec
+              image: "{{ .spec.image }}"                                 # dynamic — from CR spec
+              port: 8080
+              namespace: "{{ .metadata.namespace }}"
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}"
+                - key: managed-by
+                  value: orkestra
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+
+          services:
+            - name: "{{ .metadata.name }}-svc"
+              type: ClusterIP
+              port: 80
+              targetPort: 8080
+              namespace: "{{ .metadata.namespace }}"
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}"
+
+        # onReconcile — drift correction on every reconcile loop.
+        # Orkestra detects if child resources have been modified or deleted
+        # and reconciles them back to the declared state.
+        # Leave empty if onCreate is sufficient (Orkestra handles basic drift).
+        onReconcile:
+          deployments:
+            - name: "{{ .metadata.name }}-app"
+              replicas: "{{ .spec.replicas }}"                           # re-applies if someone manually changed replicas
+              image: "{{ .spec.image }}"
+
+        # onDelete — cleanup before finalizer removal.
+        # Most resources are cleaned up automatically via owner references.
+        # Declare here only for resources that need special handling —
+        # e.g. external resources, Jobs that must complete before deletion.
+        onDelete:
+          jobs:
+            - name: "{{ .metadata.name }}-cleanup"
+              image: busybox
+              command: ["sh", "-c", "echo cleaning up {{ .metadata.name }}"]
+              backoffLimit: 3
+              namespace: "{{ .metadata.namespace }}"
+
+      queue:
+        default: true
+        maxQueueDepth: 500
+
+      description: >-
+        Represents a deployable application workload managed by Orkestra.
+
+
+    # ── EXAMPLE: PURE DEFAULT (no hooks, no templates) ───────────────────────
+    # Simplest possible CRD — typed mode, no hooks.
+    # GenericReconciler handles finalizers, events, metrics. Zero user code.
+    # - name: simpleresource
+    #   enabled: true
+    #   workers: 2
+    #   dependsOn: []
+    #   apiTypes:
+    #     object: SimpleResource
+    #     list: SimpleResourceList
+    #     group: platform.orkestra.io
+    #     version: v1alpha1
+    #     kind: SimpleResource
+    #     plural: simpleresources
+    #     location: github.com/myorg/apis/simpleresource/v1alpha1
+    #   reconciler:
+    #     default: true
+    #     mode: typed
+    #   queue:
+    #     maxQueueDepth: 500
+
+
+    # ── EXAMPLE: DISABLED CRD ─────────────────────────────────────────────────
+    # Set enabled: false to exclude from runtime without deleting the entry.
+    # WARNING: Only disable CRDs with no live resources, or strip Orkestra
+    # finalizers first — disabled CRDs with live finalizers will cause stuck objects.
+    #
+    # - name: legacyresource
+    #   enabled: false
+    #   ...

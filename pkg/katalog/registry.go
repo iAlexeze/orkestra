@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ialexeze/orkestra/initialize"
 	"github.com/ialexeze/orkestra/pkg/logger"
+	ork_runtime "github.com/ialexeze/orkestra/pkg/runtime"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -19,7 +22,7 @@ import (
 // NewKatalog returns a list of CRD data
 func NewKatalog(mode, path string) *Katalog {
 	katalog := &Katalog{}
-	var entries []initialize.CRDEntry
+	var entries []orktypes.CRDEntry
 	var err error
 
 	switch mode {
@@ -30,16 +33,18 @@ func NewKatalog(mode, path string) *Katalog {
 		}
 	case YamlMode:
 		// Register runtime objects
-		initialize.RegisterRuntimeObjects()
+		ork_runtime.RegisterRuntimeObjects()
 
 		// Guard: if ObjectRegistry is empty, user forgot to run ork generate
-		if len(initialize.ObjectRegistry) == 0 {
-			utils.Exit(fmt.Errorf(
-				"ObjectRegistry is empty — run 'ork generate registry --katalog %s' first",
-				path,
-			))
-		}
+		for _, crd := range entries {
+			if len(orktypes.ObjectRegistry) == 0 && !crd.IsUnstructured() {
+				utils.Exit(fmt.Errorf(
+					"ObjectRegistry is empty — run 'ork generate registry --katalog %s' first",
+					path,
+				))
+			}
 
+		}
 		// Build CRDs
 		entries, err = katalog.KomposeKatalogFromYaml(path)
 		if err != nil {
@@ -84,7 +89,10 @@ func NewSchemeRegistry(k *Katalog) (*runtime.Scheme, error) {
 	// 3. Register CRDs
 	var err error
 	if k.mode.Yaml {
-		if scheme, err = initialize.RegisterScheme(scheme); err != nil {
+		if scheme, err = ork_runtime.RegisterScheme(scheme); err != nil {
+			return nil, err
+		}
+		if scheme, err = k.registerUnstructuredScheme(scheme); err != nil {
 			return nil, err
 		}
 	} else if k.mode.Go {
@@ -127,5 +135,35 @@ func (k *Katalog) registerGoScheme(scheme *runtime.Scheme) (*runtime.Scheme, err
 			return nil, fmt.Errorf("failed to register %s: %w", c.GroupVersionKind, err)
 		}
 	}
+	return scheme, nil
+}
+
+// Register unstructured CRDs — tells the watch stream to decode
+// these GVKs as *unstructured.Unstructured instead of failing
+func (k *Katalog) registerUnstructuredScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
+	for _, crd := range k.enabledCRDs {
+		if crd.IsUnstructured() {
+			// Register Object
+			scheme.AddKnownTypeWithName(
+				schema.GroupVersionKind{
+					Group:   crd.APITypes.Group,
+					Version: crd.APITypes.Version,
+					Kind:    crd.APITypes.Kind,
+				},
+				&unstructured.Unstructured{},
+			)
+
+			// Register List
+			scheme.AddKnownTypeWithName(
+				schema.GroupVersionKind{
+					Group:   crd.APITypes.Group,
+					Version: crd.APITypes.Version,
+					Kind:    crd.APITypes.Kind + "List",
+				},
+				&unstructured.UnstructuredList{},
+			)
+		}
+	}
+
 	return scheme, nil
 }

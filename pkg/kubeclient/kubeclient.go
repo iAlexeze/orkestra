@@ -111,6 +111,11 @@ func (k *Kubeclient) RestClientFor(apiPath, group, version string) (*rest.RESTCl
 	return k.SharedClientFactory(apiPath, group, version)
 }
 
+// On-demand dynamic client
+func (k *Kubeclient) DynamicClientFor(apiPath, group, version string) (dynamic.Interface, error) {
+	return k.dynamic, nil
+}
+
 func (k *Kubeclient) PatchFinalizers(
 	ctx context.Context,
 	obj runtime.Object,

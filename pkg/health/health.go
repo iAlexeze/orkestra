@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/logger"
@@ -26,9 +27,10 @@ type HealthServer struct {
 	// readiness probes
 	ready atomic.Bool
 
-	port     string
-	client   string
-	logLevel string
+	port      string
+	client    string
+	logLevel  string
+	startTime time.Time
 }
 
 func NewHealthServer(client, port, logLevel string) *HealthServer {
@@ -59,6 +61,7 @@ func (hs *HealthServer) Register(path string, handler http.HandlerFunc) {
 }
 
 func (h *HealthServer) Start(ctx context.Context) error {
+	h.startTime = time.Now()
 	if !strings.HasPrefix(h.port, ":") {
 		h.port = ":" + h.port
 	}
@@ -133,4 +136,11 @@ func (h *HealthServer) Healthy() bool {
 
 func (h *HealthServer) Ready() bool {
 	return h.ready.Load()
+}
+
+func (h *HealthServer) Uptime() string {
+	if h.startTime.IsZero() {
+		return "unknown"
+	}
+	return time.Since(h.startTime).Round(time.Second).String()
 }

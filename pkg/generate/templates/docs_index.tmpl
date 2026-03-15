@@ -1,0 +1,9 @@
+
+# Orkestra Runtimt CRD Documentation
+
+_Generated automatically on {{ .Timestamp }}._
+
+## CRDs
+{{ range .CRDs }}
+- [{{ .Kind }}](crds/{{ .Name }}.md)
+{{ end }}

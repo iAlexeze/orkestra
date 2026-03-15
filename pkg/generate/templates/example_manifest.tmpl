@@ -1,0 +1,7 @@
+apiVersion: {{ .CRD.Group }}/{{ .CRD.Version }}
+kind: {{ .CRD.Kind }}
+metadata:
+  name: example-{{ .CRD.Name }}
+  {{ if .CRD.Namespaced }}namespace: {{ if .CRD.Namespace }}{{ .CRD.Namespace }}{{ else }}default{{ end }}{{ end }}
+spec:
+  # TODO: fill in fields

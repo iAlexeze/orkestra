@@ -42,7 +42,7 @@ type Factory struct {
 	queueRegistry  *queue.QueueRegistry
 	namespace      string
 	scheme         *runtime.Scheme
-	resync         time.Duration                   // factory-level default
+	defaultResync  time.Duration                   // factory-level default
 	informers      map[reflect.Type]*informerEntry // per-type entry — not a shared opts
 	started        bool
 	mu             sync.RWMutex
@@ -55,7 +55,7 @@ func SharedInformerFactory(
 	defaultWq *queue.Workqueue,
 	scheme *runtime.Scheme,
 	namespace string,
-	resync time.Duration,
+	defaultResync time.Duration,
 ) *Factory {
 	return &Factory{
 		clientProvider: cp,
@@ -63,7 +63,7 @@ func SharedInformerFactory(
 		defaultWq:      defaultWq,
 		namespace:      namespace,
 		scheme:         scheme,
-		resync:         resync,
+		defaultResync:  defaultResync,
 		informers:      make(map[reflect.Type]*informerEntry),
 		ready:          make(chan struct{}),
 	}

@@ -4,7 +4,7 @@ package katalog
 import (
 	"fmt"
 
-	"github.com/ialexeze/orkestra/initialize"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
@@ -16,7 +16,7 @@ type DependencyGraph struct {
 
 type Node struct {
 	Name      string
-	CRD       initialize.CRDEntry
+	CRD       orktypes.CRDEntry
 	InDegree  int
 	OutDegree int
 }

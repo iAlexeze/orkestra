@@ -1,3 +1,4 @@
+// pkg/health/handlers.go
 package health
 
 import (
@@ -8,71 +9,57 @@ import (
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
-// healthHandler handles health checks -> /health
+// healthHandler — GET /health
+// Returns 200 when the controller is healthy, 500 when not.
+// Standard Kubernetes liveness probe endpoint.
 func (h *HealthServer) healthHandler(w http.ResponseWriter, r *http.Request) {
 	if !h.healthy.Load() {
-		h.writeResponse(responseReq{
-			writer:  w,
-			message: h.client + " is " + string(utils.StatusNotHealthy),
-			status:  http.StatusInternalServerError,
-			details: utils.H{
-				"service": h.client,
-				"status":  utils.StatusNotHealthy,
-			},
+		utils.WriteJSON(w, http.StatusInternalServerError, map[string]interface{}{
+			"status":  "unhealthy",
+			"service": h.client,
 		})
 		return
 	}
 
-	h.writeResponse(responseReq{
-		writer:  w,
-		message: h.client + " is " + string(utils.StatusHealthy),
-		status:  http.StatusOK,
-		details: utils.H{
-			"service": h.client,
-			"status":  utils.StatusOnline,
-		},
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"status":  "healthy",
+		"service": h.client,
+		"uptime":  h.Uptime(),
+		"started": h.startTime.Format(time.RFC3339),
 	})
 }
 
-// readyHandler confirms whether a client is ready or not -> /ready
+// readyHandler — GET /ready
+// Returns 200 when the controller is ready to serve traffic, 503 when not.
+// Standard Kubernetes readiness probe endpoint.
+// Not ready during startup (before informer caches sync) and during shutdown.
 func (h *HealthServer) readyHandler(w http.ResponseWriter, r *http.Request) {
 	if !h.ready.Load() {
-		h.writeResponse(responseReq{
-			writer:  w,
-			message: h.client + " is " + string(utils.StatusNotReady),
-			status:  http.StatusInternalServerError,
-			details: utils.H{
-				"service": h.client,
-				"status":  utils.StatusNotReady,
-			},
+		utils.WriteJSON(w, http.StatusServiceUnavailable, map[string]interface{}{
+			"status":  "not ready",
+			"service": h.client,
 		})
 		return
 	}
 
-	h.writeResponse(responseReq{
-		writer:  w,
-		message: h.client + " is " + string(utils.StatusReady),
-		status:  http.StatusOK,
-		details: utils.H{
-			"service": h.client,
-			"status":  utils.StatusRunning,
-		},
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"status":  "ready",
+		"service": h.client,
+		"uptime":  h.Uptime(),
+		"started": h.startTime.Format(time.RFC3339),
 	})
 }
 
-// logRoutesMiddleware logs every handler request
+// logRoutesMiddleware logs every request through the health server.
 func (h *HealthServer) logRoutesMiddleware(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		next.ServeHTTP(w, r)
-
-		// log routes
-		logger.Info().
+		logger.Debug().
 			Str("method", r.Method).
 			Str("path", r.URL.Path).
-			// Str("status", r.Response.Status).
 			Str("userAgent", r.UserAgent()).
 			Dur("duration", time.Since(start)).
-			Msg("request processed")
+			Msg("health request")
 	}
 }

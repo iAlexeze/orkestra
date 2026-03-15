@@ -68,6 +68,11 @@ func NewGenericReconciler[T domain.Object](
 var _ domain.Reconciler = (*GenericReconciler[domain.Object])(nil)
 
 func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error {
+	ctx = kubeclient.WithKubeclient(ctx, r.kube)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	if err := ctx.Err(); err != nil {
 		return nil
 	}
@@ -127,6 +132,9 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 
 	// Normal reconcile — call the hook if provided
 	if r.hooks.OnReconcile != nil {
+
+		ctx = context.WithValue(ctx, kubeclient.ContextKey, r.kube)
+
 		if err := r.hooks.OnReconcile(ctx, obj); err != nil {
 
 			logger.FromContext(ctx).Error().Err(err).

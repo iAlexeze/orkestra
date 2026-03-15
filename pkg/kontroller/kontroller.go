@@ -9,10 +9,9 @@ import (
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/initialize"
 	"github.com/ialexeze/orkestra/pkg/event"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 
-	// "github.com/ialexeze/orkestra/pkg/health"
 	"github.com/ialexeze/orkestra/pkg/informer"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
@@ -42,7 +41,7 @@ type Controller struct {
 	wgs            map[string]*sync.WaitGroup
 	mu             sync.RWMutex
 	reconcilers    map[string]domain.Reconciler
-	crds           []initialize.CRDEntry
+	crds           []orktypes.CRDEntry
 
 	// Error rate
 	total  map[string]int

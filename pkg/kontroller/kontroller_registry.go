@@ -5,12 +5,12 @@ import (
 	"sync"
 
 	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/initialize"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"k8s.io/client-go/tools/cache"
 )
 
 type RegistryEntry struct {
-	CRD               initialize.CRDEntry
+	CRD               orktypes.CRDEntry
 	Informer          cache.SharedIndexInformer
 	ReconcilerFactory func() domain.Reconciler // factory lives here
 	DegradeThreshold  int
@@ -29,7 +29,7 @@ func NewKontrollerRegistry() *ResourceKatalog {
 
 func (r *ResourceKatalog) Register(
 	gvk string,
-	crd initialize.CRDEntry,
+	crd orktypes.CRDEntry,
 	inf cache.SharedIndexInformer,
 	rec func() domain.Reconciler,
 ) {
