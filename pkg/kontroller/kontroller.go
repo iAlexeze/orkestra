@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/initialize"
 	"github.com/ialexeze/orkestra/pkg/event"
+	"github.com/ialexeze/orkestra/pkg/runtime"
 
 	// "github.com/ialexeze/orkestra/pkg/health"
 	"github.com/ialexeze/orkestra/pkg/informer"
@@ -42,7 +42,7 @@ type Controller struct {
 	wgs            map[string]*sync.WaitGroup
 	mu             sync.RWMutex
 	reconcilers    map[string]domain.Reconciler
-	crds           []initialize.CRDEntry
+	crds           []runtime.CRDEntry
 
 	// Error rate
 	total  map[string]int

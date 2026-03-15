@@ -5,8 +5,10 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/ialexeze/orkestra/initialize"
 	"github.com/ialexeze/orkestra/pkg/logger"
+	ork_runtime "github.com/ialexeze/orkestra/pkg/runtime"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -212,28 +214,48 @@ func (k *Katalog) addRuntimeObjects() error {
 		crd := &k.enabledCRDs[i]
 		gvk := crd.GroupVersionKind
 
-		objFn, ok := initialize.ObjectRegistry[gvk]
-		if !ok {
-			return fmt.Errorf("addRuntime Error: no object constructor registered for %s", gvk)
+		if crd.IsUnstructured() {
+			// Set unstructured factories so GetRuntimeObjects works consistently
+			g := crd.APITypes.Group
+			v := crd.APITypes.Version
+			ki := crd.APITypes.Kind
+
+			crd.ObjectYamlMode = func() runtime.Object {
+				u := &unstructured.Unstructured{}
+				u.SetGroupVersionKind(schema.GroupVersionKind{
+					Group: g, Version: v, Kind: ki,
+				})
+				return u
+			}
+			crd.ListObjectYamlMode = func() runtime.Object {
+				ul := &unstructured.UnstructuredList{}
+				ul.SetGroupVersionKind(schema.GroupVersionKind{
+					Group: g, Version: v, Kind: ki + "List",
+				})
+				return ul
+			}
+			continue
 		}
 
-		listFn, ok := initialize.ListRegistry[gvk]
+		// Typed mode — look up from registry
+		objFn, ok := ork_runtime.ObjectRegistry[gvk]
 		if !ok {
-			return fmt.Errorf("addRuntime Error: no list constructor registered for %s", gvk)
+			return fmt.Errorf("addRuntimeObjects: no object constructor registered for %s", gvk)
+		}
+		listFn, ok := ork_runtime.ListRegistry[gvk]
+		if !ok {
+			return fmt.Errorf("addRuntimeObjects: no list constructor registered for %s", gvk)
 		}
 
 		crd.ObjectYamlMode = objFn
 		crd.ListObjectYamlMode = listFn
 	}
-
 	return nil
 }
 
 // ---------------------------------------------------------------------------------
 // Add reconcilers
 func (k *Katalog) addReconcilers() error {
-	// recs := reconciler.RegisterReconcilers()
-
 	for i := range k.enabledCRDs {
 		crd := &k.enabledCRDs[i]
 
@@ -242,13 +264,32 @@ func (k *Katalog) addReconcilers() error {
 			continue
 		}
 
-		// fn, ok := recs[crd.Name]
-		// if !ok {
-		// 	return fmt.Errorf("CRD '%s' has no registered reconciler", crd.Name)
-		// }
+		constructorFn, ok := ork_runtime.ReconcilerRegistry[crd.GroupVersionKind]
+		if !ok {
+			return fmt.Errorf(
+				"CRD %q: no constructor registered — "+
+					"check reconciler.constructor in Katalog and re-run ork generate registry",
+				crd.Name,
+			)
+		}
 
-		// crd.ReconcilerConfig.Constructor = fn
+		crd.ReconcilerConfig.Constructor = constructorFn // ← sets the Go function field
 	}
+	return nil
+}
 
+// ---------------------------------------------------------------------------------
+// Add hooks
+func (k *Katalog) addHooks() error {
+	for i := range k.enabledCRDs {
+		crd := &k.enabledCRDs[i]
+		if !crd.ReconcilerConfig.Default {
+			continue
+		}
+		if hookFn, ok := ork_runtime.HookRegistry[crd.GroupVersionKind]; ok {
+			crd.ReconcilerConfig.HookFactory = hookFn
+		}
+		// not found — fine, GenericReconciler runs without hooks
+	}
 	return nil
 }

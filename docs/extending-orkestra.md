@@ -238,7 +238,7 @@ You can register CRDs in **Go mode** or **YAML mode**.
 
 ## Option A — Go Mode (Typed)
 
-Add your CRD directly to the Go katalog: [crd-katalog.go](../initialize/crd-katalog.go)
+Add your CRD directly to the Go katalog: [crd-katalog.go](../runtime/crd-katalog.go)
 
 ```go
 {
