@@ -10,11 +10,10 @@ import (
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
-	applicationTypev1 "github.com/ialexeze/orkestra/example-crds/api/types/application/v1alpha1"
 	managednsTypeV1 "github.com/ialexeze/orkestra/example-crds/api/types/managedNamespace/v1alpha1"
 	projectTypev1 "github.com/ialexeze/orkestra/example-crds/api/types/project/v1alpha1"
 	"github.com/ialexeze/orkestra/pkg/reconciler/hooks"
-	"github.com/ialexeze/orkestra/pkg/runtime"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
 // KomposeKatalogFromGo returns the full list of CRD entries for Go mode.
@@ -29,8 +28,8 @@ import (
 //   - Disabled CRDs (Enabled: false) never enter the runtime — safe to leave in place.
 //   - APITypes mirrors the YAML apiTypes block — ork generate reads this in YAML mode.
 //     In Go mode it drives setGroupVersionKind() and scheme registration.
-func KomposeKatalogFromGo() []runtime.CRDEntry {
-	return []runtime.CRDEntry{
+func KomposeKatalogFromGo() []orktypes.CRDEntry {
+	return []orktypes.CRDEntry{
 
 		// ── PROJECT ───────────────────────────────────────────────────────────
 		// Root CRD — no dependencies.
@@ -49,7 +48,7 @@ func KomposeKatalogFromGo() []runtime.CRDEntry {
 
 			// APITypes mirrors crd-katalog.yaml apiTypes block.
 			// setGroupVersionKind() derives GroupVersionKind/GroupVersionResource from here.
-			APITypes: runtime.APITypes{
+			APITypes: orktypes.APITypes{
 				Object:   projectTypev1.Kind,
 				List:     projectTypev1.Kind + "List",
 				Alias:    "projv1",
@@ -67,7 +66,7 @@ func KomposeKatalogFromGo() []runtime.CRDEntry {
 			ListObjectGoMode: &projectTypev1.ProjectList{},
 			Scheme:           projectTypev1.AddToScheme,
 
-			ReconcilerConfig: runtime.ReconcilerConfig{
+			ReconcilerConfig: orktypes.ReconcilerConfig{
 				Default: true,
 				Finalizers: []string{
 					"my-default-finalizer/platform-katalog",
@@ -80,7 +79,7 @@ func KomposeKatalogFromGo() []runtime.CRDEntry {
 				},
 			},
 
-			Queue: runtime.Queue{
+			Queue: orktypes.Queue{
 				MaxQueueDepth: 1000,
 			},
 		},
@@ -98,7 +97,7 @@ func KomposeKatalogFromGo() []runtime.CRDEntry {
 			Description: "Represents a namespace managed by Orkestra.",
 			// No Resync — uses Orkestra-level default (DEFAULT_RESYNC env var)
 
-			APITypes: runtime.APITypes{
+			APITypes: orktypes.APITypes{
 				Object:   managednsTypeV1.Kind,
 				List:     managednsTypeV1.Kind + "List",
 				Alias:    "mnsv1",
@@ -114,63 +113,14 @@ func KomposeKatalogFromGo() []runtime.CRDEntry {
 			ListObjectGoMode: &managednsTypeV1.ManagedNamespaceList{},
 			Scheme:           managednsTypeV1.AddToScheme,
 
-			ReconcilerConfig: runtime.ReconcilerConfig{
+			ReconcilerConfig: orktypes.ReconcilerConfig{
 				Default: true,
 				// No HookFactory — GenericReconciler runs silently:
 				// finalizers managed, events emitted, metrics recorded. Zero code.
 			},
 
-			Queue: runtime.Queue{
+			Queue: orktypes.Queue{
 				MaxQueueDepth: 2000,
-			},
-		},
-
-		// ── APPLICATION ───────────────────────────────────────────────────────
-		// Depends on both Project and ManagedNamespace.
-		// Uses shared default workqueue (Queue.Default: true) — no per-CRD queue.
-		// Default reconciler with finalizer override.
-		{
-			Name:        "application",
-			Enabled:     true,
-			Critical:    false,
-			Namespaced:  true,
-			Namespace:   "default",
-			Workers:     2,
-			Resync:      3 * time.Second,
-			DependsOn:   []string{"project", "managednamespace"},
-			Description: "Represents a deployable application workload managed by Orkestra.",
-
-			APITypes: runtime.APITypes{
-				Object:  applicationTypev1.Kind,
-				List:    applicationTypev1.Kind + "List",
-				Alias:   "appv1",
-				Group:   applicationTypev1.Group,
-				Version: applicationTypev1.Version,
-				Kind:    applicationTypev1.Kind,
-				Plural:  applicationTypev1.Plural,
-				APIPath: applicationTypev1.APIPath,
-				// Location: "github.com/ialexeze/orkestra/example-crds/api/types/application/v1alpha1",  // Optional if scheme is already defined
-			},
-
-			ObjectGoMode:     &applicationTypev1.Application{},
-			ListObjectGoMode: &applicationTypev1.ApplicationList{},
-			Scheme:           applicationTypev1.AddToScheme,
-
-			ReconcilerConfig: runtime.ReconcilerConfig{
-				Default: true,
-				Finalizers: []string{
-					"my-finalizer/application",
-				},
-				// To switch to a custom reconciler:
-				// Default: false,
-				// Constructor: func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
-				//     return reconciler.NewApplicationReconciler(kube, inf, ev)
-				// },
-			},
-
-			Queue: runtime.Queue{
-				Default:       true, // shared default queue — no per-CRD queue isolation
-				MaxQueueDepth: 500,
 			},
 		},
 

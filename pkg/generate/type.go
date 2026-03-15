@@ -3,29 +3,20 @@ package generate
 import (
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/runtime"
-)
-
-const (
-	RuntimePackage = "pkg/runtime"
-	RegistryFile   = "generated_runtime_registry.go"
-	ExamplesDir    = "_runtime_examples"
-	DocsDir        = "_runtime_docs"
-	TestDir        = "_runtime_test"
-	DashDir        = "_runtime_dashboards"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
 type generateKatalog struct {
 	Spec struct {
-		CRDs []runtime.CRDEntry `yaml:"crds"`
+		CRDs []orktypes.CRDEntry `yaml:"crds"`
 	} `yaml:"spec"`
 }
 
 type registryTemplateData struct {
-	Timestamp        string
-	Imports          []importEntry
-	Entries          []registryEntry
-	SchemeEntries    []registryEntry
+	Timestamp string
+	Imports   []importEntry
+	Entries   []registryEntry
+	//	SchemeEntries    []registryEntry
 	HookEntries      []hookEntry
 	RecEntries       []reconcilerEntry
 	NeedsRecImports  bool // true when RecEntries is non-empty

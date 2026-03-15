@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/pkg/runtime"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
-func (k *Katalog) List() []runtime.CRDEntry {
+func (k *Katalog) List() []orktypes.CRDEntry {
 	return k.Spec.CRDs
 }
 
 // All returns every CRD in the katalog, including disabled ones.
 // Useful for CLI commands like `ork katalog list --all`.
-func (k *Katalog) All() []runtime.CRDEntry {
+func (k *Katalog) All() []orktypes.CRDEntry {
 	return k.Spec.CRDs
 }
 
@@ -155,12 +155,12 @@ func (k *Katalog) Dependents(name string) []string {
 }
 
 // Enabled returns only the enabled CRDs in the katalog.
-func (k *Katalog) Enabled() []runtime.CRDEntry {
+func (k *Katalog) Enabled() []orktypes.CRDEntry {
 	return k.enabledCRDs
 }
 
 // Get tries to get an enabled crd
-func (k *Katalog) Get(name string) (*runtime.CRDEntry, error) {
+func (k *Katalog) Get(name string) (*orktypes.CRDEntry, error) {
 	for _, crd := range k.enabledCRDs {
 		if crd.Name == name {
 			return &crd, nil

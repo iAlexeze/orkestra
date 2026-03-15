@@ -7,7 +7,7 @@ import (
 
 	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/runtime"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
 	"k8s.io/client-go/tools/cache"
 )
@@ -40,7 +40,7 @@ func BuildCRDHealthHandler(name string, h *CRDHealth) http.HandlerFunc {
 // ── Info Handler ──────────────────────────────────────────────────────────────
 
 func BuildCRDInfoHandler(
-	crd runtime.CRDEntry,
+	crd orktypes.CRDEntry,
 	kfg *konfig.Konfig,
 	inf cache.SharedIndexInformer,
 	health *CRDHealth,
@@ -132,7 +132,7 @@ func BuildKatalogHandler(
 // Exposes what matters operationally — mode, type, hooks presence, finalizers.
 // Never exposes Go function references — those are internal.
 
-func reconcilerInfo(crd runtime.CRDEntry) map[string]interface{} {
+func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 	rc := crd.ReconcilerConfig
 
 	// Reconciler type — how is this CRD being reconciled
@@ -235,7 +235,7 @@ func reconcilerInfo(crd runtime.CRDEntry) map[string]interface{} {
 
 // templateSummary returns a summary of declared resource templates.
 // Shows counts rather than full declarations — keeps the API response lean.
-func templateSummary(t *runtime.HookTemplates) map[string]interface{} {
+func templateSummary(t *orktypes.HookTemplates) map[string]interface{} {
 	if t == nil {
 		return map[string]interface{}{}
 	}
@@ -280,7 +280,7 @@ type crdDisplayValues struct {
 }
 
 func resolveCRDDisplayValues(
-	crd runtime.CRDEntry,
+	crd orktypes.CRDEntry,
 	kfg *konfig.Konfig,
 	inf cache.SharedIndexInformer,
 ) crdDisplayValues {

@@ -7,7 +7,7 @@ import (
 	"github.com/ialexeze/orkestra/crdkatalog"
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/runtime"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
@@ -16,7 +16,7 @@ import (
 //	YAML Builder
 //
 // -----------------------------------------------------------------------------
-func (k *Katalog) KomposeKatalogFromYaml(path string) ([]runtime.CRDEntry, error) {
+func (k *Katalog) KomposeKatalogFromYaml(path string) ([]orktypes.CRDEntry, error) {
 	data, err := utils.LoadFile(path)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func (k *Katalog) KomposeKatalogFromYaml(path string) ([]runtime.CRDEntry, error
 //	GO Builder
 //
 // -----------------------------------------------------------------------------
-func (k *Katalog) KomposeKatalogFromGo() ([]runtime.CRDEntry, error) {
+func (k *Katalog) KomposeKatalogFromGo() ([]orktypes.CRDEntry, error) {
 	k.Spec.CRDs = crdkatalog.KomposeKatalogFromGo()
 
 	// Filter

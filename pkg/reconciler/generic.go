@@ -127,6 +127,9 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 
 	// Normal reconcile — call the hook if provided
 	if r.hooks.OnReconcile != nil {
+
+		ctx = context.WithValue(ctx, kubeclient.ContextKey, r.kube)
+
 		if err := r.hooks.OnReconcile(ctx, obj); err != nil {
 
 			logger.FromContext(ctx).Error().Err(err).

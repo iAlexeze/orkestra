@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/ialexeze/orkestra/pkg/logger"
-	ork_runtime "github.com/ialexeze/orkestra/pkg/runtime"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -238,11 +238,11 @@ func (k *Katalog) addRuntimeObjects() error {
 		}
 
 		// Typed mode — look up from registry
-		objFn, ok := ork_runtime.ObjectRegistry[gvk]
+		objFn, ok := orktypes.ObjectRegistry[gvk]
 		if !ok {
 			return fmt.Errorf("addRuntimeObjects: no object constructor registered for %s", gvk)
 		}
-		listFn, ok := ork_runtime.ListRegistry[gvk]
+		listFn, ok := orktypes.ListRegistry[gvk]
 		if !ok {
 			return fmt.Errorf("addRuntimeObjects: no list constructor registered for %s", gvk)
 		}
@@ -264,7 +264,7 @@ func (k *Katalog) addReconcilers() error {
 			continue
 		}
 
-		constructorFn, ok := ork_runtime.ReconcilerRegistry[crd.GroupVersionKind]
+		constructorFn, ok := orktypes.ReconcilerRegistry[crd.GroupVersionKind]
 		if !ok {
 			return fmt.Errorf(
 				"CRD %q: no constructor registered — "+
@@ -286,7 +286,7 @@ func (k *Katalog) addHooks() error {
 		if !crd.ReconcilerConfig.Default {
 			continue
 		}
-		if hookFn, ok := ork_runtime.HookRegistry[crd.GroupVersionKind]; ok {
+		if hookFn, ok := orktypes.HookRegistry[crd.GroupVersionKind]; ok {
 			crd.ReconcilerConfig.HookFactory = hookFn
 		}
 		// not found — fine, GenericReconciler runs without hooks

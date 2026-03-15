@@ -68,7 +68,8 @@ Examples:
 		}
 
 		log.Printf("registry generated successfully\n")
-		log.Printf("out: %s/%s\n", generate.RuntimePackage, generate.RegistryFile)
+		log.Printf("registry: %s/%s\n", generate.RuntimePackage, generate.RegistryFile)
+		log.Printf("hooks: %s/%s\n", generate.RuntimePackage, generate.HooksFile)
 		return nil
 	},
 }

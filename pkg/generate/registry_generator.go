@@ -8,7 +8,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/runtime"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
@@ -20,6 +20,7 @@ package runtime
 import (
 	"fmt"
 
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	{{ if or .NeedsHookImports .NeedsRecImports }}
@@ -34,19 +35,19 @@ import (
 
 func RegisterRuntimeObjects() {
 {{ range .Entries }}
-	ObjectRegistry[schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}] =
+	orktypes.ObjectRegistry[schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}] =
 		func() runtime.Object { return &{{ .Alias }}.{{ .Object }}{} }
-	ListRegistry[schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}] =
+	orktypes.ListRegistry[schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}] =
 		func() runtime.Object { return &{{ .Alias }}.{{ .List }}{} }
 {{ end }}{{ if .HookEntries }}
 	{{ range .HookEntries }}
-	HookRegistry[schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}] =
+	orktypes.HookRegistry[schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}] =
 		func() domain.AnyReconcileHooks {
 			return {{ .Alias }}.{{ .Function }}()
 		}
 {{ end }}{{ end }}{{ if .RecEntries }}
 {{ range .RecEntries }}
-	ReconcilerRegistry[schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}] =
+	orktypes.ReconcilerRegistry[schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}] =
 		func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
 			return {{ .Alias }}.{{ .Function }}(kube, inf, ev)
 		}
@@ -61,22 +62,24 @@ func RegisterScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
 `))
 
 func Registry(katalogPath string, dryRun bool) error {
+
+	// ── 1. Load ───────────────────────────────────────────────────────────────
 	data, err := utils.LoadFile(katalogPath)
 	if err != nil {
 		return fmt.Errorf("loading katalog from %q: %w", katalogPath, err)
 	}
 
+	// ── 2. Parse ──────────────────────────────────────────────────────────────
 	kat, err := parseKatalog(data)
 	if err != nil {
 		return err
 	}
 
 	var (
-		imports []importEntry
-		entries []registryEntry // Object entry
-		// schemeEntries []registryEntry // Scheme entry for registration
-		hookEntries []hookEntry
-		recEntries  []reconcilerEntry
+		imports     []importEntry
+		entries     []registryEntry   // typed CRDs → ObjectRegistry + ListRegistry + RegisterScheme
+		hookEntries []hookEntry       // Go hooks → HookRegistry
+		recEntries  []reconcilerEntry // custom reconcilers → ReconcilerRegistry
 
 		seenObjectAliases = map[string]string{}
 		seenHookAliases   = map[string]string{}
@@ -88,13 +91,17 @@ func Registry(katalogPath string, dryRun bool) error {
 			continue
 		}
 
-		// ── 1. Scheme registration — ALL typed CRDs regardless of reconciler type ──
-		// The scheme is needed for the REST client to decode API server responses.
-		// Applies to both default: true and default: false.
+		// ── Typed CRDs — object registry + scheme ────────────────────────────
+		// Unstructured CRDs skip this block entirely — they use the dynamic
+		// client and *unstructured.Unstructured, no scheme registration needed.
 		if !crd.IsUnstructured() && crd.APITypes.Location != "" {
+
+			if err := validateAPITypes(crd); err != nil {
+				return fmt.Errorf("CRD %q: %w", crd.Name, err)
+			}
+
 			alias := resolveAlias(crd.APITypes.Alias, crd.Name, crd.APITypes.Location)
 
-			// Ensure the import is registered — may already be present from object entry
 			if err := dedupeImport(seenObjectAliases, alias, crd.APITypes.Location, crd.Name); err != nil {
 				return err
 			}
@@ -103,60 +110,66 @@ func Registry(katalogPath string, dryRun bool) error {
 				seenObjectAliases[alias] = crd.APITypes.Location
 			}
 
-			// ── 3. Input entries  ─────────────────────────────────────────────────
+			// entries drives both ObjectRegistry/ListRegistry AND RegisterScheme
 			entries = append(entries, registryEntry{
-				Alias: alias, Object: crd.APITypes.Object, List: crd.APITypes.List,
-				Group: crd.APITypes.Group, Version: crd.APITypes.Version, Kind: crd.APITypes.Kind,
+				Alias:   alias,
+				Object:  crd.APITypes.Object,
+				List:    crd.APITypes.List,
+				Group:   crd.APITypes.Group,
+				Version: crd.APITypes.Version,
+				Kind:    crd.APITypes.Kind,
 			})
-
-			// schemeEntries = append(schemeEntries, registryEntry{			// This for future use cases if needed
-			// 	Alias:   alias,
-			// 	Object:  crd.APITypes.Object,
-			// 	Group:   crd.APITypes.Group,
-			// 	Version: crd.APITypes.Version,
-			// 	Kind:    crd.APITypes.Kind,
-			// })
 		}
 
-		// ── 3. Handle Default and Unstrcutured mode ─────────────────────────────────────────────────
-		if crd.ReconcilerConfig.Default {
+		// ── Go hooks — HookRegistry ───────────────────────────────────────────
+		// Only for default: true CRDs with an explicit hooks declaration.
+		// Unstructured CRDs with OnCreate/OnReconcile/OnDelete templates are
+		// handled by Hooks() below — they do not go through HookRegistry here.
+		if crd.ReconcilerConfig.Default && crd.ReconcilerConfig.Hooks != nil {
+			h := crd.ReconcilerConfig.Hooks
 
-			if crd.ReconcilerConfig.Hooks != nil {
-				h := crd.ReconcilerConfig.Hooks
-				if err := validateHookEntry(h, crd.Name); err != nil {
-					return err
-				}
-
-				hookAlias := resolveAlias(h.Alias, crd.Name+"hooks", h.Location)
-				if err := dedupeImport(seenHookAliases, hookAlias, h.Location, crd.Name); err != nil {
-					return err
-				}
-				if _, seen := seenHookAliases[hookAlias]; !seen {
-					imports = append(imports, importEntry{Alias: hookAlias, Location: h.Location})
-					seenHookAliases[hookAlias] = h.Location
-				}
-
-				hookEntries = append(hookEntries, hookEntry{
-					Alias: hookAlias, Function: h.Function,
-					Group: crd.APITypes.Group, Version: crd.APITypes.Version, Kind: crd.APITypes.Kind,
-				})
+			if err := validateHookEntry(h, crd.Name); err != nil {
+				return err
 			}
-		} else {
+
+			hookAlias := resolveAlias(h.Alias, crd.Name+"hooks", h.Location)
+
+			if err := dedupeImport(seenHookAliases, hookAlias, h.Location, crd.Name); err != nil {
+				return err
+			}
+			if _, seen := seenHookAliases[hookAlias]; !seen {
+				imports = append(imports, importEntry{Alias: hookAlias, Location: h.Location})
+				seenHookAliases[hookAlias] = h.Location
+			}
+
+			hookEntries = append(hookEntries, hookEntry{
+				Alias:    hookAlias,
+				Function: h.Function,
+				Group:    crd.APITypes.Group,
+				Version:  crd.APITypes.Version,
+				Kind:     crd.APITypes.Kind,
+			})
+		}
+
+		// ── Custom reconcilers — ReconcilerRegistry ───────────────────────────
+		if !crd.ReconcilerConfig.Default {
 			if crd.ReconcilerConfig.ConstructorDecl == nil {
 				return fmt.Errorf(
 					"CRD %q: reconciler.default is false but no constructor declared — "+
-						"add reconciler.constructor with location and function, then re-run ork generate registry",
+						"add reconciler.constructor with location and function, "+
+						"then re-run ork generate registry",
 					crd.Name,
 				)
 			}
 
-			// ── 4. Validation (regardless of mode) ─────────────────────────────────────────────────
 			c := crd.ReconcilerConfig.ConstructorDecl
+
 			if err := validateConstructorEntry(c, crd.Name); err != nil {
 				return err
 			}
 
 			recAlias := resolveAlias(c.Alias, crd.Name+"rec", c.Location)
+
 			if err := dedupeImport(seenRecAliases, recAlias, c.Location, crd.Name); err != nil {
 				return err
 			}
@@ -166,38 +179,65 @@ func Registry(katalogPath string, dryRun bool) error {
 			}
 
 			recEntries = append(recEntries, reconcilerEntry{
-				Alias: recAlias, Function: c.Function,
-				Group: crd.APITypes.Group, Version: crd.APITypes.Version, Kind: crd.APITypes.Kind,
+				Alias:    recAlias,
+				Function: c.Function,
+				Group:    crd.APITypes.Group,
+				Version:  crd.APITypes.Version,
+				Kind:     crd.APITypes.Kind,
 			})
 		}
 	}
 
-	// ── 5. Handle Not found (regardless of mode) ─────────────────────────────────────────────────
-	if len(entries) == 0 && len(recEntries) == 0 {
-		return fmt.Errorf("no enabled CRDs found — check that at least one CRD has enabled: true")
+	// ── Guard — nothing to generate ───────────────────────────────────────────
+	// Fail only if there are truly no entries of any kind AND no template CRDs.
+	// Pure unstructured template-only Katalogs are valid — Hooks() handles them.
+	if len(entries) == 0 && len(recEntries) == 0 && len(hookEntries) == 0 {
+		hasTemplates := false
+		for _, crd := range kat.Spec.CRDs {
+			if crd.Enabled && crd.HasTemplates() {
+				hasTemplates = true
+				break
+			}
+		}
+		if !hasTemplates {
+			return fmt.Errorf(
+				"no enabled CRDs found — " +
+					"check that at least one CRD has enabled: true",
+			)
+		}
 	}
 
-	// ── 6. Build registry data  ─────────────────────────────────────────────────
-	registryData := registryTemplateData{
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
-		Imports:   imports,
-		Entries:   entries,
-		// SchemeEntries:    schemeEntries,
-		HookEntries:      hookEntries,
-		RecEntries:       recEntries,
-		NeedsRecImports:  len(recEntries) > 0,
-		NeedsHookImports: len(hookEntries) > 0,
+	// ── Render registry file ──────────────────────────────────────────────────
+	// Only write the file if there is typed/hook/constructor content.
+	// Pure template Katalogs skip this — __generated_runtime_registry.go
+	// stays as the committed stub with empty RegisterRuntimeObjects().
+	if len(entries) > 0 || len(recEntries) > 0 || len(hookEntries) > 0 {
+		registryData := registryTemplateData{
+			Timestamp:        time.Now().UTC().Format(time.RFC3339),
+			Imports:          imports,
+			Entries:          entries, // used by ObjectRegistry, ListRegistry, RegisterScheme
+			HookEntries:      hookEntries,
+			RecEntries:       recEntries,
+			NeedsRecImports:  len(recEntries) > 0,
+			NeedsHookImports: len(hookEntries) > 0,
+		}
+
+		outPath := filepath.Join(RuntimePackage, RegistryFile)
+		if err := renderTemplateToFile(registryTemplate, registryData, outPath, true, dryRun); err != nil {
+			return err
+		}
 	}
 
-	// ── 7. Apply the template with registry data  ─────────────────────────────────────────────────
-	if err := renderTemplateToFile(registryTemplate, registryData, filepath.Join(RuntimePackage, RegistryFile), true, dryRun); err != nil {
-		return err
+	// ── Emit hooks file for declarative template CRDs ─────────────────────────
+	// Hooks() is always called — it skips silently if no CRDs have templates.
+	if err := Hooks(katalogPath, dryRun); err != nil {
+		return fmt.Errorf("generating hooks: %w", err)
 	}
 
 	return nil
 }
 
-func validateAPITypes(crd runtime.CRDEntry) error {
+func validateAPITypes(crd orktypes.CRDEntry) error {
 	t := crd.APITypes
 	var missing []string
 	if t.Object == "" {
@@ -224,7 +264,7 @@ func validateAPITypes(crd runtime.CRDEntry) error {
 	return nil
 }
 
-func validateHookEntry(h *runtime.HookDeclaration, crdName string) error {
+func validateHookEntry(h *orktypes.HookDeclaration, crdName string) error {
 	var missing []string
 	if h.Location == "" {
 		missing = append(missing, "reconciler.hooks.location")
@@ -238,7 +278,7 @@ func validateHookEntry(h *runtime.HookDeclaration, crdName string) error {
 	return nil
 }
 
-func validateConstructorEntry(c *runtime.ConstructorDeclaration, crdName string) error {
+func validateConstructorEntry(c *orktypes.ConstructorDeclaration, crdName string) error {
 	var missing []string
 	if c.Location == "" {
 		missing = append(missing, "reconciler.constructor.location")

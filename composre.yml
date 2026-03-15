@@ -1,3 +1,0 @@
-services:
-  database:
-    name: hello

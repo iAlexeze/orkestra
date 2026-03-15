@@ -6,6 +6,7 @@ import (
 
 	"github.com/ialexeze/orkestra/pkg/logger"
 	ork_runtime "github.com/ialexeze/orkestra/pkg/runtime"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -21,7 +22,7 @@ import (
 // NewKatalog returns a list of CRD data
 func NewKatalog(mode, path string) *Katalog {
 	katalog := &Katalog{}
-	var entries []ork_runtime.CRDEntry
+	var entries []orktypes.CRDEntry
 	var err error
 
 	switch mode {
@@ -35,13 +36,15 @@ func NewKatalog(mode, path string) *Katalog {
 		ork_runtime.RegisterRuntimeObjects()
 
 		// Guard: if ObjectRegistry is empty, user forgot to run ork generate
-		if len(ork_runtime.ObjectRegistry) == 0 {
-			utils.Exit(fmt.Errorf(
-				"ObjectRegistry is empty — run 'ork generate registry --katalog %s' first",
-				path,
-			))
-		}
+		for _, crd := range entries {
+			if len(orktypes.ObjectRegistry) == 0 && !crd.IsUnstructured() {
+				utils.Exit(fmt.Errorf(
+					"ObjectRegistry is empty — run 'ork generate registry --katalog %s' first",
+					path,
+				))
+			}
 
+		}
 		// Build CRDs
 		entries, err = katalog.KomposeKatalogFromYaml(path)
 		if err != nil {

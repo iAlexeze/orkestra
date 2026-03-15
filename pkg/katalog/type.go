@@ -3,7 +3,7 @@ package katalog
 import (
 	"reflect"
 
-	"github.com/ialexeze/orkestra/pkg/runtime"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
 // -----------------------------------------------------------------------------
@@ -37,12 +37,12 @@ type Katalog struct {
 		Email       string `yaml:"email"`
 	} `yaml:"metadata"`
 	Spec struct {
-		Finalizers []string           `yaml:"finalizers"`
-		CRDs       []runtime.CRDEntry `yaml:"crds"` // raw from YAML - documentation - CLI
+		Finalizers []string            `yaml:"finalizers"`
+		CRDs       []orktypes.CRDEntry `yaml:"crds"` // raw from YAML - documentation - CLI
 	} `yaml:"spec"`
 
 	// Internal
-	enabledCRDs []runtime.CRDEntry `yaml:"-"` // filtered
+	enabledCRDs []orktypes.CRDEntry `yaml:"-"` // filtered
 	mode        struct {
 		Go   bool `yaml:"go"`
 		Yaml bool `yaml:"yaml"`
