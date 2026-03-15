@@ -14,6 +14,7 @@ type CRDHealth struct {
 	consecutiveFails atomic.Int64
 	lastError        atomic.Value // stores string
 	lastReconcile    atomic.Value // stores time.Time
+	startTime        atomic.Value // stores time.Time
 }
 
 func NewCRDHealth(name string) *CRDHealth {
@@ -23,6 +24,7 @@ func NewCRDHealth(name string) *CRDHealth {
 }
 
 func (h *CRDHealth) RecordSuccess() {
+	h.startTime.CompareAndSwap(nil, time.Now()) // set once, never overwrite
 	h.totalReconciles.Add(1)
 	h.consecutiveFails.Store(0)
 	h.lastReconcile.Store(time.Now())
@@ -76,4 +78,12 @@ func (h *CRDHealth) LastReconcile() time.Time {
 
 func (h *CRDHealth) ConsecutiveFails() int64 {
 	return h.consecutiveFails.Load()
+}
+
+func (h *CRDHealth) Uptime() string {
+	v := h.startTime.Load()
+	if v == nil {
+		return "not started"
+	}
+	return time.Since(v.(time.Time)).Round(time.Second).String()
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/ialexeze/orkestra/pkg/queue"
 	"github.com/ialexeze/orkestra/pkg/reconciler"
 	"github.com/ialexeze/orkestra/pkg/utils"
+	"k8s.io/client-go/tools/cache"
 )
 
 type orkestraKfg struct {
@@ -84,10 +85,17 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 	// ── 4a. Client provider ───────────────────────────────────────────────────
 	// Registers a REST client constructor per CRD type.
 	// Constructors are deferred — executed when the provider is first used.
+	// Typed CRDs register a REST client constructor.
+	// Unstructured CRDs skip this — they use NewDynamicListerWatcher directly
+	// in the informer factory loop below.
 	provider := kube.ClientProvider()
 
 	for _, crd := range crdKatalog.Enabled() {
 		crd := crd // capture — closure must own its own crd value
+		if crd.IsUnstructured() {
+			continue // dynamic path — registered per-informer below
+		}
+
 		object, list := crd.GetRuntimeObjects(kfg.Mode())
 
 		logger.Debug().
@@ -155,7 +163,30 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 			opts.Wq = wq
 		}
 
-		inf := infFactory.For(object, ctx, opts)
+		// For each CRD, choose typed or dynamic informer based on mode.
+
+		var inf cache.SharedIndexInformer
+
+		if crd.IsUnstructured() {
+			// Dynamic informer — bypasses scheme entirely.
+			// NewDynamicListerWatcher returns a cache.ListerWatcher that uses
+			// the dynamic client directly. No scheme registration needed.
+			lw := kube.NewDynamicListerWatcher(kubeclient.CRDInfo{
+				Kind:         crd.APITypes.Kind,
+				Group:        crd.APITypes.Group,
+				Version:      crd.APITypes.Version,
+				APIPath:      crd.APITypes.APIPath,
+				GroupVersion: crd.GroupVersion,
+				Plural:       crd.APITypes.Plural,
+				Namespace:    crd.Namespace,
+				Namespaced:   crd.Namespaced,
+			})
+
+			inf = infFactory.ForListerWatcher(lw, object, ctx, opts)
+		} else {
+			// Typed informer — uses the REST client registered in 4a.
+			inf = infFactory.For(object, ctx, opts)
+		}
 
 		crdInfo := reconciler.CRDInfo{
 			Kind:       crd.APITypes.Kind,

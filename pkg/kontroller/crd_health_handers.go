@@ -27,6 +27,8 @@ func BuildCRDHealthHandler(name string, h *CRDHealth) http.HandlerFunc {
 		utils.WriteJSON(w, status, map[string]interface{}{
 			"name":             name,
 			"healthy":          h.IsHealthy(),
+			"status":           status,
+			"uptime":           h.Uptime(),
 			"message":          message,
 			"errorRate":        h.ErrorRate(),
 			"consecutiveFails": h.consecutiveFails.Load(),
@@ -112,6 +114,7 @@ func BuildKatalogHandler(
 				"resourceCount":    v.resourceCount,
 				"reconciler":       reconcilerInfo(crd),
 				"healthy":          h.IsHealthy(),
+				"uptime":           h.Uptime(),
 				"errorRate":        h.ErrorRate(),
 				"endpoints": map[string]string{
 					"health": "/katalog/" + strings.ToLower(crd.Name) + "/health",
@@ -165,18 +168,24 @@ func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 		}
 	}
 
-	// Hooks — are they configured and how
+	// Hooks — are they configured and how?
 	var hooksInfo map[string]interface{}
 	if rc.Hooks != nil {
-		// YAML mode — declared via reconciler.hooks block
+		// Explicit Go hook declared in Katalog via reconciler.hooks
 		hooksInfo = map[string]interface{}{
 			"configured": true,
 			"source":     "yaml",
 			"location":   rc.Hooks.Location,
 			"function":   rc.Hooks.Function,
 		}
+	} else if rc.HookFactory != nil && (rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil) {
+		// Hook factory was auto-generated from declarative templates by ork generate
+		hooksInfo = map[string]interface{}{
+			"configured": true,
+			"source":     "generated",
+		}
 	} else if rc.HookFactory != nil {
-		// Go mode — set directly in BuildKatalogFromGo()
+		// Hook factory set directly in Go mode (BuildKatalogFromGo)
 		hooksInfo = map[string]interface{}{
 			"configured": true,
 			"source":     "go",
@@ -219,7 +228,12 @@ func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 	if rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil {
 		templates := map[string]interface{}{}
 		if rc.OnCreate != nil {
-			templates["onCreate"] = templateSummary(rc.OnCreate)
+			onCreate := templateSummary(rc.OnCreate)
+			// Check if any onCreate entries have reconcile: true — show onReconcile implicitly
+			if hasAutoReconcile(rc.OnCreate) {
+				templates["onReconcile"] = map[string]interface{}{"source": "auto", "from": "onCreate[reconcile:true]"}
+			}
+			templates["onCreate"] = onCreate
 		}
 		if rc.OnReconcile != nil {
 			templates["onReconcile"] = templateSummary(rc.OnReconcile)
@@ -320,4 +334,22 @@ func resolveCRDDisplayValues(
 		queueDepthSource: queueDepthSource,
 		resourceCount:    resourceCount,
 	}
+}
+
+// Helper
+func hasAutoReconcile(t *orktypes.HookTemplates) bool {
+	if t == nil {
+		return false
+	}
+	for _, d := range t.Deployments {
+		if d.Reconcile {
+			return true
+		}
+	}
+	for _, s := range t.Services {
+		if s.Reconcile {
+			return true
+		}
+	}
+	return false
 }

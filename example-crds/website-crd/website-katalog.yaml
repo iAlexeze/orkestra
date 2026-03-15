@@ -34,7 +34,7 @@ spec:
       resync: 30s
       dependsOn: []
       namespaced: true
-      namespace: ""   # empty = watch all namespaces
+      namespace: orkestra   # where this operator should be deployed on if namespaced
 
       apiTypes:
         # location omitted → unstructured mode auto-detected

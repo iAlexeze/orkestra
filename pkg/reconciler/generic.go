@@ -68,6 +68,11 @@ func NewGenericReconciler[T domain.Object](
 var _ domain.Reconciler = (*GenericReconciler[domain.Object])(nil)
 
 func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error {
+	ctx = kubeclient.WithKubeclient(ctx, r.kube)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	if err := ctx.Err(); err != nil {
 		return nil
 	}
