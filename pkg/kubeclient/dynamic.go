@@ -39,24 +39,28 @@ func (k *Kubeclient) NewDynamicListerWatcher(info CRDInfo) cache.ListerWatcher {
 // *unstructured.UnstructuredList satisfies runtime.Object — explicit cast needed
 // because dynamic.ResourceInterface.List returns the concrete type, not the interface.
 func (d *DynamicListerWatcher) List(opts metav1.ListOptions) (runtime.Object, error) {
-	if d.namespaced {
+	if d.namespaced {    // If namespaced
 		ns := d.namespace
 		if ns == "" {
 			ns = metav1.NamespaceAll
 		}
 		return d.kube.dynamic.Resource(d.gvr).Namespace(ns).List(context.Background(), opts)
 	}
+
+	// Cluster-scoped
 	return d.kube.dynamic.Resource(d.gvr).List(context.Background(), opts)
 }
 
 // Watch implements cache.ListerWatcher.
 func (d *DynamicListerWatcher) Watch(opts metav1.ListOptions) (watch.Interface, error) {
-	if d.namespaced {
+	if d.namespaced {    // If namespaced
 		ns := d.namespace
 		if ns == "" {
 			ns = metav1.NamespaceAll
 		}
 		return d.kube.dynamic.Resource(d.gvr).Namespace(ns).Watch(context.Background(), opts)
 	}
+
+	// Cluster-scoped
 	return d.kube.dynamic.Resource(d.gvr).Watch(context.Background(), opts)
 }

@@ -28,7 +28,7 @@ type clusterKonfig struct {
 	MasterURL      string
 	InCluster      bool
 	Name           string
-	Namespace      string `validate:"required"`
+	DefaultNamespace      string `validate:"required"`
 
 	// Worload specific
 	DefaultResync  time.Duration
@@ -53,13 +53,13 @@ type konductorElection struct {
 // Methods
 
 // IsDev returns true for development environment
-func (c *Konfig) IsDev() bool {
-	return c.App().Environment == "devlopment"
+func (k *Konfig) IsDev() bool {
+	return k.App().Environment == "devlopment"
 }
 
 // IsDev returns true for staging environment
-func (c *Konfig) IsStaging() bool {
-	return c.App().Environment == "staging"
+func (k *Konfig) IsStaging() bool {
+	return k.App().Environment == "staging"
 }
 
 // IsDev returns true for production environment
@@ -68,28 +68,28 @@ func (c *Konfig) IsProduction() bool {
 }
 
 // Health returns health konfigurations
-func (c *Konfig) Health() *healthServer {
-	return &c.healthServer
+func (k *Konfig) Health() *healthServer {
+	return &k.healthServer
 }
 
 // App returns app Konfigurations
-func (c *Konfig) App() *appKonfig {
-	return &c.app
+func (k *Konfig) App() *appKonfig {
+	return &k.app
 }
 
 // Cluster returns app Konfigurations
-func (c *Konfig) Cluster() *clusterKonfig {
-	return &c.cluster
+func (k *Konfig) Cluster() *clusterKonfig {
+	return &k.cluster
 }
 
-// Konductor returns app Konfigurations
+// Konductor returns konducri Konfigurations
 func (c *Konfig) Konductor() *konductorElection {
 	return &c.konductor
 }
 
-// Katalog returns app Konfigurations
-func (c *Konfig) Katalog() *katalogKonfig {
-	return &c.katalog
+// Katalog returns katalog Konfigurations
+func (k *Konfig) Katalog() *katalogKonfig {
+	return &k.katalog
 }
 
 const (

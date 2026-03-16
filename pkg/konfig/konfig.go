@@ -16,7 +16,7 @@ func Init(filenames ...string) (*Konfig, error) {
 		log.Print("Defaulting to system defined variables...")
 	}
 
-	cfg := &Konfig{
+	kfg := &Konfig{
 		app: appKonfig{
 			Name:        GetStrEnv("APP_NAME", "orkestra"),
 			Version:     GetStrEnv("APP_VERSION", "1.0.0"),
@@ -28,7 +28,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			MasterURL:      GetStrEnv("MASTER_URL", ""),
 			InCluster:      GetBoolEnv("IN_CLUSTER", false),
 			Name:           GetStrEnv("CLUSTER_NAME", "kubernetes-crd-example"),
-			Namespace:      GetStrEnv("NAMESPACE", "default"),
+			DefaultNamespace:      GetStrEnv("DEFAULT_NAMESPACE", "default"),
 
 			// Workload
 			DefaultResync:  GetDurEnvSeconds("DEFAULT_RESYNC", 15),
@@ -55,10 +55,10 @@ func Init(filenames ...string) (*Konfig, error) {
 	}
 
 	// normalize environment
-	cfg.normalizeEnvironment()
+	kfg.normalizeEnvironment()
 
-	// validate crd konfig
-	if err = cfg.validateCRDKonfig(); err != nil {
+	// validate katalog konfig
+	if err = kfg.validateKatalogKonfig(); err != nil {
 		return nil, err
 	}
 
@@ -67,7 +67,7 @@ func Init(filenames ...string) (*Konfig, error) {
 		return nil, err
 	}
 
-	return cfg, nil
+	return kfg, nil
 }
 
 // GetStrEnv returns the string value of an env

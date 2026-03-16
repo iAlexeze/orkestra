@@ -88,7 +88,7 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 	// Typed CRDs register a REST client constructor.
 	// Unstructured CRDs skip this — they use NewDynamicListerWatcher directly
 	// in the informer factory loop below.
-	provider := kube.ClientProvider()
+	provider := kube.NewClientProvider()
 
 	for _, crd := range crdKatalog.Enabled() {
 		crd := crd // capture — closure must own its own crd value
@@ -125,7 +125,7 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 		queueRegistry,
 		defaultWq,
 		scheme,
-		kfg.Cluster().Namespace,
+		kfg.Cluster().DefaultNamespace,
 		kfg.Cluster().DefaultResync,
 	)
 

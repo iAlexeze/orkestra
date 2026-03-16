@@ -11,15 +11,17 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// Client definition
 type Client struct {
 	restClient rest.Interface
 	namespace  string
 	plural     string
 	codec      runtime.ParameterCodec
-	listType   runtime.Object
+	objList   runtime.Object
 }
 
-func (k *Kubeclient) NewClient(listType runtime.Object, info CRDInfo) (*Client, error) {
+// NewClient returns a new client using ths shared client factory
+func (k *Kubeclient) NewClient(objList runtime.Object, info CRDInfo) (*Client, error) {
 	restClient, err := k.SharedClientFactory(info.APIPath, info.Group, info.Version)
 	if err != nil {
 		return nil, err
@@ -27,17 +29,18 @@ func (k *Kubeclient) NewClient(listType runtime.Object, info CRDInfo) (*Client, 
 
 	return &Client{
 		restClient: restClient,
-		listType:   listType,
+		objList:   objList,
 		namespace:  info.Namespace,
 		plural:     info.Plural,
 		codec:      k.RuntimeParameterCodec(),
 	}, nil
 }
 
+// A generic client should know how to List and Watch just as the dynamic client
 // List returns runtime.Object - exactly what GenericClient needs!
 func (c *Client) List(ctx context.Context, opts metav1.ListOptions) (runtime.Object, error) {
 	// Create a new instance of the list type
-	list := reflect.New(reflect.TypeOf(c.listType).Elem()).Interface().(runtime.Object)
+	list := reflect.New(reflect.TypeOf(c.objList).Elem()).Interface().(runtime.Object)
 
 	err := c.restClient.Get().
 		Namespace(c.namespace).
@@ -49,6 +52,7 @@ func (c *Client) List(ctx context.Context, opts metav1.ListOptions) (runtime.Obj
 	return list, err
 }
 
+// Watch returns the watch interface
 func (c *Client) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	opts.Watch = true
 	return c.restClient.Get().

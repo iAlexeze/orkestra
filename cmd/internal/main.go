@@ -30,7 +30,7 @@ func Konduct(kfg *konfig.Konfig, ctx context.Context) {
 			printBanner(startup, konductor)
 		},
 		konductor.Options{
-			Namespace:     kfg.Cluster().Namespace,
+			Namespace:     kfg.Cluster().DefaultNamespace,
 			LeaseDuration: kfg.Konductor().LeaseDuration,
 			RenewDeadline: kfg.Konductor().RenewDeadline,
 			RetryPeriod:   kfg.Konductor().RetryPeriod,

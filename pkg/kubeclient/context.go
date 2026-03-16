@@ -24,7 +24,9 @@ type contextKey string
 const ContextKey contextKey = "orkestra-kubeclient"
 
 // WithKubeclient returns a new context with the Kubeclient stored under ContextKey.
-// Call this in GenericReconciler.Reconcile before invoking hook functions.
+// Example usage:
+// This is called in GenericReconciler.Reconcile before invoking hook functions.
+// To allow hooks retrieve the kubeclient
 func WithKubeclient(ctx context.Context, kube *Kubeclient) context.Context {
 	return context.WithValue(ctx, ContextKey, kube)
 }

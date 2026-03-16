@@ -543,7 +543,7 @@ leader := leader.NewKonductorElection(
     ev,
     func(ctx context.Context) { ktrl.Run(ctx) },
     leader.Options{
-        Namespace:     cfg.Cluster().Namespace,
+        Namespace:     cfg.Cluster().DefaultNamespace,
         LeaseDuration: cfg.Leader().LeaseDuration,
         RenewDeadline: cfg.Leader().RenewDeadline,
         RetryPeriod:   cfg.Leader().RetryPeriod,

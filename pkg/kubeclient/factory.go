@@ -9,6 +9,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// CRDInfo defines what a CRD is
 type CRDInfo struct {
 	Kind                 string                  // Required by Registry
 	Group                string                  // Required if GroupVersion is not specified
@@ -29,7 +30,7 @@ func (k *Kubeclient) SharedClientFactory(apiPath, group, version string) (*rest.
 		return nil, fmt.Errorf("kubeclient not started — restConfig is nil")
 	}
 
-	// Copy — never mutate the base config
+	// Copy to not mutate the base config
 	cfg := rest.CopyConfig(k.restConfig)
 	cfg.GroupVersion = &schema.GroupVersion{
 		Group:   group,
