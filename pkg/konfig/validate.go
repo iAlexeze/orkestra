@@ -16,7 +16,7 @@ func Validate() *validator.Validate {
 // Normalize environment
 func (k *Konfig) normalizeEnvironment() {
 	// Normalize app environment
-	switch strings.ToLower(c.app.Environment) {
+	switch strings.ToLower(k.app.Environment) {
 	case "dev", "development":
 		k.app.Environment = "development"
 	case "uat", "staging":
@@ -30,7 +30,7 @@ func (k *Konfig) normalizeEnvironment() {
 
 // Validate CRD katalog Konfiguration
 func (k *Konfig) validateKatalogKonfig() error {
-	mode := strings.ToLower(c.katalog.Mode)
+	mode := strings.ToLower(k.katalog.Mode)
 	if mode == "" {
 		k.katalog.Mode = "go"
 	}

@@ -37,7 +37,7 @@ func NewKatalog(mode, path string) *Katalog {
 
 		// Guard: if ObjectRegistry is empty, user forgot to run ork generate
 		for _, crd := range entries {
-			if len(orktypes.ObjectRegistry) == 0 && !crd.IsUnstructured() {
+			if len(orktypes.ObjectRegistry) == 0 && !crd.IsDynamic() {
 				utils.Exit(fmt.Errorf(
 					"ObjectRegistry is empty — run 'ork generate registry --katalog %s' first",
 					path,
@@ -92,7 +92,7 @@ func NewSchemeRegistry(k *Katalog) (*runtime.Scheme, error) {
 		if scheme, err = ork_runtime.RegisterScheme(scheme); err != nil {
 			return nil, err
 		}
-		if scheme, err = k.registerUnstructuredScheme(scheme); err != nil {
+		if scheme, err = k.registerDynamicScheme(scheme); err != nil {
 			return nil, err
 		}
 	} else if k.mode.Go {
@@ -138,11 +138,11 @@ func (k *Katalog) registerGoScheme(scheme *runtime.Scheme) (*runtime.Scheme, err
 	return scheme, nil
 }
 
-// Register unstructured CRDs — tells the watch stream to decode
+// Register dynamic CRDs — tells the watch stream to decode
 // these GVKs as *unstructured.Unstructured instead of failing
-func (k *Katalog) registerUnstructuredScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
+func (k *Katalog) registerDynamicScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
 	for _, crd := range k.enabledCRDs {
-		if crd.IsUnstructured() {
+		if crd.IsDynamic() {
 			// Register Object
 			scheme.AddKnownTypeWithName(
 				schema.GroupVersionKind{

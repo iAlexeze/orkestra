@@ -17,7 +17,7 @@ const (
 	RegistryFile = "generated_runtime_registry.go"
 
 	// HooksFile is the generated file containing declarative hook implementations
-	// for unstructured CRDs (onCreate, onReconcile, onDelete).
+	// for dynamic CRDs (onCreate, onReconcile, onDelete).
 	// Only emitted when at least one CRD declares template-based hooks.
 	HooksFile = "generated_runtime_hooks.go"
 

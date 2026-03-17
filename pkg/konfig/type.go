@@ -24,11 +24,11 @@ type healthServer struct {
 }
 
 type clusterKonfig struct {
-	KubekonfigPath string
-	MasterURL      string
-	InCluster      bool
-	Name           string
-	DefaultNamespace      string `validate:"required"`
+	KubekonfigPath   string
+	MasterURL        string
+	InCluster        bool
+	Name             string
+	DefaultNamespace string `validate:"required"`
 
 	// Worload specific
 	DefaultResync  time.Duration

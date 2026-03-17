@@ -40,18 +40,18 @@ var generateReconcilerCmd = &cobra.Command{
 	},
 }
 
-var generateRegistryCmd = &cobra.Command{
-	Use:   "registry",
-	Short: "Generate initialize/registry.go from a Katalog (local or remote)",
+var generateRuntimeCmd = &cobra.Command{
+	Use:   "runtime",
+	Short: "Generate 'pkg/runtime/generated_runtime_registry.go' from a Katalog (local or remote)",
 	Long: `Reads a crd-katalog.yaml (local path or remote URL), validates it,
-and emits initialize/registry.go containing RegisterRuntimeObjects() and
+and emits 'pkg/runtime/generated_runtime_registry.go' containing RegisterRuntimeObjects() and
 RegisterScheme() for all enabled CRDs with reconciler.default: true.
 
 The file is created if it does not exist and overwritten on each run — idempotent.
 
 Examples:
-  ork generate registry --katalog ./crdkatalog/crdkatalog.yaml
-  ork generate registry --katalog https://raw.githubusercontent.com/.../crd-katalog.yaml`,
+  ork generate runtime --katalog ./example-crds/website-crd/website-katalog.yaml
+  ork generate runtime --katalog https://raw.githubusercontent.com/.../crd-katalog.yaml`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		katalogPath, _ := cmd.Flags().GetString("katalog")
 		if katalogPath == "" {
@@ -59,16 +59,16 @@ Examples:
 		}
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 
-		log.Printf("generating registry...\n")
+		log.Printf("generating runtime...\n")
 		log.Printf("katalog: %s\n", katalogPath)
 		log.Printf("dry-run: %t\n", dryRun)
 
-		if err := generate.Registry(katalogPath, dryRun); err != nil {
-			return fmt.Errorf("generate registry: %w", err)
+		if err := generate.Runtime(katalogPath, dryRun); err != nil {
+			return fmt.Errorf("generate runtime: %w", err)
 		}
 
-		log.Printf("registry generated successfully\n")
-		log.Printf("registry: %s/%s\n", generate.RuntimePackage, generate.RegistryFile)
+		log.Printf("runtime generated successfully\n")
+		log.Printf("runtime: %s/%s\n", generate.RuntimePackage, generate.RegistryFile)
 		log.Printf("hooks: %s/%s\n", generate.RuntimePackage, generate.HooksFile)
 		return nil
 	},
@@ -176,7 +176,7 @@ var generateTestsCmd = &cobra.Command{
 
 var generateAllCmd = &cobra.Command{
 	Use:   "all",
-	Short: "Generate registry, docs, dashboards, examples, tests, and graphs",
+	Short: "Generate runtime, docs, dashboards, examples, tests, and graphs",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		katalogPath, _ := cmd.Flags().GetString("katalog")
 		if katalogPath == "" {
@@ -187,8 +187,8 @@ var generateAllCmd = &cobra.Command{
 
 		log.Println("running all generators...")
 
-		if err := generate.Registry(katalogPath, dryRun); err != nil {
-			return fmt.Errorf("generate registry: %w", err)
+		if err := generate.Runtime(katalogPath, dryRun); err != nil {
+			return fmt.Errorf("generate runtime: %w", err)
 		}
 		if err := generate.Docs(katalogPath, dryRun); err != nil {
 			return fmt.Errorf("generate docs: %w", err)
@@ -212,18 +212,18 @@ func init() {
 
 	generateCmd.AddCommand(generateCRDCmd)
 	generateCmd.AddCommand(generateReconcilerCmd)
-	generateCmd.AddCommand(generateRegistryCmd)
+	generateCmd.AddCommand(generateRuntimeCmd)
 	generateCmd.AddCommand(generateDocsCmd)
 	generateCmd.AddCommand(generateDashboardsCmd)
 	generateCmd.AddCommand(generateExamplesCmd)
 	generateCmd.AddCommand(generateTestsCmd)
 	generateCmd.AddCommand(generateAllCmd)
 
-	generateRegistryCmd.Flags().String("katalog", "", "Path or URL to crd-katalog.yaml (required)")
-	generateRegistryCmd.Flags().Bool("dry-run", false, "Print generated output to stdout without writing files")
+	generateRuntimeCmd.Flags().String("katalog", "", "Path or URL to katalog.yaml (required)")
+	generateRuntimeCmd.Flags().Bool("dry-run", false, "Print generated output to stdout without writing files")
 	generateDocsCmd.Flags().String("katalog", "", "Path or URL to crd-katalog.yaml (required)")
-	generateDashboardsCmd.Flags().String("katalog", "", "Path or URL to crd-katalog.yaml (required)")
-	generateExamplesCmd.Flags().String("katalog", "", "Path or URL to crd-katalog.yaml (required)")
-	generateTestsCmd.Flags().String("katalog", "", "Path or URL to crd-katalog.yaml (required)")
-	generateAllCmd.Flags().String("katalog", "", "Path or URL to crd-katalog.yaml (required)")
+	generateDashboardsCmd.Flags().String("katalog", "", "Path or URL to katalog.yaml (required)")
+	generateExamplesCmd.Flags().String("katalog", "", "Path or URL to katalog.yaml (required)")
+	generateTestsCmd.Flags().String("katalog", "", "Path or URL to katalog.yaml (required)")
+	generateAllCmd.Flags().String("katalog", "", "Path or URL to katalog.yaml (required)")
 }

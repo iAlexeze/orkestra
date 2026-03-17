@@ -17,7 +17,7 @@ type Client struct {
 	namespace  string
 	plural     string
 	codec      runtime.ParameterCodec
-	objList   runtime.Object
+	objList    runtime.Object
 }
 
 // NewClient returns a new client using ths shared client factory
@@ -29,7 +29,7 @@ func (k *Kubeclient) NewClient(objList runtime.Object, info CRDInfo) (*Client, e
 
 	return &Client{
 		restClient: restClient,
-		objList:   objList,
+		objList:    objList,
 		namespace:  info.Namespace,
 		plural:     info.Plural,
 		codec:      k.RuntimeParameterCodec(),

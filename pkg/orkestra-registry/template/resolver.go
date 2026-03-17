@@ -54,7 +54,7 @@ func NewResolver(ctx context.Context, obj domain.Object) (*Resolver, error) {
 
 // Resolve evaluates a single field value against the CR.
 //
-// Option B: if value contains "{{" it is a template expression — evaluated
+// If value contains "{{" it is a template expression — evaluated
 // against the full CR map. Otherwise returned as-is (static value, no cost).
 // Missing CR fields resolve to "" (missingkey=zero — no error on absent keys).
 func (r *Resolver) Resolve(value string) (string, error) {

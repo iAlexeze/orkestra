@@ -269,9 +269,9 @@ func Hooks(katalogPath string, dryRun bool) error {
 		if !crd.Enabled || !crd.HasTemplates() {
 			continue
 		}
-		if !crd.IsUnstructured() {
+		if !crd.IsDynamic() {
 			return fmt.Errorf(
-				"CRD %q: declarative templates require reconciler.mode: unstructured",
+				"CRD %q: declarative templates require reconciler.mode: dynamic",
 				crd.Name,
 			)
 		}

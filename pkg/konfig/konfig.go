@@ -24,11 +24,11 @@ func Init(filenames ...string) (*Konfig, error) {
 			LogLevel:    GetStrEnv("LOG_LEVEL", "info"),
 		},
 		cluster: clusterKonfig{
-			KubekonfigPath: GetStrEnv("KUBEKONFIG", ""),
-			MasterURL:      GetStrEnv("MASTER_URL", ""),
-			InCluster:      GetBoolEnv("IN_CLUSTER", false),
-			Name:           GetStrEnv("CLUSTER_NAME", "kubernetes-crd-example"),
-			DefaultNamespace:      GetStrEnv("DEFAULT_NAMESPACE", "default"),
+			KubekonfigPath:   GetStrEnv("KUBEKONFIG", ""),
+			MasterURL:        GetStrEnv("MASTER_URL", ""),
+			InCluster:        GetBoolEnv("IN_CLUSTER", false),
+			Name:             GetStrEnv("CLUSTER_NAME", "kubernetes-crd-example"),
+			DefaultNamespace: GetStrEnv("DEFAULT_NAMESPACE", "default"),
 
 			// Workload
 			DefaultResync:  GetDurEnvSeconds("DEFAULT_RESYNC", 15),
@@ -63,7 +63,7 @@ func Init(filenames ...string) (*Konfig, error) {
 	}
 
 	// validate struct
-	if err = Validate().Struct(cfg); err != nil {
+	if err = Validate().Struct(kfg); err != nil {
 		return nil, err
 	}
 

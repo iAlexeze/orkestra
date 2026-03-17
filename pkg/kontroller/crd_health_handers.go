@@ -144,11 +144,11 @@ func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 		reconcilerType = "custom" // default: false, custom Constructor
 	}
 
-	// Mode — typed or unstructured
+	// Mode — typed or dynamic
 	mode := string(rc.Mode)
 	if mode == "" {
-		if crd.IsUnstructured() {
-			mode = "unstructured"
+		if crd.IsDynamic() {
+			mode = "dynamic"
 		} else {
 			mode = "typed"
 		}
@@ -218,13 +218,13 @@ func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 
 	result := map[string]interface{}{
 		"type":        reconcilerType, // "generic" or "custom"
-		"mode":        mode,           // "typed" or "unstructured"
+		"mode":        mode,           // "typed" or "dynamic"
 		"finalizers":  finalizersInfo,
 		"hooks":       hooksInfo,
 		"constructor": constructorInfo,
 	}
 
-	// Declarative templates — only show if configured (unstructured mode)
+	// Declarative templates — only show if configured (dynamic mode)
 	if rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil {
 		templates := map[string]interface{}{}
 		if rc.OnCreate != nil {

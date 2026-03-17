@@ -214,8 +214,8 @@ func (k *Katalog) addRuntimeObjects() error {
 		crd := &k.enabledCRDs[i]
 		gvk := crd.GroupVersionKind
 
-		if crd.IsUnstructured() {
-			// Set unstructured factories so GetRuntimeObjects works consistently
+		if crd.IsDynamic() {
+			// Set dynamic factories so GetRuntimeObjects works consistently
 			g := crd.APITypes.Group
 			v := crd.APITypes.Version
 			ki := crd.APITypes.Kind

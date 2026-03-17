@@ -153,7 +153,7 @@ kube := kubeclient.NewKubeclient(kubeclient.Config{
 
 **Capabilities:**
 - `RESTClient()` – configured with complete scheme
-- `DynamicClient()` – for unstructured operations
+- `DynamicClient()` – for unstructured (dynamic) operations
 - `Clientset()` – for built‑in types
 - `SharedClientFactory()` – generates clients for any CRD on demand
 - `RuntimeParameterCodec()` – consistent query encoding

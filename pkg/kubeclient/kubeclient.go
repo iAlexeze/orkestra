@@ -34,7 +34,7 @@ type Kubeclient struct {
 	started    atomic.Bool
 }
 
-// Config defines kube configuration 
+// Config defines kube configuration
 type Config struct {
 	Kubeconfig string
 	Masterurl  string

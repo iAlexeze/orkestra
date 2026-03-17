@@ -86,13 +86,13 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 	// Registers a REST client constructor per CRD type.
 	// Constructors are deferred — executed when the provider is first used.
 	// Typed CRDs register a REST client constructor.
-	// Unstructured CRDs skip this — they use NewDynamicListerWatcher directly
+	// Dynamic CRDs skip this — they use NewDynamicListerWatcher directly
 	// in the informer factory loop below.
 	provider := kube.NewClientProvider()
 
 	for _, crd := range crdKatalog.Enabled() {
 		crd := crd // capture — closure must own its own crd value
-		if crd.IsUnstructured() {
+		if crd.IsDynamic() {
 			continue // dynamic path — registered per-informer below
 		}
 
@@ -167,7 +167,7 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 
 		var inf cache.SharedIndexInformer
 
-		if crd.IsUnstructured() {
+		if crd.IsDynamic() {
 			// Dynamic informer — bypasses scheme entirely.
 			// NewDynamicListerWatcher returns a cache.ListerWatcher that uses
 			// the dynamic client directly. No scheme registration needed.

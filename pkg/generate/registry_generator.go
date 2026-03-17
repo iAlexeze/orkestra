@@ -61,7 +61,7 @@ func RegisterScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
 }
 `))
 
-func Registry(katalogPath string, dryRun bool) error {
+func Runtime(katalogPath string, dryRun bool) error {
 
 	// ── 1. Load ───────────────────────────────────────────────────────────────
 	data, err := utils.LoadFile(katalogPath)
@@ -92,9 +92,9 @@ func Registry(katalogPath string, dryRun bool) error {
 		}
 
 		// ── Typed CRDs — object registry + scheme ────────────────────────────
-		// Unstructured CRDs skip this block entirely — they use the dynamic
+		// Dynamic CRDs skip this block entirely — they use the dynamic
 		// client and *unstructured.Unstructured, no scheme registration needed.
-		if !crd.IsUnstructured() && crd.APITypes.Location != "" {
+		if !crd.IsDynamic() && crd.APITypes.Location != "" {
 
 			if err := validateAPITypes(crd); err != nil {
 				return fmt.Errorf("CRD %q: %w", crd.Name, err)
@@ -123,7 +123,7 @@ func Registry(katalogPath string, dryRun bool) error {
 
 		// ── Go hooks — HookRegistry ───────────────────────────────────────────
 		// Only for default: true CRDs with an explicit hooks declaration.
-		// Unstructured CRDs with OnCreate/OnReconcile/OnDelete templates are
+		// Dynamic CRDs with OnCreate/OnReconcile/OnDelete templates are
 		// handled by Hooks() below — they do not go through HookRegistry here.
 		if crd.ReconcilerConfig.Default && crd.ReconcilerConfig.Hooks != nil {
 			h := crd.ReconcilerConfig.Hooks
@@ -190,7 +190,7 @@ func Registry(katalogPath string, dryRun bool) error {
 
 	// ── Guard — nothing to generate ───────────────────────────────────────────
 	// Fail only if there are truly no entries of any kind AND no template CRDs.
-	// Pure unstructured template-only Katalogs are valid — Hooks() handles them.
+	// Pure dynamic template-only Katalogs are valid — Hooks() handles them.
 	if len(entries) == 0 && len(recEntries) == 0 && len(hookEntries) == 0 {
 		hasTemplates := false
 		for _, crd := range kat.Spec.CRDs {

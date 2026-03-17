@@ -17,14 +17,14 @@ type ClientProvider struct {
 
 // ClientFactory accepts kubeclient and returns a generic client
 // The generic client is the hallmark of the whole design
-// konstructOrkestra() performs per CRD registration and 
+// konstructOrkestra() performs per CRD registration and
 // hands over to ghe informer factory
 type ClientFactory func(*Kubeclient) (informer.GenericClient, error)
 
 // NewClientProvider creates a new provider with the passed in kubeclient
 // At this stage, it only accepts the kubeclient and created the clients map
 // This is because kube is not live yet
-func(k *Kubeclient) NewClientProvider() *ClientProvider {
+func (k *Kubeclient) NewClientProvider() *ClientProvider {
 	return &ClientProvider{
 		kube:    k,
 		clients: make(map[reflect.Type]ClientFactory),

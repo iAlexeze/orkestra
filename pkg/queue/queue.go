@@ -17,7 +17,7 @@ type QueueItem struct {
 }
 
 type Workqueue struct {
-	name string
+	name          string
 	Queue         workqueue.TypedRateLimitingInterface[QueueItem]
 	started       atomic.Bool
 	maxQueueDepth int
@@ -25,7 +25,7 @@ type Workqueue struct {
 
 func NewWorkqueue() *Workqueue {
 	return &Workqueue{
-		name: "default workqueue",
+		name:  "default workqueue",
 		Queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[QueueItem]()),
 	}
 }
@@ -53,7 +53,7 @@ var _ domain.Komponent = (*Workqueue)(nil)
 // Start is called by orkestra.Start() after all komoonents are registered
 func (q *Workqueue) Start(ctx context.Context) error {
 	logger.Debug().Msgf("right here in %s", q.name)
-	
+
 	q.started.Store(true)
 	return nil
 }
