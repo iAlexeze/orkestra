@@ -53,7 +53,7 @@ func (k *Katalog) KomposeKatalogFromGo() ([]orktypes.CRDEntry, error) {
 }
 
 // Validate Config
-func (k *Katalog) validateConfig() (*Katalog, error) {
+func (k *Katalog) ValidateConfig() (*Katalog, error) {
 	// Validate config
 	// -------------------------------------------------------------------------
 	// 1. Field-level validation (required, DNS group, workers <= 5, etc.)

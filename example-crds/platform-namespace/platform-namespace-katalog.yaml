@@ -1,0 +1,128 @@
+# Example: Platform Namespace CRD
+# When a PlatformNamespace CR is created, Orkestra:
+#   - Creates a Namespace
+#   - Copies DB credentials from the platform Secret to the new namespace
+#   - Copies base app config, overriding LOG_LEVEL per environment
+#   - Creates a ServiceAccount
+#   - Everything owned by the CR — deleted when CR is deleted
+
+apiVersion: controller.orkestra.io/v1
+kind: Katalog
+metadata:
+  name: platform-katalog
+
+spec:
+  crds:
+    - name: platformnamespace
+      enabled: true
+      namespaced: false
+
+      apiTypes:
+        group: platform.example.io
+        version: v1alpha1
+        kind: PlatformNamespace
+        plural: platformnamespaces
+
+      reconciler:
+        default: true
+        mode: dynamic
+
+        finalizers:
+          - finalizer.platform.example.io/platformnamespace
+
+        onCreate:
+
+          # ── Secrets ──────────────────────────────────────────────────────────
+
+          secrets:
+
+            # Pattern 1: Copy a Secret to the new namespace
+            # The db-credentials Secret in platform namespace is copied
+            # to every namespace this CR creates. Stays in sync on reconcile.
+            - name: db-credentials
+              fromSecret: master-db-credentials   # source Secret name
+              fromNamespace: platform             # where the source lives
+              namespace: "{{ .spec.targetNamespace }}"
+              reconcile: true                     # re-sync if source changes
+
+            # Pattern 2: Copy to multiple namespaces at once
+            # One declaration, N namespaces. Source read once, copied everywhere.
+            - name: registry-pull-secret
+              fromSecret: docker-registry-creds
+              fromNamespace: platform
+              toNamespaces:
+                - "{{ .spec.targetNamespace }}"
+                - platform-staging
+              reconcile: true
+
+            # Pattern 3: Static Secret data declared in the Katalog
+            - name: "{{ .metadata.name }}-app-secret"
+              namespace: "{{ .spec.targetNamespace }}"
+              data:
+                ENVIRONMENT: "{{ .spec.environment }}"
+                REGION: "{{ .spec.region }}"
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}"
+
+          # ── ConfigMaps ───────────────────────────────────────────────────────
+
+          configMaps:
+
+            # Pattern 1: Copy base config, override specific keys per CR
+            # The base-app-config in platform has defaults for everything.
+            # Each CR can override LOG_LEVEL based on its spec.
+            - name: app-config
+              fromConfigMap: base-app-config      # source ConfigMap
+              fromNamespace: platform
+              namespace: "{{ .spec.targetNamespace }}"
+              data:
+                LOG_LEVEL: "{{ .spec.logLevel }}"  # override from CR spec
+                NAMESPACE: "{{ .spec.targetNamespace }}"
+              reconcile: true
+
+            # Pattern 2: Copy to multiple namespaces
+            - name: monitoring-config
+              fromConfigMap: prometheus-scrape-config
+              fromNamespace: monitoring
+              toNamespaces:
+                - "{{ .spec.targetNamespace }}"
+              reconcile: true
+
+            # Pattern 3: Pure static ConfigMap
+            - name: "{{ .metadata.name }}-feature-flags"
+              namespace: "{{ .spec.targetNamespace }}"
+              data:
+                FEATURE_NEW_UI: "false"
+                FEATURE_BETA_API: "false"
+                MAX_CONNECTIONS: "100"
+
+          # ── ServiceAccounts ──────────────────────────────────────────────────
+
+          serviceAccounts:
+            - name: "{{ .metadata.name }}-sa"
+              namespace: "{{ .spec.targetNamespace }}"
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}"
+
+        # ── onReconcile ───────────────────────────────────────────────────────
+        # Drift correction — re-sync secrets and configmaps if sources change
+        onReconcile:
+          secrets:
+            - name: db-credentials
+              fromSecret: master-db-credentials
+              fromNamespace: platform
+              namespace: "{{ .spec.targetNamespace }}"
+
+          configMaps:
+            - name: app-config
+              fromConfigMap: base-app-config
+              fromNamespace: platform
+              namespace: "{{ .spec.targetNamespace }}"
+              data:
+                LOG_LEVEL: "{{ .spec.logLevel }}"
+                NAMESPACE: "{{ .spec.targetNamespace }}"
+
+      queue:
+        maxQueueDepth: 200

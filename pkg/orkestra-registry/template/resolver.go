@@ -264,6 +264,90 @@ func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.
 	return resolved, nil
 }
 
+// ResolveSecretTemplate resolves all template expressions in a SecretTemplateSource.
+// Returns a new SecretTemplateSource with all expressions evaluated — safe to pass
+// directly to secrets.Resolve().
+func (r *Resolver) ResolveSecretTemplate(src orktypes.SecretTemplateSource) (orktypes.SecretTemplateSource, error) {
+	resolved := orktypes.SecretTemplateSource{
+		Version: src.Version,
+	}
+
+	var err error
+
+	// Resolve the template expressions
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("secret.name: %w", err)
+	}
+	if resolved.FromSecret, err = r.Resolve(src.FromSecret); err != nil {
+		return resolved, fmt.Errorf("secret.fromSecret: %w", err)
+	}
+	if resolved.FromNamespace, err = r.Resolve(src.FromNamespace); err != nil {
+		return resolved, fmt.Errorf("secret.fromNamespace: %w", err)
+	}
+	if resolved.Type, err = r.Resolve(src.Type); err != nil {
+		return resolved, fmt.Errorf("secret.type: %w", err)
+	}
+	if resolved.Namespace, err = r.Resolve(src.Namespace); err != nil {
+		return resolved, fmt.Errorf("secret.namespace: %w", err)
+	}
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("secret.data: %w", err)
+	}
+
+	for k, v := range src.Data {
+		rv, e := r.Resolve(v)
+		if e != nil {
+			return resolved, fmt.Errorf("secret.stringData[%q]: %w", k, e)
+		}
+		resolved.Data[k] = rv
+	}
+
+	for k, v := range src.ToNamespaces {
+		rv, e := r.Resolve(v)
+		if e != nil {
+			return resolved, fmt.Errorf("secret.toNamespaces[%q]: %w", k, e)
+		}
+		resolved.ToNamespaces = append(resolved.ToNamespaces, rv)
+	}
+
+	return resolved, nil
+}
+
+// ResolveSecretTemplate resolves all template expressions in a SecretTemplateSource.
+// Returns a new SecretTemplateSource with all expressions evaluated — safe to pass
+// directly to secrets.Resolve().
+func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource) (orktypes.ConfigMapTemplateSource, error) {
+	resolved := orktypes.ConfigMapTemplateSource{
+		Version: src.Version,
+	}
+	var err error
+
+	// Resolve the template expressions
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("configmap.name: %w", err)
+	}
+	if resolved.Namespace, err = r.Resolve(src.Namespace); err != nil {
+		return resolved, fmt.Errorf("configmap.namespace: %w", err)
+	}
+	if resolved.FromNamespace, err = r.Resolve(src.FromNamespace); err != nil {
+		return resolved, fmt.Errorf("configmap.fromNamespace: %w", err)
+	}
+	if resolved.FromConfigMap, err = r.Resolve(src.FromConfigMap); err != nil {
+		return resolved, fmt.Errorf("configmap.fromConfigMap: %w", err)
+	}
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("configmap.labels: %w", err)
+	}
+	for k, v := range src.Data {
+		rv, e := r.Resolve(v)
+		if e != nil {
+			return resolved, fmt.Errorf("configmap.data[%q]: %w", k, e)
+		}
+		resolved.Data[k] = rv
+	}
+	return resolved, nil
+}
+
 // OwnerName returns the CR name. Used by registry Resolve() for default naming.
 func (r *Resolver) OwnerName() string { return r.ownerName }
 
@@ -278,8 +362,8 @@ func (r *Resolver) OwnerNamespace() string { return r.ownerNamespace }
 // all spec fields — used directly with zero allocation overhead.
 //
 // Typed objects: only metadata fields are extracted. Spec fields are not accessible
-// without reflection or JSON round-trip. Typed object users should use Go mode hooks
-// for full spec access rather than YAML template expressions.
+// without reflection or JSON round-trip. Typed object users should use Typed mode
+// hooks with 'Go' for full spec access rather than YAML template expressions.
 func objectToMap(obj domain.Object) (map[string]interface{}, error) {
 	// Fast path — unstructured has full map natively
 	if u, ok := obj.(*unstructured.Unstructured); ok {

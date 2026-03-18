@@ -118,7 +118,7 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 			// Closing the channel unblocks any dependents waiting on this CRD.
 			close(k.readyCh[name])
 			logger.Info().Msgf("%s workers started", name)
-
+			// TODO
 			// ── 4. Mark controller as ready ─────────────────────────────────────
 			// At this point, all CRDs that existed at startup have started workers.
 			// Missing CRDs are being retried in the background.

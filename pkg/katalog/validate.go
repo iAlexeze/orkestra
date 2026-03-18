@@ -181,7 +181,7 @@ func (k *Katalog) setDefaults() error {
 
 		// Handle API path
 		if crd.APITypes.APIPath == "" {
-			logger.Info().Msgf("API path for Kind=%s is empty. Setting to '/apis'", crd.APITypes.Kind)
+			logger.Debug().Msgf("API path for Kind=%s is empty. Setting to '/apis'", crd.APITypes.Kind)
 			crd.APITypes.APIPath = "/apis"
 		}
 
@@ -189,7 +189,7 @@ func (k *Katalog) setDefaults() error {
 		crd.Name = strings.ToLower(crd.Name)
 
 		if crd.APITypes.Plural == "" {
-			logger.Info().Msgf("Plural name for %s is empty. Setting to '%ss'", crd.APITypes.Kind, crd.Name)
+			logger.Debug().Msgf("Plural name for %s is empty. Setting to '%ss'", crd.APITypes.Kind, crd.Name)
 			crd.APITypes.Plural = fmt.Sprintf("%ss", strings.ToLower(crd.Name))
 		}
 

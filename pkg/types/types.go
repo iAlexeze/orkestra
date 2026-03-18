@@ -494,12 +494,88 @@ type ConfigMapTemplateSource struct {
 	// Default when omitted: "{{ .metadata.namespace }}"
 	Namespace string `yaml:"namespace" validate:"omitempty"`
 
+	// ToNamespaces - a list of target namespaces
+	// Default when omitted: "{{ .metadata.namespace }}"
+	ToNamespaces []string `yaml:"toNamespaces" validate:"omitempty"`
+
 	// Data — static key-value configuration entries.
 	// Values are plain strings — template expressions are not supported here.
 	Data map[string]string `yaml:"data" validate:"omitempty"`
 
 	// Labels — applied to ConfigMap metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+	// FromConfigMap — name of an existing ConfigMap to copy data from.
+	// Orkestra reads this at reconcile time — copies stay in sync with the source.
+	FromConfigMap string `yaml:"fromConfigMap" validate:"omitempty"`
+
+	// FromNamespace — namespace where FromConfigMap lives.
+	// Default: same namespace as the CR.
+	FromNamespace string `yaml:"fromNamespace" validate:"omitempty"`
+
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile. Equivalent to declaring the same entry under both onCreate and
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+}
+
+// ── Secret ─────────────────────────────────────────────────────────────────────
+
+// SecretTemplateSource declares one Secret to be managed by Orkestra.
+//
+// Secret data values are static — template expressions are not evaluated
+// in Secret data entries. For dynamic configuration, use a custom Go hook.
+//
+// Example:
+//
+//	onCreate:
+//	  secrets:
+//	    - name: "{{ .metadata.name }}-credentials"
+//	      type: Opaque
+//	      data:
+//	        USERNAME: admin
+//	        PASSWORD: "supersecret"
+//
+// You may also copy from an existing Secret using FromSecret.
+type SecretTemplateSource struct {
+	// Version — OrkestraRegistry implementation version. Omit for latest.
+	Version string `yaml:"version" validate:"omitempty"`
+
+	// Name — Secret name.
+	// Default when omitted: "{{ .metadata.name }}-secret"
+	Name string `yaml:"name" validate:"omitempty"`
+
+	// Namespace — target namespace.
+	// Default when omitted: "{{ .metadata.namespace }}"
+	Namespace string `yaml:"namespace" validate:"omitempty"`
+
+	// Type — Kubernetes Secret type.
+	// Default: "Opaque"
+	Type string `yaml:"type" validate:"omitempty"`
+
+	// Data — static key-value entries.
+	// Values are plain strings — template expressions are not supported here.
+	// If you need templated or dynamic values, use a custom Go hook.
+	Data map[string]string `yaml:"data" validate:"omitempty"`
+
+	// Labels — applied to Secret metadata. Values support template expressions.
+	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+
+	// FromSecret — name of an existing Secret to copy data from.
+	// Orkestra reads this at reconcile time — copies stay in sync with the source.
+	FromSecret string `yaml:"fromSecret" validate:"omitempty"`
+
+	// FromNamespace — namespace where FromSecret lives.
+	// Default: same namespace as the CR.
+	FromNamespace string `yaml:"fromNamespace" validate:"omitempty"`
+
+	// ToNamespaces - a list of target namespaces
+	// Default when omitted: "{{ .metadata.namespace }}"
+	ToNamespaces []string `yaml:"toNamespaces" validate:"omitempty"`
+
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile. Equivalent to declaring the same entry under both onCreate and
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
 }
 
 // ── ServiceAccount ────────────────────────────────────────────────────────────
@@ -567,6 +643,7 @@ type HookTemplates struct {
 	Pods            []PodTemplateSource            `yaml:"pods"            validate:"omitempty"`
 	Jobs            []JobTemplateSource            `yaml:"jobs"            validate:"omitempty"`
 	CronJobs        []CronJobTemplateSource        `yaml:"cronJobs"        validate:"omitempty"`
+	Secrets         []SecretTemplateSource         `yaml:"secrets"      validate:"omitempty"`
 	ConfigMaps      []ConfigMapTemplateSource      `yaml:"configMaps"      validate:"omitempty"`
 	ServiceAccounts []ServiceAccountTemplateSource `yaml:"serviceAccounts" validate:"omitempty"`
 }

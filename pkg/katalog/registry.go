@@ -62,7 +62,7 @@ func NewKatalog(mode, path string) *Katalog {
 	// Pass to enabled
 	katalog.enabledCRDs = entries
 
-	kat, err := katalog.validateConfig()
+	kat, err := katalog.ValidateConfig()
 	if err != nil {
 		utils.Exit(err)
 	}

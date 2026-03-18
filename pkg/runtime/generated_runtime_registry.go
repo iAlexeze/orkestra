@@ -4,35 +4,11 @@
 package runtime
 
 import (
-	"fmt"
-
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	mnsv1 "github.com/ialexeze/orkestra/example-crds/api/types/managedNamespace/v1alpha1"
-	projv1 "github.com/ialexeze/orkestra/example-crds/api/types/project/v1alpha1"
 )
 
-func RegisterRuntimeObjects() {
-
-	orktypes.ObjectRegistry[schema.GroupVersionKind{Group: "orkestra.konduktor.io", Version: "v1alpha1", Kind: "Project"}] =
-		func() runtime.Object { return &projv1.Project{} }
-	orktypes.ListRegistry[schema.GroupVersionKind{Group: "orkestra.konduktor.io", Version: "v1alpha1", Kind: "Project"}] =
-		func() runtime.Object { return &projv1.ProjectList{} }
-
-	orktypes.ObjectRegistry[schema.GroupVersionKind{Group: "orkestra.konduktor.io", Version: "v1alpha1", Kind: "ManagedNamespace"}] =
-		func() runtime.Object { return &mnsv1.ManagedNamespace{} }
-	orktypes.ListRegistry[schema.GroupVersionKind{Group: "orkestra.konduktor.io", Version: "v1alpha1", Kind: "ManagedNamespace"}] =
-		func() runtime.Object { return &mnsv1.ManagedNamespaceList{} }
-}
+func RegisterRuntimeObjects() {}
 
 func RegisterScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
-	if err := projv1.AddToScheme(scheme); err != nil {
-		return nil, fmt.Errorf("failed to register Project scheme: %w", err)
-	}
-	if err := mnsv1.AddToScheme(scheme); err != nil {
-		return nil, fmt.Errorf("failed to register ManagedNamespace scheme: %w", err)
-	}
 	return scheme, nil
 }
