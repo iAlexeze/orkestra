@@ -1,0 +1,13 @@
+apiVersion: orkestra.konduktor.io/v1alpha1
+kind: OrkApp
+metadata:
+  name: demo-ork-app
+  namespace: orkestra
+  labels:
+    app: demo-ork-app
+    managed-by: orkestra
+
+spec:
+  replicas: 3
+  image: nginx:1.27
+  serviceType: ClusterIP

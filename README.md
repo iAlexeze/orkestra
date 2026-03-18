@@ -372,7 +372,7 @@ go run ./cmd/
 
 ### YAML Mode
 ```bash
-export KATALOG_MODE=YAML
+export KATALOG_MODE=dynamic
 export KATALOG_PATH=initialize/crd-katalog.yaml
 go run ./cmd/
 ```

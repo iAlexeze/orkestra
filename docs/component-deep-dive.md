@@ -102,7 +102,7 @@ Supports two modes with environment‑based switching:
 
 ### **YAML Mode**
 ```bash
-export KATALOG_MODE=YAML
+export KATALOG_MODE=dynamic
 export KATALOG_PATH=initialize/crd-katalog.yaml   # local or remote URL
 ```
 

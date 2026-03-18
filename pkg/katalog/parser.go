@@ -31,7 +31,7 @@ func (k *Katalog) KomposeKatalogFromYaml(path string) ([]orktypes.CRDEntry, erro
 		return nil, err
 	}
 
-	k.mode.Yaml = true
+	k.mode.Dynamic = true
 	return k.enabledCRDs, nil
 }
 
@@ -48,7 +48,7 @@ func (k *Katalog) KomposeKatalogFromGo() ([]orktypes.CRDEntry, error) {
 		return nil, err
 	}
 
-	k.mode.Go = true
+	k.mode.Typed = true
 	return k.enabledCRDs, nil
 }
 
@@ -92,7 +92,7 @@ func (k *Katalog) validateConfig() (*Katalog, error) {
 		return nil, err
 	}
 
-	if k.mode.Yaml {
+	if k.mode.Dynamic {
 		// -------------------------------------------------------------------------
 		// 5. Add Reconcilers		// ReconcilerRegistry → Constructor
 		// -------------------------------------------------------------------------

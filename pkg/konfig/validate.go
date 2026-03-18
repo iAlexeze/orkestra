@@ -32,17 +32,17 @@ func (k *Konfig) normalizeEnvironment() {
 func (k *Konfig) validateKatalogKonfig() error {
 	mode := strings.ToLower(k.katalog.Mode)
 	if mode == "" {
-		k.katalog.Mode = "go"
+		k.katalog.Mode = "dynamic"
 	}
 
-	if mode != "go" && mode != "yaml" {
-		return fmt.Errorf("invalid katalog mode: %s. Must be 'go' or 'yaml'", mode)
+	if mode != "dynamic" && mode != "typed" {
+		return fmt.Errorf("invalid katalog mode: %s. Must be 'typed' or 'dynamic'", mode)
 	}
 
-	// Be sure yaml has file path
-	if mode == "yaml" {
+	// Be sure dynamic mode has file path
+	if mode == "dynamic" {
 		if k.katalog.Path == "" {
-			return fmt.Errorf("katalog path must be specified for yaml mode. Use 'KATALOG_PATH' env variable")
+			return fmt.Errorf("katalog path must be specified for dynamic mode. Use 'KATALOG_PATH' env variable")
 		}
 	}
 

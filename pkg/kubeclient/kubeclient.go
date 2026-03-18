@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/ialexeze/orkestra/domain"
-	crderror "github.com/ialexeze/orkestra/pkg/error"
+	orkerror "github.com/ialexeze/orkestra/pkg/error"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/utils"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -47,7 +47,7 @@ var _ domain.Komponent = (*Kubeclient)(nil)
 // NewKubeclient returns a new Kubeclient with the correct scheme
 func NewKubeclient(cfg Config) *Kubeclient {
 	if cfg.Scheme == nil {
-		utils.Exit(crderror.ErrSchemeNill)
+		utils.Exit(orkerror.ErrSchemeNill)
 	}
 
 	return &Kubeclient{
@@ -92,7 +92,7 @@ func (k *Kubeclient) buildConfig() (*rest.Config, error) {
 	}
 
 	if k.scheme == nil {
-		return nil, crderror.ErrSchemeNill
+		return nil, orkerror.ErrSchemeNill
 	}
 
 	var restCfg *rest.Config

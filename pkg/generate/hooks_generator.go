@@ -480,7 +480,7 @@ func resourcesGoLit(r *orktypes.ResourceRequirements) string {
 		return "nil"
 	}
 	var b strings.Builder
-	b.WriteString("&orktypesResourceRequirements{")
+	b.WriteString("&orktypes.ResourceRequirements{")
 	if len(r.Requests) > 0 {
 		b.WriteString("Requests: map[string]string{")
 		for k, v := range r.Requests {

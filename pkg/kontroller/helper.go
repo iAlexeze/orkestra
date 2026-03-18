@@ -12,12 +12,12 @@ import (
 )
 
 // Worker that only processes items for a specific GVK
-func (c *Controller) runWorkerForGVK(ctx context.Context, gvk string, workerID string) {
-	wq, ok := c.queueRegistry.For(gvk)
+func (k *Kontroller) runWorkerForGVK(ctx context.Context, gvk string, workerID string) {
+	wq, ok := k.queueRegistry.For(gvk)
 
 	if !ok {
 		logger.Warn().Str("gvk", gvk).Msg("no queue for CRD. Using default queue")
-		wq = c.defaultWorkqueue
+		wq = k.defaultWorkqueue
 	}
 
 	logger.Debug().Msgf("worker %s started for %s", workerID, gvk)
@@ -28,7 +28,7 @@ func (c *Controller) runWorkerForGVK(ctx context.Context, gvk string, workerID s
 			logger.Debug().Msgf("worker %s for %s stopping", workerID, gvk)
 			return
 		default:
-			if !c.processNextItemForGVK(ctx, gvk) {
+			if !k.processNextItemForGVK(ctx, gvk) {
 				return
 			}
 		}
@@ -36,7 +36,7 @@ func (c *Controller) runWorkerForGVK(ctx context.Context, gvk string, workerID s
 		metrics.QueueDepth.WithLabelValues(gvk).Set(depth)
 
 		// Resource count — read from this CRD's informer cache
-		if entry, ok := c.katalog.Get(gvk); ok && entry.Informer != nil {
+		if entry, ok := k.katalog.Get(gvk); ok && entry.Informer != nil {
 			count := float64(len(entry.Informer.GetIndexer().List()))
 			metrics.ResourceCount.WithLabelValues(gvk).Set(count)
 		}
@@ -44,11 +44,11 @@ func (c *Controller) runWorkerForGVK(ctx context.Context, gvk string, workerID s
 }
 
 // Process next item, but only for the specified GVK
-func (c *Controller) processNextItemForGVK(ctx context.Context, gvk string) bool {
+func (k *Kontroller) processNextItemForGVK(ctx context.Context, gvk string) bool {
 	// Resolve queue — per-CRD if registered, default otherwise
-	wq, ok := c.queueRegistry.For(gvk)
+	wq, ok := k.queueRegistry.For(gvk)
 	if !ok {
-		wq = c.defaultWorkqueue
+		wq = k.defaultWorkqueue
 	}
 
 	item, shutdown := wq.Queue.Get()
@@ -77,9 +77,9 @@ func (c *Controller) processNextItemForGVK(ctx context.Context, gvk string) bool
 	}
 
 	// Look up the pre-built reconciler
-	c.mu.RLock()
-	rec := c.reconcilers[gvk]
-	c.mu.RUnlock()
+	k.mu.RLock()
+	rec := k.reconcilers[gvk]
+	k.mu.RUnlock()
 
 	if rec == nil {
 		logger.Error().Str("gvk", gvk).Msg("no reconciler found — dropping item")
@@ -88,10 +88,10 @@ func (c *Controller) processNextItemForGVK(ctx context.Context, gvk string) bool
 	}
 
 	// safeReconcile catches panics
-	if err := c.safeReconcile(rec, c.crdHealthMap[gvk], ctx, item.Key, gvk); err != nil {
+	if err := k.safeReconcile(rec, k.crdHealthMap[gvk], ctx, item.Key, gvk); err != nil {
 		logger.Error().Err(err).Str("gvk", gvk).Str("key", item.Key).Msg("reconcile failed")
 		wq.Queue.AddRateLimited(item)
-		c.failed[gvk]++
+		k.failed[gvk]++
 		return true
 	}
 
@@ -99,7 +99,7 @@ func (c *Controller) processNextItemForGVK(ctx context.Context, gvk string) bool
 	return true
 }
 
-func (c *Controller) safeReconcile(
+func (k *Kontroller) safeReconcile(
 	rec domain.Reconciler,
 	health *CRDHealth,
 	ctx context.Context,
@@ -127,7 +127,7 @@ func (c *Controller) safeReconcile(
 
 	err = rec.Reconcile(ctx, key)
 	if err != nil {
-		health.RecordFailure(err, c.degradeThreshold[gvk])
+		health.RecordFailure(err, k.degradeThreshold[gvk])
 		metrics.ReconcileTotal.WithLabelValues(gvk, "error").Inc()
 		return err
 	}

@@ -35,7 +35,7 @@ type orkestraKfg struct {
 // Sequence:
 //  1. Load and validate the Katalog — only enabled, validated CRD entries reach here
 //  2. Register schemes so Go types can decode API server responses
-//  3. Create all komponents (nothing starts yet — orkestra starts them in order)
+//  3. Create all komponents (nothing starts yet except 'kubeclient' — orkestra starts them in order)
 //  4. Register per-CRD client providers, informers, and reconciler factories
 //  5. Register health and Katalog API routes
 //  6. Hand everything to orkestra
@@ -66,12 +66,18 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 		kfg.App().LogLevel,
 	)
 
-	// Kubeclient — not live until orkestra calls kube.Start().
+	// Kubeclient
 	kube := kubeclient.NewKubeclient(kubeclient.Config{
 		Kubeconfig: kfg.Cluster().KubekonfigPath,
 		Masterurl:  kfg.Cluster().MasterURL,
 		Scheme:     scheme,
 	})
+
+	// Start kubeclient as it may be needed by some downstream services
+	// Example: Informerfactory now has to check for missing CRDs and needs rest config
+	if err := kube.Start(ctx); err != nil {
+		logger.Fatal().Err(err).Msg("failed to start kubeclient")
+	}
 
 	// Event recorder — wraps kube, also not live until kube.Start().
 	ev := event.NewEvent(kube)
@@ -122,6 +128,7 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 	// Not started here — infFactory.Start() is called by orkestra.
 	infFactory := informer.SharedInformerFactory(
 		provider,
+		kube.RestConfig(),
 		queueRegistry,
 		defaultWq,
 		scheme,
@@ -143,8 +150,8 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 		gvr := crd.GroupVersionResource
 		crd.Workers = crd.SetWorkers(kfg.Cluster().DefaultWorkers)
 
-		// GetRuntimeObjects abstracts Go vs YAML mode —
-		// ObjectYamlMode is already populated by addRuntimeObjects() during validation.
+		// GetRuntimeObjects abstracts Dynamic vs Typed mode —
+		// DynamicModeObject is already populated by addRuntimeObjects() during validation.
 		object, _ := crd.GetRuntimeObjects(kfg.Mode())
 
 		wq := queueRegistry.Register(gvk, crd.SetMaxQueueDepth(
@@ -199,7 +206,7 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 		var factory func() domain.Reconciler
 
 		if crd.ReconcilerConfig.Default {
-			// ObjectYamlMode / ObjectGoMode already set — GetRuntimeObjects handles mode.
+			// DynamicModeObject / TypedModeObject already set — GetRuntimeObjects handles mode.
 			// We need a domain.Object factory for GenericReconciler.
 			// object is already the correct concrete type for this CRD.
 			objCopy := object // capture the concrete runtime.Object for this CRD

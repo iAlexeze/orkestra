@@ -47,7 +47,7 @@ func printBanner(kfg *orkestraKfg, leader string) {
 	for _, c := range *kfg.komp {
 		if c.Started() {
 			fmt.Printf("- %-20s %sAVAILABLE%s\n", c.Name(), utils.ColorGreen, utils.ColorReset)
-		} else if c.Name() == "orkestra kontroller" {
+		} else if c.Name() == "orkestra dependency kontroller" {
 			fmt.Printf("- %-20s %sSTARTING%s\n", c.Name(), utils.ColorBlue, utils.ColorReset)
 		} else {
 			fmt.Printf("- %-20s %sUNAVAILABLE%s\n", c.Name(), utils.ColorRed, utils.ColorReset)

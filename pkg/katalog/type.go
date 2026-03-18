@@ -7,14 +7,6 @@ import (
 )
 
 // -----------------------------------------------------------------------------
-// Constants
-// -----------------------------------------------------------------------------
-const (
-	GoMode   = "go"
-	YamlMode = "yaml"
-)
-
-// -----------------------------------------------------------------------------
 // Variables
 // -----------------------------------------------------------------------------
 var (
@@ -44,7 +36,7 @@ type Katalog struct {
 	// Internal
 	enabledCRDs []orktypes.CRDEntry `yaml:"-"` // filtered
 	mode        struct {
-		Go   bool `yaml:"go"`
-		Yaml bool `yaml:"yaml"`
+		Typed   bool `yaml:"typed"`
+		Dynamic bool `yaml:"dynamic"`
 	} `yaml:"mode"`
 }

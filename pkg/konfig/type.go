@@ -93,16 +93,16 @@ func (k *Konfig) Katalog() *katalogKonfig {
 }
 
 const (
-	ModeGo   = "go"
-	ModeYaml = "yaml"
+	DynamicMode = "dynamic"
+	TypedMode   = "typed"
 )
 
 // Mode returns the mode in use
 func (c *Konfig) Mode() string {
-	if c.Katalog().Mode == "yaml" {
-		return "yaml"
-	} else if c.Katalog().Mode == "go" {
-		return "go"
+	if c.Katalog().Mode == DynamicMode {
+		return DynamicMode
+	} else if c.Katalog().Mode == TypedMode {
+		return TypedMode
 	}
 	return ""
 }

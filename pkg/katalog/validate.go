@@ -220,14 +220,14 @@ func (k *Katalog) addRuntimeObjects() error {
 			v := crd.APITypes.Version
 			ki := crd.APITypes.Kind
 
-			crd.ObjectYamlMode = func() runtime.Object {
+			crd.DynamicModeObject = func() runtime.Object {
 				u := &unstructured.Unstructured{}
 				u.SetGroupVersionKind(schema.GroupVersionKind{
 					Group: g, Version: v, Kind: ki,
 				})
 				return u
 			}
-			crd.ListObjectYamlMode = func() runtime.Object {
+			crd.ListDynamicModeObject = func() runtime.Object {
 				ul := &unstructured.UnstructuredList{}
 				ul.SetGroupVersionKind(schema.GroupVersionKind{
 					Group: g, Version: v, Kind: ki + "List",
@@ -247,8 +247,8 @@ func (k *Katalog) addRuntimeObjects() error {
 			return fmt.Errorf("addRuntimeObjects: no list constructor registered for %s", gvk)
 		}
 
-		crd.ObjectYamlMode = objFn
-		crd.ListObjectYamlMode = listFn
+		crd.DynamicModeObject = objFn
+		crd.ListDynamicModeObject = listFn
 	}
 	return nil
 }

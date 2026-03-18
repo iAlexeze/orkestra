@@ -2,14 +2,16 @@ package informer
 
 import (
 	"context"
-	"reflect"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ialexeze/orkestra/pkg/queue"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -28,29 +30,38 @@ type Options struct {
 	Wq     *queue.Workqueue
 }
 
-// informerEntry holds an informer and its metadata — avoids storing
+// InformerEntry holds an informer and its metadata — avoids storing
 // a single shared opts on the factory which caused the name bug.
-type informerEntry struct {
-	informer cache.SharedIndexInformer
-	name     string
-	resync   time.Duration
+type InformerEntry struct {
+	Informer cache.SharedIndexInformer
+	Name     string
+	Resync   time.Duration
+	Missing  bool
+	GVK      *schema.GroupVersionKind
 }
 
+// All mappings key: gvk
 type Factory struct {
 	clientProvider ClientProvider
+	restConfig     *rest.Config
 	defaultWq      *queue.Workqueue
 	queueRegistry  *queue.QueueRegistry
 	namespace      string
 	scheme         *runtime.Scheme
-	defaultResync  time.Duration                   // factory-level default
-	informers      map[reflect.Type]*informerEntry // per-type entry — not a shared opts
-	started        bool
-	mu             sync.RWMutex
-	ready          chan struct{}
+	defaultResync  time.Duration             // factory-level default
+	informers      map[string]*InformerEntry // per-type entry
+
+	started atomic.Bool
+	mu      sync.RWMutex
+	ready   chan struct{}
+
+	// Post start retry for missing CRDs
+	missing map[string]*InformerEntry
 }
 
 func SharedInformerFactory(
 	cp ClientProvider,
+	restConfig *rest.Config,
 	queueRegistry *queue.QueueRegistry,
 	defaultWq *queue.Workqueue,
 	scheme *runtime.Scheme,
@@ -59,12 +70,14 @@ func SharedInformerFactory(
 ) *Factory {
 	return &Factory{
 		clientProvider: cp,
+		restConfig:     restConfig,
 		queueRegistry:  queueRegistry,
 		defaultWq:      defaultWq,
 		namespace:      namespace,
 		scheme:         scheme,
 		defaultResync:  defaultResync,
-		informers:      make(map[reflect.Type]*informerEntry),
+		informers:      make(map[string]*InformerEntry),
+		missing:        make(map[string]*InformerEntry),
 		ready:          make(chan struct{}),
 	}
 }

@@ -27,6 +27,8 @@ func BuildCRDHealthHandler(name string, h *CRDHealth) http.HandlerFunc {
 		utils.WriteJSON(w, status, map[string]interface{}{
 			"name":             name,
 			"healthy":          h.IsHealthy(),
+			"started":          h.Started(),
+			"startedAt":        h.StartedAt(),
 			"status":           status,
 			"uptime":           h.Uptime(),
 			"message":          message,
@@ -68,6 +70,7 @@ func BuildCRDInfoHandler(
 			"resourceCount":    v.resourceCount,
 			"reconciler":       reconcilerInfo(crd),
 			"healthy":          health.IsHealthy(),
+			"started":          health.Started(),
 			"errorRate":        health.ErrorRate(),
 		})
 	}
@@ -114,6 +117,8 @@ func BuildKatalogHandler(
 				"resourceCount":    v.resourceCount,
 				"reconciler":       reconcilerInfo(crd),
 				"healthy":          h.IsHealthy(),
+				"started":          h.Started(),
+				"startedAt":        h.StartedAt(),
 				"uptime":           h.Uptime(),
 				"errorRate":        h.ErrorRate(),
 				"endpoints": map[string]string{
@@ -298,6 +303,8 @@ func resolveCRDDisplayValues(
 	kfg *konfig.Konfig,
 	inf cache.SharedIndexInformer,
 ) crdDisplayValues {
+
+	// Queue Depth
 	queueDepth := crd.Queue.MaxQueueDepth
 	queueDepthSource := "configured"
 
@@ -306,6 +313,7 @@ func resolveCRDDisplayValues(
 		queueDepthSource = "default"
 	}
 
+	// Resync
 	resync := crd.Resync.String()
 	resyncSource := "configured"
 	if crd.Resync == 0 {
@@ -313,6 +321,7 @@ func resolveCRDDisplayValues(
 		resync = kfg.Cluster().DefaultResync.String()
 	}
 
+	// Workers
 	workers := crd.Workers
 	workersSource := "configured"
 	if crd.Workers == 0 {
@@ -320,6 +329,7 @@ func resolveCRDDisplayValues(
 		workersSource = "default"
 	}
 
+	// Resource count
 	resourceCount := 0
 	if inf != nil {
 		resourceCount = len(inf.GetStore().List())

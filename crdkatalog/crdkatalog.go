@@ -61,10 +61,10 @@ func KomposeKatalogFromGo() []orktypes.CRDEntry {
 			},
 
 			// Go mode runtime objects — set directly here.
-			// YAML mode uses ObjectYamlMode/ListObjectYamlMode from addRuntimeObjects().
-			ObjectGoMode:     &projectTypev1.Project{},
-			ListObjectGoMode: &projectTypev1.ProjectList{},
-			Scheme:           projectTypev1.AddToScheme,
+			// YAML mode uses DynamicModeObject/ListDynamicModeObject from addRuntimeObjects().
+			TypedModeObject:     &projectTypev1.Project{},
+			ListTypedModeObject: &projectTypev1.ProjectList{},
+			Scheme:              projectTypev1.AddToScheme,
 
 			ReconcilerConfig: orktypes.ReconcilerConfig{
 				Default: true,
@@ -109,9 +109,9 @@ func KomposeKatalogFromGo() []orktypes.CRDEntry {
 				Location: "github.com/ialexeze/orkestra/example-crds/api/types/managedNamespace/v1alpha1",
 			},
 
-			ObjectGoMode:     &managednsTypeV1.ManagedNamespace{},
-			ListObjectGoMode: &managednsTypeV1.ManagedNamespaceList{},
-			Scheme:           managednsTypeV1.AddToScheme,
+			TypedModeObject:     &managednsTypeV1.ManagedNamespace{},
+			ListTypedModeObject: &managednsTypeV1.ManagedNamespaceList{},
+			Scheme:              managednsTypeV1.AddToScheme,
 
 			ReconcilerConfig: orktypes.ReconcilerConfig{
 				Default: true,

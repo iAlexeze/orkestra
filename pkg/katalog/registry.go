@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	ork_runtime "github.com/ialexeze/orkestra/pkg/runtime"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
@@ -26,12 +27,12 @@ func NewKatalog(mode, path string) *Katalog {
 	var err error
 
 	switch mode {
-	case GoMode:
+	case konfig.TypedMode:
 		entries, err = katalog.KomposeKatalogFromGo()
 		if err != nil {
 			utils.Exit(err)
 		}
-	case YamlMode:
+	case konfig.DynamicMode:
 		// Register runtime objects
 		ork_runtime.RegisterRuntimeObjects()
 
@@ -51,7 +52,7 @@ func NewKatalog(mode, path string) *Katalog {
 			utils.Exit(err)
 		}
 	default:
-		utils.Exit(fmt.Errorf("must be 'go' or 'yaml' invalid katalog mode: %s", mode))
+		utils.Exit(fmt.Errorf("must be 'dynamic' or 'typed' invalid katalog mode: %s", mode))
 	}
 
 	if len(entries) == 0 {
@@ -88,14 +89,14 @@ func NewSchemeRegistry(k *Katalog) (*runtime.Scheme, error) {
 
 	// 3. Register CRDs
 	var err error
-	if k.mode.Yaml {
+	if k.mode.Dynamic {
 		if scheme, err = ork_runtime.RegisterScheme(scheme); err != nil {
 			return nil, err
 		}
 		if scheme, err = k.registerDynamicScheme(scheme); err != nil {
 			return nil, err
 		}
-	} else if k.mode.Go {
+	} else if k.mode.Typed {
 		if scheme, err = k.registerGoScheme(scheme); err != nil {
 			return nil, err
 		}
@@ -113,12 +114,12 @@ func (k *Katalog) updateResourceMapAndReturn() (*Katalog, error) {
 			return nil, fmt.Errorf("no enabled CRDs found")
 		}
 
-		if k.mode.Yaml {
+		if k.mode.Dynamic {
 			// Map the type of the object
 			logger.Debug().Msgf("updating resource map for %s", c.GroupVersionKind.String())
-			resourceTypeMap[reflect.TypeOf(c.ObjectYamlMode)] = c.GroupVersionKind.String()
-		} else if k.mode.Go {
-			resourceTypeMap[reflect.TypeOf(c.ObjectGoMode)] = c.GroupVersionKind.String()
+			resourceTypeMap[reflect.TypeOf(c.DynamicModeObject)] = c.GroupVersionKind.String()
+		} else if k.mode.Typed {
+			resourceTypeMap[reflect.TypeOf(c.TypedModeObject)] = c.GroupVersionKind.String()
 		}
 	}
 
