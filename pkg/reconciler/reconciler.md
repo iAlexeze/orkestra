@@ -367,7 +367,7 @@ Go hooks are declared. The two are mutually exclusive for a given CRD.
 `ork generate runtime` reads the Katalog and emits two files:
 
 ```
-pkg/runtime/__generated_runtime_registry.go   — ObjectRegistry, ListRegistry, RegisterScheme
+pkg/runtime/zz_generated_runtime_registry.go   — ObjectRegistry, ListRegistry, RegisterScheme
 pkg/runtime/__generated_runtime_hooks.go      — HookRegistry entries for Go hooks
 ```
 

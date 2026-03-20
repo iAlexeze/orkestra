@@ -14,7 +14,7 @@ func Konduct(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	// create domain komponent and build orkestra
 	startup := konstructOrkestra(kfg, m, ctx)
 
-	// Start all orkestra komponent
+	// Start all orkestra komponents
 	go func() {
 		if err := startup.orkestra.Start(ctx); err != nil {
 			logger.Fatal().AnErr("orkestra startup error", err)
@@ -27,7 +27,7 @@ func Konduct(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 		startup.event,
 		func(ctx context.Context) { startup.kontroller.RunOrDie(ctx) }, // kontroller run
 		func(konductor string) {
-			// Banner prints here — Leader is the actual winner
+			// Banner prints here — konductor is the actual winner
 			printBanner(startup, konductor)
 		},
 		konductor.Options{
@@ -37,7 +37,7 @@ func Konduct(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 			RetryPeriod:   kfg.Konductor().RetryPeriod,
 		})
 
-	// start konductor election as postStartHook AFTER orkestra is ready
+	// start konductor election as postStartHook after  orkestra is ready
 	startup.orkestra.AddPostStartHook(ko, func(ctx context.Context) {
 		logger.Info().Msg("starting konductor election...")
 		ko.Start(ctx)

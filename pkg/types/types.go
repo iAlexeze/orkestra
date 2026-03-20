@@ -13,8 +13,8 @@ import (
 
 // ── Registries ────────────────────────────────────────────────────────────────
 // Package-level registries — one set per Orkestra instance.
-// Populated by RegisterRuntimeObjects() in __generated_runtime_registry.go,
-// which is produced by `ork generate registry --katalog <path>`.
+// Populated by RegisterRuntimeObjects() in zz_generated_runtime_registry.go,
+// which is produced by `ork generate runtime --katalog <path>`.
 // Keyed by schema.GroupVersionKind. Set during Katalog validation.
 //
 // User code never reads or writes these directly. Orkestra reads them during
@@ -726,7 +726,7 @@ type ReconcilerConfig struct {
 }
 
 // HookDeclaration declares where a Go hook function lives.
-// Read by ork generate to emit HookRegistry entries in __generated_runtime_registry.go.
+// Read by ork generate to emit HookRegistry entries in zz_generated_runtime_registry.go.
 // The declared function must match the signature: func() domain.AnyReconcileHooks
 type HookDeclaration struct {
 	// Location — fully qualified Go import path. Local or remote module.
@@ -862,14 +862,19 @@ func (c *CRDEntry) OrkMode() string {
 }
 
 // GetRuntimeObjects returns the object and list constructors for the current Katalog mode.
+func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
+	return c.DynamicModeObject(), c.ListDynamicModeObject()
+}
+
+// Deprecated
 // YAML mode: returns DynamicModeObject() and ListDynamicModeObject() — set by addRuntimeObjects().
 // Go mode:   returns TypedModeObject and ListTypedModeObject — set in BuildKatalogFromGo().
-func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
-	if c.IsDynamic() {
-		return c.DynamicModeObject(), c.ListDynamicModeObject()
-	}
-	return c.TypedModeObject, c.ListTypedModeObject
-}
+// func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
+// 	if c.IsDynamic() {
+// 		return c.DynamicModeObject(), c.ListDynamicModeObject()
+// 	}
+// 	return c.TypedModeObject, c.ListTypedModeObject
+// }
 
 // SetMaxQueueDepth returns the resolved queue depth for this CRD.
 // Returns the per-CRD value if explicitly set, otherwise the Orkestra-level default.

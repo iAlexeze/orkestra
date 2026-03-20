@@ -5,7 +5,7 @@
 #   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash
 #
 # Options (via environment variables):
-#   ORK_VERSION   — pin a specific version (default: latest)
+#   ORK_VERSION     — pin a specific version (default: latest)
 #   ORK_INSTALL_DIR — install directory (default: /usr/local/bin)
 #
 # Examples:
@@ -22,7 +22,7 @@ set -euo pipefail
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-REPO="ialexeze/orkestra"
+REPO="iAlexeze/orkestra"
 BINARY="ork"
 INSTALL_DIR="${ORK_INSTALL_DIR:-/usr/local/bin}"
 VERSION="${ORK_VERSION:-}"
@@ -66,9 +66,9 @@ detect_platform() {
     esac
 
     case "$(uname -m)" in
-        x86_64)  arch="amd64" ;;
-        aarch64|arm64) arch="arm64" ;;
-        *)       fatal "Unsupported architecture: $(uname -m)" ;;
+        x86_64)         arch="amd64" ;;
+        aarch64|arm64)  arch="arm64" ;;
+        *)              fatal "Unsupported architecture: $(uname -m)" ;;
     esac
 
     echo "${os}_${arch}"
@@ -116,29 +116,23 @@ install_ork() {
 
     info "Installing ${BOLD}ork ${version}${RESET} for ${platform}..."
 
-    # Build download URL
     # Expected release asset format: ork_linux_amd64.tar.gz
     archive="ork_${platform}.tar.gz"
     download_url="https://github.com/${REPO}/releases/download/${version}/${archive}"
     checksum_url="https://github.com/${REPO}/releases/download/${version}/checksums.txt"
 
-    # Create temp directory
+    # Create temp directory — cleaned up automatically on exit
     tmp_dir=$(mktemp -d)
     trap 'rm -rf "${tmp_dir}"' EXIT
-
-    # In install.sh, around line 80-90
-tmp_dir=$(mktemp -d)
-trap 'rm -rf "${tmp_dir}"' EXIT
 
     info "Downloading ${archive}..."
     if ! curl -sSfL "${download_url}" -o "${tmp_dir}/${archive}"; then
         fatal "Download failed. Check that version ${version} exists at:
-    https://github.com/${REPO}/releases"
+  https://github.com/${REPO}/releases"
     fi
 
-    # Verify the file was actually downloaded
     if [[ ! -f "${tmp_dir}/${archive}" ]]; then
-        fatal "Downloaded file not found – something went wrong"
+        fatal "Downloaded file not found — something went wrong"
     fi
 
     # Verify checksum if available
@@ -189,9 +183,9 @@ verify_install() {
     success "Installation complete."
     echo
     echo -e "  ${BOLD}Get started:${RESET}"
-    echo -e "    ork init my-operator          Scaffold a new operator"
-    echo -e "    ork validate --katalog <path> Validate a Katalog"
-    echo -e "    ork run --katalog <path>       Start the operator runtime"
+    echo -e "    ork init my-operator           Scaffold a new operator"
+    echo -e "    ork validate --katalog <path>  Validate a Katalog"
+    echo -e "    ork run --katalog <path>        Start the operator runtime"
     echo
     echo -e "  ${BOLD}Documentation:${RESET}"
     echo -e "    https://github.com/${REPO}"

@@ -170,7 +170,7 @@ When Orkestra starts:
 1. **Load the Katalog** (Go or YAML)
 2. **Filter enabled CRDs**
 3. **Validate dependency graph** (detect cycles, missing deps)
-4. **Run `ork generate registry`** (if YAML mode)
+4. **Run `ork generate runtime`** (if YAML mode)
    - Fetch API types from `apiTypes.location`
    - Fetch hooks from `hooks.location`
    - Generate `initialize/registry.go` with all bindings
@@ -186,12 +186,12 @@ Everything is driven by the Katalog.
 
 ---
 
-# The `ork generate registry` Command
+# The `ork generate runtime` Command
 
 This is where the **magic happens**. Given a Katalog, Orkestra:
 
 ```bash
-ork generate registry --katalog initialize/crd-katalog.yaml
+ork generate runtime --katalog initialize/crd-katalog.yaml
 ```
 
 **What it does:**
@@ -224,7 +224,7 @@ The Katalog supports two modes:
 - CRDs defined in YAML
 - GitOps‑friendly
 - Remote katalogs supported (HTTP/HTTPS URLs)
-- Requires `ork generate registry` once
+- Requires `ork generate runtime` once
 - Best for platform teams and multi‑cluster orchestration
 
 Both modes produce the **same runtime behavior**.

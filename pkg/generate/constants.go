@@ -13,13 +13,8 @@ const (
 	//   - ReconcilerRegistry
 	//   - RegisterScheme()
 	//
-	// It is regenerated on every `ork generate registry` invocation.
-	RegistryFile = "generated_runtime_registry.go"
-
-	// HooksFile is the generated file containing declarative hook implementations
-	// for dynamic CRDs (onCreate, onReconcile, onDelete).
-	// Only emitted when at least one CRD declares template-based hooks.
-	HooksFile = "generated_runtime_hooks.go"
+	// It is regenerated on every `ork generate runtime` invocation.
+	RegistryFile = "zz_generated_runtime_registry.go"
 
 	// ExamplesDir is the output directory for generated example manifests.
 	// Each CRD receives a minimal example YAML manifest for onboarding and testing.
