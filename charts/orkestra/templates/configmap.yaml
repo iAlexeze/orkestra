@@ -1,0 +1,12 @@
+{{- if not .Values.katalog.existingConfigMap }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "orkestra.fullname" . }}-katalog
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "orkestra.labels" . | nindent 4 }}
+data:
+  {{ .Values.katalog.configMapKey }}: |
+    {{- .Values.katalog.inline | nindent 4 }}
+{{- end }}

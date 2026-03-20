@@ -1,0 +1,219 @@
+# Default values for Orkestra.
+# Override any value in your own values file or with --set.
+
+# ── Image ──────────────────────────────────────────────────────────────────────
+image:
+  repository: ghcr.io/ialexeze/orkestra
+  tag: ""          # defaults to Chart.appVersion
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# ── Replicas and naming ────────────────────────────────────────────────────────
+replicaCount: 2    # 2 replicas — only one leads, the other keeps a warm cache
+
+nameOverride: ""
+fullnameOverride: ""
+
+# ── Katalog ───────────────────────────────────────────────────────────────────
+# The Katalog is mounted as a ConfigMap volume.
+# Set katalog.inline to embed your Katalog YAML directly in values.
+# Set katalog.existingConfigMap to reference a ConfigMap you manage separately.
+#
+# One of inline or existingConfigMap must be set.
+katalog:
+  # Inline Katalog YAML — embedded directly into a ConfigMap
+  inline: |
+    apiVersion: orkestra.konductor.io/v1Alpha
+    kind: Katalog
+    metadata:
+      name: default-katalog
+    spec:
+      crds: []   # add your CRD entries here
+
+  # Reference an existing ConfigMap instead of creating one
+  existingConfigMap: ""
+
+  # Key within the ConfigMap that contains the Katalog YAML
+  configMapKey: katalog.yaml
+
+  # Mount path inside the container
+  mountPath: /etc/orkestra/katalog
+
+# ── Runtime configuration ──────────────────────────────────────────────────────
+config:
+  # Log level: debug, info, warn, error
+  logLevel: info
+
+  # Port for the health, readiness, metrics, and Katalog API endpoints
+  healthPort: 8080
+
+  # Health server read time out in seconds
+  healthServerReadTimeout: 5
+
+  # Health server read time out in seconds
+  healthServerWriteTimeout: 20
+
+  # Default number of reconcile workers per CRD (overridden per-CRD in Katalog)
+  defaultWorkers: 2
+
+  # Default resync interval (overridden per-CRD in Katalog)
+  defaultResync: 30s
+
+  # Default maximum queue depth per CRD workqueue
+  maxQueueDepth: 500
+
+  # Default degrade threshold per CRD workqueue
+  degradeThreshold: 10
+
+  # Deployment environment
+  environment: development
+
+  # Kubernetes namespace to watch. Empty = all namespaces.
+  watchNamespace: ""
+
+# ── Leader election ────────────────────────────────────────────────────────────
+leaderElection:
+  enabled: true
+  # Namespace where the leader election lease is stored
+  namespace: ""     # defaults to the release namespace
+  leaseDuration: 15s
+  renewDeadline: 10s
+  retryPeriod: 2s
+
+# ── Service ────────────────────────────────────────────────────────────────────
+service:
+  type: ClusterIP
+  port: 8080
+  annotations: {}
+
+# ── Ingress ────────────────────────────────────────────────────────────────────
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: orkestra.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: orkestra-tls
+  #    hosts:
+  #      - orkestra.example.com
+
+# ── ServiceAccount ─────────────────────────────────────────────────────────────
+serviceAccount:
+  create: true
+  name: ""          # generated from fullname if empty
+  annotations: {}   # useful for IRSA or Workload Identity
+
+# ── RBAC ───────────────────────────────────────────────────────────────────────
+rbac:
+  create: true
+
+# ── HorizontalPodAutoscaler ────────────────────────────────────────────────────
+hpa:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# ── PodDisruptionBudget ────────────────────────────────────────────────────────
+pdb:
+  enabled: true
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# ── Resources ──────────────────────────────────────────────────────────────────
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# ── Security ───────────────────────────────────────────────────────────────────
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop:
+      - ALL
+
+# ── Scheduling ─────────────────────────────────────────────────────────────────
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  # Spread replicas across nodes by default
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - orkestra
+          topologyKey: kubernetes.io/hostname
+
+topologySpreadConstraints: []
+
+# ── Extra configuration ────────────────────────────────────────────────────────
+extraEnv: []
+#  - name: MY_VAR
+#    value: my-value
+
+extraEnvFrom: []
+#  - secretRef:
+#      name: my-secret
+
+extraVolumes: []
+extraVolumeMounts: []
+
+podAnnotations: {}
+podLabels: {}
+
+# ── Probes ─────────────────────────────────────────────────────────────────────
+livenessProbe:
+  httpGet:
+    path: /health
+    port: health
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: health
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
+
+# ── Network Policy ─────────────────────────────────────────────────────────────
+networkPolicy:
+  enabled: false
+  # Allow ingress from all namespaces by default when enabled.
+  # Tighten this in production to only allow from your monitoring namespace.
+  ingressFrom: []
+  #  - namespaceSelector:
+  #      matchLabels:
+  #        kubernetes.io/metadata.name: monitoring

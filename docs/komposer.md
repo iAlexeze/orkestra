@@ -92,12 +92,17 @@ File sources load Katalog YAML from local file paths or remote URLs.
 Each file must be a valid Katalog (`kind: Katalog`). Files that are not
 valid Katalog documents are silently skipped.
 
+### Simple form
+
+No authentication required. Works for local paths, public URLs, and
+environment variable references.
+
 ```yaml
 sources:
   files:
     - ./katalogs/project.yaml              # local relative path
     - /absolute/path/to/namespace.yaml     # local absolute path
-    - https://raw.github.com/.../app.yaml  # remote URL
+    - https://raw.github.com/.../app.yaml  # public remote URL
     - $REMOTE_KATALOG_URL                  # environment variable
 ```
 
@@ -115,6 +120,164 @@ sources:
 
 If the variable is not set or empty, Orkestra fails with a clear error
 naming the variable.
+
+---
+
+## Authenticated file sources
+
+Private Katalog files behind authentication use the struct form with an
+`auth` block. Credentials are **always resolved from environment variables**
+at startup — they never appear as literal values in the Komposer YAML.
+
+```yaml
+sources:
+  files:
+    # Simple form — no auth (existing behaviour unchanged)
+    - ./katalogs/public.yaml
+
+    # Authenticated form — private source
+    - url: https://private.myorg.io/crds/platform-katalog.yaml
+      auth:
+        type: bearer
+        fromEnv: PLATFORM_KATALOG_TOKEN
+```
+
+Both forms can be mixed freely in the same `sources.files` list.
+
+### Bearer token
+
+Use for any API that accepts `Authorization: Bearer <token>`.
+
+```yaml
+sources:
+  files:
+    - url: https://internal.company.com/crds/platform-katalog.yaml
+      auth:
+        type: bearer
+        fromEnv: PLATFORM_KATALOG_TOKEN
+```
+
+Set the environment variable before running:
+
+```bash
+export PLATFORM_KATALOG_TOKEN=your-token-here
+ork run --katalog komposer.yaml
+```
+
+In a Kubernetes deployment, inject it from a Secret:
+
+```yaml
+# Helm values
+extraEnvFrom:
+  - secretRef:
+      name: orkestra-katalog-creds
+```
+
+```bash
+kubectl create secret generic orkestra-katalog-creds \
+  --namespace orkestra-system \
+  --from-literal=PLATFORM_KATALOG_TOKEN=your-token-here
+```
+
+### GitHub token
+
+Use for raw content from private GitHub repositories.
+The token needs `repo` scope for private repository access.
+
+```yaml
+sources:
+  files:
+    - url: https://raw.githubusercontent.com/myorg/private-crds/main/katalog.yaml
+      auth:
+        type: github
+        fromEnv: GITHUB_TOKEN
+```
+
+```bash
+export GITHUB_TOKEN=ghp_xxxxxxxxxxxx
+ork run --katalog komposer.yaml
+```
+
+`github` and `bearer` produce the same `Authorization: Bearer` header.
+Use `github` when the token is a GitHub PAT — it makes the intent clear
+to anyone reading the Komposer.
+
+### Basic auth
+
+Use for Artifactory, Nexus, and other corporate artifact stores.
+
+```yaml
+sources:
+  files:
+    - url: https://artifactory.company.com/orkestra/katalog.yaml
+      auth:
+        type: basic
+        usernameFromEnv: ARTIFACTORY_USER
+        passwordFromEnv: ARTIFACTORY_PASSWORD
+```
+
+```bash
+export ARTIFACTORY_USER=svc-orkestra
+export ARTIFACTORY_PASSWORD=xxxx
+ork run --katalog komposer.yaml
+```
+
+### Mixing auth types
+
+Multiple sources with different auth requirements in one Komposer:
+
+```yaml
+sources:
+  files:
+    # Public — no auth
+    - https://raw.github.com/myorg/public-crds/main/katalog.yaml
+
+    # Private GitHub repo
+    - url: https://raw.githubusercontent.com/myorg/private-crds/main/katalog.yaml
+      auth:
+        type: github
+        fromEnv: GITHUB_TOKEN
+
+    # Internal API with bearer token
+    - url: https://config.platform.myorg.io/crds/infra-katalog.yaml
+      auth:
+        type: bearer
+        fromEnv: PLATFORM_KATALOG_TOKEN
+
+    # Artifactory with basic auth
+    - url: https://artifactory.company.com/orkestra/security-katalog.yaml
+      auth:
+        type: basic
+        usernameFromEnv: ARTIFACTORY_USER
+        passwordFromEnv: ARTIFACTORY_PASSWORD
+
+    # Environment variable (resolved to a URL, then fetched)
+    - $SECURITY_KATALOG_URL
+```
+
+### Injecting credentials in Kubernetes
+
+Never put credential values in `values.yaml` or ConfigMaps committed to
+source control. Always use Kubernetes Secrets.
+
+```bash
+kubectl create secret generic orkestra-katalog-creds \
+  --namespace orkestra-system \
+  --from-literal=GITHUB_TOKEN=ghp_xxxx \
+  --from-literal=PLATFORM_KATALOG_TOKEN=bearer_yyyy \
+  --from-literal=ARTIFACTORY_USER=svc-orkestra \
+  --from-literal=ARTIFACTORY_PASSWORD=zzzz
+```
+
+```yaml
+# Helm values
+extraEnvFrom:
+  - secretRef:
+      name: orkestra-katalog-creds
+```
+
+All variables in the Secret become environment variables in the Orkestra
+container at startup, where they are read by `auth.fromEnv`.
 
 ---
 
@@ -348,7 +511,6 @@ sources:
 
 spec:
   crds:
-    # Production override
     - name: application
       workers: 4
       apiTypes:
@@ -368,6 +530,75 @@ spec:
 ork template --katalog ./komposer.yaml --graph
 ork validate --katalog ./komposer.yaml
 ork run --katalog ./komposer.yaml
+```
+
+### Enterprise — private sources with mixed auth
+
+```yaml
+# enterprise-komposer.yaml
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Komposer
+metadata:
+  name: enterprise-komposer
+
+sources:
+  files:
+    # Public shared baseline
+    - https://raw.github.com/myorg/public-baseline/main/katalog.yaml
+
+    # Private GitHub repo — platform CRDs
+    - url: https://raw.githubusercontent.com/myorg/platform-crds/main/katalog.yaml
+      auth:
+        type: github
+        fromEnv: GITHUB_TOKEN
+
+    # Internal API — security team CRDs
+    - url: https://api.security.myorg.io/orkestra/katalog.yaml
+      auth:
+        type: bearer
+        fromEnv: SECURITY_API_TOKEN
+
+    # Artifactory — compliance CRDs
+    - url: https://artifactory.myorg.io/orkestra/compliance-katalog.yaml
+      auth:
+        type: basic
+        usernameFromEnv: ARTIFACTORY_USER
+        passwordFromEnv: ARTIFACTORY_PASSWORD
+
+  helm:
+    - repo: https://charts.myorg.io
+      chart: platform-crds
+      version: 3.2.1
+      valueFiles:
+        - ./values/enterprise-production.yaml
+
+spec:
+  crds:
+    # Production environment override — more workers than the shared default
+    - name: application
+      workers: 10
+      resync: 30s
+      apiTypes:
+        group: platform.myorg.io
+        version: v1alpha1
+        kind: Application
+        plural: applications
+      reconciler:
+        default: true
+```
+
+```bash
+# All credentials injected from a Kubernetes Secret
+kubectl create secret generic orkestra-katalog-creds \
+  --namespace orkestra-system \
+  --from-literal=GITHUB_TOKEN=ghp_xxxx \
+  --from-literal=SECURITY_API_TOKEN=bearer_yyyy \
+  --from-literal=ARTIFACTORY_USER=svc-orkestra \
+  --from-literal=ARTIFACTORY_PASSWORD=zzzz
+
+# Validate before deploying
+ork validate --katalog enterprise-komposer.yaml
+ork template --katalog enterprise-komposer.yaml --graph
 ```
 
 ### Helm chart + local Katalog + inline override
@@ -413,13 +644,13 @@ spec:
 ## Adding new source types
 
 Sources are implemented as functions on the Merger in `pkg/merger/`.
-Adding a new source type is three steps:
+Adding a new source type is three steps.
 
 **1. Add to `KatalogSources` in `pkg/types`:**
 
 ```go
 type KatalogSources struct {
-    Files []string     `yaml:"files,omitempty"`
+    Files []FileSource `yaml:"files,omitempty"`
     Helm  []HelmSource `yaml:"helm,omitempty"`
     S3    []S3Source   `yaml:"s3,omitempty"`   // ← new
 }
@@ -447,14 +678,17 @@ for i, s3Src := range doc.Sources.S3 {
 
 **Current implementations:**
 
-| Source | Declaration | Status |
-|---|---|---|
-| Local file | `sources.files: - ./path` | ✅ |
-| Remote URL | `sources.files: - https://...` | ✅ |
-| Environment variable | `sources.files: - $VAR` | ✅ |
-| Remote Helm repository | `sources.helm.repo: https://...` | ✅ |
-| Local Helm chart | `sources.helm.repo: ./charts` | ✅ |
-| Git-based Helm chart | `sources.helm.repo: https://...git` | ✅ |
-| Inline `spec.crds` | `spec.crds: [...]` | ✅ |
-| S3 / GCS / Azure Blob | `sources.s3` | Planned |
-| Kubernetes ConfigMap | `sources.configMap` | Planned |
+| Source | Declaration | Auth supported | Status |
+|---|---|---|---|
+| Local file | `sources.files: - ./path` | No (local) | ✅ |
+| Remote URL | `sources.files: - https://...` | No | ✅ |
+| Remote URL + bearer | `sources.files: - url: ... auth: type: bearer` | Yes | ✅ |
+| Remote URL + GitHub token | `sources.files: - url: ... auth: type: github` | Yes | ✅ |
+| Remote URL + basic auth | `sources.files: - url: ... auth: type: basic` | Yes | ✅ |
+| Environment variable | `sources.files: - $VAR` | No | ✅ |
+| Remote Helm repository | `sources.helm.repo: https://...` | No | ✅ |
+| Local Helm chart | `sources.helm.repo: ./charts` | No | ✅ |
+| Git-based Helm chart | `sources.helm.repo: https://...git` | No | ✅ |
+| Inline `spec.crds` | `spec.crds: [...]` | No | ✅ |
+| S3 / GCS / Azure Blob | `sources.s3` | — | Planned |
+| Kubernetes ConfigMap | `sources.configMap` | — | Planned |
