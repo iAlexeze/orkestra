@@ -11,18 +11,18 @@ sources:
   # Each file is a standalone Katalog. The merger loads them all
   # and deduplicates by CRD name.
   files:
-    - ../website/website-katalog.yaml
-    - ../platform-namespace/platform-namespace-katalog.yaml
+    - examples/website/website-katalog.yaml
+    - examples/platform-namespace/platform-namespace-katalog.yaml
 
   # ── Helm source ────────────────────────────────────────────────────────
   # The chart renders a Katalog template. Orkestra extracts the CRD
   # definitions from the rendered output.
   helm:
-    - repo: ./helm-example           # local chart for this example
-      chart: orkestra-katalog-example
+    - repo: examples/komposer                       # local chart for this example. For better experience, use absolute paths
+      chart: helm-example
       version: 0.1.0
       valueFiles:
-        - ./values/overrides.yaml    # override chart defaults per environment
+        - examples/komposer/values/overrides.yaml    # override chart defaults per environment
 
 spec:
   # ── Inline CRDs ────────────────────────────────────────────────────────

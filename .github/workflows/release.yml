@@ -122,7 +122,7 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
 
           # Extract section between this tag and the previous one
-          # Assumes CHANGELOG.md sections are headed by ## [vX.Y.Z]
+          # CHANGELOG.md sections are headed by ## [vX.Y.Z]
           if grep -q "## \[${TAG}\]" CHANGELOG.md 2>/dev/null; then
             NOTES=$(awk "/## \[${TAG}\]/{found=1; next} /## \[v/{if(found) exit} found{print}" CHANGELOG.md)
           else
