@@ -6,12 +6,13 @@ import (
 	"github.com/ialexeze/orkestra/pkg/konductor"
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/merger"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
-func Konduct(kfg *konfig.Konfig, ctx context.Context) {
+func Konduct(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	// create domain komponent and build orkestra
-	startup := konstructOrkestra(kfg, ctx)
+	startup := konstructOrkestra(kfg, m, ctx)
 
 	// Start all orkestra komponent
 	go func() {

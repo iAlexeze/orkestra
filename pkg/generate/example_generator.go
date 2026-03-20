@@ -1,32 +1,21 @@
 package generate
 
 import (
-	"fmt"
 	"path/filepath"
 	"text/template"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/utils"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
 var exampleTemplate = template.Must(
 	template.ParseFiles("pkg/generate/templates/example_manifest.tmpl"),
 )
 
-func Examples(katalogPath string, dryRun bool) error {
-	data, err := utils.LoadFile(katalogPath)
-	if err != nil {
-		return fmt.Errorf("loading katalog: %w", err)
-	}
-
-	kat, err := parseKatalog(data)
-	if err != nil {
-		return err
-	}
-
+func Examples(crds []orktypes.CRDEntry, dryRun bool) error {
 	now := time.Now().UTC()
 
-	for _, crd := range kat.Spec.CRDs {
+	for _, crd := range crds {
 		if !crd.Enabled {
 			continue
 		}

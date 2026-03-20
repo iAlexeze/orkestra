@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/merger"
 	ork_runtime "github.com/ialexeze/orkestra/pkg/runtime"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
@@ -21,38 +21,28 @@ import (
 // -----------------------------------------------------------------------------
 
 // NewKatalog returns a list of CRD data
-func NewKatalog(mode, path string) *Katalog {
+func NewKatalog(m *merger.Merger, paths ...string) *Katalog {
 	katalog := &Katalog{}
 	var entries []orktypes.CRDEntry
 	var err error
 
-	switch mode {
-	case konfig.TypedMode:
-		entries, err = katalog.KomposeKatalogFromGo()
-		if err != nil {
-			utils.Exit(err)
-		}
-	case konfig.DynamicMode:
-		// Register runtime objects
-		ork_runtime.RegisterRuntimeObjects()
+	// Register runtime objects
+	ork_runtime.RegisterRuntimeObjects()
 
-		// Guard: if ObjectRegistry is empty, user forgot to run ork generate
-		for _, crd := range entries {
-			if len(orktypes.ObjectRegistry) == 0 && !crd.IsDynamic() {
-				utils.Exit(fmt.Errorf(
-					"ObjectRegistry is empty — run 'ork generate registry --katalog %s' first",
-					path,
-				))
-			}
+	// Guard: if ObjectRegistry is empty, user forgot to run ork generate
+	for _, crd := range entries {
+		if len(orktypes.ObjectRegistry) == 0 && !crd.IsDynamic() {
+			utils.Exit(fmt.Errorf(
+				"ObjectRegistry is empty — run 'ork generate registry --katalog %s' first",
+				paths[0],
+			))
+		}
 
-		}
-		// Build CRDs
-		entries, err = katalog.KomposeKatalogFromYaml(path)
-		if err != nil {
-			utils.Exit(err)
-		}
-	default:
-		utils.Exit(fmt.Errorf("must be 'dynamic' or 'typed' invalid katalog mode: %s", mode))
+	}
+	// Build CRDs
+	entries, err = katalog.KomposeKatalogFromYaml(m, paths...)
+	if err != nil {
+		utils.Exit(err)
 	}
 
 	if len(entries) == 0 {
@@ -89,17 +79,13 @@ func NewSchemeRegistry(k *Katalog) (*runtime.Scheme, error) {
 
 	// 3. Register CRDs
 	var err error
-	if k.mode.Dynamic {
-		if scheme, err = ork_runtime.RegisterScheme(scheme); err != nil {
-			return nil, err
-		}
-		if scheme, err = k.registerDynamicScheme(scheme); err != nil {
-			return nil, err
-		}
-	} else if k.mode.Typed {
-		if scheme, err = k.registerGoScheme(scheme); err != nil {
-			return nil, err
-		}
+	// Register dynamic scheme
+	if scheme, err = k.registerDynamicScheme(scheme); err != nil {
+		return nil, err
+	}
+	// Register typed scheme
+	if scheme, err = ork_runtime.RegisterTypedScheme(scheme); err != nil {
+		return nil, err
 	}
 
 	return scheme, nil
@@ -114,13 +100,12 @@ func (k *Katalog) updateResourceMapAndReturn() (*Katalog, error) {
 			return nil, fmt.Errorf("no enabled CRDs found")
 		}
 
-		if k.mode.Dynamic {
-			// Map the type of the object
-			logger.Debug().Msgf("updating resource map for %s", c.GroupVersionKind.String())
-			resourceTypeMap[reflect.TypeOf(c.DynamicModeObject)] = c.GroupVersionKind.String()
-		} else if k.mode.Typed {
-			resourceTypeMap[reflect.TypeOf(c.TypedModeObject)] = c.GroupVersionKind.String()
-		}
+		// Map the type of the object
+		logger.Debug().Msgf("updating resource map for %s", c.GroupVersionKind.String())
+		resourceTypeMap[reflect.TypeOf(c.DynamicModeObject)] = c.GroupVersionKind.String()
+
+		// Deprecated
+		// resourceTypeMap[reflect.TypeOf(c.TypedModeObject)] = c.GroupVersionKind.String()
 	}
 
 	return k, nil
@@ -143,7 +128,7 @@ func (k *Katalog) registerGoScheme(scheme *runtime.Scheme) (*runtime.Scheme, err
 // these GVKs as *unstructured.Unstructured instead of failing
 func (k *Katalog) registerDynamicScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
 	for _, crd := range k.enabledCRDs {
-		if crd.IsDynamic() {
+		if crd.IsDynamic() && crd.APITypes.Location == "" {
 			// Register Object
 			scheme.AddKnownTypeWithName(
 				schema.GroupVersionKind{

@@ -19,7 +19,7 @@
 #   reconciler.onReconcile → generated OnReconcile hook             (dynamic mode)
 #   reconciler.onDelete   → generated OnDelete hook                 (dynamic mode)
 
-apiVersion: controller.orkestra.io/v1
+apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
   name: platform-katalog

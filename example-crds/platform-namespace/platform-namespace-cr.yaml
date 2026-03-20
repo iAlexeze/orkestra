@@ -1,9 +1,0 @@
-apiVersion: platform.example.io/v1alpha1
-kind: PlatformNamespace
-metadata:
-  name: orkestra
-spec:
-  targetNamespace: orkestra
-  environment: production
-  region: eu-west-1
-  logLevel: info

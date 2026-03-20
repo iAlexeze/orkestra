@@ -25,9 +25,9 @@ var ListRegistry = map[schema.GroupVersionKind]func() runtime.Object{}
 var HookRegistry = map[schema.GroupVersionKind]func() domain.AnyReconcileHooks{}
 var ReconcilerRegistry = map[schema.GroupVersionKind]NewReconcilerFunc{}
 
-// ── ReconcilerMode ────────────────────────────────────────────────────────────
+// ── CRDMode ────────────────────────────────────────────────────────────
 
-// ReconcilerMode controls how the GenericReconciler handles CR objects at runtime.
+// CRDMode controls how the GenericReconciler handles CR objects at runtime.
 //
 // typed
 //
@@ -53,14 +53,15 @@ var ReconcilerRegistry = map[schema.GroupVersionKind]NewReconcilerFunc{}
 //
 // Override auto-detection by setting mode explicitly:
 //
-//	reconciler:
-//	  mode: typed          # force typed even if location is empty
-//	  mode: dynamic   # force dynamic even if location is set
-type ReconcilerMode string
+//	crd:
+//	 - name: websites
+//	   mode: dynamic   		# force dynamic even if location is set
+//	   mode: typed          # force typed even if location is empty
+type CRDMode string
 
 const (
-	ReconcilerModeTyped   ReconcilerMode = "typed"
-	ReconcilerModeDynamic ReconcilerMode = "dynamic"
+	CRDModeTyped   CRDMode = "typed"
+	CRDModeDynamic CRDMode = "dynamic"
 )
 
 // ── APITypes ──────────────────────────────────────────────────────────────────
@@ -465,6 +466,11 @@ type CronJobTemplateSource struct {
 
 	// Labels — applied to CronJob metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile. Equivalent to declaring the same entry under both onCreate and
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
 }
 
 // ── ConfigMap ─────────────────────────────────────────────────────────────────
@@ -663,10 +669,6 @@ type ReconcilerConfig struct {
 	//         GenericReconciler is not used — the user owns the entire lifecycle.
 	Default bool `yaml:"default" validate:"omitempty"`
 
-	// Mode — see ReconcilerMode for full documentation.
-	// Auto-detected when omitted based on whether apiTypes.location is set.
-	Mode ReconcilerMode `yaml:"mode" validate:"omitempty,oneof=typed dynamic"`
-
 	// Finalizers — per-CRD finalizer list. Overrides the Katalog-level finalizer.
 	// Applied by GenericReconciler when a CR is first created.
 	// Stripped one-by-one before delete to unblock Kubernetes garbage collection.
@@ -784,6 +786,10 @@ type CRDEntry struct {
 	// Description — human-readable description. Shown in /katalog API responses.
 	Description string `yaml:"description" validate:"omitempty"`
 
+	// Mode — see CRDMode for full documentation.
+	// Auto-detected when omitted based on whether apiTypes.location is set.
+	Mode CRDMode `yaml:"mode" validate:"omitempty,oneof=typed dynamic"`
+
 	// ── API Types ─────────────────────────────────────────────────────────────
 	// See APITypes for full field documentation.
 	APITypes APITypes `yaml:"apiTypes" validate:"required"`
@@ -858,8 +864,8 @@ func (c *CRDEntry) OrkMode() string {
 // GetRuntimeObjects returns the object and list constructors for the current Katalog mode.
 // YAML mode: returns DynamicModeObject() and ListDynamicModeObject() — set by addRuntimeObjects().
 // Go mode:   returns TypedModeObject and ListTypedModeObject — set in BuildKatalogFromGo().
-func (c *CRDEntry) GetRuntimeObjects(mode string) (runtime.Object, runtime.Object) {
-	if mode == konfig.DynamicMode {
+func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
+	if c.IsDynamic() {
 		return c.DynamicModeObject(), c.ListDynamicModeObject()
 	}
 	return c.TypedModeObject, c.ListTypedModeObject
@@ -891,10 +897,10 @@ func (c *CRDEntry) SetWorkers(def int) int {
 //  3. apiTypes.location is empty             → true  (no compiled types available)
 //  4. apiTypes.location is set               → false (compiled types available)
 func (c *CRDEntry) IsDynamic() bool {
-	switch c.ReconcilerConfig.Mode {
-	case ReconcilerModeDynamic:
+	switch c.Mode {
+	case CRDModeDynamic:
 		return true
-	case ReconcilerModeTyped:
+	case CRDModeTyped:
 		return false
 	}
 	return c.APITypes.Location == ""

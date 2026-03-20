@@ -13,6 +13,7 @@ import (
 	"github.com/ialexeze/orkestra/pkg/kontroller"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/merger"
 	ork "github.com/ialexeze/orkestra/pkg/orkestra"
 	"github.com/ialexeze/orkestra/pkg/queue"
 	"github.com/ialexeze/orkestra/pkg/reconciler"
@@ -43,10 +44,10 @@ type orkestraKfg struct {
 // IMPORTANT: Nothing that requires a live kube connection runs here.
 // Reconciler factories are closures — called in startCRDWorkers after
 // orkestra.Start() has initialised kube, ev, and all REST clients.
-func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
+func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) *orkestraKfg {
 
 	// ── 1. Katalog ────────────────────────────────────────────────────────────
-	crdKatalog := katalog.NewKatalog(kfg.Katalog().Mode, kfg.Katalog().Path)
+	crdKatalog := katalog.NewKatalog(m, kfg.Katalog().Paths...)
 
 	// ── 2. Scheme ─────────────────────────────────────────────────────────────
 	// Registers all CRD Go types so the REST client can decode API server responses.
@@ -61,9 +62,9 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 
 	// Health server — created first so routes can be registered before Start().
 	hs := health.NewHealthServer(
-		kfg.App().Name,
+		kfg.Ork().Name,
 		kfg.Health().Port,
-		kfg.App().LogLevel,
+		kfg.Ork().LogLevel,
 	)
 
 	// Kubeclient
@@ -102,11 +103,11 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 			continue // dynamic path — registered per-informer below
 		}
 
-		object, list := crd.GetRuntimeObjects(kfg.Mode())
+		object, list := crd.GetRuntimeObjects()
 
 		logger.Debug().
 			Str("gvk", utils.SetGroupVersionKindObj(crd.GroupVersionKind)).
-			Str("mode", kfg.Mode()).
+			Str("mode", string(crd.Mode)).
 			Msg("registering CRD client provider")
 
 		provider.Register(object, func(k *kubeclient.Kubeclient) (informer.GenericClient, error) {
@@ -152,7 +153,7 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 
 		// GetRuntimeObjects abstracts Dynamic vs Typed mode —
 		// DynamicModeObject is already populated by addRuntimeObjects() during validation.
-		object, _ := crd.GetRuntimeObjects(kfg.Mode())
+		object, _ := crd.GetRuntimeObjects()
 
 		wq := queueRegistry.Register(gvk, crd.SetMaxQueueDepth(
 			kfg.Katalog().DefaultMaxQueueDepth,
@@ -327,7 +328,7 @@ func konstructOrkestra(kfg *konfig.Konfig, ctx context.Context) *orkestraKfg {
 	// Owns the full lifecycle of all komponents.
 	// Start  : sequential, in registration order.
 	// Shutdown: reverse order, on OS signal or fatal error.
-	o := ork.NewOrkestra(kfg.Cluster().DefaultResync, kfg.App().LogLevel)
+	o := ork.NewOrkestra(kfg.Cluster().DefaultResync, kfg.Ork().LogLevel)
 	o.Register(komponents)
 
 	return &orkestraKfg{

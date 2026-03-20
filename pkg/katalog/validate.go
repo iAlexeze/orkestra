@@ -43,6 +43,22 @@ func (k *Katalog) handleValidationErrors(err error) {
 }
 
 // -----------------------------------------------------------------------------
+// Validate uniqueness
+// -----------------------------------------------------------------------------
+func (k *Katalog) validateUniqueness() error {
+	if err := k.validateGVKUniqueness(); err != nil {
+		return err
+	}
+	if err := k.validateNameUniqueness(); err != nil {
+		return err
+	}
+	if err := k.validatePluralUniqueness(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// -----------------------------------------------------------------------------
 // Validation: GVK uniqueness
 // -----------------------------------------------------------------------------
 
@@ -62,6 +78,70 @@ func (k *Katalog) validateGVKUniqueness() error {
 		seen[key] = crd.Name
 	}
 
+	return nil
+}
+
+// -----------------------------------------------------------------------------
+// Validation: Name uniqueness
+// -----------------------------------------------------------------------------
+
+func (k *Katalog) validateNameUniqueness() error {
+	seen := make(map[string]bool)
+
+	for _, crd := range k.enabledCRDs {
+		if seen[crd.Name] {
+			return fmt.Errorf("duplicate CRD name detected: %s", crd.Name)
+		}
+		seen[crd.Name] = true
+	}
+
+	return nil
+}
+
+// -----------------------------------------------------------------------------
+// Validation: Name uniqueness
+// -----------------------------------------------------------------------------
+
+func (k *Katalog) validatePluralUniqueness() error {
+	seen := make(map[string]string)
+
+	for _, crd := range k.enabledCRDs {
+		if existing, ok := seen[crd.APITypes.Plural]; ok {
+			return fmt.Errorf("duplicate plural detected: %s (CRDs: %s and %s)",
+				crd.APITypes.Plural, existing, crd.Name)
+		}
+		seen[crd.APITypes.Plural] = crd.Name
+	}
+
+	return nil
+}
+
+func (k *Katalog) validateReconcilerMode() error {
+	for i := range k.enabledCRDs {
+		crd := &k.enabledCRDs[i]
+		mode := crd.Mode
+
+		switch mode {
+		case "":
+			// No mode declared — default to dynamic
+			logger.Debug().
+				Str("crd", crd.Name).
+				Msg("reconciler mode not set — defaulting to 'dynamic'")
+
+			crd.Mode = orktypes.CRDModeDynamic
+
+		case orktypes.CRDModeDynamic, orktypes.CRDModeTyped:
+			// Valid — nothing to do
+
+		default:
+			return fmt.Errorf(
+				"CRD %q: reconciler mode %q is not supported — use %q or %q",
+				crd.Name, mode,
+				orktypes.CRDModeDynamic,
+				orktypes.CRDModeTyped,
+			)
+		}
+	}
 	return nil
 }
 
@@ -160,7 +240,19 @@ func (k *Katalog) setGroupVersionKind() error {
 		}
 
 		if crd.GroupVersionKind.Empty() {
-			return fmt.Errorf("GroupVersionKind is empty. Enter a valid Group, Version and Kind for the CRD")
+			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.group, apiTypes.version, apiTypes.kind", crd.Name)
+		}
+
+		if crd.GroupVersion.Empty() {
+			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.group, apiTypes.version", crd.Name)
+		}
+
+		if crd.APITypes.Kind == "" {
+			return fmt.Errorf("CRD '%s': missing required field: apiTypes.kind", crd.Name)
+		}
+
+		if crd.GroupVersionResource.Empty() {
+			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.plural", crd.Name)
 		}
 	}
 	return nil
@@ -259,21 +351,24 @@ func (k *Katalog) addReconcilers() error {
 	for i := range k.enabledCRDs {
 		crd := &k.enabledCRDs[i]
 
-		// Default → skip registry lookup
-		if crd.ReconcilerConfig.Default {
-			continue
-		}
+		if !crd.IsDynamic() {
 
-		constructorFn, ok := orktypes.ReconcilerRegistry[crd.GroupVersionKind]
-		if !ok {
-			return fmt.Errorf(
-				"CRD %q: no constructor registered — "+
-					"check reconciler.constructor in Katalog and re-run ork generate registry",
-				crd.Name,
-			)
-		}
+			// Default → skip registry lookup
+			if crd.ReconcilerConfig.Default {
+				continue
+			}
 
-		crd.ReconcilerConfig.Constructor = constructorFn // ← sets the Go function field
+			constructorFn, ok := orktypes.ReconcilerRegistry[crd.GroupVersionKind]
+			if !ok {
+				return fmt.Errorf(
+					"CRD %q: no constructor registered — "+
+						"check reconciler.constructor in Katalog and re-run ork generate registry",
+					crd.Name,
+				)
+			}
+
+			crd.ReconcilerConfig.Constructor = constructorFn // ← sets the Go function field
+		}
 	}
 	return nil
 }

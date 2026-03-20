@@ -17,10 +17,11 @@ func Init(filenames ...string) (*Konfig, error) {
 	}
 
 	kfg := &Konfig{
-		app: appKonfig{
-			Name:        GetStrEnv("APP_NAME", "orkestra"),
-			Version:     GetStrEnv("APP_VERSION", "1.0.0"),
-			Environment: GetStrEnv("APP_ENV", "development"),
+		ork: orkKonfig{
+			Name:        orkestra,
+			ShortName:   ork,
+			Version:     GetStrEnv("ORK_VERSION", "1.0.0"),
+			Environment: GetStrEnv("ORK_ENV", "development"),
 			LogLevel:    GetStrEnv("LOG_LEVEL", "info"),
 		},
 		cluster: clusterKonfig{
@@ -32,8 +33,8 @@ func Init(filenames ...string) (*Konfig, error) {
 
 			// Workload
 			DefaultResync:  GetDurEnvSeconds("DEFAULT_RESYNC", 15),
-			Finalizer:      GetStrEnv("FINALIZER", "alexia.ai/finalizer"),
-			LabelSelector:  GetStrEnv("LABEL_SELECTOR", "app=alexia"),
+			Finalizer:      GetStrEnv("FINALIZER", "konduktor.orkestra.io/finalizer"),
+			LabelSelector:  GetStrEnv("LABEL_SELECTOR", "ork=estra"),
 			DefaultWorkers: GetIntEnv("DEFAULT_WORKERS", 3),
 		},
 		healthServer: healthServer{
@@ -49,18 +50,12 @@ func Init(filenames ...string) (*Konfig, error) {
 		katalog: katalogKonfig{
 			DefaultMaxQueueDepth:    GetIntEnv("MAX_QUEUE_DEPTH", 2000),
 			DefaultDegradeThreshold: GetIntEnv("DEGRADE_THRESHOLD", 5),
-			Mode:                    GetStrEnv("KATALOG_MODE", "dynamic"),
-			Path:                    GetStrEnv("KATALOG_PATH", ""),
+			Paths:                   GetStrSliceEnv("KATALOG_PATH", []string{}),
 		},
 	}
 
 	// normalize environment
 	kfg.normalizeEnvironment()
-
-	// validate katalog konfig
-	if err = kfg.validateKatalogKonfig(); err != nil {
-		return nil, err
-	}
 
 	// validate struct
 	if err = Validate().Struct(kfg); err != nil {
@@ -70,10 +65,20 @@ func Init(filenames ...string) (*Konfig, error) {
 	return kfg, nil
 }
 
+// -----------------------------------------------------------------------------
+
 // GetStrEnv returns the string value of an env
 func GetStrEnv(key, def string) string {
 	if val, ok := os.LookupEnv(key); ok {
 		return val
+	}
+	return def
+}
+
+// GetStrSliceEnv returns the slice value of an env
+func GetStrSliceEnv(key string, def []string) []string {
+	if val, ok := os.LookupEnv(key); ok {
+		return []string{val}
 	}
 	return def
 }

@@ -1,0 +1,160 @@
+// pkg/orkestra-registry/serviceaccounts/serviceaccount.go
+package serviceaccounts
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// ResolvedServiceAccountSpec is the fully resolved ServiceAccount specification.
+type ResolvedServiceAccountSpec struct {
+	// Name — ServiceAccount name. Required.
+	Name string
+
+	// Namespace — target namespace. Required.
+	Namespace string
+
+	// Labels — applied to ServiceAccount metadata.
+	Labels map[string]string
+}
+
+// Create creates a ServiceAccount if it does not already exist.
+// Idempotent — skips if the ServiceAccount exists.
+// Owner reference set so ServiceAccount is garbage collected when CR is deleted.
+//
+// ServiceAccounts have no meaningful spec fields that can drift after creation.
+// There is no Update function — Create is called from both onCreate and
+// onReconcile paths. If it exists, it stays. If it was deleted, it is recreated.
+func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedServiceAccountSpec) error {
+	if err := validateSpec(spec); err != nil {
+		return fmt.Errorf("serviceaccount.Create: invalid spec: %w", err)
+	}
+
+	namespace := resolveNamespace(owner, spec)
+
+	_, err := kube.Clientset().CoreV1().ServiceAccounts(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return fmt.Errorf("serviceaccount.Create: checking existence of %q: %w", spec.Name, err)
+	}
+	if err == nil {
+		logger.Debug().
+			Str("serviceaccount", spec.Name).
+			Str("namespace", namespace).
+			Msg("serviceaccount already exists — skipping create")
+		return nil
+	}
+
+	sa := buildServiceAccount(owner, spec, namespace)
+
+	_, err = kube.Clientset().CoreV1().ServiceAccounts(namespace).Create(ctx, sa, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("serviceaccount.Create: creating serviceaccount %q in %q: %w", spec.Name, namespace, err)
+	}
+
+	logger.Info().
+		Str("serviceaccount", spec.Name).
+		Str("namespace", namespace).
+		Str("owner", owner.GetName()).
+		Msg("serviceaccount created")
+
+	return nil
+}
+
+// Delete deletes the ServiceAccount if it exists.
+// For most cases owner references handle cleanup automatically —
+// only use this when explicit cleanup control is needed.
+func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedServiceAccountSpec) error {
+	namespace := resolveNamespace(owner, spec)
+
+	err := kube.Clientset().CoreV1().ServiceAccounts(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logger.Debug().
+				Str("serviceaccount", spec.Name).
+				Str("namespace", namespace).
+				Msg("serviceaccount already deleted — skipping")
+			return nil
+		}
+		return fmt.Errorf("serviceaccount.Delete: deleting serviceaccount %q in %q: %w", spec.Name, namespace, err)
+	}
+
+	logger.Info().
+		Str("serviceaccount", spec.Name).
+		Str("namespace", namespace).
+		Str("owner", owner.GetName()).
+		Msg("serviceaccount deleted")
+
+	return nil
+}
+
+// Resolve builds a ResolvedServiceAccountSpec from a ServiceAccountTemplateSource.
+// Template expressions must already be evaluated by template.Resolver before calling.
+func Resolve(src orktypes.ServiceAccountTemplateSource, ownerName string) ResolvedServiceAccountSpec {
+	spec := ResolvedServiceAccountSpec{
+		Name:      src.Name,
+		Namespace: src.Namespace,
+		Labels:    make(map[string]string),
+	}
+
+	if spec.Name == "" {
+		spec.Name = ownerName + "-sa"
+	}
+
+	for _, l := range src.Labels {
+		spec.Labels[l.Key] = l.Value
+	}
+
+	spec.Labels["managed-by"] = "orkestra"
+	spec.Labels["orkestra-owner"] = ownerName
+
+	return spec
+}
+
+// ── Internal helpers ──────────────────────────────────────────────────────────
+
+func buildServiceAccount(owner domain.Object, spec ResolvedServiceAccountSpec, namespace string) *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      spec.Name,
+			Namespace: namespace,
+			Labels:    spec.Labels,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         owner.GetObjectKind().GroupVersionKind().GroupVersion().String(),
+					Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
+					Name:               owner.GetName(),
+					UID:                owner.GetUID(),
+					Controller:         boolPtr(true),
+					BlockOwnerDeletion: boolPtr(true),
+				},
+			},
+		},
+	}
+}
+
+func validateSpec(spec ResolvedServiceAccountSpec) error {
+	if spec.Name == "" {
+		return fmt.Errorf("name is required")
+	}
+	return nil
+}
+
+func resolveNamespace(owner domain.Object, spec ResolvedServiceAccountSpec) string {
+	if spec.Namespace != "" {
+		return spec.Namespace
+	}
+	if owner.GetNamespace() != "" {
+		return owner.GetNamespace()
+	}
+	return "default"
+}
+
+func boolPtr(b bool) *bool { return &b }

@@ -4,7 +4,6 @@ package katalog
 import (
 	"fmt"
 
-	"github.com/ialexeze/orkestra/pkg/konfig"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
@@ -92,16 +91,6 @@ func (g *DependencyGraph) ShutdownOrder() []string {
 }
 
 // Constructors
-func (g *DependencyGraph) GetMode() string {
-	switch {
-	case g.katalog.mode.Dynamic:
-		return konfig.DynamicMode
-	case g.katalog.mode.Typed:
-		return konfig.TypedMode
-	}
-	return ""
-}
-
 func (g *DependencyGraph) GetNode(name string) *Node {
 	return g.nodes[name]
 }

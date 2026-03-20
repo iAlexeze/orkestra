@@ -4,11 +4,10 @@ package katalog
 import (
 	"fmt"
 
-	"github.com/ialexeze/orkestra/crdkatalog"
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/merger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
-	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
 // -----------------------------------------------------------------------------
@@ -16,39 +15,10 @@ import (
 //	YAML Builder
 //
 // -----------------------------------------------------------------------------
-func (k *Katalog) KomposeKatalogFromYaml(path string) ([]orktypes.CRDEntry, error) {
-	data, err := utils.LoadFile(path)
-	if err != nil {
-		return nil, err
-	}
+func (k *Katalog) KomposeKatalogFromYaml(m *merger.Merger, paths ...string) ([]orktypes.CRDEntry, error) {
+	k.Spec = m.ToSpec()
+	k.enabledCRDs = m.Enabled()
 
-	if err := utils.StrictUnmarshal(data, k); err != nil {
-		return nil, err
-	}
-
-	// Filter enabled CRDs
-	if err := k.filterEnabled(); err != nil {
-		return nil, err
-	}
-
-	k.mode.Dynamic = true
-	return k.enabledCRDs, nil
-}
-
-// -----------------------------------------------------------------------------
-//
-//	GO Builder
-//
-// -----------------------------------------------------------------------------
-func (k *Katalog) KomposeKatalogFromGo() ([]orktypes.CRDEntry, error) {
-	k.Spec.CRDs = crdkatalog.KomposeKatalogFromGo()
-
-	// Filter
-	if err := k.filterEnabled(); err != nil {
-		return nil, err
-	}
-
-	k.mode.Typed = true
 	return k.enabledCRDs, nil
 }
 
@@ -64,10 +34,9 @@ func (k *Katalog) ValidateConfig() (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 2. GVK uniqueness validation
+	// 2. Uniqueness validation
 	// -------------------------------------------------------------------------
-	if err := k.validateGVKUniqueness(); err != nil {
-		logger.Error().Err(err).Msgf("GVK uniqueness error: %v", err)
+	if err := k.validateUniqueness(); err != nil {
 		return nil, err
 	}
 
@@ -75,7 +44,6 @@ func (k *Katalog) ValidateConfig() (*Katalog, error) {
 	// 3. dependsOn validation (existence + cycle detection)
 	// -------------------------------------------------------------------------
 	if err := k.validateDependsOn(); err != nil {
-		logger.Error().Err(err).Msgf("dependsOn validation error: %v", err)
 		return nil, err
 	}
 
@@ -83,40 +51,39 @@ func (k *Katalog) ValidateConfig() (*Katalog, error) {
 	// 4. Set GroupVersionKind and Defaults
 	// -------------------------------------------------------------------------
 	if err := k.setGroupVersionKind(); err != nil {
-		logger.Error().Err(err).Msgf("Set GroupVersionKind error: %v", err)
 		return nil, err
 	}
 
 	if err := k.setDefaults(); err != nil {
-		logger.Error().Err(err).Msgf("Set Defaults error: %v", err)
 		return nil, err
 	}
 
-	if k.mode.Dynamic {
-		// -------------------------------------------------------------------------
-		// 5. Add Reconcilers		// ReconcilerRegistry → Constructor
-		// -------------------------------------------------------------------------
-		if err := k.addReconcilers(); err != nil {
-			logger.Error().Err(err).Msgf("Add Reconcilers error: %v", err)
-			return nil, err
-		}
+	// -------------------------------------------------------------------------
+	// 5. Add Reconcilers		// ReconcilerRegistry → Constructor
+	// -------------------------------------------------------------------------
+	if err := k.addReconcilers(); err != nil {
+		logger.Error().Err(err).Msgf("Add Reconcilers error: %v", err)
+		return nil, err
+	}
+	// -------------------------------------------------------------------------
+	// 6. Add RuntimeObjects	// ObjectRegistry + ListRegistry
+	// -------------------------------------------------------------------------
+	if err := k.addRuntimeObjects(); err != nil {
+		return nil, err
+	}
 
-		// -------------------------------------------------------------------------
-		// 6. Add RuntimeObjects	// ObjectRegistry + ListRegistry
-		// -------------------------------------------------------------------------
-		if err := k.addRuntimeObjects(); err != nil {
-			logger.Error().Err(err).Msgf("Add RuntimeObjects error: %v", err)
-			return nil, err
-		}
+	// -------------------------------------------------------------------------
+	// 6. Add Hooks	// HookRegistry → HookFactory
+	// -------------------------------------------------------------------------
+	if err := k.addHooks(); err != nil {
+		return nil, err
+	}
 
-		// -------------------------------------------------------------------------
-		// 6. Add Hooks	// HookRegistry → HookFactory
-		// -------------------------------------------------------------------------
-		if err := k.addHooks(); err != nil {
-			logger.Error().Err(err).Msgf("Add Hooks error: %v", err)
-			return nil, err
-		}
-
+	// -------------------------------------------------------------------------
+	// 7. Validate Reconciler modes
+	// -------------------------------------------------------------------------
+	if err := k.validateReconcilerMode(); err != nil {
+		return nil, err
 	}
 	return k, nil
 }

@@ -10,7 +10,6 @@ import (
 
 	"github.com/ialexeze/orkestra/domain"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // Resolver evaluates Go text/template expressions against a live CR object.
@@ -78,20 +77,6 @@ func (r *Resolver) Resolve(value string) (string, error) {
 	}
 
 	return strings.TrimSpace(buf.String()), nil
-}
-
-// ResolveLabels evaluates template expressions in label and annotation values.
-// Keys are never template expressions — only values are resolved.
-func (r *Resolver) ResolveLabels(labels []orktypes.ResourceLabel) ([]orktypes.ResourceLabel, error) {
-	resolved := make([]orktypes.ResourceLabel, 0, len(labels))
-	for _, l := range labels {
-		v, err := r.Resolve(l.Value)
-		if err != nil {
-			return nil, fmt.Errorf("label %q: %w", l.Key, err)
-		}
-		resolved = append(resolved, orktypes.ResourceLabel{Key: l.Key, Value: v})
-	}
-	return resolved, nil
 }
 
 // ResolvePodTemplate resolves all template expressions in a PodTemplateSource.
@@ -294,28 +279,33 @@ func (r *Resolver) ResolveSecretTemplate(src orktypes.SecretTemplateSource) (ork
 		return resolved, fmt.Errorf("secret.data: %w", err)
 	}
 
-	for k, v := range src.Data {
-		rv, e := r.Resolve(v)
-		if e != nil {
-			return resolved, fmt.Errorf("secret.stringData[%q]: %w", k, e)
+	if len(src.Data) > 0 {
+		resolved.Data = make(map[string]string, len(src.Data))
+		for k, v := range src.Data {
+			rv, e := r.Resolve(v)
+			if e != nil {
+				return resolved, fmt.Errorf("secret.data[%q]: %w", k, e)
+			}
+			resolved.Data[k] = rv
 		}
-		resolved.Data[k] = rv
 	}
 
-	for k, v := range src.ToNamespaces {
+	for i, v := range src.ToNamespaces {
 		rv, e := r.Resolve(v)
 		if e != nil {
-			return resolved, fmt.Errorf("secret.toNamespaces[%q]: %w", k, e)
+			return resolved, fmt.Errorf("secret.toNamespaces[%d]: %w", i, e)
 		}
-		resolved.ToNamespaces = append(resolved.ToNamespaces, rv)
+		if rv != "" {
+			resolved.ToNamespaces = append(resolved.ToNamespaces, rv)
+		}
 	}
 
 	return resolved, nil
 }
 
-// ResolveSecretTemplate resolves all template expressions in a SecretTemplateSource.
-// Returns a new SecretTemplateSource with all expressions evaluated — safe to pass
-// directly to secrets.Resolve().
+// ResolveConfigMapTemplate resolves all template expressions in a ConfigMapsTemplateSource.
+// Returns a new ConfigMapTemplateSource with all expressions evaluated — safe to pass
+// directly to configmaps.Resolve().
 func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource) (orktypes.ConfigMapTemplateSource, error) {
 	resolved := orktypes.ConfigMapTemplateSource{
 		Version: src.Version,
@@ -338,46 +328,95 @@ func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource
 	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
 		return resolved, fmt.Errorf("configmap.labels: %w", err)
 	}
-	for k, v := range src.Data {
-		rv, e := r.Resolve(v)
-		if e != nil {
-			return resolved, fmt.Errorf("configmap.data[%q]: %w", k, e)
+
+	if len(src.Data) > 0 {
+		resolved.Data = make(map[string]string, len(src.Data))
+		for k, v := range src.Data {
+			rv, e := r.Resolve(v)
+			if e != nil {
+				return resolved, fmt.Errorf("configmap.data[%q]: %w", k, e)
+			}
+			resolved.Data[k] = rv
 		}
-		resolved.Data[k] = rv
 	}
+
 	return resolved, nil
 }
 
-// OwnerName returns the CR name. Used by registry Resolve() for default naming.
-func (r *Resolver) OwnerName() string { return r.ownerName }
+// Additional resolver methods needed by run_cronjobs.go and run_serviceaccounts.go
+// Add these alongside existing Resolve* methods in resolver.go
 
-// OwnerNamespace returns the CR namespace.
-func (r *Resolver) OwnerNamespace() string { return r.ownerNamespace }
-
-// ── Internal ──────────────────────────────────────────────────────────────────
-
-// objectToMap converts a domain.Object to map[string]interface{} for template execution.
-//
-// Fast path: *unstructured.Unstructured already has the full object map including
-// all spec fields — used directly with zero allocation overhead.
-//
-// Typed objects: only metadata fields are extracted. Spec fields are not accessible
-// without reflection or JSON round-trip. Typed object users should use Typed mode
-// hooks with 'Go' for full spec access rather than YAML template expressions.
-func objectToMap(obj domain.Object) (map[string]interface{}, error) {
-	// Fast path — unstructured has full map natively
-	if u, ok := obj.(*unstructured.Unstructured); ok {
-		return u.Object, nil
+// ResolveCronJobTemplate resolves all template expressions in a CronJobTemplateSource.
+func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (orktypes.CronJobTemplateSource, error) {
+	resolved := orktypes.CronJobTemplateSource{
+		Version: src.Version,
 	}
 
-	// Typed fallback — metadata only
-	// spec fields not available without reflection on typed objects
-	return map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"name":        obj.GetName(),
-			"namespace":   obj.GetNamespace(),
-			"labels":      obj.GetLabels(),
-			"annotations": obj.GetAnnotations(),
-		},
-	}, nil
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("cronjob.name: %w", err)
+	}
+	if resolved.Image, err = r.Resolve(src.Image); err != nil {
+		return resolved, fmt.Errorf("cronjob.image: %w", err)
+	}
+	if resolved.Schedule, err = r.Resolve(src.Schedule); err != nil {
+		return resolved, fmt.Errorf("cronjob.schedule: %w", err)
+	}
+
+	ns := src.Namespace
+	if ns == "" {
+		ns = "{{ .metadata.namespace }}"
+	}
+	if resolved.Namespace, err = r.Resolve(ns); err != nil {
+		return resolved, fmt.Errorf("cronjob.namespace: %w", err)
+	}
+
+	for i, c := range src.Command {
+		rv, e := r.Resolve(c)
+		if e != nil {
+			return resolved, fmt.Errorf("cronjob.command[%d]: %w", i, e)
+		}
+		resolved.Command = append(resolved.Command, rv)
+	}
+	for i, a := range src.Args {
+		rv, e := r.Resolve(a)
+		if e != nil {
+			return resolved, fmt.Errorf("cronjob.args[%d]: %w", i, e)
+		}
+		resolved.Args = append(resolved.Args, rv)
+	}
+
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("cronjob.labels: %w", err)
+	}
+
+	return resolved, nil
+}
+
+// ResolveServiceAccountTemplate resolves all template expressions in a ServiceAccountTemplateSource.
+func (r *Resolver) ResolveServiceAccountTemplate(src orktypes.ServiceAccountTemplateSource) (orktypes.ServiceAccountTemplateSource, error) {
+	resolved := orktypes.ServiceAccountTemplateSource{
+		Version: src.Version,
+	}
+
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("serviceaccount.name: %w", err)
+	}
+
+	ns := src.Namespace
+	if ns == "" {
+		ns = "{{ .metadata.namespace }}"
+	}
+	if resolved.Namespace, err = r.Resolve(ns); err != nil {
+		return resolved, fmt.Errorf("serviceaccount.namespace: %w", err)
+	}
+
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("serviceaccount.labels: %w", err)
+	}
+
+	return resolved, nil
 }

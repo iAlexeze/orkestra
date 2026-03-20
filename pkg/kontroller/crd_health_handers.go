@@ -55,6 +55,7 @@ func BuildCRDInfoHandler(
 		utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
 			"name":             crd.Name,
 			"description":      crd.Description,
+			"mode":             crd.Mode,
 			"gvk":              utils.SetGroupVersionKindObj(crd.GroupVersionKind),
 			"gvr":              crd.GroupVersionResource.String(),
 			"critical":         crd.Critical,
@@ -102,6 +103,7 @@ func BuildKatalogHandler(
 			crds = append(crds, map[string]interface{}{
 				"name":             crd.Name,
 				"description":      crd.Description,
+				"mode":             crd.Mode,
 				"gvk":              gvk,
 				"gvr":              crd.GroupVersionResource.String(),
 				"critical":         crd.Critical,
@@ -147,16 +149,6 @@ func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 	reconcilerType := "generic" // default: true, GenericReconciler
 	if !rc.Default {
 		reconcilerType = "custom" // default: false, custom Constructor
-	}
-
-	// Mode — typed or dynamic
-	mode := string(rc.Mode)
-	if mode == "" {
-		if crd.IsDynamic() {
-			mode = "dynamic"
-		} else {
-			mode = "typed"
-		}
 	}
 
 	// Finalizers — show resolved list or indicate using Katalog default
@@ -223,7 +215,6 @@ func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 
 	result := map[string]interface{}{
 		"type":        reconcilerType, // "generic" or "custom"
-		"mode":        mode,           // "typed" or "dynamic"
 		"finalizers":  finalizersInfo,
 		"hooks":       hooksInfo,
 		"constructor": constructorInfo,

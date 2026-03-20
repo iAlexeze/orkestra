@@ -514,7 +514,7 @@ leader := leader.NewKonductorElection(
 The orchestrator that brings everything together:
 
 ```go
-o := ork.NewOrkestra(cfg.Cluster().DefaultResync, cfg.App().LogLevel)
+o := ork.NewOrkestra(cfg.Cluster().DefaultResync, cfg.Ork().LogLevel)
 o.Register(komponents)
 o.Start(ctx)
 o.Wait()

@@ -1,12 +1,12 @@
+// cmd/cli/version.go
 package cli
 
 import (
 	"fmt"
 
-	"github.com/spf13/cobra"
-	// "github.com/spf13/viper"
-
 	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/ialexeze/orkestra/pkg/version"
+	"github.com/spf13/cobra"
 )
 
 var versionCmd = &cobra.Command{
@@ -14,8 +14,9 @@ var versionCmd = &cobra.Command{
 	Short: "Show Orkestra version",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(utils.OrkestraLogoCLI)
-		// fmt.Printf("Orkestra version: %s\n", viper.GetString("version"))
-		fmt.Printf("Orkestra version: v%s\n", kfg.App().Version)
+		fmt.Printf("Orkestra version: %s\n", version.Short())
+		fmt.Printf("Commit:           %s\n", version.Commit)
+		fmt.Printf("Built:            %s\n", version.Date)
 	},
 }
 

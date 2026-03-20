@@ -1,0 +1,42 @@
+# namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: orkestra
+
+---
+# my-blog — simple nginx, 2 replicas, ClusterIP
+apiVersion: demo.orkestra.io/v1alpha1
+kind: Website
+metadata:
+  name: my-blog
+  namespace: orkestra
+spec:
+  image: nginx:1.25
+  replicas: 2
+  port: 80
+  serviceType: ClusterIP
+
+---
+# my-api — custom image, 3 replicas, LoadBalancer
+apiVersion: demo.orkestra.io/v1alpha1
+kind: Website
+metadata:
+  name: my-api
+  namespace: orkestra
+spec:
+  image: myorg/api-server:v1.2.0
+  replicas: 3
+  port: 8080
+  serviceType: LoadBalancer
+
+---
+# landing-page — minimal, only image required
+# replicas defaults to 1, port defaults to 80, serviceType defaults to ClusterIP
+apiVersion: demo.orkestra.io/v1alpha1
+kind: Website
+metadata:
+  name: landing-page
+  namespace: orkestra
+spec:
+  image: nginx:alpine

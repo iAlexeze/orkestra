@@ -1,16 +1,6 @@
 package generate
 
-import (
-	"time"
-
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
-)
-
-type generateKatalog struct {
-	Spec struct {
-		CRDs []orktypes.CRDEntry `yaml:"crds"`
-	} `yaml:"spec"`
-}
+import "time"
 
 type registryTemplateData struct {
 	Timestamp string

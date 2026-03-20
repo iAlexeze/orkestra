@@ -3,15 +3,16 @@ package konfig
 import "time"
 
 type Konfig struct {
-	app          appKonfig
+	ork          orkKonfig
 	cluster      clusterKonfig
 	konductor    konductorElection
 	healthServer healthServer
 	katalog      katalogKonfig
 }
 
-type appKonfig struct {
+type orkKonfig struct {
 	Name        string `validate:"required"`
+	ShortName   string
 	Version     string
 	Environment string
 	LogLevel    string
@@ -38,8 +39,7 @@ type clusterKonfig struct {
 }
 
 type katalogKonfig struct {
-	Path                    string // Path to CRD registry YAML file
-	Mode                    string `validate:"required"` // Mode of CRD registry
+	Paths                   []string // Comma separated Paths to CRD katalog YAML file
 	DefaultMaxQueueDepth    int
 	DefaultDegradeThreshold int `validate:"required"`
 }
@@ -54,17 +54,17 @@ type konductorElection struct {
 
 // IsDev returns true for development environment
 func (k *Konfig) IsDev() bool {
-	return k.App().Environment == "devlopment"
+	return k.Ork().Environment == "devlopment"
 }
 
 // IsDev returns true for staging environment
 func (k *Konfig) IsStaging() bool {
-	return k.App().Environment == "staging"
+	return k.Ork().Environment == "staging"
 }
 
 // IsDev returns true for production environment
 func (c *Konfig) IsProduction() bool {
-	return c.App().Environment == "production"
+	return c.Ork().Environment == "production"
 }
 
 // Health returns health konfigurations
@@ -72,17 +72,17 @@ func (k *Konfig) Health() *healthServer {
 	return &k.healthServer
 }
 
-// App returns app Konfigurations
-func (k *Konfig) App() *appKonfig {
-	return &k.app
+// Ork returns Ork Konfigurations
+func (k *Konfig) Ork() *orkKonfig {
+	return &k.ork
 }
 
-// Cluster returns app Konfigurations
+// Cluster returns cluster Konfigurations
 func (k *Konfig) Cluster() *clusterKonfig {
 	return &k.cluster
 }
 
-// Konductor returns konducri Konfigurations
+// Konductor returns konductor Konfigurations
 func (c *Konfig) Konductor() *konductorElection {
 	return &c.konductor
 }
@@ -90,19 +90,4 @@ func (c *Konfig) Konductor() *konductorElection {
 // Katalog returns katalog Konfigurations
 func (k *Konfig) Katalog() *katalogKonfig {
 	return &k.katalog
-}
-
-const (
-	DynamicMode = "dynamic"
-	TypedMode   = "typed"
-)
-
-// Mode returns the mode in use
-func (c *Konfig) Mode() string {
-	if c.Katalog().Mode == DynamicMode {
-		return DynamicMode
-	} else if c.Katalog().Mode == TypedMode {
-		return TypedMode
-	}
-	return ""
 }

@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/ialexeze/orkestra/pkg/konfig"
+	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
 var (
@@ -36,9 +38,19 @@ func Execute(k *konfig.Konfig, c context.Context) {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+
+	// GLOBAL FLAGS
+	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug logging")
 }
 
 func initConfig() {
 	viper.SetEnvPrefix("orkestra")
 	viper.AutomaticEnv()
+
+	debug, _ := rootCmd.Flags().GetBool("debug")
+	if debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
+	}
 }

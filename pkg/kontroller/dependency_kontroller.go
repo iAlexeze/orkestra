@@ -3,7 +3,6 @@ package kontroller
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"time"
 
@@ -60,103 +59,76 @@ func NewDependencyKontroller(
 // RunOrDie starts CRDs in dependency order and blocks until leadership is lost.
 // When leadership ends, it shuts down CRDs in reverse dependency order.
 func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
-	logger.Info().Msgf("%s starting in %s mode...", k.Name(), k.depGraph.GetMode())
-
+	logger.Info().Msgf("%s is starting...", k.Name())
 	k.startedAt = time.Now()
 
-	// ── 1. Compute topological startup order (A → B → C) ─────────────────
-	// This ensures dependencies start before dependents.
 	startupOrder := k.depGraph.StartupOrder()
 
-	// ── 2. Create a "ready" channel for each CRD ────────────────────────
-	// These channels signal when a CRD has fully started its workers.
-	// Dependents block on these channels until they're closed.
+	// Create ready channels for all CRDs upfront
 	for _, name := range startupOrder {
 		k.readyCh[name] = make(chan struct{})
 	}
 
-	// ── 3. Start CRDs in dependency order ───────────────────────────────
+	anyOnline := false
+
+	// Process CRDs in dependency order
 	for _, name := range startupOrder {
 		node := k.depGraph.GetNode(name)
 		crd := node.CRD
 		gvk := crd.GroupVersionKind.String()
 
-		// ── 3a. Wait for all dependencies to signal readiness ───────────
-		// For each dependency, block on its ready channel.
-		// If a dependency is missing, its channel never closes → we block forever.
-		// This is intentional – the retry loop will close it when the CRD appears.
+		// Wait for hard dependencies — blocks until dep is online or ctx cancelled
 		for _, dep := range crd.DependsOn {
 			select {
 			case <-k.readyCh[dep]:
-				logger.Debug().Msgf("%s dependency %s is ready", name, dep)
+				logger.Debug().Msgf("%s: dependency %q ready", name, dep)
 			case <-ctx.Done():
 				return
 			}
 		}
 
-		// Log startup intent
-		if len(crd.DependsOn) > 0 {
-			logger.Info().Msgf("starting %s (depends on: %s)...", name, strings.Join(crd.DependsOn, ", "))
-		} else {
-			logger.Info().Msgf("starting %s...", name)
+		if k.informerFactory.IsMissing(gvk) {
+			logger.Warn().Msgf("CRD %s is missing — workers not started, retry loop will activate it", gvk)
+			// DO NOT close readyCh[name] — retry loop closes it when CRD appears
+			// DO NOT call SetReady here — nothing is online yet for this CRD
+			continue
 		}
 
-		// ── 3b. Start workers for this CRD if available ─────────────────
-		// If the CRD exists in the cluster, start its worker pool.
-		// If it's missing, we don't start workers – the retry loop will handle it.
-		if !k.informerFactory.IsMissing(gvk) {
-			workers := k.katalog.GetWorkers(gvk, k.defaultWorkers)
+		// CRD exists — start workers
+		workers := k.katalog.GetWorkers(gvk, k.defaultWorkers)
+		logger.Info().Msgf("starting %d workers for %s", workers, gvk)
+		k.startCRDWorkers(ctx, gvk, workers)
+		metrics.WorkersActive.WithLabelValues(gvk).Set(float64(workers))
 
-			logger.Info().Msgf("starting %d workers for %s", workers, gvk)
+		// Signal dependents — this CRD is ready
+		close(k.readyCh[name])
+		logger.Info().Msgf("%s workers started and ready", name)
 
-			k.startCRDWorkers(ctx, gvk, workers)
-
-			// ── 3c. Send metrics to prometheus for this CRD ─────────────
-			metrics.WorkersActive.WithLabelValues(gvk).Set(float64(workers))
-
-			// ── 3d. Signal that this CRD is ready ───────────────────────
-			// Closing the channel unblocks any dependents waiting on this CRD.
-			close(k.readyCh[name])
-			logger.Info().Msgf("%s workers started", name)
-			// TODO
-			// ── 4. Mark controller as ready ─────────────────────────────────────
-			// At this point, all CRDs that existed at startup have started workers.
-			// Missing CRDs are being retried in the background.
-			k.startedKtrl.Store(true)
-			k.hs.SetReady()
-			logger.Info().Msgf("%s started – retry loop active for missing CRDs", k.Name())
-		} else {
-			// ── 5a. CRD is missing – log and move on ────────────────────
-			k.startedKtrl.Store(true)
-			k.hs.SetReady()
-			logger.Info().Msgf("%s started – retry loop active for missing CRDs", k.Name())
-			// Workers are NOT started. The retry loop will activate this CRD
-			// later when it appears in the cluster.
-			logger.Warn().Msgf("CRD %s is missing – workers not started (will retry)", gvk)
-
-			// DO NOT close readyCh[name] here – that would falsely signal readiness.
-			// The retry loop will close it when the CRD actually appears.
-
-			// ── 5b. Start background retry loop for missing CRDs ─────────────────
-			// This runs once, regardless of whether any CRDs were missing.
-			// It will keep running until context cancellation, handling:
-			//   - CRDs that were missing at startup
-			//   - CRDs that get deleted and recreated later
-			//   - New CRDs added after Orkestra started
-			go k.retryMissingCRDs(ctx)
-		}
+		anyOnline = true
 	}
 
-	// ── 6. Block until leadership is lost ───────────────────────────────
-	// This goroutine stays here until leader election is lost or SIGTERM.
-	<-ctx.Done()
-	logger.Info().Msg("leadership lost — beginning dependency‑aware shutdown")
+	// ── Start retry loop ONCE after the startup sequence ─────────────────────
+	// Handles all missing CRDs together — no races, no duplicate goroutines.
+	// Also handles CRDs that get deleted and recreated after startup.
+	go k.retryMissingCRDs(ctx)
 
-	// Mark as unhealthy – stop routing traffic to this instance
+	// ── Mark controller started ───────────────────────────────────────────────
+	// Ready only if at least one CRD came online.
+	// If everything is missing, we're started but not ready — retry loop will flip this.
+	k.startedKtrl.Store(true)
+	if anyOnline {
+		k.hs.SetReady()
+		logger.Info().Msgf("%s started — %d CRD(s) online, retry loop active for missing",
+			k.Name(), len(startupOrder))
+	} else {
+		logger.Warn().Msgf("%s started — all CRDs missing, waiting for retry loop", k.Name())
+	}
+
+	// Block until leadership lost
+	<-ctx.Done()
+	logger.Info().Msg("leadership lost — beginning dependency-aware shutdown")
 	k.hs.Unhealthy()
 
-	// ── 7. Shutdown CRDs in reverse dependency order ────────────────────
-	// Reverse of startup order ensures dependents shut down before their dependencies.
 	shutdownOrder := k.depGraph.ShutdownOrder()
 	for _, name := range shutdownOrder {
 		logger.Info().Msgf("shutting down %s", name)
@@ -166,8 +138,7 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 	logger.Info().Msgf("%s drained and stopped", k.Name())
 }
 
-// startCRDWorkers starts a worker pool for a specific CRD.
-// It mirrors the logic in Kontroller.RunOrDie but is invoked in dependency order.
+// startCRDWorkers starts a worker pool for a specific CRD and is invoked in dependency order.
 func (k *DependencyKontroller) startCRDWorkers(ctx context.Context, gvk string, workers int) {
 	// Build reconciler once here — kube and ev are started by now
 	entry, ok := k.katalog.Get(gvk)

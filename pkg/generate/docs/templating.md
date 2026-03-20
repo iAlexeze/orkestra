@@ -1,430 +1,446 @@
-# 📘 **Orkestra Hooks Templating Engine — Technical Documentation**
+# Orkestra Templating Engine
 
-The Hooks Templating Engine is the subsystem that converts **declarative Katalog templates** into **runtime Go code** that the Orkestra kontroller executes during reconciliation.
-
-It is a *compiler*:
-
-```
-Katalog YAML → Template Engine → generated_runtime_hooks.go → Kontroller Runtime
-```
-
-The generated hooks are responsible for creating, updating, and deleting Kubernetes resources in a safe, idempotent, declarative way.
-
-Below is a full explanation using **Deployments** as the example.
-
----
-
-## 🏗️ **1. Architecture Overview**
-
-```mermaid
-graph TB
-    subgraph Input["User Input"]
-        YAML[Katalog YAML<br/>with declarative templates]
-    end
-
-    subgraph Generator["Hooks Generator (ork generate runtime)"]
-        P[Parser]
-        B[buildHookCRDData]
-        T[hooksTemplate]
-        R[Render to File]
-    end
-
-    subgraph Output["Generated Code"]
-        H[generated_runtime_hooks.go]
-    end
-
-    subgraph Runtime["Orkestra Runtime"]
-        subgraph Phase1["Phase 1: Template Resolution"]
-            TR[Template Resolver<br/>oraktmpl.NewResolver]
-            TE["Evaluate Go Templates<br/>{{ .metadata.name }}"]
-        end
-        
-        subgraph Phase2["Phase 2: Registry Resolution"]
-            RR[Registry Resolver<br/>orkdeploy.Resolve]
-            D[Defaulting & Normalization]
-        end
-        
-        subgraph Phase3["Phase 3: Registry Execution"]
-            RE[Registry Executor<br/>orkdeploy.Create/Update]
-            K8s[Kubernetes API]
-        end
-    end
-
-    YAML --> P
-    P --> B
-    B --> T
-    T --> R
-    R --> H
-    H --> Phase1
-    Phase1 --> Phase2
-    Phase2 --> Phase3
-    Phase3 --> K8s
-
-    style Generator fill:#FFD966,stroke:#333,stroke-width:2px
-    style Output fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
-    style Phase1 fill:#C8E6C9,stroke:#333,stroke-width:2px
-    style Phase2 fill:#C8E6C9,stroke:#333,stroke-width:2px
-    style Phase3 fill:#C8E6C9,stroke:#333,stroke-width:2px
-```
-
----
-
-## 🧩 **2. What the Hooks Engine Does**
-
-When a user writes a Katalog like:
+Orkestra's templating engine is the subsystem that evaluates declarative
+resource declarations in the Katalog and applies them to a live Kubernetes
+cluster. It is how a Katalog entry like:
 
 ```yaml
 onCreate:
   deployments:
-    - name: "{{ .metadata.name }}-api"
-      image: "my-api:latest"
-      replicas: "3"
-      port: "8080"
-      namespace: "{{ .spec.targetNamespace }}"
-      labels:
-        - key: app
-          value: "{{ .metadata.name }}"
-      reconcile: true
+    - image: "{{ .spec.image }}"
+      replicas: "{{ .spec.replicas }}"
 ```
 
-The Hooks Engine:
+becomes a real Deployment with `nginx:1.25` and `2` replicas when your
+Website CR says `spec.image: nginx:1.25` and `spec.replicas: 2`.
 
-1. **Parses** the Katalog into Go structs  
-2. **Builds template data** (`deploymentTemplateData`)  
-3. **Feeds it into a Go text/template**  
-4. **Generates Go code** that will run at reconcile time  
-5. **Uses the Orkestra Registry** to apply the Deployment safely
+---
 
-The generated code ends up looking like:
+## How it works
+
+The templating engine runs entirely at reconcile time. There is no code
+generation step for dynamic template CRDs. When a CR event fires, the
+engine reads the Katalog's template declarations, evaluates them against
+the live CR, and calls the OrkestraRegistry to apply the results.
+
+```
+CR event
+    │
+    ▼
+GenericReconciler.Reconcile()
+    │
+    ├── reads ReconcilerConfig.OnCreate from the Katalog
+    ├── builds a Resolver from the CR object
+    │
+    ▼
+runTemplateReconcile()
+    │
+    ├── runDeployments() → resolver.ResolveDeploymentTemplate() → orkdeploy.Create()
+    ├── runServices()    → resolver.ResolveServiceTemplate()    → orksvc.Create()
+    ├── runSecrets()     → resolver.ResolveSecretTemplate()     → orksecrets.Create()
+    ├── runConfigMaps()  → resolver.ResolveConfigMapTemplate()  → orkcm.Create()
+    └── ...
+```
+
+No generated file involved. No `ork generate runtime`. Just `ork run`.
+
+---
+
+## Template expressions
+
+Any string field in a template declaration that contains `{{` is treated
+as a Go `text/template` expression and evaluated against the live CR object
+at reconcile time. Any string without `{{` is a static value used as-is.
+
+```yaml
+# Static — same for every CR of this type
+image: nginx:1.25
+
+# Dynamic — resolved from the CR spec at reconcile time
+image: "{{ .spec.image }}"
+
+# Mixed — CR name with a static suffix
+name: "{{ .metadata.name }}-api"
+```
+
+This is Option B inference — the same field can hold either a static or a
+dynamic value without any additional YAML structure. Orkestra determines
+which it is at evaluation time.
+
+---
+
+## Template context
+
+The template context is the full CR object as `map[string]interface{}`.
+For dynamic CRDs (no `apiTypes.location`) this is the raw object from the
+API server — all fields accessible including the complete `spec`.
+
+```
+.metadata.name        CR name
+.metadata.namespace   CR namespace
+.metadata.labels      CR labels map
+.metadata.annotations CR annotations map
+.spec.*               any spec field
+.status.*             any status field
+```
+
+Missing fields resolve to empty string — `missingkey=zero` is set. This
+prevents reconcile failures when optional spec fields are omitted.
+
+**Example — Website CR:**
+
+```yaml
+# CR
+spec:
+  image: nginx:1.25
+  replicas: 2
+  port: 80
+  serviceType: LoadBalancer
+```
+
+```yaml
+# Katalog template declarations
+deployments:
+  - name: "{{ .metadata.name }}"           # → my-website
+    image: "{{ .spec.image }}"             # → nginx:1.25
+    replicas: "{{ .spec.replicas }}"       # → 2
+    port: "{{ .spec.port }}"              # → 80
+    namespace: "{{ .metadata.namespace }}" # → default
+
+services:
+  - name: "{{ .metadata.name }}-svc"       # → my-website-svc
+    type: "{{ .spec.serviceType }}"        # → LoadBalancer
+    port: "80"                             # static
+    targetPort: "{{ .spec.port }}"         # → 80
+```
+
+---
+
+## The Resolver
+
+`pkg/orkestra-registry/template/resolver.go`
+
+The Resolver is created once per reconcile from the CR object. It holds
+the CR data as a `map[string]interface{}` and evaluates template expressions
+against it.
 
 ```go
-resolved, err := resolver.ResolveDeploymentTemplate(...)
+resolver, err := orktmpl.NewResolver(ctx, obj)
+```
+
+For `*unstructured.Unstructured` — the fast path. The object already has
+a native map. Full spec accessible at zero cost.
+
+For typed objects — only metadata fields are accessible. Users with typed
+CRDs should use Go hooks for spec field access.
+
+**Per-resource resolve methods:**
+
+```go
+resolver.ResolveDeploymentTemplate(src)    // all string fields in DeploymentTemplateSource
+resolver.ResolveServiceTemplate(src)       // all string fields in ServiceTemplateSource
+resolver.ResolveSecretTemplate(src)        // name, namespace, fromSecret, fromNamespace, toNamespaces
+resolver.ResolveConfigMapTemplate(src)     // name, namespace, fromConfigMap, fromNamespace, toNamespaces
+resolver.ResolveServiceAccountTemplate(src)
+resolver.ResolveJobTemplate(src)           // name, image, namespace, command elements
+resolver.ResolveCronJobTemplate(src)       // name, image, schedule, namespace
+resolver.ResolveLabels(labels)             // label values only — keys are never templates
+resolver.ResolveStringSlice(slice)         // each element resolved independently
+```
+
+Each method returns a new struct of the same type with all template
+expressions replaced by their evaluated values. The original source struct
+is never mutated.
+
+---
+
+## The three-step pipeline
+
+Every resource runner follows the same three steps:
+
+**Step 1 — Resolve**
+
+Evaluate all template expressions in the source declaration. After this
+step every field is a literal value.
+
+```go
+resolved, err := resolver.ResolveDeploymentTemplate(src)
+// resolved.Image is now "nginx:1.25", not "{{ .spec.image }}"
+```
+
+**Step 2 — Build spec**
+
+Translate the resolved template source into the registry's spec type.
+This applies defaults, parses strings to int, builds label maps, and sets
+the owner name for system labels.
+
+```go
 spec := orkdeploy.Resolve(resolved, staticReplicas, resolver.OwnerName())
-orkdeploy.Create(ctx, kube, obj, spec)
 ```
 
-This is the core pattern.
+**Step 3 — Apply**
 
----
-
-## 🧬 **3. The Three‑Phase Resolution Pipeline**
-
-```mermaid
-sequenceDiagram
-    participant U as User YAML
-    participant G as Generator
-    participant H as Generated Hook
-    participant TR as Template Resolver
-    participant RR as Registry Resolver
-    participant RE as Registry Executor
-    participant K as Kubernetes API
-
-    U->>G: ork generate runtime
-    G->>G: Parse templates
-    G->>G: Build data structures
-    G->>G: Render hooksTemplate
-    G->>H: generated_runtime_hooks.go
-
-    Note over H,TR: Runtime Reconciliation
-
-    H->>TR: ResolveDeploymentTemplate()
-    TR->>TR: Evaluate {{ .metadata.name }}
-    TR->>TR: Evaluate {{ .spec.targetNamespace }}
-    TR-->>H: Resolved Template
-
-    H->>RR: orkdeploy.Resolve()
-    RR->>RR: Add owner labels
-    RR->>RR: Normalize replicas
-    RR->>RR: Apply defaults
-    RR-->>H: Final ResolvedDeploymentSpec
-
-    H->>RE: orkdeploy.Create() / Update()
-    RE->>RE: Check if exists
-    RE->>RE: Set owner references
-    RE->>K: Apply to cluster
-    K-->>RE: Success/Failure
-    RE-->>H: Result
-```
-
----
-
-### **Step 1 — Template Resolution**
-The engine calls:
+Call the registry to apply the spec to the cluster. The registry handles
+idempotency, owner references, and the actual API server call.
 
 ```go
-resolver.ResolveDeploymentTemplate(orktypes.DeploymentTemplateSource{...})
+orkdeploy.Create(ctx, kube, obj, spec)  // onCreate path
+orkdeploy.Update(ctx, kube, obj, spec)  // onReconcile path
 ```
-
-This evaluates all Go template expressions:
-
-- `{{ .metadata.name }}`
-- `{{ .spec.targetNamespace }}`
-- `{{ .spec.replicas }}`
-- etc.
-
-After this step, all fields are **fully resolved strings**.
-
-But this is still a *template*, not a Kubernetes spec.
 
 ---
 
-### **Step 2 — Registry Resolution**
-Next:
+## onCreate, onReconcile, and `reconcile: true`
 
-```go
-spec := orkdeploy.Resolve(resolved, staticReplicas, ownerName)
+**`onCreate`** resources are created idempotently on every reconcile. If the
+resource already exists it is skipped without error. Think of it as "ensure
+this exists".
+
+**`onReconcile`** resources are updated on every reconcile. If the resource
+has been manually modified, it is reconciled back to the declared state. If it
+was deleted, it is recreated. Think of it as "keep this in sync".
+
+**`reconcile: true`** is a shorthand that combines both. Declaring it on
+an `onCreate` resource means "create it and keep it in sync" without writing
+a separate `onReconcile` block.
+
+```yaml
+# Without reconcile: true — two separate declarations needed
+onCreate:
+  deployments:
+    - image: "{{ .spec.image }}"
+onReconcile:
+  deployments:
+    - image: "{{ .spec.image }}"   # same thing written twice
+
+# With reconcile: true — declared once, both behaviours
+onCreate:
+  deployments:
+    - image: "{{ .spec.image }}"
+      reconcile: true              # create + drift correction
 ```
 
-This converts the template into a **ResolvedDeploymentSpec**, which includes:
-
-- defaulting  
-- owner labels  
-- replica normalization  
-- resource merging  
-- label merging  
-- namespace resolution  
-
-This is the *final* spec that the registry understands.
-
----
-
-### **Step 3 — Registry Execution**
-Finally:
+The runner implements this as:
 
 ```go
-orkdeploy.Create(ctx, kube, obj, spec)
-```
-
-The registry:
-
-- checks if the Deployment exists  
-- creates it if missing  
-- sets owner references  
-- ensures idempotency  
-- logs actions  
-
-If the user marked `reconcile: true`, the engine also generates:
-
-```go
-orkdeploy.Update(...)
-```
-
-for drift correction.
-
----
-
-## 🧠 **4. Why the Engine Uses a Two‑Phase Resolve Pattern**
-
-This is intentional and powerful.
-
-### **Phase 1 — Template Resolver**
-- Evaluates Go templates  
-- Handles user expressions  
-- Produces a normalized template struct  
-
-### **Phase 2 — Registry Resolver**
-- Applies Orkestra defaults  
-- Adds owner labels  
-- Normalizes replicas  
-- Validates required fields  
-- Produces a final spec  
-
-### **Phase 3 — Registry Executor**
-- Applies to Kubernetes  
-- Ensures idempotency  
-- Handles drift correction  
-- Handles multi‑namespace copies  
-- Handles FromConfigMap / FromSecret sync  
-
-This separation keeps the system:
-
-- predictable  
-- testable  
-- safe  
-- extensible  
-
----
-
-## 🧱 **5. Generated Code Structure (Deployment Example)**
-
-```mermaid
-graph LR
-    subgraph Generated["generated_runtime_hooks.go"]
-        A[registerTemplateHooksCRD]
-        B[CRDOnReconcile]
-        C[CRDOnDelete]
-        
-        subgraph Deployment["Deployment Block"]
-            D[resolver.ResolveDeploymentTemplate]
-            E[orkdeploy.Resolve]
-            F[orkdeploy.Create/Update]
-        end
-    end
-    
-    A --> B
-    A --> C
-    B --> Deployment
-```
-
-Inside the generated file:
-
-```go
-func <CRD>OnReconcile(ctx, obj) error {
-    resolved, err := resolver.ResolveDeploymentTemplate(...)
-    staticReplicas, _ := strconv.Atoi("3")
-    spec := orkdeploy.Resolve(resolved, staticReplicas, resolver.OwnerName())
-    orkdeploy.Create(ctx, kube, obj, spec)
+// update=false means onCreate path
+if err := orkdeploy.Create(ctx, kube, owner, spec); err != nil { ... }
+if src.Reconcile {
+    if err := orkdeploy.Update(ctx, kube, owner, spec); err != nil { ... }
 }
 ```
 
-The Hooks Engine always generates:
+---
 
-- **OnReconcile**  
-- **OnDelete** (if jobs defined)  
-- **Auto‑generated reconcile blocks** for templates with `reconcile: true`
+## onDelete
+
+`onDelete` declarations run after the CR's `DeletionTimestamp` is set,
+before Orkestra removes its finalizers. For most resources this is not
+needed — owner references cause cascade deletion automatically when the CR
+is deleted. Declare `onDelete` only for resources that need explicit cleanup:
+
+- Jobs that must complete before the CR is considered deleted
+- External resources not in Kubernetes
+- Resources in other namespaces that aren't covered by owner references
+
+```yaml
+onDelete:
+  jobs:
+    - name: "{{ .metadata.name }}-cleanup"
+      image: busybox
+      command: ["sh", "-c", "drain-queue.sh {{ .metadata.name }}"]
+      backoffLimit: 3
+```
+
+Owner references handle everything else. Keep `onDelete` minimal.
 
 ---
 
-## 🔄 **6. Auto‑Generation Flow for `reconcile: true`**
+## Secrets and ConfigMaps — additional patterns
 
-```mermaid
-graph TD
-    subgraph Katalog["Katalog YAML"]
-        A[onCreate.deployments]
-        B[reconcile: true]
-    end
+Secrets and ConfigMaps support two patterns beyond simple creation.
 
-    subgraph Generator["Hooks Generator"]
-        C[buildHookCRDData]
-        D[Detect reconcile:true]
-        E[Auto-generate onReconcile entry]
-        F[Add to OnReconcileDeployments]
-    end
+**`fromSecret` / `fromConfigMap`** — copy data from an existing resource
+in another namespace rather than declaring it inline:
 
-    subgraph Output["Generated Code"]
-        G[CRDOnReconcile contains Update block]
-    end
+```yaml
+secrets:
+  - name: db-credentials
+    fromSecret: master-db-creds      # source secret name
+    fromNamespace: platform          # where the source lives
+    namespace: "{{ .metadata.namespace }}"
+    reconcile: true                  # re-sync if source changes
+```
 
-    A --> C
-    B --> D
-    D --> E
-    E --> F
-    F --> G
+The registry reads the source at reconcile time and copies its data. When
+the source Secret rotates, the copy is updated on the next reconcile loop.
+
+**`toNamespaces`** — create one copy in each listed namespace:
+
+```yaml
+secrets:
+  - name: registry-pull-secret
+    fromSecret: docker-registry-creds
+    fromNamespace: platform
+    toNamespaces:
+      - "{{ .metadata.namespace }}"
+      - "{{ .metadata.namespace }}-staging"
+      - monitoring
+```
+
+The registry reads the source once and writes copies to every namespace.
+Each copy gets an owner reference back to the CR.
+
+**ConfigMap merge** — combine a base ConfigMap with inline overrides:
+
+```yaml
+configMaps:
+  - name: app-config
+    fromConfigMap: base-app-config   # source ConfigMap
+    fromNamespace: platform
+    namespace: "{{ .metadata.namespace }}"
+    data:
+      LOG_LEVEL: "{{ .spec.logLevel }}"  # override — wins over source value
+    reconcile: true
+```
+
+Source keys are copied first, then `data` keys override matching ones.
+The result is a merged ConfigMap in the target namespace.
+
+---
+
+## Default namespace
+
+When `namespace` is omitted from any template declaration, the resolver
+defaults it to `{{ .metadata.namespace }}` — the same namespace as the CR.
+This means you almost never need to declare `namespace` explicitly for
+namespaced CRDs.
+
+```yaml
+# These two are equivalent for a namespaced CRD
+deployments:
+  - image: nginx:1.25
+    # namespace omitted — defaults to CR namespace
+
+deployments:
+  - image: nginx:1.25
+    namespace: "{{ .metadata.namespace }}"  # explicit, same result
 ```
 
 ---
 
-## ⚠️ **7. Common Errors & How to Fix Them**
+## Default naming
 
-### **❌ 1. strconv imported but unused**
-Happens when:
+When `name` is omitted, each resource type has a default naming pattern:
 
-- Deployments are not present  
-- But the template still imports `"strconv"`
-
-**Fix:**  
-Only import strconv when `.NeedsDeployments` is true.
-
----
-
-### **❌ 2. Wrong type passed to registry**
-Example error:
-
-```
-cannot use resolved (type DeploymentTemplateSource)
-as ResolvedDeploymentSpec
-```
-
-**Cause:**  
-Using:
-
-```go
-orkdeploy.Create(ctx, kube, obj, resolved)
-```
-
-instead of:
-
-```go
-spec := orkdeploy.Resolve(resolved, ...)
-orkdeploy.Create(ctx, kube, obj, spec)
-```
-
-**Fix:**  
-Always call the registry's `Resolve()` before `Create()` or `Update()`.
+| Resource | Default name pattern |
+|---|---|
+| Deployment | `{{ .metadata.name }}-deployment` |
+| Service | `{{ .metadata.name }}-svc` |
+| Secret | `{{ .metadata.name }}-secret` |
+| ConfigMap | `{{ .metadata.name }}-config` |
+| ServiceAccount | `{{ .metadata.name }}-sa` |
+| Job | `{{ .metadata.name }}-job` |
+| CronJob | `{{ .metadata.name }}-cronjob` |
 
 ---
 
-### **❌ 3. Template blocks generated outside functions**
-Error:
+## System labels
+
+Orkestra always adds two labels to every resource it creates. These are
+not overridable:
 
 ```
-expected declaration, found '{'
+managed-by: orkestra
+orkestra-owner: <cr-name>
 ```
 
-**Cause:**  
-Template blocks placed after:
+`managed-by` identifies the resource as Orkestra-managed. `orkestra-owner`
+is used as the pod selector by Services — it ensures a Service created for
+a CR only routes to pods owned by that CR.
 
-```go
-return nil
-}
+Additional labels declared in the template are merged alongside these:
+
+```yaml
+labels:
+  - key: app
+    value: "{{ .metadata.name }}"
+  - key: environment
+    value: "{{ .spec.environment }}"
+  # managed-by and orkestra-owner are always added automatically
 ```
-
-**Fix:**  
-Ensure all resource blocks are inside the `OnReconcile` function.
 
 ---
 
-### **❌ 4. Missing namespace resolution**
-If the user omits `namespace`, the registry resolves it using:
+## Owner references
 
-- CR namespace  
-- or `"default"`
+Every resource created by the templating engine has an owner reference
+pointing to the CR that triggered its creation. This means cascade deletion
+is automatic — when the CR is deleted, all child resources are garbage
+collected by Kubernetes without any `onDelete` declarations.
 
-But if the template engine passes an empty string incorrectly, the registry may misbehave.
+```yaml
+ownerReferences:
+  - apiVersion: demo.orkestra.io/v1alpha1
+    kind: Website
+    name: my-website
+    uid: fb0b6ae7-...
+    controller: true
+    blockOwnerDeletion: true
+```
 
-**Fix:**  
-Ensure `Namespace: goLit(src.Namespace)` is always included.
+The only exception is `onDelete` Jobs — they cannot have owner references
+because the CR is being deleted when they run. They must complete
+independently after the CR is gone.
 
 ---
 
-### **❌ 5. Template expressions not validated**
-Example:
+## When to use Go hooks instead
 
+Declarative templates handle the majority of operator use cases. Use Go
+hooks when you need:
+
+- **Type-safe spec access** — templates only see field names as strings.
+  Go hooks have compiled access to `obj.Spec.Image`, `obj.Spec.Replicas` etc.
+- **Complex conditional logic** — "if environment is production and tier is
+  premium, create a different set of resources"
+- **External API calls** — provision cloud resources, call DNS APIs, notify
+  external systems
+- **Status updates** — write back to `obj.Status` with computed values
+
+Declare Go hooks in the Katalog:
+
+```yaml
+reconciler:
+  default: true
+  hooks:
+    location: github.com/myorg/hooks
+    function: WebsiteHooks
 ```
-{{ .spec.enviroment }}
-```
 
-Typo → silent failure → broken generated code.
-
-**Fix:**  
-Add template expression validation during katalog validation.
+Then run `ork generate runtime` to register the hook function. The reconciler
+will use your Go hook instead of the template path.
 
 ---
 
-## 🎯 **8. Summary**
+## When `ork generate runtime` is needed
 
-The Hooks Templating Engine is a **compiler** that turns declarative Katalog YAML into executable Go code.  
-Using Deployments as the example, the pipeline is:
-
-```mermaid
-graph LR
-    A[User YAML] -->|ork generate| B[Template Resolver]
-    B --> C[Registry Resolver]
-    C --> D[Registry Executor]
-    D --> E[Kubernetes]
-    
-    style A fill:#C8E6C9
-    style B fill:#FFD966
-    style C fill:#FFD966
-    style D fill:#00C853
-    style E fill:#00C853,color:#FFFFFF
+```
+CRD type                                    generate runtime needed?
+──────────────────────────────────────────────────────────────────────
+Dynamic CRD, templates only                 NO
+Dynamic CRD with reconciler.hooks           YES — registers Go hook
+Typed CRD (apiTypes.location set)           YES — registers Go type + scheme
+reconciler.default: false (custom)          YES — registers constructor
+──────────────────────────────────────────────────────────────────────
 ```
 
-This architecture gives Orkestra:
+For pure dynamic operators — the most common case — `ork generate runtime`
+is never needed. The complete workflow is:
 
-- ✅ safe idempotent reconciliation  
-- ✅ declarative multi‑resource orchestration  
-- ✅ template‑driven dynamic behavior  
-- ✅ consistent behavior across all resource types  
-- ✅ separation of concerns (templates vs. logic)  
-- ✅ testability at each phase
+```bash
+ork init my-operator
+cd my-operator
+kubectl apply -f examples/website/website-crd.yaml
+ork run --katalog examples/website/website-katalog.yaml
+```
