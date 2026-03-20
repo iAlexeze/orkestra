@@ -17,23 +17,23 @@ const (
 	RegistryFile = "generated_runtime_registry.go"
 
 	// HooksFile is the generated file containing declarative hook implementations
-	// for unstructured CRDs (onCreate, onReconcile, onDelete).
+	// for dynamic CRDs (onCreate, onReconcile, onDelete).
 	// Only emitted when at least one CRD declares template-based hooks.
 	HooksFile = "generated_runtime_hooks.go"
 
 	// ExamplesDir is the output directory for generated example manifests.
 	// Each CRD receives a minimal example YAML manifest for onboarding and testing.
-	ExamplesDir = "_runtime_examples"
+	ExamplesDir = "_runtime/examples"
 
 	// DocsDir is the output directory for generated Markdown documentation.
 	// Includes per-CRD docs, an index, and dependency graph documentation.
-	DocsDir = "_runtime_docs"
+	DocsDir = "_runtime/docs"
 
 	// TestDir is the output directory for generated test scaffolding.
 	// Contains unit test stubs and integration test templates for each CRD.
-	TestDir = "_runtime_test"
+	TestDir = "_runtime/test"
 
 	// DashDir is the output directory for generated Grafana dashboards.
 	// Each CRD receives a dashboard JSON file with metrics panels.
-	DashDir = "_runtime_dashboards"
+	DashDir = "_runtime/dashboards"
 )

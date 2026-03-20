@@ -102,7 +102,7 @@ Supports two modes with environment‑based switching:
 
 ### **YAML Mode**
 ```bash
-export KATALOG_MODE=YAML
+export KATALOG_MODE=dynamic
 export KATALOG_PATH=initialize/crd-katalog.yaml   # local or remote URL
 ```
 
@@ -153,7 +153,7 @@ kube := kubeclient.NewKubeclient(kubeclient.Config{
 
 **Capabilities:**
 - `RESTClient()` – configured with complete scheme
-- `DynamicClient()` – for unstructured operations
+- `DynamicClient()` – for unstructured (dynamic) operations
 - `Clientset()` – for built‑in types
 - `SharedClientFactory()` – generates clients for any CRD on demand
 - `RuntimeParameterCodec()` – consistent query encoding
@@ -500,7 +500,7 @@ leader := leader.NewKonductorElection(
     ev,
     func(ctx context.Context) { ktrl.Run(ctx) },
     leader.Options{
-        Namespace:     cfg.Cluster().Namespace,
+        Namespace:     cfg.Cluster().DefaultNamespace,
         LeaseDuration: cfg.Leader().LeaseDuration,
         RenewDeadline: cfg.Leader().RenewDeadline,
         RetryPeriod:   cfg.Leader().RetryPeriod,
@@ -514,7 +514,7 @@ leader := leader.NewKonductorElection(
 The orchestrator that brings everything together:
 
 ```go
-o := ork.NewOrkestra(cfg.Cluster().DefaultResync, cfg.App().LogLevel)
+o := ork.NewOrkestra(cfg.Cluster().DefaultResync, cfg.Ork().LogLevel)
 o.Register(komponents)
 o.Start(ctx)
 o.Wait()

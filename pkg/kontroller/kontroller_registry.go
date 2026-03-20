@@ -83,3 +83,14 @@ func (r *ResourceKatalog) GetWorkers(gvk string, defaultWorkers int) int {
 func (r *ResourceKatalog) Entries() map[string]RegistryEntry {
 	return r.entries
 }
+
+func (r *ResourceKatalog) NewObjectForGVK(gvk string) interface{} {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	entry, ok := r.entries[gvk]
+	if !ok {
+		return nil
+	}
+	return entry.CRD.NewObject()
+}

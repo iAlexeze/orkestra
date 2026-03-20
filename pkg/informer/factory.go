@@ -3,10 +3,10 @@ package informer
 
 import (
 	"context"
-	"reflect"
 
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -18,7 +18,12 @@ func (f *Factory) For(obj runtime.Object, ctx context.Context, opts Options) cac
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	return f.getOrCreate(reflect.TypeOf(obj), f.newListWatch(obj), obj, ctx, opts)
+	gvk, err := f.gvkFromObject(obj)
+	if err != nil {
+		return nil
+	}
+
+	return f.getOrCreate(gvk, f.newListWatch(obj), obj, ctx, opts)
 }
 
 // ForListerWatcher creates or returns a SharedIndexInformer using an explicit
@@ -29,47 +34,58 @@ func (f *Factory) ForListerWatcher(lw cache.ListerWatcher, obj runtime.Object, c
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	// Unstructured objects all have the same reflect.Type — use name as key instead
-	key := reflect.TypeOf(obj)
-	if opts.Name != "" {
-		// Store under a named type derived from the informer name
-		// This ensures each unstructured CRD gets its own informer
-		key = reflect.TypeOf(struct{ name string }{opts.Name})
+	gvk, err := f.gvkFromObject(obj)
+	if err != nil {
+		return nil
 	}
-
-	return f.getOrCreate(key, lw, obj, ctx, opts)
+	return f.getOrCreate(gvk, lw, obj, ctx, opts)
 }
 
 // getOrCreate is the shared core — returns an existing informer or creates one.
 // Called by both For and ForListerWatcher. Must be called with f.mu held.
 func (f *Factory) getOrCreate(
-	key reflect.Type,
+	gvk *schema.GroupVersionKind,
 	lw cache.ListerWatcher,
 	obj runtime.Object,
 	ctx context.Context,
 	opts Options,
 ) cache.SharedIndexInformer {
-	// Return existing informer — idempotent
+
+	key := gvk.String()
+
+	// 1. Return existing informer
 	if entry, ok := f.informers[key]; ok {
 		logger.Debug().Msgf("informer for %s already exists — reusing", opts.Name)
-		return entry.informer
+		return entry.Informer
 	}
 
-	// Resolve resync — per-CRD takes priority, fall back to factory default
+	// 2. Check CRD existence BEFORE creating informer
+	logger.Info().Msgf("checking CRD (%s)...", gvk.String())
+	if !f.crdExists(gvk) {
+		logger.Warn().
+			Str("gvk", key).
+			Msg("CRD not installed — skipping informer creation until it appears")
+
+		entry := &InformerEntry{
+			Informer: nil,
+			Name:     opts.Name,
+			Resync:   opts.Resync,
+			Missing:  true,
+			GVK:      gvk,
+		}
+
+		f.informers[key] = entry
+		f.missing[key] = entry
+		return nil
+	}
+
+	// 3. Resolve resync
 	resync := opts.Resync
 	if resync == 0 {
-		logger.Info().Msgf(
-			"processing informer for %s with default resync duration: %v",
-			opts.Name, f.defaultResync,
-		)
 		resync = f.defaultResync
-	} else {
-		logger.Info().Msgf(
-			"processing informer for %s with resync duration: %v",
-			opts.Name, resync,
-		)
 	}
 
+	// 4. Create informer
 	inf := cache.NewSharedIndexInformer(
 		lw,
 		obj,
@@ -83,14 +99,20 @@ func (f *Factory) getOrCreate(
 		DeleteFunc: func(obj interface{}) { f.handleEvent(obj) },
 	})
 
-	f.informers[key] = &informerEntry{
-		informer: inf,
-		name:     opts.Name,
-		resync:   resync,
+	// 5. Register informer
+	entry := &InformerEntry{
+		Informer: inf,
+		Name:     opts.Name,
+		Resync:   resync,
+		Missing:  false,
+		GVK:      gvk,
 	}
 
-	// If factory already started (dynamic CRD registration), start immediately
-	if f.started {
+	f.informers[key] = entry
+	delete(f.missing, key)
+
+	// 6. Start immediately if factory already running
+	if f.started.Load() {
 		go inf.Run(ctx.Done())
 	}
 

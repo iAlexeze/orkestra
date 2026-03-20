@@ -17,7 +17,7 @@ func main() {
 	}
 
 	// initilaize logger
-	logger.Init(kfg.App().LogLevel)
+	logger.Init(kfg.Ork().LogLevel)
 
 	// define root context
 	ctx, cancel := context.WithCancel(context.Background())

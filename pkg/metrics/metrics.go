@@ -32,4 +32,15 @@ var (
 		Name: "controller_workers_active",
 		Help: "Number of active workers per CRD",
 	}, []string{"crd"})
+
+	CRDActivationLatency = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "controller_crd_activation_latency_seconds",
+		Help:    "Time from controller start to CRD becoming active",
+		Buckets: prometheus.DefBuckets,
+	}, []string{"crd"})
+
+	CRDActivationTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "controller_crd_activation_total",
+		Help: "Total number of CRD activations after startup",
+	}, []string{"crd", "result"}) // result=success|failure
 )

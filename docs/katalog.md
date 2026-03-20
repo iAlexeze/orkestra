@@ -91,7 +91,7 @@ Build operators with 2, 5, or 50 CRDs — all from one Katalog.
 A Katalog is composed of **CRD entries**:
 
 ```yaml
-apiVersion: controller.orkestra.io/v1
+apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
   name: platform-katalog

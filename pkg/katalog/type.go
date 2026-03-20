@@ -7,14 +7,6 @@ import (
 )
 
 // -----------------------------------------------------------------------------
-// Constants
-// -----------------------------------------------------------------------------
-const (
-	GoMode   = "go"
-	YamlMode = "yaml"
-)
-
-// -----------------------------------------------------------------------------
 // Variables
 // -----------------------------------------------------------------------------
 var (
@@ -26,25 +18,7 @@ var (
 // Structs
 // -----------------------------------------------------------------------------
 type Katalog struct {
-	APIVersion string `yaml:"apiVersion"`
-	Kind       string `yaml:"kind"`
-	Metadata   struct {
-		Name        string `yaml:"name"`
-		Description string `yaml:"description"`
-		Version     string `yaml:"version"`
-		Author      string `yaml:"author"`
-		Website     string `yaml:"website"`
-		Email       string `yaml:"email"`
-	} `yaml:"metadata"`
-	Spec struct {
-		Finalizers []string            `yaml:"finalizers"`
-		CRDs       []orktypes.CRDEntry `yaml:"crds"` // raw from YAML - documentation - CLI
-	} `yaml:"spec"`
-
+	Spec orktypes.KatalogSpec `yaml:"spec"`
 	// Internal
 	enabledCRDs []orktypes.CRDEntry `yaml:"-"` // filtered
-	mode        struct {
-		Go   bool `yaml:"go"`
-		Yaml bool `yaml:"yaml"`
-	} `yaml:"mode"`
 }

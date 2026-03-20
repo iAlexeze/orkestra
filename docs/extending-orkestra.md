@@ -272,7 +272,7 @@ Add your CRD directly to the Go katalog: [crd-katalog.go](../runtime/crd-katalog
 Enable YAML mode:
 
 ```bash
-export KATALOG_MODE=YAML
+export KATALOG_MODE=dynamic
 export KATALOG_PATH=initialize/crd-katalog.yaml    # or remote URL
 ```
 

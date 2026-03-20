@@ -12,28 +12,28 @@ import (
 func Init(filenames ...string) (*Konfig, error) {
 	err := godotenv.Load(filenames...)
 	if err != nil {
-		log.Printf("failed to load env from file: %v", err)
 		log.Print("Defaulting to system defined variables...")
 	}
 
-	cfg := &Konfig{
-		app: appKonfig{
-			Name:        GetStrEnv("APP_NAME", "orkestra"),
-			Version:     GetStrEnv("APP_VERSION", "1.0.0"),
-			Environment: GetStrEnv("APP_ENV", "development"),
+	kfg := &Konfig{
+		ork: orkKonfig{
+			Name:        orkestra,
+			ShortName:   ork,
+			Version:     GetStrEnv("ORK_VERSION", "1.0.0"),
+			Environment: GetStrEnv("ORK_ENV", "development"),
 			LogLevel:    GetStrEnv("LOG_LEVEL", "info"),
 		},
 		cluster: clusterKonfig{
-			KubekonfigPath: GetStrEnv("KUBEKONFIG", ""),
-			MasterURL:      GetStrEnv("MASTER_URL", ""),
-			InCluster:      GetBoolEnv("IN_CLUSTER", false),
-			Name:           GetStrEnv("CLUSTER_NAME", "kubernetes-crd-example"),
-			Namespace:      GetStrEnv("NAMESPACE", "default"),
+			KubekonfigPath:   GetStrEnv("KUBEKONFIG", ""),
+			MasterURL:        GetStrEnv("MASTER_URL", ""),
+			InCluster:        GetBoolEnv("IN_CLUSTER", false),
+			Name:             GetStrEnv("CLUSTER_NAME", "kubernetes-crd-example"),
+			DefaultNamespace: GetStrEnv("DEFAULT_NAMESPACE", "default"),
 
 			// Workload
 			DefaultResync:  GetDurEnvSeconds("DEFAULT_RESYNC", 15),
-			Finalizer:      GetStrEnv("FINALIZER", "alexia.ai/finalizer"),
-			LabelSelector:  GetStrEnv("LABEL_SELECTOR", "app=alexia"),
+			Finalizer:      GetStrEnv("FINALIZER", "konduktor.orkestra.io/finalizer"),
+			LabelSelector:  GetStrEnv("LABEL_SELECTOR", "ork=estra"),
 			DefaultWorkers: GetIntEnv("DEFAULT_WORKERS", 3),
 		},
 		healthServer: healthServer{
@@ -49,31 +49,35 @@ func Init(filenames ...string) (*Konfig, error) {
 		katalog: katalogKonfig{
 			DefaultMaxQueueDepth:    GetIntEnv("MAX_QUEUE_DEPTH", 2000),
 			DefaultDegradeThreshold: GetIntEnv("DEGRADE_THRESHOLD", 5),
-			Mode:                    GetStrEnv("KATALOG_MODE", "go"),
-			Path:                    GetStrEnv("KATALOG_PATH", ""),
+			Paths:                   GetStrSliceEnv("KATALOG_PATH", []string{}),
 		},
 	}
 
 	// normalize environment
-	cfg.normalizeEnvironment()
-
-	// validate crd konfig
-	if err = cfg.validateCRDKonfig(); err != nil {
-		return nil, err
-	}
+	kfg.normalizeEnvironment()
 
 	// validate struct
-	if err = Validate().Struct(cfg); err != nil {
+	if err = Validate().Struct(kfg); err != nil {
 		return nil, err
 	}
 
-	return cfg, nil
+	return kfg, nil
 }
+
+// -----------------------------------------------------------------------------
 
 // GetStrEnv returns the string value of an env
 func GetStrEnv(key, def string) string {
 	if val, ok := os.LookupEnv(key); ok {
 		return val
+	}
+	return def
+}
+
+// GetStrSliceEnv returns the slice value of an env
+func GetStrSliceEnv(key string, def []string) []string {
+	if val, ok := os.LookupEnv(key); ok {
+		return []string{val}
 	}
 	return def
 }

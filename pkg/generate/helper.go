@@ -6,22 +6,10 @@ import (
 
 	"bytes"
 	"go/format"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"text/template"
 )
-
-func parseKatalog(data []byte) (*generateKatalog, error) {
-	var kat generateKatalog
-	if err := yaml.Unmarshal(data, &kat); err != nil {
-		return nil, fmt.Errorf("parsing katalog: %w", err)
-	}
-	if len(kat.Spec.CRDs) == 0 {
-		return nil, fmt.Errorf("katalog has no CRDs defined")
-	}
-	return &kat, nil
-}
 
 func renderTemplateToFile(tmpl *template.Template, data any, outPath string, gofmt bool, dryRun bool) error {
 	var buf bytes.Buffer

@@ -3,28 +3,34 @@ package cli
 import (
 	"fmt"
 
+	"github.com/ialexeze/orkestra/pkg/katalog"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
 var validateCmd = &cobra.Command{
 	Use:   "validate",
-	Short: "Validate Orkestra configuration",
-}
-
-var validateRegistryCmd = &cobra.Command{
-	Use:   "registry <file>",
-	Short: "Validate a CRD registry file",
-	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) == 0 {
-			fmt.Println("Missing registry file")
-			return
+	Short: "Validate Orkestra katalog configuration",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		m, err := generateKatalog(cmd)
+		if err != nil {
+			return err
 		}
-		fmt.Printf("Validating registry: %s\n", args[0])
-		// TODO: validate YAML registry
+
+		var k katalog.Katalog
+		if _, err = k.KomposeKatalogFromYaml(m.m); err != nil {
+			return err
+		}
+		if _, err = k.ValidateConfig(); err != nil {
+			return err
+		}
+
+		fmt.Printf("Success: %sKatalog is valid%s\n", utils.ColorGreen, utils.ColorReset)
+		return nil
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(validateCmd)
-	validateCmd.AddCommand(validateRegistryCmd)
+	validateCmd.Flags().StringSlice("katalog", nil, "Path(s) or URL(s) to crd-katalog.yaml (repeatable)")
 }

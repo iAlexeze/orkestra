@@ -14,9 +14,8 @@ func printBanner(kfg *orkestraKfg, leader string) {
 	fmt.Print(utils.ColorReset)
 
 	fmt.Println("====================================================")
-	fmt.Printf("%s        Orkestra Runtime%s (v%s)\n", utils.ColorMagenta, utils.ColorReset, kfg.konfig.App().Version)
-	fmt.Printf("        Mode: %s%s%s\n", utils.ColorCyan, strings.ToUpper(kfg.konfig.Mode()), utils.ColorReset)
-	fmt.Printf("        Environment: %s%s%s\n", utils.ColorBlue, kfg.konfig.App().Environment, utils.ColorReset)
+	fmt.Printf("%s        Orkestra Runtime%s (v%s)\n", utils.ColorMagenta, utils.ColorReset, kfg.konfig.Ork().Version)
+	fmt.Printf("        Environment: %s%s%s\n", utils.ColorBlue, kfg.konfig.Ork().Environment, utils.ColorReset)
 	fmt.Printf("        Listening on: %s:%s%s\n", utils.ColorGreen, kfg.konfig.Health().Port, utils.ColorReset)
 
 	if leader != "" {
@@ -47,7 +46,7 @@ func printBanner(kfg *orkestraKfg, leader string) {
 	for _, c := range *kfg.komp {
 		if c.Started() {
 			fmt.Printf("- %-20s %sAVAILABLE%s\n", c.Name(), utils.ColorGreen, utils.ColorReset)
-		} else if c.Name() == "orkestra kontroller" {
+		} else if c.Name() == "orkestra dependency kontroller" {
 			fmt.Printf("- %-20s %sSTARTING%s\n", c.Name(), utils.ColorBlue, utils.ColorReset)
 		} else {
 			fmt.Printf("- %-20s %sUNAVAILABLE%s\n", c.Name(), utils.ColorRed, utils.ColorReset)

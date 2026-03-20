@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/konfig"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -23,9 +25,9 @@ var ListRegistry = map[schema.GroupVersionKind]func() runtime.Object{}
 var HookRegistry = map[schema.GroupVersionKind]func() domain.AnyReconcileHooks{}
 var ReconcilerRegistry = map[schema.GroupVersionKind]NewReconcilerFunc{}
 
-// ── ReconcilerMode ────────────────────────────────────────────────────────────
+// ── CRDMode ────────────────────────────────────────────────────────────
 
-// ReconcilerMode controls how the GenericReconciler handles CR objects at runtime.
+// CRDMode controls how the GenericReconciler handles CR objects at runtime.
 //
 // typed
 //
@@ -35,7 +37,7 @@ var ReconcilerRegistry = map[schema.GroupVersionKind]NewReconcilerFunc{}
 //	Required when Go hooks reference typed fields directly.
 //	Use when you have generated API types and want compile-time guarantees.
 //
-// unstructured
+// dynamic
 //
 //	No compiled types needed. Objects are map[string]interface{} at runtime.
 //	Works with any CRD without code generation or controller-gen.
@@ -47,18 +49,19 @@ var ReconcilerRegistry = map[schema.GroupVersionKind]NewReconcilerFunc{}
 // Auto-detection when mode is omitted:
 //
 //	apiTypes.location is set   → typed       (compiled types available)
-//	apiTypes.location is empty → unstructured (no compiled types)
+//	apiTypes.location is empty → dynamic (no compiled types)
 //
 // Override auto-detection by setting mode explicitly:
 //
-//	reconciler:
-//	  mode: typed          # force typed even if location is empty
-//	  mode: unstructured   # force unstructured even if location is set
-type ReconcilerMode string
+//	crd:
+//	 - name: websites
+//	   mode: dynamic   		# force dynamic even if location is set
+//	   mode: typed          # force typed even if location is empty
+type CRDMode string
 
 const (
-	ReconcilerModeTyped        ReconcilerMode = "typed"
-	ReconcilerModeUnstructured ReconcilerMode = "unstructured"
+	CRDModeTyped   CRDMode = "typed"
+	CRDModeDynamic CRDMode = "dynamic"
 )
 
 // ── APITypes ──────────────────────────────────────────────────────────────────
@@ -107,7 +110,7 @@ type APITypes struct {
 	// Location — fully qualified Go import path for the API types package.
 	// Required for typed mode. Used by ork generate for import statements
 	// and scheme registration in RegisterScheme().
-	// Not needed for unstructured mode — omit entirely.
+	// Not needed for dynamic mode — omit entirely.
 	// e.g. "github.com/ialexeze/orkestra/api/types/project/v1alpha1"
 	Location string `yaml:"location" validate:"omitempty"`
 }
@@ -174,7 +177,7 @@ type ResourceRequirements struct {
 //   .metadata.name        CR name
 //   .metadata.namespace   CR namespace
 //   .metadata.labels      CR labels map
-//   .spec.*               any spec field (unstructured mode only — full spec accessible)
+//   .spec.*               any spec field (dynamic mode only — full spec accessible)
 //   .status.*             any status field
 //
 // All resources created by hook templates receive owner references pointing to the CR.
@@ -463,6 +466,11 @@ type CronJobTemplateSource struct {
 
 	// Labels — applied to CronJob metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile. Equivalent to declaring the same entry under both onCreate and
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
 }
 
 // ── ConfigMap ─────────────────────────────────────────────────────────────────
@@ -492,12 +500,88 @@ type ConfigMapTemplateSource struct {
 	// Default when omitted: "{{ .metadata.namespace }}"
 	Namespace string `yaml:"namespace" validate:"omitempty"`
 
+	// ToNamespaces - a list of target namespaces
+	// Default when omitted: "{{ .metadata.namespace }}"
+	ToNamespaces []string `yaml:"toNamespaces" validate:"omitempty"`
+
 	// Data — static key-value configuration entries.
 	// Values are plain strings — template expressions are not supported here.
 	Data map[string]string `yaml:"data" validate:"omitempty"`
 
 	// Labels — applied to ConfigMap metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+	// FromConfigMap — name of an existing ConfigMap to copy data from.
+	// Orkestra reads this at reconcile time — copies stay in sync with the source.
+	FromConfigMap string `yaml:"fromConfigMap" validate:"omitempty"`
+
+	// FromNamespace — namespace where FromConfigMap lives.
+	// Default: same namespace as the CR.
+	FromNamespace string `yaml:"fromNamespace" validate:"omitempty"`
+
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile. Equivalent to declaring the same entry under both onCreate and
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+}
+
+// ── Secret ─────────────────────────────────────────────────────────────────────
+
+// SecretTemplateSource declares one Secret to be managed by Orkestra.
+//
+// Secret data values are static — template expressions are not evaluated
+// in Secret data entries. For dynamic configuration, use a custom Go hook.
+//
+// Example:
+//
+//	onCreate:
+//	  secrets:
+//	    - name: "{{ .metadata.name }}-credentials"
+//	      type: Opaque
+//	      data:
+//	        USERNAME: admin
+//	        PASSWORD: "supersecret"
+//
+// You may also copy from an existing Secret using FromSecret.
+type SecretTemplateSource struct {
+	// Version — OrkestraRegistry implementation version. Omit for latest.
+	Version string `yaml:"version" validate:"omitempty"`
+
+	// Name — Secret name.
+	// Default when omitted: "{{ .metadata.name }}-secret"
+	Name string `yaml:"name" validate:"omitempty"`
+
+	// Namespace — target namespace.
+	// Default when omitted: "{{ .metadata.namespace }}"
+	Namespace string `yaml:"namespace" validate:"omitempty"`
+
+	// Type — Kubernetes Secret type.
+	// Default: "Opaque"
+	Type string `yaml:"type" validate:"omitempty"`
+
+	// Data — static key-value entries.
+	// Values are plain strings — template expressions are not supported here.
+	// If you need templated or dynamic values, use a custom Go hook.
+	Data map[string]string `yaml:"data" validate:"omitempty"`
+
+	// Labels — applied to Secret metadata. Values support template expressions.
+	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+
+	// FromSecret — name of an existing Secret to copy data from.
+	// Orkestra reads this at reconcile time — copies stay in sync with the source.
+	FromSecret string `yaml:"fromSecret" validate:"omitempty"`
+
+	// FromNamespace — namespace where FromSecret lives.
+	// Default: same namespace as the CR.
+	FromNamespace string `yaml:"fromNamespace" validate:"omitempty"`
+
+	// ToNamespaces - a list of target namespaces
+	// Default when omitted: "{{ .metadata.namespace }}"
+	ToNamespaces []string `yaml:"toNamespaces" validate:"omitempty"`
+
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile. Equivalent to declaring the same entry under both onCreate and
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
 }
 
 // ── ServiceAccount ────────────────────────────────────────────────────────────
@@ -565,6 +649,7 @@ type HookTemplates struct {
 	Pods            []PodTemplateSource            `yaml:"pods"            validate:"omitempty"`
 	Jobs            []JobTemplateSource            `yaml:"jobs"            validate:"omitempty"`
 	CronJobs        []CronJobTemplateSource        `yaml:"cronJobs"        validate:"omitempty"`
+	Secrets         []SecretTemplateSource         `yaml:"secrets"      validate:"omitempty"`
 	ConfigMaps      []ConfigMapTemplateSource      `yaml:"configMaps"      validate:"omitempty"`
 	ServiceAccounts []ServiceAccountTemplateSource `yaml:"serviceAccounts" validate:"omitempty"`
 }
@@ -584,10 +669,6 @@ type ReconcilerConfig struct {
 	//         GenericReconciler is not used — the user owns the entire lifecycle.
 	Default bool `yaml:"default" validate:"omitempty"`
 
-	// Mode — see ReconcilerMode for full documentation.
-	// Auto-detected when omitted based on whether apiTypes.location is set.
-	Mode ReconcilerMode `yaml:"mode" validate:"omitempty,oneof=typed unstructured"`
-
 	// Finalizers — per-CRD finalizer list. Overrides the Katalog-level finalizer.
 	// Applied by GenericReconciler when a CR is first created.
 	// Stripped one-by-one before delete to unblock Kubernetes garbage collection.
@@ -599,7 +680,7 @@ type ReconcilerConfig struct {
 	// ork generate reads them and emits HookRegistry / ReconcilerRegistry entries.
 	// Katalog validation reads them to wire HookFactory and Constructor at startup.
 
-	// Hooks — declares a Go hook function for Default: true CRDs in typed or unstructured mode.
+	// Hooks — declares a Go hook function for Default: true CRDs in typed or dynamic mode.
 	// The function at Location.Function must match: func() domain.AnyReconcileHooks
 	// Use this when you want full Go control over reconcile logic.
 	// For declarative resource management without Go code, use OnCreate/OnReconcile/OnDelete.
@@ -612,7 +693,7 @@ type ReconcilerConfig struct {
 	ConstructorDecl *ConstructorDeclaration `yaml:"constructor" validate:"omitempty"`
 
 	// ── Declarative hook templates ────────────────────────────────────────────
-	// Only valid when Default: true and mode: unstructured.
+	// Only valid when Default: true and mode: dynamic.
 	// ork generate reads these declarations and emits complete hook implementations
 	// in __generated_runtime_hooks.go that call OrkestraRegistry resource functions
 	// with resolved field values. No Go code required from the user.
@@ -705,6 +786,10 @@ type CRDEntry struct {
 	// Description — human-readable description. Shown in /katalog API responses.
 	Description string `yaml:"description" validate:"omitempty"`
 
+	// Mode — see CRDMode for full documentation.
+	// Auto-detected when omitted based on whether apiTypes.location is set.
+	Mode CRDMode `yaml:"mode" validate:"omitempty,oneof=typed dynamic"`
+
 	// ── API Types ─────────────────────────────────────────────────────────────
 	// See APITypes for full field documentation.
 	APITypes APITypes `yaml:"apiTypes" validate:"required"`
@@ -712,21 +797,21 @@ type CRDEntry struct {
 	// ── Runtime objects ───────────────────────────────────────────────────────
 	// Set by addRuntimeObjects() during Katalog validation. Never set from YAML.
 	//
-	// Typed mode:        ObjectYamlMode and ListObjectYamlMode are factory functions
+	// Typed mode:        DynamicModeObject and ListDynamicModeObject are factory functions
 	//                    from ObjectRegistry and ListRegistry respectively.
-	//                    ObjectGoMode and ListObjectGoMode are set in BuildKatalogFromGo().
+	//                    TypedModeObject and ListTypedModeObject are set in BuildKatalogFromGo().
 	//
-	// Unstructured mode: ObjectYamlMode and ListObjectYamlMode are factory functions
+	// Dynamic mode: DynamicModeObject and ListDynamicModeObject are factory functions
 	//                    that return *unstructured.Unstructured and *unstructured.UnstructuredList.
 	//                    These are always set by addRuntimeObjects() — never nil after validation.
-	ObjectGoMode       runtime.Object        `yaml:"-"`
-	ListObjectGoMode   runtime.Object        `yaml:"-"`
-	ObjectYamlMode     func() runtime.Object `yaml:"-"`
-	ListObjectYamlMode func() runtime.Object `yaml:"-"`
+	TypedModeObject       runtime.Object        `yaml:"-"`
+	ListTypedModeObject   runtime.Object        `yaml:"-"`
+	DynamicModeObject     func() runtime.Object `yaml:"-"`
+	ListDynamicModeObject func() runtime.Object `yaml:"-"`
 
 	// Scheme — AddToScheme function generated by controller-gen for this API type.
 	// Required for typed mode so the REST client can decode API server responses.
-	// Not needed for unstructured mode — the dynamic client bypasses scheme decoding.
+	// Not needed for dynamic mode — the dynamic client bypasses scheme decoding.
 	// Set in BuildKatalogFromGo() for Go mode. Handled by RegisterScheme() for YAML mode.
 	Scheme func(s *runtime.Scheme) error `yaml:"-"`
 
@@ -769,15 +854,21 @@ type CRDEntry struct {
 }
 
 // ── CRDEntry helpers ──────────────────────────────────────────────────────────
+func (c *CRDEntry) OrkMode() string {
+	if c.IsDynamic() {
+		return konfig.DynamicMode
+	}
+	return konfig.TypedMode
+}
 
 // GetRuntimeObjects returns the object and list constructors for the current Katalog mode.
-// YAML mode: returns ObjectYamlMode() and ListObjectYamlMode() — set by addRuntimeObjects().
-// Go mode:   returns ObjectGoMode and ListObjectGoMode — set in BuildKatalogFromGo().
-func (c *CRDEntry) GetRuntimeObjects(mode string) (runtime.Object, runtime.Object) {
-	if mode == "yaml" {
-		return c.ObjectYamlMode(), c.ListObjectYamlMode()
+// YAML mode: returns DynamicModeObject() and ListDynamicModeObject() — set by addRuntimeObjects().
+// Go mode:   returns TypedModeObject and ListTypedModeObject — set in BuildKatalogFromGo().
+func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
+	if c.IsDynamic() {
+		return c.DynamicModeObject(), c.ListDynamicModeObject()
 	}
-	return c.ObjectGoMode, c.ListObjectGoMode
+	return c.TypedModeObject, c.ListTypedModeObject
 }
 
 // SetMaxQueueDepth returns the resolved queue depth for this CRD.
@@ -798,18 +889,18 @@ func (c *CRDEntry) SetWorkers(def int) int {
 	return c.Workers
 }
 
-// IsUnstructured returns true if this CRD uses unstructured mode.
+// IsDynamic returns true if this CRD uses dynamic mode.
 //
 // Resolution order (first match wins):
-//  1. mode: unstructured explicitly declared → true
+//  1. mode: dynamic explicitly declared → true
 //  2. mode: typed explicitly declared        → false
 //  3. apiTypes.location is empty             → true  (no compiled types available)
 //  4. apiTypes.location is set               → false (compiled types available)
-func (c *CRDEntry) IsUnstructured() bool {
-	switch c.ReconcilerConfig.Mode {
-	case ReconcilerModeUnstructured:
+func (c *CRDEntry) IsDynamic() bool {
+	switch c.Mode {
+	case CRDModeDynamic:
 		return true
-	case ReconcilerModeTyped:
+	case CRDModeTyped:
 		return false
 	}
 	return c.APITypes.Location == ""
@@ -830,4 +921,28 @@ func (c *CRDEntry) GVK() schema.GroupVersionKind {
 // GVR returns the computed GroupVersionResource. Used for dynamic client calls.
 func (c *CRDEntry) GVR() schema.GroupVersionResource {
 	return c.GroupVersionResource
+}
+
+// New Object
+func (c *CRDEntry) NewObject() runtime.Object {
+	if c.IsDynamic() {
+		return &unstructured.Unstructured{}
+	}
+
+	if c.TypedModeObject == nil {
+		return c.DynamicModeObject()
+	}
+	return c.TypedModeObject
+}
+
+// New List
+func (c *CRDEntry) NewList() runtime.Object {
+	if c.IsDynamic() {
+		return &unstructured.UnstructuredList{}
+	}
+
+	if c.ListTypedModeObject == nil {
+		return c.ListDynamicModeObject()
+	}
+	return c.ListTypedModeObject
 }

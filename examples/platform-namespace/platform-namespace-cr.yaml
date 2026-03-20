@@ -1,0 +1,40 @@
+# payments team — production namespace
+# Orkestra will:
+#   - Create a ConfigMap with log level and environment info
+#   - Copy the registry pull secret into the namespace
+#   - Create a ServiceAccount for workloads
+apiVersion: platform.orkestra.io/v1alpha1
+kind: PlatformNamespace
+metadata:
+  name: payments-production
+spec:
+  team: payments
+  environment: production
+  targetNamespace: payments-prod
+  logLevel: warn
+  pullSecret: registry-pull-secret
+
+---
+# payments team — staging namespace
+apiVersion: platform.orkestra.io/v1alpha1
+kind: PlatformNamespace
+metadata:
+  name: payments-staging
+spec:
+  team: payments
+  environment: staging
+  targetNamespace: payments-staging
+  logLevel: info
+  pullSecret: registry-pull-secret
+
+---
+# platform team — development namespace, no pull secret
+apiVersion: platform.orkestra.io/v1alpha1
+kind: PlatformNamespace
+metadata:
+  name: platform-development
+spec:
+  team: platform
+  environment: development
+  targetNamespace: platform-dev
+  logLevel: debug

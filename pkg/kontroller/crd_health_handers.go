@@ -27,6 +27,8 @@ func BuildCRDHealthHandler(name string, h *CRDHealth) http.HandlerFunc {
 		utils.WriteJSON(w, status, map[string]interface{}{
 			"name":             name,
 			"healthy":          h.IsHealthy(),
+			"started":          h.Started(),
+			"startedAt":        h.StartedAt(),
 			"status":           status,
 			"uptime":           h.Uptime(),
 			"message":          message,
@@ -53,6 +55,7 @@ func BuildCRDInfoHandler(
 		utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
 			"name":             crd.Name,
 			"description":      crd.Description,
+			"mode":             crd.Mode,
 			"gvk":              utils.SetGroupVersionKindObj(crd.GroupVersionKind),
 			"gvr":              crd.GroupVersionResource.String(),
 			"critical":         crd.Critical,
@@ -68,6 +71,7 @@ func BuildCRDInfoHandler(
 			"resourceCount":    v.resourceCount,
 			"reconciler":       reconcilerInfo(crd),
 			"healthy":          health.IsHealthy(),
+			"started":          health.Started(),
 			"errorRate":        health.ErrorRate(),
 		})
 	}
@@ -99,6 +103,7 @@ func BuildKatalogHandler(
 			crds = append(crds, map[string]interface{}{
 				"name":             crd.Name,
 				"description":      crd.Description,
+				"mode":             crd.Mode,
 				"gvk":              gvk,
 				"gvr":              crd.GroupVersionResource.String(),
 				"critical":         crd.Critical,
@@ -114,6 +119,8 @@ func BuildKatalogHandler(
 				"resourceCount":    v.resourceCount,
 				"reconciler":       reconcilerInfo(crd),
 				"healthy":          h.IsHealthy(),
+				"started":          h.Started(),
+				"startedAt":        h.StartedAt(),
 				"uptime":           h.Uptime(),
 				"errorRate":        h.ErrorRate(),
 				"endpoints": map[string]string{
@@ -142,16 +149,6 @@ func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 	reconcilerType := "generic" // default: true, GenericReconciler
 	if !rc.Default {
 		reconcilerType = "custom" // default: false, custom Constructor
-	}
-
-	// Mode — typed or unstructured
-	mode := string(rc.Mode)
-	if mode == "" {
-		if crd.IsUnstructured() {
-			mode = "unstructured"
-		} else {
-			mode = "typed"
-		}
 	}
 
 	// Finalizers — show resolved list or indicate using Katalog default
@@ -218,13 +215,12 @@ func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 
 	result := map[string]interface{}{
 		"type":        reconcilerType, // "generic" or "custom"
-		"mode":        mode,           // "typed" or "unstructured"
 		"finalizers":  finalizersInfo,
 		"hooks":       hooksInfo,
 		"constructor": constructorInfo,
 	}
 
-	// Declarative templates — only show if configured (unstructured mode)
+	// Declarative templates — only show if configured (dynamic mode)
 	if rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil {
 		templates := map[string]interface{}{}
 		if rc.OnCreate != nil {
@@ -298,6 +294,8 @@ func resolveCRDDisplayValues(
 	kfg *konfig.Konfig,
 	inf cache.SharedIndexInformer,
 ) crdDisplayValues {
+
+	// Queue Depth
 	queueDepth := crd.Queue.MaxQueueDepth
 	queueDepthSource := "configured"
 
@@ -306,6 +304,7 @@ func resolveCRDDisplayValues(
 		queueDepthSource = "default"
 	}
 
+	// Resync
 	resync := crd.Resync.String()
 	resyncSource := "configured"
 	if crd.Resync == 0 {
@@ -313,6 +312,7 @@ func resolveCRDDisplayValues(
 		resync = kfg.Cluster().DefaultResync.String()
 	}
 
+	// Workers
 	workers := crd.Workers
 	workersSource := "configured"
 	if crd.Workers == 0 {
@@ -320,6 +320,7 @@ func resolveCRDDisplayValues(
 		workersSource = "default"
 	}
 
+	// Resource count
 	resourceCount := 0
 	if inf != nil {
 		resourceCount = len(inf.GetStore().List())

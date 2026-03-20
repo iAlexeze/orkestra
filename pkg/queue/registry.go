@@ -11,56 +11,77 @@ import (
 )
 
 type QueueRegistry struct {
+	name    string
 	queues  map[string]*Workqueue // keyed by GVK string
 	mu      sync.RWMutex
 	started atomic.Bool
 }
 
+// NewQueueRegistry returns a new queue registry
+// At this stage only the queues map is created
+// Register uses the map created to register all CRDs
+// For returns a registered CRD
 func NewQueueRegistry() *QueueRegistry {
-	qr := &QueueRegistry{
-		queues: make(map[string]*Workqueue),
+	return &QueueRegistry{
+		name:   "queue registry",
+		queues: make(map[string]*Workqueue), // Create the map for per CRD registration
 	}
-
-	qr.started.Store(false)
-	return qr
 }
 
-func (r *QueueRegistry) Register(gvk string, maxQueueDepth int) *Workqueue {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+// Register registers each CRD with their respective
+// GVK and maximum queue depth
+func (qr *QueueRegistry) Register(gvk string, maxQueueDepth int) *Workqueue {
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
+
 	wq := NewWorkqueue()
-	r.queues[gvk] = wq
-	wq.maxQueueDepth = maxQueueDepth
+	qr.queues[gvk] = wq              // Register each CRD to a workqueue
+	wq.maxQueueDepth = maxQueueDepth // Set the maximum queue depth for this new queue per CRD
+
 	return wq
 }
 
-func (r *QueueRegistry) For(gvk string) (*Workqueue, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	wq, ok := r.queues[gvk]
-	return wq, ok
+// For returns the workqueue for a given GVK
+func (qr *QueueRegistry) For(gvk string) (*Workqueue, bool) {
+	qr.mu.RLock()
+	defer qr.mu.RUnlock()
+
+	wq, ok := qr.queues[gvk]
+	if !ok {
+		return nil, false
+	}
+
+	return wq, true
 }
 
-func (r *QueueRegistry) Shutdown(ctx context.Context) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	for _, wq := range r.queues {
-		wq.Queue.ShutDown()
+// Shutdown drains all registered workqueues
+// This is called by orkestra.Shutdown() for graceful degradation
+func (qr *QueueRegistry) Shutdown(ctx context.Context) {
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
+
+	for _, wq := range qr.queues {
+		if wq.Queue != nil {
+			wq.Queue.ShutDown()
+		}
 	}
 }
 
-// Methods
+// Methods implementation of the Komponent interface
 var _ domain.Komponent = (*QueueRegistry)(nil)
 
+// Called by orkestra.Start() to start the workqueue registry
 func (qr *QueueRegistry) Start(ctx context.Context) error {
-	logger.Debug().Msgf("right here in queue registry with %v queues", len(qr.queues))
+	logger.Debug().Msgf("right here in %s with %v queues", qr.name, len(qr.queues))
 
 	qr.started.Store(true)
 	return nil
 }
 
+// Started is a status check for all orkestra komponents
 func (qr *QueueRegistry) Started() bool { return qr.started.Load() }
 
+// Name returns the name of the queue registry
 func (qr *QueueRegistry) Name() string {
-	return "queue registry"
+	return qr.name
 }

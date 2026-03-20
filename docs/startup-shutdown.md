@@ -58,7 +58,7 @@ The banner makes the dependency relationship explicit before any reconciliation 
 Leader election starts as a **post-start hook** — after all komponents are `AVAILABLE` and caches are warm. This is the correct order. Starting leader election before the informer cache is synced means a newly-elected leader could begin reconciling with a stale view of the cluster.
 
 ```go
-startup.manager.AddPostStartHook(leader, func(ctx context.Context) {
+startup.orkestra.AddPostStartHook(leader, func(ctx context.Context) {
     leader.Start(ctx)
 })
 ```

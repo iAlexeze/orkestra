@@ -202,6 +202,7 @@ func buildService(owner domain.Object, spec ResolvedServiceSpec, namespace strin
 
 	// For unstructured owners the GVK may not be set on the object itself —
 	// use the unstructured helper to get it
+	// TODO: If there is a better way
 	apiVersion := ""
 	kind := ""
 	if u, ok := owner.(*unstructured.Unstructured); ok {

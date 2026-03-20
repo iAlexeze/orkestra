@@ -1,0 +1,222 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Build ──────────────────────────────────────────────────────────────────
+  build:
+    name: Build ${{ matrix.os }}_${{ matrix.arch }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            goarch: amd64
+            goos: linux
+          - os: linux
+            arch: arm64
+            goarch: arm64
+            goos: linux
+          - os: darwin
+            arch: amd64
+            goarch: amd64
+            goos: darwin
+          - os: darwin
+            arch: arm64
+            goarch: arm64
+            goos: darwin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Resolve version
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p dist
+
+          go build \
+            -trimpath \
+            -ldflags="-s -w \
+              -X github.com/ialexeze/orkestra/pkg/version.Version=${{ steps.version.outputs.VERSION }} \
+              -X github.com/ialexeze/orkestra/pkg/version.Commit=${{ github.sha }} \
+              -X github.com/ialexeze/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o dist/ork \
+            ./cmd/orkestra/
+
+          echo "✅ Binary built: dist/ork"
+          file dist/ork
+          ls -lh dist/ork
+
+      - name: Package tarball
+        run: |
+          ARCHIVE="ork_${{ matrix.os }}_${{ matrix.arch }}.tar.gz"
+
+          tar -czf "dist/${ARCHIVE}" \
+            -C dist ork \
+            -C "${{ github.workspace }}" \
+            README.md \
+            LICENSE
+
+          echo "✅ Archive created: dist/${ARCHIVE}"
+          ls -lh "dist/${ARCHIVE}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ork_${{ matrix.os }}_${{ matrix.arch }}
+          path: dist/ork_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
+          retention-days: 1
+
+  # ── Checksums + Release ───────────────────────────────────────────────────
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum ork_*.tar.gz > checksums.txt
+          echo "✅ Checksums generated:"
+          cat checksums.txt
+
+      - name: Extract changelog for this release
+        id: changelog
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+
+          # Extract section between this tag and the previous one
+          # CHANGELOG.md sections are headed by ## [vX.Y.Z]
+          if grep -q "## \[${TAG}\]" CHANGELOG.md 2>/dev/null; then
+            NOTES=$(awk "/## \[${TAG}\]/{found=1; next} /## \[v/{if(found) exit} found{print}" CHANGELOG.md)
+          else
+            NOTES="Release ${TAG}"
+          fi
+
+          # Write to file to preserve multiline
+          echo "${NOTES}" > release_notes.txt
+          echo "✅ Release notes extracted"
+
+      - name: Build release summary
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+
+          echo "## 🚀 Release ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "### 📦 Artifacts" >> "$GITHUB_STEP_SUMMARY"
+          echo "| File | Size | SHA256 |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|------|--------|" >> "$GITHUB_STEP_SUMMARY"
+
+          for f in dist/ork_*.tar.gz; do
+            name=$(basename "$f")
+            size=$(du -sh "$f" | cut -f1)
+            hash=$(sha256sum "$f" | cut -d' ' -f1 | cut -c1-16)
+            echo "| \`${name}\` | ${size} | \`${hash}...\` |" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ✅ Install" >> "$GITHUB_STEP_SUMMARY"
+          echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+          echo "curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | bash" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ github.ref_name }}"
+          body_path: release_notes.txt
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}  # v1.0.0-rc.1 = prerelease
+          files: |
+            dist/ork_linux_amd64.tar.gz
+            dist/ork_linux_arm64.tar.gz
+            dist/ork_darwin_amd64.tar.gz
+            dist/ork_darwin_arm64.tar.gz
+            dist/checksums.txt
+          fail_on_unmatched_files: true
+
+  # ── Summary ───────────────────────────────────────────────────────────────
+  summary:
+    name: Release Summary
+    runs-on: ubuntu-latest
+    needs: [build, release]
+    if: always()
+
+    steps:
+      - name: Write summary
+        run: |
+          BUILD_STATUS="${{ needs.build.result }}"
+          RELEASE_STATUS="${{ needs.release.result }}"
+          TAG="${GITHUB_REF_NAME}"
+
+          echo "## Release ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Stage | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|--------|" >> "$GITHUB_STEP_SUMMARY"
+
+          # Build status per platform
+          for platform in "linux_amd64" "linux_arm64" "darwin_amd64" "darwin_arm64"; do
+            if [ "$BUILD_STATUS" = "success" ]; then
+              echo "| Build \`${platform}\` | ✅ success |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| Build \`${platform}\` | ❌ failed |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          echo "| Checksums | $([ "$RELEASE_STATUS" = "success" ] && echo "✅ generated" || echo "❌ failed") |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| GitHub Release | $([ "$RELEASE_STATUS" = "success" ] && echo "✅ published" || echo "❌ failed") |" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$BUILD_STATUS" = "success" ] && [ "$RELEASE_STATUS" = "success" ]; then
+            echo "### ✅ Release ${TAG} published successfully" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+            echo "# Install" >> "$GITHUB_STEP_SUMMARY"
+            echo "curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | bash" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "# Or pin to this version" >> "$GITHUB_STEP_SUMMARY"
+            echo "curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | ORK_VERSION=${TAG} bash" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ❌ Release ${TAG} failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Check the failed jobs above for details." >> "$GITHUB_STEP_SUMMARY"
+          fi

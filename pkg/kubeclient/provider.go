@@ -9,22 +9,34 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// ClientProvider definition for registering new clients
 type ClientProvider struct {
 	kube    *Kubeclient
 	clients map[reflect.Type]ClientFactory
 }
 
-func (k *Kubeclient) ClientProvider() *ClientProvider {
+// ClientFactory accepts kubeclient and returns a generic client
+// The generic client is the hallmark of the whole design
+// konstructOrkestra() performs per CRD registration and
+// hands over to ghe informer factory
+type ClientFactory func(*Kubeclient) (informer.GenericClient, error)
+
+// NewClientProvider creates a new provider with the passed in kubeclient
+// At this stage, it only accepts the kubeclient and created the clients map
+// This is because kube is not live yet
+func (k *Kubeclient) NewClientProvider() *ClientProvider {
 	return &ClientProvider{
 		kube:    k,
 		clients: make(map[reflect.Type]ClientFactory),
 	}
 }
 
+// Register adds a new object to clients
 func (p *ClientProvider) Register(obj runtime.Object, factory ClientFactory) {
 	p.clients[reflect.TypeOf(obj)] = factory
 }
 
+// For returns a generic client for a registered object
 func (p *ClientProvider) For(obj runtime.Object) (informer.GenericClient, error) {
 	factory, ok := p.clients[reflect.TypeOf(obj)]
 	if !ok {
@@ -32,5 +44,3 @@ func (p *ClientProvider) For(obj runtime.Object) (informer.GenericClient, error)
 	}
 	return factory(p.kube)
 }
-
-type ClientFactory func(*Kubeclient) (informer.GenericClient, error)

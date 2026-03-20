@@ -3,12 +3,11 @@ package kontroller
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/ialexeze/orkestra/domain"
+	orkerror "github.com/ialexeze/orkestra/pkg/error"
 	"github.com/ialexeze/orkestra/pkg/event"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 
@@ -16,13 +15,12 @@ import (
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/queue"
-	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
-var _ domain.Komponent = (*Controller)(nil)
+var _ domain.Komponent = (*Kontroller)(nil)
 
 // Every map has the same key GVK
-type Controller struct {
+type Kontroller struct {
 	kube             *kubeclient.Kubeclient
 	informerFactory  *informer.Factory
 	event            *event.Event
@@ -58,8 +56,8 @@ func NewKontroller(
 	queueRegistry *queue.QueueRegistry,
 	defaultWorkqueue *queue.Workqueue,
 	defaultWorkers int,
-) *Controller {
-	c := &Controller{
+) *Kontroller {
+	k := &Kontroller{
 		kube:             kube,
 		informerFactory:  informerFactory,
 		katalog:          katalog,
@@ -68,143 +66,93 @@ func NewKontroller(
 		defaultWorkqueue: defaultWorkqueue,
 		queueRegistry:    queueRegistry,
 		defaultWorkers:   defaultWorkers,
+		crdHealthMap:     crdHealthMap,
 		started:          make(map[string]bool),
 		cancelFuncs:      make(map[string]context.CancelFunc),
 		total:            make(map[string]int),
 		failed:           make(map[string]int),
 		wgs:              make(map[string]*sync.WaitGroup),
 		reconcilers:      make(map[string]domain.Reconciler),
-		crdHealthMap:     crdHealthMap,
 		degradeThreshold: make(map[string]int),
 	}
 
 	// Load registry entries
 	for gvk, entry := range katalog.Entries() {
-		c.crds = append(c.crds, entry.CRD)
-		c.degradeThreshold[gvk] = entry.CRD.Queue.DegradeThreshold
+		k.crds = append(k.crds, entry.CRD)
+		k.degradeThreshold[gvk] = entry.CRD.Queue.DegradeThreshold
 	}
 
-	return c
+	return k
 }
 
-func (c *Controller) Start(ctx context.Context) error {
-	// Run CRD checks in parallel, respecting dependency order
-	var wg sync.WaitGroup
-	errCh := make(chan error, len(c.crds))
+func (k *Kontroller) Start(ctx context.Context) error {
+	// CRD checks now carried out in informer
+	// Kontroller just accepts that crds have been checked, listens to know if any is missing
+	// Then marks as degraded
+	for _, crd := range k.crds {
+		gvk := crd.GroupVersionKind.String()
 
-	// readyCh per CRD — same pattern as DependencyKontroller
-	readyCh := make(map[string]chan struct{}, len(c.crds))
-	for _, crd := range c.crds {
-		readyCh[crd.Name] = make(chan struct{})
+		if !k.informerFactory.IsMissing(gvk) {
+			continue
+		}
+		logger.Warn().Msgf("CRD %s is missing, marking as degraded...", gvk)
+		k.crdHealthMap[gvk].RecordStartupFailure(orkerror.ErrCRDNotFound, crd.Queue.DegradeThreshold)
 	}
 
-	for _, crd := range c.crds {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
-			// Wait for all dependencies to be confirmed present first
-			for _, dep := range crd.DependsOn {
-				select {
-				case <-readyCh[dep]:
-					// dependency confirmed — proceed
-				case <-ctx.Done():
-					errCh <- fmt.Errorf("context cancelled waiting for dependency %q", dep)
-					return
-				}
-			}
-
-			logger.Info().Msgf("checking CRD %s/%s (%s)...", crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind)
-
-			err := utils.RetryBackoff(
-				func() error {
-					return utils.WaitForCRD(
-						c.kube.RestConfig(),
-						crd.APITypes.Group,
-						crd.APITypes.Kind,
-						crd.APITypes.Version,
-					)
-				},
-				5,
-				2*time.Second,
-			)
-
-			if err != nil {
-				errCh <- fmt.Errorf("CRD %s/%s (%s) not found: %w",
-					crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind, err)
-				return
-			}
-
-			logger.Info().Msgf("CRD %s/%s (%s) detected", crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind)
-
-			// Signal dependents that this CRD is confirmed
-			close(readyCh[crd.Name])
-		}()
-	}
-
-	// Wait for all checks to complete
-	wg.Wait()
-	close(errCh)
-
-	// Collect any errors
-	var errs []string
-	for err := range errCh {
-		errs = append(errs, err.Error())
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("CRD checks failed:\n%s", strings.Join(errs, "\n"))
-	}
-
-	// All CRDs confirmed — now sync caches
+	// All CRDs confirmed (filtered by informer) — now sync caches
 	logger.Debug().Msg("waiting for all informer caches to sync...")
-	if !c.informerFactory.WaitForCacheSync(ctx) {
+	if !k.informerFactory.WaitForCacheSync(ctx) {
 		return fmt.Errorf("failed to sync one or more informer caches")
 	}
 	logger.Info().Msg("all informer caches synced")
 
 	// Build reconcilers now — kube, ev, and REST clients are all live
 	logger.Debug().Msg("building reconcilers...")
-	for gvk, entry := range c.katalog.Entries() {
+	for gvk, entry := range k.katalog.Entries() {
 		rec := entry.ReconcilerFactory() // ← safe here, manager has started everything
-		c.mu.Lock()
-		c.reconcilers[gvk] = rec
-		c.mu.Unlock()
+		k.mu.Lock()
+		k.reconcilers[gvk] = rec
+		k.mu.Unlock()
 		logger.Debug().Str("gvk", gvk).Msg("reconciler built")
 	}
 
 	return nil
 }
 
+// MissingCRDs returns a map of missing crds keyed by gvk
+func (k *Kontroller) MissingCRDs() map[string]*informer.InformerEntry {
+	return k.informerFactory.Missing()
+}
+
 // Set the controller ready
-func (c *Controller) SetReady(h domain.Health) {
+func (k *Kontroller) SetReady(h domain.Health) {
 	h.SetReady()
 }
 
 // Set the controller to degraded
-func (c *Controller) Degraded(h domain.Health) {
+func (k *Kontroller) Degraded(h domain.Health) {
 	h.Degraded()
 }
 
 // Healthy mark on startup
-func (c *Controller) Started() bool { return c.startedKtrl.Load() }
+func (k *Kontroller) Started() bool { return k.startedKtrl.Load() }
 
 // Shutdown gracefully stops orkestra
-func (c *Controller) Shutdown(ctx context.Context) {}
+func (k *Kontroller) Shutdown(ctx context.Context) {}
 
 // Controller name
-func (c *Controller) Name() string {
+func (k *Kontroller) Name() string {
 	return "orkestra kontroller"
 }
 
 // Errorrate
-func (c *Controller) errorRate(gvk string) float64 {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+func (k *Kontroller) errorRate(gvk string) float64 {
+	k.mu.RLock()
+	defer k.mu.RUnlock()
 
-	if c.total[gvk] == 0 {
+	if k.total[gvk] == 0 {
 		return 0
 	}
 
-	return float64(c.failed[gvk] / c.total[gvk])
+	return float64(k.failed[gvk] / k.total[gvk])
 }

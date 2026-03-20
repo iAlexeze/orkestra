@@ -8,6 +8,7 @@ import (
 
 type CRDHealth struct {
 	name             string
+	started          atomic.Bool
 	healthy          atomic.Bool
 	totalReconciles  atomic.Int64
 	failedReconciles atomic.Int64
@@ -24,7 +25,6 @@ func NewCRDHealth(name string) *CRDHealth {
 }
 
 func (h *CRDHealth) RecordSuccess() {
-	h.startTime.CompareAndSwap(nil, time.Now()) // set once, never overwrite
 	h.totalReconciles.Add(1)
 	h.consecutiveFails.Store(0)
 	h.lastReconcile.Store(time.Now())
@@ -44,6 +44,11 @@ func (h *CRDHealth) RecordFailure(err error, degradeThreshold int) {
 	}
 }
 
+func (h *CRDHealth) RecordStartupFailure(err error, degradeThreshold int) {
+	h.consecutiveFails.Add(1)
+	h.lastError.Store(err.Error())
+}
+
 func (h *CRDHealth) ErrorRate() float64 {
 	total := h.totalReconciles.Load()
 	if total == 0 {
@@ -54,6 +59,28 @@ func (h *CRDHealth) ErrorRate() float64 {
 
 func (h *CRDHealth) IsHealthy() bool {
 	return h.healthy.Load()
+}
+
+func (h *CRDHealth) Started() bool {
+	return h.started.Load()
+}
+
+func (h *CRDHealth) StartedAt() string {
+	v := h.startTime.Load()
+	if v == nil {
+		return "not started"
+	}
+
+	if v.(time.Time).IsZero() {
+		return "starting"
+	}
+
+	return v.(time.Time).Round(time.Second).String()
+}
+
+func (h *CRDHealth) SetStarted() {
+	h.startTime.CompareAndSwap(nil, time.Now()) // set once, never overwrite
+	h.started.Store(true)
 }
 
 func (h *CRDHealth) Name() string {
@@ -73,7 +100,12 @@ func (h *CRDHealth) LastError() string {
 }
 
 func (h *CRDHealth) LastReconcile() time.Time {
-	return h.lastReconcile.Load().(time.Time)
+	v := h.lastReconcile.Load()
+	if v == nil {
+		return time.Time{}
+	}
+
+	return v.(time.Time)
 }
 
 func (h *CRDHealth) ConsecutiveFails() int64 {

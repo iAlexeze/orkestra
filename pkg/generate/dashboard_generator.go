@@ -6,7 +6,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/utils"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
 var (
@@ -15,19 +15,9 @@ var (
 	)
 )
 
-func Dashboards(katalogPath string, dryRun bool) error {
-	data, err := utils.LoadFile(katalogPath)
-	if err != nil {
-		return fmt.Errorf("loading katalog from %q: %w", katalogPath, err)
-	}
-
-	kat, err := parseKatalog(data)
-	if err != nil {
-		return err
-	}
-
+func Dashboards(c []orktypes.CRDEntry, dryRun bool) error {
 	var crds []CRDMeta
-	for _, crd := range kat.Spec.CRDs {
+	for _, crd := range c {
 		if !crd.Enabled {
 			continue
 		}

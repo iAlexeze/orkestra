@@ -7,7 +7,7 @@
 # Reconciler modes:
 #   typed        — compiled API types required (apiTypes.location must be set)
 #                  full type safety, Go hooks, deep copy via generated methods
-#   unstructured — no compiled types needed, works with any CRD
+#   dynamic — no compiled types needed, works with any CRD
 #                  required for declarative hook templates (onCreate, onDelete, etc.)
 #                  fields accessed via: "{{ .spec.replicas }}", "{{ .metadata.name }}"
 #
@@ -15,11 +15,11 @@
 #   apiTypes              → ObjectRegistry + ListRegistry + scheme  (typed mode)
 #   reconciler.hooks      → HookRegistry                            (optional, typed mode)
 #   reconciler.constructor → ReconcilerRegistry                     (required, default: false)
-#   reconciler.onCreate   → generated OnCreate hook implementation  (unstructured mode)
-#   reconciler.onReconcile → generated OnReconcile hook             (unstructured mode)
-#   reconciler.onDelete   → generated OnDelete hook                 (unstructured mode)
+#   reconciler.onCreate   → generated OnCreate hook implementation  (dynamic mode)
+#   reconciler.onReconcile → generated OnReconcile hook             (dynamic mode)
+#   reconciler.onDelete   → generated OnDelete hook                 (dynamic mode)
 
-apiVersion: controller.orkestra.io/v1
+apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
   name: platform-katalog
@@ -103,8 +103,8 @@ spec:
         Represents a namespace managed by Orkestra.
 
 
-    # ── APPLICATION (unstructured, declarative templates) ─────────────────────
-    # Unstructured mode — no compiled types needed.
+    # ── APPLICATION (dynamic, declarative templates) ─────────────────────
+    # Dynamic mode — no compiled types needed.
     # Declarative hook templates — ork generate emits hook implementations
     # from OrkestraRegistry. Zero Go code required.
     #
@@ -126,7 +126,7 @@ spec:
         - managednamespace
 
       apiTypes:
-        # location not required in unstructured mode —
+        # location not required in dynamic mode —
         # but group/version/kind/plural still needed for informer registration
         group: platform.orkestra.io
         version: v1alpha1
@@ -135,7 +135,7 @@ spec:
 
       reconciler:
         default: true
-        mode: unstructured                                                 # no compiled types needed
+        mode: dynamic                                                 # no compiled types needed
 
         finalizers:
           - test-finalizer/application
