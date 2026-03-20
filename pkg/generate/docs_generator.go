@@ -11,11 +11,11 @@ import (
 
 var (
 	crdDocTemplate = template.Must(
-		template.ParseFiles("pkg/generate/templates/crd_doc.tmpl"),
+		template.ParseFS(templateFS, "templates/crd_doc.tmpl"),
 	)
 
 	docsIndexTemplate = template.Must(
-		template.ParseFiles("pkg/generate/templates/docs_index.tmpl"),
+		template.ParseFS(templateFS, "templates/docs_index.tmpl"),
 	)
 )
 

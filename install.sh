@@ -2,7 +2,7 @@
 # install.sh — Orkestra CLI installer
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash
 #
 # Options (via environment variables):
 #   ORK_VERSION   — pin a specific version (default: latest)
@@ -10,13 +10,13 @@
 #
 # Examples:
 #   # Install latest
-#   curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash
 #
 #   # Install specific version
-#   curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | ORK_VERSION=v1.0.0 bash
+#   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | ORK_VERSION=v1.0.0 bash
 #
 #   # Install to custom directory
-#   curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
+#   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
 
 set -euo pipefail
 

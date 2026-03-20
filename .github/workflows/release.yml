@@ -154,7 +154,7 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "### ✅ Install" >> "$GITHUB_STEP_SUMMARY"
           echo '```bash' >> "$GITHUB_STEP_SUMMARY"
-          echo "curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | bash" >> "$GITHUB_STEP_SUMMARY"
+          echo "curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create GitHub release
@@ -210,10 +210,10 @@ jobs:
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo '```bash' >> "$GITHUB_STEP_SUMMARY"
             echo "# Install" >> "$GITHUB_STEP_SUMMARY"
-            echo "curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | bash" >> "$GITHUB_STEP_SUMMARY"
+            echo "curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo "# Or pin to this version" >> "$GITHUB_STEP_SUMMARY"
-            echo "curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | ORK_VERSION=${TAG} bash" >> "$GITHUB_STEP_SUMMARY"
+            echo "curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | ORK_VERSION=${TAG} bash" >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
           else
             echo "### ❌ Release ${TAG} failed" >> "$GITHUB_STEP_SUMMARY"

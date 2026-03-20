@@ -8,7 +8,7 @@ import (
 )
 
 var testTemplate = template.Must(
-	template.ParseFiles("pkg/generate/templates/test_scaffold.tmpl"),
+	template.ParseFS(templateFS, "templates/test_scaffold.tmpl"),
 )
 
 func Tests(crds []orktypes.CRDEntry, dryRun bool) error {

@@ -2,6 +2,7 @@
 package generate
 
 import (
+	"embed"
 	"fmt"
 
 	"bytes"
@@ -10,6 +11,9 @@ import (
 	"path/filepath"
 	"text/template"
 )
+
+//go:embed templates/*.tmpl
+var templateFS embed.FS
 
 func renderTemplateToFile(tmpl *template.Template, data any, outPath string, gofmt bool, dryRun bool) error {
 	var buf bytes.Buffer
