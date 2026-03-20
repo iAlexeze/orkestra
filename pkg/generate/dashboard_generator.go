@@ -9,10 +9,8 @@ import (
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
-var (
-	dashboardTemplate = template.Must(
-		template.ParseFiles("pkg/generate/templates/dashboard.tmpl"),
-	)
+var dashboardTemplate = template.Must(
+	template.ParseFS(templateFS, "templates/dashboard.tmpl"),
 )
 
 func Dashboards(c []orktypes.CRDEntry, dryRun bool) error {

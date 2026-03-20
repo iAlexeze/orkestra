@@ -9,7 +9,7 @@ import (
 )
 
 var exampleTemplate = template.Must(
-	template.ParseFiles("pkg/generate/templates/example_manifest.tmpl"),
+	template.ParseFS(templateFS, "templates/example_manifest.tmpl"),
 )
 
 func Examples(crds []orktypes.CRDEntry, dryRun bool) error {

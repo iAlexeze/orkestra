@@ -1,4 +1,4 @@
-// pkg/kontroller/handlers.go
+// pkg/kontroller/crd_health_handlers.go
 package kontroller
 
 import (
@@ -12,13 +12,30 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// ── Health Handler ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// CRD Health Handler
+// Returns the live health status of a single CRD reconciler.
+// This endpoint is used by:
+//   - /katalog/<crd>/health
+//   - dashboards
+//   - readiness/liveness checks
+//   - operator self‑diagnostics
+//
+// The handler exposes:
+//   - health state (healthy/degraded)
+//   - startup state
+//   - uptime
+//   - reconcile counters
+//   - last error
+//   - last reconcile timestamp
+// ─────────────────────────────────────────────────────────────────────────────
 
 func BuildCRDHealthHandler(name string, h *CRDHealth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := http.StatusOK
 		message := name + " healthy"
 
+		// Mark degraded if health flag is false
 		if !h.IsHealthy() {
 			status = http.StatusServiceUnavailable
 			message = name + " degraded"
@@ -36,12 +53,26 @@ func BuildCRDHealthHandler(name string, h *CRDHealth) http.HandlerFunc {
 			"consecutiveFails": h.consecutiveFails.Load(),
 			"totalReconciles":  h.totalReconciles.Load(),
 			"lastError":        h.lastError.Load(),
-			"lastReconcile":    h.lastReconcile.Load(),
+			"lastReconcile":    h.LastReconcile(),
 		})
 	}
 }
 
-// ── Info Handler ──────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// CRD Info Handler
+// Returns static + dynamic metadata about a CRD:
+//   - GVK/GVR
+//   - mode (dynamic/typed)
+//   - workers, resync, queue depth (with source: default or configured)
+//   - reconciler configuration (hooks, finalizers, constructor)
+//   - resource count from informer
+//   - health summary
+//
+// This endpoint powers:
+//   - /katalog/<crd>
+//   - dashboards
+//   - operator introspection
+// ─────────────────────────────────────────────────────────────────────────────
 
 func BuildCRDInfoHandler(
 	crd orktypes.CRDEntry,
@@ -77,7 +108,17 @@ func BuildCRDInfoHandler(
 	}
 }
 
-// ── Katalog Handler ───────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Katalog Handler
+// Returns a full list of CRDs in the running operator, including:
+//   - metadata (GVK, mode, namespace, dependencies)
+//   - resolved operational values (workers, resync, queue depth)
+//   - reconciler configuration summary
+//   - health summary (uptime, error rate, startedAt)
+//   - per‑CRD endpoints (/health, /info)
+//
+// This is the top‑level endpoint for dashboards and operator UIs.
+// ─────────────────────────────────────────────────────────────────────────────
 
 func BuildKatalogHandler(
 	kat *katalog.Katalog,
@@ -137,21 +178,30 @@ func BuildKatalogHandler(
 	}
 }
 
-// ── reconcilerInfo ────────────────────────────────────────────────────────────
-// Builds the reconciler section of the API response.
-// Exposes what matters operationally — mode, type, hooks presence, finalizers.
-// Never exposes Go function references — those are internal.
+// ─────────────────────────────────────────────────────────────────────────────
+// reconcilerInfo
+// Produces a structured summary of how a CRD is reconciled.
+// This avoids exposing internal Go function pointers and instead reports:
+//
+//   - reconciler type: generic (default) or custom
+//   - finalizers: configured or default
+//   - hooks: yaml, generated, go, or none
+//   - constructor: yaml, go, or none
+//   - declarative templates: counts only (not full templates)
+//
+// This keeps the API stable and safe for dashboards.
+// ─────────────────────────────────────────────────────────────────────────────
 
 func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 	rc := crd.ReconcilerConfig
 
-	// Reconciler type — how is this CRD being reconciled
-	reconcilerType := "generic" // default: true, GenericReconciler
+	// Determine reconciler type
+	reconcilerType := "generic"
 	if !rc.Default {
-		reconcilerType = "custom" // default: false, custom Constructor
+		reconcilerType = "custom"
 	}
 
-	// Finalizers — show resolved list or indicate using Katalog default
+	// Finalizers
 	var finalizersInfo map[string]interface{}
 	if len(rc.Finalizers) > 0 {
 		finalizersInfo = map[string]interface{}{
@@ -165,10 +215,9 @@ func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 		}
 	}
 
-	// Hooks — are they configured and how?
+	// Hooks
 	var hooksInfo map[string]interface{}
 	if rc.Hooks != nil {
-		// Explicit Go hook declared in Katalog via reconciler.hooks
 		hooksInfo = map[string]interface{}{
 			"configured": true,
 			"source":     "yaml",
@@ -176,13 +225,11 @@ func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 			"function":   rc.Hooks.Function,
 		}
 	} else if rc.HookFactory != nil && (rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil) {
-		// Hook factory was auto-generated from declarative templates by ork generate
 		hooksInfo = map[string]interface{}{
 			"configured": true,
 			"source":     "generated",
 		}
 	} else if rc.HookFactory != nil {
-		// Hook factory set directly in Go mode (BuildKatalogFromGo)
 		hooksInfo = map[string]interface{}{
 			"configured": true,
 			"source":     "go",
@@ -193,7 +240,7 @@ func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 		}
 	}
 
-	// Constructor — custom reconciler location if declared
+	// Constructor
 	var constructorInfo map[string]interface{}
 	if rc.ConstructorDecl != nil {
 		constructorInfo = map[string]interface{}{
@@ -214,20 +261,22 @@ func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 	}
 
 	result := map[string]interface{}{
-		"type":        reconcilerType, // "generic" or "custom"
+		"type":        reconcilerType,
 		"finalizers":  finalizersInfo,
 		"hooks":       hooksInfo,
 		"constructor": constructorInfo,
 	}
 
-	// Declarative templates — only show if configured (dynamic mode)
+	// Declarative templates (dynamic mode)
 	if rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil {
 		templates := map[string]interface{}{}
 		if rc.OnCreate != nil {
 			onCreate := templateSummary(rc.OnCreate)
-			// Check if any onCreate entries have reconcile: true — show onReconcile implicitly
 			if hasAutoReconcile(rc.OnCreate) {
-				templates["onReconcile"] = map[string]interface{}{"source": "auto", "from": "onCreate[reconcile:true]"}
+				templates["onReconcile"] = map[string]interface{}{
+					"source": "auto",
+					"from":   "onCreate[reconcile:true]",
+				}
 			}
 			templates["onCreate"] = onCreate
 		}
@@ -243,8 +292,12 @@ func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 	return result
 }
 
-// templateSummary returns a summary of declared resource templates.
-// Shows counts rather than full declarations — keeps the API response lean.
+// ─────────────────────────────────────────────────────────────────────────────
+// templateSummary
+// Produces a compact summary of declarative templates for a CRD.
+// Only counts are returned — not full templates — to keep API responses small.
+// ─────────────────────────────────────────────────────────────────────────────
+
 func templateSummary(t *orktypes.HookTemplates) map[string]interface{} {
 	if t == nil {
 		return map[string]interface{}{}
@@ -277,7 +330,16 @@ func templateSummary(t *orktypes.HookTemplates) map[string]interface{} {
 	return summary
 }
 
-// ── Display value resolution ──────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// resolveCRDDisplayValues
+// Resolves operational values for a CRD, including:
+//   - workers (configured or default)
+//   - resync period (configured or default)
+//   - queue depth (configured or default)
+//   - resource count from informer
+//
+// This ensures the API always shows the *effective* values the operator uses.
+// ─────────────────────────────────────────────────────────────────────────────
 
 type crdDisplayValues struct {
 	resync           string
@@ -295,10 +357,9 @@ func resolveCRDDisplayValues(
 	inf cache.SharedIndexInformer,
 ) crdDisplayValues {
 
-	// Queue Depth
+	// Queue depth
 	queueDepth := crd.Queue.MaxQueueDepth
 	queueDepthSource := "configured"
-
 	if queueDepth == 0 {
 		queueDepth = kfg.Katalog().DefaultMaxQueueDepth
 		queueDepthSource = "default"
@@ -320,7 +381,7 @@ func resolveCRDDisplayValues(
 		workersSource = "default"
 	}
 
-	// Resource count
+	// Resource count from informer
 	resourceCount := 0
 	if inf != nil {
 		resourceCount = len(inf.GetStore().List())
@@ -337,7 +398,12 @@ func resolveCRDDisplayValues(
 	}
 }
 
-// Helper
+// ─────────────────────────────────────────────────────────────────────────────
+// hasAutoReconcile
+// Returns true if any declarative template has `reconcile: true`,
+// meaning onCreate implicitly triggers onReconcile.
+// ─────────────────────────────────────────────────────────────────────────────
+
 func hasAutoReconcile(t *orktypes.HookTemplates) bool {
 	if t == nil {
 		return false

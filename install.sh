@@ -2,7 +2,7 @@
 # install.sh — Orkestra CLI installer
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash
 #
 # Options (via environment variables):
 #   ORK_VERSION   — pin a specific version (default: latest)
@@ -10,13 +10,13 @@
 #
 # Examples:
 #   # Install latest
-#   curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash
 #
 #   # Install specific version
-#   curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | ORK_VERSION=v1.0.0 bash
+#   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | ORK_VERSION=v1.0.0 bash
 #
 #   # Install to custom directory
-#   curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
+#   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
 
 set -euo pipefail
 
@@ -126,10 +126,19 @@ install_ork() {
     tmp_dir=$(mktemp -d)
     trap 'rm -rf "${tmp_dir}"' EXIT
 
+    # In install.sh, around line 80-90
+tmp_dir=$(mktemp -d)
+trap 'rm -rf "${tmp_dir}"' EXIT
+
     info "Downloading ${archive}..."
     if ! curl -sSfL "${download_url}" -o "${tmp_dir}/${archive}"; then
         fatal "Download failed. Check that version ${version} exists at:
-  https://github.com/${REPO}/releases"
+    https://github.com/${REPO}/releases"
+    fi
+
+    # Verify the file was actually downloaded
+    if [[ ! -f "${tmp_dir}/${archive}" ]]; then
+        fatal "Downloaded file not found – something went wrong"
     fi
 
     # Verify checksum if available
