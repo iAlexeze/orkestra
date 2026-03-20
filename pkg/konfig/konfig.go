@@ -12,7 +12,6 @@ import (
 func Init(filenames ...string) (*Konfig, error) {
 	err := godotenv.Load(filenames...)
 	if err != nil {
-		log.Printf("failed to load env from file: %v", err)
 		log.Print("Defaulting to system defined variables...")
 	}
 

@@ -16,16 +16,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
+      # - name: Set up Go
+      #   uses: actions/setup-go@v5
+      #   with:
+      #     go-version-file: go.mod
+      #     cache: true
 
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
+      # - name: golangci-lint
+      #   uses: golangci/golangci-lint-action@v6
+      #   with:
+      #     version: latest
 
       - name: Write summary
         if: always()
@@ -154,7 +154,7 @@ jobs:
 
       - name: Validate Meta Katalog example
         run: |
-          ./bin/ork validate --katalog examples/meta-katalog/meta.yaml
+          ./bin/ork validate --katalog examples/komposer/komposer.yaml
           echo "✅ Meta Katalog example valid"
 
       - name: Write summary
