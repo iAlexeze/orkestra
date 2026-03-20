@@ -68,7 +68,11 @@ Delete the CR and Orkestra cleans up.
 ## Install
 
 ```bash
+# Install
 curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash
+
+# Or pin to a specific version
+curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | ORK_VERSION=v1.0.0 bash
 ```
 
 Verify:
@@ -302,6 +306,11 @@ Contributions, issues, and discussions are welcome.
 
 ---
 
+## Publish
+- [Why Orkestra](./publish/why-orkestra.md)
+- [Declarative Operators - White paper](./publish/declarative-operators-whitepaper.md)
+
+---
 ## License
 
 [MIT](LICENSE)

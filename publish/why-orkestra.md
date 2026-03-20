@@ -80,7 +80,12 @@ Every CRD automatically gets:
 - dynamic queue depth  
 - worker counts  
 
-No custom code required.
+No custom code required.  
+Aggregate view at `/katalog`.
+
+Orkestra health:
+- `/health` — liveness probe  
+- `/ready` — readiness probe
 
 ### 5. **Operators become safe**
 Orkestra enforces:
@@ -121,3 +126,5 @@ Orkestra aims to make operators:
 The Kubernetes community has long needed a way to build operators without writing operators.
 
 Orkestra is that way.
+
+But this is just the beginning. The patterns enabled by declarative operators extend far beyond simplification — they fundamentally change how we think about Kubernetes extensibility. The accompanying [whitepaper](./declarative-operators-whitepaper.md) explores these patterns in depth.
