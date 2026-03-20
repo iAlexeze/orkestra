@@ -88,9 +88,9 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 
 var generateRuntimeCmd = &cobra.Command{
 	Use:   "runtime",
-	Short: "Generate 'pkg/runtime/generated_runtime_registry.go' from a Katalog (local or remote)",
+	Short: "Generate 'pkg/runtime/zz_generated_runtime_registry.go' from a Katalog (local or remote)",
 	Long: `Reads one or more crd-katalog.yaml files (local paths or remote URLs), validates them,
-and emits 'pkg/runtime/generated_runtime_registry.go' containing RegisterRuntimeObjects() and
+and emits 'pkg/runtime/zz_generated_runtime_registry.go' containing RegisterRuntimeObjects() and
 RegisterScheme() for all enabled CRDs with reconciler.default: true.
 
 The file is created if it does not exist and overwritten on each run — idempotent.
@@ -117,7 +117,6 @@ Examples:
 
 		log.Printf("runtime generated successfully\n")
 		log.Printf("runtime: %s/%s\n", generate.RuntimePackage, generate.RegistryFile)
-		log.Printf("hooks: %s/%s\n", generate.RuntimePackage, generate.HooksFile)
 		return nil
 	},
 }

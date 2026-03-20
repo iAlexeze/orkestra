@@ -1,130 +1,134 @@
 # Why Orkestra?
 
-Kubernetes has always promised declarative infrastructure.  
-But operators — the very mechanism used to extend Kubernetes — have remained stubbornly imperative.
+Kubernetes has always promised declarative infrastructure.
+You describe what you want. The platform makes it so.
 
-Every operator framework to date has required:
-- writing Go
-- scaffolding boilerplate
-- generating code
-- wiring informers
-- managing schemes
-- building controllers
-- maintaining custom reconcilers
+That promise holds everywhere — until you need to extend Kubernetes itself.
 
-This creates a paradox:  
-**to make Kubernetes more declarative, you must write imperative code.**
+The moment you need a custom resource, you leave the declarative world.
+You write Go. You scaffold controllers. You wire informers and schemes.
+You manage reconcile loops, error handling, retries, and backoff.
+You build images, write tests, maintain boilerplate that nobody asked for.
+
+Every operator framework to date has accepted this as the cost of entry.
+Kubebuilder. Operator SDK. Metacontroller. They all make the Go easier.
+None of them make it unnecessary.
+
+This creates a paradox: **to make Kubernetes more declarative, you must
+write imperative code.**
 
 Orkestra breaks that paradox.
 
 ---
 
-## The Core Idea
+## What changed
 
-**Orkestra makes operators declarative.  
-Fully. End‑to‑end. No Go required.**
+Orkestra treats operators the same way Kubernetes treats deployments —
+as a declaration of intent.
 
-A user writes a Katalog YAML describing:
-- the CRDs they want to manage
-- the templates that define how resources should be reconciled
-- optional hooks, constructors, and typed APIs
+You write a Katalog. You describe the CRDs you want to manage, the resources
+that should exist for each CR, and how they should stay in sync. You run
+`ork run`. The operator is live.
 
-Then they run:
-
+```yaml
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+spec:
+  crds:
+    - name: website
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: Website
+        plural: websites
+      reconciler:
+        default: true
+        onCreate:
+          deployments:
+            - image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              reconcile: true
+          services:
+            - port: "80"
+              targetPort: "{{ .spec.port }}"
+              reconcile: true
 ```
-ork run --katalog ./katalog.yaml
+
+```bash
+ork run --katalog website.yaml
 ```
 
-And a production‑grade operator comes to life.
+That is the entire operator. Apply a `Website` CR and Orkestra creates the
+Deployment and Service. Change a field and Orkestra reconciles. Delete the
+CR and Orkestra cleans up. No Go. No code generation. No compilation.
 
-No code generation.  
-No compilation.  
-No boilerplate.  
-No controller-runtime.  
-No Kubebuilder scaffolding.
-
-Just intent → behavior.
+The operator also has a health API, emits Prometheus metrics, supports leader
+election, and handles graceful shutdown. Not because you wrote any of that —
+because Orkestra provides it for every CRD, always, for free.
 
 ---
 
-## Why This Matters
+## Why this is different
 
-### 1. **Operators become accessible**
-You no longer need to be a Go engineer to build an operator.  
-Platform teams, SREs, and application owners can define behavior declaratively.
+Other frameworks lower the barrier to writing Go operators. Orkestra removes
+the barrier entirely for the common case. That is not a reduction in
+complexity — it is a different category of tool.
 
-### 2. **Operators become portable**
-A Katalog is just YAML.  
-It can be versioned, templated, rendered, diffed, and promoted like any other manifest.
+**Accessibility.** Platform engineers, SREs, and application teams can now
+build and own operators without learning Go. The person who understands the
+domain — what a `Website` should do — can write the operator.
 
-### 3. **Operators become composable**
-Komposers allow teams to merge Katalogs from:
-- Git repos  
-- Helm charts  
-- remote URLs  
-- local files  
-- environment‑specific overrides  
+**Portability.** A Katalog is YAML. It can be versioned in Git, rendered
+with Helm, promoted across environments, diffed in PRs, and shared with
+other teams as easily as any other manifest. Operators become artifacts, not
+codebases.
 
-This creates a clean separation between:
-- **CRD definition**  
-- **CRD composition**  
-- **CRD operation**
+**Composability.** A Komposer composes Katalogs from files, Helm charts,
+remote URLs, and environment-specific overrides. Platform teams publish
+standard CRD definitions. Application teams consume and override them.
+The same pattern that Helm brought to deployment manifests now applies to
+operator configuration.
 
-### 4. **Operators become observable**
-Every CRD automatically gets:
-- `/katalog/{crd}` info endpoint  
-- `/katalog/{crd}/health` health endpoint  
-- reconcile metrics  
-- error rates  
-- uptime  
-- dynamic queue depth  
-- worker counts  
+**Consistency.** Every CRD managed by Orkestra behaves the same way.
+Same health endpoints. Same metrics. Same dependency ordering. Same
+lifecycle semantics. An organisation running ten Orkestra operators has
+ten operators with identical operational characteristics — not ten different
+systems each invented from scratch.
 
-No custom code required.  
-Aggregate view at `/katalog`.
-
-Orkestra health:
-- `/health` — liveness probe  
-- `/ready` — readiness probe
-
-### 5. **Operators become safe**
-Orkestra enforces:
-- dependency ordering  
-- health degradation  
-- readiness gates  
-- startup synchronization  
-- graceful shutdown  
-
-All without the user writing a single line of Go.
+**Escape hatches.** When a CRD needs Go — typed spec access, complex state
+machines, external API calls — Orkestra provides Go hooks and custom
+constructors. You write only what you need. The framework handles everything
+else.
 
 ---
 
-## The Philosophy
+## The philosophy
 
-Orkestra is built on three principles:
+**Declarative first.** If Kubernetes can express it declaratively, Orkestra
+should too. Templates, dependencies, finalizers, drift correction — all
+declared, none written.
 
-### **1. Declarative First**
-If Kubernetes can express it declaratively, Orkestra should too.
+**Composition over code.** Operators should be assembled from declarations
+and reusable registry implementations, not programmed from scratch.
 
-### **2. Composition Over Code**
-Operators should be assembled, not programmed.
-
-### **3. Runtime Over Build‑Time**
-Behavior should be interpreted at runtime, not baked into binaries.
+**Runtime over build-time.** Behavior should be interpreted at runtime, not
+baked into binaries. A change to a Katalog changes operator behavior without
+a build, a push, or a deploy.
 
 ---
 
-## The Vision
+## The bigger picture
 
-Orkestra aims to make operators:
-- easier to write  
-- easier to maintain  
-- easier to reason about  
-- easier to share  
-- easier to scale  
+The patterns that make Orkestra work — declarative reconciliation, dependency
+graphs, the registry model, multi-source composition — are not just
+simplifications of existing patterns. They are a different way of thinking
+about what an operator is.
 
-The Kubernetes community has long needed a way to build operators without writing operators.
+An operator is not a controller. It is not a Go binary. It is a declaration
+of how a domain concept maps to Kubernetes resources and how that mapping
+should be maintained over time.
 
-Orkestra is that way.
+Orkestra is the runtime that makes that declaration executable.
 
-But this is just the beginning. The patterns enabled by declarative operators extend far beyond simplification — they fundamentally change how we think about Kubernetes extensibility. The accompanying [whitepaper](./declarative-operators-whitepaper.md) explores these patterns in depth.
+The [whitepaper](./declarative-operators-whitepaper.md) explores these
+patterns and their implications in depth.

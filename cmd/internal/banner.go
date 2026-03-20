@@ -7,7 +7,7 @@ import (
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
-func printBanner(kfg *orkestraKfg, leader string) {
+func printBanner(kfg *orkestraKfg, konductor string) {
 	// Logo
 	fmt.Print(utils.ColorCyan)
 	fmt.Println(utils.Center(utils.OrkestraLogo))
@@ -18,10 +18,10 @@ func printBanner(kfg *orkestraKfg, leader string) {
 	fmt.Printf("        Environment: %s%s%s\n", utils.ColorBlue, kfg.konfig.Ork().Environment, utils.ColorReset)
 	fmt.Printf("        Listening on: %s:%s%s\n", utils.ColorGreen, kfg.konfig.Health().Port, utils.ColorReset)
 
-	if leader != "" {
-		fmt.Printf("        Leader: %s%s%s\n", utils.ColorYellow, leader, utils.ColorReset)
+	if konductor != "" {
+		fmt.Printf("        Konductor: %s%s%s\n", utils.ColorYellow, konductor, utils.ColorReset)
 	} else {
-		fmt.Printf("        Leader: %sPENDING%s\n", utils.ColorRed, utils.ColorReset)
+		fmt.Printf("        Konductor: %sPENDING%s\n", utils.ColorRed, utils.ColorReset)
 	}
 
 	fmt.Println("====================================================")

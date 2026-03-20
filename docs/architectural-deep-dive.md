@@ -1,706 +1,323 @@
-# **Architectural Deep Dive (New Edition)**  
-### *A Runtime‑Composable, Multi‑CRD Kubernetes Operator Framework*
+# Orkestra Architecture
 
-This document provides a complete, modern overview of the internal architecture of Orkestra — a runtime‑composable, multi‑CRD Kubernetes operator framework. It explains how CRDs are loaded (Go or YAML), how dependency graphs shape kontroller lifecycle, how informers and clients are generated dynamically, how the GenericReconciler with hooks eliminates boilerplate, and how Orkestra achieves high availability, observability, and zero‑code extensibility.
+Orkestra is a declarative operator runtime. You declare CRDs in a Katalog.
+Orkestra builds the operator around them — clients, informers, reconcilers,
+workers, dependency ordering, health API, metrics, and leader election.
 
-This is not a traditional operator.  
-It is a **universal operator runtime**.
-
----
-
-# **Core Design Principles**
-
-The framework is built on five foundational ideas:
-
-### **1. CRDs Are Data, Not Code**
-CRDs are defined declaratively (Go or YAML).  
-Orkestra runtime constructs everything else dynamically.
-
-### **2. Runtime Composition**
-Clients, informers, reconcilers, workers, and resync intervals are all created at runtime based on registry entries.
-
-### **3. Dependency‑Aware Lifecycle**
-CRDs declare dependencies.  
-Orkestra starts and stops them in topological order.
-
-### **4. Zero‑Code by Default, Hooks When Needed**
-The `GenericReconciler` provides a full reconciler with **zero Go code**.  
-When custom logic is required, implement **only the hooks you need**.
-
-### **5. Remote Everything**
-API types and hooks can live in separate repositories. Orkestra fetches them at generation time.
+You write a Katalog. Orkestra manages everything else.
 
 ---
 
-# **High‑Level Architecture**
+## Core design principles
 
-```mermaid
-flowchart TB
-    subgraph Registry["CRD Registry (Go/YAML)"]
-        CRD["CRD Entries"]
-        DEP["Dependencies"]
-        RESYNC["Resync Intervals"]
-        WORKERS["Per‑CRD Workers"]
-    end
+**CRDs are data.** Every CRD is a declaration in a Katalog or Komposer YAML
+file. The runtime reads the declaration and constructs all the machinery at
+startup. Nothing is hardcoded.
 
-    subgraph Generation["`ork generate registry`"]
-        FETCH["Fetch API Types & Hooks"]
-        REGEN["Generate registry.go"]
-    end
+**Dependency-aware lifecycle.** CRDs declare what they depend on. Orkestra
+builds a DAG, validates it, and starts CRDs in topological order. Shutdown
+runs in reverse. Dependents never start before their dependencies are ready.
 
-    subgraph Scheme["Scheme Registry"]
-        SCH["AddToScheme()"]
-    end
+**Two CRD styles, one model.** A CRD is either dynamic (default) or typed.
+Dynamic CRDs use the dynamic client and `*unstructured.Unstructured` —
+no compiled Go types needed, no scheme registration, no code generation.
+Typed CRDs have a compiled Go type at `apiTypes.location` — the generator
+registers the type and scheme at build time. Both styles run through the
+same reconciler, the same health API, the same metrics.
 
-    subgraph Runtime["Runtime Construction"]
-        CPF["SharedClientFactory"]
-        INF["SharedInformerFactory"]
-        GR["GenericReconciler Factory"]
-        CREG["Kontroller Registry"]
-    end
+**Three reconciler paths, one framework.** 
+- Every CRD starts with `reconciler.default: true` — GenericReconciler handles the full lifecycle.
 
-    subgraph Control["Dependency Kontroller"]
-        START["Start CRDs in dependency order"]
-        STOP["Shutdown in reverse order"]
-        WORK["Per‑CRD Worker Pools"]
-    end
-
-    subgraph Observability["Observability Layer"]
-        METRICS["5 Per‑CRD Metrics"]
-        HEALTH["/katalog/* Health APIs"]
-        EVENTS["Kubernetes Events"]
-    end
-
-    subgraph HA["High Availability"]
-        LE["Leader Election"]
-        CACHE["Warm Informer Caches"]
-    end
-
-    Registry --> Generation
-    Generation --> Scheme
-    Scheme --> Runtime
-    Runtime --> Control
-    Control --> Observability
-    Control --> HA
-```
-
----
-
-# **1. CRD Registry (Go Mode + YAML Mode)**
-
-The CRD Registry is the **source of truth** for all CRDs Orkestra manages.
-
-It supports two modes:
-
----
-
-## **Go Mode (Typed, Default)**
-
-CRDs are defined in Go with full type safety:
-
-```go
-{
-    Name:       "project",
-    Object:     &projectv1.Project{},
-    ListObject: &projectv1.ProjectList{},
-    Group:      projectv1.Group,
-    Version:    projectv1.Version,
-    Kind:       projectv1.Kind,
-    Plural:     projectv1.NamePlural,
-    Workers:    3,
-    Resync:     10 * time.Minute,
-    Scheme:     projectv1.AddToScheme,
-    ReconcilerConfig: reconciler.Config{
-        Default: true,  // Zero‑code reconciler
-    },
-}
-```
-
-### Benefits
-- Full type safety  
-- No manual scheme registration  
-- IDE autocompletion  
-- Compile‑time validation  
-
----
-
-## **YAML Mode (Dynamic)**
-
-CRDs are loaded from a YAML file (local or remote URL):
-
-```yaml
-crds:
-  - name: project
-    enabled: true
-    group: platform.orkestra.io
-    version: v1alpha1
-    kind: Project
-    plural: projects
-    workers: 3
-    resync: 10m
-    dependsOn: []
-    
-    apiTypes:
-      location: github.com/yourorg/your-api/types/project/v1alpha1
-    
-    reconciler:
-      default: true  # Zero code required!
-```
-
-### Benefits
-- No recompilation  
-- GitOps‑friendly  
-- Multi‑cluster orchestration  
-- Canary rollouts  
-- Partner integrations  
-- Easy to enable/disable CRDs without code changes  
-
----
-
-# **2. The `ork generate registry` Command**
-
-This is the **magic step** that makes YAML mode possible:
-
-```bash
-ork generate registry --katalog initialize/crd-katalog.yaml
-```
-
-**What it does:**
-1. Reads all enabled CRDs from the Katalog
-2. For each CRD with `apiTypes.location`, runs `go get` to fetch the package
-3. For each CRD with `hooks.location`, runs `go get` to fetch the hooks
-4. Generates `initialize/registry.go` containing:
-   - `RegisterRuntimeObjects()` – object factories for all CRDs
-   - `RegisterScheme()` – scheme registration for all CRDs
-5. Wires everything together
-
-**If `go mod tidy` is needed, run it once. Done.**
-
-This means API types and hooks can live in **completely separate repositories**, versioned independently, and Orkestra consumes them as first‑class Go modules.
-
----
-
-# **3. Dependency Graph**
-
-Each CRD may declare dependencies:
-
-```yaml
-dependsOn: ["project", "managednamespace"]
-```
-
-The framework builds a **directed acyclic graph (DAG)** and validates:
-
-- No cycles  
-- All dependencies exist  
-- No self‑dependencies  
-
-### Why this matters
-- CRDs start in correct order  
-- Shutdown happens in reverse order  
-- Reconcilers never run before their prerequisites  
-- Multi‑CRD operators behave predictably  
-
----
-
-# **4. Dynamic Resync Per CRD**
-
-Each CRD can define its own resync interval:
-
-```yaml
-resync: 10m
-```
-
-If omitted, Orkestra uses the global default.
-
-### What this enables
-- High‑frequency reconciliation for volatile CRDs  
-- Low‑frequency reconciliation for stable CRDs  
-- Environment‑specific tuning (dev vs prod)  
-- Fine‑grained performance control  
-
-Logs clearly show the behavior:
-
-```
-processing informer for Project with resync duration: 10m0s
-processing informer for ManagedNamespace with default resync duration: 30s
-```
-
----
-
-# **5. Per‑CRD Worker Pools**
-
-Each CRD defines its own concurrency:
-
-```yaml
-workers: 5
-```
-
-Workers are isolated per GVK:
-
-- No CRD starves another  
-- No CRD overloads the queue  
-- High‑throughput CRDs scale independently  
-
-**Worker counts are live‑visible** in metrics and the Katalog API:
-
-```json
-{
-  "workers": 3,
-  "workersSource": "configured",
-  "workersActive": 3
-}
-```
-
-The `workersSource` field tells operators whether the value came from the Katalog or a default — zero configuration mystery.
-
----
-
-# **6. Scheme Registry**
-
-The Scheme Registry builds the runtime scheme:
-
-- In Go mode: **automatic** from CRD definitions  
-- In YAML mode: calls generated `RegisterScheme()` from `ork generate`
-
-This ensures:
-- REST clients know how to encode/decode CRDs  
-- Informers can deserialize objects  
-- Events and status updates work correctly  
-
----
-
-# **7. SharedClientFactory**
-
-A generic factory that creates REST clients for **any CRD**:
-
-```go
-client, err := kube.NewClient(listObject, kubeclient.CRDInfo{
-    Kind:       crd.APITypes.Kind,
-    Group:      crd.APITypes.Group,
-    Version:    crd.APITypes.Version,
-    APIPath:    crd.APITypes.APIPath,
-    Plural:     crd.APITypes.Plural,
-    Namespace:  crd.Namespace,
-    Namespaced: crd.Namespaced,
-})
-```
-
-- Uses CRD metadata (group, version, plural, API path)  
-- Configures serializers from the scheme  
-- Produces typed clients for any CRD  
-
-This is the foundation for dynamic CRD support.
-
----
-
-# **8. SharedInformerFactory**
-
-The heart of the framework. For each CRD, it:
-
-1. Creates a ListWatch using the client provider  
-2. Builds a SharedIndexInformer  
-3. Applies the CRD's **per‑CRD resync** interval  
-4. Registers event handlers that enqueue with GVK  
-5. Caches informers for reuse  
-6. Starts all informers when `Start()` is called  
-
-```go
-infFactory := informer.SharedInformerFactory(
-    provider,
-    queueRegistry,
-    defaultWq,
-    scheme,
-    namespace,
-    defaultResync,
-)
-
-inf := infFactory.For(object, ctx, informer.Options{
-    Resync: crd.Resync,  // Per‑CRD resync!
-    Wq:     perCRDQueue, // Per‑CRD or shared queue
-})
-```
-
-**This eliminates all informer boilerplate.**
-
----
-
-# **9. Kontroller Registry**
-
-At runtime, the framework registers:
-
-- The informer  
-- The reconciler factory  
-- The CRD metadata  
-
-Mapped by GVK:
-
-```go
-ktrlRegistry := kontroller.NewKontrollerRegistry()
-ktrlRegistry.Register(gvk, crd, inf, reconcilerFactory)
-```
-
-This allows Orkestra to dispatch events dynamically:
-
-```go
-reconciler := registry.GetReconciler(item.GVK)
-if reconciler != nil {
-    reconciler.Reconcile(ctx, item.Key)
-}
-```
-
----
-
-# **10. The GenericReconciler – Zero‑Code by Default**
-
-The `GenericReconciler` is the **crown jewel** of Orkestra's zero‑boilerplate design.
-
-```go
-type GenericReconciler[T domain.Object] struct {
-    informer cache.SharedIndexInformer
-    event    *event.Event
-    kube     *kubeclient.Kubeclient
-    hooks    domain.ReconcileHooks[T]
-    crd      CRDInfo
-}
-```
-
-**Features provided automatically:**
-
-| Feature | Implementation |
-|---------|---------------|
-| **Cache reads** | From informer store (zero API cost) |
-| **Type safety** | Generic type parameter + factory |
-| **Deep copies** | Never mutates cached objects |
-| **Finalizers** | Auto‑add/remove based on CRD config |
-| **Events** | Emitted for all major operations |
-| **Deletion handling** | Calls `OnDelete` hook if provided |
-| **NotFound handling** | Calls `OnNotFound` hook if provided |
-| **Metrics** | All 5 metrics recorded automatically |
-| **Health tracking** | Updates per‑CRD health state |
-
-**All hooks are optional** – implement only what you need.
-
----
-
-## **Three Levels of Reconciler Involvement**
-
-### 🟢 **Level 1: Zero‑Code (reconciler.default: true)**
 ```yaml
 reconciler:
-  default: true
+  default: true             # Default behaviour
 ```
-- Full reconciler provided by `GenericReconciler`
-- Includes finalizers, events, metrics, health tracking
-- **No Go code required!**
 
-### 🟡 **Level 2: Hook‑Based**
+- Add `reconciler.hooks` for Go hooks when you need type-safe access or
+external API calls. 
+
 ```yaml
 reconciler:
   default: true
   hooks:
-    location: github.com/yourorg/your-hooks
-    package: hooks.ProjectHooks
-```
-Implement only the hooks you need:
-
-```go
-func ProjectHooks() domain.ReconcileHooks[domain.Object] {
-    return domain.ReconcileHooks[domain.Object]{
-        OnReconcile: func(ctx context.Context, obj domain.Object) error {
-            project := obj.(*projectv1.Project)  // Type-safe after assertion
-            // Your business logic here
-            return nil
-        },
-        OnDelete: func(ctx context.Context, obj domain.Object) error {
-            project := obj.(*projectv1.Project)
-            // Cleanup external resources
-            return nil
-        },
-        // OnNotFound is optional – skip if not needed
-    }
-}
+    location: github.com/my-org/orkestra/pkg/reconciler/hooks
+    function: WebsiteHooks
+    alias: websitehooks         # Optional
 ```
 
-### 🔴 **Level 3: Full Custom**
+- Set `reconciler.default: false` with a `constructor` when you need full control of the reconcile loop. 
+
 ```yaml
 reconciler:
   default: false
-  constructor: "reconciler.NewCustomReconciler"
+  constructor: 
+    location: github.com/my-org/orkestra/pkg/reconciler
+    function: NewWebsiteReconciler
+    alias: websitereconciler    # Optional
 ```
-Implement the entire `domain.Reconciler` interface for complete control.
+In all three cases Orkestra owns the informer, workqueue, metrics, health, and leader election.
+
+**Zero-code by default.** For dynamic CRDs with `onCreate`/`onReconcile`/
+`onDelete` template declarations, no code generation is needed. The
+GenericReconciler interprets templates directly at runtime. `ork run` is
+the only command required.
 
 ---
 
-# **11. Dependency‑Aware Kontroller**
+## High-level flow
 
-Orkestra is no longer a simple loop.  
-It is a **dependency‑aware orchestrator**.
+```
+Katalog or Komposer YAML
+        │
+        ▼
+Merger — resolves sources, deduplicates, validates
+        │
+        ▼
+konstructOrkestra — wires all runtime components
+  ├── NewSchemeRegistry   — registers typed CRD schemes
+  ├── NewKubeclient       — REST client, dynamic client, clientset
+  ├── ClientProvider      — CRD REST client factories (typed CRDs only)
+  ├── SharedInformerFactory — per-CRD informers with per-CRD resync
+  ├── KontrollerRegistry  — maps GVK → informer + reconciler factory
+  ├── HealthServer        — routes registered before start
+  └── DependencyKontroller — topological startup + worker dispatch
+        │
+        ▼
+Orkestra — starts all komponents in registration order
+        │
+        ▼
+KonductorElection — leader election as post-start hook
+  └── kontroller.RunOrDie() runs only on the elected leader
+```
 
-### Startup Sequence
-1. Compute topological order from dependency graph
-2. For each CRD in order:
-   - Create worker pool (`workers` from Katalog)
-   - Start informer (already running via factory)
-   - Wait for cache sync
-   - Signal readiness to dependents
+---
 
-### Worker Pools
-Each CRD has its own isolated worker pool with:
-- Configurable size (`workers`)
-- Metrics (`controller_workers_active`)
-- Health tracking
+## Startup sequence
 
-### Dispatch Logic
+`Konduct` is the entry point. It calls `konstructOrkestra` to wire
+everything, starts all komponents via `orkestra.Start()`, then starts
+leader election as a post-start hook.
+
 ```go
-func (c *DependencyKontroller) processNextItem(ctx context.Context) bool {
-    item, shutdown := c.queue.Get()
-    if shutdown {
-        return false
-    }
-    defer c.queue.Done(item)
+func Konduct(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
+    startup := konstructOrkestra(kfg, m, ctx)
 
-    reconciler := c.registry.GetReconciler(item.GVK)
-    if reconciler == nil {
-        c.queue.Forget(item)
-        return true
-    }
+    go func() {
+        startup.orkestra.Start(ctx)
+    }()
 
-    // safeReconcile wraps the actual reconcile with:
-    // - panic recovery
-    // - metrics recording
-    // - health state updates
-    if err := c.safeReconcile(ctx, reconciler, item); err != nil {
-        c.queue.AddRateLimited(item)
-        return true
-    }
+    ko := konductor.NewKonductorElection(
+        startup.kube,
+        startup.event,
+        func(ctx context.Context) { startup.kontroller.RunOrDie(ctx) },
+        func(konductor string) { printBanner(startup, konductor) },
+        konductor.Options{...},
+    )
 
-    c.queue.Forget(item)
-    return true
+    startup.orkestra.AddPostStartHook(ko, func(ctx context.Context) {
+        ko.Start(ctx)
+    })
+
+    startup.orkestra.Wait()
 }
 ```
 
-### Shutdown
-- Stops accepting new items
-- Drains workers in reverse dependency order
-- Waits for in‑flight reconciliations
-- Releases leader lease
+Komponent startup order (sequential, each must succeed before the next starts):
+
+```
+1. HealthServer        — routes registered before start, first up last down
+2. Kubeclient          — REST config, dynamic client, clientset
+3. EventRecorder       — depends on kubeclient
+4. QueueRegistry       — per-CRD isolated queues
+5. DefaultWorkqueue    — shared fallback queue
+6. SharedInformerFactory — starts all informers, closes ready channel
+7. DependencyKontroller — topological CRD startup + event dispatch
+```
+
+Shutdown runs in reverse order. The KonductorElection lease is released before
+the kontroller shuts down.
 
 ---
 
-# **12. Observability Layer**
+## konstructOrkestra
 
-## **Prometheus Metrics**
+`konstructOrkestra` [wires](../cmd/internal/konstruct_orkestra.go) the entire runtime without starting anything
+(except kubeclient, which is started early as downstream services need
+the REST config). All reconciler factories are closures — called only after
+`orkestra.Start()` guarantees all komponents are live.
 
-Five production‑grade metrics, all per‑CRD:
+**Step by step:**
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `controller_resource_count` | Gauge | Live CR count from informer cache (zero API cost) |
-| `controller_reconcile_total` | Counter | Success/error outcomes per CRD |
-| `controller_reconcile_duration_seconds` | Histogram | Reconciliation latency per CRD |
-| `controller_queue_depth` | Gauge | Current queue backlog per CRD |
-| `controller_workers_active` | Gauge | Active worker count per CRD |
-
-All metrics use the full GVK string as the `crd` label — consistent and unambiguous.
-
-## **Katalog Health API**
-
-Auto‑generated HTTP endpoints for every enabled CRD:
-
-| Endpoint | Purpose |
-|----------|---------|
-| `/katalog` | All CRDs + dependency graph + health summary |
-| `/katalog/{crd}` | CRD config + live reconcile stats |
-| `/katalog/{crd}/health` | 200 healthy \| 503 degraded |
-
-Each endpoint exposes:
-- `healthy` — current health state
-- `totalReconciles` — cumulative reconcile count
-- `errorRate` — failed / total
-- `consecutiveFails` — current failure streak
-- `lastError` — last error message
-- `workers` / `workersSource` — resolved worker count with config source
-- `resync` / `resyncSource` — resolved resync with config source
-- `resourceCount` — live CR count from informer cache
-
-**Source tracking** (`workersSource`, `resyncSource`) tells operators whether a value came from the Katalog or a default — zero configuration mystery.
+1. Load and validate the Katalog from the merger
+2. Build the scheme registry — typed CRDs register `AddToScheme`
+3. Create HealthServer, Kubeclient, EventRecorder, queues
+4. Register REST client constructors via ClientProvider (typed CRDs only — dynamic CRDs skip this)
+5. Build SharedInformerFactory
+6. For each enabled CRD — create informer (typed or dynamic path), register reconciler factory in KontrollerRegistry
+7. Build per-CRD health map
+8. Register all health and Katalog API routes on the HealthServer
+9. Create DependencyKontroller with the dependency graph
+10. Return the `orkestraKfg` struct — Orkestra owns all komponents
 
 ---
 
-# **13. High Availability Model**
+## Dynamic vs typed CRD path
 
-The framework uses Kubernetes leader election:
+**Dynamic CRD** — `apiTypes.location` not set:
 
-- **All pods** run informers (warm caches)  
-- **Only leader** runs workers  
-- **Instant failover** – followers already have synced caches  
-- **Lease released** on graceful shutdown  
-- **Events emitted** for leadership transitions  
+```
+NewDynamicListerWatcher  →  ForListerWatcher  →  SharedIndexInformer
+                                                 (unstructured.Unstructured)
+```
+
+The dynamic client bypasses scheme decoding entirely. The informer stores
+`*unstructured.Unstructured` objects. The resolver has full access to all
+spec fields at runtime via the object map.
+
+**Typed CRD** — `apiTypes.location` set:
+
+```
+ClientProvider.Register  →  infFactory.For  →  SharedIndexInformer
+                                               (compiled Go type)
+```
+
+The REST client decodes API server responses into compiled Go structs.
+The reconciler has type-safe access via the concrete type. `ork generate runtime` command is required after this to register your types with Orkestra. Then `ork run`.
+
+Both paths produce a `cache.SharedIndexInformer`. The KontrollerRegistry,
+DependencyKontroller, and GenericReconciler are identical after this point.
+
+---
+
+## The Katalog
+
+`pkg/katalog` is the runtime representation of the merged, validated
+Katalog. It holds `[]CRDEntry` — the post-validation set of enabled CRDs
+with all defaults applied, GVKs set, and modes resolved.
+
+**Key methods:**
 
 ```go
-leader := leader.NewKonductorElection(
-    kube,
-    ev,
-    func(ctx context.Context) { ktrl.Run(ctx) },
-    leader.Options{
-        Namespace:     cfg.Cluster().DefaultNamespace,
-        LeaseDuration: cfg.Leader().LeaseDuration,
-        RenewDeadline: cfg.Leader().RenewDeadline,
-        RetryPeriod:   cfg.Leader().RetryPeriod,
+kat.Enabled()              // []CRDEntry — only enabled CRDs
+kat.All()                  // []CRDEntry — all CRDs including disabled
+NewDependencyGraph(kat)    // builds the DAG
+NewSchemeRegistry(kat)     // builds the runtime scheme
+```
+
+---
+
+## Dependency graph
+
+CRDs declare dependencies in the Katalog:
+
+```yaml
+- name: application
+  dependsOn:
+    - project
+    - managednamespace
+```
+
+The DependencyKontroller computes topological order from the DAG.
+CRDs start in dependency order — `application` only starts after both
+`project` and `managednamespace` signal readiness.
+
+Missing CRDs at startup — if a dependency is declared but its CRD is not
+yet installed on the cluster — are handled by `retryMissingCRDs`. The
+kontroller retries in the background without blocking healthy CRDs.
+When the CRD appears, it starts automatically and signals dependents.
+
+---
+
+## GenericReconciler — three reconcile paths
+
+Priority order — first match wins:
+
+**1. Go hooks** — `r.hooks.OnReconcile != nil`
+
+Registered via `HookFactory()` at startup. Full type-safe access to the CR.
+Requires `ork generate runtime` to register the hook function.
+
+**2. Declarative templates** — `r.rc.OnCreate != nil || r.rc.OnReconcile != nil`
+
+`runTemplateReconcile()` interprets `onCreate`/`onReconcile`/`onDelete`
+blocks directly at runtime. Calls OrkestraRegistry functions with resolved
+template values. No code generation needed.
+
+**3. No-op** — neither hooks nor templates declared
+
+Finalizers, events, and metrics still handled. Useful for CRDs that only
+need lifecycle tracking.
+
+---
+
+## KonductorElection — leader election
+
+All pods run informers (warm caches). Only the elected leader runs workers.
+On leadership loss or graceful shutdown the lease is released immediately,
+a follower takes over, and its already-warm cache means zero startup delay.
+
+```go
+ko := konductor.NewKonductorElection(
+    startup.kube,
+    startup.event,
+    func(ctx context.Context) { startup.kontroller.RunOrDie(ctx) },
+    func(konductor string) { printBanner(startup, konductor) },
+    konductor.Options{
+        Namespace:     kfg.Cluster().DefaultNamespace,
+        LeaseDuration: kfg.Konductor().LeaseDuration,
+        RenewDeadline: kfg.Konductor().RenewDeadline,
+        RetryPeriod:   kfg.Konductor().RetryPeriod,
     })
 ```
 
+The banner prints only on the elected leader. Followers are silent.
+
 ---
 
-# **14. Graceful Shutdown**
+## Observability
 
-On SIGTERM or leadership loss:
+Every Orkestra operator exposes these endpoints automatically:
 
-1. Stop accepting new items  
-2. Drain workers in **reverse dependency order**  
-3. Shutdown informers  
-4. Release leader lease  
-5. Exit cleanly  
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | Liveness — 200 always when running |
+| `GET /ready` | Readiness — 200 after all komponents ready, 503 before |
+| `GET /metrics` | Prometheus metrics |
+| `GET /katalog` | All CRDs — health, config, dependency graph |
+| `GET /katalog/{crd}` | Single CRD — config, reconcile stats |
+| `GET /katalog/{crd}/health` | 200 healthy / 503 degraded |
 
-**Shutdown order (reverse of startup):**
+**Prometheus metrics — all per-CRD:**
+
+| Metric | Type |
+|---|---|
+| `controller_resource_count` | Gauge — live CR count from informer cache |
+| `controller_reconcile_total` | Counter — success/error per CRD |
+| `controller_reconcile_duration_seconds` | Histogram — reconcile latency |
+| `controller_queue_depth` | Gauge — current queue backlog |
+| `controller_workers_active` | Gauge — active worker count |
+|`controller_crd_activation_latency_seconds` | Histogram — CRD activation latency _(for missing CRDs)_ |
+|`controller_crd_activation_total` | Counter — CRD activation count _(for missing CRDs)_ |
+
+
+All metrics use the full GVK string as the `crd` label.
+
+---
+
+## Graceful shutdown
+
+On SIGTERM or context cancellation, Orkestra shuts komponents down in
+reverse startup order:
+
 ```
-managednamespace (depends on project)
-project (root dependency)
-```
-
-No partial reconciliations.  
-No double processing.  
-No orphaned resources.
-
----
-
-# **15. Why This Architecture Works**
-
-This architecture gives you:
-
-| Feature | How It's Achieved |
-|---------|------------------|
-| **Multi‑CRD support** | Dynamic registries + GVK dispatch |
-| **Zero‑code reconcilers** | GenericReconciler with hooks |
-| **Dependency ordering** | DAG + dependency kontroller |
-| **Per‑CRD tuning** | Workers + resync per CRD |
-| **Remote API types** | `apiTypes.location` fetched at generation |
-| **Remote hooks** | `hooks.location` fetched at generation |
-| **GitOps** | YAML + remote URLs |
-| **HA** | Leader election + warm caches |
-| **Observability** | 5 metrics + Katalog API + events |
-| **Extensibility** | CRDs are data, not code |
-
----
-
-# **The Complete Flow**
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant K as Katalog
-    participant G as `ork generate`
-    participant R as Runtime
-    participant C as Kontroller
-    participant W as Workers
-    participant API as Kubernetes API
-
-    U->>K: Define CRDs (Go/YAML)
-    Note over K: With workers, resync, dependencies
-    
-    alt YAML Mode
-        U->>G: ork generate registry
-        G->>K: Fetch API types & hooks
-        G->>G: Generate registry.go
-    end
-    
-    U->>R: Start Orkestra
-    R->>R: Build scheme
-    R->>R: Create clients
-    R->>R: Create informers (per‑CRD resync)
-    R->>C: Create dependency kontroller
-    
-    C->>API: Start informers
-    API-->>C: Watch events
-    
-    Note over C: Leader election
-    
-    C->>W: Start per‑CRD worker pools
-    Note over W: Workers: 3 for Project<br/>Workers: 2 for ManagedNamespace
-    
-    API-->>C: Resource event
-    C->>W: Dispatch by GVK
-    W->>W: Reconcile (Generic or Custom)
-    W->>W: Update metrics
-    W->>W: Update health
-    
-    U->>API: kubectl get
-    API-->>U: Resources
-    
-    U->>R: curl /katalog
-    R-->>U: Health + config + stats
-    
-    U->>R: SIGTERM
-    R->>C: Shutdown
-    C->>W: Drain workers (reverse order)
-    W-->>C: Done
-    C-->>R: Done
-    R-->>U: Exited
+7. DependencyKontroller — stops workers, drains queues
+6. SharedInformerFactory — stops informers
+5. DefaultWorkqueue
+4. QueueRegistry
+3. EventRecorder
+2. Kubeclient
+1. HealthServer — last to stop so health probes stay live during shutdown
 ```
 
----
-
-# **What 50 Lines of Code Gets You**
-
-When you add a new CRD to Orkestra, you write:
-
-| Component | Lines of Code |
-|-----------|---------------|
-| API types | ~30 (generated) |
-| Optional hooks | ~20 (your logic) |
-| Katalog entry | ~10 (Go or YAML) |
-| **Total** | **~60 lines** |
-
-**What Orkestra generates for you:**
-
-| Generated Component | Lines |
-|--------------------|-------|
-| Clients | 120+ |
-| Informers | 100+ |
-| Worker pools | 50+ |
-| Finalizer logic | 80+ |
-| Event emission | 40+ |
-| Metrics | 60+ |
-| Health APIs | 70+ |
-| **Total** | **~520 lines** |
-
-**You write ~60 lines. Orkestra generates ~520 lines of runtime behavior.**
-
-That's the power of a **universal operator runtime**.
-
----
-
-# **Conclusion**
-
-This framework is no longer just a controller.  
-It is a **runtime‑composable operator platform** that:
-
-- Loads CRDs dynamically from Go or YAML  
-- Fetches API types and hooks from remote repositories  
-- Builds clients and informers automatically  
-- Orchestrates CRDs through dependency graphs  
-- Provides zero‑code reconcilers with optional hooks  
-- Supports per‑CRD workers and resync intervals  
-- Runs with high availability  
-- Offers deep observability (metrics + health APIs)  
-- Requires **zero boilerplate**
-
-**Adding a new CRD is now:**
-
-1. Write API types (controller-gen)
-2. Write optional hooks (your business logic)
-3. Add Katalog entry (Go or YAML)
-4. Run `ork generate registry` (YAML mode only)
-5. Done!
-
-**Everything else — clients, informers, workers, finalizers, events, metrics, health, lifecycle — is handled by the runtime.** 🚀
+No partial reconciliations. No double processing. In-flight reconciles
+complete before workers stop.

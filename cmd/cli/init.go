@@ -132,8 +132,8 @@ func createDynamicFolders(root string) error {
 	// Dynamic projects have no pkg/ or cmd/ — just Katalog files
 	dirs := []string{
 		"examples/website",
-		"examples/platform-namespace",
-		"katalogs",
+		// "examples/platform-namespace",
+		// "katalogs",
 	}
 	return makeDirs(root, dirs)
 }
@@ -142,8 +142,8 @@ func createTypedFolders(root string) error {
 	dirs := []string{
 		"cmd/orkestra",
 		"examples/website",
-		"examples/platform-namespace",
-		"katalogs",
+		// "examples/platform-namespace",
+		// "katalogs",
 		"pkg/runtime", // for __generated_runtime_*.go
 		"pkg/hooks",   // user writes Go hooks here
 	}
@@ -194,7 +194,6 @@ DEFAULT_RESYNC=30s
 MAX_QUEUE_DEPTH=500
 HEALTH_PORT=8080
 LOG_LEVEL=info
-APP_NAME=orkestra
 `
 	return writeFile(root, ".env.example", content)
 }

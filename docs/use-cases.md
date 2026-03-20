@@ -338,6 +338,8 @@ controller_reconcile_duration_seconds{crd="..."}
 controller_queue_depth{crd="..."}
 controller_workers_active{crd="..."}
 controller_resource_count{crd="..."}
+controller_crd_activation_latency_seconds{crd="..."}
+controller_crd_activation_total{crd="..."}
 ```
 
 These are not add-ons. They are part of the framework. Every operator

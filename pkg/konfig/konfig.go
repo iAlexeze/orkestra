@@ -12,7 +12,7 @@ import (
 func Init(filenames ...string) (*Konfig, error) {
 	err := godotenv.Load(filenames...)
 	if err != nil {
-		log.Print("Defaulting to system defined variables...")
+		log.Print("No '.env' file found. Defaulting to system defined variables...")
 	}
 
 	kfg := &Konfig{

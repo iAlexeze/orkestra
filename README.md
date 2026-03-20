@@ -11,9 +11,9 @@
 **The Kubernetes operator framework that needs no Go.**
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8.svg)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8.svg)](https://golang.org/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.28+-326CE5.svg)](https://kubernetes.io/)
-[![Release](https://img.shields.io/github/v/release/ialexeze/orkestra)](https://github.com/ialexeze/orkestra/releases)
+[![Release](https://img.shields.io/github/v/release/iAlexeze/orkestra)](https://github.com/iAlexeze/orkestra/releases)
 
 </div>
 
@@ -21,7 +21,7 @@
 
 ## What is Orkestra?
 
-Orkestra is a Declarative Kubernetes operator framework. You declare what you want in a
+Orkestra is a declarative Kubernetes operator framework. You declare what you want in a
 YAML file — a **Katalog** — and Orkestra manages the full lifecycle of your
 CRDs: create, reconcile, drift-correct, and delete.
 
@@ -67,15 +67,53 @@ Delete the CR and Orkestra cleans up.
 
 ## Install
 
-```bash
-# Install
-curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash
+### macOS (Homebrew)
 
-# Or pin to a specific version
-curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | ORK_VERSION=v1.0.0 bash
+```bash
+brew tap iAlexeze/tap
+brew install ork
 ```
 
-Verify:
+### Linux / macOS (curl)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | bash
+```
+
+### Options
+
+```bash
+# Review before running
+curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh -o install.sh
+less install.sh
+bash install.sh
+
+# Pin to a specific version
+curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | ORK_VERSION=v1.0.0 bash
+
+# Install to a custom directory
+curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
+```
+
+### Verify the binary (recommended)
+
+Every release is GPG-signed. To verify the binary before running it:
+
+```bash
+# Import the Orkestra public key (one time)
+curl -sSL https://github.com/iAlexeze/orkestra/releases/download/v1.0.0/orkestra-public-key.asc | gpg --import
+
+# Download the binary and its signature
+curl -sSLO https://github.com/iAlexeze/orkestra/releases/download/v1.0.0/ork_linux_amd64.tar.gz
+curl -sSLO https://github.com/iAlexeze/orkestra/releases/download/v1.0.0/ork_linux_amd64.tar.gz.asc
+
+# Verify
+gpg --verify ork_linux_amd64.tar.gz.asc ork_linux_amd64.tar.gz
+# gpg: Good signature from "Orkestra Releases <releases@orkestra.io>"
+```
+
+### Confirm installation
+
 ```bash
 ork version
 ```
@@ -101,9 +139,9 @@ kubectl apply -f examples/website/website-cr.yaml
 # 5. Watch Orkestra work
 kubectl get deployments
 kubectl get services
-curl localhost:8080/katalog/metrics               # Ready metrics
-curl localhost:8080/katalog/website | jq          # CRD Info
-curl localhost:8080/katalog/website/health | jq   # Health check
+curl localhost:8080/katalog/website/health | jq
+curl localhost:8080/katalog/website | jq
+curl localhost:8080/metrics
 ```
 
 ---
@@ -145,9 +183,14 @@ and idempotency. You declare what you want. The registry handles the how.
 
 ### Komposer
 
-A Komposer is a meta-katalog and can compose CRD definitions from multiple sources:
+A Komposer composes CRD definitions from multiple sources into one runtime.
+Where a Katalog declares CRDs, a Komposer declares where to find them:
 
 ```yaml
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Komposer
+metadata:
+  name: platform-komposer
 sources:
   files:
     - ./katalogs/project.yaml
@@ -160,7 +203,9 @@ sources:
 ```
 
 The merger resolves all sources, deduplicates by CRD name, and produces one
-validated runtime configuration.
+validated runtime configuration. Inline `spec.crds` on a Komposer override
+any source definition with the same name — use this for environment-specific
+adjustments without forking the source.
 
 ### Dependency ordering
 
@@ -173,20 +218,21 @@ CRDs can declare dependencies:
 ```
 
 Orkestra starts CRDs in topological order. Dependents wait for their
-dependencies to signal readiness before their workers start.
+dependencies to signal readiness before their workers start. Missing CRDs
+retry in the background — healthy CRDs are never blocked.
 
 ---
 
 ## CLI
 
 ```bash
-ork run       --katalog <path>          Start the operator runtime
-ork validate  --katalog <path>          Validate a Katalog
+ork init      <n>                    Scaffold a new operator project
+ork validate  --katalog <path>          Validate a Katalog or Komposer
 ork template  --katalog <path>          Preview the merged, validated Katalog
 ork template  --katalog <path> --graph  Show dependency graph
 ork template  --katalog <path> --json   Full post-validation state as JSON
 ork generate runtime --katalog <path>  Generate runtime wiring (typed CRDs only)
-ork init      <name>                    Scaffold a new operator project
+ork run       --katalog <path>          Start the operator runtime
 ork version                             Print version information
 ```
 
@@ -206,11 +252,18 @@ GET /katalog/{crd}/health    Single CRD health — 200 healthy / 503 degraded
 ```
 
 **Metrics:**
-- `controller_reconcile_total` — reconcile count by result (success/error)
-- `controller_reconcile_duration_seconds` — reconcile latency histogram
-- `controller_queue_depth` — current workqueue depth per CRD
-- `controller_workers_active` — active worker count per CRD
-- `controller_resource_count` — live CR count per CRD
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `controller_reconcile_total` | Counter | Reconcile count by result (success/error) |
+| `controller_reconcile_duration_seconds` | Histogram | Reconcile latency per CRD |
+| `controller_queue_depth` | Gauge | Current workqueue depth per CRD |
+| `controller_workers_active` | Gauge | Active worker count per CRD |
+| `controller_resource_count` | Gauge | Live CR count per CRD |
+| `controller_crd_activation_latency_seconds` | Histogram | CRD activation latency |
+| `controller_crd_activation_total` | Counter | CRD activation count |
+
+All metrics use the full GVK string as the `crd` label.
 
 ---
 
@@ -221,30 +274,25 @@ Three examples, each building on the previous one.
 | Example | What it shows | Complexity |
 |---------|--------------|------------|
 | [Website](./examples/website/README.md) | Hello world — Deployment + Service from a CR | ⭐ |
-| [Platform Namespace](examples/platform-namespace/README.md) | Secrets, ConfigMaps, ServiceAccounts — the platform engineering pattern | ⭐⭐ |
-| [Komposer](examples/komposer/README.md) | Composing Katalogs from files, Helm charts, and inline overrides | ⭐⭐⭐ |
+| [Platform Namespace](./examples/platform-namespace/README.md) | Secrets, ConfigMaps, ServiceAccounts — the platform engineering pattern | ⭐⭐ |
+| [Komposer](./examples/komposer/README.md) | Composing Katalogs from files, Helm charts, and inline overrides | ⭐⭐⭐ |
 
 ---
 
-## Standards
-
-### Katalog file
+## Katalog reference
 
 ```yaml
 apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
-  name: <name>
+  name: <n>
   description: <optional>
-sources:         # optional
-  files: [...]
-  helm:  [...]
 spec:
-  finalizers: [...]
+  finalizers: [...]             # katalog-level finalizers — inherited by all CRDs
   crds:
     - name: <lowercase-kebab>
-      enabled: true|false
-      namespaced: true|false
+      enabled: true|false       # default: true
+      namespaced: true|false    # default: true
       workers: <int>
       resync: <duration>
       dependsOn: [<crd-name>, ...]
@@ -253,64 +301,73 @@ spec:
         version: <version>
         kind: <Kind>
         plural: <plural>
-        location: <go-import-path>   # optional — omit for dynamic mode
+        location: <go-import-path>  # optional — omit for dynamic mode
       reconciler:
-        default: true|false
-        finalizers: [...]
-        onCreate:    { deployments, services, secrets, configMaps, ... }
-        onReconcile: { deployments, services, secrets, configMaps, ... }
-        onDelete:    { jobs, ... }
-        hooks:       { location, function }     # optional Go hooks
-        constructor: { location, function }     # required when default: false
+        default: true|false         # default: true
+        finalizers: [...]           # per-CRD finalizers
+        onCreate:    { deployments, services, secrets, configMaps, serviceAccounts, jobs, cronJobs }
+        onReconcile: { deployments, services, secrets, configMaps, cronJobs }
+        onDelete:    { jobs }
+        hooks:       { location, function }   # optional Go hooks
+        constructor: { location, function }   # required when default: false
       queue:
         maxQueueDepth: <int>
+        degradeThreshold: <int>
 ```
+
 ---
+
 ## Philosophy
 
 Orkestra is built on three principles:
 
-1. **Declarative First**  
-2. **Composition Over Code**  
-3. **Runtime Over Build‑Time**
+**Declarative first.** If Kubernetes can express it declaratively, Orkestra should too.
 
-Operators should be assembled, not programmed.
+**Composition over code.** Operators should be assembled from declarations,
+not programmed from scratch.
 
----
-
-## ❤️ Community
-
-Orkestra is built for:
-- platform engineers  
-- SREs  
-- infrastructure teams  
-- Kubernetes contributors  
-- anyone who wants operators without writing operators  
-
-Contributions, issues, and discussions are welcome.
+**Runtime over build-time.** Behavior should be interpreted at runtime, not
+baked into binaries.
 
 ---
 
 ## Documentation
 
-- [Katalogs](./docs/katalog.md) — how to declare what you want
-- [Komposer](./docs/komposer.md) — files, Helm, environment variables, merge rules
-- [OrkestraRegistry](./docs/orkestra-registry.md) — available resource implementations
-- [CLI Reference](./docs/cli.md) — all commands and flags
-- [Observability](./docs/observability.md) — health API, metrics, Prometheus
-- [Use Cases](./docs/use-cases.md) — explore different Orkestra use cases
-- [Architecture Deep Dive](./docs/architectural-deep-dive.md) —  How does Orkestra work under the hood?
-- [Component Deep Dive](./docs/component-deep-dive.md) — What does each part of Orkestra do?
-- [Extending OrKestra](./docs/extending-orkestra.md) — How do I build on top of Orkestra?
-- [Startup & Shutdown](./docs/startup-shutdown.md) — What happens when Orkestra starts and stops?
-
----
+| Document | Description |
+|----------|-------------|
+| [Katalog](./docs/katalog.md) | How to declare what you want |
+| [Komposer](./docs/komposer.md) | Files, Helm, environment variables, merge rules |
+| [OrkestraRegistry](./docs/orkestra-registry.md) | Available resource implementations |
+| [Templating](./docs/templating.md) | Template expressions and the resolver |
+| [CLI Reference](./docs/cli.md) | All commands and flags |
+| [Architecture](./docs/architecture.md) | How Orkestra works under the hood |
+| [Components](./docs/components.md) | What each part of Orkestra does |
+| [Extending Orkestra](./docs/extending.md) | Adding new CRDs and resource types |
+| [Use Cases](./docs/use-cases.md) | Real-world operator patterns |
+| [Roadmap](./ROADMAP.md) | What is coming next |
 
 ## Publish
-- [Why Orkestra](./publish/why-orkestra.md)
-- [Declarative Operators - White paper](./publish/declarative-operators-whitepaper.md)
+
+| Document | Description |
+|----------|-------------|
+| [Why Orkestra](./publish/why-orkestra.md) | The case for declarative operators |
+| [Declarative Operators](./publish/declarative-operators-whitepaper.md) | Technical whitepaper |
 
 ---
+
+## Community
+
+Orkestra is built for platform engineers, SREs, infrastructure teams, and
+anyone who wants operators without writing operators.
+
+- [GitHub Issues](https://github.com/iAlexeze/orkestra/issues)
+- [Discussions](https://github.com/iAlexeze/orkestra/discussions)
+- Kubernetes Slack — `#orkestra` _(planned)_
+
+Contributions, bug reports, and Katalog examples are all welcome.
+
+---
+
 ## License
 
 [MIT](LICENSE)

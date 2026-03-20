@@ -118,7 +118,7 @@ hooks:
   package: hooks.ProjectHooks  # Function reference
 ```
 
-Run `ork generate registry --katalog your-katalog.yaml` and OrKestra:
+Run `ork generate runtime --katalog your-katalog.yaml` and OrKestra:
 1. Fetches the API types (via `go get`)
 2. Fetches the hooks package
 3. Generates `initialize/registry.go` with everything wired
@@ -136,7 +136,7 @@ Run `ork generate registry --katalog your-katalog.yaml` and OrKestra:
 - load CRDs from local or remote YAML  
 - GitOps‑friendly  
 - perfect for multi‑cluster orchestration  
-- `ork generate registry` creates Go bindings from YAML  
+- `ork generate runtime` creates Go bindings from YAML  
 
 ## 📊 **Built‑in Metrics Suite**
 
@@ -221,7 +221,7 @@ OrKestra:
 A powerful command‑line interface that feels as natural as `kubectl`:
 
 ```bash
-ork generate registry --katalog <path-or-url>   # Generate Go bindings from YAML
+ork generate runtime --katalog <path-or-url>   # Generate Go bindings from YAML
 ork katalog list                                 # Inspect the Katalog
 ork katalog graph                                 # Visualize dependencies
 ork kontroller status                              # List active controllers

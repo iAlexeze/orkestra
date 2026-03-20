@@ -330,7 +330,7 @@ cache       ← from Helm chart
 
 ## `ork generate runtime`
 
-Generate `__generated_runtime_registry.go` from the Katalog. Only needed
+Generate `zz_generated_runtime_registry.go` from the Katalog. Only needed
 when your operator uses typed CRDs, Go hooks, or custom constructors.
 Dynamic template operators do not need this step.
 
@@ -373,7 +373,7 @@ ork generate runtime --katalog ./infra.yaml --katalog ./apps.yaml
 **What it generates:**
 
 ```go
-// pkg/runtime/__generated_runtime_registry.go
+// pkg/runtime/zz_generated_runtime_registry.go
 func RegisterRuntimeObjects() {
     // ObjectRegistry + ListRegistry entries for typed CRDs
     // HookRegistry entries for Go hooks

@@ -362,7 +362,7 @@ func (k *Katalog) addReconcilers() error {
 			if !ok {
 				return fmt.Errorf(
 					"CRD %q: no constructor registered — "+
-						"check reconciler.constructor in Katalog and re-run ork generate registry",
+						"check reconciler.constructor in Katalog and re-run ork generate runtime",
 					crd.Name,
 				)
 			}
