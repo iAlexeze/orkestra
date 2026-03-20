@@ -1,17 +1,17 @@
 // pkg/kontroller/degraded.go
 package kontroller
 
-func (c *Controller) IsDegraded(gvk string) bool {
-	// Check if queue depth is too high
-	if c.wq.Depth() > c.maxQueueDepth {
+func (k *Kontroller) IsDegraded(gvk string) bool {
+	wq, _ := k.queueRegistry.For(gvk)
+
+	if wq.Depth() > wq.MaxQueueDepth() {
 		return true
 	}
 
 	// Check if error rate is too high
-	if c.errorRate(gvk) > 0.1 {
+	if k.errorRate(gvk) > 0.1 {
 		return true
 	}
 
-	c.hs.Degraded()
 	return false
 }

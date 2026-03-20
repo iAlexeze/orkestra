@@ -3,12 +3,14 @@ package kontroller
 
 import (
 	"context"
-	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/event"
-	"github.com/ialexeze/orkestra/pkg/health"
+
+	// "github.com/ialexeze/orkestra/pkg/health"
 	"github.com/ialexeze/orkestra/pkg/informer"
 	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
@@ -17,20 +19,20 @@ import (
 	"github.com/ialexeze/orkestra/pkg/queue"
 )
 
-// DependencyKontroller extends the base Controller with dependency‑aware startup.
+// DependencyKontroller extends the base Kontroller with dependency‑aware startup.
 // It ensures CRDs start in topological order and shut down in reverse order.
 type DependencyKontroller struct {
-	*Controller
+	*Kontroller
 
 	depGraph       *katalog.DependencyGraph
 	defaultWorkers int
-	bannKfg        *BannerKonfig
+	startedAt      time.Time
 
 	// readyCh[name] is closed when a CRD has fully started its workers.
 	readyCh map[string]chan struct{}
 }
 
-// NewDependencyKontroller constructs a dependency‑aware controller.
+// NewDependencyKontroller constructs a dependency‑aware Kontroller.
 // It embeds the base Kontroller so all worker logic, queue handling,
 // and reconciler dispatching remain unchanged.
 func NewDependencyKontroller(
@@ -38,133 +40,166 @@ func NewDependencyKontroller(
 	factory *informer.Factory,
 	katalog *ResourceKatalog,
 	events *event.Event,
-	wq *queue.Workqueue,
-	hs *health.HealthServer,
+	hs domain.Health,
+	queueRegistry *queue.QueueRegistry,
+	defaultWorkqueue *queue.Workqueue,
+	crdHealthMap map[string]*CRDHealth,
 	defaultWorkers int,
-	maxQueueDepth int,
 	depGraph *katalog.DependencyGraph,
-	bannKfg *BannerKonfig,
 ) *DependencyKontroller {
 
 	return &DependencyKontroller{
-		Controller:     NewController(kube, factory, katalog, events, wq, hs, defaultWorkers, maxQueueDepth),
+		Kontroller:     NewKontroller(kube, factory, katalog, events, hs, crdHealthMap, queueRegistry, defaultWorkqueue, defaultWorkers),
 		depGraph:       depGraph,
 		defaultWorkers: defaultWorkers,
-		bannKfg:        bannKfg,
 		readyCh:        make(map[string]chan struct{}),
 	}
 }
 
 // RunOrDie starts CRDs in dependency order and blocks until leadership is lost.
 // When leadership ends, it shuts down CRDs in reverse dependency order.
-func (c *DependencyKontroller) RunOrDie(ctx context.Context) {
-	logger.Info().Msgf("dependency controller starting in %s mode...", c.depGraph.GetMode())
+func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
+	logger.Info().Msgf("%s is starting...", k.Name())
+	k.startedAt = time.Now()
 
-	// 1. Compute topological startup order (A → B → C)
-	startupOrder := c.depGraph.StartupOrder()
+	startupOrder := k.depGraph.StartupOrder()
 
-	// 2. Create a "ready" channel for each CRD
+	// Create ready channels for all CRDs upfront
 	for _, name := range startupOrder {
-		c.readyCh[name] = make(chan struct{})
+		k.readyCh[name] = make(chan struct{})
 	}
 
-	// 3. Start CRDs in dependency order
+	anyOnline := false
+
+	// Process CRDs in dependency order
 	for _, name := range startupOrder {
-		node := c.depGraph.GetNode(name)
+		node := k.depGraph.GetNode(name)
 		crd := node.CRD
 		gvk := crd.GroupVersionKind.String()
 
-		if len(crd.DependsOn) > 0 {
-			logger.Info().Msgf("starting %s (depends on: %s)", name, strings.Join(crd.DependsOn, ", "))
-		} else {
-			logger.Info().Msgf("starting %s", name)
-		}
-
-		// 3a. Wait for all dependencies to signal readiness
+		// Wait for hard dependencies — blocks until dep is online or ctx cancelled
 		for _, dep := range crd.DependsOn {
 			select {
-			case <-c.readyCh[dep]:
-				logger.Debug().Msgf("%s dependency %s is ready", name, dep)
+			case <-k.readyCh[dep]:
+				logger.Debug().Msgf("%s: dependency %q ready", name, dep)
 			case <-ctx.Done():
 				return
 			}
 		}
 
-		// 3b. Start workers for this CRD
-		workers := c.katalog.GetWorkers(gvk, c.defaultWorkers)
+		if k.informerFactory.IsMissing(gvk) {
+			logger.Warn().Msgf("CRD %s is missing — workers not started, retry loop will activate it", gvk)
+			// DO NOT close readyCh[name] — retry loop closes it when CRD appears
+			// DO NOT call SetReady here — nothing is online yet for this CRD
+			continue
+		}
+
+		// CRD exists — start workers
+		workers := k.katalog.GetWorkers(gvk, k.defaultWorkers)
 		logger.Info().Msgf("starting %d workers for %s", workers, gvk)
-
-		c.startCRDWorkers(ctx, gvk, workers)
-
-		// 3c Send metrics to prometheus
+		k.startCRDWorkers(ctx, gvk, workers)
 		metrics.WorkersActive.WithLabelValues(gvk).Set(float64(workers))
 
-		// 3d. Signal that this CRD is ready
-		close(c.readyCh[name])
+		// Signal dependents — this CRD is ready
+		close(k.readyCh[name])
+		logger.Info().Msgf("%s workers started and ready", name)
+
+		anyOnline = true
 	}
 
-	// Mark as started
-	c.healthy = true
-	c.hs.SetReady()
+	// ── Start retry loop ONCE after the startup sequence ─────────────────────
+	// Handles all missing CRDs together — no races, no duplicate goroutines.
+	// Also handles CRDs that get deleted and recreated after startup.
+	go k.retryMissingCRDs(ctx)
 
-	c.bannKfg.Komponents = append(c.bannKfg.Komponents, c)
+	// ── Mark controller started ───────────────────────────────────────────────
+	// Ready only if at least one CRD came online.
+	// If everything is missing, we're started but not ready — retry loop will flip this.
+	k.startedKtrl.Store(true)
+	if anyOnline {
+		k.hs.SetReady()
+		logger.Info().Msgf("%s started — %d CRD(s) online, retry loop active for missing",
+			k.Name(), len(startupOrder))
+	} else {
+		logger.Warn().Msgf("%s started — all CRDs missing, waiting for retry loop", k.Name())
+	}
 
-	// Print banner
-	c.printBanner(c.bannKfg)
-
-	// 4. Block until leadership is lost
+	// Block until leadership lost
 	<-ctx.Done()
-	logger.Info().Msg("leadership lost — beginning dependency‑aware shutdown")
+	logger.Info().Msg("leadership lost — beginning dependency-aware shutdown")
+	k.hs.Unhealthy()
 
-	// Mark as degraded
-	c.healthy = false
-	c.hs.Degraded()
-
-	// 5. Shutdown CRDs in reverse dependency order
-	shutdownOrder := c.depGraph.ShutdownOrder()
+	shutdownOrder := k.depGraph.ShutdownOrder()
 	for _, name := range shutdownOrder {
 		logger.Info().Msgf("shutting down %s", name)
-		c.stopCRDWorkers(name)
+		k.stopCRDWorkers(name)
 	}
 
-	logger.Info().Msg("dependency controller drained and stopped")
+	logger.Info().Msgf("%s drained and stopped", k.Name())
 }
 
-// startCRDWorkers starts a worker pool for a specific CRD.
-// It mirrors the logic in Controller.RunOrDie but is invoked in dependency order.
-func (c *DependencyKontroller) startCRDWorkers(ctx context.Context, gvk string, workers int) {
+// startCRDWorkers starts a worker pool for a specific CRD and is invoked in dependency order.
+func (k *DependencyKontroller) startCRDWorkers(ctx context.Context, gvk string, workers int) {
+	// Build reconciler once here — kube and ev are started by now
+	entry, ok := k.katalog.Get(gvk)
+	if !ok {
+		logger.Fatal().Str("gvk", gvk).Msg("no katalog entry found")
+		return
+	}
+
+	// CRD context
 	crdCtx, cancel := context.WithCancel(ctx)
 
-	c.mu.Lock()
-	c.cancelFuncs[gvk] = cancel
+	rec := entry.ReconcilerFactory() // ← initialize reconciler factory for all CRDs once
+
+	k.mu.Lock()
+
+	k.reconcilers[gvk] = rec // ← reconciler stored here
+
+	// cancel func for each
+	k.cancelFuncs[gvk] = cancel
+
+	// wait group for each
 	wg := &sync.WaitGroup{}
-	c.wgs[gvk] = wg
-	c.started[gvk] = true
-	c.total[gvk]++
-	c.mu.Unlock()
+	k.wgs[gvk] = wg
+
+	// compute started for each
+	k.crdHealthMap[gvk].SetStarted() // ← health map
+	k.started[gvk] = true            // ← state map
+	k.total[gvk]++
+
+	k.mu.Unlock()
 
 	for i := 0; i < workers; i++ {
-		wg.Add(1)
+		wg.Add(1) // ← one crd at a time
 		go func(workerID string) {
 			defer wg.Done()
-			c.runWorkerForGVK(crdCtx, gvk, workerID)
-		}(uuid.New().String())
+			k.runWorkerForGVK(crdCtx, gvk, workerID)
+		}(uuid.New().String()) // ← for tracing
 	}
 }
 
 // stopCRDWorkers cancels the CRD context and waits for all workers to drain.
-func (c *DependencyKontroller) stopCRDWorkers(name string) {
-	gvk := c.depGraph.GetNode(name).CRD.GroupVersionKind.String()
+func (k *DependencyKontroller) stopCRDWorkers(name string) {
+	gvk := k.depGraph.GetNode(name).CRD.GroupVersionKind.String()
 
-	c.mu.RLock()
-	cancel, okCancel := c.cancelFuncs[gvk]
-	wg, okWG := c.wgs[gvk]
-	c.mu.RUnlock()
+	k.mu.RLock()
+	cancel, okCancel := k.cancelFuncs[gvk]
+	wg, okWG := k.wgs[gvk]
+	k.mu.RUnlock()
 
+	// cancel if seen
 	if okCancel {
 		cancel()
 	}
+
+	// wait if seen
 	if okWG {
 		wg.Wait()
 	}
+}
+
+// Name returns the name of the dependency kontroller
+func (k *DependencyKontroller) Name() string {
+	return "orkestra dependency kontroller"
 }

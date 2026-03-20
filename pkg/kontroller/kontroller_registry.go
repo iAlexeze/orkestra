@@ -5,14 +5,15 @@ import (
 	"sync"
 
 	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/initialize"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"k8s.io/client-go/tools/cache"
 )
 
 type RegistryEntry struct {
-	CRD        initialize.CRDEntry
-	Informer   cache.SharedIndexInformer
-	Reconciler domain.Reconciler
+	CRD               orktypes.CRDEntry
+	Informer          cache.SharedIndexInformer
+	ReconcilerFactory func() domain.Reconciler // factory lives here
+	DegradeThreshold  int
 }
 
 type ResourceKatalog struct {
@@ -28,17 +29,17 @@ func NewKontrollerRegistry() *ResourceKatalog {
 
 func (r *ResourceKatalog) Register(
 	gvk string,
-	crd initialize.CRDEntry,
+	crd orktypes.CRDEntry,
 	inf cache.SharedIndexInformer,
-	rec domain.Reconciler,
+	rec func() domain.Reconciler,
 ) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	r.entries[gvk] = RegistryEntry{
-		CRD:        crd,
-		Informer:   inf,
-		Reconciler: rec,
+		CRD:               crd,
+		Informer:          inf,
+		ReconcilerFactory: rec,
 	}
 }
 
@@ -81,4 +82,15 @@ func (r *ResourceKatalog) GetWorkers(gvk string, defaultWorkers int) int {
 
 func (r *ResourceKatalog) Entries() map[string]RegistryEntry {
 	return r.entries
+}
+
+func (r *ResourceKatalog) NewObjectForGVK(gvk string) interface{} {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	entry, ok := r.entries[gvk]
+	if !ok {
+		return nil
+	}
+	return entry.CRD.NewObject()
 }

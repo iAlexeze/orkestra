@@ -4,22 +4,22 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/initialize"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
-func (k *Katalog) List() []initialize.CRDEntry {
-	return k.CRDs
+func (k *Katalog) List() []orktypes.CRDEntry {
+	return k.Spec.CRDs
 }
 
 // All returns every CRD in the katalog, including disabled ones.
 // Useful for CLI commands like `ork katalog list --all`.
-func (k *Katalog) All() []initialize.CRDEntry {
-	return k.CRDs
+func (k *Katalog) All() []orktypes.CRDEntry {
+	return k.Spec.CRDs
 }
 
 // Exists returns true if a CRD with the given name exists in the katalog.
 func (k *Katalog) Exists(name string) bool {
-	for _, crd := range k.CRDs {
+	for _, crd := range k.Spec.CRDs {
 		if crd.Name == name {
 			return true
 		}
@@ -37,10 +37,10 @@ func (k *Katalog) Describe(name string) (string, error) {
 
 	b := &strings.Builder{}
 	fmt.Fprintf(b, "Name:        %s\n", crd.Name)
-	fmt.Fprintf(b, "Group:       %s\n", crd.Group)
-	fmt.Fprintf(b, "Version:     %s\n", crd.Version)
-	fmt.Fprintf(b, "Kind:        %s\n", crd.Kind)
-	fmt.Fprintf(b, "Plural:      %s\n", crd.Plural)
+	fmt.Fprintf(b, "Group:       %s\n", crd.APITypes.Group)
+	fmt.Fprintf(b, "Version:     %s\n", crd.APITypes.Version)
+	fmt.Fprintf(b, "Kind:        %s\n", crd.APITypes.Kind)
+	fmt.Fprintf(b, "Plural:      %s\n", crd.APITypes.Plural)
 	fmt.Fprintf(b, "Namespaced:  %v\n", crd.Namespaced)
 	if crd.Namespaced {
 		fmt.Fprintf(b, "Namespace:   %s\n", crd.Namespace)
@@ -69,13 +69,17 @@ func (k *Katalog) Explain(name string) (string, error) {
 	}
 
 	b := &strings.Builder{}
-	fmt.Fprintf(b, "%s (%s/%s)\n", crd.Kind, crd.Group, crd.Version)
+	fmt.Fprintf(b, "%s (%s/%s)\n", crd.APITypes.Kind, crd.APITypes.Group, crd.APITypes.Version)
 	fmt.Fprintf(b, "----------------------------------------\n")
-	fmt.Fprintf(b, "API Path:     %s\n", crd.APIPath)
+	fmt.Fprintf(b, "API Path:     %s\n", crd.APITypes.APIPath)
 	fmt.Fprintf(b, "GVK:          %s\n", crd.GroupVersionKind.String())
 	fmt.Fprint(b, "List Type:    runtime.Object")
 	fmt.Fprint(b, "Object Type:  runtime.Object")
-	fmt.Fprintf(b, "Reconciler:   %T\n", crd.Reconciler)
+	if crd.ReconcilerConfig.Default {
+		fmt.Fprint(b, "Reconciler:   Default\n")
+	} else {
+		fmt.Fprintf(b, "Reconciler:   %T\n", crd.ReconcilerConfig.Constructor)
+	}
 	fmt.Fprintf(b, "Informer:     LIST, WATCH\n") // later: dynamic
 
 	if len(crd.DependsOn) > 0 {
@@ -107,7 +111,7 @@ func (k *Katalog) Order() []string {
 func (k *Katalog) Controllers() []string {
 	var out []string
 	for _, crd := range k.enabledCRDs {
-		if crd.Reconciler != nil {
+		if crd.ReconcilerConfig.Constructor != nil && crd.ReconcilerConfig.Default {
 			out = append(out, crd.Name)
 		}
 	}
@@ -151,12 +155,12 @@ func (k *Katalog) Dependents(name string) []string {
 }
 
 // Enabled returns only the enabled CRDs in the katalog.
-func (k *Katalog) Enabled() []initialize.CRDEntry {
+func (k *Katalog) Enabled() []orktypes.CRDEntry {
 	return k.enabledCRDs
 }
 
 // Get tries to get an enabled crd
-func (k *Katalog) Get(name string) (*initialize.CRDEntry, error) {
+func (k *Katalog) Get(name string) (*orktypes.CRDEntry, error) {
 	for _, crd := range k.enabledCRDs {
 		if crd.Name == name {
 			return &crd, nil

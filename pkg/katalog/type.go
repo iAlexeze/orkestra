@@ -3,15 +3,7 @@ package katalog
 import (
 	"reflect"
 
-	"github.com/ialexeze/orkestra/initialize"
-)
-
-// -----------------------------------------------------------------------------
-// Constants
-// -----------------------------------------------------------------------------
-const (
-	GoMode   = "go"
-	YamlMode = "yaml"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
 // -----------------------------------------------------------------------------
@@ -26,16 +18,7 @@ var (
 // Structs
 // -----------------------------------------------------------------------------
 type Katalog struct {
-	aPIVersion string `yaml:"apiVersion"`
-	kind       string `yaml:"kind"`
-	metadata   struct {
-		Name string `yaml:"name"`
-	} `yaml:"metadata"`
-
-	CRDs        []initialize.CRDEntry `yaml:"crds"` // raw from YAML - documentation - CLI
-	enabledCRDs []initialize.CRDEntry `yaml:"-"`    // filtered
-	mode        struct {
-		Go   bool `yaml:"go"`
-		Yaml bool `yaml:"yaml"`
-	} `yaml:"mode"`
+	Spec orktypes.KatalogSpec `yaml:"spec"`
+	// Internal
+	enabledCRDs []orktypes.CRDEntry `yaml:"-"` // filtered
 }

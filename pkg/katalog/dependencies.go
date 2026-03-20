@@ -4,7 +4,7 @@ package katalog
 import (
 	"fmt"
 
-	"github.com/ialexeze/orkestra/initialize"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
@@ -16,7 +16,7 @@ type DependencyGraph struct {
 
 type Node struct {
 	Name      string
-	CRD       initialize.CRDEntry
+	CRD       orktypes.CRDEntry
 	InDegree  int
 	OutDegree int
 }
@@ -91,16 +91,38 @@ func (g *DependencyGraph) ShutdownOrder() []string {
 }
 
 // Constructors
-func (g *DependencyGraph) GetMode() string {
-	switch {
-	case g.katalog.mode.Go:
-		return "Go"
-	case g.katalog.mode.Yaml:
-		return "YAML"
-	}
-	return ""
-}
-
 func (g *DependencyGraph) GetNode(name string) *Node {
 	return g.nodes[name]
+}
+
+func (g *DependencyGraph) GetNodes() map[string]*Node {
+	return g.nodes
+}
+
+func (g *DependencyGraph) GetEdges() map[string][]string {
+	return g.edges
+}
+
+func (g *DependencyGraph) GetInDegree(name string) int {
+	return g.nodes[name].InDegree
+}
+
+func (g *DependencyGraph) GetOutDegree(name string) int {
+	return g.nodes[name].OutDegree
+}
+
+func (g *DependencyGraph) GetDependents(name string) []string {
+	var dependents []string
+	for dep, deps := range g.edges {
+		for _, d := range deps {
+			if d == name {
+				dependents = append(dependents, dep)
+			}
+		}
+	}
+	return dependents
+}
+
+func (g *DependencyGraph) GetDependencies(name string) []string {
+	return g.edges[name]
 }

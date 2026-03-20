@@ -1,0 +1,63 @@
+// pkg/reconciler/run_cronjobs.go
+package reconciler
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	orkcron "github.com/ialexeze/orkestra/pkg/orkestra-registry/cronjobs"
+	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
+)
+
+// runCronJobs resolves and applies CronJob template declarations.
+//
+// CronJobs are long-lived scheduled resources — created under onCreate and
+// drift-corrected under onReconcile (or reconcile: true).
+//
+// Common use cases:
+//   - Periodic sync jobs (cache warming, data replication)
+//   - Scheduled backup jobs
+//   - Recurring cleanup or archival tasks
+//   - Health check or audit jobs on a schedule
+//
+// The schedule field supports both static cron expressions and dynamic
+// values from the CR spec:
+//
+//	schedule: "0 * * * *"               static — every hour
+//	schedule: "{{ .spec.syncSchedule }}" dynamic — from CR spec
+func runCronJobs(
+	ctx context.Context,
+	kube *kubeclient.Kubeclient,
+	resolver *orktmpl.Resolver,
+	owner domain.Object,
+	srcs []orktypes.CronJobTemplateSource,
+	update bool,
+) error {
+	for i, src := range srcs {
+		resolved, err := resolver.ResolveCronJobTemplate(src)
+		if err != nil {
+			return fmt.Errorf("cronjobs[%d]: %w", i, err)
+		}
+
+		spec := orkcron.Resolve(resolved, resolver.OwnerName())
+
+		if update {
+			if err := orkcron.Update(ctx, kube, owner, spec); err != nil {
+				return fmt.Errorf("cronjobs[%d].update: %w", i, err)
+			}
+		} else {
+			if err := orkcron.Create(ctx, kube, owner, spec); err != nil {
+				return fmt.Errorf("cronjobs[%d].create: %w", i, err)
+			}
+			if src.Reconcile {
+				if err := orkcron.Update(ctx, kube, owner, spec); err != nil {
+					return fmt.Errorf("cronjobs[%d].reconcile: %w", i, err)
+				}
+			}
+		}
+	}
+	return nil
+}

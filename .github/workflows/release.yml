@@ -1,0 +1,382 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Build ──────────────────────────────────────────────────────────────────
+  build:
+    name: Build ${{ matrix.os }}_${{ matrix.arch }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            goarch: amd64
+            goos: linux
+          - os: linux
+            arch: arm64
+            goarch: arm64
+            goos: linux
+          - os: darwin
+            arch: amd64
+            goarch: amd64
+            goos: darwin
+          - os: darwin
+            arch: arm64
+            goarch: arm64
+            goos: darwin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Resolve version
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p dist
+
+          go build \
+            -trimpath \
+            -ldflags="-s -w \
+              -X github.com/iAlexeze/orkestra/pkg/version.Version=${{ steps.version.outputs.VERSION }} \
+              -X github.com/iAlexeze/orkestra/pkg/version.Commit=${{ github.sha }} \
+              -X github.com/iAlexeze/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o dist/ork \
+            ./cmd/orkestra/
+
+          echo "✅ Binary built: dist/ork"
+          file dist/ork
+          ls -lh dist/ork
+
+      - name: Package tarball
+        run: |
+          ARCHIVE="ork_${{ matrix.os }}_${{ matrix.arch }}.tar.gz"
+
+          tar -czf "dist/${ARCHIVE}" \
+            -C dist ork \
+            -C "${{ github.workspace }}" \
+            README.md \
+            LICENSE
+
+          echo "✅ Archive created: dist/${ARCHIVE}"
+          ls -lh "dist/${ARCHIVE}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ork_${{ matrix.os }}_${{ matrix.arch }}
+          path: dist/ork_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
+          retention-days: 1
+
+  # ── Sign + Checksums + Release ─────────────────────────────────────────────
+  release:
+    name: Sign and Release
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Import GPG signing key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          # Import the private key used to sign releases
+          echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
+
+          # Trust the key fully so signing does not prompt
+          KEY_ID=$(gpg --list-secret-keys --with-colons | grep '^sec' | cut -d: -f5)
+          echo "${KEY_ID}:6:" | gpg --import-ownertrust
+
+          echo "✅ GPG key imported: ${KEY_ID}"
+
+      - name: Sign tarballs
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          cd dist
+          for archive in ork_*.tar.gz; do
+            gpg --batch --yes \
+                --passphrase "${GPG_PASSPHRASE}" \
+                --pinentry-mode loopback \
+                --armor \
+                --detach-sign \
+                "${archive}"
+
+            echo "✅ Signed: ${archive} → ${archive}.asc"
+          done
+
+      - name: Export public key
+        run: |
+          # Publish the public key alongside every release so users can verify
+          gpg --armor --export releases@orkestra.io > dist/orkestra-public-key.asc
+          echo "✅ Public key exported: dist/orkestra-public-key.asc"
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum ork_*.tar.gz > checksums.txt
+          echo "✅ Checksums generated:"
+          cat checksums.txt
+
+      - name: Verify signatures (self-check)
+        run: |
+          cd dist
+          for archive in ork_*.tar.gz; do
+            gpg --verify "${archive}.asc" "${archive}" \
+              && echo "✅ Verified: ${archive}" \
+              || { echo "❌ Verification failed: ${archive}"; exit 1; }
+          done
+
+      - name: Extract changelog for this release
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+
+          if grep -q "## \[${TAG}\]" CHANGELOG.md 2>/dev/null; then
+            awk "/## \[${TAG}\]/{found=1; next} /## \[v/{if(found) exit} found{print}" CHANGELOG.md \
+              > release_notes.txt
+          else
+            echo "Release ${TAG}" > release_notes.txt
+          fi
+
+          echo "✅ Release notes extracted"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ github.ref_name }}"
+          body_path: release_notes.txt
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            dist/ork_linux_amd64.tar.gz
+            dist/ork_linux_amd64.tar.gz.asc
+            dist/ork_linux_arm64.tar.gz
+            dist/ork_linux_arm64.tar.gz.asc
+            dist/ork_darwin_amd64.tar.gz
+            dist/ork_darwin_amd64.tar.gz.asc
+            dist/ork_darwin_arm64.tar.gz
+            dist/ork_darwin_arm64.tar.gz.asc
+            dist/checksums.txt
+            dist/orkestra-public-key.asc
+          fail_on_unmatched_files: true
+
+      - name: Build release summary
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+
+          echo "## 🚀 Release ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "### 📦 Artifacts" >> "$GITHUB_STEP_SUMMARY"
+          echo "| File | Size | SHA256 |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|------|--------|" >> "$GITHUB_STEP_SUMMARY"
+
+          for f in dist/ork_*.tar.gz; do
+            name=$(basename "$f")
+            size=$(du -sh "$f" | cut -f1)
+            hash=$(sha256sum "$f" | cut -d' ' -f1 | cut -c1-16)
+            echo "| \`${name}\` | ${size} | \`${hash}...\` |" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 🔐 Signatures" >> "$GITHUB_STEP_SUMMARY"
+          echo "Every tarball is GPG-signed. Verify with:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+          echo "gpg --verify ork_linux_amd64.tar.gz.asc ork_linux_amd64.tar.gz" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ✅ Install" >> "$GITHUB_STEP_SUMMARY"
+          echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+          echo "# macOS (Homebrew)" >> "$GITHUB_STEP_SUMMARY"
+          echo "brew tap iAlexeze/tap && brew install ork" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "# Linux / macOS (curl)" >> "$GITHUB_STEP_SUMMARY"
+          echo "curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Homebrew formula update ────────────────────────────────────────────────
+  homebrew:
+    name: Update Homebrew Formula
+    runs-on: ubuntu-latest
+    needs: release
+    # Only run on full releases — not pre-releases (rc, alpha, beta tags)
+    if: ${{ !contains(github.ref_name, '-') }}
+
+    steps:
+      - name: Checkout tap repository
+        uses: actions/checkout@v4
+        with:
+          repository: iAlexeze/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Download checksums
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          curl -sSfL \
+            "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/checksums.txt" \
+            -o checksums.txt
+
+      - name: Extract SHA256 values
+        id: sha
+        run: |
+          echo "DARWIN_AMD64=$(grep 'ork_darwin_amd64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "DARWIN_ARM64=$(grep 'ork_darwin_arm64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "LINUX_AMD64=$(grep 'ork_linux_amd64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "LINUX_ARM64=$(grep 'ork_linux_arm64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Update formula
+        env:
+          TAG: ${{ github.ref_name }}
+          DARWIN_AMD64: ${{ steps.sha.outputs.DARWIN_AMD64 }}
+          DARWIN_ARM64: ${{ steps.sha.outputs.DARWIN_ARM64 }}
+          LINUX_AMD64: ${{ steps.sha.outputs.LINUX_AMD64 }}
+          LINUX_ARM64: ${{ steps.sha.outputs.LINUX_ARM64 }}
+        run: |
+          VERSION="${TAG#v}"  # strip the 'v' prefix for Homebrew
+
+          cat > homebrew-tap/Formula/ork.rb << EOF
+          class Ork < Formula
+            desc "The Kubernetes operator framework that needs no Go"
+            homepage "https://github.com/iAlexeze/orkestra"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              on_arm do
+                url "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/ork_darwin_arm64.tar.gz"
+                sha256 "${DARWIN_ARM64}"
+              end
+              on_intel do
+                url "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/ork_darwin_amd64.tar.gz"
+                sha256 "${DARWIN_AMD64}"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/ork_linux_arm64.tar.gz"
+                sha256 "${LINUX_ARM64}"
+              end
+              on_intel do
+                url "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/ork_linux_amd64.tar.gz"
+                sha256 "${LINUX_AMD64}"
+              end
+            end
+
+            def install
+              bin.install "ork"
+            end
+
+            test do
+              system "#{bin}/ork", "version"
+            end
+          end
+          EOF
+
+          echo "✅ Formula updated for ${TAG}"
+
+      - name: Commit and push formula
+        run: |
+          cd homebrew-tap
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/ork.rb
+          git commit -m "ork ${GITHUB_REF_NAME}"
+          git push
+
+      - name: Write summary
+        run: |
+          echo "### 🍺 Homebrew formula updated" >> "$GITHUB_STEP_SUMMARY"
+          echo "Users can now install with:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+          echo "brew tap iAlexeze/tap" >> "$GITHUB_STEP_SUMMARY"
+          echo "brew install ork" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Final summary ──────────────────────────────────────────────────────────
+  summary:
+    name: Release Summary
+    runs-on: ubuntu-latest
+    needs: [build, release, homebrew]
+    if: always()
+
+    steps:
+      - name: Write summary
+        run: |
+          BUILD_STATUS="${{ needs.build.result }}"
+          RELEASE_STATUS="${{ needs.release.result }}"
+          HOMEBREW_STATUS="${{ needs.homebrew.result }}"
+          TAG="${GITHUB_REF_NAME}"
+
+          echo "## Release ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Stage | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|--------|" >> "$GITHUB_STEP_SUMMARY"
+
+          for platform in "linux_amd64" "linux_arm64" "darwin_amd64" "darwin_arm64"; do
+            if [ "$BUILD_STATUS" = "success" ]; then
+              echo "| Build \`${platform}\` | ✅ success |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| Build \`${platform}\` | ❌ failed |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          echo "| GPG signing | $([ "$RELEASE_STATUS" = "success" ] && echo "✅ signed" || echo "❌ failed") |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Checksums | $([ "$RELEASE_STATUS" = "success" ] && echo "✅ generated" || echo "❌ failed") |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| GitHub Release | $([ "$RELEASE_STATUS" = "success" ] && echo "✅ published" || echo "❌ failed") |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Homebrew formula | $([ "$HOMEBREW_STATUS" = "success" ] && echo "✅ updated" || echo "⏭️ skipped or failed") |" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$BUILD_STATUS" = "success" ] && [ "$RELEASE_STATUS" = "success" ]; then
+            echo "### ✅ Release ${TAG} published successfully" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+            echo "# macOS" >> "$GITHUB_STEP_SUMMARY"
+            echo "brew tap iAlexeze/tap && brew install ork" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "# Linux / macOS" >> "$GITHUB_STEP_SUMMARY"
+            echo "curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "# Pin to this version" >> "$GITHUB_STEP_SUMMARY"
+            echo "curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | ORK_VERSION=${TAG} bash" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ❌ Release ${TAG} failed — check the jobs above" >> "$GITHUB_STEP_SUMMARY"
+          fi

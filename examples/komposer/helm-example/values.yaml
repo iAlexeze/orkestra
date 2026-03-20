@@ -1,0 +1,37 @@
+# Default values for orkestra-katalog-example.
+# Override these in your own values file or via --set.
+
+# apiGroup — the Kubernetes API group for all CRDs in this chart.
+apiGroup: demo.orkestra.io
+
+# apiVersion — the API version for all CRDs in this chart.
+apiVersion: v1alpha1
+
+# crds — list of CRD definitions to include in the rendered Katalog.
+# Each entry produces one CRDEntry in the output.
+crds:
+  - name: database
+    enabled: true
+    kind: Database
+    plural: databases
+    namespaced: false
+    workers: 2
+    resync: 1m
+    reconciler:
+      default: true
+      mode: dynamic
+    description: >-
+      Manages a database instance. Provisioned by the platform team Helm chart.
+
+  - name: cache
+    enabled: true
+    kind: Cache
+    plural: caches
+    namespaced: true
+    workers: 2
+    resync: 30s
+    reconciler:
+      default: true
+      mode: dynamic
+    description: >-
+      Manages a cache instance. Provisioned by the platform team Helm chart.

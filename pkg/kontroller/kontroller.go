@@ -4,134 +4,155 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
+	"sync/atomic"
 
 	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/initialize"
+	orkerror "github.com/ialexeze/orkestra/pkg/error"
 	"github.com/ialexeze/orkestra/pkg/event"
-	"github.com/ialexeze/orkestra/pkg/health"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
+
 	"github.com/ialexeze/orkestra/pkg/informer"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/queue"
-	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
-var _ domain.Komponent = (*Controller)(nil)
+var _ domain.Komponent = (*Kontroller)(nil)
 
 // Every map has the same key GVK
-type Controller struct {
-	kube            *kubeclient.Kubeclient
-	informerFactory *informer.Factory
-	event           *event.Event
-	katalog         *ResourceKatalog
-	wq              *queue.Workqueue
-	hs              *health.HealthServer
-	defaultWorkers  int
-	healthy         bool
-	started         map[string]bool
-	cancelFuncs     map[string]context.CancelFunc
-	wgs             map[string]*sync.WaitGroup
-	mu              sync.RWMutex
-	reconcilers     map[string]domain.Reconciler
-	crds            []initialize.CRDEntry
+type Kontroller struct {
+	kube             *kubeclient.Kubeclient
+	informerFactory  *informer.Factory
+	event            *event.Event
+	katalog          *ResourceKatalog
+	queueRegistry    *queue.QueueRegistry
+	defaultWorkqueue *queue.Workqueue
+	degradeThreshold map[string]int
+
+	hs           domain.Health
+	crdHealthMap map[string]*CRDHealth
+
+	defaultWorkers int
+	startedKtrl    atomic.Bool
+	started        map[string]bool
+	cancelFuncs    map[string]context.CancelFunc
+	wgs            map[string]*sync.WaitGroup
+	mu             sync.RWMutex
+	reconcilers    map[string]domain.Reconciler
+	crds           []orktypes.CRDEntry
 
 	// Error rate
-	total         map[string]int
-	failed        map[string]int
-	maxQueueDepth int
+	total  map[string]int
+	failed map[string]int
 }
 
-func NewController(
+func NewKontroller(
 	kube *kubeclient.Kubeclient,
 	informerFactory *informer.Factory,
 	katalog *ResourceKatalog,
 	event *event.Event,
-	wq *queue.Workqueue,
-	hs *health.HealthServer,
+	hs domain.Health,
+	crdHealthMap map[string]*CRDHealth,
+	queueRegistry *queue.QueueRegistry,
+	defaultWorkqueue *queue.Workqueue,
 	defaultWorkers int,
-	maxQueueDepth int,
-) *Controller {
-	c := &Controller{
-		kube:            kube,
-		informerFactory: informerFactory,
-		katalog:         katalog,
-		event:           event,
-		wq:              wq,
-		hs:              hs,
-		defaultWorkers:  defaultWorkers,
-		maxQueueDepth:   maxQueueDepth,
-		started:         make(map[string]bool),
-		cancelFuncs:     make(map[string]context.CancelFunc),
-		total:           make(map[string]int),
-		failed:          make(map[string]int),
-		wgs:             make(map[string]*sync.WaitGroup),
-		reconcilers:     make(map[string]domain.Reconciler),
+) *Kontroller {
+	k := &Kontroller{
+		kube:             kube,
+		informerFactory:  informerFactory,
+		katalog:          katalog,
+		event:            event,
+		hs:               hs,
+		defaultWorkqueue: defaultWorkqueue,
+		queueRegistry:    queueRegistry,
+		defaultWorkers:   defaultWorkers,
+		crdHealthMap:     crdHealthMap,
+		started:          make(map[string]bool),
+		cancelFuncs:      make(map[string]context.CancelFunc),
+		total:            make(map[string]int),
+		failed:           make(map[string]int),
+		wgs:              make(map[string]*sync.WaitGroup),
+		reconcilers:      make(map[string]domain.Reconciler),
+		degradeThreshold: make(map[string]int),
 	}
 
 	// Load registry entries
 	for gvk, entry := range katalog.Entries() {
-		c.reconcilers[gvk] = entry.Reconciler
-		c.crds = append(c.crds, entry.CRD)
+		k.crds = append(k.crds, entry.CRD)
+		k.degradeThreshold[gvk] = entry.CRD.Queue.DegradeThreshold
 	}
 
-	return c
+	return k
 }
 
-func (c *Controller) Start(ctx context.Context) error {
-	// CRD check (you may later generalize this per-CRD)
-	for _, crd := range c.crds {
-		logger.Info().Msgf("checking CRD %s/%s (%s)...", crd.Group, crd.Version, crd.Kind)
+func (k *Kontroller) Start(ctx context.Context) error {
+	// CRD checks now carried out in informer
+	// Kontroller just accepts that crds have been checked, listens to know if any is missing
+	// Then marks as degraded
+	for _, crd := range k.crds {
+		gvk := crd.GroupVersionKind.String()
 
-		err := utils.RetryBackoff(
-			func() error {
-				return utils.WaitForCRD(
-					c.kube.RestConfig(),
-					crd.Group,
-					crd.Kind,
-					crd.Version,
-				)
-			},
-			5,
-			2*time.Second,
-		)
-
-		if err != nil {
-			return fmt.Errorf("CRD %s/%s (%s) not found: %w",
-				crd.Group, crd.Version, crd.Kind, err)
+		if !k.informerFactory.IsMissing(gvk) {
+			continue
 		}
-
-		logger.Info().Msgf("CRD %s/%s (%s) detected", crd.Group, crd.Version, crd.Kind)
+		logger.Warn().Msgf("CRD %s is missing, marking as degraded...", gvk)
+		k.crdHealthMap[gvk].RecordStartupFailure(orkerror.ErrCRDNotFound, crd.Queue.DegradeThreshold)
 	}
 
+	// All CRDs confirmed (filtered by informer) — now sync caches
 	logger.Debug().Msg("waiting for all informer caches to sync...")
-	if !c.informerFactory.WaitForCacheSync(ctx) {
+	if !k.informerFactory.WaitForCacheSync(ctx) {
 		return fmt.Errorf("failed to sync one or more informer caches")
 	}
 	logger.Info().Msg("all informer caches synced")
 
+	// Build reconcilers now — kube, ev, and REST clients are all live
+	logger.Debug().Msg("building reconcilers...")
+	for gvk, entry := range k.katalog.Entries() {
+		rec := entry.ReconcilerFactory() // ← safe here, manager has started everything
+		k.mu.Lock()
+		k.reconcilers[gvk] = rec
+		k.mu.Unlock()
+		logger.Debug().Str("gvk", gvk).Msg("reconciler built")
+	}
+
 	return nil
 }
 
+// MissingCRDs returns a map of missing crds keyed by gvk
+func (k *Kontroller) MissingCRDs() map[string]*informer.InformerEntry {
+	return k.informerFactory.Missing()
+}
+
+// Set the controller ready
+func (k *Kontroller) SetReady(h domain.Health) {
+	h.SetReady()
+}
+
+// Set the controller to degraded
+func (k *Kontroller) Degraded(h domain.Health) {
+	h.Degraded()
+}
+
 // Healthy mark on startup
-func (c *Controller) Started() bool { return c.healthy }
+func (k *Kontroller) Started() bool { return k.startedKtrl.Load() }
 
 // Shutdown gracefully stops orkestra
-func (c *Controller) Shutdown(ctx context.Context) {}
+func (k *Kontroller) Shutdown(ctx context.Context) {}
 
 // Controller name
-func (c *Controller) Name() string {
+func (k *Kontroller) Name() string {
 	return "orkestra kontroller"
 }
 
 // Errorrate
-func (c *Controller) errorRate(gvk string) float64 {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+func (k *Kontroller) errorRate(gvk string) float64 {
+	k.mu.RLock()
+	defer k.mu.RUnlock()
 
-	if c.total[gvk] == 0 {
+	if k.total[gvk] == 0 {
 		return 0
 	}
 
-	return float64(c.failed[gvk] / c.total[gvk])
+	return float64(k.failed[gvk] / k.total[gvk])
 }

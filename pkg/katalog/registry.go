@@ -4,11 +4,15 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ialexeze/orkestra/initialize"
 	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/merger"
+	ork_runtime "github.com/ialexeze/orkestra/pkg/runtime"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -17,27 +21,28 @@ import (
 // -----------------------------------------------------------------------------
 
 // NewKatalog returns a list of CRD data
-func NewKatalog(mode, path string) *Katalog {
+func NewKatalog(m *merger.Merger, paths ...string) *Katalog {
 	katalog := &Katalog{}
-	var entries []initialize.CRDEntry
+	var entries []orktypes.CRDEntry
 	var err error
 
-	switch mode {
-	case GoMode:
-		entries, err = katalog.buildKatalogFromGo()
-		if err != nil {
-			utils.Exit(err)
+	// Register runtime objects
+	ork_runtime.RegisterRuntimeObjects()
+
+	// Guard: if ObjectRegistry is empty, user forgot to run ork generate
+	for _, crd := range entries {
+		if len(orktypes.ObjectRegistry) == 0 && !crd.IsDynamic() {
+			utils.Exit(fmt.Errorf(
+				"ObjectRegistry is empty — run 'ork generate runtime --katalog %s' first",
+				paths[0],
+			))
 		}
-	case YamlMode:
-		// Register runtime objects
-		initialize.RegisterRuntimeObjects()
-		// Build CRDs
-		entries, err = katalog.buildKatalogFromYaml(path)
-		if err != nil {
-			utils.Exit(err)
-		}
-	default:
-		utils.Exit(fmt.Errorf("must be 'go' or 'yaml' invalid katalog mode: %s", mode))
+
+	}
+	// Build CRDs
+	entries, err = katalog.KomposeKatalogFromYaml(m, paths...)
+	if err != nil {
+		utils.Exit(err)
 	}
 
 	if len(entries) == 0 {
@@ -47,7 +52,7 @@ func NewKatalog(mode, path string) *Katalog {
 	// Pass to enabled
 	katalog.enabledCRDs = entries
 
-	kat, err := katalog.validateConfig()
+	kat, err := katalog.ValidateConfig()
 	if err != nil {
 		utils.Exit(err)
 	}
@@ -74,14 +79,13 @@ func NewSchemeRegistry(k *Katalog) (*runtime.Scheme, error) {
 
 	// 3. Register CRDs
 	var err error
-	if k.mode.Yaml {
-		if scheme, err = initialize.RegisterScheme(scheme); err != nil {
-			return nil, err
-		}
-	} else if k.mode.Go {
-		if scheme, err = k.registerGoScheme(scheme); err != nil {
-			return nil, err
-		}
+	// Register dynamic scheme
+	if scheme, err = k.registerDynamicScheme(scheme); err != nil {
+		return nil, err
+	}
+	// Register typed scheme
+	if scheme, err = ork_runtime.RegisterTypedScheme(scheme); err != nil {
+		return nil, err
 	}
 
 	return scheme, nil
@@ -96,13 +100,12 @@ func (k *Katalog) updateResourceMapAndReturn() (*Katalog, error) {
 			return nil, fmt.Errorf("no enabled CRDs found")
 		}
 
-		if k.mode.Yaml {
-			// Map the type of the object
-			logger.Debug().Msgf("updating resource map for %s", c.GroupVersionKind.String())
-			resourceTypeMap[reflect.TypeOf(c.ObjectYamlMode)] = c.GroupVersionKind.String()
-		} else if k.mode.Go {
-			resourceTypeMap[reflect.TypeOf(c.ObjectGoMode)] = c.GroupVersionKind.String()
-		}
+		// Map the type of the object
+		logger.Debug().Msgf("updating resource map for %s", c.GroupVersionKind.String())
+		resourceTypeMap[reflect.TypeOf(c.DynamicModeObject)] = c.GroupVersionKind.String()
+
+		// Deprecated
+		// resourceTypeMap[reflect.TypeOf(c.TypedModeObject)] = c.GroupVersionKind.String()
 	}
 
 	return k, nil
@@ -118,5 +121,35 @@ func (k *Katalog) registerGoScheme(scheme *runtime.Scheme) (*runtime.Scheme, err
 			return nil, fmt.Errorf("failed to register %s: %w", c.GroupVersionKind, err)
 		}
 	}
+	return scheme, nil
+}
+
+// Register dynamic CRDs — tells the watch stream to decode
+// these GVKs as *unstructured.Unstructured instead of failing
+func (k *Katalog) registerDynamicScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
+	for _, crd := range k.enabledCRDs {
+		if crd.IsDynamic() && crd.APITypes.Location == "" {
+			// Register Object
+			scheme.AddKnownTypeWithName(
+				schema.GroupVersionKind{
+					Group:   crd.APITypes.Group,
+					Version: crd.APITypes.Version,
+					Kind:    crd.APITypes.Kind,
+				},
+				&unstructured.Unstructured{},
+			)
+
+			// Register List
+			scheme.AddKnownTypeWithName(
+				schema.GroupVersionKind{
+					Group:   crd.APITypes.Group,
+					Version: crd.APITypes.Version,
+					Kind:    crd.APITypes.Kind + "List",
+				},
+				&unstructured.UnstructuredList{},
+			)
+		}
+	}
+
 	return scheme, nil
 }

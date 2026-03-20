@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -16,42 +16,76 @@ var _ domain.Komponent = (*HealthServer)(nil)
 
 type HealthServer struct {
 	server *http.Server
-	ready  atomic.Bool
-	port   string
-	client string
-	kfg    *konfig.Konfig
+	mux    *http.ServeMux
+
+	// startup probes
+	started atomic.Bool
+
+	// health probes
+	healthy atomic.Bool
+
+	// readiness probes
+	ready atomic.Bool
+
+	port      string
+	client    string
+	logLevel  string
+	startTime time.Time
 }
 
-func NewHealthServer(kfg *konfig.Konfig) *HealthServer {
-	client := kfg.App().Name
+func NewHealthServer(client, port, logLevel string) *HealthServer {
 	if client == "" {
 		client = "service"
 	}
 
 	hs := &HealthServer{
-		client: client,
-		port:   kfg.Health().Port,
-		kfg:    kfg,
+		client:   client,
+		port:     port,
+		mux:      http.NewServeMux(),
+		logLevel: logLevel,
 	}
 
 	// server is not healthy or ready on startup.
 	// modified when client is ready to process requests
 	hs.ready.Store(false)
+	hs.started.Store(false)
+	hs.healthy.Store(false)
 	return hs
 }
 
+// Register adds a route to the health server mux.
+// Must be called before Start() — routes registered after Start()
+// are not guaranteed to be visible depending on ServeMux implementation.
+func (hs *HealthServer) Register(path string, handler http.HandlerFunc) {
+	hs.mux.Handle(path, hs.logRoutesMiddleware(handler))
+}
+
 func (h *HealthServer) Start(ctx context.Context) error {
+	h.startTime = time.Now()
 	if !strings.HasPrefix(h.port, ":") {
-		logger.Debug().Msgf("normalizing port from %s to :%s", h.port, h.port)
 		h.port = ":" + h.port
 	}
 
+	// Register built-in routes on h.mux — same mux Register() uses
+	if strings.ToLower(h.logLevel) == "debug" {
+		h.mux.Handle("/health", h.logRoutesMiddleware(http.HandlerFunc(h.healthHandler)))
+		h.mux.Handle("/ready", h.logRoutesMiddleware(http.HandlerFunc(h.readyHandler)))
+	} else {
+		h.mux.HandleFunc("/health", h.healthHandler)
+		h.mux.HandleFunc("/ready", h.readyHandler)
+	}
+	h.mux.Handle("/metrics", promhttp.Handler())
+
+	// h.mux now has: /health, /ready, /metrics + all /katalog/* routes
 	h.server = &http.Server{
 		Addr:    h.port,
-		Handler: h.routes(),
+		Handler: h.mux,
 	}
 
+	h.started.Store(true)
+	h.healthy.Store(true)
 	go func() {
+		logger.Info().Msgf("health server listening on %s", h.port)
 		if err := h.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error().Err(err).Msg("health server error")
 		}
@@ -67,6 +101,7 @@ func (h *HealthServer) Shutdown(ctx context.Context) {
 		}
 	}
 	h.ready.Store(false)
+	h.healthy.Store(false)
 }
 
 func (h *HealthServer) Name() string {
@@ -77,28 +112,35 @@ func (h *HealthServer) SetReady() {
 	h.ready.Store(true)
 }
 
-func (h *HealthServer) Started() bool {
-	return h.ready.Load()
-}
-
-func (h *HealthServer) Degraded() bool {
+func (h *HealthServer) Degraded() {
 	if h.ready.Load() {
 		h.ready.Store(false)
 	}
-	return false
 }
 
-func (h *HealthServer) routes() *http.ServeMux {
-	mux := http.NewServeMux()
+func (h *HealthServer) Unhealthy() {
+	h.healthy.Store(false)
+}
 
-	if h.kfg.IsDev() {
-		mux.Handle("/health", h.logRouteMiddleware(http.HandlerFunc(h.healthHandler)))
-		mux.Handle("/ready", h.logRouteMiddleware(http.HandlerFunc(h.readyHandler)))
-	} else {
-		mux.HandleFunc("/health", h.healthHandler)
-		mux.HandleFunc("/ready", h.readyHandler)
+func (h *HealthServer) Started() bool {
+	return h.started.Load()
+}
+
+func (h *HealthServer) SetStarted() {
+	h.started.Store(true)
+}
+
+func (h *HealthServer) Healthy() bool {
+	return h.healthy.Load()
+}
+
+func (h *HealthServer) Ready() bool {
+	return h.ready.Load()
+}
+
+func (h *HealthServer) Uptime() string {
+	if h.startTime.IsZero() {
+		return "unknown"
 	}
-
-	mux.Handle("/metrics", promhttp.Handler())
-	return mux
+	return time.Since(h.startTime).Round(time.Second).String()
 }

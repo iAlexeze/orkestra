@@ -1,41 +1,218 @@
-# 🎼 **Extending Orkestra**  
-### *How to Add New CRDs, Reconcilers, and Runtime Behavior*
+# Extending Orkestra
 
-Orkestra is designed so that extending it is **fast**, **predictable**, and **boilerplate‑free**.  
-Whether you’re adding a new CRD in Go or defining one dynamically through YAML, the workflow is intentionally simple:
-
-> **You write API types and a reconciler.  
-Orkestra builds the entire operator runtime around them.**
-
-This guide walks you through the full process.
+Adding a new CRD to Orkestra means adding a Katalog entry. Orkestra builds
+the operator around it — informer, workqueue, workers, health API, metrics,
+finalizers, and lifecycle. You declare the CRD. Orkestra manages it.
 
 ---
 
-# 🧩 **Overview: What You Need to Provide**
+## What you provide
 
-To add a new CRD to Orkestra, you only need to supply:
+The minimum for any CRD:
 
-1. **API Types**  
-2. **Reconciler**  
-3. **Katalog Entry** (Go or YAML)  
-4. *(YAML mode only)* Scheme registration
+```yaml
+# in your Katalog
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+spec:
+  crds:
+    - name: myresource
+      enabled: true
+      apiTypes:
+        group: myorg.io
+        version: v1alpha1
+        kind: MyResource
+        plural: myresources
+      reconciler:
+        default: true
+```
 
-Everything else — clients, informers, workers, resync intervals, dependency ordering, lifecycle orchestration — is generated automatically.
+That is a complete operator entry. Apply the CRD definition to your cluster,
+run `ork run --katalog katalog.yaml`, and Orkestra manages `MyResource`
+from that moment forward.
+
+Everything else — compiled types, Go hooks, custom constructors — is
+optional and added only when you need it.
 
 ---
 
-# 🏗️ Step 1 — Create API Types
+## Step 1 — Declare your CRD in the Katalog
 
-Create a new directory for your CRD:
+Every CRD entry needs at minimum: `name`, `apiTypes` (group, version, kind,
+plural), and `reconciler.default`.
+
+```yaml
+- name: myresource
+  enabled: true
+  namespaced: true
+  workers: 2
+  resync: 30s
+  dependsOn: []
+
+  apiTypes:
+    group: myorg.io
+    version: v1alpha1
+    kind: MyResource
+    plural: myresources
+    # location omitted → dynamic mode
+    # location: github.com/myorg/apis/v1alpha1 → typed mode
+
+  reconciler:
+    default: true
+
+  queue:
+    maxQueueDepth: 500
+    degradeThreshold: 5
+```
+
+**Dynamic mode** (no `apiTypes.location`) — no Go types needed. Orkestra
+uses the dynamic client. Template expressions in `onCreate`/`onReconcile`/
+`onDelete` resolve against the live CR at reconcile time.
+
+**Typed mode** (`apiTypes.location` set) — compiled Go types are registered
+at startup. The REST client decodes API server responses into your structs.
+Required for Go hooks that access `obj.Spec` fields with compile-time safety.
+
+---
+
+## Step 2 — Choose your reconcile path
+
+### Path A — Declarative templates (zero code)
+
+Declare what resources to create in the Katalog. No Go. No code generation.
+No build step. Just `ork run`.
+
+```yaml
+reconciler:
+  default: true
+  finalizers:
+    - finalizer.myorg.io/myresource
+  onCreate:
+    deployments:
+      - name: "{{ .metadata.name }}"
+        image: "{{ .spec.image }}"
+        replicas: "{{ .spec.replicas }}"
+        reconcile: true   # drift correction — no separate onReconcile needed
+    services:
+      - name: "{{ .metadata.name }}-svc"
+        port: "80"
+        targetPort: "{{ .spec.port }}"
+        type: "{{ .spec.serviceType }}"
+        reconcile: true
+    configMaps:
+      - name: "{{ .metadata.name }}-config"
+        data:
+          LOG_LEVEL: "{{ .spec.logLevel }}"
+        reconcile: true
+  onDelete:
+    jobs:
+      - name: "{{ .metadata.name }}-cleanup"
+        image: busybox
+        command: ["sh", "-c", "cleanup.sh {{ .metadata.name }}"]
+```
+
+GenericReconciler interprets these declarations at runtime. `reconcile: true`
+means the same resource is also drift-corrected on every reconcile — you
+declare it once and get both create and correction behaviour.
+
+### Path B — Go hooks
+
+Use when you need: type-safe `obj.Spec` access, conditional resource creation,
+external API calls, or status subresource writes.
+
+```yaml
+reconciler:
+  default: true
+  hooks:
+    location: github.com/myorg/hooks
+    function: MyResourceHooks
+```
+
+```go
+// pkg/hooks/myresource.go
+func MyResourceHooks() domain.AnyReconcileHooks {
+    return domain.ReconcileHooks[*apiv1.MyResource]{
+        OnReconcile: func(ctx context.Context, obj *apiv1.MyResource) error {
+            kube, _ := kubeclient.FromContext(ctx)
+
+            // type-safe spec access
+            spec := orkdeploy.ResolvedDeploymentSpec{
+                Name:      obj.Name,
+                Namespace: obj.Namespace,
+                Image:     obj.Spec.Image,     // compiled field access
+                Replicas:  int32(obj.Spec.Replicas),
+            }
+            return orkdeploy.Create(ctx, kube, obj, spec)
+        },
+        OnDelete: func(ctx context.Context, obj *apiv1.MyResource) error {
+            // cleanup logic
+            return nil
+        },
+    }
+}
+```
+
+Requires `ork generate runtime` to register the hook in `HookRegistry`.
+Also requires a compiled Go type package — set `apiTypes.location`.
+
+### Path C — Custom constructor
+
+Use when you need the full reconcile loop: complex state machines, custom
+retry strategies, or wrapping an existing reconciler implementation.
+
+```yaml
+reconciler:
+  default: false
+  constructor:
+    location: github.com/myorg/reconcilers
+    function: NewMyResourceReconciler
+```
+
+```go
+type MyResourceReconciler struct {
+    informer cache.SharedIndexInformer
+    kube     *kubeclient.Kubeclient
+    event    *event.Event
+}
+
+func NewMyResourceReconciler(
+    kube *kubeclient.Kubeclient,
+    inf cache.SharedIndexInformer,
+    ev *event.Event,
+) domain.Reconciler {
+    return &MyResourceReconciler{informer: inf, kube: kube, event: ev}
+}
+
+func (r *MyResourceReconciler) Reconcile(ctx context.Context, key string) error {
+    raw, exists, err := r.informer.GetIndexer().GetByKey(key)
+    if err != nil || !exists {
+        return err
+    }
+    obj := raw.(*apiv1.MyResource).DeepCopy()
+    // your reconcile logic
+    return nil
+}
+```
+
+Orkestra still owns the informer, workqueue, metrics, health API, and leader
+election. You own the reconcile function.
+
+Requires `ork generate runtime` to register the constructor.
+
+---
+
+## Step 3 — For typed mode: create API types
+
+Only needed when `apiTypes.location` is set. Skip for dynamic CRDs.
 
 ```
-api/types/yourcrd/v1alpha1/
-├── groupversion_info.go
-├── yourcrd_types.go
-└── zz_generated.deepcopy.go
+api/types/myresource/v1alpha1/
+  groupversion_info.go
+  myresource_types.go
+  zz_generated.deepcopy.go   ← generated by controller-gen
 ```
 
-### `groupversion_info.go`
+**`groupversion_info.go`:**
 
 ```go
 package v1alpha1
@@ -47,265 +224,133 @@ import (
 )
 
 var (
-    Group      = "yourgroup.example.com"
+    Group      = "myorg.io"
     Version    = "v1alpha1"
-    APIPath    = "/apis"
-    Kind       = "YourCRD"
-    NamePlural = "yourcrds"
+    Kind       = "MyResource"
+    NamePlural = "myresources"
 
-    GroupVersion = schema.GroupVersion{
-        Group:   Group,
-        Version: Version,
-    }
-
+    GroupVersion  = schema.GroupVersion{Group: Group, Version: Version}
     SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
     AddToScheme   = SchemeBuilder.AddToScheme
 )
 
 func addKnownTypes(scheme *runtime.Scheme) error {
-    scheme.AddKnownTypes(GroupVersion,
-        &YourCRD{},
-        &YourCRDList{},
-    )
+    scheme.AddKnownTypes(GroupVersion, &MyResource{}, &MyResourceList{})
     metav1.AddToGroupVersion(scheme, GroupVersion)
     return nil
 }
 ```
 
-### `yourcrd_types.go`
+**`myresource_types.go`:**
 
 ```go
 package v1alpha1
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-type YourCRD struct {
+type MyResource struct {
     metav1.TypeMeta   `json:",inline"`
     metav1.ObjectMeta `json:"metadata,omitempty"`
-    Spec              YourCRDSpec   `json:"spec"`
-    Status            YourCRDStatus `json:"status,omitempty"`
+    Spec              MyResourceSpec   `json:"spec"`
+    Status            MyResourceStatus `json:"status,omitempty"`
 }
 
-type YourCRDSpec struct {
-    Replicas int `json:"replicas"`
+type MyResourceSpec struct {
+    Image     string `json:"image"`
+    Replicas  int    `json:"replicas,omitempty"`
+    LogLevel  string `json:"logLevel,omitempty"`
 }
 
-type YourCRDStatus struct {
-    Phase string `json:"phase,omitempty"`
+type MyResourceStatus struct {
+    Phase   string `json:"phase,omitempty"`
+    Message string `json:"message,omitempty"`
 }
 
-type YourCRDList struct {
+type MyResourceList struct {
     metav1.TypeMeta `json:",inline"`
     metav1.ListMeta `json:"metadata,omitempty"`
-    Items           []YourCRD `json:"items"`
+    Items           []MyResource `json:"items"`
 }
 ```
 
-### Generate deepcopy code
+Generate deepcopy:
 
 ```bash
-controller-gen object paths=./api/types/yourcrd/...
+controller-gen object paths=./api/types/myresource/...
 ```
 
 ---
 
-# 🧠 Step 2 — Write Your Reconciler
+## Step 4 — Generate runtime wiring (typed and hooks only)
 
-Your reconciler is the **only Go logic** you write.
-
-```go
-package reconciler
-
-import (
-    "context"
-    "k8s.io/client-go/tools/cache"
-)
-
-type YourCRDReconciler struct{}
-
-func NewYourCRDReconciler(inf cache.SharedIndexInformer) *YourCRDReconciler {
-    return &YourCRDReconciler{}
-}
-
-func (r *YourCRDReconciler) Reconcile(ctx context.Context, key string) error {
-    namespace, name, err := cache.SplitMetaNamespaceKey(key)
-    if err != nil {
-        return err
-    }
-
-    // Fetch object from informer store
-    obj, exists, err := r.informer.GetStore().GetByKey(key)
-    if err != nil || !exists {
-        return nil // handle deletion if needed
-    }
-
-    cr := obj.(*v1alpha1.YourCRD)
-
-    // Your business logic here
-    return nil
-}
-```
-
----
-
-# 🧭 Step 3 — Register Your CRD
-
-You can register CRDs in **Go mode** or **YAML mode**.
-
----
-
-## 🟦 Option A — Go Mode (Typed)
-
-Add your CRD to the Go katalog: [crd-katalog](../initialize/katalog.go)
-
-```go
-{
-    Name:        "yourcrd",
-    Object:      &yourcrdv1.YourCRD{},
-    ListObject:  &yourcrdv1.YourCRDList{},
-    Group:       yourcrdv1.Group,
-    Version:     yourcrdv1.Version,
-    Kind:        yourcrdv1.Kind,
-    Plural:      yourcrdv1.NamePlural,
-    Namespace:   "default",
-    Namespaced:  true,
-    Workers:     3,
-    Resync:      10 * time.Minute,
-    Scheme:      yourcrdv1.AddToScheme,
-    Reconciler: func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer) domain.Reconciler {
-        return reconciler.NewYourCRDReconciler(inf)
-    },
-}
-```
-
-### Go Mode Benefits
-- Full type safety  
-- Automatic scheme registration  
-- IDE autocompletion  
-- Compile‑time validation  
-
----
-
-## 🟩 Option B — YAML Mode (Dynamic)
-
-Enable YAML mode:
+Dynamic template CRDs skip this entirely.
 
 ```bash
-export KATALOG_PATH_MODE=YAML
-export KATALOG_PATH=initialize/katalog.yaml    # or remote URL
+# Typed CRDs — registers Go types + scheme
+# Go hooks — registers hook factory in HookRegistry
+# Custom constructors — registers constructor in ReconcilerRegistry
+ork generate runtime --katalog katalog.yaml
+
+# Preview without writing
+ork generate runtime --katalog katalog.yaml --dry-run
+
+# Then
+go mod tidy
 ```
 
-Add your CRD:
+What gets generated for each case:
 
-```yaml
-crds:
-  - name: yourcrd
-    group: yourgroup.example.com
-    version: v1alpha1
-    kind: YourCRD
-    plural: yourcrds
-    namespace: default
-    namespaced: true
-    workers: 3
-    resync: 10m
-    dependsOn: ["project"]
-```
-
-### YAML Mode Benefits
-- No recompilation  
-- GitOps‑friendly  
-- Remote registries  
-- Multi‑cluster orchestration  
-- Canary rollouts  
+| Case | Generated |
+|---|---|
+| Typed CRD | `ObjectRegistry` + `ListRegistry` entries + `RegisterTypedScheme` |
+| Go hooks | `HookRegistry` entry |
+| Custom constructor | `ReconcilerRegistry` entry |
+| Dynamic templates only | **Nothing — generation skipped** |
 
 ---
 
-# 🎼 Step 4 — Register Your Reconciler (YAML Mode Only)
+## Step 5 — Apply the CRD and run
 
-YAML mode uses a name‑based reconciler katalog: [reconciler-katalog](../pkg/reconciler/reconcile.go)
+```bash
+# Apply the Kubernetes CRD definition
+kubectl apply -f myresource-crd.yaml
 
-```go
-func RegisterReconcilers() map[string]NewReconcilerFunc {
-    return map[string]NewReconcilerFunc{
-        "yourcrd": func(k *kubeclient.Kubeclient, inf cache.SharedIndexInformer) domain.Reconciler {
-            return NewYourCRDReconciler(inf)
-        },
-    }
-}
+# Validate the Katalog before running
+ork validate --katalog katalog.yaml
+
+# Preview the merged state
+ork template --katalog katalog.yaml --graph
+
+# Start the operator
+ork run --katalog katalog.yaml
 ```
 
-The key (`yourcrd`) must match the YAML `name:` field.
+Orkestra starts, the informer syncs, and your CRD is now managed. Create a
+CR and watch the resources appear:
 
----
-
-# 🎻 Step 5 — Register Your Scheme (YAML Mode Only)
-YAML mode scheme katalog: [scheme-katalog](../initialize/scheme_katalog.go)
-
-```go
-func RegisterScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
-    if err := yourcrdv1.AddToScheme(scheme); err != nil {
-        return nil, err
-    }
-    return scheme, nil
-}
+```bash
+kubectl apply -f myresource-cr.yaml
+kubectl get deployments
+curl localhost:8080/katalog/myresource/health | jq
 ```
 
 ---
 
-# 🎉 Step 6 — Done!
+## Summary
 
-Orkestra now automatically:
-
-- builds REST clients  
-- creates informers  
-- applies your resync interval  
-- assigns worker pools  
-- wires event handlers  
-- dispatches by GVK  
-- enforces dependency ordering  
-- exposes metrics  
-- integrates with leader election  
-- handles graceful shutdown  
-
-You wrote **~50 lines of code**.  
-Orkestra generated **~500 lines of runtime behavior**.
-
----
-
-# 🧪 Testing Your CRD
-
-You can test your reconciler in isolation:
-
-- use fake informer stores  
-- use fake kubeclient  
-- simulate events  
-- assert state transitions  
-
-Orkestra’s clean interfaces make this trivial.
-
----
-
-# 🏁 Summary
-
-Adding a new CRD to Orkestra is:
-
-1. Write API types  
-2. Write reconciler  
-3. Register CRD (Go or YAML)  
-4. *(YAML mode)* Register scheme and reconciler 
-5. Done  
-
-Orkestra handles:
-
-- clients  
-- informers  
-- workqueues  
-- dispatch  
-- workers  
-- resync  
-- dependencies  
-- lifecycle  
-- metrics  
-- HA  
-
-So you can focus entirely on **business logic**, not plumbing.
+| What you provide | What Orkestra provides |
+|---|---|
+| Katalog entry | Informer + workqueue |
+| Template declarations (optional) | Runtime template interpretation |
+| Go types (optional, typed mode) | Scheme registration + REST client |
+| Go hooks (optional) | GenericReconciler lifecycle |
+| Custom constructor (optional) | Everything except reconcile function |
+| | Health API (`/katalog/myresource`) |
+| | Prometheus metrics |
+| | Dependency ordering |
+| | Leader election |
+| | Graceful shutdown |
+| | Drift correction |
+| | Cascade deletion via owner references |
+| | Finalizer management |
+| | Kubernetes events |

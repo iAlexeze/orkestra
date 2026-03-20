@@ -3,15 +3,16 @@ package konfig
 import "time"
 
 type Konfig struct {
-	app          appKonfig
+	ork          orkKonfig
 	cluster      clusterKonfig
-	leader       leaderElection
+	konductor    konductorElection
 	healthServer healthServer
 	katalog      katalogKonfig
 }
 
-type appKonfig struct {
+type orkKonfig struct {
 	Name        string `validate:"required"`
+	ShortName   string
 	Version     string
 	Environment string
 	LogLevel    string
@@ -24,11 +25,11 @@ type healthServer struct {
 }
 
 type clusterKonfig struct {
-	KubekonfigPath string
-	MasterURL      string
-	InCluster      bool
-	Name           string
-	Namespace      string `validate:"required"`
+	KubekonfigPath   string
+	MasterURL        string
+	InCluster        bool
+	Name             string
+	DefaultNamespace string `validate:"required"`
 
 	// Worload specific
 	DefaultResync  time.Duration
@@ -38,12 +39,12 @@ type clusterKonfig struct {
 }
 
 type katalogKonfig struct {
-	Path          string // Path to CRD registry YAML file
-	Mode          string `validate:"required"` // Mode of CRD registry
-	MaxQueueDepth int
+	Paths                   []string // Comma separated Paths to CRD katalog YAML file
+	DefaultMaxQueueDepth    int
+	DefaultDegradeThreshold int `validate:"required"`
 }
 
-type leaderElection struct {
+type konductorElection struct {
 	LeaseDuration time.Duration
 	RenewDeadline time.Duration
 	RetryPeriod   time.Duration
@@ -52,56 +53,41 @@ type leaderElection struct {
 // Methods
 
 // IsDev returns true for development environment
-func (c *Konfig) IsDev() bool {
-	return c.App().Environment == "devlopment"
+func (k *Konfig) IsDev() bool {
+	return k.Ork().Environment == "devlopment"
 }
 
 // IsDev returns true for staging environment
-func (c *Konfig) IsStaging() bool {
-	return c.App().Environment == "staging"
+func (k *Konfig) IsStaging() bool {
+	return k.Ork().Environment == "staging"
 }
 
 // IsDev returns true for production environment
 func (c *Konfig) IsProduction() bool {
-	return c.App().Environment == "production"
+	return c.Ork().Environment == "production"
 }
 
 // Health returns health konfigurations
-func (c *Konfig) Health() *healthServer {
-	return &c.healthServer
+func (k *Konfig) Health() *healthServer {
+	return &k.healthServer
 }
 
-// App returns app Konfigurations
-func (c *Konfig) App() *appKonfig {
-	return &c.app
+// Ork returns Ork Konfigurations
+func (k *Konfig) Ork() *orkKonfig {
+	return &k.ork
 }
 
-// Cluster returns app Konfigurations
-func (c *Konfig) Cluster() *clusterKonfig {
-	return &c.cluster
+// Cluster returns cluster Konfigurations
+func (k *Konfig) Cluster() *clusterKonfig {
+	return &k.cluster
 }
 
-// Leader returns app Konfigurations
-func (c *Konfig) Leader() *leaderElection {
-	return &c.leader
+// Konductor returns konductor Konfigurations
+func (c *Konfig) Konductor() *konductorElection {
+	return &c.konductor
 }
 
-// Katalog returns app Konfigurations
-func (c *Konfig) Katalog() *katalogKonfig {
-	return &c.katalog
-}
-
-const (
-	ModeGo   = "go"
-	ModeYaml = "yaml"
-)
-
-// Mode returns the mode in use
-func (c *Konfig) Mode() string {
-	if c.Katalog().Mode == "yaml" {
-		return "yaml"
-	} else if c.Katalog().Mode == "go" {
-		return "go"
-	}
-	return ""
+// Katalog returns katalog Konfigurations
+func (k *Konfig) Katalog() *katalogKonfig {
+	return &k.katalog
 }

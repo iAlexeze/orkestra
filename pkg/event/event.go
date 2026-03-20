@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/ialexeze/orkestra/domain"
-	crderror "github.com/ialexeze/orkestra/pkg/error"
+	orkerror "github.com/ialexeze/orkestra/pkg/error"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/utils"
@@ -32,7 +32,7 @@ var _ domain.Komponent = (*Event)(nil)
 
 func NewEvent(kube *kubeclient.Kubeclient) *Event {
 	if kube.Scheme() == nil {
-		utils.Exit(crderror.ErrSchemeNill)
+		utils.Exit(orkerror.ErrSchemeNill)
 	}
 
 	return &Event{
