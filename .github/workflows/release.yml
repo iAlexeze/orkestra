@@ -114,14 +114,18 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          # Import the private key used to sign releases
           echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
 
-          # Trust the key fully so signing does not prompt
-          KEY_ID=$(gpg --list-secret-keys --with-colons | grep '^sec' | cut -d: -f5)
-          echo "${KEY_ID}:6:" | gpg --import-ownertrust
+          # Extract the full fingerprint from the fpr record (field 10)
+          # NOT the key ID from the sec record (field 5) — import-ownertrust needs the fingerprint
+          FINGERPRINT=$(gpg --list-secret-keys --with-colons releases@orkestra.io \
+            | grep '^fpr' \
+            | head -1 \
+            | cut -d: -f10)
 
-          echo "✅ GPG key imported: ${KEY_ID}"
+          echo "${FINGERPRINT}:6:" | gpg --import-ownertrust
+
+          echo "✅ GPG key imported and trusted: ${FINGERPRINT}"
 
       - name: Sign tarballs
         env:
