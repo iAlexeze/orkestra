@@ -45,9 +45,10 @@ type katalogKonfig struct {
 }
 
 type konductorElection struct {
-	LeaseDuration time.Duration
-	RenewDeadline time.Duration
-	RetryPeriod   time.Duration
+	ElectionNamespace string
+	LeaseDuration     time.Duration
+	RenewDeadline     time.Duration
+	RetryPeriod       time.Duration
 }
 
 // Methods

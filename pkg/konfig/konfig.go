@@ -1,7 +1,7 @@
 package konfig
 
 import (
-	"log"
+	// "log"
 	"os"
 	"strconv"
 	"time"
@@ -12,7 +12,7 @@ import (
 func Init(filenames ...string) (*Konfig, error) {
 	err := godotenv.Load(filenames...)
 	if err != nil {
-		log.Print("No '.env' file found. Defaulting to system defined variables...")
+		// log.Print("No '.env' file found. Defaulting to system defined variables...")
 	}
 
 	kfg := &Konfig{
@@ -28,7 +28,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			MasterURL:        GetStrEnv("MASTER_URL", ""),
 			InCluster:        GetBoolEnv("IN_CLUSTER", false),
 			Name:             GetStrEnv("CLUSTER_NAME", "kubernetes-crd-example"),
-			DefaultNamespace: GetStrEnv("DEFAULT_NAMESPACE", "default"),
+			DefaultNamespace: GetStrEnv("NAMESPACE", "default"),
 
 			// Workload
 			DefaultResync:  GetDurEnvSeconds("DEFAULT_RESYNC", 15),
@@ -37,14 +37,15 @@ func Init(filenames ...string) (*Konfig, error) {
 			DefaultWorkers: GetIntEnv("DEFAULT_WORKERS", 3),
 		},
 		healthServer: healthServer{
-			Port:         GetStrEnv("PORT", "5000"),
+			Port:         GetStrEnv("HEALTH_PORT", "5000"),
 			ReadTimeout:  GetDurEnvSeconds("SRV_READ_TIMEOUT", 5),
 			WriteTimeout: GetDurEnvSeconds("SRV_WRITE_TIMEOUT", 20),
 		},
 		konductor: konductorElection{
-			LeaseDuration: GetDurEnvSeconds("LEASE_DURATION", 60),
-			RenewDeadline: GetDurEnvSeconds("RENEW_DEADLINE", 40),
-			RetryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),
+			ElectionNamespace: GetStrEnv("LEADER_ELECTION_NAMESPACE", "default"),
+			LeaseDuration:     GetDurEnvSeconds("LEASE_DURATION", 60),
+			RenewDeadline:     GetDurEnvSeconds("RENEW_DEADLINE", 40),
+			RetryPeriod:       GetDurEnvSeconds("RETRY_PERIOD", 10),
 		},
 		katalog: katalogKonfig{
 			DefaultMaxQueueDepth:    GetIntEnv("MAX_QUEUE_DEPTH", 2000),

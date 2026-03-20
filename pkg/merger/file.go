@@ -138,14 +138,22 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktype
 
 	// ── Step 1: file sources ──────────────────────────────────────────────────
 	if doc.Sources != nil {
-		for _, filePath := range doc.Sources.Files {
-			resolved, err := resolveEnvVar(filePath)
+		for _, fileSrc := range doc.Sources.Files {
+
+			// Resolve environment variable in the URL if needed
+			resolved, err := resolveEnvVar(fileSrc.URL)
 			if err != nil {
 				return nil, fmt.Errorf("%q sources.files: %w", path, err)
 			}
 
+			// Resolve authentication credentials from environment variables
+			auth, err := fileSrc.Auth.Resolve()
+			if err != nil {
+				return nil, fmt.Errorf("%q sources.files[%q]: auth: %w", path, resolved, err)
+			}
+
 			// Load the file — must be a Katalog, not another Komposer
-			crds, err := m.loadSourceFile(path, resolved)
+			crds, err := m.loadSourceFileWithAuth(path, resolved, auth)
 			if err != nil {
 				return nil, fmt.Errorf("%q sources.files[%q]: %w", path, resolved, err)
 			}
@@ -158,7 +166,6 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktype
 				allCRDs = append(allCRDs, crd)
 			}
 		}
-
 		// ── Step 2: helm sources ──────────────────────────────────────────────
 		for i, helmSrc := range doc.Sources.Helm {
 			crds, err := m.loadHelmSource(helmSrc)

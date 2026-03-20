@@ -1,0 +1,81 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "orkestra.fullname" . }}
+  labels:
+    {{- include "orkestra.labels" . | nindent 4 }}
+rules:
+  # ── CRD discovery ──────────────────────────────────────────────────────────
+  # Orkestra reads CRD definitions to discover group/version/resource metadata.
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+
+  # ── Informer — watch arbitrary CRDs ───────────────────────────────────────
+  # Orkestra watches any CRD declared in the Katalog.
+  # The wildcard is intentional — Katalogs may declare CRDs from any group.
+  # Modify in production to specific groups.
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+
+  # ── Finalizer management ──────────────────────────────────────────────────
+  # Orkestra patches finalizers on CRs it manages.
+  # Modify in production to specific groups.
+  - apiGroups: ["*"]
+    resources: ["*/finalizers"]
+    verbs: ["update", "patch"]
+
+  # ── OrkestraRegistry — Deployments ────────────────────────────────────────
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # ── OrkestraRegistry — Services ───────────────────────────────────────────
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # ── OrkestraRegistry — Secrets ────────────────────────────────────────────
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # ── OrkestraRegistry — ConfigMaps ─────────────────────────────────────────
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # ── OrkestraRegistry — ServiceAccounts ───────────────────────────────────
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # ── OrkestraRegistry — Jobs ───────────────────────────────────────────────
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # ── OrkestraRegistry — CronJobs ───────────────────────────────────────────
+  - apiGroups: ["batch"]
+    resources: ["cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # ── OrkestraRegistry — Pods ───────────────────────────────────────────────
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # ── Kubernetes events ──────────────────────────────────────────────────────
+  # Orkestra emits events on every CR it reconciles.
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch", "update"]
+
+  # ── Leader election ────────────────────────────────────────────────────────
+  # KonductorElection uses a Lease for leader election.
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+{{- end }}

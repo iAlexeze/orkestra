@@ -1,0 +1,30 @@
+apiVersion: v2
+name: orkestra
+description: >-
+  The Kubernetes operator framework that needs no Go.
+  Deploy Orkestra and manage your CRDs declaratively with Katalog YAML files.
+type: application
+version: 0.1.0
+appVersion: "v1.0.0"
+keywords:
+  - orkestra
+  - operator
+  - kubernetes
+  - crd
+  - declarative
+  - controller
+home: https://github.com/iAlexeze/orkestra
+sources:
+  - https://github.com/iAlexeze/orkestra
+maintainers:
+  - name: Orkestra
+    url: https://github.com/iAlexeze/orkestra
+annotations:
+  artifacthub.io/license: MIT
+  artifacthub.io/links: |
+    - name: Documentation
+      url: https://github.com/iAlexeze/orkestra/tree/main/docs
+    - name: Whitepaper
+      url: https://github.com/iAlexeze/orkestra/blob/main/publish/declarative-operators-whitepaper.md
+    - name: Why Orkestra?
+      url: https://github.com/iAlexeze/orkestra/blob/main/publish/why-orkestra.md

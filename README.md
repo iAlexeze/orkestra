@@ -89,7 +89,7 @@ less install.sh
 bash install.sh
 
 # Pin to a specific version
-curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | ORK_VERSION=v1.0.0 bash
+curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | ORK_VERSION=v0.1.1 bash
 
 # Install to a custom directory
 curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
@@ -101,11 +101,11 @@ Every release is GPG-signed. To verify the binary before running it:
 
 ```bash
 # Import the Orkestra public key (one time)
-curl -sSL https://github.com/iAlexeze/orkestra/releases/download/v1.0.0/orkestra-public-key.asc | gpg --import
+curl -sSL https://github.com/iAlexeze/orkestra/releases/download/v0.1.1/orkestra-public-key.asc | gpg --import
 
 # Download the binary and its signature
-curl -sSLO https://github.com/iAlexeze/orkestra/releases/download/v1.0.0/ork_linux_amd64.tar.gz
-curl -sSLO https://github.com/iAlexeze/orkestra/releases/download/v1.0.0/ork_linux_amd64.tar.gz.asc
+curl -sSLO https://github.com/iAlexeze/orkestra/releases/download/v0.1.1/ork_linux_amd64.tar.gz
+curl -sSLO https://github.com/iAlexeze/orkestra/releases/download/v0.1.1/ork_linux_amd64.tar.gz.asc
 
 # Verify
 gpg --verify ork_linux_amd64.tar.gz.asc ork_linux_amd64.tar.gz
@@ -345,6 +345,7 @@ baked into binaries.
 | [Extending Orkestra](./docs/extending.md) | Adding new CRDs and resource types |
 | [Use Cases](./docs/use-cases.md) | Real-world operator patterns |
 | [Roadmap](./ROADMAP.md) | What is coming next |
+| [Deployment](./docs/deployment.md) | Step by step guide to deploy Orkestra |
 
 ## Publish
 

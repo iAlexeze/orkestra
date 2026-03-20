@@ -90,6 +90,9 @@ KonductorElection — leader election as post-start hook
   └── kontroller.RunOrDie() runs only on the elected leader
 ```
 
+See full architecture view [here](../docs/full-architecture-view.md).
+
+
 ---
 
 ## Startup sequence

@@ -18,14 +18,29 @@ type KatalogMeta struct {
 	Description string `yaml:"description,omitempty"`
 }
 
-// KatalogSources declares additional CRD definitions to merge in.
+// KatalogSources declares where to load CRD definitions from.
 // Sources are loaded before spec.crds — inline CRDs are merged last
 // and win on name conflict (allowing local overrides of remote definitions).
+//
+// Only valid on kind: Komposer documents.
 type KatalogSources struct {
-	// Files — local file paths or remote URLs to other Katalog files.
+	// Files — local paths, remote URLs, or environment variable references.
 	// Each entry must be a valid Katalog YAML (apiVersion, kind, spec.crds).
 	// Supports environment variable references: $MY_KATALOG_URL
-	Files []string `yaml:"files,omitempty"`
+	//
+	// Simple form: just a path string (no auth)
+	//   files:
+	//     - ./katalogs/project.yaml
+	//     - https://public.url/katalog.yaml
+	//     - $MY_KATALOG_URL
+	//
+	// Authenticated form: a FileSource struct with auth block
+	//   files:
+	//     - url: https://private.url/katalog.yaml
+	//       auth:
+	//         type: bearer
+	//         fromEnv: MY_TOKEN
+	Files []FileSource `yaml:"files,omitempty"`
 
 	// Helm — Helm chart sources. Each chart is rendered with the provided
 	// value files and the resulting Katalog templates are extracted and merged.

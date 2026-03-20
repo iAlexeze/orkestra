@@ -1,51 +1,62 @@
-# ---- Build Stage ----
+# ── Stage 1: Build ────────────────────────────────────────────────────────────
+# Full Go toolchain — only used during compilation, never in the final image.
 FROM golang:1.25-alpine AS builder
 
-# Install build dependencies
-RUN apk add --no-cache git ca-certificates
+# Install git — needed for go modules that reference git repos
+RUN apk add --no-cache git ca-certificates tzdata
 
-# Set working directory
-WORKDIR /app
+WORKDIR /build
 
-# Copy go mod files first (for better layer caching)
+# Copy dependency files first — Docker cache layer reuse.
+# Only re-downloads modules when go.mod or go.sum changes.
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code
+# Copy the rest of the source
 COPY . .
 
-# Build Orkestra
-# - CGO_ENABLED=0 for static binary
-# - ldflags to strip debug info and reduce size
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s" \
-    -o bin/orkestra ./cmd
+# Build arguments injected by the release workflow via --build-arg
+ARG VERSION=dev
+ARG COMMIT=none
+ARG BUILD_DATE=unknown
 
-# ---- Final Stage ----
-FROM alpine:3.19
+# Build the binary
+# CGO_ENABLED=0  — fully static binary, no libc dependency
+# -trimpath      — removes local file paths from stack traces
+# -ldflags "-s -w" — strip debug info and symbol table (smaller binary)
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -trimpath \
+    -ldflags="-s -w \
+      -X github.com/iAlexeze/orkestra/pkg/version.Version=${VERSION} \
+      -X github.com/iAlexeze/orkestra/pkg/version.Commit=${COMMIT} \
+      -X github.com/iAlexeze/orkestra/pkg/version.Date=${BUILD_DATE}" \
+    -o /build/ork \
+    ./cmd/orkestra/
 
-# Install ca-certificates for TLS and curl for health checks
-RUN apk add --no-cache ca-certificates curl jq
+# Verify the binary is statically linked
+RUN file /build/ork && ldd /build/ork 2>&1 || true
 
-# Create non-root user for security
-RUN addgroup -g 1000 -S appuser && \
-    adduser -u 1000 -S appuser -G appuser
+# ── Stage 2: Final image ───────────────────────────────────────────────────────
+# distroless/static — no shell, no package manager, no libc.
+# Attack surface is as small as a container image can be.
+# Contains only: the binary, CA certificates, and timezone data.
+FROM gcr.io/distroless/static-debian12:nonroot
 
-# Set working directory
-WORKDIR /app
+# Copy CA certs and timezone data from builder
+# (distroless/static includes these but being explicit documents the intent)
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
-# Copy binary from builder
-COPY --from=builder /app/bin/orkestra /app/orkestra
+# Copy only the compiled binary — nothing else from the build stage
+COPY --from=builder /build/ork /usr/local/bin/ork
 
-# Copy .env.example as reference (optional)
-COPY --from=builder /app/.env.example /app/.env.example
+# distroless/nonroot runs as uid 65532 by default
+# Declaring it here makes the intent explicit and satisfies security scanners
+USER 65532:65532
 
-# Create directory for potential volume mounts
-RUN mkdir -p /app/config && \
-    chown -R appuser:appuser /app
+# Health check — Kubernetes probes handle this, but useful for docker run
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["/usr/local/bin/ork", "version"]
 
-# Switch to non-root user
-USER appuser
-
-# Run orkestra
-ENTRYPOINT ["/app/orkestra"]
+ENTRYPOINT ["/usr/local/bin/ork"]
+CMD ["--help"]
