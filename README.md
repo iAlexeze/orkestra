@@ -345,7 +345,7 @@ baked into binaries.
 | [Extending Orkestra](./docs/extending.md) | Adding new CRDs and resource types |
 | [Use Cases](./docs/use-cases.md) | Real-world operator patterns |
 | [Roadmap](./ROADMAP.md) | What is coming next |
-| [Deployment](./docs/deploy-to-production.md) | Step by step guide to deploy Orkestra |
+| [Deployment](./docs/deployment.md) | Step by step guide to deploy Orkestra |
 
 ## Publish
 
