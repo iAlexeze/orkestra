@@ -17,6 +17,11 @@ func (k *Katalog) All() []orktypes.CRDEntry {
 	return k.Spec.CRDs
 }
 
+// Useful Metadata
+func (k *Katalog) Meta() orktypes.KatalogMeta {
+	return k.metadata
+}
+
 // Exists returns true if a CRD with the given name exists in the katalog.
 func (k *Katalog) Exists(name string) bool {
 	for _, crd := range k.Spec.CRDs {

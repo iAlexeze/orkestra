@@ -4,6 +4,8 @@ package kontroller
 import (
 	"sync/atomic"
 	"time"
+
+	"github.com/ialexeze/orkestra/pkg/queue"
 )
 
 // CRDHealth tracks the runtime health of a single CRD's reconciler.
@@ -34,6 +36,8 @@ type CRDHealth struct {
 	lastError        atomic.Value // stores string
 	lastReconcile    atomic.Value // stores time.Time
 	startTime        atomic.Value // stores time.Time
+	workersActive    atomic.Int64 // store number of active workers
+	queueReg         *queue.QueueRegistry
 }
 
 // NewCRDHealth initializes a CRDHealth tracker for a given CRD name.
@@ -90,11 +94,25 @@ func (h *CRDHealth) ErrorRate() float64 {
 // If the reconciler has started but not yet reconciled, it returns a placeholder.
 func (h *CRDHealth) LastReconcile() string {
 	v := h.lastReconcile.Load()
-	if v == nil && h.Started() {
-		return "no reconciles yet"
+
+	// Case 1: nothing stored yet
+	if v == nil {
+		if h.Started() {
+			return "no reconciles yet"
+		}
+		return "not started"
 	}
 
-	return v.(time.Time).Round(time.Second).String()
+	// Case 2: stored value is nil inside interface{}
+	t, ok := v.(time.Time)
+	if !ok || t.IsZero() {
+		if h.Started() {
+			return "no reconciles yet"
+		}
+		return "not started"
+	}
+
+	return t.Round(time.Second).String()
 }
 
 // IsHealthy reports whether the reconciler is currently considered healthy.
@@ -164,4 +182,26 @@ func (h *CRDHealth) Uptime() string {
 		return "not started"
 	}
 	return time.Since(v.(time.Time)).Round(time.Second).String()
+}
+
+// WorkersActive returns the number of active workers for this CRD
+func (h *CRDHealth) SetWorkersActive(workers int) {
+	h.workersActive.Add(int64(workers))
+}
+
+// WorkersActive returns the number of active workers for this CRD
+func (h *CRDHealth) WorkersActive() int {
+	return int(h.workersActive.Load())
+}
+
+// QueueDepth returns the queue for this CRD
+func (h *CRDHealth) QueueDepth(gvk string) int {
+	if h.queueReg == nil {
+		return 0
+	}
+	depth := h.queueReg.Depth(gvk)
+	if depth < 0 {
+		return 0
+	}
+	return depth
 }

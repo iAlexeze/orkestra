@@ -337,15 +337,19 @@ baked into binaries.
 |----------|-------------|
 | [Katalog](./docs/katalog.md) | How to declare what you want |
 | [Komposer](./docs/komposer.md) | Files, Helm, environment variables, merge rules |
+| [Komponents](./docs/komponents.md) | What each part of Orkestra does |
 | [OrkestraRegistry](./docs/orkestra-registry.md) | Available resource implementations |
 | [Templating](./docs/templating.md) | Template expressions and the resolver |
 | [CLI Reference](./docs/cli.md) | All commands and flags |
+| [Inspect Live CRD](./docs/inspect-live-crd.md) | CLI for inspecting all CRDs | 
 | [Architecture](./docs/architecture.md) | How Orkestra works under the hood |
-| [Components](./docs/components.md) | What each part of Orkestra does |
 | [Extending Orkestra](./docs/extending.md) | Adding new CRDs and resource types |
 | [Use Cases](./docs/use-cases.md) | Real-world operator patterns |
-| [Roadmap](./ROADMAP.md) | What is coming next |
 | [Deployment](./docs/deployment.md) | Step by step guide to deploy Orkestra |
+| [Metrics](./docs/metrics.md) | Which metrics to look for |
+| [Health Subsystem](./docs/health-subsystem.md) | How Orkestra manages its health and that of CRDs |
+| [Dependency Model](./docs/dependency-model.md) | How Orkestra manages dependencies |
+| [Roadmap](./ROADMAP.md) | What is coming next |
 
 ## Publish
 

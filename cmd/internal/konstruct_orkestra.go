@@ -17,7 +17,6 @@ import (
 	ork "github.com/ialexeze/orkestra/pkg/orkestra"
 	"github.com/ialexeze/orkestra/pkg/queue"
 	"github.com/ialexeze/orkestra/pkg/reconciler"
-	"github.com/ialexeze/orkestra/pkg/utils"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -106,7 +105,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		object, list := crd.GetRuntimeObjects()
 
 		logger.Debug().
-			Str("gvk", utils.SetGroupVersionKindObj(crd.GroupVersionKind)).
+			Str("gvk", crd.GVK().String()).
 			Str("mode", string(crd.Mode)).
 			Msg("registering CRD client provider")
 
@@ -147,7 +146,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 
 	for _, crd := range kat.Enabled() {
 		crd := crd
-		gvk := utils.SetGroupVersionKindObj(crd.GroupVersionKind)
+		gvk := crd.GVK().String()
 		gvr := crd.GroupVersionResource
 		crd.Workers = crd.SetWorkers(kfg.Cluster().DefaultWorkers)
 
@@ -257,7 +256,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	//   route handlers   → read health state on HTTP request
 	crdHealthMap := make(map[string]*kontroller.CRDHealth)
 	for _, crd := range kat.Enabled() {
-		gvk := utils.SetGroupVersionKindObj(crd.GroupVersionKind)
+		gvk := crd.GVK().String()
 		crdHealthMap[gvk] = kontroller.NewCRDHealth(crd.Name)
 	}
 
@@ -265,7 +264,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// All routes must be registered before hs.Start() — the HTTP server
 	// uses hs.mux which is the same mux Register() writes to.
 	for _, crd := range kat.Enabled() {
-		gvk := utils.SetGroupVersionKindObj(crd.GroupVersionKind)
+		gvk := crd.GVK().String()
 		crdHealth := crdHealthMap[gvk]
 		crdName := strings.ToLower(crd.Name)
 
@@ -276,7 +275,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		// GET /katalog/{crd}/health — 200 healthy, 503 degraded
 		hs.Register(
 			"/katalog/"+crdName+"/health",
-			kontroller.BuildCRDHealthHandler(crd.Name, crdHealth),
+			kontroller.BuildCRDHealthHandler(crd, crdHealth),
 		)
 
 		// GET /katalog/{crd} — CRD config + live reconcile stats

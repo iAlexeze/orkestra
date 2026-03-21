@@ -12,6 +12,16 @@ spec:
     - finalizer.demo.orkestra.io/website
 
   crds:
+    - name: deprecated application
+      enabled: true
+      apiTypes:
+        group: orkestra.konduktor.io
+        version: v1alpha1
+        kind: OrkApp
+        plural: orkapps
+      reconciler:
+        default: true
+
     - name: website
       enabled: true
       namespaced: true
@@ -28,6 +38,18 @@ spec:
 
       reconciler:
         default: true
+        # validation:
+        #   - field: spec.replicas
+        #     max: 10
+        #     message: "replicas cannot exceed 10"
+        #   - field: spec.image
+        #     prefix: "myorg/"
+        #     message: "image must be from myorg registry"
+        # mutation:
+        #   - field: spec.replicas
+        #     default: "1"
+        #   - field: spec.logLevel
+        #     default: "info"
 
         finalizers:
           - finalizer.demo.orkestra.io/website
@@ -58,6 +80,9 @@ spec:
               targetPort: "{{ .spec.port }}"
               namespace: "{{ .metadata.namespace }}"
               reconcile: true
+              # when:
+              #   - field: spec.exposePublicly
+              #     eqauls: "true"
               labels:
                 - key: app
                   value: "{{ .metadata.name }}"

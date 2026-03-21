@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -265,6 +266,20 @@ func (k *Katalog) setDefaults() error {
 	for i := range k.enabledCRDs {
 		crd := &k.enabledCRDs[i]
 
+		// Add labels
+		crd.Labels = append(crd.Labels, orktypes.ResourceLabel{
+			Key:   konfig.ManagedByLabel,
+			Value: konfig.Orkestra,
+		})
+
+		// Remove all whitespaces
+		crd.Name = strings.ReplaceAll(crd.Name, " ", "")
+		crd.Name = strings.ToLower(crd.Name)
+
+		if crd.Name == "" {
+			return fmt.Errorf("CRD '%s': missing required field: name", crd.Name)
+		}
+
 		// Handle namespaced and cluster-scoped crds
 		if !crd.Namespaced && crd.Namespace != "" {
 			logger.Warn().Msgf("%s is clusterscoped. Namespace %s will be ignored", crd.APITypes.Kind, crd.Namespace)
@@ -278,8 +293,6 @@ func (k *Katalog) setDefaults() error {
 		}
 
 		// Handle plural name
-		crd.Name = strings.ToLower(crd.Name)
-
 		if crd.APITypes.Plural == "" {
 			logger.Debug().Msgf("Plural name for %s is empty. Setting to '%ss'", crd.APITypes.Kind, crd.Name)
 			crd.APITypes.Plural = fmt.Sprintf("%ss", strings.ToLower(crd.Name))

@@ -723,6 +723,12 @@ type ReconcilerConfig struct {
 	// Constructor — called once at startCRDWorkers time to build a custom reconciler.
 	// Must not be nil when Default: false — enforced by Katalog validation at startup.
 	Constructor NewReconcilerFunc `yaml:"-"`
+
+	// Validation defines validation rules per CRD
+	Validation *ValidationConfig `yaml:"validation,omitempty"`
+
+	// Mutation defines mutation rules per CRD
+	Mutation *MutationConfig `yaml:"mutation,omitempty"`
 }
 
 // HookDeclaration declares where a Go hook function lives.
@@ -838,6 +844,9 @@ type CRDEntry struct {
 	// 0 → uses Orkestra-level default (DEFAULT_WORKERS env var).
 	Workers int `yaml:"workers" validate:"omitempty,gte=1,lte=50"`
 
+	// WorkersActive — records number of active concurrent reconcile workers for this CRD.
+	WorkersActive int `yaml:"workersActive" validate:"omitempty,gte=1,lte=50"`
+
 	// Resync — full re-list interval for the informer cache.
 	// Triggers a reconcile for every cached object at this interval.
 	// 0 → uses Orkestra-level default (DEFAULT_RESYNC env var).
@@ -851,6 +860,7 @@ type CRDEntry struct {
 	// ── Reconciler + Queue ────────────────────────────────────────────────────
 	ReconcilerConfig ReconcilerConfig `yaml:"reconciler"`
 	Queue            Queue            `yaml:"queue"`
+	Labels           []ResourceLabel  `yaml:"labels" validate:"omitempty"`
 }
 
 // ── CRDEntry helpers ──────────────────────────────────────────────────────────
@@ -865,16 +875,6 @@ func (c *CRDEntry) OrkMode() string {
 func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
 	return c.DynamicModeObject(), c.ListDynamicModeObject()
 }
-
-// Deprecated
-// YAML mode: returns DynamicModeObject() and ListDynamicModeObject() — set by addRuntimeObjects().
-// Go mode:   returns TypedModeObject and ListTypedModeObject — set in BuildKatalogFromGo().
-// func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
-// 	if c.IsDynamic() {
-// 		return c.DynamicModeObject(), c.ListDynamicModeObject()
-// 	}
-// 	return c.TypedModeObject, c.ListTypedModeObject
-// }
 
 // SetMaxQueueDepth returns the resolved queue depth for this CRD.
 // Returns the per-CRD value if explicitly set, otherwise the Orkestra-level default.

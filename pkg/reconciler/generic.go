@@ -150,8 +150,78 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 }
 
 // reconcile dispatches to the correct reconcile implementation.
-// Priority: Go hooks → declarative templates → no-op.
+// Order:
+//  1. Mutation (if mutateFirst: true)
+//  2. Validation
+//  3. Mutation (if mutateFirst: false, the default)
+//  4. Go hooks → Declarative templates → No-op (through reconcileImpl())
+//
+// Validation failure halts reconciliation — returns error to workqueue for retry.
+// Mutation success means the CR was patched — generic.go re-reads from cache
+// before calling runTemplateReconcile.
 func (r *GenericReconciler[T]) reconcile(ctx context.Context, obj T) error {
+	kube, _ := kubeclient.FromContext(ctx)
+	rc := r.rc
+
+	// ── Mutation first (optional) ─────────────────────────────────────────────
+	// When mutateFirst: true — apply defaults before validation so defaults
+	// can make an otherwise-invalid object pass validation.
+	if rc.Mutation != nil && rc.Mutation.MutateFirst {
+		mutResult, err := RunMutation(ctx, kube, obj, rc.Mutation, r.crd.GVR, r.crd.Kind)
+		if err != nil {
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"MutationError",
+				fmt.Sprintf("Mutation failed: %v", err))
+			return err
+		}
+		if mutResult.Applied > 0 {
+			// CR was patched — re-read from informer cache before continuing.
+			// The workqueue will re-queue the object with the updated version.
+			// Return nil here so the current reconcile ends cleanly.
+			// The next reconcile (triggered by the patch event) proceeds
+			// with the mutated values.
+			logger.FromContext(ctx).Debug().
+				Str("name", obj.GetName()).
+				Int("fieldsChanged", mutResult.Applied).
+				Msg("mutateFirst: CR patched — requeueing for reconcile with mutated values")
+			return nil
+		}
+	}
+
+	// ── Validation ────────────────────────────────────────────────────────────
+	// Always runs when validation rules are declared.
+	// Failures halt reconciliation with an event and a metric.
+	if rc.Validation != nil {
+		valResult := RunValidation(obj, rc.Validation, r.crd.Kind)
+		if !valResult.Passed {
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"ValidationFailed",
+				fmt.Sprintf("Validation failed: %s", valResult.Error()))
+			return valResult.Error()
+		}
+	}
+
+	// ── Mutation (default order — after validation) ───────────────────────────
+	// Apply defaults to valid objects. Most common path.
+	if rc.Mutation != nil && !rc.Mutation.MutateFirst {
+		mutResult, err := RunMutation(ctx, kube, obj, rc.Mutation, r.crd.GVR, r.crd.Kind)
+		if err != nil {
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"MutationError",
+				fmt.Sprintf("Mutation failed: %v", err))
+			return err
+		}
+		if mutResult.Applied > 0 {
+			// Same as above — patch was applied, let the next reconcile
+			// proceed with the updated values.
+			return nil
+		}
+	}
+
+	// ── Reconcile implementation ──────────────────────────────────────────────
+	return r.reconcileImpl(ctx, obj)
+}
+
+// reconcileImpl dispatches to the correct reconcile implementation.
+// Priority: Go hooks → declarative templates → no-op.
+func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	var err error
 
 	switch {

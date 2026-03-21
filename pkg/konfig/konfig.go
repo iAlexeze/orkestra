@@ -17,8 +17,8 @@ func Init(filenames ...string) (*Konfig, error) {
 
 	kfg := &Konfig{
 		ork: orkKonfig{
-			Name:        orkestra,
-			ShortName:   ork,
+			Name:        Orkestra,
+			ShortName:   Ork,
 			Version:     GetStrEnv("ORK_VERSION", "1.0.0"),
 			Environment: GetStrEnv("ORK_ENV", "development"),
 			LogLevel:    GetStrEnv("LOG_LEVEL", "info"),

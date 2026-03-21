@@ -123,7 +123,7 @@ func (k *Kubeclient) DynamicClientFor(apiPath, group, version string) (dynamic.I
 	return k.dynamic, nil
 }
 
-// TODO: cleanup
+// Patch Finalizers
 func (k *Kubeclient) PatchFinalizers(
 	ctx context.Context,
 	obj runtime.Object,

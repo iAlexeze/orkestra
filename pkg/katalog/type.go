@@ -18,7 +18,8 @@ var (
 // Structs
 // -----------------------------------------------------------------------------
 type Katalog struct {
-	Spec orktypes.KatalogSpec `yaml:"spec"`
+	metadata orktypes.KatalogMeta `yaml:"metadata"`
+	Spec     orktypes.KatalogSpec `yaml:"spec"`
 	// Internal
 	enabledCRDs []orktypes.CRDEntry `yaml:"-"` // filtered
 }

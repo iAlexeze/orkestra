@@ -46,3 +46,14 @@ func RequireStrParams(required map[string]string) error {
 	}
 	return nil
 }
+
+// BuildAnnotationPatch constructs a JSON merge patch that sets one annotation.
+func BuildAnnotationPatch(key, value string) map[string]interface{} {
+	return map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"annotations": map[string]interface{}{
+				key: value,
+			},
+		},
+	}
+}

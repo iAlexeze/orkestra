@@ -10,7 +10,6 @@ import (
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/event"
 
-	// "github.com/ialexeze/orkestra/pkg/health"
 	"github.com/ialexeze/orkestra/pkg/informer"
 	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
@@ -27,6 +26,7 @@ type DependencyKontroller struct {
 	depGraph       *katalog.DependencyGraph
 	defaultWorkers int
 	startedAt      time.Time
+	queueReg       *queue.QueueRegistry
 
 	// readyCh[name] is closed when a CRD has fully started its workers.
 	readyCh map[string]chan struct{}
@@ -52,6 +52,7 @@ func NewDependencyKontroller(
 		Kontroller:     NewKontroller(kube, factory, katalog, events, hs, crdHealthMap, queueRegistry, defaultWorkqueue, defaultWorkers),
 		depGraph:       depGraph,
 		defaultWorkers: defaultWorkers,
+		queueReg:       queueRegistry,
 		readyCh:        make(map[string]chan struct{}),
 	}
 }
@@ -98,6 +99,14 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 		workers := k.katalog.GetWorkers(gvk, k.defaultWorkers)
 		logger.Info().Msgf("starting %d workers for %s", workers, gvk)
 		k.startCRDWorkers(ctx, gvk, workers)
+
+		// Set the workers in health map
+		k.crdHealthMap[gvk].SetWorkersActive(workers)
+		k.crdHealthMap[gvk].queueReg = k.queueReg
+
+		// Set Queue Registry to track queue for this GVK
+
+		// Emit metrics
 		metrics.WorkersActive.WithLabelValues(gvk).Set(float64(workers))
 
 		// Signal dependents — this CRD is ready

@@ -54,6 +54,23 @@ func (qr *QueueRegistry) For(gvk string) (*Workqueue, bool) {
 	return wq, true
 }
 
+// Depth returns the queue depth for a given GVK
+func (qr *QueueRegistry) Depth(gvk string) int {
+	qr.mu.RLock()
+	defer qr.mu.RUnlock()
+
+	wq, ok := qr.queues[gvk]
+	if !ok {
+		return 0
+	}
+
+	if wq.Queue == nil {
+		return 0
+	}
+
+	return wq.Depth()
+}
+
 // Shutdown drains all registered workqueues
 // This is called by orkestra.Shutdown() for graceful degradation
 func (qr *QueueRegistry) Shutdown(ctx context.Context) {

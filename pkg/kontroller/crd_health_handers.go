@@ -30,24 +30,25 @@ import (
 //   - last reconcile timestamp
 // ─────────────────────────────────────────────────────────────────────────────
 
-func BuildCRDHealthHandler(name string, h *CRDHealth) http.HandlerFunc {
+func BuildCRDHealthHandler(crd orktypes.CRDEntry, h *CRDHealth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		status := http.StatusOK
-		message := name + " healthy"
+		message := crd.Name + " healthy"
 
 		// Mark degraded if health flag is false
 		if !h.IsHealthy() {
 			status = http.StatusServiceUnavailable
-			message = name + " degraded"
+			message = crd.Name + " degraded"
 		}
 
 		utils.WriteJSON(w, status, map[string]interface{}{
-			"name":             name,
+			"name":             crd.Name,
 			"healthy":          h.IsHealthy(),
 			"started":          h.Started(),
 			"startedAt":        h.StartedAt(),
 			"status":           status,
 			"uptime":           h.Uptime(),
+			"queueDepth":       h.QueueDepth(crd.GVK().String()),
 			"message":          message,
 			"errorRate":        h.ErrorRate(),
 			"consecutiveFails": h.consecutiveFails.Load(),
@@ -78,32 +79,34 @@ func BuildCRDInfoHandler(
 	crd orktypes.CRDEntry,
 	kfg *konfig.Konfig,
 	inf cache.SharedIndexInformer,
-	health *CRDHealth,
+	h *CRDHealth,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := resolveCRDDisplayValues(crd, kfg, inf)
 
 		utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
-			"name":             crd.Name,
-			"description":      crd.Description,
-			"mode":             crd.Mode,
-			"gvk":              utils.SetGroupVersionKindObj(crd.GroupVersionKind),
-			"gvr":              crd.GroupVersionResource.String(),
-			"critical":         crd.Critical,
-			"namespaced":       crd.Namespaced,
-			"namespace":        crd.Namespace,
-			"dependsOn":        crd.DependsOn,
-			"workers":          v.workers,
-			"workersSource":    v.workersSource,
-			"resync":           v.resync,
-			"resyncSource":     v.resyncSource,
-			"queueDepth":       v.queueDepth,
-			"queueDepthSource": v.queueDepthSource,
-			"resourceCount":    v.resourceCount,
-			"reconciler":       reconcilerInfo(crd),
-			"healthy":          health.IsHealthy(),
-			"started":          health.Started(),
-			"errorRate":        health.ErrorRate(),
+			"name":                crd.Name,
+			"description":         crd.Description,
+			"mode":                crd.Mode,
+			"gvk":                 crd.GVK().String(),
+			"gvr":                 crd.GroupVersionResource.String(),
+			"critical":            crd.Critical,
+			"namespaced":          crd.Namespaced,
+			"namespace":           crd.Namespace,
+			"dependsOn":           crd.DependsOn,
+			"workers":             v.workers,
+			"workersActive":       h.WorkersActive(),
+			"workersSource":       v.workersSource,
+			"resync":              v.resync,
+			"resyncSource":        v.resyncSource,
+			"queueDepth":          h.QueueDepth(crd.GVK().String()),
+			"maxQueueDepth":       v.maxQueueDepth,
+			"maxQueueDepthSource": v.maxQueueDepthSource,
+			"resourceCount":       v.resourceCount,
+			"reconciler":          reconcilerInfo(crd),
+			"healthy":             h.IsHealthy(),
+			"started":             h.Started(),
+			"errorRate":           h.ErrorRate(),
 		})
 	}
 }
@@ -130,7 +133,7 @@ func BuildKatalogHandler(
 		crds := make([]map[string]interface{}, 0)
 
 		for _, crd := range kat.Enabled() {
-			gvk := utils.SetGroupVersionKindObj(crd.GroupVersionKind)
+			gvk := crd.GVK().String()
 			h := healthMap[gvk]
 
 			entry, ok := reg.Get(gvk)
@@ -142,28 +145,30 @@ func BuildKatalogHandler(
 			v := resolveCRDDisplayValues(crd, kfg, inf)
 
 			crds = append(crds, map[string]interface{}{
-				"name":             crd.Name,
-				"description":      crd.Description,
-				"mode":             crd.Mode,
-				"gvk":              gvk,
-				"gvr":              crd.GroupVersionResource.String(),
-				"critical":         crd.Critical,
-				"namespaced":       crd.Namespaced,
-				"namespace":        crd.Namespace,
-				"dependsOn":        crd.DependsOn,
-				"workers":          v.workers,
-				"workersSource":    v.workersSource,
-				"resync":           v.resync,
-				"resyncSource":     v.resyncSource,
-				"queueDepth":       v.queueDepth,
-				"queueDepthSource": v.queueDepthSource,
-				"resourceCount":    v.resourceCount,
-				"reconciler":       reconcilerInfo(crd),
-				"healthy":          h.IsHealthy(),
-				"started":          h.Started(),
-				"startedAt":        h.StartedAt(),
-				"uptime":           h.Uptime(),
-				"errorRate":        h.ErrorRate(),
+				"name":                crd.Name,
+				"description":         crd.Description,
+				"mode":                crd.Mode,
+				"gvk":                 gvk,
+				"gvr":                 crd.GroupVersionResource.String(),
+				"critical":            crd.Critical,
+				"namespaced":          crd.Namespaced,
+				"namespace":           crd.Namespace,
+				"dependsOn":           crd.DependsOn,
+				"workers":             v.workers,
+				"workersSource":       v.workersSource,
+				"workersActive":       h.WorkersActive(),
+				"resync":              v.resync,
+				"resyncSource":        v.resyncSource,
+				"queueDepth":          h.QueueDepth(crd.GVK().String()),
+				"maxQueueDepth":       v.maxQueueDepth,
+				"maxQueueDepthSource": v.maxQueueDepthSource,
+				"resourceCount":       v.resourceCount,
+				"reconciler":          reconcilerInfo(crd),
+				"healthy":             h.IsHealthy(),
+				"started":             h.Started(),
+				"startedAt":           h.StartedAt(),
+				"uptime":              h.Uptime(),
+				"errorRate":           h.ErrorRate(),
 				"endpoints": map[string]string{
 					"health": "/katalog/" + strings.ToLower(crd.Name) + "/health",
 					"info":   "/katalog/" + strings.ToLower(crd.Name),
@@ -171,11 +176,49 @@ func BuildKatalogHandler(
 			})
 		}
 
-		utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
-			"crds":  crds,
-			"total": len(crds),
+		// Calculate overall health of the katalog
+		healthy := true
+		degradedReason := ""
+		status := http.StatusOK
+		for _, crd := range crds {
+			if !crd["healthy"].(bool) {
+				healthy = false
+				status = http.StatusServiceUnavailable
+				degradedReason = crd["name"].(string) + " degraded"
+				break
+			}
+		}
+
+		utils.WriteJSON(w, http.StatusOK, KatalogResponse{
+			CRDs:           crds,
+			Total:          len(kat.All()),
+			TotalEnabled:   len(kat.Enabled()),
+			Healthy:        healthy,
+			Status:         status,
+			DegradedReason: degradedReason,
+
+			// Metadata
+			Name:        kat.Meta().Name,
+			Version:     kat.Meta().Version,
+			Author:      kat.Meta().Author,
+			License:     kat.Meta().License,
+			Description: kat.Meta().Description,
 		})
 	}
+}
+
+type KatalogResponse struct {
+	CRDs           []map[string]interface{} `json:"crds"`
+	TotalEnabled   int                      `json:"totalEnabled"`
+	Total          int                      `json:"total"`
+	Healthy        bool                     `json:"healthy"`
+	Status         int                      `json:"status"`
+	DegradedReason string                   `json:"degradedReason,omitempty"`
+	Name           string                   `json:"name,omitempty"`
+	Version        string                   `json:"version,omitempty"`
+	Author         string                   `json:"author,omitempty"`
+	Description    string                   `json:"description,omitempty"`
+	License        string                   `json:"license,omitempty"`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -342,13 +385,13 @@ func templateSummary(t *orktypes.HookTemplates) map[string]interface{} {
 // ─────────────────────────────────────────────────────────────────────────────
 
 type crdDisplayValues struct {
-	resync           string
-	resyncSource     string
-	workers          int
-	workersSource    string
-	queueDepth       int
-	queueDepthSource string
-	resourceCount    int
+	resync              string
+	resyncSource        string
+	workers             int
+	workersSource       string
+	maxQueueDepth       int
+	maxQueueDepthSource string
+	resourceCount       int
 }
 
 func resolveCRDDisplayValues(
@@ -358,11 +401,11 @@ func resolveCRDDisplayValues(
 ) crdDisplayValues {
 
 	// Queue depth
-	queueDepth := crd.Queue.MaxQueueDepth
-	queueDepthSource := "configured"
-	if queueDepth == 0 {
-		queueDepth = kfg.Katalog().DefaultMaxQueueDepth
-		queueDepthSource = "default"
+	maxQueueDepth := crd.Queue.MaxQueueDepth
+	maxQueueDepthSource := "configured"
+	if maxQueueDepth == 0 {
+		maxQueueDepth = kfg.Katalog().DefaultMaxQueueDepth
+		maxQueueDepthSource = "default"
 	}
 
 	// Resync
@@ -388,13 +431,13 @@ func resolveCRDDisplayValues(
 	}
 
 	return crdDisplayValues{
-		resync:           resync,
-		resyncSource:     resyncSource,
-		workers:          workers,
-		workersSource:    workersSource,
-		queueDepth:       queueDepth,
-		queueDepthSource: queueDepthSource,
-		resourceCount:    resourceCount,
+		resync:              resync,
+		resyncSource:        resyncSource,
+		workers:             workers,
+		workersSource:       workersSource,
+		maxQueueDepth:       maxQueueDepth,
+		maxQueueDepthSource: maxQueueDepthSource,
+		resourceCount:       resourceCount,
 	}
 }
 
