@@ -1,5 +1,5 @@
 .env
-test/
+unknown/
 _runtime_*/
 example-crds/
 ork

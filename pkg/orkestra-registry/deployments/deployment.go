@@ -7,9 +7,11 @@ import (
 	"strconv"
 
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -198,8 +200,8 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 	}
 
 	// Orkestra system labels — always added
-	spec.Labels["managed-by"] = "orkestra"
-	spec.Labels["orkestra-owner"] = ownerName
+	spec.Labels[konfig.ManagedByLabel] = konfig.Orkestra
+	spec.Labels[konfig.OrkestraOwnerLabel] = ownerName
 
 	return spec
 }
@@ -221,8 +223,8 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 					Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
 					Name:               owner.GetName(),
 					UID:                owner.GetUID(),
-					Controller:         boolPtr(true),
-					BlockOwnerDeletion: boolPtr(true),
+					Controller:         utils.BoolPtr(true),
+					BlockOwnerDeletion: utils.BoolPtr(true),
 				},
 			},
 		},
@@ -301,5 +303,3 @@ func buildResourceRequirements(r *orktypes.ResourceRequirements) corev1.Resource
 	}
 	return req
 }
-
-func boolPtr(b bool) *bool { return &b }

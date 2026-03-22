@@ -17,7 +17,6 @@ import (
 	ork "github.com/ialexeze/orkestra/pkg/orkestra"
 	"github.com/ialexeze/orkestra/pkg/queue"
 	"github.com/ialexeze/orkestra/pkg/reconciler"
-	"github.com/ialexeze/orkestra/pkg/utils"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -106,7 +105,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		object, list := crd.GetRuntimeObjects()
 
 		logger.Debug().
-			Str("gvk", utils.SetGroupVersionKindObj(crd.GroupVersionKind)).
+			Str("gvk", crd.GVK().String()).
 			Str("mode", string(crd.Mode)).
 			Msg("registering CRD client provider")
 
@@ -119,7 +118,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 				GroupVersion: crd.GroupVersion,
 				Plural:       crd.APITypes.Plural,
 				Namespace:    crd.Namespace,
-				Namespaced:   crd.Namespaced,
+				Namespaced:   crd.IsNamespaced(),
 			})
 		})
 	}
@@ -147,11 +146,12 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 
 	for _, crd := range kat.Enabled() {
 		crd := crd
-		gvk := utils.SetGroupVersionKindObj(crd.GroupVersionKind)
+		gvk := crd.GVK().String()
 		gvr := crd.GroupVersionResource
 		crd.Workers = crd.SetWorkers(kfg.Cluster().DefaultWorkers)
 
-		// GetRuntimeObjects populates DynamicModeObject is already populated by addRuntimeObjects() during validation.
+		// GetRuntimeObjects populates DynamicModeObject
+		// Already populated by addRuntimeObjects() during validation.
 		object, _ := crd.GetRuntimeObjects()
 
 		wq := queueRegistry.Register(gvk, crd.SetMaxQueueDepth(
@@ -163,7 +163,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			Resync: crd.Resync,
 		}
 
-		if crd.Queue.Default {
+		if crd.DefaultQueue() {
 			logger.Debug().Str("gvk", gvk).Msg("using default workqueue")
 			opts.Wq = nil
 		} else {
@@ -186,7 +186,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 				GroupVersion: crd.GroupVersion,
 				Plural:       crd.APITypes.Plural,
 				Namespace:    crd.Namespace,
-				Namespaced:   crd.Namespaced,
+				Namespaced:   crd.IsNamespaced(),
 			})
 
 			inf = infFactory.ForListerWatcher(lw, object, ctx, opts)
@@ -199,13 +199,14 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			Kind:       crd.APITypes.Kind,
 			GVK:        gvk,
 			GVR:        gvr,
+			Operator:   kat.Meta().Name,
 			Finalizers: crd.ReconcilerConfig.Finalizers,
 		}
 		infCopy := inf
 
 		var factory func() domain.Reconciler
 
-		if crd.ReconcilerConfig.Default {
+		if crd.DefaultReconcile() {
 			// DynamicModeObject / TypedModeObject already set — GetRuntimeObjects handles mode.
 			// We need a domain.Object factory for GenericReconciler.
 			// object is already the correct concrete type for this CRD.
@@ -257,7 +258,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	//   route handlers   → read health state on HTTP request
 	crdHealthMap := make(map[string]*kontroller.CRDHealth)
 	for _, crd := range kat.Enabled() {
-		gvk := utils.SetGroupVersionKindObj(crd.GroupVersionKind)
+		gvk := crd.GVK().String()
 		crdHealthMap[gvk] = kontroller.NewCRDHealth(crd.Name)
 	}
 
@@ -265,7 +266,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// All routes must be registered before hs.Start() — the HTTP server
 	// uses hs.mux which is the same mux Register() writes to.
 	for _, crd := range kat.Enabled() {
-		gvk := utils.SetGroupVersionKindObj(crd.GroupVersionKind)
+		gvk := crd.GVK().String()
 		crdHealth := crdHealthMap[gvk]
 		crdName := strings.ToLower(crd.Name)
 
@@ -276,7 +277,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		// GET /katalog/{crd}/health — 200 healthy, 503 degraded
 		hs.Register(
 			"/katalog/"+crdName+"/health",
-			kontroller.BuildCRDHealthHandler(crd.Name, crdHealth),
+			kontroller.BuildCRDHealthHandler(crd, crdHealth),
 		)
 
 		// GET /katalog/{crd} — CRD config + live reconcile stats

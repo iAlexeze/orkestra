@@ -106,7 +106,13 @@ func (k *DependencyKontroller) activateCRD(ctx context.Context, entry *informer.
 	// 2. Start workers
 	workers := k.katalog.GetWorkers(gvkStr, k.defaultWorkers)
 	k.startCRDWorkers(ctx, gvkStr, workers)
+
+	// Set the workers in health map
+	k.crdHealthMap[gvkStr].SetWorkersActive(workers)
+
+	// Emit metrics
 	metrics.WorkersActive.WithLabelValues(gvkStr).Set(float64(workers))
+
 	logger.Info().Msgf("activateCRD: %d workers started for %s", workers, name)
 
 	// 3. Mark CRD health as started

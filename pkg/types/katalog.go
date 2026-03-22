@@ -16,6 +16,9 @@ type KatalogFile struct {
 type KatalogMeta struct {
 	Name        string `yaml:"name"`
 	Description string `yaml:"description,omitempty"`
+	Version     string `yaml:"version,omitempty"`
+	Author      string `yaml:"author,omitempty"`
+	License     string `yaml:"license,omitempty"`
 }
 
 // KatalogSources declares where to load CRD definitions from.

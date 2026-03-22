@@ -2,22 +2,41 @@
 package kontroller
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
+	//	"github.com/ialexeze/orkestra/pkg/reconciler"
+
+	"github.com/ialexeze/orkestra/pkg/queue"
 )
 
 // CRDHealth tracks the runtime health of a single CRD's reconciler.
 // It is fully concurrency‑safe and designed to be updated from multiple goroutines.
 //
 // Fields tracked:
+//
 //   - started:           whether the reconciler has begun processing events
+//
 //   - healthy:           whether the reconciler is currently considered healthy
+//
 //   - totalReconciles:   total number of reconcile attempts (success + failure)
+//
 //   - failedReconciles:  number of failed reconciles
+//
 //   - consecutiveFails:  number of failures in a row (used for degradation)
+//
 //   - lastError:         last error message (string)
+//
 //   - lastReconcile:     timestamp of last reconcile attempt
+//
 //   - startTime:         timestamp when the reconciler first started
+//
+//   - The activeWarnings: tracks current warn-mode violations per CR.
+//     It answers the question: "which CRs are currently violating advisory rules?"
+//     This powers the /katalog/{crd}/validation active warnings section.
+//
+//     Map key: "namespace/name" — unique per CR
+//     Map value: slice of ActiveWarning, one per violated warn rule
 //
 // This struct powers:
 //   - /healthz endpoint
@@ -34,6 +53,17 @@ type CRDHealth struct {
 	lastError        atomic.Value // stores string
 	lastReconcile    atomic.Value // stores time.Time
 	startTime        atomic.Value // stores time.Time
+	workersActive    atomic.Int64 // store number of active workers
+	queueReg         *queue.QueueRegistry
+
+	// activeWarnings tracks current warn-mode violations per CR.
+	// Protected by mu — warnings are written from reconcile goroutines
+	// and read from the HTTP handler goroutine.
+	mu sync.RWMutex
+	//	activeWarnings map[string][]reconciler.Violation // key: "namespace/name"
+
+	// Warning counters — kept as atomics alongside the existing health counters
+	totalWarned int64 // total reconciles that had at least one warning
 }
 
 // NewCRDHealth initializes a CRDHealth tracker for a given CRD name.
@@ -90,11 +120,25 @@ func (h *CRDHealth) ErrorRate() float64 {
 // If the reconciler has started but not yet reconciled, it returns a placeholder.
 func (h *CRDHealth) LastReconcile() string {
 	v := h.lastReconcile.Load()
-	if v == nil && h.Started() {
-		return "no reconciles yet"
+
+	// Case 1: nothing stored yet
+	if v == nil {
+		if h.Started() {
+			return "no reconciles yet"
+		}
+		return "not started"
 	}
 
-	return v.(time.Time).Round(time.Second).String()
+	// Case 2: stored value is nil inside interface{}
+	t, ok := v.(time.Time)
+	if !ok || t.IsZero() {
+		if h.Started() {
+			return "no reconciles yet"
+		}
+		return "not started"
+	}
+
+	return t.Round(time.Second).String()
 }
 
 // IsHealthy reports whether the reconciler is currently considered healthy.
@@ -164,4 +208,26 @@ func (h *CRDHealth) Uptime() string {
 		return "not started"
 	}
 	return time.Since(v.(time.Time)).Round(time.Second).String()
+}
+
+// WorkersActive returns the number of active workers for this CRD
+func (h *CRDHealth) SetWorkersActive(workers int) {
+	h.workersActive.Add(int64(workers))
+}
+
+// WorkersActive returns the number of active workers for this CRD
+func (h *CRDHealth) WorkersActive() int {
+	return int(h.workersActive.Load())
+}
+
+// QueueDepth returns the queue for this CRD
+func (h *CRDHealth) QueueDepth(gvk string) int {
+	if h.queueReg == nil {
+		return 0
+	}
+	depth := h.queueReg.Depth(gvk)
+	if depth < 0 {
+		return 0
+	}
+	return depth
 }

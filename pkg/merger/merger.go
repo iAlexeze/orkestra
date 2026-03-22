@@ -30,6 +30,10 @@ type Merger struct {
 
 	// merged tracks whether Merge() has been called
 	merged bool
+
+	// metadata gets the metadata from the document processed
+	// used by cli and health endpoints
+	metadata orktypes.KatalogMeta
 }
 
 // New creates a Merger with the given entry point file paths or URLs.
@@ -89,7 +93,7 @@ func (m *Merger) Enabled() []orktypes.CRDEntry {
 	m.mustBeMerged()
 	var out []orktypes.CRDEntry
 	for _, crd := range m.result {
-		if crd.Enabled {
+		if crd.IsEnabled() {
 			out = append(out, crd)
 		}
 	}
@@ -129,4 +133,10 @@ func (m *Merger) EnabledCount() int {
 func (m *Merger) ToSpec() orktypes.KatalogSpec {
 	m.mustBeMerged()
 	return orktypes.KatalogSpec{CRDs: m.result}
+}
+
+// ToMeta returns the merged result as a KatalogMeta.
+func (m *Merger) ToMeta() orktypes.KatalogMeta {
+	m.mustBeMerged()
+	return m.metadata
 }

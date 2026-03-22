@@ -63,14 +63,15 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 		fmt.Printf("  %sVersion:%s       %s\n", utils.ColorYellow, utils.ColorReset, crd.APITypes.Version)
 
 		fmt.Printf("  %sEnabled:%s       %s\n", utils.ColorYellow, utils.ColorReset,
-			map[bool]string{true: "Yes", false: "No"}[crd.Enabled],
+			map[bool]string{true: "Yes", false: "No"}[crd.IsEnabled()],
 		)
 
 		if crd.Namespace != "" {
 			fmt.Printf("  %sNamespace:%s     %s\n", utils.ColorYellow, utils.ColorReset, crd.Namespace)
 		}
 
-		fmt.Printf("  %sNamespaced:%s    %v\n", utils.ColorYellow, utils.ColorReset, crd.Namespaced)
+		fmt.Printf("  %sNamespaced:%s    %v\n", utils.ColorYellow, utils.ColorReset,
+			map[bool]string{true: "Yes", false: "No"}[crd.IsNamespaced()])
 		fmt.Printf("  %sWorkers:%s       %d\n", utils.ColorYellow, utils.ColorReset, crd.Workers)
 
 		// Queue depth

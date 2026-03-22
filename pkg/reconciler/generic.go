@@ -4,7 +4,6 @@ package reconciler
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/event"
@@ -58,6 +57,7 @@ type CRDInfo struct {
 	GVR              schema.GroupVersionResource
 	Finalizers       []string
 	ReconcilerConfig orktypes.ReconcilerConfig
+	Operator         string
 }
 
 func NewGenericReconciler[T domain.Object](
@@ -146,12 +146,155 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 		return err
 	}
 
+	// Ensure managed label — idempotent, like finalizer patching.
+	// This is how ork reconcile knows what this operator instance manages.
+	if err := r.ensureManagedLabel(ctx, obj); err != nil {
+		return err
+	}
+
+	if err := r.ensureManagedAnnotations(ctx, obj, r.crd.Operator); err != nil {
+		return err
+	}
+
 	return r.reconcile(ctx, obj)
 }
 
 // reconcile dispatches to the correct reconcile implementation.
-// Priority: Go hooks → declarative templates → no-op.
+// Order:
+//  1. Mutation (if mutateFirst: true)
+//  2. Cleanup rules  ←  fires before deny/warn, short-circuits
+//  3. Validation (deny + warn)
+//  3. Mutation (if mutateFirst: false, the default)
+//  4. Go hooks → Declarative templates → No-op (through reconcileImpl())
+//
+// Validation failure halts reconciliation — returns error to workqueue for retry.
+// Mutation success means the CR was patched — generic.go re-reads from cache
+// before calling runTemplateReconcile.
 func (r *GenericReconciler[T]) reconcile(ctx context.Context, obj T) error {
+	kube, _ := kubeclient.FromContext(ctx)
+	rc := r.rc
+
+	// ── Step 1: MutateFirst (optional) ────────────────────────────────────────
+	// When mutateFirst: true — apply defaults before validation so defaults
+	// can make an otherwise-invalid object pass validation.
+	if rc.Mutation != nil && rc.Mutation.MutateFirst {
+		mutResult, err := RunMutation(ctx, kube, obj, rc.Mutation, r.crd.GVR, r.crd.Kind)
+		if err != nil {
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"MutationError",
+				fmt.Sprintf("Mutation error: %v", err))
+			return err
+		}
+		if mutResult.Applied > 0 {
+			return nil // patch applied — re-queued via informer Update event
+		}
+	}
+
+	// ── Step 2: Cleanup rules ─────────────────────────────────────────────────
+	// Evaluated before deny and warn. The first matching cleanup rule
+	// short-circuits — no point warning or denying a resource being deleted.
+	//
+	// Cleanup rules fire on the resource being reconciled, not on child
+	// resources. For built-in resources (Pod, Deployment), this means
+	// Orkestra deletes the resource itself when a cleanup rule matches.
+	if rc.Validation != nil {
+		cleanupResult := RunCleanupRules(obj, rc.Validation, r.crd.Kind)
+
+		if cleanupResult.ShouldDelete {
+			// Emit a Warning event so the deletion is visible and auditable
+			got := ""
+			if cleanupResult.MatchedRule != nil {
+				fieldVal, _ := resolveField(toUnstructuredUnsafe(obj), cleanupResult.MatchedRule.Field)
+				got = fieldVal
+			}
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"Cleanup",
+				CleanupEventMessage(cleanupResult.MatchedRule, got))
+
+			// Delete the resource
+			if err := ExecuteCleanup(ctx, kube, obj, r.crd.GVR, cleanupResult.MatchedRule, r.crd.Kind); err != nil {
+				return err
+			}
+
+			// Deletion submitted — reconcile ends here.
+			// The Delete event will remove the object from the informer cache.
+			// No deny or warn rules run — the resource is gone.
+			return nil
+		}
+
+		if cleanupResult.DryRunMatch {
+			// Dry-run cleanup — emit event, metric already incremented, continue
+			// to deny and warn so all violations are surfaced during rollout
+			got := ""
+			if cleanupResult.MatchedRule != nil {
+				fieldVal, _ := resolveField(toUnstructuredUnsafe(obj), cleanupResult.MatchedRule.Field)
+				got = fieldVal
+			}
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"CleanupDryRun",
+				CleanupEventMessage(cleanupResult.MatchedRule, got))
+
+			logger.Info().
+				Str("crd", r.crd.Kind).
+				Str("name", obj.GetName()).
+				Msg("cleanup dry-run: resource would have been deleted — continuing reconcile")
+
+			// Fall through to deny and warn — dry-run surfaces all violations
+		}
+	}
+
+	// ── Step 3: Validation (deny + warn) ──────────────────────────────────────
+	// Always runs when validation rules are declared.
+	// Failures halt reconciliation with an event and a metric.
+	if rc.Validation != nil {
+		outcome := RunValidation(obj, rc.Validation, r.crd.Kind)
+
+		// Debugger
+		outcome.Log(r.crd.Kind, obj.GetName(), obj.GetNamespace())
+
+		// Warnings
+		if outcome.HasWarnings() {
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"ValidationAdvisory",
+				outcome.WarningSummary())
+			//r.health.RecordActiveWarnings(obj.GetNamespace(), obj.GetName(), outcome.Warnings)
+		} else {
+			// r.health.ClearActiveWarnings(obj.GetNamespace(), obj.GetName())
+		}
+
+		// Deny
+		if outcome.Denied() {
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"ValidationDenied",
+				outcome.DenialMessage())
+			return outcome.DenialError()
+		}
+	}
+
+	// ── Step 4: Mutation (default order) ──────────────────────────────────────
+	if rc.Mutation != nil && !rc.Mutation.MutateFirst {
+		mutResult, err := RunMutation(ctx, kube, obj, rc.Mutation, r.crd.GVR, r.crd.Kind)
+		if err != nil {
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"MutationError",
+				fmt.Sprintf("Mutation error: %v", err))
+			return err
+		}
+		if mutResult.Applied > 0 {
+			// CR was patched — re-read from informer cache before continuing.
+			// The workqueue will re-queue the object with the updated version.
+			// Return nil here so the current reconcile ends cleanly.
+			// The next reconcile (triggered by the patch event) proceeds
+			// with the mutated values.
+			logger.FromContext(ctx).Debug().
+				Str("name", obj.GetName()).
+				Int("fieldsChanged", mutResult.Applied).
+				Msg("mutateFirst: CR patched — requeueing for reconcile with mutated values")
+			return nil
+		}
+	}
+
+	// ── Step 5: Reconcile implementation ──────────────────────────────────────
+	return r.reconcileImpl(ctx, obj)
+}
+
+// reconcileImpl dispatches to the correct reconcile implementation.
+// Priority: Go hooks → declarative templates → no-op.
+func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	var err error
 
 	switch {
@@ -312,91 +455,4 @@ func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, obj doma
 	}
 
 	return nil
-}
-
-// ── Finalizer management ──────────────────────────────────────────────────────
-
-func (r *GenericReconciler[T]) ensureFinalizers(ctx context.Context, obj T) error {
-	if len(r.crd.Finalizers) == 0 {
-		return nil
-	}
-
-	needsUpdate := false
-	for _, f := range r.crd.Finalizers {
-		if !ContainsFinalizer(obj, f) {
-			needsUpdate = true
-			break
-		}
-	}
-	if !needsUpdate {
-		return nil
-	}
-
-	newFinalizers := obj.GetFinalizers()
-	for _, f := range r.crd.Finalizers {
-		if !ContainsFinalizer(obj, f) {
-			newFinalizers = append(newFinalizers, f)
-		}
-	}
-
-	logger.Debug().
-		Str("name", obj.GetName()).
-		Msgf("adding finalizers: %v → %v", obj.GetFinalizers(), newFinalizers)
-
-	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.Kind+"FinalizerAdded",
-		fmt.Sprintf("Added finalizers to %s/%s", obj.GetNamespace(), obj.GetName()))
-
-	return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR, newFinalizers)
-}
-
-func (r *GenericReconciler[T]) removeFinalizers(ctx context.Context, obj T) error {
-	if len(obj.GetFinalizers()) == 0 {
-		return nil
-	}
-
-	newFinalizers := make([]string, 0, len(obj.GetFinalizers()))
-	for _, f := range obj.GetFinalizers() {
-		if !slices.Contains(r.crd.Finalizers, f) {
-			newFinalizers = append(newFinalizers, f)
-		}
-	}
-
-	if len(newFinalizers) == len(obj.GetFinalizers()) {
-		return nil
-	}
-
-	logger.Debug().
-		Str("name", obj.GetName()).
-		Msgf("removing finalizers: %v → %v", obj.GetFinalizers(), newFinalizers)
-
-	return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR, newFinalizers)
-}
-
-// ── Finalizer helpers — exported for custom reconcilers ───────────────────────
-
-func AddFinalizer(o domain.Object, finalizer string) (updated bool) {
-	if ContainsFinalizer(o, finalizer) {
-		return false
-	}
-	o.SetFinalizers(append(o.GetFinalizers(), finalizer))
-	return true
-}
-
-func RemoveFinalizer(o domain.Object, finalizer string) (updated bool) {
-	f := o.GetFinalizers()
-	length := len(f)
-	index := 0
-	for i := range length {
-		if f[i] == finalizer {
-			continue
-		}
-		f[index] = f[i]
-		index++
-	}
-	o.SetFinalizers(f[:index])
-	return length != index
-}
-
-func ContainsFinalizer(o domain.Object, finalizer string) bool {
-	return slices.Contains(o.GetFinalizers(), finalizer)
 }

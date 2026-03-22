@@ -47,6 +47,12 @@ spec:
                     - NodePort
                     - LoadBalancer
                   description: Kubernetes Service type.
+                exposePublicly:
+                  type: string
+                  default: "false"
+                  enum:
+                    - "true"
+                    - "false"
             status:
               type: object
               properties:

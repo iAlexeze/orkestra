@@ -6,9 +6,11 @@ import (
 	"fmt"
 
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -112,8 +114,8 @@ func Resolve(src orktypes.ServiceAccountTemplateSource, ownerName string) Resolv
 		spec.Labels[l.Key] = l.Value
 	}
 
-	spec.Labels["managed-by"] = "orkestra"
-	spec.Labels["orkestra-owner"] = ownerName
+	spec.Labels[konfig.ManagedByLabel] = konfig.Orkestra
+	spec.Labels[konfig.OrkestraOwnerLabel] = ownerName
 
 	return spec
 }
@@ -132,8 +134,8 @@ func buildServiceAccount(owner domain.Object, spec ResolvedServiceAccountSpec, n
 					Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
 					Name:               owner.GetName(),
 					UID:                owner.GetUID(),
-					Controller:         boolPtr(true),
-					BlockOwnerDeletion: boolPtr(true),
+					Controller:         utils.BoolPtr(true),
+					BlockOwnerDeletion: utils.BoolPtr(true),
 				},
 			},
 		},
@@ -156,5 +158,3 @@ func resolveNamespace(owner domain.Object, spec ResolvedServiceAccountSpec) stri
 	}
 	return "default"
 }
-
-func boolPtr(b bool) *bool { return &b }

@@ -121,7 +121,7 @@ type Queue struct {
 	// Default: true — uses the shared default workqueue instead of a per-CRD queue.
 	// Suitable for low-volume CRDs where queue isolation is not required.
 	// Default: false — each CRD gets its own isolated workqueue.
-	Default bool `yaml:"default"`
+	Default *bool `yaml:"default"`
 
 	// MaxQueueDepth — maximum number of items in the per-CRD queue.
 	// New items are rejected when the queue is full.
@@ -667,7 +667,7 @@ type ReconcilerConfig struct {
 	// false — Custom reconciler. The user provides the full reconcile implementation.
 	//         Constructor must be declared (in YAML mode) or set directly (Go mode).
 	//         GenericReconciler is not used — the user owns the entire lifecycle.
-	Default bool `yaml:"default" validate:"omitempty"`
+	Default *bool `yaml:"default" validate:"omitempty"`
 
 	// Finalizers — per-CRD finalizer list. Overrides the Katalog-level finalizer.
 	// Applied by GenericReconciler when a CR is first created.
@@ -723,6 +723,12 @@ type ReconcilerConfig struct {
 	// Constructor — called once at startCRDWorkers time to build a custom reconciler.
 	// Must not be nil when Default: false — enforced by Katalog validation at startup.
 	Constructor NewReconcilerFunc `yaml:"-"`
+
+	// Validation defines validation rules per CRD
+	Validation *ValidationConfig `yaml:"validation,omitempty"`
+
+	// Mutation defines mutation rules per CRD
+	Mutation *MutationConfig `yaml:"mutation,omitempty"`
 }
 
 // HookDeclaration declares where a Go hook function lives.
@@ -776,12 +782,12 @@ type CRDEntry struct {
 	// Enabled — include this CRD in the runtime. false = skipped entirely.
 	// WARNING: only set to false after stripping Orkestra finalizers from all
 	// live CRs — disabled CRDs with live finalizers will cause stuck objects.
-	Enabled bool `yaml:"enabled"`
+	Enabled *bool `yaml:"enabled"`
 
 	// Critical — if true, Orkestra marks the entire controller as degraded when
 	// this CRD's health state transitions to degraded.
 	// Use for CRDs that are fundamental to the platform's correctness.
-	Critical bool `yaml:"critical"`
+	Critical *bool `yaml:"critical"`
 
 	// Description — human-readable description. Shown in /katalog API responses.
 	Description string `yaml:"description" validate:"omitempty"`
@@ -825,7 +831,8 @@ type CRDEntry struct {
 	// ── Scope ─────────────────────────────────────────────────────────────────
 
 	// Namespaced — true if this CRD is namespace-scoped, false if cluster-scoped.
-	Namespaced bool `yaml:"namespaced"`
+	// Default is true
+	Namespaced *bool `yaml:"namespaced"`
 
 	// Namespace — target namespace for namespace-scoped CRDs.
 	// Informer watches this namespace only. Empty = all namespaces.
@@ -837,6 +844,9 @@ type CRDEntry struct {
 	// Higher values increase throughput but also increase API server load.
 	// 0 → uses Orkestra-level default (DEFAULT_WORKERS env var).
 	Workers int `yaml:"workers" validate:"omitempty,gte=1,lte=50"`
+
+	// WorkersActive — records number of active concurrent reconcile workers for this CRD.
+	WorkersActive int `yaml:"workersActive" validate:"omitempty,gte=1,lte=50"`
 
 	// Resync — full re-list interval for the informer cache.
 	// Triggers a reconcile for every cached object at this interval.
@@ -851,6 +861,20 @@ type CRDEntry struct {
 	// ── Reconciler + Queue ────────────────────────────────────────────────────
 	ReconcilerConfig ReconcilerConfig `yaml:"reconciler"`
 	Queue            Queue            `yaml:"queue"`
+	Labels           []ResourceLabel  `yaml:"labels" validate:"omitempty"`
+
+	// IsBuiltIn is set to true when this CRD entry was enriched from the
+	// built-in Kubernetes resource registry. Used for ork validate output
+	// and informational logging only — does not affect runtime behavior.
+	IsBuiltIn bool `yaml:"-"` // never serialized — runtime state only
+
+	// BuiltInGroup is the display name of the API group for built-in resources.
+	// "core" for resources in the core group (empty string group).
+	// Only set when IsBuiltIn is true.
+	BuiltInGroup string `yaml:"-"` // never serialized
+
+	// EnrichmentOutcome is the outcome of the enrichment process performed as part of the validation.
+	EnrichmentOutcome EnrichmentOutcome `yaml:"-"` // never serialized
 }
 
 // ── CRDEntry helpers ──────────────────────────────────────────────────────────
@@ -861,20 +885,14 @@ func (c *CRDEntry) OrkMode() string {
 	return konfig.TypedMode
 }
 
+func (c *CRDEntry) IsBuiltInType() bool {
+	return c.IsBuiltIn
+}
+
 // GetRuntimeObjects returns the object and list constructors for the current Katalog mode.
 func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
 	return c.DynamicModeObject(), c.ListDynamicModeObject()
 }
-
-// Deprecated
-// YAML mode: returns DynamicModeObject() and ListDynamicModeObject() — set by addRuntimeObjects().
-// Go mode:   returns TypedModeObject and ListTypedModeObject — set in BuildKatalogFromGo().
-// func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
-// 	if c.IsDynamic() {
-// 		return c.DynamicModeObject(), c.ListDynamicModeObject()
-// 	}
-// 	return c.TypedModeObject, c.ListTypedModeObject
-// }
 
 // SetMaxQueueDepth returns the resolved queue depth for this CRD.
 // Returns the per-CRD value if explicitly set, otherwise the Orkestra-level default.
@@ -950,4 +968,40 @@ func (c *CRDEntry) NewList() runtime.Object {
 		return c.ListDynamicModeObject()
 	}
 	return c.ListTypedModeObject
+}
+
+// Default methods
+func (c *CRDEntry) IsEnabled() bool {
+	if c.Enabled == nil {
+		return true
+	}
+	return *c.Enabled
+}
+
+func (c *CRDEntry) IsCritical() bool {
+	if c.Critical == nil {
+		return false
+	}
+	return *c.Critical
+}
+
+func (c *CRDEntry) IsNamespaced() bool {
+	if c.Namespaced == nil {
+		return true
+	}
+	return *c.Namespaced
+}
+
+func (c *CRDEntry) DefaultReconcile() bool {
+	if c.ReconcilerConfig.Default == nil {
+		return false
+	}
+	return *c.ReconcilerConfig.Default
+}
+
+func (c *CRDEntry) DefaultQueue() bool {
+	if c.Queue.Default == nil {
+		return true
+	}
+	return *c.Queue.Default
 }
