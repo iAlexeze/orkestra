@@ -26,14 +26,4 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Health API** — expanded per‑CRD fields (degrade threshold, consecutive fails, last error, resource count, workers active) for richer observability
 - **Metrics registry** — standardized CRD label format (`group/version, Kind=…`) across all metrics for consistency and easier Grafana dashboards
 
----
-
-# 📌 **Next Steps (tracked but not part of this PR)**
-
-These are the items you mentioned — formatted to match your changelog style:
-
-### Planned
-
-- **Extended validation & mutation engine** — conditional rules, mutation‑first vs validation‑first modes, dry‑run mutation previews
-- **Conditional execution** — `when:` clauses for templated resources, field‑based gating, dynamic resource creation
-- **Test coverage expansion** — enrichment tests, validation rule tests, CLI tests, mock health API tests, and integration tests for dynamic mode
+### Security
