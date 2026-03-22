@@ -118,7 +118,7 @@ func (k *Katalog) filterEnabled() error {
 
 	// Filter enabled CRDs
 	for _, crd := range k.Spec.CRDs {
-		if crd.Enabled {
+		if crd.IsEnabled() {
 			k.enabledCRDs = append(k.enabledCRDs, crd)
 		} else {
 			logger.Warn().Msgf("%s disabled. skipping...", crd.Name)

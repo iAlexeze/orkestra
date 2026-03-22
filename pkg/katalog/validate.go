@@ -281,7 +281,7 @@ func (k *Katalog) setDefaults() error {
 		}
 
 		// Handle namespaced and cluster-scoped crds
-		if !crd.Namespaced && crd.Namespace != "" {
+		if !crd.IsNamespaced() && crd.Namespace != "" {
 			logger.Warn().Msgf("%s is clusterscoped. Namespace %s will be ignored", crd.APITypes.Kind, crd.Namespace)
 			crd.Namespace = ""
 		}
@@ -367,7 +367,7 @@ func (k *Katalog) addReconcilers() error {
 		if !crd.IsDynamic() {
 
 			// Default → skip registry lookup
-			if crd.ReconcilerConfig.Default {
+			if crd.DefaultReconcile() {
 				continue
 			}
 
@@ -391,7 +391,7 @@ func (k *Katalog) addReconcilers() error {
 func (k *Katalog) addHooks() error {
 	for i := range k.enabledCRDs {
 		crd := &k.enabledCRDs[i]
-		if !crd.ReconcilerConfig.Default {
+		if !crd.DefaultReconcile() {
 			continue
 		}
 		if hookFn, ok := orktypes.HookRegistry[crd.GroupVersionKind]; ok {

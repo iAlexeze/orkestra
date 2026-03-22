@@ -25,12 +25,12 @@ type CRDEntryDTO struct {
 func toDTO(crd orktypes.CRDEntry) CRDEntryDTO {
 	return CRDEntryDTO{
 		Name:       crd.Name,
-		Enabled:    crd.Enabled,
+		Enabled:    crd.IsEnabled(),
 		Group:      crd.APITypes.Group,
 		Version:    crd.APITypes.Version,
 		Kind:       crd.APITypes.Kind,
 		Plural:     crd.APITypes.Plural,
-		Namespaced: crd.Namespaced,
+		Namespaced: crd.IsNamespaced(),
 		Namespace:  crd.Namespace,
 		Workers:    crd.Workers,
 		Resync:     crd.Resync.String(),
@@ -46,9 +46,9 @@ func printPrettyCRD(crd orktypes.CRDEntry) {
 	fmt.Printf("  Version: %s\n", crd.APITypes.Version)
 	fmt.Printf("  Kind: %s\n", crd.APITypes.Kind)
 	fmt.Printf("  Plural: %s\n", crd.APITypes.Plural)
-	fmt.Printf("  Enabled: %t\n", crd.Enabled)
+	fmt.Printf("  Enabled: %v\n", crd.Enabled)
 	fmt.Printf("  Mode: %s\n", crd.Mode)
-	fmt.Printf("  Namespaced: %t\n", crd.Namespaced)
+	fmt.Printf("  Namespaced: %v\n", crd.Namespaced)
 	if crd.Namespace != "" {
 		fmt.Printf("  Namespace: %s\n", crd.Namespace)
 	}
@@ -63,7 +63,7 @@ func printPrettyCRD(crd orktypes.CRDEntry) {
 	}
 
 	fmt.Println("  Reconciler:")
-	fmt.Printf("    Default: %t\n", crd.ReconcilerConfig.Default)
+	fmt.Printf("    Default: %v\n", crd.ReconcilerConfig.Default)
 
 	if len(crd.ReconcilerConfig.Finalizers) > 0 {
 		fmt.Println("    Finalizers:")

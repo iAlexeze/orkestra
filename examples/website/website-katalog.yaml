@@ -13,10 +13,21 @@ spec:
 
   crds:
     - name: pod-governance
-      enabled: true
-      namespaced: true
       apiTypes:
         kind: Pod          # built-in — Kubernetes knows the rest
+      reconciler:
+        default: true
+    - name: deployment-watcher
+      apiTypes:
+        kind: Deployment
+      reconciler:
+        default: true
+    - name: secrets-manager
+      apiTypes:
+        kind: Secret
+      reconciler:
+        default: true
+
       # validation:
       #   - field: metadata.ownerReferences
       #     operator: exists
@@ -30,8 +41,6 @@ spec:
       #   - cert-manager
 
     - name: backend
-      enabled: true
-      namespaced: true
       apiTypes:
         group: orkestra.konduktor.io
         version: v1alpha1
@@ -41,8 +50,8 @@ spec:
         default: true
 
     - name: frontend
-      enabled: true
-      namespaced: true
+      enabled: true     # Default
+      namespaced: true  # Default
       workers: 2
       resync: 30s
       dependsOn:

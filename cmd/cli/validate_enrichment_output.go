@@ -35,7 +35,7 @@ func printCRDValidationLine(entry orktypes.CRDEntry, warnings []orktypes.CRDEntr
 	if entry.IsBuiltIn {
 		// Enriched from built-in — tell the user what was resolved
 		scope := "Namespaced"
-		if !entry.Namespaced {
+		if !entry.IsNamespaced() {
 			scope = "ClusterScoped"
 		}
 
@@ -54,7 +54,7 @@ func printCRDValidationLine(entry orktypes.CRDEntry, warnings []orktypes.CRDEntr
 	} else {
 		// Custom CRD — show the declared values
 		scope := "Namespaced"
-		if !entry.Namespaced {
+		if !entry.IsNamespaced() {
 			scope = "ClusterScoped"
 		}
 		fmt.Printf("    \033[90mkind: %s / group: %s / version: %s / plural: %s / scope: %s\033[0m\n",

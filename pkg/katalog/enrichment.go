@@ -84,12 +84,17 @@ func EnrichCRDEntry(entry *orktypes.CRDEntry) (orktypes.EnrichmentOutcome, error
 	}
 
 	// Apply enrichment
+	IsNamespaced := true
+	if !result.BuiltIn.Namespaced {
+		IsNamespaced = false
+	}
+
 	apiTypes.Kind = result.Kind
 	apiTypes.Group = result.BuiltIn.Group
 	apiTypes.Version = result.BuiltIn.Version
 	apiTypes.Plural = result.BuiltIn.Plural
 	apiTypes.APIPath = result.BuiltIn.APIPath
-	entry.Namespaced = result.BuiltIn.Namespaced
+	entry.Namespaced = &IsNamespaced
 
 	// Mark as a built-in for informational logging and ork validate output
 	entry.IsBuiltIn = true

@@ -179,14 +179,21 @@ func BuildKatalogHandler(
 		// Calculate overall health of the katalog
 		healthy := true
 		degradedReason := ""
+		degradedCRDs := []string{}
+
 		status := http.StatusOK
 		for _, crd := range crds {
 			if !crd["healthy"].(bool) {
-				healthy = false
-				status = http.StatusServiceUnavailable
-				degradedReason = crd["name"].(string) + " degraded"
+				degradedCRDs = append(degradedCRDs, crd["name"].(string))
 				break
 			}
+		}
+
+		if len(degradedCRDs) > 0 {
+			healthy = false
+			status = http.StatusServiceUnavailable
+			degradedReason = strings.Join(degradedCRDs, ", ")
+			degradedReason = "degraded: " + degradedReason
 		}
 
 		utils.WriteJSON(w, http.StatusOK, KatalogResponse{
@@ -240,7 +247,7 @@ func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
 
 	// Determine reconciler type
 	reconcilerType := "generic"
-	if !rc.Default {
+	if !crd.DefaultReconcile() {
 		reconcilerType = "custom"
 	}
 

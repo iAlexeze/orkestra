@@ -186,7 +186,7 @@ func TestEnrichCRDEntry_KindOnly_Deployment(t *testing.T) {
 	if entry.APITypes.Plural != "deployments" {
 		t.Errorf("expected plural=deployments, got %q", entry.APITypes.Plural)
 	}
-	if !entry.Namespaced {
+	if !entry.IsNamespaced() {
 		t.Error("expected Namespaced=true for Deployment")
 	}
 	if !entry.IsBuiltIn {
@@ -233,7 +233,7 @@ func TestEnrichCRDEntry_KindOnly_Namespace_ClusterScoped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if entry.Namespaced {
+	if entry.IsNamespaced() {
 		t.Error("Namespace is cluster-scoped — Namespaced should be false")
 	}
 }

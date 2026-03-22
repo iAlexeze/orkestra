@@ -118,7 +118,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 				GroupVersion: crd.GroupVersion,
 				Plural:       crd.APITypes.Plural,
 				Namespace:    crd.Namespace,
-				Namespaced:   crd.Namespaced,
+				Namespaced:   crd.IsNamespaced(),
 			})
 		})
 	}
@@ -163,7 +163,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			Resync: crd.Resync,
 		}
 
-		if crd.Queue.Default {
+		if crd.DefaultQueue() {
 			logger.Debug().Str("gvk", gvk).Msg("using default workqueue")
 			opts.Wq = nil
 		} else {
@@ -186,7 +186,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 				GroupVersion: crd.GroupVersion,
 				Plural:       crd.APITypes.Plural,
 				Namespace:    crd.Namespace,
-				Namespaced:   crd.Namespaced,
+				Namespaced:   crd.IsNamespaced(),
 			})
 
 			inf = infFactory.ForListerWatcher(lw, object, ctx, opts)
@@ -206,7 +206,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 
 		var factory func() domain.Reconciler
 
-		if crd.ReconcilerConfig.Default {
+		if crd.DefaultReconcile() {
 			// DynamicModeObject / TypedModeObject already set — GetRuntimeObjects handles mode.
 			// We need a domain.Object factory for GenericReconciler.
 			// object is already the correct concrete type for this CRD.

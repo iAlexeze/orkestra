@@ -47,7 +47,7 @@ func (k *Katalog) Describe(name string) (string, error) {
 	fmt.Fprintf(b, "Kind:        %s\n", crd.APITypes.Kind)
 	fmt.Fprintf(b, "Plural:      %s\n", crd.APITypes.Plural)
 	fmt.Fprintf(b, "Namespaced:  %v\n", crd.Namespaced)
-	if crd.Namespaced {
+	if crd.IsNamespaced() {
 		fmt.Fprintf(b, "Namespace:   %s\n", crd.Namespace)
 	}
 	fmt.Fprintf(b, "Workers:     %d\n", crd.Workers)
@@ -80,7 +80,7 @@ func (k *Katalog) Explain(name string) (string, error) {
 	fmt.Fprintf(b, "GVK:          %s\n", crd.GroupVersionKind.String())
 	fmt.Fprint(b, "List Type:    runtime.Object")
 	fmt.Fprint(b, "Object Type:  runtime.Object")
-	if crd.ReconcilerConfig.Default {
+	if crd.DefaultReconcile() {
 		fmt.Fprint(b, "Reconciler:   Default\n")
 	} else {
 		fmt.Fprintf(b, "Reconciler:   %T\n", crd.ReconcilerConfig.Constructor)
@@ -116,7 +116,7 @@ func (k *Katalog) Order() []string {
 func (k *Katalog) Controllers() []string {
 	var out []string
 	for _, crd := range k.enabledCRDs {
-		if crd.ReconcilerConfig.Constructor != nil && crd.ReconcilerConfig.Default {
+		if crd.ReconcilerConfig.Constructor != nil && crd.DefaultReconcile() {
 			out = append(out, crd.Name)
 		}
 	}

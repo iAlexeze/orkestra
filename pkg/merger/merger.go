@@ -93,7 +93,7 @@ func (m *Merger) Enabled() []orktypes.CRDEntry {
 	m.mustBeMerged()
 	var out []orktypes.CRDEntry
 	for _, crd := range m.result {
-		if crd.Enabled {
+		if crd.IsEnabled() {
 			out = append(out, crd)
 		}
 	}

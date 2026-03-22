@@ -16,7 +16,7 @@ var dashboardTemplate = template.Must(
 func Dashboards(c []orktypes.CRDEntry, dryRun bool) error {
 	var crds []CRDMeta
 	for _, crd := range c {
-		if !crd.Enabled {
+		if !crd.IsEnabled() {
 			continue
 		}
 

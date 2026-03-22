@@ -357,6 +357,8 @@ baked into binaries.
 |----------|-------------|
 | [Why Orkestra](./publications/why-orkestra.md) | The case for declarative operators |
 | [Declarative Operators](./publications/declarative-operators-whitepaper.md) | Technical whitepaper |
+| [Metrics Analysis](./publications/metrics-analysis.md) | See Orkestra metrics managing **170+** CRDs |
+
 
 ---
 

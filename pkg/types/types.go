@@ -121,7 +121,7 @@ type Queue struct {
 	// Default: true — uses the shared default workqueue instead of a per-CRD queue.
 	// Suitable for low-volume CRDs where queue isolation is not required.
 	// Default: false — each CRD gets its own isolated workqueue.
-	Default bool `yaml:"default"`
+	Default *bool `yaml:"default"`
 
 	// MaxQueueDepth — maximum number of items in the per-CRD queue.
 	// New items are rejected when the queue is full.
@@ -667,7 +667,7 @@ type ReconcilerConfig struct {
 	// false — Custom reconciler. The user provides the full reconcile implementation.
 	//         Constructor must be declared (in YAML mode) or set directly (Go mode).
 	//         GenericReconciler is not used — the user owns the entire lifecycle.
-	Default bool `yaml:"default" validate:"omitempty"`
+	Default *bool `yaml:"default" validate:"omitempty"`
 
 	// Finalizers — per-CRD finalizer list. Overrides the Katalog-level finalizer.
 	// Applied by GenericReconciler when a CR is first created.
@@ -782,12 +782,12 @@ type CRDEntry struct {
 	// Enabled — include this CRD in the runtime. false = skipped entirely.
 	// WARNING: only set to false after stripping Orkestra finalizers from all
 	// live CRs — disabled CRDs with live finalizers will cause stuck objects.
-	Enabled bool `yaml:"enabled"`
+	Enabled *bool `yaml:"enabled"`
 
 	// Critical — if true, Orkestra marks the entire controller as degraded when
 	// this CRD's health state transitions to degraded.
 	// Use for CRDs that are fundamental to the platform's correctness.
-	Critical bool `yaml:"critical"`
+	Critical *bool `yaml:"critical"`
 
 	// Description — human-readable description. Shown in /katalog API responses.
 	Description string `yaml:"description" validate:"omitempty"`
@@ -832,7 +832,7 @@ type CRDEntry struct {
 
 	// Namespaced — true if this CRD is namespace-scoped, false if cluster-scoped.
 	// Default is true
-	Namespaced bool `yaml:"namespaced"`
+	Namespaced *bool `yaml:"namespaced"`
 
 	// Namespace — target namespace for namespace-scoped CRDs.
 	// Informer watches this namespace only. Empty = all namespaces.
@@ -968,4 +968,40 @@ func (c *CRDEntry) NewList() runtime.Object {
 		return c.ListDynamicModeObject()
 	}
 	return c.ListTypedModeObject
+}
+
+// Default methods
+func (c *CRDEntry) IsEnabled() bool {
+	if c.Enabled == nil {
+		return true
+	}
+	return *c.Enabled
+}
+
+func (c *CRDEntry) IsCritical() bool {
+	if c.Critical == nil {
+		return false
+	}
+	return *c.Critical
+}
+
+func (c *CRDEntry) IsNamespaced() bool {
+	if c.Namespaced == nil {
+		return true
+	}
+	return *c.Namespaced
+}
+
+func (c *CRDEntry) DefaultReconcile() bool {
+	if c.ReconcilerConfig.Default == nil {
+		return false
+	}
+	return *c.ReconcilerConfig.Default
+}
+
+func (c *CRDEntry) DefaultQueue() bool {
+	if c.Queue.Default == nil {
+		return true
+	}
+	return *c.Queue.Default
 }
