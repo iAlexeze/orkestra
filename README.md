@@ -351,12 +351,12 @@ baked into binaries.
 | [Dependency Model](./docs/dependency-model.md) | How Orkestra manages dependencies |
 | [Roadmap](./ROADMAP.md) | What is coming next |
 
-## Publish
+## Publication
 
 | Document | Description |
 |----------|-------------|
-| [Why Orkestra](./publish/why-orkestra.md) | The case for declarative operators |
-| [Declarative Operators](./publish/declarative-operators-whitepaper.md) | Technical whitepaper |
+| [Why Orkestra](./publications/why-orkestra.md) | The case for declarative operators |
+| [Declarative Operators](./publications/declarative-operators-whitepaper.md) | Technical whitepaper |
 
 ---
 

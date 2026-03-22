@@ -831,6 +831,7 @@ type CRDEntry struct {
 	// ── Scope ─────────────────────────────────────────────────────────────────
 
 	// Namespaced — true if this CRD is namespace-scoped, false if cluster-scoped.
+	// Default is true
 	Namespaced bool `yaml:"namespaced"`
 
 	// Namespace — target namespace for namespace-scoped CRDs.
@@ -861,6 +862,19 @@ type CRDEntry struct {
 	ReconcilerConfig ReconcilerConfig `yaml:"reconciler"`
 	Queue            Queue            `yaml:"queue"`
 	Labels           []ResourceLabel  `yaml:"labels" validate:"omitempty"`
+
+	// IsBuiltIn is set to true when this CRD entry was enriched from the
+	// built-in Kubernetes resource registry. Used for ork validate output
+	// and informational logging only — does not affect runtime behavior.
+	IsBuiltIn bool `yaml:"-"` // never serialized — runtime state only
+
+	// BuiltInGroup is the display name of the API group for built-in resources.
+	// "core" for resources in the core group (empty string group).
+	// Only set when IsBuiltIn is true.
+	BuiltInGroup string `yaml:"-"` // never serialized
+
+	// EnrichmentOutcome is the outcome of the enrichment process performed as part of the validation.
+	EnrichmentOutcome EnrichmentOutcome `yaml:"-"` // never serialized
 }
 
 // ── CRDEntry helpers ──────────────────────────────────────────────────────────
@@ -869,6 +883,10 @@ func (c *CRDEntry) OrkMode() string {
 		return konfig.DynamicMode
 	}
 	return konfig.TypedMode
+}
+
+func (c *CRDEntry) IsBuiltInType() bool {
+	return c.IsBuiltIn
 }
 
 // GetRuntimeObjects returns the object and list constructors for the current Katalog mode.

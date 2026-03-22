@@ -18,7 +18,19 @@ import (
 func (k *Katalog) KomposeKatalogFromYaml(m *merger.Merger, paths ...string) ([]orktypes.CRDEntry, error) {
 	k.Spec = m.ToSpec()
 	k.enabledCRDs = m.Enabled() // Enabled CRDs for all operations
+	k.allCRDs = m.All()         // All CRDs for documentation
 	k.metadata = m.ToMeta()     // Metadata for CLI and health endpoints
+
+	// Enrich enabled CRDs
+	for i := range k.enabledCRDs {
+		entry := &k.enabledCRDs[i]
+
+		outcome, err := EnrichCRDEntry(entry)
+		if err != nil {
+			return nil, err
+		}
+		entry.EnrichmentOutcome = outcome
+	}
 
 	return k.enabledCRDs, nil
 }

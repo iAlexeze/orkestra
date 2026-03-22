@@ -2,8 +2,10 @@
 package kontroller
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
+	//	"github.com/ialexeze/orkestra/pkg/reconciler"
 
 	"github.com/ialexeze/orkestra/pkg/queue"
 )
@@ -12,14 +14,29 @@ import (
 // It is fully concurrency‑safe and designed to be updated from multiple goroutines.
 //
 // Fields tracked:
+//
 //   - started:           whether the reconciler has begun processing events
+//
 //   - healthy:           whether the reconciler is currently considered healthy
+//
 //   - totalReconciles:   total number of reconcile attempts (success + failure)
+//
 //   - failedReconciles:  number of failed reconciles
+//
 //   - consecutiveFails:  number of failures in a row (used for degradation)
+//
 //   - lastError:         last error message (string)
+//
 //   - lastReconcile:     timestamp of last reconcile attempt
+//
 //   - startTime:         timestamp when the reconciler first started
+//
+//   - The activeWarnings: tracks current warn-mode violations per CR.
+//     It answers the question: "which CRs are currently violating advisory rules?"
+//     This powers the /katalog/{crd}/validation active warnings section.
+//
+//     Map key: "namespace/name" — unique per CR
+//     Map value: slice of ActiveWarning, one per violated warn rule
 //
 // This struct powers:
 //   - /healthz endpoint
@@ -38,6 +55,15 @@ type CRDHealth struct {
 	startTime        atomic.Value // stores time.Time
 	workersActive    atomic.Int64 // store number of active workers
 	queueReg         *queue.QueueRegistry
+
+	// activeWarnings tracks current warn-mode violations per CR.
+	// Protected by mu — warnings are written from reconcile goroutines
+	// and read from the HTTP handler goroutine.
+	mu sync.RWMutex
+	//	activeWarnings map[string][]reconciler.Violation // key: "namespace/name"
+
+	// Warning counters — kept as atomics alongside the existing health counters
+	totalWarned int64 // total reconciles that had at least one warning
 }
 
 // NewCRDHealth initializes a CRDHealth tracker for a given CRD name.

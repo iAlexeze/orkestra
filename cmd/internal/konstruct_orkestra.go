@@ -150,7 +150,8 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		gvr := crd.GroupVersionResource
 		crd.Workers = crd.SetWorkers(kfg.Cluster().DefaultWorkers)
 
-		// GetRuntimeObjects populates DynamicModeObject is already populated by addRuntimeObjects() during validation.
+		// GetRuntimeObjects populates DynamicModeObject
+		// Already populated by addRuntimeObjects() during validation.
 		object, _ := crd.GetRuntimeObjects()
 
 		wq := queueRegistry.Register(gvk, crd.SetMaxQueueDepth(
@@ -198,6 +199,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			Kind:       crd.APITypes.Kind,
 			GVK:        gvk,
 			GVR:        gvr,
+			Operator:   kat.Meta().Name,
 			Finalizers: crd.ReconcilerConfig.Finalizers,
 		}
 		infCopy := inf

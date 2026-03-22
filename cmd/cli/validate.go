@@ -2,9 +2,10 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/ialexeze/orkestra/pkg/inspect"
 	"github.com/ialexeze/orkestra/pkg/katalog"
-	"github.com/ialexeze/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -18,14 +19,43 @@ var validateCmd = &cobra.Command{
 		}
 
 		var k katalog.Katalog
-		if _, err = k.KomposeKatalogFromYaml(m.m); err != nil {
-			return err
-		}
-		if _, err = k.ValidateConfig(); err != nil {
+		entries, err := k.KomposeKatalogFromYaml(m.m)
+		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Success: %sKatalog is valid%s\n", utils.ColorGreen, utils.ColorReset)
+		_, err = k.ValidateConfig()
+		if err != nil {
+			return err
+		}
+
+		fmt.Println()
+		fmt.Println(inspect.Bold("Validating Katalog..."))
+		fmt.Println()
+
+		builtIn := 0
+		custom := 0
+
+		// Print each CRD entry with enrichment info
+		for _, entry := range entries {
+			printCRDValidationLine(entry, k.Enabled())
+			fmt.Println()
+
+			if entry.IsBuiltIn {
+				builtIn++
+			} else {
+				custom++
+			}
+		}
+
+		// Summary
+		fmt.Println(strings.Repeat("─", 60))
+		fmt.Printf("%d CRDs valid (%d built-in, %d custom)\n", len(entries), builtIn, custom)
+
+		fmt.Println()
+		fmt.Println("Built-in resources are enriched automatically from the Kubernetes API.")
+		fmt.Println("No apiTypes.location or code generation required.")
+
 		return nil
 	},
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -325,8 +326,8 @@ func buildSecret(owner domain.Object, spec ResolvedSecretSpec, namespace string,
 					Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
 					Name:               owner.GetName(),
 					UID:                owner.GetUID(),
-					Controller:         boolPtr(true),
-					BlockOwnerDeletion: boolPtr(true),
+					Controller:         utils.BoolPtr(true),
+					BlockOwnerDeletion: utils.BoolPtr(true),
 				},
 			},
 		},
@@ -380,5 +381,3 @@ func stringDataEqual(a, b map[string]string) bool {
 	}
 	return true
 }
-
-func boolPtr(b bool) *bool { return &b }

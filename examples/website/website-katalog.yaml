@@ -12,8 +12,26 @@ spec:
     - finalizer.demo.orkestra.io/website
 
   crds:
-    - name: deprecated application
+    - name: pod-governance
       enabled: true
+      namespaced: true
+      apiTypes:
+        kind: Pod          # built-in — Kubernetes knows the rest
+      # validation:
+      #   - field: metadata.ownerReferences
+      #     operator: exists
+      #     message: "orphaned pods are not permitted — all pods must have an owner"
+      #     action: cleanup
+      #     gracePeriodSeconds: 0    # immediate
+      #     dryRun: false            # when you are confident. Start with true.
+
+      # restrictedNamespaces:
+      #   - kube-system              # never clean up system pods
+      #   - cert-manager
+
+    - name: backend
+      enabled: true
+      namespaced: true
       apiTypes:
         group: orkestra.konduktor.io
         version: v1alpha1
@@ -22,11 +40,13 @@ spec:
       reconciler:
         default: true
 
-    - name: website
+    - name: frontend
       enabled: true
       namespaced: true
       workers: 2
       resync: 30s
+      dependsOn:
+        - backend
 
       apiTypes:
         group: demo.orkestra.io

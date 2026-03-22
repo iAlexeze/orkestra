@@ -12,9 +12,13 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// EvaluateConditions evaluates a slice of conditions against the CR object.
-// All conditions are AND'd — returns true only if every condition passes.
-// Returns true when the When slice is empty (no conditions = always create).
+// EvaluateConditions reports whether all conditions pass for the given CR.
+//
+// An empty or nil slice always returns true — no conditions means unconditional.
+// All conditions are AND'd — every condition must pass.
+//
+// Only unstructured (dynamic) CRDs support dot-notation field evaluation.
+// Typed CRDs always return true here — use Go hooks for typed conditional logic.
 func EvaluateConditions(obj domain.Object, conditions []orktypes.Condition) bool {
 	if len(conditions) == 0 {
 		return true // no conditions → unconditional

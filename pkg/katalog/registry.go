@@ -128,7 +128,7 @@ func (k *Katalog) registerGoScheme(scheme *runtime.Scheme) (*runtime.Scheme, err
 // these GVKs as *unstructured.Unstructured instead of failing
 func (k *Katalog) registerDynamicScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
 	for _, crd := range k.enabledCRDs {
-		if crd.IsDynamic() && crd.APITypes.Location == "" {
+		if crd.IsDynamic() && crd.APITypes.Location == "" && !crd.IsBuiltInType() {
 			// Register Object
 			scheme.AddKnownTypeWithName(
 				schema.GroupVersionKind{

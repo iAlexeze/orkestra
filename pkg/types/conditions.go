@@ -108,6 +108,8 @@ type ValidationRule struct {
 	// Supports template expressions.
 	Value string `yaml:"value,omitempty"`
 
+	Action ValidationAction `yaml:"action,omitempty"` // deny (default), warn, or cleanup
+
 	// Shorthands — these map to the corresponding operator.
 	// Use these for readability in the common cases.
 	Equals    string `yaml:"equals,omitempty"`
@@ -121,6 +123,20 @@ type ValidationRule struct {
 	// Message — the error shown in the Kubernetes event and operator log
 	// when this rule is violated.
 	Message string `yaml:"message" validate:"required"`
+
+	// Cleanup-specific options.
+	// Only meaningful when action: cleanup. Ignored for deny and warn.
+
+	// GracePeriodSeconds — how long to wait before force-deleting.
+	// Default 0: immediate deletion.
+	// Set to a positive value for resources that need graceful shutdown.
+	GracePeriodSeconds *int64 `yaml:"gracePeriodSeconds,omitempty"`
+
+	// DryRun — when true, the cleanup rule logs and emits an event but
+	// does not delete the resource. Use during policy rollout to observe
+	// what would be removed before enabling live deletion.
+	// Default false.
+	DryRun bool `yaml:"dryRun,omitempty"`
 }
 
 // ValidationConfig holds the full validation configuration for a CRD.

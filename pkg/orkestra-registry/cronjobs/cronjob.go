@@ -10,6 +10,7 @@ import (
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -202,8 +203,8 @@ func buildCronJob(owner domain.Object, spec ResolvedCronJobSpec, namespace strin
 					Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
 					Name:               owner.GetName(),
 					UID:                owner.GetUID(),
-					Controller:         boolPtr(true),
-					BlockOwnerDeletion: boolPtr(true),
+					Controller:         utils.BoolPtr(true),
+					BlockOwnerDeletion: utils.BoolPtr(true),
 				},
 			},
 		},
@@ -262,5 +263,3 @@ func resolveNamespace(owner domain.Object, spec ResolvedCronJobSpec) string {
 	}
 	return "default"
 }
-
-func boolPtr(b bool) *bool { return &b }

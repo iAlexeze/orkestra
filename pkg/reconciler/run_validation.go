@@ -48,6 +48,12 @@ type ValidationResult struct {
 	// Passed — true when all rules passed
 	Passed bool
 
+	// Warning
+	Warnings []string
+
+	// Deny
+	Deny bool
+
 	// Violations — one entry per failed rule
 	Violations []ValidationViolation
 }
@@ -273,4 +279,87 @@ func ruleType(r orktypes.ValidationRule) string {
 		return string(r.Operator)
 	}
 	return "exists"
+}
+
+// ─────────────────────────────────────────────────────────────
+// High‑level state checks
+// ─────────────────────────────────────────────────────────────
+
+// HasWarnings returns true if any advisory warnings were produced.
+func (r *ValidationResult) HasWarnings() bool {
+	return len(r.Warnings) > 0
+}
+
+// Denied returns true if validation rules explicitly blocked reconciliation.
+func (r *ValidationResult) Denied() bool {
+	return r.Deny
+}
+
+// Blocked returns true if reconciliation must stop.
+// Deny takes precedence; warnings alone do NOT block.
+func (r *ValidationResult) Blocked() bool {
+	return r.Deny
+}
+
+// ─────────────────────────────────────────────────────────────
+// Error + message helpers
+// ─────────────────────────────────────────────────────────────
+
+// DenialError returns a proper error describing the denial reason.
+func (r *ValidationResult) DenialError() error {
+	if !r.Deny {
+		return nil
+	}
+	return fmt.Errorf("validation denied: %s", r.DenialMessage())
+}
+
+// DenialMessage returns a human‑readable summary of the denial cause.
+func (r *ValidationResult) DenialMessage() string {
+	if !r.Deny {
+		return ""
+	}
+	if len(r.Violations) == 0 {
+		return "validation denied"
+	}
+	// First violation is usually the most relevant
+	v := r.Violations[0]
+	return fmt.Sprintf("field %q: %s (got %q)", v.Field, v.Message, v.Value)
+}
+
+// WarningSummary returns a semicolon‑joined list of warnings.
+func (r *ValidationResult) WarningSummary() string {
+	if len(r.Warnings) == 0 {
+		return ""
+	}
+	return strings.Join(r.Warnings, "; ")
+}
+
+// HasViolations returns true if any rules failed.
+func (r *ValidationResult) HasViolations() bool {
+	return len(r.Violations) > 0
+}
+
+// ViolationSummary returns a semicolon‑joined list of violations.
+func (r *ValidationResult) ViolationSummary() string {
+	if len(r.Violations) == 0 {
+		return ""
+	}
+	out := make([]string, 0, len(r.Violations))
+	for _, v := range r.Violations {
+		out = append(out, fmt.Sprintf("%s: %s", v.Field, v.Message))
+	}
+	return strings.Join(out, "; ")
+}
+
+// Log helper for debugging
+func (r *ValidationResult) Log(crd, name, ns string) {
+	if r.Passed {
+		return
+	}
+	logger.Info().
+		Str("crd", crd).
+		Str("name", name).
+		Str("namespace", ns).
+		Int("violations", len(r.Violations)).
+		Msg("validation failed")
 }

@@ -22,4 +22,5 @@ type Katalog struct {
 	Spec     orktypes.KatalogSpec `yaml:"spec"`
 	// Internal
 	enabledCRDs []orktypes.CRDEntry `yaml:"-"` // filtered
+	allCRDs     []orktypes.CRDEntry `yaml:"-"` // all CRDs
 }

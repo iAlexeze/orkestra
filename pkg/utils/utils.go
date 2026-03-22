@@ -30,6 +30,8 @@ func Sleep(n int) {
 	time.Sleep(time.Duration(n) * time.Second)
 }
 
+func BoolPtr(b bool) *bool { return &b }
+
 func Retry(fn func() error, attempts int, delay time.Duration) error {
 	if attempts < 1 {
 		return errors.New("attempts must be >= 1")

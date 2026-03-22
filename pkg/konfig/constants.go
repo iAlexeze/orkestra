@@ -27,6 +27,22 @@ const (
 	ManagedByLabel         = "managed-by"
 	ManagedByOrkestraLabel = "managed-by=orkestra"
 	OrkestraOwnerLabel     = "orkestra-owner"
+
+	// LabelManaged is patched on every CR Orkestra manages.
+	// Used by ork reconcile, ork get, and ork events to scope
+	// their operations to exactly what this operator instance manages.
+	LabelManaged      = "orkestra.konductor.io/managed"
+	LabelManagedValue = "true"
+
+	// Annotations
+
+	// AnnotationManagedBy identifies which Orkestra operator instance
+	// is managing this CR. Useful when multiple Orkestra operators
+	// run in the same cluster managing different CRD sets.
+	AnnotationManagedBy = "orkestra.konductor.io/managed-by"
+
+	// AnnotationManagedSince records when Orkestra first took ownership.
+	AnnotationManagedSince = "orkestra.konductor.io/managed-since"
 )
 
 var (
