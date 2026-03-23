@@ -243,8 +243,8 @@ ork version                             Print version information
 Every Orkestra operator exposes built-in endpoints with no configuration:
 
 ```bash
-GET /health                  Liveness probe
-GET /ready                   Readiness probe
+GET /healthz                 Orkestra Liveness probe
+GET /readyz                  Orkestra Readiness probe
 GET /metrics                 Prometheus metrics
 GET /katalog                 All CRDs — health, config, dependency graph
 GET /katalog/{crd}           Single CRD — config, stats, reconciler info

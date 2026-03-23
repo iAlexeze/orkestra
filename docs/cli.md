@@ -450,10 +450,10 @@ orkapp workers started and ready
 **Endpoints available immediately:**
 
 ```bash
-GET /health                       # liveness
-GET /ready                        # readiness
-GET /metrics                      # Prometheus metrics
-GET /katalog                      # all CRDs with health and dependency graph
+GET /healthz                       # Orkestra liveness
+GET /readyz                        # Orkestra readiness
+GET /metrics                       # Prometheus metrics
+GET /katalog                       # all CRDs with health and dependency graph
 GET /katalog/{crd}                 # single CRD config and reconcile stats
 GET /katalog/{crd}/health          # 200 healthy / 503 degraded
 ```

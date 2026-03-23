@@ -322,8 +322,8 @@ Every Orkestra operator exposes the same endpoints regardless of what
 is in the Katalog.
 
 ```bash
-GET /health                          # liveness — 200 or 500
-GET /ready                           # readiness — 200 or 503
+GET /healthz                         # orkestra liveness — 200 or 500
+GET /readyz                          # orkestra readiness — 200 or 503
 GET /metrics                         # Prometheus metrics
 GET /katalog                         # all CRDs with health and dependency graph
 GET /katalog/{crd}                   # single CRD config and stats

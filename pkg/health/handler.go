@@ -9,7 +9,7 @@ import (
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
-// healthHandler — GET /health
+// healthHandler — GET /healthz
 // Returns 200 when the controller is healthy, 500 when not.
 // Standard Kubernetes liveness probe endpoint.
 func (h *HealthServer) healthHandler(w http.ResponseWriter, r *http.Request) {

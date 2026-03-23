@@ -275,16 +275,28 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		inf := entry.Informer // already stored on RegistryEntry
 
 		// GET /katalog/{crd}/health — 200 healthy, 503 degraded
-		hs.Register(
-			"/katalog/"+crdName+"/health",
-			kontroller.BuildCRDHealthHandler(crd, crdHealth),
-		)
+		if crd.IsHealthEnabled() {
+			hs.Register(
+				"/katalog/"+crdName+"/health",
+				kontroller.BuildCRDHealthHandler(crd, crdHealth),
+			)
+		}
 
 		// GET /katalog/{crd} — CRD config + live reconcile stats
-		hs.Register(
-			"/katalog/"+crdName,
-			kontroller.BuildCRDInfoHandler(crd, kfg, inf, crdHealth),
-		)
+		if crd.IsInfoEnabled() {
+			hs.Register(
+				"/katalog/"+crdName,
+				kontroller.BuildCRDInfoHandler(crd, kfg, inf, crdHealth),
+			)
+		}
+
+		// GET /katalog/{crd}/validation - CRD validation stats
+		if crd.IsValidationEnabled() {
+			hs.Register(
+				"/katalog/"+crdName+"/validation",
+				kontroller.BuildCRDValidationHandler(crd, kfg, crdHealth),
+			)
+		}
 
 		logger.Debug().
 			Str("health", "/katalog/"+crdName+"/health").
