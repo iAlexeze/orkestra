@@ -428,7 +428,7 @@ Before running Orkestra in production:
 
 **Observability**
 - [ ] Prometheus scrape configured for `/metrics`
-- [ ] Health probes reaching `/healthz` and `/readyz`
+- [ ] Health probes reaching `/health` and `/ready`
 - [ ] Alerts on `controller_reconcile_total{result="error"}`
 
 ---

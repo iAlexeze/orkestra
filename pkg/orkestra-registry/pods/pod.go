@@ -160,8 +160,8 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string) ResolvedPodSpec {
 	}
 
 	// System labels — always present
-	spec.Labels[konfig.ManagedByLabel] = konfig.Orkestra
-	spec.Labels[konfig.OrkestraOwnerLabel] = ownerName
+	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
+	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
 
 	return spec
 }

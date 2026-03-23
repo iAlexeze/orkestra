@@ -7,6 +7,7 @@ import (
 
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/ialexeze/orkestra/pkg/logger"
 	orkdeploy "github.com/ialexeze/orkestra/pkg/orkestra-registry/deployments"
 	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
@@ -29,6 +30,17 @@ func runDeployments(
 	update bool,
 ) error {
 	for i, src := range srcs {
+
+		// 1. Evaluate conditions BEFORE resolving templates
+		if !EvaluateConditions(owner, src.Conditions) {
+			logger.FromContext(ctx).Debug().
+				Str("resource", "Deployment").
+				Int("index", i).
+				Msg("conditions not met — skipping resource")
+			continue
+		}
+
+		// 2. Resolve template expressions
 		resolved, err := resolver.ResolveDeploymentTemplate(src)
 		if err != nil {
 			return fmt.Errorf("deployments[%d]: %w", i, err)
@@ -39,6 +51,7 @@ func runDeployments(
 			fmt.Sscanf(resolved.Replicas, "%d", &staticReplicas)
 		}
 
+		// 3. Build registry spec and apply
 		spec := orkdeploy.Resolve(resolved, staticReplicas, resolver.OwnerName())
 
 		if update {

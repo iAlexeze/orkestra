@@ -142,7 +142,7 @@ func (c *CRDEntry) DefaultQueue() bool {
 	return *c.Queue.Default
 }
 
-// IsHealthEnabled reports whether the /healthz endpoint is enabled for this CRD.
+// IsHealthEnabled reports whether the /health endpoint is enabled for this CRD.
 // Defaults to true when omitted.
 func (c *CRDEntry) IsHealthEnabled() bool {
 	if c.Endpoints.Health == nil {

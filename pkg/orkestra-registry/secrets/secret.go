@@ -263,8 +263,8 @@ func Resolve(src orktypes.SecretTemplateSource, ownerName string) ResolvedSecret
 	}
 
 	// System labels
-	spec.Labels[konfig.ManagedByLabel] = konfig.Orkestra
-	spec.Labels[konfig.OrkestraOwnerLabel] = ownerName
+	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
+	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
 
 	return spec
 }

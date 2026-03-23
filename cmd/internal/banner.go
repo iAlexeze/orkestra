@@ -28,8 +28,8 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 
 	// Endpoints
 	fmt.Println("Orkestra Endpoints:")
-	fmt.Printf("- Health:   %s/healthz%s\n", utils.ColorGreen, utils.ColorReset)
-	fmt.Printf("- Ready:    %s/readyz%s\n", utils.ColorGreen, utils.ColorReset)
+	fmt.Printf("- Health:   %s/health%s\n", utils.ColorGreen, utils.ColorReset)
+	fmt.Printf("- Ready:    %s/ready%s\n", utils.ColorGreen, utils.ColorReset)
 	fmt.Printf("- Metrics:  %s/metrics%s\n", utils.ColorGreen, utils.ColorReset)
 
 	fmt.Println()

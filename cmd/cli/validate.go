@@ -38,7 +38,7 @@ var validateCmd = &cobra.Command{
 
 		// Print each CRD entry with enrichment info
 		for _, entry := range entries {
-			printCRDValidationLine(entry, k.Enabled())
+			printCRDValidationLine(entry)
 			fmt.Println()
 
 			if entry.IsBuiltIn {

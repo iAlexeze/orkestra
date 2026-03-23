@@ -1,4 +1,4 @@
-// pkg/types/validation_action_v2.go
+// pkg/types/validation_action.go
 package orktypes
 
 // ValidationAction declares what happens when a validation rule fails.

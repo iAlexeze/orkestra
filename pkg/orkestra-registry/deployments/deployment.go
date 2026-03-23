@@ -200,8 +200,8 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 	}
 
 	// Orkestra system labels — always added
-	spec.Labels[konfig.ManagedByLabel] = konfig.Orkestra
-	spec.Labels[konfig.OrkestraOwnerLabel] = ownerName
+	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
+	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
 
 	return spec
 }

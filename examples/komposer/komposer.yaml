@@ -13,6 +13,13 @@ sources:
   files:
     - examples/website/website-katalog.yaml
     - examples/platform-namespace/platform-namespace-katalog.yaml
+    # - $PLATFORM_XYZ_KATALOG
+
+    # Authenticated
+    # - url: https://internal.company.com/crds/platform-katalog.yaml
+    #   auth:
+    #     type: bearer # Or github or basic
+    #     fromEnv: PLATFORM_KATALOG_TOKEN
 
   # ── Helm source ────────────────────────────────────────────────────────
   # The chart renders a Katalog template. Orkestra extracts the CRD

@@ -112,7 +112,7 @@ func BuildCRDInfoHandler(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CRD Validation Hanlder
+// TODO: CRD Validation Haandler
 func BuildCRDValidationHandler(
 	crd orktypes.CRDEntry,
 	kfg *konfig.Konfig,

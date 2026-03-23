@@ -7,6 +7,7 @@ import (
 
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/ialexeze/orkestra/pkg/logger"
 	orkjobs "github.com/ialexeze/orkestra/pkg/orkestra-registry/jobs"
 	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
@@ -36,11 +37,22 @@ func runJobs(
 	srcs []orktypes.JobTemplateSource,
 ) error {
 	for i, src := range srcs {
+		// 1. Evaluate conditions BEFORE resolving templates
+		if !EvaluateConditions(owner, src.Conditions) {
+			logger.FromContext(ctx).Debug().
+				Str("resource", "Deployment").
+				Int("index", i).
+				Msg("conditions not met — skipping resource")
+			continue
+		}
+
+		// 2. Resolve template expressions
 		resolved, err := resolver.ResolveJobTemplate(src)
 		if err != nil {
 			return fmt.Errorf("jobs[%d]: %w", i, err)
 		}
 
+		// 3. Build registry spec and apply
 		spec := orkjobs.Resolve(resolved, resolved.BackoffLimit, resolver.OwnerName())
 
 		// Jobs are always creates — no update semantics

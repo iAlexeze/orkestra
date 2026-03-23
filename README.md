@@ -122,23 +122,41 @@ ork version
 
 ## Quick start
 
+### Requirements
+
+Orkestra needs only two things:
+
+- **A Kubernetes cluster** – any version 1.28 or later. Use [kind](https://kind.sigs.k8s.io/), [minikube](https://minikube.sigs.k8s.io/), [k3s](https://k3s.io/), or a managed cluster ([EKS](https://aws.amazon.com/eks/), [GKE](https://cloud.google.com/kubernetes-engine/), [AKS](https://azure.microsoft.com/en-us/products//kubernetes-service/)). Orkestra runs inside the cluster or alongside it.
+
+- **The [ork](#install) CLI** – installed via Homebrew or the install script.
+
+That's it. No Go. No controller‑gen. No Docker build. No compilation.
+
+Orkestra discovers your cluster automatically from your kubeconfig. No additional configuration required.
+
 ```bash
 # 1. Scaffold a new operator
 ork init my-operator
 cd my-operator
 
-# 2. Apply the example CRD
+# 2. Setup environment variables
+cp .env.example .env        # modify as needed. Most importantly, KUBEKONFIG
+
+# 3. Apply the example CRD
 kubectl apply -f examples/website/website-crd.yaml
 
-# 3. Start Orkestra
-ork run --katalog examples/website/website-katalog.yaml
+# 4. Start Orkestra
+ork run --katalog examples/website/website-katalog.yaml     # use --debug to run in deug mode
 
-# 4. Apply a CR — in another terminal
+# 5. Apply a CR — in another terminal
 kubectl apply -f examples/website/website-cr.yaml
 
-# 5. Watch Orkestra work
+# 6. Watch Orkestra work
+ork status -w
 kubectl get deployments
 kubectl get services
+
+# Endpoints
 curl localhost:8080/katalog/website/health | jq
 curl localhost:8080/katalog/website | jq
 curl localhost:8080/metrics
@@ -226,7 +244,7 @@ retry in the background — healthy CRDs are never blocked.
 ## CLI
 
 ```bash
-ork init      <n>                    Scaffold a new operator project
+ork init      <name>                    Scaffold a new operator project
 ork validate  --katalog <path>          Validate a Katalog or Komposer
 ork template  --katalog <path>          Preview the merged, validated Katalog
 ork template  --katalog <path> --graph  Show dependency graph
@@ -234,6 +252,7 @@ ork template  --katalog <path> --json   Full post-validation state as JSON
 ork generate runtime --katalog <path>  Generate runtime wiring (typed CRDs only)
 ork run       --katalog <path>          Start the operator runtime
 ork version                             Print version information
+ork status                              Displays status of CRDs, workers, errors, reconciles and queue depth
 ```
 
 ---
@@ -243,8 +262,8 @@ ork version                             Print version information
 Every Orkestra operator exposes built-in endpoints with no configuration:
 
 ```bash
-GET /healthz                 Orkestra Liveness probe
-GET /readyz                  Orkestra Readiness probe
+GET /health                 Orkestra Liveness probe
+GET /ready                  Orkestra Readiness probe
 GET /metrics                 Prometheus metrics
 GET /katalog                 All CRDs — health, config, dependency graph
 GET /katalog/{crd}           Single CRD — config, stats, reconciler info
@@ -285,7 +304,7 @@ Three examples, each building on the previous one.
 apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
-  name: <n>
+  name: <name>
   description: <optional>
 spec:
   finalizers: [...]             # katalog-level finalizers — inherited by all CRDs
@@ -337,6 +356,7 @@ baked into binaries.
 |----------|-------------|
 | [Katalog](./docs/katalog.md) | How to declare what you want |
 | [Komposer](./docs/komposer.md) | Files, Helm, environment variables, merge rules |
+| [Katalog and Komposer Reference](./docs/katalog-komposer-reference.md) | Katalog and Komposer reference
 | [Komponents](./docs/komponents.md) | What each part of Orkestra does |
 | [OrkestraRegistry](./docs/orkestra-registry.md) | Available resource implementations |
 | [Templating](./docs/templating.md) | Template expressions and the resolver |

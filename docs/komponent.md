@@ -35,8 +35,8 @@ HTTP mux is the same object used at both registration time and request time.
 Routes registered by `konstructOrkestra`:
 
 ```
-GET /healthz                 Orkestra Liveness — 200 always when running
-GET /readyz                  Orkestra Readiness — 200 after all komponents ready, 503 before
+GET /health                 Orkestra Liveness — 200 always when running
+GET /ready                  Orkestra Readiness — 200 after all komponents ready, 503 before
 GET /metrics                 Prometheus metrics endpoint
 GET /katalog                 All CRDs — health, config, dependency graph
 GET /katalog/{crd}           Single CRD — config + live reconcile stats

@@ -28,7 +28,7 @@ import (
 
 // printCRDValidationLine prints one CRD entry's validation result.
 // Shows enrichment clearly when it occurred.
-func printCRDValidationLine(entry orktypes.CRDEntry, warnings []orktypes.CRDEntry) {
+func printCRDValidationLine(entry orktypes.CRDEntry) {
 	icon := inspect.HealthIcon("ready")
 	fmt.Printf("%s %s\n", icon, inspect.Bold(entry.Name))
 
@@ -65,10 +65,6 @@ func printCRDValidationLine(entry orktypes.CRDEntry, warnings []orktypes.CRDEntr
 			scope,
 		)
 	}
-
-	// for _, w := range warnings {
-	// 	fmt.Printf("    %s%v\033[0m\n", "\033[33m⚠ ", w)
-	// }
 }
 
 // validateOutputExample shows what ork validate now produces.
