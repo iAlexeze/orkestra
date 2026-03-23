@@ -22,7 +22,7 @@ What exists today:
 - **GenericReconciler** — three-path dispatch: templates, Go hooks, custom constructor
 - **DependencyKontroller** — per-CRD worker pools, safe reconcile, panic recovery
 - **KonductorElection** — leader election, warm cache failover
-- **Health API** — `/health`, `/ready`, `/metrics`, `/katalog/*` per CRD
+- **Health API** — `/healthz`, `/readyz`, `/metrics`, `/katalog/*` per CRD
 - **Prometheus metrics** — five per-CRD metrics, consistent labels
 - **CLI** — `ork init`, `ork validate`, `ork template`, `ork generate runtime`, `ork run`, `ork version`
 - **Install** — `curl | bash` installer for macOS and Linux
@@ -229,3 +229,5 @@ not covered above.
 | v1.2.0 | Q3 2026 | `ork dashboard`, auth for remote sources |
 | v1.3.0 | Q4 2026 | Additional sources (S3, ConfigMap), `ork diff`, `ork lint` |
 | v2.0.0 | 2027 | Public registry, versioning, CNCF Sandbox |
+
+- **Want to Try it out?** Start [here](./README.md).

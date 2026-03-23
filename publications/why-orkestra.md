@@ -13,7 +13,7 @@ whose primary purpose is to watch another project.
 
 Every major operator framework to date has accepted this as the cost of
 entry. Kubebuilder, Operator SDK, Metacontroller — they each make the Go
-easier. None of them make it unnecessary.
+easier, not unnecessary.
 
 This creates a paradox: **to make Kubernetes more declarative, you must
 write imperative code.**
@@ -222,3 +222,5 @@ Orkestra makes the operators that extend Kubernetes declarative.
 The same principle, applied one level up.
 It was always possible.
 It just needed someone to build it.
+
+- **Next:** [Whitepaper](./declarative-operators-whitepaper.md)

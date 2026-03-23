@@ -32,8 +32,6 @@ func Init(filenames ...string) (*Konfig, error) {
 
 			// Workload
 			DefaultResync:  GetDurEnvSeconds("DEFAULT_RESYNC", 15),
-			Finalizer:      GetStrEnv("FINALIZER", "konduktor.orkestra.io/finalizer"),
-			LabelSelector:  GetStrEnv("LABEL_SELECTOR", "ork=estra"),
 			DefaultWorkers: GetIntEnv("DEFAULT_WORKERS", 3),
 		},
 		healthServer: healthServer{

@@ -39,8 +39,8 @@ import (
 //     Map value: slice of ActiveWarning, one per violated warn rule
 //
 // This struct powers:
-//   - /healthz endpoint
-//   - metrics
+//   - /katalog/<crd> endpoint
+//   - /katalog/<crd>/health endpoint
 //   - dashboard status
 //   - operator self‑diagnostics
 type CRDHealth struct {

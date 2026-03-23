@@ -34,8 +34,6 @@ type clusterKonfig struct {
 	// Worload specific
 	DefaultResync  time.Duration
 	DefaultWorkers int
-	LabelSelector  string
-	Finalizer      string
 }
 
 type katalogKonfig struct {

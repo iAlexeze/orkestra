@@ -28,16 +28,26 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 
 	// Endpoints
 	fmt.Println("Orkestra Endpoints:")
-	fmt.Printf("- Health:   %s/health%s\n", utils.ColorGreen, utils.ColorReset)
-	fmt.Printf("- Ready:    %s/ready%s\n", utils.ColorGreen, utils.ColorReset)
+	fmt.Printf("- Health:   %s/healthz%s\n", utils.ColorGreen, utils.ColorReset)
+	fmt.Printf("- Ready:    %s/readyz%s\n", utils.ColorGreen, utils.ColorReset)
 	fmt.Printf("- Metrics:  %s/metrics%s\n", utils.ColorGreen, utils.ColorReset)
 
 	fmt.Println()
 	fmt.Println("Katalog Endpoints:")
 	fmt.Printf("- Katalog:  %s/katalog%s\n", utils.ColorGreen, utils.ColorReset)
 	for _, crd := range kfg.katalog.Enabled() {
-		fmt.Printf("  - %s%s%s:  %s/katalog/%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
-		fmt.Printf("  - %s%s%s:  %s/katalog/%s/health%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
+		if !crd.IsEnabledAllEndpoints() {
+			continue
+		}
+		if crd.IsInfoEnabled() {
+			fmt.Printf("  - %s%s%s:  %s/katalog/%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
+		}
+		if crd.IsHealthEnabled() {
+			fmt.Printf("  - %s%s%s:  %s/katalog/%s/health%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
+		}
+		if crd.IsValidationEnabled() {
+			fmt.Printf("  - %s%s%s:  %s/katalog/%s/validation%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
+		}
 	}
 	fmt.Println("====================================================")
 

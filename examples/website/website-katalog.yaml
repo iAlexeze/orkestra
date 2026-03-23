@@ -11,22 +11,34 @@ spec:
   finalizers:
     - finalizer.demo.orkestra.io/website
 
+# endpoints:
+#   Controls which HTTP endpoints are exposed for this CRD.
+#   All fields are optional. Omitted fields use operator defaults.
+#   
+#   enabled: true|false      # if false, endpoints are disabled   (default: true)
+#   health: true|false       # /katalog/<crd>/health              (default: true)
+#   info: true|false         # /katalog/<crd>                     (default: true)
+#   validation: true|false   # /katalog/<crd>/validation          (default: true)
+#
+#   Example:
+#     endpoints:
+#       info: false          # hide CRD info endpoint
+#       validation: false    # hide validation endpoint
   crds:
     - name: pod-governance
       apiTypes:
         kind: Pod          # built-in — Kubernetes knows the rest
-      reconciler:
-        default: true
     - name: deployment-watcher
       apiTypes:
         kind: Deployment
-      reconciler:
-        default: true
+      endpoints:
+        info: false
     - name: secrets-manager
       apiTypes:
         kind: Secret
-      reconciler:
-        default: true
+      endpoints:
+        info: false
+        validation: false
 
       # validation:
       #   - field: metadata.ownerReferences
@@ -46,6 +58,8 @@ spec:
         version: v1alpha1
         kind: OrkApp
         plural: orkapps
+      endpoints:
+        enabled: false  # This disables endpoint creation for this CRD
       reconciler:
         default: true
 

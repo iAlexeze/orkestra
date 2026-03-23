@@ -283,8 +283,8 @@ Every Orkestra operator exposes these endpoints automatically:
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /health` | Liveness — 200 always when running |
-| `GET /ready` | Readiness — 200 after all komponents ready, 503 before |
+| `GET /healthz` | Orkestra Liveness — 200 always when running |
+| `GET /readyz` | Orkestra Readiness — 200 after all komponents ready, 503 before |
 | `GET /metrics` | Prometheus metrics |
 | `GET /katalog` | All CRDs — health, config, dependency graph |
 | `GET /katalog/{crd}` | Single CRD — config, reconcile stats |

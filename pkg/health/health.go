@@ -68,15 +68,15 @@ func (h *HealthServer) Start(ctx context.Context) error {
 
 	// Register built-in routes on h.mux — same mux Register() uses
 	if strings.ToLower(h.logLevel) == "debug" {
-		h.mux.Handle("/health", h.logRoutesMiddleware(http.HandlerFunc(h.healthHandler)))
-		h.mux.Handle("/ready", h.logRoutesMiddleware(http.HandlerFunc(h.readyHandler)))
+		h.mux.Handle("/healthz", h.logRoutesMiddleware(http.HandlerFunc(h.healthHandler)))
+		h.mux.Handle("/readyz", h.logRoutesMiddleware(http.HandlerFunc(h.readyHandler)))
 	} else {
-		h.mux.HandleFunc("/health", h.healthHandler)
-		h.mux.HandleFunc("/ready", h.readyHandler)
+		h.mux.HandleFunc("/healthz", h.healthHandler)
+		h.mux.HandleFunc("/readyz", h.readyHandler)
 	}
 	h.mux.Handle("/metrics", promhttp.Handler())
 
-	// h.mux now has: /health, /ready, /metrics + all /katalog/* routes
+	// h.mux now has: /healthz, /readyz, /metrics + all /katalog/* routes
 	h.server = &http.Server{
 		Addr:    h.port,
 		Handler: h.mux,

@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -873,135 +871,39 @@ type CRDEntry struct {
 	// Only set when IsBuiltIn is true.
 	BuiltInGroup string `yaml:"-"` // never serialized
 
-	// EnrichmentOutcome is the outcome of the enrichment process performed as part of the validation.
+	// EnrichmentOutcome records the result of the API type enrichment phase.
+	// During validation, built‑in Kubernetes kinds (e.g., Pod, Deployment, Secret)
+	// are automatically enriched with their full API metadata — group, version,
+	// plural, API path, and namespaced scope. This allows users to specify only:
+	//
+	//	apiTypes:
+	//	  kind: Pod
+	//
+	// and rely on Orkestra to resolve all remaining fields based on the
+	// Kubernetes discovery API. Custom resources are enriched using their declared
+	// group/version/kind. This field is never serialized and is used internally to
+	// report enrichment status and drive downstream runtime behavior.
 	EnrichmentOutcome EnrichmentOutcome `yaml:"-"` // never serialized
+
+	// Endpoints defines which operator HTTP endpoints are enabled for this CRD.
+	Endpoints EndpointsConfig `yaml:"endpoints"`
 }
 
-// ── CRDEntry helpers ──────────────────────────────────────────────────────────
-func (c *CRDEntry) OrkMode() string {
-	if c.IsDynamic() {
-		return konfig.DynamicMode
-	}
-	return konfig.TypedMode
-}
-
-func (c *CRDEntry) IsBuiltInType() bool {
-	return c.IsBuiltIn
-}
-
-// GetRuntimeObjects returns the object and list constructors for the current Katalog mode.
-func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
-	return c.DynamicModeObject(), c.ListDynamicModeObject()
-}
-
-// SetMaxQueueDepth returns the resolved queue depth for this CRD.
-// Returns the per-CRD value if explicitly set, otherwise the Orkestra-level default.
-func (c *CRDEntry) SetMaxQueueDepth(def int) int {
-	if c.Queue.MaxQueueDepth == 0 {
-		return def
-	}
-	return c.Queue.MaxQueueDepth
-}
-
-// SetWorkers returns the resolved worker count for this CRD.
-// Returns the per-CRD value if explicitly set, otherwise the Orkestra-level default.
-func (c *CRDEntry) SetWorkers(def int) int {
-	if c.Workers == 0 {
-		return def
-	}
-	return c.Workers
-}
-
-// IsDynamic returns true if this CRD uses dynamic mode.
+// EndpointsConfig controls which HTTP endpoints are exposed by the operator.
 //
-// Resolution order (first match wins):
-//  1. mode: dynamic explicitly declared → true
-//  2. mode: typed explicitly declared        → false
-//  3. apiTypes.location is empty             → true  (no compiled types available)
-//  4. apiTypes.location is set               → false (compiled types available)
-func (c *CRDEntry) IsDynamic() bool {
-	switch c.Mode {
-	case CRDModeDynamic:
-		return true
-	case CRDModeTyped:
-		return false
-	}
-	return c.APITypes.Location == ""
-}
+// This allows users to selectively enable/disable endpoints while keeping
+// the configuration minimal and declarative.
+type EndpointsConfig struct {
+	// Enabled if false disables all endpoints for this CRD
+	// Default is true
+	Enabled *bool `yaml:"enabled"`
 
-// HasTemplates returns true if any declarative hook templates are declared on this CRD.
-// Used by ork generate to decide whether to emit entries in __generated_runtime_hooks.go.
-func (c *CRDEntry) HasTemplates() bool {
-	rc := c.ReconcilerConfig
-	return rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil
-}
+	// Health controls whether the /healthz endpoint is served.
+	Health *bool `yaml:"health"`
 
-// GVK returns the computed GroupVersionKind. Shorthand for logging and routing.
-func (c *CRDEntry) GVK() schema.GroupVersionKind {
-	return c.GroupVersionKind
-}
+	// Info controls whether the /info endpoint is served.
+	Info *bool `yaml:"info"`
 
-// GVR returns the computed GroupVersionResource. Used for dynamic client calls.
-func (c *CRDEntry) GVR() schema.GroupVersionResource {
-	return c.GroupVersionResource
-}
-
-// New Object
-func (c *CRDEntry) NewObject() runtime.Object {
-	if c.IsDynamic() {
-		return &unstructured.Unstructured{}
-	}
-
-	if c.TypedModeObject == nil {
-		return c.DynamicModeObject()
-	}
-	return c.TypedModeObject
-}
-
-// New List
-func (c *CRDEntry) NewList() runtime.Object {
-	if c.IsDynamic() {
-		return &unstructured.UnstructuredList{}
-	}
-
-	if c.ListTypedModeObject == nil {
-		return c.ListDynamicModeObject()
-	}
-	return c.ListTypedModeObject
-}
-
-// Default methods
-func (c *CRDEntry) IsEnabled() bool {
-	if c.Enabled == nil {
-		return true
-	}
-	return *c.Enabled
-}
-
-func (c *CRDEntry) IsCritical() bool {
-	if c.Critical == nil {
-		return false
-	}
-	return *c.Critical
-}
-
-func (c *CRDEntry) IsNamespaced() bool {
-	if c.Namespaced == nil {
-		return true
-	}
-	return *c.Namespaced
-}
-
-func (c *CRDEntry) DefaultReconcile() bool {
-	if c.ReconcilerConfig.Default == nil {
-		return false
-	}
-	return *c.ReconcilerConfig.Default
-}
-
-func (c *CRDEntry) DefaultQueue() bool {
-	if c.Queue.Default == nil {
-		return true
-	}
-	return *c.Queue.Default
+	// Validation controls whether the /validate endpoint is served.
+	Validation *bool `yaml:"validation"`
 }
