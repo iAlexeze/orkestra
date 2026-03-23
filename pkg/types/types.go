@@ -894,6 +894,10 @@ type CRDEntry struct {
 // This allows users to selectively enable/disable endpoints while keeping
 // the configuration minimal and declarative.
 type EndpointsConfig struct {
+	// Enabled if false disables all endpoints for this CRD
+	// Default is true
+	Enabled *bool `yaml:"enabled"`
+
 	// Health controls whether the /healthz endpoint is served.
 	Health *bool `yaml:"health"`
 

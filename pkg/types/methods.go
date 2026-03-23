@@ -168,3 +168,12 @@ func (c *CRDEntry) IsValidationEnabled() bool {
 	}
 	return *c.Endpoints.Validation
 }
+
+// IsEnabledAllEndpoints reports whether the all endpoints are disabled for this CRD.
+// Defaults to false when omitted.
+func (c *CRDEntry) IsEnabledAllEndpoints() bool {
+	if c.Endpoints.Enabled == nil {
+		return true
+	}
+	return *c.Endpoints.Enabled
+}

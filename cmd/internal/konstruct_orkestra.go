@@ -274,6 +274,10 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		entry, _ := ktrlRegistry.Get(gvk)
 		inf := entry.Informer // already stored on RegistryEntry
 
+		if !crd.IsEnabledAllEndpoints() {
+			continue
+		}
+
 		// GET /katalog/{crd}/health — 200 healthy, 503 degraded
 		if crd.IsHealthEnabled() {
 			hs.Register(

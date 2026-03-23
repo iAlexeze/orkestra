@@ -14,10 +14,11 @@ spec:
 # endpoints:
 #   Controls which HTTP endpoints are exposed for this CRD.
 #   All fields are optional. Omitted fields use operator defaults.
-#
-#   health: true|false       # /katalog/<crd>/health       (default: true)
-#   info: true|false         # /katalog/<crd>              (default: true)
-#   validation: true|false   # /katalog/<crd>/validation   (default: true)
+#   
+#   enabled: true|false      # if false, endpoints are disabled   (default: true)
+#   health: true|false       # /katalog/<crd>/health              (default: true)
+#   info: true|false         # /katalog/<crd>                     (default: true)
+#   validation: true|false   # /katalog/<crd>/validation          (default: true)
 #
 #   Example:
 #     endpoints:
@@ -57,6 +58,8 @@ spec:
         version: v1alpha1
         kind: OrkApp
         plural: orkapps
+      endpoints:
+        enabled: false  # This disables endpoint creation for this CRD
       reconciler:
         default: true
 

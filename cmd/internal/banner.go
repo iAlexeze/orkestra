@@ -36,6 +36,9 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 	fmt.Println("Katalog Endpoints:")
 	fmt.Printf("- Katalog:  %s/katalog%s\n", utils.ColorGreen, utils.ColorReset)
 	for _, crd := range kfg.katalog.Enabled() {
+		if !crd.IsEnabledAllEndpoints() {
+			continue
+		}
 		if crd.IsInfoEnabled() {
 			fmt.Printf("  - %s%s%s:  %s/katalog/%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
 		}
