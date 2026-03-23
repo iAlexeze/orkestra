@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/ialexeze/orkestra/pkg/version"
 )
 
 func printBanner(kfg *orkestraKfg, konductor string) {
@@ -14,7 +15,7 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 	fmt.Print(utils.ColorReset)
 
 	fmt.Println("====================================================")
-	fmt.Printf("%s        Orkestra Runtime%s (v%s)\n", utils.ColorMagenta, utils.ColorReset, kfg.konfig.Ork().Version)
+	fmt.Printf("%s        Orkestra Runtime%s (v%s)\n", utils.ColorMagenta, utils.ColorReset, version.Version)
 	fmt.Printf("        Environment: %s%s%s\n", utils.ColorBlue, kfg.konfig.Ork().Environment, utils.ColorReset)
 	fmt.Printf("        Listening on: %s:%s%s\n", utils.ColorGreen, kfg.konfig.Health().Port, utils.ColorReset)
 

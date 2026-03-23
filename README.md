@@ -120,57 +120,101 @@ ork version
 
 ---
 
-## Quick start
+## Quick Start
 
-### Requirements
+Declare what you want in a Katalog and run an operator with Orkestra in just a few minutes.
 
-Orkestra needs only two things:
+---
 
-- **A Kubernetes cluster** – any version 1.28 or later. Use [kind](https://kind.sigs.k8s.io/), [minikube](https://minikube.sigs.k8s.io/), [k3s](https://k3s.io/), or a managed cluster ([EKS](https://aws.amazon.com/eks/), [GKE](https://cloud.google.com/kubernetes-engine/), [AKS](https://azure.microsoft.com/en-us/products//kubernetes-service/)). Orkestra runs inside the cluster or alongside it.
+## Requirements
+
+You only need two things:
+
+- **A Kubernetes cluster** (1.28+).  
+  Works with [kind](https://kind.sigs.k8s.io/), [minikube](https://minikube.sigs.k8s.io/), [k3s](https://k3s.io/), or a managed cluster ([EKS](https://aws.amazon.com/eks/), [GKE](https://cloud.google.com/kubernetes-engine/), [AKS](https://azure.microsoft.com/en-us/products//kubernetes-service/)).
 
 - **The [ork](#install) CLI** – installed via Homebrew or the install script.
 
-That's it. No Go. No controller‑gen. No Docker build. No compilation.
+Orkestra automatically discovers your cluster from your kubeconfig — no extra setup required.
 
-Orkestra discovers your cluster automatically from your kubeconfig. No additional configuration required.
+---
 
-1. Scaffold a new operator
+## 1. Create your operator
+
 ```bash
 ork init my-operator
 cd my-operator
 ```
 
-2. Setup environment variables
+This scaffolds a clean operator workspace with examples and a ready‑to‑run Katalog.
+
+---
+
+## 2. Connect to your cluster
+
+Copy the example environment file:
+
 ```bash
-cp .env.example .env        # modify as needed. Most importantly, KUBEKONFIG
+cp .env.example .env
 ```
 
-3. Apply the example CRD
+Most users don’t need to change anything — Orkestra will pick up your kubeconfig automatically.
+
+---
+
+## 3. Install the CRD your operator manages
+
+For the Website example:
+
 ```bash
 kubectl apply -f examples/website/website-crd.yaml
 ```
 
-4. Start Orkestra
+This tells Kubernetes what a `Website` resource looks like.
+
+---
+
+## 4. Run Orkestra
+
+Start the operator locally:
+
 ```bash
-ork run --katalog examples/website/website-katalog.yaml     # use --debug to run in deug mode
+ork run --katalog examples/website/website-katalog.yaml
 ```
 
-5. Apply a CR — in another terminal
+Use `--debug` to see every reconcile, event, and template resolution.
+
+---
+
+## 5. Apply a Website resource
+
+In another terminal:
+
 ```bash
 kubectl apply -f examples/website/website-cr.yaml
 ```
 
-6. Watch Orkestra work
+Orkestra immediately detects the new CR and begins reconciling.
+
+---
+
+## 6. Watch Orkestra work
+
 ```bash
 ork status -w
 kubectl get deployments
 kubectl get services
+```
 
-# Endpoints
+Or explore the built‑in endpoints:
+
+```bash
 curl localhost:8080/katalog/website/health | jq
 curl localhost:8080/katalog/website | jq
 curl localhost:8080/metrics
 ```
+
+You’ll see the operator’s health, metrics, and full runtime state.
 
 ---
 

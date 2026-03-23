@@ -13,7 +13,6 @@ type Konfig struct {
 type orkKonfig struct {
 	Name        string `validate:"required"`
 	ShortName   string
-	Version     string
 	Environment string
 	LogLevel    string
 }
@@ -27,7 +26,6 @@ type healthServer struct {
 type clusterKonfig struct {
 	KubekonfigPath   string
 	MasterURL        string
-	InCluster        bool
 	Name             string
 	DefaultNamespace string `validate:"required"`
 
