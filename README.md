@@ -134,24 +134,34 @@ That's it. No Go. No controller‑gen. No Docker build. No compilation.
 
 Orkestra discovers your cluster automatically from your kubeconfig. No additional configuration required.
 
+1. Scaffold a new operator
 ```bash
-# 1. Scaffold a new operator
 ork init my-operator
 cd my-operator
+```
 
-# 2. Setup environment variables
+2. Setup environment variables
+```bash
 cp .env.example .env        # modify as needed. Most importantly, KUBEKONFIG
+```
 
-# 3. Apply the example CRD
+3. Apply the example CRD
+```bash
 kubectl apply -f examples/website/website-crd.yaml
+```
 
-# 4. Start Orkestra
+4. Start Orkestra
+```bash
 ork run --katalog examples/website/website-katalog.yaml     # use --debug to run in deug mode
+```
 
-# 5. Apply a CR — in another terminal
+5. Apply a CR — in another terminal
+```bash
 kubectl apply -f examples/website/website-cr.yaml
+```
 
-# 6. Watch Orkestra work
+6. Watch Orkestra work
+```bash
 ork status -w
 kubectl get deployments
 kubectl get services
