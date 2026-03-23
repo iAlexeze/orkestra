@@ -69,14 +69,14 @@ Three separate observability stories. Three separate failure modes.
 
 Each step in this progression was correct given the constraints of its time.
 The progression itself reveals something important: the fundamental problem
-was never the Go, or the boilerplate, or the webhook infrastructure.
+was never the programming langugae, or the boilerplate, or the webhook infrastructure.
 
 **The fundamental problem was that Kubernetes had no permanent observer
 watching what was being provisioned.** Every tool that emerged — operator
 frameworks, webhook servers, policy engines — existed to compensate for
 that absence.
 
-Orkestra is that observer.
+Orkestra is that observer and it says: **YOUR CRD IS ENOUGH**.
 
 ---
 

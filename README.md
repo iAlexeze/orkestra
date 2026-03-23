@@ -8,7 +8,9 @@
           O R K E S T R A
 ```
 
-**The Kubernetes operator framework that needs no Go.**
+**CRDs in. Operators out.**
+
+**The Kubernetes operator framework that needs no Programming Language.**
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8.svg)](https://golang.org/)
@@ -25,7 +27,7 @@ Orkestra is a declarative Kubernetes operator framework. You declare what you wa
 YAML file — a **Katalog** — and Orkestra manages the full lifecycle of your
 CRDs: create, reconcile, drift-correct, and delete.
 
-No Go. No code generation. No controller boilerplate.
+No Programming language. No code generation. No controller boilerplate.
 
 ```yaml
 # katalog.yaml — a complete operator in one file
@@ -62,6 +64,49 @@ ork run --katalog katalog.yaml
 That is the entire operator. Apply a `Website` CR and Orkestra creates the
 Deployment and Service. Change a field in the CR and Orkestra reconciles.
 Delete the CR and Orkestra cleans up.
+
+> **Orkestra turns CRDs into operators — no programming language required.
+> If you have a CRD, you already have everything you need.
+> The rest is just a Katalog.**
+---
+
+## The Orkestra Model
+
+Here is the entire mental model of Orkestra in one diagram:
+
+```mermaid
+flowchart LR
+ subgraph Input["User Input"]
+        A[("Your CRD<br>(YAML schema)")]
+        B[("Katalog<br>(YAML logic)")]
+  end
+ subgraph Output["Orkestra"]
+        C[("Orkestra Runtime")]
+        D[("OrkestraRegistry")]
+  end
+    A L_A_C_0@-- schema defines what --> C
+    B L_B_C_0@-- logic defines how --> C
+    C L_C_D_0@-- uses --> D
+    D L_D_C_0@-- provides implementations --> C
+    C L_C_K8s_0@-- manages --> K8s["Kubernetes API"]
+
+    style A fill:transparent,stroke:#333,stroke-width:2px
+    style B fill:transparent,stroke:#333,stroke-width:2px
+    style C fill:#FF6D00,stroke:#333,stroke-width:4px,color:#FFFFFF
+    style D fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
+    style K8s fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
+
+    L_A_C_0@{ animation: fast } 
+    L_B_C_0@{ animation: fast } 
+    L_C_D_0@{ animation: fast } 
+    L_D_C_0@{ animation: fast } 
+    L_C_K8s_0@{ animation: fast }
+```
+
+Or in words:
+
+> **CRD → Katalog → Operator**  
+> If Kubernetes can store it, Orkestra can reconcile it.
 
 ---
 
@@ -218,6 +263,24 @@ You’ll see the operator’s health, metrics, and full runtime state.
 
 ---
 
+## What just happened?
+
+When you applied your CR:
+
+1. Kubernetes notified Orkestra  
+2. Orkestra queued the reconcile  
+3. The CR was loaded from the informer cache  
+4. Finalizers were added  
+5. Mutation and validation ran  
+6. Templates were resolved  
+7. Deployments and Services were created  
+8. Drift correction was enabled  
+9. Metrics and events were emitted  
+
+All from a single YAML file.
+
+---
+
 ## How it works
 
 ### The Katalog
@@ -248,10 +311,16 @@ CR object. Static values are used as-is. Dynamic values reference CR fields.
 
 ### The OrkestraRegistry
 
-The OrkestraRegistry provides resource implementations — `Deployment`,
+The OrkestraRegistry is the operator standard library — a growing ecosystem of reusable, versioned, production‑ready operator behaviors. It provides resource implementations — `Deployment`,
 `Service`, `Secret`, `ConfigMap`, `ServiceAccount`, `Job`, `CronJob`.
 Every implementation handles create, update, delete, owner references,
 and idempotency. You declare what you want. The registry handles the how.
+
+This is the foundation for a future where:
+
+> No one writes reconcilers anymore, and Operators are composed, not coded.
+
+_Write it once; Community maintains and uses forever._
 
 ### Komposer
 
@@ -352,44 +421,6 @@ Three examples, each building on the previous one.
 
 ---
 
-## Katalog reference
-
-```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
-kind: Katalog
-metadata:
-  name: <name>
-  description: <optional>
-spec:
-  finalizers: [...]             # katalog-level finalizers — inherited by all CRDs
-  crds:
-    - name: <lowercase-kebab>
-      enabled: true|false       # default: true
-      namespaced: true|false    # default: true
-      workers: <int>
-      resync: <duration>
-      dependsOn: [<crd-name>, ...]
-      apiTypes:
-        group: <api-group>
-        version: <version>
-        kind: <Kind>
-        plural: <plural>
-        location: <go-import-path>  # optional — omit for dynamic mode
-      reconciler:
-        default: true|false         # default: true
-        finalizers: [...]           # per-CRD finalizers
-        onCreate:    { deployments, services, secrets, configMaps, serviceAccounts, jobs, cronJobs }
-        onReconcile: { deployments, services, secrets, configMaps, cronJobs }
-        onDelete:    { jobs }
-        hooks:       { location, function }   # optional Go hooks
-        constructor: { location, function }   # required when default: false
-      queue:
-        maxQueueDepth: <int>
-        degradeThreshold: <int>
-```
-
----
-
 ## Philosophy
 
 Orkestra is built on three principles:
@@ -404,33 +435,43 @@ baked into binaries.
 
 ---
 
+## What Orkestra is NOT
+
+- ❌ Not a replacement for Kubernetes  
+- ❌ Not a DSL  
+- ❌ Not a templating engine  
+- ❌ Not a webhook server  
+- ❌ Not a controller framework  
+- ❌ Not a policy engine  
+- ❌ Not a code generator  
+
+Orkestra is a **runtime** — the missing trusted observer Kubernetes never had.
+
+---
+
 ## Documentation
+
+Start with the core concepts:
 
 | Document | Description |
 |----------|-------------|
-| [Katalog](./docs/katalog.md) | How to declare what you want |
-| [Komposer](./docs/komposer.md) | Files, Helm, environment variables, merge rules |
-| [Katalog and Komposer Reference](./docs/katalog-komposer-reference.md) | Katalog and Komposer reference
-| [Komponents](./docs/komponents.md) | What each part of Orkestra does |
-| [OrkestraRegistry](./docs/orkestra-registry.md) | Available resource implementations |
-| [Templating](./docs/templating.md) | Template expressions and the resolver |
-| [CLI Reference](./docs/cli.md) | All commands and flags |
-| [Inspect Live CRD](./docs/inspect-live-crd.md) | CLI for inspecting all CRDs | 
-| [Architecture](./docs/architecture.md) | How Orkestra works under the hood |
-| [Extending Orkestra](./docs/extending.md) | Adding new CRDs and resource types |
-| [Use Cases](./docs/use-cases.md) | Real-world operator patterns |
-| [Deployment](./docs/deployment.md) | Step by step guide to deploy Orkestra |
-| [Metrics](./docs/metrics.md) | Which metrics to look for |
-| [Health Subsystem](./docs/health-subsystem.md) | How Orkestra manages its health and that of CRDs |
-| [Dependency Model](./docs/dependency-model.md) | How Orkestra manages dependencies |
-| [Roadmap](./ROADMAP.md) | What is coming next |
+| [Katalog](./docs/katalog.md) | How to declare operator behavior |
+| [Komposer](./docs/komposer.md) | Compose multiple Katalogs and sources |
+| [CLI Reference](./docs/cli.md) | Commands, flags, and usage |
 
-## Publication
+For all other documentation — including architecture, OrkestraRegistry, metrics, health subsystem, dependency model, extending Orkestra, and more — see:
+
+👉 **[Full Documentation Index](./docs/README.md)**
+
+---
+
+## Publications
 
 | Document | Description |
 |----------|-------------|
 | [Why Orkestra](./publications/why-orkestra.md) | The case for declarative operators |
 | [Declarative Operators](./publications/declarative-operators-whitepaper.md) | Technical whitepaper |
+| [Your CRD is Enough](./publications/your-crd-is-enough.md) | You already have all you need to run an operator |
 | [Metrics Analysis](./publications/metrics-analysis.md) | See Orkestra metrics managing **170+** CRDs |
 
 
