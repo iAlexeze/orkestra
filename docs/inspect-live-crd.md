@@ -296,8 +296,6 @@ platformnamespace      2/2       0       ●        412          0.0%   6
 application            4/4       3       ●        8,891        0.2%   12
 database               2/2       0       ●        201          0.0%   4
 cache                  2/2       0       ●        89           0.0%   2
-
-⚠  application: failed to update deployment: context deadline exceeded
 ```
 
 **Columns:**

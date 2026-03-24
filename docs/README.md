@@ -1,13 +1,13 @@
-# 📚 Orkestra Documentation
+# Orkestra Documentation
 
-Welcome to the Orkestra documentation hub — the complete reference for the world’s first **zero‑code Kubernetes operator framework**.
+Welcome to the Orkestra documentation hub — the complete reference for the world’s first **zero‑code Kubernetes operator runtime**.
 
 Orkestra turns CRDs into operators.  
 This documentation explains how.
 
 ---
 
-# 🧭 Start Here
+# Start Here
 
 If you're new to Orkestra, begin with:
 
@@ -17,7 +17,7 @@ This gives you the mental model, the workflow, and the first operator you’ll b
 
 ---
 
-# 🧩 Concepts
+# Concepts
 
 Core ideas that define how Orkestra works.
 
@@ -25,11 +25,12 @@ Core ideas that define how Orkestra works.
 - **[Komposer](./komposer.md)** — Compose multiple Katalogs and sources  
 - **[Katalog & Komposer Reference](./katalog-komposer-reference.md)** — Full schema  
 - **[Templating](./templating.md)** — Template expressions and resolution  
+- **[Trust and Failure Model](./trust-and-failure-model.md)** - Why Orkestra is safe to use
 - **[Your CRD is Enough](../publications/your-crd-is-enough.md)** — The philosophy  
 
 ---
 
-# 🛠 Guides
+# Guides
 
 Step‑by‑step instructions for using Orkestra.
 
@@ -40,7 +41,7 @@ Step‑by‑step instructions for using Orkestra.
 
 ---
 
-# 🧱 OrkestraRegistry
+# OrkestraRegistry
 
 The operator standard library — the future of reusable operator patterns.
 
@@ -49,11 +50,13 @@ The operator standard library — the future of reusable operator patterns.
 
 ---
 
-# 🧬 Internals & Architecture
+# Internals & Architecture
 
 Deep dives into how Orkestra works under the hood.
 
 - **[Architecture](./architecture.md)**  
+- **[Architecture Diagrams](./architecture-diagrams.md)**
+- **[Katalog API](./katalog-api.md)**  
 - **[Komponents](./komponents.md)**  
 - **[Health Subsystem](./health-subsystem.md)**  
 - **[Metrics](./metrics.md)**  
@@ -62,13 +65,13 @@ Deep dives into how Orkestra works under the hood.
 
 ---
 
-# 🗺 Roadmap
+# Roadmap
 
 - **[Roadmap](../ROADMAP.md)** — What’s coming next
 
 ---
 
-# 📰 Publications
+# Publications
 
 High‑level papers and conceptual documents.
 

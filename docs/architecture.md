@@ -25,7 +25,7 @@ Typed CRDs have a compiled Go type at `apiTypes.location` — the generator
 registers the type and scheme at build time. Both styles run through the
 same reconciler, the same health API, the same metrics.
 
-**Three reconciler paths, one framework.** 
+**Three reconciler paths, one runtime.** 
 - Every CRD starts with `reconciler.default: true` — GenericReconciler handles the full lifecycle.
 
 ```yaml

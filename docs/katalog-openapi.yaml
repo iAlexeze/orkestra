@@ -5,6 +5,7 @@
 # - `/katalog`
 # - `/katalog/{crd}`
 # - `/katalog/{crd}/health`
+# - `/katalog/{crd}/validation`
 
 # It reflects exactly what your handlers return.
 
@@ -76,6 +77,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CRDHealth'
+
+  /katalog/{crd}/validation:      # placeholder
+    get:
+      summary: Get validation status for a CRD
+      tags: [Validation]
+      parameters:
+        - name: crd
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CRD is valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  message:
+                    type: string
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+                  errors:
+                    type: array
+                    items:
+                      type: string
 
 components:
   schemas:

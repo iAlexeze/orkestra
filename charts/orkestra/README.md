@@ -1,6 +1,6 @@
 # Orkestra Helm Chart
 
-Deploy Orkestra — the declarative Kubernetes operator framework — using Helm.
+Deploy Orkestra — the declarative Kubernetes operator runtime — using Helm.
 
 ```bash
 helm repo add orkestra https://ialexeze.github.io/orkestra

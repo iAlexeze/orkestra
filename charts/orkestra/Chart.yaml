@@ -1,7 +1,7 @@
 apiVersion: v2
 name: orkestra
 description: >-
-  The Kubernetes operator framework that needs no Go.
+  The Kubernetes operator runtime that needs no programming language.
   Deploy Orkestra and manage your CRDs declaratively with Katalog YAML files.
 type: application
 version: 0.1.0
