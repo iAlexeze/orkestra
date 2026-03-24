@@ -66,6 +66,11 @@ func (r *GenericReconciler[T]) ensureFinalizers(ctx context.Context, obj T) erro
 		return nil
 	}
 
+	logger.Debug().
+		Str("name", obj.GetName()).
+		Any("crd finalizers", r.crd.Finalizers).
+		Msgf("checking finalizers: %v", obj.GetFinalizers())
+
 	needsUpdate := false
 	for _, f := range r.crd.Finalizers {
 		if !ContainsFinalizer(obj, f) {

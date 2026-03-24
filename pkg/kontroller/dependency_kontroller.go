@@ -171,6 +171,7 @@ package kontroller
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -232,38 +233,69 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 	k.startedAt = time.Now()
 
 	startupOrder := k.depGraph.StartupOrder()
+	logger.Info().Msgf("startupOrder: %v", strings.Join(startupOrder, " → "))
+
+	// Build name → GVK mapping
+	nameToGVK := make(map[string]string)
+	for _, name := range startupOrder {
+		node := k.depGraph.GetNode(name)
+		if node == nil {
+			continue
+		}
+		nameToGVK[name] = node.CRD.GroupVersionKind.String()
+	}
+
+	// Create ready channels for all CRDs
+	for _, name := range startupOrder {
+		node := k.depGraph.GetNode(name)
+		if node == nil {
+			continue
+		}
+		gvk := node.CRD.GroupVersionKind.String()
+		k.readyCh[gvk] = make(chan struct{})
+	}
+
+	// START RETRY LOOP ONCE, BEFORE ANY BLOCKING
+	go k.retryMissingCRDs(ctx)
 
 	anyOnline := false
 
 	// Process CRDs in dependency order
 	for _, name := range startupOrder {
 		node := k.depGraph.GetNode(name)
+		if node == nil {
+			continue
+		}
 		crd := node.CRD
 		gvk := crd.GroupVersionKind.String()
 
-		// Create ready channels for all CRDs upfront
-		k.readyCh[gvk] = make(chan struct{})
-
-		// Skip missing CRDs
-		if k.informerFactory.IsMissing(gvk) {
-			logger.Debug().Msgf("%s is missing — skipping", name)
-			continue
+		if len(crd.DependsOn) > 0 {
+			logger.Info().Msgf("starting %s (depends on: %s)", name, strings.Join(crd.GetDependencies(), ", "))
+		} else {
+			logger.Info().Msgf("starting %s", name)
 		}
 
-		// Wait for dependencies — blocks until dep is online or ctx cancelled
-		for _, dep := range crd.DependsOn {
+		// Wait for dependencies
+		for _, depName := range crd.DependsOn {
+			depGVK, ok := nameToGVK[depName]
+			if !ok {
+				logger.Error().Msgf("%s depends on %s, but %s not found in dependency graph", name, depName, depName)
+				continue
+			}
+
+			logger.Debug().Msgf("%s waiting for dependency %q (%s)", name, depName, depGVK)
 			select {
-			case <-k.readyCh[dep]:
-				logger.Debug().Msgf("%s: dependency %q ready", name, dep)
+			case <-k.readyCh[depGVK]:
+				logger.Debug().Msgf("%s: dependency %q ready", name, depName)
 			case <-ctx.Done():
 				return
 			}
 		}
 
+		// Check if CRD exists
 		if k.informerFactory.IsMissing(gvk) {
-			logger.Warn().Msgf("CRD %s is missing — workers not started, retry loop will activate it", gvk)
-			// DO NOT close readyCh[name] — retry loop closes it when CRD appears
-			// DO NOT call SetReady here — nothing is online yet for this CRD
+			logger.Debug().Msgf("%s is missing — readyCh remains open, workers not started", name)
+			// DO NOT close readyCh — dependents will block until this CRD appears
 			continue
 		}
 
@@ -272,37 +304,23 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 		logger.Info().Msgf("starting %d workers for %s", workers, gvk)
 		k.startCRDWorkers(ctx, gvk, workers)
 
-		// Set the workers in health map
+		// Update health and metrics
 		k.crdHealthMap[gvk].SetWorkersActive(workers)
 		k.crdHealthMap[gvk].queueReg = k.queueReg
-
-		// Set Queue Registry to track queue for this GVK
-
-		// Emit metrics
 		metrics.WorkersActive.WithLabelValues(gvk).Set(float64(workers))
 
-		// Signal dependents — this CRD is ready
-		if !k.informerFactory.IsMissing(gvk) {
-			close(k.readyCh[gvk])
-			logger.Info().Msgf("%s workers started and ready", name)
+		// Signal dependents
+		close(k.readyCh[gvk])
+		logger.Info().Msgf("%s workers started and ready", name)
 
-			anyOnline = true
-		}
+		anyOnline = true
 	}
 
-	// ── Start retry loop ONCE after the startup sequence ─────────────────────
-	// Handles all missing CRDs together — no races, no duplicate goroutines.
-	// Also handles CRDs that get deleted and recreated after startup.
-	go k.retryMissingCRDs(ctx)
-
-	// ── Mark controller started ───────────────────────────────────────────────
-	// Ready only if at least one CRD came online.
-	// If everything is missing, we're started but not ready — retry loop will flip this.
+	// Mark controller started
 	k.startedKtrl.Store(true)
 	if anyOnline {
 		k.hs.SetReady()
-		logger.Info().Msgf("%s started — %d CRD(s) online, retry loop active for missing",
-			k.Name(), len(startupOrder))
+		logger.Info().Msgf("%s started — %d CRD(s) online", k.Name(), len(startupOrder))
 	} else {
 		logger.Warn().Msgf("%s started — all CRDs missing, waiting for retry loop", k.Name())
 	}
@@ -313,6 +331,7 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 	k.hs.Unhealthy()
 
 	shutdownOrder := k.depGraph.ShutdownOrder()
+	logger.Info().Msgf("shutdownOrder: %v", strings.Join(shutdownOrder, " → "))
 	for _, name := range shutdownOrder {
 		logger.Info().Msgf("shutting down %s", name)
 		gvk := k.depGraph.GetNode(name).CRD.GroupVersionKind.String()
@@ -370,8 +389,8 @@ func (k *DependencyKontroller) stopCRDWorkers(gvk string) {
 	wg, okWG := k.wgs[gvk]
 	k.mu.RUnlock()
 
-	logger.Info().Msgf("stopCRDWorkers: looking for %s", gvk)
-	logger.Info().Msgf("  okCancel=%v, okWG=%v", okCancel, okWG)
+	// logger.Debug().Msgf("stopCRDWorkers: looking for %s", gvk)
+	// logger.Debug().Msgf("  okCancel=%v, okWG=%v", okCancel, okWG)
 
 	if okCancel {
 		logger.Info().Msgf("cancelling workers for %s", gvk)

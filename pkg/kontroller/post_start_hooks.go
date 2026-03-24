@@ -28,6 +28,7 @@ import (
 func (k *DependencyKontroller) retryMissingCRDs(ctx context.Context) {
 	ticker := time.NewTicker(PostStartRetryInterval)
 	defer ticker.Stop()
+	backoff := PostStartBackoff
 
 	for {
 		select {
@@ -35,10 +36,40 @@ func (k *DependencyKontroller) retryMissingCRDs(ctx context.Context) {
 			return
 		case <-ticker.C:
 			missing := k.informerFactory.Missing()
+			if len(missing) == 0 {
+				logger.Info().Msg("retry loop: no missing CRDs — stopping")
+				return
+			}
+
+			logger.Debug().Msgf("retry loop: checking %d missing CRD(s)", len(missing))
+			stillMissing := make(map[string]*informer.InformerEntry)
+
 			for _, entry := range missing {
 				if ok, _ := k.crdExists(entry.GVK); ok {
 					k.activateCRD(ctx, entry)
+				} else {
+					stillMissing[entry.GVK.String()] = entry
+					logger.Debug().Msgf("retry loop: %s still not available", entry.GVK.String())
+					continue
 				}
+			}
+
+			// Update missing map — only what's still missing remains
+			k.informerFactory.SetMissing(stillMissing)
+
+			if len(stillMissing) == 0 {
+				logger.Info().Msg("retry loop: all CRDs activated")
+				// All CRDs now online — mark controller fully ready
+				k.hs.SetReady()
+				return
+			}
+
+			logger.Info().Msgf("retry loop: %d CRD(s) still missing", len(stillMissing))
+
+			// Exponential backoff — cap at 1 minute
+			time.Sleep(backoff)
+			if backoff < time.Minute {
+				backoff *= 2
 			}
 		}
 	}

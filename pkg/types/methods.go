@@ -1,7 +1,6 @@
 package orktypes
 
 import (
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -56,10 +55,10 @@ func (c *CRDEntry) IsDynamic() bool {
 
 // HasTemplates reports whether this CRD declares any declarative hook templates.
 // Used by `ork generate` to determine whether to emit generated runtime hooks.
-func (c *CRDEntry) HasTemplates() bool {
-	rc := c.ReconcilerConfig
-	return rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil
-}
+// func (c *CRDEntry) HasTemplates() bool {
+// 	rc := c.ReconcilerConfig
+// 	return rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil
+// }
 
 // GVK returns the fully resolved GroupVersionKind for this CRD. Used for logging,
 // routing, and dynamic client operations.
@@ -71,50 +70,6 @@ func (c *CRDEntry) GVK() schema.GroupVersionKind {
 // dynamic client list/watch operations.
 func (c *CRDEntry) GVR() schema.GroupVersionResource {
 	return c.GroupVersionResource
-}
-
-// NewObject returns a new instance of the runtime object for this CRD.
-// In dynamic mode, returns *unstructured.Unstructured with GVK set.
-// In typed mode, returns a deep copy of the typed object if available.
-func (c *CRDEntry) NewObject() runtime.Object {
-	if c.IsDynamic() {
-		u := &unstructured.Unstructured{}
-		u.SetGroupVersionKind(c.GVK())
-		return u
-	}
-	if c.TypedModeObject != nil {
-		return c.TypedModeObject.DeepCopyObject()
-	}
-	return &unstructured.Unstructured{}
-}
-
-// NewList returns a new list object for this CRD. Mirrors NewObject but returns
-// the list variant (typed or unstructured).
-func (c *CRDEntry) NewList() runtime.Object {
-	if c.IsDynamic() {
-		u := &unstructured.UnstructuredList{}
-		u.SetGroupVersionKind(c.GVK())
-		return u
-	}
-	if c.ListTypedModeObject == nil {
-		return c.ListDynamicModeObject()
-	}
-	return c.ListTypedModeObject
-}
-
-// NewObjectForListerWatcher returns an object suitable for creating a ListerWatcher.
-// This is the object that will be used to identify the client type.
-// Useful in case of reactivating a missing CRD
-func (c *CRDEntry) NewObjectForListerWatcher() runtime.Object {
-	if c.IsDynamic() {
-		u := &unstructured.Unstructured{}
-		u.SetGroupVersionKind(c.GVK())
-		return u
-	}
-	if c.TypedModeObject != nil {
-		return c.TypedModeObject
-	}
-	return &unstructured.Unstructured{}
 }
 
 // IsEnabled reports whether this CRD is enabled. Defaults to true when omitted.
@@ -156,7 +111,7 @@ func (c *CRDEntry) DefaultReconcile() bool {
 // Defaults to true unless explicitly disabled.
 func (c *CRDEntry) DefaultQueue() bool {
 	if c.Queue.Default == nil {
-		return true
+		return false
 	}
 	return *c.Queue.Default
 }
@@ -186,4 +141,9 @@ func (c *CRDEntry) IsEnabledAllEndpoints() bool {
 		return true
 	}
 	return *c.Endpoints.Enabled
+}
+
+// GetDependencies returns a list of dependencies for this CRD.
+func (c *CRDEntry) GetDependencies() []string {
+	return c.DependsOn
 }
