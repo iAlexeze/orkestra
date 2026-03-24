@@ -88,3 +88,8 @@ func (c *Konfig) Konductor() *konductorElection {
 func (k *Konfig) Katalog() *katalogKonfig {
 	return &k.katalog
 }
+
+// Finalizers return a list of default finalizers
+func (k *Konfig) Finalizers() []string {
+	return []string{FinalizerOrkestra}
+}

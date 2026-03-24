@@ -44,20 +44,22 @@ spec:
       endpoints:
         info: false
       restrictedNamespaces:
-        - kube-system              # never clean up system pods
+        - kube-system
         - cert-manager
 
     - name: backend
-      enabled: false
+      # enabled: false
       apiTypes:
         group: orkestra.konduktor.io
         version: v1alpha1
         kind: OrkApp
         plural: orkapps
       endpoints:
-        enabled: false  # This disables endpoint creation for this CRD
+        enabled: true  # This disables endpoint creation for this CRD
       reconciler:
         default: true
+      dependsOn:
+        - frontend
 
     - name: frontend
       enabled: true     # Default
@@ -95,8 +97,6 @@ spec:
               labels:
                 - key: app
                   value: "{{ .metadata.name }}"
-                - key: managed-by
-                  value: orkestra
 
           services:
             - name: "{{ .metadata.name }}-svc"
@@ -111,14 +111,25 @@ spec:
               labels:
                 - key: app
                   value: "{{ .metadata.name }}"
-                - key: managed-by
-                  value: orkestra
+            - name: "{{ .metadata.name }}-general-svc"
+              type: "ClusterIP"
+              port: "8080"
+              targetPort: "8080"
+              namespace: "{{ .metadata.namespace }}"
+              reconcile: true
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}"
+
+
+
 
         # onDelete — owner references handle Deployment + Service cleanup
         # automatically. No explicit onDelete needed.
 
       queue:
-        maxQueueDepth: 500
+        default: true       # Do not create a separate queue for this CRD (Default: false)
+        maxQueueDepth: 200
 
       description: >-
         Manages a web application Deployment and Service pair.

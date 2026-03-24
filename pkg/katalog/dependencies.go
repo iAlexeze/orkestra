@@ -3,15 +3,19 @@ package katalog
 
 import (
 	"fmt"
+	"sort"
+	"sync"
 
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
 type DependencyGraph struct {
-	nodes   map[string]*Node
-	edges   map[string][]string
-	katalog *Katalog
+	nodes        map[string]*Node
+	edges        map[string][]string
+	katalog      *Katalog
+	startupOrder []string // cache
+	once         sync.Once
 }
 
 type Node struct {
@@ -54,34 +58,60 @@ func NewDependencyGraph(katalog *Katalog) *DependencyGraph {
 
 // Topological sort for startup order
 func (g *DependencyGraph) StartupOrder() []string {
-	var order []string
-	queue := []string{}
-
-	// Find nodes with no dependencies (in-degree 0)
-	for name, node := range g.nodes {
-		if node.InDegree == 0 {
-			queue = append(queue, name)
+	g.once.Do(func() {
+		// Copy indegree (DO NOT mutate original)
+		indegree := make(map[string]int, len(g.nodes))
+		for name, node := range g.nodes {
+			indegree[name] = node.InDegree
 		}
-	}
 
-	for len(queue) > 0 {
-		current := queue[0]
-		queue = queue[1:]
-		order = append(order, current)
+		// Sort node names for deterministic processing
+		var names []string
+		for name := range g.nodes {
+			names = append(names, name)
+		}
+		sort.Strings(names)
 
-		for _, neighbor := range g.edges[current] {
-			g.nodes[neighbor].InDegree--
-			if g.nodes[neighbor].InDegree == 0 {
-				queue = append(queue, neighbor)
+		// Initialize queue (sorted)
+		var queue []string
+		for _, name := range names {
+			if indegree[name] == 0 {
+				queue = append(queue, name)
 			}
 		}
-	}
 
-	if len(order) != len(g.nodes) {
-		utils.Exit(fmt.Errorf("circular dependency detected"))
-	}
+		var order []string
 
-	return order
+		for len(queue) > 0 {
+			// Always pick the first (queue is kept sorted)
+			current := queue[0]
+			queue = queue[1:]
+
+			order = append(order, current)
+
+			// Process neighbors in sorted order
+			neighbors := append([]string{}, g.edges[current]...)
+			sort.Strings(neighbors)
+
+			for _, neighbor := range neighbors {
+				indegree[neighbor]--
+				if indegree[neighbor] == 0 {
+					queue = append(queue, neighbor)
+				}
+			}
+
+			// Keep queue sorted for determinism
+			sort.Strings(queue)
+		}
+
+		if len(order) != len(g.nodes) {
+			utils.Exit(fmt.Errorf("circular dependency detected"))
+		}
+
+		g.startupOrder = order
+	})
+
+	return g.startupOrder
 }
 
 // Reverse topological sort for shutdown order

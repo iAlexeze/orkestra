@@ -39,6 +39,9 @@ const (
 
 	// AnnotationManagedSince records when Orkestra first took ownership.
 	AnnotationManagedSince = "orkestra.konductor.io/managed-since"
+
+	// Finalizers
+	FinalizerOrkestra = "orkestra.konductor.io/finalizer"
 )
 
 var (

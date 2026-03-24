@@ -144,6 +144,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 
 	logger.Debug().Msg("wiring CRDs into kontroller registry...")
 
+	finalizers := kfg.Finalizers()
 	for _, crd := range kat.Enabled() {
 		crd := crd
 		gvk := crd.GVK().String()
@@ -195,12 +196,14 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			inf = infFactory.For(object, ctx, opts)
 		}
 
+		finalizers = append(finalizers, crd.ReconcilerConfig.Finalizers...)
 		crdInfo := reconciler.CRDInfo{
-			Kind:       crd.APITypes.Kind,
-			GVK:        gvk,
-			GVR:        gvr,
-			Operator:   kat.Meta().Name,
-			Finalizers: crd.ReconcilerConfig.Finalizers,
+			Kind:             crd.APITypes.Kind,
+			GVK:              gvk,
+			GVR:              gvr,
+			Operator:         kat.Meta().Name,
+			Finalizers:       finalizers,
+			ReconcilerConfig: crd.ReconcilerConfig,
 		}
 		infCopy := inf
 

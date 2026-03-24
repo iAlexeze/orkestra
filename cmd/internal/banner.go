@@ -67,6 +67,7 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 	for _, crd := range kfg.katalog.Enabled() {
 		fmt.Printf("- %s%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset)
 
+		fmt.Printf("  %sName:%s          %s\n", utils.ColorYellow, utils.ColorReset, crd.Name)
 		fmt.Printf("  %sGroup:%s         %s\n", utils.ColorYellow, utils.ColorReset, crd.APITypes.Group)
 		fmt.Printf("  %sVersion:%s       %s\n", utils.ColorYellow, utils.ColorReset, crd.APITypes.Version)
 

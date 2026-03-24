@@ -9,23 +9,31 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **Testing framework** — complete testing infrastructure for unit, integration, and end‑to‑end tests.
-  - `tests/` directory with structure for all test types
-  - Test helpers (`fake_kubeclient.go`, `testutils.go`) for integration tests
-  - Fixtures (`katalogs/`, `crds/`) for reusable test data
-  - Makefile targets: `test-unit`, `test-integration`, `test-e2e`, `test-coverage`, `test-all`
-  - GitHub Actions workflow running unit and integration tests on every push and pull request
-  - Comprehensive testing strategy documentation in `tests/README.md`
+- **Deterministic dependency graph** — startup order is now cached using `sync.Once`, ensuring consistent ordering across runs. Nodes are processed in sorted order for deterministic behavior. Circular dependencies are detected and reported with clear error messages.
 
-- **Testing strategy** — documented approach for achieving confidence before v1 release:
-  - Unit tests for core logic (CRDHealth, dependency graph, merge rules)
-  - Integration tests with fake Kubernetes clients (reconciler, activation, komposer)
-  - E2E tests with kind (website example, activation, dependencies)
-  - Priority‑based test plan (P0 → P1 → P2 → P3)
+- **Proper shutdown ordering** — CRDs now shut down in reverse topological order (dependents before dependencies), ensuring clean teardown without broken references.
+
+- **Single retry loop for missing CRDs** — previously, multiple goroutines were started; now a single retry loop handles activation of CRDs that appear after startup, preventing race conditions.
+
+- **Activation system** — when a missing CRD appears, its informer starts, workers begin, and the ready channel closes, unblocking any dependents waiting for it.
+
+- **Conditional provisioning** — resources now support `when` blocks. Services are created only when conditions like `exposePublicly: true` are met, evaluated during template resolution.
+
+- **Logging improvements** — startup and shutdown orders are now logged with arrows (e.g., `frontend → backend`) for clear visibility. Activation progress is logged with emoji indicators.
+
+### Fixed
+
+- **Generic reconciler no‑op issue** — `CRDInfo` now correctly passes `ReconcilerConfig` to the generic reconciler, ensuring templates are executed instead of resulting in a no‑op.
+
+- **Dependency blocking** — dependents now correctly block on ready channels until their dependencies are ready, even when dependencies appear after startup.
+
+- **Multiple retry loops** — retry loop now starts once instead of once per CRD, eliminating race conditions.
 
 ### Changed
 
-- **Testing infrastructure** — no functional changes; this is additive only.
+- **Dependency graph** — complete rewrite for determinism and concurrency safety.
+- **Startup flow** — CRDs now wait for dependencies before starting workers, ensuring correct order.
+- **Shutdown flow** — now follows reverse topological order for clean teardown.
 
 ### Security
 
