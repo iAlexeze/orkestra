@@ -268,8 +268,8 @@ func (k *Katalog) setDefaults() error {
 
 		// Add labels
 		crd.Labels = append(crd.Labels, orktypes.ResourceLabel{
-			Key:   konfig.ManagedByLabel,
-			Value: konfig.Orkestra,
+			Key:   konfig.LabelManaged,
+			Value: konfig.LabelManagedValue,
 		})
 
 		// Remove all whitespaces

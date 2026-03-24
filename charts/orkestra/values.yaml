@@ -194,7 +194,7 @@ podLabels: {}
 # ── Probes ─────────────────────────────────────────────────────────────────────
 livenessProbe:
   httpGet:
-    path: /healthz
+    path: /health
     port: health
   initialDelaySeconds: 10
   periodSeconds: 15
@@ -202,7 +202,7 @@ livenessProbe:
 
 readinessProbe:
   httpGet:
-    path: /readyz
+    path: /ready
     port: health
   initialDelaySeconds: 5
   periodSeconds: 10

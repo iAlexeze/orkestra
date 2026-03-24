@@ -132,7 +132,7 @@ jobs:
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
           labels: |
             org.opencontainers.image.title=Orkestra
-            org.opencontainers.image.description=The Kubernetes operator framework that needs no Go
+            org.opencontainers.image.description=The Kubernetes operator runtime that needs no programming language
             org.opencontainers.image.vendor=Orkestra
             org.opencontainers.image.licenses=MIT
 
@@ -359,7 +359,7 @@ jobs:
           VERSION="${TAG#v}"
           cat > homebrew-tap/Formula/ork.rb << EOF
           class Ork < Formula
-            desc "The Kubernetes operator framework that needs no Go"
+            desc "The Kubernetes operator runtime that needs no Programming Language"
             homepage "https://github.com/iAlexeze/orkestra"
             version "${VERSION}"
             license "MIT"

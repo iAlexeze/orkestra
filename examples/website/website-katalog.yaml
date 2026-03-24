@@ -18,41 +18,37 @@ spec:
 #   enabled: true|false      # if false, endpoints are disabled   (default: true)
 #   health: true|false       # /katalog/<crd>/health              (default: true)
 #   info: true|false         # /katalog/<crd>                     (default: true)
-#   validation: true|false   # /katalog/<crd>/validation          (default: true)
 #
 #   Example:
 #     endpoints:
 #       info: false          # hide CRD info endpoint
-#       validation: false    # hide validation endpoint
   crds:
     - name: pod-governance
+      enabled: false
       apiTypes:
         kind: Pod          # built-in — Kubernetes knows the rest
+      restrictedNamespaces:
+        - kube-system              # never clean up system pods
+        - cert-manager
+
     - name: deployment-watcher
+      enabled: false
       apiTypes:
         kind: Deployment
       endpoints:
         info: false
     - name: secrets-manager
+      enabled: false
       apiTypes:
         kind: Secret
       endpoints:
         info: false
-        validation: false
-
-      # validation:
-      #   - field: metadata.ownerReferences
-      #     operator: exists
-      #     message: "orphaned pods are not permitted — all pods must have an owner"
-      #     action: cleanup
-      #     gracePeriodSeconds: 0    # immediate
-      #     dryRun: false            # when you are confident. Start with true.
-
-      # restrictedNamespaces:
-      #   - kube-system              # never clean up system pods
-      #   - cert-manager
+      restrictedNamespaces:
+        - kube-system              # never clean up system pods
+        - cert-manager
 
     - name: backend
+      enabled: false
       apiTypes:
         group: orkestra.konduktor.io
         version: v1alpha1
@@ -68,8 +64,8 @@ spec:
       namespaced: true  # Default
       workers: 2
       resync: 30s
-      dependsOn:
-        - backend
+      # dependsOn:
+      #   - backend
 
       apiTypes:
         group: demo.orkestra.io
@@ -80,20 +76,6 @@ spec:
         # Orkestra uses *unstructured.Unstructured automatically
 
       reconciler:
-        default: true
-        # validation:
-        #   - field: spec.replicas
-        #     max: 10
-        #     message: "replicas cannot exceed 10"
-        #   - field: spec.image
-        #     prefix: "myorg/"
-        #     message: "image must be from myorg registry"
-        # mutation:
-        #   - field: spec.replicas
-        #     default: "1"
-        #   - field: spec.logLevel
-        #     default: "info"
-
         finalizers:
           - finalizer.demo.orkestra.io/website
 
@@ -123,9 +105,9 @@ spec:
               targetPort: "{{ .spec.port }}"
               namespace: "{{ .metadata.namespace }}"
               reconcile: true
-              # when:
-              #   - field: spec.exposePublicly
-              #     eqauls: "true"
+              when:
+              - field: spec.exposePublicly
+                equals: "true"
               labels:
                 - key: app
                   value: "{{ .metadata.name }}"

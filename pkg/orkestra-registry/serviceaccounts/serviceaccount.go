@@ -114,8 +114,8 @@ func Resolve(src orktypes.ServiceAccountTemplateSource, ownerName string) Resolv
 		spec.Labels[l.Key] = l.Value
 	}
 
-	spec.Labels[konfig.ManagedByLabel] = konfig.Orkestra
-	spec.Labels[konfig.OrkestraOwnerLabel] = ownerName
+	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
+	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
 
 	return spec
 }

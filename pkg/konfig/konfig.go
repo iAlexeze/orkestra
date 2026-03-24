@@ -19,14 +19,12 @@ func Init(filenames ...string) (*Konfig, error) {
 		ork: orkKonfig{
 			Name:        Orkestra,
 			ShortName:   Ork,
-			Version:     GetStrEnv("ORK_VERSION", "1.0.0"),
 			Environment: GetStrEnv("ORK_ENV", "development"),
-			LogLevel:    GetStrEnv("LOG_LEVEL", "info"),
+			// LogLevel:    GetStrEnv("LOG_LEVEL", "info"),
 		},
 		cluster: clusterKonfig{
-			KubekonfigPath:   GetStrEnv("KUBEKONFIG", ""),
+			// KubekonfigPath:   GetStrEnv("KUBEKONFIG", ""),
 			MasterURL:        GetStrEnv("MASTER_URL", ""),
-			InCluster:        GetBoolEnv("IN_CLUSTER", false),
 			Name:             GetStrEnv("CLUSTER_NAME", "kubernetes-crd-example"),
 			DefaultNamespace: GetStrEnv("NAMESPACE", "default"),
 

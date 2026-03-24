@@ -1,4 +1,4 @@
-# Orkestra Metrics Analysis: Managing 170+ Resources Across 5 CRDs with Zero Go
+# Orkestra Metrics Analysis: Managing 170+ Resources Across 5 CRDs with Zero Code
 
 ## Executive Summary
 
@@ -271,9 +271,9 @@ Every metric needed to understand operator health is exposed without configurati
 - Queue depth
 - Worker utilization
 
-### 11.5 The Zero-Go Promise is Fulfilled
+### 11.5 The Zero-Programming language Promise is Fulfilled
 
-All 5 CRDs — including the built-in Pod, Secret, and Deployment watchers — were defined entirely in YAML. No Go code was written to:
+All 5 CRDs — including the built-in Pod, Secret, and Deployment watchers — were defined entirely in YAML. No code was written to:
 - Create clients for built-in resources
 - Write informers for Pods/Secrets/Deployments
 - Implement reconciliation logic for any resource

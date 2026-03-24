@@ -73,7 +73,7 @@ var statusCmd = &cobra.Command{
 Connects to the health API (default: localhost:8080).
 Port-forward to access a cluster deployment:
 
-  kubectl port-forward svc/orkestra 8080:8080 -n orkestra-system
+  kubectl port-forward svc/orkestra <port>:<port> -n orkestra-system
   ork status
 
 What each column shows:

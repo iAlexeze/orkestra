@@ -274,6 +274,29 @@ type DeploymentTemplateSource struct {
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
 	// onReconcile. When false (default), only runs on onCreate (idempotent create).
 	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty"`
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -324,6 +347,29 @@ type ServiceTemplateSource struct {
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
 	// onReconcile. When false (default), only runs on onCreate (idempotent create).
 	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty"`
 }
 
 // ── Pod ───────────────────────────────────────────────────────────────────────
@@ -369,6 +415,29 @@ type PodTemplateSource struct {
 
 	// Resources — static CPU and memory requests/limits.
 	Resources *ResourceRequirements `yaml:"resources" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty"`
 }
 
 // ── Job ───────────────────────────────────────────────────────────────────────
@@ -422,6 +491,29 @@ type JobTemplateSource struct {
 
 	// Labels — applied to Job metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty"`
 }
 
 // ── CronJob ───────────────────────────────────────────────────────────────────
@@ -469,6 +561,29 @@ type CronJobTemplateSource struct {
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
 	// onReconcile. When false (default), only runs on onCreate (idempotent create).
 	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty"`
 }
 
 // ── ConfigMap ─────────────────────────────────────────────────────────────────
@@ -520,6 +635,29 @@ type ConfigMapTemplateSource struct {
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
 	// onReconcile. When false (default), only runs on onCreate (idempotent create).
 	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty"`
 }
 
 // ── Secret ─────────────────────────────────────────────────────────────────────
@@ -580,6 +718,29 @@ type SecretTemplateSource struct {
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
 	// onReconcile. When false (default), only runs on onCreate (idempotent create).
 	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty"`
 }
 
 // ── ServiceAccount ────────────────────────────────────────────────────────────
@@ -609,6 +770,29 @@ type ServiceAccountTemplateSource struct {
 
 	// Labels — applied to ServiceAccount metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty"`
 }
 
 // ── HookTemplates ─────────────────────────────────────────────────────────────
@@ -708,11 +892,6 @@ type ReconcilerConfig struct {
 	// Omit for resources covered by owner reference cascade deletion.
 	OnDelete *HookTemplates `yaml:"onDelete" validate:"omitempty"`
 
-	// ── Go mode function references ───────────────────────────────────────────
-	// These fields are never set from YAML — tagged yaml:"-".
-	// In YAML mode: populated by addHooks() and addReconcilers() after registry lookup.
-	// In Go mode:   set directly in BuildKatalogFromGo() before calling Konduct().
-
 	// HookFactory — called once at startCRDWorkers time to produce typed hooks.
 	// nil → GenericReconciler runs with no user hooks.
 	//       Finalizers, events, and metrics are still handled automatically.
@@ -721,12 +900,6 @@ type ReconcilerConfig struct {
 	// Constructor — called once at startCRDWorkers time to build a custom reconciler.
 	// Must not be nil when Default: false — enforced by Katalog validation at startup.
 	Constructor NewReconcilerFunc `yaml:"-"`
-
-	// Validation defines validation rules per CRD
-	Validation *ValidationConfig `yaml:"validation,omitempty"`
-
-	// Mutation defines mutation rules per CRD
-	Mutation *MutationConfig `yaml:"mutation,omitempty"`
 }
 
 // HookDeclaration declares where a Go hook function lives.
@@ -887,6 +1060,9 @@ type CRDEntry struct {
 
 	// Endpoints defines which operator HTTP endpoints are enabled for this CRD.
 	Endpoints EndpointsConfig `yaml:"endpoints"`
+
+	// Restricted Namespaces
+	RestrictedNamespaces RestrictedNamespaces `yaml:"restrictedNamespaces,omitempty"`
 }
 
 // EndpointsConfig controls which HTTP endpoints are exposed by the operator.
@@ -898,12 +1074,9 @@ type EndpointsConfig struct {
 	// Default is true
 	Enabled *bool `yaml:"enabled"`
 
-	// Health controls whether the /healthz endpoint is served.
+	// Health controls whether the /health endpoint is served.
 	Health *bool `yaml:"health"`
 
 	// Info controls whether the /info endpoint is served.
 	Info *bool `yaml:"info"`
-
-	// Validation controls whether the /validate endpoint is served.
-	Validation *bool `yaml:"validation"`
 }

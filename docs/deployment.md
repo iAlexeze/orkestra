@@ -7,6 +7,7 @@ production multi-cluster setup. Choose the path that matches your situation.
 
 ## Table of contents
 
+- [Installation](#installation)
 - [Quick local test](#quick-local-test)
 - [Helm deployment](#helm-deployment)
 - [Managing your Katalog](#managing-your-katalog)
@@ -21,15 +22,79 @@ production multi-cluster setup. Choose the path that matches your situation.
 
 ---
 
+## Installation
+
+### macOS (Homebrew)
+
+```bash
+brew tap iAlexeze/tap
+brew install ork
+```
+
+### Linux / macOS (curl)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | bash
+```
+
+### Options
+
+```bash
+# Review before running
+curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh -o install.sh
+less install.sh
+bash install.sh
+
+# Pin to a specific version
+curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | ORK_VERSION=v0.1.1 bash
+
+# Install to a custom directory
+curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
+```
+
+### Verify the binary (recommended)
+
+Every release is GPG-signed. To verify the binary before running it:
+
+```bash
+# Import the Orkestra public key (one time)
+curl -sSL https://github.com/iAlexeze/orkestra/releases/download/v0.1.1/orkestra-public-key.asc | gpg --import
+
+# Download the binary and its signature
+curl -sSLO https://github.com/iAlexeze/orkestra/releases/download/v0.1.1/ork_linux_amd64.tar.gz
+curl -sSLO https://github.com/iAlexeze/orkestra/releases/download/v0.1.1/ork_linux_amd64.tar.gz.asc
+
+# Verify
+gpg --verify ork_linux_amd64.tar.gz.asc ork_linux_amd64.tar.gz
+# gpg: Good signature from "Orkestra Releases <releases@orkestra.io>"
+```
+
+### Confirm installation
+
+```bash
+ork version
+```
+
 ## Quick local test
 
 The fastest way to run Orkestra. No cluster deployment needed — the `ork`
 binary is the operator.
 
-```bash
-# Install the CLI
-curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | bash
+### Requirements
 
+You only need two things:
+
+- **A Kubernetes cluster** (1.28+).  
+  Works with [kind](https://kind.sigs.k8s.io/), [minikube](https://minikube.sigs.k8s.io/), [k3s](https://k3s.io/), or a managed cluster ([EKS](https://aws.amazon.com/eks/), [GKE](https://cloud.google.com/kubernetes-engine/), [AKS](https://azure.microsoft.com/en-us/products//kubernetes-service/)).
+
+- **The [ork](#install) CLI** – installed via Homebrew or the install script.
+
+Orkestra automatically discovers your cluster from your kubeconfig — no extra setup required.
+
+---
+
+### Run your first Operator
+```bash
 # Scaffold a project
 ork init my-operator && cd my-operator
 
@@ -87,14 +152,12 @@ katalog:
     spec:
       crds:
         - name: website
-          enabled: true
           apiTypes:
             group: demo.orkestra.io
             version: v1alpha1
             kind: Website
             plural: websites
           reconciler:
-            default: true
             onCreate:
               deployments:
                 - image: "{{ .spec.image }}"
@@ -428,7 +491,7 @@ Before running Orkestra in production:
 
 **Observability**
 - [ ] Prometheus scrape configured for `/metrics`
-- [ ] Health probes reaching `/healthz` and `/readyz`
+- [ ] Health probes reaching `/health` and `/ready`
 - [ ] Alerts on `controller_reconcile_total{result="error"}`
 
 ---

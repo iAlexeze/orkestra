@@ -15,7 +15,7 @@ spec:
 apiVersion: demo.orkestra.io/v1alpha1
 kind: Website
 metadata:
-  name: my-api
+  name: my-external-api
   namespace: orkestra
 spec:
   image: myorg/api-server:v1.2.0

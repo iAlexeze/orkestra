@@ -141,5 +141,5 @@ ork template --katalog website-katalog.yaml --json
 
 - [Example 2 — Platform Namespace](../platform-namespace/README.md)
   Secrets, ConfigMaps, ServiceAccounts — the full platform provisioning pattern
-- [Example 3 — Meta Katalog](../meta-katalog/README.md)
+- [Example 3 — Komposer ](../komposer/README.md)
   Composing multiple Katalogs from files and Helm charts

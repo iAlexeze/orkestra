@@ -22,7 +22,7 @@ What exists today:
 - **GenericReconciler** — three-path dispatch: templates, Go hooks, custom constructor
 - **DependencyKontroller** — per-CRD worker pools, safe reconcile, panic recovery
 - **KonductorElection** — leader election, warm cache failover
-- **Health API** — `/healthz`, `/readyz`, `/metrics`, `/katalog/*` per CRD
+- **Health API** — `/health`, `/ready`, `/metrics`, `/katalog/*` per CRD
 - **Prometheus metrics** — five per-CRD metrics, consistent labels
 - **CLI** — `ork init`, `ork validate`, `ork template`, `ork generate runtime`, `ork run`, `ork version`
 - **Install** — `curl | bash` installer for macOS and Linux
@@ -42,7 +42,7 @@ is in front of real users.
 |---|---|
 | `ork init` end-to-end test | The first thing every evaluator runs — must be flawless |
 | Runtime template interpretation — eliminate `generate` for dynamic CRDs | The last build-step friction for the zero-code story |
-| Integration tests — website, platform-namespace, meta-katalog examples | Catch regressions before users do |
+| Integration tests — website, platform-namespace, komposer examples | Catch regressions before users do |
 | `ork validate` full error coverage | Every invalid Katalog should produce a clear, actionable error |
 | Module path migration — `github.com/iAlexeze/orkestra` → `github.com/konduktor-io/orkestra` | Must happen before first external user |
 | Helm chart for Orkestra itself | Production deployments need a proper chart |
@@ -199,7 +199,8 @@ Cross-cluster operations belong to a different architectural layer.
 
 **Replacing controller-runtime.** Orkestra is not a replacement for
 controller-runtime. It is a higher-level abstraction that makes the common
-case trivial and defers to Go code when needed.
+case trivial and today, defers to Go code when needed. The goal os to make even the most complex use cases declarative.
+
 
 ---
 

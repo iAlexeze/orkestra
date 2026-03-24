@@ -146,5 +146,5 @@ curl localhost:8080/metrics | grep platformnamespace
 
 ## What's next
 
-- [Example 3 — Meta Katalog](../meta-katalog/README.md)
+- [Example 3 — Komposer](../komposer/README.md)
   Composing this Katalog with others using files and Helm sources

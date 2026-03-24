@@ -11,8 +11,8 @@ independent from CRD‑level health and reflects the state of the operator itsel
 The health subsystem is implemented by `HealthServer`, a standalone HTTP server
 that exposes:
 
-- **`GET /healthz`** — Orkestra liveness probe  
-- **`GET /readyz`** — Orkestra readiness probe  
+- **`GET /health`** — Orkestra liveness probe  
+- **`GET /ready`** — Orkestra readiness probe  
 - **`GET /metrics`** — Prometheus metrics  
 - **`/katalog/*`** — dynamically registered CRD endpoints
 
@@ -23,7 +23,7 @@ shutdown.
 
 ## Endpoints
 
-### `GET /healthz` — Orkestra Liveness Probe
+### `GET /health` — Orkestra Liveness Probe
 
 Returns:
 
@@ -49,7 +49,7 @@ Example:
 
 ---
 
-### `GET /readyz` — Orkestra Readiness Probe
+### `GET /ready` — Orkestra Readiness Probe
 
 Returns:
 
@@ -96,7 +96,7 @@ This endpoint is automatically registered and requires no configuration.
 On `Start()`:
 
 - server binds to the configured port  
-- `/healthz`, `/readyz`, `/metrics` are registered  
+- `/health`, `/ready`, `/metrics` are registered  
 - CRD routes are registered before startup  
 - `started = true`  
 - `healthy = true`  
@@ -120,8 +120,8 @@ This is called after:
 
 On shutdown:
 
-- `/readyz` returns 503  
-- `/healthz` returns 500  
+- `/ready` returns 503  
+- `/health` returns 500  
 - HTTP server shuts down gracefully  
 
 ---

@@ -1,6 +1,6 @@
 # Orkestra Helm Chart
 
-Deploy Orkestra — the declarative Kubernetes operator framework — using Helm.
+Deploy Orkestra — the declarative Kubernetes operator runtime — using Helm.
 
 ```bash
 helm repo add orkestra https://ialexeze.github.io/orkestra
@@ -219,8 +219,8 @@ After installing, Orkestra exposes:
 # Health endpoints
 kubectl port-forward svc/orkestra 8080:8080 -n orkestra-system
 
-curl localhost:8080/healthz          # liveness
-curl localhost:8080/readyz           # readiness
+curl localhost:8080/health          # liveness
+curl localhost:8080/ready           # readiness
 curl localhost:8080/metrics          # Prometheus metrics
 curl localhost:8080/katalog | jq     # all CRDs
 ```

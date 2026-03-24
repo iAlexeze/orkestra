@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/ialexeze/orkestra/pkg/version"
 )
 
 func printBanner(kfg *orkestraKfg, konductor string) {
@@ -14,7 +15,7 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 	fmt.Print(utils.ColorReset)
 
 	fmt.Println("====================================================")
-	fmt.Printf("%s        Orkestra Runtime%s (v%s)\n", utils.ColorMagenta, utils.ColorReset, kfg.konfig.Ork().Version)
+	fmt.Printf("%s        Orkestra Runtime%s (v%s)\n", utils.ColorMagenta, utils.ColorReset, version.Version)
 	fmt.Printf("        Environment: %s%s%s\n", utils.ColorBlue, kfg.konfig.Ork().Environment, utils.ColorReset)
 	fmt.Printf("        Listening on: %s:%s%s\n", utils.ColorGreen, kfg.konfig.Health().Port, utils.ColorReset)
 
@@ -28,8 +29,8 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 
 	// Endpoints
 	fmt.Println("Orkestra Endpoints:")
-	fmt.Printf("- Health:   %s/healthz%s\n", utils.ColorGreen, utils.ColorReset)
-	fmt.Printf("- Ready:    %s/readyz%s\n", utils.ColorGreen, utils.ColorReset)
+	fmt.Printf("- Health:   %s/health%s\n", utils.ColorGreen, utils.ColorReset)
+	fmt.Printf("- Ready:    %s/ready%s\n", utils.ColorGreen, utils.ColorReset)
 	fmt.Printf("- Metrics:  %s/metrics%s\n", utils.ColorGreen, utils.ColorReset)
 
 	fmt.Println()
@@ -44,9 +45,6 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 		}
 		if crd.IsHealthEnabled() {
 			fmt.Printf("  - %s%s%s:  %s/katalog/%s/health%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
-		}
-		if crd.IsValidationEnabled() {
-			fmt.Printf("  - %s%s%s:  %s/katalog/%s/validation%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
 		}
 	}
 	fmt.Println("====================================================")

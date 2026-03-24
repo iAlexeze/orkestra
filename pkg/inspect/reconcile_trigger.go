@@ -83,7 +83,7 @@ func TriggerReconcileAll(
 	}
 
 	list, err := resource.List(ctx, metav1.ListOptions{
-		LabelSelector: konfig.ManagedByOrkestraLabel,
+		LabelSelector: konfig.LabelManaged + konfig.LabelManagedValue,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("listing %s: %w", gvr.Resource, err)

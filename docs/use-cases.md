@@ -1,6 +1,6 @@
 # Orkestra Use Cases
 
-Orkestra is a declarative operator framework. Every operator is a Katalog —
+Orkestra is a declarative operator runtime. Every operator is a Katalog —
 a YAML file that declares what CRDs to manage and how. This page shows what
 becomes possible when your operator is a file rather than a codebase.
 
@@ -322,8 +322,8 @@ Every Orkestra operator exposes the same endpoints regardless of what
 is in the Katalog.
 
 ```bash
-GET /healthz                         # orkestra liveness — 200 or 500
-GET /readyz                          # orkestra readiness — 200 or 503
+GET /health                         # orkestra liveness — 200 or 500
+GET /ready                          # orkestra readiness — 200 or 503
 GET /metrics                         # Prometheus metrics
 GET /katalog                         # all CRDs with health and dependency graph
 GET /katalog/{crd}                   # single CRD config and stats
@@ -342,7 +342,7 @@ controller_crd_activation_latency_seconds{crd="..."}
 controller_crd_activation_total{crd="..."}
 ```
 
-These are not add-ons. They are part of the framework. Every operator
+These are not add-ons. They are part of the runtime. Every operator
 you build with Orkestra has them from day one.
 
 ---

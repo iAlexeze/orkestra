@@ -1,0 +1,21 @@
+onCreate:
+  deployments:
+    fromCRD:
+    - name: name which we already know maps to "{{ .metadata.name }}-app"                           # dynamic — from CR metadata
+      replicas: same here "{{ .spec.replicas }}"                           # dynamic — from CR spec
+      image: here too "{{ .spec.image }}"                                 # dynamic — from CR spec
+      port: here 8080
+      namespace: here "{{ .metadata.namespace }}"
+    or even say:
+    fromCRD:
+      merge: true (merge may not be the right word), 
+      # but it means, loop through all crd definitions and use it to create the deployment
+      # could be tricky because different people will have different implementations, so option A shoul work if you think so
+      # At least fir POC
+    # then another wiil be
+    fromKatalog: <- or maybe a better name
+    this tells orkestra not to look at the crd for these values...
+    both can be defined at the same time, but one should take priiority
+    we also validate required values
+
+This is how i am thinking about it

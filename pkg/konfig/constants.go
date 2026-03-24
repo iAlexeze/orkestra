@@ -23,16 +23,12 @@ const (
 	kindKonductor = "Konductor"
 	kindKomposer  = "Komposer"
 
-	// Labels
-	ManagedByLabel         = "managed-by"
-	ManagedByOrkestraLabel = "managed-by=orkestra"
-	OrkestraOwnerLabel     = "orkestra-owner"
-
 	// LabelManaged is patched on every CR Orkestra manages.
 	// Used by ork reconcile, ork get, and ork events to scope
 	// their operations to exactly what this operator instance manages.
-	LabelManaged      = "orkestra.konductor.io/managed"
-	LabelManagedValue = "true"
+	LabelManaged       = "orkestra.konductor.io/managed"
+	LabelManagedValue  = "true"
+	LabelOrkestraOwner = "orkestra-owner"
 
 	// Annotations
 

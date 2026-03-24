@@ -1,4 +1,4 @@
-# OrkestraRegistry
+# OrkestraRegistry Technical Documentation
 
 OrkestraRegistry is the standard library of Kubernetes resource implementations
 for Orkestra operators. It provides production-ready Create, Update, Delete, and
@@ -9,6 +9,8 @@ You do not write Kubernetes API calls. You declare what you want in a Katalog
 or call a registry function from a Go hook. OrkestraRegistry handles the rest.
 
 ---
+
+  > New to Orkestra? Start with the [Katalog documentation](../katalog.md) and the [examples](../../examples/website/README.md). This document is a reference for the registry implementation.
 
 ## What it provides
 

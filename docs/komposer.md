@@ -692,3 +692,9 @@ for i, s3Src := range doc.Sources.S3 {
 | Inline `spec.crds` | `spec.crds: [...]` | No | ✅ |
 | S3 / GCS / Azure Blob | `sources.s3` | — | Planned |
 | Kubernetes ConfigMap | `sources.configMap` | — | Planned |
+
+
+---
+
+> For a complete list of all configurable options, see the **[Katalog and Komposer Reference](./katalog-komposer-reference.md)**.  
+> For real‑world examples, see the **[Use Cases](./use-cases.md)** documentation.

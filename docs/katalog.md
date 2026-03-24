@@ -1,347 +1,281 @@
-# **The Orkestra Katalog**
-### *A Declarative Bundle for CRDs, Behavior, and Runtime Orchestration*
+# The Orkestra Katalog
 
-The **Katalog** is the heart of Orkestra's architecture.  
-It is a **declarative, composable, dependency‑aware bundle** that describes:
+### A Declarative Bundle for CRDs, Behavior, and Runtime Orchestration
 
-- what CRDs exist
-- how they behave
-- how they depend on each other
-- how they should be wired at runtime
-- how Orkestra should generate clients, informers, reconcilers, and workers
-- where to fetch API types and hooks from
+The **Katalog** is the heart of Orkestra. It is a **declarative, composable, dependency‑aware bundle** that describes:
 
-It is the single source of truth for the entire operator runtime.
+- what CRDs exist — built‑in or custom
+- how they behave — workers, resync intervals, dependencies
+- what resources they create — Deployments, Services, Secrets, ConfigMaps, and more
+- how they validate and mutate incoming CRs
 
-If the Kubernetes API is the "data plane,"  
-the **Katalog is the control plane** for Orkestra.
+It is the single source of truth for your operator. You write one YAML file. Orkestra does the rest.
+
+If the Kubernetes API is the "data plane," the **Katalog is the control plane** for your operator.
 
 ---
 
-# What Is a Katalog?
+## What Is a Katalog?
 
-A **Katalog** is a structured definition that contains one or more **CRD entries**.  
-Each entry describes:
+A **Katalog** is a YAML file that declares one or more CRD entries. Each entry describes a Kubernetes resource — built‑in or custom — and how Orkestra should manage it.
 
-| Field | Purpose |
-|-------|---------|
-| `name` | Unique identifier |
-| `enabled` | Whether the CRD is active at runtime |
-| `group`/`version`/`kind`/`plural` | API metadata |
-| `workers` | Concurrency per CRD |
-| `resync` | Reconcile frequency |
-| `dependsOn` | Startup/shutdown dependencies |
-| `apiTypes` | Location of Go API types (for YAML mode) |
-| `reconciler` | How to handle reconciliation (default, hooks, or custom) |
-| `queue` | Queue configuration (per‑CRD or shared) |
-| `finalizers` | List of finalizers to manage |
+**Built‑in resources** (Pod, Deployment, Secret, ConfigMap, ServiceAccount) require only `kind`. Orkestra queries the Kubernetes API to discover the group, version, plural, and scope automatically.
 
-In other words:
+**Custom resources** require `group`, `version`, `kind`, and `plural`. You may also provide an `apiTypes.location` for typed mode, but it is optional — dynamic mode works with any CRD without code generation.
 
-> **A Katalog is to Orkestra what a Helm Chart is to Kubernetes —  
-but for CRDs, controllers, and runtime behavior.**
+```yaml
+# Built‑in — Kubernetes knows the rest
+- name: pod-governance
+  apiTypes:
+    kind: Pod
 
----
+# Custom — declare the API metadata
+- name: website
+  apiTypes:
+    group: demo.orkestra.io
+    version: v1alpha1
+    kind: Website
+    plural: websites
+```
 
-# Why the Katalog Exists
-
-Traditional operator frameworks require:
-
-- static wiring
-- hand‑rolled clients
-- hand‑rolled informers
-- one controller per CRD
-- boilerplate everywhere
-
-Orkestra replaces all of that with a **single declarative bundle**.
-
-The Katalog enables:
-
-### 🔹 Dynamic CRD loading
-Go or YAML — local or remote.
-
-### 🔹 Automatic client + informer generation
-No boilerplate, no codegen, no controller‑runtime magic.
-
-### 🔹 Remote API type fetching
-Specify `apiTypes.location` and Orkestra fetches the Go types at generation time — they can live in completely separate repositories.
-
-### 🔹 Dependency‑aware orchestration
-CRDs start in topological order and shut down in reverse order.
-
-### 🔹 Per‑CRD workers and resync
-Each CRD defines its own concurrency and refresh interval.
-
-### 🔹 Pluggable reconcilers
-Three levels of involvement:
-- **Zero‑code** (`reconciler.default: true`)
-- **Hook‑based** (add only the hooks you need)
-- **Full custom** (implement the entire reconciler)
-
-### 🔹 Remote hooks
-Specify `hooks.location` and Orkestra fetches your business logic dynamically.
-
-### 🔹 Multi‑CRD operator composition
-Build operators with 2, 5, or 50 CRDs — all from one Katalog.
+**No Go. No code generation. No controller‑runtime scaffolding.** Just YAML.
 
 ---
 
-# Katalog Structure
+## A Simple Katalog
 
-A Katalog is composed of **CRD entries**:
+The simplest Katalog manages a single CRD with no reconciliation logic — just watches and reports health.
 
 ```yaml
 apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
-  name: platform-katalog
+  name: simple-observer
+spec:
+  crds:
+    - name: pod-observer
+      apiTypes:
+        kind: Pod
+```
+
+Orkestra:
+- Enriches `kind: Pod` to `core/v1`, `pods`, `namespaced`
+- Creates informer, workers, health endpoints
+- Exposes `/katalog/pod-observer/health` and Prometheus metrics
+- No resources are created — just observation
+
+---
+
+## A Complete Katalog
+
+A complete Katalog declares CRDs, reconciliation templatess and conditional creation.
+
+```yaml
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: website-katalog
+  description: Manages the Website CRD with Deployment and Service
+
 spec:
   finalizers:
-    - my-default-finalizer/platform-katalog
+    - finalizer.demo.orkestra.io/website
 
   crds:
-    # ── Zero‑code CRD ──────────────────────────────────
-    - name: project
-      enabled: true
-      group: platform.orkestra.io
-      version: v1alpha1
-      kind: Project
-      plural: projects
-      workers: 3
-      resync: 10m
-      dependsOn: []
-      
+    # ── Built‑in resources ─────────────────────────────────────────────
+    # Orkestra enriches automatically. No group/version/plural needed.
+    - name: pod-governance
       apiTypes:
-        location: github.com/ialexeze/orkestra/example-crds/api/types/project/v1alpha1
-      
-      reconciler:
-        default: true  # No code required!
+        kind: Pod
 
-    # ── Hook‑based CRD ─────────────────────────────────
-    - name: managednamespace
-      enabled: true
-      group: platform.orkestra.io
-      version: v1alpha1
-      kind: ManagedNamespace
-      plural: managednamespaces
+    - name: deployment-watcher
+      apiTypes:
+        kind: Deployment
+      endpoints:
+        info: false          # hide the /info endpoint for this CRD
+
+    - name: secrets-manager
+      apiTypes:
+        kind: Secret
+      endpoints:
+        info: false
+
+    # ── Custom CRDs ─────────────────────────────────────────────────────
+    - name: backend
+      apiTypes:
+        group: orkestra.konduktor.io
+        version: v1alpha1
+        kind: OrkApp
+        plural: orkapps
+      endpoints:
+        enabled: false            # disable all endpoints for this CRD
+
+    - name: frontend
+      enabled: false              # disables this CRD and orkestra ignores it on startup
+      namespaced: true
+      description: Manages a web application Deployment and Service pair
       workers: 2
       resync: 30s
-      dependsOn: ["project"]
-      
-      apiTypes:
-        location: github.com/ialexeze/orkestra/example-crds/api/types/managedNamespace/v1alpha1
-      
-      reconciler:
-        default: true
-        hooks:
-          location: github.com/yourorg/your-hooks
-          package: hooks.ManagedNamespaceHooks
-
-    # ── Full custom CRD ────────────────────────────────
-    - name: application
-      enabled: true
-      group: platform.orkestra.io
-      version: v1alpha1
-      kind: Application
-      plural: applications
-      workers: 2
-      resync: 3s
-      dependsOn: ["project", "managednamespace"]
-      
-      apiTypes:
-        location: github.com/ialexeze/orkestra/example-crds/api/types/application/v1alpha1
-      
-      reconciler:
-        default: false
-        constructor: "reconciler.NewApplicationReconciler"
-      
+      dependsOn:
+        - backend
       queue:
         maxQueueDepth: 500
+        degradeThreshold: 10
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: Website
+        plural: websites
+
+      # ── Reconciliation templates ─────────────────────────────────────
+      # onCreate runs on every reconcile. Idempotent — skipped if exists.
+      # reconcile: true also applies as drift correction.
+      reconciler:
+        default: true
+        finalizers:
+          - finalizer.demo.orkestra.io/website
+
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: "{{ .spec.port }}"
+              namespace: "{{ .metadata.namespace }}"
+              reconcile: true
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}"
+                - key: managed-by
+                  value: orkestra
+
+          services:
+            - name: "{{ .metadata.name }}-svc"
+              type: "{{ .spec.serviceType }}"
+              port: "80"
+              targetPort: "{{ .spec.port }}"
+              namespace: "{{ .metadata.namespace }}"
+              reconcile: true
+              # Conditional creation — only when exposePublicly is true
+              when:
+                - field: spec.exposePublicly
+                  equals: "true"
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}"
+                - key: managed-by
+                  value: orkestra
+
+        # onDelete — owner references handle Deployment + Service cleanup.
+        # No explicit onDelete needed for most cases.
 ```
 
-This is the declarative definition that Orkestra uses to build the runtime.
-
 ---
 
-# How Orkestra Uses the Katalog
+## Conditional Creation
 
-When Orkestra starts:
-
-1. **Load the Katalog** (Go or YAML)
-2. **Filter enabled CRDs**
-3. **Validate dependency graph** (detect cycles, missing deps)
-4. **Run `ork generate runtime`** (if YAML mode)
-   - Fetch API types from `apiTypes.location`
-   - Fetch hooks from `hooks.location`
-   - Generate `initialize/registry.go` with all bindings
-5. **Build scheme registry** from generated code
-6. **Generate clients** via SharedClientFactory
-7. **Generate informers** with per‑CRD resync
-8. **Generate reconcilers** (generic, hooks, or custom)
-9. **Build dependency‑aware controller**
-10. **Start workers per CRD** in topological order
-11. **Begin event dispatching**
-
-Everything is driven by the Katalog.
-
----
-
-# The `ork generate runtime` Command
-
-This is where the **magic happens**. Given a Katalog, Orkestra:
-
-```bash
-ork generate runtime --katalog initialize/crd-katalog.yaml
-```
-
-**What it does:**
-
-1. Reads all enabled CRDs
-2. For each CRD with `apiTypes.location`, runs `go get` to fetch the package
-3. For each CRD with `hooks.location`, runs `go get` to fetch the hooks
-4. Generates `initialize/registry.go` containing:
-   - `RegisterRuntimeObjects()` – object factories for all CRDs
-   - `RegisterScheme()` – scheme registration for all CRDs
-5. Wires everything together
-
-**If `go mod tidy` is needed, run it once. Done.**
-
-This means API types and hooks can live in **completely separate repositories**, versioned independently, and Orkestra consumes them as first‑class Go modules.
-
----
-
-# Go Mode vs YAML Mode
-
-The Katalog supports two modes:
-
-## **Go Mode**
-- CRDs defined in Go (`initialize/crd-katalog.go`)
-- Strong typing
-- Automatic scheme registration (no `ork generate` needed)
-- Best for framework authors and core development
-
-## **YAML Mode**
-- CRDs defined in YAML
-- GitOps‑friendly
-- Remote katalogs supported (HTTP/HTTPS URLs)
-- Requires `ork generate runtime` once
-- Best for platform teams and multi‑cluster orchestration
-
-Both modes produce the **same runtime behavior**.
-
----
-
-# Dependency Graph
-
-Each CRD can declare:
+Resources can be conditionally created using `when` blocks. The `when` field accepts a list of conditions; all must match for the resource to be created.
 
 ```yaml
-dependsOn:
-  - project
-  - managednamespace
+services:
+  - name: "{{ .metadata.name }}-svc"
+    when:
+      - field: spec.exposePublicly
+        equals: "true"
+      - field: spec.environment
+        equals: "production"
 ```
 
-Orkestra builds a DAG and:
-
-- detects cycles
-- validates all dependencies exist
-- computes topological order
-- starts CRDs in dependency order
-- shuts them down in reverse order
-- ensures cross‑CRD correctness
-
-This is essential for multi‑CRD operators where resources depend on each other.
+Available operators: `equals`, `notequals`, `exists`, `notexists`.
 
 ---
 
-# CLI Integration
+## Built‑in Resource Enrichment
 
-The Katalog is fully introspectable via the CLI:
-
-```bash
-# List all CRDs in the Katalog
-ork katalog list
-
-# Show detailed CRD configuration
-ork katalog describe project
-
-# Visualize dependencies
-ork graph deps
-ork graph order
-ork graph tree
-
-# Show runtime status
-ork kontroller status
-```
-
-See **[Orkestra CLI](./cli.md)** for full details.
-
----
-
-# Future Thoughts & Roadmap
-
-The Katalog unlocks a new era of operator design.  
-Here are some future directions already on the horizon:
-
-## **1. Katalog Repositories**
-Like Helm repos — publish katalogs for:
-
-- internal teams
-- partners
-- open‑source ecosystems
-
-## **2. Remote Go Reconcilers**
-Fetch reconcilers dynamically from Git or OCI as compiled plugins or WASM modules.
-
-## **3. Katalog Marketplace**
-A curated library of:
-
-- CRDs
-- reconcilers
-- hooks
-- behaviors
-- patterns
-
-## **4. Katalog Composition**
-Import katalogs into katalogs:
+Orkestra queries the Kubernetes API at startup to discover metadata for built‑in resources. You only need to specify `kind`.
 
 ```yaml
-imports:
-  - github.com/org/platform-katalog
-  - github.com/org/networking-katalog
+- name: pod-governance
+  apiTypes:
+    kind: Pod
+
+# Orkestra discovers:
+#   group: "" (core)
+#   version: v1
+#   plural: pods
+#   namespaced: true
 ```
 
-## **5. Katalog Validation Webhooks**
-Validate katalogs before runtime with schema checking and policy enforcement.
-
-## **6. Katalog‑Driven Code Generation**
-Optional codegen for teams that want static clients (escape hatch).
-
-## **7. Katalog‑Aware UI**
-A dashboard that visualizes:
-
-- dependency graphs
-- controller health
-- worker pools
-- reconcile metrics
-- live CR counts
+This works for any built‑in resource: Pod, Deployment, Secret, ConfigMap, ServiceAccount, Job, CronJob, and more.
 
 ---
 
-# Summary
+## What Makes a Katalog
 
-The **Katalog** is the foundation of Orkestra's runtime.  
-It is:
+| Element | Purpose |
+|---------|---------|
+| `apiVersion` | Must be `orkestra.konduktor.io/v1Alpha` |
+| `kind` | Must be `Katalog` |
+| `metadata.name` | Unique identifier |
+| `spec.finalizers` | Katalog‑level finalizers (inherited) |
+| `spec.crds[]` | List of CRD entries |
 
-- **declarative** – define, don't code
-- **composable** – mix and match CRDs
-- **dependency‑aware** – topological ordering
-- **mode‑agnostic** – Go or YAML
-- **introspectable** – CLI and API
-- **extensible** – hooks, custom reconcilers, remote types
+### CRD Entry Fields
 
-It transforms operator engineering from boilerplate into orchestration.
+| Field | Default | Description |
+|-------|---------|-------------|
+| `name` | required | Unique identifier, lowercase kebab‑case |
+| `enabled` | `true` | Include in runtime |
+| `namespaced` | `true` | Scope: true = namespace, false = cluster |
+| `workers` | `0` | Worker count (0 = use default) |
+| `resync` | `0` | Resync interval (0 = use default) |
+| `dependsOn` | `[]` | CRDs that must start first |
+| `critical` | `false` | If true, CRD degradation degrades whole operator |
+| `endpoints.enabled` | `true` | Disable all endpoints for this CRD |
+| `endpoints.health` | `true` | Disable `/health` endpoint |
+| `endpoints.info` | `true` | Disable `/info` endpoint |
+| `reconciler.default` | `true` | Use GenericReconciler (zero code) |
+| `reconciler.finalizers` | `[]` | Per‑CRD finalizers |
+| `reconciler.onCreate` | `{}` | Resources to create |
+| `reconciler.onReconcile` | `{}` | Drift correction resources |
+| `reconciler.onDelete` | `{}` | Cleanup resources |
+| `queue.maxQueueDepth` | `0` | Max queue depth (0 = use default) |
+| `queue.degradeThreshold` | `0` | Failures before degraded (0 = use default) |
 
-Use it to define your CRDs.  
-Use it to wire your controllers.  
-Use it to build multi‑CRD systems with elegance and clarity.
+---
+
+## CLI Integration
+
+```bash
+# Validate a Katalog
+ork validate --katalog katalog.yaml
+
+# Preview the merged result
+ork template --katalog katalog.yaml --graph
+ork template --katalog katalog.yaml --json
+
+# Run the operator
+ork run --katalog katalog.yaml
+
+# Check status
+ork status
+```
+
+---
+
+## Summary
+
+The Katalog transforms operator engineering from boilerplate into orchestration.
+
+- **Declarative** – define, don't code
+- **Built‑in aware** – Kubernetes knows the rest
+- **Dependency‑aware** – topological ordering
+- **Observable** – health endpoints, metrics, status
+- **Extensible** – hooks, custom reconcilers
+
+Use it to define your CRDs. Use it to wire your controllers. Use it to build multi‑CRD systems with elegance and clarity.
+
+---
+
+> For a complete list of all configurable options, see the **[Katalog and Komposer Reference](./katalog-komposer-reference.md)**.  
+> For real‑world examples, see the **[Use Cases](./use-cases.md)** documentation.

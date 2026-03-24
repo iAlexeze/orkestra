@@ -112,22 +112,6 @@ func BuildCRDInfoHandler(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CRD Validation Hanlder
-func BuildCRDValidationHandler(
-	crd orktypes.CRDEntry,
-	kfg *konfig.Konfig,
-	h *CRDHealth) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
-			"name":        crd.Name,
-			"description": crd.Description,
-			"mode":        crd.Mode,
-		},
-		)
-	}
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Katalog Handler
 // Returns a full list of CRDs in the running operator, including:
 //   - metadata (GVK, mode, namespace, dependencies)

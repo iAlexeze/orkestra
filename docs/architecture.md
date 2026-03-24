@@ -25,7 +25,7 @@ Typed CRDs have a compiled Go type at `apiTypes.location` — the generator
 registers the type and scheme at build time. Both styles run through the
 same reconciler, the same health API, the same metrics.
 
-**Three reconciler paths, one framework.** 
+**Three reconciler paths, one runtime.** 
 - Every CRD starts with `reconciler.default: true` — GenericReconciler handles the full lifecycle.
 
 ```yaml
@@ -283,8 +283,8 @@ Every Orkestra operator exposes these endpoints automatically:
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /healthz` | Orkestra Liveness — 200 always when running |
-| `GET /readyz` | Orkestra Readiness — 200 after all komponents ready, 503 before |
+| `GET /health` | Orkestra Liveness — 200 always when running |
+| `GET /ready` | Orkestra Readiness — 200 after all komponents ready, 503 before |
 | `GET /metrics` | Prometheus metrics |
 | `GET /katalog` | All CRDs — health, config, dependency graph |
 | `GET /katalog/{crd}` | Single CRD — config, reconcile stats |
