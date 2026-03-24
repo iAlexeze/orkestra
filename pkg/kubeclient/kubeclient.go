@@ -27,6 +27,9 @@ type Kubeclient struct {
 	Config     Config
 	Info       *CRDInfo
 	started    atomic.Bool
+
+	// Testing
+	FakeClientset kubernetes.Interface
 }
 
 // Config defines kube configuration

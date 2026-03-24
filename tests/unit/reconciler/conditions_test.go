@@ -1,9 +1,10 @@
-// pkg/reconciler/conditions_test.go
-package reconciler
+// pkg/reconciler_test/conditions_test.go
+package reconciler_test
 
 import (
 	"testing"
 
+	. "github.com/ialexeze/orkestra/pkg/reconciler"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )

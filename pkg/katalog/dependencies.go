@@ -126,3 +126,15 @@ func (g *DependencyGraph) GetDependents(name string) []string {
 func (g *DependencyGraph) GetDependencies(name string) []string {
 	return g.edges[name]
 }
+
+func (g *DependencyGraph) Validate() error {
+	for name, node := range g.nodes {
+		if node.InDegree < 0 {
+			return fmt.Errorf("negative in-degree for %s", name)
+		}
+		if node.OutDegree < 0 {
+			return fmt.Errorf("negative out-degree for %s", name)
+		}
+	}
+	return nil
+}

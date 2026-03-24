@@ -9,14 +9,24 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **Global endpoint toggle** — new `endpoints.enabled` field allows disabling all CRD‑specific HTTP endpoints (`/health`, `/info`, `/validation`) with a single switch. When set to `false`, no routes are registered and the CRD is omitted from the Katalog endpoint list.
+- **Testing framework** — complete testing infrastructure for unit, integration, and end‑to‑end tests.
+  - `tests/` directory with structure for all test types
+  - Test helpers (`fake_kubeclient.go`, `testutils.go`) for integration tests
+  - Fixtures (`katalogs/`, `crds/`) for reusable test data
+  - Makefile targets: `test-unit`, `test-integration`, `test-e2e`, `test-coverage`, `test-all`
+  - GitHub Actions workflow running unit and integration tests on every push and pull request
+  - Comprehensive testing strategy documentation in `tests/README.md`
 
-- **Per‑CRD endpoint toggles** — `endpoints.health`, `endpoints.info`, and `endpoints.validation` can now be enabled or disabled declaratively in the Katalog. Omitted fields use operator defaults. Disabled endpoints are not registered, resulting in a cleaner and more intentional API surface.
+- **Testing strategy** — documented approach for achieving confidence before v1 release:
+  - Unit tests for core logic (CRDHealth, dependency graph, merge rules)
+  - Integration tests with fake Kubernetes clients (reconciler, activation, komposer)
+  - E2E tests with kind (website example, activation, dependencies)
+  - Priority‑based test plan (P0 → P1 → P2 → P3)
 
 ### Changed
 
-- **Endpoint registration logic** — CRDs with `endpoints.enabled: false` now skip all endpoint registration before the health server starts. Individual endpoint flags (`health`, `info`, `validation`) continue to work when `enabled` is omitted or true.
-
-- **Katalog route registration** — health, info, and validation routes are now conditionally registered based on the CRD’s endpoint configuration. CRDs with disabled endpoints no longer expose those HTTP routes.
+- **Testing infrastructure** — no functional changes; this is additive only.
 
 ### Security
+
+- No security changes in this release.
