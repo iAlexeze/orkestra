@@ -38,6 +38,9 @@ type InformerEntry struct {
 	Resync   time.Duration
 	Missing  bool
 	GVK      *schema.GroupVersionKind
+	// Store the context and cancel function
+	Ctx    context.Context    // stored context
+	Cancel context.CancelFunc // stored cancel function
 }
 
 // All mappings key: gvk

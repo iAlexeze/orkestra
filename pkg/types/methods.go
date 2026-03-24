@@ -74,28 +74,47 @@ func (c *CRDEntry) GVR() schema.GroupVersionResource {
 }
 
 // NewObject returns a new instance of the runtime object for this CRD.
-// In dynamic mode, an unstructured.Unstructured is returned.
-// In typed mode, the compiled Go type is returned if available.
+// In dynamic mode, returns *unstructured.Unstructured with GVK set.
+// In typed mode, returns a deep copy of the typed object if available.
 func (c *CRDEntry) NewObject() runtime.Object {
 	if c.IsDynamic() {
-		return &unstructured.Unstructured{}
+		u := &unstructured.Unstructured{}
+		u.SetGroupVersionKind(c.GVK())
+		return u
 	}
-	if c.TypedModeObject == nil {
-		return c.DynamicModeObject()
+	if c.TypedModeObject != nil {
+		return c.TypedModeObject.DeepCopyObject()
 	}
-	return c.TypedModeObject
+	return &unstructured.Unstructured{}
 }
 
 // NewList returns a new list object for this CRD. Mirrors NewObject but returns
 // the list variant (typed or unstructured).
 func (c *CRDEntry) NewList() runtime.Object {
 	if c.IsDynamic() {
-		return &unstructured.UnstructuredList{}
+		u := &unstructured.UnstructuredList{}
+		u.SetGroupVersionKind(c.GVK())
+		return u
 	}
 	if c.ListTypedModeObject == nil {
 		return c.ListDynamicModeObject()
 	}
 	return c.ListTypedModeObject
+}
+
+// NewObjectForListerWatcher returns an object suitable for creating a ListerWatcher.
+// This is the object that will be used to identify the client type.
+// Useful in case of reactivating a missing CRD
+func (c *CRDEntry) NewObjectForListerWatcher() runtime.Object {
+	if c.IsDynamic() {
+		u := &unstructured.Unstructured{}
+		u.SetGroupVersionKind(c.GVK())
+		return u
+	}
+	if c.TypedModeObject != nil {
+		return c.TypedModeObject
+	}
+	return &unstructured.Unstructured{}
 }
 
 // IsEnabled reports whether this CRD is enabled. Defaults to true when omitted.

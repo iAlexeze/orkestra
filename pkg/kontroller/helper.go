@@ -25,7 +25,7 @@ func (k *Kontroller) runWorkerForGVK(ctx context.Context, gvk string, workerID s
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Debug().Msgf("worker %s for %s stopping", workerID, gvk)
+			logger.Debug().Msgf("worker %s for %s stopped (context cancelled)", workerID, gvk)
 			return
 		default:
 			if !k.processNextItemForGVK(ctx, gvk) {

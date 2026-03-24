@@ -55,14 +55,10 @@ type CRDHealth struct {
 	workersActive    atomic.Int64 // store number of active workers
 	queueReg         *queue.QueueRegistry
 
-	// activeWarnings tracks current warn-mode violations per CR.
-	// Protected by mu — warnings are written from reconcile goroutines
-	// and read from the HTTP handler goroutine.
-	mu sync.RWMutex
-	//	activeWarnings map[string][]reconciler.Violation // key: "namespace/name"
-
-	// Warning counters — kept as atomics alongside the existing health counters
-	totalWarned int64 // total reconciles that had at least one warning
+	// track CRD readines
+	lastCRDCheck time.Time
+	crdExists    atomic.Bool
+	crdCheckMu   sync.RWMutex
 }
 
 // NewCRDHealth initializes a CRDHealth tracker for a given CRD name.
@@ -173,6 +169,11 @@ func (h *CRDHealth) SetStarted() {
 	h.started.Store(true)
 }
 
+// SetNotStarted marks the reconciler as not started.
+func (h *CRDHealth) SetNotStarted() {
+	h.started.Store(false)
+}
+
 // Name returns the CRD name associated with this health tracker.
 func (h *CRDHealth) Name() string {
 	return h.name
@@ -229,4 +230,24 @@ func (h *CRDHealth) QueueDepth(gvk string) int {
 		return 0
 	}
 	return depth
+}
+
+// SetCRDExists records that the CRD exists in the cluster.
+func (h *CRDHealth) SetCRDExists(exists bool) {
+	h.crdExists.Store(exists)
+	h.crdCheckMu.Lock()
+	defer h.crdCheckMu.Unlock()
+	h.lastCRDCheck = time.Now()
+}
+
+// CRDExists returns whether the CRD exists in the cluster.
+func (h *CRDHealth) CRDExists() bool {
+	return h.crdExists.Load()
+}
+
+// LastCRDCheck returns when the CRD existence was last verified.
+func (h *CRDHealth) LastCRDCheck() time.Time {
+	h.crdCheckMu.RLock()
+	defer h.crdCheckMu.RUnlock()
+	return h.lastCRDCheck
 }

@@ -1,4 +1,172 @@
 // pkg/kontroller/dependency_kontroller.go
+/*
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    CRD Lifecycle Management Flow                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+The retryMissingCRDs goroutine runs forever, handling both activation and deactivation
+of CRDs. This is the self‑healing core of Orkestra.
+
+─────────────────────────────────────────────────────────────────────────────────
+SCENARIO 1: CRD MISSING AT STARTUP
+─────────────────────────────────────────────────────────────────────────────────
+
+Startup:
+  - CRD A is missing from the cluster
+  - RunOrDie loop processes A → readyCh["A"] remains open
+  - RunOrDie continues (does NOT block) because missing CRDs are skipped
+  - Retry loop starts in background
+
+Retry loop (every PostStartRetryInterval):
+  - Phase 1: checks missing map
+    - finds A is missing
+    - calls utils.WaitForCRD() → false
+    - remains in missing map
+  - Phase 2: checks running CRDs (none)
+  - Phase 3: allReady? false
+
+Later:
+  - User applies CRD A to cluster
+  - Retry loop runs again
+  - Phase 1: utils.WaitForCRD() → true
+  - activateCRD(A) is called:
+    - starts informer (entry.Informer.Run)
+    - starts workers
+    - closes readyCh["A"] ← UNBLOCKS dependents in RunOrDie
+  - Phase 3: allCRDsPresent() may still be false if other CRDs missing
+
+Result: CRD A becomes operational without restarting Orkestra.
+
+─────────────────────────────────────────────────────────────────────────────────
+SCENARIO 2: CRD DELETED AFTER STARTUP
+─────────────────────────────────────────────────────────────────────────────────
+
+Running state:
+  - CRD A is active (workers running, informer watching)
+  - Retry loop runs periodically
+
+User deletes CRD A:
+  - Informer reflector starts logging "failed to list... the server could not find..."
+  - Retry loop runs:
+    - Phase 1: missing map (A not there)
+    - Phase 2: checks running CRDs
+      - calls crdExists(A) → false
+      - deactivateCRD(A) is called:
+        - stopCRDWorkers(A) → stops workers, drains queue
+        - removes from started map
+        - marks as missing in informerFactory
+        - health.SetStarted(false)
+        - DOES NOT close readyCh[A]
+  - Phase 3: allReady becomes false
+
+Result: CRD A becomes degraded, workers stop, but dependents continue (degraded).
+No more reflector errors.
+
+─────────────────────────────────────────────────────────────────────────────────
+SCENARIO 3: CRD REAPPEARS AFTER BEING DELETED
+─────────────────────────────────────────────────────────────────────────────────
+
+After deactivation:
+  - CRD A is in missing map
+  - Retry loop runs:
+    - Phase 1: missing map contains A
+    - utils.WaitForCRD() → true
+    - activateCRD(A) is called (same as scenario 1)
+  - Workers restart, informer starts
+  - readyCh[A] is closed again (it was never closed during deactivation,
+    but we create a new channel? No — readyCh persists. Actually we don't close it
+    during deactivation, so it remains open. We need to be careful: during activation,
+    we should close it regardless of whether it was closed before.)
+
+    In activateCRD, we already handle this with select/default:
+        select {
+        case <-ch:
+            // already closed
+        default:
+            close(ch)
+        }
+
+Result: CRD A becomes operational again without restarting Orkestra.
+
+─────────────────────────────────────────────────────────────────────────────────
+SCENARIO 4: DEPENDENCY CHAIN WITH DELAYED ACTIVATION
+─────────────────────────────────────────────────────────────────────────────────
+
+StartupOrder: [A, B, C] where B depends on A, C depends on B
+
+Initial state:
+  - A: missing
+  - B: present
+  - C: present
+
+RunOrDie loop:
+  - A → missing → continue (readyCh["A"] open)
+  - B → waits on readyCh["A"] → BLOCKS here (main goroutine blocked)
+  - C → never reached (blocked at B)
+
+Retry loop:
+  - Phase 1: missing map contains A
+  - utils.WaitForCRD(A) → true
+  - activateCRD(A):
+    - starts workers
+    - closes readyCh["A"] ← UNBLOCKS RunOrDie loop
+
+RunOrDie loop continues:
+  - B → readyCh["A"] closed → starts workers → closes readyCh["B"]
+  - C → readyCh["B"] closed → starts workers → closes readyCh["C"]
+
+Result: Full dependency chain resolves dynamically as CRDs appear.
+
+─────────────────────────────────────────────────────────────────────────────────
+SCENARIO 5: DEPENDENCY CHAIN WITH DELETION IN THE MIDDLE
+─────────────────────────────────────────────────────────────────────────────────
+
+Running state:
+  - A, B, C all active and healthy
+  - D depends on C
+
+User deletes CRD C:
+  - Retry loop detects C missing
+  - deactivateCRD(C):
+    - stops workers
+    - marks missing
+    - DOES NOT close readyCh[C] (it's already closed from startup)
+
+Result:
+  - C is degraded, workers stopped
+  - D continues running (degraded) because its dependency C is not ready
+  - Health endpoints show C as degraded, D as degraded
+
+Later, C is recreated:
+  - activateCRD(C):
+    - starts workers
+    - attempts to close readyCh[C] (already closed, safe)
+  - D's health becomes healthy again automatically
+
+─────────────────────────────────────────────────────────────────────────────────
+KEY DESIGN DECISIONS
+─────────────────────────────────────────────────────────────────────────────────
+
+1. readyCh is NEVER closed during deactivation.
+   Reason: Dependents should continue running (degraded) rather than block.
+   If we closed the channel, dependents would think the dependency is ready
+   when it's actually missing.
+
+2. retry loop runs FOREVER, not just at startup.
+   Reason: CRDs can be deleted at any time. We need continuous monitoring.
+
+3. activateCRD closes readyCh safely using select/default.
+   Reason: readyCh may already be closed from initial startup or previous activation.
+
+4. deactivateCRD does NOT remove from readyCh map.
+   Reason: The channel is still needed for future activations.
+   The channel is never closed, so it remains in the map.
+
+5. health.SetStarted(false) on deactivation.
+   Reason: Allows health endpoint to show the CRD as not started.
+
+╚═══════════════════════════════════════════════════════════════════════════════╝
+*/
 package kontroller
 
 import (
@@ -28,7 +196,7 @@ type DependencyKontroller struct {
 	startedAt      time.Time
 	queueReg       *queue.QueueRegistry
 
-	// readyCh[name] is closed when a CRD has fully started its workers.
+	// readyCh[gvk] is closed when a CRD has fully started its workers.
 	readyCh map[string]chan struct{}
 }
 
@@ -65,11 +233,6 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 
 	startupOrder := k.depGraph.StartupOrder()
 
-	// Create ready channels for all CRDs upfront
-	for _, name := range startupOrder {
-		k.readyCh[name] = make(chan struct{})
-	}
-
 	anyOnline := false
 
 	// Process CRDs in dependency order
@@ -78,7 +241,16 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 		crd := node.CRD
 		gvk := crd.GroupVersionKind.String()
 
-		// Wait for hard dependencies — blocks until dep is online or ctx cancelled
+		// Create ready channels for all CRDs upfront
+		k.readyCh[gvk] = make(chan struct{})
+
+		// Skip missing CRDs
+		if k.informerFactory.IsMissing(gvk) {
+			logger.Debug().Msgf("%s is missing — skipping", name)
+			continue
+		}
+
+		// Wait for dependencies — blocks until dep is online or ctx cancelled
 		for _, dep := range crd.DependsOn {
 			select {
 			case <-k.readyCh[dep]:
@@ -110,10 +282,12 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 		metrics.WorkersActive.WithLabelValues(gvk).Set(float64(workers))
 
 		// Signal dependents — this CRD is ready
-		close(k.readyCh[name])
-		logger.Info().Msgf("%s workers started and ready", name)
+		if !k.informerFactory.IsMissing(gvk) {
+			close(k.readyCh[gvk])
+			logger.Info().Msgf("%s workers started and ready", name)
 
-		anyOnline = true
+			anyOnline = true
+		}
 	}
 
 	// ── Start retry loop ONCE after the startup sequence ─────────────────────
@@ -141,7 +315,8 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 	shutdownOrder := k.depGraph.ShutdownOrder()
 	for _, name := range shutdownOrder {
 		logger.Info().Msgf("shutting down %s", name)
-		k.stopCRDWorkers(name)
+		gvk := k.depGraph.GetNode(name).CRD.GroupVersionKind.String()
+		k.stopCRDWorkers(gvk)
 	}
 
 	logger.Info().Msgf("%s drained and stopped", k.Name())
@@ -189,23 +364,31 @@ func (k *DependencyKontroller) startCRDWorkers(ctx context.Context, gvk string, 
 }
 
 // stopCRDWorkers cancels the CRD context and waits for all workers to drain.
-func (k *DependencyKontroller) stopCRDWorkers(name string) {
-	gvk := k.depGraph.GetNode(name).CRD.GroupVersionKind.String()
-
+func (k *DependencyKontroller) stopCRDWorkers(gvk string) {
 	k.mu.RLock()
 	cancel, okCancel := k.cancelFuncs[gvk]
 	wg, okWG := k.wgs[gvk]
 	k.mu.RUnlock()
 
-	// cancel if seen
+	logger.Info().Msgf("stopCRDWorkers: looking for %s", gvk)
+	logger.Info().Msgf("  okCancel=%v, okWG=%v", okCancel, okWG)
+
 	if okCancel {
+		logger.Info().Msgf("cancelling workers for %s", gvk)
 		cancel()
+	} else {
+		logger.Warn().Msgf("no cancel function found for %s", gvk)
 	}
 
-	// wait if seen
 	if okWG {
+		logger.Info().Msgf("waiting for workers for %s to drain", gvk)
 		wg.Wait()
+		logger.Info().Msgf("workers for %s drained", gvk)
+	} else {
+		logger.Warn().Msgf("no wait group found for %s", gvk)
 	}
+
+	logger.Info().Msgf("workers for %s stopped", gvk)
 }
 
 // Name returns the name of the dependency kontroller
