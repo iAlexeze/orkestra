@@ -88,8 +88,6 @@ It contains:
 - reconcile logic  
 - drift correction  
 - defaults  
-- validation  
-- mutation  
 - resource templates  
 - best practices baked in  
 
@@ -176,7 +174,6 @@ Teams can override:
 - schedules  
 - resource limits  
 - deletion behavior  
-- validation rules  
 
 …without forking the operator.
 

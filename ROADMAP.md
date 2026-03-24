@@ -199,7 +199,8 @@ Cross-cluster operations belong to a different architectural layer.
 
 **Replacing controller-runtime.** Orkestra is not a replacement for
 controller-runtime. It is a higher-level abstraction that makes the common
-case trivial and defers to Go code when needed.
+case trivial and today, defers to Go code when needed. The goal os to make even the most complex use cases declarative.
+
 
 ---
 

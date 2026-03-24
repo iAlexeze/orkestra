@@ -33,7 +33,6 @@ import (
 //
 //   - The activeWarnings: tracks current warn-mode violations per CR.
 //     It answers the question: "which CRs are currently violating advisory rules?"
-//     This powers the /katalog/{crd}/validation active warnings section.
 //
 //     Map key: "namespace/name" — unique per CR
 //     Map value: slice of ActiveWarning, one per violated warn rule

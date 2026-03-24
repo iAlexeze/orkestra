@@ -10,7 +10,6 @@
 //   - informer resource counts
 //   - worker utilization
 //   - CRD activation behavior
-//   - mutation/defaulting activity
 //
 // These metrics are unique to Orkestra because they reflect the *declarative
 // operator model* — every CRD is treated as a first‑class unit of work, and
@@ -110,66 +109,3 @@ var CRDActivationTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 	Name: "controller_crd_activation_total",
 	Help: "Total number of CRD activations after startup",
 }, []string{"crd", "result"})
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MutationTotal
-// Counts reconciles where at least one mutation/defaulting rule was applied.
-// Helps understand how often CRs rely on defaults or auto‑correction.
-// ─────────────────────────────────────────────────────────────────────────────
-var MutationTotal = promauto.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "controller_mutation_total",
-		Help: "Total reconciles where at least one mutation rule was applied.",
-	},
-	[]string{"crd"},
-)
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MutationAppliedDetail
-// Counts individual field‑level mutations.
-// Labeled by:
-//   - crd
-//   - field: the field mutated
-//   - type: mutation type (default, override, normalize, etc.)
-//
-// Helps identify:
-//   - which fields are most often missing
-//   - which defaults are most active
-//   - where schema drift or user misconfiguration occurs
-//
-// ─────────────────────────────────────────────────────────────────────────────
-var MutationAppliedDetail = promauto.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "controller_mutation_applied_total",
-		Help: "Mutations applied per field, labeled by CRD, field, and mutation type.",
-	},
-	[]string{"crd", "field", "type"},
-)
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CleanupTotal
-// controller_validation_cleanup_total{crd, field, rule, dry_run}
-//
-//	Counts every cleanup action taken (or would-have-been-taken in dry-run mode).
-//	The dry_run label lets you compare live cleanups vs dry-run observations:
-//
-//	  # How many live deletions happened?
-//	  sum(controller_validation_cleanup_total{dry_run="false"})
-//
-//	  # How many would dry-run have caught?
-//	  sum(controller_validation_cleanup_total{dry_run="true"})
-//
-//	When rolling out a cleanup rule:
-//	1. Deploy with dryRun: true — observe the metric for a reconcile period
-//	2. If the count stabilises (no new violations), enable live deletion
-//	3. If the count keeps rising, the rule may be too broad — revise it first
-//
-// ─────────────────────────────────────────────────────────────────────────────
-var CleanupTotal = promauto.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "controller_validation_cleanup_total",
-		Help: "Resources cleaned up (deleted) by validation cleanup rules. " +
-			"dry_run=true means the rule would have deleted but did not.",
-	},
-	[]string{"crd", "field", "rule", "dry_run"},
-)

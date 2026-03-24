@@ -47,14 +47,11 @@ A **Katalog** declares CRDs and their behavior. It is the source of truth for wh
 | `reconciler.onDelete` | object | `{}` | No | Templates for cleanup |
 | `reconciler.hooks` | object | — | No | Go hook function declaration |
 | `reconciler.constructor` | object | — | No | Custom reconciler constructor |
-| `reconciler.validation` | object | — | No | Validation rules (planned) |
-| `reconciler.mutation` | object | — | No | Mutation rules (planned) |
 | `queue.maxQueueDepth` | int | `0` | No | Max queue depth (0 = use default) |
 | `queue.degradeThreshold` | int | `0` | No | Failures before degraded (0 = use default) |
 | `endpoints.enabled` | bool | `true` | No | Disable all endpoints for this CRD |
 | `endpoints.health` | bool | `true` | No | Disable `/health` endpoint |
 | `endpoints.info` | bool | `true` | No | Disable `/info` endpoint |
-| `endpoints.validation` | bool | `true` | No | Disable `/validation` endpoint |
 | `labels` | array | `[]` | No | Static labels for all created resources |
 
 \* For built-in Kubernetes resources (Pod, Deployment, Secret, etc.), `group`, `version`, and `plural` are auto‑discovered. Omit them and Orkestra enriches from the API server.

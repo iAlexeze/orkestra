@@ -98,7 +98,7 @@ flowchart LR
 | **Zero code** | No Go, no Python, no controller boilerplate. Just YAML. |
 | **Built‑in resources** | Pods, Deployments, Secrets — Kubernetes knows the rest. |
 | **Dependencies** | Declare `dependsOn` — Orkestra starts CRDs in order and shuts down in reverse. |
-| **Per‑CRD separation** | Each CRD gets its own informers, workqueue, and worker pool. |
+| **Per‑CRD separations** | Each CRD gets its own informers, workqueue and worker pool. |
 | **Observability** | Health endpoints, Prometheus metrics, `ork status`. |
 | **Composition** | Komposer merges Katalogs from files, Helm, URLs. |
 | **Registry** | Reusable operator patterns — the standard Orkestra library for Kubernetes. |
@@ -170,10 +170,11 @@ For detailed installation options, GPG verification, and production deployment, 
 
 Orkestra is built to be predictable and resilient:
 
-- **CRD‑level isolation** — A panic in one CRD's reconciler does not crash others. `safeReconcile` recovers and logs the error.
-- **Idempotent registry operations** — Resources are created or updated safely. Running the same reconcile twice does not create duplicates.
-- **Explicit drift correction** — Templates with `onCreate.reconcile: true` or a separate `onReconcile` block run on every reconcile, correcting manual changes to your resources.
-- **Non‑blocking runtime** — The controller starts even if some CRDs are missing. Workers start when CRDs appear.
+- CRD‑level isolation  
+- Panic recovery (`safeReconcile`)  
+- Idempotent registry operations  
+- Explicit drift correction  
+- Non‑blocking runtime  
 
 Full details: [Trust & Failure Model](./docs/trust-and-failure-model.md)
 

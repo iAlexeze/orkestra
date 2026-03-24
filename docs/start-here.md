@@ -172,11 +172,10 @@ When you applied your CR:
 2. Orkestra queued the reconcile  
 3. The CR was loaded from the informer cache  
 4. Finalizers were added  
-5. Mutation and validation ran  
-6. Templates were resolved  
-7. Deployments and Services were created  
-8. Drift correction was enabled  
-9. Metrics and events were emitted  
+5. Templates were resolved  
+6. Deployments and Services were created  
+7. Drift correction was enabled  
+8. Metrics and events were emitted  
 
 All from a single YAML file.
 

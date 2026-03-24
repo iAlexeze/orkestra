@@ -294,14 +294,6 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			)
 		}
 
-		// GET /katalog/{crd}/validation - CRD validation stats
-		if crd.IsValidationEnabled() {
-			hs.Register(
-				"/katalog/"+crdName+"/validation",
-				kontroller.BuildCRDValidationHandler(crd, kfg, crdHealth),
-			)
-		}
-
 		logger.Debug().
 			Str("health", "/katalog/"+crdName+"/health").
 			Str("info", "/katalog/"+crdName).

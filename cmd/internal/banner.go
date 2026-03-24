@@ -46,9 +46,6 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 		if crd.IsHealthEnabled() {
 			fmt.Printf("  - %s%s%s:  %s/katalog/%s/health%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
 		}
-		if crd.IsValidationEnabled() {
-			fmt.Printf("  - %s%s%s:  %s/katalog/%s/validation%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
-		}
 	}
 	fmt.Println("====================================================")
 

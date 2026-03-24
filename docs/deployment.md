@@ -152,14 +152,12 @@ katalog:
     spec:
       crds:
         - name: website
-          enabled: true
           apiTypes:
             group: demo.orkestra.io
             version: v1alpha1
             kind: Website
             plural: websites
           reconciler:
-            default: true
             onCreate:
               deployments:
                 - image: "{{ .spec.image }}"

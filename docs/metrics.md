@@ -8,7 +8,6 @@ These metrics give platform engineers deep visibility into:
 - reconcile performance
 - queue pressure
 - CRD activation behavior
-- mutation/defaulting activity
 - informer resource counts
 - worker utilization
 
@@ -102,27 +101,6 @@ Use this to:
 
 ---
 
-### 4. Mutation / Defaulting Metrics
-
-#### `controller_mutation_total{crd}`
-Counts reconciles where at least one mutation/default was applied.
-
-Use this to:
-- understand how often CRs rely on defaults
-- detect schema drift
-
----
-
-#### `controller_mutation_applied_total{crd, field, type}`
-Counts individual field‑level mutations.
-
-Use this to:
-- identify fields most often missing or overridden
-- detect misconfiguration patterns
-- validate defaulting logic
-
----
-
 ## Why These Metrics Matter
 
 Orkestra’s metrics are designed to answer the questions platform teams actually ask:
@@ -146,7 +124,6 @@ Orkestra metrics provide:
 - high‑signal operational insight  
 - per‑CRD granularity  
 - reconcile‑centric observability  
-- mutation/defaulting visibility  
 - startup and activation diagnostics  
 
 These metrics make declarative operators not just easier to build — but easier to operate, debug, and scale.

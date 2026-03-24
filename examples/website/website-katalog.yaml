@@ -18,26 +18,15 @@ spec:
 #   enabled: true|false      # if false, endpoints are disabled   (default: true)
 #   health: true|false       # /katalog/<crd>/health              (default: true)
 #   info: true|false         # /katalog/<crd>                     (default: true)
-#   validation: true|false   # /katalog/<crd>/validation          (default: true)
 #
 #   Example:
 #     endpoints:
 #       info: false          # hide CRD info endpoint
-#       validation: false    # hide validation endpoint
   crds:
     - name: pod-governance
       enabled: false
       apiTypes:
         kind: Pod          # built-in — Kubernetes knows the rest
-      validation:
-        rules:
-          - field: metadata.ownerReferences
-            operator: exists
-            message: "orphaned pods are not permitted — all pods must have an owner"
-            action: cleanup
-            gracePeriodSeconds: 0    # immediate
-            dryRun: false            # when you are confident. Start with true.
-
       restrictedNamespaces:
         - kube-system              # never clean up system pods
         - cert-manager
@@ -54,17 +43,6 @@ spec:
         kind: Secret
       endpoints:
         info: false
-        validation: false
-
-      validation:
-        rules:
-          - field: metadata.ownerReferences
-            operator: exists
-            message: "orphaned pods are not permitted — all pods must have an owner"
-            action: cleanup
-            gracePeriodSeconds: 0    # immediate
-            dryRun: false            # when you are confident. Start with true.
-
       restrictedNamespaces:
         - kube-system              # never clean up system pods
         - cert-manager
@@ -98,21 +76,6 @@ spec:
         # Orkestra uses *unstructured.Unstructured automatically
 
       reconciler:
-        validation:
-          rules:
-          - field: spec.replicas
-            max: 10
-            message: "replicas cannot exceed 10"
-          - field: spec.image
-            prefix: "myorg/"
-            message: "image must be from myorg registry"
-        mutation:
-          rules:
-            - field: spec.replicas
-              default: "1"
-            - field: spec.logLevel
-              default: "info"
-
         finalizers:
           - finalizer.demo.orkestra.io/website
 

@@ -10,7 +10,6 @@ import (
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // ── Label management ──────────────────────────────────────────────────────
@@ -117,18 +116,6 @@ func (r *GenericReconciler[T]) removeFinalizers(ctx context.Context, obj T) erro
 
 	return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR, newFinalizers)
 }
-
-// toUnstructuredUnsafe returns the unstructured form of obj for field access.
-// Returns nil if obj is not unstructured — callers handle nil safely.
-func toUnstructuredUnsafe(obj domain.Object) map[string]interface{} {
-	u, ok := obj.(*unstructured.Unstructured)
-	if !ok {
-		return nil
-	}
-	return u.Object
-}
-
-//
 
 // ── Finalizer helpers — exported for custom reconcilers ───────────────────────
 

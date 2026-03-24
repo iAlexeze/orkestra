@@ -68,7 +68,7 @@ Orkestra:
 
 ## A Complete Katalog
 
-A complete Katalog declares CRDs, reconciliation templates, validation rules, mutation defaults, and conditional creation.
+A complete Katalog declares CRDs, reconciliation templatess and conditional creation.
 
 ```yaml
 apiVersion: orkestra.konductor.io/v1Alpha
@@ -99,20 +99,6 @@ spec:
         kind: Secret
       endpoints:
         info: false
-        validation: false
-
-      # ── Validation rules ─────────────────────────────────────────────
-      # Validate CRs before reconciliation. Reject invalid ones.
-      validation:
-        - field: metadata.ownerReferences
-          operator: exists
-          message: "orphaned pods are not permitted — all pods must have an owner"
-          action: error          # reject the CR, show message
-        - field: metadata.namespace
-          operator: notin
-          values: [kube-system, cert-manager]
-          message: "secrets in protected namespaces are not managed"
-          action: warn           # log warning, continue reconciliation
 
     # ── Custom CRDs ─────────────────────────────────────────────────────
     - name: backend
@@ -140,29 +126,6 @@ spec:
         version: v1alpha1
         kind: Website
         plural: websites
-
-      # ── Validation ────────────────────────────────────────────────────
-      validation:
-        - field: spec.replicas
-          max: 10
-          message: "replicas cannot exceed 10"
-          action: error
-        - field: spec.image
-          prefix: "myorg/"
-          message: "image must be from myorg registry"
-          action: error
-
-      # ── Mutation ─────────────────────────────────────────────────────
-      # Apply defaults before validation and reconciliation.
-      mutation:
-        - field: spec.replicas
-          default: "1"
-          when: "{{ .spec.replicas }} == ''"
-        - field: spec.logLevel
-          default: "info"
-        - field: spec.serviceType
-          default: "ClusterIP"
-          when: "{{ .spec.exposePublicly }} != true"
 
       # ── Reconciliation templates ─────────────────────────────────────
       # onCreate runs on every reconcile. Idempotent — skipped if exists.
@@ -205,53 +168,6 @@ spec:
 
         # onDelete — owner references handle Deployment + Service cleanup.
         # No explicit onDelete needed for most cases.
-```
-
----
-
-## Validation and Mutation
-
-Orkestra validates and mutates CRs **before** reconciliation. This prevents invalid state from ever reaching your templates.
-You can flip this with:
-```yaml
-  crds:
-    - name: frontend
-      mutateFirst: true       # This tells orkestra to mutate the CRD first before validation
-```
-
-### Validation Actions
-
-| Action | Behavior |
-|--------|----------|
-| `warn` | Logs a warning, continues reconciliation |
-| `error` | Rejects the CR, returns error message, halts reconciliation until corrected |
-| `cleanup` | Removes offending resources from the cluster — use with extreme caution |
-
-### Validation Operators
-
-| Operator | Description |
-|----------|-------------|
-| `exists` | Field must be present |
-| `notexists` | Field must be absent |
-| `equals` | Field must equal a specific value |
-| `notequals` | Field must not equal a specific value |
-| `in` | Field must be in a list of values |
-| `notin` | Field must not be in a list of values |
-| `min` | Numeric field must be ≥ value |
-| `max` | Numeric field must be ≤ value |
-| `regex` | String must match regular expression |
-
-### Mutation
-
-Mutation applies defaults before validation. Use `when` to conditionally set values based on the CR spec.
-
-```yaml
-mutation:
-  - field: spec.replicas
-    default: "1"
-    when: "{{ .spec.replicas }} == ''"
-  - field: spec.logLevel
-    default: "info"
 ```
 
 ---
@@ -318,9 +234,6 @@ This works for any built‑in resource: Pod, Deployment, Secret, ConfigMap, Serv
 | `endpoints.enabled` | `true` | Disable all endpoints for this CRD |
 | `endpoints.health` | `true` | Disable `/health` endpoint |
 | `endpoints.info` | `true` | Disable `/info` endpoint |
-| `endpoints.validation` | `true` | Disable `/validation` endpoint |
-| `validation[]` | `[]` | Validation rules |
-| `mutation[]` | `[]` | Mutation rules |
 | `reconciler.default` | `true` | Use GenericReconciler (zero code) |
 | `reconciler.finalizers` | `[]` | Per‑CRD finalizers |
 | `reconciler.onCreate` | `{}` | Resources to create |
@@ -358,7 +271,7 @@ The Katalog transforms operator engineering from boilerplate into orchestration.
 - **Built‑in aware** – Kubernetes knows the rest
 - **Dependency‑aware** – topological ordering
 - **Observable** – health endpoints, metrics, status
-- **Extensible** – validation, mutation, hooks, custom reconcilers
+- **Extensible** – hooks, custom reconcilers
 
 Use it to define your CRDs. Use it to wire your controllers. Use it to build multi‑CRD systems with elegance and clarity.
 

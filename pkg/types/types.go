@@ -900,12 +900,6 @@ type ReconcilerConfig struct {
 	// Constructor — called once at startCRDWorkers time to build a custom reconciler.
 	// Must not be nil when Default: false — enforced by Katalog validation at startup.
 	Constructor NewReconcilerFunc `yaml:"-"`
-
-	// Validation defines validation rules per CRD
-	Validation *ValidationConfig `yaml:"validation,omitempty"`
-
-	// Mutation defines mutation rules per CRD
-	Mutation *MutationConfig `yaml:"mutation,omitempty"`
 }
 
 // HookDeclaration declares where a Go hook function lives.
@@ -1067,14 +1061,8 @@ type CRDEntry struct {
 	// Endpoints defines which operator HTTP endpoints are enabled for this CRD.
 	Endpoints EndpointsConfig `yaml:"endpoints"`
 
-	// Validation | Mutation | Restrictions
+	// Restricted Namespaces
 	RestrictedNamespaces RestrictedNamespaces `yaml:"restrictedNamespaces,omitempty"`
-
-	// Validation is a list of rules
-	Validation ValidationConfig `yaml:"validation,omitempty"`
-
-	// Mutation is a list of rules
-	Mutation MutationConfig `yaml:"mutation,omitempty"`
 }
 
 // EndpointsConfig controls which HTTP endpoints are exposed by the operator.
@@ -1091,7 +1079,4 @@ type EndpointsConfig struct {
 
 	// Info controls whether the /info endpoint is served.
 	Info *bool `yaml:"info"`
-
-	// Validation controls whether the /validate endpoint is served.
-	Validation *bool `yaml:"validation"`
 }

@@ -160,15 +160,6 @@ func (c *CRDEntry) IsInfoEnabled() bool {
 	return *c.Endpoints.Info
 }
 
-// IsValidationEnabled reports whether the /validate endpoint is enabled for this CRD.
-// Defaults to true when omitted.
-func (c *CRDEntry) IsValidationEnabled() bool {
-	if c.Endpoints.Validation == nil {
-		return true
-	}
-	return *c.Endpoints.Validation
-}
-
 // IsEnabledAllEndpoints reports whether the all endpoints are disabled for this CRD.
 // Defaults to false when omitted.
 func (c *CRDEntry) IsEnabledAllEndpoints() bool {
