@@ -90,11 +90,11 @@ func (f *Factory) Start(ctx context.Context) error {
 	logger.Info().Msgf("starting %d informers...", len(f.informers))
 
 	for t, entry := range f.informers {
-		if entry == nil || entry.Informer == nil {
+		if entry == nil || entry.Informer == nil || entry.Missing {
 			logger.Warn().Msgf("nil informer entry for type %s — skipping", t)
 			continue
 		}
-		// Each informer gets its own correct name — no shared opts field
+		// Each informer gets its own correct name
 		logger.Debug().
 			Str("name", entry.Name).
 			Str("type", t).
@@ -232,6 +232,14 @@ func (f *Factory) SetMissing(missing map[string]*InformerEntry) {
 	defer f.mu.Unlock()
 
 	f.missing = missing
+}
+
+// RemoveMissing CRDs in between runs
+func (f *Factory) RemoveMissing(gvkStr string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	delete(f.missing, gvkStr)
 }
 
 // IsMissing CRDs on startup

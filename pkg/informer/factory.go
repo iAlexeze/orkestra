@@ -50,48 +50,20 @@ func (f *Factory) getOrCreate(
 	ctx context.Context,
 	opts Options,
 ) cache.SharedIndexInformer {
-
 	key := gvk.String()
 
-	// 1. Return existing informer
+	// Return existing informer
 	if entry, ok := f.informers[key]; ok {
-		logger.Debug().Msgf("informer for %s already exists — reusing", opts.Name)
 		return entry.Informer
 	}
 
-	// 2. Check CRD existence BEFORE creating informer
-	logger.Info().Msgf("checking CRD (%s)...", gvk.String())
-	if !f.crdExists(gvk) {
-		logger.Warn().
-			Str("gvk", key).
-			Msg("CRD not installed — skipping informer creation until it appears")
-
-		entry := &InformerEntry{
-			Informer: nil,
-			Name:     opts.Name,
-			Resync:   opts.Resync,
-			Missing:  true,
-			GVK:      gvk,
-		}
-
-		f.informers[key] = entry
-		f.missing[key] = entry
-		return nil
-	}
-
-	// 3. Resolve resync
+	// ALWAYS create the informer (even for missing CRDs)
 	resync := opts.Resync
 	if resync == 0 {
 		resync = f.defaultResync
 	}
 
-	// 4. Create informer
-	inf := cache.NewSharedIndexInformer(
-		lw,
-		obj,
-		resync,
-		cache.Indexers{},
-	)
+	inf := cache.NewSharedIndexInformer(lw, obj, resync, cache.Indexers{})
 
 	inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    func(obj interface{}) { f.handleEvent(obj) },
@@ -99,23 +71,29 @@ func (f *Factory) getOrCreate(
 		DeleteFunc: func(obj interface{}) { f.handleEvent(obj) },
 	})
 
-	// 5. Register informer
+	// Check if CRD exists
+	crdExists := f.crdExists(gvk)
+
 	entry := &InformerEntry{
 		Informer: inf,
 		Name:     opts.Name,
 		Resync:   resync,
-		Missing:  false,
+		Missing:  !crdExists,
 		GVK:      gvk,
 	}
 
 	f.informers[key] = entry
-	delete(f.missing, key)
 
-	// 6. Start immediately if factory already running
-	if f.started.Load() {
-		go inf.Run(ctx.Done())
+	if crdExists {
+		delete(f.missing, key)
+		if f.started.Load() {
+			go inf.Run(ctx.Done())
+		}
+		logger.Info().Msgf("informer for %s created and started", opts.Name)
+	} else {
+		f.missing[key] = entry
+		logger.Warn().Msgf("CRD %s missing — informer created but NOT started", gvk.String())
 	}
 
-	logger.Info().Msgf("informer for %s created", opts.Name)
 	return inf
 }
