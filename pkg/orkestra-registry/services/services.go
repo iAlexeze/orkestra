@@ -139,7 +139,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Resolve builds a ResolvedServiceSpec from a ServiceTemplateSource.
-// Option B — all fields already resolved by template.Resolver before calling here.
+// All fields already resolved by template.Resolver before calling here.
 // This function assembles the spec and applies defaults.
 func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServiceSpec {
 	spec := ResolvedServiceSpec{

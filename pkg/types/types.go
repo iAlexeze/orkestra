@@ -152,12 +152,11 @@ type ResourceRequirements struct {
 	Limits   map[string]string `yaml:"limits"   validate:"omitempty"`
 }
 
-// ── Hook template source types — Option B flat format ────────────────────────
+// ── Hook template source types — flat format ────────────────────────
 //
 // All template source types use a single flat field layout.
-// There is no explicit fromCRD / fromKatalog split in the YAML.
 //
-// Instead, Orkestra uses Option B inference:
+// Instead, Orkestra uses:
 //   Any string field containing "{{" → treated as a Go text/template expression.
 //                                       Evaluated against the live CR at reconcile time.
 //   Any string field without "{{"    → treated as a static value. Used as-is.

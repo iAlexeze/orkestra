@@ -63,9 +63,7 @@ image: "{{ .spec.image }}"
 name: "{{ .metadata.name }}-api"
 ```
 
-This is Option B inference — the same field can hold either a static or a
-dynamic value without any additional YAML structure. Orkestra determines
-which it is at evaluation time.
+The same field can hold either a static or a dynamic value without any additional YAML structure. Orkestra determines which it is at evaluation time.
 
 ---
 
@@ -272,7 +270,7 @@ secrets:
     reconcile: true                  # re-sync if source changes
 ```
 
-The registry reads the source at reconcile time and copies its data. When
+Orkestra reads the source at reconcile time and copies its data. When
 the source Secret rotates, the copy is updated on the next reconcile loop.
 
 **`toNamespaces`** — create one copy in each listed namespace:
@@ -288,7 +286,7 @@ secrets:
       - monitoring
 ```
 
-The registry reads the source once and writes copies to every namespace.
+Orkestra reads the source once and writes copies to every namespace.
 Each copy gets an owner reference back to the CR.
 
 **ConfigMap merge** — combine a base ConfigMap with inline overrides:
@@ -306,6 +304,33 @@ configMaps:
 
 Source keys are copied first, then `data` keys override matching ones.
 The result is a merged ConfigMap in the target namespace.
+
+---
+
+## Conditional Provisioning
+Orkestra supports conditional provisioning with the `when` block.
+
+```yaml
+services:
+  - name: "{{ .metadata.name }}-svc"
+    type: "{{ .spec.serviceType }}"
+    port: "80"
+    targetPort: "{{ .spec.port }}"
+    namespace: "{{ .metadata.namespace }}"
+    reconcile: true
+    when:
+      - field: spec.exposePublicly
+        equals: "true"
+```
+
+The result is that a service is only created when `spec.exposePublicly` is
+`true`.
+
+All conditions must pass (AND semantics).  
+If any condition fails, the resource is skipped for this reconcile cycle.
+
+> For more details on conditions, see  
+> 👉 **[Conditional Provisioning](../docs/conditional-provisioning.md)**.
 
 ---
 
@@ -345,19 +370,28 @@ When `name` is omitted, each resource type has a default naming pattern:
 
 ---
 
-## System labels
+## System labels and annotations
 
 Orkestra always adds two labels to every resource it creates. These are
 not overridable:
 
-```
-managed-by: orkestra
-orkestra-owner: <cr-name>
+### Labels
+```bash
+orkestra.konductor.io/managed=true
 ```
 
-`managed-by` identifies the resource as Orkestra-managed. `orkestra-owner`
-is used as the pod selector by Services — it ensures a Service created for
+### Annotations
+```bash
+orkestra.konductor.io/managed-by: <cr-name>
+orkestra.konductor.io/managed-since: <timestamp>
+```
+
+`orkestra.konductor.io/managed` identifies the resource as Orkestra-managed.
+This is used as the pod selector by Services — it ensures a Service created for
 a CR only routes to pods owned by that CR.
+
+`orkestra.konductor.io/managed-by` identifies the particular CR that created
+the resource. Name comes from `katalog.metadata.name`. or `komposer.metadata.name`
 
 Additional labels declared in the template are merged alongside these:
 
@@ -367,7 +401,7 @@ labels:
     value: "{{ .metadata.name }}"
   - key: environment
     value: "{{ .spec.environment }}"
-  # managed-by and orkestra-owner are always added automatically
+  # managed, managed-by and managed-since are always added automatically
 ```
 
 ---
@@ -402,8 +436,6 @@ hooks when you need:
 
 - **Type-safe spec access** — templates only see field names as strings.
   Go hooks have compiled access to `obj.Spec.Image`, `obj.Spec.Replicas` etc.
-- **Complex conditional logic** — "if environment is production and tier is
-  premium, create a different set of resources"
 - **External API calls** — provision cloud resources, call DNS APIs, notify
   external systems
 - **Status updates** — write back to `obj.Status` with computed values
@@ -444,3 +476,9 @@ cd my-operator
 kubectl apply -f examples/website/website-crd.yaml
 ork run --katalog examples/website/website-katalog.yaml
 ```
+
+**Whats Next?**
+  - [Orkestra Use Cases](../docs/use-cases.md)
+  - [What is a Katalog](../docs/katalog.md)
+  - [What is a Komposer](../docs/komposer.md)
+  - [How to decide which Orkestra input model is right for your operator](../docs/choosing-katalog-vs-komposer.md)

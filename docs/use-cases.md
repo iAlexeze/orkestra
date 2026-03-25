@@ -85,7 +85,7 @@ the ConfigMap updates on the next reconcile. Delete the CR and every
 child resource is cleaned up automatically.
 
 This is what ClusterSecret, Namespace Configurator, and custom namespace
-controllers all do separately. In Orkestra it is one Katalog.
+controllers all do separately. In Orkestra it is one Katalog entry.
 
 ---
 
@@ -106,7 +106,7 @@ secrets:
     reconcile: true
 ```
 
-The registry reads the source once and writes to every namespace. Owner
+Orkestra reads the source once and writes to every namespace. Owner
 references mean cleanup is automatic when the CR is deleted.
 
 ---
@@ -139,7 +139,7 @@ automatically and signals its dependents.
 ## Centralised operator configuration
 
 Katalogs are files. Files live in Git. When your CRD configuration is in
-Git it becomes a GitOps artifact — versioned, reviewed, and auditable.
+Git, it becomes a GitOps artifact — versioned, reviewed, and auditable.
 
 **Platform teams publish standard configurations:**
 
@@ -322,8 +322,8 @@ Every Orkestra operator exposes the same endpoints regardless of what
 is in the Katalog.
 
 ```bash
-GET /health                         # orkestra liveness — 200 or 500
-GET /ready                          # orkestra readiness — 200 or 503
+GET /health                          # orkestra liveness — 200 or 500
+GET /ready                           # orkestra readiness — 200 or 503
 GET /metrics                         # Prometheus metrics
 GET /katalog                         # all CRDs with health and dependency graph
 GET /katalog/{crd}                   # single CRD config and stats
@@ -347,8 +347,6 @@ you build with Orkestra has them from day one.
 
 ---
 
----
-
 ## When to use Go hooks
 
 Declarative templates handle resource creation and drift correction without
@@ -366,27 +364,22 @@ reconciler:
 
 **Reach for this when you need:**
 
-**Type-safe spec access** — template expressions only see field names as
+1. **Type-safe spec access** — template expressions only see field names as
 strings evaluated at runtime. A Go hook has compiled access to
 `obj.Spec.Image`, `obj.Spec.Replicas`, `obj.Spec.DatabaseURL`. If your
 reconcile logic depends on the shape of the spec being correct at compile
 time, use hooks.
 
-**Conditional resource creation** — "create a LoadBalancer Service only
-when `spec.environment` is production, ClusterIP otherwise". Declarative
-templates create every declared resource unconditionally. A hook is plain
-Go — write any conditional logic you need.
-
-**External API calls alongside Kubernetes resources** — your reconcile
+2. **External API calls alongside Kubernetes resources** — your reconcile
 creates a Deployment and also registers the service in an external
 service registry, or calls a cloud API to provision supporting
 infrastructure. Templates only know about Kubernetes resources.
 
-**Status writes** — computing derived status fields from the current
+3. **Status writes** — computing derived status fields from the current
 state of child resources and writing them back to `obj.Status`. The
 GenericReconciler doesn't touch status — your hook does.
 
-**Calling OrkestraRegistry directly** — hooks call `orkdeploy.Create`,
+4. **Calling OrkestraRegistry directly** — hooks call `orkdeploy.Create`,
 `orksvc.Create`, `orksecrets.CopyToNamespaces` directly. You get all the
 registry implementations with none of the YAML declaration overhead.
 
@@ -413,29 +406,29 @@ reconciler:
 
 **Reach for this when you need:**
 
-**Complex state machines** — your CR progresses through multiple phases
+1. **Complex state machines** — your CR progresses through multiple phases
 with branching logic based on external state. `Pending → Provisioning →
 WaitingForDNS → Ready → Degraded`. Each phase has different behaviour,
 different retry strategies, different events. This is a state machine, not
 a reconcile loop, and it needs to be written as one.
 
-**Custom retry and backoff strategies** — the default workqueue retries
+2. **Custom retry and backoff strategies** — the default workqueue retries
 with exponential backoff. Some operators need domain-specific logic — back
 off immediately on quota errors, retry faster on transient failures, give
 up after N attempts for certain error classes. The constructor gives you
 full control over what goes back on the queue and when.
 
-**Custom finalizer orchestration** — when deletion requires a specific
+3. **Custom finalizer orchestration** — when deletion requires a specific
 sequence of external cleanup steps that must succeed in order before
 finalizers are removed, and that sequence is too complex to express in
 `onDelete` templates or a single hook function.
 
-**Replacing an existing controller** — migrating a hand-written controller
+3. **Replacing an existing controller** — migrating a hand-written controller
 into Orkestra without changing its reconcile logic. Wrap the existing
 implementation in the constructor signature and Orkestra handles everything
 around it.
 
-**Integrating with controller-runtime or another framework** — some teams
+4. **Integrating with controller-runtime or another framework** — some teams
 have existing reconcilers built with other frameworks. The constructor path
 accepts anything that satisfies `domain.Reconciler`. Wrap it and compose.
 
@@ -463,3 +456,6 @@ wrong, you read the Katalog. When something needs to change, you change
 the Katalog. When you need to reproduce a failure, you run the Katalog.
 
 This is the simplification that Orkestra exists to provide.
+
+**Whats Next?**
+  - See [Templating Engine](./templating.md) to learn more.

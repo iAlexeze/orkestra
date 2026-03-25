@@ -36,6 +36,7 @@ Step‑by‑step instructions for using Orkestra.
 
 - **[CLI Reference](./cli.md)**  
 - **[Deployment Guide](./deployment.md)**  
+- **[Conditional Provisioning](./conditional-provisioning.md)**
 - **[Use Cases](./use-cases.md)**  
 - **[Inspect Live CRD](./inspect-live-crd.md)**  
 

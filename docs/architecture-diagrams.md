@@ -1,4 +1,4 @@
-# **Orkestra Architecture Diagrams**  
+# Orkestra Architecture Diagrams 
 ### A visual guide to the internal components of the Orkestra runtime
 
 This document provides a complete, visual overview of how Orkestra works internally.  
@@ -7,13 +7,13 @@ It complements the [Architecture](./architecture.md), [Trust Model, and Failure 
 
 ---
 
-# **1. High‑Level Architecture (Two Modes)**
+## 1. High‑Level Architecture (Two Modes)
 
 Orkestra supports two ways to supply operator definitions:
 
 ---
 
-## **1A. Direct Katalog → Runtime (simple mode)**
+### 1A. Direct Katalog → Runtime (simple mode)
 
 ```mermaid
 flowchart LR
@@ -29,7 +29,7 @@ This is the simplest and most common mode.
 
 ---
 
-## **1B. Komposer → Unified Katalog → Runtime (multi‑source mode)**
+### 1B. Komposer → Unified Katalog → Runtime (multi‑source mode)
 
 ```mermaid
 flowchart LR
@@ -54,7 +54,7 @@ It produces a single Katalog that the runtime consumes.
 
 ---
 
-# **2. Reconcile Loop (per CRD)**
+## 2. Reconcile Loop (per CRD)**
 
 ```mermaid
 flowchart LR
@@ -80,7 +80,7 @@ flowchart LR
 
 ---
 
-# **3. safeReconcile — Fault Isolation**
+## **3. safeReconcile — Fault Isolation**
 
 ```mermaid
 flowchart TD
@@ -97,7 +97,7 @@ A panic in one CR **cannot** crash the worker or the runtime.
 
 ---
 
-# **4. Dependency Engine**
+## 4. Dependency Engine
 
 ```mermaid
 graph TD
@@ -116,7 +116,7 @@ graph TD
 
 ---
 
-# **5. Komposer Merge Pipeline (multi‑source mode)**
+## 5. Komposer Merge Pipeline (multi‑source mode)
 
 ```mermaid
 flowchart LR
@@ -142,7 +142,7 @@ flowchart LR
 
 ---
 
-# **6. Template Resolution**
+## 6. Template Resolution
 
 ```mermaid
 flowchart LR
@@ -161,7 +161,7 @@ flowchart LR
 
 ---
 
-# **7. OrkestraRegistry Flow**
+## 7. OrkestraRegistry Flow
 
 ```mermaid
 flowchart LR
@@ -187,7 +187,7 @@ flowchart LR
 
 ---
 
-# **8. Health & Metrics Pipeline**
+## 8. Health & Metrics Pipeline
 
 ```mermaid
 flowchart LR
@@ -207,7 +207,7 @@ Metrics include:
 
 ---
 
-# **9. Failure Containment Model**
+## 9. Failure Containment Model
 
 ```mermaid
 flowchart TD
@@ -229,7 +229,7 @@ flowchart TD
 
 ---
 
-# **10. End-to-End Flow**
+## 10. End-to-End Flow
 
 ```mermaid
 sequenceDiagram
@@ -250,7 +250,7 @@ sequenceDiagram
 
 ---
 
-# **Summary**
+## Summary
 
 This document provides a complete visual map of:
 
@@ -264,3 +264,7 @@ This document provides a complete visual map of:
 - the failure isolation model  
 
 It is the **single most important reference** for understanding Orkestra’s internals.
+
+**Whats Next?**
+  - [Orkestra Architecture](./architecture.md)
+  - [Trust and Failure Model](./trust-and-failure-model.md)

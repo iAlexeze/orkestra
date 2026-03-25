@@ -498,7 +498,7 @@ Before running Orkestra in production:
 
 ## High availability
 
-Orkestra uses leader election (KonductorElection) for HA. Run at least
+Orkestra uses leader election for HA. Run at least
 two replicas — only one leads, the others keep warm informer caches.
 On leadership loss, a follower takes over in milliseconds.
 

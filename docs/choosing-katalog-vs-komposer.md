@@ -1,4 +1,4 @@
-# **Choosing Between Katalog and Komposer**
+# Choosing Between Katalog and Komposer
 ### *How to decide which Orkestra input model is right for your operator*
 
 Orkestra supports two ways to define operator behavior:
@@ -14,22 +14,22 @@ This guide helps you choose the right model for your use case.
 
 ---
 
-# **1. Use Katalog when…**
+# 1. Use Katalog when…
 
 Katalog is the simplest and most direct way to define operator behavior.
 
 Choose **Katalog** if:
 
-### You have a single operator  
+- You have a single operator  
 One CRD or multiple CRDs in one file.
 
-### You want a single source of truth  
+- You want a single source of truth  
 Everything lives in one YAML file.
 
-### You don’t need to merge multiple sources  
+- You don’t need to merge multiple sources  
 No Helm charts, no external files, no layering.
 
-### You want the fastest iteration loop  
+- You want the fastest iteration loop  
 Edit → `ork run` → done.
 
 ### Typical examples
@@ -49,26 +49,26 @@ If you can fit everything into one file, **use Katalog**.
 
 ---
 
-# **2. Use Komposer when…**
+# 2. Use Komposer when…
 
 Komposer is for **multi‑source**, **multi‑environment**, or **multi‑team** setups.
 
 Choose **Komposer** if:
 
-### You have multiple Katalogs  
+- You have multiple Katalogs  
 You want to combine several operators into one runtime.
 
-### You want to merge Helm charts  
+- You want to merge Helm charts  
 Komposer can ingest Helm output and turn it into a Katalog.
 
-### You want environment‑specific layering  
+- You want environment‑specific layering  
 Different values for dev, staging, prod.
 
-### You want overrides  
+- You want overrides  
 Inline patches, file-based overrides, or environment overrides.
 
-### You want to consume registry entries  
-(e.g., `prometheus@v2.45` from the OrkestraRegistry)
+- You want to consume registry entries  
+(e.g., `platform-workflow@v2.45` from the OrkestraRegistry)
 
 ### Typical examples
 
@@ -95,7 +95,7 @@ If you have **multiple sources**, **use Komposer**.
 
 ---
 
-# **3. Quick Decision Table**
+# 3. Quick Decision Table
 
 | Situation | Use Katalog | Use Komposer |
 |----------|-------------|--------------|
@@ -111,7 +111,7 @@ If you have **multiple sources**, **use Komposer**.
 
 ---
 
-# **4. The Golden Rule**
+# 4. The Golden Rule
 
 > **If you have one source → use Katalog.  
 > If you have more than one source → use Komposer.**
@@ -120,9 +120,9 @@ That’s the entire decision.
 
 ---
 
-# **5. Visual Summary**
+# 5. Visual Summary
 
-## **Katalog Path**
+## Katalog Path
 
 ```mermaid
 flowchart LR
@@ -130,7 +130,7 @@ flowchart LR
     B --> C[Reconcile]
 ```
 
-## **Komposer Path**
+## Komposer Path
 
 ```mermaid
 flowchart LR
@@ -144,29 +144,29 @@ flowchart LR
 
 ---
 
-# **6. FAQ**
+# 6. FAQ
 
 ### **Can I run multiple Katalogs without Komposer?**  
 Yes, but it’s not recommended.  
 You risk duplicate CRDs, conflicting definitions, and unclear layering.
 
-### **Does Komposer run inside the runtime?**  
+### Does Komposer run inside the runtime?
 No.  
 Komposer is a **build step**.  
 The runtime only ever sees **one Katalog**.
 
-### **Can I mix Katalog and Komposer?**  
+### Can I mix Katalog and Komposer?
 No.  
 Komposer outputs a Katalog.  
 You run the runtime on that output.
 
-### **Is Komposer required?**  
+### Is Komposer required?  
 No.  
 Many operators will never need it.
 
 ---
 
-# **7. Final Recommendation**
+# 7. Final Recommendation
 
 - **Start with Katalog** — simplest, fastest, cleanest.  
 - **Adopt Komposer** when your operator ecosystem grows.  
