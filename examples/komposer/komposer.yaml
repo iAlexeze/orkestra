@@ -30,6 +30,10 @@ sources:
       version: 0.1.0
       valueFiles:
         - examples/komposer/values/overrides.yaml    # override chart defaults per environment
+  registry:
+    - katalog: platform-manager
+      version: main
+      description: "A reusable platform manager"
 
 spec:
   # ── Inline CRDs ────────────────────────────────────────────────────────

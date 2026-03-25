@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Orkestra Team">
+        <link rel="canonical" href="https://orkestra.sh/guides/use-cases/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Use Cases - Orkestra</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Orkestra</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../../core/" class="nav-link">Start Here</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Architecture</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../architecture/architecture/" class="dropdown-item">Overview</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/runtime-flow/" class="dropdown-item">Runtime Flow</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/crd-lifecycle/" class="dropdown-item">CRD Lifecycle</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/design-philosophy/" class="dropdown-item">Design Philosophy</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture-diagrams.md" class="dropdown-item">Architecture Diagrams</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/full-architecture-view.md" class="dropdown-item">Full Architecture View</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Concepts</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../concepts/katalog/" class="dropdown-item">Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/komposer/" class="dropdown-item">Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/conditional-provisioning/" class="dropdown-item">Conditional Provisioning</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/template-engine/" class="dropdown-item">Template Engine</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/dependency-graph/" class="dropdown-item">Dependency Graph</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/reconciler-model.md" class="dropdown-item">Reconciler Model</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Internals</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../internals/startup-sequence/" class="dropdown-item">Startup Sequence</a>
+</li>
+                                    
+<li>
+    <a href="../../internals/konstruct-orkestra/" class="dropdown-item">konstructOrkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../internals/dynamic-vs-typed/" class="dropdown-item">Dynamic vs Typed CRDs</a>
+</li>
+                                    
+<li>
+    <a href="../../internals/informer-factory/" class="dropdown-item">Informer Factory</a>
+</li>
+                                    
+<li>
+    <a href="../../internals/dependency-kontroller/" class="dropdown-item">Dependency Kontroller</a>
+</li>
+                                    
+<li>
+    <a href="../../internals/reconciler-pipeline/" class="dropdown-item">Reconciler Pipeline</a>
+</li>
+                                    
+<li>
+    <a href="../../internals/observability/" class="dropdown-item">Observability</a>
+</li>
+                                    
+<li>
+    <a href="../../internals/shutdown/" class="dropdown-item">Shutdown</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Guides</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../getting-started.md" class="dropdown-item">Getting Started</a>
+</li>
+                                    
+<li>
+    <a href="../writing-your-first-katalog.md" class="dropdown-item">Writing Your First Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../writing-hooks.md" class="dropdown-item">Writing Hooks</a>
+</li>
+                                    
+<li>
+    <a href="../writing-custom-reconcilers.md" class="dropdown-item">Writing Custom Reconcilers</a>
+</li>
+                                    
+<li>
+    <a href="../testing-operators.md" class="dropdown-item">Testing Operators</a>
+</li>
+                                    
+<li>
+    <a href="../production-deployment.md" class="dropdown-item">Production Deployment</a>
+</li>
+                                    
+<li>
+    <a href="../inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+</li>
+                                    
+<li>
+    <a href="../extending-orkestra/" class="dropdown-item">Extending Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../choosing-katalog-vs-komposer/" class="dropdown-item">Choosing Katalog vs Komposer</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">Use Cases</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../reference/katalog-schema/" class="dropdown-item">Katalog Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/komposer-schema/" class="dropdown-item">Komposer Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/metrics/" class="dropdown-item">Metrics</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/api.md" class="dropdown-item">API</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/cli/" class="dropdown-item">CLI</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../choosing-katalog-vs-komposer/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../../reference/katalog-schema/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#orkestra-use-cases" class="nav-link">Orkestra Use Cases</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#zero-code-operators" class="nav-link">Zero-code operators</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#platform-namespace-provisioning" class="nav-link">Platform namespace provisioning</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#secret-distribution-across-namespaces" class="nav-link">Secret distribution across namespaces</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#multi-crd-dependency-ordering" class="nav-link">Multi-CRD dependency ordering</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#centralised-operator-configuration" class="nav-link">Centralised operator configuration</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#environment-specific-tuning" class="nav-link">Environment-specific tuning</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#helm-driven-operator-configuration" class="nav-link">Helm-driven operator configuration</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#multi-team-composition" class="nav-link">Multi-team composition</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#progressive-rollout" class="nav-link">Progressive rollout</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#disaster-recovery" class="nav-link">Disaster recovery</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#air-gapped-and-restricted-environments" class="nav-link">Air-gapped and restricted environments</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#observability-built-in" class="nav-link">Observability built in</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#when-to-use-go-hooks" class="nav-link">When to use Go hooks</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#when-to-use-a-custom-constructor" class="nav-link">When to use a custom constructor</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#the-pattern-that-ties-it-together" class="nav-link">The pattern that ties it together</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="orkestra-use-cases">Orkestra Use Cases</h1>
+<p>Orkestra is a declarative operator runtime. Every operator is a Katalog —
+a YAML file that declares what CRDs to manage and how. This page shows what
+becomes possible when your operator is a file rather than a codebase.</p>
+<hr />
+<h2 id="zero-code-operators">Zero-code operators</h2>
+<p>The most immediate use case. Write a CRD definition, write a Katalog, run.</p>
+<pre><code class="language-yaml"># website-katalog.yaml
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: website-katalog
+spec:
+  crds:
+    - name: website
+      enabled: true
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: Website
+        plural: websites
+      reconciler:
+        default: true
+        onCreate:
+          deployments:
+            - image: &quot;{{ .spec.image }}&quot;
+              replicas: &quot;{{ .spec.replicas }}&quot;
+              reconcile: true
+          services:
+            - port: &quot;80&quot;
+              targetPort: &quot;{{ .spec.port }}&quot;
+              type: &quot;{{ .spec.serviceType }}&quot;
+              reconcile: true
+</code></pre>
+<pre><code class="language-bash">kubectl apply -f website-crd.yaml
+ork run --katalog website-katalog.yaml
+</code></pre>
+<p>A Deployment and a Service are created for every <code>Website</code> CR. Owner
+references are set. Drift is corrected. Cascade deletion works. The
+health API is live. Metrics are flowing. No Go written.</p>
+<hr />
+<h2 id="platform-namespace-provisioning">Platform namespace provisioning</h2>
+<p>Every platform team at every company writes some version of this controller.
+Create a namespace, copy a pull secret, add a ConfigMap, create a ServiceAccount.</p>
+<pre><code class="language-yaml">reconciler:
+  default: true
+  onCreate:
+    configMaps:
+      - name: &quot;{{ .metadata.name }}-config&quot;
+        namespace: &quot;{{ .spec.targetNamespace }}&quot;
+        data:
+          ENVIRONMENT: &quot;{{ .spec.environment }}&quot;
+          LOG_LEVEL: &quot;{{ .spec.logLevel }}&quot;
+          TEAM: &quot;{{ .spec.team }}&quot;
+        reconcile: true
+
+    secrets:
+      - name: registry-pull-secret
+        fromSecret: docker-registry-creds
+        fromNamespace: platform
+        namespace: &quot;{{ .spec.targetNamespace }}&quot;
+        reconcile: true
+
+    serviceAccounts:
+      - name: &quot;{{ .spec.team }}-sa&quot;
+        namespace: &quot;{{ .spec.targetNamespace }}&quot;
+</code></pre>
+<p>One CR creates a fully provisioned namespace. Change <code>spec.logLevel</code> and
+the ConfigMap updates on the next reconcile. Delete the CR and every
+child resource is cleaned up automatically.</p>
+<p>This is what ClusterSecret, Namespace Configurator, and custom namespace
+controllers all do separately. In Orkestra it is one Katalog entry.</p>
+<hr />
+<h2 id="secret-distribution-across-namespaces">Secret distribution across namespaces</h2>
+<p>A common platform requirement — one source Secret, many namespace copies.
+When the source rotates, every copy updates automatically.</p>
+<pre><code class="language-yaml">secrets:
+  - name: db-credentials
+    fromSecret: master-db-creds
+    fromNamespace: platform
+    toNamespaces:
+      - &quot;{{ .metadata.namespace }}&quot;
+      - monitoring
+      - staging
+    reconcile: true
+</code></pre>
+<p>Orkestra reads the source once and writes to every namespace. Owner
+references mean cleanup is automatic when the CR is deleted.</p>
+<hr />
+<h2 id="multi-crd-dependency-ordering">Multi-CRD dependency ordering</h2>
+<p>Operators with multiple CRDs that depend on each other start in the right
+order every time.</p>
+<pre><code class="language-yaml">crds:
+  - name: project
+    dependsOn: []
+
+  - name: managednamespace
+    dependsOn: [project]      # starts after project is ready
+
+  - name: application
+    dependsOn:
+      - project
+      - managednamespace      # starts after both are ready
+</code></pre>
+<p>If a CRD is missing from the cluster at startup, Orkestra retries in
+the background without blocking healthy CRDs. When it appears, it starts
+automatically and signals its dependents.</p>
+<hr />
+<h2 id="centralised-operator-configuration">Centralised operator configuration</h2>
+<p>Katalogs are files. Files live in Git. When your CRD configuration is in
+Git, it becomes a GitOps artifact — versioned, reviewed, and auditable.</p>
+<p><strong>Platform teams publish standard configurations:</strong></p>
+<pre><code>https://internal.company.com/platform/crds/standard-katalog.yaml
+</code></pre>
+<p><strong>Every team consumes it:</strong></p>
+<pre><code class="language-bash">ork run --katalog https://internal.company.com/platform/crds/standard-katalog.yaml
+</code></pre>
+<p>Changes to the Katalog propagate to every cluster that consumes it on
+the next Orkestra restart. No binary rebuilds. No deployments. One file
+change, everywhere updated.</p>
+<hr />
+<h2 id="environment-specific-tuning">Environment-specific tuning</h2>
+<p>Different environments need different settings. A Komposer lets you
+compose the shared Katalog with environment-specific overrides without
+forking it.</p>
+<pre><code class="language-yaml"># production-komposer.yaml
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Komposer
+metadata:
+  name: production-komposer
+
+sources:
+  files:
+    - https://internal.company.com/platform/crds/standard-katalog.yaml
+
+spec:
+  crds:
+    # Override — production needs more workers
+    - name: application
+      workers: 10
+      resync: 30s
+      apiTypes:
+        group: platform.myorg.io
+        version: v1alpha1
+        kind: Application
+        plural: applications
+      reconciler:
+        default: true
+</code></pre>
+<p>Development uses <code>workers: 2</code>. Production uses <code>workers: 10</code>. The same
+source Katalog, two different overrides, no fork.</p>
+<hr />
+<h2 id="helm-driven-operator-configuration">Helm-driven operator configuration</h2>
+<p>Teams that already manage infrastructure with Helm can ship Orkestra
+Katalog definitions as Helm chart templates. The chart becomes the
+distribution mechanism.</p>
+<pre><code class="language-yaml"># charts/platform-crds/templates/katalog.yaml
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+spec:
+  crds:
+    {{- range .Values.crds }}
+    - name: {{ .name }}
+      apiTypes:
+        group: {{ $.Values.apiGroup }}
+        version: v1alpha1
+        kind: {{ .kind }}
+        plural: {{ .plural }}
+      reconciler:
+        default: true
+    {{- end }}
+</code></pre>
+<pre><code class="language-yaml"># komposer.yaml
+sources:
+  helm:
+    - repo: https://charts.myorg.io
+      chart: platform-crds
+      version: 1.2.0
+      valueFiles:
+        - ./values/production.yaml
+</code></pre>
+<p>The chart renders a Katalog. Orkestra reads it. The team's existing Helm
+workflow remains intact.</p>
+<hr />
+<h2 id="multi-team-composition">Multi-team composition</h2>
+<p>Large organisations have platform teams, application teams, and security
+teams — each owning their own CRDs. A Komposer brings them together.</p>
+<pre><code class="language-yaml"># platform-komposer.yaml
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Komposer
+metadata:
+  name: platform-komposer
+
+sources:
+  files:
+    # Platform team — infrastructure CRDs
+    - ./katalogs/namespaces.yaml
+
+    # Application team — workload CRDs from their repository
+    - https://raw.github.com/myorg/app-crds/main/katalog.yaml
+
+    # Security team — policy CRDs
+    - $SECURITY_KATALOG_URL
+</code></pre>
+<p>Each team owns their Katalog. The Komposer composes them. No team needs
+access to another team's repository.</p>
+<hr />
+<h2 id="progressive-rollout">Progressive rollout</h2>
+<p>Because Katalogs are URLs, you can run different versions on different
+clusters and measure the difference.</p>
+<pre><code class="language-bash"># 90% of clusters — stable
+ork run --katalog https://config.company.com/stable/katalog.yaml
+
+# 10% of clusters — candidate
+ork run --katalog https://config.company.com/candidate/katalog.yaml
+</code></pre>
+<p>Compare error rates, reconcile latency, and resource usage between the
+two versions. Roll forward when confidence is high. Revert by pointing
+back to the stable URL.</p>
+<p>This is the same pattern as canary deployments but for operator configuration.</p>
+<hr />
+<h2 id="disaster-recovery">Disaster recovery</h2>
+<p>A cluster can be fully restored from a Katalog. Point Orkestra at the
+same file and the same operators start with the same configuration.</p>
+<pre><code class="language-bash"># Restore on a new cluster
+ork run --katalog https://git.company.com/platform/crds/prod-katalog.yaml
+</code></pre>
+<p>No binary rebuild. No configuration migration. The Katalog is the
+disaster recovery plan.</p>
+<hr />
+<h2 id="air-gapped-and-restricted-environments">Air-gapped and restricted environments</h2>
+<p>Katalogs are files. Files work offline.</p>
+<pre><code class="language-bash"># Downloaded to disk before the air-gap
+ork run --katalog /etc/orkestra/crds/production-katalog.yaml
+</code></pre>
+<p>For organisations in air-gapped environments — government, finance,
+healthcare — the operator configuration is bundled with the deployment
+artifact. Nothing is fetched at runtime.</p>
+<hr />
+<h2 id="observability-built-in">Observability built in</h2>
+<p>Every Orkestra operator exposes the same endpoints regardless of what
+is in the Katalog.</p>
+<pre><code class="language-bash">GET /health                          # orkestra liveness — 200 or 500
+GET /ready                           # orkestra readiness — 200 or 503
+GET /metrics                         # Prometheus metrics
+GET /katalog                         # all CRDs with health and dependency graph
+GET /katalog/{crd}                   # single CRD config and stats
+GET /katalog/{crd}/health            # 200 healthy / 503 degraded
+</code></pre>
+<pre><code># Prometheus metrics
+controller_reconcile_total{crd=&quot;...&quot;,result=&quot;success&quot;}
+controller_reconcile_total{crd=&quot;...&quot;,result=&quot;error&quot;}
+controller_reconcile_duration_seconds{crd=&quot;...&quot;}
+controller_queue_depth{crd=&quot;...&quot;}
+controller_workers_active{crd=&quot;...&quot;}
+controller_resource_count{crd=&quot;...&quot;}
+controller_crd_activation_latency_seconds{crd=&quot;...&quot;}
+controller_crd_activation_total{crd=&quot;...&quot;}
+</code></pre>
+<p>These are not add-ons. They are part of the runtime. Every operator
+you build with Orkestra has them from day one.</p>
+<hr />
+<h2 id="when-to-use-go-hooks">When to use Go hooks</h2>
+<p>Declarative templates handle resource creation and drift correction without
+any Go. Go hooks are the next step up — you keep GenericReconciler managing
+the lifecycle, finalizers, events, and metrics, but you write the reconcile
+logic in Go with full type-safe access to the CR.</p>
+<pre><code class="language-yaml">reconciler:
+  default: true
+  hooks:
+    location: github.com/myorg/hooks
+    function: WebsiteHooks
+</code></pre>
+<p><strong>Reach for this when you need:</strong></p>
+<ol>
+<li>
+<p><strong>Type-safe spec access</strong> — template expressions only see field names as
+strings evaluated at runtime. A Go hook has compiled access to
+<code>obj.Spec.Image</code>, <code>obj.Spec.Replicas</code>, <code>obj.Spec.DatabaseURL</code>. If your
+reconcile logic depends on the shape of the spec being correct at compile
+time, use hooks.</p>
+</li>
+<li>
+<p><strong>External API calls alongside Kubernetes resources</strong> — your reconcile
+creates a Deployment and also registers the service in an external
+service registry, or calls a cloud API to provision supporting
+infrastructure. Templates only know about Kubernetes resources.</p>
+</li>
+<li>
+<p><strong>Status writes</strong> — computing derived status fields from the current
+state of child resources and writing them back to <code>obj.Status</code>. The
+GenericReconciler doesn't touch status — your hook does.</p>
+</li>
+<li>
+<p><strong>Calling OrkestraRegistry directly</strong> — hooks call <code>orkdeploy.Create</code>,
+<code>orksvc.Create</code>, <code>orksecrets.CopyToNamespaces</code> directly. You get all the
+registry implementations with none of the YAML declaration overhead.</p>
+</li>
+</ol>
+<p>Go hooks still run inside GenericReconciler. Finalizers, events, metrics,
+and the workqueue are all handled for you.</p>
+<hr />
+<h2 id="when-to-use-a-custom-constructor">When to use a custom constructor</h2>
+<p>A custom constructor means you own the entire reconcile loop. Set
+<code>reconciler.default: false</code> and declare where your constructor lives.
+Orkestra wires it into the dependency graph, starts it in the correct
+order, and surrounds it with the health API, metrics, and leader election.
+The reconcile implementation is entirely yours.</p>
+<pre><code class="language-yaml">reconciler:
+  default: false
+  constructor:
+    location: github.com/myorg/reconcilers
+    function: NewApplicationReconciler
+</code></pre>
+<p><strong>Reach for this when you need:</strong></p>
+<ol>
+<li>
+<p><strong>Complex state machines</strong> — your CR progresses through multiple phases
+with branching logic based on external state. <code>Pending → Provisioning →
+WaitingForDNS → Ready → Degraded</code>. Each phase has different behaviour,
+different retry strategies, different events. This is a state machine, not
+a reconcile loop, and it needs to be written as one.</p>
+</li>
+<li>
+<p><strong>Custom retry and backoff strategies</strong> — the default workqueue retries
+with exponential backoff. Some operators need domain-specific logic — back
+off immediately on quota errors, retry faster on transient failures, give
+up after N attempts for certain error classes. The constructor gives you
+full control over what goes back on the queue and when.</p>
+</li>
+<li>
+<p><strong>Custom finalizer orchestration</strong> — when deletion requires a specific
+sequence of external cleanup steps that must succeed in order before
+finalizers are removed, and that sequence is too complex to express in
+<code>onDelete</code> templates or a single hook function.</p>
+</li>
+<li>
+<p><strong>Replacing an existing controller</strong> — migrating a hand-written controller
+into Orkestra without changing its reconcile logic. Wrap the existing
+implementation in the constructor signature and Orkestra handles everything
+around it.</p>
+</li>
+<li>
+<p><strong>Integrating with controller-runtime or another framework</strong> — some teams
+have existing reconcilers built with other frameworks. The constructor path
+accepts anything that satisfies <code>domain.Reconciler</code>. Wrap it and compose.</p>
+</li>
+</ol>
+<blockquote>
+<p>You still get everything Orkestra provides — the informer, workqueue, dependency graph, health API, metrics, and leader election.</p>
+<p>You own the reconcile function. That is the only difference.</p>
+</blockquote>
+<hr />
+<h2 id="the-pattern-that-ties-it-together">The pattern that ties it together</h2>
+<p>Every use case above shares the same shape:</p>
+<pre><code>Declare what you want in a Katalog or Komposer
+         ↓
+ork run --katalog &lt;path&gt;
+         ↓
+Orkestra manages the lifecycle
+</code></pre>
+<p>The Katalog is the operator. It is the deployment artifact, the
+configuration, and the documentation in one file. When something goes
+wrong, you read the Katalog. When something needs to change, you change
+the Katalog. When you need to reproduce a failure, you run the Katalog.</p>
+<p>This is the simplification that Orkestra exists to provide.</p>
+<p><strong>Whats Next?</strong>
+  - See <a href="./templating.md">Templating Engine</a> to learn more.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+                <p>Orkestra</p>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

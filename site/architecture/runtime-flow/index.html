@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+
+<html data-bs-theme="light" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="Orkestra Team" name="author"/>
+<link href="https://orkestra.sh/architecture/runtime-flow/" rel="canonical"/>
+<link href="../../img/favicon.ico" rel="shortcut icon"/>
+<title>Runtime Flow - Orkestra</title>
+<link href="../../css/bootstrap.min.css" rel="stylesheet"/>
+<link href="../../css/fontawesome.min.css" rel="stylesheet"/>
+<link href="../../css/brands.min.css" rel="stylesheet"/>
+<link href="../../css/solid.min.css" rel="stylesheet"/>
+<link href="../../css/v4-font-face.min.css" rel="stylesheet"/>
+<link href="../../css/base.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" id="hljs-light" rel="stylesheet"/>
+<link disabled="" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" id="hljs-dark" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+<div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+<div class="container">
+<a class="navbar-brand" href="../..">Orkestra</a>
+<!-- Expander button -->
+<button aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler" data-bs-target="#navbar-collapse" data-bs-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<!-- Expanded navigation -->
+<div class="navbar-collapse collapse" id="navbar-collapse">
+<!-- Main navigation -->
+<ul class="nav navbar-nav">
+<li class="nav-item">
+<a class="nav-link" href="../../core/">Start Here</a>
+</li>
+<li class="nav-item dropdown">
+<a aria-current="page" aria-expanded="false" class="nav-link dropdown-toggle active" data-bs-toggle="dropdown" href="#" role="button">Architecture</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../architecture/">Overview</a>
+</li>
+<li>
+<a aria-current="page" class="dropdown-item active" href="./">Runtime Flow</a>
+</li>
+<li>
+<a class="dropdown-item" href="../crd-lifecycle/">CRD Lifecycle</a>
+</li>
+<li>
+<a class="dropdown-item" href="../design-philosophy/">Design Philosophy</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../architecture-diagrams.md">Architecture Diagrams</a>
+</li>
+<li>
+<a class="dropdown-item" href="../full-architecture-view.md">Full Architecture View</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Concepts</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../concepts/katalog/">Katalog</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/komposer/">Komposer</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/conditional-provisioning/">Conditional Provisioning</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/template-engine/">Template Engine</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/dependency-graph/">Dependency Graph</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/reconciler-model.md">Reconciler Model</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Internals</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../internals/startup-sequence/">Startup Sequence</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../internals/konstruct-orkestra/">konstructOrkestra</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../internals/dynamic-vs-typed/">Dynamic vs Typed CRDs</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../internals/informer-factory/">Informer Factory</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../internals/dependency-kontroller/">Dependency Kontroller</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../internals/reconciler-pipeline/">Reconciler Pipeline</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../internals/observability/">Observability</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../internals/shutdown/">Shutdown</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Guides</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../guides/getting-started.md">Getting Started</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/writing-your-first-katalog.md">Writing Your First Katalog</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/writing-hooks.md">Writing Hooks</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/writing-custom-reconcilers.md">Writing Custom Reconcilers</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/testing-operators.md">Testing Operators</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/production-deployment.md">Production Deployment</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/inspect-live-crd/">Inspect Live CRD</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/extending-orkestra/">Extending Orkestra</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/choosing-katalog-vs-komposer/">Choosing Katalog vs Komposer</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/use-cases/">Use Cases</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Reference</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../reference/katalog-schema/">Katalog Schema</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../reference/komposer-schema/">Komposer Schema</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../reference/metrics/">Metrics</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../reference/api.md">API</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../reference/cli/">CLI</a>
+</li>
+</ul>
+</li>
+</ul>
+<ul class="nav navbar-nav ms-md-auto">
+<li class="nav-item">
+<a class="nav-link" data-bs-target="#mkdocs_search_modal" data-bs-toggle="modal" href="#">
+<i class="fa fa-search"></i> Search
+                            </a>
+</li>
+<li class="nav-item">
+<a class="nav-link" href="../architecture/" rel="prev">
+<i class="fa fa-arrow-left"></i> Previous
+                                </a>
+</li>
+<li class="nav-item">
+<a class="nav-link" href="../crd-lifecycle/" rel="next">
+                                    Next <i class="fa fa-arrow-right"></i>
+</a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="container">
+<div class="row">
+<div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+<div class="navbar-header">
+<button class="navbar-toggler collapsed" data-bs-target="#toc-collapse" data-bs-toggle="collapse" title="Table of Contents" type="button">
+<span class="fa fa-angle-down"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse card bg-body-tertiary" id="toc-collapse">
+<ul class="nav flex-column">
+<li class="nav-item" data-bs-level="1"><a class="nav-link" href="#orkestra-runtime-flow">Orkestra Runtime Flow</a>
+<ul class="nav flex-column">
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#1-endtoend-runtime-flow">1. End‑to‑End Runtime Flow</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#2-informer-workqueue">2. Informer → Workqueue</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#3-worker-execution">3. Worker Execution</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#4-dispatch-by-gvk">4. Dispatch by GVK</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#5-genericreconciler">5. GenericReconciler</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#6-template-engine">6. Template Engine</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#7-status-events">7. Status + Events</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#whats-next">What’s Next?</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div></div>
+<div class="col-md-9" role="main">
+<h1 id="orkestra-runtime-flow">Orkestra Runtime Flow</h1>
+<p>A deep dive into how events move through Orkestra — from Kubernetes → Informers → Workers → Reconciler → Template Engine → Kubernetes.</p>
+<p>This document complements the <a href="../architecture/">Architecture Overview</a> by showing the <strong>runtime execution path</strong> in detail.</p>
+<hr/>
+<h2 id="1-endtoend-runtime-flow">1. End‑to‑End Runtime Flow</h2>
+<div class="mermaid">sequenceDiagram
+    autonumber
+
+    participant API as Kubernetes API
+    participant INF as Informer
+    participant WQ as Workqueue
+    participant WK as Worker
+    participant DIS as Dispatcher
+    participant REC as GenericReconciler
+    participant TMP as Template Engine
+    participant K8s as Kubernetes API (Apply)
+
+    API-&gt;&gt;INF: CR event (Add/Update/Delete)
+    INF-&gt;&gt;WQ: Enqueue key
+    WQ-&gt;&gt;WK: Pop key
+    WK-&gt;&gt;DIS: Dispatch by GVK
+    DIS-&gt;&gt;REC: Reconcile(key)
+    REC-&gt;&gt;TMP: Resolve templates + conditions
+    TMP-&gt;&gt;K8s: Create/Update/Delete resources
+    REC-&gt;&gt;API: Emit events
+</div>
+<hr/>
+<h2 id="2-informer-workqueue">2. Informer → Workqueue</h2>
+<p>Every CRD has:</p>
+<ul>
+<li>its own informer  </li>
+<li>its own queue  </li>
+<li>its own worker pool  </li>
+</ul>
+<p>Informers watch the API server and enqueue keys on:</p>
+<ul>
+<li>Add  </li>
+<li>Update  </li>
+<li>Delete  </li>
+</ul>
+<p>Orkestra uses <strong>SharedIndexInformers</strong>, so all workers share a warm cache.</p>
+<hr/>
+<h2 id="3-worker-execution">3. Worker Execution</h2>
+<p>Workers pop keys from the queue and call:</p>
+<pre><code>safeReconcile(key)
+</code></pre>
+<p>This wrapper:</p>
+<ul>
+<li>catches panics  </li>
+<li>handles retries  </li>
+<li>prevents worker crashes  </li>
+<li>ensures at‑least‑once semantics  </li>
+</ul>
+<hr/>
+<h2 id="4-dispatch-by-gvk">4. Dispatch by GVK</h2>
+<p>The KontrollerRegistry maps:</p>
+<pre><code>GVK → Reconciler
+</code></pre>
+<p>This allows Orkestra to support:</p>
+<ul>
+<li>dynamic CRDs  </li>
+<li>typed CRDs  </li>
+<li>custom reconcilers  </li>
+<li>hooks  </li>
+<li>zero‑code templates  </li>
+</ul>
+<p>All through the same dispatch layer.</p>
+<hr/>
+<h2 id="5-genericreconciler">5. GenericReconciler</h2>
+<p>The GenericReconciler handles:</p>
+<ul>
+<li>finalizers  </li>
+<li>managed labels  </li>
+<li>managed annotations  </li>
+<li>deletion  </li>
+<li>reconcile implementation  </li>
+</ul>
+<p>Priority:</p>
+<ol>
+<li>Go hooks  </li>
+<li>Declarative templates  </li>
+<li>No‑op  </li>
+</ol>
+<hr/>
+<h2 id="6-template-engine">6. Template Engine</h2>
+<p>The template engine performs:</p>
+<ul>
+<li>field resolution (<code>{{ .spec.image }}</code>)</li>
+<li>conditional provisioning (<code>when:</code> blocks)</li>
+<li>resource building (Deployments, Services, Secrets…)</li>
+<li>drift correction (reconcile: true)</li>
+<li>owner references</li>
+<li>idempotency</li>
+</ul>
+<p>This is where declarative operator logic becomes real Kubernetes objects.</p>
+<hr/>
+<h2 id="7-status-events">7. Status + Events</h2>
+<p>Every reconcile emits:</p>
+<ul>
+<li>Kubernetes events  </li>
+<li>Prometheus metrics  </li>
+<li>CRD health updates  </li>
+</ul>
+<hr/>
+<h2 id="whats-next">What’s Next?</h2>
+<p>Continue to the <strong>CRD Lifecycle</strong> to understand how Orkestra handles:</p>
+<ul>
+<li>missing CRDs  </li>
+<li>deleted CRDs  </li>
+<li>reappearing CRDs  </li>
+<li>dependency‑aware activation  </li>
+</ul>
+<p>👉 <a href="../crd-lifecycle/">CRD Lifecycle →</a></p></div>
+</div>
+</div>
+<footer class="col-md-12">
+<hr/>
+<p>Orkestra</p>
+<p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+</footer>
+<script src="../../js/bootstrap.bundle.min.js"></script>
+<script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+<script src="../../js/base.js"></script>
+<script src="../../search/main.js"></script>
+<div aria-hidden="true" aria-labelledby="searchModalLabel" class="modal" id="mkdocs_search_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="searchModalLabel">Search</h4>
+<button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+</div>
+<div class="modal-body">
+<p>From here you can search these documents. Enter your search terms below.</p>
+<form>
+<div class="form-group">
+<input class="form-control" id="mkdocs-search-query" placeholder="Search..." title="Type search term here" type="search"/>
+</div>
+</form>
+<div data-no-results-text="No results found" id="mkdocs-search-results"></div>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div><div aria-hidden="true" aria-labelledby="keyboardModalLabel" class="modal" id="mkdocs_keyboard_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+<button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+</div>
+<div class="modal-body">
+<table class="table">
+<thead>
+<tr>
+<th style="width: 20%;">Keys</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="help shortcut"><kbd>?</kbd></td>
+<td>Open this help</td>
+</tr>
+<tr>
+<td class="next shortcut"><kbd>n</kbd></td>
+<td>Next page</td>
+</tr>
+<tr>
+<td class="prev shortcut"><kbd>p</kbd></td>
+<td>Previous page</td>
+</tr>
+<tr>
+<td class="search shortcut"><kbd>s</kbd></td>
+<td>Search</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>

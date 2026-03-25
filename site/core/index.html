@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+
+<html data-bs-theme="light" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="Orkestra Team" name="author"/>
+<link href="https://orkestra.sh/core/" rel="canonical"/>
+<link href="../img/favicon.ico" rel="shortcut icon"/>
+<title>Start Here - Orkestra</title>
+<link href="../css/bootstrap.min.css" rel="stylesheet"/>
+<link href="../css/fontawesome.min.css" rel="stylesheet"/>
+<link href="../css/brands.min.css" rel="stylesheet"/>
+<link href="../css/solid.min.css" rel="stylesheet"/>
+<link href="../css/v4-font-face.min.css" rel="stylesheet"/>
+<link href="../css/base.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" id="hljs-light" rel="stylesheet"/>
+<link disabled="" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" id="hljs-dark" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+<div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+<div class="container">
+<a class="navbar-brand" href="..">Orkestra</a>
+<!-- Expander button -->
+<button aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler" data-bs-target="#navbar-collapse" data-bs-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<!-- Expanded navigation -->
+<div class="navbar-collapse collapse" id="navbar-collapse">
+<!-- Main navigation -->
+<ul class="nav navbar-nav">
+<li class="nav-item">
+<a aria-current="page" class="nav-link active" href="./">Start Here</a>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Architecture</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../architecture/architecture/">Overview</a>
+</li>
+<li>
+<a class="dropdown-item" href="../architecture/runtime-flow/">Runtime Flow</a>
+</li>
+<li>
+<a class="dropdown-item" href="../architecture/crd-lifecycle/">CRD Lifecycle</a>
+</li>
+<li>
+<a class="dropdown-item" href="../architecture/design-philosophy/">Design Philosophy</a>
+</li>
+<li>
+<a class="dropdown-item" href="../architecture-diagrams.md">Architecture Diagrams</a>
+</li>
+<li>
+<a class="dropdown-item" href="../architecture/full-architecture-view.md">Full Architecture View</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Concepts</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../concepts/katalog/">Katalog</a>
+</li>
+<li>
+<a class="dropdown-item" href="../concepts/komposer/">Komposer</a>
+</li>
+<li>
+<a class="dropdown-item" href="../concepts/conditional-provisioning/">Conditional Provisioning</a>
+</li>
+<li>
+<a class="dropdown-item" href="../concepts/template-engine/">Template Engine</a>
+</li>
+<li>
+<a class="dropdown-item" href="../concepts/dependency-graph/">Dependency Graph</a>
+</li>
+<li>
+<a class="dropdown-item" href="../concepts/reconciler-model.md">Reconciler Model</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Internals</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../internals/startup-sequence/">Startup Sequence</a>
+</li>
+<li>
+<a class="dropdown-item" href="../internals/konstruct-orkestra/">konstructOrkestra</a>
+</li>
+<li>
+<a class="dropdown-item" href="../internals/dynamic-vs-typed/">Dynamic vs Typed CRDs</a>
+</li>
+<li>
+<a class="dropdown-item" href="../internals/informer-factory/">Informer Factory</a>
+</li>
+<li>
+<a class="dropdown-item" href="../internals/dependency-kontroller/">Dependency Kontroller</a>
+</li>
+<li>
+<a class="dropdown-item" href="../internals/reconciler-pipeline/">Reconciler Pipeline</a>
+</li>
+<li>
+<a class="dropdown-item" href="../internals/observability/">Observability</a>
+</li>
+<li>
+<a class="dropdown-item" href="../internals/shutdown/">Shutdown</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Guides</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../guides/getting-started.md">Getting Started</a>
+</li>
+<li>
+<a class="dropdown-item" href="../guides/writing-your-first-katalog.md">Writing Your First Katalog</a>
+</li>
+<li>
+<a class="dropdown-item" href="../guides/writing-hooks.md">Writing Hooks</a>
+</li>
+<li>
+<a class="dropdown-item" href="../guides/writing-custom-reconcilers.md">Writing Custom Reconcilers</a>
+</li>
+<li>
+<a class="dropdown-item" href="../guides/testing-operators.md">Testing Operators</a>
+</li>
+<li>
+<a class="dropdown-item" href="../guides/production-deployment.md">Production Deployment</a>
+</li>
+<li>
+<a class="dropdown-item" href="../guides/inspect-live-crd/">Inspect Live CRD</a>
+</li>
+<li>
+<a class="dropdown-item" href="../guides/extending-orkestra/">Extending Orkestra</a>
+</li>
+<li>
+<a class="dropdown-item" href="../guides/choosing-katalog-vs-komposer/">Choosing Katalog vs Komposer</a>
+</li>
+<li>
+<a class="dropdown-item" href="../guides/use-cases/">Use Cases</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Reference</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../reference/katalog-schema/">Katalog Schema</a>
+</li>
+<li>
+<a class="dropdown-item" href="../reference/komposer-schema/">Komposer Schema</a>
+</li>
+<li>
+<a class="dropdown-item" href="../reference/metrics/">Metrics</a>
+</li>
+<li>
+<a class="dropdown-item" href="../reference/api.md">API</a>
+</li>
+<li>
+<a class="dropdown-item" href="../reference/cli/">CLI</a>
+</li>
+</ul>
+</li>
+</ul>
+<ul class="nav navbar-nav ms-md-auto">
+<li class="nav-item">
+<a class="nav-link" data-bs-target="#mkdocs_search_modal" data-bs-toggle="modal" href="#">
+<i class="fa fa-search"></i> Search
+                            </a>
+</li>
+<li class="nav-item">
+<a class="nav-link disabled" rel="prev">
+<i class="fa fa-arrow-left"></i> Previous
+                                </a>
+</li>
+<li class="nav-item">
+<a class="nav-link" href="../architecture/architecture/" rel="next">
+                                    Next <i class="fa fa-arrow-right"></i>
+</a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="container">
+<div class="row">
+<div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+<div class="navbar-header">
+<button class="navbar-toggler collapsed" data-bs-target="#toc-collapse" data-bs-toggle="collapse" title="Table of Contents" type="button">
+<span class="fa fa-angle-down"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse card bg-body-tertiary" id="toc-collapse">
+<ul class="nav flex-column">
+<li class="nav-item" data-bs-level="1"><a class="nav-link" href="#the-orkestra-onboarding-guide">The Orkestra Onboarding Guide</a>
+<ul class="nav flex-column">
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#1-what-orkestra-is">1. What Orkestra Is</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#2-the-mental-model">2. The Mental Model</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#3-install-orkestra">3. Install Orkestra</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#4-create-your-first-operator">4. Create Your First Operator</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#5-install-the-crd">5. Install the CRD</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#6-run-orkestra">6. Run Orkestra</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#7-apply-a-cr">7. Apply a CR</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#8-watch-orkestra-work">8. Watch Orkestra Work</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#9-what-just-happened">9. What Just Happened?</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#10-next-steps">10. Next Steps</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#examples">Examples</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#philosophy">Philosophy</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#what-orkestra-is-not">What Orkestra is NOT</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div></div>
+<div class="col-md-9" role="main">
+<h1 id="the-orkestra-onboarding-guide">The Orkestra Onboarding Guide</h1>
+<p>Welcome to Orkestra — the operator runtime where <strong>your CRD is enough</strong>.</p>
+<p>This guide gives you the mental model, the workflow, and your first operator in minutes.</p>
+<hr/>
+<div align="center">
+<pre><code>   ___       _              _
+  / _ \ _  _| |___ _ _  ___| |_ _ _ __ _
+ | (_) | || | / -_) ' \/ -_)  _| '_/ _` |
+  \___/ \_,_|_\___|_||_\___|\__|_| \__,_|
+          O R K E S T R A
+</code></pre>
+
+
+**CRDs in. Operators out.**
+
+</div>
+<hr/>
+<h2 id="1-what-orkestra-is">1. What Orkestra Is</h2>
+<p>Orkestra is a <strong>runtime</strong>, not a framework.</p>
+<p>You don't write:</p>
+<ul>
+<li>Go  </li>
+<li>Python  </li>
+<li>JavaScript  </li>
+<li>Reconcile loops  </li>
+<li>Controllers  </li>
+<li>Webhooks  </li>
+<li>CRD structs  </li>
+<li>Boilerplate  </li>
+</ul>
+<p>You write:</p>
+<ul>
+<li><strong>A CRD</strong> (the schema)  </li>
+<li><strong>A Katalog</strong> (the behavior)  </li>
+</ul>
+<p>Orkestra does the rest.</p>
+<hr/>
+<h2 id="2-the-mental-model">2. The Mental Model</h2>
+<pre><code>CRD → Katalog → Orkestra → Kubernetes
+</code></pre>
+<ul>
+<li><strong>CRD</strong> defines <em>what</em> your resource is  </li>
+<li><strong>Katalog</strong> defines <em>how</em> it should behave  </li>
+<li><strong>Orkestra</strong> reconciles it  </li>
+<li><strong>Kubernetes</strong> stores it  </li>
+</ul>
+<p>This is the simplest operator model ever created.</p>
+<div class="mermaid">flowchart LR
+    A[("Your CRD")] --&gt;|schema| C[("Orkestra Runtime")]
+    B[("Katalog")] --&gt;|logic| C
+    C --&gt;|uses| D[("OrkestraRegistry")]
+    D --&gt;|provides| C
+    C --&gt;|manages| K8s["Kubernetes API"]
+
+    style A fill:transparent,stroke:#333,stroke-width:2px
+    style B fill:transparent,stroke:#333,stroke-width:2px
+    style C fill:#FF6D00,stroke:#333,stroke-width:4px,color:#FFFFFF
+    style D fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
+    style K8s fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
+
+%%    L_A_C_0@{ animation: fast } 
+ %%   L_B_C_0@{ animation: fast } 
+  %%  L_C_D_0@{ animation: fast } 
+   %% L_D_C_0@{ animation: fast } 
+   %% L_C_K8s_0@{ animation: fast }
+</div>
+<hr/>
+<h2 id="3-install-orkestra">3. Install Orkestra</h2>
+<pre><code class="language-bash"># macOS
+brew tap iAlexeze/tap
+brew install ork
+
+# Linux / macOS
+curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | bash
+</code></pre>
+<p>Verify:</p>
+<pre><code class="language-bash">ork version
+</code></pre>
+<p>For advanced installation options — GPG verification, custom directory, version pinning — see the <a href="./deployment.md#installation">Installation Guide</a>.</p>
+<hr/>
+<h2 id="4-create-your-first-operator">4. Create Your First Operator</h2>
+<pre><code class="language-bash">ork init my-operator
+cd my-operator
+</code></pre>
+<p>This scaffolds a clean operator workspace with examples and a ready‑to‑run Katalog.</p>
+<hr/>
+<h2 id="5-install-the-crd">5. Install the CRD</h2>
+<pre><code class="language-bash">kubectl apply -f examples/website/website-crd.yaml
+</code></pre>
+<p>This tells Kubernetes what a <code>Website</code> resource looks like.</p>
+<hr/>
+<h2 id="6-run-orkestra">6. Run Orkestra</h2>
+<pre><code class="language-bash">ork run --katalog examples/website/website-katalog.yaml
+</code></pre>
+<p>Use <code>--debug</code> to see every reconcile, event, and template resolution.</p>
+<hr/>
+<h2 id="7-apply-a-cr">7. Apply a CR</h2>
+<pre><code class="language-bash">kubectl apply -f examples/website/website-cr.yaml
+</code></pre>
+<p>Orkestra immediately detects the new CR and begins reconciling.</p>
+<hr/>
+<h2 id="8-watch-orkestra-work">8. Watch Orkestra Work</h2>
+<pre><code class="language-bash">ork status -w
+kubectl get deployments
+kubectl get services
+</code></pre>
+<p>Or explore the built‑in endpoints:</p>
+<pre><code class="language-bash">curl localhost:8080/katalog/website/health | jq
+curl localhost:8080/katalog/website | jq
+curl localhost:8080/metrics
+</code></pre>
+<p>You'll see the operator's health, metrics, and full runtime state.</p>
+<hr/>
+<h2 id="9-what-just-happened">9. What Just Happened?</h2>
+<p>When you applied your CR:</p>
+<ol>
+<li>Kubernetes notified Orkestra  </li>
+<li>Orkestra queued the reconcile  </li>
+<li>The CR was loaded from the informer cache  </li>
+<li>Finalizers were added  </li>
+<li>Templates were resolved  </li>
+<li>Deployments and Services were created  </li>
+<li>Drift correction was enabled  </li>
+<li>Metrics and events were emitted  </li>
+</ol>
+<p>All from a single YAML file.</p>
+<hr/>
+<h2 id="10-next-steps">10. Next Steps</h2>
+<ul>
+<li>Learn the <strong><a href="./docs/katalog.md">Katalog</a></strong> — declare operator behavior  </li>
+<li>Compose multiple operators with <strong><a href="./docs/komposer.md">Komposer</a></strong> </li>
+<li>Explore the <strong><a href="./docs/orkestra-registry/orkestra-registry-vision.md">OrkestraRegistry</a></strong> </li>
+<li>Read the philosophy: <strong><a href="./publications/your-crd-is-enough.md">Your CRD is Enough</a></strong></li>
+</ul>
+<hr/>
+<h2 id="examples">Examples</h2>
+<table>
+<thead>
+<tr>
+<th>Example</th>
+<th>What it shows</th>
+<th>Complexity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="./examples/website/README.md">Website</a></td>
+<td>Deployment + Service from a CR</td>
+<td>⭐</td>
+</tr>
+<tr>
+<td><a href="./examples/platform-namespace/README.md">Platform Namespace</a></td>
+<td>Secrets, ConfigMaps, ServiceAccounts</td>
+<td>⭐⭐</td>
+</tr>
+<tr>
+<td><a href="./examples/komposer/README.md">Komposer</a></td>
+<td>Composing Katalogs from files, Helm charts</td>
+<td>⭐⭐⭐</td>
+</tr>
+</tbody>
+</table>
+<hr/>
+<h2 id="philosophy">Philosophy</h2>
+<p>Orkestra is built on three principles:</p>
+<ul>
+<li>
+<p><strong>Declarative first.</strong> If Kubernetes can express it declaratively, Orkestra should too. Your CRD is enough.</p>
+</li>
+<li>
+<p><strong>Composition over code.</strong> Operators should be assembled from declarations,
+not programmed from scratch.</p>
+</li>
+<li>
+<p><strong>Runtime over build-time.</strong> Behavior should be interpreted at runtime, not
+baked into binaries.</p>
+</li>
+</ul>
+<hr/>
+<h2 id="what-orkestra-is-not">What Orkestra is NOT</h2>
+<ul>
+<li>❌ Not a replacement for Kubernetes  </li>
+<li>❌ Not a DSL  </li>
+<li>❌ Not a templating engine  </li>
+<li>❌ Not a webhook server  </li>
+<li>❌ Not a controller framework  </li>
+<li>❌ Not a policy engine  </li>
+<li>❌ Not a code generator  </li>
+</ul>
+<p>Orkestra is a <strong>runtime</strong> — the missing trusted observer Kubernetes never had.</p>
+<hr/>
+<p>Welcome to the future of operators. 🎼</p></div>
+</div>
+</div>
+<footer class="col-md-12">
+<hr/>
+<p>Orkestra</p>
+<p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+</footer>
+<script src="../js/bootstrap.bundle.min.js"></script>
+<script>
+            var base_url = "..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+<script src="../js/base.js"></script>
+<script src="../search/main.js"></script>
+<div aria-hidden="true" aria-labelledby="searchModalLabel" class="modal" id="mkdocs_search_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="searchModalLabel">Search</h4>
+<button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+</div>
+<div class="modal-body">
+<p>From here you can search these documents. Enter your search terms below.</p>
+<form>
+<div class="form-group">
+<input class="form-control" id="mkdocs-search-query" placeholder="Search..." title="Type search term here" type="search"/>
+</div>
+</form>
+<div data-no-results-text="No results found" id="mkdocs-search-results"></div>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div><div aria-hidden="true" aria-labelledby="keyboardModalLabel" class="modal" id="mkdocs_keyboard_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+<button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+</div>
+<div class="modal-body">
+<table class="table">
+<thead>
+<tr>
+<th style="width: 20%;">Keys</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="help shortcut"><kbd>?</kbd></td>
+<td>Open this help</td>
+</tr>
+<tr>
+<td class="next shortcut"><kbd>n</kbd></td>
+<td>Next page</td>
+</tr>
+<tr>
+<td class="prev shortcut"><kbd>p</kbd></td>
+<td>Previous page</td>
+</tr>
+<tr>
+<td class="search shortcut"><kbd>s</kbd></td>
+<td>Search</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>
