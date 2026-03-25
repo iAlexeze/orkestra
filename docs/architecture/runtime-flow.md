@@ -5,7 +5,7 @@ This document complements the [Architecture Overview](./architecture.md) by show
 
 ---
 
-## 1. End‑to‑End Runtime Flow
+## 1. **End‑to‑End Runtime Flow**
 
 ```mermaid
 sequenceDiagram
@@ -32,7 +32,7 @@ sequenceDiagram
 
 ---
 
-## 2. Informer → Workqueue
+## 2. **Informer → Workqueue**
 
 Every CRD has:
 
@@ -50,7 +50,7 @@ Orkestra uses **SharedIndexInformers**, so all workers share a warm cache.
 
 ---
 
-## 3. Worker Execution
+## 3. **Worker Execution**
 
 Workers pop keys from the queue and call:
 
@@ -67,7 +67,7 @@ This wrapper:
 
 ---
 
-## 4. Dispatch by GVK
+## **4. Dispatch by GVK**
 
 The KontrollerRegistry maps:
 
@@ -87,7 +87,7 @@ All through the same dispatch layer.
 
 ---
 
-## 5. GenericReconciler
+## **5. GenericReconciler**
 
 The GenericReconciler handles:
 
@@ -105,7 +105,7 @@ Priority:
 
 ---
 
-## 6. Template Engine
+## **6. Template Engine**
 
 The template engine performs:
 
@@ -120,7 +120,7 @@ This is where declarative operator logic becomes real Kubernetes objects.
 
 ---
 
-## 7. Status + Events
+## **7. Status + Events**
 
 Every reconcile emits:
 
@@ -130,7 +130,7 @@ Every reconcile emits:
 
 ---
 
-## What’s Next?
+## **What’s Next?**
 
 Continue to the **CRD Lifecycle** to understand how Orkestra handles:
 

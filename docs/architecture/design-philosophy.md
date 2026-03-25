@@ -5,7 +5,7 @@ This document complements the [CRD Lifecycle](./crd-lifecycle.md) and explains t
 
 ---
 
-## 1. CRDs Are Data
+## 1. **CRDs Are Data**
 
 Operators should be **declared**, not coded.
 
@@ -24,7 +24,7 @@ This allows:
 
 ---
 
-## 2. Dependency‑Aware Lifecycle
+## 2. **Dependency‑Aware Lifecycle**
 
 Operators often depend on each other.
 
@@ -43,7 +43,7 @@ This prevents:
 
 ---
 
-## 3. Zero‑Code by Default
+## 3. **Zero‑Code by Default**
 
 Most operators don’t need Go or custom code.
 
@@ -59,7 +59,7 @@ This covers 90% of operator use cases.
 
 ---
 
-## 4. Typed When Needed
+## 4. **Typed When Needed**
 
 When you need:
 
@@ -73,7 +73,7 @@ But the runtime remains the same.
 
 ---
 
-## 5. Self‑Healing
+## 5. **Self‑Healing**
 
 CRDs can appear, disappear, or change at any time.
 
@@ -92,7 +92,7 @@ This makes operators resilient to:
 
 ---
 
-## 6. Isolation and Safety
+## 6. **Isolation and Safety**
 
 Orkestra isolates failures at:
 
@@ -109,7 +109,7 @@ Orkestra isolates failures at:
 
 ---
 
-## 7. Deterministic Startup and Shutdown
+## 7. **Deterministic Startup and Shutdown**
 
 Startup:
 
@@ -130,7 +130,7 @@ This guarantees:
 
 ---
 
-## What’s Next?
+## **What’s Next?**
 
 Explore the **Architecture Diagrams** for a complete visual reference.
 

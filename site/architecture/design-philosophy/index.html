@@ -34,15 +34,37 @@
                 <div id="navbar-collapse" class="navbar-collapse collapse">
                         <!-- Main navigation -->
                         <ul class="nav navbar-nav">
-                            <li class="nav-item">
-                                <a href="../../core/" class="nav-link">Start Here</a>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Getting Started</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/getting-started/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-your-first-katalog/" class="dropdown-item">Writing Your First Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-hooks/" class="dropdown-item">Writing Hooks</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-custom-reconcilers/" class="dropdown-item">Writing Custom Reconcilers</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/testing-operators/" class="dropdown-item">Testing Operators</a>
+</li>
+                                </ul>
                             </li>
                             <li class="nav-item dropdown">
                                 <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Architecture</a>
                                 <ul class="dropdown-menu">
                                     
 <li>
-    <a href="../architecture/" class="dropdown-item">Overview</a>
+    <a href="../overview/" class="dropdown-item">Overview</a>
 </li>
                                     
 <li>
@@ -58,11 +80,11 @@
 </li>
                                     
 <li>
-    <a href="../../architecture-diagrams.md" class="dropdown-item">Architecture Diagrams</a>
+    <a href="../architecture-diagrams/" class="dropdown-item">Architecture Diagrams</a>
 </li>
                                     
 <li>
-    <a href="../full-architecture-view.md" class="dropdown-item">Full Architecture View</a>
+    <a href="../full-architecture-view/" class="dropdown-item">Full Architecture View</a>
 </li>
                                 </ul>
                             </li>
@@ -83,52 +105,19 @@
 </li>
                                     
 <li>
-    <a href="../../concepts/template-engine/" class="dropdown-item">Template Engine</a>
+    <a href="../../concepts/templating/" class="dropdown-item">Templating</a>
 </li>
                                     
 <li>
-    <a href="../../concepts/dependency-graph/" class="dropdown-item">Dependency Graph</a>
+    <a href="../../concepts/dependency-model/" class="dropdown-item">Dependency Model</a>
 </li>
                                     
 <li>
-    <a href="../../concepts/reconciler-model.md" class="dropdown-item">Reconciler Model</a>
-</li>
-                                </ul>
-                            </li>
-                            <li class="nav-item dropdown">
-                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Internals</a>
-                                <ul class="dropdown-menu">
-                                    
-<li>
-    <a href="../../internals/startup-sequence/" class="dropdown-item">Startup Sequence</a>
+    <a href="../../concepts/health-subsystem/" class="dropdown-item">Health Subsystem</a>
 </li>
                                     
 <li>
-    <a href="../../internals/konstruct-orkestra/" class="dropdown-item">konstructOrkestra</a>
-</li>
-                                    
-<li>
-    <a href="../../internals/dynamic-vs-typed/" class="dropdown-item">Dynamic vs Typed CRDs</a>
-</li>
-                                    
-<li>
-    <a href="../../internals/informer-factory/" class="dropdown-item">Informer Factory</a>
-</li>
-                                    
-<li>
-    <a href="../../internals/dependency-kontroller/" class="dropdown-item">Dependency Kontroller</a>
-</li>
-                                    
-<li>
-    <a href="../../internals/reconciler-pipeline/" class="dropdown-item">Reconciler Pipeline</a>
-</li>
-                                    
-<li>
-    <a href="../../internals/observability/" class="dropdown-item">Observability</a>
-</li>
-                                    
-<li>
-    <a href="../../internals/shutdown/" class="dropdown-item">Shutdown</a>
+    <a href="../../concepts/reconciler-model/" class="dropdown-item">Reconciler Model</a>
 </li>
                                 </ul>
                             </li>
@@ -137,31 +126,7 @@
                                 <ul class="dropdown-menu">
                                     
 <li>
-    <a href="../../guides/getting-started.md" class="dropdown-item">Getting Started</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/writing-your-first-katalog.md" class="dropdown-item">Writing Your First Katalog</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/writing-hooks.md" class="dropdown-item">Writing Hooks</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/writing-custom-reconcilers.md" class="dropdown-item">Writing Custom Reconcilers</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/testing-operators.md" class="dropdown-item">Testing Operators</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/production-deployment.md" class="dropdown-item">Production Deployment</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+    <a href="../../guides/deployment/#helm-deployment" class="dropdown-item">Production Deployment</a>
 </li>
                                     
 <li>
@@ -194,11 +159,36 @@
 </li>
                                     
 <li>
-    <a href="../../reference/api.md" class="dropdown-item">API</a>
+    <a href="../../reference/cli/" class="dropdown-item">CLI</a>
 </li>
                                     
 <li>
-    <a href="../../reference/cli/" class="dropdown-item">CLI</a>
+    <a href="../../reference/inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Publications</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../publications/declarative-operators-whitepaper/" class="dropdown-item">Declarative Operators Whitepaper</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/why-orkestra/" class="dropdown-item">Why Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/metrics-analysis/" class="dropdown-item">Metrics Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/your-crd-is-enough/" class="dropdown-item">Your CRD is Enough</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/roadmap/" class="dropdown-item">Roadmap</a>
 </li>
                                 </ul>
                             </li>
@@ -216,7 +206,7 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a rel="next" href="../../concepts/katalog/" class="nav-link">
+                                <a rel="next" href="../architecture-diagrams/" class="nav-link">
                                     Next <i class="fa fa-arrow-right"></i>
                                 </a>
                             </li>
@@ -283,7 +273,7 @@
 <p>Why Orkestra is built the way it is — and what principles guide its architecture.</p>
 <p>This document complements the <a href="../crd-lifecycle/">CRD Lifecycle</a> and explains the deeper reasoning behind Orkestra’s design.</p>
 <hr />
-<h2 id="1-crds-are-data">1. CRDs Are Data</h2>
+<h2 id="1-crds-are-data">1. <strong>CRDs Are Data</strong></h2>
 <p>Operators should be <strong>declared</strong>, not coded.</p>
 <p>A CRD in Orkestra is:</p>
 <ul>
@@ -299,7 +289,7 @@
 <li>multi‑source composition (Komposer)  </li>
 </ul>
 <hr />
-<h2 id="2-dependencyaware-lifecycle">2. Dependency‑Aware Lifecycle</h2>
+<h2 id="2-dependencyaware-lifecycle">2. <strong>Dependency‑Aware Lifecycle</strong></h2>
 <p>Operators often depend on each other.</p>
 <p>Orkestra enforces:</p>
 <ul>
@@ -315,7 +305,7 @@
 <li>broken dependency chains  </li>
 </ul>
 <hr />
-<h2 id="3-zerocode-by-default">3. Zero‑Code by Default</h2>
+<h2 id="3-zerocode-by-default">3. <strong>Zero‑Code by Default</strong></h2>
 <p>Most operators don’t need Go or custom code.</p>
 <p>Orkestra provides:</p>
 <ul>
@@ -327,7 +317,7 @@
 </ul>
 <p>This covers 90% of operator use cases.</p>
 <hr />
-<h2 id="4-typed-when-needed">4. Typed When Needed</h2>
+<h2 id="4-typed-when-needed">4. <strong>Typed When Needed</strong></h2>
 <p>When you need:</p>
 <ul>
 <li>type‑safe hooks  </li>
@@ -337,7 +327,7 @@
 <p>You can add Go hooks or custom reconcilers.</p>
 <p>But the runtime remains the same.</p>
 <hr />
-<h2 id="5-selfhealing">5. Self‑Healing</h2>
+<h2 id="5-selfhealing">5. <strong>Self‑Healing</strong></h2>
 <p>CRDs can appear, disappear, or change at any time.</p>
 <p>Orkestra:</p>
 <ul>
@@ -353,7 +343,7 @@
 <li>partial deployments  </li>
 </ul>
 <hr />
-<h2 id="6-isolation-and-safety">6. Isolation and Safety</h2>
+<h2 id="6-isolation-and-safety">6. <strong>Isolation and Safety</strong></h2>
 <p>Orkestra isolates failures at:</p>
 <ul>
 <li>CR level  </li>
@@ -368,7 +358,7 @@
 <li>no runtime crashes  </li>
 </ul>
 <hr />
-<h2 id="7-deterministic-startup-and-shutdown">7. Deterministic Startup and Shutdown</h2>
+<h2 id="7-deterministic-startup-and-shutdown">7. <strong>Deterministic Startup and Shutdown</strong></h2>
 <p>Startup:</p>
 <ol>
 <li>Health server  </li>
@@ -386,7 +376,7 @@
 <li>no double processing  </li>
 </ul>
 <hr />
-<h2 id="whats-next">What’s Next?</h2>
+<h2 id="whats-next"><strong>What’s Next?</strong></h2>
 <p>Explore the <strong>Architecture Diagrams</strong> for a complete visual reference.</p>
 <p>👉 <a href="../architecture-diagrams/">Architecture Diagrams →</a></p></div>
             </div>

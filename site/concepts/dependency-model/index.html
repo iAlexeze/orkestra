@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Orkestra Team">
+        <link rel="canonical" href="https://orkestra.sh/concepts/dependency-model/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Dependency Model - Orkestra</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Orkestra</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Getting Started</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/getting-started/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-your-first-katalog/" class="dropdown-item">Writing Your First Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-hooks/" class="dropdown-item">Writing Hooks</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-custom-reconcilers/" class="dropdown-item">Writing Custom Reconcilers</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/testing-operators/" class="dropdown-item">Testing Operators</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Architecture</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../architecture/overview/" class="dropdown-item">Overview</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/runtime-flow/" class="dropdown-item">Runtime Flow</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/crd-lifecycle/" class="dropdown-item">CRD Lifecycle</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/design-philosophy/" class="dropdown-item">Design Philosophy</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/architecture-diagrams/" class="dropdown-item">Architecture Diagrams</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/full-architecture-view/" class="dropdown-item">Full Architecture View</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Concepts</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../katalog/" class="dropdown-item">Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../komposer/" class="dropdown-item">Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../conditional-provisioning/" class="dropdown-item">Conditional Provisioning</a>
+</li>
+                                    
+<li>
+    <a href="../templating/" class="dropdown-item">Templating</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">Dependency Model</a>
+</li>
+                                    
+<li>
+    <a href="../health-subsystem/" class="dropdown-item">Health Subsystem</a>
+</li>
+                                    
+<li>
+    <a href="../reconciler-model/" class="dropdown-item">Reconciler Model</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Guides</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/deployment/#helm-deployment" class="dropdown-item">Production Deployment</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/extending-orkestra/" class="dropdown-item">Extending Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/choosing-katalog-vs-komposer/" class="dropdown-item">Choosing Katalog vs Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/use-cases/" class="dropdown-item">Use Cases</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../reference/katalog-schema/" class="dropdown-item">Katalog Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/komposer-schema/" class="dropdown-item">Komposer Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/metrics/" class="dropdown-item">Metrics</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/cli/" class="dropdown-item">CLI</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Publications</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../publications/declarative-operators-whitepaper/" class="dropdown-item">Declarative Operators Whitepaper</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/why-orkestra/" class="dropdown-item">Why Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/metrics-analysis/" class="dropdown-item">Metrics Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/your-crd-is-enough/" class="dropdown-item">Your CRD is Enough</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/roadmap/" class="dropdown-item">Roadmap</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../templating/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../health-subsystem/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#how-dependencies-work" class="nav-link">How Dependencies Work</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#the-problem" class="nav-link">The Problem</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#declaring-dependencies" class="nav-link">Declaring Dependencies</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#how-it-works" class="nav-link">How It Works</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#example-in-action" class="nav-link">Example in Action</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#what-if-a-crd-is-deleted-later" class="nav-link">What If a CRD Is Deleted Later?</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#shutdown-order" class="nav-link">Shutdown Order</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#visualizing-dependencies" class="nav-link">Visualizing Dependencies</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#what-about-circular-dependencies" class="nav-link">What About Circular Dependencies?</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#under-the-hood" class="nav-link">Under the Hood</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#summary" class="nav-link">Summary</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="how-dependencies-work">How Dependencies Work</h1>
+<p>This document explains how Orkestra manages dependencies between CRDs — automatically, without any code.</p>
+<hr />
+<h2 id="the-problem"><strong>The Problem</strong></h2>
+<p>When you have multiple CRDs that depend on each other, you need them to start in the right order.</p>
+<p>Imagine a web application that needs a database before it can run:</p>
+<ul>
+<li><strong>Database CRD</strong> must be ready before the <strong>Application CRD</strong> starts</li>
+<li>If the database CRD is missing, the application should wait</li>
+<li>When the database appears, the application should start automatically</li>
+</ul>
+<p>Traditional operators don't handle this. You have to write code to check if dependencies exist, wait for them, and retry when they appear.</p>
+<p>Orkestra does this for you.</p>
+<hr />
+<h2 id="declaring-dependencies"><strong>Declaring Dependencies</strong></h2>
+<p>In your Katalog, you declare dependencies with <code>dependsOn</code>:</p>
+<pre><code class="language-yaml">crds:
+  - name: database
+    apiTypes:
+      group: database.myorg.io
+      version: v1alpha1
+      kind: Database
+      plural: databases
+    # ... other config
+
+  - name: application
+    apiTypes:
+      group: app.myorg.io
+      version: v1alpha1
+      kind: Application
+      plural: applications
+    dependsOn:
+      - database      # ← Application depends on Database
+    # ... other config
+</code></pre>
+<p>That's it. Orkestra handles the rest.</p>
+<hr />
+<h2 id="how-it-works"><strong>How It Works</strong></h2>
+<h3 id="1-orkestra-builds-a-graph"><strong>1. Orkestra Builds a Graph</strong></h3>
+<p>When Orkestra starts, it reads all your CRDs and their dependencies. It builds a graph that shows which CRD depends on which.</p>
+<pre><code>database ──┐
+           │
+           ▼
+     application
+</code></pre>
+<h3 id="2-orkestra-computes-the-order"><strong>2. Orkestra Computes the Order</strong></h3>
+<p>From the graph, Orkestra computes the order to start CRDs:</p>
+<ul>
+<li>CRDs with no dependencies start first</li>
+<li>CRDs that depend on others start only after their dependencies are ready</li>
+</ul>
+<p>In the example:
+1. <code>database</code> starts first (no dependencies)
+2. <code>application</code> starts second (waits for <code>database</code>)</p>
+<h3 id="3-orkestra-creates-ready-channels"><strong>3. Orkestra Creates Ready Channels</strong></h3>
+<p>For each CRD, Orkestra creates a "ready channel" — think of it as a closed door.</p>
+<ul>
+<li>If the CRD exists in the cluster, the door opens immediately</li>
+<li>If the CRD is missing, the door stays closed</li>
+</ul>
+<h3 id="4-dependents-wait"><strong>4. Dependents Wait</strong></h3>
+<p>When Orkestra reaches a CRD that depends on others, it waits for those doors to open.</p>
+<pre><code>application: waiting for database door to open...
+</code></pre>
+<h3 id="5-when-a-missing-crd-appears">5. <strong>When a Missing CRD Appears</strong></h3>
+<p>If a CRD is missing at startup, Orkestra doesn't stop. It keeps checking in the background.</p>
+<p>When the missing CRD finally appears:</p>
+<ol>
+<li>Orkestra detects it</li>
+<li>It starts the CRD's workers</li>
+<li>It opens the ready door</li>
+<li>All waiting dependents automatically start</li>
+</ol>
+<hr />
+<h2 id="example-in-action"><strong>Example in Action</strong></h2>
+<h3 id="scenario-database-missing-at-startup">Scenario: Database Missing at Startup</h3>
+<p>You start Orkestra, but the <code>database</code> CRD isn't installed yet. Only the <code>application</code> CRD exists.</p>
+<pre><code>1. Orkestra sees database is missing
+2. Orkestra sees application depends on database
+3. application starts waiting for database
+4. Orkestra keeps checking for database in the background
+</code></pre>
+<p>Your cluster has a <code>database</code> CR installed (the resource), but the <code>database</code> CRD (the definition) is missing.</p>
+<p>Later, you install the <code>database</code> CRD:</p>
+<pre><code class="language-bash">kubectl apply -f database-crd.yaml
+</code></pre>
+<p>Orkestra detects the CRD:</p>
+<pre><code>5. Orkestra notices database CRD appears
+6. Orkestra starts database workers
+7. Orkestra opens the ready door for database
+8. application sees the door open and starts its workers
+9. application reconciles any existing Application CRs
+</code></pre>
+<p>The system self‑heals. No restart needed.</p>
+<hr />
+<h2 id="what-if-a-crd-is-deleted-later">What If a CRD Is Deleted Later?</h2>
+<p>If you delete a CRD while Orkestra is running:</p>
+<ul>
+<li>The CRD's informer keeps running (it logs errors, but it's harmless)</li>
+<li>The workers stop (they can't run without the CRD)</li>
+<li>Dependents that were already started continue running (they're already active)</li>
+<li>If the CRD is recreated later, the informer recovers automatically</li>
+</ul>
+<p>You don't need to restart Orkestra.</p>
+<hr />
+<h2 id="shutdown-order"><strong>Shutdown Order</strong></h2>
+<p>When Orkestra shuts down, it stops CRDs in the <strong>reverse</strong> order they started.</p>
+<pre><code>Startup:   database → application
+Shutdown:  application → database
+</code></pre>
+<p>This ensures dependents stop before their dependencies. No broken references.</p>
+<hr />
+<h2 id="visualizing-dependencies"><strong>Visualizing Dependencies</strong></h2>
+<p>You can see the dependency graph with:</p>
+<pre><code class="language-bash">ork template --katalog my-katalog.yaml --graph
+</code></pre>
+<p>Output:</p>
+<pre><code>Dependency Graph:
+database
+application
+  └─ database
+</code></pre>
+<p>This shows that <code>application</code> depends on <code>database</code>.</p>
+<hr />
+<h2 id="what-about-circular-dependencies"><strong>What About Circular Dependencies?</strong></h2>
+<p>Orkestra detects circular dependencies and refuses to start:</p>
+<pre><code class="language-yaml">crds:
+  - name: a
+    dependsOn: [b]
+  - name: b
+    dependsOn: [a]
+</code></pre>
+<p>Error:</p>
+<pre><code>dependency cycle detected involving a → b → a
+</code></pre>
+<p>Fix your dependencies before running.</p>
+<hr />
+<h2 id="under-the-hood"><strong>Under the Hood</strong></h2>
+<p>Orkestra uses a simple but powerful mechanism:</p>
+<ul>
+<li><strong>Graph</strong> — built from your Katalog at startup</li>
+<li><strong>Ready channels</strong> — one per CRD, closed when the CRD is ready</li>
+<li><strong>Retry loop</strong> — checks for missing CRDs in the background</li>
+<li><strong>Topological sort</strong> — computes startup order</li>
+<li><strong>Reverse order</strong> — for clean shutdown</li>
+</ul>
+<p>No code. Just declaration.</p>
+<hr />
+<h2 id="summary"><strong>Summary</strong></h2>
+<table>
+<thead>
+<tr>
+<th>What</th>
+<th>How Orkestra Handles It</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Declare dependencies</strong></td>
+<td><code>dependsOn: [database]</code> in your Katalog</td>
+</tr>
+<tr>
+<td><strong>Startup order</strong></td>
+<td>Automatic — dependencies first</td>
+</tr>
+<tr>
+<td><strong>Missing CRDs</strong></td>
+<td>Wait, retry in background, activate when they appear</td>
+</tr>
+<tr>
+<td><strong>CRD deletion</strong></td>
+<td>Workers stop, informer recovers when recreated</td>
+</tr>
+<tr>
+<td><strong>Shutdown order</strong></td>
+<td>Reverse of startup</td>
+</tr>
+<tr>
+<td><strong>Circular dependencies</strong></td>
+<td>Detected and rejected</td>
+</tr>
+</tbody>
+</table>
+<p><strong>You declare the dependencies. Orkestra handles the order.</strong> 🎼</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+                <p>Orkestra</p>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

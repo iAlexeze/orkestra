@@ -34,15 +34,37 @@
                 <div id="navbar-collapse" class="navbar-collapse collapse">
                         <!-- Main navigation -->
                         <ul class="nav navbar-nav">
-                            <li class="nav-item">
-                                <a href="../../core/" class="nav-link">Start Here</a>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Getting Started</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/getting-started/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-your-first-katalog/" class="dropdown-item">Writing Your First Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-hooks/" class="dropdown-item">Writing Hooks</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-custom-reconcilers/" class="dropdown-item">Writing Custom Reconcilers</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/testing-operators/" class="dropdown-item">Testing Operators</a>
+</li>
+                                </ul>
                             </li>
                             <li class="nav-item dropdown">
                                 <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Architecture</a>
                                 <ul class="dropdown-menu">
                                     
 <li>
-    <a href="../../architecture/architecture/" class="dropdown-item">Overview</a>
+    <a href="../../architecture/overview/" class="dropdown-item">Overview</a>
 </li>
                                     
 <li>
@@ -58,11 +80,11 @@
 </li>
                                     
 <li>
-    <a href="../../architecture-diagrams.md" class="dropdown-item">Architecture Diagrams</a>
+    <a href="../../architecture/architecture-diagrams/" class="dropdown-item">Architecture Diagrams</a>
 </li>
                                     
 <li>
-    <a href="../../architecture/full-architecture-view.md" class="dropdown-item">Full Architecture View</a>
+    <a href="../../architecture/full-architecture-view/" class="dropdown-item">Full Architecture View</a>
 </li>
                                 </ul>
                             </li>
@@ -83,52 +105,19 @@
 </li>
                                     
 <li>
-    <a href="../template-engine/" class="dropdown-item">Template Engine</a>
+    <a href="../templating/" class="dropdown-item">Templating</a>
 </li>
                                     
 <li>
-    <a href="../dependency-graph/" class="dropdown-item">Dependency Graph</a>
+    <a href="../dependency-model/" class="dropdown-item">Dependency Model</a>
 </li>
                                     
 <li>
-    <a href="../reconciler-model.md" class="dropdown-item">Reconciler Model</a>
-</li>
-                                </ul>
-                            </li>
-                            <li class="nav-item dropdown">
-                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Internals</a>
-                                <ul class="dropdown-menu">
-                                    
-<li>
-    <a href="../../internals/startup-sequence/" class="dropdown-item">Startup Sequence</a>
+    <a href="../health-subsystem/" class="dropdown-item">Health Subsystem</a>
 </li>
                                     
 <li>
-    <a href="../../internals/konstruct-orkestra/" class="dropdown-item">konstructOrkestra</a>
-</li>
-                                    
-<li>
-    <a href="../../internals/dynamic-vs-typed/" class="dropdown-item">Dynamic vs Typed CRDs</a>
-</li>
-                                    
-<li>
-    <a href="../../internals/informer-factory/" class="dropdown-item">Informer Factory</a>
-</li>
-                                    
-<li>
-    <a href="../../internals/dependency-kontroller/" class="dropdown-item">Dependency Kontroller</a>
-</li>
-                                    
-<li>
-    <a href="../../internals/reconciler-pipeline/" class="dropdown-item">Reconciler Pipeline</a>
-</li>
-                                    
-<li>
-    <a href="../../internals/observability/" class="dropdown-item">Observability</a>
-</li>
-                                    
-<li>
-    <a href="../../internals/shutdown/" class="dropdown-item">Shutdown</a>
+    <a href="../reconciler-model/" class="dropdown-item">Reconciler Model</a>
 </li>
                                 </ul>
                             </li>
@@ -137,31 +126,7 @@
                                 <ul class="dropdown-menu">
                                     
 <li>
-    <a href="../../guides/getting-started.md" class="dropdown-item">Getting Started</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/writing-your-first-katalog.md" class="dropdown-item">Writing Your First Katalog</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/writing-hooks.md" class="dropdown-item">Writing Hooks</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/writing-custom-reconcilers.md" class="dropdown-item">Writing Custom Reconcilers</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/testing-operators.md" class="dropdown-item">Testing Operators</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/production-deployment.md" class="dropdown-item">Production Deployment</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+    <a href="../../guides/deployment/#helm-deployment" class="dropdown-item">Production Deployment</a>
 </li>
                                     
 <li>
@@ -194,11 +159,36 @@
 </li>
                                     
 <li>
-    <a href="../../reference/api.md" class="dropdown-item">API</a>
+    <a href="../../reference/cli/" class="dropdown-item">CLI</a>
 </li>
                                     
 <li>
-    <a href="../../reference/cli/" class="dropdown-item">CLI</a>
+    <a href="../../reference/inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Publications</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../publications/declarative-operators-whitepaper/" class="dropdown-item">Declarative Operators Whitepaper</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/why-orkestra/" class="dropdown-item">Why Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/metrics-analysis/" class="dropdown-item">Metrics Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/your-crd-is-enough/" class="dropdown-item">Your CRD is Enough</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/roadmap/" class="dropdown-item">Roadmap</a>
 </li>
                                 </ul>
                             </li>
@@ -230,7 +220,7 @@
             
             <li class="nav-item" data-bs-level="1"><a href="#orkestra-komponents" class="nav-link">Orkestra Komponents</a>
               <ul class="nav flex-column">
-            <li class="nav-item" data-bs-level="2"><a href="#komponent-index" class="nav-link">Komponent index</a>
+            <li class="nav-item" data-bs-level="2"><a href="#the-pieces-at-a-glance" class="nav-link">The Pieces at a Glance</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -266,7 +256,15 @@
               <ul class="nav flex-column">
               </ul>
             </li>
-            <li class="nav-item" data-bs-level="2"><a href="#orkestra" class="nav-link">Orkestra</a>
+            <li class="nav-item" data-bs-level="2"><a href="#orkestra-the-manager" class="nav-link">Orkestra (the Manager)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#how-they-fit-together" class="nav-link">How They Fit Together</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#what-this-means-for-you" class="nav-link">What This Means for You</a>
               <ul class="nav flex-column">
               </ul>
             </li>
@@ -278,260 +276,229 @@
                     <div class="col-md-9" role="main">
 
 <h1 id="orkestra-komponents">Orkestra Komponents</h1>
-<p>Orkestra is composed of discrete komponents — each with a single
-responsibility, a defined startup order, and a clean shutdown path.
-This document describes each one and how they connect.</p>
+<p>Orkestra is made of several pieces, each with one job. They start in a specific order and shut down in reverse. This document explains each piece and how they fit together.</p>
 <hr />
-<h2 id="komponent-index">Komponent index</h2>
+<h2 id="the-pieces-at-a-glance">The Pieces at a Glance</h2>
 <table>
 <thead>
 <tr>
-<th>Komponent</th>
-<th>Package</th>
-<th>Responsibility</th>
+<th>Piece</th>
+<th>What It Does</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>HealthServer</td>
-<td><code>pkg/health</code></td>
-<td>Liveness, readiness, Katalog API, metrics</td>
+<td><strong>HealthServer</strong></td>
+<td>Answers questions like "Is Orkestra alive?" and "Are my CRDs healthy?"</td>
 </tr>
 <tr>
-<td>Kubeclient</td>
-<td><code>pkg/kubeclient</code></td>
-<td>REST client, dynamic client, clientset</td>
+<td><strong>Kubeclient</strong></td>
+<td>Talks to Kubernetes — reads, writes, watches</td>
 </tr>
 <tr>
-<td>EventRecorder</td>
-<td><code>pkg/event</code></td>
-<td>Kubernetes events</td>
+<td><strong>EventRecorder</strong></td>
+<td>Creates events you see in <code>kubectl describe</code></td>
 </tr>
 <tr>
-<td>QueueRegistry</td>
-<td><code>pkg/queue</code></td>
-<td>Per-CRD isolated workqueues</td>
+<td><strong>QueueRegistry</strong></td>
+<td>Holds a to-do list for each CRD</td>
 </tr>
 <tr>
-<td>DefaultWorkqueue</td>
-<td><code>pkg/queue</code></td>
-<td>Shared fallback queue</td>
+<td><strong>DefaultWorkqueue</strong></td>
+<td>A shared to-do list for simple CRDs</td>
 </tr>
 <tr>
-<td>SharedInformerFactory</td>
-<td><code>pkg/informer</code></td>
-<td>Per-CRD informers with per-CRD resync</td>
+<td><strong>SharedInformerFactory</strong></td>
+<td>Watches for changes to your CRDs</td>
 </tr>
 <tr>
-<td>DependencyKontroller</td>
-<td><code>pkg/kontroller</code></td>
-<td>Topological startup, event dispatch, workers</td>
+<td><strong>DependencyKontroller</strong></td>
+<td>Makes sure CRDs start in the right order</td>
 </tr>
 <tr>
-<td>KonductorElection</td>
-<td><code>pkg/konductor</code></td>
-<td>Leader election — post-start hook</td>
+<td><strong>KonductorElection</strong></td>
+<td>Picks one leader when multiple copies run</td>
+</tr>
+<tr>
+<td><strong>Orkestra</strong></td>
+<td>Starts and stops everything, in the right order</td>
 </tr>
 </tbody>
 </table>
-<p>Startup is sequential in this order. Shutdown runs in reverse.
-<code>KonductorElection</code> is a post-start hook — it starts after all komponents
-are ready and runs the kontroller only on the elected leader.</p>
 <hr />
 <h2 id="healthserver">HealthServer</h2>
-<p><code>pkg/health</code></p>
-<p>First to start, last to stop. Routes are registered before <code>Start()</code> — the
-HTTP mux is the same object used at both registration time and request time.</p>
-<p>Routes registered by <code>konstructOrkestra</code>:</p>
-<pre><code>GET /health                 Orkestra Liveness — 200 always when running
-GET /ready                  Orkestra Readiness — 200 after all komponents ready, 503 before
-GET /metrics                 Prometheus metrics endpoint
-GET /katalog                 All CRDs — health, config, dependency graph
-GET /katalog/{crd}           Single CRD — config + live reconcile stats
-GET /katalog/{crd}/health    200 healthy / 503 degraded
-</code></pre>
-<p>The <code>/katalog/*</code> routes are registered per-CRD in <code>konstructOrkestra</code>
-before the HealthServer starts. The <code>crdHealthMap</code> is shared across the
-kontroller (writes) and the route handlers (reads).</p>
+<p><strong>First to start, last to stop.</strong></p>
+<p>The HealthServer answers questions about Orkestra's health. It runs a small web server that responds to:</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>What It Answers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/health</code></td>
+<td>"Is Orkestra alive?" → Always 200 when running</td>
+</tr>
+<tr>
+<td><code>/ready</code></td>
+<td>"Is Orkestra ready to work?" → 200 after everything is started</td>
+</tr>
+<tr>
+<td><code>/metrics</code></td>
+<td>Numbers about what Orkestra is doing (for Prometheus)</td>
+</tr>
+<tr>
+<td><code>/katalog</code></td>
+<td>List of all CRDs, their health, and dependencies</td>
+</tr>
+<tr>
+<td><code>/katalog/{crd}</code></td>
+<td>Details about one CRD</td>
+</tr>
+<tr>
+<td><code>/katalog/{crd}/health</code></td>
+<td>Is this CRD healthy?</td>
+</tr>
+</tbody>
+</table>
+<p>These endpoints are created before the server starts. When you run <code>ork run</code>, Orkestra registers all the routes, then starts the server.</p>
 <hr />
 <h2 id="kubeclient">Kubeclient</h2>
-<p><code>pkg/kubeclient</code></p>
-<p>Generic Kubernetes client wrapping REST, dynamic, and clientset clients.
-Started early — downstream services need the REST config and dynamic client
-during wiring, before <code>orkestra.Start()</code> runs.</p>
-<p><strong>Capabilities:</strong></p>
-<pre><code class="language-go">kube.RESTClient()           // configured with full scheme — typed CRDs
-kube.DynamicClient()        // for *unstructured.Unstructured — dynamic CRDs
-kube.Clientset()            // for built-in Kubernetes types
-kube.RestConfig()           // *rest.Config — used by SharedInformerFactory
-kube.NewClient(...)         // creates a REST client for any CRD (typed path)
-kube.NewDynamicListerWatcher(...) // creates a ListerWatcher via dynamic client
-kube.PatchFinalizers(...)   // JSON merge patch for finalizer add/remove
-kube.NewClientProvider()    // creates a ClientProvider for typed CRD registration
-</code></pre>
-<p><strong>Context injection:</strong></p>
-<pre><code class="language-go">// konstructOrkestra injects kube into context before calling reconcile hooks
-ctx = kubeclient.WithKubeclient(ctx, kube)
-kube, ok := kubeclient.FromContext(ctx)
-</code></pre>
-<p>OrkestraRegistry functions retrieve kube from context — hook signatures
-stay clean without kube as an explicit parameter.</p>
+<p>The Kubeclient is Orkestra's way of talking to Kubernetes. It can:</p>
+<ul>
+<li>Read and write any Kubernetes resource</li>
+<li>Watch for changes</li>
+<li>Talk to custom resources (your CRDs)</li>
+<li>Talk to built-in resources (Pods, Deployments, etc.)</li>
+</ul>
+<p>Everything Orkestra does goes through the Kubeclient. It's started early because other pieces need it.</p>
+<p>When you write a hook (Go code), Orkestra gives you access to the Kubeclient so you can read or write anything you need.</p>
 <hr />
 <h2 id="eventrecorder">EventRecorder</h2>
-<p><code>pkg/event</code></p>
-<p>Broadcasts Kubernetes events. Depends on kubeclient being started.</p>
-<p>Events appear in <code>kubectl describe</code> and <code>kubectl get events --watch</code>.
-Used by GenericReconciler for lifecycle events (reconciled, deleted,
-finalizer added/removed) and by KonductorElection for leadership transitions.</p>
+<p>The EventRecorder creates Kubernetes events. Events appear in:</p>
+<pre><code>kubectl describe website my-blog
+kubectl get events --watch
+</code></pre>
+<p>You'll see events when:</p>
+<ul>
+<li>A CR is reconciled successfully</li>
+<li>A CR fails to reconcile</li>
+<li>A finalizer is added or removed</li>
+<li>A leader is elected</li>
+</ul>
+<p>Events help you understand what Orkestra is doing without looking at logs.</p>
 <hr />
 <h2 id="queueregistry-and-defaultworkqueue">QueueRegistry and DefaultWorkqueue</h2>
-<p><code>pkg/queue</code></p>
-<p><strong>QueueRegistry</strong> creates and holds a dedicated workqueue per CRD GVK.
-Each queue has its own depth metric and exponential backoff.</p>
-<p><strong>DefaultWorkqueue</strong> is the shared fallback for CRDs with <code>queue.default: true</code>.</p>
-<pre><code class="language-yaml"># Per-CRD queue (default)
-queue:
-  maxQueueDepth: 500        # — maximum number of items in the per-CRD queue
-  degradeThreshold: 5       # — number of consecutive reconcile failures before the CRD health state transitions from healthy to degraded
-
-# Use shared default queue instead
-queue:
-  default: true                 
-  # You can still configure queuedepth and degradeThreshold — 0 uses the default
-</code></pre>
-<p>Queue items carry both the object key (<code>namespace/name</code>) and the GVK so
-the DependencyKontroller can route to the correct reconciler.</p>
+<p>These are Orkestra's to-do lists.</p>
+<p><strong>QueueRegistry</strong> creates a separate to-do list for each CRD. If you have 5 CRDs, you have 5 queues. Each queue has its own depth (how many tasks are waiting) and retry behavior.</p>
+<p><strong>DefaultWorkqueue</strong> is one shared to-do list. If a CRD is simple and doesn't need its own queue, you can use the default one.</p>
+<p>Each task in a queue has two pieces:</p>
+<ul>
+<li><strong>Key</strong> — which resource to work on (like <code>default/my-blog</code>)</li>
+<li><strong>GVK</strong> — what kind of resource it is (like <code>Website</code>)</li>
+</ul>
+<p>When a worker picks up a task, it knows exactly which CRD and which CR to reconcile.</p>
 <hr />
 <h2 id="sharedinformerfactory">SharedInformerFactory</h2>
-<p><code>pkg/informer</code></p>
-<p>Creates and manages <code>cache.SharedIndexInformer</code> instances per CRD.
-The factory routes API server events into the correct queue via
-event handlers registered at creation time.</p>
-<p><strong>Two paths depending on CRD mode:</strong></p>
-<p><strong>Typed CRD</strong> — uses <code>ClientProvider</code> (REST client registered per-type):</p>
-<pre><code class="language-go">inf = infFactory.For(object, ctx, opts)
-</code></pre>
-<p><strong>Dynamic CRD</strong> — uses <code>NewDynamicListerWatcher</code> (bypasses scheme):</p>
-<pre><code class="language-go">lw := kube.NewDynamicListerWatcher(crdInfo)
-inf = infFactory.ForListerWatcher(lw, object, ctx, opts)
-</code></pre>
-<p>Both produce a <code>cache.SharedIndexInformer</code>. The rest of the system is
-identical — the same KontrollerRegistry, DependencyKontroller, and
-GenericReconciler work with either.</p>
-<p>Per-CRD resync is applied per informer:</p>
-<pre><code class="language-go">infFactory.For(object, ctx, informer.Options{
-    Name:   crd.APITypes.Kind,
-    Resync: crd.Resync,    // per-CRD — overrides the factory default
-    Wq:     wq,
-})
-</code></pre>
-<p>The factory is not started in <code>konstructOrkestra</code>. <code>orkestra.Start()</code>
-calls <code>infFactory.Start()</code> in the correct sequence.</p>
+<p>The SharedInformerFactory watches for changes. It keeps a local copy of every CR it manages.</p>
+<p>When something changes — a CR is created, updated, or deleted — the informer notices and adds a task to the queue.</p>
+<p>The informer also keeps a local cache. This means workers never need to ask the Kubernetes API for the current state. They read from the cache, which is fast and reduces load on the cluster.</p>
+<p>Each CRD can have its own resync interval. A resync is like a "just checking" event — even if nothing changed, the informer re‑adds the resource to the queue so Orkestra can make sure everything is still correct.</p>
 <hr />
 <h2 id="kontrollerregistry">KontrollerRegistry</h2>
-<p><code>pkg/kontroller</code></p>
-<p>Maps GVK to runtime components — informer, reconciler factory, and CRD
-metadata. Built by <code>konstructOrkestra</code> before the DependencyKontroller
-is created.</p>
-<pre><code class="language-go">ktrlRegistry.Register(gvk, crd, inf, factory)
-entry, ok := ktrlRegistry.Get(gvk)
-</code></pre>
-<p>The reconciler <code>factory</code> is a closure — it captures <code>kube</code>, <code>ev</code>, <code>inf</code>,
-and <code>crd</code> but is not called until <code>startCRDWorkers</code> runs after
-<code>orkestra.Start()</code> guarantees everything is live.</p>
+<p>The KontrollerRegistry is a lookup table. It maps a CRD (like <code>Website</code>) to:</p>
+<ul>
+<li>Its informer (how to watch it)</li>
+<li>Its reconciler (how to reconcile it)</li>
+<li>Its metadata (name, group, version, etc.)</li>
+</ul>
+<p>When a worker picks up a task, it looks in this registry to find the right reconciler for that CRD.</p>
 <hr />
 <h2 id="dependencykontroller">DependencyKontroller</h2>
-<p><code>pkg/kontroller</code></p>
-<p>Orchestrates CRD lifecycle in topological dependency order.
-The most complex komponent — but it presents a single clean interface:</p>
-<pre><code class="language-go">ktrl.RunOrDie(ctx)   // called by KonductorElection on the elected leader
-</code></pre>
-<p><strong>Startup sequence:</strong></p>
+<p>This is the brain of Orkestra. It makes sure CRDs start in the right order.</p>
+<h3 id="how-it-starts">How It Starts</h3>
 <ol>
-<li>Compute topological order from the dependency graph</li>
-<li>For each CRD in dependency order:</li>
-<li>Call <code>reconcilerFactory()</code> to build the reconciler</li>
-<li>Wait for the informer cache to sync</li>
-<li>Start <code>N</code> worker goroutines (N from <code>crd.Workers</code>)</li>
-<li>Signal readiness — unblocks dependents</li>
-<li>Start <code>retryMissingCRDs</code> once after the startup loop — handles CRDs
-   not yet installed on the cluster</li>
-<li>Call <code>SetReady()</code> after all enabled CRDs have started</li>
+<li>Reads all your CRDs and their dependencies</li>
+<li>Figures out the order — dependencies first, dependents later</li>
+<li>For each CRD in order:</li>
+<li>Creates the reconciler (the code that does the work)</li>
+<li>Waits for the informer to have the latest data</li>
+<li>Starts workers (the number you set in <code>workers</code>)</li>
+<li>Signals "ready" to any CRDs that depend on this one</li>
+<li>Starts a background checker for CRDs that aren't installed yet</li>
+<li>Marks itself ready when everything is running</li>
 </ol>
-<p><strong>Worker dispatch:</strong></p>
-<p>Each worker calls <code>safeReconcile</code> — a wrapper around the reconciler that:
-- recovers from panics (one CRD cannot crash others)
-- records metrics (duration, success/error count)
-- updates CRD health state</p>
-<pre><code class="language-go">func (c *DependencyKontroller) processNextItem(ctx context.Context) bool {
-    item, shutdown := c.queue.Get()
-    if shutdown { return false }
-    defer c.queue.Done(item)
-
-    reconciler := c.registry.GetReconciler(item.GVK)
-    if err := c.safeReconcile(ctx, reconciler, item); err != nil {
-        c.queue.AddRateLimited(item)
-        return true
-    }
-    c.queue.Forget(item)
-    return true
-}
-</code></pre>
-<p><strong>Missing CRD handling:</strong></p>
-<p>If a CRD is declared in the Katalog but not yet installed on the cluster,
-<code>retryMissingCRDs</code> runs once after the startup loop completes. It retries
-in the background without blocking healthy CRDs. When the CRD appears,
-<code>activateCRD</code> closes the readiness channel, which unblocks any dependents
-waiting in <code>RunOrDie</code>.</p>
-<p><strong>Shutdown:</strong></p>
-<p>Stops accepting new items, drains in-flight reconciliations, shuts down
-CRDs in reverse dependency order.</p>
+<h3 id="how-it-processes-tasks">How It Processes Tasks</h3>
+<p>Workers pull tasks from the queue and call the reconciler. If the reconciler fails, the task goes back to the queue with a delay (exponential backoff). If it succeeds, the task is forgotten.</p>
+<h3 id="what-if-a-crd-is-missing">What If a CRD Is Missing?</h3>
+<p>If a CRD is declared in your Katalog but not installed in the cluster:</p>
+<ul>
+<li>Orkestra doesn't start workers for it</li>
+<li>CRDs that depend on it wait</li>
+<li>A background checker keeps checking</li>
+<li>When the CRD appears, Orkestra starts its workers and unblocks the dependents</li>
+</ul>
+<h3 id="how-it-stops">How It Stops</h3>
+<p>When Orkestra shuts down:</p>
+<ol>
+<li>Stops accepting new tasks</li>
+<li>Waits for current tasks to finish</li>
+<li>Stops CRDs in reverse order (dependents first, dependencies last)</li>
+</ol>
 <hr />
 <h2 id="konductorelection">KonductorElection</h2>
-<p><code>pkg/konductor</code></p>
-<p>Kubernetes leader election. Runs as a post-start hook — only called after
-all komponents are ready.</p>
-<pre><code class="language-go">ko := konductor.NewKonductorElection(
-    startup.kube,
-    startup.event,
-    func(ctx context.Context) { startup.kontroller.RunOrDie(ctx) },
-    func(konductor string) { printBanner(startup, konductor) },
-    konductor.Options{
-        Namespace:     kfg.Cluster().DefaultNamespace,
-        LeaseDuration: kfg.Konductor().LeaseDuration,
-        RenewDeadline: kfg.Konductor().RenewDeadline,
-        RetryPeriod:   kfg.Konductor().RetryPeriod,
-    })
-
-startup.orkestra.AddPostStartHook(ko, func(ctx context.Context) {
-    ko.Start(ctx)
-})
-</code></pre>
-<p><strong>Behaviour:</strong></p>
-<ul>
-<li>All pods start informers — caches are warm on every replica</li>
-<li>Only the elected leader calls <code>kontroller.RunOrDie(ctx)</code></li>
-<li>The banner prints only on the leader</li>
-<li>On leadership loss or context cancellation, the lease is released
-  and a follower takes over with an already-warm cache</li>
-<li>Leadership transitions emit Kubernetes events</li>
-</ul>
+<p>If you run multiple copies of Orkestra (for high availability), only one should do the work. The KonductorElection picks one leader.</p>
+<p>All copies watch for changes (informers run everywhere). But only the leader runs the workers.</p>
+<p>If the leader dies, another copy becomes leader. Because all copies have warm caches, the new leader can start immediately.</p>
+<p>When a leader is elected, it prints a banner so you know which pod is in charge.</p>
 <hr />
-<h2 id="orkestra">Orkestra</h2>
-<p><code>pkg/orkestra</code></p>
-<p>The lifecycle manager for all komponents. Not a komponent itself — it
-owns and orchestrates them.</p>
-<pre><code class="language-go">o := ork.NewOrkestra(kfg.Cluster().DefaultResync, kfg.Ork().LogLevel)
-o.Register(komponents)
-o.Start(ctx)      // sequential — each must succeed before the next
-o.Wait()          // blocks until context cancelled or fatal error
+<h2 id="orkestra-the-manager">Orkestra (the Manager)</h2>
+<p>This piece starts and stops everything else. It's not a component itself — it's the conductor.</p>
+<pre><code class="language-bash">ork run --katalog my-katalog.yaml
 </code></pre>
-<p><code>AddPostStartHook</code> registers a function to run after <code>Start()</code> completes.
-The KonductorElection is always registered as a post-start hook — it must
-not run before all komponents (especially the informer factory and kontroller)
-are fully started.</p>
-<p>Shutdown on SIGTERM or context cancellation runs komponents in reverse
-registration order. Every komponent has a <code>Stop()</code> method called in sequence.</p></div>
+<p>When you run this command:</p>
+<ol>
+<li>Orkestra creates all the components</li>
+<li>It starts them in the right order</li>
+<li>It waits for a signal to stop (like Ctrl+C)</li>
+<li>When it stops, it shuts everything down in reverse order</li>
+</ol>
+<p>If any component fails to start, Orkestra stops and tells you what went wrong.</p>
+<hr />
+<h2 id="how-they-fit-together">How They Fit Together</h2>
+<pre><code>1. HealthServer starts — routes are registered, server isn't listening yet
+2. Kubeclient starts — can now talk to Kubernetes
+3. EventRecorder starts — can now create events
+4. QueueRegistry starts — to-do lists are ready
+5. DefaultWorkqueue starts — shared to-do list is ready
+6. SharedInformerFactory starts — begins watching for changes
+7. DependencyKontroller starts — waits for dependencies, starts workers
+8. KonductorElection starts — picks a leader, runs the workers on the leader
+9. HealthServer starts listening — now ready to answer health checks
+</code></pre>
+<p>When you press Ctrl+C:</p>
+<pre><code>1. KonductorElection stops — leader releases the lock
+2. DependencyKontroller stops — workers finish and stop
+3. SharedInformerFactory stops — stops watching for changes
+4. Queues stop — no new tasks accepted
+5. EventRecorder stops — flushes remaining events
+6. Kubeclient stops — closes connections
+7. HealthServer stops — no longer answers health checks
+</code></pre>
+<hr />
+<h2 id="what-this-means-for-you">What This Means for You</h2>
+<p>You don't need to know the details of how these components work. You just write a Katalog. Orkestra handles:</p>
+<ul>
+<li>Watching your CRDs</li>
+<li>Queueing changes</li>
+<li>Processing them in order</li>
+<li>Handling dependencies</li>
+<li>Recovering from failures</li>
+<li>Shutting down cleanly</li>
+</ul>
+<p>The components exist so you don't have to build them yourself. 🎼</p></div>
             </div>
         </div>
 

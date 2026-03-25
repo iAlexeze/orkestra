@@ -1,302 +1,227 @@
 # Orkestra Komponents
 
-Orkestra is composed of discrete komponents — each with a single
-responsibility, a defined startup order, and a clean shutdown path.
-This document describes each one and how they connect.
+Orkestra is made of several pieces, each with one job. They start in a specific order and shut down in reverse. This document explains each piece and how they fit together.
 
 ---
 
-## Komponent index
+## The Pieces at a Glance
 
-| Komponent | Package | Responsibility |
-|---|---|---|
-| HealthServer | `pkg/health` | Liveness, readiness, Katalog API, metrics |
-| Kubeclient | `pkg/kubeclient` | REST client, dynamic client, clientset |
-| EventRecorder | `pkg/event` | Kubernetes events |
-| QueueRegistry | `pkg/queue` | Per-CRD isolated workqueues |
-| DefaultWorkqueue | `pkg/queue` | Shared fallback queue |
-| SharedInformerFactory | `pkg/informer` | Per-CRD informers with per-CRD resync |
-| DependencyKontroller | `pkg/kontroller` | Topological startup, event dispatch, workers |
-| KonductorElection | `pkg/konductor` | Leader election — post-start hook |
-
-Startup is sequential in this order. Shutdown runs in reverse.
-`KonductorElection` is a post-start hook — it starts after all komponents
-are ready and runs the kontroller only on the elected leader.
+| Piece | What It Does |
+|-------|--------------|
+| **HealthServer** | Answers questions like "Is Orkestra alive?" and "Are my CRDs healthy?" |
+| **Kubeclient** | Talks to Kubernetes — reads, writes, watches |
+| **EventRecorder** | Creates events you see in `kubectl describe` |
+| **QueueRegistry** | Holds a to-do list for each CRD |
+| **DefaultWorkqueue** | A shared to-do list for simple CRDs |
+| **SharedInformerFactory** | Watches for changes to your CRDs |
+| **DependencyKontroller** | Makes sure CRDs start in the right order |
+| **KonductorElection** | Picks one leader when multiple copies run |
+| **Orkestra** | Starts and stops everything, in the right order |
 
 ---
 
 ## HealthServer
 
-`pkg/health`
+**First to start, last to stop.**
 
-First to start, last to stop. Routes are registered before `Start()` — the
-HTTP mux is the same object used at both registration time and request time.
+The HealthServer answers questions about Orkestra's health. It runs a small web server that responds to:
 
-Routes registered by `konstructOrkestra`:
+| Endpoint | What It Answers |
+|----------|-----------------|
+| `/health` | "Is Orkestra alive?" → Always 200 when running |
+| `/ready` | "Is Orkestra ready to work?" → 200 after everything is started |
+| `/metrics` | Numbers about what Orkestra is doing (for Prometheus) |
+| `/katalog` | List of all CRDs, their health, and dependencies |
+| `/katalog/{crd}` | Details about one CRD |
+| `/katalog/{crd}/health` | Is this CRD healthy? |
 
-```
-GET /health                 Orkestra Liveness — 200 always when running
-GET /ready                  Orkestra Readiness — 200 after all komponents ready, 503 before
-GET /metrics                 Prometheus metrics endpoint
-GET /katalog                 All CRDs — health, config, dependency graph
-GET /katalog/{crd}           Single CRD — config + live reconcile stats
-GET /katalog/{crd}/health    200 healthy / 503 degraded
-```
-
-The `/katalog/*` routes are registered per-CRD in `konstructOrkestra`
-before the HealthServer starts. The `crdHealthMap` is shared across the
-kontroller (writes) and the route handlers (reads).
+These endpoints are created before the server starts. When you run `ork run`, Orkestra registers all the routes, then starts the server.
 
 ---
 
 ## Kubeclient
 
-`pkg/kubeclient`
+The Kubeclient is Orkestra's way of talking to Kubernetes. It can:
 
-Generic Kubernetes client wrapping REST, dynamic, and clientset clients.
-Started early — downstream services need the REST config and dynamic client
-during wiring, before `orkestra.Start()` runs.
+- Read and write any Kubernetes resource
+- Watch for changes
+- Talk to custom resources (your CRDs)
+- Talk to built-in resources (Pods, Deployments, etc.)
 
-**Capabilities:**
+Everything Orkestra does goes through the Kubeclient. It's started early because other pieces need it.
 
-```go
-kube.RESTClient()           // configured with full scheme — typed CRDs
-kube.DynamicClient()        // for *unstructured.Unstructured — dynamic CRDs
-kube.Clientset()            // for built-in Kubernetes types
-kube.RestConfig()           // *rest.Config — used by SharedInformerFactory
-kube.NewClient(...)         // creates a REST client for any CRD (typed path)
-kube.NewDynamicListerWatcher(...) // creates a ListerWatcher via dynamic client
-kube.PatchFinalizers(...)   // JSON merge patch for finalizer add/remove
-kube.NewClientProvider()    // creates a ClientProvider for typed CRD registration
-```
-
-**Context injection:**
-
-```go
-// konstructOrkestra injects kube into context before calling reconcile hooks
-ctx = kubeclient.WithKubeclient(ctx, kube)
-kube, ok := kubeclient.FromContext(ctx)
-```
-
-OrkestraRegistry functions retrieve kube from context — hook signatures
-stay clean without kube as an explicit parameter.
+When you write a hook (Go code), Orkestra gives you access to the Kubeclient so you can read or write anything you need.
 
 ---
 
 ## EventRecorder
 
-`pkg/event`
+The EventRecorder creates Kubernetes events. Events appear in:
 
-Broadcasts Kubernetes events. Depends on kubeclient being started.
+```
+kubectl describe website my-blog
+kubectl get events --watch
+```
 
-Events appear in `kubectl describe` and `kubectl get events --watch`.
-Used by GenericReconciler for lifecycle events (reconciled, deleted,
-finalizer added/removed) and by KonductorElection for leadership transitions.
+You'll see events when:
+
+- A CR is reconciled successfully
+- A CR fails to reconcile
+- A finalizer is added or removed
+- A leader is elected
+
+Events help you understand what Orkestra is doing without looking at logs.
 
 ---
 
 ## QueueRegistry and DefaultWorkqueue
 
-`pkg/queue`
+These are Orkestra's to-do lists.
 
-**QueueRegistry** creates and holds a dedicated workqueue per CRD GVK.
-Each queue has its own depth metric and exponential backoff.
+**QueueRegistry** creates a separate to-do list for each CRD. If you have 5 CRDs, you have 5 queues. Each queue has its own depth (how many tasks are waiting) and retry behavior.
 
-**DefaultWorkqueue** is the shared fallback for CRDs with `queue.default: true`.
+**DefaultWorkqueue** is one shared to-do list. If a CRD is simple and doesn't need its own queue, you can use the default one.
 
-```yaml
-# Per-CRD queue (default)
-queue:
-  maxQueueDepth: 500        # — maximum number of items in the per-CRD queue
-  degradeThreshold: 5       # — number of consecutive reconcile failures before the CRD health state transitions from healthy to degraded
+Each task in a queue has two pieces:
 
-# Use shared default queue instead
-queue:
-  default: true                 
-  # You can still configure queuedepth and degradeThreshold — 0 uses the default
-```
+- **Key** — which resource to work on (like `default/my-blog`)
+- **GVK** — what kind of resource it is (like `Website`)
 
-Queue items carry both the object key (`namespace/name`) and the GVK so
-the DependencyKontroller can route to the correct reconciler.
+When a worker picks up a task, it knows exactly which CRD and which CR to reconcile.
 
 ---
 
 ## SharedInformerFactory
 
-`pkg/informer`
+The SharedInformerFactory watches for changes. It keeps a local copy of every CR it manages.
 
-Creates and manages `cache.SharedIndexInformer` instances per CRD.
-The factory routes API server events into the correct queue via
-event handlers registered at creation time.
+When something changes — a CR is created, updated, or deleted — the informer notices and adds a task to the queue.
 
-**Two paths depending on CRD mode:**
+The informer also keeps a local cache. This means workers never need to ask the Kubernetes API for the current state. They read from the cache, which is fast and reduces load on the cluster.
 
-**Typed CRD** — uses `ClientProvider` (REST client registered per-type):
-
-```go
-inf = infFactory.For(object, ctx, opts)
-```
-
-**Dynamic CRD** — uses `NewDynamicListerWatcher` (bypasses scheme):
-
-```go
-lw := kube.NewDynamicListerWatcher(crdInfo)
-inf = infFactory.ForListerWatcher(lw, object, ctx, opts)
-```
-
-Both produce a `cache.SharedIndexInformer`. The rest of the system is
-identical — the same KontrollerRegistry, DependencyKontroller, and
-GenericReconciler work with either.
-
-Per-CRD resync is applied per informer:
-
-```go
-infFactory.For(object, ctx, informer.Options{
-    Name:   crd.APITypes.Kind,
-    Resync: crd.Resync,    // per-CRD — overrides the factory default
-    Wq:     wq,
-})
-```
-
-The factory is not started in `konstructOrkestra`. `orkestra.Start()`
-calls `infFactory.Start()` in the correct sequence.
+Each CRD can have its own resync interval. A resync is like a "just checking" event — even if nothing changed, the informer re‑adds the resource to the queue so Orkestra can make sure everything is still correct.
 
 ---
 
 ## KontrollerRegistry
 
-`pkg/kontroller`
+The KontrollerRegistry is a lookup table. It maps a CRD (like `Website`) to:
 
-Maps GVK to runtime components — informer, reconciler factory, and CRD
-metadata. Built by `konstructOrkestra` before the DependencyKontroller
-is created.
+- Its informer (how to watch it)
+- Its reconciler (how to reconcile it)
+- Its metadata (name, group, version, etc.)
 
-```go
-ktrlRegistry.Register(gvk, crd, inf, factory)
-entry, ok := ktrlRegistry.Get(gvk)
-```
-
-The reconciler `factory` is a closure — it captures `kube`, `ev`, `inf`,
-and `crd` but is not called until `startCRDWorkers` runs after
-`orkestra.Start()` guarantees everything is live.
+When a worker picks up a task, it looks in this registry to find the right reconciler for that CRD.
 
 ---
 
 ## DependencyKontroller
 
-`pkg/kontroller`
+This is the brain of Orkestra. It makes sure CRDs start in the right order.
 
-Orchestrates CRD lifecycle in topological dependency order.
-The most complex komponent — but it presents a single clean interface:
+### How It Starts
 
-```go
-ktrl.RunOrDie(ctx)   // called by KonductorElection on the elected leader
-```
+1. Reads all your CRDs and their dependencies
+2. Figures out the order — dependencies first, dependents later
+3. For each CRD in order:
+   - Creates the reconciler (the code that does the work)
+   - Waits for the informer to have the latest data
+   - Starts workers (the number you set in `workers`)
+   - Signals "ready" to any CRDs that depend on this one
+4. Starts a background checker for CRDs that aren't installed yet
+5. Marks itself ready when everything is running
 
-**Startup sequence:**
+### How It Processes Tasks
 
-1. Compute topological order from the dependency graph
-2. For each CRD in dependency order:
-   - Call `reconcilerFactory()` to build the reconciler
-   - Wait for the informer cache to sync
-   - Start `N` worker goroutines (N from `crd.Workers`)
-   - Signal readiness — unblocks dependents
-3. Start `retryMissingCRDs` once after the startup loop — handles CRDs
-   not yet installed on the cluster
-4. Call `SetReady()` after all enabled CRDs have started
+Workers pull tasks from the queue and call the reconciler. If the reconciler fails, the task goes back to the queue with a delay (exponential backoff). If it succeeds, the task is forgotten.
 
-**Worker dispatch:**
+### What If a CRD Is Missing?
 
-Each worker calls `safeReconcile` — a wrapper around the reconciler that:
-- recovers from panics (one CRD cannot crash others)
-- records metrics (duration, success/error count)
-- updates CRD health state
+If a CRD is declared in your Katalog but not installed in the cluster:
 
-```go
-func (c *DependencyKontroller) processNextItem(ctx context.Context) bool {
-    item, shutdown := c.queue.Get()
-    if shutdown { return false }
-    defer c.queue.Done(item)
+- Orkestra doesn't start workers for it
+- CRDs that depend on it wait
+- A background checker keeps checking
+- When the CRD appears, Orkestra starts its workers and unblocks the dependents
 
-    reconciler := c.registry.GetReconciler(item.GVK)
-    if err := c.safeReconcile(ctx, reconciler, item); err != nil {
-        c.queue.AddRateLimited(item)
-        return true
-    }
-    c.queue.Forget(item)
-    return true
-}
-```
+### How It Stops
 
-**Missing CRD handling:**
+When Orkestra shuts down:
 
-If a CRD is declared in the Katalog but not yet installed on the cluster,
-`retryMissingCRDs` runs once after the startup loop completes. It retries
-in the background without blocking healthy CRDs. When the CRD appears,
-`activateCRD` closes the readiness channel, which unblocks any dependents
-waiting in `RunOrDie`.
-
-**Shutdown:**
-
-Stops accepting new items, drains in-flight reconciliations, shuts down
-CRDs in reverse dependency order.
+1. Stops accepting new tasks
+2. Waits for current tasks to finish
+3. Stops CRDs in reverse order (dependents first, dependencies last)
 
 ---
 
 ## KonductorElection
 
-`pkg/konductor`
+If you run multiple copies of Orkestra (for high availability), only one should do the work. The KonductorElection picks one leader.
 
-Kubernetes leader election. Runs as a post-start hook — only called after
-all komponents are ready.
+All copies watch for changes (informers run everywhere). But only the leader runs the workers.
 
-```go
-ko := konductor.NewKonductorElection(
-    startup.kube,
-    startup.event,
-    func(ctx context.Context) { startup.kontroller.RunOrDie(ctx) },
-    func(konductor string) { printBanner(startup, konductor) },
-    konductor.Options{
-        Namespace:     kfg.Cluster().DefaultNamespace,
-        LeaseDuration: kfg.Konductor().LeaseDuration,
-        RenewDeadline: kfg.Konductor().RenewDeadline,
-        RetryPeriod:   kfg.Konductor().RetryPeriod,
-    })
+If the leader dies, another copy becomes leader. Because all copies have warm caches, the new leader can start immediately.
 
-startup.orkestra.AddPostStartHook(ko, func(ctx context.Context) {
-    ko.Start(ctx)
-})
-```
-
-**Behaviour:**
-
-- All pods start informers — caches are warm on every replica
-- Only the elected leader calls `kontroller.RunOrDie(ctx)`
-- The banner prints only on the leader
-- On leadership loss or context cancellation, the lease is released
-  and a follower takes over with an already-warm cache
-- Leadership transitions emit Kubernetes events
+When a leader is elected, it prints a banner so you know which pod is in charge.
 
 ---
 
-## Orkestra
+## Orkestra (the Manager)
 
-`pkg/orkestra`
+This piece starts and stops everything else. It's not a component itself — it's the conductor.
 
-The lifecycle manager for all komponents. Not a komponent itself — it
-owns and orchestrates them.
-
-```go
-o := ork.NewOrkestra(kfg.Cluster().DefaultResync, kfg.Ork().LogLevel)
-o.Register(komponents)
-o.Start(ctx)      // sequential — each must succeed before the next
-o.Wait()          // blocks until context cancelled or fatal error
+```bash
+ork run --katalog my-katalog.yaml
 ```
 
-`AddPostStartHook` registers a function to run after `Start()` completes.
-The KonductorElection is always registered as a post-start hook — it must
-not run before all komponents (especially the informer factory and kontroller)
-are fully started.
+When you run this command:
 
-Shutdown on SIGTERM or context cancellation runs komponents in reverse
-registration order. Every komponent has a `Stop()` method called in sequence.
+1. Orkestra creates all the components
+2. It starts them in the right order
+3. It waits for a signal to stop (like Ctrl+C)
+4. When it stops, it shuts everything down in reverse order
+
+If any component fails to start, Orkestra stops and tells you what went wrong.
+
+---
+
+## How They Fit Together
+
+```
+1. HealthServer starts — routes are registered, server isn't listening yet
+2. Kubeclient starts — can now talk to Kubernetes
+3. EventRecorder starts — can now create events
+4. QueueRegistry starts — to-do lists are ready
+5. DefaultWorkqueue starts — shared to-do list is ready
+6. SharedInformerFactory starts — begins watching for changes
+7. DependencyKontroller starts — waits for dependencies, starts workers
+8. KonductorElection starts — picks a leader, runs the workers on the leader
+9. HealthServer starts listening — now ready to answer health checks
+```
+
+When you press Ctrl+C:
+
+```
+1. KonductorElection stops — leader releases the lock
+2. DependencyKontroller stops — workers finish and stop
+3. SharedInformerFactory stops — stops watching for changes
+4. Queues stop — no new tasks accepted
+5. EventRecorder stops — flushes remaining events
+6. Kubeclient stops — closes connections
+7. HealthServer stops — no longer answers health checks
+```
+
+---
+
+## What This Means for You
+
+You don't need to know the details of how these components work. You just write a Katalog. Orkestra handles:
+
+- Watching your CRDs
+- Queueing changes
+- Processing them in order
+- Handling dependencies
+- Recovering from failures
+- Shutting down cleanly
+
+The components exist so you don't have to build them yourself. 🎼

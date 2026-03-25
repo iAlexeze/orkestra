@@ -1,154 +1,121 @@
-# 🌌 **Orkestra**  
-### *A Declarative Operator Runtime for Kubernetes*
+# Orkestra Documentation
 
-Orkestra turns YAML into fully‑functional Kubernetes operators — no scaffolding, no code generation, no boilerplate.  
-You describe **what** your operator should do.  
-Orkestra handles **how** it runs.
+Welcome to the Orkestra documentation — the complete reference for the world's first **zero‑code Kubernetes operator runtime**.
 
-It’s the operator framework you always wished existed.
+Orkestra turns CRDs into operators. This documentation explains how.
 
 ---
 
-## 🚀 Why Orkestra?
+<div align="center">
 
-### **Zero‑Code Operators**  
-Define CRDs and behavior in a **Katalog**.  
-Orkestra builds the entire operator around them:
-
-- Informers  
-- Worker pools  
-- Reconciler pipeline  
-- Drift correction  
-- Health endpoints  
-- Metrics  
-- Dependency ordering  
-- Leader election  
-
-No Go code required — unless you want it.
-
----
-
-### **Dynamic or Typed — Your Choice**  
-Use unstructured CRDs for rapid iteration, or plug in typed Go structs when you need type‑safe hooks.  
-Both paths share the same runtime.
-
----
-
-### **Self‑Healing Runtime**  
-CRDs can appear, disappear, or change at any time.  
-Orkestra automatically:
-
-- detects missing CRDs  
-- activates them when they appear  
-- deactivates them when deleted  
-- reactivates them when reinstalled  
-
-Your operator never needs a restart.
-
----
-
-### **Dependency‑Aware Execution**  
-Declare dependencies between CRDs.  
-Orkestra builds a DAG and ensures:
-
-- startup in topological order  
-- shutdown in reverse  
-- dependents never start early  
-- missing dependencies don’t block healthy CRDs  
-
-This is how operators *should* work.
-
----
-
-### **Production‑Ready by Default**  
-Every operator includes:
-
-- `/health` and `/ready` endpoints  
-- `/katalog` introspection API  
-- Prometheus metrics  
-- Panic‑safe reconcile loop  
-- Idempotent resource application  
-- Automatic owner references  
-- Drift correction  
-
-You get CNCF‑grade behavior without writing a line of Go.
-
----
-
-## 🧩 How It Works
-
-```mermaid
-flowchart LR
-    A[Katalog] --> B[Orkestra Runtime]
-    B --> C[Reconciler Registry]
-    C --> D[Template Engine]
-    D --> E[Kubernetes API]
+```
+   ___       _              _
+  / _ \ _  _| |___ _ _  ___| |_ _ _ __ _
+ | (_) | || | / -_) ' \/ -_)  _| '_/ _` |
+  \___/ \_,_|_\___|_||_\___|\__|_| \__,_|
+          O R K E S T R A
 ```
 
-Orkestra reads your Katalog → builds a runtime → watches CRDs → reconciles resources → keeps everything in sync.
+<strong>CRDs in. Operators out.</strong>
+
+</div>
 
 ---
 
-## 🛠 Example: A Zero‑Code Operator
+## Quick Start
 
-```yaml
-apiVersion: demo.orkestra.io/v1alpha1
-kind: Website
-metadata:
-  name: my-blog
-spec:
-  image: nginx:1.25
-  replicas: 2
-  port: 80
-  exposePublicly: "true"
-```
+New to Orkestra? Start here to build your first operator in minutes.
 
-And the Katalog:
-
-```yaml
-onCreate:
-  deployments:
-    - name: "{{ .metadata.name }}"
-      image: "{{ .spec.image }}"
-      replicas: "{{ .spec.replicas }}"
-      port: "{{ .spec.port }}"
-      reconcile: true
-
-  services:
-    - name: "{{ .metadata.name }}-svc"
-      type: LoadBalancer
-      port: "80"
-      targetPort: "{{ .spec.port }}"
-      when:
-        - field: spec.exposePublicly
-          equals: "true"
-```
-
-That’s it.  
-You just wrote an operator.
+👉 **[Get Started →](./guides/getting-started.md)**
 
 ---
 
-## 📚 Documentation
+## Guides
 
-- **[Start Here](./core/README.md)** → Learn the core concepts  
-- **[Architecture](./architecture/architecture.md)** → Understand the runtime  
-- **[Guides](./guides/)** → Build your first operator  
-- **[Reference](./reference/cli.md)** → Katalog + Komposer schemas  
-- **[Internals](./internals/startup-sequence.md)** → Deep dive into the engine  
+Step‑by‑step instructions for building and operating with Orkestra.
 
----
-
-## 🌐 Community & Links
-
-- GitHub: *coming soon*  
-- Website: **orkestra.sh**  
-- Docs: `/docs`  
-- Discussions: *coming soon*  
+| Guide | Description |
+|-------|-------------|
+| [Getting Started](./guides/getting-started.md) | Install Orkestra and run your first operator |
+| [Writing Your First Katalog](./guides/writing-your-first-katalog.md) | Declare CRDs and create resources from templates |
+| [Writing Hooks](./guides/writing-hooks.md) | Add Go logic when templates aren't enough |
+| [Writing Custom Reconcilers](./guides/writing-custom-reconcilers.md) | Take full control of reconciliation |
+| [Testing Operators](./guides/testing-operators.md) | Unit, integration, and E2E testing |
 
 ---
 
-## 🎼 Orkestra: Conduct Your Operators
+## Concepts
 
-Kubernetes operators shouldn’t require scaffolding, generators, or thousands of lines of boilerplate.  
-With Orkestra, you describe the score — and the runtime conducts the rest.
+Core ideas that define how Orkestra works.
+
+| Concept | Description |
+|---------|-------------|
+| [Katalog](./concepts/katalog.md) | Declare operator behavior |
+| [Komposer](./concepts/komposer.md) | Compose Katalogs from multiple sources |
+| [Katalog & Komposer Reference](./reference/katalog-komposer-reference.md) | Full schema reference |
+| [Templating](./concepts/templating.md) | Template expressions and resolution |
+| [Dependency Model](./concepts/dependency-model.md) | How Orkestra manages CRD dependencies |
+| [Trust & Failure Model](./core/trust-and-failure-model.md) | Why Orkestra is safe to use |
+| [Your CRD is Enough](./publications/your-crd-is-enough.md) | The philosophy |
+
+---
+
+## OrkestraRegistry
+
+The operator standard library — reusable, versioned operator patterns.
+
+| Document | Description |
+|----------|-------------|
+| [OrkestraRegistry Vision](./orkestra-registry/orkestra-registry-vision.md) | The future of reusable operators |
+| [OrkestraRegistry Technical Documentation](./orkestra-registry/orkestra-registry-technical-documentation.md) | How the registry works |
+
+---
+
+## Reference
+
+Detailed documentation for every part of Orkestra.
+
+| Document | Description |
+|----------|-------------|
+| [CLI Reference](./reference/cli.md) | All `ork` commands and flags |
+| [Inspect Live CRD](./reference/inspect-live-crd.md) | Inspect CRDs directly from the terminal |
+| [Architecture](./architecture/overview.md) | How Orkestra works under the hood |
+| [Architecture Diagrams](./architecture/architecture-diagrams.md) | Visual architecture overview |
+| [Komponents](./concepts/komponent.md) | What each part of Orkestra does |
+| [Health Subsystem](./concepts/health-subsystem.md) | Health tracking and degradation |
+| [Metrics](./reference/metrics.md) | Prometheus metrics reference |
+
+---
+
+## Deployment
+
+How to run Orkestra in different environments.
+
+| Document | Description |
+|----------|-------------|
+| [Deployment Guide](./guides/deployment.md) | Helm, GitOps, and production setups |
+| [Use Cases](./guides/use-cases.md) | Real‑world operator patterns |
+
+---
+
+## Publications
+
+High‑level papers and conceptual documents.
+
+| Document | Description |
+|----------|-------------|
+| [Why Orkestra](./publications/why-orkestra.md) | The case for declarative operators |
+| [Declarative Operators Whitepaper](./publications/declarative-operators-whitepaper.md) | Technical whitepaper |
+| [Metrics Analysis](./publications/metrics-analysis.md) | Performance metrics for 170+ CRDs |
+
+---
+
+## Community
+
+- [GitHub Issues](https://github.com/konduktor-io/orkestra/issues)
+- [Discussions](https://github.com/konduktor-io/orkestra/discussions)
+- Kubernetes Slack — `#orkestra` _(planned)_
+
+---
+
+**Built with ❤️ for the Kubernetes ecosystem.** 🎼

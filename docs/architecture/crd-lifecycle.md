@@ -5,7 +5,7 @@ This document complements the [Runtime Flow](./runtime-flow.md) by explaining ho
 
 ---
 
-## 1. Lifecycle Overview
+## 1. **Lifecycle Overview**
 
 ```mermaid
 stateDiagram-v2
@@ -22,7 +22,7 @@ stateDiagram-v2
 
 ---
 
-## 2. Missing → Activating
+## 2. **Missing → Activating**
 
 A CRD is **Missing** when:
 
@@ -45,7 +45,7 @@ When the CRD appears:
 
 ---
 
-## 3. Active → Deactivating
+## 3. **Active → Deactivating**
 
 A CRD becomes **Deactivating** when:
 
@@ -62,7 +62,7 @@ Orkestra:
 
 ---
 
-## 4. Deactivating → Missing
+## 4. **Deactivating → Missing**
 
 Once workers stop:
 
@@ -71,7 +71,7 @@ Once workers stop:
 
 ---
 
-## 5. Missing → Activating (Reactivation)
+## 5. **Missing → Activating (Reactivation)**
 
 When the CRD is reinstalled:
 
@@ -84,7 +84,7 @@ This is how Orkestra achieves **self‑healing**.
 
 ---
 
-## What’s Next?
+## **What’s Next?**
 
 Learn *why* Orkestra is designed this way in the **Design Philosophy**.
 

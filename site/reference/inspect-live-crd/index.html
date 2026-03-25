@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Orkestra Team">
+        <link rel="canonical" href="https://orkestra.sh/reference/inspect-live-crd/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Inspect Live CRD - Orkestra</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Orkestra</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Getting Started</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/getting-started/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-your-first-katalog/" class="dropdown-item">Writing Your First Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-hooks/" class="dropdown-item">Writing Hooks</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-custom-reconcilers/" class="dropdown-item">Writing Custom Reconcilers</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/testing-operators/" class="dropdown-item">Testing Operators</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Architecture</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../architecture/overview/" class="dropdown-item">Overview</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/runtime-flow/" class="dropdown-item">Runtime Flow</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/crd-lifecycle/" class="dropdown-item">CRD Lifecycle</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/design-philosophy/" class="dropdown-item">Design Philosophy</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/architecture-diagrams/" class="dropdown-item">Architecture Diagrams</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/full-architecture-view/" class="dropdown-item">Full Architecture View</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Concepts</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../concepts/katalog/" class="dropdown-item">Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/komposer/" class="dropdown-item">Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/conditional-provisioning/" class="dropdown-item">Conditional Provisioning</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/templating/" class="dropdown-item">Templating</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/dependency-model/" class="dropdown-item">Dependency Model</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/health-subsystem/" class="dropdown-item">Health Subsystem</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/reconciler-model/" class="dropdown-item">Reconciler Model</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Guides</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/deployment/#helm-deployment" class="dropdown-item">Production Deployment</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/extending-orkestra/" class="dropdown-item">Extending Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/choosing-katalog-vs-komposer/" class="dropdown-item">Choosing Katalog vs Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/use-cases/" class="dropdown-item">Use Cases</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../katalog-schema/" class="dropdown-item">Katalog Schema</a>
+</li>
+                                    
+<li>
+    <a href="../komposer-schema/" class="dropdown-item">Komposer Schema</a>
+</li>
+                                    
+<li>
+    <a href="../metrics/" class="dropdown-item">Metrics</a>
+</li>
+                                    
+<li>
+    <a href="../cli/" class="dropdown-item">CLI</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">Inspect Live CRD</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Publications</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../publications/declarative-operators-whitepaper/" class="dropdown-item">Declarative Operators Whitepaper</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/why-orkestra/" class="dropdown-item">Why Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/metrics-analysis/" class="dropdown-item">Metrics Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/your-crd-is-enough/" class="dropdown-item">Your CRD is Enough</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/roadmap/" class="dropdown-item">Roadmap</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../cli/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../../publications/declarative-operators-whitepaper/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#orkestra-inspect-commands" class="nav-link">Orkestra Inspect Commands</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#commands" class="nav-link">Commands</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#cluster-access" class="nav-link">Cluster access</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#crd-name-resolution" class="nav-link">CRD name resolution</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ork-get" class="nav-link">ork get</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ork-describe" class="nav-link">ork describe</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ork-reconcile" class="nav-link">ork reconcile</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ork-status" class="nav-link">ork status</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ork-events" class="nav-link">ork events</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#combining-with-kubectl" class="nav-link">Combining with kubectl</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#kubeconfig-for-kubernetes-deployments" class="nav-link">Kubeconfig for Kubernetes deployments</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="orkestra-inspect-commands">Orkestra Inspect Commands</h1>
+<p>The inspect commands let you observe and interact with Orkestra-managed
+resources directly from the terminal. No need to construct <code>kubectl</code> commands
+or know the API group of a CRD — just use the name you declared in the Katalog.</p>
+<p>All inspect commands read from the cluster — they require <code>KUBECONFIG</code> or
+<code>--kubeconfig</code> to be set.</p>
+<hr />
+<h2 id="commands">Commands</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ork get &lt;crd&gt;</code></td>
+<td>List all CRs of a CRD type</td>
+</tr>
+<tr>
+<td><code>ork describe &lt;crd&gt; &lt;name&gt;</code></td>
+<td>Describe a specific CR with spec, status, and events</td>
+</tr>
+<tr>
+<td><code>ork reconcile &lt;crd&gt; [name]</code></td>
+<td>Trigger reconciliation for one or all CRs</td>
+</tr>
+<tr>
+<td><code>ork reconcile all</code></td>
+<td>Trigger reconciliation for every Orkestra-managed resource</td>
+</tr>
+<tr>
+<td><code>ork status</code></td>
+<td>Show health and stats of the running operator</td>
+</tr>
+<tr>
+<td><code>ork events &lt;crd&gt; [name]</code></td>
+<td>Show Kubernetes events for a CRD type or specific CR</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="cluster-access">Cluster access</h2>
+<p>All inspect commands use the standard Kubernetes client resolution:</p>
+<ol>
+<li><code>--kubeconfig &lt;path&gt;</code> flag</li>
+<li><code>KUBECONFIG</code> environment variable</li>
+<li><code>~/.kube/config</code> (default)</li>
+<li>In-cluster config (when running inside a pod)</li>
+</ol>
+<pre><code class="language-bash"># Explicit kubeconfig
+ork get website --kubeconfig ~/.kube/production.yaml
+
+# Environment variable
+KUBECONFIG=~/.kube/production.yaml ork get website
+
+# Default (~/.kube/config)
+ork get website
+</code></pre>
+<hr />
+<h2 id="crd-name-resolution">CRD name resolution</h2>
+<p>All inspect commands accept the CRD name in any of these forms:</p>
+<pre><code class="language-bash">ork get websites          # plural
+ork get website           # singular
+ork get Website           # Kind (case-insensitive)
+</code></pre>
+<p>If multiple CRDs match the name across different API groups, Orkestra
+lists the candidates and asks you to be more specific:</p>
+<pre><code>&quot;website&quot; matches multiple CRDs — be more specific:
+  websites.demo.orkestra.io (v1alpha1)
+  websites.other.io (v1beta1)
+</code></pre>
+<hr />
+<h2 id="ork-get"><code>ork get</code></h2>
+<p>List all Custom Resources of a given CRD type.</p>
+<pre><code class="language-bash">ork get &lt;crd&gt; [flags]
+</code></pre>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n, --namespace</code></td>
+<td>List resources in a specific namespace</td>
+</tr>
+<tr>
+<td><code>-A, --all-namespaces</code></td>
+<td>List resources across all namespaces</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Examples:</strong></p>
+<pre><code class="language-bash"># List all Website CRs
+ork get websites
+
+# Output:
+# NAME           STATUS    AGE
+# landing-page   Ready     2d
+# my-api         Ready     5h
+# my-blog        Ready     3d
+
+# List across all namespaces
+ork get website -A
+
+# Output:
+# NAMESPACE    NAME           STATUS    AGE
+# default      landing-page   Ready     2d
+# production   my-api         Ready     5h
+# staging      my-blog        Ready     3d
+
+# Cluster-scoped CRDs (namespace column omitted automatically)
+ork get platformnamespace
+
+# Output:
+# NAME                   STATUS    AGE
+# payments-production    Ready     7d
+# payments-staging       Ready     7d
+# platform-development   Ready     2h
+</code></pre>
+<p><strong>Status extraction:</strong></p>
+<p>Orkestra inspects the CR's <code>.status</code> in this order:
+- <code>status.phase</code> — e.g. <code>Ready</code>, <code>Pending</code>, <code>Failed</code>
+- <code>status.state</code> — alternative phase field
+- <code>status.conditions[0]</code> — e.g. <code>Ready=True</code>
+- Falls back to <code>Unknown</code> if no status fields are present</p>
+<hr />
+<h2 id="ork-describe"><code>ork describe</code></h2>
+<p>Show the full details of a named CR — spec, status, and recent events.</p>
+<pre><code class="language-bash">ork describe &lt;crd&gt; &lt;name&gt; [flags]
+</code></pre>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n, --namespace</code></td>
+<td>Namespace of the resource</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example:</strong></p>
+<pre><code class="language-bash">ork describe website my-blog
+</code></pre>
+<pre><code>── Metadata ──────────────────────────────────────────────────────────────────
+Name:                my-blog
+Namespace:           default
+Kind:                Website
+Group:               demo.orkestra.io
+Version:             v1alpha1
+Age:                 3d
+Labels:
+  app:               my-blog
+  managed-by:        orkestra
+Finalizers:
+  - finalizer.demo.orkestra.io/website
+
+── Spec ──────────────────────────────────────────────────────────────────────
+image:               nginx:1.25
+replicas:            2
+port:                80
+serviceType:         ClusterIP
+
+── Status ────────────────────────────────────────────────────────────────────
+phase:               Ready
+readyReplicas:       2
+message:             Deployment and Service created
+
+── Events ────────────────────────────────────────────────────────────────────
+
+TYPE       REASON           OBJECT             MESSAGE                         AGE
+● Normal   Reconciled       default/my-blog    Successfully reconciled Web...  5m
+● Normal   FinalizerAdded   default/my-blog    Added finalizers to Website...  3d
+</code></pre>
+<hr />
+<h2 id="ork-reconcile"><code>ork reconcile</code></h2>
+<p>Trigger reconciliation by patching the <code>orkestra.konductor.io/reconcile-at</code>
+annotation. The Orkestra informer detects the metadata change and re-queues
+the object on the next reconcile loop.</p>
+<p>This is non-destructive — only the annotation is changed, never the spec.</p>
+<h3 id="single-cr">Single CR</h3>
+<pre><code class="language-bash">ork reconcile website my-blog
+ork reconcile website my-blog -n production
+</code></pre>
+<pre><code>Triggering reconcile for Website/my-blog...  ✓
+</code></pre>
+<h3 id="all-crs-of-a-type">All CRs of a type</h3>
+<pre><code class="language-bash">ork reconcile website
+</code></pre>
+<pre><code>Triggering reconcile for all Website resources...
+
+  default/landing-page                          ✓
+  default/my-api                                ✓
+  default/my-blog                               ✓
+  production/my-api                             ✓
+
+✓  Triggered 4 resources
+</code></pre>
+<h3 id="all-orkestra-managed-resources">All Orkestra-managed resources</h3>
+<pre><code class="language-bash">ork reconcile all
+</code></pre>
+<pre><code>[1/3] Website
+  default/landing-page                          ✓
+  default/my-api                                ✓
+  default/my-blog                               ✓
+  Waiting 3s before next CRD...
+
+[2/3] PlatformNamespace
+  payments-production                           ✓
+  payments-staging                              ✓
+  Waiting 3s before next CRD...
+
+[3/3] Application
+  default/payments-app                          ✓
+
+──────────────────────────────────────────────────
+✓  Reconciled 6 resources across 3 CRDs
+</code></pre>
+<p><strong>Flags for <code>ork reconcile all</code>:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--sleep</code></td>
+<td>Pause between CRD types (default: <code>3s</code>)</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Print what would be reconciled without making changes</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash">ork reconcile all --sleep 5s
+ork reconcile all --dry-run
+</code></pre>
+<p><strong>When to use reconcile all:</strong></p>
+<ul>
+<li>After updating a Katalog and restarting the operator — to immediately
+  reconcile all existing CRs rather than waiting for the next resync</li>
+<li>After a brief operator downtime — to catch up on any changes that
+  accumulated during the outage</li>
+<li>During debugging — to force a fresh reconcile pass and observe the logs</li>
+</ul>
+<hr />
+<h2 id="ork-status"><code>ork status</code></h2>
+<p>Show the health and reconcile statistics of a running Orkestra operator.
+Connects to the operator's health API.</p>
+<pre><code class="language-bash">ork status [flags]
+</code></pre>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--url</code></td>
+<td>Operator URL (default: <code>http://localhost:8080</code>)</td>
+</tr>
+<tr>
+<td><code>--timeout</code></td>
+<td>Request timeout (default: <code>5s</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Port-forwarding a cluster deployment:</strong></p>
+<pre><code class="language-bash">kubectl port-forward svc/orkestra 8080:8080 -n orkestra-system
+ork status
+</code></pre>
+<p><strong>Example output:</strong></p>
+<pre><code>Orkestra Status
+Operator:            my-platform-operator
+Health:              healthy
+CRDs:                5 total, 5 enabled
+Uptime:              2d 4h 32m
+
+CRD                    WORKERS   QUEUE   HEALTH   RECONCILES   ERR%   RESOURCES
+website                2/2       0       ●        1,247        0.0%   3
+platformnamespace      2/2       0       ●        412          0.0%   6
+application            4/4       3       ●        8,891        0.2%   12
+database               2/2       0       ●        201          0.0%   4
+cache                  2/2       0       ●        89           0.0%   2
+</code></pre>
+<p><strong>Columns:</strong></p>
+<ul>
+<li><code>WORKERS</code> — active workers / configured workers</li>
+<li><code>QUEUE</code> — current workqueue depth (non-zero means backlog building up)</li>
+<li><code>HEALTH</code> — green ● healthy / red ● degraded</li>
+<li><code>RECONCILES</code> — total reconcile count since operator started</li>
+<li><code>ERR%</code> — percentage of reconciles that returned an error</li>
+<li><code>RESOURCES</code> — live CR count from the informer cache</li>
+</ul>
+<p><strong>Connect to a remote operator:</strong></p>
+<pre><code class="language-bash"># Via Ingress
+ork status --url https://orkestra.platform.myorg.io
+
+# Via port-forward to a specific pod
+kubectl port-forward pod/orkestra-7d9b4c8f6d-xkj2p 8080:8080 -n orkestra-system
+ork status
+</code></pre>
+<hr />
+<h2 id="ork-events"><code>ork events</code></h2>
+<p>List Kubernetes events for a CRD type or a specific CR. Useful for debugging
+reconcile failures without having to parse operator logs.</p>
+<pre><code class="language-bash">ork events &lt;crd&gt; [name] [flags]
+</code></pre>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n, --namespace</code></td>
+<td>Namespace (namespaced CRDs only)</td>
+</tr>
+<tr>
+<td><code>--tail</code></td>
+<td>Number of most recent events to show (default: <code>25</code>, <code>0</code> = all)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Examples:</strong></p>
+<pre><code class="language-bash"># All events for all Website CRs
+ork events website
+
+# Events for a specific CR
+ork events website my-blog
+
+# Last 50 events
+ork events website --tail 50
+
+# All events (no limit)
+ork events website --tail 0
+</code></pre>
+<p><strong>Example output:</strong></p>
+<pre><code>Events for all Website resources:
+
+TYPE         REASON              OBJECT               MESSAGE                  AGE
+● Normal     Reconciled          default/my-blog      Successfully reconci...  5m
+● Normal     Reconciled          default/landing-...  Successfully reconci...  5m
+● Warning    ReconcileError      default/my-api       failed to create dep...  12m
+● Normal     FinalizerAdded      default/my-blog      Added finalizers to ...  3d
+● Normal     Deleting            default/old-site     Deleting Website def...  7d
+</code></pre>
+<p><strong>Event types from Orkestra:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Type</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Reconciled</code></td>
+<td>Normal</td>
+<td>Successful reconcile</td>
+</tr>
+<tr>
+<td><code>ReconcileError</code></td>
+<td>Warning</td>
+<td>Reconcile returned an error</td>
+</tr>
+<tr>
+<td><code>FinalizerAdded</code></td>
+<td>Normal</td>
+<td>Finalizer added to the CR</td>
+</tr>
+<tr>
+<td><code>FinalizerRemovalError</code></td>
+<td>Warning</td>
+<td>Failed to remove finalizer during deletion</td>
+</tr>
+<tr>
+<td><code>Deleting</code></td>
+<td>Normal</td>
+<td>CR deletion is in progress</td>
+</tr>
+<tr>
+<td><code>Deleted</code></td>
+<td>Normal</td>
+<td>CR deletion completed</td>
+</tr>
+<tr>
+<td><code>FinalizerAdded</code></td>
+<td>Normal</td>
+<td>Finalizer was added</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="combining-with-kubectl">Combining with kubectl</h2>
+<p>The inspect commands are designed to complement <code>kubectl</code>, not replace it.
+Use Orkestra's inspect commands when you want to work with CRDs by name
+without remembering their API groups. Use kubectl when you need advanced
+filtering, patching, or output formats.</p>
+<pre><code class="language-bash"># Orkestra — quick overview by CRD name
+ork get website
+
+# kubectl — patch a specific field
+kubectl patch website my-blog --type merge -p '{&quot;spec&quot;:{&quot;replicas&quot;:3}}'
+
+# Orkestra — trigger immediate reconcile after the patch
+ork reconcile website my-blog
+
+# kubectl — watch the Deployment respond
+kubectl get deployment my-blog -w
+</code></pre>
+<hr />
+<h2 id="kubeconfig-for-kubernetes-deployments">Kubeconfig for Kubernetes deployments</h2>
+<p>When Orkestra itself is deployed in the cluster and you are running <code>ork</code>
+commands from your local machine, you need a kubeconfig with access to the
+cluster. The inspect commands use the same resolution as <code>kubectl</code>.</p>
+<pre><code class="language-bash"># Use the cluster's kubeconfig
+export KUBECONFIG=~/.kube/production.yaml
+
+# Or per-command
+ork get website --kubeconfig ~/.kube/production.yaml
+
+# Or via kubectl context
+kubectl config use-context my-production-cluster
+ork get website
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+                <p>Orkestra</p>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

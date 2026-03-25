@@ -8,7 +8,7 @@
         <meta name="author" content="Orkestra Team">
         <link rel="canonical" href="https://orkestra.sh/internals/startup-sequence/">
         <link rel="shortcut icon" href="../../img/favicon.ico">
-        <title>Startup Sequence - Orkestra</title>
+        <title>Orkestra Startup &amp; Shutdown - Orkestra</title>
         <link href="../../css/bootstrap.min.css" rel="stylesheet">
         <link href="../../css/fontawesome.min.css" rel="stylesheet">
         <link href="../../css/brands.min.css" rel="stylesheet">
@@ -34,15 +34,37 @@
                 <div id="navbar-collapse" class="navbar-collapse collapse">
                         <!-- Main navigation -->
                         <ul class="nav navbar-nav">
-                            <li class="nav-item">
-                                <a href="../../core/" class="nav-link">Start Here</a>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Getting Started</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/getting-started/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-your-first-katalog/" class="dropdown-item">Writing Your First Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-hooks/" class="dropdown-item">Writing Hooks</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-custom-reconcilers/" class="dropdown-item">Writing Custom Reconcilers</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/testing-operators/" class="dropdown-item">Testing Operators</a>
+</li>
+                                </ul>
                             </li>
                             <li class="nav-item dropdown">
                                 <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Architecture</a>
                                 <ul class="dropdown-menu">
                                     
 <li>
-    <a href="../../architecture/architecture/" class="dropdown-item">Overview</a>
+    <a href="../../architecture/overview/" class="dropdown-item">Overview</a>
 </li>
                                     
 <li>
@@ -58,11 +80,11 @@
 </li>
                                     
 <li>
-    <a href="../../architecture-diagrams.md" class="dropdown-item">Architecture Diagrams</a>
+    <a href="../../architecture/architecture-diagrams/" class="dropdown-item">Architecture Diagrams</a>
 </li>
                                     
 <li>
-    <a href="../../architecture/full-architecture-view.md" class="dropdown-item">Full Architecture View</a>
+    <a href="../../architecture/full-architecture-view/" class="dropdown-item">Full Architecture View</a>
 </li>
                                 </ul>
                             </li>
@@ -83,52 +105,19 @@
 </li>
                                     
 <li>
-    <a href="../../concepts/template-engine/" class="dropdown-item">Template Engine</a>
+    <a href="../../concepts/templating/" class="dropdown-item">Templating</a>
 </li>
                                     
 <li>
-    <a href="../../concepts/dependency-graph/" class="dropdown-item">Dependency Graph</a>
+    <a href="../../concepts/dependency-model/" class="dropdown-item">Dependency Model</a>
 </li>
                                     
 <li>
-    <a href="../../concepts/reconciler-model.md" class="dropdown-item">Reconciler Model</a>
-</li>
-                                </ul>
-                            </li>
-                            <li class="nav-item dropdown">
-                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Internals</a>
-                                <ul class="dropdown-menu">
-                                    
-<li>
-    <a href="./" class="dropdown-item active" aria-current="page">Startup Sequence</a>
+    <a href="../../concepts/health-subsystem/" class="dropdown-item">Health Subsystem</a>
 </li>
                                     
 <li>
-    <a href="../konstruct-orkestra/" class="dropdown-item">konstructOrkestra</a>
-</li>
-                                    
-<li>
-    <a href="../dynamic-vs-typed/" class="dropdown-item">Dynamic vs Typed CRDs</a>
-</li>
-                                    
-<li>
-    <a href="../informer-factory/" class="dropdown-item">Informer Factory</a>
-</li>
-                                    
-<li>
-    <a href="../dependency-kontroller/" class="dropdown-item">Dependency Kontroller</a>
-</li>
-                                    
-<li>
-    <a href="../reconciler-pipeline/" class="dropdown-item">Reconciler Pipeline</a>
-</li>
-                                    
-<li>
-    <a href="../observability/" class="dropdown-item">Observability</a>
-</li>
-                                    
-<li>
-    <a href="../shutdown/" class="dropdown-item">Shutdown</a>
+    <a href="../../concepts/reconciler-model/" class="dropdown-item">Reconciler Model</a>
 </li>
                                 </ul>
                             </li>
@@ -137,31 +126,7 @@
                                 <ul class="dropdown-menu">
                                     
 <li>
-    <a href="../../guides/getting-started.md" class="dropdown-item">Getting Started</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/writing-your-first-katalog.md" class="dropdown-item">Writing Your First Katalog</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/writing-hooks.md" class="dropdown-item">Writing Hooks</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/writing-custom-reconcilers.md" class="dropdown-item">Writing Custom Reconcilers</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/testing-operators.md" class="dropdown-item">Testing Operators</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/production-deployment.md" class="dropdown-item">Production Deployment</a>
-</li>
-                                    
-<li>
-    <a href="../../guides/inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+    <a href="../../guides/deployment/#helm-deployment" class="dropdown-item">Production Deployment</a>
 </li>
                                     
 <li>
@@ -194,11 +159,36 @@
 </li>
                                     
 <li>
-    <a href="../../reference/api.md" class="dropdown-item">API</a>
+    <a href="../../reference/cli/" class="dropdown-item">CLI</a>
 </li>
                                     
 <li>
-    <a href="../../reference/cli/" class="dropdown-item">CLI</a>
+    <a href="../../reference/inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Publications</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../publications/declarative-operators-whitepaper/" class="dropdown-item">Declarative Operators Whitepaper</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/why-orkestra/" class="dropdown-item">Why Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/metrics-analysis/" class="dropdown-item">Metrics Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/your-crd-is-enough/" class="dropdown-item">Your CRD is Enough</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/roadmap/" class="dropdown-item">Roadmap</a>
 </li>
                                 </ul>
                             </li>
@@ -210,16 +200,6 @@
                                 <i class="fa fa-search"></i> Search
                             </a>
                         </li>
-                            <li class="nav-item">
-                                <a rel="prev" href="../../concepts/dependency-graph/" class="nav-link">
-                                    <i class="fa fa-arrow-left"></i> Previous
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a rel="next" href="../konstruct-orkestra/" class="nav-link">
-                                    Next <i class="fa fa-arrow-right"></i>
-                                </a>
-                            </li>
                     </ul>
                 </div>
             </div>
@@ -238,7 +218,7 @@
     <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
         <ul class="nav flex-column">
             
-            <li class="nav-item" data-bs-level="1"><a href="#orkestra-startup-shutdown" class="nav-link">🎼 Orkestra Startup &amp; Shutdown</a>
+            <li class="nav-item" data-bs-level="1"><a href="#orkestra-startup-shutdown" class="nav-link">Orkestra Startup &amp; Shutdown</a>
               <ul class="nav flex-column">
             <li class="nav-item" data-bs-level="2"><a href="#startup" class="nav-link">Startup</a>
               <ul class="nav flex-column">
@@ -263,12 +243,12 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
-<h1 id="orkestra-startup-shutdown">🎼 Orkestra Startup &amp; Shutdown</h1>
+<h1 id="orkestra-startup-shutdown"><strong>Orkestra Startup &amp; Shutdown</strong></h1>
 <p>Orkestra is built around a single principle: <strong>every component has a defined lifecycle, a defined order, and a defined responsibility</strong>. Nothing starts before its dependency is ready. Nothing stops before the components that depend on it have stopped first.</p>
 <p>This document captures exactly what happens when Orkestra starts and when it shuts down — why the order is the way it is, and what each step guarantees.</p>
 <hr />
-<h2 id="startup">Startup</h2>
-<h3 id="phase-1-katalog-load-scheme-registration">Phase 1 — Katalog Load &amp; Scheme Registration</h3>
+<h2 id="startup"><strong>Startup</strong></h2>
+<h3 id="phase-1-katalog-load-scheme-registration"><strong>Phase 1 — Katalog Load &amp; Scheme Registration</strong></h3>
 <p>Before any Kubernetes client is built, Orkestra reads the Katalog. The Katalog is the single source of truth for which CRDs exist, how many workers each gets, what resync interval each uses, and which CRDs depend on which.</p>
 <pre><code>Katalog loaded (Go or YAML mode)
     ↓
@@ -281,7 +261,7 @@ Scheme registry built (Go types registered per CRD)
 CRD clients registered to the provider
 </code></pre>
 <p>This phase is entirely in-memory. No API server calls are made yet. If the dependency graph contains a cycle, Orkestra fails fast here before any network connection is opened.</p>
-<h3 id="phase-2-komponent-startup-in-order">Phase 2 — Komponent Startup (in order)</h3>
+<h3 id="phase-2-komponent-startup-in-order"><strong>Phase 2 — Komponent Startup (in order)</strong></h3>
 <p>Orkestra starts each komponent sequentially. Each one must reach <code>AVAILABLE</code> before the next begins. The order is fixed and intentional:</p>
 <pre><code>health server     → receives traffic immediately, reports not-ready until cache sync
 kubeclient        → builds rest.Config, clientset, REST clients
@@ -290,14 +270,14 @@ queue             → rate-limiting workqueue initialized
 informer factory  → SharedInformerFactory started, list-watch streams opened
 orkestra kontroller → dependency graph evaluated, CRDs started in topological order
 </code></pre>
-<p><img alt="Orkestra startup — komponents reporting AVAILABLE" src="./images/startup_komponents.png" /></p>
+<p><img alt="Orkestra startup — komponents reporting AVAILABLE" src="../../images/startup_komponents.png" /></p>
 <p>Every komponent logs its transition to <code>AVAILABLE</code>. If any komponent fails to start, orkestra returns the error immediately and the process exits — there is no partial-start state.</p>
-<h3 id="phase-3-crd-banner-dependency-display">Phase 3 — CRD Banner &amp; Dependency Display</h3>
+<h3 id="phase-3-crd-banner-dependency-display"><strong>Phase 3 — CRD Banner &amp; Dependency Display</strong></h3>
 <p>Once the kontroller is available, Orkestra prints the Katalog summary. This shows every enabled CRD with its full configuration and its declared dependencies, resolved at runtime:</p>
-<p><img alt="Orkestra startup — CRDs and dependency graph displayed" src="./images/startup_crds.png" /></p>
+<p><img alt="Orkestra startup — CRDs and dependency graph displayed" src="../../images/startup_crds.png" /></p>
 <p>The banner makes the dependency relationship explicit before any reconciliation begins. In this example, <code>ManagedNamespace</code> declares <code>DependsOn: project</code> — Orkestra will start the <code>Project</code> informer and workers first, then start <code>ManagedNamespace</code>. This ordering is enforced by topological sort of the DAG, not by convention.</p>
 <p><code>Orkestra is conducting your CRDs...</code> is the signal that startup is complete and the leader election post-start hook is about to fire.</p>
-<h3 id="phase-4-leader-election">Phase 4 — Leader Election</h3>
+<h3 id="phase-4-leader-election"><strong>Phase 4 — Leader Election</strong></h3>
 <p>Leader election starts as a <strong>post-start hook</strong> — after all komponents are <code>AVAILABLE</code> and caches are warm. This is the correct order. Starting leader election before the informer cache is synced means a newly-elected leader could begin reconciling with a stale view of the cluster.</p>
 <pre><code class="language-go">startup.orkestra.AddPostStartHook(leader, func(ctx context.Context) {
     leader.Start(ctx)
@@ -306,11 +286,11 @@ orkestra kontroller → dependency graph evaluated, CRDs started in topological 
 <p>Only the elected leader runs <code>kontroller.RunOrDie()</code>. Standby replicas hold warm caches and wait. On leader loss, a standby acquires the lease and begins reconciling immediately — no cold start, no re-list.</p>
 <p>The readyz endpoint only returns <code>200</code> after leader election succeeds and the first reconcile pass completes. The health server is <code>AVAILABLE</code> from the start, but <code>ready</code> is a separate and stricter signal.</p>
 <hr />
-<h2 id="shutdown">Shutdown</h2>
+<h2 id="shutdown"><strong>Shutdown</strong></h2>
 <p>Shutdown is triggered by <code>SIGINT</code> or <code>SIGTERM</code>. The root context is cancelled, which propagates to every goroutine in the system.</p>
 <p>The shutdown sequence is the <strong>reverse of startup</strong>, with dependency-aware ordering enforced:</p>
-<p><img alt="Orkestra dependency-aware graceful shutdown" src="./images/dependency_away_graceful_shutdown.png" /></p>
-<h3 id="step-by-step-breakdown">Step-by-step breakdown</h3>
+<p><img alt="Orkestra dependency-aware graceful shutdown" src="../../images/dependency_away_graceful_shutdown.png" /></p>
+<h3 id="step-by-step-breakdown"><strong>Step-by-step breakdown</strong></h3>
 <pre><code>SIGINT / SIGTERM received
         ↓
 Leader performs cleanup
@@ -345,7 +325,7 @@ all events flushed                  ← broadcaster drains before exit
         ↓
 ✅ All services shut down gracefully
 </code></pre>
-<h3 id="why-this-order-matters">Why this order matters</h3>
+<h3 id="why-this-order-matters"><strong>Why this order matters</strong></h3>
 <p><strong>Lease released before kontroller stops.</strong> <code>ReleaseOnCancel: true</code> means the outgoing leader voluntarily gives up the lease rather than waiting for it to expire. A standby can acquire it immediately — typically within one <code>RetryPeriod</code> — instead of waiting out the full <code>LeaseDuration</code> (usually 15 seconds). This is the difference between a 1-second failover and a 15-second gap.</p>
 <p><strong>Informer factory before queue.</strong> The informer factory opens persistent watch streams to the API server. Closing it first stops new events from entering the system. The queue is then shut down after — no new items can be enqueued once the streams are closed.</p>
 <p><strong>CRDs in reverse dependency order.</strong> <code>ManagedNamespace</code> depends on <code>Project</code>. On shutdown, <code>ManagedNamespace</code> workers drain first, then <code>Project</code> workers drain. This mirrors startup order exactly. A child CRD cannot be safely shut down while its parent's workers are still processing items that might affect it.</p>
@@ -353,7 +333,7 @@ all events flushed                  ← broadcaster drains before exit
 <p><strong>Health server second-to-last.</strong> The health server keeps reporting ready until almost the end. Load balancers and readiness probes need time to drain traffic away from the pod. Shutting the health server down too early causes the probe to fail prematurely, which can cause traffic to be routed to the pod during its shutdown window.</p>
 <p><strong>Events flushed last.</strong> The event broadcaster is a buffered channel. <code>Shutdown()</code> drains all pending events to the API server before closing. Without this, events emitted during the last reconcile pass are silently dropped. <code>all events flushed</code> is the confirmation that every <code>Eventf()</code> call that completed before shutdown was committed.</p>
 <hr />
-<h2 id="guarantees">Guarantees</h2>
+<h2 id="guarantees"><strong>Guarantees</strong></h2>
 <table>
 <thead>
 <tr>
@@ -397,7 +377,7 @@ all events flushed                  ← broadcaster drains before exit
 </tbody>
 </table>
 <hr />
-<h2 id="configuration">Configuration</h2>
+<h2 id="configuration"><strong>Configuration</strong></h2>
 <p>Startup and shutdown timing is controlled by leader election options:</p>
 <table>
 <thead>

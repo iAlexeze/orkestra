@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Orkestra Team">
+        <link rel="canonical" href="https://orkestra.sh/publications/roadmap/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Roadmap - Orkestra</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Orkestra</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Getting Started</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/getting-started/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-your-first-katalog/" class="dropdown-item">Writing Your First Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-hooks/" class="dropdown-item">Writing Hooks</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-custom-reconcilers/" class="dropdown-item">Writing Custom Reconcilers</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/testing-operators/" class="dropdown-item">Testing Operators</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Architecture</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../architecture/overview/" class="dropdown-item">Overview</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/runtime-flow/" class="dropdown-item">Runtime Flow</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/crd-lifecycle/" class="dropdown-item">CRD Lifecycle</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/design-philosophy/" class="dropdown-item">Design Philosophy</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/architecture-diagrams/" class="dropdown-item">Architecture Diagrams</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/full-architecture-view/" class="dropdown-item">Full Architecture View</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Concepts</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../concepts/katalog/" class="dropdown-item">Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/komposer/" class="dropdown-item">Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/conditional-provisioning/" class="dropdown-item">Conditional Provisioning</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/templating/" class="dropdown-item">Templating</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/dependency-model/" class="dropdown-item">Dependency Model</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/health-subsystem/" class="dropdown-item">Health Subsystem</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/reconciler-model/" class="dropdown-item">Reconciler Model</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Guides</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/deployment/#helm-deployment" class="dropdown-item">Production Deployment</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/extending-orkestra/" class="dropdown-item">Extending Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/choosing-katalog-vs-komposer/" class="dropdown-item">Choosing Katalog vs Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/use-cases/" class="dropdown-item">Use Cases</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../reference/katalog-schema/" class="dropdown-item">Katalog Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/komposer-schema/" class="dropdown-item">Komposer Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/metrics/" class="dropdown-item">Metrics</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/cli/" class="dropdown-item">CLI</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Publications</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../declarative-operators-whitepaper/" class="dropdown-item">Declarative Operators Whitepaper</a>
+</li>
+                                    
+<li>
+    <a href="../why-orkestra/" class="dropdown-item">Why Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../metrics-analysis/" class="dropdown-item">Metrics Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../your-crd-is-enough/" class="dropdown-item">Your CRD is Enough</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">Roadmap</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../your-crd-is-enough/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" class="nav-link disabled">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#orkestra-roadmap" class="nav-link">Orkestra Roadmap</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#where-we-are" class="nav-link">Where we are</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#phase-1-stability-q2-2026" class="nav-link">Phase 1 — Stability (Q2 2026)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#phase-2-adoption-q3q4-2026" class="nav-link">Phase 2 — Adoption (Q3–Q4 2026)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#phase-3-ecosystem-2027" class="nav-link">Phase 3 — Ecosystem (2027)</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#what-we-are-not-building" class="nav-link">What we are not building</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#contributing" class="nav-link">Contributing</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#release-schedule" class="nav-link">Release schedule</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="orkestra-roadmap">Orkestra Roadmap</h1>
+<p><em>Last updated: March 2026</em></p>
+<hr />
+<h2 id="where-we-are"><strong>Where we are</strong></h2>
+<p>Orkestra v1.0 is the first complete declarative operator runtime.
+The core is done. The promise — write a Katalog, run <code>ork run</code>, get a
+production-grade operator — is delivered.</p>
+<p>What exists today:</p>
+<ul>
+<li><strong>Katalog</strong> — declare CRDs, reconcile templates, dependencies, workers, resync</li>
+<li><strong>Komposer</strong> — compose Katalogs from files, URLs, Helm charts, environment variables</li>
+<li><strong>Dynamic mode</strong> — zero-code operators, no compiled types, no generation step</li>
+<li><strong>Typed mode</strong> — compiled Go types, Go hooks, custom constructors</li>
+<li><strong>OrkestraRegistry</strong> — Deployments, Services, Secrets, ConfigMaps, ServiceAccounts, Jobs, CronJobs, Pods</li>
+<li><strong>Template resolver</strong> — full Go <code>text/template</code> against live CR objects</li>
+<li><strong>Dependency graph</strong> — topological startup, cycle detection, missing CRD retry</li>
+<li><strong>GenericReconciler</strong> — three-path dispatch: templates, Go hooks, custom constructor</li>
+<li><strong>DependencyKontroller</strong> — per-CRD worker pools, safe reconcile, panic recovery</li>
+<li><strong>KonductorElection</strong> — leader election, warm cache failover</li>
+<li><strong>Health API</strong> — <code>/health</code>, <code>/ready</code>, <code>/metrics</code>, <code>/katalog/*</code> per CRD</li>
+<li><strong>Prometheus metrics</strong> — five per-CRD metrics, consistent labels</li>
+<li><strong>CLI</strong> — <code>ork init</code>, <code>ork validate</code>, <code>ork template</code>, <code>ork generate runtime</code>, <code>ork run</code>, <code>ork version</code></li>
+<li><strong>Install</strong> — <code>curl | bash</code> installer for macOS and Linux</li>
+<li><strong>Documentation</strong> — architecture, CLI, registry, templating, extending, use cases, whitepaper</li>
+</ul>
+<hr />
+<h2 id="phase-1-stability-q2-2026"><strong>Phase 1 — Stability (Q2 2026)</strong></h2>
+<p><strong>Goal:</strong> Make v1.0 something teams can rely on in production.</p>
+<p>The architecture is right. The features are complete. What Phase 1 is about
+is hardening, coverage, and removing the remaining friction before Orkestra
+is in front of real users.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Why it matters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ork init</code> end-to-end test</td>
+<td>The first thing every evaluator runs — must be flawless</td>
+</tr>
+<tr>
+<td>Runtime template interpretation — eliminate <code>generate</code> for dynamic CRDs</td>
+<td>The last build-step friction for the zero-code story</td>
+</tr>
+<tr>
+<td>Integration tests — website, platform-namespace, komposer examples</td>
+<td>Catch regressions before users do</td>
+</tr>
+<tr>
+<td><code>ork validate</code> full error coverage</td>
+<td>Every invalid Katalog should produce a clear, actionable error</td>
+</tr>
+<tr>
+<td>Module path migration — <code>github.com/iAlexeze/orkestra</code> → <code>github.com/konduktor-io/orkestra</code></td>
+<td>Must happen before first external user</td>
+</tr>
+<tr>
+<td>Helm chart for Orkestra itself</td>
+<td>Production deployments need a proper chart</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="phase-2-adoption-q3q4-2026"><strong>Phase 2 — Adoption (Q3–Q4 2026)</strong></h2>
+<p><strong>Goal:</strong> Remove every obstacle between "interested" and "running in production."</p>
+<h3 id="ork-dashboard"><code>ork dashboard</code></h3>
+<p>A terminal UI showing the live state of a running operator.</p>
+<pre><code>CRD                    Workers   Queue   Health   Reconciles   Errors
+website                2/2       0       ✅        1,247        0
+platformnamespace      2/2       3       ✅        412          1
+application            4/4       0       ✅        8,891        0
+database               2/2       0       ⚠️         201          4
+</code></pre>
+<p>Real-time queue depth, worker utilization, error rates, and the dependency
+graph. The thing that makes Orkestra feel alive to someone evaluating it.</p>
+<h3 id="authentication-for-remote-sources"><strong>Authentication for remote sources</strong></h3>
+<p>Blocking enterprise adoption without this. Platform teams need to point
+Orkestra at internal URLs that require credentials.</p>
+<pre><code class="language-yaml">sources:
+  files:
+    - url: https://internal.company.com/crds/platform-katalog.yaml
+      auth:
+        type: bearer
+        fromEnv: PLATFORM_KATALOG_TOKEN
+    - url: https://raw.github.com/myorg/private-crds/main/katalog.yaml
+      auth:
+        type: github
+        fromEnv: GITHUB_TOKEN
+</code></pre>
+<h3 id="additional-source-types"><strong>Additional source types</strong></h3>
+<pre><code class="language-yaml">sources:
+  s3:
+    - bucket: my-org-katalogs
+      key: platform/crds.yaml
+      region: us-east-1
+
+  configMap:
+    - name: platform-crds
+      namespace: orkestra-system
+      key: katalog.yaml
+</code></pre>
+<p>S3 and ConfigMap are the two most-requested. GCS and Azure Blob follow
+the same pattern.</p>
+<h3 id="ork-diff"><strong><code>ork diff</code></strong></h3>
+<p>Show what would change in a running operator if the Katalog were updated.
+Like <code>kubectl diff</code> for operator configuration.</p>
+<pre><code class="language-bash">ork diff --katalog ./katalog-v2.yaml
+# ~ website: workers 2 → 4
+# + logging (new CRD)
+# - legacy-resource (removed)
+</code></pre>
+<h3 id="performance-benchmarks-and-stress-testing"><strong>Performance benchmarks and stress testing</strong></h3>
+<p>Before recommending Orkestra for operators managing hundreds of CRs, we
+need numbers. Reconcile throughput, queue latency, informer memory usage
+at 100+ CRDs. These are quality gates, not features — but they need to be
+done and published.</p>
+<h3 id="ork-lint"><strong><code>ork lint</code></strong></h3>
+<p>Deeper Katalog analysis beyond <code>ork validate</code>. Detects patterns that are
+valid but likely wrong:</p>
+<pre><code class="language-bash">ork lint --katalog ./katalog.yaml
+# WARN website: reconcile: true on all resources — consider onReconcile
+# WARN database: workers: 1 — single worker may cause latency spikes
+# WARN application: resync: 1s — very short resync interval for 500+ CRDs
+</code></pre>
+<hr />
+<h2 id="phase-3-ecosystem-2027"><strong>Phase 3 — Ecosystem (2027)</strong></h2>
+<p><strong>Goal:</strong> Make Orkestra the standard way to distribute and consume operator
+definitions.</p>
+<h3 id="public-katalog-registry"><strong>Public Katalog registry</strong></h3>
+<p>The OrkestraRegistry is already the community home for resource
+implementations. The next layer is a registry for complete Katalogs —
+reusable operator definitions that anyone can consume.</p>
+<pre><code class="language-bash">ork registry search postgres
+ork registry pull konduktor-io/postgres@v14
+ork run --from konduktor-io/postgres@v14
+
+ork registry publish ./my-katalog.yaml --name myorg/postgres
+</code></pre>
+<p>The same model as Helm Hub, but for operator behavior rather than deployment
+manifests.</p>
+<h3 id="katalog-versioning-and-dependencies"><strong>Katalog versioning and dependencies</strong></h3>
+<pre><code class="language-yaml">name: postgres
+version: 14.5.0
+orkestra: &quot;&gt;=1.0.0&quot;
+dependencies:
+  - storage-class@v1
+  - monitoring@&gt;=2.0
+</code></pre>
+<p>Semantic versioning, dependency resolution, compatibility checks. The
+package management layer that the registry needs.</p>
+<h3 id="cncf-sandbox-submission"><strong>CNCF Sandbox submission</strong></h3>
+<p>Target Q1 2027. Requires production usage at multiple organisations — which
+Phase 2 adoption efforts should produce. The CNCF sandbox gives Orkestra
+vendor neutrality and community governance.</p>
+<h3 id="ork-dashboard-web-version"><strong><code>ork dashboard</code> — web version</strong></h3>
+<p>The terminal dashboard from Phase 2 extended to a web UI. Useful for
+organisations managing large numbers of operators across clusters.</p>
+<hr />
+<h2 id="what-we-are-not-building"><strong>What we are not building</strong></h2>
+<p>These are deliberate non-goals:</p>
+<p><strong>Admission webhooks.</strong> Orkestra is a reconciler runtime. Webhooks are a
+synchronous validation mechanism in the API server request path. Different
+tool, different model. No plans to add.</p>
+<p><strong>Multi-cluster federation.</strong> Orkestra manages CRDs within one cluster.
+Cross-cluster operations belong to a different architectural layer.</p>
+<p><strong>Replacing controller-runtime.</strong> Orkestra is not a replacement for
+controller-runtime. It is a higher-level abstraction that makes the common
+case trivial and today, defers to Go code when needed. The goal os to make even the most complex use cases declarative.</p>
+<hr />
+<h2 id="contributing"><strong>Contributing</strong></h2>
+<p>The highest-value contributions right now:</p>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>What helps most</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Testing</strong></td>
+<td>Run Orkestra in real environments and report what breaks</td>
+</tr>
+<tr>
+<td><strong>Registry implementations</strong></td>
+<td>Add new resource types to OrkestraRegistry</td>
+</tr>
+<tr>
+<td><strong>Examples</strong></td>
+<td>More Katalog examples showing real operator patterns</td>
+</tr>
+<tr>
+<td><strong>Documentation</strong></td>
+<td>Edge cases, gotchas, things that weren't obvious</td>
+</tr>
+</tbody>
+</table>
+<p>Open a <a href="https://github.com/iAlexeze/orkestra/issues">GitHub issue</a> or start
+a <a href="https://github.com/iAlexeze/orkestra/discussions">Discussion</a> for anything
+not covered above.</p>
+<hr />
+<h2 id="release-schedule"><strong>Release schedule</strong></h2>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Target</th>
+<th>Focus</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>v1.0.0</td>
+<td>Q2 2026</td>
+<td>Stability, hardening, <code>ork init</code> end-to-end</td>
+</tr>
+<tr>
+<td>v1.1.0</td>
+<td>Q3 2026</td>
+<td>Runtime template interpretation, zero generate step</td>
+</tr>
+<tr>
+<td>v1.2.0</td>
+<td>Q3 2026</td>
+<td><code>ork dashboard</code>, auth for remote sources</td>
+</tr>
+<tr>
+<td>v1.3.0</td>
+<td>Q4 2026</td>
+<td>Additional sources (S3, ConfigMap), <code>ork diff</code>, <code>ork lint</code></td>
+</tr>
+<tr>
+<td>v2.0.0</td>
+<td>2027</td>
+<td>Public registry, versioning, CNCF Sandbox</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Want to Try it out?</strong> <a href="../../guides/getting-started/">Start here</a>.</li>
+</ul></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+                <p>Orkestra</p>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

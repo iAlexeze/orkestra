@@ -1,4 +1,4 @@
-# 🎼 Orkestra Startup & Shutdown
+# **Orkestra Startup & Shutdown**
 
 Orkestra is built around a single principle: **every component has a defined lifecycle, a defined order, and a defined responsibility**. Nothing starts before its dependency is ready. Nothing stops before the components that depend on it have stopped first.
 
@@ -6,9 +6,9 @@ This document captures exactly what happens when Orkestra starts and when it shu
 
 ---
 
-## Startup
+## **Startup**
 
-### Phase 1 — Katalog Load & Scheme Registration
+### **Phase 1 — Katalog Load & Scheme Registration**
 
 Before any Kubernetes client is built, Orkestra reads the Katalog. The Katalog is the single source of truth for which CRDs exist, how many workers each gets, what resync interval each uses, and which CRDs depend on which.
 
@@ -26,7 +26,7 @@ CRD clients registered to the provider
 
 This phase is entirely in-memory. No API server calls are made yet. If the dependency graph contains a cycle, Orkestra fails fast here before any network connection is opened.
 
-### Phase 2 — Komponent Startup (in order)
+### **Phase 2 — Komponent Startup (in order)**
 
 Orkestra starts each komponent sequentially. Each one must reach `AVAILABLE` before the next begins. The order is fixed and intentional:
 
@@ -39,21 +39,21 @@ informer factory  → SharedInformerFactory started, list-watch streams opened
 orkestra kontroller → dependency graph evaluated, CRDs started in topological order
 ```
 
-![Orkestra startup — komponents reporting AVAILABLE](./images/startup_komponents.png)
+![Orkestra startup — komponents reporting AVAILABLE](../images/startup_komponents.png)
 
 Every komponent logs its transition to `AVAILABLE`. If any komponent fails to start, orkestra returns the error immediately and the process exits — there is no partial-start state.
 
-### Phase 3 — CRD Banner & Dependency Display
+### **Phase 3 — CRD Banner & Dependency Display**
 
 Once the kontroller is available, Orkestra prints the Katalog summary. This shows every enabled CRD with its full configuration and its declared dependencies, resolved at runtime:
 
-![Orkestra startup — CRDs and dependency graph displayed](./images/startup_crds.png)
+![Orkestra startup — CRDs and dependency graph displayed](../images/startup_crds.png)
 
 The banner makes the dependency relationship explicit before any reconciliation begins. In this example, `ManagedNamespace` declares `DependsOn: project` — Orkestra will start the `Project` informer and workers first, then start `ManagedNamespace`. This ordering is enforced by topological sort of the DAG, not by convention.
 
 `Orkestra is conducting your CRDs...` is the signal that startup is complete and the leader election post-start hook is about to fire.
 
-### Phase 4 — Leader Election
+### **Phase 4 — Leader Election**
 
 Leader election starts as a **post-start hook** — after all komponents are `AVAILABLE` and caches are warm. This is the correct order. Starting leader election before the informer cache is synced means a newly-elected leader could begin reconciling with a stale view of the cluster.
 
@@ -69,15 +69,15 @@ The readyz endpoint only returns `200` after leader election succeeds and the fi
 
 ---
 
-## Shutdown
+## **Shutdown**
 
 Shutdown is triggered by `SIGINT` or `SIGTERM`. The root context is cancelled, which propagates to every goroutine in the system.
 
 The shutdown sequence is the **reverse of startup**, with dependency-aware ordering enforced:
 
-![Orkestra dependency-aware graceful shutdown](./images/dependency_away_graceful_shutdown.png)
+![Orkestra dependency-aware graceful shutdown](../images/dependency_away_graceful_shutdown.png)
 
-### Step-by-step breakdown
+### **Step-by-step breakdown**
 
 ```
 SIGINT / SIGTERM received
@@ -115,7 +115,7 @@ all events flushed                  ← broadcaster drains before exit
 ✅ All services shut down gracefully
 ```
 
-### Why this order matters
+### **Why this order matters**
 
 **Lease released before kontroller stops.** `ReleaseOnCancel: true` means the outgoing leader voluntarily gives up the lease rather than waiting for it to expire. A standby can acquire it immediately — typically within one `RetryPeriod` — instead of waiting out the full `LeaseDuration` (usually 15 seconds). This is the difference between a 1-second failover and a 15-second gap.
 
@@ -131,7 +131,7 @@ all events flushed                  ← broadcaster drains before exit
 
 ---
 
-## Guarantees
+## **Guarantees**
 
 | Guarantee | Mechanism |
 |---|---|
@@ -146,7 +146,7 @@ all events flushed                  ← broadcaster drains before exit
 
 ---
 
-## Configuration
+## **Configuration**
 
 Startup and shutdown timing is controlled by leader election options:
 

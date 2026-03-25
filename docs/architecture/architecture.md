@@ -7,7 +7,7 @@ This document explains the full architecture of the Orkestra runtime: how CRDs a
 
 ---
 
-## 1. High‑Level Overview
+## **1. High‑Level Overview**
 
 Orkestra consists of four major subsystems:
 
@@ -200,7 +200,7 @@ style TemplateEngine stroke:#333,stroke-width:2px,color:#FFFFFF
 
 ---
 
-## 2. Pre‑Runtime: Komposer + Katalog Loader
+## **2. Pre‑Runtime: Komposer + Katalog Loader**
 
 Before Orkestra starts reconciling anything, it builds the **runtime Katalog**:
 
@@ -215,7 +215,7 @@ This produces a complete, normalized operator definition.
 
 ---
 
-## 3. Informer Factory
+## **3. Informer Factory**
 
 For each CRD:
 
@@ -228,7 +228,7 @@ Informers feed events into the shared workqueue.
 
 ---
 
-## 4. Dependency‑Aware Kontroller
+## **4. Dependency‑Aware Kontroller**
 
 The Kontroller:
 
@@ -244,7 +244,7 @@ This is the heart of Orkestra’s self‑healing model.
 
 ---
 
-## 5. Reconciler Registry
+## 5. **Reconciler Registry**
 
 Each CRD maps to a **Reconciler**:
 
@@ -256,7 +256,7 @@ The registry dispatches events to the correct reconciler based on GVK.
 
 ---
 
-## 6. Template Engine
+## 6. **Template Engine**
 
 The template engine handles:
 

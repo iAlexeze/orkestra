@@ -458,4 +458,4 @@ the Katalog. When you need to reproduce a failure, you run the Katalog.
 This is the simplification that Orkestra exists to provide.
 
 **Whats Next?**
-  - See [Templating Engine](./templating.md) to learn more.
+  - See [Templating Engine](../concepts//templating.md) to learn more.

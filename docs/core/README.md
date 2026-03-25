@@ -16,7 +16,7 @@ This guide gives you the mental model, the workflow, and your first operator in 
           O R K E S T R A
 ```
 
-**CRDs in. Operators out.**
+<strong>CRDs in. Operators out.</strong>
 
 </div>
 
@@ -46,39 +46,6 @@ Orkestra does the rest.
 
 ---
 
-## 2. The Mental Model
-
-```
-CRD → Katalog → Orkestra → Kubernetes
-```
-
-- **CRD** defines *what* your resource is  
-- **Katalog** defines *how* it should behave  
-- **Orkestra** reconciles it  
-- **Kubernetes** stores it  
-
-This is the simplest operator model ever created.
-
-```mermaid
-flowchart LR
-    A[("Your CRD")] -->|schema| C[("Orkestra Runtime")]
-    B[("Katalog")] -->|logic| C
-    C -->|uses| D[("OrkestraRegistry")]
-    D -->|provides| C
-    C -->|manages| K8s["Kubernetes API"]
-
-    style A fill:transparent,stroke:#333,stroke-width:2px
-    style B fill:transparent,stroke:#333,stroke-width:2px
-    style C fill:#FF6D00,stroke:#333,stroke-width:4px,color:#FFFFFF
-    style D fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
-    style K8s fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
-
-%%    L_A_C_0@{ animation: fast } 
- %%   L_B_C_0@{ animation: fast } 
-  %%  L_C_D_0@{ animation: fast } 
-   %% L_D_C_0@{ animation: fast } 
-   %% L_C_K8s_0@{ animation: fast }
-```
 
 ---
 
@@ -99,7 +66,7 @@ Verify:
 ork version
 ```
 
-For advanced installation options — GPG verification, custom directory, version pinning — see the [Installation Guide](./deployment.md#installation).
+For advanced installation options — GPG verification, custom directory, version pinning — see the [Installation Guide](../guides/deployment.md#installation).
 
 ---
 
@@ -183,10 +150,10 @@ All from a single YAML file.
 
 ## 10. Next Steps
 
-- Learn the **[Katalog](./docs/katalog.md)** — declare operator behavior  
-- Compose multiple operators with **[Komposer](./docs/komposer.md)**  
-- Explore the **[OrkestraRegistry](./docs/orkestra-registry/orkestra-registry-vision.md)**  
-- Read the philosophy: **[Your CRD is Enough](./publications/your-crd-is-enough.md)**
+- Learn the **[Katalog](../concepts/katalog.md)** — declare operator behavior  
+- Compose multiple operators with **[Komposer](../concepts/komposer.md)**  
+- Explore the **[OrkestraRegistry](../orkestra-registry/orkestra-registry-vision.md)**  
+- Read the philosophy: **[Your CRD is Enough](../publications/your-crd-is-enough.md)**
 
 ---
 
@@ -194,9 +161,9 @@ All from a single YAML file.
 
 | Example | What it shows | Complexity |
 |---------|--------------|------------|
-| [Website](./examples/website/README.md) | Deployment + Service from a CR | ⭐ |
-| [Platform Namespace](./examples/platform-namespace/README.md) | Secrets, ConfigMaps, ServiceAccounts | ⭐⭐ |
-| [Komposer](./examples/komposer/README.md) | Composing Katalogs from files, Helm charts | ⭐⭐⭐ |
+| [Website](../examples/website/README.md) | Deployment + Service from a CR | ⭐ |
+| [Platform Namespace](../examples/platform-namespace/README.md) | Secrets, ConfigMaps, ServiceAccounts | ⭐⭐ |
+| [Komposer](../examples/komposer/README.md) | Composing Katalogs from files, Helm charts | ⭐⭐⭐ |
 
 ---
 

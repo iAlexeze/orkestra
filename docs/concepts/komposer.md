@@ -696,5 +696,5 @@ for i, s3Src := range doc.Sources.S3 {
 
 ---
 
-> For a complete list of all configurable options, see the **[Katalog and Komposer Reference](./katalog-komposer-reference.md)**.  
-> For real‑world examples, see the **[Use Cases](./use-cases.md)** documentation.
+> For a complete list of all configurable options, see the **[Katalog and Komposer Reference](../reference/katalog-komposer-reference.md)**.  
+> For real‑world examples, see the **[Use Cases](../guides/use-cases.md)** documentation.

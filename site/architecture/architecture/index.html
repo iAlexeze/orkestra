@@ -8,7 +8,7 @@
 <meta content="Orkestra Team" name="author"/>
 <link href="https://orkestra.sh/architecture/architecture/" rel="canonical"/>
 <link href="../../img/favicon.ico" rel="shortcut icon"/>
-<title>Overview - Orkestra</title>
+<title>Orkestra Full Architecture Overview - Orkestra</title>
 <link href="../../css/bootstrap.min.css" rel="stylesheet"/>
 <link href="../../css/fontawesome.min.css" rel="stylesheet"/>
 <link href="../../css/brands.min.css" rel="stylesheet"/>
@@ -32,14 +32,31 @@
 <div class="navbar-collapse collapse" id="navbar-collapse">
 <!-- Main navigation -->
 <ul class="nav navbar-nav">
-<li class="nav-item">
-<a class="nav-link" href="../../core/">Start Here</a>
-</li>
 <li class="nav-item dropdown">
-<a aria-current="page" aria-expanded="false" class="nav-link dropdown-toggle active" data-bs-toggle="dropdown" href="#" role="button">Architecture</a>
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Getting Started</a>
 <ul class="dropdown-menu">
 <li>
-<a aria-current="page" class="dropdown-item active" href="./">Overview</a>
+<a class="dropdown-item" href="../../guides/getting-started/">Installation</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/writing-your-first-katalog/">Writing Your First Katalog</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/writing-hooks/">Writing Hooks</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/writing-custom-reconcilers/">Writing Custom Reconcilers</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/testing-operators/">Testing Operators</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Architecture</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../overview/">Overview</a>
 </li>
 <li>
 <a class="dropdown-item" href="../runtime-flow/">Runtime Flow</a>
@@ -51,10 +68,10 @@
 <a class="dropdown-item" href="../design-philosophy/">Design Philosophy</a>
 </li>
 <li>
-<a class="dropdown-item" href="../../architecture-diagrams.md">Architecture Diagrams</a>
+<a class="dropdown-item" href="../architecture-diagrams/">Architecture Diagrams</a>
 </li>
 <li>
-<a class="dropdown-item" href="../full-architecture-view.md">Full Architecture View</a>
+<a class="dropdown-item" href="../full-architecture-view/">Full Architecture View</a>
 </li>
 </ul>
 </li>
@@ -71,42 +88,16 @@
 <a class="dropdown-item" href="../../concepts/conditional-provisioning/">Conditional Provisioning</a>
 </li>
 <li>
-<a class="dropdown-item" href="../../concepts/template-engine/">Template Engine</a>
+<a class="dropdown-item" href="../../concepts/templating/">Templating</a>
 </li>
 <li>
-<a class="dropdown-item" href="../../concepts/dependency-graph/">Dependency Graph</a>
+<a class="dropdown-item" href="../../concepts/dependency-model/">Dependency Model</a>
 </li>
 <li>
-<a class="dropdown-item" href="../../concepts/reconciler-model.md">Reconciler Model</a>
-</li>
-</ul>
-</li>
-<li class="nav-item dropdown">
-<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Internals</a>
-<ul class="dropdown-menu">
-<li>
-<a class="dropdown-item" href="../../internals/startup-sequence/">Startup Sequence</a>
+<a class="dropdown-item" href="../../concepts/health-subsystem/">Health Subsystem</a>
 </li>
 <li>
-<a class="dropdown-item" href="../../internals/konstruct-orkestra/">konstructOrkestra</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../internals/dynamic-vs-typed/">Dynamic vs Typed CRDs</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../internals/informer-factory/">Informer Factory</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../internals/dependency-kontroller/">Dependency Kontroller</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../internals/reconciler-pipeline/">Reconciler Pipeline</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../internals/observability/">Observability</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../internals/shutdown/">Shutdown</a>
+<a class="dropdown-item" href="../../concepts/reconciler-model/">Reconciler Model</a>
 </li>
 </ul>
 </li>
@@ -114,25 +105,7 @@
 <a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Guides</a>
 <ul class="dropdown-menu">
 <li>
-<a class="dropdown-item" href="../../guides/getting-started.md">Getting Started</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../guides/writing-your-first-katalog.md">Writing Your First Katalog</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../guides/writing-hooks.md">Writing Hooks</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../guides/writing-custom-reconcilers.md">Writing Custom Reconcilers</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../guides/testing-operators.md">Testing Operators</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../guides/production-deployment.md">Production Deployment</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../guides/inspect-live-crd/">Inspect Live CRD</a>
+<a class="dropdown-item" href="../../guides/deployment/#helm-deployment">Production Deployment</a>
 </li>
 <li>
 <a class="dropdown-item" href="../../guides/extending-orkestra/">Extending Orkestra</a>
@@ -158,10 +131,30 @@
 <a class="dropdown-item" href="../../reference/metrics/">Metrics</a>
 </li>
 <li>
-<a class="dropdown-item" href="../../reference/api.md">API</a>
+<a class="dropdown-item" href="../../reference/cli/">CLI</a>
 </li>
 <li>
-<a class="dropdown-item" href="../../reference/cli/">CLI</a>
+<a class="dropdown-item" href="../../reference/inspect-live-crd/">Inspect Live CRD</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Publications</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../publications/declarative-operators-whitepaper/">Declarative Operators Whitepaper</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/why-orkestra/">Why Orkestra</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/metrics-analysis/">Metrics Analysis</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/your-crd-is-enough/">Your CRD is Enough</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/roadmap/">Roadmap</a>
 </li>
 </ul>
 </li>
@@ -171,16 +164,6 @@
 <a class="nav-link" data-bs-target="#mkdocs_search_modal" data-bs-toggle="modal" href="#">
 <i class="fa fa-search"></i> Search
                             </a>
-</li>
-<li class="nav-item">
-<a class="nav-link" href="../../core/" rel="prev">
-<i class="fa fa-arrow-left"></i> Previous
-                                </a>
-</li>
-<li class="nav-item">
-<a class="nav-link" href="../runtime-flow/" rel="next">
-                                    Next <i class="fa fa-arrow-right"></i>
-</a>
 </li>
 </ul>
 </div>
@@ -233,7 +216,7 @@
 You describe <em>what</em> an operator should do in YAML (a <strong>Katalog</strong>), and Orkestra handles <em>how</em> to do it.</p>
 <p>This document explains the full architecture of the Orkestra runtime: how CRDs are discovered, how workers are started, how reconcile events flow, and how Orkestra remains self‑healing and dependency‑aware.</p>
 <hr/>
-<h2 id="1-highlevel-overview">1. High‑Level Overview</h2>
+<h2 id="1-highlevel-overview"><strong>1. High‑Level Overview</strong></h2>
 <p>Orkestra consists of four major subsystems:</p>
 <ol>
 <li>
@@ -426,7 +409,7 @@ style TemplateEngine stroke:#333,stroke-width:2px,color:#FFFFFF
 %% L_EV_API_0@{ animation: fast }
 </div>
 <hr/>
-<h2 id="2-preruntime-komposer-katalog-loader">2. Pre‑Runtime: Komposer + Katalog Loader</h2>
+<h2 id="2-preruntime-komposer-katalog-loader"><strong>2. Pre‑Runtime: Komposer + Katalog Loader</strong></h2>
 <p>Before Orkestra starts reconciling anything, it builds the <strong>runtime Katalog</strong>:</p>
 <ul>
 <li>Merge multiple files, Helm charts, URLs  </li>
@@ -438,7 +421,7 @@ style TemplateEngine stroke:#333,stroke-width:2px,color:#FFFFFF
 </ul>
 <p>This produces a complete, normalized operator definition.</p>
 <hr/>
-<h2 id="3-informer-factory">3. Informer Factory</h2>
+<h2 id="3-informer-factory"><strong>3. Informer Factory</strong></h2>
 <p>For each CRD:</p>
 <ul>
 <li>A SharedIndexInformer is created  </li>
@@ -448,7 +431,7 @@ style TemplateEngine stroke:#333,stroke-width:2px,color:#FFFFFF
 </ul>
 <p>Informers feed events into the shared workqueue.</p>
 <hr/>
-<h2 id="4-dependencyaware-kontroller">4. Dependency‑Aware Kontroller</h2>
+<h2 id="4-dependencyaware-kontroller"><strong>4. Dependency‑Aware Kontroller</strong></h2>
 <p>The Kontroller:</p>
 <ul>
 <li>Computes startup order (topological sort)</li>
@@ -461,7 +444,7 @@ style TemplateEngine stroke:#333,stroke-width:2px,color:#FFFFFF
 </ul>
 <p>This is the heart of Orkestra’s self‑healing model.</p>
 <hr/>
-<h2 id="5-reconciler-registry">5. Reconciler Registry</h2>
+<h2 id="5-reconciler-registry">5. <strong>Reconciler Registry</strong></h2>
 <p>Each CRD maps to a <strong>Reconciler</strong>:</p>
 <ul>
 <li>GenericReconciler (zero‑code)</li>
@@ -470,7 +453,7 @@ style TemplateEngine stroke:#333,stroke-width:2px,color:#FFFFFF
 </ul>
 <p>The registry dispatches events to the correct reconciler based on GVK.</p>
 <hr/>
-<h2 id="6-template-engine">6. Template Engine</h2>
+<h2 id="6-template-engine">6. <strong>Template Engine</strong></h2>
 <p>The template engine handles:</p>
 <ul>
 <li>Field resolution (<code>{{ .spec.image }}</code>)</li>

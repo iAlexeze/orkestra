@@ -87,7 +87,7 @@ You only need two things:
 - **A Kubernetes cluster** (1.28+).  
   Works with [kind](https://kind.sigs.k8s.io/), [minikube](https://minikube.sigs.k8s.io/), [k3s](https://k3s.io/), or a managed cluster ([EKS](https://aws.amazon.com/eks/), [GKE](https://cloud.google.com/kubernetes-engine/), [AKS](https://azure.microsoft.com/en-us/products//kubernetes-service/)).
 
-- **The [ork](#install) CLI** – installed via Homebrew or the install script.
+- **The [ork](#installation) CLI** – installed via Homebrew or the install script.
 
 Orkestra automatically discovers your cluster from your kubeconfig — no extra setup required.
 

@@ -8,7 +8,7 @@
 <meta content="Orkestra Team" name="author"/>
 <link href="https://orkestra.sh/architecture/architecture-diagrams/" rel="canonical"/>
 <link href="../../img/favicon.ico" rel="shortcut icon"/>
-<title>Orkestra Architecture Diagrams - Orkestra</title>
+<title>Architecture Diagrams - Orkestra</title>
 <link href="../../css/bootstrap.min.css" rel="stylesheet"/>
 <link href="../../css/fontawesome.min.css" rel="stylesheet"/>
 <link href="../../css/brands.min.css" rel="stylesheet"/>
@@ -32,14 +32,31 @@
 <div class="navbar-collapse collapse" id="navbar-collapse">
 <!-- Main navigation -->
 <ul class="nav navbar-nav">
-<li class="nav-item">
-<a class="nav-link" href="../../core/">Start Here</a>
-</li>
 <li class="nav-item dropdown">
-<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Architecture</a>
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Getting Started</a>
 <ul class="dropdown-menu">
 <li>
-<a class="dropdown-item" href="../architecture/">Overview</a>
+<a class="dropdown-item" href="../../guides/getting-started/">Installation</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/writing-your-first-katalog/">Writing Your First Katalog</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/writing-hooks/">Writing Hooks</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/writing-custom-reconcilers/">Writing Custom Reconcilers</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/testing-operators/">Testing Operators</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-current="page" aria-expanded="false" class="nav-link dropdown-toggle active" data-bs-toggle="dropdown" href="#" role="button">Architecture</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../overview/">Overview</a>
 </li>
 <li>
 <a class="dropdown-item" href="../runtime-flow/">Runtime Flow</a>
@@ -51,10 +68,10 @@
 <a class="dropdown-item" href="../design-philosophy/">Design Philosophy</a>
 </li>
 <li>
-<a class="dropdown-item" href="../../architecture-diagrams.md">Architecture Diagrams</a>
+<a aria-current="page" class="dropdown-item active" href="./">Architecture Diagrams</a>
 </li>
 <li>
-<a class="dropdown-item" href="../full-architecture-view.md">Full Architecture View</a>
+<a class="dropdown-item" href="../full-architecture-view/">Full Architecture View</a>
 </li>
 </ul>
 </li>
@@ -71,42 +88,16 @@
 <a class="dropdown-item" href="../../concepts/conditional-provisioning/">Conditional Provisioning</a>
 </li>
 <li>
-<a class="dropdown-item" href="../../concepts/template-engine/">Template Engine</a>
+<a class="dropdown-item" href="../../concepts/templating/">Templating</a>
 </li>
 <li>
-<a class="dropdown-item" href="../../concepts/dependency-graph/">Dependency Graph</a>
+<a class="dropdown-item" href="../../concepts/dependency-model/">Dependency Model</a>
 </li>
 <li>
-<a class="dropdown-item" href="../../concepts/reconciler-model.md">Reconciler Model</a>
-</li>
-</ul>
-</li>
-<li class="nav-item dropdown">
-<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Internals</a>
-<ul class="dropdown-menu">
-<li>
-<a class="dropdown-item" href="../../internals/startup-sequence/">Startup Sequence</a>
+<a class="dropdown-item" href="../../concepts/health-subsystem/">Health Subsystem</a>
 </li>
 <li>
-<a class="dropdown-item" href="../../internals/konstruct-orkestra/">konstructOrkestra</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../internals/dynamic-vs-typed/">Dynamic vs Typed CRDs</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../internals/informer-factory/">Informer Factory</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../internals/dependency-kontroller/">Dependency Kontroller</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../internals/reconciler-pipeline/">Reconciler Pipeline</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../internals/observability/">Observability</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../internals/shutdown/">Shutdown</a>
+<a class="dropdown-item" href="../../concepts/reconciler-model/">Reconciler Model</a>
 </li>
 </ul>
 </li>
@@ -114,25 +105,7 @@
 <a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Guides</a>
 <ul class="dropdown-menu">
 <li>
-<a class="dropdown-item" href="../../guides/getting-started.md">Getting Started</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../guides/writing-your-first-katalog.md">Writing Your First Katalog</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../guides/writing-hooks.md">Writing Hooks</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../guides/writing-custom-reconcilers.md">Writing Custom Reconcilers</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../guides/testing-operators.md">Testing Operators</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../guides/production-deployment.md">Production Deployment</a>
-</li>
-<li>
-<a class="dropdown-item" href="../../guides/inspect-live-crd/">Inspect Live CRD</a>
+<a class="dropdown-item" href="../../guides/deployment/#helm-deployment">Production Deployment</a>
 </li>
 <li>
 <a class="dropdown-item" href="../../guides/extending-orkestra/">Extending Orkestra</a>
@@ -158,10 +131,30 @@
 <a class="dropdown-item" href="../../reference/metrics/">Metrics</a>
 </li>
 <li>
-<a class="dropdown-item" href="../../reference/api.md">API</a>
+<a class="dropdown-item" href="../../reference/cli/">CLI</a>
 </li>
 <li>
-<a class="dropdown-item" href="../../reference/cli/">CLI</a>
+<a class="dropdown-item" href="../../reference/inspect-live-crd/">Inspect Live CRD</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Publications</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../publications/declarative-operators-whitepaper/">Declarative Operators Whitepaper</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/why-orkestra/">Why Orkestra</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/metrics-analysis/">Metrics Analysis</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/your-crd-is-enough/">Your CRD is Enough</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/roadmap/">Roadmap</a>
 </li>
 </ul>
 </li>
@@ -171,6 +164,16 @@
 <a class="nav-link" data-bs-target="#mkdocs_search_modal" data-bs-toggle="modal" href="#">
 <i class="fa fa-search"></i> Search
                             </a>
+</li>
+<li class="nav-item">
+<a class="nav-link" href="../design-philosophy/" rel="prev">
+<i class="fa fa-arrow-left"></i> Previous
+                                </a>
+</li>
+<li class="nav-item">
+<a class="nav-link" href="../full-architecture-view/" rel="next">
+                                    Next <i class="fa fa-arrow-right"></i>
+</a>
 </li>
 </ul>
 </div>
@@ -241,7 +244,7 @@
 <h1 id="orkestra-architecture-diagrams">Orkestra Architecture Diagrams</h1>
 <h3 id="a-visual-guide-to-the-internal-components-of-the-orkestra-runtime">A visual guide to the internal components of the Orkestra runtime</h3>
 <p>This document provides a complete, visual overview of how Orkestra works internally.<br/>
-It complements the <a href="../architecture/">Architecture</a>, <a href="./trust-and-failure-model.md">Trust Model, and Failure Modes</a> documents by showing<br/>
+It complements the <a href="../architecture/">Architecture</a>, <a href="../../core/trust-and-failure-model/">Trust Model, and Failure Modes</a> documents by showing<br/>
 <strong>how the pieces fit together</strong>.</p>
 <hr/>
 <h2 id="1-highlevel-architecture-two-modes">1. High‑Level Architecture (Two Modes)</h2>
@@ -451,7 +454,7 @@ A panic in one CR <strong>cannot</strong> crash the worker or the runtime.</p>
 </ul>
 <p>It is the <strong>single most important reference</strong> for understanding Orkestra’s internals.</p>
 <p><strong>Whats Next?</strong>
-  - <a href="../trust-and-failure-model.md">Trust and Failure Model</a></p></div>
+  - <a href="../../core/trust-and-failure-model/">Trust and Failure Model</a></p></div>
 </div>
 </div>
 <footer class="col-md-12">
