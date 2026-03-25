@@ -1,16 +1,15 @@
 <div align="center">
 
-```
-   ___       _              _
-  / _ \ _  _| |___ _ _  ___| |_ _ _ __ _
- | (_) | || | / -_) ' \/ -_)  _| '_/ _` |
-  \___/ \_,_|_\___|_||_\___|\__|_| \__,_|
+<img src="./docs/assets/ork-logo-white.png" alt="Orkestra Logo" height="120" style="vertical-align: middle">
+<br>
           O R K E S T R A
-```
 
-**CRDs in. Operators out.**
-
-**The Kubernetes operator runtime that needs no Programming Language.**
+<!-- **CRDs in. Operators out.** -->
+<br>
+<br>
+The Kubernetes operator runtime that needs no Programming Language.
+<br>
+<br>
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8.svg)](https://golang.org/)
@@ -156,12 +155,12 @@ ork status -w
 curl localhost:8080/katalog/website/health
 ```
 
-For detailed installation options, GPG verification, and production deployment, see the [Installation Guide](./docs/guides/deployment.md#installation).
+For detailed installation options, GPG verification, and production deployment, see the [Installation Guide](https://orkestra.readthedocs.io/en/latest/guides/deployment/#installation).
 
 ---
 
 > For a step‑by‑step walkthrough of what happens during reconcile, see  
-> 👉 **[Start Here](./docs/guides/getting-started.md#9-what-just-happened)**.
+> 👉 **[Start Here](https://orkestra.readthedocs.io/en/latest/guides/getting-started/#what-just-happened)**.
 
 
 ---
@@ -175,16 +174,16 @@ Orkestra is built to be predictable and resilient:
 - **Explicit drift correction** — Templates with `onCreate.reconcile: true` or a separate `onReconcile` block run on every reconcile, correcting manual changes to your resources.
 - **Non‑blocking runtime** — The controller starts even if some CRDs are missing. Workers start when CRDs appear.
 
-Full details: [Trust & Failure Model](./docs/core/trust-and-failure-model.md)
+Full details: [Trust & Failure Model](https://orkestra.readthedocs.io/en/latest/publications/trust-and-failure-model)
 
 ---
 
 ## Documentation
 
-- **[Start Here](./docs/guides/getting-started.md)** — Onboarding guide  
-- **[Katalog](./docs/concepts/katalog.md)** — Declare operator behavior  
-- **[Komposer](./docs/concepts/komposer.md)** — Compose multiple Katalogs  
-- **[Full Documentation Index](./docs/index.md)** — All guides, references, and internals  
+- **[Start Here](https://orkestra.readthedocs.io/en/latest/guides/getting-started)** — Onboarding guide  
+- **[Katalog](https://orkestra.readthedocs.io/en/latest/concepts/katalog)** — Declare operator behavior  
+- **[Komposer](https://orkestra.readthedocs.io/en/latest/concepts/komposer)** — Compose multiple Katalogs  
+- **[Full Documentation Index](https://orkestra.readthedocs.io/en/latest)** — All guides, references, and internals  
 
 ---
 

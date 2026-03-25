@@ -1,4 +1,4 @@
-# 📘 **Katalog Schema**  
+# **Katalog Schema**  
 This schema describes everything a Katalog can contain.
 
 ```yaml

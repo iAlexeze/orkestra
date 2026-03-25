@@ -234,3 +234,5 @@ This combined model gives Orkestra the same reliability expectations as:
 - Operator SDK controllers  
 
 But with **zero code**, **zero typed APIs**, and **zero controller boilerplate**.
+
+- **Next:** [Production Metrics](./metrics-analysis.md)

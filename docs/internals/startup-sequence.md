@@ -39,7 +39,7 @@ informer factory  → SharedInformerFactory started, list-watch streams opened
 orkestra kontroller → dependency graph evaluated, CRDs started in topological order
 ```
 
-![Orkestra startup — komponents reporting AVAILABLE](../images/startup_komponents.png)
+![Orkestra startup — komponents reporting AVAILABLE](../assets/startup_komponents.png)
 
 Every komponent logs its transition to `AVAILABLE`. If any komponent fails to start, orkestra returns the error immediately and the process exits — there is no partial-start state.
 
@@ -47,7 +47,7 @@ Every komponent logs its transition to `AVAILABLE`. If any komponent fails to st
 
 Once the kontroller is available, Orkestra prints the Katalog summary. This shows every enabled CRD with its full configuration and its declared dependencies, resolved at runtime:
 
-![Orkestra startup — CRDs and dependency graph displayed](../images/startup_crds.png)
+![Orkestra startup — CRDs and dependency graph displayed](../assets/startup_crds.png)
 
 The banner makes the dependency relationship explicit before any reconciliation begins. In this example, `ManagedNamespace` declares `DependsOn: project` — Orkestra will start the `Project` informer and workers first, then start `ManagedNamespace`. This ordering is enforced by topological sort of the DAG, not by convention.
 
@@ -75,7 +75,7 @@ Shutdown is triggered by `SIGINT` or `SIGTERM`. The root context is cancelled, w
 
 The shutdown sequence is the **reverse of startup**, with dependency-aware ordering enforced:
 
-![Orkestra dependency-aware graceful shutdown](../images/dependency_away_graceful_shutdown.png)
+![Orkestra dependency-aware graceful shutdown](../assets/dependency_away_graceful_shutdown.png)
 
 ### **Step-by-step breakdown**
 

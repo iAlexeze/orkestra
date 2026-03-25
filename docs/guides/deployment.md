@@ -5,23 +5,6 @@ production multi-cluster setup. Choose the path that matches your situation.
 
 ---
 
-## Table of contents
-
-- [Installation](#installation)
-- [Quick local test](#quick-local-test)
-- [Helm deployment](#helm-deployment)
-- [Managing your Katalog](#managing-your-katalog)
-- [Multi-CRD operators with Komposer](#multi-crd-operators-with-komposer)
-- [Remote Katalog sources](#remote-katalog-sources)
-- [Authenticated remote sources](#authenticated-remote-sources)
-- [Production checklist](#production-checklist)
-- [High availability](#high-availability)
-- [GitOps with ArgoCD or Flux](#gitops-with-argocd-or-flux)
-- [Multi-cluster](#multi-cluster)
-- [Upgrading](#upgrading)
-
----
-
 ## Installation
 
 ### macOS (Homebrew)
