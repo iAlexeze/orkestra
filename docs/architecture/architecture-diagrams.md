@@ -2,7 +2,7 @@
 ### A visual guide to the internal components of the Orkestra runtime
 
 This document provides a complete, visual overview of how Orkestra works internally.  
-It complements the [Architecture](./architecture.md), [Trust Model, and Failure Modes](../core/trust-and-failure-model.md) documents by showing  
+It complements the [Architecture](./architecture.md), [Trust Model, and Failure Modes](../publications/trust-and-failure-model.md) documents by showing  
 **how the pieces fit together**.
 
 ---
@@ -266,4 +266,4 @@ This document provides a complete visual map of:
 It is the **single most important reference** for understanding Orkestra’s internals.
 
 **Whats Next?**
-  - [Trust and Failure Model](../core/trust-and-failure-model.md)
+  - [Trust and Failure Model](../publications/trust-and-failure-model.md)

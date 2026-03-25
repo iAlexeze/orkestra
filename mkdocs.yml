@@ -7,10 +7,14 @@ copyright: "Orkestra"
 plugins:
     - search
     - mermaid2
+theme:
+    # name: material
+    name: readthedocs 
+    # https://mkdocs.readthedocs.io/en/restructure-compat/user-guide/styling-your-docs/
 
 nav:
   - Getting Started:
-      - Installation: guides/getting-started.md
+      - Welcome to Orkestra: guides/getting-started.md
       - Writing Your First Katalog: guides/writing-your-first-katalog.md
       - Writing Hooks: guides/writing-hooks.md
       - Writing Custom Reconcilers: guides/writing-custom-reconcilers.md
@@ -49,6 +53,7 @@ nav:
       - Extending Orkestra: guides/extending-orkestra.md
       - Choosing Katalog vs Komposer: guides/choosing-katalog-vs-komposer.md
       - Use Cases: guides/use-cases.md
+      - Best Practices: guides/best-practices.md
 
   - Reference:
       - Katalog Schema: reference/katalog-schema.md
@@ -59,8 +64,9 @@ nav:
       - Inspect Live CRD: reference/inspect-live-crd.md
 
   - Publications:
-      - Declarative Operators Whitepaper: publications/declarative-operators-whitepaper.md
       - Why Orkestra: publications/why-orkestra.md
+      - Declarative Operators Whitepaper: publications/declarative-operators-whitepaper.md
+      - Trust and Safety: publications/trust-and-failure-model.md
       - Metrics Analysis: publications/metrics-analysis.md
       - Your CRD is Enough: publications/your-crd-is-enough.md
       - Roadmap: publications/roadmap.md

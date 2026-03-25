@@ -256,8 +256,8 @@ ork run --katalog my-katalog.yaml --debug
 You'll see:
 
 ```
-DEBU resolved template: image="{{ .spec.image }}" → "nginx:1.25"
-DEBU resolved template: replicas="{{ .spec.replicas }}" → "3"
+DEBUG resolved template: image="{{ .spec.image }}" → "nginx:1.25"
+DEBUG resolved template: replicas="{{ .spec.replicas }}" → "3"
 ```
 
 This shows you exactly what value each template became.

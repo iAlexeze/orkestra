@@ -270,11 +270,11 @@ queue             → rate-limiting workqueue initialized
 informer factory  → SharedInformerFactory started, list-watch streams opened
 orkestra kontroller → dependency graph evaluated, CRDs started in topological order
 </code></pre>
-<p><img alt="Orkestra startup — komponents reporting AVAILABLE" src="../../images/startup_komponents.png" /></p>
+<p><img alt="Orkestra startup — komponents reporting AVAILABLE" src="../../assets/startup_komponents.png" /></p>
 <p>Every komponent logs its transition to <code>AVAILABLE</code>. If any komponent fails to start, orkestra returns the error immediately and the process exits — there is no partial-start state.</p>
 <h3 id="phase-3-crd-banner-dependency-display"><strong>Phase 3 — CRD Banner &amp; Dependency Display</strong></h3>
 <p>Once the kontroller is available, Orkestra prints the Katalog summary. This shows every enabled CRD with its full configuration and its declared dependencies, resolved at runtime:</p>
-<p><img alt="Orkestra startup — CRDs and dependency graph displayed" src="../../images/startup_crds.png" /></p>
+<p><img alt="Orkestra startup — CRDs and dependency graph displayed" src="../../assets/startup_crds.png" /></p>
 <p>The banner makes the dependency relationship explicit before any reconciliation begins. In this example, <code>ManagedNamespace</code> declares <code>DependsOn: project</code> — Orkestra will start the <code>Project</code> informer and workers first, then start <code>ManagedNamespace</code>. This ordering is enforced by topological sort of the DAG, not by convention.</p>
 <p><code>Orkestra is conducting your CRDs...</code> is the signal that startup is complete and the leader election post-start hook is about to fire.</p>
 <h3 id="phase-4-leader-election"><strong>Phase 4 — Leader Election</strong></h3>
@@ -289,7 +289,7 @@ orkestra kontroller → dependency graph evaluated, CRDs started in topological 
 <h2 id="shutdown"><strong>Shutdown</strong></h2>
 <p>Shutdown is triggered by <code>SIGINT</code> or <code>SIGTERM</code>. The root context is cancelled, which propagates to every goroutine in the system.</p>
 <p>The shutdown sequence is the <strong>reverse of startup</strong>, with dependency-aware ordering enforced:</p>
-<p><img alt="Orkestra dependency-aware graceful shutdown" src="../../images/dependency_away_graceful_shutdown.png" /></p>
+<p><img alt="Orkestra dependency-aware graceful shutdown" src="../../assets/dependency_away_graceful_shutdown.png" /></p>
 <h3 id="step-by-step-breakdown"><strong>Step-by-step breakdown</strong></h3>
 <pre><code>SIGINT / SIGTERM received
         ↓

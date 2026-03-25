@@ -6,115 +6,131 @@ Orkestra turns CRDs into operators. This documentation explains how.
 
 ---
 
-<div align="center">
+## What Is Orkestra?
 
-```
-   ___       _              _
-  / _ \ _  _| |___ _ _  ___| |_ _ _ __ _
- | (_) | || | / -_) ' \/ -_)  _| '_/ _` |
-  \___/ \_,_|_\___|_||_\___|\__|_| \__,_|
-          O R K E S T R A
-```
+Orkestra is a declarative, zero‑code Kubernetes operator runtime. You declare what you want in a YAML file — a **Katalog** — and Orkestra manages the full lifecycle of your CRDs: create, reconcile, drift‑correct, delete.
 
-<strong>CRDs in. Operators out.</strong>
+No Go. No code generation. No controller boilerplate.
 
-</div>
+---
+
+## Why Orkestra?
+
+CRDs were meant to make Kubernetes extensible. But to turn a CRD into an operator, you still write Go code — controllers, informers, reconcilers, finalizers, events, metrics. Every operator repeats the same patterns. Every team rebuilds the same infrastructure.
+
+Orkestra removes that barrier. You write a Katalog. Orkestra builds the operator.
+
+**Your CRD is enough.**
+
+---
+
+## How It Works
+
+Orkestra follows the GitOps pattern of using YAML as the source of truth for operator behavior.
+
+1. **You declare a Katalog** — a YAML file that describes your CRDs and the resources they should create (Deployments, Services, Secrets, ConfigMaps, Jobs, CronJobs).
+
+2. **You apply your CRD** — Orkestra detects the CRD, creates informers, starts workers, and begins watching for Custom Resources.
+
+3. **You create a Custom Resource** — Orkestra reconciles it, creates the declared resources, adds finalizers, and enables drift correction.
+
+4. **You update or delete the CR** — Orkestra reconciles changes, corrects drift, or cleans up child resources.
+
+For a quick overview, see the [Getting Started](./guides/getting-started.md) guide.
+
+---
+
+## Architecture
+
+Orkestra is implemented as a Kubernetes runtime that watches your CRDs and reconciles according to your Katalog. It runs as a single binary — locally or in the cluster — and manages all your CRDs in one process.
+
+- **One runtime, any number of CRDs** — each CRD gets its own informer, worker pool, and queue
+- **Dependency‑aware startup** — declare `dependsOn`, Orkestra starts CRDs in topological order
+- **Built‑in observability** — health endpoints, Prometheus metrics, `ork status` CLI
+- **Per‑CRD tuning** — configure workers, resync intervals, and queue depth per CRD
+- **Drift correction** — resources with `reconcile: true` are automatically corrected on every reconcile
+- **No programming language required** — just YAML
+
+For additional details, see the [Architecture Overview](./architecture/overview.md).
 
 ---
 
 ## Quick Start
 
-New to Orkestra? Start here to build your first operator in minutes.
+```bash
+# Install Orkestra
+brew install iAlexeze/tap/ork
+# or
+curl -sSL https://raw.githubusercontent.com/konduktor-io/orkestra/main/install.sh | bash
+```
 
-👉 **[Get Started →](./guides/getting-started.md)**
-
----
-
-## Guides
-
-Step‑by‑step instructions for building and operating with Orkestra.
-
-| Guide | Description |
-|-------|-------------|
-| [Getting Started](./guides/getting-started.md) | Install Orkestra and run your first operator |
-| [Writing Your First Katalog](./guides/writing-your-first-katalog.md) | Declare CRDs and create resources from templates |
-| [Writing Hooks](./guides/writing-hooks.md) | Add Go logic when templates aren't enough |
-| [Writing Custom Reconcilers](./guides/writing-custom-reconcilers.md) | Take full control of reconciliation |
-| [Testing Operators](./guides/testing-operators.md) | Unit, integration, and E2E testing |
+For a step‑by‑step walkthrough, see the [Getting Started Guide](./guides/getting-started.md).
 
 ---
 
-## Concepts
+## Features
 
-Core ideas that define how Orkestra works.
+- **Zero‑code operators** — No Go, no Python, no controller boilerplate. Just YAML.
+- **Any CRD, any resource** — Works with custom CRDs and built‑in Kubernetes resources (Pods, Deployments, Secrets)
+- **Declarative templates** — Use Go templates to reference CR spec fields (`{{ .spec.image }}`)
+- **Conditional provisioning** — Create resources only when conditions are met (`when: `)
+- **Dependency ordering** — Declare `dependsOn`, Orkestra starts CRDs in the right order
+- **Drift correction** — Resources with `reconcile: true` are automatically corrected on every reconcile
+- **Per‑CRD workers** — Each CRD gets its own worker pool, queue, and resync interval
+- **Built‑in observability** — Health and info endpoints (`/katalog/{crd}/health` and `/katalog/{crd}`), Prometheus metrics(`/metrics`), `ork status`
+- **Komposer composition** — Compose Katalogs from files, Helm charts, and remote URLs
+- **Multi‑source authentication** — Support for bearer tokens, GitHub tokens, and basic auth
+- **Leader election** — High availability with warm caches on all replicas
+- **Graceful shutdown** — Drains workers, stops informers, releases leader lease
 
-| Concept | Description |
+---
+
+## Development Status
+
+Orkestra is being actively developed. The core runtime is stable and ready for testing. New features are being added regularly.
+
+- **Current version:** v0.1.0 (alpha)
+- **Roadmap:** See [Roadmap](./publications/roadmap.md)
+- **Releases:** Available on [GitHub](https://github.com/orkestra-sh/orkestra/releases)
+
+---
+
+## Adoption
+
+Orkestra is designed for:
+
+- **Platform engineers** — build internal developer platforms without writing operators
+- **SREs** — manage infrastructure with declarative YAML, not Go code
+- **Infrastructure teams** — replace dozens of operators with one runtime
+- **Application developers** — define their own CRDs without learning Kubernetes controller patterns
+
+Early adopters are using Orkestra to manage:
+
+- Namespace provisioners with quotas and network policies
+- Database operators (PostgreSQL, MongoDB) with secrets and backups
+- Application operators (Deployment + Service + ConfigMap) with conditional public exposure
+- Built‑in resource governance (Pod, Deployment, Secret) with health monitoring
+
+---
+
+## Documentation
+
+| Section | Description |
 |---------|-------------|
-| [Katalog](./concepts/katalog.md) | Declare operator behavior |
-| [Komposer](./concepts/komposer.md) | Compose Katalogs from multiple sources |
-| [Katalog & Komposer Reference](./reference/katalog-komposer-reference.md) | Full schema reference |
-| [Templating](./concepts/templating.md) | Template expressions and resolution |
-| [Dependency Model](./concepts/dependency-model.md) | How Orkestra manages CRD dependencies |
-| [Trust & Failure Model](./core/trust-and-failure-model.md) | Why Orkestra is safe to use |
-| [Your CRD is Enough](./publications/your-crd-is-enough.md) | The philosophy |
-
----
-
-## OrkestraRegistry
-
-The operator standard library — reusable, versioned operator patterns.
-
-| Document | Description |
-|----------|-------------|
-| [OrkestraRegistry Vision](./orkestra-registry/orkestra-registry-vision.md) | The future of reusable operators |
-| [OrkestraRegistry Technical Documentation](./orkestra-registry/orkestra-registry-technical-documentation.md) | How the registry works |
-
----
-
-## Reference
-
-Detailed documentation for every part of Orkestra.
-
-| Document | Description |
-|----------|-------------|
-| [CLI Reference](./reference/cli.md) | All `ork` commands and flags |
-| [Inspect Live CRD](./reference/inspect-live-crd.md) | Inspect CRDs directly from the terminal |
+| [Guides](./guides/getting-started.md) | Step‑by‑step instructions for building operators |
+| [Concepts](./concepts/katalog.md) | Core ideas that define how Orkestra works |
+| [Reference](./reference/katalog-schema.md) | Detailed documentation for every part of Orkestra |
 | [Architecture](./architecture/overview.md) | How Orkestra works under the hood |
-| [Architecture Diagrams](./architecture/architecture-diagrams.md) | Visual architecture overview |
-| [Komponents](./concepts/komponent.md) | What each part of Orkestra does |
-| [Health Subsystem](./concepts/health-subsystem.md) | Health tracking and degradation |
-| [Metrics](./reference/metrics.md) | Prometheus metrics reference |
-
----
-
-## Deployment
-
-How to run Orkestra in different environments.
-
-| Document | Description |
-|----------|-------------|
-| [Deployment Guide](./guides/deployment.md) | Helm, GitOps, and production setups |
-| [Use Cases](./guides/use-cases.md) | Real‑world operator patterns |
-
----
-
-## Publications
-
-High‑level papers and conceptual documents.
-
-| Document | Description |
-|----------|-------------|
-| [Why Orkestra](./publications/why-orkestra.md) | The case for declarative operators |
-| [Declarative Operators Whitepaper](./publications/declarative-operators-whitepaper.md) | Technical whitepaper |
-| [Metrics Analysis](./publications/metrics-analysis.md) | Performance metrics for 170+ CRDs |
+| [OrkestraRegistry](./orkestra-registry/orkestra-registry-vision.md) | The operator standard library |
+| [Publications](./publications/why-orkestra.md) | High‑level papers and conceptual documents |
 
 ---
 
 ## Community
 
-- [GitHub Issues](https://github.com/konduktor-io/orkestra/issues)
-- [Discussions](https://github.com/konduktor-io/orkestra/discussions)
-- Kubernetes Slack — `#orkestra` _(planned)_
+- [GitHub Issues](https://github.com/konduktor-io/orkestra/issues) — report bugs, request features
+- [Discussions](https://github.com/konduktor-io/orkestra/discussions) — ask questions, share ideas
+<!-- - Kubernetes Slack — `#orkestra` _(planned)_ -->
 
 ---
 

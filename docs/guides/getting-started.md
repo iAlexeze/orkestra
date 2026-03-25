@@ -20,10 +20,10 @@ No Go. No code generation. No controller boilerplate.
 CRD → Katalog → Orkestra → Kubernetes
 ```
 
-- **CRD** defines *what* your resource is (the schema)
+<!-- - **CRD** defines *what* your resource is (the schema)
 - **Katalog** defines *how* it should behave (the logic)
 - **Orkestra** reconciles it (the runtime)
-- **Kubernetes** stores it (the platform)
+- **Kubernetes** stores it (the platform) -->
 
 ```mermaid
 flowchart LR
