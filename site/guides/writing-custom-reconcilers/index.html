@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Orkestra Team">
+        <link rel="canonical" href="https://orkestra.sh/guides/writing-custom-reconcilers/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Writing Custom Reconcilers - Orkestra</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Orkestra</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Getting Started</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../getting-started/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="../writing-your-first-katalog/" class="dropdown-item">Writing Your First Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../writing-hooks/" class="dropdown-item">Writing Hooks</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">Writing Custom Reconcilers</a>
+</li>
+                                    
+<li>
+    <a href="../testing-operators/" class="dropdown-item">Testing Operators</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Architecture</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../architecture/overview/" class="dropdown-item">Overview</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/runtime-flow/" class="dropdown-item">Runtime Flow</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/crd-lifecycle/" class="dropdown-item">CRD Lifecycle</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/design-philosophy/" class="dropdown-item">Design Philosophy</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/architecture-diagrams/" class="dropdown-item">Architecture Diagrams</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/full-architecture-view/" class="dropdown-item">Full Architecture View</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Concepts</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../concepts/katalog/" class="dropdown-item">Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/komposer/" class="dropdown-item">Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/conditional-provisioning/" class="dropdown-item">Conditional Provisioning</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/templating/" class="dropdown-item">Templating</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/dependency-model/" class="dropdown-item">Dependency Model</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/health-subsystem/" class="dropdown-item">Health Subsystem</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/reconciler-model/" class="dropdown-item">Reconciler Model</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Guides</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../deployment/#helm-deployment" class="dropdown-item">Production Deployment</a>
+</li>
+                                    
+<li>
+    <a href="../extending-orkestra/" class="dropdown-item">Extending Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../choosing-katalog-vs-komposer/" class="dropdown-item">Choosing Katalog vs Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../use-cases/" class="dropdown-item">Use Cases</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../reference/katalog-schema/" class="dropdown-item">Katalog Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/komposer-schema/" class="dropdown-item">Komposer Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/metrics/" class="dropdown-item">Metrics</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/cli/" class="dropdown-item">CLI</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Publications</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../publications/declarative-operators-whitepaper/" class="dropdown-item">Declarative Operators Whitepaper</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/why-orkestra/" class="dropdown-item">Why Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/metrics-analysis/" class="dropdown-item">Metrics Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/your-crd-is-enough/" class="dropdown-item">Your CRD is Enough</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/roadmap/" class="dropdown-item">Roadmap</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../writing-hooks/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../testing-operators/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#writing-custom-reconcilers" class="nav-link">Writing Custom Reconcilers</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#when-to-use-a-custom-reconciler" class="nav-link">When to Use a Custom Reconciler</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#the-reconciler-interface" class="nav-link">The Reconciler Interface</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#scaffolding-a-custom-reconciler" class="nav-link">Scaffolding a Custom Reconciler</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#implementing-reconcile-logic" class="nav-link">Implementing Reconcile Logic</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#managing-finalizers" class="nav-link">Managing Finalizers</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#handling-deletion" class="nav-link">Handling Deletion</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#registering-a-custom-reconciler" class="nav-link">Registering a Custom Reconciler</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#next-steps" class="nav-link">Next Steps</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="writing-custom-reconcilers">Writing Custom Reconcilers</h1>
+<p>The <code>GenericReconciler</code> handles most use cases with templates and hooks. But sometimes you need complete control over the reconciliation loop. That's when you write a <strong>custom reconciler</strong>.</p>
+<hr />
+<h2 id="when-to-use-a-custom-reconciler">When to Use a Custom Reconciler</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>GenericReconciler</th>
+<th>Custom Reconciler</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create Deployments</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Create Services</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Drift correction</td>
+<td>✅</td>
+<td>You implement</td>
+</tr>
+<tr>
+<td>Finalizers</td>
+<td>✅</td>
+<td>You implement</td>
+</tr>
+<tr>
+<td>Events</td>
+<td>✅</td>
+<td>You implement</td>
+</tr>
+<tr>
+<td>Metrics</td>
+<td>✅</td>
+<td>You implement</td>
+</tr>
+<tr>
+<td>External API calls</td>
+<td>✅ (via hooks)</td>
+<td>✅ (direct)</td>
+</tr>
+<tr>
+<td>Complex state machines</td>
+<td>❌</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Custom status updates</td>
+<td>❌</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Performance tuning</td>
+<td>❌</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+<p>Use a custom reconciler when:</p>
+<ul>
+<li>You need a complex state machine (e.g., provisioning → ready → degraded)</li>
+<li>You need to update status frequently</li>
+<li>You need to orchestrate multiple external resources</li>
+<li>You need to implement custom retry logic</li>
+</ul>
+<hr />
+<h2 id="the-reconciler-interface">The Reconciler Interface</h2>
+<p>A custom reconciler must implement one method:</p>
+<pre><code class="language-go">type Reconciler interface {
+    Reconcile(ctx context.Context, key string) error
+}
+</code></pre>
+<p>That's it. Orkestra handles everything else: informers, queues, workers, metrics, and health tracking.</p>
+<hr />
+<h2 id="scaffolding-a-custom-reconciler">Scaffolding a Custom Reconciler</h2>
+<pre><code class="language-bash"># Scaffold a typed project
+ork init my-operator --typed
+cd my-operator
+</code></pre>
+<p>Create your reconciler in <code>pkg/reconciler/website.go</code>:</p>
+<pre><code class="language-go">package reconciler
+
+import (
+    &quot;context&quot;
+    &quot;fmt&quot;
+
+    &quot;github.com/ialexeze/orkestra/domain&quot;
+    &quot;github.com/ialexeze/orkestra/pkg/event&quot;
+    &quot;github.com/ialexeze/orkestra/pkg/kubeclient&quot;
+    &quot;github.com/ialexeze/orkestra/pkg/logger&quot;
+    websitev1 &quot;github.com/myorg/apis/website/v1alpha1&quot;
+    corev1 &quot;k8s.io/api/core/v1&quot;
+    apierrors &quot;k8s.io/apimachinery/pkg/api/errors&quot;
+    metav1 &quot;k8s.io/apimachinery/pkg/apis/meta/v1&quot;
+    &quot;k8s.io/client-go/tools/cache&quot;
+)
+
+type WebsiteReconciler struct {
+    informer cache.SharedIndexInformer
+    kube     *kubeclient.Kubeclient
+    event    *event.Event
+}
+
+func NewWebsiteReconciler(
+    informer cache.SharedIndexInformer,
+    kube *kubeclient.Kubeclient,
+    ev *event.Event,
+) *WebsiteReconciler {
+    return &amp;WebsiteReconciler{
+        informer: informer,
+        kube:     kube,
+        event:    ev,
+    }
+}
+
+func (r *WebsiteReconciler) Reconcile(ctx context.Context, key string) error {
+    // Parse the key (namespace/name)
+    namespace, name, err := cache.SplitMetaNamespaceKey(key)
+    if err != nil {
+        return fmt.Errorf(&quot;invalid key: %w&quot;, err)
+    }
+
+    // Get the object from the informer cache
+    obj, exists, err := r.informer.GetIndexer().GetByKey(key)
+    if err != nil {
+        return fmt.Errorf(&quot;failed to get object: %w&quot;, err)
+    }
+
+    if !exists {
+        // Object was deleted — clean up external resources
+        return r.cleanup(ctx, namespace, name)
+    }
+
+    website := obj.(*websitev1.Website)
+
+    // Check if the object is being deleted
+    if website.DeletionTimestamp != nil {
+        return r.handleDeletion(ctx, website)
+    }
+
+    // Ensure finalizers
+    if err := r.ensureFinalizers(ctx, website); err != nil {
+        return err
+    }
+
+    // Reconcile the desired state
+    return r.reconcile(ctx, website)
+}
+</code></pre>
+<hr />
+<h2 id="implementing-reconcile-logic">Implementing Reconcile Logic</h2>
+<p>Here's a complete implementation that creates a Deployment:</p>
+<pre><code class="language-go">func (r *WebsiteReconciler) reconcile(ctx context.Context, website *websitev1.Website) error {
+    logger.FromContext(ctx).Info().
+        Str(&quot;website&quot;, website.Name).
+        Msg(&quot;reconciling website&quot;)
+
+    // Create or update Deployment
+    deployment := &amp;appsv1.Deployment{
+        ObjectMeta: metav1.ObjectMeta{
+            Name:      website.Name,
+            Namespace: website.Namespace,
+            OwnerReferences: []metav1.OwnerReference{
+                *metav1.NewControllerRef(website, websitev1.SchemeGroupVersion.WithKind(&quot;Website&quot;)),
+            },
+        },
+        Spec: appsv1.DeploymentSpec{
+            Replicas: &amp;website.Spec.Replicas,
+            Selector: &amp;metav1.LabelSelector{
+                MatchLabels: map[string]string{
+                    &quot;app&quot;: website.Name,
+                },
+            },
+            Template: corev1.PodTemplateSpec{
+                ObjectMeta: metav1.ObjectMeta{
+                    Labels: map[string]string{
+                        &quot;app&quot;: website.Name,
+                    },
+                },
+                Spec: corev1.PodSpec{
+                    Containers: []corev1.Container{
+                        {
+                            Name:  &quot;app&quot;,
+                            Image: website.Spec.Image,
+                            Ports: []corev1.ContainerPort{
+                                {ContainerPort: website.Spec.Port},
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+
+    _, err := r.kube.Clientset().AppsV1().Deployments(website.Namespace).Create(ctx, deployment, metav1.CreateOptions{})
+    if apierrors.IsAlreadyExists(err) {
+        // Update if needed
+        _, err = r.kube.Clientset().AppsV1().Deployments(website.Namespace).Update(ctx, deployment, metav1.UpdateOptions{})
+        if err != nil {
+            return err
+        }
+    } else if err != nil {
+        return err
+    }
+
+    // Update status
+    website.Status.Phase = &quot;Ready&quot;
+    _, err = r.kube.DynamicClient().Resource(websitev1.GroupVersionResource).Namespace(website.Namespace).UpdateStatus(ctx, website, metav1.UpdateOptions{})
+    if err != nil {
+        return err
+    }
+
+    // Emit event
+    r.event.Recorder().Eventf(website, corev1.EventTypeNormal, &quot;Reconciled&quot;,
+        &quot;Successfully reconciled website %s&quot;, website.Name)
+
+    return nil
+}
+</code></pre>
+<hr />
+<h2 id="managing-finalizers">Managing Finalizers</h2>
+<p>Finalizers protect your CR from being deleted until cleanup completes:</p>
+<pre><code class="language-go">func (r *WebsiteReconciler) ensureFinalizers(ctx context.Context, website *websitev1.Website) error {
+    finalizer := &quot;finalizer.demo.orkestra.io/website&quot;
+
+    for _, f := range website.Finalizers {
+        if f == finalizer {
+            return nil // Already has it
+        }
+    }
+
+    // Add finalizer
+    website.Finalizers = append(website.Finalizers, finalizer)
+    _, err := r.kube.DynamicClient().Resource(websitev1.GroupVersionResource).Namespace(website.Namespace).Update(ctx, website, metav1.UpdateOptions{})
+    return err
+}
+</code></pre>
+<hr />
+<h2 id="handling-deletion">Handling Deletion</h2>
+<p>When a CR is deleted, clean up external resources before removing finalizers:</p>
+<pre><code class="language-go">func (r *WebsiteReconciler) handleDeletion(ctx context.Context, website *websitev1.Website) error {
+    logger.FromContext(ctx).Info().
+        Str(&quot;website&quot;, website.Name).
+        Msg(&quot;handling deletion&quot;)
+
+    // Clean up external resources
+    // e.g., delete cloud load balancer, deregister domain, etc.
+
+    // Remove finalizer to allow deletion to proceed
+    finalizer := &quot;finalizer.demo.orkestra.io/website&quot;
+    newFinalizers := []string{}
+    for _, f := range website.Finalizers {
+        if f != finalizer {
+            newFinalizers = append(newFinalizers, f)
+        }
+    }
+    website.Finalizers = newFinalizers
+
+    _, err := r.kube.DynamicClient().Resource(websitev1.GroupVersionResource).Namespace(website.Namespace).Update(ctx, website, metav1.UpdateOptions{})
+    return err
+}
+</code></pre>
+<hr />
+<h2 id="registering-a-custom-reconciler">Registering a Custom Reconciler</h2>
+<p>In your Katalog, set <code>reconciler.default: false</code> and provide the constructor:</p>
+<pre><code class="language-yaml">crds:
+  - name: website
+    apiTypes:
+      group: demo.orkestra.io
+      version: v1alpha1
+      kind: Website
+      plural: websites
+      location: github.com/myorg/apis/website/v1alpha1
+    reconciler:
+      default: false
+      constructor:
+        location: github.com/myorg/my-operator/pkg/reconciler
+        function: NewWebsiteReconciler
+</code></pre>
+<p>Then generate the runtime wiring:</p>
+<pre><code class="language-bash">ork generate runtime --katalog katalogs/website.yaml
+go mod tidy
+</code></pre>
+<hr />
+<h2 id="next-steps">Next Steps</h2>
+<p>Now that you know how to write custom reconcilers, learn how to test your operators.</p>
+<p>👉 <a href="../testing-operators/">Testing Operators →</a></p>
+<hr /></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+                <p>Orkestra</p>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

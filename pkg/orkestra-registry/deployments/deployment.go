@@ -154,7 +154,6 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Fields with template expressions must already be evaluated before calling Resolve.
 // Use pkg/orkestra-registry/template.Resolver to evaluate expressions first.
 //
-// Option B inference — no explicit fromCRD/fromKatalog split needed.
 // The resolver already evaluated template expressions — here we just merge.
 // deployments/deployment.go
 func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerName string) ResolvedDeploymentSpec {

@@ -127,7 +127,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 
 // Resolve builds a ResolvedPodSpec from a PodTemplateSource.
 //
-// Option B — fields are flat on the source struct. Template expressions
+// Fields are flat on the source struct. Template expressions
 // must already be evaluated by template.Resolver before calling Resolve.
 // This function only reads already-resolved string values and assembles the spec.
 //

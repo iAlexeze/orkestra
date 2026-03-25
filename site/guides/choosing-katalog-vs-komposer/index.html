@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+
+<html data-bs-theme="light" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="Orkestra Team" name="author"/>
+<link href="https://orkestra.sh/guides/choosing-katalog-vs-komposer/" rel="canonical"/>
+<link href="../../img/favicon.ico" rel="shortcut icon"/>
+<title>Choosing Katalog vs Komposer - Orkestra</title>
+<link href="../../css/bootstrap.min.css" rel="stylesheet"/>
+<link href="../../css/fontawesome.min.css" rel="stylesheet"/>
+<link href="../../css/brands.min.css" rel="stylesheet"/>
+<link href="../../css/solid.min.css" rel="stylesheet"/>
+<link href="../../css/v4-font-face.min.css" rel="stylesheet"/>
+<link href="../../css/base.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" id="hljs-light" rel="stylesheet"/>
+<link disabled="" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" id="hljs-dark" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+<div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+<div class="container">
+<a class="navbar-brand" href="../..">Orkestra</a>
+<!-- Expander button -->
+<button aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler" data-bs-target="#navbar-collapse" data-bs-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<!-- Expanded navigation -->
+<div class="navbar-collapse collapse" id="navbar-collapse">
+<!-- Main navigation -->
+<ul class="nav navbar-nav">
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Getting Started</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../getting-started/">Installation</a>
+</li>
+<li>
+<a class="dropdown-item" href="../writing-your-first-katalog/">Writing Your First Katalog</a>
+</li>
+<li>
+<a class="dropdown-item" href="../writing-hooks/">Writing Hooks</a>
+</li>
+<li>
+<a class="dropdown-item" href="../writing-custom-reconcilers/">Writing Custom Reconcilers</a>
+</li>
+<li>
+<a class="dropdown-item" href="../testing-operators/">Testing Operators</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Architecture</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../architecture/overview/">Overview</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../architecture/runtime-flow/">Runtime Flow</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../architecture/crd-lifecycle/">CRD Lifecycle</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../architecture/design-philosophy/">Design Philosophy</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../architecture/architecture-diagrams/">Architecture Diagrams</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../architecture/full-architecture-view/">Full Architecture View</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Concepts</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../concepts/katalog/">Katalog</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/komposer/">Komposer</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/conditional-provisioning/">Conditional Provisioning</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/templating/">Templating</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/dependency-model/">Dependency Model</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/health-subsystem/">Health Subsystem</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/reconciler-model/">Reconciler Model</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-current="page" aria-expanded="false" class="nav-link dropdown-toggle active" data-bs-toggle="dropdown" href="#" role="button">Guides</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../deployment/#helm-deployment">Production Deployment</a>
+</li>
+<li>
+<a class="dropdown-item" href="../extending-orkestra/">Extending Orkestra</a>
+</li>
+<li>
+<a aria-current="page" class="dropdown-item active" href="./">Choosing Katalog vs Komposer</a>
+</li>
+<li>
+<a class="dropdown-item" href="../use-cases/">Use Cases</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Reference</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../reference/katalog-schema/">Katalog Schema</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../reference/komposer-schema/">Komposer Schema</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../reference/metrics/">Metrics</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../reference/cli/">CLI</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../reference/inspect-live-crd/">Inspect Live CRD</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Publications</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../publications/declarative-operators-whitepaper/">Declarative Operators Whitepaper</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/why-orkestra/">Why Orkestra</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/metrics-analysis/">Metrics Analysis</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/your-crd-is-enough/">Your CRD is Enough</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/roadmap/">Roadmap</a>
+</li>
+</ul>
+</li>
+</ul>
+<ul class="nav navbar-nav ms-md-auto">
+<li class="nav-item">
+<a class="nav-link" data-bs-target="#mkdocs_search_modal" data-bs-toggle="modal" href="#">
+<i class="fa fa-search"></i> Search
+                            </a>
+</li>
+<li class="nav-item">
+<a class="nav-link" href="../extending-orkestra/" rel="prev">
+<i class="fa fa-arrow-left"></i> Previous
+                                </a>
+</li>
+<li class="nav-item">
+<a class="nav-link" href="../use-cases/" rel="next">
+                                    Next <i class="fa fa-arrow-right"></i>
+</a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="container">
+<div class="row">
+<div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+<div class="navbar-header">
+<button class="navbar-toggler collapsed" data-bs-target="#toc-collapse" data-bs-toggle="collapse" title="Table of Contents" type="button">
+<span class="fa fa-angle-down"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse card bg-body-tertiary" id="toc-collapse">
+<ul class="nav flex-column">
+<li class="nav-item" data-bs-level="1"><a class="nav-link" href="#choosing-between-katalog-and-komposer">Choosing Between Katalog and Komposer</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="1"><a class="nav-link" href="#1-use-katalog-when">1. Use Katalog when…</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="1"><a class="nav-link" href="#2-use-komposer-when">2. Use Komposer when…</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="1"><a class="nav-link" href="#3-quick-decision-table">3. Quick Decision Table</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="1"><a class="nav-link" href="#4-the-golden-rule">4. The Golden Rule</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="1"><a class="nav-link" href="#5-visual-summary">5. Visual Summary</a>
+<ul class="nav flex-column">
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#katalog-path">Katalog Path</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#komposer-path">Komposer Path</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-bs-level="1"><a class="nav-link" href="#6-faq">6. FAQ</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="1"><a class="nav-link" href="#7-final-recommendation">7. Final Recommendation</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+</ul>
+</div>
+</div></div>
+<div class="col-md-9" role="main">
+<h1 id="choosing-between-katalog-and-komposer">Choosing Between Katalog and Komposer</h1>
+<h3 id="how-to-decide-which-orkestra-input-model-is-right-for-your-operator"><em>How to decide which Orkestra input model is right for your operator</em></h3>
+<p>Orkestra supports two ways to define operator behavior:</p>
+<ul>
+<li><strong>Katalog</strong> — a single declarative file containing one or more CRDs  </li>
+<li><strong>Komposer</strong> — a merge engine that combines multiple sources into one Katalog  </li>
+</ul>
+<p>You never use both at the same time.<br/>
+Komposer <em>produces</em> a Katalog.<br/>
+The runtime <em>consumes</em> a Katalog.</p>
+<p>This guide helps you choose the right model for your use case.</p>
+<hr/>
+<h1 id="1-use-katalog-when">1. Use Katalog when…</h1>
+<p>Katalog is the simplest and most direct way to define operator behavior.</p>
+<p>Choose <strong>Katalog</strong> if:</p>
+<ul>
+<li>
+<p>You have a single operator<br/>
+One CRD or multiple CRDs in one file.</p>
+</li>
+<li>
+<p>You want a single source of truth<br/>
+Everything lives in one YAML file.</p>
+</li>
+<li>
+<p>You don’t need to merge multiple sources<br/>
+No Helm charts, no external files, no layering.</p>
+</li>
+<li>
+<p>You want the fastest iteration loop<br/>
+Edit → <code>ork run</code> → done.</p>
+</li>
+</ul>
+<h3 id="typical-examples">Typical examples</h3>
+<ul>
+<li>A Website operator with Deployment + Service  </li>
+<li>A Namespace operator with RBAC + Quotas  </li>
+<li>A Database operator with StatefulSet + Secret  </li>
+<li>A CRD that owns 2–5 resources  </li>
+</ul>
+<h3 id="mental-model">Mental model</h3>
+<pre><code>Katalog.yaml → Runtime → Reconcile
+</code></pre>
+<p>If you can fit everything into one file, <strong>use Katalog</strong>.</p>
+<hr/>
+<h1 id="2-use-komposer-when">2. Use Komposer when…</h1>
+<p>Komposer is for <strong>multi‑source</strong>, <strong>multi‑environment</strong>, or <strong>multi‑team</strong> setups.</p>
+<p>Choose <strong>Komposer</strong> if:</p>
+<ul>
+<li>
+<p>You have multiple Katalogs<br/>
+You want to combine several operators into one runtime.</p>
+</li>
+<li>
+<p>You want to merge Helm charts<br/>
+Komposer can ingest Helm output and turn it into a Katalog.</p>
+</li>
+<li>
+<p>You want environment‑specific layering<br/>
+Different values for dev, staging, prod.</p>
+</li>
+<li>
+<p>You want overrides<br/>
+Inline patches, file-based overrides, or environment overrides.</p>
+</li>
+<li>
+<p>You want to consume registry entries<br/>
+(e.g., <code>platform-workflow@v2.45</code> from the OrkestraRegistry)</p>
+</li>
+</ul>
+<h3 id="typical-examples_1">Typical examples</h3>
+<ul>
+<li>A platform runtime composed of:</li>
+<li>namespace operator  </li>
+<li>monitoring operator  </li>
+<li>ingress operator  </li>
+<li>website operator  </li>
+<li>
+<p>secrets operator  </p>
+</li>
+<li>
+<p>A team that wants:</p>
+</li>
+<li>base Katalog from Git  </li>
+<li>Helm chart from vendor  </li>
+<li>environment overrides  </li>
+<li>inline patches  </li>
+</ul>
+<h3 id="mental-model_1">Mental model</h3>
+<pre><code>(files + helm + overrides + registry) → Komposer → Unified Katalog → Runtime
+</code></pre>
+<p>If you have <strong>multiple sources</strong>, <strong>use Komposer</strong>.</p>
+<hr/>
+<h1 id="3-quick-decision-table">3. Quick Decision Table</h1>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Use Katalog</th>
+<th>Use Komposer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>One operator</td>
+<td>✅</td>
+<td></td>
+</tr>
+<tr>
+<td>One file</td>
+<td>✅</td>
+<td></td>
+</tr>
+<tr>
+<td>Multiple CRDs in one file</td>
+<td>✅</td>
+<td></td>
+</tr>
+<tr>
+<td>Multiple Katalogs</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Merge Helm charts</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Environment layering</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Inline overrides</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Registry entries</td>
+<td></td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Want a single final Katalog</td>
+<td>Both work</td>
+<td>Komposer recommended</td>
+</tr>
+</tbody>
+</table>
+<hr/>
+<h1 id="4-the-golden-rule">4. The Golden Rule</h1>
+<blockquote>
+<p><strong>If you have one source → use Katalog.<br/>
+If you have more than one source → use Komposer.</strong></p>
+</blockquote>
+<p>That’s the entire decision.</p>
+<hr/>
+<h1 id="5-visual-summary">5. Visual Summary</h1>
+<h2 id="katalog-path">Katalog Path</h2>
+<div class="mermaid">flowchart LR
+    A[Katalog.yaml] --&gt; B[Runtime]
+    B --&gt; C[Reconcile]
+</div>
+<h2 id="komposer-path">Komposer Path</h2>
+<div class="mermaid">flowchart LR
+    A[Files] --&gt; E[Komposer]
+    B[Helm Charts] --&gt; E
+    C[Overrides] --&gt; E
+    D[Registry Entries] --&gt; E
+    E --&gt; F[Unified Katalog]
+    F --&gt; G[Runtime]
+</div>
+<hr/>
+<h1 id="6-faq">6. FAQ</h1>
+<h3 id="can-i-run-multiple-katalogs-without-komposer"><strong>Can I run multiple Katalogs without Komposer?</strong></h3>
+<p>Yes, but it’s not recommended.<br/>
+You risk duplicate CRDs, conflicting definitions, and unclear layering.</p>
+<h3 id="does-komposer-run-inside-the-runtime">Does Komposer run inside the runtime?</h3>
+<p>No.<br/>
+Komposer is a <strong>build step</strong>.<br/>
+The runtime only ever sees <strong>one Katalog</strong>.</p>
+<h3 id="can-i-mix-katalog-and-komposer">Can I mix Katalog and Komposer?</h3>
+<p>No.<br/>
+Komposer outputs a Katalog.<br/>
+You run the runtime on that output.</p>
+<h3 id="is-komposer-required">Is Komposer required?</h3>
+<p>No.<br/>
+Many operators will never need it.</p>
+<hr/>
+<h1 id="7-final-recommendation">7. Final Recommendation</h1>
+<ul>
+<li><strong>Start with Katalog</strong> — simplest, fastest, cleanest.  </li>
+<li><strong>Adopt Komposer</strong> when your operator ecosystem grows.  </li>
+</ul>
+<p>This mirrors how teams grow:</p>
+<ul>
+<li>Start with one operator  </li>
+<li>Add more  </li>
+<li>Add environments  </li>
+<li>Add overrides  </li>
+<li>Add registry entries  </li>
+<li>Move to Komposer  </li>
+</ul>
+<p>Orkestra supports both paths cleanly.</p>
+<p><strong>Whats Next?</strong>
+  - See <a href="../use-cases/">Use Cases</a> to learn more.</p></div>
+</div>
+</div>
+<footer class="col-md-12">
+<hr/>
+<p>Orkestra</p>
+<p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+</footer>
+<script src="../../js/bootstrap.bundle.min.js"></script>
+<script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+<script src="../../js/base.js"></script>
+<script src="../../search/main.js"></script>
+<div aria-hidden="true" aria-labelledby="searchModalLabel" class="modal" id="mkdocs_search_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="searchModalLabel">Search</h4>
+<button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+</div>
+<div class="modal-body">
+<p>From here you can search these documents. Enter your search terms below.</p>
+<form>
+<div class="form-group">
+<input class="form-control" id="mkdocs-search-query" placeholder="Search..." title="Type search term here" type="search"/>
+</div>
+</form>
+<div data-no-results-text="No results found" id="mkdocs-search-results"></div>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div><div aria-hidden="true" aria-labelledby="keyboardModalLabel" class="modal" id="mkdocs_keyboard_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+<button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+</div>
+<div class="modal-body">
+<table class="table">
+<thead>
+<tr>
+<th style="width: 20%;">Keys</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="help shortcut"><kbd>?</kbd></td>
+<td>Open this help</td>
+</tr>
+<tr>
+<td class="next shortcut"><kbd>n</kbd></td>
+<td>Next page</td>
+</tr>
+<tr>
+<td class="prev shortcut"><kbd>p</kbd></td>
+<td>Previous page</td>
+</tr>
+<tr>
+<td class="search shortcut"><kbd>s</kbd></td>
+<td>Search</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>

@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Orkestra Team">
+        <link rel="canonical" href="https://orkestra.sh/core/trust-and-failure-model/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Trust Model &amp; Failure Guarantees - Orkestra</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Orkestra</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Getting Started</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/getting-started/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-your-first-katalog/" class="dropdown-item">Writing Your First Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-hooks/" class="dropdown-item">Writing Hooks</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-custom-reconcilers/" class="dropdown-item">Writing Custom Reconcilers</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/testing-operators/" class="dropdown-item">Testing Operators</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Architecture</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../architecture/overview/" class="dropdown-item">Overview</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/runtime-flow/" class="dropdown-item">Runtime Flow</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/crd-lifecycle/" class="dropdown-item">CRD Lifecycle</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/design-philosophy/" class="dropdown-item">Design Philosophy</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/architecture-diagrams/" class="dropdown-item">Architecture Diagrams</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/full-architecture-view/" class="dropdown-item">Full Architecture View</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Concepts</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../concepts/katalog/" class="dropdown-item">Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/komposer/" class="dropdown-item">Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/conditional-provisioning/" class="dropdown-item">Conditional Provisioning</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/templating/" class="dropdown-item">Templating</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/dependency-model/" class="dropdown-item">Dependency Model</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/health-subsystem/" class="dropdown-item">Health Subsystem</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/reconciler-model/" class="dropdown-item">Reconciler Model</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Guides</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/deployment/#helm-deployment" class="dropdown-item">Production Deployment</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/extending-orkestra/" class="dropdown-item">Extending Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/choosing-katalog-vs-komposer/" class="dropdown-item">Choosing Katalog vs Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/use-cases/" class="dropdown-item">Use Cases</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../reference/katalog-schema/" class="dropdown-item">Katalog Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/komposer-schema/" class="dropdown-item">Komposer Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/metrics/" class="dropdown-item">Metrics</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/cli/" class="dropdown-item">CLI</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Publications</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../publications/declarative-operators-whitepaper/" class="dropdown-item">Declarative Operators Whitepaper</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/why-orkestra/" class="dropdown-item">Why Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/metrics-analysis/" class="dropdown-item">Metrics Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/your-crd-is-enough/" class="dropdown-item">Your CRD is Enough</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/roadmap/" class="dropdown-item">Roadmap</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#trust-model-failure-guarantees" class="nav-link">Trust Model &amp; Failure Guarantees</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#1-runtime-isolation-model" class="nav-link">1. Runtime Isolation Model</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#2-idempotent-safe-operations" class="nav-link">2. Idempotent, Safe Operations</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#3-transparent-observability" class="nav-link">3. Transparent Observability</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#4-declarative-behavior" class="nav-link">4. Declarative Behavior</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#5-failure-modes-guarantees" class="nav-link">5. Failure Modes &amp; Guarantees</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#51-if-orkestra-is-down" class="nav-link">#*5.1 If Orkestra is down</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#6-summary-table" class="nav-link">6. Summary Table</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#final-note" class="nav-link">Final Note</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="trust-model-failure-guarantees">Trust Model &amp; Failure Guarantees</h1>
+<p>Orkestra is a runtime that manages live infrastructure.<br />
+Trust comes from <strong>predictability</strong>, <strong>isolation</strong>, and <strong>transparent behavior</strong> — not from promises.</p>
+<p>This document explains why Orkestra is safe to run in production and how it behaves when things go wrong.</p>
+<hr />
+<h2 id="1-runtime-isolation-model">1. Runtime Isolation Model</h2>
+<p>Orkestra is designed so that failures are <strong>contained</strong>, <strong>recoverable</strong>, and <strong>observable</strong>.</p>
+<h3 id="11-percrd-isolation">1.1 Per‑CRD Isolation</h3>
+<p>Each CRD has:</p>
+<ul>
+<li>its own workqueue  </li>
+<li>its own worker pool  </li>
+<li>its own reconcile loop  </li>
+<li>its own health state  </li>
+<li>its own metrics  </li>
+</ul>
+<p>A failure in one CRD <strong>cannot</strong> affect others.</p>
+<h3 id="12-percr-isolation">1.2 Per‑CR Isolation</h3>
+<p>Each reconcile is wrapped in <code>safeReconcile</code>, which:</p>
+<ul>
+<li>recovers from panics  </li>
+<li>records metrics  </li>
+<li>updates CRD health  </li>
+<li>prevents worker crashes  </li>
+</ul>
+<p>Actual implementation enforces this:</p>
+<pre><code class="language-go">func (c *DependencyKontroller) processNextItem(ctx context.Context) bool {
+    item, shutdown := c.queue.Get()
+    if shutdown { return false }
+    defer c.queue.Done(item)
+
+    reconciler := c.registry.GetReconciler(item.GVK)
+    if err := c.safeReconcile(ctx, reconciler, item); err != nil {
+        c.queue.AddRateLimited(item)
+        return true
+    }
+    c.queue.Forget(item)
+    return true
+}
+</code></pre>
+<p><strong>Guarantee:</strong><br />
+A panic in one CR does not crash the worker.<br />
+A panic in one CRD does not affect other CRDs.</p>
+<hr />
+<h2 id="2-idempotent-safe-operations">2. Idempotent, Safe Operations</h2>
+<p>Every registry implementation (<code>Create</code>, <code>Update</code>, <code>Delete</code>) is designed to be safely re-run:</p>
+<ul>
+<li><code>Create</code> never errors on “already exists”</li>
+<li><code>Delete</code> never errors on “not found”</li>
+<li><code>Update</code> performs drift correction on explicit fields only</li>
+</ul>
+<p><strong>Guarantee:</strong><br />
+Reconciles can be retried indefinitely without corrupting state.</p>
+<hr />
+<h2 id="3-transparent-observability">3. Transparent Observability</h2>
+<p>Orkestra exposes:</p>
+<ul>
+<li><code>/health</code> and <code>/ready</code>  </li>
+<li><code>/metrics</code> (queue depth, reconcile duration, worker count, errors)  </li>
+<li><code>/katalog</code> (CRD health, config, dependency graph)  </li>
+</ul>
+<p>You can always see what Orkestra is doing.</p>
+<p><strong>Guarantee:</strong><br />
+Failures are visible, not silent.</p>
+<hr />
+<h2 id="4-declarative-behavior">4. Declarative Behavior</h2>
+<p>All operator behavior is declared in:</p>
+<ul>
+<li><strong>Katalogs</strong> (per‑CRD behavior)</li>
+<li><strong>Komposers</strong> (multi‑source composition)</li>
+<li><strong>Registry entries</strong> (resource implementations)</li>
+</ul>
+<p>There is no hidden code path.</p>
+<p><strong>Guarantee:</strong><br />
+What you declare is what runs.</p>
+<hr />
+<h2 id="5-failure-modes-guarantees">5. Failure Modes &amp; Guarantees</h2>
+<p>Orkestra is designed with explicit, predictable failure modes.</p>
+<hr />
+<h2 id="51-if-orkestra-is-down">#*5.1 If Orkestra is down</h2>
+<ul>
+<li>Existing resources remain as-is  </li>
+<li>No new reconciles occur  </li>
+<li>Kubernetes continues normally  </li>
+<li>Orkestra resumes from current state on restart  </li>
+</ul>
+<p><strong>Guarantee:</strong><br />
+Orkestra never blocks the API server or normal cluster operation.</p>
+<hr />
+<h3 id="52-if-a-reconcile-fails">5.2 If a reconcile fails</h3>
+<ul>
+<li>Error recorded in metrics  </li>
+<li>Error recorded in CRD health  </li>
+<li>Item requeued with rate-limited backoff  </li>
+<li>No partial state assumed  </li>
+</ul>
+<p><strong>Guarantee:</strong><br />
+A failed reconcile does not corrupt state and can be retried safely.</p>
+<hr />
+<h3 id="53-if-a-reconcile-panics">5.3 If a reconcile panics</h3>
+<ul>
+<li><code>safeReconcile</code> catches the panic  </li>
+<li>Worker continues  </li>
+<li>CR is retried  </li>
+<li>Other CRDs are unaffected  </li>
+</ul>
+<p><strong>Guarantee:</strong><br />
+One CR cannot crash the runtime. One CRD cannot crash others.</p>
+<hr />
+<h3 id="54-if-a-katalog-is-invalid">5.4 If a Katalog is invalid</h3>
+<ul>
+<li><code>ork validate</code> fails  </li>
+<li>Runtime refuses to start  </li>
+</ul>
+<p><strong>Guarantee:</strong><br />
+Invalid operator definitions never reach the cluster.</p>
+<hr />
+<h3 id="55-if-a-cr-is-malformed">5.5 If a CR is malformed</h3>
+<ul>
+<li>Templates may resolve to empty/invalid values  </li>
+<li>Registry operations fail with clear errors  </li>
+<li>CR status reflects the failure  </li>
+<li>Reconcile is retried  </li>
+</ul>
+<p><strong>Guarantee:</strong><br />
+Bad CRs fail loudly and observably.</p>
+<hr />
+<h3 id="56-if-dependencies-are-missing">5.6 If dependencies are missing</h3>
+<ul>
+<li>Dependent CRDs wait  </li>
+<li>Healthy CRDs continue  </li>
+<li>No global stall  </li>
+</ul>
+<p><strong>Guarantee:</strong><br />
+One broken CRD cannot block the entire system.</p>
+<hr />
+<h3 id="57-if-registry-operations-fail">5.7 If registry operations fail</h3>
+<ul>
+<li>All operations are idempotent  </li>
+<li>Failures are surfaced  </li>
+<li>Retries are safe  </li>
+</ul>
+<p><strong>Guarantee:</strong><br />
+Registry failures are isolated and recoverable.</p>
+<hr />
+<h3 id="58-if-the-queue-backs-up">5.8 If the queue backs up</h3>
+<ul>
+<li>Each CRD has its own queue  </li>
+<li>Each CRD has its own workers  </li>
+<li>No cross‑CRD starvation  </li>
+</ul>
+<p><strong>Guarantee:</strong><br />
+Load is isolated per CRD.</p>
+<hr />
+<h3 id="59-if-orkestra-is-upgraded">5.9 If Orkestra is upgraded</h3>
+<ul>
+<li>No operator rebuilds  </li>
+<li>No controller redeployments  </li>
+<li>No CRD changes required  </li>
+<li>Runtime resumes from current state  </li>
+</ul>
+<p><strong>Guarantee:</strong><br />
+Upgrades do not break existing operators.</p>
+<hr />
+<h2 id="6-summary-table">6. Summary Table</h2>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Guarantee</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Orkestra down</td>
+<td>Cluster continues normally</td>
+</tr>
+<tr>
+<td>Reconcile error</td>
+<td>Safe retry, no corruption</td>
+</tr>
+<tr>
+<td>Reconcile panic</td>
+<td>Isolated, worker continues</td>
+</tr>
+<tr>
+<td>Invalid Katalog</td>
+<td>Rejected before runtime</td>
+</tr>
+<tr>
+<td>Malformed CR</td>
+<td>Visible failure, safe retry</td>
+</tr>
+<tr>
+<td>Missing dependencies</td>
+<td>No global stall</td>
+</tr>
+<tr>
+<td>Registry failure</td>
+<td>Idempotent, recoverable</td>
+</tr>
+<tr>
+<td>Queue overload</td>
+<td>CRD‑level isolation</td>
+</tr>
+<tr>
+<td>Upgrade</td>
+<td>No operator rebuilds needed</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="final-note">Final Note</h2>
+<p>This combined model gives Orkestra the same reliability expectations as:</p>
+<ul>
+<li>Kubernetes controllers  </li>
+<li>Crossplane providers  </li>
+<li>ArgoCD controllers  </li>
+<li>Operator SDK controllers  </li>
+</ul>
+<p>But with <strong>zero code</strong>, <strong>zero typed APIs</strong>, and <strong>zero controller boilerplate</strong>.</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+                <p>Orkestra</p>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

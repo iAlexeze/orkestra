@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Orkestra Team">
+        <link rel="canonical" href="https://orkestra.sh/internals/template-engine/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Orkestra Templating Engine - Orkestra</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Orkestra</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Getting Started</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/getting-started/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-your-first-katalog/" class="dropdown-item">Writing Your First Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-hooks/" class="dropdown-item">Writing Hooks</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-custom-reconcilers/" class="dropdown-item">Writing Custom Reconcilers</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/testing-operators/" class="dropdown-item">Testing Operators</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Architecture</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../architecture/overview/" class="dropdown-item">Overview</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/runtime-flow/" class="dropdown-item">Runtime Flow</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/crd-lifecycle/" class="dropdown-item">CRD Lifecycle</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/design-philosophy/" class="dropdown-item">Design Philosophy</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/architecture-diagrams/" class="dropdown-item">Architecture Diagrams</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/full-architecture-view/" class="dropdown-item">Full Architecture View</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Concepts</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../concepts/katalog/" class="dropdown-item">Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/komposer/" class="dropdown-item">Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/conditional-provisioning/" class="dropdown-item">Conditional Provisioning</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/templating/" class="dropdown-item">Templating</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/dependency-model/" class="dropdown-item">Dependency Model</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/health-subsystem/" class="dropdown-item">Health Subsystem</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/reconciler-model/" class="dropdown-item">Reconciler Model</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Guides</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/deployment/#helm-deployment" class="dropdown-item">Production Deployment</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/extending-orkestra/" class="dropdown-item">Extending Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/choosing-katalog-vs-komposer/" class="dropdown-item">Choosing Katalog vs Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/use-cases/" class="dropdown-item">Use Cases</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../reference/katalog-schema/" class="dropdown-item">Katalog Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/komposer-schema/" class="dropdown-item">Komposer Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/metrics/" class="dropdown-item">Metrics</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/cli/" class="dropdown-item">CLI</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Publications</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../publications/declarative-operators-whitepaper/" class="dropdown-item">Declarative Operators Whitepaper</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/why-orkestra/" class="dropdown-item">Why Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/metrics-analysis/" class="dropdown-item">Metrics Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/your-crd-is-enough/" class="dropdown-item">Your CRD is Enough</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/roadmap/" class="dropdown-item">Roadmap</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#orkestra-templating-engine" class="nav-link">Orkestra Templating Engine</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#how-it-works" class="nav-link">How it works</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#template-expressions" class="nav-link">Template expressions</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#template-context" class="nav-link">Template context</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#the-resolver" class="nav-link">The Resolver</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#the-three-step-pipeline" class="nav-link">The three-step pipeline</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#oncreate-onreconcile-and-reconcile-true" class="nav-link">onCreate, onReconcile, and reconcile: true</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ondelete" class="nav-link">onDelete</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#secrets-and-configmaps-additional-patterns" class="nav-link">Secrets and ConfigMaps — additional patterns</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#conditional-provisioning" class="nav-link">Conditional Provisioning</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#default-namespace" class="nav-link">Default namespace</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#default-naming" class="nav-link">Default naming</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#system-labels-and-annotations" class="nav-link">System labels and annotations</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#owner-references" class="nav-link">Owner references</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#when-to-use-go-hooks-instead" class="nav-link">When to use Go hooks instead</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#when-ork-generate-runtime-is-needed" class="nav-link">When ork generate runtime is needed</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="orkestra-templating-engine">Orkestra Templating Engine</h1>
+<p>Orkestra's templating engine is the subsystem that evaluates declarative
+resource declarations in the Katalog and applies them to a live Kubernetes
+cluster. It is how a Katalog entry like:</p>
+<pre><code class="language-yaml">onCreate:
+  deployments:
+    - image: &quot;{{ .spec.image }}&quot;
+      replicas: &quot;{{ .spec.replicas }}&quot;
+</code></pre>
+<p>becomes a real Deployment with <code>nginx:1.25</code> and <code>2</code> replicas when your
+Website CR says <code>spec.image: nginx:1.25</code> and <code>spec.replicas: 2</code>.</p>
+<hr />
+<h2 id="how-it-works">How it works</h2>
+<p>The templating engine runs entirely at reconcile time. There is no code
+generation step for dynamic template CRDs. When a CR event fires, the
+engine reads the Katalog's template declarations, evaluates them against
+the live CR, and calls the OrkestraRegistry to apply the results.</p>
+<pre><code>CR event
+    │
+    ▼
+GenericReconciler.Reconcile()
+    │
+    ├── reads ReconcilerConfig.OnCreate from the Katalog
+    ├── builds a Resolver from the CR object
+    │
+    ▼
+runTemplateReconcile()
+    │
+    ├── runDeployments() → resolver.ResolveDeploymentTemplate() → orkdeploy.Create()
+    ├── runServices()    → resolver.ResolveServiceTemplate()    → orksvc.Create()
+    ├── runSecrets()     → resolver.ResolveSecretTemplate()     → orksecrets.Create()
+    ├── runConfigMaps()  → resolver.ResolveConfigMapTemplate()  → orkcm.Create()
+    └── ...
+</code></pre>
+<p>No generated file involved. No <code>ork generate runtime</code>. Just <code>ork run</code>.</p>
+<hr />
+<h2 id="template-expressions">Template expressions</h2>
+<p>Any string field in a template declaration that contains <code>{{</code> is treated
+as a Go <code>text/template</code> expression and evaluated against the live CR object
+at reconcile time. Any string without <code>{{</code> is a static value used as-is.</p>
+<pre><code class="language-yaml"># Static — same for every CR of this type
+image: nginx:1.25
+
+# Dynamic — resolved from the CR spec at reconcile time
+image: &quot;{{ .spec.image }}&quot;
+
+# Mixed — CR name with a static suffix
+name: &quot;{{ .metadata.name }}-api&quot;
+</code></pre>
+<p>The same field can hold either a static or a dynamic value without any additional YAML structure. Orkestra determines which it is at evaluation time.</p>
+<hr />
+<h2 id="template-context">Template context</h2>
+<p>The template context is the full CR object as <code>map[string]interface{}</code>.
+For dynamic CRDs (no <code>apiTypes.location</code>) this is the raw object from the
+API server — all fields accessible including the complete <code>spec</code>.</p>
+<pre><code>.metadata.name        CR name
+.metadata.namespace   CR namespace
+.metadata.labels      CR labels map
+.metadata.annotations CR annotations map
+.spec.*               any spec field
+.status.*             any status field
+</code></pre>
+<p>Missing fields resolve to empty string — <code>missingkey=zero</code> is set. This
+prevents reconcile failures when optional spec fields are omitted.</p>
+<p><strong>Example — Website CR:</strong></p>
+<pre><code class="language-yaml"># CR
+spec:
+  image: nginx:1.25
+  replicas: 2
+  port: 80
+  serviceType: LoadBalancer
+</code></pre>
+<pre><code class="language-yaml"># Katalog template declarations
+deployments:
+  - name: &quot;{{ .metadata.name }}&quot;           # → my-website
+    image: &quot;{{ .spec.image }}&quot;             # → nginx:1.25
+    replicas: &quot;{{ .spec.replicas }}&quot;       # → 2
+    port: &quot;{{ .spec.port }}&quot;              # → 80
+    namespace: &quot;{{ .metadata.namespace }}&quot; # → default
+
+services:
+  - name: &quot;{{ .metadata.name }}-svc&quot;       # → my-website-svc
+    type: &quot;{{ .spec.serviceType }}&quot;        # → LoadBalancer
+    port: &quot;80&quot;                             # static
+    targetPort: &quot;{{ .spec.port }}&quot;         # → 80
+</code></pre>
+<hr />
+<h2 id="the-resolver">The Resolver</h2>
+<p><code>pkg/orkestra-registry/template/resolver.go</code></p>
+<p>The Resolver is created once per reconcile from the CR object. It holds
+the CR data as a <code>map[string]interface{}</code> and evaluates template expressions
+against it.</p>
+<pre><code class="language-go">resolver, err := orktmpl.NewResolver(ctx, obj)
+</code></pre>
+<p>For <code>*unstructured.Unstructured</code> — the fast path. The object already has
+a native map. Full spec accessible at zero cost.</p>
+<p>For typed objects — only metadata fields are accessible. Users with typed
+CRDs should use Go hooks for spec field access.</p>
+<p><strong>Per-resource resolve methods:</strong></p>
+<pre><code class="language-go">resolver.ResolveDeploymentTemplate(src)    // all string fields in DeploymentTemplateSource
+resolver.ResolveServiceTemplate(src)       // all string fields in ServiceTemplateSource
+resolver.ResolveSecretTemplate(src)        // name, namespace, fromSecret, fromNamespace, toNamespaces
+resolver.ResolveConfigMapTemplate(src)     // name, namespace, fromConfigMap, fromNamespace, toNamespaces
+resolver.ResolveServiceAccountTemplate(src)
+resolver.ResolveJobTemplate(src)           // name, image, namespace, command elements
+resolver.ResolveCronJobTemplate(src)       // name, image, schedule, namespace
+resolver.ResolveLabels(labels)             // label values only — keys are never templates
+resolver.ResolveStringSlice(slice)         // each element resolved independently
+</code></pre>
+<p>Each method returns a new struct of the same type with all template
+expressions replaced by their evaluated values. The original source struct
+is never mutated.</p>
+<hr />
+<h2 id="the-three-step-pipeline">The three-step pipeline</h2>
+<p>Every resource runner follows the same three steps:</p>
+<p><strong>Step 1 — Resolve</strong></p>
+<p>Evaluate all template expressions in the source declaration. After this
+step every field is a literal value.</p>
+<pre><code class="language-go">resolved, err := resolver.ResolveDeploymentTemplate(src)
+// resolved.Image is now &quot;nginx:1.25&quot;, not &quot;{{ .spec.image }}&quot;
+</code></pre>
+<p><strong>Step 2 — Build spec</strong></p>
+<p>Translate the resolved template source into the registry's spec type.
+This applies defaults, parses strings to int, builds label maps, and sets
+the owner name for system labels.</p>
+<pre><code class="language-go">spec := orkdeploy.Resolve(resolved, staticReplicas, resolver.OwnerName())
+</code></pre>
+<p><strong>Step 3 — Apply</strong></p>
+<p>Call the registry to apply the spec to the cluster. The registry handles
+idempotency, owner references, and the actual API server call.</p>
+<pre><code class="language-go">orkdeploy.Create(ctx, kube, obj, spec)  // onCreate path
+orkdeploy.Update(ctx, kube, obj, spec)  // onReconcile path
+</code></pre>
+<hr />
+<h2 id="oncreate-onreconcile-and-reconcile-true">onCreate, onReconcile, and <code>reconcile: true</code></h2>
+<p><strong><code>onCreate</code></strong> resources are created idempotently on every reconcile. If the
+resource already exists it is skipped without error. Think of it as "ensure
+this exists".</p>
+<p><strong><code>onReconcile</code></strong> resources are updated on every reconcile. If the resource
+has been manually modified, it is reconciled back to the declared state. If it
+was deleted, it is recreated. Think of it as "keep this in sync".</p>
+<p><strong><code>reconcile: true</code></strong> is a shorthand that combines both. Declaring it on
+an <code>onCreate</code> resource means "create it and keep it in sync" without writing
+a separate <code>onReconcile</code> block.</p>
+<pre><code class="language-yaml"># Without reconcile: true — two separate declarations needed
+onCreate:
+  deployments:
+    - image: &quot;{{ .spec.image }}&quot;
+onReconcile:
+  deployments:
+    - image: &quot;{{ .spec.image }}&quot;   # same thing written twice
+
+# With reconcile: true — declared once, both behaviours
+onCreate:
+  deployments:
+    - image: &quot;{{ .spec.image }}&quot;
+      reconcile: true              # create + drift correction
+</code></pre>
+<p>The runner implements this as:</p>
+<pre><code class="language-go">// update=false means onCreate path
+if err := orkdeploy.Create(ctx, kube, owner, spec); err != nil { ... }
+if src.Reconcile {
+    if err := orkdeploy.Update(ctx, kube, owner, spec); err != nil { ... }
+}
+</code></pre>
+<hr />
+<h2 id="ondelete">onDelete</h2>
+<p><code>onDelete</code> declarations run after the CR's <code>DeletionTimestamp</code> is set,
+before Orkestra removes its finalizers. For most resources this is not
+needed — owner references cause cascade deletion automatically when the CR
+is deleted. Declare <code>onDelete</code> only for resources that need explicit cleanup:</p>
+<ul>
+<li>Jobs that must complete before the CR is considered deleted</li>
+<li>External resources not in Kubernetes</li>
+<li>Resources in other namespaces that aren't covered by owner references</li>
+</ul>
+<pre><code class="language-yaml">onDelete:
+  jobs:
+    - name: &quot;{{ .metadata.name }}-cleanup&quot;
+      image: busybox
+      command: [&quot;sh&quot;, &quot;-c&quot;, &quot;drain-queue.sh {{ .metadata.name }}&quot;]
+      backoffLimit: 3
+</code></pre>
+<p>Owner references handle everything else. Keep <code>onDelete</code> minimal.</p>
+<hr />
+<h2 id="secrets-and-configmaps-additional-patterns">Secrets and ConfigMaps — additional patterns</h2>
+<p>Secrets and ConfigMaps support two patterns beyond simple creation.</p>
+<p><strong><code>fromSecret</code> / <code>fromConfigMap</code></strong> — copy data from an existing resource
+in another namespace rather than declaring it inline:</p>
+<pre><code class="language-yaml">secrets:
+  - name: db-credentials
+    fromSecret: master-db-creds      # source secret name
+    fromNamespace: platform          # where the source lives
+    namespace: &quot;{{ .metadata.namespace }}&quot;
+    reconcile: true                  # re-sync if source changes
+</code></pre>
+<p>Orkestra reads the source at reconcile time and copies its data. When
+the source Secret rotates, the copy is updated on the next reconcile loop.</p>
+<p><strong><code>toNamespaces</code></strong> — create one copy in each listed namespace:</p>
+<pre><code class="language-yaml">secrets:
+  - name: registry-pull-secret
+    fromSecret: docker-registry-creds
+    fromNamespace: platform
+    toNamespaces:
+      - &quot;{{ .metadata.namespace }}&quot;
+      - &quot;{{ .metadata.namespace }}-staging&quot;
+      - monitoring
+</code></pre>
+<p>Orkestra reads the source once and writes copies to every namespace.
+Each copy gets an owner reference back to the CR.</p>
+<p><strong>ConfigMap merge</strong> — combine a base ConfigMap with inline overrides:</p>
+<pre><code class="language-yaml">configMaps:
+  - name: app-config
+    fromConfigMap: base-app-config   # source ConfigMap
+    fromNamespace: platform
+    namespace: &quot;{{ .metadata.namespace }}&quot;
+    data:
+      LOG_LEVEL: &quot;{{ .spec.logLevel }}&quot;  # override — wins over source value
+    reconcile: true
+</code></pre>
+<p>Source keys are copied first, then <code>data</code> keys override matching ones.
+The result is a merged ConfigMap in the target namespace.</p>
+<hr />
+<h2 id="conditional-provisioning">Conditional Provisioning</h2>
+<p>Orkestra supports conditional provisioning with the <code>when</code> block.</p>
+<pre><code class="language-yaml">services:
+  - name: &quot;{{ .metadata.name }}-svc&quot;
+    type: &quot;{{ .spec.serviceType }}&quot;
+    port: &quot;80&quot;
+    targetPort: &quot;{{ .spec.port }}&quot;
+    namespace: &quot;{{ .metadata.namespace }}&quot;
+    reconcile: true
+    when:
+      - field: spec.exposePublicly
+        equals: &quot;true&quot;
+</code></pre>
+<p>The result is that a service is only created when <code>spec.exposePublicly</code> is
+<code>true</code>.</p>
+<p>All conditions must pass (AND semantics).<br />
+If any condition fails, the resource is skipped for this reconcile cycle.</p>
+<blockquote>
+<p>For more details on conditions, see<br />
+👉 <strong><a href="../../concepts/conditional-provisioning/">Conditional Provisioning</a></strong>.</p>
+</blockquote>
+<hr />
+<h2 id="default-namespace">Default namespace</h2>
+<p>When <code>namespace</code> is omitted from any template declaration, the resolver
+defaults it to <code>{{ .metadata.namespace }}</code> — the same namespace as the CR.
+This means you almost never need to declare <code>namespace</code> explicitly for
+namespaced CRDs.</p>
+<pre><code class="language-yaml"># These two are equivalent for a namespaced CRD
+deployments:
+  - image: nginx:1.25
+    # namespace omitted — defaults to CR namespace
+
+deployments:
+  - image: nginx:1.25
+    namespace: &quot;{{ .metadata.namespace }}&quot;  # explicit, same result
+</code></pre>
+<hr />
+<h2 id="default-naming">Default naming</h2>
+<p>When <code>name</code> is omitted, each resource type has a default naming pattern:</p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Default name pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Deployment</td>
+<td><code>{{ .metadata.name }}-deployment</code></td>
+</tr>
+<tr>
+<td>Service</td>
+<td><code>{{ .metadata.name }}-svc</code></td>
+</tr>
+<tr>
+<td>Secret</td>
+<td><code>{{ .metadata.name }}-secret</code></td>
+</tr>
+<tr>
+<td>ConfigMap</td>
+<td><code>{{ .metadata.name }}-config</code></td>
+</tr>
+<tr>
+<td>ServiceAccount</td>
+<td><code>{{ .metadata.name }}-sa</code></td>
+</tr>
+<tr>
+<td>Job</td>
+<td><code>{{ .metadata.name }}-job</code></td>
+</tr>
+<tr>
+<td>CronJob</td>
+<td><code>{{ .metadata.name }}-cronjob</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="system-labels-and-annotations">System labels and annotations</h2>
+<p>Orkestra always adds two labels to every resource it creates. These are
+not overridable:</p>
+<h3 id="labels">Labels</h3>
+<pre><code class="language-bash">orkestra.konductor.io/managed=true
+</code></pre>
+<h3 id="annotations">Annotations</h3>
+<pre><code class="language-bash">orkestra.konductor.io/managed-by: &lt;cr-name&gt;
+orkestra.konductor.io/managed-since: &lt;timestamp&gt;
+</code></pre>
+<p><code>orkestra.konductor.io/managed</code> identifies the resource as Orkestra-managed.
+This is used as the pod selector by Services — it ensures a Service created for
+a CR only routes to pods owned by that CR.</p>
+<p><code>orkestra.konductor.io/managed-by</code> identifies the particular CR that created
+the resource. Name comes from <code>katalog.metadata.name</code>. or <code>komposer.metadata.name</code></p>
+<p>Additional labels declared in the template are merged alongside these:</p>
+<pre><code class="language-yaml">labels:
+  - key: app
+    value: &quot;{{ .metadata.name }}&quot;
+  - key: environment
+    value: &quot;{{ .spec.environment }}&quot;
+  # managed, managed-by and managed-since are always added automatically
+</code></pre>
+<hr />
+<h2 id="owner-references">Owner references</h2>
+<p>Every resource created by the templating engine has an owner reference
+pointing to the CR that triggered its creation. This means cascade deletion
+is automatic — when the CR is deleted, all child resources are garbage
+collected by Kubernetes without any <code>onDelete</code> declarations.</p>
+<pre><code class="language-yaml">ownerReferences:
+  - apiVersion: demo.orkestra.io/v1alpha1
+    kind: Website
+    name: my-website
+    uid: fb0b6ae7-...
+    controller: true
+    blockOwnerDeletion: true
+</code></pre>
+<p>The only exception is <code>onDelete</code> Jobs — they cannot have owner references
+because the CR is being deleted when they run. They must complete
+independently after the CR is gone.</p>
+<hr />
+<h2 id="when-to-use-go-hooks-instead">When to use Go hooks instead</h2>
+<p>Declarative templates handle the majority of operator use cases. Use Go
+hooks when you need:</p>
+<ul>
+<li><strong>Type-safe spec access</strong> — templates only see field names as strings.
+  Go hooks have compiled access to <code>obj.Spec.Image</code>, <code>obj.Spec.Replicas</code> etc.</li>
+<li><strong>External API calls</strong> — provision cloud resources, call DNS APIs, notify
+  external systems</li>
+<li><strong>Status updates</strong> — write back to <code>obj.Status</code> with computed values</li>
+</ul>
+<p>Declare Go hooks in the Katalog:</p>
+<pre><code class="language-yaml">reconciler:
+  default: true
+  hooks:
+    location: github.com/myorg/hooks
+    function: WebsiteHooks
+</code></pre>
+<p>Then run <code>ork generate runtime</code> to register the hook function. The reconciler
+will use your Go hook instead of the template path.</p>
+<hr />
+<h2 id="when-ork-generate-runtime-is-needed">When <code>ork generate runtime</code> is needed</h2>
+<pre><code>CRD type                                    generate runtime needed?
+──────────────────────────────────────────────────────────────────────
+Dynamic CRD, templates only                 NO
+Dynamic CRD with reconciler.hooks           YES — registers Go hook
+Typed CRD (apiTypes.location set)           YES — registers Go type + scheme
+reconciler.default: false (custom)          YES — registers constructor
+──────────────────────────────────────────────────────────────────────
+</code></pre>
+<p>For pure dynamic operators — the most common case — <code>ork generate runtime</code>
+is never needed. The complete workflow is:</p>
+<pre><code class="language-bash">ork init my-operator
+cd my-operator
+kubectl apply -f examples/website/website-crd.yaml
+ork run --katalog examples/website/website-katalog.yaml
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+                <p>Orkestra</p>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

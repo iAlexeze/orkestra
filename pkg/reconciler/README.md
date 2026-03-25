@@ -1,4 +1,4 @@
-# 📘 **Reconciler Architecture**
+# **Reconciler Architecture**
 
 The reconciler is the heart of Orkestra’s runtime. It is where a Kubernetes
 event — *“this CR changed”* — becomes real‑world action: a Deployment is
@@ -9,7 +9,7 @@ way, and how to extend it safely.
 
 ---
 
-## 🚦 The Reconcile Journey
+## The Reconcile Journey
 
 Every reconcile follows the same deterministic path:
 
@@ -51,7 +51,7 @@ Everything else — logging, events, metrics, retries — is handled centrally.
 
 ---
 
-## 🧩 Conditional Provisioning (`when:`)
+## Conditional Provisioning (`when:`)
 
 Resource templates may declare conditions:
 
@@ -100,7 +100,7 @@ Typed controllers should use **Go hooks** for conditional logic.
 
 ---
 
-## 🧠 Declarative Templates vs Go Hooks
+## Declarative Templates vs Go Hooks
 
 Orkestra supports two reconcile modes:
 
@@ -137,7 +137,7 @@ Go hooks always take priority over templates.
 
 ---
 
-## 🧱 Template Resolution
+## Template Resolution
 
 Before any registry call, all template expressions are resolved:
 
@@ -152,7 +152,7 @@ Registry functions never see template expressions — only literal values.
 
 ---
 
-## 🏗️ Resource Runners
+## Resource Runners
 
 Each resource type has its own runner:
 
@@ -177,7 +177,7 @@ This keeps the reconciler clean and extensible.
 
 ---
 
-## 🧹 Finalizers and Deletion
+## Finalizers and Deletion
 
 Finalizers ensure cleanup happens before Kubernetes garbage collects the CR.
 
@@ -197,7 +197,7 @@ Finalizers are never removed on error.
 
 ---
 
-## 🧩 Adding a New Resource Type
+## Adding a New Resource Type
 
 To add a new resource type:
 

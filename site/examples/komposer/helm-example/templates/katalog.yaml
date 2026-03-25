@@ -1,0 +1,30 @@
+{{- /*
+  katalog.yaml — renders an Orkestra Katalog from Helm values.
+  Orkestra's merger reads this template's output and extracts CRD definitions.
+  The chart must render at least one template with kind: Katalog.
+*/ -}}
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: {{ .Release.Name }}-katalog
+
+spec:
+  crds:
+    {{- range .Values.crds }}
+    - name: {{ .name }}
+      enabled: {{ .enabled | default true }}
+      namespaced: {{ .namespaced | default true }}
+      workers: {{ .workers | default 2 }}
+      resync: {{ .resync | default "30s" }}
+
+      apiTypes:
+        group: {{ $.Values.apiGroup }}
+        version: {{ $.Values.apiVersion | default "v1alpha1" }}
+        kind: {{ .kind }}
+        plural: {{ .plural }}
+
+      reconciler:
+        default: {{ .reconciler.default | default true }}
+
+      description: {{ .description | default "" | quote }}
+    {{- end }}

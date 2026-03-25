@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Orkestra Team">
+        <link rel="canonical" href="https://orkestra.sh/publications/tracking/declarative-operators-whitepaperv1/">
+        <link rel="shortcut icon" href="../../../img/favicon.ico">
+        <title>Declarative Operators: A New Model for Kubernetes Extensibility - Orkestra</title>
+        <link href="../../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../../css/brands.min.css" rel="stylesheet">
+        <link href="../../../css/solid.min.css" rel="stylesheet">
+        <link href="../../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../../..">Orkestra</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Getting Started</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../../guides/getting-started/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="../../../guides/writing-your-first-katalog/" class="dropdown-item">Writing Your First Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../../guides/writing-hooks/" class="dropdown-item">Writing Hooks</a>
+</li>
+                                    
+<li>
+    <a href="../../../guides/writing-custom-reconcilers/" class="dropdown-item">Writing Custom Reconcilers</a>
+</li>
+                                    
+<li>
+    <a href="../../../guides/testing-operators/" class="dropdown-item">Testing Operators</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Architecture</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../../architecture/overview/" class="dropdown-item">Overview</a>
+</li>
+                                    
+<li>
+    <a href="../../../architecture/runtime-flow/" class="dropdown-item">Runtime Flow</a>
+</li>
+                                    
+<li>
+    <a href="../../../architecture/crd-lifecycle/" class="dropdown-item">CRD Lifecycle</a>
+</li>
+                                    
+<li>
+    <a href="../../../architecture/design-philosophy/" class="dropdown-item">Design Philosophy</a>
+</li>
+                                    
+<li>
+    <a href="../../../architecture/architecture-diagrams/" class="dropdown-item">Architecture Diagrams</a>
+</li>
+                                    
+<li>
+    <a href="../../../architecture/full-architecture-view/" class="dropdown-item">Full Architecture View</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Concepts</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../../concepts/katalog/" class="dropdown-item">Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../../concepts/komposer/" class="dropdown-item">Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../../concepts/conditional-provisioning/" class="dropdown-item">Conditional Provisioning</a>
+</li>
+                                    
+<li>
+    <a href="../../../concepts/templating/" class="dropdown-item">Templating</a>
+</li>
+                                    
+<li>
+    <a href="../../../concepts/dependency-model/" class="dropdown-item">Dependency Model</a>
+</li>
+                                    
+<li>
+    <a href="../../../concepts/health-subsystem/" class="dropdown-item">Health Subsystem</a>
+</li>
+                                    
+<li>
+    <a href="../../../concepts/reconciler-model/" class="dropdown-item">Reconciler Model</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Guides</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../../guides/deployment/#helm-deployment" class="dropdown-item">Production Deployment</a>
+</li>
+                                    
+<li>
+    <a href="../../../guides/extending-orkestra/" class="dropdown-item">Extending Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../../guides/choosing-katalog-vs-komposer/" class="dropdown-item">Choosing Katalog vs Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../../guides/use-cases/" class="dropdown-item">Use Cases</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../../reference/katalog-schema/" class="dropdown-item">Katalog Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../../reference/komposer-schema/" class="dropdown-item">Komposer Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../../reference/metrics/" class="dropdown-item">Metrics</a>
+</li>
+                                    
+<li>
+    <a href="../../../reference/cli/" class="dropdown-item">CLI</a>
+</li>
+                                    
+<li>
+    <a href="../../../reference/inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Publications</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../declarative-operators-whitepaper/" class="dropdown-item">Declarative Operators Whitepaper</a>
+</li>
+                                    
+<li>
+    <a href="../../why-orkestra/" class="dropdown-item">Why Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../metrics-analysis/" class="dropdown-item">Metrics Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../../your-crd-is-enough/" class="dropdown-item">Your CRD is Enough</a>
+</li>
+                                    
+<li>
+    <a href="../../roadmap/" class="dropdown-item">Roadmap</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#declarative-operators-a-new-model-for-kubernetes-extensibility" class="nav-link">Declarative Operators: A New Model for Kubernetes Extensibility</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#abstract" class="nav-link">Abstract</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#1-the-operator-model-and-its-costs" class="nav-link">1. The operator model and its costs</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#2-the-reconciliation-loop-as-an-abstraction" class="nav-link">2. The reconciliation loop as an abstraction</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#3-the-orkestra-model" class="nav-link">3. The Orkestra model</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#4-the-orkestraregistry" class="nav-link">4. The OrkestraRegistry</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#5-composition-through-komposers" class="nav-link">5. Composition through Komposers</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#6-dependency-aware-lifecycle" class="nav-link">6. Dependency-aware lifecycle</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#7-observability-as-infrastructure" class="nav-link">7. Observability as infrastructure</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#8-high-availability" class="nav-link">8. High availability</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#9-the-operator-sprawl-problem" class="nav-link">9. The operator sprawl problem</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#10-the-escape-hatches" class="nav-link">10. The escape hatches</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#11-implications" class="nav-link">11. Implications</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#12-conclusion" class="nav-link">12. Conclusion</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="declarative-operators-a-new-model-for-kubernetes-extensibility">Declarative Operators: A New Model for Kubernetes Extensibility</h1>
+<p><em>Orkestra Project — March 2026</em></p>
+<hr />
+<h2 id="abstract">Abstract</h2>
+<p>Kubernetes operators encode domain knowledge as reconciliation logic.
+Every major operator framework to date requires this logic to be written
+in Go, compiled into a binary, and deployed as a long-running process.
+This paper argues that the reconciliation model itself — not the language
+or the framework — is the right abstraction, and that the implementation
+can be separated from it. We introduce declarative operators: operators
+whose reconcile behavior is expressed as structured declarations interpreted
+at runtime, with no compiled implementation required. We describe the
+Orkestra runtime, the primitives it introduces (Katalog, Komposer, the
+OrkestraRegistry), and the architectural patterns that emerge from treating
+operators as data rather than code.</p>
+<hr />
+<h2 id="1-the-operator-model-and-its-costs">1. The operator model and its costs</h2>
+<p>The Kubernetes operator pattern, introduced in 2016, extends the Kubernetes
+API with domain-specific resources and encodes the operational knowledge
+required to manage them. An operator watches Custom Resource (CR) events
+and reconciles the actual state of the cluster toward a desired state
+declared in the CR.</p>
+<p>The pattern is powerful. It has enabled a generation of platform tooling —
+database operators, certificate managers, service mesh controllers, and more.
+But the implementation model has remained fixed: every operator is a Go
+binary, built around an informer, a workqueue, and a reconcile function.</p>
+<p>The cost of this model is consistently underestimated:</p>
+<p><strong>Cognitive load.</strong> Building an operator requires deep familiarity with
+Kubernetes client-go internals — schemes, informers, RESTMappers, workqueues,
+finalizers, and owner references. These are not domain concepts. They are
+infrastructure for implementing domain concepts. A developer building a
+database operator spends more time on the infrastructure than on the
+database knowledge.</p>
+<p><strong>Operational sprawl.</strong> Modern platforms run dozens of operators. Each
+consumes resources, requires an independent update cycle, exposes its own
+metrics (inconsistently), and implements its own health checking. Platform
+teams spend significant effort managing the operators that manage their
+platform.</p>
+<p><strong>Inaccessibility.</strong> Operators encode domain knowledge. Domain experts are
+not always Go engineers. The requirement to write Go excludes the people
+most qualified to define what an operator should do.</p>
+<p><strong>Duplication.</strong> Every operator reimplements the same patterns: ensuring a
+Deployment exists, copying a Secret to another namespace, setting owner
+references, handling deletion. These patterns are not operator-specific.
+They are resource management primitives that belong in a shared library.</p>
+<hr />
+<h2 id="2-the-reconciliation-loop-as-an-abstraction">2. The reconciliation loop as an abstraction</h2>
+<p>The core of every operator is the reconcile function:</p>
+<pre><code>observe current state
+compare to desired state
+apply changes to close the gap
+</code></pre>
+<p>This pattern is not specific to Go. It is an algorithm. The desired state
+comes from the CR spec. The current state comes from the informer cache.
+The changes are API calls to create, update, or delete resources.</p>
+<p>What if the reconcile function could be declared rather than implemented?</p>
+<pre><code class="language-yaml">reconciler:
+  default: true
+  onCreate:
+    deployments:
+      - image: &quot;{{ .spec.image }}&quot;
+        replicas: &quot;{{ .spec.replicas }}&quot;
+        reconcile: true
+    services:
+      - port: &quot;80&quot;
+        targetPort: &quot;{{ .spec.port }}&quot;
+        reconcile: true
+</code></pre>
+<p>This declaration is fully equivalent to a reconcile function that ensures
+a Deployment and a Service exist with the specified configuration and
+corrects drift on every loop. The template expressions resolve against the
+live CR at reconcile time. The <code>reconcile: true</code> flag means the resource
+is also updated on every reconcile, not just created.</p>
+<p>The runtime interprets this declaration. The developer writes nothing else.</p>
+<hr />
+<h2 id="3-the-orkestra-model">3. The Orkestra model</h2>
+<p>Orkestra is a runtime for declarative operators. It introduces two document
+kinds:</p>
+<p><strong>Katalog</strong> — declares one or more CRDs and how they should be reconciled.
+A Katalog is a complete operator definition. Just run
+<code>ork run --katalog ./katalog.yaml</code> and the operator is live.</p>
+<p><strong>Komposer</strong> — composes Katalogs from multiple sources into one runtime.
+A Komposer declares where CRD definitions come from — local files, remote
+URLs, Helm charts — and optionally overrides specific definitions for the
+current environment.</p>
+<p>The separation between Katalog and Komposer mirrors the separation between
+a Deployment manifest and a Helm chart. The Katalog defines what an operator
+does. The Komposer defines how definitions are composed and distributed.</p>
+<h3 id="31-the-katalog">3.1 The Katalog</h3>
+<p>A Katalog entry for a dynamic CRD:</p>
+<pre><code class="language-yaml">apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: platform-namespace-katalog
+spec:
+  crds:
+    - name: platformnamespace
+      enabled: true
+      namespaced: false
+      workers: 2
+      resync: 1m
+      apiTypes:
+        group: platform.orkestra.io
+        version: v1alpha1
+        kind: PlatformNamespace
+        plural: platformnamespaces
+      reconciler:
+        default: true
+        finalizers:
+          - finalizer.platform.orkestra.io/platformnamespace
+        onCreate:
+          configMaps:
+            - name: &quot;{{ .metadata.name }}-config&quot;
+              namespace: &quot;{{ .spec.targetNamespace }}&quot;
+              data:
+                ENVIRONMENT: &quot;{{ .spec.environment }}&quot;
+                LOG_LEVEL: &quot;{{ .spec.logLevel }}&quot;
+                TEAM: &quot;{{ .spec.team }}&quot;
+              reconcile: true
+          secrets:
+            - name: registry-pull-secret
+              fromSecret: docker-registry-creds
+              fromNamespace: platform
+              namespace: &quot;{{ .spec.targetNamespace }}&quot;
+              reconcile: true
+          serviceAccounts:
+            - name: &quot;{{ .spec.team }}-sa&quot;
+              namespace: &quot;{{ .spec.targetNamespace }}&quot;
+</code></pre>
+<p>This is a complete namespace provisioning operator. For every
+<code>PlatformNamespace</code> CR, Orkestra creates a ConfigMap with environment
+configuration, copies the registry pull secret into the provisioned
+namespace, and creates a ServiceAccount. Owner references are set on all
+child resources. Deletion of the CR cascades automatically. The ConfigMap
+is kept in sync on every reconcile — if <code>spec.logLevel</code> changes in the CR,
+the ConfigMap updates.</p>
+<p>No Go was written.</p>
+<h3 id="32-crd-modes">3.2 CRD modes</h3>
+<p>A CRD entry is either dynamic or typed.</p>
+<p><strong>Dynamic</strong> (default) — no <code>apiTypes.location</code>. The runtime uses the dynamic
+Kubernetes client and stores objects as <code>*unstructured.Unstructured</code>. Template
+expressions have full access to all spec fields at runtime. No compiled Go
+types needed.</p>
+<p><strong>Typed</strong> — <code>apiTypes.location</code> set. The runtime uses compiled Go types
+registered at startup via <code>ork generate runtime</code>. The reconcile function
+receives a typed object — <code>obj.Spec.Image</code> instead of a map lookup. Required
+when Go hooks need compile-time type safety.</p>
+<h3 id="33-the-reconcile-implementation-hierarchy">3.3 The reconcile implementation hierarchy</h3>
+<p>Orkestra's GenericReconciler selects the reconcile implementation in
+priority order:</p>
+<ol>
+<li>
+<p><strong>Go hooks</strong> — user-provided function with typed CR access. Handles
+   cases requiring conditional logic, external API calls, or status writes.
+   Registered via <code>ork generate runtime</code>.</p>
+</li>
+<li>
+<p><strong>Declarative templates</strong> — runtime interpretation of
+   <code>onCreate</code>/<code>onReconcile</code>/<code>onDelete</code> blocks. No code generation needed.
+   The common path for dynamic operators.</p>
+</li>
+<li>
+<p><strong>No-op</strong> — GenericReconciler manages finalizers, events, and metrics
+   without any reconcile logic. Useful for lifecycle tracking only.</p>
+</li>
+</ol>
+<p>When <code>reconciler.default: false</code>, the user provides a custom constructor
+and owns the entire reconcile function. Orkestra still provides the
+informer, workqueue, dependency ordering, health API, and leader election.</p>
+<hr />
+<h2 id="4-the-orkestraregistry">4. The OrkestraRegistry</h2>
+<p>The OrkestraRegistry is a library of Kubernetes resource implementations.
+Each implementation handles create, update, delete, owner references,
+idempotency, and drift detection for one resource type.</p>
+<p>Current implementations: Deployment, Service, Secret, ConfigMap,
+ServiceAccount, Job, CronJob, Pod.</p>
+<p>The registry provides two patterns specific to platform engineering:</p>
+<p><strong>Cross-namespace distribution.</strong> Secrets and ConfigMaps can be declared
+with <code>toNamespaces</code> — the registry reads the source once and writes copies
+to every listed namespace. When the source changes, <code>reconcile: true</code>
+keeps all copies in sync.</p>
+<pre><code class="language-yaml">secrets:
+  - name: registry-pull-secret
+    fromSecret: docker-registry-creds
+    fromNamespace: platform
+    toNamespaces:
+      - &quot;{{ .metadata.namespace }}&quot;
+      - monitoring
+      - staging
+    reconcile: true
+</code></pre>
+<p><strong>Merge with override.</strong> ConfigMaps support <code>fromConfigMap</code> — the registry
+copies data from a source ConfigMap and applies declared <code>data</code> keys as
+overrides. This provides a base-plus-override pattern without forking the
+source.</p>
+<pre><code class="language-yaml">configMaps:
+  - name: app-config
+    fromConfigMap: base-app-config
+    fromNamespace: platform
+    data:
+      LOG_LEVEL: &quot;{{ .spec.logLevel }}&quot;  # overrides the base value
+    reconcile: true
+</code></pre>
+<p>The registry is extensible. Adding a new resource type requires a type
+definition, a resolver method, a registry package (Create, Update, Delete,
+Resolve), a runner file in the reconciler package, and one call in
+<code>runTemplateReconcile</code>. The Katalog accepts the new resource type
+immediately.</p>
+<hr />
+<h2 id="5-composition-through-komposers">5. Composition through Komposers</h2>
+<p>Platform engineering at scale requires distributing and composing operator
+definitions across teams and environments.</p>
+<p>A Komposer addresses this directly:</p>
+<pre><code class="language-yaml">apiVersion: orkestra.konductor.io/v1Alpha
+kind: Komposer
+metadata:
+  name: platform-komposer
+sources:
+  files:
+    - ./katalogs/website.yaml
+    - https://raw.github.com/myorg/app-crds/main/katalog.yaml
+    - $SECURITY_KATALOG_URL
+  helm:
+    - repo: https://charts.myorg.io
+      chart: platform-crds
+      version: 2.1.0
+      valueFiles:
+        - ./values/production.yaml
+spec:
+  crds:
+    - name: application
+      workers: 4            # production override
+      apiTypes:
+        group: platform.myorg.io
+        version: v1alpha1
+        kind: Application
+        plural: applications
+      reconciler:
+        default: true
+</code></pre>
+<p>The merger resolves all sources, deduplicates by CRD name, and produces
+one validated set of CRD entries. Inline <code>spec.crds</code> on a Komposer are
+overrides — they win on name conflict with any source. This allows consuming
+a shared Katalog and overriding specific CRD configuration for the current
+environment without forking the source.</p>
+<p><strong>Merge rules</strong> are enforced:
+- Duplicate names across independent sources are errors with source attribution
+- Inline overrides are silent and intentional
+- Inline self-duplicates are errors
+- A Komposer cannot source another Komposer — composition chains are kept
+  shallow and predictable</p>
+<hr />
+<h2 id="6-dependency-aware-lifecycle">6. Dependency-aware lifecycle</h2>
+<p>Operators managing multiple CRDs face a fundamental problem: resources that
+depend on each other must be started and stopped in the right order.
+Traditional operators handle this implicitly and inconsistently.</p>
+<p>Orkestra makes dependencies explicit:</p>
+<pre><code class="language-yaml">crds:
+  - name: project
+    dependsOn: []
+
+  - name: managednamespace
+    dependsOn: [project]
+
+  - name: application
+    dependsOn: [project, managednamespace]
+</code></pre>
+<p>The runtime builds a directed acyclic graph from these declarations,
+validates it for cycles and missing references, and computes topological
+order. CRDs start in dependency order. Shutdown runs in reverse.
+Dependents wait for dependencies to signal readiness before their workers
+start.</p>
+<p>Missing CRDs at startup — declared but not yet installed on the cluster —
+are retried in the background without blocking healthy CRDs.</p>
+<hr />
+<h2 id="7-observability-as-infrastructure">7. Observability as infrastructure</h2>
+<p>Every Orkestra operator exposes a consistent set of endpoints and metrics
+regardless of what CRDs it manages.</p>
+<p><strong>HTTP endpoints</strong> (automatic, no configuration):</p>
+<pre><code>GET /health                       liveness probe
+GET /ready                        readiness probe
+GET /metrics                      Prometheus metrics
+GET /katalog                      all CRDs — health, config, dependency graph
+GET /katalog/{crd}                single CRD — config, reconcile stats
+GET /katalog/{crd}/health         200 healthy / 503 degraded
+</code></pre>
+<p><strong>Prometheus metrics</strong> (per CRD, labelled by GVK):</p>
+<pre><code>controller_resource_count                     live CR count from informer cache
+controller_reconcile_total                    success/error count
+controller_reconcile_duration_seconds         latency histogram
+controller_queue_depth                        current queue backlog
+controller_workers_active                     active worker count
+controller_crd_activation_latency_seconds     CRD activation latency histogram for missing CRDs 
+controller_crd_activation_total               CRD activation count for missing CRDs
+</code></pre>
+<p>An organisation running ten Orkestra operators has ten operators with
+identical operational characteristics. The same Grafana dashboard, the same
+alert rules, the same runbooks apply to all of them.</p>
+<hr />
+<h2 id="8-high-availability">8. High availability</h2>
+<p>Orkestra uses Kubernetes leader election (via the konductor package).
+All replicas run informers — their caches are warm on every pod. Only the
+elected leader runs workers. On leadership loss the lease is released
+immediately and a follower takes over with an already-warm cache.
+Failover takes milliseconds, not the time to sync a cold informer.</p>
+<hr />
+<h2 id="9-the-operator-sprawl-problem">9. The operator sprawl problem</h2>
+<p>Modern platforms commonly run fifteen to thirty operators: Prometheus,
+cert-manager, external-secrets, crossplane providers, database operators,
+and more. Each is a separate binary, a separate deployment, a separate
+metrics endpoint (if it has one at all), and a separate operational concern.</p>
+<p>Orkestra's multi-CRD runtime addresses this directly. One runtime manages
+many CRDs. The dependency graph keeps them correctly ordered. The health API
+provides a unified view. The metrics follow a consistent schema.</p>
+<p>What previously required fifteen deployments becomes one runtime with
+fifteen Katalog entries.</p>
+<p>This is not just operational simplification. It is architectural
+simplification. Teams no longer need to understand fifteen different operator
+frameworks, fifteen different configuration formats, and fifteen different
+health models.</p>
+<hr />
+<h2 id="10-the-escape-hatches">10. The escape hatches</h2>
+<p>Declarative operators cover the majority of operator use cases. The following
+patterns require code:</p>
+<p><strong>Complex state machines.</strong> CRs that progress through multiple phases with
+branching logic based on external state — provisioning pipelines, multi-step
+migrations — require Go hooks or a custom constructor.</p>
+<p><strong>External API calls.</strong> Operators that provision cloud resources, call DNS
+APIs, or interact with external systems need the custom path.</p>
+<p><strong>Status writes.</strong> Writing derived state back to <code>obj.Status</code> requires
+reading child resource state and making conditional decisions that template
+declarations cannot express.</p>
+<p>For these cases Orkestra provides Go hooks (user-provided function, framework
+manages everything else) and custom constructors (user owns the reconcile
+function, framework manages informer, workqueue, and lifecycle).</p>
+<p>The escape hatches are additive. A dynamic CRD can be migrated to Go hooks
+without changing anything else. The Katalog entry gains a <code>hooks</code> declaration.
+The rest is unchanged.</p>
+<hr />
+<h2 id="11-implications">11. Implications</h2>
+<h3 id="operators-as-artifacts">Operators as artifacts</h3>
+<p>A Katalog is a versioned, diffable, promotable artifact. It can live in Git,
+be rendered with Helm, be reviewed in a pull request, and be deployed with
+the same tooling as any other manifest. Operators become part of the
+infrastructure-as-code story rather than a special category requiring
+separate processes.</p>
+<h3 id="operator-distribution">Operator distribution</h3>
+<p>The Komposer model enables operator distribution. Platform teams publish
+Katalogs as Helm charts or at well-known URLs. Application teams consume
+them with a single source declaration. Overrides are explicit and localized.
+This mirrors how Helm enabled application distribution — the same pattern
+applied to operator behavior.</p>
+<h3 id="non-engineer-accessibility">Non-engineer accessibility</h3>
+<p>The person who understands a domain — how namespaces should be provisioned,
+how databases should be backed up — can now write the operator. They need
+YAML and an understanding of their domain. They do not need Go, client-go,
+or controller-runtime.</p>
+<h3 id="velocity">Velocity</h3>
+<p>A declarative operator is written in minutes and modified in seconds.
+A YAML change takes effect on the next <code>ork run</code>. There is no build,
+no image push, no deployment rollout in the development loop.</p>
+<hr />
+<h2 id="12-conclusion">12. Conclusion</h2>
+<p>The operator pattern is the right abstraction for Kubernetes extensibility.
+The requirement to implement that abstraction in Go has been a constraint of
+convention, not necessity.</p>
+<p>Declarative operators demonstrate that the reconciliation model can be
+separated from its implementation. A runtime that interprets reconciliation
+declarations provides the same correctness guarantees as a compiled reconciler —
+idempotency, drift correction, cascade deletion, finalizer management — with
+none of the implementation burden.</p>
+<p>Orkestra is the first runtime to fully realise this model. The Katalog
+primitive, the Komposer composition model, the OrkestraRegistry, and the
+dependency-aware lifecycle provide a complete foundation for declarative
+operators at any scale.</p>
+<p>Operators are no longer software projects. They are infrastructure
+definitions. Orkestra is the runtime that makes this possible.</p>
+<hr />
+<p><em>Orkestra — Declarative Operators for Kubernetes</em>
+<em>March 2026</em>
+<em>https://github.com/iAlexeze/orkestra</em></p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+                <p>Orkestra</p>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../../js/base.js"></script>
+        <script src="../../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+
+<html data-bs-theme="light" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="IE=edge" http-equiv="X-UA-Compatible"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="Orkestra Team" name="author"/>
+<link href="https://orkestra.sh/internals/reconciler-pipeline/" rel="canonical"/>
+<link href="../../img/favicon.ico" rel="shortcut icon"/>
+<title>Reconciler Pipeline (Internals) - Orkestra</title>
+<link href="../../css/bootstrap.min.css" rel="stylesheet"/>
+<link href="../../css/fontawesome.min.css" rel="stylesheet"/>
+<link href="../../css/brands.min.css" rel="stylesheet"/>
+<link href="../../css/solid.min.css" rel="stylesheet"/>
+<link href="../../css/v4-font-face.min.css" rel="stylesheet"/>
+<link href="../../css/base.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" id="hljs-light" rel="stylesheet"/>
+<link disabled="" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" id="hljs-dark" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</head>
+<body>
+<div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+<div class="container">
+<a class="navbar-brand" href="../..">Orkestra</a>
+<!-- Expander button -->
+<button aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler" data-bs-target="#navbar-collapse" data-bs-toggle="collapse" type="button">
+<span class="navbar-toggler-icon"></span>
+</button>
+<!-- Expanded navigation -->
+<div class="navbar-collapse collapse" id="navbar-collapse">
+<!-- Main navigation -->
+<ul class="nav navbar-nav">
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Getting Started</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../guides/getting-started/">Installation</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/writing-your-first-katalog/">Writing Your First Katalog</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/writing-hooks/">Writing Hooks</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/writing-custom-reconcilers/">Writing Custom Reconcilers</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/testing-operators/">Testing Operators</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Architecture</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../architecture/overview/">Overview</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../architecture/runtime-flow/">Runtime Flow</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../architecture/crd-lifecycle/">CRD Lifecycle</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../architecture/design-philosophy/">Design Philosophy</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../architecture/architecture-diagrams/">Architecture Diagrams</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../architecture/full-architecture-view/">Full Architecture View</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Concepts</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../concepts/katalog/">Katalog</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/komposer/">Komposer</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/conditional-provisioning/">Conditional Provisioning</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/templating/">Templating</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/dependency-model/">Dependency Model</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/health-subsystem/">Health Subsystem</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../concepts/reconciler-model/">Reconciler Model</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Guides</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../guides/deployment/#helm-deployment">Production Deployment</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/extending-orkestra/">Extending Orkestra</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/choosing-katalog-vs-komposer/">Choosing Katalog vs Komposer</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../guides/use-cases/">Use Cases</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Reference</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../reference/katalog-schema/">Katalog Schema</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../reference/komposer-schema/">Komposer Schema</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../reference/metrics/">Metrics</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../reference/cli/">CLI</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../reference/inspect-live-crd/">Inspect Live CRD</a>
+</li>
+</ul>
+</li>
+<li class="nav-item dropdown">
+<a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button">Publications</a>
+<ul class="dropdown-menu">
+<li>
+<a class="dropdown-item" href="../../publications/declarative-operators-whitepaper/">Declarative Operators Whitepaper</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/why-orkestra/">Why Orkestra</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/metrics-analysis/">Metrics Analysis</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/your-crd-is-enough/">Your CRD is Enough</a>
+</li>
+<li>
+<a class="dropdown-item" href="../../publications/roadmap/">Roadmap</a>
+</li>
+</ul>
+</li>
+</ul>
+<ul class="nav navbar-nav ms-md-auto">
+<li class="nav-item">
+<a class="nav-link" data-bs-target="#mkdocs_search_modal" data-bs-toggle="modal" href="#">
+<i class="fa fa-search"></i> Search
+                            </a>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="container">
+<div class="row">
+<div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+<div class="navbar-header">
+<button class="navbar-toggler collapsed" data-bs-target="#toc-collapse" data-bs-toggle="collapse" title="Table of Contents" type="button">
+<span class="fa fa-angle-down"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse card bg-body-tertiary" id="toc-collapse">
+<ul class="nav flex-column">
+<li class="nav-item" data-bs-level="1"><a class="nav-link" href="#reconciler-pipeline-internals">Reconciler Pipeline (Internals)</a>
+<ul class="nav flex-column">
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#overview">Overview</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#1-event-enqueueing">1. Event Enqueueing</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#2-worker-dispatch">2. Worker Dispatch</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#3-context-enrichment">3. Context Enrichment</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#4-cache-read">4. Cache Read</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#5-deletion-check">5. Deletion Check</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#6-finalizer-management">6. Finalizer Management</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#7-label-and-annotation-management">7. Label and Annotation Management</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#8-condition-evaluation">8. Condition Evaluation</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#9-hook-execution">9. Hook Execution</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#10-template-resolution">10. Template Resolution</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#11-resource-creationupdate">11. Resource Creation/Update</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#12-owner-references">12. Owner References</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#13-drift-correction">13. Drift Correction</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#14-status-update">14. Status Update</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#15-metrics-emission">15. Metrics Emission</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#16-event-emission">16. Event Emission</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#17-health-tracking">17. Health Tracking</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#18-error-handling-and-retries">18. Error Handling and Retries</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+<li class="nav-item" data-bs-level="2"><a class="nav-link" href="#summary">Summary</a>
+<ul class="nav flex-column">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div></div>
+<div class="col-md-9" role="main">
+<h1 id="reconciler-pipeline-internals">Reconciler Pipeline (Internals)</h1>
+<p>This document explains the complete reconciliation flow in Orkestra — from the moment a CR is created or updated, through template resolution and resource creation, to final status updates and metric emission.</p>
+<hr/>
+<h2 id="overview">Overview</h2>
+<p>The Orkestra reconciler is the heart of the operator runtime. It processes events from the informer queue and executes the reconciliation logic defined in your Katalog.</p>
+<div class="mermaid">flowchart TB
+    subgraph Input["Event Sources"]
+        A[CR Create/Update/Delete]
+        B[Periodic Resync]
+    end
+
+    subgraph Queue["Queue Layer"]
+        Q[Workqueue]
+    end
+
+    subgraph Reconcile["Reconciliation Pipeline"]
+        R1[Context Enrichment]
+        R2[Cache Read]
+        R3[Deletion Check]
+        R4[Finalizer Management]
+        R5[Label/Annotation Management]
+        R6[Condition Evaluation]
+        R7[Hook Execution]
+        R8[Template Resolution]
+        R9[Resource Creation/Update]
+        R10[Status Update]
+        R11[Metrics &amp; Events]
+    end
+
+    Input --&gt; Q
+    Q --&gt; R1
+    R1 --&gt; R2
+    R2 --&gt; R3
+    R3 --&gt; R4
+    R4 --&gt; R5
+    R5 --&gt; R6
+    R6 --&gt; R7
+    R7 --&gt; R8
+    R8 --&gt; R9
+    R9 --&gt; R10
+    R10 --&gt; R11
+</div>
+<hr/>
+<h2 id="1-event-enqueueing">1. Event Enqueueing</h2>
+<p>When a CR is created, updated, or deleted, the informer receives the event and enqueues it to the workqueue.</p>
+<pre><code class="language-go">// The informer's event handler
+inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+    AddFunc:    func(obj interface{}) { f.handleEvent(obj) },
+    UpdateFunc: func(_, newObj interface{}) { f.handleEvent(newObj) },
+    DeleteFunc: func(obj interface{}) { f.handleEvent(obj) },
+})
+</code></pre>
+<p>Each enqueued item contains:
+- <code>Key</code> — namespace/name (e.g., <code>default/my-website</code>)
+- <code>GVK</code> — GroupVersionKind of the resource</p>
+<pre><code class="language-go">type QueueItem struct {
+    Key string
+    GVK string
+}
+</code></pre>
+<p>The queue is rate‑limited and deduplicated. Multiple events for the same key are coalesced.</p>
+<hr/>
+<h2 id="2-worker-dispatch">2. Worker Dispatch</h2>
+<p>The controller runs a configurable number of workers per CRD. Each worker pulls items from the queue and dispatches to the correct reconciler.</p>
+<pre><code class="language-go">func (c *Controller) runWorkerForGVK(ctx context.Context, gvk string, workerID string) {
+    for {
+        item, shutdown := c.getQueue(gvk).Get()
+        if shutdown {
+            return
+        }
+
+        reconciler := c.reconcilers[item.GVK]
+        reconciler.Reconcile(ctx, item.Key)
+
+        c.getQueue(gvk).Done(item)
+    }
+}
+</code></pre>
+<hr/>
+<h2 id="3-context-enrichment">3. Context Enrichment</h2>
+<p>Before reconciliation begins, the context is enriched with:</p>
+<ul>
+<li><strong>Request ID</strong> — unique identifier for tracing</li>
+<li><strong>CRD name</strong> — for logging context</li>
+<li><strong>Resource key</strong> — namespace/name of the CR</li>
+</ul>
+<pre><code class="language-go">ctx = logger.WithRequestID(ctx)
+ctx = logger.WithCRD(ctx, r.crd.GVK)
+ctx = logger.WithResource(ctx, key)
+</code></pre>
+<p>This ensures all logs for a single reconciliation share the same request ID.</p>
+<hr/>
+<h2 id="4-cache-read">4. Cache Read</h2>
+<p>The reconciler reads the CR from the informer's <strong>local cache</strong>, never from the API server.</p>
+<pre><code class="language-go">raw, exists, err := r.informer.GetIndexer().GetByKey(key)
+if err != nil {
+    return fmt.Errorf("getting %q from store: %w", key, err)
+}
+
+if !exists {
+    // Object was deleted — handle cleanup
+    return r.handleNotFound(ctx, key)
+}
+
+obj := raw.(T).DeepCopyObject().(T)
+</code></pre>
+<p>The deep copy ensures the reconciler never mutates the cached object.</p>
+<hr/>
+<h2 id="5-deletion-check">5. Deletion Check</h2>
+<p>If the CR has a <code>deletionTimestamp</code>, it's being deleted.</p>
+<pre><code class="language-go">if obj.GetDeletionTimestamp() != nil {
+    logger.FromContext(ctx).Info().
+        Str("name", obj.GetName()).
+        Msgf("deletion handler called for %s", r.crd.GVK)
+
+    r.event.Eventf(obj, corev1.EventTypeNormal, "Deleting",
+        fmt.Sprintf("Deleting %s %s/%s", r.crd.GVK, obj.GetNamespace(), obj.GetName()))
+
+    return r.handleDeletion(ctx, obj)
+}
+</code></pre>
+<hr/>
+<h2 id="6-finalizer-management">6. Finalizer Management</h2>
+<p>Finalizers protect the CR from being deleted until cleanup completes.</p>
+<pre><code class="language-go">func (r *GenericReconciler[T]) ensureFinalizers(ctx context.Context, obj T) error {
+    if len(r.crd.Finalizers) == 0 {
+        return nil
+    }
+
+    needsUpdate := false
+    for _, f := range r.crd.Finalizers {
+        if !ContainsFinalizer(obj, f) {
+            needsUpdate = true
+            break
+        }
+    }
+
+    if !needsUpdate {
+        return nil
+    }
+
+    // Add missing finalizers
+    newFinalizers := obj.GetFinalizers()
+    for _, f := range r.crd.Finalizers {
+        if !ContainsFinalizer(obj, f) {
+            newFinalizers = append(newFinalizers, f)
+        }
+    }
+
+    return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR, newFinalizers)
+}
+</code></pre>
+<hr/>
+<h2 id="7-label-and-annotation-management">7. Label and Annotation Management</h2>
+<p>Orkestra adds managed labels and annotations to every CR it controls.</p>
+<pre><code class="language-go">// Ensure managed label
+func (r *GenericReconciler[T]) ensureManagedLabel(ctx context.Context, obj T) error {
+    labels := obj.GetLabels()
+    if labels == nil {
+        labels = make(map[string]string)
+    }
+
+    if labels["orkestra.konductor.io/managed"] != "true" {
+        labels["orkestra.konductor.io/managed"] = "true"
+        obj.SetLabels(labels)
+        return r.kube.PatchLabels(ctx, obj, r.crd.GVR, labels)
+    }
+
+    return nil
+}
+
+// Ensure managed annotations
+func (r *GenericReconciler[T]) ensureManagedAnnotations(ctx context.Context, obj T, operator string) error {
+    annotations := obj.GetAnnotations()
+    if annotations == nil {
+        annotations = make(map[string]string)
+    }
+
+    annotations["orkestra.konductor.io/managed-by"] = operator
+    annotations["orkestra.konductor.io/managed-since"] = time.Now().Format(time.RFC3339)
+
+    obj.SetAnnotations(annotations)
+    return r.kube.PatchAnnotations(ctx, obj, r.crd.GVR, annotations)
+}
+</code></pre>
+<hr/>
+<h2 id="8-condition-evaluation">8. Condition Evaluation</h2>
+<p>Before executing templates, Orkestra evaluates <code>when</code> conditions. Resources are only created if all conditions match.</p>
+<pre><code class="language-yaml">services:
+  - name: "{{ .metadata.name }}-svc"
+    when:
+      - field: spec.exposePublicly
+        equals: "true"
+      - field: spec.environment
+        equals: "production"
+</code></pre>
+<p>The resolver evaluates each condition against the CR:</p>
+<pre><code class="language-go">func (r *Resolver) evaluateConditions(conditions []orktypes.Condition, obj map[string]interface{}) bool {
+    for _, cond := range conditions {
+        fieldValue := getField(obj, cond.Field)
+
+        switch cond.Operator {
+        case "equals":
+            if fmt.Sprintf("%v", fieldValue) != cond.Value {
+                return false
+            }
+        case "notequals":
+            if fmt.Sprintf("%v", fieldValue) == cond.Value {
+                return false
+            }
+        case "exists":
+            if fieldValue == nil {
+                return false
+            }
+        case "notexists":
+            if fieldValue != nil {
+                return false
+            }
+        }
+    }
+    return true
+}
+</code></pre>
+<hr/>
+<h2 id="9-hook-execution">9. Hook Execution</h2>
+<p>If hooks are defined, they run before templates. This allows custom logic to validate, modify, or enrich the CR before resource creation.</p>
+<pre><code class="language-go">if r.hooks.OnReconcile != nil {
+    if err := r.hooks.OnReconcile(ctx, obj); err != nil {
+        r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"ReconcileError",
+            fmt.Sprintf("Hook failed: %v", err))
+        return err
+    }
+}
+</code></pre>
+<p>Hooks have full access to:
+- The CR object (typed or unstructured)
+- Kubernetes client
+- Template resolver
+- Context</p>
+<hr/>
+<h2 id="10-template-resolution">10. Template Resolution</h2>
+<p>The resolver evaluates Go template expressions against the CR.</p>
+<pre><code class="language-go">resolver, err := orktmpl.NewResolver(ctx, obj)
+if err != nil {
+    return fmt.Errorf("building resolver: %w", err)
+}
+
+// Resolve a single field
+image, err := resolver.Resolve("{{ .spec.image }}")
+// image = "nginx:1.25"
+
+// Resolve a deployment template
+resolved, err := resolver.ResolveDeploymentTemplate(src)
+</code></pre>
+<p>The resolver supports:</p>
+<table>
+<thead>
+<tr>
+<th>Expression</th>
+<th>Resolves To</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{{ .metadata.name }}</code></td>
+<td>CR name</td>
+</tr>
+<tr>
+<td><code>{{ .metadata.namespace }}</code></td>
+<td>CR namespace</td>
+</tr>
+<tr>
+<td><code>{{ .spec.field }}</code></td>
+<td>Any spec field</td>
+</tr>
+<tr>
+<td><code>{{ .status.field }}</code></td>
+<td>Any status field</td>
+</tr>
+</tbody>
+</table>
+<p>Missing fields resolve to empty string (no error). This allows optional fields.</p>
+<hr/>
+<h2 id="11-resource-creationupdate">11. Resource Creation/Update</h2>
+<p>Each resource type has its own runner. The runner determines whether to create or update based on whether the resource already exists.</p>
+<pre><code class="language-go">func runDeployments(ctx context.Context, kube *kubeclient.Kubeclient,
+    resolver *orktmpl.Resolver, owner domain.Object,
+    srcs []orktypes.DeploymentTemplateSource, update bool) error {
+
+    for i, src := range srcs {
+        // Evaluate conditions first
+        if src.When != nil &amp;&amp; !evaluateConditions(src.When, resolver) {
+            logger.Debug().Msgf("conditions not met — skipping deployment[%d]", i)
+            continue
+        }
+
+        // Resolve template
+        resolved, err := resolver.ResolveDeploymentTemplate(src)
+        if err != nil {
+            return fmt.Errorf("deployment[%d]: %w", i, err)
+        }
+
+        spec := orkdeploy.Resolve(resolved, staticReplicas, resolver.OwnerName())
+
+        if update {
+            // Drift correction — update if exists, create if not
+            if err := orkdeploy.Update(ctx, kube, owner, spec); err != nil {
+                return fmt.Errorf("deployment[%d].update: %w", i, err)
+            }
+        } else {
+            // Idempotent create — skip if exists
+            if err := orkdeploy.Create(ctx, kube, owner, spec); err != nil {
+                return fmt.Errorf("deployment[%d].create: %w", i, err)
+            }
+        }
+    }
+    return nil
+}
+</code></pre>
+<hr/>
+<h2 id="12-owner-references">12. Owner References</h2>
+<p>Every resource created by Orkestra receives an owner reference pointing back to the CR.</p>
+<pre><code class="language-go">func (r *Resolver) OwnerReference() metav1.OwnerReference {
+    return metav1.OwnerReference{
+        APIVersion:         r.gvk.GroupVersion().String(),
+        Kind:               r.gvk.Kind,
+        Name:               r.ownerName,
+        UID:                r.ownerUID,
+        Controller:         pointer.Bool(true),
+        BlockOwnerDeletion: pointer.Bool(true),
+    }
+}
+</code></pre>
+<p>This enables Kubernetes garbage collection: when the CR is deleted, all child resources are automatically cleaned up.</p>
+<hr/>
+<h2 id="13-drift-correction">13. Drift Correction</h2>
+<p>When a template has <code>reconcile: true</code>, it runs on <strong>every</strong> reconcile, not just on creation. This corrects any manual changes to the child resources.</p>
+<pre><code class="language-yaml">deployments:
+  - image: "{{ .spec.image }}"
+    replicas: "{{ .spec.replicas }}"
+    reconcile: true  # ← Drift correction enabled
+</code></pre>
+<p>The registry compares the desired state with the current state and updates if different:</p>
+<pre><code class="language-go">// orkdeploy.Update checks for drift
+func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedDeploymentSpec) error {
+    existing, err := kube.Clientset().AppsV1().Deployments(spec.Namespace).Get(ctx, spec.Name, metav1.GetOptions{})
+    if apierrors.IsNotFound(err) {
+        return Create(ctx, kube, owner, spec)  // Create if missing
+    }
+
+    // Check for drift
+    if existing.Spec.Replicas != &amp;spec.Replicas {
+        existing.Spec.Replicas = &amp;spec.Replicas
+        needsUpdate = true
+    }
+
+    if existing.Spec.Template.Spec.Containers[0].Image != spec.Image {
+        existing.Spec.Template.Spec.Containers[0].Image = spec.Image
+        needsUpdate = true
+    }
+
+    if needsUpdate {
+        _, err = kube.Clientset().AppsV1().Deployments(spec.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
+        return err
+    }
+
+    return nil
+}
+</code></pre>
+<hr/>
+<h2 id="14-status-update">14. Status Update</h2>
+<p>After reconciliation, the CR's status is updated to reflect the current state.</p>
+<pre><code class="language-go">// The reconciler can update status
+obj.Status.Phase = "Ready"
+obj.Status.LastReconcile = metav1.Now()
+obj.Status.ObservedGeneration = obj.GetGeneration()
+
+_, err := kube.DynamicClient().Resource(r.crd.GVR).Namespace(obj.GetNamespace()).UpdateStatus(ctx, obj, metav1.UpdateOptions{})
+</code></pre>
+<p>Status fields are not managed by Orkestra — you control them via hooks or custom reconcilers.</p>
+<hr/>
+<h2 id="15-metrics-emission">15. Metrics Emission</h2>
+<p>Every reconcile produces metrics, regardless of whether the reconciler is generic or custom.</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Type</th>
+<th>Labels</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>controller_reconcile_total</code></td>
+<td>Counter</td>
+<td><code>crd</code>, <code>result</code> (success/error)</td>
+</tr>
+<tr>
+<td><code>controller_reconcile_duration_seconds</code></td>
+<td>Histogram</td>
+<td><code>crd</code></td>
+</tr>
+<tr>
+<td><code>controller_resource_count</code></td>
+<td>Gauge</td>
+<td><code>crd</code></td>
+</tr>
+<tr>
+<td><code>controller_queue_depth</code></td>
+<td>Gauge</td>
+<td><code>crd</code></td>
+</tr>
+<tr>
+<td><code>controller_workers_active</code></td>
+<td>Gauge</td>
+<td><code>crd</code></td>
+</tr>
+</tbody>
+</table>
+<p>Metrics are emitted from a single choke point to ensure consistency:</p>
+<pre><code class="language-go">func safeReconcile(ctx context.Context, reconciler domain.Reconciler, key string) error {
+    start := time.Now()
+    err := reconciler.Reconcile(ctx, key)
+    duration := time.Since(start).Seconds()
+
+    gvk := utils.GetGVKFromContext(ctx)
+    metrics.ReconcileDuration.WithLabelValues(gvk).Observe(duration)
+
+    if err != nil {
+        metrics.ReconcileTotal.WithLabelValues(gvk, "error").Inc()
+    } else {
+        metrics.ReconcileTotal.WithLabelValues(gvk, "success").Inc()
+    }
+
+    return err
+}
+</code></pre>
+<hr/>
+<h2 id="16-event-emission">16. Event Emission</h2>
+<p>Kubernetes events are emitted for significant actions:</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Type</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Reconciled</code></td>
+<td>Normal</td>
+<td>Successful reconcile</td>
+</tr>
+<tr>
+<td><code>ReconcileError</code></td>
+<td>Warning</td>
+<td>Reconcile returned an error</td>
+</tr>
+<tr>
+<td><code>FinalizerAdded</code></td>
+<td>Normal</td>
+<td>Finalizer added to CR</td>
+</tr>
+<tr>
+<td><code>FinalizerRemoved</code></td>
+<td>Normal</td>
+<td>Finalizer removed</td>
+</tr>
+<tr>
+<td><code>Deleting</code></td>
+<td>Normal</td>
+<td>CR deletion in progress</td>
+</tr>
+<tr>
+<td><code>Deleted</code></td>
+<td>Normal</td>
+<td>CR deletion completed</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-go">r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.Kind+"Reconciled",
+    fmt.Sprintf("Successfully reconciled %s %s/%s",
+        r.crd.GVK, obj.GetNamespace(), obj.GetName()))
+</code></pre>
+<p>Events appear in <code>kubectl describe</code> and <code>kubectl get events</code>.</p>
+<hr/>
+<h2 id="17-health-tracking">17. Health Tracking</h2>
+<p>After each reconcile, the CRD's health state is updated.</p>
+<pre><code class="language-go">if err != nil {
+    h.RecordFailure(err, degradeThreshold)
+} else {
+    h.RecordSuccess()
+}
+</code></pre>
+<p>Health state is exposed via:</p>
+<ul>
+<li><code>/katalog/{crd}/health</code> endpoint</li>
+<li><code>ork status</code> command</li>
+<li>Prometheus metrics</li>
+</ul>
+<hr/>
+<h2 id="18-error-handling-and-retries">18. Error Handling and Retries</h2>
+<p>If reconciliation returns an error, the item is requeued with exponential backoff.</p>
+<pre><code class="language-go">if err := reconciler.Reconcile(ctx, key); err != nil {
+    logger.Error().Err(err).Msg("reconcile failed")
+    queue.AddRateLimited(key)  // Exponential backoff
+    return true
+}
+</code></pre>
+<p>Backoff sequence: 5ms, 10ms, 20ms, 40ms, … up to 1000ms.</p>
+<hr/>
+<h2 id="summary">Summary</h2>
+<p>The reconciliation pipeline ensures that every CR is processed consistently:</p>
+<ol>
+<li><strong>Event enqueued</strong> from informer</li>
+<li><strong>Worker dispatches</strong> to correct reconciler</li>
+<li><strong>Context enriched</strong> for logging</li>
+<li><strong>CR read from cache</strong> (never API)</li>
+<li><strong>Deletion check</strong> — handle cleanup if needed</li>
+<li><strong>Finalizers added</strong> — protect CR during reconciliation</li>
+<li><strong>Labels/annotations managed</strong> — for tracking</li>
+<li><strong>Conditions evaluated</strong> — skip resources if conditions not met</li>
+<li><strong>Hooks executed</strong> — custom Go logic</li>
+<li><strong>Templates resolved</strong> — evaluate Go expressions</li>
+<li><strong>Resources created/updated</strong> — idempotent operations</li>
+<li><strong>Drift correction</strong> — fix manual changes</li>
+<li><strong>Status updated</strong> — reflect current state</li>
+<li><strong>Metrics emitted</strong> — for observability</li>
+<li><strong>Events emitted</strong> — for kubectl visibility</li>
+<li><strong>Health tracked</strong> — for health API</li>
+<li><strong>Error handled</strong> — requeue with backoff</li>
+</ol>
+<p>All of this happens automatically. You just write the Katalog. 🎼</p></div>
+</div>
+</div>
+<footer class="col-md-12">
+<hr/>
+<p>Orkestra</p>
+<p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+</footer>
+<script src="../../js/bootstrap.bundle.min.js"></script>
+<script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+<script src="../../js/base.js"></script>
+<script src="../../search/main.js"></script>
+<div aria-hidden="true" aria-labelledby="searchModalLabel" class="modal" id="mkdocs_search_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="searchModalLabel">Search</h4>
+<button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+</div>
+<div class="modal-body">
+<p>From here you can search these documents. Enter your search terms below.</p>
+<form>
+<div class="form-group">
+<input class="form-control" id="mkdocs-search-query" placeholder="Search..." title="Type search term here" type="search"/>
+</div>
+</form>
+<div data-no-results-text="No results found" id="mkdocs-search-results"></div>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div><div aria-hidden="true" aria-labelledby="keyboardModalLabel" class="modal" id="mkdocs_keyboard_modal" role="dialog" tabindex="-1">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+<button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button"></button>
+</div>
+<div class="modal-body">
+<table class="table">
+<thead>
+<tr>
+<th style="width: 20%;">Keys</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="help shortcut"><kbd>?</kbd></td>
+<td>Open this help</td>
+</tr>
+<tr>
+<td class="next shortcut"><kbd>n</kbd></td>
+<td>Next page</td>
+</tr>
+<tr>
+<td class="prev shortcut"><kbd>p</kbd></td>
+<td>Previous page</td>
+</tr>
+<tr>
+<td class="search shortcut"><kbd>s</kbd></td>
+<td>Search</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="modal-footer">
+</div>
+</div>
+</div>
+</div>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@10.4.0/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>

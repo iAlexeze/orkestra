@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Orkestra Team">
+        <link rel="canonical" href="https://orkestra.sh/reference/cli/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>CLI - Orkestra</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Orkestra</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Getting Started</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/getting-started/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-your-first-katalog/" class="dropdown-item">Writing Your First Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-hooks/" class="dropdown-item">Writing Hooks</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/writing-custom-reconcilers/" class="dropdown-item">Writing Custom Reconcilers</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/testing-operators/" class="dropdown-item">Testing Operators</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Architecture</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../architecture/overview/" class="dropdown-item">Overview</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/runtime-flow/" class="dropdown-item">Runtime Flow</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/crd-lifecycle/" class="dropdown-item">CRD Lifecycle</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/design-philosophy/" class="dropdown-item">Design Philosophy</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/architecture-diagrams/" class="dropdown-item">Architecture Diagrams</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/full-architecture-view/" class="dropdown-item">Full Architecture View</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Concepts</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../concepts/katalog/" class="dropdown-item">Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/komposer/" class="dropdown-item">Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/conditional-provisioning/" class="dropdown-item">Conditional Provisioning</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/templating/" class="dropdown-item">Templating</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/dependency-model/" class="dropdown-item">Dependency Model</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/health-subsystem/" class="dropdown-item">Health Subsystem</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/reconciler-model/" class="dropdown-item">Reconciler Model</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Guides</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../guides/deployment/#helm-deployment" class="dropdown-item">Production Deployment</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/extending-orkestra/" class="dropdown-item">Extending Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/choosing-katalog-vs-komposer/" class="dropdown-item">Choosing Katalog vs Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../guides/use-cases/" class="dropdown-item">Use Cases</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../katalog-schema/" class="dropdown-item">Katalog Schema</a>
+</li>
+                                    
+<li>
+    <a href="../komposer-schema/" class="dropdown-item">Komposer Schema</a>
+</li>
+                                    
+<li>
+    <a href="../metrics/" class="dropdown-item">Metrics</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">CLI</a>
+</li>
+                                    
+<li>
+    <a href="../inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Publications</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../publications/declarative-operators-whitepaper/" class="dropdown-item">Declarative Operators Whitepaper</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/why-orkestra/" class="dropdown-item">Why Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/metrics-analysis/" class="dropdown-item">Metrics Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/your-crd-is-enough/" class="dropdown-item">Your CRD is Enough</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/roadmap/" class="dropdown-item">Roadmap</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../metrics/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../inspect-live-crd/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#orkestra-cli-reference" class="nav-link">Orkestra CLI Reference</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#commands-overview" class="nav-link">Commands Overview</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ork-init" class="nav-link">ork init</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ork-validate" class="nav-link">ork validate</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ork-template" class="nav-link">ork template</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ork-generate-runtime" class="nav-link">ork generate runtime</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ork-run" class="nav-link">ork run</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ork-status" class="nav-link">ork status</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#inspect-commands" class="nav-link">Inspect commands</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ork-version" class="nav-link">ork version</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#typical-workflows" class="nav-link">Typical workflows</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#exit-codes" class="nav-link">Exit codes</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="orkestra-cli-reference">Orkestra CLI Reference</h1>
+<p><code>ork</code> is the command-line interface for Orkestra. It covers the full operator lifecycle — scaffold, validate, preview, generate, run, and inspect.</p>
+<pre><code class="language-bash">ork &lt;command&gt; [flags]
+</code></pre>
+<hr />
+<h2 id="commands-overview">Commands Overview</h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ork init</code></td>
+<td>Scaffold a new operator project</td>
+</tr>
+<tr>
+<td><code>ork validate</code></td>
+<td>Validate a Katalog or Komposer</td>
+</tr>
+<tr>
+<td><code>ork template</code></td>
+<td>Preview the merged, validated Katalog</td>
+</tr>
+<tr>
+<td><code>ork generate runtime</code></td>
+<td>Generate runtime wiring for typed CRDs and Go hooks</td>
+</tr>
+<tr>
+<td><code>ork run</code></td>
+<td>Start the operator runtime</td>
+</tr>
+<tr>
+<td><code>ork status</code></td>
+<td>Show health and stats of the running operator</td>
+</tr>
+<tr>
+<td><code>ork get</code></td>
+<td>List all CRs of a CRD type</td>
+</tr>
+<tr>
+<td><code>ork describe</code></td>
+<td>Describe a specific CR with spec, status, and events</td>
+</tr>
+<tr>
+<td><code>ork reconcile</code></td>
+<td>Trigger reconciliation for one or all CRs</td>
+</tr>
+<tr>
+<td><code>ork events</code></td>
+<td>Show Kubernetes events for a CRD type or specific CR</td>
+</tr>
+<tr>
+<td><code>ork version</code></td>
+<td>Print version information</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ork-init"><code>ork init</code></h2>
+<p>Scaffold a new Orkestra operator project.</p>
+<pre><code class="language-bash">ork init &lt;project-name&gt; [flags]
+</code></pre>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--typed</code></td>
+<td>Scaffold a Go project for typed CRDs or custom reconcilers</td>
+</tr>
+<tr>
+<td><code>--module</code></td>
+<td>Go module path — only used with <code>--typed</code> (default: <code>github.com/myorg/&lt;name&gt;</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dynamic-project-default">Dynamic project (default)</h3>
+<p>The default. Creates a Katalog-only project — no Go, no build step. The installed <code>ork</code> binary is your operator.</p>
+<pre><code class="language-bash">ork init my-operator
+cd my-operator
+</code></pre>
+<p><strong>What gets created:</strong></p>
+<pre><code>my-operator/
+  examples/
+    website/
+      website-crd.yaml        sample CRD definition
+      website-cr.yaml         sample CRs to apply
+      website-katalog.yaml    starter Katalog
+  katalogs/                   your CRD declarations go here
+  .env.example                all config options with defaults
+  .gitignore
+  README.md
+</code></pre>
+<p><strong>Start immediately:</strong></p>
+<pre><code class="language-bash">kubectl apply -f examples/website/website-crd.yaml
+ork run --katalog examples/website/website-katalog.yaml
+</code></pre>
+<h3 id="typed-project">Typed project</h3>
+<p>For operators that need compiled Go types, Go hooks, or custom reconcilers. Runs <code>go mod tidy</code> automatically.</p>
+<pre><code class="language-bash">ork init my-operator --typed
+ork init my-operator --typed --module github.com/myorg/my-operator
+</code></pre>
+<p><strong>Additional files created:</strong></p>
+<pre><code>my-operator/
+  cmd/
+    orkestra/
+      main.go       thin entrypoint — calls cli.Execute
+  pkg/
+    runtime/        generated files go here
+    hooks/          write your Go hooks here
+  go.mod
+</code></pre>
+<p><strong>Start with:</strong></p>
+<pre><code class="language-bash">go run ./cmd/orkestra/ run --katalog examples/website/website-katalog.yaml
+</code></pre>
+<hr />
+<h2 id="ork-validate"><code>ork validate</code></h2>
+<p>Validate a Katalog or Komposer. Resolves all sources, merges, and runs the full validation pipeline. Exits non-zero on any error.</p>
+<pre><code class="language-bash">ork validate --katalog &lt;path&gt; [--katalog &lt;path&gt;...]
+</code></pre>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--katalog</code></td>
+<td>Path or URL to a Katalog or Komposer (repeatable)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Examples:</strong></p>
+<pre><code class="language-bash"># Single file
+ork validate --katalog ./katalog.yaml
+
+# Multiple entry points — merged before validation
+ork validate --katalog ./infra.yaml --katalog ./apps.yaml
+
+# Remote
+ork validate --katalog https://raw.github.com/myorg/crds/main/katalog.yaml
+
+# Environment variable
+ork validate --katalog $KATALOG_PATH
+</code></pre>
+<p><strong>Success:</strong></p>
+<pre><code>Success: Katalog is valid
+</code></pre>
+<p><strong>Errors are specific and actionable:</strong></p>
+<pre><code># Missing required field
+CRD &quot;website-staging&quot;: missing required fields: apiTypes.group, apiTypes.version, apiTypes.kind
+
+# Duplicate CRD name
+merger: duplicate CRD &quot;website&quot;: defined in
+  &quot;file:./katalogs/website.yaml&quot; and
+  &quot;url:https://remote/app.yaml&quot;
+
+# Dependency cycle
+dependency cycle detected involving 'project'
+
+# Duplicate GVK
+duplicate GVK detected: demo.orkestra.io/v1alpha1, Kind=Website
+  (CRDs: website and website-staging)
+
+# Katalog with sources block
+&quot;./katalog.yaml&quot;: kind Katalog cannot declare sources —
+  use kind: Komposer to compose multiple Katalogs
+
+# Komposer sourcing another Komposer
+&quot;./komposer.yaml&quot; sources.files[&quot;./other.yaml&quot;]:
+  a Komposer cannot source another Komposer —
+  only Katalog files are valid sources
+</code></pre>
+<hr />
+<h2 id="ork-template"><code>ork template</code></h2>
+<p>Render and print the merged, validated Katalog. Shows the post-merge, post-validation state with all defaults applied — exactly as Orkestra will see it at runtime.</p>
+<pre><code class="language-bash">ork template --katalog &lt;path&gt; [flags]
+</code></pre>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--katalog</code></td>
+<td>Path or URL to a Katalog or Komposer (repeatable)</td>
+</tr>
+<tr>
+<td><code>--json</code></td>
+<td>Output CRDs as JSON</td>
+</tr>
+<tr>
+<td><code>--yaml</code></td>
+<td>Output CRDs as YAML</td>
+</tr>
+<tr>
+<td><code>--graph</code></td>
+<td>Show ASCII dependency graph</td>
+</tr>
+<tr>
+<td><code>--verbose</code>, <code>-v</code></td>
+<td>Show all fields per CRD</td>
+</tr>
+</tbody>
+</table>
+<h3 id="default-summary">Default — summary</h3>
+<p>Shows which CRDs are declared and their dependency relationships.</p>
+<pre><code class="language-bash">ork template --katalog ./katalog.yaml
+</code></pre>
+<pre><code>Success: Katalog is valid
+
+Rendered CRDs:
+  - website  (depends on: orkapp)
+  - orkapp
+  - platformnamespace
+  - database
+  - website-staging  (depends on: orkapp)
+</code></pre>
+<h3 id="-json-full-post-validation-state"><code>--json</code> — full post-validation state</h3>
+<p>Shows every field after defaults are applied. Useful for verifying that modes are set correctly, finalizers are inherited, and overrides took effect.</p>
+<pre><code class="language-bash">ork template --katalog ./katalog.yaml --json
+</code></pre>
+<pre><code class="language-json">[
+  {
+    &quot;name&quot;: &quot;website&quot;,
+    &quot;enabled&quot;: true,
+    &quot;group&quot;: &quot;demo.orkestra.io&quot;,
+    &quot;version&quot;: &quot;v1alpha1&quot;,
+    &quot;kind&quot;: &quot;Website&quot;,
+    &quot;plural&quot;: &quot;websites&quot;,
+    &quot;namespaced&quot;: true,
+    &quot;namespace&quot;: &quot;orkestra&quot;,
+    &quot;workers&quot;: 2,
+    &quot;resync&quot;: &quot;30s&quot;,
+    &quot;dependsOn&quot;: [&quot;orkapp&quot;],
+    &quot;finalizers&quot;: [&quot;finalizer.demo.orkestra.io/website&quot;],
+    &quot;mode&quot;: &quot;dynamic&quot;
+  }
+]
+</code></pre>
+<h3 id="-yaml-yaml-output"><code>--yaml</code> — YAML output</h3>
+<p>Same content as <code>--json</code> in YAML format.</p>
+<pre><code class="language-bash">ork template --katalog ./katalog.yaml --yaml
+</code></pre>
+<pre><code class="language-yaml">- name: website
+  enabled: true
+  group: demo.orkestra.io
+  version: v1alpha1
+  kind: Website
+  plural: websites
+  namespaced: true
+  namespace: orkestra
+  workers: 2
+  resync: 30s
+  dependsOn:
+    - orkapp
+  finalizers:
+    - finalizer.demo.orkestra.io/website
+  mode: dynamic
+</code></pre>
+<h3 id="-graph-dependency-graph"><code>--graph</code> — dependency graph</h3>
+<p>ASCII tree showing which CRDs depend on which. Useful for understanding startup order before running.</p>
+<pre><code class="language-bash">ork template --katalog ./katalog.yaml --graph
+</code></pre>
+<pre><code>Dependency Graph:
+website
+  └─ orkapp
+orkapp
+platformnamespace
+database
+website-staging
+  └─ orkapp
+</code></pre>
+<p>CRDs with no dependencies appear at the root. Indented entries are what the parent depends on — <code>website</code> starts only after <code>orkapp</code> is ready.</p>
+<h3 id="-verbose-all-fields"><code>--verbose</code> — all fields</h3>
+<p>Every field for every CRD in human-readable format.</p>
+<pre><code class="language-bash">ork template --katalog ./katalog.yaml --verbose
+</code></pre>
+<pre><code>Verbose merged katalog output:
+CRD: website
+  Group: demo.orkestra.io
+  Version: v1alpha1
+  Kind: Website
+  Plural: websites
+  Enabled: true
+  Namespaced: true
+  Namespace: orkestra
+  Workers: 2
+  Resync: 30s
+  DependsOn: [orkapp]
+  Finalizers: [finalizer.demo.orkestra.io/website]
+  Mode: dynamic
+  ...
+</code></pre>
+<h3 id="combining-with-a-komposer">Combining with a Komposer</h3>
+<p><code>ork template</code> works with Komposers. All sources are resolved and merged before printing. What you see is the final merged state.</p>
+<pre><code class="language-bash">ork template --katalog ./komposer.yaml --graph
+</code></pre>
+<pre><code>Dependency Graph:
+website
+platformnamespace
+database    ← from Helm chart, overridden inline (workers: 4)
+cache       ← from Helm chart
+</code></pre>
+<hr />
+<h2 id="ork-generate-runtime"><code>ork generate runtime</code></h2>
+<p>Generate <code>zz_generated_runtime_registry.go</code> from the Katalog. Only needed when your operator uses typed CRDs, Go hooks, or custom constructors. Dynamic template operators do not need this step.</p>
+<pre><code class="language-bash">ork generate runtime --katalog &lt;path&gt; [flags]
+</code></pre>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--katalog</code></td>
+<td>Path or URL to a Katalog or Komposer (repeatable)</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Print generated output to stdout without writing files</td>
+</tr>
+</tbody>
+</table>
+<p><strong>When you need it:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Needed?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dynamic CRD with <code>onCreate</code>/<code>onReconcile</code>/<code>onDelete</code> templates</td>
+<td><strong>No</strong></td>
+</tr>
+<tr>
+<td>Dynamic CRD with <code>reconciler.hooks</code> declared</td>
+<td><strong>Yes</strong></td>
+</tr>
+<tr>
+<td>Typed CRD (<code>apiTypes.location</code> set)</td>
+<td><strong>Yes</strong></td>
+</tr>
+<tr>
+<td><code>reconciler.default: false</code> with constructor</td>
+<td><strong>Yes</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Examples:</strong></p>
+<pre><code class="language-bash"># Generate from a single Katalog
+ork generate runtime --katalog ./katalog.yaml
+
+# Preview without writing — use in CI to verify registry is up to date
+ork generate runtime --katalog ./katalog.yaml --dry-run
+
+# Generate from a Komposer
+ork generate runtime --katalog ./komposer.yaml
+
+# Multiple sources
+ork generate runtime --katalog ./infra.yaml --katalog ./apps.yaml
+</code></pre>
+<p><strong>What it generates:</strong></p>
+<pre><code class="language-go">// pkg/runtime/zz_generated_runtime_registry.go
+func RegisterRuntimeObjects() {
+    // ObjectRegistry + ListRegistry entries for typed CRDs
+    // HookRegistry entries for Go hooks
+    // ReconcilerRegistry entries for custom constructors
+}
+
+func RegisterTypedScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
+    // AddToScheme calls for each typed CRD
+}
+</code></pre>
+<p><strong>After generating, always run:</strong></p>
+<pre><code class="language-bash">go mod tidy
+</code></pre>
+<p><strong>Pure dynamic output:</strong></p>
+<pre><code>nothing to generate — all CRDs use declarative templates
+(interpreted at runtime by GenericReconciler, no generate step needed)
+</code></pre>
+<hr />
+<h2 id="ork-run"><code>ork run</code></h2>
+<p>Start the Orkestra operator runtime.</p>
+<pre><code class="language-bash">ork run --katalog &lt;path&gt; [flags]
+</code></pre>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--katalog</code></td>
+<td>Path or URL to a Katalog or Komposer (repeatable)</td>
+</tr>
+</tbody>
+</table>
+<p>The merger runs first — if merging or validation fails, the runtime never starts. Fail fast before any reconcilers start.</p>
+<p><strong>Examples:</strong></p>
+<pre><code class="language-bash"># Single Katalog
+ork run --katalog ./katalog.yaml
+
+# Komposer
+ork run --katalog ./komposer.yaml
+
+# Multiple entry points
+ork run --katalog ./infra.yaml --katalog ./apps.yaml
+
+# Remote
+ork run --katalog https://config.company.com/crds/production-katalog.yaml
+
+# Environment variable
+ork run --katalog $KATALOG_PATH
+</code></pre>
+<p><strong>What happens after starting:</strong></p>
+<pre><code>katalogs merged     total=5 enabled=5
+all informer caches synced
+starting 2 workers for demo.orkestra.io/v1alpha1, Kind=Website
+website workers started and ready
+starting 3 workers for orkestra.konduktor.io/v1alpha1, Kind=OrkApp
+orkapp workers started and ready
+</code></pre>
+<p><strong>Endpoints available immediately:</strong></p>
+<pre><code class="language-bash">GET /health                       # Orkestra liveness
+GET /ready                        # Orkestra readiness
+GET /metrics                       # Prometheus metrics
+GET /katalog                       # all CRDs with health and dependency graph
+GET /katalog/{crd}                 # single CRD config and reconcile stats
+GET /katalog/{crd}/health          # 200 healthy / 503 degraded
+</code></pre>
+<hr />
+<h2 id="ork-status"><code>ork status</code></h2>
+<p>Show the health and reconcile statistics of a running Orkestra operator. Connects to the operator's health API.</p>
+<pre><code class="language-bash">ork status [flags]
+</code></pre>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--url</code></td>
+<td>Operator URL (default: <code>http://localhost:8080</code>)</td>
+</tr>
+<tr>
+<td><code>--timeout</code></td>
+<td>Request timeout (default: <code>5s</code>)</td>
+</tr>
+<tr>
+<td><code>-w</code>, <code>--watch</code></td>
+<td>Watch for changes, refresh every 5 seconds</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Port-forwarding a cluster deployment:</strong></p>
+<pre><code class="language-bash">kubectl port-forward svc/orkestra 8080:8080 -n orkestra-system
+ork status
+</code></pre>
+<p><strong>Example output:</strong></p>
+<pre><code>Orkestra Status
+Operator:            my-platform-operator
+Health:              healthy
+CRDs:                5 total, 5 enabled
+Uptime:              2d 4h 32m
+
+CRD                    WORKERS   QUEUE   HEALTH   RECONCILES   ERR%   RESOURCES   UPTIME
+website                2/2       0       ●        1,247        0.0%   3           2d 4h 25m
+platformnamespace      2/2       0       ●        412          0.0%   6           2d 4h 32m
+application            4/4       3       ●        8,891        0.2%   12          2d 4h 30m
+database               2/2       0       ●        201          0.0%   4           2d 4h 20m
+cache                  2/2       0       ●        89           0.0%   2           2d 4h 15m
+</code></pre>
+<p><strong>Columns:</strong></p>
+<ul>
+<li><code>WORKERS</code> — active workers / configured workers</li>
+<li><code>QUEUE</code> — current workqueue depth (non-zero means backlog building up)</li>
+<li><code>HEALTH</code> — green ● healthy / red ● degraded</li>
+<li><code>RECONCILES</code> — total reconcile count since operator started</li>
+<li><code>ERR%</code> — percentage of reconciles that returned an error</li>
+<li><code>RESOURCES</code> — live CR count from the informer cache</li>
+<li><code>UPTIME</code> — uptime per CRD</li>
+</ul>
+<hr />
+<h2 id="inspect-commands">Inspect commands</h2>
+<p>The inspect commands let you observe and interact with Orkestra-managed resources directly from the terminal. No need to construct <code>kubectl</code> commands or know the API group of a CRD — just use the name you declared in the Katalog.</p>
+<p>All inspect commands read from the cluster — they require <code>KUBECONFIG</code> or <code>--kubeconfig</code> to be set.</p>
+<p>For full documentation, see the <a href="../inspect-live-crd/">Inspect Commands Reference</a>.</p>
+<h3 id="ork-get"><code>ork get</code></h3>
+<p>List all Custom Resources of a given CRD type.</p>
+<pre><code class="language-bash">ork get &lt;crd&gt; [flags]
+</code></pre>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n, --namespace</code></td>
+<td>List resources in a specific namespace</td>
+</tr>
+<tr>
+<td><code>-A, --all-namespaces</code></td>
+<td>List resources across all namespaces</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example:</strong></p>
+<pre><code class="language-bash">ork get websites
+</code></pre>
+<pre><code>NAME           STATUS    AGE
+landing-page   Ready     2d
+my-api         Ready     5h
+my-blog        Ready     3d
+</code></pre>
+<h3 id="ork-describe"><code>ork describe</code></h3>
+<p>Show the full details of a named CR — spec, status, and recent events.</p>
+<pre><code class="language-bash">ork describe &lt;crd&gt; &lt;name&gt; [flags]
+</code></pre>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n, --namespace</code></td>
+<td>Namespace of the resource</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ork-reconcile"><code>ork reconcile</code></h3>
+<p>Trigger reconciliation by patching the <code>orkestra.konductor.io/reconcile-at</code> annotation.</p>
+<pre><code class="language-bash">ork reconcile &lt;crd&gt; [name] [flags]
+ork reconcile all [flags]
+</code></pre>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--sleep</code></td>
+<td>Pause between CRD types (default: <code>3s</code>)</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>Print what would be reconciled without making changes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ork-events"><code>ork events</code></h3>
+<p>List Kubernetes events for a CRD type or a specific CR.</p>
+<pre><code class="language-bash">ork events &lt;crd&gt; [name] [flags]
+</code></pre>
+<p><strong>Flags:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-n, --namespace</code></td>
+<td>Namespace (namespaced CRDs only)</td>
+</tr>
+<tr>
+<td><code>--tail</code></td>
+<td>Number of most recent events to show (default: <code>25</code>, <code>0</code> = all)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ork-version"><code>ork version</code></h2>
+<p>Print version, commit, and build date.</p>
+<pre><code class="language-bash">ork version
+</code></pre>
+<pre><code>   ___       _              _
+  / _ \ _  _| |___ _ _  ___| |_ _ _ __ _
+ | (_) | || | / -_) ' \/ -_)  _| '_/ _` |
+  \___/ \_,_|_\___|_||_\___|\__|_| \__,_|
+          O R K E S T R A
+
+Orkestra version: v1.0.0
+Commit:           abc1234f
+Built:            2026-03-20T10:00:00Z
+</code></pre>
+<p>In development builds (not from a release binary): <code>version: dev</code>.</p>
+<hr />
+<h2 id="typical-workflows">Typical workflows</h2>
+<h3 id="zero-code-dynamic-operator">Zero-code dynamic operator</h3>
+<pre><code class="language-bash"># 1. Scaffold
+ork init my-operator &amp;&amp; cd my-operator
+
+# 2. Edit examples/website/website-katalog.yaml with your CRD
+# 3. Validate before running
+ork validate --katalog examples/website/website-katalog.yaml
+
+# 4. Preview what will run
+ork template --katalog examples/website/website-katalog.yaml --graph
+
+# 5. Apply CRD and run
+kubectl apply -f examples/website/website-crd.yaml
+ork run --katalog examples/website/website-katalog.yaml
+
+# 6. Monitor
+ork status -w
+</code></pre>
+<h3 id="typed-operator-with-go-hooks">Typed operator with Go hooks</h3>
+<pre><code class="language-bash"># 1. Scaffold
+ork init my-operator --typed &amp;&amp; cd my-operator
+
+# 2. Write your Katalog with reconciler.hooks declared
+# 3. Validate
+ork validate --katalog katalogs/my-katalog.yaml
+
+# 4. Generate runtime wiring
+ork generate runtime --katalog katalogs/my-katalog.yaml
+
+# 5. Install dependencies
+go mod tidy
+
+# 6. Run
+go run ./cmd/orkestra/ --katalog katalogs/my-katalog.yaml
+</code></pre>
+<h3 id="komposer-with-multiple-sources">Komposer with multiple sources</h3>
+<pre><code class="language-bash"># 1. Validate the composed result
+ork validate --katalog ./komposer.yaml
+
+# 2. See what sources contributed and final state
+ork template --katalog ./komposer.yaml --json | jq '.[].name'
+
+# 3. Verify the dependency graph
+ork template --katalog ./komposer.yaml --graph
+
+# 4. Run
+ork run --katalog ./komposer.yaml
+</code></pre>
+<h3 id="ci-pipeline">CI pipeline</h3>
+<pre><code class="language-bash"># Validate in CI — fail fast before deploying
+ork validate --katalog ./katalog.yaml
+
+# Verify generated registry is up to date (for typed operators)
+ork generate runtime --katalog ./katalog.yaml --dry-run
+</code></pre>
+<hr />
+<h2 id="exit-codes">Exit codes</h2>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>Success</td>
+</tr>
+<tr>
+<td>1</td>
+<td>Validation error, merge error, or runtime failure</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Invalid flags or arguments</td>
+</tr>
+</tbody>
+</table></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+                <p>Orkestra</p>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

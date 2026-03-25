@@ -156,12 +156,12 @@ ork status -w
 curl localhost:8080/katalog/website/health
 ```
 
-For detailed installation options, GPG verification, and production deployment, see the [Installation Guide](./docs/deployment.md#installation).
+For detailed installation options, GPG verification, and production deployment, see the [Installation Guide](./docs/guides/deployment.md#installation).
 
 ---
 
 > For a step‑by‑step walkthrough of what happens during reconcile, see  
-> 👉 **[Start Here](./docs/start-here.md#9-what-just-happened)**.
+> 👉 **[Start Here](./docs/guides/getting-started.md#9-what-just-happened)**.
 
 
 ---
@@ -175,16 +175,16 @@ Orkestra is built to be predictable and resilient:
 - **Explicit drift correction** — Templates with `onCreate.reconcile: true` or a separate `onReconcile` block run on every reconcile, correcting manual changes to your resources.
 - **Non‑blocking runtime** — The controller starts even if some CRDs are missing. Workers start when CRDs appear.
 
-Full details: [Trust & Failure Model](./docs/trust-and-failure-model.md)
+Full details: [Trust & Failure Model](./docs/core/trust-and-failure-model.md)
 
 ---
 
 ## Documentation
 
-- **[Start Here](./docs/start-here.md)** — Onboarding guide  
-- **[Katalog](./docs/katalog.md)** — Declare operator behavior  
-- **[Komposer](./docs/komposer.md)** — Compose multiple Katalogs  
-- **[Full Documentation Index](./docs/README.md)** — All guides, references, and internals  
+- **[Start Here](./docs/guides/getting-started.md)** — Onboarding guide  
+- **[Katalog](./docs/concepts/katalog.md)** — Declare operator behavior  
+- **[Komposer](./docs/concepts/komposer.md)** — Compose multiple Katalogs  
+- **[Full Documentation Index](./docs/index.md)** — All guides, references, and internals  
 
 ---
 

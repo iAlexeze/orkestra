@@ -14,7 +14,6 @@ import (
 
 // Resolver evaluates Go text/template expressions against a live CR object.
 //
-// Option B inference — no explicit fromCRD/fromKatalog split required.
 // Any field value containing "{{" is treated as a template expression and
 // evaluated against the CR. Any value without "{{" is returned as-is.
 //

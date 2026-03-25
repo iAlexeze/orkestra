@@ -1,0 +1,59 @@
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Komposer
+metadata:
+  name: platform-komposer
+  description: >-
+    Composes CRD definitions from multiple sources into one runtime.
+    Demonstrates files, Helm charts, and inline overrides together.
+
+sources:
+  # ── File sources ───────────────────────────────────────────────────────
+  # Each file is a standalone Katalog. The merger loads them all
+  # and deduplicates by CRD name.
+  files:
+    - examples/website/website-katalog.yaml
+    - examples/platform-namespace/platform-namespace-katalog.yaml
+    # - $PLATFORM_XYZ_KATALOG
+
+    # Authenticated
+    # - url: https://internal.company.com/crds/platform-katalog.yaml
+    #   auth:
+    #     type: bearer # Or github or basic
+    #     fromEnv: PLATFORM_KATALOG_TOKEN
+
+  # ── Helm source ────────────────────────────────────────────────────────
+  # The chart renders a Katalog template. Orkestra extracts the CRD
+  # definitions from the rendered output.
+  helm:
+    - repo: examples/komposer                       # local chart for this example. For better experience, use absolute paths
+      chart: helm-example
+      version: 0.1.0
+      valueFiles:
+        - examples/komposer/values/overrides.yaml    # override chart defaults per environment
+  registry:
+    - katalog: platform-manager
+      version: main
+      description: "A reusable platform manager"
+
+spec:
+  # ── Inline CRDs ────────────────────────────────────────────────────────
+  # Merged last. Win on name conflict — override any source definition.
+  # Use this for environment-specific adjustments without forking the source.
+  crds:
+
+    # Override the 'database' CRD from the Helm chart.
+    # The chart defines it with workers: 2 — this environment needs 4.
+    - name: database
+      enabled: true
+      namespaced: false
+      workers: 4                     # production override
+      resync: 2m
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: Database
+        plural: databases
+      reconciler:
+        default: true
+      description: >-
+        Database CRD — overridden inline with production worker count.

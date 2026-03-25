@@ -1,0 +1,68 @@
+site_name: Orkestra
+site_description: Declarative Operator Runtime for Kubernetes
+site_url: https://orkestra.sh
+site_author: "Orkestra Team"
+copyright: "Orkestra"
+
+plugins:
+    - search
+    - mermaid2
+
+nav:
+  - Getting Started:
+      - Installation: guides/getting-started.md
+      - Writing Your First Katalog: guides/writing-your-first-katalog.md
+      - Writing Hooks: guides/writing-hooks.md
+      - Writing Custom Reconcilers: guides/writing-custom-reconcilers.md
+      - Testing Operators: guides/testing-operators.md
+
+
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Runtime Flow: architecture/runtime-flow.md
+      - CRD Lifecycle: architecture/crd-lifecycle.md
+      - Design Philosophy: architecture/design-philosophy.md
+      - Architecture Diagrams: architecture/architecture-diagrams.md
+      - Full Architecture View: architecture/full-architecture-view.md
+
+  - Concepts:
+      - Katalog: concepts/katalog.md
+      - Komposer: concepts/komposer.md
+      - Conditional Provisioning: concepts/conditional-provisioning.md
+      - Templating: concepts/templating.md
+      - Dependency Model: concepts/dependency-model.md
+      - Health Subsystem: concepts/health-subsystem.md
+      - Reconciler Model: concepts/reconciler-model.md
+
+#   - Internals:
+#       - Startup Sequence: internals/startup-sequence.md
+#       - konstructOrkestra: internals/konstruct-orkestra.md
+#       - Dynamic vs Typed CRDs: internals/dynamic-vs-typed.md
+#       - Informer Factory: internals/informer-factory.md
+#       - Dependency Kontroller: internals/dependency-kontroller.md
+#       - Reconciler Pipeline: internals/reconciler-pipeline.md
+#       - Observability: internals/observability.md
+#       - Shutdown: internals/shutdown.md
+
+  - Guides:
+      - Production Deployment: guides/deployment/#helm-deployment
+      - Extending Orkestra: guides/extending-orkestra.md
+      - Choosing Katalog vs Komposer: guides/choosing-katalog-vs-komposer.md
+      - Use Cases: guides/use-cases.md
+
+  - Reference:
+      - Katalog Schema: reference/katalog-schema.md
+      - Komposer Schema: reference/komposer-schema.md
+      - Metrics: reference/metrics.md
+    #   - API: reference/api.md
+      - CLI: reference/cli.md
+      - Inspect Live CRD: reference/inspect-live-crd.md
+
+  - Publications:
+      - Declarative Operators Whitepaper: publications/declarative-operators-whitepaper.md
+      - Why Orkestra: publications/why-orkestra.md
+      - Metrics Analysis: publications/metrics-analysis.md
+      - Your CRD is Enough: publications/your-crd-is-enough.md
+      - Roadmap: publications/roadmap.md
+
+  

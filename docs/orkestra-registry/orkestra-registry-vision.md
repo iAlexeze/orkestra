@@ -273,6 +273,6 @@ This is the future Orkestra is building — one registry entry at a time.
 
 ## What's next
 
-- [Registry Technical Documentation](./technical%20documentation.md)
+- [Registry Technical Documentation](orkestra-registry-technical-documentation.md)
   How the resgistry works today.
   

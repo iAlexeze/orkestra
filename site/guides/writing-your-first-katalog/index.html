@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <meta name="author" content="Orkestra Team">
+        <link rel="canonical" href="https://orkestra.sh/guides/writing-your-first-katalog/">
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Writing Your First Katalog - Orkestra</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">Orkestra</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Getting Started</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../getting-started/" class="dropdown-item">Installation</a>
+</li>
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">Writing Your First Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../writing-hooks/" class="dropdown-item">Writing Hooks</a>
+</li>
+                                    
+<li>
+    <a href="../writing-custom-reconcilers/" class="dropdown-item">Writing Custom Reconcilers</a>
+</li>
+                                    
+<li>
+    <a href="../testing-operators/" class="dropdown-item">Testing Operators</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Architecture</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../architecture/overview/" class="dropdown-item">Overview</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/runtime-flow/" class="dropdown-item">Runtime Flow</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/crd-lifecycle/" class="dropdown-item">CRD Lifecycle</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/design-philosophy/" class="dropdown-item">Design Philosophy</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/architecture-diagrams/" class="dropdown-item">Architecture Diagrams</a>
+</li>
+                                    
+<li>
+    <a href="../../architecture/full-architecture-view/" class="dropdown-item">Full Architecture View</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Concepts</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../concepts/katalog/" class="dropdown-item">Katalog</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/komposer/" class="dropdown-item">Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/conditional-provisioning/" class="dropdown-item">Conditional Provisioning</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/templating/" class="dropdown-item">Templating</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/dependency-model/" class="dropdown-item">Dependency Model</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/health-subsystem/" class="dropdown-item">Health Subsystem</a>
+</li>
+                                    
+<li>
+    <a href="../../concepts/reconciler-model/" class="dropdown-item">Reconciler Model</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Guides</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../deployment/#helm-deployment" class="dropdown-item">Production Deployment</a>
+</li>
+                                    
+<li>
+    <a href="../extending-orkestra/" class="dropdown-item">Extending Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../choosing-katalog-vs-komposer/" class="dropdown-item">Choosing Katalog vs Komposer</a>
+</li>
+                                    
+<li>
+    <a href="../use-cases/" class="dropdown-item">Use Cases</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Reference</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../reference/katalog-schema/" class="dropdown-item">Katalog Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/komposer-schema/" class="dropdown-item">Komposer Schema</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/metrics/" class="dropdown-item">Metrics</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/cli/" class="dropdown-item">CLI</a>
+</li>
+                                    
+<li>
+    <a href="../../reference/inspect-live-crd/" class="dropdown-item">Inspect Live CRD</a>
+</li>
+                                </ul>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Publications</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../publications/declarative-operators-whitepaper/" class="dropdown-item">Declarative Operators Whitepaper</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/why-orkestra/" class="dropdown-item">Why Orkestra</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/metrics-analysis/" class="dropdown-item">Metrics Analysis</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/your-crd-is-enough/" class="dropdown-item">Your CRD is Enough</a>
+</li>
+                                    
+<li>
+    <a href="../../publications/roadmap/" class="dropdown-item">Roadmap</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../getting-started/" class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" href="../writing-hooks/" class="nav-link">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#writing-your-first-katalog" class="nav-link">Writing Your First Katalog</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#the-simplest-katalog" class="nav-link">The Simplest Katalog</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#adding-resources" class="nav-link">Adding Resources</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#adding-a-service" class="nav-link">Adding a Service</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#adding-a-secret" class="nav-link">Adding a Secret</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#adding-a-configmap" class="nav-link">Adding a ConfigMap</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#conditional-resources" class="nav-link">Conditional Resources</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#dependencies-between-crds" class="nav-link">Dependencies Between CRDs</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#complete-example" class="nav-link">Complete Example</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#next-steps" class="nav-link">Next Steps</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="writing-your-first-katalog">Writing Your First Katalog</h1>
+<p>Now that you have Orkestra installed and have run the example operator, let's build your own Katalog from scratch.</p>
+<p>A <strong>Katalog</strong> is a YAML file that declares:
+- What CRDs you want to manage
+- What resources to create for each CR
+- How to reconcile them</p>
+<hr />
+<h2 id="the-simplest-katalog">The Simplest Katalog</h2>
+<p>Create a file called <code>my-katalog.yaml</code>:</p>
+<pre><code class="language-yaml">apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: my-first-katalog
+spec:
+  crds:
+    - name: myapp
+      apiTypes:
+        group: demo.myorg.io
+        version: v1alpha1
+        kind: MyApp
+        plural: myapps
+      reconciler:
+        default: true
+</code></pre>
+<p>This Katalog tells Orkestra:
+- Watch for <code>MyApp</code> resources in the cluster
+- Use the default reconciler (no custom code needed)
+- Do nothing else (no resources created)</p>
+<hr />
+<h2 id="adding-resources">Adding Resources</h2>
+<p>Let's create a Deployment when a <code>MyApp</code> CR is applied:</p>
+<pre><code class="language-yaml">spec:
+  crds:
+    - name: myapp
+      apiTypes:
+        group: demo.myorg.io
+        version: v1alpha1
+        kind: MyApp
+        plural: myapps
+      reconciler:
+        default: true
+        onCreate:
+          deployments:
+            - name: &quot;{{ .metadata.name }}-app&quot;
+              image: &quot;{{ .spec.image }}&quot;
+              replicas: &quot;{{ .spec.replicas }}&quot;
+              port: &quot;{{ .spec.port }}&quot;
+              namespace: &quot;{{ .metadata.namespace }}&quot;
+              reconcile: true
+</code></pre>
+<h3 id="understanding-templates">Understanding Templates</h3>
+<p>Values inside <code>{{ }}</code> are Go templates evaluated against the live CR:</p>
+<table>
+<thead>
+<tr>
+<th>Template</th>
+<th>Resolves To</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{{ .metadata.name }}</code></td>
+<td>The CR's name</td>
+</tr>
+<tr>
+<td><code>{{ .spec.image }}</code></td>
+<td>The value of <code>spec.image</code> in the CR</td>
+</tr>
+<tr>
+<td><code>{{ .spec.replicas }}</code></td>
+<td>The value of <code>spec.replicas</code></td>
+</tr>
+<tr>
+<td><code>{{ .metadata.namespace }}</code></td>
+<td>The CR's namespace</td>
+</tr>
+</tbody>
+</table>
+<p>Static values are used as-is.</p>
+<hr />
+<h2 id="adding-a-service">Adding a Service</h2>
+<pre><code class="language-yaml">onCreate:
+  deployments:
+    # ... deployment config ...
+  services:
+    - name: &quot;{{ .metadata.name }}-svc&quot;
+      type: &quot;{{ .spec.serviceType }}&quot;
+      port: &quot;80&quot;
+      targetPort: &quot;{{ .spec.port }}&quot;
+      namespace: &quot;{{ .metadata.namespace }}&quot;
+      reconcile: true
+</code></pre>
+<hr />
+<h2 id="adding-a-secret">Adding a Secret</h2>
+<p>Secrets can be created from static data or copied from existing secrets:</p>
+<pre><code class="language-yaml">onCreate:
+  secrets:
+    # Static secret
+    - name: &quot;{{ .metadata.name }}-creds&quot;
+      data:
+        USERNAME: admin
+        PASSWORD: &quot;{{ .spec.password }}&quot;
+
+    # Copy from existing secret
+    - name: db-creds
+      fromSecret: master-db-creds
+      fromNamespace: platform
+      toNamespaces:
+        - &quot;{{ .metadata.namespace }}&quot;
+      reconcile: true
+</code></pre>
+<p>The <code>reconcile: true</code> flag ensures the secret stays in sync with its source.</p>
+<hr />
+<h2 id="adding-a-configmap">Adding a ConfigMap</h2>
+<pre><code class="language-yaml">onCreate:
+  configMaps:
+    - name: &quot;{{ .metadata.name }}-config&quot;
+      data:
+        LOG_LEVEL: &quot;{{ .spec.logLevel }}&quot;
+        MAX_CONNECTIONS: &quot;{{ .spec.maxConnections }}&quot;
+      reconcile: true
+</code></pre>
+<hr />
+<h2 id="conditional-resources">Conditional Resources</h2>
+<p>Sometimes you only want to create a resource under certain conditions. Use the <code>when</code> block:</p>
+<pre><code class="language-yaml">services:
+  - name: &quot;{{ .metadata.name }}-public-svc&quot;
+    type: LoadBalancer
+    port: &quot;80&quot;
+    targetPort: &quot;{{ .spec.port }}&quot;
+    when:
+      - field: spec.exposePublicly
+        equals: &quot;true&quot;
+</code></pre>
+<p>The service is only created when <code>spec.exposePublicly: true</code> in the CR.</p>
+<hr />
+<h2 id="dependencies-between-crds">Dependencies Between CRDs</h2>
+<p>If your operator manages multiple CRDs, you can declare dependencies:</p>
+<pre><code class="language-yaml">crds:
+  - name: database
+    # ... config ...
+  - name: application
+    dependsOn:
+      - database
+    # ... config ...
+</code></pre>
+<p>Orkestra ensures <code>database</code> starts before <code>application</code>.</p>
+<hr />
+<h2 id="complete-example">Complete Example</h2>
+<p>Here's a complete Katalog for a simple web application:</p>
+<pre><code class="language-yaml">apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: webapp-katalog
+spec:
+  crds:
+    - name: webapp
+      apiTypes:
+        group: demo.myorg.io
+        version: v1alpha1
+        kind: WebApp
+        plural: webapps
+      reconciler:
+        default: true
+        onCreate:
+          secrets:
+            - name: &quot;{{ .metadata.name }}-creds&quot;
+              data:
+                API_KEY: &quot;{{ .spec.apiKey }}&quot;
+          configMaps:
+            - name: &quot;{{ .metadata.name }}-config&quot;
+              data:
+                LOG_LEVEL: &quot;{{ .spec.logLevel }}&quot;
+          deployments:
+            - name: &quot;{{ .metadata.name }}&quot;
+              image: &quot;{{ .spec.image }}&quot;
+              replicas: &quot;{{ .spec.replicas }}&quot;
+              port: &quot;{{ .spec.port }}&quot;
+              reconcile: true
+          services:
+            - name: &quot;{{ .metadata.name }}-svc&quot;
+              type: &quot;{{ .spec.serviceType }}&quot;
+              port: &quot;80&quot;
+              targetPort: &quot;{{ .spec.port }}&quot;
+              reconcile: true
+              when:
+                - field: spec.exposePublicly
+                  equals: &quot;true&quot;
+</code></pre>
+<hr />
+<h2 id="next-steps">Next Steps</h2>
+<p>You now know how to write a Katalog that creates resources from CRs. Next, learn how to add <strong>Go hooks</strong> for custom logic when templates aren't enough.</p>
+<p>👉 <a href="../writing-hooks/">Writing Hooks →</a></p>
+<hr /></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+                <p>Orkestra</p>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>

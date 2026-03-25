@@ -1,0 +1,80 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: platformnamespaces.platform.orkestra.io
+spec:
+  group: platform.orkestra.io
+  scope: Cluster
+  names:
+    plural: platformnamespaces
+    singular: platformnamespace
+    kind: PlatformNamespace
+    listKind: PlatformNamespaceList
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - team
+                - environment
+              properties:
+                team:
+                  type: string
+                  description: Team that owns this namespace.
+                  example: payments
+                environment:
+                  type: string
+                  enum:
+                    - development
+                    - staging
+                    - production
+                  description: Target environment.
+                targetNamespace:
+                  type: string
+                  description: >-
+                    Name of the Kubernetes namespace to provision.
+                    Defaults to "{team}-{environment}" if not set.
+                logLevel:
+                  type: string
+                  default: info
+                  enum:
+                    - debug
+                    - info
+                    - warn
+                    - error
+                  description: Log level for workloads in this namespace.
+                pullSecret:
+                  type: string
+                  description: >-
+                    Name of an existing Secret in the platform namespace
+                    to copy into the provisioned namespace.
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                namespace:
+                  type: string
+                message:
+                  type: string
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Team
+          type: string
+          jsonPath: .spec.team
+        - name: Environment
+          type: string
+          jsonPath: .spec.environment
+        - name: Namespace
+          type: string
+          jsonPath: .spec.targetNamespace
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
