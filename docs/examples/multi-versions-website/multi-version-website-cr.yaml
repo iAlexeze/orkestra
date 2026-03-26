@@ -1,0 +1,28 @@
+#
+apiVersion: demo.orkestra.io/v1
+kind: Website
+metadata:
+  name: production-site
+  namespace: orkestra
+spec:
+  image: nginx:1.27
+  replicas: 5
+  port: 80
+
+  # v1‑only field
+  seo:
+    enabled: true
+
+---
+apiVersion: demo.orkestra.io/v1alpha1
+kind: Website
+metadata:
+  name: my-blog
+  namespace: orkestra
+spec:
+  image: nginx:1.25
+  replicas: 2
+  port: 80
+
+  # v1alpha1‑only field
+  theme: "dark"

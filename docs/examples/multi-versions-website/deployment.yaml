@@ -1,0 +1,227 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: orkestra
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: orkestra
+subjects:
+  - kind: ServiceAccount
+    name: orkestra
+    namespace: orkestra
+---
+# ───────────────────────────────────────────────────────────────
+# Deployment — Orkestra Runtime
+# ───────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orkestra-runtime
+  namespace: orkestra
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: orkestra-runtime
+  template:
+    metadata:
+      labels:
+        app: orkestra-runtime
+    spec:
+      serviceAccountName: orkestra
+
+      # Needed for distroless to read mounted TLS secrets
+      securityContext:
+        fsGroup: 65532
+
+      containers:
+      - name: orkestra
+        image: ialexeze/ork:changer-0.1
+
+        env:
+          - name: ENABLE_CONVERSION
+            value: "true"
+          - name: HEALTH_PORT
+            value: "8080"
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+
+          # Correct: file paths, not secret contents
+          - name: TLS_CERT
+            value: "/tls/tls.crt"
+          - name: TLS_KEY
+            value: "/tls/tls.key"
+
+        args:
+          - run
+          - --katalog
+          - /katalogs/katalog.yaml
+
+        ports:
+          - containerPort: 8080
+          - containerPort: 8443
+
+        volumeMounts:
+          - name: katalogs
+            mountPath: /katalogs
+          - name: tls
+            mountPath: /tls
+            readOnly: true
+        resources: {}
+
+      volumes:
+        - name: katalogs
+          configMap:
+            name: orkestra-katalog
+
+        - name: tls
+          secret:
+            secretName: orkestra-tls
+---
+# ───────────────────────────────────────────────────────────────
+# Service — exposes health + conversion webhook
+# MUST match CRD conversion.webhook.clientConfig.service
+# ───────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: orkestra
+  namespace: orkestra
+spec:
+  selector:
+    app: orkestra-runtime
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: https
+      port: 8443
+      targetPort: 8443
+---
+# ───────────────────────────────────────────────────────────────
+# Katalog — Declarative reconciliation + conversion rules
+# ───────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orkestra-katalog
+  namespace: orkestra
+data:
+  katalog.yaml: |
+
+
+    apiVersion: orkestra.konductor.io/v1Alpha
+    kind: Katalog
+    metadata:
+      name: multi-version-website
+      description: >-
+        Declarative orchestration and version conversion for the Website CRD.
+        Supports v1alpha1 and v1 simultaneously with zero-code conversion.
+
+    spec:
+      crds:
+        # ──────────────────────────────────────────────────────────────────────────
+        # v1alpha1 — the older version
+        # Fields: image, replicas, port, theme
+        #
+        # No conversion rules here. v1alpha1 is not the storage version.
+        # Kubernetes stores all objects as v1 and converts on read/write.
+        # Reconciliation still works — Orkestra receives v1alpha1 objects
+        # after Kubernetes converts them from storage (v1) for the informer.
+        # ──────────────────────────────────────────────────────────────────────────
+        - name: website-v1alpha1
+          apiTypes:
+            group: demo.orkestra.io
+            version: v1alpha1
+            kind: Website
+            plural: websites
+
+          reconciler:
+            default: true
+            onCreate:
+              deployments:
+                - name: "{{ .metadata.name }}"
+                  image: "{{ .spec.image }}"
+                  replicas: "{{ .spec.replicas }}"
+                  port: "{{ .spec.port }}"
+                  reconcile: true
+
+        # ──────────────────────────────────────────────────────────────────────────
+        # v1 — the storage version
+        # Fields: image, replicas, port, seo.enabled
+        # Removed: theme (present in v1alpha1 only)
+        #
+        # conversion block lives here because v1 is storageVersion.
+        # Orkestra serves /convert and applies these rules declaratively.
+        # ──────────────────────────────────────────────────────────────────────────
+        - name: website-v1
+          apiTypes:
+            group: demo.orkestra.io
+            version: v1
+            kind: Website
+            plural: websites
+
+          reconciler:
+            default: true
+            onCreate:
+              deployments:
+                - name: "{{ .metadata.name }}"
+                  image: "{{ .spec.image }}"
+                  replicas: "{{ .spec.replicas }}"
+                  port: "{{ .spec.port }}"
+                  reconcile: true
+
+          # ── Declarative conversion rules ───────────────────────────────────────
+          #
+          # storageVersion: v1
+          #   All Website objects are stored internally as v1.
+          #
+          # paths:
+          #   Each path declares an explicit from → to pair.
+          #   Both are bare version strings — not full apiVersion strings.
+          #   The spec is the OUTPUT in the target version's format.
+          #   Template expressions resolve against the SOURCE object.
+          #
+          # Two paths are needed for a two-version CRD:
+          #   v1alpha1 → v1  (up-conversion: reading an old object from etcd)
+          #   v1 → v1alpha1  (down-conversion: client requests the old version)
+          # ──────────────────────────────────────────────────────────────────────
+          conversion:
+            storageVersion: v1
+
+            paths:
+              # ── UP-CONVERSION: v1alpha1 → v1 ──────────────────────────────────
+              # Kubernetes has a v1alpha1 object in etcd and needs to serve it as v1.
+              # Or: a client POSTs a v1alpha1 object and Kubernetes needs to store it.
+              #
+              # v1 adds: seo.enabled
+              # v1 removes: theme
+              #
+              # Provide seo.enabled default because v1alpha1 objects have no SEO data.
+              - from: v1alpha1
+                to: v1
+                spec:
+                  image: "{{ .spec.image }}"
+                  replicas: "{{ .spec.replicas }}"
+                  port: "{{ .spec.port }}"
+                  seo:
+                    enabled: false          # default — v1alpha1 has no seo field
+
+              # ── DOWN-CONVERSION: v1 → v1alpha1 ────────────────────────────────
+              # A client requests the v1alpha1 version of an object stored as v1.
+              # Kubernetes calls /convert asking Orkestra to transform v1 → v1alpha1.
+              #
+              # v1alpha1 adds: theme
+              # v1alpha1 removes: seo.enabled
+              #
+              # Provide theme default because v1 objects have no theme field.
+              - from: v1
+                to: v1alpha1
+                spec:
+                  image: "{{ .spec.image }}"
+                  replicas: "{{ .spec.replicas }}"
+                  port: "{{ .spec.port }}"
+                  theme: "default"          # default — v1 has no theme field

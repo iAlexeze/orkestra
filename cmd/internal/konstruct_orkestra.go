@@ -64,6 +64,12 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		kfg.Ork().Name,
 		kfg.Health().Port,
 		kfg.Ork().LogLevel,
+		kat.ConversionRegistry(),
+		health.ConversionOptions{
+			ConvEnabled: kfg.ConversionConfig().EnableConversion,
+			ConvCert:    kfg.ConversionConfig().TLSCert,
+			ConvKey:     kfg.ConversionConfig().TLSKey,
+		},
 	)
 
 	// Kubeclient

@@ -2,8 +2,6 @@
 package katalog
 
 import (
-	"fmt"
-
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/merger"
@@ -30,6 +28,14 @@ func (k *Katalog) KomposeKatalogFromYaml(m *merger.Merger, paths ...string) ([]o
 			return nil, err
 		}
 		entry.EnrichmentOutcome = outcome
+	}
+
+	// initialize conversion registry
+	k.conversionRegistry = NewInMemoryConversionRegistry()
+
+	// now safe to register rules
+	for _, entry := range k.Spec.CRDs {
+		k.conversionRegistry.registerConversionRulesFromSpec(entry)
 	}
 
 	return k.enabledCRDs, nil
@@ -99,35 +105,4 @@ func (k *Katalog) ValidateConfig() (*Katalog, error) {
 		return nil, err
 	}
 	return k, nil
-}
-
-// Helpers
-func (k *Katalog) empty() bool {
-	return len(k.Spec.CRDs) == 0
-}
-
-func (k *Katalog) enabledEmpty() bool {
-	return len(k.enabledCRDs) == 0
-}
-
-// Filter enabled CRDs
-func (k *Katalog) filterEnabled() error {
-	if k.empty() {
-		return fmt.Errorf("Katalog is empty")
-	}
-
-	// Filter enabled CRDs
-	for _, crd := range k.Spec.CRDs {
-		if crd.IsEnabled() {
-			k.enabledCRDs = append(k.enabledCRDs, crd)
-		} else {
-			logger.Warn().Msgf("%s disabled. skipping...", crd.Name)
-		}
-	}
-
-	if k.enabledEmpty() {
-		return fmt.Errorf("no enabled CRDs found")
-	}
-
-	return nil
 }

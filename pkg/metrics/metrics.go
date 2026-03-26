@@ -109,3 +109,48 @@ var CRDActivationTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 	Name: "controller_crd_activation_total",
 	Help: "Total number of CRD activations after startup",
 }, []string{"crd", "result"})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ConversionTotal
+// Counts every conversion request.
+// Labeled by:
+//   - kind: CRD kind (e.g., "Website")
+//   - from_version: source API version (e.g., "v1alpha1")
+//   - to_version: target API version (e.g., "v1")
+//   - result: "success" or "failure"
+// ─────────────────────────────────────────────────────────────────────────────
+var ConversionTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+	Name: "orkestra_conversion_requests_total",
+	Help: "Total number of conversion requests processed",
+}, []string{"kind", "from_version", "to_version", "result"})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ConversionDuration
+// Histogram of conversion latency per kind and direction.
+// Helps identify slow conversions that might affect API server performance.
+// ─────────────────────────────────────────────────────────────────────────────
+var ConversionDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	Name:    "orkestra_conversion_duration_seconds",
+	Help:    "Duration of conversion requests",
+	Buckets: []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1},
+}, []string{"kind", "from_version", "to_version"})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ConversionErrors
+// Counts conversion errors by kind and error type.
+// Helps debug conversion rule misconfigurations.
+// ─────────────────────────────────────────────────────────────────────────────
+var ConversionErrors = promauto.NewCounterVec(prometheus.CounterOpts{
+	Name: "orkestra_conversion_errors_total",
+	Help: "Total number of conversion errors",
+}, []string{"kind", "error_type"})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ConversionActiveRequests
+// Gauge of currently in‑flight conversion requests.
+// Helps detect conversion backpressure.
+// ─────────────────────────────────────────────────────────────────────────────
+var ConversionActiveRequests = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "orkestra_conversion_active_requests",
+	Help: "Number of conversion requests currently being processed",
+})
