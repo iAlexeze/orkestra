@@ -37,7 +37,7 @@ spec:
 
       containers:
       - name: orkestra
-        image: ialexeze/ork:changer-0.1
+        image: ialexeze/ork:changer-0.3
 
         env:
           - name: ENABLE_CONVERSION

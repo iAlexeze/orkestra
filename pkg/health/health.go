@@ -39,12 +39,16 @@ type HealthServer struct {
 
 	// katalog for conversion rules
 	katalog katalog.ConversionRegistry
+
+	// conversion stats
+	conversionStats *ConversionStats
 }
 
 type ConversionOptions struct {
-	ConvEnabled bool
-	ConvCert    string
-	ConvKey     string
+	ConvEnabled      bool
+	ConvCert         string
+	ConvKey          string
+	ConversionWindow int
 }
 
 // NewHealthServer creates a new health server.
@@ -54,13 +58,14 @@ func NewHealthServer(client, port, logLevel string, katalog katalog.ConversionRe
 	}
 
 	hs := &HealthServer{
-		client:   client,
-		port:     port,
-		convOpts: convOpts,
-		mux:      http.NewServeMux(),
-		convMux:  http.NewServeMux(),
-		logLevel: logLevel,
-		katalog:  katalog,
+		client:          client,
+		port:            port,
+		convOpts:        convOpts,
+		mux:             http.NewServeMux(),
+		convMux:         http.NewServeMux(),
+		logLevel:        logLevel,
+		katalog:         katalog,
+		conversionStats: NewConversionStats(convOpts.ConversionWindow),
 	}
 
 	hs.ready.Store(false)
@@ -199,4 +204,9 @@ func (h *HealthServer) Uptime() string {
 		return "unknown"
 	}
 	return time.Since(h.startTime).Round(time.Second).String()
+}
+
+// GetConversionStats returns the conversion statistics for use in handlers.
+func (h *HealthServer) GetConversionStats() *ConversionStats {
+	return h.conversionStats
 }

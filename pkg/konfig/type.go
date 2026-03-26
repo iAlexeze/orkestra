@@ -40,6 +40,7 @@ type conversionConfig struct {
 	EnableConversion bool
 	TLSCert          string
 	TLSKey           string
+	ConversionWindow int
 }
 
 type katalogKonfig struct {

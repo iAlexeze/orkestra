@@ -79,7 +79,22 @@ leaderElection:
   namespace: ""     # defaults to the release namespace
   leaseDuration: 15s
   renewDeadline: 10s
-  retryPeriod: 2s
+  retryPeriod: 5s
+
+# ── Multi-version Conversion ────────────────────────────────────────────────────────────
+crdConversion:
+  enabled: true
+
+  # REQUIRED when enabled
+  existingSecret: "mine"
+
+  # These should follow Kubernetes TLS secret conventions
+  certKey: tls.crt
+  keyKey: tls.key
+
+  # Secret must contain:
+    #   tls.crt: certificate
+    #   tls.key: private key
 
 # ── Service ────────────────────────────────────────────────────────────────────
 service:

@@ -1,14 +1,14 @@
 # One Runtime, Many CRDs: A New Model for Kubernetes Operator Management
 
-Orkestra Project — March 2026
+*Orkestra Project — March 2026*
 
 ---
 
 ## Abstract
 
-Kubernetes operators have become the standard mechanism for extending cluster capabilities, yet their development remains bound to a long-standing orthodoxy: one operator per CRD. This principle, codified in official best practices, emerged from sound engineering concerns—separation of concerns, encapsulation, and the UNIX philosophy of "do one thing and do it well" . However, this architectural constraint has produced an unintended consequence: operator sprawl. Production clusters routinely run dozens of operators, each consuming memory, CPU, and API server resources, each with its own lifecycle, upgrade cadence, and failure domain.
+Kubernetes operators have become the standard mechanism for extending cluster capabilities, yet their development remains bound to a long‑standing orthodoxy: one operator per CRD. This principle, codified in official best practices, emerged from sound engineering concerns—separation of concerns, encapsulation, and the UNIX philosophy of "do one thing and do it well". However, this architectural constraint has produced an unintended consequence: operator sprawl. Production clusters routinely run dozens of operators, each consuming memory, CPU, and API server resources, each with its own lifecycle, upgrade cadence, and failure domain.
 
-This paper argues that the prohibition against multi‑CRD operators reflects constraints of implementation, not necessity. When the operator runtime is designed to manage multiple CRDs with proper isolation, the benefits of consolidation outweigh the risks. We present Orkestra, a runtime that treats each CRD as an isolated unit—with per‑CRD workers, queues, health endpoints, and failure domains—while sharing a single control plane. This model preserves the separation of concerns that operator frameworks advocate while eliminating the operational overhead of operator sprawl. We examine the original concerns that led to the one‑operator‑per‑CRD principle and demonstrate how a well‑architected multi‑CRD runtime addresses each of them. Finally, we show that this approach enables new capabilities: unified observability, declarative composition, and dependency management across CRDs—features that are difficult or impossible to achieve with separate operators.
+This paper argues that the prohibition against multi‑CRD operators reflects constraints of implementation, not necessity. When the operator runtime is designed to manage multiple CRDs with proper isolation, the benefits of consolidation outweigh the risks. We present Orkestra, a runtime that treats each CRD as an isolated unit—with per‑CRD workers, queues, health endpoints, and failure domains—while sharing a single control plane. This model preserves the separation of concerns that operator frameworks advocate while eliminating the operational overhead of operator sprawl. We examine the original concerns that led to the one‑operator‑per‑CRD principle and demonstrate how a well‑architected multi‑CRD runtime addresses each of them. Finally, we show that this approach enables new capabilities: unified observability, declarative composition, dependency management across CRDs, and a novel declarative approach to multi‑version CRD conversion—features that are difficult or impossible to achieve with separate operators.
 
 ---
 
@@ -18,11 +18,11 @@ Kubernetes operators have transformed how we manage complex applications on the 
 
 The operator pattern has succeeded beyond its creators' expectations. Today, organizations routinely run 20, 50, or even 100 operators in a single cluster. Each operator represents a distinct binary, a distinct deployment, a distinct set of RBAC rules, a distinct upgrade path, and—crucially—a distinct failure domain. The cumulative overhead is substantial.
 
-This proliferation is not accidental. It stems from a design principle that has been consistently reinforced by operator frameworks: "Avoid a design solution where more than one Kind is reconciled by the same controller" . The Operator SDK best practices document elaborates: "Having many Kinds (such as CRDs) which are all managed by the same controller usually goes against the design proposed by controller-runtime. Furthermore this might hurt concepts such as encapsulation, the Single Responsibility Principle, and Cohesion" .
+This proliferation is not accidental. It stems from a design principle that has been consistently reinforced by operator frameworks: "Avoid a design solution where more than one Kind is reconciled by the same controller". The Operator SDK best practices document elaborates: "Having many Kinds (such as CRDs) which are all managed by the same controller usually goes against the design proposed by controller‑runtime. Furthermore this might hurt concepts such as encapsulation, the Single Responsibility Principle, and Cohesion".
 
-This guidance is sound in principle. A controller that manages multiple CRDs risks becoming a tangled monolith where changes to one resource inadvertently affect another. The UNIX philosophy of "do one thing and do it well" has proven its value across computing .
+This guidance is sound in principle. A controller that manages multiple CRDs risks becoming a tangled monolith where changes to one resource inadvertently affect another. The UNIX philosophy of "do one thing and do it well" has proven its value across computing.
 
-Yet the guidance was formulated in a specific context: the `controller-runtime` framework and its assumptions about controller implementation. The question this paper explores is whether the principle is intrinsic to the operator pattern or incidental to the implementation frameworks that dominated early operator development.
+Yet the guidance was formulated in a specific context: the controller‑runtime framework and its assumptions about controller implementation. The question this paper explores is whether the principle is intrinsic to the operator pattern or incidental to the implementation frameworks that dominated early operator development.
 
 We propose that the core insight of operator design is not "one controller per CRD" but rather "one reconciler per CRD, with proper isolation." When the runtime itself provides this isolation, a single controller process can safely manage many CRDs.
 
@@ -32,15 +32,15 @@ The remainder of this paper is organized as follows. Section 2 examines the orig
 
 ## 2. The One‑Operator‑Per‑CRD Orthodoxy
 
-2.1 Origins of the Principle
+### 2.1 Origins of the Principle
 
-The recommendation against multi‑CRD operators appears across Kubernetes operator documentation. The Operator SDK best practices document is explicit: "Avoid a design solution where more than one Kind is reconciled by the same controller" . The rationale is grounded in software engineering fundamentals: separation of concerns, the Single Responsibility Principle, and cohesion .
+The recommendation against multi‑CRD operators appears across Kubernetes operator documentation. The Operator SDK best practices document is explicit: "Avoid a design solution where more than one Kind is reconciled by the same controller". The rationale is grounded in software engineering fundamentals: separation of concerns, the Single Responsibility Principle, and cohesion.
 
-The UNIX philosophy echoes this sentiment: "Do one thing and do it well" . Applied to operators, this suggests each operator should manage exactly one kind of resource. The Operator SDK's own summary reinforces this: "One Operator per managed application" .
+The UNIX philosophy echoes this sentiment: "Do one thing and do it well". Applied to operators, this suggests each operator should manage exactly one kind of resource. The Operator SDK's own summary reinforces this: "One Operator per managed application".
 
 ### 2.2 The Stated Concerns
 
-The official best practices articulate several specific concerns with multi‑CRD controllers :
+The official best practices articulate several specific concerns with multi‑CRD controllers:
 
 - **Encapsulation:** When multiple CRDs are managed by the same controller, the controller necessarily knows about all of them. This coupling can make it difficult to reason about the system, test individual components, or reuse parts of the controller in other contexts.
 
@@ -56,16 +56,17 @@ The official best practices articulate several specific concerns with multi‑CR
 
 While the guidance aims to maintain clean architecture, it has produced a predictable operational problem: operator sprawl. Consider a typical production cluster:
 
-Application Operator
-Prometheus Prometheus Operator
-Grafana Grafana Operator
-Cert Manager Cert Manager Operator
-Ingress Nginx Ingress Operator
-PostgreSQL PostgreSQL Operator
-Redis Redis Operator
-Kafka Strimzi Operator
-Monitoring (multiple operators)
-Security (multiple operators)
+| Application | Operator |
+|-------------|----------|
+| Prometheus | Prometheus Operator |
+| Grafana | Grafana Operator |
+| Cert Manager | Cert Manager Operator |
+| Ingress | Nginx Ingress Operator |
+| PostgreSQL | PostgreSQL Operator |
+| Redis | Redis Operator |
+| Kafka | Strimzi Operator |
+| Monitoring | (multiple operators) |
+| Security | (multiple operators) |
 
 Each operator consumes memory (typically 50‑200 MB), consumes CPU (even when idle, due to informers), maintains its own watch cache, requires its own RBAC, and has its own upgrade schedule.
 
@@ -73,9 +74,9 @@ The problem extends beyond resource consumption. Observability becomes fragmente
 
 ### 2.4 Alternative Approaches to the Cluster‑Wide CRD Problem
 
-A related challenge arises from the cluster‑wide nature of CRDs themselves. As noted in recent discussions, CRDs are cluster‑scoped resources, which means all tenants in a cluster share the same CRD definitions . This creates version compatibility issues: team A might need CRD version v1alpha2, while team B needs v1beta1, but only one can be installed .
+A related challenge arises from the cluster‑wide nature of CRDs themselves. As noted in recent discussions, CRDs are cluster‑scoped resources, which means all tenants in a cluster share the same CRD definitions. This creates version compatibility issues: team A might need CRD version v1alpha2, while team B needs v1beta1, but only one can be installed.
 
-The conventional response has been to create separate clusters per team—an expensive solution that introduces its own operational overhead . This problem highlights the need for better tooling around CRD management and isolation.
+The conventional response has been to create separate clusters per team—an expensive solution that introduces its own operational overhead. This problem highlights the need for better tooling around CRD management and isolation.
 
 ---
 
@@ -85,21 +86,22 @@ Orkestra is a runtime designed for multi‑CRD management with strong isolation.
 
 ### 3.1 Core Design Principles
 
-- Per‑CRD Isolation. Every CRD in Orkestra receives its own:
-
-    - Informer (with per‑CRD resync intervals)
-    - Workqueue (with per‑CRD depth and backoff)
-    - Worker pool (configurable concurrency)
-    - Health endpoint and metrics
-    - Failure domain (a panic in one reconciler does not affect others)
+- **Per‑CRD Isolation:** Every CRD in Orkestra receives its own:
+  - Informer (with per‑CRD resync intervals)
+  - Workqueue (with per‑CRD depth and backoff)
+  - Worker pool (configurable concurrency)
+  - Health endpoint and metrics
+  - Failure domain (a panic in one reconciler does not affect others)
 
 - **Declarative Configuration:** Users define CRDs in a Katalog—a YAML file that declares the CRD, its dependencies, and the resources it should create. No Go code is required.
 
-- **Dependency Management:** CRDs can declare dependencies using dependsOn. Orkestra starts CRDs in topological order and shuts them down in reverse order.
+- **Dependency Management:** CRDs can declare dependencies using `dependsOn`. Orkestra starts CRDs in topological order and shuts them down in reverse order.
 
-- **Built‑in Observability:** Every CRD automatically exposes health endpoints (/katalog/{crd}/health) and metrics (reconcile count, latency, queue depth, worker count).
+- **Built‑in Observability:** Every CRD automatically exposes health endpoints (`/katalog/{crd}/health`) and metrics (reconcile count, latency, queue depth, worker count).
 
 - **Runtime Composition:** Komposers allow composing multiple Katalogs from files, Helm charts, and remote URLs—with environment‑specific overrides.
+
+- **Declarative Version Conversion:** Orkestra serves as a built‑in conversion webhook, applying declarative conversion rules defined in the Katalog. No Go code, no separate webhook deployment, no TLS management.
 
 ### 3.2 Implementation Architecture
 
@@ -145,7 +147,7 @@ Each component is designed for isolation:
 - **Informer Factory:** Creates a separate informer for each CRD with its own resync interval. Informers share only the API server connection.
 - **Queue Registry:** Maintains a separate workqueue per CRD, each with independent depth limits and backoff settings.
 - **Worker Pools:** Each CRD has a dedicated pool of worker goroutines. A panic in one worker is caught and does not affect other CRDs.
-- **Health Endpoints:** Each CRD has its own /katalog/{crd}/health endpoint, enabling fine‑grained monitoring.
+- **Health Endpoints:** Each CRD has its own `/katalog/{crd}/health` endpoint, enabling fine‑grained monitoring.
 
 ### 3.3 The Komposer: Declarative Composition
 
@@ -172,6 +174,34 @@ spec:
 
 This enables organization‑wide standardization while preserving team autonomy. Platform teams define base Katalogs; application teams consume and override only what differs.
 
+### 3.4 Declarative Version Conversion
+
+Orkestra includes a built‑in conversion webhook that applies declarative rules defined in the Katalog. The user declares how fields map between versions, and Orkestra handles the conversion when the API server requests it.
+
+```yaml
+conversion:
+  - kind: Website
+    storageVersion: v1
+    paths:
+      - from: v1alpha1
+        to: v1
+        spec:
+          image: "{{ .spec.image }}"
+          replicas: "{{ .spec.replicas }}"
+          autoscaling:
+            enabled: false   # default for v1alpha1 resources
+      - from: v1
+        to: v1alpha1
+        spec:
+          image: "{{ .spec.image }}"
+          replicas: "{{ .spec.replicas }}"
+          # autoscaling dropped — it didn't exist in v1alpha1
+```
+
+Orkestra's HTTPS server serves the `/convert` endpoint, and the CRD's `conversion` block points to it. No separate webhook deployment. No Go code. No TLS management (certificates are required). Conversion metrics are automatically exposed.
+
+For a detailed treatment, see the companion paper: **Declarative Version Conversion for Kubernetes CRDs**.
+
 ---
 
 ## 4. Addressing the Original Concerns
@@ -180,7 +210,7 @@ We now examine each of the concerns raised against multi‑CRD controllers and s
 
 ### 4.1 Encapsulation
 
-The original concern: "Having many Kinds which are all managed by the same controller usually goes against the design proposed by controller‑runtime" .
+The original concern: "Having many Kinds which are all managed by the same controller usually goes against the design proposed by controller‑runtime".
 
 In Orkestra, each CRD's reconciler is encapsulated. The runtime dispatches events to the appropriate reconciler based on GVK, but the reconcilers themselves are independent. A change to one CRD's reconciler does not affect others.
 
@@ -192,7 +222,7 @@ The original concern: A controller that manages multiple CRDs has multiple reaso
 
 Orkestra's architecture inverts this. The runtime itself has a single responsibility: hosting reconcilers. Each reconciler maintains the Single Responsibility Principle at the level of its own code. The runtime is infrastructure; the reconcilers are logic.
 
-This is analogous to Kubernetes itself. The kube‑controller‑manager runs dozens of controllers (Deployment controller, ReplicaSet controller, Endpoint controller, etc.) in a single process. No one argues that this violates the Single Responsibility Principle because each controller is a separate unit with its own responsibility .
+This is analogous to Kubernetes itself. The kube‑controller‑manager runs dozens of controllers (Deployment controller, ReplicaSet controller, Endpoint controller, etc.) in a single process. No one argues that this violates the Single Responsibility Principle because each controller is a separate unit with its own responsibility.
 
 ### 4.3 Cohesion
 
@@ -200,13 +230,13 @@ The original concern: Operations for different CRDs may not be logically related
 
 In Orkestra, the runtime provides no logic beyond dispatching. Cohesion is maintained at the reconciler level. The runtime does not need to know what any CRD does—it merely provides the infrastructure for reconciliation.
 
-Moreover, Orkestra enables positive cohesion that separate operators cannot achieve. When CRDs are managed by separate operators, there is no coordination between them. A database CRD and an application CRD that depends on it have no way to coordinate startup order. Orkestra's dependsOn feature provides this coordination declaratively.
+Moreover, Orkestra enables *positive* cohesion that separate operators cannot achieve. When CRDs are managed by separate operators, there is no coordination between them. A database CRD and an application CRD that depends on it have no way to coordinate startup order. Orkestra's `dependsOn` feature provides this coordination declaratively.
 
 ### 4.4 Unexpected Side Effects
 
 The original concern: A change intended for one CRD might inadvertently affect others.
 
-Because Orkestra's reconcilers are isolated and communicate only through the shared runtime (via readyCh channels for dependencies), side effects are controlled. A panic in one reconciler is caught and logged; other reconcilers continue unaffected. Per‑CRD queues ensure that a backlog in one CRD's queue does not starve others.
+Because Orkestra's reconcilers are isolated and communicate only through the shared runtime (via ready channels for dependencies), side effects are controlled. A panic in one reconciler is caught and logged; other reconcilers continue unaffected. Per‑CRD queues ensure that a backlog in one CRD's queue does not starve others.
 
 ### 4.5 Testing Complexity
 
@@ -233,12 +263,13 @@ GET /katalog/{crd}/health    # 200 healthy / 503 degraded
 GET /metrics                 # Prometheus metrics for all CRDs
 ```
 
-All metrics use the full GVK string as the crd label, enabling per‑CRD dashboards:
+All metrics use the full GVK string as the `crd` label, enabling per‑CRD dashboards:
 
 ```
 controller_reconcile_total{crd="demo.orkestra.io/v1alpha1, Kind=Website", result="success"} 1247
 controller_workers_active{crd="demo.orkestra.io/v1alpha1, Kind=Website"} 3
 controller_queue_depth{crd="apps/v1, Kind=Deployment"} 0
+orkestra_conversion_requests_total{kind="Website", from_version="v1alpha1", to_version="v1", result="success"} 47
 ```
 
 This unified view is essential for platform engineers who need to understand the health of all extensions to their cluster.
@@ -292,42 +323,34 @@ This model enables GitOps workflows where the entire operator configuration is v
 
 The resource efficiency of a consolidated runtime is substantial. A single Orkestra instance managing 5 CRDs with 170+ resources consumes:
 
-Metric Value
-Memory 98 MB
-CPU 0.05 cores
-Goroutines 86
+| Metric | Value |
+|--------|-------|
+| Memory | 98 MB |
+| CPU | 0.05 cores |
+| Goroutines | 86 |
 
 By comparison, 5 separate operators would likely consume 5–10 times the memory and CPU. Each operator would maintain its own informer cache, its own metrics endpoint, its own leader election mechanism.
 
----
+### 5.5 Declarative Version Conversion
 
-### 5.5 Solution to the Cluster‑Wide CRD Problem
+The standard approach to multi‑version CRDs requires writing a conversion webhook in Go, deploying it as a separate service, managing TLS certificates, and maintaining conversion logic across versions. This infrastructure overhead often outweighs the benefit of adding a new version.
 
-The vCluster approach to the cluster‑wide CRD problem uses virtual clusters to isolate teams . While effective, it introduces significant complexity and overhead. Orkestra offers an alternative: rather than isolating teams at the cluster level, isolate CRD management at the control plane level.
-
-Because Orkestra treats each CRD as an independent unit with its own configuration, it can manage multiple versions of related CRDs (or different configurations of the same CRD) within a single cluster. The runtime's dependency management ensures that CRDs that depend on each other are ordered correctly, while CRDs that are independent remain isolated.
-
-Moreover, Orkestra's version‑aware informer solves the version compatibility problem at its root. Unlike standard Kubernetes controllers that only see the storage version of a resource, Orkestra's informer can be configured to watch a specific API version. When a user creates a resource with `apiVersion: v1alpha1`, Orkestra receives it as `v1alpha1`, not converted to the storage version. The reconciler works with the version the user intended, not the version Kubernetes stores. This means that:
-
-- Users can create resources with any served version and see them exactly as they created them
-- Different teams can use different versions of the same CRD on the same cluster
-- No conversion webhooks are required—the API server handles conversion, but Orkestra works with the original version
-- Version upgrades become declarative: teams declare which version they want, and Orkestra uses it
-
-The Orkestra CLI further enhances this capability with version‑aware commands:
+Orkestra eliminates this complexity. Conversion rules are declared in the Katalog, the same place where reconciliation logic is defined. Orkestra's existing HTTPS server handles the `/convert` endpoint. Metrics for conversion requests, latency, and errors are automatically exposed.
 
 ```bash
-# See the original version of a resource
-ork get website my-site --version v1alpha1
-
-# See the storage version
-ork get website my-site --version v1
-
-# Orkestra remembers the original version
-ork get website my-site
+# See conversion statistics per CRD
+curl localhost:8080/katalog/website-v1 | jq '.conversion'
+{
+  "enabled": true,
+  "total": 62,
+  "success": 62,
+  "failures": 0,
+  "avgLatencyMs": 0.5,
+  "p95LatencyMs": 1.2
+}
 ```
 
-This gives teams full visibility into version usage and eliminates the confusion that typically accompanies multi‑version CRD management.
+This is the first time version conversion has been made declarative and observable.
 
 ---
 
@@ -337,7 +360,7 @@ The Orkestra model is not without limitations. While it addresses the concerns r
 
 **Shared Failure Domain.** While Orkestra's per‑CRD reconciler isolation ensures that a panic in one reconciler does not crash others, the runtime process itself is a single point of failure. In practice, this is mitigated by leader election and warm caches on follower pods. When the leader fails, a follower with an already‑warm cache takes over.
 
-Critically, this architecture mirrors Kubernetes' own `kube-controller-manager`, which runs dozens of controllers (Deployment controller, ReplicaSet controller, Endpoint controller, etc.) in a single process. Kubernetes has operated this way for years without systemic failure. For production deployments, Orkestra recommends running at least two replicas with PodAntiAffinity rules to ensure pods are scheduled on different nodes, preventing node failure from affecting all replicas. This is identical to how `kube-controller-manager` is deployed in production clusters.
+Critically, this architecture mirrors Kubernetes' own `kube-controller-manager`, which runs dozens of controllers in a single process. Kubernetes has operated this way for years without systemic failure. For production deployments, Orkestra recommends running at least two replicas with PodAntiAffinity rules to ensure pods are scheduled on different nodes, preventing node failure from affecting all replicas. This is identical to how `kube-controller-manager` is deployed in production clusters.
 
 **Per‑CRD Lifecycle Management.** Separate operators can be upgraded independently. Orkestra is a single binary that manages all CRDs. This is both a feature and a constraint: upgrading Orkestra upgrades all CRD management logic at once, which may be desirable for consistency but may be problematic for teams that need to control upgrade cadence per CRD.
 
@@ -349,7 +372,7 @@ Future work includes exploring plugin architectures that would allow reconcilers
 
 The recommendation against multi‑CRD operators emerged from sound engineering principles and the constraints of early operator frameworks. But the principle is not inherent to the operator pattern; it is a property of the implementation.
 
-When the runtime itself provides proper isolation—per‑CRD informers, queues, workers, failure domains—a single process can safely manage many CRDs. This consolidation eliminates operator sprawl, reduces resource consumption, and enables new capabilities: unified observability, cross‑CRD dependencies, declarative composition, and efficient resource utilization.
+When the runtime itself provides proper isolation—per‑CRD informers, queues, workers, failure domains—a single process can safely manage many CRDs. This consolidation eliminates operator sprawl, reduces resource consumption, and enables new capabilities: unified observability, cross‑CRD dependencies, declarative composition, efficient resource utilization, and declarative version conversion.
 
 Orkestra demonstrates that the core insight of operator design is not "one operator per CRD" but rather "one reconciler per CRD, with isolation." By providing that isolation in the runtime, Orkestra makes multi‑CRD management not just possible but preferable.
 

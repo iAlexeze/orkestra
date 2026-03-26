@@ -118,6 +118,7 @@ var CRDActivationTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 //   - from_version: source API version (e.g., "v1alpha1")
 //   - to_version: target API version (e.g., "v1")
 //   - result: "success" or "failure"
+//
 // ─────────────────────────────────────────────────────────────────────────────
 var ConversionTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 	Name: "orkestra_conversion_requests_total",

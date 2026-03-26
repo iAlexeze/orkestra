@@ -4,6 +4,8 @@ package health
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/metrics"
@@ -41,18 +43,41 @@ func (h *HealthServer) conversionHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Track active requests
 	metrics.ConversionActiveRequests.Inc()
 	defer metrics.ConversionActiveRequests.Dec()
-	
+
 	var review ConversionReview
 	if err := json.NewDecoder(r.Body).Decode(&review); err != nil {
+		h.conversionStats.RecordFailure()
+		metrics.ConversionErrors.WithLabelValues("unknown", "invalid_request").Inc()
 		http.Error(w, "invalid ConversionReview", http.StatusBadRequest)
 		return
 	}
 	if review.Request == nil {
+		h.conversionStats.RecordFailure()
+		metrics.ConversionErrors.WithLabelValues("unknown", "missing_request").Inc()
 		http.Error(w, "missing request", http.StatusBadRequest)
 		return
+	}
+
+	// Extract source version from the first object
+	sourceVersion := ""
+	if len(review.Request.Objects) > 0 {
+		var firstObj map[string]interface{}
+		if err := json.Unmarshal(review.Request.Objects[0], &firstObj); err == nil {
+			if apiVersion, ok := firstObj["apiVersion"].(string); ok {
+				if parts := strings.Split(apiVersion, "/"); len(parts) == 2 {
+					sourceVersion = parts[1]
+				}
+			}
+		}
+	}
+
+	targetVersion := ""
+	if desired := review.Request.DesiredAPIVersion; desired != "" {
+		if parts := strings.Split(desired, "/"); len(parts) == 2 {
+			targetVersion = parts[1]
+		}
 	}
 
 	resp := &ConversionReviewResponse{
@@ -61,30 +86,52 @@ func (h *HealthServer) conversionHandler(w http.ResponseWriter, r *http.Request)
 		Result:           &Status{Status: "Success"},
 	}
 
+	var kind string
+
 	for i, raw := range review.Request.Objects {
+		objStart := time.Now()
+
 		var obj map[string]interface{}
 		if err := json.Unmarshal(raw, &obj); err != nil {
 			resp.Result = &Status{Status: "Failure", Message: "invalid object payload"}
+			metrics.ConversionErrors.WithLabelValues(kind, "invalid_payload").Inc()
+			metrics.ConversionTotal.WithLabelValues(kind, sourceVersion, targetVersion, "failure").Inc()
+			h.conversionStats.RecordFailure()
 			break
 		}
 
-		kind, _ := obj["kind"].(string)
+		kind, _ = obj["kind"].(string)
 		if kind == "" {
 			resp.Result = &Status{Status: "Failure", Message: "object missing kind"}
+			metrics.ConversionErrors.WithLabelValues(kind, "missing_kind").Inc()
+			metrics.ConversionTotal.WithLabelValues(kind, sourceVersion, targetVersion, "failure").Inc()
+			h.conversionStats.RecordFailure()
 			break
 		}
 
 		rules := h.katalog.GetConversionRules(kind)
 		if rules == nil {
 			resp.Result = &Status{Status: "Failure", Message: "no conversion rules for kind"}
+			metrics.ConversionErrors.WithLabelValues(kind, "no_rules").Inc()
+			metrics.ConversionTotal.WithLabelValues(kind, sourceVersion, targetVersion, "failure").Inc()
+			h.conversionStats.RecordFailure()
 			break
 		}
 
 		converted, err := applyConversion(obj, rules, review.Request.DesiredAPIVersion)
 		if err != nil {
 			resp.Result = &Status{Status: "Failure", Message: err.Error()}
+			metrics.ConversionErrors.WithLabelValues(kind, "apply_failed").Inc()
+			metrics.ConversionTotal.WithLabelValues(kind, sourceVersion, targetVersion, "failure").Inc()
+			h.conversionStats.RecordFailure()
 			break
 		}
+
+		// Success
+		objDuration := time.Since(objStart).Seconds()
+		metrics.ConversionDuration.WithLabelValues(kind, sourceVersion, targetVersion).Observe(objDuration)
+		metrics.ConversionTotal.WithLabelValues(kind, sourceVersion, targetVersion, "success").Inc()
+		h.conversionStats.RecordSuccess(time.Duration(objDuration * float64(time.Second)))
 
 		out, _ := json.Marshal(converted)
 		resp.ConvertedObjects[i] = out

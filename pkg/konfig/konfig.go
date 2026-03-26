@@ -37,6 +37,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			EnableConversion: GetBoolEnv("ENABLE_CONVERSION", false),
 			TLSCert:          GetStrEnv("TLS_CERT", ""),
 			TLSKey:           GetStrEnv("TLS_KEY", ""),
+			ConversionWindow: GetIntEnv("CONVERSION_WINDOW", 100),
 		},
 		healthServer: healthServer{
 			Port:         GetStrEnv("HEALTH_PORT", "5000"),

@@ -66,6 +66,8 @@ theme:
 #   - Publications:
 #       - Why Orkestra: publications/why-orkestra.md
 #       - Declarative Operators Whitepaper: publications/declarative-operators-whitepaper.md
+#       - Declarative Version Conversion: publications/declarative-version-conversion.md
+#       - One Runtime, Many CRDs: publications/one-runtime-many-crds.md
 #       - Trust and Safety: publications/trust-and-failure-model.md
 #       - Metrics Analysis: publications/metrics-analysis.md
 #       - Your CRD is Enough: publications/your-crd-is-enough.md

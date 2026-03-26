@@ -66,9 +66,10 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		kfg.Ork().LogLevel,
 		kat.ConversionRegistry(),
 		health.ConversionOptions{
-			ConvEnabled: kfg.ConversionConfig().EnableConversion,
-			ConvCert:    kfg.ConversionConfig().TLSCert,
-			ConvKey:     kfg.ConversionConfig().TLSKey,
+			ConvEnabled:      kfg.ConversionConfig().EnableConversion,
+			ConvCert:         kfg.ConversionConfig().TLSCert,
+			ConvKey:          kfg.ConversionConfig().TLSKey,
+			ConversionWindow: kfg.ConversionConfig().ConversionWindow,
 		},
 	)
 
@@ -299,7 +300,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		if crd.IsInfoEnabled() {
 			hs.Register(
 				"/katalog/"+crdName,
-				kontroller.BuildCRDInfoHandler(crd, kfg, inf, crdHealth),
+				kontroller.BuildCRDInfoHandler(crd, kfg, inf, crdHealth, hs.GetConversionStats()),
 			)
 		}
 
