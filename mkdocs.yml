@@ -1,76 +1,154 @@
-site_name: Orkestra
+# theme:
+#     # name: material
+#     name: readthedocs 
+#     custom_dir: docs/overrides
+#     # https://mkdocs.readthedocs.io/en/restructure-compat/user-guide/styling-your-docs/
+# extra_css:
+#   - css/extra.css
+
+nav:
+- Overview: index.md
+- understanding-the-basics.md
+- core-concepts.md 
+- Getting Started:
+    - Getting Started: user-guide/getting-started.md
+    - Writing Your First Katalog: user-guide/writing-your-first-katalog.md
+    - Writing Hooks: user-guide/writing-hooks.md
+    - Writing Custom Reconcilers: user-guide/writing-custom-reconcilers.md
+    - Testing Operators: user-guide/testing-operators.md
+
+- Runtime Manual:
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Runtime Flow: architecture/runtime-flow.md
+      - CRD Lifecycle: architecture/crd-lifecycle.md
+      - Design Philosophy: architecture/design-philosophy.md
+      - Architecture Diagrams: architecture/architecture-diagrams.md
+      - Full Architecture View: architecture/full-architecture-view.md
+
+  - Concepts:
+      - Katalog: concepts/katalog.md
+      - Komposer: concepts/komposer.md
+      - Conditional Provisioning: concepts/conditional-provisioning.md
+      - Templating: concepts/templating.md
+      - Dependency Model: concepts/dependency-model.md
+      - Health Subsystem: concepts/health-subsystem.md
+      - Reconciler Model: concepts/reconciler-model.md
+
+  #   - Internals:
+  #       - Startup Sequence: internals/startup-sequence.md
+  #       - konstructOrkestra: internals/konstruct-orkestra.md
+  #       - Dynamic vs Typed CRDs: internals/dynamic-vs-typed.md
+  #       - Informer Factory: internals/informer-factory.md
+  #       - Dependency Kontroller: internals/dependency-kontroller.md
+  #       - Reconciler Pipeline: internals/reconciler-pipeline.md
+  #       - Observability: internals/observability.md
+  #       - Shutdown: internals/shutdown.md
+
+- User Guide:
+    - user-guide/overview.md
+    - How Reconciliation Works: user-guide/how-reconciliation-works.md
+    - Multi Version CRD Explained: user-guide/multi-version-crd-explained.md
+    - Extending Orkestra: user-guide/extending-orkestra.md
+    - Production Deployment: user-guide/deployment/#helm-deployment
+    - Generate a Certificate with Cert-Manager: user-guide/self-signed-certificate-with-cert-manager.md
+    - Generate an OpenSSL Self-signed Certificate: user-guide/self-signed-certificate-with-openssl.md
+    - Choosing Katalog vs Komposer: user-guide/choosing-katalog-vs-komposer.md
+    - Use Cases: user-guide/use-cases.md
+    - Best Practices: user-guide/best-practices.md
+
+- Developer Guide:
+    - developer-guide/overview.md
+    - developer-guide/development-environment.md
+
+- Reference:
+    - Katalog Schema: reference/katalog-schema.md
+    - Komposer Schema: reference/komposer-schema.md
+    - Metrics: reference/metrics.md
+  #   - API: reference/api.md
+    - CLI: reference/cli.md
+    - Inspect Live CRD: reference/inspect-live-crd.md
+
+- Publications:
+    - Why Orkestra: publications/why-orkestra.md
+    - Declarative Operators Whitepaper: publications/declarative-operators-whitepaper.md
+    - Declarative Version Conversion: publications/declarative-version-conversion.md
+    - One Runtime, Many CRDs: publications/one-runtime-many-crds.md
+    - Trust and Safety: publications/trust-and-failure-model.md
+    - Metrics Analysis: publications/metrics-analysis.md
+    - Your CRD is Enough: publications/your-crd-is-enough.md
+    - Roadmap: roadmap.md
+
+  
+- faq.md
+- security-considerations.md
+- support.md
+- roadmap.md
+- Releases ⧉: https://github.com/iAlexeze/orkestra/releases
+- Blog ⧉: https://blog.orkestra.sh/
+plugins:
+  - search
+  - gh-admonitions
+  - mermaid2
+repo_url: https://github.com/iAlexeze/orkestra
+site_name: Orkestra - Declarative Operator Runtime for Kubernetes
 site_description: Declarative Operator Runtime for Kubernetes
 site_url: https://orkestra.sh
 site_author: "Orkestra Team"
 copyright: "Orkestra"
-docs_dir: coming-soon
-plugins:
-    - search
-    - mermaid2
+
+
+# docs_dir: coming-soon
+
+# site_url: !ENV READTHEDOCS_CANONICAL_URL
+# strict: true
+
+
+# Configuraton
+extra:
+  analytics:
+    property: G-5Z1VTPDL73
+    provider: google
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/orkestra-sh/orkestra
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/orkestra
+# extra_css:
+# - assets/versions.css
+# extra_javascript:
+# - assets/versions.js
+
+markdown_extensions:
+- markdown_include.include
+- admonition
+- markdown_grid_tables
+- codehilite:
+    css_class: highlight
+- toc:
+    permalink: true
+
 theme:
-    # name: material
-    name: readthedocs 
-    # https://mkdocs.readthedocs.io/en/restructure-compat/user-guide/styling-your-docs/
-
-# nav:
-#   - Getting Started:
-#       - Welcome to Orkestra: guides/getting-started.md
-#       - Writing Your First Katalog: guides/writing-your-first-katalog.md
-#       - Writing Hooks: guides/writing-hooks.md
-#       - Writing Custom Reconcilers: guides/writing-custom-reconcilers.md
-#       - Testing Operators: guides/testing-operators.md
-
-
-#   - Architecture:
-#       - Overview: architecture/overview.md
-#       - Runtime Flow: architecture/runtime-flow.md
-#       - CRD Lifecycle: architecture/crd-lifecycle.md
-#       - Design Philosophy: architecture/design-philosophy.md
-#       - Architecture Diagrams: architecture/architecture-diagrams.md
-#       - Full Architecture View: architecture/full-architecture-view.md
-
-#   - Concepts:
-#       - Katalog: concepts/katalog.md
-#       - Komposer: concepts/komposer.md
-#       - Conditional Provisioning: concepts/conditional-provisioning.md
-#       - Templating: concepts/templating.md
-#       - Dependency Model: concepts/dependency-model.md
-#       - Health Subsystem: concepts/health-subsystem.md
-#       - Reconciler Model: concepts/reconciler-model.md
-
-# #   - Internals:
-# #       - Startup Sequence: internals/startup-sequence.md
-# #       - konstructOrkestra: internals/konstruct-orkestra.md
-# #       - Dynamic vs Typed CRDs: internals/dynamic-vs-typed.md
-# #       - Informer Factory: internals/informer-factory.md
-# #       - Dependency Kontroller: internals/dependency-kontroller.md
-# #       - Reconciler Pipeline: internals/reconciler-pipeline.md
-# #       - Observability: internals/observability.md
-# #       - Shutdown: internals/shutdown.md
-
-#   - Guides:
-#       - Production Deployment: guides/deployment/#helm-deployment
-#       - Extending Orkestra: guides/extending-orkestra.md
-#       - Choosing Katalog vs Komposer: guides/choosing-katalog-vs-komposer.md
-#       - Use Cases: guides/use-cases.md
-#       - Best Practices: guides/best-practices.md
-
-#   - Reference:
-#       - Katalog Schema: reference/katalog-schema.md
-#       - Komposer Schema: reference/komposer-schema.md
-#       - Metrics: reference/metrics.md
-#     #   - API: reference/api.md
-#       - CLI: reference/cli.md
-#       - Inspect Live CRD: reference/inspect-live-crd.md
-
-#   - Publications:
-#       - Why Orkestra: publications/why-orkestra.md
-#       - Declarative Operators Whitepaper: publications/declarative-operators-whitepaper.md
-#       - Declarative Version Conversion: publications/declarative-version-conversion.md
-#       - One Runtime, Many CRDs: publications/one-runtime-many-crds.md
-#       - Trust and Safety: publications/trust-and-failure-model.md
-#       - Metrics Analysis: publications/metrics-analysis.md
-#       - Your CRD is Enough: publications/your-crd-is-enough.md
-#       - Roadmap: publications/roadmap.md
-
-  
+  icon:
+    repo: fontawesome/brands/github
+  # custom_dir: overrides
+  favicon: assets/ork-logo-white.png
+  font:
+    text: Work Sans
+  logo: assets/ork-logo-white.png
+  name: material
+  palette:
+  - media: '(prefers-color-scheme: light)'
+    # primary: teal
+    primary: dark purple
+    scheme: default
+    toggle:
+      icon: material/brightness-7
+      name: Switch to dark mode
+  - media: '(prefers-color-scheme: dark)'
+    # primary: teal
+    primary: dark purple
+    scheme: slate
+    toggle:
+      icon: material/brightness-4
+      name: Switch to light mode

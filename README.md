@@ -155,12 +155,12 @@ ork status -w
 curl localhost:8080/katalog/website/health
 ```
 
-For detailed installation options, GPG verification, and production deployment, see the [Installation Guide](https://orkestra.readthedocs.io/en/latest/guides/deployment/#installation).
+For detailed installation options, GPG verification, and production deployment, see the [Installation Guide](https://orkestra.readthedocs.io/en/latest/user-guide/deployment/#installation).
 
 ---
 
 > For a step‑by‑step walkthrough of what happens during reconcile, see  
-> 👉 **[Start Here](https://orkestra.readthedocs.io/en/latest/guides/getting-started/#what-just-happened)**.
+> 👉 **[Start Here](https://orkestra.readthedocs.io/en/latest/user-guide/getting-started/#what-just-happened)**.
 
 
 ---
@@ -180,7 +180,7 @@ Full details: [Trust & Failure Model](https://orkestra.readthedocs.io/en/latest/
 
 ## Documentation
 
-- **[Start Here](https://orkestra.readthedocs.io/en/latest/guides/getting-started)** — Onboarding guide  
+- **[Start Here](https://orkestra.readthedocs.io/en/latest/user-guide/getting-started)** — Onboarding guide  
 - **[Katalog](https://orkestra.readthedocs.io/en/latest/concepts/katalog)** — Declare operator behavior  
 - **[Komposer](https://orkestra.readthedocs.io/en/latest/concepts/komposer)** — Compose multiple Katalogs  
 - **[Full Documentation Index](https://orkestra.readthedocs.io/en/latest)** — All guides, references, and internals  

@@ -16,7 +16,7 @@ This is exactly the CronJob problem from the Kubebuilder tutorial, but for a Web
 ---
 
 ## Step 1: The CRD with Two Incompatible Versions
-Examine the CRD: [multi-version-website](./multi-version-website.yaml)
+Examine the CRD: [multi-version-website](./multi-version-website-katalog.yaml)
 
 **The incompatibility:** v1alpha1 has no `autoscaling` field. When converting from v1alpha1 to v1, we must provide a default. When converting from v1 to v1alpha1, we must drop the field.
 

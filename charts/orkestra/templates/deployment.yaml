@@ -65,6 +65,8 @@ spec:
               value: {{ .Values.config.environment | quote }}
             - name: DEGRADE_THRESHOLD
               value: {{ .Values.config.degradeThreshold | quote }}
+            - name: ORK_REGISTRY
+              value: {{ .Values.registry.url | quote }}
             {{- if .Values.config.watchNamespace }}
             - name: NAMESPACE
               value: {{ .Values.config.watchNamespace | quote }}

@@ -137,7 +137,29 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktype
 	localSeen := map[string]string{}
 	var allCRDs []orktypes.CRDEntry
 
-	// ── Step 1: file sources ──────────────────────────────────────────────────
+	// ── Step 1: registry sources ─────────────────────────────────────────────
+	if doc.Sources != nil {
+		for i, regSrc := range doc.Sources.Registry {
+			crds, err := m.loadRegistrySource(regSrc)
+			if err != nil {
+				return nil, fmt.Errorf("%q sources.registry[%d]: %w", path, i, err)
+			}
+
+			for _, crd := range crds {
+				srcName := fmt.Sprintf("registry:%d", i)
+				if regSrc.URL != "" {
+					srcName = "registry:" + regSrc.URL
+				}
+				if err := checkDuplicate(localSeen, crd.Name, srcName); err != nil {
+					return nil, fmt.Errorf("%q: %w", path, err)
+				}
+				localSeen[crd.Name] = srcName
+				allCRDs = append(allCRDs, crd)
+			}
+		}
+	}
+
+	// ── Step 2: file sources ──────────────────────────────────────────────────
 	if doc.Sources != nil {
 		for _, fileSrc := range doc.Sources.Files {
 
@@ -167,7 +189,7 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktype
 				allCRDs = append(allCRDs, crd)
 			}
 		}
-		// ── Step 2: helm sources ──────────────────────────────────────────────
+		// ── Step 3: helm sources ──────────────────────────────────────────────
 		for i, helmSrc := range doc.Sources.Helm {
 			crds, err := m.loadHelmSource(helmSrc)
 			if err != nil {
@@ -185,7 +207,7 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktype
 		}
 	}
 
-	// ── Step 3: inline spec.crds — override any source CRD with same name ────
+	// ── Step 4: inline spec.crds — override any source CRD with same name ────
 	for _, crd := range doc.Spec.CRDs {
 		if crd.Name == "" {
 			return nil, fmt.Errorf("%q spec.crds: CRD with no name", path)

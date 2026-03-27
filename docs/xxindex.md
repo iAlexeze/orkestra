@@ -36,7 +36,7 @@ Orkestra follows the GitOps pattern of using YAML as the source of truth for ope
 
 4. **You update or delete the CR** — Orkestra reconciles changes, corrects drift, or cleans up child resources.
 
-For a quick overview, see the [Getting Started](./guides/getting-started.md) guide.
+For a quick overview, see the [Getting Started](./user-guide/getting-started.md) guide.
 
 ---
 
@@ -64,7 +64,7 @@ brew install iAlexeze/tap/ork
 curl -sSL https://raw.githubusercontent.com/konduktor-io/orkestra/main/install.sh | bash
 ```
 
-For a step‑by‑step walkthrough, see the [Getting Started Guide](./guides/getting-started.md).
+For a step‑by‑step walkthrough, see the [Getting Started Guide](./user-guide/getting-started.md).
 
 ---
 
@@ -90,7 +90,7 @@ For a step‑by‑step walkthrough, see the [Getting Started Guide](./guides/get
 Orkestra is being actively developed. The core runtime is stable and ready for testing. New features are being added regularly.
 
 - **Current version:** v0.1.0 (alpha)
-- **Roadmap:** See [Roadmap](./publications/roadmap.md)
+- **Roadmap:** See [Roadmap](./roadmap.md)
 - **Releases:** Available on [GitHub](https://github.com/orkestra-sh/orkestra/releases)
 
 ---
@@ -117,7 +117,7 @@ Early adopters are using Orkestra to manage:
 
 | Section | Description |
 |---------|-------------|
-| [Guides](./guides/getting-started.md) | Step‑by‑step instructions for building operators |
+| [Guides](./user-guide/getting-started.md) | Step‑by‑step instructions for building operators |
 | [Concepts](./concepts/katalog.md) | Core ideas that define how Orkestra works |
 | [Reference](./reference/katalog-schema.md) | Detailed documentation for every part of Orkestra |
 | [Architecture](./architecture/overview.md) | How Orkestra works under the hood |

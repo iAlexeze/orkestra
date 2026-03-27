@@ -66,7 +66,7 @@ Verify:
 ork version
 ```
 
-For advanced installation options — GPG verification, custom directory, version pinning — see the [Installation Guide](../guides/deployment.md#installation).
+For advanced installation options — GPG verification, custom directory, version pinning — see the [Installation Guide](../user-guide/deployment.md#installation).
 
 ---
 

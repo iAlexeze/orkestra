@@ -278,4 +278,4 @@ Use it to define your CRDs. Use it to wire your controllers. Use it to build mul
 ---
 
 > For a complete list of all configurable options, see the **[Katalog and Komposer Reference](../reference/katalog-komposer-reference.md)**.  
-> For real‑world examples, see the **[Use Cases](../guides/use-cases.md)** documentation.
+> For real‑world examples, see the **[Use Cases](../user-guide/use-cases.md)** documentation.

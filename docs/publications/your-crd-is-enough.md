@@ -1,280 +1,356 @@
-# YOUR CRD IS ENOUGH
+# Extending Orkestra
 
-## The Zero‑Code Future of Kubernetes Operators
-
----
-
-For years, the Kubernetes community has lived with an unspoken contradiction.
-
-We introduced Custom Resource Definitions (CRDs) to make Kubernetes extensible. The promise was simple: describe your API, and Kubernetes would store it, validate it, and serve it. The hard part—the business logic—would be yours to implement.
-
-But somewhere along the way, the promise inverted. Instead of focusing on the CRD, the ecosystem focused on everything around it.
-
-We built frameworks to generate code for us. We built tools to scaffold projects for us. We built libraries to abstract the plumbing. Each generation made the code easier to write, but none removed the need to write it at all.
-
-The result is a generation of platform engineers who spend their days writing infrastructure for their infrastructure. Operators become software projects. CRDs become an afterthought. The tail wags the dog.
-
-This paper argues for a return to first principles. The CRD was always enough. The rest is plumbing.
+Adding a new CRD to Orkestra means adding a Katalog entry. Orkestra builds
+the operator around it — informer, workqueue, workers, health API, metrics,
+finalizers, and lifecycle. You declare the CRD. Orkestra manages it.
 
 ---
 
-## The Contradiction
+## What you provide
 
-Kubernetes was designed for declarative infrastructure. You write YAML. The platform makes it so.
-
-This promise holds everywhere — until you need to extend Kubernetes itself.
-
-The moment you need a custom resource, you leave the declarative world. You write Go. You scaffold controllers. You wire informers and schemes. You manage reconcile loops, retries, and backoff. You build images. You write deployment manifests for your controller. You maintain a project whose primary purpose is to watch another project.
-
-Every major operator framework to date has accepted this as the cost of entry. Kubebuilder, Operator SDK, Metacontroller, Kopf — they each make the code easier, not unnecessary.
-
-This creates a paradox: to make Kubernetes more declarative, you must write imperative code.
-
-Orkestra breaks that paradox.
-
----
-
-## What "Your CRD Is Enough" Actually Means
-
-The phrase is not a slogan. It is a technical assertion with profound implications.
-
-It means that the CRD contains everything Kubernetes needs to know about your resource.
-
-Kubernetes already:
-- Stores the CRD as unstructured JSON
-- Knows its schema (if you provided one)
-- Validates incoming requests against that schema
-- Persists objects in etcd
-- Emits events when they change
-- Triggers watches for controllers
-
-The only missing piece has always been a runtime that can reconcile CRDs without requiring the user to write code that translates the CRD into Kubernetes API calls.
-
-That runtime is Orkestra.
-
-Orkestra treats your CRD as the API and your Katalog as the operator. No types. No structs. No reconcile loops. No controllers. No webhooks. Just declarations.
-
----
-
-## The 80% Problem
-
-Every operator ever written contains the same 80% of logic:
-
-- Create a Deployment
-- Update a Service
-- Sync a Secret
-- Merge a ConfigMap
-- Set owner references
-- Detect drift
-- Handle retries
-- Emit events
-- Expose metrics
-
-This logic is identical across operators. A PostgreSQL operator and a Redis operator do the same things, with different field names. Yet every team rewrites it. Every framework expects you to write it again.
-
-Orkestra provides that 80% as a built‑in library. You declare what you want. Orkestra handles the how.
-
-The remaining 20% — your business logic — you write as hooks. But even there, Orkestra's declarative templates cover most cases. For the Website CRD, creating a Deployment and Service is 10 lines of YAML. No hooks needed.
-
----
-
-## What We've Been Building Instead
-
-Every operator framework before Orkestra was built around typed CRD structs. Typed structs require:
-
-- code generation
-- deep‑copy functions
-- scheme registration
-- client‑go libraries
-- reconcile loops
-- patch logic
-- drift detection
-- error handling
-- boilerplate
-
-This entire stack exists because we assumed operators must be written in Go. But Kubernetes itself does not use typed structs for CRDs. It stores everything as `map[string]interface{}`. The typed layer is a convenience for developers—not a requirement for the platform.
-
-Orkestra operates directly on unstructured CRDs—the same way Kubernetes does internally. This eliminates the entire class of problems created by typed APIs:
-
-- no dot‑notation failures
-- no schema drift
-- no type mismatches
-- no code generation
-- no compile‑time coupling
-- no need for a language at all
-
-Your CRD becomes the source of truth. Your Katalog becomes the behavior. Orkestra becomes the runtime.
-
----
-
-## The Model
-
-```
-CRD → Katalog → Orkestra → Kubernetes
-```
-
-- **CRD** defines *what* the resource is
-- **Katalog** defines *how* it should behave
-- **Orkestra** reconciles it
-- **Kubernetes** stores and enforces it
-
-This is the simplest possible operator model—and the most powerful.
-
----
-
-## What This Unlocks
-
-### 1. Zero‑code operators
-
-Not "less code." Zero code.
-
-A user writes:
+The minimum for any CRD:
 
 ```yaml
+# in your Katalog
 apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 spec:
   crds:
-    - name: website
+    - name: myresource
+      enabled: true
       apiTypes:
-        group: demo.orkestra.io
+        group: myorg.io
         version: v1alpha1
-        kind: Website
+        kind: MyResource
+        plural: myresources
       reconciler:
         default: true
-        onCreate:
-          deployments:
-            - image: "{{ .spec.image }}"
-              replicas: "{{ .spec.replicas }}"
 ```
 
-And runs:
+That is a complete operator entry. Apply the CRD definition to your cluster,
+run `ork run --katalog katalog.yaml`, and Orkestra manages `MyResource`
+from that moment forward.
+
+Everything else — compiled types, Go hooks, custom constructors — is
+optional and added only when you need it.
+
+---
+
+## Step 1 — Declare your CRD in the Katalog
+
+Every CRD entry needs at minimum: `name`, `apiTypes` (group, version, kind,
+plural), and `reconciler.default`.
+
+```yaml
+- name: myresource
+  enabled: true
+  namespaced: true
+  workers: 2
+  resync: 30s
+  dependsOn: []
+
+  apiTypes:
+    group: myorg.io
+    version: v1alpha1
+    kind: MyResource
+    plural: myresources
+    # location omitted → dynamic mode
+    # location: github.com/myorg/apis/v1alpha1 → typed mode
+
+  reconciler:
+    default: true
+
+  queue:
+    maxQueueDepth: 500
+    degradeThreshold: 5
+```
+
+**Dynamic mode** (no `apiTypes.location`) — no Go types needed. Orkestra
+uses the dynamic client. Template expressions in `onCreate`/`onReconcile`/
+`onDelete` resolve against the live CR at reconcile time.
+
+**Typed mode** (`apiTypes.location` set) — compiled Go types are registered
+at startup. The REST client decodes API server responses into your structs.
+Required for Go hooks that access `obj.Spec` fields with compile-time safety.
+
+---
+
+## Step 2 — Choose your reconcile path
+
+### Path A — Declarative templates (zero code)
+
+Declare what resources to create in the Katalog. No Go. No code generation.
+No build step. Just `ork run`.
+
+```yaml
+reconciler:
+  default: true
+  finalizers:
+    - finalizer.myorg.io/myresource
+  onCreate:
+    deployments:
+      - name: "{{ .metadata.name }}"
+        image: "{{ .spec.image }}"
+        replicas: "{{ .spec.replicas }}"
+        reconcile: true   # drift correction — no separate onReconcile needed
+    services:
+      - name: "{{ .metadata.name }}-svc"
+        port: "80"
+        targetPort: "{{ .spec.port }}"
+        type: "{{ .spec.serviceType }}"
+        reconcile: true
+    configMaps:
+      - name: "{{ .metadata.name }}-config"
+        data:
+          LOG_LEVEL: "{{ .spec.logLevel }}"
+        reconcile: true
+  onDelete:
+    jobs:
+      - name: "{{ .metadata.name }}-cleanup"
+        image: busybox
+        command: ["sh", "-c", "cleanup.sh {{ .metadata.name }}"]
+```
+
+GenericReconciler interprets these declarations at runtime. `reconcile: true`
+means the same resource is also drift-corrected on every reconcile — you
+declare it once and get both create and correction behaviour.
+
+### Path B — Go hooks
+
+Use when you need: type-safe `obj.Spec` access, conditional resource creation,
+external API calls, or status subresource writes.
+
+```yaml
+reconciler:
+  default: true
+  hooks:
+    location: github.com/myorg/hooks
+    function: MyResourceHooks
+```
+
+```go
+// pkg/hooks/myresource.go
+func MyResourceHooks() domain.AnyReconcileHooks {
+    return domain.ReconcileHooks[*apiv1.MyResource]{
+        OnReconcile: func(ctx context.Context, obj *apiv1.MyResource) error {
+            kube, _ := kubeclient.FromContext(ctx)
+
+            // type-safe spec access
+            spec := orkdeploy.ResolvedDeploymentSpec{
+                Name:      obj.Name,
+                Namespace: obj.Namespace,
+                Image:     obj.Spec.Image,     // compiled field access
+                Replicas:  int32(obj.Spec.Replicas),
+            }
+            return orkdeploy.Create(ctx, kube, obj, spec)
+        },
+        OnDelete: func(ctx context.Context, obj *apiv1.MyResource) error {
+            // cleanup logic
+            return nil
+        },
+    }
+}
+```
+
+Requires `ork generate runtime` to register the hook in `HookRegistry`.
+Also requires a compiled Go type package — set `apiTypes.location`.
+
+### Path C — Custom constructor
+
+Use when you need the full reconcile loop: complex state machines, custom
+retry strategies, or wrapping an existing reconciler implementation.
+
+```yaml
+reconciler:
+  default: false
+  constructor:
+    location: github.com/myorg/reconcilers
+    function: NewMyResourceReconciler
+```
+
+```go
+type MyResourceReconciler struct {
+    informer cache.SharedIndexInformer
+    kube     *kubeclient.Kubeclient
+    event    *event.Event
+}
+
+func NewMyResourceReconciler(
+    kube *kubeclient.Kubeclient,
+    inf cache.SharedIndexInformer,
+    ev *event.Event,
+) domain.Reconciler {
+    return &MyResourceReconciler{informer: inf, kube: kube, event: ev}
+}
+
+func (r *MyResourceReconciler) Reconcile(ctx context.Context, key string) error {
+    raw, exists, err := r.informer.GetIndexer().GetByKey(key)
+    if err != nil || !exists {
+        return err
+    }
+    obj := raw.(*apiv1.MyResource).DeepCopy()
+    // your reconcile logic
+    return nil
+}
+```
+
+Orkestra still owns the informer, workqueue, metrics, health API, and leader
+election. You own the reconcile function.
+
+Requires `ork generate runtime` to register the constructor.
+
+---
+
+## Step 3 — For typed mode: create API types
+
+Only needed when `apiTypes.location` is set. Skip for dynamic CRDs.
+
+```
+api/types/myresource/v1alpha1/
+  groupversion_info.go
+  myresource_types.go
+  zz_generated.deepcopy.go   ← generated by controller-gen
+```
+
+**`groupversion_info.go`:**
+
+```go
+package v1alpha1
+
+import (
+    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    "k8s.io/apimachinery/pkg/runtime"
+    "k8s.io/apimachinery/pkg/runtime/schema"
+)
+
+var (
+    Group      = "myorg.io"
+    Version    = "v1alpha1"
+    Kind       = "MyResource"
+    NamePlural = "myresources"
+
+    GroupVersion  = schema.GroupVersion{Group: Group, Version: Version}
+    SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
+    AddToScheme   = SchemeBuilder.AddToScheme
+)
+
+func addKnownTypes(scheme *runtime.Scheme) error {
+    scheme.AddKnownTypes(GroupVersion, &MyResource{}, &MyResourceList{})
+    metav1.AddToGroupVersion(scheme, GroupVersion)
+    return nil
+}
+```
+
+**`myresource_types.go`:**
+
+```go
+package v1alpha1
+
+import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+type MyResource struct {
+    metav1.TypeMeta   `json:",inline"`
+    metav1.ObjectMeta `json:"metadata,omitempty"`
+    Spec              MyResourceSpec   `json:"spec"`
+    Status            MyResourceStatus `json:"status,omitempty"`
+}
+
+type MyResourceSpec struct {
+    Image     string `json:"image"`
+    Replicas  int    `json:"replicas,omitempty"`
+    LogLevel  string `json:"logLevel,omitempty"`
+}
+
+type MyResourceStatus struct {
+    Phase   string `json:"phase,omitempty"`
+    Message string `json:"message,omitempty"`
+}
+
+type MyResourceList struct {
+    metav1.TypeMeta `json:",inline"`
+    metav1.ListMeta `json:"metadata,omitempty"`
+    Items           []MyResource `json:"items"`
+}
+```
+
+Generate deepcopy:
 
 ```bash
+controller-gen object paths=./api/types/myresource/...
+```
+
+---
+
+## Step 4 — Generate runtime wiring (typed and hooks only)
+
+Dynamic template CRDs skip this entirely.
+
+```bash
+# Typed CRDs — registers Go types + scheme
+# Go hooks — registers hook factory in HookRegistry
+# Custom constructors — registers constructor in ReconcilerRegistry
+ork generate runtime --katalog katalog.yaml
+
+# Preview without writing
+ork generate runtime --katalog katalog.yaml --dry-run
+
+# Then
+go mod tidy
+```
+
+What gets generated for each case:
+
+| Case | Generated |
+|---|---|
+| Typed CRD | `ObjectRegistry` + `ListRegistry` entries + `RegisterTypedScheme` |
+| Go hooks | `HookRegistry` entry |
+| Custom constructor | `ReconcilerRegistry` entry |
+| Dynamic templates only | **Nothing — generation skipped** |
+
+---
+
+## Step 5 — Apply the CRD and run
+
+```bash
+# Apply the Kubernetes CRD definition
+kubectl apply -f myresource-crd.yaml
+
+# Validate the Katalog before running
+ork validate --katalog katalog.yaml
+
+# Preview the merged state
+ork template --katalog katalog.yaml --graph
+
+# Start the operator
 ork run --katalog katalog.yaml
 ```
 
-That is the entire operator.
+Orkestra starts, the informer syncs, and your CRD is now managed. Create a
+CR and watch the resources appear:
 
-### 2. Operators for CRDs you don't own
-
-You can manage any third‑party CRD without touching its code:
-
-- Prometheus
-- ArgoCD
-- Istio
-- External Secrets
-- Cert‑Manager
-- Any Helm chart
-- Any open‑source operator
-
-If Kubernetes accepts the CRD, Orkestra can reconcile it. No fork. No rewrite. No reverse engineering. Just a Katalog.
-
-### 3. Operators that evolve at runtime
-
-No recompilation. No redeployment. No image builds. No version drift. Update the Katalog—the operator changes instantly.
-
-This is the difference between build‑time and runtime.
-
-### 4. True version management
-
-When a CRD has multiple versions, Kubernetes stores only one. The user sees the storage version, not the version they created.
-
-Orkestra's informer watches the version the user wrote. The reconciler sees the original intent. The `ork get --version` command shows what was created.
-
-This means teams can:
-- Use different versions simultaneously
-- See what they actually wrote
-- Upgrade at their own pace
-- Write version‑specific templates
-- Trust what they see
-
-### 5. Declarative version conversion
-
-The standard approach to multi‑version CRDs requires writing a conversion webhook in Go, deploying it as a separate service, managing TLS certificates, and maintaining conversion logic across versions.
-
-Orkestra eliminates this. Conversion rules are declared in the Katalog:
-
-```yaml
-conversion:
-  - kind: Website
-    storageVersion: v1
-    paths:
-      - from: v1alpha1
-        to: v1
-        spec:
-          image: "{{ .spec.image }}"
-          replicas: "{{ .spec.replicas }}"
-          autoscaling:
-            enabled: false
-      - from: v1
-        to: v1alpha1
-        spec:
-          image: "{{ .spec.image }}"
-          replicas: "{{ .spec.replicas }}"
+```bash
+kubectl apply -f myresource-cr.yaml
+kubectl get deployments
+curl localhost:8080/katalog/myresource/health | jq
 ```
-
-Orkestra's built‑in webhook applies these rules. No Go. No separate deployment. No TLS management.
-
-### 6. A shared operator ecosystem
-
-The final form of this vision is the OrkestraRegistry—a global registry of versioned operator patterns. A registry entry looks like this:
-
-```yaml
-# registry entry: prometheus@v2.45
-apiVersion: orkestra.konductor.io/v1Alpha
-kind: Katalog
-metadata:
-  name: prometheus
-  description: Prometheus monitoring stack
-
-crds:
-  - name: prometheus
-    group: monitoring.coreos.com
-    version: v1
-    kind: Prometheus
-    plural: prometheuses
-
-templates:
-  prometheus:
-    onCreate:
-      deployments:
-        - image: "{{ .spec.image }}"
-          replicas: "{{ .spec.replicas }}"
-          # production‑hardened defaults
-```
-
-Teams consume it like this:
-
-```yaml
-sources:
-  registry:
-    katalog: prometheus
-    version: v2.45
-```
-
-No controller code. No reconcile loops. No operator project. Just a reference to a versioned operator pattern.
-
-This is the difference between a tool and an ecosystem.
 
 ---
 
-## The Economics
+## Summary
 
-| Cost Center | Traditional | Orkestra |
-|-------------|-------------|----------|
-| **Operator development** | Weeks | Minutes |
-| **Operator resources** | 50 operators × 200MB = 10GB | 1 runtime × 200MB = 200MB |
-| **Version management** | Full‑time engineers | Declarative rules in Katalog |
-| **Cluster duplication** | Separate clusters per version | One cluster, all versions |
-| **Debugging** | Hours finding storage version | Seconds with `ork get --version` |
-
-The savings are not incremental. They are orders of magnitude.
-
----
-
-## The One‑Sentence Truth
-
-Every operator framework before Orkestra reduced the code you write. Orkestra removes the need to write code at all.
-
-**Your CRD is enough.**
+| What you provide | What Orkestra provides |
+|---|---|
+| Katalog entry | Informer + workqueue |
+| Template declarations (optional) | Runtime template interpretation |
+| Go types (optional, typed mode) | Scheme registration + REST client |
+| Go hooks (optional) | GenericReconciler lifecycle |
+| Custom constructor (optional) | Everything except reconcile function |
+| | Health API (`/katalog/myresource`) |
+| | Prometheus metrics |
+| | Dependency ordering |
+| | Leader election |
+| | Graceful shutdown |
+| | Drift correction |
+| | Cascade deletion via owner references |
+| | Finalizer management |
+| | Kubernetes events |

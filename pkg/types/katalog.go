@@ -48,6 +48,9 @@ type KatalogSources struct {
 	// Helm — Helm chart sources. Each chart is rendered with the provided
 	// value files and the resulting Katalog templates are extracted and merged.
 	Helm []HelmSource `yaml:"helm,omitempty"`
+
+	// Registry - Registry sources.
+	Registry []RegistrySource `yaml:"registry,omitempty"`
 }
 
 // HelmSource declares a Helm chart that produces Katalog CRD definitions.

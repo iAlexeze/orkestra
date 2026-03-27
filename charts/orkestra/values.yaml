@@ -96,6 +96,11 @@ crdConversion:
     #   tls.crt: certificate
     #   tls.key: private key
 
+# ── Registry ────────────────────────────────────────────────────────────────────
+registry:
+  enabled: true
+  url: ""     # Global registry URL. Can be overwritten at komposer level per source
+
 # ── Service ────────────────────────────────────────────────────────────────────
 service:
   type: ClusterIP

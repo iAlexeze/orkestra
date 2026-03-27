@@ -9,6 +9,7 @@ type Konfig struct {
 	healthServer healthServer
 	katalog      katalogKonfig
 	conversion   conversionConfig
+	registry     registryConfig
 }
 
 type orkKonfig struct {
@@ -33,6 +34,10 @@ type clusterKonfig struct {
 	// Worload specific
 	DefaultResync  time.Duration
 	DefaultWorkers int
+}
+
+type registryConfig struct {
+	RegistryURL string
 }
 
 type conversionConfig struct {
@@ -106,4 +111,9 @@ func (k *Konfig) Finalizers() []string {
 // ConversionConfig returns true is enabled
 func (k *Konfig) ConversionConfig() *conversionConfig {
 	return &k.conversion
+}
+
+// RegistryConfig returns true is enabled
+func (k *Konfig) RegistryConfig() *registryConfig {
+	return &k.registry
 }

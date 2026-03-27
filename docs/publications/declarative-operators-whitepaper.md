@@ -6,46 +6,131 @@
 
 ## Abstract
 
-Kubernetes operators encode domain knowledge as reconciliation logic. Every major operator framework to date requires this logic to be written in Go, compiled into a binary, and deployed as a separate long-running process. The result is a pattern that is increasingly expensive to operate — each new CRD brings a new binary, a new deployment, a new set of metrics, a new health story.
+Kubernetes operators encode domain knowledge as reconciliation logic. Every
+major operator framework to date requires this logic to be written in a
+programming language, compiled into a binary, and deployed as a separate
+long-running process — one per CRD. The result, at scale, is operator sprawl:
+dozens of binaries each with independent lifecycle, observability, and
+resource consumption.
 
-This paper argues that the operator itself can be declarative. We describe Orkestra — a runtime for declarative operators that watches CRDs and reconciles according to YAML templates. The same runtime that reconciles custom resources can watch built-in Kubernetes resources, compose operator definitions from multiple sources, and provide unified observability. The result is a model where operators are data, not code.
+This paper presents a different model. We argue that the operator pattern
+is fundamentally correct, but its implementation has been conflated with its
+mechanism. The pattern requires one reconciler per CRD with proper isolation.
+It does not require one binary per CRD. When a shared runtime provides the
+isolation, each CRD becomes a complete, independent operator — with its own
+informer, worker pool, workqueue, health endpoint, and metrics — while the
+operational overhead of running them collapses to a single process.
+
+We describe Orkestra, a runtime for declarative operators built on this
+principle. Users declare CRDs and their reconcile behavior in a YAML Katalog.
+The runtime interprets these declarations, provides full operator lifecycle,
+and composes multiple Katalogs through a Komposer model. We demonstrate that
+this approach eliminates code generation, build pipelines, and per-operator
+deployments while preserving and strengthening the isolation properties that
+operator frameworks seek.
 
 ---
 
-## 1. The evolution of the operator pattern
+## 1. The Operator Pattern and Its Costs
 
-### 1.1 The original model
+### 1.1 The Original Model
 
-The operator pattern, introduced in 2016, proposed encoding operational knowledge as a reconciliation loop: a controller that watches a custom resource and continuously drives the cluster toward the desired state declared in it. The concept was sound. The implementation required intimate familiarity with client-go internals — informers, workqueues, REST mappers, schemes. Most of that implementation was identical across operators. The business logic was a small fraction of the total code.
+The operator pattern, introduced in 2016, proposed encoding operational
+knowledge as a reconciliation loop: a controller that watches a custom
+resource and continuously drives the cluster toward the desired state declared
+in it. The pattern was correct. Its implementation required intimate
+familiarity with client-go internals — informers, workqueues, REST mappers,
+and scheme registration. The business logic was a small fraction of the total
+code. The remainder was identical across every operator ever written.
 
-### 1.2 Frameworks reduce boilerplate
+### 1.2 Frameworks Address Boilerplate
 
-Kubebuilder and Operator SDK addressed this by generating the plumbing. Scaffolding commands produced a working controller skeleton. controller-runtime wrapped client-go into a higher-level interface. The operator developer could focus on the reconcile function. The cost of entry dropped meaningfully.
+Kubebuilder, Operator SDK, and controller-runtime addressed the boilerplate
+by generating the common parts. The operator developer could focus on the
+reconcile function rather than its surrounding infrastructure. This was
+genuine progress.
 
-The cost did not reach zero. The generated project still required Go, a build pipeline, an image registry, and a deployment manifest. Adding a new CRD meant adding a new type, running code generation, rebuilding the binary, pushing the image, and rolling the deployment. The development loop was compressed but not eliminated.
+The cost did not disappear. The generated project still required Go, a build
+pipeline, an image registry, and a deployment manifest. Adding a new CRD
+meant adding a new Go type, running code generation, rebuilding the binary,
+pushing the image, and rolling the deployment. The development loop was
+compressed but not eliminated.
 
-### 1.3 The operator sprawl problem
+More significantly, the framework design encoded an assumption that would
+compound over time: one operator per CRD, one binary per operator.
 
-As organizations adopted operators, the operational overhead multiplied. A typical platform runs operators for Prometheus, Cert Manager, Istio, External Secrets, Crossplane providers, and internal CRDs — each with its own binary, its own deployment, its own RBAC, its own metrics endpoint, its own upgrade cadence. Each operator consumes memory and CPU. Each operator duplicates the same informer logic, the same workqueue, the same leader election code.
+### 1.3 The Operator Sprawl Problem
 
-The problem is not that operators are heavy. The problem is that the operator pattern was never designed to be shared across many CRDs.
+The one-binary-per-CRD assumption produces predictable operational overhead
+at scale. A production cluster running Prometheus, Cert Manager, External
+Secrets, an Ingress controller, a service mesh, and a collection of internal
+CRDs routinely runs twenty to fifty operator processes. Each consumes memory
+and CPU even when idle. Each maintains its own informer cache, duplicating
+watch traffic against the API server. Each has its own RBAC configuration,
+its own metrics endpoint (if any), its own upgrade cadence, and its own
+health story.
+
+Platform engineers managing these clusters do not have one observability
+problem. They have fifty. Understanding why an application failed requires
+consulting multiple dashboards, multiple log streams, multiple health
+endpoints — each with its own format, its own conventions, and its own
+operational vocabulary.
+
+This is operator sprawl. It is not a consequence of the operator pattern.
+It is a consequence of the assumption that operator equals binary.
 
 ---
 
-## 2. The Orkestra model
+## 2. Reframing: The Super-Operator Model
 
-### 2.1 The operator as a declaration
+The Kubernetes community has long held that the correct design is one operator
+per CRD. This paper agrees — and argues that Orkestra fulfills this principle
+more completely than previous frameworks.
 
-Orkestra introduces two document kinds: **Katalog** and **Komposer**.
+The confusion lies in what "one operator" means. In traditional frameworks,
+it means one process, one binary, one deployment. The per-CRD isolation is
+an architectural intention, but it is implemented at the process boundary —
+not within the runtime.
 
-A Katalog declares one or more CRDs — their API types and how they should be reconciled. A Komposer composes Katalogs from multiple sources into one runtime.
+Orkestra makes the isolation explicit and structural. Each CRD in Orkestra
+receives its own isolated operator stack:
+
+- **Informer** — watches exactly one GVK with its own resync interval
+- **Workqueue** — independent depth, backoff, and rate limiting
+- **Worker pool** — dedicated goroutines; no other CRD can consume them
+- **Reconciler** — interprets this CRD's templates and hooks only
+- **Health endpoint** — `/katalog/{crd}/health` per CRD
+- **Metrics** — five Prometheus metrics, all labeled by GVK
+- **Failure domain** — a panic in one reconciler is recovered; others continue
+
+These components are hosted by a shared runtime that provides the
+infrastructure — API server connections, leader election, dependency ordering,
+the informer factory, the queue registry. The runtime is infrastructure. The
+operator stack per CRD is the tenant.
+
+This is the super-operator model: each CRD becomes a complete, production-grade
+operator. They share infrastructure the way microservices share a Kubernetes
+cluster — not by merging their logic, but by running on common platforms.
+
+---
+
+## 3. Orkestra
+
+### 3.1 The Katalog
+
+A Katalog is a YAML document that declares one or more CRDs and how they
+should be reconciled. It is the unit of operator definition in Orkestra.
 
 ```yaml
 apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
+metadata:
+  name: website-operator
 spec:
   crds:
     - name: website
+      workers: 3
+      resync: 30s
       apiTypes:
         group: demo.orkestra.io
         version: v1alpha1
@@ -64,246 +149,330 @@ spec:
               reconcile: true
 ```
 
-This declaration is the complete operator. Apply the `Website` CRD to the cluster, run `ork run --katalog katalog.yaml`, and:
+This is a complete operator declaration. `ork run --katalog katalog.yaml`
+starts the runtime. Every `Website` CR triggers a reconcile that creates
+and drift-corrects a Deployment and Service. Deletion cascades via owner
+references. Finalizers ensure cleanup completes before CR removal.
 
-- Every `Website` CR is watched by an informer
-- A Deployment and Service are created for each CR and kept in sync
-- Deletion cascades via owner references
-- Finalizers ensure cleanup completes before the CR is removed
-- A health API, Prometheus metrics, and Kubernetes events are provided automatically
+The field `reconcile: true` on each resource means it is also corrected on
+every reconcile cycle — not just created. Drift is detected and corrected
+without additional configuration.
 
-No Programming language. No code generation. No separate deployment. No duplicate operator binary.
+### 3.2 The Dynamic Client Model
 
-### 2.2 One runtime, many CRDs
+Orkestra operates on unstructured CRDs by default — the same
+`*unstructured.Unstructured` representation Kubernetes uses internally.
+The API types (`apiTypes.location`) field is optional, needed only when
+Go hooks require concrete type assertions. This distinction matters for
+three reasons.
 
-A single Orkestra instance can manage any number of CRDs. Each CRD gets its own informer, its own worker pool, its own queue depth, and its own health endpoint — all from the same runtime.
+First, it eliminates the code generation step for the common case. The
+cluster already holds the CRD schema. Orkestra reads it at startup via the
+discovery API. The user does not need to replicate it in Go structs.
+
+Second, it enables watching any CRD — including ones the operator does not
+own. A Katalog entry with `kind: Deployment` and no `apiTypes.location` is
+sufficient for Orkestra to watch all Deployments in the cluster. The cluster
+knows the schema. Orkestra asks for it.
+
+Third, it is the mechanism that makes multi-version CRDs tractable. Each
+version of a CRD is registered as a separate Katalog entry. Each version
+gets its own complete operator stack. The conversion logic is declared
+alongside the reconcile logic, interpreted by the same template resolver.
+
+### 3.3 The Template Resolver
+
+Orkestra's template resolver evaluates Go `text/template` expressions
+against the live CR object at reconcile time. This is the mechanism
+through which declarative templates become Kubernetes API calls.
 
 ```yaml
-spec:
-  crds:
-    - name: website
-      workers: 3
-      resync: 30s
-      # ... templates
-    - name: database
-      workers: 2
-      dependsOn: [website]
-      # ... templates
-    - name: cache
-      workers: 2
-      dependsOn: [website, database]
+deployments:
+  - name: "{{ .metadata.name }}"
+    image: "{{ .spec.image }}"
+    replicas: "{{ .spec.replicas }}"
+    reconcile: true
 ```
 
-This is the opposite of operator sprawl. One runtime replaces N operators.
+The resolver resolves each field against the CR's unstructured map before
+calling the OrkestraRegistry. The OrkestraRegistry handles the Kubernetes
+API calls — create, update, delete, owner references, idempotency — for
+each resource type. Adding a new resource type to the registry is a single
+file addition.
 
-### 2.3 Dependency ordering
+### 3.4 Dependency Ordering
 
 CRDs can declare dependencies:
 
 ```yaml
-- name: application
-  dependsOn:
-    - project
+crds:
+  - name: project
+    dependsOn: []
+  - name: namespace
+    dependsOn: [project]
+  - name: application
+    dependsOn: [project, namespace]
 ```
 
-Orkestra starts CRDs in topological order. Dependents wait for their dependencies to signal readiness before their workers start. Missing CRDs retry in the background — healthy CRDs are never blocked.
+Orkestra computes the topological order from the dependency graph and starts
+CRDs in that order. Each CRD waits for its dependencies to signal readiness
+before its workers start. Missing CRDs — declared but not yet installed in
+the cluster — are retried in the background without blocking healthy CRDs.
 
-This is essential for multi-CRD systems where resources depend on each other. The dependency graph is declared, not coded.
+This capability is structurally impossible with separate operators. Separate
+processes have no coordination mechanism. Orkestra provides it as a declared
+property of the Katalog.
 
-### 2.4 Built-in Kubernetes resources
+Shutdown runs in reverse dependency order. No partial reconciliations. No
+orphaned resources.
 
-A Kubernetes Deployment is a CRD that ships with every cluster. It has a group (`apps`), version (`v1`), kind (`Deployment`), and plural (`deployments`). Those four values in a Katalog entry are enough for Orkestra to watch it.
+### 3.5 The Komposer
 
-```yaml
-- name: deployment-governance
-  apiTypes:
-    kind: Deployment
-  reconciler:
-    default: true
-    onCreate: []
-```
-
-Orkestra queries the API server at startup to discover the group, version, plural, and scope for any `kind`. The user does not need to know these values. The cluster knows them. Orkestra asks.
-
-This capability means Orkestra can watch and report on any Kubernetes resource with a single line in a Katalog. The same observability — health endpoints, metrics, `ork status` — applies to built-in resources and custom CRDs alike.
-
----
-
-## 3. Composition at scale
-
-### 3.1 The Komposer model
-
-A Komposer resolves CRD definitions from multiple sources — files, Helm charts, remote URLs — into one validated runtime configuration. Sources are merged by CRD name. Inline `spec.crds` on a Komposer override source definitions.
+A Komposer composes Katalogs from multiple sources into one runtime:
 
 ```yaml
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Komposer
+metadata:
+  name: platform-komposer
 sources:
   files:
-    - ./katalogs/project.yaml
-    - https://platform.myorg.io/crds/katalog.yaml
-    - url: https://private.myorg.io/crds/secure-katalog.yaml
+    - ./katalogs/website.yaml
+    - https://platform.myorg.io/crds/database.yaml
+    - url: https://private.myorg.io/crds/internal.yaml
       auth:
         type: bearer
-        fromEnv: PLATFORM_KATALOG_TOKEN
+        fromEnv: PLATFORM_TOKEN
   helm:
     - repo: https://charts.myorg.io
       chart: platform-crds
       version: 2.1.0
+  registry:
+    - katalog:
+        application:
+          version: v1.4.0
+spec:
+  crds:
+    # Inline override — wins on name conflict with any source
+    - name: application
+      workers: 8
 ```
 
-### 3.2 Multi-team ownership
+The merger resolves all sources, deduplicates by CRD name, and produces one
+validated configuration. Inline `spec.crds` are merged last and override
+source definitions — the mechanism for environment-specific configuration
+without forking source Katalogs.
 
-Each team owns their Katalog. The platform Komposer composes them. Environment-specific overrides are declared inline. The same Katalog runs in development with `workers: 2` and in production with `workers: 8` — the override is declared, not hardcoded.
+This is the pattern that Helm brought to deployment manifests, applied to
+operator behavior. Platform teams publish Katalogs. Application teams
+compose and selectively override.
 
-This is the pattern that Helm brought to deployment configuration, applied to operator behavior. Platform teams publish operator definitions. Application teams consume and selectively override. The inheritance is explicit, auditable, and composable.
-
----
-
-## 4. Observability
-
-### 4.1 Built-in health API
+### 3.6 Observability
 
 Every CRD managed by Orkestra automatically exposes:
 
 ```
-GET /katalog                 All CRDs — health, config, dependency graph
-GET /katalog/{crd}           Single CRD — config, stats, reconciler info
-GET /katalog/{crd}/health    Single CRD health — 200 healthy / 503 degraded
+GET /katalog                   All CRDs — health, dependency graph, stats
+GET /katalog/{crd}             Single CRD — config, reconcile stats
+GET /katalog/{crd}/health      200 healthy / 503 degraded
+GET /metrics                   Prometheus metrics for all CRDs
 ```
 
-### 4.2 Built-in metrics
-
-Five Prometheus metrics, all per-CRD:
-
-| Metric | Type | Description |
-|--------|------|-------------|
-| `controller_reconcile_total` | Counter | Reconcile count by result (success/error) |
-| `controller_reconcile_duration_seconds` | Histogram | Reconcile latency per CRD |
-| `controller_queue_depth` | Gauge | Current workqueue depth per CRD |
-| `controller_workers_active` | Gauge | Active worker count per CRD |
-| `controller_resource_count` | Gauge | Live CR count per CRD |
-
-### 4.3 CLI status
-
-`ork status` shows the state of every managed CRD in a single view:
+Five metrics, all per-CRD, all labeled by full GVK:
 
 ```
-Orkestra Operator Status
-Operator:            platform-operator
-Health:              ● healthy
-CRDs:                5 total, 5 enabled
-
-CRD              WORKERS   QUEUE     HEALTH       RECONCILES   ERR%   RESOURCES
-website             3/3       0        ●        1,247        0.0%   3
-database            2/2       0        ●        412          0.0%   6
-cache               2/2       3        ●        8,891        0.2%   12
+controller_reconcile_total{crd, result}
+controller_reconcile_duration_seconds{crd}
+controller_queue_depth{crd}
+controller_workers_active{crd}
+controller_resource_count{crd}
 ```
 
-This is the unified observability that the operator sprawl makes impossible.
+This unified observability is a structural consequence of the single-runtime
+model. Separate operators cannot provide it.
 
 ---
 
-## 5. The OrkestraRegistry
+## 4. Multi-Version CRDs: Declarative Conversion
 
-### 5.1 The standard library of operators
+### 4.1 The Standard Approach
 
-The OrkestraRegistry provides production-ready implementations for Deployments, Services, Secrets, ConfigMaps, Jobs, and CronJobs. Every implementation handles create, update, delete, owner references, and idempotency.
+Kubernetes CRDs support multiple API versions through a conversion webhook.
+When a client requests a version different from the storage version, the API
+server sends a `ConversionReview` request to the webhook. The webhook must
+return the converted objects.
 
-Users declare what they want. The registry handles how.
+The standard implementation requires writing conversion functions in Go,
+deploying a separate webhook server, managing TLS certificates, configuring
+the CRD to point to the webhook, and maintaining conversion logic as versions
+evolve. For a change as simple as adding a field, this infrastructure overhead
+frequently exceeds the development cost of the change itself.
 
-### 5.2 The future: a shared ecosystem
+### 4.2 Conversion as a Consequence of the Super-Operator Model
 
-The registry is the foundation for a global ecosystem of reusable operator patterns. A registry entry looks like this:
+The super-operator model makes declarative conversion architecturally natural.
+Each version of a CRD is a separate Katalog entry with its own complete
+operator stack — its own informer watching that specific version, its own
+workers, its own reconciler. The version boundary is a first-class concept
+in the runtime.
+
+Conversion rules are declared alongside reconcile templates using the same
+template resolver:
 
 ```yaml
-# registry entry: postgres@v14
-apiVersion: orkestra.konductor.io/v1Alpha
-kind: Katalog
-metadata:
-  name: postgres
-crds:
-  - name: postgres
-    group: postgres.io
+- name: website-v1
+  apiTypes:
+    group: demo.orkestra.io
     version: v1
-    kind: Postgres
-    plural: postgreses
-templates:
-  postgres:
-    onCreate:
-      deployments:
-        - image: "{{ .spec.image }}"
+    kind: Website
+  conversion:
+    storageVersion: v1
+    paths:
+      - from: v1alpha1
+        to: v1
+        spec:
+          image: "{{ .spec.image }}"
           replicas: "{{ .spec.replicas }}"
+          seo:
+            enabled: false   # default — v1alpha1 has no seo field
+      - from: v1
+        to: v1alpha1
+        spec:
+          image: "{{ .spec.image }}"
+          replicas: "{{ .spec.replicas }}"
+          theme: "default"   # default — v1 has no theme field
 ```
 
-A Komposer imports it:
+Orkestra's HTTPS server serves the `/convert` endpoint. The conversion
+handler resolves each path's spec template against the source object and
+returns the converted objects. The CRD's `conversion` block points to this
+endpoint.
 
-```yaml
-sources:
-  registry:
-    - postgres@v14
-    - monitoring@v2
-    - backup@v1
+### 4.3 Production Results
+
+The following is from a live deployment managing both versions of the
+Website CRD:
+
+```json
+{
+  "name": "website-v1alpha1",
+  "conversion": {
+    "enabled": true,
+    "total": 62,
+    "success": 62,
+    "failures": 0,
+    "avgLatencyMs": 0.5,
+    "p95LatencyMs": 1.2
+  }
+}
 ```
 
-The same pattern that made package management work for applications now works for operators. The operator sprawl collapses into a registry of reusable patterns.
+```
+orkestra_conversion_requests_total{kind="Website",from="v1alpha1",to="v1",result="success"} 14
+orkestra_conversion_requests_total{kind="Website",from="v1",to="v1alpha1",result="success"} 17
+orkestra_conversion_duration_seconds_sum{from="v1alpha1",to="v1"} 0.007
+```
+
+62 successful conversions. Zero failures. Sub-millisecond average latency.
+Zero lines of Go written for the conversion. Zero additional deployments.
+Zero TLS certificates to manage.
 
 ---
 
-## 6. The Kubernetes-native future
+## 5. Addressing the One-Operator-Per-CRD Principle
 
-### 6.1 What the architecture implies
+### 5.1 The Principle is Correct
 
-Every capability in Orkestra is a declaration interpreted at runtime. The composition model — Katalog and Komposer as first-class YAML documents — makes operator distribution work like package management.
+The Operator SDK best practices document states: "Avoid a design solution
+where more than one Kind is reconciled by the same controller." The concerns
+articulated are encapsulation, Single Responsibility, cohesion, and
+preventing unexpected side effects between CRDs.
 
-The logical conclusion is that this observer belongs inside Kubernetes, not outside it.
+These concerns are valid. Orkestra does not disagree with them.
 
-### 6.2 A native meta-controller
+### 5.2 The Principle Refers to Reconciler Logic, Not Process Boundaries
 
-If Katalog and Komposer became Kubernetes-native resource kinds, registered by the cluster itself, the Orkestra runtime could run as a core controller inside `kube-controller-manager`. Every cluster would have an operator runtime without installation. Platform teams would write Katalogs and Kubernetes would manage them.
+The Operator SDK's concerns are about reconciler logic — that a reconciler
+for `Website` should not contain logic for `Database`. Orkestra enforces
+this more strictly than any previous framework.
 
-The CRD definition provides the schema at cluster apply time. The Katalog entry declares Group, Version, Kind, and Plural — the same information the cluster already has. Orkestra reads it from the discovery API. Nothing is duplicated.
+In Orkestra, the reconciler for `Website` is a closure that closes over
+exactly the Katalog entry for `Website`. It has no access to the reconciler
+for `Database`. It cannot affect the `Database` workqueue. It cannot observe
+the `Database` informer. The isolation is structural.
 
-### 6.3 The path there
+What is shared is the orchestration infrastructure: the API server connection,
+the informer factory, the queue registry, the health server, the leader
+election lease. This is analogous to how the Kubernetes
+`kube-controller-manager` runs the Deployment controller, the ReplicaSet
+controller, the Endpoint controller, and dozens of others in a single process —
+each isolated, each maintaining the Single Responsibility Principle, all
+sharing infrastructure.
 
-This is not immediate. It is the direction. The path runs through production adoption, through CNCF Sandbox, through a Kubernetes Enhancement Proposal, through alpha and beta behind a feature gate, to a future release where `kubectl apply -f my-katalog.yaml` is the complete interaction with an operator runtime that ships with every cluster.
+No one argues that `kube-controller-manager` violates good design. Orkestra
+applies the same principle to user-defined operators.
 
-Every Katalog written today is evidence for the proposal. Every platform team that simplifies their operator surface is evidence that the direction is right.
+### 5.3 The Shared Failure Domain
 
-The solution will speak for itself.
+The legitimate remaining concern is that a single process is a single failure
+domain. If the Orkestra process crashes, all CRD operators stop together.
+
+This is addressed the same way Kubernetes addresses it for
+`kube-controller-manager`: multiple replicas with leader election and warm
+informer caches. Followers are not idle — they maintain synced informer
+caches. When the leader fails, a follower takes over within the lease renewal
+period, already warm.
+
+Within the process, Orkestra's `safeReconcile` wrapper recovers from panics
+in individual reconcilers. A `nil` pointer dereference in the `Website`
+reconciler does not crash the `Database` reconciler.
 
 ---
 
-## 7. What this replaces
+## 6. What This Replaces
 
-| Traditional | Orkestra equivalent |
-|-------------|---------------------|
-| Go operator binary | Katalog YAML |
+| Traditional | Orkestra |
+|---|---|
+| Go operator binary per CRD | Katalog YAML |
 | Kubebuilder scaffolding | `ork init` |
-| One deployment per CRD | One runtime for all CRDs |
-| Separate health endpoints | Unified health API |
-| Per-operator metrics | Unified per-CRD metrics |
+| One deployment per CRD | One runtime per operator surface |
+| Per-operator health endpoints | Unified `/katalog/*` API |
+| Per-operator metrics (or none) | Unified per-CRD metrics |
 | Manual dependency management | Declared `dependsOn` |
 | Helm chart per operator | Komposer |
+| Conversion webhook binary + TLS | Conversion rules in Katalog |
 | Operator sprawl | One runtime |
 
 ---
 
-## 8. Conclusion
+## 7. Conclusion
 
-The operator pattern is the right abstraction for Kubernetes extensibility. The requirement to implement it in Go, compiled into a binary deployed separately for each CRD, has been a constraint of convention rather than necessity.
+The operator pattern is the right abstraction for Kubernetes extensibility.
+The requirement to implement one binary per CRD has been a constraint of
+implementation convention, not of the pattern itself.
 
-When the same runtime can watch any CRD, compose definitions from any source, and provide unified observability, the operator sprawl disappears. Operators become data, not code. They are composed, not programmed. They are versioned, shared, and reused like any other Kubernetes resource.
+Orkestra demonstrates that when a runtime provides per-CRD isolation
+structurally — through dedicated informers, workqueues, worker pools, and
+failure domains — the isolation properties the community seeks are preserved
+and strengthened. Each CRD becomes a complete, production-grade operator.
+They share only the infrastructure that makes this possible.
+
+The consequences extend beyond simplification. When each CRD version is its
+own operator entry, multi-version conversion becomes a declaration rather
+than an infrastructure project. When operators are YAML declarations, they
+become composable through the same mechanisms as any other Kubernetes
+resource. When one runtime watches all managed CRDs, unified observability
+is a structural consequence, not an integration project.
+
+Operators become data, not code.
+They are composed, not programmed.
+They are versioned, shared, and reused like any other Kubernetes resource.
 
 Kubernetes made infrastructure declarative.
 Orkestra makes the operators that extend Kubernetes declarative.
 The same principle, applied one level up.
-It was always possible.
-It just needed someone to build it.
 
 ---
 
 *Orkestra — Declarative Operators for Kubernetes*
-*March 2026*
-*https://github.com/iAlexeze/orkestra*
-
-
-- **Next:** [Trust and Safety](./trust-and-failure-model.md)
+*March 2026 — https://github.com/iAlexeze/orkestra*

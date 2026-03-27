@@ -4,7 +4,9 @@ package merger
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/ialexeze/orkestra/pkg/logger"
@@ -66,6 +68,39 @@ func writeTempFile(data []byte, pattern string) (string, error) {
 		return "", fmt.Errorf("writing temp file: %w", err)
 	}
 	return f.Name(), nil
+}
+
+// gitClone clones a git repository into dst at the given ref.
+// ref may be a branch, tag, or commit hash.
+func gitClone(repo, dst, ref string) error {
+	if ref == "" {
+		ref = "HEAD"
+	}
+
+	// First attempt: shallow clone at branch/tag
+	cmd := exec.Command("git", "clone",
+		"--depth", "1",
+		"--branch", ref,
+		repo,
+		dst,
+	)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+
+	if err := cmd.Run(); err == nil {
+		return nil
+	}
+
+	// Fallback: full clone + checkout (for commit hashes)
+	if err := exec.Command("git", "clone", repo, dst).Run(); err != nil {
+		return fmt.Errorf("git clone failed for %q: %w", repo, err)
+	}
+
+	if err := exec.Command("git", "-C", dst, "checkout", ref).Run(); err != nil {
+		return fmt.Errorf("git checkout %q failed in %q: %w", ref, repo, err)
+	}
+
+	return nil
 }
 
 // unused but kept for completeness

@@ -39,6 +39,9 @@ func Init(filenames ...string) (*Konfig, error) {
 			TLSKey:           GetStrEnv("TLS_KEY", ""),
 			ConversionWindow: GetIntEnv("CONVERSION_WINDOW", 100),
 		},
+		registry: registryConfig{
+			RegistryURL: GetStrEnv("ORK_REGISTRY", ""),
+		},
 		healthServer: healthServer{
 			Port:         GetStrEnv("HEALTH_PORT", "5000"),
 			ReadTimeout:  GetDurEnvSeconds("SRV_READ_TIMEOUT", 5),

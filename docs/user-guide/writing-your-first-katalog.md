@@ -222,7 +222,6 @@ spec:
 
 You now know how to write a Katalog that creates resources from CRs. Next, learn how to add **Go hooks** for custom logic when templates aren't enough.
 
-👉 [Writing Hooks →](./writing-hooks.md)
 
 
 ---

@@ -233,6 +233,6 @@ It is one of the most powerful parts of Orkestra’s declarative operator model.
 
 
 **Whats Next?**
-  - [Orkestra Use Cases](../guides/use-cases.md)
+  - [Orkestra Use Cases](../user-guide/use-cases.md)
   - [What is a Katalog](./katalog.md)
   - [What is a Komposer](./komposer.md)
