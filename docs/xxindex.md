@@ -1,4 +1,4 @@
-# Orkestra Documentation
+# Overview
 
 Welcome to the Orkestra documentation — the complete reference for the world's first **zero‑code Kubernetes operator runtime**.
 
@@ -18,9 +18,9 @@ No Go. No code generation. No controller boilerplate.
 
 CRDs were meant to make Kubernetes extensible. But to turn a CRD into an operator, you still write Go code — controllers, informers, reconcilers, finalizers, events, metrics. Every operator repeats the same patterns. Every team rebuilds the same infrastructure.
 
-Orkestra removes that barrier. You write a Katalog. Orkestra builds the operator.
+Orkestra removes that barrier. You write a [Katalog](./getting-started/writing-your-first-katalog.md). Orkestra builds the operator.
 
-**Your CRD is enough.**
+**[Your CRD is enough](./publications/your-crd-is-enough.md).**
 
 ---
 

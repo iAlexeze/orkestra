@@ -111,7 +111,7 @@ site_author: "Orkestra Team"
 copyright: "Orkestra"
 
 
-# docs_dir: coming-soon
+docs_dir: coming-soon
 
 # site_url: !ENV READTHEDOCS_CANONICAL_URL
 # strict: true
