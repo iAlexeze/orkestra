@@ -8,9 +8,8 @@ references, drift detection, and consistent error handling built in.
 You do not write Kubernetes API calls. You declare what you want in a Katalog
 or call a registry function from a Go hook. OrkestraRegistry handles the rest.
 
----
-
-  > New to Orkestra? Start with the [Katalog documentation](../concepts/katalog.md) and the [examples](../examples/beginner/website/README.md). This document is a reference for the registry implementation.
+!!! note
+    New to Orkestra? Check out [Getting Started](../getting-started/getting-started.md) and the [Example Workflows](../examples/overview.md). This document is a reference for the registry implementation.
 
 ## What it provides
 
@@ -26,9 +25,6 @@ pkg/orkestra-registry/
   pods/              Pod create/update/delete
   template/          Resolver — evaluates template expressions against live CRs
 ```
-
----
-
 ## How it connects to Orkestra
 
 OrkestraRegistry sits between the reconciler and the Kubernetes API. When a
@@ -48,10 +44,9 @@ Registry — orkdeploy.Create(ctx, kube, owner, spec)
 Kubernetes API — Deployment created with owner reference
 ```
 
-The reconciler never constructs Kubernetes objects directly. The registry
-never evaluates template expressions. The boundary is clean.
-
----
+!!! tip
+    The reconciler never constructs Kubernetes objects directly. 
+    The registry never evaluates template expressions. The boundary is clean.
 
 ## The contract
 
@@ -82,18 +77,16 @@ means cascade deletion is automatic — when the CR is deleted, all child
 resources are garbage collected by Kubernetes without any explicit `onDelete`
 declarations needed.
 
-**System labels** are always added and cannot be overridden:
+**System labels** and **Annotations** are always added and cannot be overridden:
 
 ```
-managed-by: orkestra
-orkestra-owner: <cr-name>
+labels:
+  orkestra.konductor.io/managed: "true"
+
+annotations:
+  orkestra.konductor.io/managed-by: website-katalog
+  orkestra.konductor.io/managed-since: 2026-03-25T10:30:45Z
 ```
-
-`managed-by` identifies Orkestra-managed resources. `orkestra-owner` is used
-as the pod selector by Services — it ensures a Service only routes to pods
-owned by the same CR.
-
----
 
 ## Deployments
 
@@ -154,8 +147,6 @@ drift-corrected by default — declare them under `onReconcile` if needed.
 | `Annotations` | map[string]string | Applied to Deployment metadata |
 | `Resources` | *ResourceRequirements | CPU and memory requests/limits |
 
----
-
 ## Services
 
 `pkg/orkestra-registry/services`
@@ -208,8 +199,6 @@ and recreate.
 | `Port` | int32 | Service port |
 | `TargetPort` | int32 | Container port to route to |
 | `Labels` | map[string]string | Applied to Service metadata |
-
----
 
 ## Secrets
 
@@ -290,8 +279,6 @@ up when the CR is deleted.
 | `StringData` | map[string]string | String secret data (auto-encoded) |
 | `Type` | string | Kubernetes Secret type (default: Opaque) |
 | `Labels` | map[string]string | Applied to Secret metadata |
-
----
 
 ## ConfigMaps
 
@@ -377,8 +364,6 @@ orkcm.CopyToNamespaces(ctx, kube, obj, spec, namespaces)
 | `FromNamespace` | string | Source ConfigMap namespace |
 | `Labels` | map[string]string | Applied to ConfigMap metadata |
 
----
-
 ## ServiceAccounts
 
 `pkg/orkestra-registry/serviceaccounts`
@@ -418,8 +403,6 @@ orksa.Create(ctx, kube, obj, spec)
 | `Name` | string | ServiceAccount name |
 | `Namespace` | string | Target namespace |
 | `Labels` | map[string]string | Applied to ServiceAccount metadata |
-
----
 
 ## Jobs
 
@@ -480,8 +463,6 @@ when the CR is deleted.
 | `BackoffLimit` | int | Retry count before Job is marked Failed (default: 3) |
 | `Labels` | map[string]string | Applied to Job metadata |
 
----
-
 ## CronJobs
 
 `pkg/orkestra-registry/cronjobs`
@@ -537,8 +518,6 @@ drifts the CronJob is updated in place.
 | `Args` | []string | Container arguments |
 | `Labels` | map[string]string | Applied to CronJob metadata |
 
----
-
 ## Pods
 
 `pkg/orkestra-registry/pods`
@@ -585,8 +564,6 @@ and recreate since most Pod spec fields cannot be updated in place.
 | `Labels` | map[string]string | Applied to Pod metadata |
 | `Annotations` | map[string]string | Applied to Pod metadata |
 | `Resources` | *ResourceRequirements | CPU and memory requests/limits |
-
----
 
 ## Template resolver
 
@@ -666,8 +643,6 @@ never need to declare `namespace` explicitly for namespaced CRDs.
 resolver.OwnerName()       // CR name — used by Resolve() for default naming
 resolver.OwnerNamespace()  // CR namespace
 ```
-
----
 
 ## Adding a new resource type
 
@@ -764,8 +739,6 @@ onCreate:
       reconcile: true
 ```
 
----
-
 ## Using OrkestraRegistry from Go hooks
 
 OrkestraRegistry is designed to be called directly from Go hooks. Import
@@ -822,8 +795,6 @@ func WebsiteHooks() domain.AnyReconcileHooks {
 }
 ```
 
----
-
 ## Default naming
 
 When `name` is omitted from any template declaration, the registry applies
@@ -839,17 +810,3 @@ a default based on the owner CR name:
 | Job | `<cr-name>-job` |
 | CronJob | `<cr-name>-cronjob` |
 | Pod | `<cr-name>-pod` |
-
----
-
-## System labels
-
-Every resource created by OrkestraRegistry receives these labels. They are
-set by `Resolve()` and cannot be overridden by user declarations:
-
-```
-managed-by: orkestra
-orkestra-owner: <cr-name>
-```
-
-User-declared labels are merged alongside these.

@@ -4,9 +4,7 @@ This page explains Orkestra’s core building blocks in a **non‑technical**, b
 
 Think of this as your mental map of how Orkestra works.
 
----
-
-# CRD (Custom Resource Definition)
+## CRD (Custom Resource Definition)
 
 A CRD defines:
 
@@ -23,9 +21,7 @@ In Orkestra, a CRD also defines:
 
 Your CRD becomes the “blueprint” for your operator.
 
----
-
-# CR (Custom Resource)
+## CR (Custom Resource)
 
 A CR is an instance of your CRD.
 
@@ -40,9 +36,7 @@ spec:
 
 Orkestra watches CRs and ensures the cluster matches what the CR describes.
 
----
-
-# Katalog
+## Katalog
 
 The **katalog** is Orkestra’s internal registry of everything it knows about your CRDs.
 
@@ -66,9 +60,7 @@ You can view it through the Orkestra API:
 
 It’s your operator’s “control panel”.
 
----
-
-# Komposer
+## Komposer
 
 The **komposer** is Orkestra’s template engine.
 
@@ -91,9 +83,7 @@ It’s like Helm, but:
 
 You don’t write Go code — you write templates.
 
----
-
-# Registry
+## Registry
 The **Orkestra Registry** is where reusable building blocks live.
 
 Think of it like a **library of operator behaviors**:
@@ -114,56 +104,7 @@ A registry contains **katalogs**, and a katalog describes:
 
 Orkestra loads katalogs from registries and uses them to decide **how to act** when a CRD asks for something.
 
----
-
-## How Users Extend the Registry
-
-Users can add their own katalogs by creating a **Komposer**:
-
-```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
-kind: Komposer
-metadata:
-  name: platform-komposer
-```
-
-A Komposer tells Orkestra:
-
-- Where to pull katalogs from  
-- Which versions to use  
-- How to authenticate  
-- How to merge overrides  
-
-It supports:
-
-- Git registries  
-- Private registries  
-- GitHub / GitLab  
-- Helm repositories  
-- Local files  
-- URLs  
-
-This lets teams build **shared operator behaviors** and reuse them across environments.
-
----
-
-## What the Registry Actually Does
-
-When a CRD is loaded, Orkestra:
-
-1. Looks up its katalog in the registry  
-2. Loads its templates  
-3. Loads its conversion rules  
-4. Loads its dependencies  
-5. Loads its reconciliation behavior  
-6. Loads its defaults  
-7. Loads its health rules  
-
-The registry is the **source of truth** for how a CRD behaves.
-
----
-
-## Core Registry vs. User Registries
+### Core Registry vs. User Registries
 
 ### **Core Registry**
 Ships with Orkestra.  
@@ -188,23 +129,9 @@ Contain:
 
 Users can mix and match multiple registries.
 
----
-
-## Why This Matters
-
-The registry makes Orkestra:
-
-- **Composable** — mix behaviors from many sources  
-- **Versioned** — pin katalogs to branches, tags, or commits  
-- **Declarative** — no controller code  
-- **Reusable** — share katalogs across teams  
-- **Extensible** — add new CRDs without writing Go  
-
 It’s the heart of Orkestra’s “operator‑as‑data” model.
 
----
-
-# Health
+## Health
 
 Every CRD has a health endpoint:
 
@@ -222,9 +149,7 @@ It reports:
 
 It’s your operator’s heartbeat.
 
----
-
-# Metrics
+## Metrics
 
 Orkestra exposes Prometheus metrics:
 
@@ -243,9 +168,7 @@ You can plug Orkestra into:
 
 Instant observability.
 
----
-
-# Informer
+## Informer
 
 An **informer** watches Kubernetes for changes.
 
@@ -256,9 +179,7 @@ Orkestra automatically creates informers for:
 
 You don’t write any code — Orkestra wires everything.
 
----
-
-# Queue
+## Queue
 
 Every CRD has a work queue.
 
@@ -277,9 +198,7 @@ This ensures:
 
 You never touch the queue — Orkestra manages it.
 
----
-
-# Reconciler
+## Reconciler
 
 The **reconciler** is the heart of an operator.
 
@@ -299,9 +218,7 @@ In Orkestra, the reconciler is:
 
 You don’t write reconciliation logic — Orkestra does.
 
----
-
-# Workers
+## Workers
 
 Workers are the “threads” that process CRs.
 
@@ -314,9 +231,7 @@ Each CRD has:
 
 Workers pick items from the queue and run the reconciler.
 
----
-
-# Putting It All Together
+## Putting It All Together
 
 Here’s the lifecycle of a CR in Orkestra:
 

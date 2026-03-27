@@ -90,6 +90,9 @@ nav:
     - Registry Schema: reference/registry-schema.md
     - Runtime: reference/runtime.md
     - Metrics: reference/metrics.md
+- Orkestra Public Registry:
+    - Vision: orkestra-registry/orkestra-registry-vision.md
+    - Technical Paper: orkestra-registry/orkestra-registry-technical-documentation.md
 
 - Example Workflows:
     - Overview: examples/overview.md
@@ -133,7 +136,7 @@ nav:
 - faq.md
 - security-considerations.md
 - support.md
-- roadmap.md
+- Roadmap: roadmap.md
 - Releases ⧉: https://github.com/iAlexeze/orkestra/releases
 - Blog ⧉: https://blog.orkestra.sh/
 plugins:
