@@ -166,7 +166,8 @@ ork run --katalog komposer.yaml
 ```
 
 !!! note
-    Notice how both katalog and kompoer use the same flag `--katalog`.  It is by design because every komposer is just a bundle of katalogs.
+    Both katalogs and komposers are passed using the `--katalog` flag.  
+    This is by design, as a Komposer is simply a declarative bundle of katalogs.
 
 
 Orkestra will:

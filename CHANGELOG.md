@@ -9,31 +9,21 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **Deterministic dependency graph** — startup order is now cached using `sync.Once`, ensuring consistent ordering across runs. Nodes are processed in sorted order for deterministic behavior. Circular dependencies are detected and reported with clear error messages.
-
-- **Proper shutdown ordering** — CRDs now shut down in reverse topological order (dependents before dependencies), ensuring clean teardown without broken references.
-
-- **Single retry loop for missing CRDs** — previously, multiple goroutines were started; now a single retry loop handles activation of CRDs that appear after startup, preventing race conditions.
-
-- **Activation system** — when a missing CRD appears, its informer starts, workers begin, and the ready channel closes, unblocking any dependents waiting for it.
-
-- **Conditional provisioning** — resources now support `when` blocks. Services are created only when conditions like `exposePublicly: true` are met, evaluated during template resolution.
-
-- **Logging improvements** — startup and shutdown orders are now logged with arrows (e.g., `frontend → backend`) for clear visibility. Activation progress is logged with emoji indicators.
-
-### Fixed
-
-- **Generic reconciler no‑op issue** — `CRDInfo` now correctly passes `ReconcilerConfig` to the generic reconciler, ensuring templates are executed instead of resulting in a no‑op.
-
-- **Dependency blocking** — dependents now correctly block on ready channels until their dependencies are ready, even when dependencies appear after startup.
-
-- **Multiple retry loops** — retry loop now starts once instead of once per CRD, eliminating race conditions.
+- **Multi-version CRD conversion** — full support for declarative up-conversion, down-conversion, defaulting, and structural field mapping across CRD versions.
+- **Conversion mapping engine** — deterministic field transformation system supporting renamed fields, added/removed fields, nested object mapping, and type changes.
+- **Conversion pipeline integration** — conversions now run automatically during reconciliation with validation, fallback, and clear error reporting.
+- **Documentation overhaul** — complete rewrite of the multi-version CRD, conversion rules, and versioning strategy sections with improved structure, diagrams, and examples.
+- **Migration patterns** — new guidance for evolving CRDs safely across versions using Orkestra’s declarative conversion model.
 
 ### Changed
 
-- **Dependency graph** — complete rewrite for determinism and concurrency safety.
-- **Startup flow** — CRDs now wait for dependencies before starting workers, ensuring correct order.
-- **Shutdown flow** — now follows reverse topological order for clean teardown.
+- **Documentation structure** — reorganized to better separate beginner, intermediate, and advanced workflows; improved cross-linking and conceptual clarity.
+- **Versioning model** — clarified mental model for CRD evolution, conversion ordering, and reconciliation behavior across versions.
+
+### Fixed
+
+- **Conversion validation errors** — improved detection and reporting of invalid or incomplete conversion rules.
+- **Mapping edge cases** — resolved issues with nested object transforms and missing field defaults during conversion.
 
 ### Security
 
