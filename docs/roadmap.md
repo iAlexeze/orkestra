@@ -231,4 +231,4 @@ not covered above.
 | v1.3.0 | Q4 2026 | Additional sources (S3, ConfigMap), `ork diff`, `ork lint` |
 | v2.0.0 | 2027 | Public registry, versioning, CNCF Sandbox |
 
-- **Want to Try it out?** [Start here](../guides/getting-started.md).
+- **Want to Try it out?** [Start here](getting-started/getting-started.md).

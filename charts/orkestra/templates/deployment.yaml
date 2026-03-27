@@ -1,3 +1,7 @@
+{{- if and .Values.crdConversion.enabled (not .Values.crdConversion.existingSecret) }}
+{{- fail "crdConversion.existingSecret must be set when crdConversion.enabled=true" }}
+{{- end }}
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -61,6 +65,8 @@ spec:
               value: {{ .Values.config.environment | quote }}
             - name: DEGRADE_THRESHOLD
               value: {{ .Values.config.degradeThreshold | quote }}
+            - name: ORK_REGISTRY
+              value: {{ .Values.registry.url | quote }}
             {{- if .Values.config.watchNamespace }}
             - name: NAMESPACE
               value: {{ .Values.config.watchNamespace | quote }}
@@ -77,9 +83,17 @@ spec:
             - name: RETRY_PERIOD
               value: {{ .Values.leaderElection.retryPeriod | quote }}
             - name: SRV_READ_TIMEOUT
-              value: {{ .Values.config.healthServerReadTimeout }}
+              value: {{ .Values.config.healthServerReadTimeout | quote }}
             - name: SRV_WRITE_TIMEOUT
-              value: {{ .Values.config.healthServerWriteTimeout }}
+              value: {{ .Values.config.healthServerWriteTimeout | quote }}
+            {{- if .Values.crdConversion.enabled }}
+            - name: ENABLE_CONVERSION
+              value: "true"
+            - name: TLS_CERT_FILE
+              value: /tls/{{ .Values.crdConversion.certKey }}
+            - name: TLS_KEY_FILE
+              value: /tls/{{ .Values.crdConversion.keyKey }}
+            {{- end }}
             {{- end }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
@@ -105,6 +119,11 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
 
           volumeMounts:
+          {{- if .Values.crdConversion.enabled }}
+            - name: ork-crd-conversion-tls
+              mountPath: /tls
+              readOnly: true
+            {{- end }}
             - name: katalog
               mountPath: {{ .Values.katalog.mountPath }}
               readOnly: true
@@ -115,6 +134,11 @@ spec:
             {{- end }}
 
       volumes:
+      {{- if .Values.crdConversion.enabled }}
+        - name: ork-crd-conversion-tls
+          secret:
+            secretName: {{ required "crdConversion.existingSecret is required when crdConversion.enabled=true" .Values.crdConversion.existingSecret }}
+        {{- end }}
         - name: katalog
           configMap:
             name: {{ include "orkestra.katalogConfigMapName" . }}

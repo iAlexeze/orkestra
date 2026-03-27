@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ialexeze/orkestra/pkg/health"
 	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
@@ -80,11 +81,12 @@ func BuildCRDInfoHandler(
 	kfg *konfig.Konfig,
 	inf cache.SharedIndexInformer,
 	h *CRDHealth,
+	stats *health.ConversionStats,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := resolveCRDDisplayValues(crd, kfg, inf)
 
-		utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		response := map[string]interface{}{
 			"name":                crd.Name,
 			"description":         crd.Description,
 			"mode":                crd.Mode,
@@ -107,7 +109,22 @@ func BuildCRDInfoHandler(
 			"healthy":             h.IsHealthy(),
 			"started":             h.Started(),
 			"errorRate":           h.ErrorRate(),
-		})
+		}
+
+		// Add conversion stats if available
+		if stats != nil {
+			snapshot := stats.GetStats()
+			response["conversion"] = map[string]interface{}{
+				"enabled":      true,
+				"total":        snapshot.TotalRequests,
+				"success":      snapshot.SuccessRequests,
+				"failures":     snapshot.FailedRequests,
+				"avgLatencyMs": snapshot.AvgLatency.Milliseconds(),
+				"p95LatencyMs": snapshot.P95Latency.Milliseconds(),
+			}
+		}
+
+		utils.WriteJSON(w, http.StatusOK, response)
 	}
 }
 

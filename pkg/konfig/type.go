@@ -8,6 +8,8 @@ type Konfig struct {
 	konductor    konductorElection
 	healthServer healthServer
 	katalog      katalogKonfig
+	conversion   conversionConfig
+	registry     registryConfig
 }
 
 type orkKonfig struct {
@@ -32,6 +34,18 @@ type clusterKonfig struct {
 	// Worload specific
 	DefaultResync  time.Duration
 	DefaultWorkers int
+}
+
+type registryConfig struct {
+	RegistryURL string
+}
+
+type conversionConfig struct {
+	// Webhook for coversion
+	EnableConversion bool
+	TLSCert          string
+	TLSKey           string
+	ConversionWindow int
 }
 
 type katalogKonfig struct {
@@ -92,4 +106,14 @@ func (k *Konfig) Katalog() *katalogKonfig {
 // Finalizers return a list of default finalizers
 func (k *Konfig) Finalizers() []string {
 	return []string{FinalizerOrkestra}
+}
+
+// ConversionConfig returns true is enabled
+func (k *Konfig) ConversionConfig() *conversionConfig {
+	return &k.conversion
+}
+
+// RegistryConfig returns true is enabled
+func (k *Konfig) RegistryConfig() *registryConfig {
+	return &k.registry
 }

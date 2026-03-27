@@ -1,11 +1,15 @@
 # Writing Your First Katalog
 
-Now that you have Orkestra installed and have run the example operator, let's build your own Katalog from scratch.
+Now that you have Orkestra installed and have run the example operator, you’re ready to build your own Katalog from scratch.
 
-A **Katalog** is a YAML file that declares:
-- What CRDs you want to manage
-- What resources to create for each CR
-- How to reconcile them
+A **Katalog** is a declarative file that tells Orkestra:
+
+- Which CRDs you want to manage  
+- What resources to create for each CR  
+- How reconciliation should behave  
+
+!!! note
+    This guide assumes you have already completed the installation steps and successfully run the example operator.
 
 ---
 
@@ -31,15 +35,20 @@ spec:
 ```
 
 This Katalog tells Orkestra:
-- Watch for `MyApp` resources in the cluster
-- Use the default reconciler (no custom code needed)
-- Do nothing else (no resources created)
+
+- Watch for `MyApp` resources in the cluster  
+- Use the default reconciler  
+- Do not create any resources yet  
+
+!!! tip
+    Every CRD entry must define `apiTypes` and a `reconciler`.  
+    Everything else is optional and added only when needed.
 
 ---
 
 ## Adding Resources
 
-Let's create a Deployment when a `MyApp` CR is applied:
+Let’s create a Deployment whenever a `MyApp` CR is applied:
 
 ```yaml
 spec:
@@ -62,18 +71,24 @@ spec:
               reconcile: true
 ```
 
-### Understanding Templates
+!!! note
+    `reconcile: true` means the Deployment will be drift‑corrected on every reconcile, not just created once.
 
-Values inside `{{ }}` are Go templates evaluated against the live CR:
+---
+
+## Understanding Templates
+
+Values inside `{{ }}` are Go templates evaluated against the live CR.
 
 | Template | Resolves To |
 |----------|-------------|
 | `{{ .metadata.name }}` | The CR's name |
-| `{{ .spec.image }}` | The value of `spec.image` in the CR |
+| `{{ .spec.image }}` | The value of `spec.image` |
 | `{{ .spec.replicas }}` | The value of `spec.replicas` |
 | `{{ .metadata.namespace }}` | The CR's namespace |
 
-Static values are used as-is.
+!!! tip
+    Templates always evaluate against the **current** version of the CR, so updates to the CR automatically propagate to generated resources.
 
 ---
 
@@ -92,11 +107,14 @@ onCreate:
       reconcile: true
 ```
 
+!!! note
+    Services support drift correction as well. If the CR changes, Orkestra updates the Service automatically.
+
 ---
 
 ## Adding a Secret
 
-Secrets can be created from static data or copied from existing secrets:
+Secrets can be created from static values or copied from existing secrets:
 
 ```yaml
 onCreate:
@@ -116,7 +134,9 @@ onCreate:
       reconcile: true
 ```
 
-The `reconcile: true` flag ensures the secret stays in sync with its source.
+!!! caution
+    When copying secrets, ensure the source secret exists before the CR is reconciled.  
+    Otherwise reconciliation will fail until the secret becomes available.
 
 ---
 
@@ -149,7 +169,8 @@ services:
         equals: "true"
 ```
 
-The service is only created when `spec.exposePublicly: true` in the CR.
+!!! tip
+    Conditions allow you to express branching logic declaratively without writing Go hooks.
 
 ---
 
@@ -167,13 +188,19 @@ crds:
     # ... config ...
 ```
 
-Orkestra ensures `database` starts before `application`.
+Orkestra ensures:
+
+- `database` reconciles first  
+- `application` waits until `database` is healthy  
+
+!!! note
+    Dependencies apply to reconciliation order, not CR creation order.
 
 ---
 
 ## Complete Example
 
-Here's a complete Katalog for a simple web application:
+Here is a complete Katalog for a simple web application:
 
 ```yaml
 apiVersion: orkestra.konductor.io/v1Alpha
@@ -220,9 +247,10 @@ spec:
 
 ## Next Steps
 
-You now know how to write a Katalog that creates resources from CRs. Next, learn how to add **Go hooks** for custom logic when templates aren't enough.
+You now know how to write a Katalog that creates resources from CRs.
 
-👉 [Writing Hooks →](./writing-hooks.md)
+Continue with:
 
+**Writing Your First Komposer**  
+Learn how to load katalogs from files, Helm charts, and registries — and how to apply overrides.
 
----

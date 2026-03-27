@@ -1917,7 +1917,7 @@ lunr.Index = function (attrs) {
  *
  * Results will be returned sorted by their score, the most relevant results
  * will be returned first.  For details on how the score is calculated, please see
- * the {@link https://lunrjs.com/guides/searching.html#scoring|guide}.
+ * the {@link https://lunrjs.com/user-guide/searching.html#scoring|guide}.
  *
  * For more programmatic querying use lunr.Index#query.
  *

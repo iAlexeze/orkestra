@@ -50,6 +50,15 @@ func NewResolver(ctx context.Context, obj domain.Object) (*Resolver, error) {
 	}, nil
 }
 
+// NewResolverFromMap creates a Resolver from a plain map[string]interface{}.
+// Used by conversion webhooks where we work with unstructured JSON.
+func NewResolverFromMap(data map[string]interface{}) *Resolver {
+	return &Resolver{
+		data: data,
+		// ownerName/ownerNamespace are optional here; only needed for defaults.
+	}
+}
+
 // Resolve evaluates a single field value against the CR.
 //
 // If value contains "{{" it is a template expression — evaluated

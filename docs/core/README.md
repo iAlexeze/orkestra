@@ -66,7 +66,7 @@ Verify:
 ork version
 ```
 
-For advanced installation options — GPG verification, custom directory, version pinning — see the [Installation Guide](../guides/deployment.md#installation).
+For advanced installation options — GPG verification, custom directory, version pinning — see the [Installation Guide](../user-guide/deployment.md#installation).
 
 ---
 
@@ -161,9 +161,9 @@ All from a single YAML file.
 
 | Example | What it shows | Complexity |
 |---------|--------------|------------|
-| [Website](../examples/website/README.md) | Deployment + Service from a CR | ⭐ |
-| [Platform Namespace](../examples/platform-namespace/README.md) | Secrets, ConfigMaps, ServiceAccounts | ⭐⭐ |
-| [Komposer](../examples/komposer/README.md) | Composing Katalogs from files, Helm charts | ⭐⭐⭐ |
+| [Website](../examples/beginner/website/README.md) | Deployment + Service from a CR | ⭐ |
+| [Platform Namespace](../examples/beginner/platform-namespace/README.md) | Secrets, ConfigMaps, ServiceAccounts | ⭐⭐ |
+| [Komposer](../examples/beginner/komposer/README.md) | Composing Katalogs from files, Helm charts | ⭐⭐⭐ |
 
 ---
 

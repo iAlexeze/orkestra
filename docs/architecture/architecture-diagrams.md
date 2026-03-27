@@ -54,7 +54,7 @@ It produces a single Katalog that the runtime consumes.
 
 ---
 
-## 2. Reconcile Loop (per CRD)**
+## 2. Reconcile Loop (per CRD)
 
 ```mermaid
 flowchart LR

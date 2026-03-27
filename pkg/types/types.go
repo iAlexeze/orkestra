@@ -1062,6 +1062,14 @@ type CRDEntry struct {
 
 	// Restricted Namespaces
 	RestrictedNamespaces RestrictedNamespaces `yaml:"restrictedNamespaces,omitempty"`
+
+	// Conversion is useful for handling multi-version crd
+	Conversion *CRDConversion `yaml:"conversion,omitempty"`
+}
+
+type ConversionVersionSpec struct {
+	Version string                 `json:"version"`
+	Spec    map[string]interface{} `json:"spec"`
 }
 
 // EndpointsConfig controls which HTTP endpoints are exposed by the operator.

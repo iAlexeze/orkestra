@@ -12,6 +12,7 @@ import (
 	"github.com/ialexeze/orkestra/pkg/inspect"
 	"github.com/spf13/cobra"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 )
 
@@ -44,6 +45,7 @@ Use --no-health to suppress the banner explicitly.`,
 		allNamespaces, _ := cmd.Flags().GetBool("all-namespaces")
 		operatorURL, _ := cmd.Flags().GetString("operator-url")
 		noHealth, _ := cmd.Flags().GetBool("no-health")
+		version, _ := cmd.Flags().GetString("version")
 
 		clients, err := inspect.NewClients(kubeconfig)
 		if err != nil {
@@ -64,7 +66,28 @@ Use --no-health to suppress the banner explicitly.`,
 			}
 		}
 
-		// ── List CRs from the cluster ─────────────────────────────────────────
+		// ── Resolve version to use ─────────────────────────────────────
+		targetVersion := version
+		if targetVersion == "" {
+			// If no version specified, use the original version from metadata
+			// or fall back to the storage version
+			targetVersion = crd.Version // default to the version we discovered
+		}
+
+		// After printing the health banner, print the version context
+		if targetVersion != crd.Version {
+			fmt.Printf("\033[90mShowing %s resources as version %s (default: %s)\033[0m\n\n",
+				crd.Kind, targetVersion, crd.Version)
+		}
+
+		// ── Build GVR with the target version ───────────────────────────────
+		targetGVR := schema.GroupVersionResource{
+			Group:    crd.Group,
+			Version:  targetVersion,
+			Resource: crd.Plural,
+		}
+
+		// ── List CRs from the cluster using the target version ──────────────
 		listNamespace := namespace
 		if !crd.Namespaced {
 			listNamespace = "" // cluster-scoped — namespace is meaningless
@@ -74,14 +97,16 @@ Use --no-health to suppress the banner explicitly.`,
 
 		var resourceIface dynamic.ResourceInterface
 		if listNamespace != "" {
-			resourceIface = clients.Dynamic.Resource(crd.GVR).Namespace(listNamespace)
+			resourceIface = clients.Dynamic.Resource(targetGVR).Namespace(listNamespace)
 		} else {
-			resourceIface = clients.Dynamic.Resource(crd.GVR)
+			resourceIface = clients.Dynamic.Resource(targetGVR)
 		}
 
 		list, err := resourceIface.List(context.Background(), metav1.ListOptions{})
 		if err != nil {
-			return fmt.Errorf("listing %s: %w", crd.Plural, err)
+			// return fmt.Errorf("listing %s: %w", crd.Plural, err)
+			// If the version doesn't exist, fall back to the CRD's served version
+			return fmt.Errorf("listing %s with version %s: %w", crd.Plural, targetVersion, err)
 		}
 
 		if len(list.Items) == 0 {
@@ -122,6 +147,7 @@ func init() {
 	getCmd.Flags().String("operator-url", "http://localhost:8080",
 		"Orkestra operator URL for health banner (empty = skip)")
 	getCmd.Flags().Bool("no-health", false, "Skip the operator health banner")
+	getCmd.Flags().StringP("version", "v", "", "API version to list resources as (e.g., v1alpha1, v1)")
 }
 
 // ── Health banner ─────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@ package orktypes
 
 // KatalogFile is the top-level structure of a crd-katalog.yaml file.
 // It contains optional sources (files and helm charts) plus inline CRDs.
-// The merger resolves all sources and merges everything into one KatalogSpec.
+// Orkestra's in-built merger resolves all sources and merges everything into one KatalogSpec.
 type KatalogFile struct {
 	APIVersion string          `yaml:"apiVersion"`
 	Kind       string          `yaml:"kind"`
@@ -48,6 +48,9 @@ type KatalogSources struct {
 	// Helm — Helm chart sources. Each chart is rendered with the provided
 	// value files and the resulting Katalog templates are extracted and merged.
 	Helm []HelmSource `yaml:"helm,omitempty"`
+
+	// Registry - Registry sources.
+	Registry []RegistrySource `yaml:"registry,omitempty"`
 }
 
 // HelmSource declares a Helm chart that produces Katalog CRD definitions.

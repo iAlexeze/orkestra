@@ -32,6 +32,16 @@ func Init(filenames ...string) (*Konfig, error) {
 			DefaultResync:  GetDurEnvSeconds("DEFAULT_RESYNC", 15),
 			DefaultWorkers: GetIntEnv("DEFAULT_WORKERS", 3),
 		},
+		conversion: conversionConfig{
+			// Webhook Conversion
+			EnableConversion: GetBoolEnv("ENABLE_CONVERSION", false),
+			TLSCert:          GetStrEnv("TLS_CERT", ""),
+			TLSKey:           GetStrEnv("TLS_KEY", ""),
+			ConversionWindow: GetIntEnv("CONVERSION_WINDOW", 100),
+		},
+		registry: registryConfig{
+			RegistryURL: GetStrEnv("ORK_REGISTRY", ""),
+		},
 		healthServer: healthServer{
 			Port:         GetStrEnv("HEALTH_PORT", "5000"),
 			ReadTimeout:  GetDurEnvSeconds("SRV_READ_TIMEOUT", 5),

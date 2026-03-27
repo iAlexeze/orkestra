@@ -21,6 +21,7 @@ type Katalog struct {
 	metadata orktypes.KatalogMeta `yaml:"metadata"`
 	Spec     orktypes.KatalogSpec `yaml:"spec"`
 	// Internal
-	enabledCRDs []orktypes.CRDEntry `yaml:"-"` // filtered
-	allCRDs     []orktypes.CRDEntry `yaml:"-"` // all CRDs
+	enabledCRDs        []orktypes.CRDEntry `yaml:"-"` // filtered
+	allCRDs            []orktypes.CRDEntry `yaml:"-"` // all CRDs
+	conversionRegistry *InMemoryConversionRegistry
 }

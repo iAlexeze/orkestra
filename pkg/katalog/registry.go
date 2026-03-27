@@ -96,7 +96,7 @@ func NewSchemeRegistry(k *Katalog) (*runtime.Scheme, error) {
 func (k *Katalog) updateResourceMapAndReturn() (*Katalog, error) {
 	// Map the type of the object
 	for _, c := range k.enabledCRDs {
-		if k.enabledEmpty() {
+		if len(k.enabledCRDs) == 0 {
 			return nil, fmt.Errorf("no enabled CRDs found")
 		}
 
@@ -111,9 +111,10 @@ func (k *Katalog) updateResourceMapAndReturn() (*Katalog, error) {
 	return k, nil
 }
 
+// Deprecated: Every use case now is dynamic. Scheme registration is handled by `ork generate`
 func (k *Katalog) registerGoScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
 	for _, c := range k.enabledCRDs {
-		if k.enabledEmpty() {
+		if len(k.enabledCRDs) == 0 {
 			return nil, fmt.Errorf("no enabled CRDs found")
 		}
 

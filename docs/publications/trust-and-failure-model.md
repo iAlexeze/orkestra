@@ -105,7 +105,7 @@ Orkestra is designed with explicit, predictable failure modes.
 
 ---
 
-## #*5.1 If Orkestra is down
+### 5.1 If Orkestra is down
 
 - Existing resources remain as-is  
 - No new reconciles occur  

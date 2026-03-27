@@ -53,9 +53,9 @@ func (k *Katalog) validateUniqueness() error {
 	if err := k.validateNameUniqueness(); err != nil {
 		return err
 	}
-	if err := k.validatePluralUniqueness(); err != nil {
-		return err
-	}
+	// if err := k.validatePluralUniqueness(); err != nil {
+	// 	return err
+	// }
 	return nil
 }
 
@@ -103,19 +103,19 @@ func (k *Katalog) validateNameUniqueness() error {
 // Validation: Name uniqueness
 // -----------------------------------------------------------------------------
 
-func (k *Katalog) validatePluralUniqueness() error {
-	seen := make(map[string]string)
+// func (k *Katalog) validatePluralUniqueness() error {
+// 	seen := make(map[string]string)
 
-	for _, crd := range k.enabledCRDs {
-		if existing, ok := seen[crd.APITypes.Plural]; ok {
-			return fmt.Errorf("duplicate plural detected: %s (CRDs: %s and %s)",
-				crd.APITypes.Plural, existing, crd.Name)
-		}
-		seen[crd.APITypes.Plural] = crd.Name
-	}
+// 	for _, crd := range k.enabledCRDs {
+// 		if existing, ok := seen[crd.APITypes.Plural]; ok {
+// 			return fmt.Errorf("duplicate plural detected: %s (CRDs: %s and %s)",
+// 				crd.APITypes.Plural, existing, crd.Name)
+// 		}
+// 		seen[crd.APITypes.Plural] = crd.Name
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func (k *Katalog) validateReconcilerMode() error {
 	for i := range k.enabledCRDs {

@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: curl
+  namespace: orkestra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: curl
+  template:
+    metadata:
+      labels:
+        app: curl
+    spec:
+      containers:
+      - name: curl
+        image: curlimages/curl:8.5.0
+        command: ["sleep", "36000"]
+        resources: {}
+      restartPolicy: Always
+
+# curl -vk https://orkestra.orkestra.svc:8443/convert

@@ -34,6 +34,8 @@ type Merger struct {
 	// metadata gets the metadata from the document processed
 	// used by cli and health endpoints
 	metadata orktypes.KatalogMeta
+
+	registryURL string // set from ORK_REGISTRY via SetRegistryURL
 }
 
 // New creates a Merger with the given entry point file paths or URLs.
@@ -139,4 +141,14 @@ func (m *Merger) ToSpec() orktypes.KatalogSpec {
 func (m *Merger) ToMeta() orktypes.KatalogMeta {
 	m.mustBeMerged()
 	return m.metadata
+}
+
+func (m *Merger) SetRegistryURL(url string) {
+	m.mustBeMerged()
+	m.registryURL = url
+}
+
+func (m *Merger) GetRegistryURL() string {
+	m.mustBeMerged()
+	return m.registryURL
 }
