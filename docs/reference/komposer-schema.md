@@ -1,60 +1,102 @@
-# 🎼 **Komposer Schema**
+# **Komposer Schema**
+
+The Komposer merges multiple Katalog sources — files, URLs, Helm charts, and Registry entries — into a single, unified operator configuration.
+
+It is the declarative way to:
+
+- compose multiple teams’ Katalogs  
+- apply environment‑specific overrides  
+- select CRD versions  
+- override workers, resync intervals, and reconciler behavior  
+- pull Katalogs from Git, Helm, or the Orkestra Registry  
+
+Below is the full schema.
+
+---
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
-kind: Komposer
+apiVersion: orkestra.konductor.io/v1Alpha     # Required
+kind: Komposer   # Required
 
 metadata:
-  name: string
-  description: string
+  name: string    # Required
+  description: string # (optional but encouraged)
 
+# -------------------------------------------------------------------
+# Sources: where Katalogs come from
+# -------------------------------------------------------------------
 sources:
-  files:
-    - string | 
-      url: string
-      auth:
-        type: string            # bearer | github | basic
-        fromEnv: string         # environment variable name
 
+  # -----------------------------
+  # File & URL sources
+  # -----------------------------
+  files:
+    - string |                     # simple path or URL
+      url: string                  # explicit URL
+      path: string                 # local file path
+      auth:                        # optional authentication
+        type: string               # bearer | github | basic
+        fromEnv: string            # environment variable containing token
+
+  # -----------------------------
+  # Helm chart sources
+  # -----------------------------
   helm:
-    - repo: string              # path or URL
-      chart: string
-      version: string
-      valueFiles:
+    - repo: string                 # Helm repo URL or local path
+      chart: string                # chart name
+      version: string              # chart version
+      valueFiles:                  # list of values.yaml overrides
         - string
 
+  # -----------------------------
+  # Orkestra Registry sources
+  # -----------------------------
   registry:
-    - katalog: string
-      version: string
-      description: string
+    - katalog: string              # name of the katalog in the registry
+      version: string              # semantic version or tag
+      description: string          # optional human description
+      alias: string                # optional alias for merging
+      # future: constraints, channels, etc.
 
+# -------------------------------------------------------------------
+# Spec: CRD-level overrides
+# -------------------------------------------------------------------
 spec:
   crds:
-    - name: string
-      enabled: boolean
-      namespaced: boolean
-      workers: integer
-      resync: duration
-      description: string
+    - name: string                 # CRD name (matches katalog)
+      enabled: boolean             # enable/disable this CRD
+      namespaced: boolean          # override namespaced mode
+      workers: integer             # worker count override
+      resync: duration             # resync period override
+      description: string          # human description
 
+      # -------------------------
+      # API type overrides
+      # -------------------------
       apiTypes:
         group: string
         version: string
         kind: string
         plural: string
-        location: string
+        location: string           # optional Go package for hooks/constructors
 
+      # -------------------------
+      # Reconciler overrides
+      # -------------------------
       reconciler:
-        default: boolean
+        default: boolean           # use GenericReconciler
         hooks:
-          location: string
-          function: string
-          alias: string
+          location: string         # Go module path
+          function: string         # exported function name
+          alias: string            # optional alias for merging
         constructor:
-          location: string
-          function: string
+          location: string         # Go module path
+          function: string         # exported constructor
           alias: string
 
+      # -------------------------
+      # Dependency overrides
+      # -------------------------
       dependsOn:
-        - string
+        - string                   # list of CRD names
 ```

@@ -3,9 +3,9 @@
 Orkestra is a **declarative operator runtime** for Kubernetes.  
 If you’re new to Kubernetes operators, CRDs, or reconciliation, this page gives you the foundation you need before diving deeper.
 
-> [!TIP]
-> You don’t need to be an expert in Kubernetes internals to use Orkestra.  
-> This guide gives you just enough background to understand what Orkestra automates for you.
+!!! tip 
+    You don’t need to be an expert in Kubernetes internals to use Orkestra.  
+    This guide gives you just enough background to understand what Orkestra automates for you.
 
 ---
 

@@ -7,7 +7,7 @@ This page explains how to get help, report issues, and request new features.
 
 ## Community Support
 
-> [!TIP]
+> !!! tip 
 > Community support is the fastest way to get help for general questions, troubleshooting, and best practices.
 
 You can reach the Orkestra community through:
@@ -37,7 +37,7 @@ If you believe you’ve found a bug, please open a GitHub issue with:
 - Your Orkestra version  
 - Kubernetes version  
 
-> [!NOTE]
+> !!! note
 > Issues with incomplete information may take longer to diagnose.
 
 ---
@@ -58,7 +58,7 @@ This helps maintainers understand the context and prioritize effectively.
 
 ## Security Issues
 
-> [!WARNING]
+> !!! warning
 > Do **not** open public GitHub issues for security vulnerabilities.
 
 If you discover a security issue:

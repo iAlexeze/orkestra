@@ -8,7 +8,7 @@ This document explains:
 - **Why** the conversion webhook exists  
 - **What** problem it solves  
 - **How** it is implemented inside Orkestra  
-- **How** it is enabled using `ENABLE_CONVERSION`  
+- **How** it is enabled using 
 - **How** TLS is provided by the user for secure webhook communication  
 
 ---
@@ -28,12 +28,12 @@ This is one of the **most painful** parts of building Kubernetes operators.
 
 Orkestra eliminates all of that.
 
-### Orkestra’s goal  
-> **Make CRD versioning fully declarative — no Go code, no conversion functions, no boilerplate.**
+!!! tip
+    ### Orkestra’s goal:
+    Make CRD versioning fully declarative — no Go code, no conversion functions, no boilerplate.
 
 To achieve this, Orkestra needs a webhook endpoint that Kubernetes can call whenever it needs to convert an object between versions. But unlike traditional operators, Orkestra’s webhook is:
 
-- **Optional**  
 - **Declaratively driven**  
 - **Runtime‑enabled**  
 - **User‑controlled**  
@@ -44,16 +44,7 @@ This is where the conditional conversion webhook comes in.
 ---
 
 ## What Problem the Conditional Webhook Solves
-
-### Without Orkestra  
-If a CRD has multiple versions, Kubernetes requires a conversion webhook. Without it, the API server rejects CRs with:
-
-```
-no conversion defined for version X
-```
-
-### With Orkestra  
-Users can define conversion rules directly in the Katalog:
+With Orkestra, users can define conversion rules directly in the Katalog:
 
 ```yaml
 conversion:

@@ -3,7 +3,7 @@
 Orkestra’s conversion webhook requires TLS.  
 This guide walks you through generating a **self‑signed certificate** suitable for development and testing.
 
-> [!WARNING]
+> !!! warning
 > **Self‑signed certificates are strongly discouraged in production.** 
 
 > They are not trusted by default, cannot be revoked, and require manual CA distribution.  
@@ -60,7 +60,7 @@ DNS.3 = orkestra.orkestra.svc
 DNS.4 = orkestra.orkestra.svc.cluster.local
 ```
 
-> [!TIP]
+> !!! tip 
 > These SANs must match the service name defined in your CRD’s webhook configuration.
 
 ---
@@ -77,7 +77,7 @@ openssl req -x509 -new -nodes \
   -subj "/CN=orkestra-ca"
 ```
 
-> [!NOTE]
+> !!! note
 > This CA will be used only to sign the webhook certificate.  
 > Kubernetes will trust this CA because you will embed it in the CRD.
 
@@ -124,7 +124,7 @@ kubectl create secret tls orkestra-tls \
   -n orkestra
 ```
 
-> [!TIP]
+> !!! tip 
 > Orkestra mounts this secret at `/tls/tls.crt` and `/tls/tls.key`.
 
 ---
@@ -151,7 +151,7 @@ conversion:
       caBundle: <BASE64_CA_CERT>
 ```
 
-> [!WARNING]
+> !!! warning
 > If the CA does not match the certificate used by the webhook server,  
 > Kubernetes will reject all conversion requests with:
 >

@@ -1,15 +1,20 @@
-# Conditional Provisioning in Orkestra  
+# **Conditional Provisioning in Orkestra**  
 **Declarative, per‑resource conditions for dynamic operator behavior**
 
 Conditional provisioning lets you declare **when** a resource should be created, updated, or skipped — based entirely on the fields of the Custom Resource (CR) being reconciled.
 
 This allows a single Katalog to express multiple deployment modes, optional components, environment‑specific behavior, and feature flags **without writing Go code**.
 
+!!! note
+    Conditional provisioning is evaluated on *every* reconcile.  
+    If a condition fails, the resource is skipped cleanly — no errors, no partial state.
+
 ---
 
-# Why Conditional Provisioning Exists
+# **Why Conditional Provisioning Exists**
 
-Operators often need to create resources *only if* certain fields are present or certain values are set.  
+Operators often need to create resources *only if* certain fields are present or certain values are set.
+
 Examples:
 
 - Create a `Service` only if `spec.exposePublicly = true`
@@ -18,12 +23,13 @@ Examples:
 - Create a `Secret` only if `spec.credentialsRef` is provided
 - Create a `Job` only if `spec.runMigrations = true`
 
-In traditional operators, this logic lives in Go code.  
-In Orkestra, it lives in **YAML**, inside your Katalog.
+!!! tip
+    In traditional operators, this logic lives in Go code.  
+    In Orkestra, it lives in **YAML**, inside your Katalog.
 
 ---
 
-# How It Works
+# **How It Works**
 
 Every resource under:
 
@@ -41,16 +47,18 @@ when:
 
 Each entry in `when:` is a **Condition**.
 
-All conditions in the list are **AND’ed**.  
-If *any* condition fails, the resource is **skipped** for that reconcile cycle.
+- All conditions are **AND’ed**  
+- If *any* condition fails → the resource is **skipped**  
+- Skipping is **not an error**  
 
-Skipping is **not an error** — it is a clean no‑op.
+!!! caution
+    Conditions never delete resources.  
+    If a resource was previously created and conditions later fail, Orkestra will **stop reconciling it**, but will not remove it.  
+    Use `onDelete` if you need explicit teardown logic.
 
 ---
 
-# Supported Condition Operators
-
-Orkestra supports a rich set of operators:
+# **Supported Condition Operators**
 
 | Operator | Meaning |
 |----------|---------|
@@ -64,26 +72,13 @@ Orkestra supports a rich set of operators:
 | `gt` | Field value is numerically greater than the condition value |
 | `lt` | Field value is numerically less than the condition value |
 
-### Shorthand: `equals`
-
-You may use:
-
-```yaml
-equals: "true"
-```
-
-instead of:
-
-```yaml
-operator: equals
-value: "true"
-```
-
-If `equals` is present, `operator` is ignored.
+!!! tip
+    `equals` is the default operator.  
+    If `equals` is present, `operator:` is ignored.
 
 ---
 
-# Field Resolution
+# **Field Resolution**
 
 `field:` uses **dot notation** to reference CR fields:
 
@@ -97,13 +92,18 @@ Nested fields are supported.
 
 If a field does not exist:
 
-- `exists` → **false**
-- `notExists` → **true**
+- `exists` → **false**  
+- `notExists` → **true**  
 - all other operators → **false**
+
+!!! note
+    Missing fields never cause errors — they simply fail the condition.
 
 ---
 
-# Example: Conditional Service Creation
+# **Examples**
+
+## **Conditional Service Creation**
 
 ```yaml
 services:
@@ -125,11 +125,11 @@ spec:
   exposePublicly: "false"
 ```
 
-Then the service is **skipped**.
+The service is **skipped**.
 
 ---
 
-# Example: Multiple Conditions (AND)
+## **Multiple Conditions (AND)**
 
 ```yaml
 when:
@@ -147,7 +147,7 @@ This resource is created only when:
 
 ---
 
-# Example: Optional ConfigMap
+## **Optional ConfigMap**
 
 ```yaml
 configMaps:
@@ -165,7 +165,7 @@ If `spec.config` is missing, the ConfigMap is skipped.
 
 ---
 
-# Example: Feature Flags
+## **Feature Flags**
 
 ```yaml
 deployments:
@@ -179,46 +179,55 @@ deployments:
         equals: "enabled"
 ```
 
+!!! tip
+    Feature flags are one of the most common uses of conditional provisioning.
+
 ---
 
-# How Orkestra Evaluates Conditions
+# **How Orkestra Evaluates Conditions**
 
 During reconcile:
 
-1. The GenericReconciler loads the CR from the informer cache.
-2. Before creating a resource, it evaluates all `when:` conditions.
-3. If all pass → resource is created/updated.
-4. If any fail → resource is skipped.
+1. The GenericReconciler loads the CR from the informer cache  
+2. Before creating a resource, it evaluates all `when:` conditions  
+3. If all pass → resource is created/updated  
+4. If any fail → resource is skipped  
 5. Skipped resources produce a debug log:
 
 ```
 conditions not met — skipping resource
 ```
 
-This is intentional and expected.
+!!! note
+    Skipping is a **clean no‑op**.  
+    It does not count as an error and does not requeue the CR.
 
 ---
 
-# Best Practices
+# **Best Practices**
 
-### ✔ Use `equals: "true"` for booleans  
+- Use `equals: "true"` for booleans  
 CRDs often store booleans as strings.
 
-### ✔ Use `exists` for optional fields  
+-  Use `exists` for optional fields  
 Cleaner than comparing to empty strings.
 
-### ✔ Use numeric operators (`gt`, `lt`) for scaling logic  
+-  Use numeric operators (`gt`, `lt`) for scaling logic  
 Great for autoscaling‑like behavior.
 
-### ✔ Keep conditions simple  
+-  Keep conditions simple  
 Complex logic belongs in the CR, not the Katalog.
 
-### ✔ Remember: all conditions are AND’ed  
+-  Remember: all conditions are AND’ed  
 If you need OR logic, split into multiple resources.
+
+!!! warning
+    Avoid deeply nested conditions — they make the operator harder to reason about.  
+    Prefer explicit CR fields that express intent.
 
 ---
 
-# Summary
+# **Summary**
 
 Conditional provisioning gives you:
 
@@ -231,8 +240,12 @@ Conditional provisioning gives you:
 
 It is one of the most powerful parts of Orkestra’s declarative operator model.
 
+---
 
-**Whats Next?**
-  - [Orkestra Use Cases](../user-guide/use-cases.md)
-  - [What is a Katalog](./katalog.md)
-  - [What is a Komposer](./komposer.md)
+---
+
+## Related Documentation
+
+- **Concept:** [Templating Engine](../concepts/templating.md)
+- **Reference:** [Katalog Schema — Conditions](../reference/katalog-schema.md#conditions)
+- **Next Use Case:** [Zero‑Code Operators](../use-cases/zero-code-operators.md)

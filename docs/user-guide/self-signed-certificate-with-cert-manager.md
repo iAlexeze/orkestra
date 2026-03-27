@@ -1,10 +1,10 @@
 # 🟣 Using cert‑manager to Generate TLS Certificates for Orkestra
 
-> [!TIP]
+> !!! tip 
 > This is the recommended method for production clusters.  
 > cert‑manager handles certificate issuance, rotation, and CA trust automatically.
 
-> [!WARNING]
+> !!! warning
 > If you previously installed a self‑signed certificate manually,  
 > **delete the old secret** before switching to cert‑manager:
 >
@@ -130,6 +130,6 @@ conversion:
       caBundle: <base64-ca-from-secret>
 ```
 
-> [!NOTE]
+> !!! note
 > cert‑manager **does not automatically patch CRDs**.  
 > You must embed the CA bundle manually or automate it with a small controller.
