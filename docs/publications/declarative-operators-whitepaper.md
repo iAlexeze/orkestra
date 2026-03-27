@@ -258,7 +258,7 @@ spec:
       workers: 8
 ```
 
-The merger resolves all sources, deduplicates by CRD name, and produces one
+Orkestra's in-built merger resolves all sources, deduplicates by CRD name, and produces one
 validated configuration. Inline `spec.crds` are merged last and override
 source definitions — the mechanism for environment-specific configuration
 without forking source Katalogs.

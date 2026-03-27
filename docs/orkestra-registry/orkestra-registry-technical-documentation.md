@@ -10,7 +10,7 @@ or call a registry function from a Go hook. OrkestraRegistry handles the rest.
 
 ---
 
-  > New to Orkestra? Start with the [Katalog documentation](../concepts/katalog.md) and the [examples](../examples/website/README.md). This document is a reference for the registry implementation.
+  > New to Orkestra? Start with the [Katalog documentation](../concepts/katalog.md) and the [examples](../examples/beginner/website/README.md). This document is a reference for the registry implementation.
 
 ## What it provides
 

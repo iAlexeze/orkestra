@@ -11,11 +11,13 @@ nav:
 - understanding-the-basics.md
 - core-concepts.md 
 - Getting Started:
-    - Getting Started: user-guide/getting-started.md
-    - Writing Your First Katalog: user-guide/writing-your-first-katalog.md
-    - Writing Hooks: user-guide/writing-hooks.md
-    - Writing Custom Reconcilers: user-guide/writing-custom-reconcilers.md
-    - Testing Operators: user-guide/testing-operators.md
+    - getting-started/getting-started.md
+    - getting-started/writing-your-first-katalog.md
+    - getting-started/writing-your-first-komposer.md
+    - getting-started/basic-reconciliation.md
+    # - Writing Hooks: user-guide/writing-hooks.md
+    # - Writing Custom Reconcilers: user-guide/writing-custom-reconcilers.md
+    # - Testing Operators: user-guide/testing-operators.md
 
 - Runtime Manual:
   - Architecture:
@@ -68,6 +70,16 @@ nav:
   #   - API: reference/api.md
     - CLI: reference/cli.md
     - Inspect Live CRD: reference/inspect-live-crd.md
+- Example Workflows:
+    - Overview: examples/overview.md
+    - Beginner:
+      - examples/beginner/website/README.md
+      - examples/beginner/platform-namespace/README.md
+      - examples/beginner/komposer/README.md
+    - Intermediate:
+      - examples/intermediate/<.md>
+    - Advanced:
+      - examples/advanced/multi-versions-website/README.md
 
 - Publications:
     - Why Orkestra: publications/why-orkestra.md
@@ -88,8 +100,9 @@ nav:
 - Blog ⧉: https://blog.orkestra.sh/
 plugins:
   - search
+  - mermaid2:
+      version: 10.0.2
   - gh-admonitions
-  - mermaid2
 repo_url: https://github.com/iAlexeze/orkestra
 site_name: Orkestra - Declarative Operator Runtime for Kubernetes
 site_description: Declarative Operator Runtime for Kubernetes
@@ -114,24 +127,33 @@ extra:
       link: https://github.com/orkestra-sh/orkestra
     - icon: fontawesome/brands/twitter
       link: https://twitter.com/orkestra
-# extra_css:
+extra_css:
+  - css/footer-nav.css
 # - assets/versions.css
+
 # extra_javascript:
 # - assets/versions.js
 
 markdown_extensions:
-- markdown_include.include
-- admonition
-- markdown_grid_tables
-- codehilite:
-    css_class: highlight
-- toc:
-    permalink: true
+  - markdown_include.include
+  - admonition
+  - markdown_grid_tables
+  # - pymdownx.details
+  # - pymdownx.highlight
+  # - pymdownx.superfences:
+  #     custom_fences:
+  #       - name: mermaid
+  #         class: mermaid
+  #         format: !!python/name:mermaid2.fence_mermaid_custom
+  - codehilite:
+      css_class: highlight
+  - toc:
+      permalink: true
 
 theme:
   icon:
     repo: fontawesome/brands/github
-  # custom_dir: overrides
+  # custom_dir: docs/overrides
   favicon: assets/ork-logo-white.png
   font:
     text: Work Sans

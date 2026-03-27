@@ -295,7 +295,7 @@ spec:
         default: true
 ```
 
-The merger resolves all sources, deduplicates by CRD name, and produces
+Orkestra's in-built merger resolves all sources, deduplicates by CRD name, and produces
 one validated set of CRD entries. Inline `spec.crds` on a Komposer are
 overrides — they win on name conflict with any source. This allows consuming
 a shared Katalog and overriding specific CRD configuration for the current

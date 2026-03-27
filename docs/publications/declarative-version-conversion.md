@@ -244,6 +244,7 @@ Content-Type: application/json
 ```
 
 The handler:
+
 1. Decodes the `ConversionReview`
 2. Extracts the bare source version from the object's `apiVersion` field
 3. Extracts the bare target version from `desiredAPIVersion`

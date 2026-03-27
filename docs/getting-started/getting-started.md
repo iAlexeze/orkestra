@@ -288,5 +288,5 @@ You have a working operator. Here is where to go next:
 * **[Komposer](../concepts/komposer.md)** — compose Katalogs from files, Helm charts, and registries
 * **[Deployment Guide](../user-guide/deployment.md)** — run Orkestra in a cluster with Helm
 * **[CLI Reference](../reference/cli.md)** — full documentation for every command
-* **[Use Cases](./use-cases.md)** — real-world operator patterns
+* **[Use Cases](../user-guide/use-cases.md)** — real-world operator patterns
 

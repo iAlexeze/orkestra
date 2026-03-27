@@ -3,7 +3,7 @@ package orktypes
 
 // KatalogFile is the top-level structure of a crd-katalog.yaml file.
 // It contains optional sources (files and helm charts) plus inline CRDs.
-// The merger resolves all sources and merges everything into one KatalogSpec.
+// Orkestra's in-built merger resolves all sources and merges everything into one KatalogSpec.
 type KatalogFile struct {
 	APIVersion string          `yaml:"apiVersion"`
 	Kind       string          `yaml:"kind"`

@@ -124,6 +124,7 @@ ork run --katalog katalog.yaml
 ```
 
 The `Website` CRD now has:
+
 - Its own informer watching `demo.orkestra.io/v1alpha1`
 - 3 dedicated workers — no other CRD can consume them
 - Its own workqueue with independent backoff and depth limits
