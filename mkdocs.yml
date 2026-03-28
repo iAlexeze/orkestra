@@ -1,6 +1,8 @@
 nav:
 - Overview: index.md
-- understanding-the-basics.md
+- Basics:
+  - basics/kubernetes-basics.md
+  - basics/understanding-orkestra.md
 - Getting Started:
     - getting-started/index.md
     - getting-started/writing-your-first-katalog.md
@@ -123,9 +125,8 @@ nav:
     - publications/index.md
     - Why Orkestra: publications/why-orkestra.md
     - Declarative Operators Whitepaper: publications/declarative-operators-whitepaper.md
-    - Declarative Version Conversion: publications/declarative-version-conversion.md
+    - Declarative Version Conversion: publications/declarative-conversion.md
     - One Runtime, Many CRDs: publications/one-runtime-many-crds.md
-    - publications/why-katalogs-and-komposers-are-not-crds.md
     - publications/universal-observer-whitepaper.md
     - publications/value-proposition.md
     - Orkestra Registry: publications/orkestra-registry.md
@@ -151,17 +152,28 @@ nav:
     - use-cases/conversion.md
     - use-cases/hooks.md
     - use-cases/custom-constructors.md
-  
-- faq.md
-- security-considerations.md
+
+- FAQs:
+    - faqs/index.md
+    - faqs/why-not-crds.md
+- security.md
 - support.md
-- Roadmap: roadmap.md
+- roadmap.md
 - Releases ⧉: https://github.com/iAlexeze/orkestra/releases
 - Blog ⧉: https://blog.orkestra.sh/
+
+
+
+
+
 plugins:
   - search
   - mermaid2:
       version: 10.0.2
+      arguments:
+        securityLevel: 'loose'
+        startOnLoad: true
+        theme: "^(document.querySelector('body').getAttribute('data-md-color-scheme') === 'slate') ? 'dark' : 'default'"
   - gh-admonitions
 repo_url: https://github.com/iAlexeze/orkestra
 site_name: Orkestra - Declarative Operator Runtime for Kubernetes
@@ -189,34 +201,18 @@ extra:
     - icon: fontawesome/brands/twitter
       link: https://twitter.com/orkestra
 
-# extra_css:
-#   - css/footer-nav.css
-
-# For future use
-#   - assets/versions.css
-# extra_javascript:
-# - assets/versions.js
-
 markdown_extensions:
   - markdown_include.include
   - admonition
   - markdown_grid_tables
-  # - pymdownx.details
-  # - pymdownx.highlight
-  # - pymdownx.superfences:
-  #     custom_fences:
-  #       - name: mermaid
-  #         class: mermaid
-  #         format: !!python/name:mermaid2.fence_mermaid_custom
-  - codehilite:
-      css_class: highlight
   - toc:
       permalink: true
 
 theme:
+  features: 
+    - navigation.footer
   icon:
     repo: fontawesome/brands/github
-  # custom_dir: docs/overrides
   favicon: assets/ork-logo-white.png
   font:
     text: Work Sans
@@ -224,16 +220,12 @@ theme:
   name: material
   palette:
   - media: '(prefers-color-scheme: light)'
-    # primary: teal
-    # primary: dark purple
     primary: deep purple
     scheme: default
     toggle:
       icon: material/brightness-7
       name: Switch to dark mode
   - media: '(prefers-color-scheme: dark)'
-    # primary: teal
-    # primary: dark purple
     primary: deep purple
     scheme: slate
     toggle:

@@ -45,17 +45,43 @@ func TestCRDHealth_RecordFailure(t *testing.T) {
 func TestCRDHealth_RecordFailureExceedsThreshold(t *testing.T) {
 	h := kontroller.NewCRDHealth("test")
 
-	// First failure — still healthy (threshold=3)
+	// CRDs start unhealthy (no successful reconcile has occurred yet).
+	// RecordFailure below threshold does not flip healthy to true —
+	// it only prevents an already-healthy CRD from staying healthy.
+
+	// First failure — unhealthy, consecutiveFails = 1
 	h.RecordFailure(fmt.Errorf("error 1"), 3)
-	assert.True(t, h.IsHealthy())
+	assert.False(t, h.IsHealthy())
+	assert.Equal(t, int64(1), h.ConsecutiveFails())
 
-	// Second failure — still healthy
+	// Second failure — still unhealthy, consecutiveFails = 2
 	h.RecordFailure(fmt.Errorf("error 2"), 3)
-	assert.True(t, h.IsHealthy())
+	assert.False(t, h.IsHealthy())
+	assert.Equal(t, int64(2), h.ConsecutiveFails())
 
-	// Third failure — becomes degraded
+	// Third failure — threshold reached, still unhealthy (was already false)
 	h.RecordFailure(fmt.Errorf("error 3"), 3)
 	assert.False(t, h.IsHealthy())
+	assert.Equal(t, int64(3), h.ConsecutiveFails())
+}
+
+func TestCRDHealth_ThresholdDegradesPreviouslyHealthyCRD(t *testing.T) {
+	h := kontroller.NewCRDHealth("test")
+
+	// Establish healthy state via a successful reconcile
+	h.RecordSuccess()
+	assert.True(t, h.IsHealthy())
+
+	// Failures below threshold: CRD stays healthy
+	h.RecordFailure(fmt.Errorf("error 1"), 3)
+	assert.True(t, h.IsHealthy(), "below threshold — should remain healthy")
+
+	h.RecordFailure(fmt.Errorf("error 2"), 3)
+	assert.True(t, h.IsHealthy(), "below threshold — should remain healthy")
+
+	// Third failure crosses threshold — CRD becomes degraded
+	h.RecordFailure(fmt.Errorf("error 3"), 3)
+	assert.False(t, h.IsHealthy(), "at threshold — should be degraded")
 }
 
 func TestCRDHealth_SuccessResetsConsecutiveFails(t *testing.T) {

@@ -17,7 +17,7 @@ The code you would have written does not exist.
     Every operator framework before Orkestra reduced the code you write.
     Orkestra removes the need to write code at all.
 
-See [Your CRD Is Enough](./concepts/your-crd-is-enough.md) for the full picture.
+See [Your CRD Is Enough](../publications/your-crd-is-enough.md) for the full picture.
 
 ---
 
@@ -45,7 +45,7 @@ declarative layer handles everything else.
 !!! note "When Go becomes necessary"
     The 20% of operator logic that genuinely requires code — creating a user
     inside PostgreSQL, calling an external API, reading another cluster's state
-    — is handled by [hooks](./docs/technical-docs/hooks.md). Hooks coexist with
+    — is handled by [hooks](../technical-docs/hooks.md). Hooks coexist with
     declarative templates. You do not choose one or the other.
 
 ---
@@ -99,11 +99,11 @@ spec:
 
 !!! note "Why Katalog is not a CRD"
     Orkestra deliberately keeps Katalog and Komposer as plain YAML files, not
-    Kubernetes CRDs. See [Why Katalog and Komposer Are Not CRDs](./concepts/why-not-crds.md)
+    Kubernetes CRDs. See [Why Katalog and Komposer Are Not CRDs](./why-not-crds.md)
     for the full reasoning. The short version: your CRD should be the focus,
     not Orkestra's management infrastructure.
 
-See the [Katalog Schema](./docs/reference/katalog-schema.md) for all available fields.
+See the [Katalog Schema](../reference/katalog-schema.md) for all available fields.
 
 ---
 
@@ -138,7 +138,7 @@ spec:
 The `spec.crds` inline block always wins on name conflict — it is the override
 mechanism. Platform teams publish Katalogs; application teams compose and override.
 
-See the [Komposer Schema](./docs/reference/komposer-schema.md) for all options.
+See the [Komposer Schema](../reference/komposer-schema.md) for all options.
 
 ---
 
@@ -161,7 +161,7 @@ with one line in a Komposer. No binary. No deployment. Just a Katalog.
     Patterns are versioned, composable, and overridable. You import them like
     dependencies, not like binaries.
 
-See [OrkestraRegistry Overview](./docs/orkestra-registry/overview.md) for the full picture.
+See [OrkestraRegistry Overview](../orkestra-registry/index.md) for the full picture.
 
 ---
 
@@ -209,7 +209,7 @@ helm install orkestra charts/orkestra \
   --set konfig.katalog.path=/katalogs/katalog.yaml
 ```
 
-See the [Deployment Guide](./docs/guides/deployment.md) for full cluster setup including
+See the [Deployment Guide](../guides/user-guide/deployment.md) for full cluster setup including
 TLS, RBAC, and production tuning.
 
 ---
@@ -371,8 +371,8 @@ declared alongside reconcile templates and evaluated by the same resolver:
     `/validate` and `/mutate`. No separate conversion webhook binary. No separate
     TLS certificate. No separate deployment.
 
-See [Versioning](./docs/concepts/versioning.md) and
-[Declarative Conversion](./docs/publish/declarative-conversion.md) for the full design.
+See [Versioning](../runtime-manual/concepts/versioning.md) and
+[Declarative Conversion](../publications/declarative-conversion.md) for the full design.
 
 ---
 
@@ -487,7 +487,7 @@ Yes. Orkestra is designed for and demonstrated in production.
     16–17 seconds of a leader crash. During this window, CRs are not modified —
     they are queued and processed when the new leader starts.
 
-See [Trust and Failure Model](./docs/concepts/trust-and-failure-model.md) for every
+See [Trust and Failure Model](../publications/trust-and-failure-model.md) for every
 failure mode, what it means, and how Orkestra handles it.
 
 ---
@@ -581,7 +581,7 @@ model to CRDs you did not write and cannot modify.
 
 ### What is the path to Kubernetes core?
 
-See [Orkestra: The Universal Observer That Belongs in Kubernetes Core](./docs/papers/universal-observer-whitepaper.md)
+See [Orkestra: The Universal Observer That Belongs in Kubernetes Core](../publications/universal-observer-whitepaper.md)
 for the full argument and roadmap.
 
 The short version: Orkestra is building toward CNCF Sandbox, then a Kubernetes

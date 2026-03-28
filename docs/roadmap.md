@@ -1,67 +1,86 @@
-# Orkestra Roadmap
+# Roadmap
 
 *Last updated: March 2026*
 
 ---
 
-## Where We Are
+## Where we are
 
-Orkestra v1.0 is the first complete declarative operator runtime. The core is done. The promise — write a Katalog, run `ork run`, get a production-grade operator — is delivered.
+Orkestra v1.0 is the first complete declarative operator runtime for Kubernetes.
+The core promise is delivered: write a Katalog, run `ork run`, get a
+production-grade operator — with its own informer, workqueue, worker pool, health
+endpoint, metrics, leader election, and drift correction — without writing a single
+line of Go.
 
-What exists today:
+What exists in production today:
 
-- **Katalog** — declare CRDs, reconcile templates, dependencies, workers, resync
-- **Komposer** — compose Katalogs from files, URLs, Helm charts, environment variables
-- **Dynamic mode** — zero-code operators, no compiled types, no generation step
-- **Typed mode** — compiled Go types, Go hooks, custom constructors
-- **OrkestraRegistry** — Deployments, Services, Secrets, ConfigMaps, ServiceAccounts, Jobs, CronJobs, Pods
-- **Declarative conversion** — version conversion rules in YAML, no Go code, no separate webhook
-- **Built-in conversion webhook** — Orkestra serves `/convert` over HTTPS, metrics exposed
-- **Template resolver** — full Go `text/template` against live CR objects
-- **Dependency graph** — topological startup, cycle detection, missing CRD retry
-- **GenericReconciler** — three-path dispatch: templates, Go hooks, custom constructor
-- **DependencyKontroller** — per-CRD worker pools, safe reconcile, panic recovery
-- **KonductorElection** — leader election, warm cache failover
-- **Health API** — `/health`, `/ready`, `/metrics`, `/katalog/*` per CRD
-- **Prometheus metrics** — reconciliation and conversion metrics, per‑CRD labels
-- **CLI** — `ork init`, `ork validate`, `ork template`, `ork generate runtime`, `ork run`, `ork version`, `ork status`
-- **Install** — `curl | bash` installer for macOS and Linux
-- **Documentation** — architecture, CLI, registry, conversion, templating, extending, use cases, whitepaper
+**Runtime**
+
+- Dynamic mode — zero-code operators, no generated types, no compilation step
+- Typed mode — Go types, Go hooks, custom constructors when you need them
+- GenericReconciler with three-path dispatch: templates, hooks, constructor
+- Per-CRD isolation — dedicated informer, workqueue, and worker pool per CRD
+- Dependency graph — topological startup order, cycle detection, missing CRD retry
+- safeReconcile — panic recovery per CRD, other CRDs unaffected
+- Konductor election — leader election with warm-cache follower failover
+
+**Declarations**
+
+- Katalog — CRDs, reconcile templates, workers, resync, dependencies, conversion rules
+- Komposer — compose Katalogs from files, URLs, Helm charts, Git and OCI registries
+- Conditions (`when:`) — conditional resource creation based on CR field values
+- Declarative version conversion — conversion rules in YAML, no Go code
+- Declarative validation — deny/warn rules at reconcile and admission time
+- Declarative mutation — defaults and overrides at reconcile and admission time
+
+**Distribution**
+
+- OrkestraRegistry — the internal resource library: Deployment, Service, Secret, ConfigMap, ServiceAccount, Job, CronJob, Pod
+- Registry source — pull operator patterns from OCI or Git with `sources.registry`
+- Five-file pattern structure — enforced at pull time, not at author time
+- Authenticated sources — bearer, GitHub, and basic auth from environment variables
+
+**Webhooks**
+
+- Built-in conversion webhook — Orkestra serves `/convert` over HTTPS
+- Built-in admission webhooks — `/validate` and `/mutate` on the same HTTPS server
+- Auto-registration — ValidatingWebhookConfiguration and MutatingWebhookConfiguration created at startup
+- Admission metrics — per-CRD, per-field, per-source (admission vs reconcile)
+
+**Observability**
+
+- Health API — `/health`, `/ready`, `/katalog`, `/katalog/{crd}`, `/katalog/{crd}/health`
+- Prometheus metrics — reconcile, conversion, and admission metrics with consistent GVK labels
+- Rolling stats — in-process ConversionStats and AdmissionStats with p95 latency
+
+**CLI**
+
+- `ork init` — scaffold a new operator project
+- `ork validate` — validate any Katalog or Komposer without a cluster
+- `ork run` — start the operator runtime
+- `ork status` — live view of all managed CRDs (queries `/katalog`)
+- `ork get` / `ork describe` / `ork events` / `ork top` — per-CRD inspection
+- `ork template` — preview the merged, validated configuration
+- `ork generate runtime` — code generation for typed-mode CRDs
+- `ork version` — version information
+
+**Distribution**
+
+- Homebrew tap — `brew install iAlexeze/tap/ork`
+- curl installer — `curl -sSL .../install.sh | bash` with GPG signing
+- Docker image — GHCR, distroless, two-stage build
+- Helm chart — production-ready deployment chart
 
 ---
 
-## Completed Milestones (Already Shipped)
+## Phase 1 — Stability (Complete)
 
-| Item | Status |
-|------|--------|
-| Runtime template interpretation | ✅ Dynamic CRDs require no `generate` step |
-| Declarative version conversion | ✅ Conversion rules in YAML, no Go code |
-| Built‑in conversion webhook | ✅ Orkestra serves `/convert` over HTTPS |
-| Conversion metrics | ✅ `orkestra_conversion_requests_total`, `orkestra_conversion_duration_seconds` |
-| Multi‑source authentication | ✅ Bearer, GitHub, Basic auth with `fromEnv` |
-| `ork status` command | ✅ Live view of CRD health, workers, queue, resources |
-| End‑to‑end tests | ✅ Website, platform‑namespace, komposer examples |
-| `ork validate` full error coverage | ✅ Clear, actionable error messages for all invalid Katalog patterns |
-| Module path migration | ✅ `github.com/orkestra-sh/orkestra` |
-| Helm chart for Orkestra | ✅ Production-ready deployment chart |
+**Goal:** Ensure the core is production-ready for early adopters.
 
----
+The architecture is settled. The features are complete. Phase 1 hardened the
+runtime, added test coverage, and removed the last friction before real users.
 
-## Phase 1 — Stability (Q2 2026)
-
-**Goal:** Ensure v1.0 is production‑ready for early adopters.
-
-The architecture is right. The features are complete. Phase 1 focuses on hardening, coverage, and removing the last friction before Orkestra is in front of real users.
-
-| Item | Status |
-|------|--------|
-| `ork init` end‑to‑end test | ✅ Complete |
-| Integration tests for all examples | ✅ Complete |
-| `ork validate` full error coverage | ✅ Complete |
-| Module path migration | ✅ Complete |
-| Helm chart for Orkestra | ✅ Complete |
-
-**Phase 1 complete.** Orkestra is ready for production evaluation.
+All Phase 1 milestones are shipped.
 
 ---
 
@@ -71,113 +90,204 @@ The architecture is right. The features are complete. Phase 1 focuses on hardeni
 
 ### `ork dashboard`
 
-A terminal UI showing the live state of a running operator.
+A terminal UI showing the live state of a running operator — the `/katalog` endpoint
+rendered for the terminal in real time.
 
 ```
-CRD                    Workers   Queue   Health   Reconciles   Errors   Conversions
-website                2/2       0       ✅        1,247        0        47
-platformnamespace      2/2       3       ✅        412          1        0
-application            4/4       0       ✅        8,891        0        0
-database               2/2       0       ⚠️         201          4        12
+CRD                  Workers  Queue  Health   Reconciles  Errors  Conversions
+website              2/2      0      healthy  1,247       0       47
+postgres             4/4      3      healthy  8,891       0       0
+platform-namespace   2/2      0      healthy  412         1       0
+database             2/2      0      degraded 201         4       12
 ```
 
-Real-time queue depth, worker utilization, error rates, conversion statistics, and the dependency graph.
+Real-time queue depth, worker utilisation, error rates, conversion latency, and
+active validation warnings. The data is already in `/katalog` — the dashboard is
+a renderer, not a new data source.
+
+### `ork diff`
+
+Show what would change in a running operator if the Katalog were updated. Like
+`kubectl diff` for operator configuration.
+
+```bash
+ork diff --katalog ./katalog-v2.yaml
+# ~ website: workers 2 → 4
+# ~ website: resync 15s → 30s
+# + logging (new CRD)
+# - legacy-resource (removed)
+```
+
+### `ork lint`
+
+Deeper Katalog analysis beyond `ork validate`. Catches patterns that are valid
+but likely wrong:
+
+```bash
+ork lint --katalog katalog.yaml
+# WARN website: reconcile: true on all resources — consider onReconcile for drift
+# WARN database: workers: 1 — single worker will serialise all reconciles
+# WARN platform: resync: 1s — very short interval across 500+ CRDs
+```
+
+### `ork registry` CLI
+
+The planned command suite for working with OCI-distributed operator patterns:
+
+```bash
+ork registry login ghcr.io
+ork registry push ghcr.io/myorg/postgres:v14 ./postgres/v14
+ork registry pull ghcr.io/myorg/postgres:v14 ./local
+ork registry list ghcr.io/konduktor-io/orkestra-registry
+ork registry search postgres
+ork registry info ghcr.io/konduktor-io/orkestra-registry/postgres:v14
+```
+
+OCI patterns are consumable today via direct `oci:` references in Komposers.
+The CLI is the first-class interface being built on top.
 
 ### Additional source types
 
 ```yaml
 sources:
-  s3:
-    - bucket: my-org-katalogs
-      key: platform/crds.yaml
-      region: us-east-1
-
   configMap:
     - name: platform-crds
       namespace: orkestra-system
       key: katalog.yaml
+
+  s3:
+    - bucket: my-org-katalogs
+      key: platform/crds.yaml
+      region: us-east-1
+      auth:
+        type: aws
+        fromEnv: AWS_PROFILE
 ```
 
-S3 and ConfigMap are the two most-requested sources.
+ConfigMap and S3 are the two most-requested sources for platform teams managing
+Katalog distribution internally.
 
-### `ork diff`
+### Performance benchmarks
 
-Show what would change in a running operator if the Katalog were updated. Like `kubectl diff` for operator configuration.
-
-```bash
-ork diff --katalog ./katalog-v2.yaml
-# ~ website: workers 2 → 4
-# + logging (new CRD)
-# - legacy-resource (removed)
-```
-
-### Performance benchmarks and stress testing
-
-Numbers for reconcile throughput, queue latency, informer memory usage at 100+ CRDs. Quality gates to be published.
-
-### `ork lint`
-
-Deeper Katalog analysis beyond `ork validate`. Detects patterns that are valid but likely wrong:
-
-```bash
-ork lint --katalog ./katalog.yaml
-# WARN website: reconcile: true on all resources — consider onReconcile
-# WARN database: workers: 1 — single worker may cause latency spikes
-# WARN application: resync: 1s — very short resync interval for 500+ CRDs
-```
+Published numbers for reconcile throughput, queue latency, and informer memory
+usage at 50+ and 100+ CRDs. Stress test results with quality gates. Production
+evidence at scale beyond the current deployment.
 
 ---
 
 ## Phase 3 — Ecosystem (2027)
 
-**Goal:** Make Orkestra the standard way to distribute and consume operator definitions.
+**Goal:** Make Orkestra the standard way to distribute and consume operator
+definitions. Position for CNCF Sandbox.
 
 ### Public Katalog registry
 
-The OrkestraRegistry already exists as the community home for resource implementations. The next layer is a registry for complete Katalogs — reusable operator definitions that anyone can consume.
+The OrkestraRegistry grows from a resource implementation library to a full
+pattern registry — versioned, searchable, consumable with a version reference.
 
-```bash
-ork registry search postgres
-ork registry pull konduktor-io/postgres@v14
-ork run --from konduktor-io/postgres@v14
-
-ork registry publish ./my-katalog.yaml --name myorg/postgres
+```yaml
+sources:
+  registry:
+    - url: konduktor-io/postgres@v14.2.0
+      oci: true
+    - url: konduktor-io/monitoring@v0.3.0
+      oci: true
 ```
 
-The same model as Helm Hub, but for operator behavior rather than deployment manifests.
+Discoverable on Artifact Hub. Community-contributed patterns with maintainer
+review. The npm of operator behavior.
 
 ### Katalog versioning and dependencies
 
 ```yaml
 name: postgres
-version: 14.5.0
+version: 14.2.0
 orkestra: ">=1.0.0"
 dependencies:
   - storage-class@v1
   - monitoring@>=2.0
 ```
 
-Semantic versioning, dependency resolution, compatibility checks. The package management layer that the registry needs.
+Semantic versioning, dependency resolution, and compatibility checks. The package
+management layer the registry needs to be trustworthy at scale.
 
-### `ork dashboard` — web version
+### Database-backed state (optional)
 
-The terminal dashboard from Phase 2 extended to a web UI. Useful for organisations managing large numbers of operators across clusters.
+For teams who need more than in-process rolling windows — historical reconcile
+data, long-term trend analysis, cross-cluster aggregation — an optional
+persistence backend:
+
+```yaml
+state:
+  backend: postgres   # or sqlite, mysql
+  dsn: "$DATABASE_URL"
+  retentionDays: 90
+```
+
+This is deliberately optional. The default is in-process and sufficient for
+most operators. The database backend is for platform teams managing large operator
+fleets who want historical data beyond what Prometheus provides — per-CR reconcile
+history, error timelines, conversion audit trails.
+
+The interface is the same regardless of backend. `/katalog` returns the same
+response. `ork status` works the same way. The backend choice is an operational
+decision, not an architectural one.
+
+### Web dashboard
+
+The terminal dashboard from Phase 2 extended to a web UI. Useful for
+organisations managing large numbers of operators across clusters where a browser
+is more appropriate than a terminal.
 
 ### CNCF Sandbox submission
 
-Target Q1 2027. Requires production usage at multiple organisations — which Phase 2 adoption efforts should produce. The CNCF sandbox gives Orkestra vendor neutrality and community governance.
+Target Q1 2027. Requires production usage at multiple organisations — which Phase
+2 adoption efforts should produce. CNCF Sandbox gives Orkestra vendor neutrality,
+community governance, and the credibility that enterprise platform teams require
+before adopting an open-source runtime.
 
 ---
 
-## What We Are Not Building
+## The longer horizon
 
-These are deliberate non-goals:
+The long-term vision is Katalog and Komposer as native Kubernetes kinds — registered
+by the cluster itself, understood by `kube-controller-manager`, RBAC-controlled,
+auditable through the standard Kubernetes audit log.
 
-**Admission webhooks.** Orkestra is a reconciler runtime. Webhooks are a synchronous validation mechanism in the API server request path. Different tool, different model. No plans to add.
+```bash
+kubectl get katalogs          # not yet, but this is where we are going
+kubectl describe katalog website-operator
+```
 
-**Multi-cluster federation.** Orkestra manages CRDs within one cluster. Cross-cluster operations belong to a different architectural layer.
+The path is: production adoption → CNCF Sandbox → Kubernetes Enhancement Proposal →
+alpha behind a feature gate → beta → general availability. A realistic timeline is
+five years. The work is not primarily technical — the design is largely correct. The
+work is community trust.
 
-**Replacing controller-runtime.** Orkestra is not a replacement for controller-runtime. It is a higher-level abstraction that makes the common case trivial and defers to Go code when needed. The goal is to make even the most complex use cases declarative.
+Every production deployment is evidence. Every publication is an argument made early.
+Every pattern in the registry is a demonstration that the ecosystem works.
+
+See [Orkestra: The Universal Observer That Belongs in Kubernetes Core](./publications/universal-observer-whitepaper.md)
+for the full argument.
+
+---
+
+## What we are not building
+
+These are deliberate non-goals, reconsidered carefully:
+
+**Multi-cluster federation.** Orkestra manages CRDs within one cluster. Cross-cluster
+operations belong to a different architectural layer. Not planned.
+
+**Replacing controller-runtime.** Orkestra is a higher-level abstraction. For use
+cases that genuinely need the full flexibility of controller-runtime, custom
+constructors provide the bridge. Orkestra and controller-runtime are complementary,
+not competitive.
+
+**A general-purpose policy engine.** Orkestra's validation and mutation are scoped
+to the CRDs it manages. Global cluster-wide policy across resources Orkestra does
+not manage belongs in OPA, Kyverno, or VAP. Orkestra's admission model complements
+these — it does not replace them.
 
 ---
 
@@ -185,26 +295,31 @@ These are deliberate non-goals:
 
 The highest-value contributions right now:
 
-| Area | What Helps Most |
-|------|-----------------|
-| **Testing** | Run Orkestra in real environments and report what breaks |
-| **Registry implementations** | Add new resource types to OrkestraRegistry |
-| **Examples** | More Katalog examples showing real operator patterns |
+| Area | What helps most |
+|---|---|
+| **Production deployments** | Run Orkestra on real workloads, report what breaks |
+| **Registry patterns** | Five-file patterns for common CRDs — postgres, redis, cert-manager |
+| **Testing at scale** | 50+ CRD deployments, stress test results |
 | **Documentation** | Edge cases, gotchas, things that weren't obvious |
+| **Hooks** | Real-world hook implementations for complex operators |
 
-Open a [GitHub issue](https://github.com/orkestra-sh/orkestra/issues) or start a [Discussion](https://github.com/orkestra-sh/orkestra/discussions) for anything not covered above.
+Open a [GitHub issue](https://github.com/iAlexeze/orkestra/issues) or
+[Discussion](https://github.com/iAlexeze/orkestra/discussions) for anything not
+covered above. See [CONTRIBUTING.md](./technical-docs/CONTRIBUTING.md) for the development setup
+and code standards.
 
 ---
 
-## Release Schedule
+## Release schedule
 
 | Version | Target | Focus |
-|---------|--------|-------|
-| v1.0.0 | Q2 2026 | Production‑ready core (current) |
-| v1.1.0 | Q3 2026 | `ork dashboard`, `ork diff`, `ork lint` |
-| v1.2.0 | Q4 2026 | Additional sources (S3, ConfigMap) |
-| v2.0.0 | 2027 | Public registry, versioning, CNCF Sandbox |
+|---|---|---|
+| v1.0.0 | Q2 2026 | Production-ready core — current |
+| v1.1.0 | Q3 2026 | `ork dashboard`, `ork diff`, `ork lint`, `ork registry` CLI |
+| v1.2.0 | Q4 2026 | Additional sources (ConfigMap, S3), performance benchmarks |
+| v2.0.0 | Q1 2027 | Public registry, Katalog versioning, CNCF Sandbox submission |
+| v2.x | 2027+ | Optional database backend, web dashboard, KEP preparation |
 
 ---
 
-**Want to try it out?** [Start here](./getting-started/index.md).
+[Start here →](./getting-started/index.md)

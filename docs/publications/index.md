@@ -19,7 +19,7 @@ This section contains high‑level papers, philosophical foundations, and in‑d
 | Document | Description |
 |----------|-------------|
 | [One Runtime, Many CRDs](./one-runtime-many-crds.md) | A research‑style paper arguing against the one‑operator‑per‑CRD orthodoxy. Demonstrates how per‑CRD isolation enables consolidation without loss of separation of concerns. |
-| [Declarative Version Conversion](./declarative-version-conversion.md) | A technical paper on Orkestra’s built‑in conversion webhook and declarative version rules. Compares to the standard Kubebuilder webhook approach. |
+| [Declarative Version Conversion](./declarative-conversion.md) | A technical paper on Orkestra’s built‑in conversion webhook and declarative version rules. Compares to the standard Kubebuilder webhook approach. |
 | [The Orkestra Registry](./orkestra-registry.md) | Describes the registry as a library of declarative operator patterns, distributed as OCI artifacts. Covers the three‑layer architecture, promotion path, and OCI publishing. |
 
 ---
