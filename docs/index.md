@@ -76,6 +76,8 @@ For a step‑by‑step walkthrough, see the [Getting Started Guide](./getting-st
 - **Conditional provisioning** — Create resources only when conditions are met (`when: `)
 - **Dependency ordering** — Declare `dependsOn`, Orkestra starts CRDs in the right order
 - **Drift correction** — Resources with `reconcile: true` are automatically corrected on every reconcile
+- **Admission policy** — Declare [validation](./runtime-manual/concepts/validation.md) and [mutation](./runtime-manual/concepts/mutation.md) rules in the Katalog. No webhook server to run, no TLS to manage, no Go to write.
+- **Multi‑version CRDs** — Declarative [conversion paths](./runtime-manual/concepts/conditional-webhooks.md) between CRD versions. No conversion functions.
 - **Per‑CRD workers** — Each CRD gets its own worker pool, queue, and resync interval
 - **Built‑in observability** — Health and info endpoints (`/katalog/{crd}/health` and `/katalog/{crd}`), Prometheus metrics(`/metrics`), `ork status`
 - **Komposer composition** — Compose Katalogs from files, Helm charts, and remote URLs

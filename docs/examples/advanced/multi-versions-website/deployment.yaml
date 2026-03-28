@@ -37,7 +37,7 @@ spec:
 
       containers:
       - name: orkestra
-        image: ialexeze/ork:doit
+        image: ialexeze/ork:doit-1
 
         env:
           - name: ENABLE_CONVERSION

@@ -4,7 +4,7 @@
 <br>
           O R K E S T R A
 
-<!-- **CRDs in. Operators out.** -->
+**CRDs in. Operators out.**
 <br>
 <br>
 The Kubernetes operator runtime that needs no Programming Language.
@@ -98,6 +98,8 @@ flowchart LR
 | **Built‑in resources** | Pods, Deployments, Secrets — Kubernetes knows the rest. |
 | **Dependencies** | Declare `dependsOn` — Orkestra starts CRDs in order and shuts down in reverse. |
 | **Per‑CRD separation** | Each CRD gets its own informers, workqueue, and worker pool. |
+| **Admission policy** | Declare validation and mutation rules in the Katalog. No webhook server, no Go code, no cert management. |
+| **Version conversion** | Multi‑version CRDs with declarative conversion paths. No conversion functions to write. |
 | **Observability** | Health endpoints, Prometheus metrics, `ork status`. |
 | **Composition** | Komposer merges Katalogs from files, Helm, URLs. |
 | **Registry** | Reusable operator patterns — the standard Orkestra library for Kubernetes. |
@@ -114,13 +116,25 @@ Orkestra removes that barrier.
 - **Your YAML becomes your logic.**  
 - **Your runtime becomes the controller.**
 
-No SDKs.  
-No scaffolding.  
-No rebuilds.  
+No SDKs.
+No scaffolding.
+No rebuilds.
 No redeploys.
 
-Orkestra brings operators back to the Kubernetes model:  
+Orkestra brings operators back to the Kubernetes model:
 **declarative, composable, observable, and safe.**
+
+---
+
+## By the numbers
+
+| | Traditional operators | Orkestra |
+|---|---|---|
+| **First working operator** | 3–6 weeks | < 1 hour |
+| **Memory for 15 CRDs** | 750 MB–3 GB | ~47 MB |
+| **Conversion latency** | 2–5 ms (external webhook) | 0.5 ms (in-process) |
+| **Admission policy** | 1 week (webhook server + Go) | One Katalog rule |
+| **Deployment manifests** | 15 (one per operator) | 1 |
 
 ---
 

@@ -117,6 +117,7 @@ nav:
       - examples/intermediate/<.md>
     - Advanced:
       - examples/advanced/multi-versions-website/README.md
+      - examples/advanced/validation-mutation/README.md
 
 - Publications:
     - publications/index.md
@@ -124,6 +125,7 @@ nav:
     - Declarative Operators Whitepaper: publications/declarative-operators-whitepaper.md
     - Declarative Version Conversion: publications/declarative-version-conversion.md
     - One Runtime, Many CRDs: publications/one-runtime-many-crds.md
+    - publications/why-katalogs-and-komposers-are-not-crds.md
     - publications/universal-observer-whitepaper.md
     - publications/value-proposition.md
     - Orkestra Registry: publications/orkestra-registry.md

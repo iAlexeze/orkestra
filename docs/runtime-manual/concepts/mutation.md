@@ -165,8 +165,7 @@ Without `mutateFirst: true`, a CR with no `spec.replicas` would fail the
 Same requirements as validation:
 
 ```bash
-ENABLE_CONVERSION=true
-ENABLE_WEBHOOKS=true
+ENABLE_WEBHOOKS=true     # starts the HTTPS server on :8443 and registers /validate and /mutate
 TLS_CERT=/tls/tls.crt
 TLS_KEY=/tls/tls.key
 ```

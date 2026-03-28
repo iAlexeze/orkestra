@@ -186,20 +186,20 @@ Field paths use dot-notation: `spec.image`, `metadata.labels.tier`,
 
 ## Enabling admission-time validation
 
-Admission-time validation requires the HTTPS server (shared with conversion).
+Admission-time validation requires an HTTPS server and TLS certificates.
+Set the following environment variables:
 
 ```bash
 # Required environment variables
-ENABLE_CONVERSION=true   # starts the HTTPS server on :8443
-ENABLE_WEBHOOKS=true     # registers /validate and /mutate
+ENABLE_WEBHOOKS=true     # starts the HTTPS server on :8443 and registers /validate and /mutate
 TLS_CERT=/tls/tls.crt   # serving certificate (also used as CA bundle)
 TLS_KEY=/tls/tls.key    # serving key
 ```
 
-!!! note "ENABLE_CONVERSION required"
-    `ENABLE_WEBHOOKS=true` requires `ENABLE_CONVERSION=true` because they
-    share the same HTTPS server. Orkestra will return an error at startup
-    if `ENABLE_WEBHOOKS=true` without `ENABLE_CONVERSION=true`.
+!!! tip "Combining with conversion"
+    If you also use declarative CRD version conversion, set `ENABLE_CONVERSION=true`
+    alongside `ENABLE_WEBHOOKS=true`. Both features share the same HTTPS server.
+    Either flag alone is sufficient to start it.
 
 Orkestra automatically creates the `ValidatingWebhookConfiguration` object
 at startup. The webhook covers only CRDs that have validation rules declared

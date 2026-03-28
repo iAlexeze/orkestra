@@ -156,6 +156,7 @@ that a traditional operator framework provides, minus the code:
 | Graceful shutdown | Written | Automatic |
 | Dependency ordering | Not provided | Declared with `dependsOn` |
 | Version conversion | Written + deployed | Declared in Katalog |
+| Admission policy | Written + separate webhook server | Declared in Katalog |
 
 The operator that previously required weeks of development is now a Katalog
 entry that declares what Orkestra should do. The code that would have been
