@@ -36,7 +36,7 @@ Orkestra follows the GitOps pattern of using YAML as the source of truth for ope
 
 4. **You update or delete the CR** — Orkestra reconciles changes, corrects drift, or cleans up child resources.
 
-For a quick overview, see the [Getting Started](./getting-started/getting-started.md) guide.
+For a quick overview, see the [Getting Started](./getting-started/index.md) guide.
 
 ---
 
@@ -51,7 +51,7 @@ Orkestra is implemented as a Kubernetes runtime that watches your CRDs and recon
 - **Drift correction** — resources with `reconcile: true` are automatically corrected on every reconcile
 - **No programming language required** — just YAML
 
-For additional details, see the [Architecture Overview](./architecture/overview.md).
+For additional details, see the [Architecture Overview](./runtime-manual/architecture/index.md).
 
 ---
 
@@ -61,10 +61,10 @@ For additional details, see the [Architecture Overview](./architecture/overview.
 # Install Orkestra
 brew install iAlexeze/tap/ork
 # or
-curl -sSL https://raw.githubusercontent.com/konduktor-io/orkestra/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/orkestra-sh/orkestra/main/install.sh | bash
 ```
 
-For a step‑by‑step walkthrough, see the [Getting Started Guide](./getting-started/getting-started.md).
+For a step‑by‑step walkthrough, see the [Getting Started Guide](./getting-started/index.md).
 
 ---
 
@@ -117,19 +117,19 @@ Early adopters are using Orkestra to manage:
 
 | Section | Description |
 |---------|-------------|
-| [Guides](./getting-started/getting-started.md) | Step‑by‑step instructions for building operators |
-| [Concepts](./concepts/katalog.md) | Core ideas that define how Orkestra works |
+| [Guides](./getting-started/index.md) | Step‑by‑step instructions for building operators |
+| [Concepts](./runtime-manual/concepts/katalog.md) | Core ideas that define how Orkestra works |
 | [Reference](./reference/katalog-schema.md) | Detailed documentation for every part of Orkestra |
-| [Architecture](./architecture/overview.md) | How Orkestra works under the hood |
-| [OrkestraRegistry](./orkestra-registry/orkestra-registry-vision.md) | The operator standard library |
+| [Architecture](./runtime-manual/architecture/index.md) | How Orkestra works under the hood |
+| [OrkestraRegistry](./orkestra-registry/index.md) | The operator standard library |
 | [Publications](./publications/why-orkestra.md) | High‑level papers and conceptual documents |
 
 ---
 
 ## Community
 
-- [GitHub Issues](https://github.com/konduktor-io/orkestra/issues) — report bugs, request features
-- [Discussions](https://github.com/konduktor-io/orkestra/discussions) — ask questions, share ideas
+- [GitHub Issues](https://github.com/orkestra-sh/orkestra/issues) — report bugs, request features
+- [Discussions](https://github.com/orkestra-sh/orkestra/discussions) — ask questions, share ideas
 <!-- - Kubernetes Slack — `#orkestra` _(planned)_ -->
 
 ---

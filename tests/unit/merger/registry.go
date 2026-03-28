@@ -64,10 +64,10 @@ func TestGitHubRawURL(t *testing.T) {
 		expected string
 	}{
 		{
-			"https://github.com/konduktor-io/orkestra-registry",
+			"https://github.com/orkestra-sh/registry",
 			"main",
 			"registry/katalogs/website/katalog.yaml",
-			"https://raw.githubusercontent.com/konduktor-io/orkestra-registry/main/registry/katalogs/website/katalog.yaml",
+			"https://raw.githubusercontent.com/orkestra-sh/registry/main/registry/katalogs/website/katalog.yaml",
 		},
 		{
 			// With .git suffix — should be stripped

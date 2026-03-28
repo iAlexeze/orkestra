@@ -289,5 +289,5 @@ This is the foundation for everything else you will build with Orkestra.
 
 Continue with:
 
-**Example Workflows ([Beginner](../examples/overview.md))**  
+**Example Workflows ([Beginner](../examples/index.md))**  
 Learn how to build multi‑resource operators, add drift correction, use dependencies, and structure real‑world katalogs.

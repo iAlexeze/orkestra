@@ -2,9 +2,9 @@
 
 Orkestra is designed to run safely in production environments, but like any Kubernetes component, it must be deployed with care. This page outlines important security considerations, recommended practices, and areas to be aware of when operating Orkestra.
 
-> [!NOTE]
-> No security vulnerabilities have been reported for Orkestra at this time.  
-> This page exists to help you adopt secure practices from the start.
+!!! note
+    No security vulnerabilities have been reported for Orkestra at this time.  
+    This page exists to help you adopt secure practices from the start.
 
 ---
 
@@ -15,13 +15,13 @@ These webhooks must be served over HTTPS.
 
 You may use:
 
-- [cert‑manager](./user-guide/self-signed-certificate-with-cert-manager.md) (recommended)
+- [cert‑manager](./guides/user-guide/self-signed-certificate-with-cert-manager.md) (recommended)
 - Your organization’s PKI
-- A [self‑signed certificate](./user-guide/self-signed-certificate-with-openssl.md) (development only)
+- A [self‑signed certificate](./guides/user-guide/self-signed-certificate-with-openssl.md) (development only)
 
-> [!WARNING]
-> Self‑signed certificates should **not** be used in production.  
-> They cannot be revoked and require manual CA distribution.
+!!! warning
+        Self‑signed certificates should **not** be used in production.  
+        They cannot be revoked and require manual CA distribution.
 
 Ensure that:
 
@@ -104,8 +104,8 @@ You should:
 
 ## Reporting Security Issues
 
-> [!WARNING]
-> Do **not** open public GitHub issues for security vulnerabilities.
+!!! warning
+    Do **not** open public GitHub issues for security vulnerabilities.
 
 If you discover a potential security issue:
 

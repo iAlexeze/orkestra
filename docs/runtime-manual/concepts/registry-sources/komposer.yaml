@@ -1,0 +1,97 @@
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Komposer
+metadata:
+  name: platform-komposer
+
+# ── sources.registry ──────────────────────────────────────────────────────────
+# One unified block for all registry sources — Git, OCI, private, public.
+#
+# Each entry pulls exactly one pattern from exactly one source.
+# You load either katalog.yaml or komposer.yaml — not both.
+#
+# ── URL formats ──────────────────────────────────────────────────────────────
+# Shorthand (@ inline):
+#   url: ghcr.io/orkestra-sh/orkestra-registry/postgres@v14
+#   url: https://github.com/myorg/registry@main
+#
+# Explicit (url + version separately):
+#   url: ghcr.io/orkestra-sh/orkestra-registry/postgres
+#   version: v14
+#
+# When @ is present in the URL, the version field is ignored.
+#
+# ── oci field ─────────────────────────────────────────────────────────────────
+# oci: false (default) — pull via Git or raw HTTP
+# oci: true            — pull as OCI artifact using ORAS
+#
+# ── useKomposer field ────────────────────────────────────────────────────────
+# useKomposer: false (default) — load katalog.yaml from the pattern
+# useKomposer: true            — load komposer.yaml from the pattern
+#
+# Default (useKomposer: false) is the right choice for most consumers.
+# You get the CRD definitions and override them inline in your own Komposer.
+# No upstream source tree is pulled — just the Katalog.
+#
+# useKomposer: true is for teams running an upstream pattern exactly as-is.
+# A Komposer has its own sources — those sources will also be resolved.
+# Understand the upstream dependency tree before using this.
+
+sources:
+  registry:
+    # ── Public OCI registry — shorthand ──────────────────────────────────────
+    - url: ghcr.io/orkestra-sh/orkestra-registry/postgres@v14
+      oci: true
+      # useKomposer: false  ← default, loads katalog.yaml
+
+    # ── Public OCI registry — explicit ───────────────────────────────────────
+    - url: ghcr.io/orkestra-sh/orkestra-registry/redis
+      version: v7.2.0
+      oci: true
+
+    # ── Private OCI registry with auth ───────────────────────────────────────
+    - url: registry.myorg.com/operators/internal-crd@v2.1.0
+      oci: true
+      auth:
+        type: basic
+        usernameFromEnv: REGISTRY_USER
+        passwordFromEnv: REGISTRY_PASSWORD
+
+    # ── GitHub registry — Git pull (no clone, raw HTTP per file) ─────────────
+    - url: https://github.com/myorg/orkestra-registry@main
+      oci: false    # default — can be omitted
+
+    # ── GitHub registry with auth — private repo ──────────────────────────────
+    - url: https://github.com/myorg/private-registry@v1.0.0
+      auth:
+        type: github
+        fromEnv: GITHUB_TOKEN
+
+    # ── GitLab registry ───────────────────────────────────────────────────────
+    - url: https://gitlab.company.com/platform/orkestra-registry@production
+      auth:
+        type: bearer
+        fromEnv: GITLAB_TOKEN
+
+    # ── Internal team pattern — trust their Komposer exactly as-is ───────────
+    - url: https://github.com/myorg/canonical-operators@main
+      useKomposer: true   # load their komposer.yaml — accept their full setup
+
+  # ── Mix with other source types freely ────────────────────────────────────
+  files:
+    - ./local-overrides/katalog.yaml
+
+  helm:
+    - repo: https://charts.myorg.io
+      chart: platform-crds
+      version: 3.0.0
+
+# ── Inline overrides ──────────────────────────────────────────────────────────
+# Merged last. Override any field from any source by CRD name.
+# These always win over source definitions.
+spec:
+  crds:
+    - name: postgres
+      workers: 8          # production needs more than registry default
+      resync: 30s
+    - name: redis
+      workers: 4

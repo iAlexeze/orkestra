@@ -20,7 +20,7 @@ For every `Website` CR you apply, Orkestra automatically:
 ## Requirements
 
 !!! note
-    This example assumes you have completed **[Getting Started](../../../getting-started/getting-started.md)** and already know how to:
+    This example assumes you have completed **[Getting Started](../../../getting-started/index.md)** and already know how to:
     
     - Install Orkestra  
     - Write a basic Katalog  

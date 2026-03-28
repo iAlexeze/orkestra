@@ -33,39 +33,39 @@
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/concepts/conditional-provisioning/</loc>
+         <loc>https://orkestra.sh/runtime-manual/concepts/conditional-provisioning/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/concepts/crd-runtime-health/</loc>
+         <loc>https://orkestra.sh/runtime-manual/concepts/crd-runtime-health/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/concepts/dependency-model/</loc>
+         <loc>https://orkestra.sh/runtime-manual/concepts/dependency-model/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/concepts/health-subsystem/</loc>
+         <loc>https://orkestra.sh/runtime-manual/concepts/health-subsystem/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/concepts/katalog/</loc>
+         <loc>https://orkestra.sh/runtime-manual/concepts/katalog/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/concepts/komponent/</loc>
+         <loc>https://orkestra.sh/runtime-manual/concepts/komponent/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/concepts/komposer/</loc>
+         <loc>https://orkestra.sh/runtime-manual/concepts/komposer/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/concepts/reconciler-model/</loc>
+         <loc>https://orkestra.sh/runtime-manual/concepts/reconciler-model/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/concepts/templating/</loc>
+         <loc>https://orkestra.sh/runtime-manual/concepts/templating/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
@@ -89,83 +89,83 @@
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/user-guide/choosing-katalog-vs-komposer/</loc>
+         <loc>https://orkestra.sh/guides/user-guide/choosing-katalog-vs-komposer/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/user-guide/deployment/</loc>
+         <loc>https://orkestra.sh/guides/user-guide/deployment/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/user-guide/extending-orkestra/</loc>
+         <loc>https://orkestra.sh/guides/user-guide/extending-orkestra/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/user-guide/getting-started/</loc>
+         <loc>https://orkestra.sh/guides/user-guide/getting-started/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/user-guide/testing-operators/</loc>
+         <loc>https://orkestra.sh/guides/user-guide/testing-operators/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/user-guide/use-cases/</loc>
+         <loc>https://orkestra.sh/guides/user-guide/use-cases/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/user-guide/writing-custom-reconcilers/</loc>
+         <loc>https://orkestra.sh/guides/user-guide/writing-custom-reconcilers/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/user-guide/writing-hooks/</loc>
+         <loc>https://orkestra.sh/guides/user-guide/writing-hooks/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/user-guide/writing-your-first-katalog/</loc>
+         <loc>https://orkestra.sh/guides/user-guide/writing-your-first-katalog/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/internals/crd-runtime-health/</loc>
+         <loc>https://orkestra.sh/runtime-manual/internals/crd-runtime-health/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/internals/dependency-kontroller/</loc>
+         <loc>https://orkestra.sh/runtime-manual/internals/dependency-kontroller/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/internals/dynamic-vs-typed/</loc>
+         <loc>https://orkestra.sh/runtime-manual/internals/dynamic-vs-typed/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/internals/informer-factory/</loc>
+         <loc>https://orkestra.sh/runtime-manual/internals/informer-factory/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/internals/komponent/</loc>
+         <loc>https://orkestra.sh/runtime-manual/internals/komponent/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/internals/konstruct-orkestra/</loc>
+         <loc>https://orkestra.sh/runtime-manual/internals/konstruct-orkestra/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/internals/observability/</loc>
+         <loc>https://orkestra.sh/runtime-manual/internals/observability/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/internals/reconciler-pipeline/</loc>
+         <loc>https://orkestra.sh/runtime-manual/internals/reconciler-pipeline/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/internals/shutdown/</loc>
+         <loc>https://orkestra.sh/runtime-manual/internals/shutdown/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/internals/startup-sequence/</loc>
+         <loc>https://orkestra.sh/runtime-manual/internals/startup-sequence/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
-         <loc>https://orkestra.sh/internals/template-engine/</loc>
+         <loc>https://orkestra.sh/runtime-manual/internals/template-engine/</loc>
          <lastmod>2026-03-25</lastmod>
     </url>
     <url>
