@@ -15,9 +15,9 @@ These webhooks must be served over HTTPS.
 
 You may use:
 
-- [cert‑manager](./user-guide/self-signed-certificate-with-cert-manager.md) (recommended)
+- [cert‑manager](./guides/user-guide/self-signed-certificate-with-cert-manager.md) (recommended)
 - Your organization’s PKI
-- A [self‑signed certificate](./user-guide/self-signed-certificate-with-openssl.md) (development only)
+- A [self‑signed certificate](./guides/user-guide/self-signed-certificate-with-openssl.md) (development only)
 
 !!! warning
         Self‑signed certificates should **not** be used in production.  

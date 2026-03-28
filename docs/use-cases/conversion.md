@@ -249,6 +249,6 @@ conversion:
 
 ## Related Documentation
 
-- **Concept:** [CRD Versioning](../concepts/versioning.md)
+- **Concept:** [CRD Versioning](../runtime-manual/concepts/versioning.md)
 - **Reference:** [Conversion Rules](../reference/katalog-schema.md#conversion)
 - **Next Use Case:** [Go Hooks](./hooks.md)

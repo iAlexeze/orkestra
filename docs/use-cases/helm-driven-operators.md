@@ -110,6 +110,6 @@ crds:
 
 ## Related Documentation
 
-- **Concept:** [Komposer Sources](../concepts/komposer.md#sources)
+- **Concept:** [Komposer Sources](../runtime-manual/concepts/komposer.md#sources)
 - **Reference:** [Helm Source](../reference/komposer-schema.md#helm)
 - **Next Use Case:** [Multi‑Team Composition](./multi-team-composition.md)

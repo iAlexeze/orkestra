@@ -17,7 +17,7 @@ ork run --katalog https://config.company.com/candidate/katalog.yaml
 
 ## Related Documentation
 
-- **Concept:** [Katalog Lifecycle](../concepts/katalog.md#lifecycle)
+- **Concept:** [Katalog Lifecycle](../runtime-manual/concepts/katalog.md#lifecycle)
 - **Reference:** [Runtime Behavior](../reference/runtime.md)
 - **Next Use Case:** [Disaster Recovery](./disaster-recovery.md)
 

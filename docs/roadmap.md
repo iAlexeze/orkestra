@@ -42,7 +42,7 @@ What exists today:
 | `ork status` command | ✅ Live view of CRD health, workers, queue, resources |
 | End‑to‑end tests | ✅ Website, platform‑namespace, komposer examples |
 | `ork validate` full error coverage | ✅ Clear, actionable error messages for all invalid Katalog patterns |
-| Module path migration | ✅ `github.com/konduktor-io/orkestra` |
+| Module path migration | ✅ `github.com/orkestra-sh/orkestra` |
 | Helm chart for Orkestra | ✅ Production-ready deployment chart |
 
 ---
@@ -192,7 +192,7 @@ The highest-value contributions right now:
 | **Examples** | More Katalog examples showing real operator patterns |
 | **Documentation** | Edge cases, gotchas, things that weren't obvious |
 
-Open a [GitHub issue](https://github.com/konduktor-io/orkestra/issues) or start a [Discussion](https://github.com/konduktor-io/orkestra/discussions) for anything not covered above.
+Open a [GitHub issue](https://github.com/orkestra-sh/orkestra/issues) or start a [Discussion](https://github.com/orkestra-sh/orkestra/discussions) for anything not covered above.
 
 ---
 
@@ -207,4 +207,4 @@ Open a [GitHub issue](https://github.com/konduktor-io/orkestra/issues) or start 
 
 ---
 
-**Want to try it out?** [Start here](./getting-started/getting-started.md).
+**Want to try it out?** [Start here](./getting-started/index.md).

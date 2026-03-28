@@ -164,6 +164,6 @@ They are a core part of Orkestra’s philosophy:
 
 ## Related Documentation
 
-- **Concept:** [Runtime](../concepts/runtime.md)
+- **Concept:** [Runtime](../runtime-manual/concepts/runtime.md)
 - **Reference:** [Runtime Schema](../reference/runtime.md)
 - **Next Use Case:** [Registry‑Powered Operators](./registry-schema.md)

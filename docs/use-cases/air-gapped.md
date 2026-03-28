@@ -13,6 +13,6 @@ ork run --katalog /etc/orkestra/crds/production-katalog.yaml
 
 ## Related Documentation
 
-- **Concept:** [Katalog Sources](../concepts/katalog.md#sources)
+- **Concept:** [Katalog Sources](../runtime-manual/concepts/katalog.md#sources)
 - **Reference:** [Local Files](../reference/komposer-schema.md#files)
 - **Next Use Case:** [Observability](./observability.md)

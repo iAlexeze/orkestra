@@ -18,6 +18,6 @@ crds:
 
 ## Related Documentation
 
-- **Concept:** [Dependency Graph](../concepts/dependency-model.md)
+- **Concept:** [Dependency Graph](../runtime-manual/concepts/dependency-model.md)
 - **Reference:** [CRD Configuration](../reference/katalog-schema.md#crds)
 - **Next Use Case:** [Centralised Configuration](./centralized-configuration.md)

@@ -17,7 +17,7 @@ sources:
 
 ## Related Documentation
 
-- **Concept:** [Komposer](../concepts/komposer.md)
+- **Concept:** [Komposer](../runtime-manual/concepts/komposer.md)
 - **Reference:** [File & URL Sources](../reference/komposer-schema.md#files)
 - **Next Use Case:** [Progressive Rollout](./progressive-rollout.md)
 

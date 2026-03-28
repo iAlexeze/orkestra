@@ -21,6 +21,6 @@ secrets:
 
 ## Related Documentation
 
-- **Concept:** [Registry](../concepts/registry.md)
+- **Concept:** [Registry](../runtime-manual/concepts/registry.md)
 - **Reference:** [Secret Operations](../reference/registry-schema.md#secrets)
 - **Next Use Case:** [Dependency Ordering](./dependency-ordering.md)

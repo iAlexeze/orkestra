@@ -33,6 +33,6 @@ spec:
 
 ## Related Documentation
 
-- **Concept:** [Katalog](../concepts/katalog.md)
+- **Concept:** [Katalog](../runtime-manual/concepts/katalog.md)
 - **Reference:** [Katalog Reference](../reference/katalog-schema.md)
 - **Next Use Case:** [Platform Namespace Provisioning](./platform-namespace-provisioning.md)

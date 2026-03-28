@@ -13,6 +13,6 @@ ork run --katalog https://git.company.com/platform/crds/prod-katalog.yaml
 
 ## Related Documentation
 
-- **Concept:** [Katalog](../concepts/katalog.md)
+- **Concept:** [Katalog](../runtime-manual/concepts/katalog.md)
 - **Reference:** [Runtime Startup](../reference/runtime.md#startup)
 - **Next Use Case:** [Air‑Gapped Environments](./air-gapped.md)

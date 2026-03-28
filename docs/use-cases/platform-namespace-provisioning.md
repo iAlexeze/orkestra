@@ -32,6 +32,6 @@ onCreate:
 
 ## Related Documentation
 
-- **Concept:** [Templating Engine](../concepts/templating.md)
+- **Concept:** [Templating Engine](../runtime-manual/concepts/templating.md)
 - **Reference:** [Registry Reference](../reference/registry-schema.md)
 - **Next Use Case:** [Secret Distribution](./secret-distribution.md)

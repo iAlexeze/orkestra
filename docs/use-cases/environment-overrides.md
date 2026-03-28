@@ -38,6 +38,6 @@ spec:
 
 ## Related Documentation
 
-- **Concept:** [Komposer](../concepts/komposer.md)
+- **Concept:** [Komposer](../runtime-manual/concepts/komposer.md)
 - **Reference:** [Komposer Overrides](../reference/komposer-schema.md#overrides)
 - **Next Use Case:** [Helm‑Driven Operators](./helm-driven-operators.md)

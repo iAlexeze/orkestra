@@ -18,7 +18,7 @@ GET /katalog/{crd}/health
 
 ## Related Documentation
 
-- **Concept:** [Observability](../concepts/observability.md)
+- **Concept:** [Observability](../runtime-manual/concepts/observability.md)
 - **Reference:** [Metrics & Health](../reference/runtime.md#observability)
 - **Next Use Case:** [Registry‑Powered Operators](./registry.md)
 

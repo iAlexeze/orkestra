@@ -22,6 +22,6 @@ reconciler:
 
 ## Related Documentation
 
-- **Concept:** [Hooks](../concepts/hooks.md)
+- **Concept:** [Hooks](../runtime-manual/concepts/hooks.md)
 - **Reference:** [Hook Configuration](../reference/katalog-schema.md#hooks)
 - **Next Use Case:** [Custom Constructors](./custom-constructors.md)

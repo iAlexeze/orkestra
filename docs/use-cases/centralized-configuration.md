@@ -24,6 +24,6 @@ ork run --katalog https://internal.company.com/platform/crds/standard-katalog.ya
 
 ## Related Documentation
 
-- **Concept:** [Komposer](../concepts/komposer.md)
+- **Concept:** [Komposer](../runtime-manual/concepts/komposer.md)
 - **Reference:** [Komposer Reference](../reference/komposer-schema.md)
 - **Next Use Case:** [Environment Overrides](./environment-overrides.md)

@@ -14,7 +14,7 @@ The Kubernetes operator runtime that needs no Programming Language.
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8.svg)](https://golang.org/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.28+-326CE5.svg)](https://kubernetes.io/)
-[![Release](https://img.shields.io/github/v/release/konduktor-io/orkestra)](https://github.com/konduktor-io/orkestra/releases)
+[![Release](https://img.shields.io/github/v/release/orkestra-sh/orkestra)](https://github.com/orkestra-sh/orkestra/releases)
 
 </div>
 
@@ -132,7 +132,7 @@ You need a Kubernetes cluster (1.28+) and the `ork` CLI. Orkestra automatically 
 # Install
 brew install iAlexeze/tap/ork
 # or
-curl -sSL https://raw.githubusercontent.com/konduktor-io/orkestra/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/orkestra-sh/orkestra/main/install.sh | bash
 
 # Create an operator
 ork init my-operator
@@ -155,12 +155,12 @@ ork status -w
 curl localhost:8080/katalog/website/health
 ```
 
-For detailed installation options, GPG verification, and production deployment, see the [Installation Guide](https://orkestra.readthedocs.io/en/latest/user-guide/deployment/#installation).
+For detailed installation options, GPG verification, and production deployment, see the [Installation Guide](https://orkestra.readthedocs.io/en/latest/guides/user-guide/deployment/#installation).
 
 ---
 
 > For a step‑by‑step walkthrough of what happens during reconcile, see  
-> 👉 **[Start Here](https://orkestra.readthedocs.io/en/latest/user-guide/getting-started/#what-just-happened)**.
+> 👉 **[Start Here](https://orkestra.readthedocs.io/en/latest/guides/user-guide/getting-started/#what-just-happened)**.
 
 
 ---
@@ -180,17 +180,17 @@ Full details: [Trust & Failure Model](https://orkestra.readthedocs.io/en/latest/
 
 ## Documentation
 
-- **[Start Here](https://orkestra.readthedocs.io/en/latest/user-guide/getting-started)** — Onboarding guide  
-- **[Katalog](https://orkestra.readthedocs.io/en/latest/concepts/katalog)** — Declare operator behavior  
-- **[Komposer](https://orkestra.readthedocs.io/en/latest/concepts/komposer)** — Compose multiple Katalogs  
+- **[Start Here](https://orkestra.readthedocs.io/en/latest/guides/user-guide/getting-started)** — Onboarding guide  
+- **[Katalog](https://orkestra.readthedocs.io/en/latest/runtime-manual/concepts/katalog)** — Declare operator behavior  
+- **[Komposer](https://orkestra.readthedocs.io/en/latest/runtime-manual/concepts/komposer)** — Compose multiple Katalogs  
 - **[Full Documentation Index](https://orkestra.readthedocs.io/en/latest)** — All guides, references, and internals  
 
 ---
 
 ## Community
 
-- [GitHub Issues](https://github.com/konduktor-io/orkestra/issues)
-- [Discussions](https://github.com/konduktor-io/orkestra/discussions)
+- [GitHub Issues](https://github.com/orkestra-sh/orkestra/issues)
+- [Discussions](https://github.com/orkestra-sh/orkestra/discussions)
 - Kubernetes Slack — `#orkestra` _(planned)_
 
 ---

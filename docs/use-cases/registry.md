@@ -20,6 +20,6 @@ The Orkestra Registry provides reusable implementations for:
 
 ## Related Documentation
 
-- **Concept:** [Registry](../concepts/registry.md)
+- **Concept:** [Registry](../runtime-manual/concepts/registry.md)
 - **Reference:** [Registry API](../reference/registry-schema.md)
 - **Next Use Case:** [Multi‑Version Conversion](./conversion.md)
