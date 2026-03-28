@@ -30,7 +30,7 @@ const (
 // For GitHub and GitLab URLs, raw file content is fetched directly via HTTPS —
 // no git clone needed, one HTTP request per katalog entry.
 // For all other URLs, the registry is cloned to a temp dir and files are read locally.
-func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) ([]orktypes.CRDEntry, error) {
+func (m *Merger) loadRegistrySourceDeprecated(src orktypes.RegistrySource) ([]orktypes.CRDEntry, error) {
 	registryURL, err := m.resolveRegistryURL(src.URL)
 	if err != nil {
 		return nil, err
@@ -276,29 +276,4 @@ func resolveRegistryAuth(auth *orktypes.FileSourceAuth) (*utils.FileAuth, error)
 		return nil, nil
 	}
 	return auth.Resolve()
-}
-
-// Exported for tests
-func ExportedGitHubRawURL(repoURL, ref, filePath string) string {
-	return githubRawURL(repoURL, ref, filePath)
-}
-
-// Exported for tests
-func ExportedGitLabRawURL(repoURL, ref, filePath string) string {
-	return gitlabRawURL(repoURL, ref, filePath)
-}
-
-// ExportedLoadRegistrySource
-func ExportedLoadRegistrySource(m *Merger, src orktypes.RegistrySource) ([]orktypes.CRDEntry, error) {
-	return m.loadRegistrySource(src)
-}
-
-// ExportedIsGitHubURL
-func ExportedIsGitHubURL(u string) bool {
-	return isGitHubURL(u)
-}
-
-// ExportedIsGitLab
-func ExportedIsGitLabURL(u string) bool {
-	return isGitLabURL(u)
 }
