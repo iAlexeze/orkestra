@@ -103,15 +103,15 @@ The conversion server is **not started by default**.
 Inside the code:
 
 ```go
-if h.convOpts.ConvEnabled {
+if h.opts.ConvEnabled {
     h.convServer = &http.Server{
         Addr:    ":8443",
-        Handler: h.convMux,
+        Handler: h.hookMux,
     }
 
     go func() {
         logger.Info().Msg("conversion https server listening on :8443")
-        if err := h.convServer.ListenAndServeTLS(h.convOpts.ConvCert, h.convOpts.ConvKey); err != nil {
+        if err := h.convServer.ListenAndServeTLS(h.opts.ConvCert, h.opts.ConvKey); err != nil {
             logger.Error().Err(err).Msg("conversion https server error")
         }
     }()

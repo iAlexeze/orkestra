@@ -1,4 +1,4 @@
-<!-- # Overview
+# Overview
 
 Welcome to the Orkestra documentation — the complete reference for the world's first **zero‑code Kubernetes operator runtime**.
 
@@ -132,15 +132,6 @@ Early adopters are using Orkestra to manage:
 - [Discussions](https://github.com/orkestra-sh/orkestra/discussions) — ask questions, share ideas
 <!-- - Kubernetes Slack — `#orkestra` _(planned)_ -->
 
---- -->
-
-<!-- **Built with ❤️ for the Kubernetes ecosystem.** 🎼 -->
-
-
----
-title: 00x00
 ---
 
-# Coming soon
-
-This page is under active development. Check back soon for updates.
+**Built with ❤️ for the Kubernetes ecosystem.** 🎼

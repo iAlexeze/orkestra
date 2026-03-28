@@ -43,19 +43,19 @@ func (h *HealthServer) conversionHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	metrics.ConversionActiveRequests.Inc()
-	defer metrics.ConversionActiveRequests.Dec()
+	metrics.IncConversionRequests()
+	defer metrics.DecConversionRequests()
 
 	var review ConversionReview
 	if err := json.NewDecoder(r.Body).Decode(&review); err != nil {
 		h.conversionStats.RecordFailure()
-		metrics.ConversionErrors.WithLabelValues("unknown", "invalid_request").Inc()
+		metrics.RecordConversionError("unknown", "invalid_request")
 		http.Error(w, "invalid ConversionReview", http.StatusBadRequest)
 		return
 	}
 	if review.Request == nil {
 		h.conversionStats.RecordFailure()
-		metrics.ConversionErrors.WithLabelValues("unknown", "missing_request").Inc()
+		metrics.RecordConversionError("unknown", "missing_request")
 		http.Error(w, "missing request", http.StatusBadRequest)
 		return
 	}
@@ -94,8 +94,8 @@ func (h *HealthServer) conversionHandler(w http.ResponseWriter, r *http.Request)
 		var obj map[string]interface{}
 		if err := json.Unmarshal(raw, &obj); err != nil {
 			resp.Result = &Status{Status: "Failure", Message: "invalid object payload"}
-			metrics.ConversionErrors.WithLabelValues(kind, "invalid_payload").Inc()
-			metrics.ConversionTotal.WithLabelValues(kind, sourceVersion, targetVersion, "failure").Inc()
+			metrics.RecordConversionError(kind, "invalid_payload")
+			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
 			h.conversionStats.RecordFailure()
 			break
 		}
@@ -103,17 +103,17 @@ func (h *HealthServer) conversionHandler(w http.ResponseWriter, r *http.Request)
 		kind, _ = obj["kind"].(string)
 		if kind == "" {
 			resp.Result = &Status{Status: "Failure", Message: "object missing kind"}
-			metrics.ConversionErrors.WithLabelValues(kind, "missing_kind").Inc()
-			metrics.ConversionTotal.WithLabelValues(kind, sourceVersion, targetVersion, "failure").Inc()
+			metrics.RecordConversionError(kind, "missing_kind")
+			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
 			h.conversionStats.RecordFailure()
 			break
 		}
 
-		rules := h.katalog.GetConversionRules(kind)
+		rules := h.conversionRegistry.GetConversionRules(kind)
 		if rules == nil {
 			resp.Result = &Status{Status: "Failure", Message: "no conversion rules for kind"}
-			metrics.ConversionErrors.WithLabelValues(kind, "no_rules").Inc()
-			metrics.ConversionTotal.WithLabelValues(kind, sourceVersion, targetVersion, "failure").Inc()
+			metrics.RecordConversionError(kind, "no_rules")
+			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
 			h.conversionStats.RecordFailure()
 			break
 		}
@@ -121,16 +121,16 @@ func (h *HealthServer) conversionHandler(w http.ResponseWriter, r *http.Request)
 		converted, err := applyConversion(obj, rules, review.Request.DesiredAPIVersion)
 		if err != nil {
 			resp.Result = &Status{Status: "Failure", Message: err.Error()}
-			metrics.ConversionErrors.WithLabelValues(kind, "apply_failed").Inc()
-			metrics.ConversionTotal.WithLabelValues(kind, sourceVersion, targetVersion, "failure").Inc()
+			metrics.RecordConversionError(kind, "apply_failed")
+			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
 			h.conversionStats.RecordFailure()
 			break
 		}
 
 		// Success
 		objDuration := time.Since(objStart).Seconds()
-		metrics.ConversionDuration.WithLabelValues(kind, sourceVersion, targetVersion).Observe(objDuration)
-		metrics.ConversionTotal.WithLabelValues(kind, sourceVersion, targetVersion, "success").Inc()
+		metrics.ObserveConversionDuration(kind, sourceVersion, targetVersion, objDuration)
+		metrics.RecordConversion(kind, sourceVersion, targetVersion, "success")
 		h.conversionStats.RecordSuccess(time.Duration(objDuration * float64(time.Second)))
 
 		out, _ := json.Marshal(converted)

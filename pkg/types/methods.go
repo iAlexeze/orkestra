@@ -147,3 +147,9 @@ func (c *CRDEntry) IsEnabledAllEndpoints() bool {
 func (c *CRDEntry) GetDependencies() []string {
 	return c.DependsOn
 }
+
+// Returns true when either validation or mutation rules are declared.
+// Used to decide whether to populate the admission block in the health response.
+func (e *CRDEntry) HasValidationOrMutationRules() bool {
+	return len(e.Validation.Rules) > 0 || len(e.Mutation.Rules) > 0
+}

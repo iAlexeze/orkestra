@@ -1,0 +1,19 @@
+# test/cr-too-many-replicas.yaml
+# Test case F: SHOULD BE REJECTED at admission time
+#
+# Expected with ENABLE_WEBHOOKS=true:
+#   Error from server: admission webhook "validate.orkestra.konductor.io" denied the request:
+#   [orkestra] validation failed: field "spec.replicas": replicas cannot exceed 10
+#   — contact platform team for exceptions (got: "15")
+apiVersion: demo.orkestra.io/v1alpha1
+kind: Website
+metadata:
+  name: too-many-replicas
+  namespace: orkestra
+  labels:
+    team: platform
+spec:
+  image: myorg/nginx:1.25
+  replicas: 15             # ← WRONG: exceeds max:10
+  port: 8080
+  enabled: true

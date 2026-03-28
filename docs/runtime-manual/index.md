@@ -43,19 +43,8 @@ The core ideas that define how Orkestra works.
 
 ## Internals
 
-Deep dives into Orkestra’s implementation for contributors and advanced users.
-
-| Document | Description |
-|----------|-------------|
-| [Startup Sequence](./internals/startup-sequence.md) | What happens when Orkestra starts. |
-| [konstructOrkestra](./internals/konstruct-orkestra.md) | The wiring function that builds the runtime. |
-| [Dynamic vs Typed CRDs](./internals/dynamic-vs-typed.md) | How Orkestra handles both modes. |
-| [Informer Factory](./internals/informer-factory.md) | Per‑CRD informers with isolated queues. |
-| [Dependency Kontroller](./internals/dependency-kontroller.md) | Topological startup and shutdown. |
-| [Reconciler Pipeline](./internals/reconciler-pipeline.md) | The flow from event to reconciliation. |
-| [Observability](./internals/observability.md) | How metrics and health are collected. |
-| [Shutdown](./internals/shutdown.md) | Graceful termination and cleanup. |
+Deep dives into Orkestra’s implementation for contributors and advanced users can be found [here](../technical-docs/index.md).
 
 ---
 
-**Start with the [Architecture Overview](./architecture/index.md) if you are new to the runtime. Use the [Concepts](./concepts/index.md) section to understand individual ideas, and the [Internals](./internals/startup-sequence.md) section for implementation details.** 🎼
+**Start with the [Architecture Overview](./architecture/index.md) if you are new to the runtime. Use the [Concepts](./concepts/index.md) section to understand individual ideas, and the [Internals](../technical-docs/index.md) section for implementation details.** 🎼

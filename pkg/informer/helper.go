@@ -87,11 +87,11 @@ func (f *Factory) Start(ctx context.Context) error {
 	// Signal readiness first — unblocks any List/Watch already waiting
 	close(f.ready)
 
-	logger.Info().Msgf("starting %d informers...", len(f.informers))
+	logger.Info().Int("count", len(f.informers)).Msg("starting informers")
 
 	for t, entry := range f.informers {
 		if entry == nil || entry.Informer == nil || entry.Missing {
-			logger.Warn().Msgf("nil informer entry for type %s — skipping", t)
+			logger.Warn().Str("gvk", t).Msg("informer entry nil or missing — skipping")
 			continue
 		}
 		// Each informer gets its own correct name
@@ -181,7 +181,7 @@ func (f *Factory) IsReady() bool {
 func (f *Factory) gvkFromObject(obj interface{}) (*schema.GroupVersionKind, error) {
 	runtimeObj, ok := obj.(runtime.Object)
 	if !ok {
-		logger.Error().Msgf("object is not a runtime.Object: %T", obj)
+		logger.Error().Str("type", fmt.Sprintf("%T", obj)).Msg("object is not a runtime.Object — event dropped")
 		return nil, fmt.Errorf("object is not a runtime.Object: %T", obj)
 	}
 
@@ -189,7 +189,7 @@ func (f *Factory) gvkFromObject(obj interface{}) (*schema.GroupVersionKind, erro
 	// GetObjectKind().GroupVersionKind() returns empty.
 	gvks, _, err := f.scheme.ObjectKinds(runtimeObj)
 	if err != nil || len(gvks) == 0 {
-		logger.Error().Err(err).Msgf("failed to resolve GVK for %T — event dropped", obj)
+		logger.Error().Err(err).Str("type", fmt.Sprintf("%T", obj)).Msg("failed to resolve GVK — event dropped")
 		return nil, fmt.Errorf("failed to resolve GVK for %T — event dropped", obj)
 	}
 

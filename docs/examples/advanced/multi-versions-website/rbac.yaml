@@ -44,7 +44,12 @@ rules:
     resources: ["events"]
     verbs: ["create", "patch"]
 
-  
+  # Allow Admission webhooks
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources:
+      - validatingwebhookconfigurations
+      - mutatingwebhookconfigurations
+    verbs: ["get", "create", "update", "patch", "delete"]
 
 
 ---

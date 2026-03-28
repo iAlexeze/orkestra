@@ -30,11 +30,13 @@ func (k *Katalog) KomposeKatalogFromYaml(m *merger.Merger, paths ...string) ([]o
 		entry.EnrichmentOutcome = outcome
 	}
 
-	// initialize conversion registry
+	// initialize conversion registry and admission registry
 	k.conversionRegistry = NewInMemoryConversionRegistry()
+	k.admissionRegistry = NewInMemoryAdmissionRegistry()
 
 	// now safe to register rules
 	for _, entry := range k.Spec.CRDs {
+		k.admissionRegistry.RegisterAdmissionRulesFromEntry(entry)
 		k.conversionRegistry.registerConversionRulesFromSpec(entry)
 	}
 
@@ -81,7 +83,7 @@ func (k *Katalog) ValidateConfig() (*Katalog, error) {
 	// 5. Add Reconcilers		// ReconcilerRegistry → Constructor
 	// -------------------------------------------------------------------------
 	if err := k.addReconcilers(); err != nil {
-		logger.Error().Err(err).Msgf("Add Reconcilers error: %v", err)
+		logger.Error().Err(err).Msg("failed to add reconcilers")
 		return nil, err
 	}
 	// -------------------------------------------------------------------------

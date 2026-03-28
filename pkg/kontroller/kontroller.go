@@ -95,7 +95,7 @@ func (k *Kontroller) Start(ctx context.Context) error {
 		if !k.informerFactory.IsMissing(gvk) {
 			continue
 		}
-		logger.Warn().Msgf("CRD %s is missing, marking as degraded...", gvk)
+		logger.Warn().Str("gvk", gvk).Msg("CRD missing — marking as degraded")
 		k.crdHealthMap[gvk].RecordStartupFailure(orkerror.ErrCRDNotFound, crd.Queue.DegradeThreshold)
 	}
 

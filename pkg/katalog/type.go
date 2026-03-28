@@ -24,4 +24,17 @@ type Katalog struct {
 	enabledCRDs        []orktypes.CRDEntry `yaml:"-"` // filtered
 	allCRDs            []orktypes.CRDEntry `yaml:"-"` // all CRDs
 	conversionRegistry *InMemoryConversionRegistry
+	admissionRegistry  *InMemoryAdmissionRegistry
+}
+
+func (k *Katalog) EnabledCRDs() []orktypes.CRDEntry {
+	return k.enabledCRDs
+}
+
+func (k *Katalog) AllCRDs() []orktypes.CRDEntry {
+	return k.allCRDs
+}
+
+func (k *Katalog) Metadata() orktypes.KatalogMeta {
+	return k.metadata
 }

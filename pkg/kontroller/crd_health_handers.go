@@ -82,6 +82,7 @@ func BuildCRDInfoHandler(
 	inf cache.SharedIndexInformer,
 	h *CRDHealth,
 	stats *health.ConversionStats,
+	admStats *health.AdmissionStats,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := resolveCRDDisplayValues(crd, kfg, inf)
@@ -121,6 +122,27 @@ func BuildCRDInfoHandler(
 				"failures":     snapshot.FailedRequests,
 				"avgLatencyMs": snapshot.AvgLatency.Milliseconds(),
 				"p95LatencyMs": snapshot.P95Latency.Milliseconds(),
+			}
+		}
+
+		// Add admission stats if available
+		if admStats != nil {
+			snap := admStats.GetStats(crd.Webhooks.WebhookValidationEnabled() || crd.Webhooks.WebhookMutationEnabled())
+			response["admission"] = map[string]interface{}{
+				"webhooksEnabled":   snap.WebhooksEnabled,
+				"validationTotal":   snap.ValidationTotal,
+				"validationAllowed": snap.ValidationAllowed,
+				"validationDenied":  snap.ValidationDenied,
+				"validationWarned":  snap.ValidationWarned,
+				"valAvgLatencyMs":   snap.ValAvgLatencyMs,
+				"valP95LatencyMs":   snap.ValP95LatencyMs,
+				"valMaxLatencyMs":   snap.ValMaxLatencyMs,
+				"mutationTotal":     snap.MutationTotal,
+				"mutationApplied":   snap.MutationApplied,
+				"mutationSkipped":   snap.MutationSkipped,
+				"mutAvgLatencyMs":   snap.MutAvgLatencyMs,
+				"mutP95LatencyMs":   snap.MutP95LatencyMs,
+				"mutMaxLatencyMs":   snap.MutMaxLatencyMs,
 			}
 		}
 
