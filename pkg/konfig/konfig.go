@@ -32,8 +32,8 @@ func Init(filenames ...string) (*Konfig, error) {
 			DefaultResync:  GetDurEnvSeconds("DEFAULT_RESYNC", 15),
 			DefaultWorkers: GetIntEnv("DEFAULT_WORKERS", 3),
 		},
-		conversion: conversionConfig{
-			// Webhook Conversion
+		webhook: webhookConfig{
+			EnableWebhooks:   GetBoolEnv("ENABLE_WEBHOOKS", false),
 			EnableConversion: GetBoolEnv("ENABLE_CONVERSION", false),
 			TLSCert:          GetStrEnv("TLS_CERT", ""),
 			TLSKey:           GetStrEnv("TLS_KEY", ""),

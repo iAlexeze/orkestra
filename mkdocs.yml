@@ -1,222 +1,218 @@
-# theme:
-#     # name: material
-#     name: readthedocs 
-#     custom_dir: docs/overrides
-#     # https://mkdocs.readthedocs.io/en/restructure-compat/guides/user-guide/styling-your-docs/
-# extra_css:
-#   - css/extra.css
+nav:
+- Overview: index.md
+- Basics:
+  - basics/kubernetes-basics.md
+  - basics/understanding-orkestra.md
+- Getting Started:
+    - getting-started/index.md
+    - getting-started/writing-your-first-katalog.md
+    - getting-started/writing-your-first-komposer.md
+    - getting-started/basic-reconciliation.md
 
-# nav:
-# - Overview: index.md
-# - understanding-the-basics.md
-# - core-concepts.md 
-# - Getting Started:
-#     - getting-started/index.md
-#     - getting-started/writing-your-first-katalog.md
-#     - getting-started/writing-your-first-komposer.md
-#     - getting-started/basic-reconciliation.md
-#     # - Writing Hooks: guides/user-guide/writing-hooks.md
-#     # - Writing Custom Reconcilers: guides/user-guide/writing-custom-reconcilers.md
-#     # - Testing Operators: guides/user-guide/testing-operators.md
+- Runtime Manual:
+  - runtime-manual/index.md
+  - Architecture:
+      - Overview: runtime-manual/architecture/index.md
+      - Runtime Flow: runtime-manual/architecture/runtime-flow.md
+      - CRD Lifecycle: runtime-manual/architecture/crd-lifecycle.md
+      - Design Philosophy: runtime-manual/architecture/design-philosophy.md
+      - Architecture Diagrams: runtime-manual/architecture/architecture-diagrams.md
+      - Full Architecture View: runtime-manual/architecture/full-architecture-view.md
 
-# - Runtime Manual:
-#   - runtime-manual/index.md
-#   - Architecture:
-#       - Overview: runtime-manual/architecture/index.md
-#       - Runtime Flow: runtime-manual/architecture/runtime-flow.md
-#       - CRD Lifecycle: runtime-manual/architecture/crd-lifecycle.md
-#       - Design Philosophy: runtime-manual/architecture/design-philosophy.md
-#       - Architecture Diagrams: runtime-manual/architecture/architecture-diagrams.md
-#       - Full Architecture View: runtime-manual/architecture/full-architecture-view.md
+  - Concepts:
+      - runtime-manual/concepts/index.md
+      - runtime-manual/concepts/katalog.md
+      - runtime-manual/concepts/komposer.md
+      - runtime-manual/concepts/validation.md
+      - runtime-manual/concepts/mutation.md
+      - Registry Sources:
+        - Overview: runtime-manual/concepts/registry-sources/index.md
+        - runtime-manual/concepts/registry-sources/pattern-structure.md
+        - Fields:
+          - URL formats and shorthand rules: runtime-manual/concepts/registry-sources/url.md
+          - Version Semantics: runtime-manual/concepts/registry-sources/version.md
+          - OCI vs Git sources: runtime-manual/concepts/registry-sources/oci.md
+          - Loading Sources: runtime-manual/concepts/registry-sources/useKomposer.md
+          - Authentication: runtime-manual/concepts/registry-sources/auth.md
+        - Multiple Sources: runtime-manual/concepts/registry-sources/multiple-sources.md
+        - Best Practices: runtime-manual/concepts/registry-sources/best-practices-registry.md
+        - runtime-manual/concepts/registry-sources/publishing-a-pattern.md
+      - Hooks: runtime-manual/concepts/hooks.md
+      - Constructors: runtime-manual/concepts/constructors.md
+      - Observability: runtime-manual/concepts/observability.md
+      - Runtime: runtime-manual/concepts/runtime.md
+      - Versioning: runtime-manual/concepts/versioning.md
+      - Conversion Webhooks: runtime-manual/concepts/conditional-webhooks.md
+      - Conditional Provisioning: runtime-manual/concepts/conditional-provisioning.md
+      - Templating: runtime-manual/concepts/templating.md
+      - Dependency Model: runtime-manual/concepts/dependency-model.md
+      - Health Subsystem: runtime-manual/concepts/health-subsystem.md
+      - Reconciler Model: runtime-manual/concepts/reconciler-model.md
 
-#   - Concepts:
-#       - runtime-manual/concepts/index.md
-#       - Katalog: runtime-manual/concepts/katalog.md
-#       - Komposer: runtime-manual/concepts/komposer.md
-#       - Registry Sources:
-#         - Overview: runtime-manual/concepts/registry-sources/index.md
-#         - runtime-manual/concepts/registry-sources/pattern-structure.md
-#         - Fields:
-#           - URL formats and shorthand rules: runtime-manual/concepts/registry-sources/url.md
-#           - Version Semantics: runtime-manual/concepts/registry-sources/version.md
-#           - OCI vs Git sources: runtime-manual/concepts/registry-sources/oci.md
-#           - Loading Sources: runtime-manual/concepts/registry-sources/useKomposer.md
-#           - Authentication: runtime-manual/concepts/registry-sources/auth.md
-#         - Multiple Sources: runtime-manual/concepts/registry-sources/multiple-sources.md
-#         - Best Practices: runtime-manual/concepts/registry-sources/best-practices-registry.md
-#         - runtime-manual/concepts/registry-sources/publishing-a-pattern.md
-#       - Hooks: runtime-manual/concepts/hooks.md
-#       - Constructors: runtime-manual/concepts/constructors.md
-#       - Observability: runtime-manual/concepts/observability.md
-#       - Runtime: runtime-manual/concepts/runtime.md
-#       - Versioning: runtime-manual/concepts/versioning.md
-#       - Conversion Webhooks: runtime-manual/concepts/conditional-webhooks.md
-#       - Conditional Provisioning: runtime-manual/concepts/conditional-provisioning.md
-#       - Templating: runtime-manual/concepts/templating.md
-#       - Dependency Model: runtime-manual/concepts/dependency-model.md
-#       - Health Subsystem: runtime-manual/concepts/health-subsystem.md
-#       - Reconciler Model: runtime-manual/concepts/reconciler-model.md
+- Guides:
+  - User Guide:
+    - guides/user-guide/index.md
+    - How Reconciliation Works: guides/user-guide/how-reconciliation-works.md
+    - Multi Version CRD Explained: guides/user-guide/multi-version-crd-explained.md
+    - Extending Orkestra: guides/user-guide/extending-orkestra.md
+    - Production Deployment: guides/user-guide/deployment/#helm-deployment
+    - Generate a Certificate with Cert-Manager: guides/user-guide/self-signed-certificate-with-cert-manager.md
+    - Generate an OpenSSL Self-signed Certificate: guides/user-guide/self-signed-certificate-with-openssl.md
+    - Choosing Katalog vs Komposer: guides/user-guide/choosing-katalog-vs-komposer.md
+    - Use Cases: use-cases/index.md
+    - Best Practices: guides/user-guide/best-practices.md
 
-#   - Internals:
-#       - runtime-manual/internals/index.md
-#       - Startup Sequence: runtime-manual/internals/startup-sequence.md
-#       - konstructOrkestra: runtime-manual/internals/konstruct-orkestra.md
-#       - Dynamic vs Typed CRDs: runtime-manual/internals/dynamic-vs-typed.md
-#       - Informer Factory: runtime-manual/internals/informer-factory.md
-#       - Dependency Kontroller: runtime-manual/internals/dependency-kontroller.md
-#       - Reconciler Pipeline: runtime-manual/internals/reconciler-pipeline.md
-#       - Observability: runtime-manual/internals/observability.md
-#       - Shutdown: runtime-manual/internals/shutdown.md
+  - Developer Guide:
+      - guides/developer-guide/index.md
+      - guides/developer-guide/development-environment.md
+      - Technical Docs:
+          - technical-docs/index.md
+          - technical-docs/generic-reconciler.md
+          - technical-docs/informer-factory.md
+          - technical-docs/constructor.md
+          - technical-docs/konstructor.md
+          - technical-docs/hooks.md
+          - technical-docs/katalog.md
+          - technical-docs/merger.md
+          - technical-docs/health-server.md
+          - technical-docs/kontroller.md
+          - technical-docs/ork-generate.md
+          - technical-docs/orkestra-registry.md
+          - technical-docs/CONTRIBUTING.md
+      - CLI Reference:
+          - reference/cli/index.md
+          - ork init: reference/cli/init.md
+          - ork validate: reference/cli/validate.md
+          - ork template: reference/cli/template.md
+          - ork generate runtime: reference/cli/generate-runtime.md
+          - ork run: reference/cli/run.md
+          - ork status: reference/cli/status.md
+          - ork get: reference/cli/get.md
+          - ork describe: reference/cli/describe.md
+          - ork reconcile: reference/cli/reconcile.md
+          - ork events: reference/cli/events.md
+          - ork version: reference/cli/version.md
+          - Inspect Live CRD: reference/cli/inspect-live-crd.md
 
-# - Guides:
-#   - User Guide:
-#     - guides/user-guide/index.md
-#     - How Reconciliation Works: guides/user-guide/how-reconciliation-works.md
-#     - Multi Version CRD Explained: guides/user-guide/multi-version-crd-explained.md
-#     - Extending Orkestra: guides/user-guide/extending-orkestra.md
-#     - Production Deployment: guides/user-guide/deployment/#helm-deployment
-#     - Generate a Certificate with Cert-Manager: guides/user-guide/self-signed-certificate-with-cert-manager.md
-#     - Generate an OpenSSL Self-signed Certificate: guides/user-guide/self-signed-certificate-with-openssl.md
-#     - Choosing Katalog vs Komposer: guides/user-guide/choosing-katalog-vs-komposer.md
-#     - Use Cases: use-cases/index.md
-#     - Best Practices: guides/user-guide/best-practices.md
+- Reference:
+    - reference/index.md
+    - reference/katalog-schema.md
+    - reference/komposer-schema.md
+    - reference/registry-schema.md
+    - reference/validation-schema.md
+    - reference/mutation-schema.md
+    - Runtime: reference/runtime.md
+    - Metrics: reference/metrics.md
 
-#   - Developer Guide:
-#       - guides/developer-guide/index.md
-#       - guides/developer-guide/development-environment.md
-#       - CLI Reference:
-#           - reference/cli/index.md
-#           - ork init: reference/cli/init.md
-#           - ork validate: reference/cli/validate.md
-#           - ork template: reference/cli/template.md
-#           - ork generate runtime: reference/cli/generate-runtime.md
-#           - ork run: reference/cli/run.md
-#           - ork status: reference/cli/status.md
-#           - ork get: reference/cli/get.md
-#           - ork describe: reference/cli/describe.md
-#           - ork reconcile: reference/cli/reconcile.md
-#           - ork events: reference/cli/events.md
-#           - ork version: reference/cli/version.md
-#           - Inspect Live CRD: reference/cli/inspect-live-crd.md
+- Orkestra Registry:
+    - orkestra-registry/index.md
+    - How it Works: orkestra-registry/how-it-works.md
+    - orkestra-registry/vision.md
 
-# - Reference:
-#     - reference/index.md
-#     - Katalog Schema: reference/katalog-schema.md
-#     - Komposer Schema: reference/komposer-schema.md
-#     - Registry Schema: reference/registry-schema.md
-#     - Runtime: reference/runtime.md
-#     - Metrics: reference/metrics.md
+- Example Workflows:
+    - Overview: examples/index.md
+    - Beginner:
+      - examples/beginner/website/README.md
+      - examples/beginner/platform-namespace/README.md
+      - examples/beginner/komposer/README.md
+    - Intermediate:
+      - examples/intermediate/<.md>
+    - Advanced:
+      - examples/advanced/multi-versions-website/README.md
+      - examples/advanced/validation-mutation/README.md
 
-# - Orkestra Registry:
-#     - orkestra-registry/index.md
-#     - How it Works: orkestra-registry/how-it-works.md
-#     - orkestra-registry/vision.md
+- Publications:
+    - publications/index.md
+    - Why Orkestra: publications/why-orkestra.md
+    - Declarative Operators Whitepaper: publications/declarative-operators-whitepaper.md
+    - Declarative Version Conversion: publications/declarative-conversion.md
+    - One Runtime, Many CRDs: publications/one-runtime-many-crds.md
+    - publications/universal-observer-whitepaper.md
+    - publications/value-proposition.md
+    - Orkestra Registry: publications/orkestra-registry.md
+    - Trust and Safety: publications/trust-and-failure-model.md
+    - Metrics Analysis: publications/metrics-analysis.md
+    - Your CRD is Enough: publications/your-crd-is-enough.md
 
-# - Example Workflows:
-#     - Overview: examples/index.md
-#     - Beginner:
-#       - examples/beginner/website/README.md
-#       - examples/beginner/platform-namespace/README.md
-#       - examples/beginner/komposer/README.md
-#     - Intermediate:
-#       - examples/intermediate/<.md>
-#     - Advanced:
-#       - examples/advanced/multi-versions-website/README.md
+- Use Cases:
+    - Overview: use-cases/index.md
+    - use-cases/zero-code-operators.md
+    - use-cases/platform-namespace-provisioning.md
+    - use-cases/secret-distribution.md
+    - use-cases/dependency-ordering.md
+    - use-cases/centralized-configuration.md
+    - use-cases/environment-overrides.md
+    - use-cases/helm-driven-operators.md
+    - use-cases/multi-team-composition.md
+    - use-cases/progressive-rollout.md
+    - use-cases/disaster-recovery.md
+    - use-cases/air-gapped.md
+    - use-cases/observability.md
+    - use-cases/registry.md
+    - use-cases/conversion.md
+    - use-cases/hooks.md
+    - use-cases/custom-constructors.md
 
-# - Publications:
-#     - publications/index.md
-#     - Why Orkestra: publications/why-orkestra.md
-#     - Declarative Operators Whitepaper: publications/declarative-operators-whitepaper.md
-#     - Declarative Version Conversion: publications/declarative-version-conversion.md
-#     - One Runtime, Many CRDs: publications/one-runtime-many-crds.md
-#     - Orkestra Registry: publications/orkestra-registry.md
-#     - Trust and Safety: publications/trust-and-failure-model.md
-#     - Metrics Analysis: publications/metrics-analysis.md
-#     - Your CRD is Enough: publications/your-crd-is-enough.md
-
-# - Use Cases:
-#     - Overview: use-cases/index.md
-#     - use-cases/zero-code-operators.md
-#     - use-cases/platform-namespace-provisioning.md
-#     - use-cases/secret-distribution.md
-#     - use-cases/dependency-ordering.md
-#     - use-cases/centralized-configuration.md
-#     - use-cases/environment-overrides.md
-#     - use-cases/helm-driven-operators.md
-#     - use-cases/multi-team-composition.md
-#     - use-cases/progressive-rollout.md
-#     - use-cases/disaster-recovery.md
-#     - use-cases/air-gapped.md
-#     - use-cases/observability.md
-#     - use-cases/registry.md
-#     - use-cases/conversion.md
-#     - use-cases/hooks.md
-#     - use-cases/custom-constructors.md
-  
-# - faq.md
-# - security-considerations.md
-# - support.md
-# - Roadmap: roadmap.md
-# - Releases ⧉: https://github.com/iAlexeze/orkestra/releases
-# - Blog ⧉: https://blog.orkestra.sh/
-# plugins:
-#   - search
-#   - mermaid2:
-#       version: 10.0.2
-#   - gh-admonitions
-# repo_url: https://github.com/iAlexeze/orkestra
-# site_name: Orkestra - Declarative Operator Runtime for Kubernetes
-# site_description: Declarative Operator Runtime for Kubernetes
-# site_url: https://orkestra.sh
-# site_author: "Orkestra Team"
-# copyright: "Orkestra"
+- FAQs:
+    - faqs/index.md
+    - faqs/why-not-crds.md
+- security.md
+- support.md
+- roadmap.md
+- Releases ⧉: https://github.com/iAlexeze/orkestra/releases
+- Blog ⧉: https://blog.orkestra.sh/
 
 
-site_name: ORK
-docs_dir: coming-soon
+
+
+
+plugins:
+  - search
+  - mermaid2:
+      version: 10.0.2
+      arguments:
+        securityLevel: 'loose'
+        startOnLoad: true
+        theme: "^(document.querySelector('body').getAttribute('data-md-color-scheme') === 'slate') ? 'dark' : 'default'"
+  - gh-admonitions
+repo_url: https://github.com/iAlexeze/orkestra
+site_name: Orkestra - Declarative Operator Runtime for Kubernetes
+site_description: Declarative Operator Runtime for Kubernetes
+site_url: https://orkestra.sh
+site_author: "Orkestra Team"
+copyright: "Orkestra"
+
+
+# site_name: ORK
+# docs_dir: coming-soon
 
 # site_url: !ENV READTHEDOCS_CANONICAL_URL
 # strict: true
 
 
 # Configuraton
-# extra:
-#   analytics:
-#     property: G-5Z1VTPDL73
-#     provider: google
-#   social:
-#     - icon: fontawesome/brands/github
-#       link: https://github.com/orkestra-sh/orkestra
-#     - icon: fontawesome/brands/twitter
-#       link: https://twitter.com/orkestra
-# extra_css:
-#   - css/footer-nav.css
-
-# For future use
-#   - assets/versions.css
-# extra_javascript:
-# - assets/versions.js
+extra:
+  analytics:
+    property: G-5Z1VTPDL73
+    provider: google
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/orkestra-sh/orkestra
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/orkestra
 
 markdown_extensions:
   - markdown_include.include
   - admonition
   - markdown_grid_tables
-  # - pymdownx.details
-  # - pymdownx.highlight
-  # - pymdownx.superfences:
-  #     custom_fences:
-  #       - name: mermaid
-  #         class: mermaid
-  #         format: !!python/name:mermaid2.fence_mermaid_custom
-  - codehilite:
-      css_class: highlight
   - toc:
       permalink: true
 
 theme:
+  features: 
+    - navigation.footer
   icon:
     repo: fontawesome/brands/github
-  # custom_dir: docs/overrides
   favicon: assets/ork-logo-white.png
   font:
     text: Work Sans
@@ -224,16 +220,12 @@ theme:
   name: material
   palette:
   - media: '(prefers-color-scheme: light)'
-    # primary: teal
-    # primary: dark purple
     primary: deep purple
     scheme: default
     toggle:
       icon: material/brightness-7
       name: Switch to dark mode
   - media: '(prefers-color-scheme: dark)'
-    # primary: teal
-    # primary: dark purple
     primary: deep purple
     scheme: slate
     toggle:

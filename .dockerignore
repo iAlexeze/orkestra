@@ -1,5 +1,11 @@
 .env
-test/
+unknown/
 _runtime_*/
 example-crds/
 ork
+ork.md
+ork.yaml
+reviews/
+orkestra-certs/
+coverage.out/
+coverage

@@ -92,33 +92,22 @@ It exposes two HTTP servers:
 | Health + readiness | `8080` | HTTP |
 | Conversion webhook | `8443` | HTTPS |
 
-The conversion server is **not started by default**.
+The HTTPS server is **not started by default**.
 
 ### It is only started when:
 
-1. `ENABLE_CONVERSION=true`  
-2. Valid TLS certificate + key paths are provided  
-3. The CRD declares a webhook pointing to Orkestra  
+1. `ENABLE_CONVERSION=true` and/or `ENABLE_WEBHOOKS=true`
+2. Valid TLS certificate + key paths are provided
 
-Inside the code:
+Either flag alone is sufficient. Both flags share the same HTTPS server on `:8443`.
 
-```go
-if h.convOpts.ConvEnabled {
-    h.convServer = &http.Server{
-        Addr:    ":8443",
-        Handler: h.convMux,
-    }
+| Flag | Routes registered |
+|---|---|
+| `ENABLE_CONVERSION=true` | `/convert` |
+| `ENABLE_WEBHOOKS=true` | `/validate`, `/mutate` |
+| Both | All three routes |
 
-    go func() {
-        logger.Info().Msg("conversion https server listening on :8443")
-        if err := h.convServer.ListenAndServeTLS(h.convOpts.ConvCert, h.convOpts.ConvKey); err != nil {
-            logger.Error().Err(err).Msg("conversion https server error")
-        }
-    }()
-}
-```
-
-If conversion is disabled, Orkestra runs normally without exposing a webhook.
+If neither flag is set, Orkestra runs normally without exposing port 8443.
 
 ---
 
@@ -197,7 +186,17 @@ Orkestra will:
 4. Register the `/convert` handler
 5. Serve conversion requests from the Kubernetes API server
 
-If any requirement is missing, the conversion server is **not started**, and Orkestra continues running normally.
+To also enable admission webhooks (validation and mutation), add:
+
+```yaml
+env:
+  - name: ENABLE_WEBHOOKS
+    value: "true"
+```
+
+The same HTTPS server serves all three routes. Either flag alone starts it.
+
+If neither flag is set and TLS is not provided, the HTTPS server is **not started**, and Orkestra continues running on HTTP only.
 
 ---
 
@@ -205,13 +204,14 @@ If any requirement is missing, the conversion server is **not started**, and Ork
 
 Here’s the entire story in one clean block:
 
-- Orkestra supports **declarative CRD version conversion**  
-- Kubernetes requires a **conversion webhook** for multi‑version CRDs  
-- Orkestra provides a **conditional webhook** that only runs when enabled  
-- It is activated via `ENABLE_CONVERSION=true`  
-- It requires user‑provided TLS certificates  
-- It exposes a secure HTTPS endpoint at `/convert`  
-- It uses declarative rules from the Katalog to perform conversions  
-- It eliminates all Go conversion code, schemes, and boilerplate  
+- Orkestra supports **declarative CRD version conversion** and **admission-time policy**
+- Kubernetes requires a webhook for both conversion and admission enforcement
+- Orkestra provides a **conditional HTTPS server** that only runs when enabled
+- Conversion is activated via `ENABLE_CONVERSION=true`
+- Admission webhooks are activated via `ENABLE_WEBHOOKS=true`
+- Both require user-provided TLS certificates and share the same server on `:8443`
+- The `/convert`, `/validate`, and `/mutate` endpoints are registered only when their
+  respective feature is enabled
+- All behavior is declared in the Katalog — no Go code, no webhook servers to maintain
 
 This is one of the core innovations that makes Orkestra a **zero‑code operator engine**.

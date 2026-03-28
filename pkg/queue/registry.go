@@ -106,13 +106,7 @@ var _ domain.Komponent = (*QueueRegistry)(nil)
 // Called by orkestra.Start() to start the workqueue registry
 func (qr *QueueRegistry) Start(ctx context.Context) error {
 	count := len(qr.queues)
-	queueText := "queues"
-
-	if count == 1 {
-		queueText = "queue"
-	}
-
-	logger.Debug().Msgf("right here in %s with %v %s", qr.name, count, queueText)
+	logger.Debug().Str("name", qr.name).Int("queues", count).Msg("queue registry started")
 
 	qr.started.Store(true)
 	return nil

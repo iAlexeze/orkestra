@@ -8,7 +8,7 @@ type Konfig struct {
 	konductor    konductorElection
 	healthServer healthServer
 	katalog      katalogKonfig
-	conversion   conversionConfig
+	webhook      webhookConfig
 	registry     registryConfig
 }
 
@@ -40,12 +40,17 @@ type registryConfig struct {
 	RegistryURL string
 }
 
-type conversionConfig struct {
-	// Webhook for coversion
+type webhookConfig struct {
+	// Admission webhooks
+	EnableWebhooks bool
+
+	// Conversion webhooks
 	EnableConversion bool
-	TLSCert          string
-	TLSKey           string
 	ConversionWindow int
+
+	// Certificates
+	TLSCert string
+	TLSKey  string
 }
 
 type katalogKonfig struct {
@@ -108,9 +113,9 @@ func (k *Konfig) Finalizers() []string {
 	return []string{FinalizerOrkestra}
 }
 
-// ConversionConfig returns true is enabled
-func (k *Konfig) ConversionConfig() *conversionConfig {
-	return &k.conversion
+// WebhookConfig returns true is enabled
+func (k *Konfig) WebhookConfig() *webhookConfig {
+	return &k.webhook
 }
 
 // RegistryConfig returns true is enabled

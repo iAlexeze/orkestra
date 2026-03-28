@@ -1,0 +1,155 @@
+# HealthServer
+
+`health.HealthServer` is the HTTP(S) server that provides all external interfaces for a running Orkestra instance. It serves health probes, Prometheus metrics, the Katalog API, and — when enabled — the conversion and admission webhook endpoints.
+
+---
+
+## Responsibilities
+
+- `/health` and `/ready` probes for Kubernetes liveness and readiness
+- `/katalog` and `/katalog/{crd}` operator health and statistics API
+- `/metrics` Prometheus exposition endpoint
+- `/convert` CRD version conversion webhook (when `ENABLE_CONVERSION=true`)
+- `/validate` admission validation webhook (when `ENABLE_WEBHOOKS=true`)
+- `/mutate` admission mutation webhook (when `ENABLE_WEBHOOKS=true`)
+
+---
+
+## Two servers, one TLS certificate
+
+HealthServer runs two HTTP servers:
+
+**HTTP server** (`h.server`, default `:8080`)
+Serves `/health`, `/ready`, and `/metrics`. No TLS. Intended for internal cluster traffic — Kubernetes probes and Prometheus scraping.
+
+**HTTPS server** (`h.hookSrv`, fixed `:8443`)
+Serves `/convert`, `/validate`, and `/mutate`. Requires TLS certificates. Intended for calls from the Kubernetes API server, which requires HTTPS for webhook endpoints.
+
+Both servers share the same `HealthServer` instance and access the same registries. The certificate used for `:8443` is also used as the `caBundle` in the webhook configurations Orkestra registers at startup.
+
+!!! note "ENABLE_CONVERSION and ENABLE_WEBHOOKS share the HTTPS server"
+    If `ENABLE_WEBHOOKS=true` is set without `ENABLE_CONVERSION=true`, the
+    HTTPS server would never start and `/validate`/`/mutate` would never be
+    reachable. Orkestra validates this at startup and returns an error:
+    ```
+    webhook server error: TLS_CERT is required for ENABLE_WEBHOOKS
+    ```
+    Always set both when enabling admission webhooks.
+
+---
+
+## Startup sequence
+
+```go
+func (h *HealthServer) Start(ctx context.Context) error
+```
+
+1. Validates TLS configuration (if conversion or webhooks enabled)
+2. Registers `/health`, `/ready`, `/metrics` on the HTTP mux
+3. Starts the HTTP server in a goroutine
+4. If `ENABLE_CONVERSION=true`: registers `/convert` on the HTTPS mux, starts HTTPS server
+5. If `ENABLE_WEBHOOKS=true`: registers `/validate` and `/mutate` on the HTTPS mux, then registers webhook configurations with the API server in a background goroutine
+
+!!! warning "Webhook registration is best-effort"
+    The `RegisterWebhooks` call in step 5 runs in a goroutine and does not block startup.
+    If it fails (e.g. insufficient RBAC), the HTTPS endpoints are still reachable but the
+    API server does not know to call them. Check logs for:
+    ```
+    admission webhooks: webhook configuration registration failed
+    ```
+    This is the most common startup issue when enabling admission webhooks for the first time.
+
+---
+
+## Health and ready probes
+
+**`/health`** — returns 200 when the server has started and considers itself healthy. Returns 503 when `h.healthy` is false. Unhealthy state is set when a critical CRD degrades (if `critical: true` is declared) or when Orkestra calls `h.Unhealthy()`.
+
+**`/ready`** — returns 200 when all CRDs have started and the runtime is accepting reconcile events. Returns 503 until `h.SetReady()` is called, which happens after the dependency graph is fully started.
+
+The distinction matters for rolling deployments. Kubernetes will not route traffic to a pod until `/ready` returns 200. A pod that is healthy but not yet ready — informers syncing, dependency ordering in progress — is kept out of rotation.
+
+---
+
+## The Katalog API
+
+**`GET /katalog`** — returns a JSON array of all managed CRDs with their health state, reconcile statistics, and configuration. Used by `ork status`.
+
+**`GET /katalog/{crd}`** — returns the full JSON detail for one CRD. Includes worker count, queue depth, error rate, reconcile totals, conversion stats, and admission stats. Used by `ork describe` and direct health monitoring.
+
+**`GET /katalog/{crd}/health`** — returns `200 OK` with `{"healthy":true}` or `503` with `{"healthy":false}`. Used by external health checks and `ork status`.
+
+The handler for these endpoints reads from `CRDHealth` structs that are updated by the reconciler workers on every reconcile cycle. The reads are lock-free where possible — atomic operations for counters.
+
+---
+
+## Conversion handler
+
+```go
+func (h *HealthServer) conversionHandler(w http.ResponseWriter, r *http.Request)
+```
+
+Receives `ConversionReview` from the Kubernetes API server. For each object in the review:
+
+1. Unmarshals the object to `map[string]interface{}`
+2. Extracts bare version strings from full apiVersion strings
+3. Looks up `ConversionRules` from `h.conversionRegistry` by Kind
+4. Finds the `(from, to)` path in the rules
+5. Resolves the path spec using `orktmpl.NewResolverFromMap(obj)`
+6. Sets `apiVersion` to the target apiVersion string
+7. Returns the converted objects in the `ConversionReview` response
+
+See [Versioning](../runtime-manual/concepts/versioning.md) for the full conversion design.
+
+---
+
+## Admission handlers
+
+```go
+func (h *HealthServer) validationHandler(w http.ResponseWriter, r *http.Request)
+func (h *HealthServer) mutationHandler(w http.ResponseWriter, r *http.Request)
+```
+
+Both receive `AdmissionReview` from the Kubernetes API server. The GVR from the request is used to look up rules from `h.admissionRegistry`. Evaluation results feed both the response and the Prometheus metrics.
+
+Key differences from conversion:
+- Validation returns `allowed: true/false` in the response
+- Mutation returns a JSON patch (RFC 6902) computed from field changes
+- Both record to `AdmissionStats` and Prometheus
+- Both must never return errors that block the API server — failures are logged and allowed through
+
+---
+
+## ConversionStats and AdmissionStats
+
+Both are in-process rolling window trackers. They accumulate statistics in memory using ring buffers. `GetStats()` on each returns a snapshot that is embedded in the `/katalog/{crd}` JSON response.
+
+These are not a replacement for Prometheus — they reset on restart. They serve the use case of "what is happening right now in this running instance" rather than "what has been happening over the past 30 days."
+
+---
+
+## Environment variables
+
+| Variable | Default | Effect |
+|---|---|---|
+| `HEALTH_PORT` | `8080` | HTTP server port |
+| `ENABLE_CONVERSION` | `false` | Start HTTPS server and serve `/convert` |
+| `ENABLE_WEBHOOKS` | `false` | Serve `/validate` and `/mutate`, register webhook configs |
+| `TLS_CERT` | — | Path to TLS certificate (required when conversion or webhooks enabled) |
+| `TLS_KEY` | — | Path to TLS key |
+| `CONVERSION_WINDOW` | `1000` | Rolling window size for latency percentile calculations |
+| `ORKESTRA_SERVICE_NAME` | `orkestra` | Service name used in webhook clientConfig |
+| `NAMESPACE` | — | Namespace where Orkestra runs — used in webhook clientConfig |
+
+---
+
+## Adding a new endpoint
+
+1. Add the handler method to `HealthServer`
+2. Register in `Start()` on the appropriate mux (`h.mux` for HTTP, `h.hookMux` for HTTPS)
+3. Log the registration
+4. Add to the endpoint table in this document
+
+!!! tip
+    Use `h.logRoutesMiddleware(handler)` when wrapping a handler for debug logging.
+    This middleware logs the path, method, and duration of every request when `LOG_LEVEL=debug`.

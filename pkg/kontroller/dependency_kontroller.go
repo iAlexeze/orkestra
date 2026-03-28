@@ -229,11 +229,11 @@ func NewDependencyKontroller(
 // RunOrDie starts CRDs in dependency order and blocks until leadership is lost.
 // When leadership ends, it shuts down CRDs in reverse dependency order.
 func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
-	logger.Info().Msgf("%s is starting...", k.Name())
+	logger.Info().Str("component", k.Name()).Msg("starting")
 	k.startedAt = time.Now()
 
 	startupOrder := k.depGraph.StartupOrder()
-	logger.Info().Msgf("startupOrder: %v", strings.Join(startupOrder, " → "))
+	logger.Info().Str("order", strings.Join(startupOrder, " → ")).Msg("startup order")
 
 	// Build name → GVK mapping
 	nameToGVK := make(map[string]string)
@@ -270,23 +270,26 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 		gvk := crd.GroupVersionKind.String()
 
 		if len(crd.DependsOn) > 0 {
-			logger.Info().Msgf("starting %s (depends on: %s)", name, strings.Join(crd.GetDependencies(), ", "))
+			logger.Info().
+				Str("crd", name).
+				Str("depends_on", strings.Join(crd.GetDependencies(), ", ")).
+				Msg("starting CRD")
 		} else {
-			logger.Info().Msgf("starting %s", name)
+			logger.Info().Str("crd", name).Msg("starting CRD")
 		}
 
 		// Wait for dependencies
 		for _, depName := range crd.DependsOn {
 			depGVK, ok := nameToGVK[depName]
 			if !ok {
-				logger.Error().Msgf("%s depends on %s, but %s not found in dependency graph", name, depName, depName)
+				logger.Error().Str("crd", name).Str("dependency", depName).Msg("dependency not found in dependency graph")
 				continue
 			}
 
-			logger.Debug().Msgf("%s waiting for dependency %q (%s)", name, depName, depGVK)
+			logger.Debug().Str("crd", name).Str("dependency", depName).Str("gvk", depGVK).Msg("waiting for dependency")
 			select {
 			case <-k.readyCh[depGVK]:
-				logger.Debug().Msgf("%s: dependency %q ready", name, depName)
+				logger.Debug().Str("crd", name).Str("dependency", depName).Msg("dependency ready")
 			case <-ctx.Done():
 				return
 			}
@@ -294,24 +297,24 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 
 		// Check if CRD exists
 		if k.informerFactory.IsMissing(gvk) {
-			logger.Debug().Msgf("%s is missing — readyCh remains open, workers not started", name)
+			logger.Debug().Str("crd", name).Str("gvk", gvk).Msg("CRD missing — workers not started, waiting for retry")
 			// DO NOT close readyCh — dependents will block until this CRD appears
 			continue
 		}
 
 		// CRD exists — start workers
 		workers := k.katalog.GetWorkers(gvk, k.defaultWorkers)
-		logger.Info().Msgf("starting %d workers for %s", workers, gvk)
+		logger.Info().Str("gvk", gvk).Int("workers", workers).Msg("starting workers")
 		k.startCRDWorkers(ctx, gvk, workers)
 
 		// Update health and metrics
 		k.crdHealthMap[gvk].SetWorkersActive(workers)
 		k.crdHealthMap[gvk].queueReg = k.queueReg
-		metrics.WorkersActive.WithLabelValues(gvk).Set(float64(workers))
+		metrics.SetWorkersActive(gvk, float64(workers))
 
 		// Signal dependents
 		close(k.readyCh[gvk])
-		logger.Info().Msgf("%s workers started and ready", name)
+		logger.Info().Str("crd", name).Str("gvk", gvk).Int("workers", workers).Msg("workers started and ready")
 
 		anyOnline = true
 	}
@@ -320,9 +323,9 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 	k.startedKtrl.Store(true)
 	if anyOnline {
 		k.hs.SetReady()
-		logger.Info().Msgf("%s started — %d CRD(s) online", k.Name(), len(startupOrder))
+		logger.Info().Str("component", k.Name()).Int("crds_online", len(startupOrder)).Msg("started")
 	} else {
-		logger.Warn().Msgf("%s started — all CRDs missing, waiting for retry loop", k.Name())
+		logger.Warn().Str("component", k.Name()).Msg("started — all CRDs missing, waiting for retry loop")
 	}
 
 	// Block until leadership lost
@@ -331,14 +334,14 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 	k.hs.Unhealthy()
 
 	shutdownOrder := k.depGraph.ShutdownOrder()
-	logger.Info().Msgf("shutdownOrder: %v", strings.Join(shutdownOrder, " → "))
+	logger.Info().Str("order", strings.Join(shutdownOrder, " → ")).Msg("shutdown order")
 	for _, name := range shutdownOrder {
-		logger.Info().Msgf("shutting down %s", name)
+		logger.Info().Str("crd", name).Msg("shutting down CRD")
 		gvk := k.depGraph.GetNode(name).CRD.GroupVersionKind.String()
 		k.stopCRDWorkers(gvk)
 	}
 
-	logger.Info().Msgf("%s drained and stopped", k.Name())
+	logger.Info().Str("component", k.Name()).Msg("drained and stopped")
 }
 
 // startCRDWorkers starts a worker pool for a specific CRD and is invoked in dependency order.
@@ -389,25 +392,22 @@ func (k *DependencyKontroller) stopCRDWorkers(gvk string) {
 	wg, okWG := k.wgs[gvk]
 	k.mu.RUnlock()
 
-	// logger.Debug().Msgf("stopCRDWorkers: looking for %s", gvk)
-	// logger.Debug().Msgf("  okCancel=%v, okWG=%v", okCancel, okWG)
-
 	if okCancel {
-		logger.Info().Msgf("cancelling workers for %s", gvk)
+		logger.Info().Str("gvk", gvk).Msg("cancelling workers")
 		cancel()
 	} else {
-		logger.Warn().Msgf("no cancel function found for %s", gvk)
+		logger.Warn().Str("gvk", gvk).Msg("no cancel function found for workers")
 	}
 
 	if okWG {
-		logger.Info().Msgf("waiting for workers for %s to drain", gvk)
+		logger.Info().Str("gvk", gvk).Msg("waiting for workers to drain")
 		wg.Wait()
-		logger.Info().Msgf("workers for %s drained", gvk)
+		logger.Info().Str("gvk", gvk).Msg("workers drained")
 	} else {
-		logger.Warn().Msgf("no wait group found for %s", gvk)
+		logger.Warn().Str("gvk", gvk).Msg("no wait group found for workers")
 	}
 
-	logger.Info().Msgf("workers for %s stopped", gvk)
+	logger.Info().Str("gvk", gvk).Msg("workers stopped")
 }
 
 // Name returns the name of the dependency kontroller

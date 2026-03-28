@@ -89,10 +89,10 @@ func (f *Factory) getOrCreate(
 		if f.started.Load() {
 			go inf.Run(ctx.Done())
 		}
-		logger.Info().Msgf("informer for %s created and started", opts.Name)
+		logger.Info().Str("name", opts.Name).Str("gvk", gvk.String()).Msg("informer created and started")
 	} else {
 		f.missing[key] = entry
-		logger.Warn().Msgf("CRD %s missing — informer created but NOT started", gvk.String())
+		logger.Warn().Str("name", opts.Name).Str("gvk", gvk.String()).Msg("CRD missing — informer created but not started")
 	}
 
 	return inf

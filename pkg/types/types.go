@@ -1065,6 +1065,20 @@ type CRDEntry struct {
 
 	// Conversion is useful for handling multi-version crd
 	Conversion *CRDConversion `yaml:"conversion,omitempty"`
+
+	// Validation is a list of rules
+	Validation *ValidationConfig `yaml:"validation,omitempty"`
+
+	// Mutation is a list of rules
+	Mutation *MutationConfig `yaml:"mutation,omitempty"`
+
+	// Webhooks controls per-CRD admission webhook behaviour.
+	// Only meaningful when ENABLE_WEBHOOKS=true.
+	// By default, any CRD with Validation or Mutation rules is included
+	// in the corresponding webhook configuration automatically.
+	// Set validation: false or mutation: false to opt a specific CRD out of
+	// admission-time interception while keeping its reconcile-time enforcement.
+	Webhooks AdmissionWebhookConfig `yaml:"webhooks,omitempty"`
 }
 
 type ConversionVersionSpec struct {

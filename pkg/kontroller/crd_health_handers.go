@@ -33,24 +33,37 @@ import (
 
 func BuildCRDHealthHandler(crd orktypes.CRDEntry, h *CRDHealth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		status := http.StatusOK
-		message := crd.Name + " healthy"
+		// Snapshot both state flags once so message, status, and body fields
+		// are always consistent with each other — a reconcile completing mid-handler
+		// cannot cause message and "healthy" to disagree.
+		isStarted := h.Started()
+		isHealthy := h.IsHealthy()
 
-		// Mark degraded if health flag is false
-		if !h.IsHealthy() {
-			status = http.StatusServiceUnavailable
-			message = crd.Name + " degraded"
+		var httpStatus int
+		var state string
+
+		switch {
+		case !isStarted:
+			// CRD workers have not started yet — this is expected on fresh startup,
+			// not a sign of degradation. Report pending so probes don't false-alarm.
+			httpStatus = http.StatusOK
+			state = "pending"
+		case isHealthy:
+			httpStatus = http.StatusOK
+			state = "healthy"
+		default:
+			httpStatus = http.StatusServiceUnavailable
+			state = "degraded"
 		}
 
-		utils.WriteJSON(w, status, map[string]interface{}{
+		utils.WriteJSON(w, httpStatus, map[string]interface{}{
 			"name":             crd.Name,
-			"healthy":          h.IsHealthy(),
-			"started":          h.Started(),
+			"state":            state,
+			"healthy":          isHealthy,
+			"started":          isStarted,
 			"startedAt":        h.StartedAt(),
-			"status":           status,
 			"uptime":           h.Uptime(),
 			"queueDepth":       h.QueueDepth(crd.GVK().String()),
-			"message":          message,
 			"errorRate":        h.ErrorRate(),
 			"consecutiveFails": h.consecutiveFails.Load(),
 			"totalReconciles":  h.totalReconciles.Load(),
@@ -82,6 +95,7 @@ func BuildCRDInfoHandler(
 	inf cache.SharedIndexInformer,
 	h *CRDHealth,
 	stats *health.ConversionStats,
+	admStats *health.AdmissionStats,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := resolveCRDDisplayValues(crd, kfg, inf)
@@ -121,6 +135,27 @@ func BuildCRDInfoHandler(
 				"failures":     snapshot.FailedRequests,
 				"avgLatencyMs": snapshot.AvgLatency.Milliseconds(),
 				"p95LatencyMs": snapshot.P95Latency.Milliseconds(),
+			}
+		}
+
+		// Add admission stats if available
+		if admStats != nil {
+			snap := admStats.GetStats(crd.Webhooks.WebhookValidationEnabled() || crd.Webhooks.WebhookMutationEnabled())
+			response["admission"] = map[string]interface{}{
+				"webhooksEnabled":   snap.WebhooksEnabled,
+				"validationTotal":   snap.ValidationTotal,
+				"validationAllowed": snap.ValidationAllowed,
+				"validationDenied":  snap.ValidationDenied,
+				"validationWarned":  snap.ValidationWarned,
+				"valAvgLatencyMs":   snap.ValAvgLatencyMs,
+				"valP95LatencyMs":   snap.ValP95LatencyMs,
+				"valMaxLatencyMs":   snap.ValMaxLatencyMs,
+				"mutationTotal":     snap.MutationTotal,
+				"mutationApplied":   snap.MutationApplied,
+				"mutationSkipped":   snap.MutationSkipped,
+				"mutAvgLatencyMs":   snap.MutAvgLatencyMs,
+				"mutP95LatencyMs":   snap.MutP95LatencyMs,
+				"mutMaxLatencyMs":   snap.MutMaxLatencyMs,
 			}
 		}
 

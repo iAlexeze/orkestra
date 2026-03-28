@@ -12,6 +12,7 @@ import (
 	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"k8s.io/client-go/kubernetes"
 )
 
 var _ domain.Komponent = (*HealthServer)(nil)
@@ -21,8 +22,8 @@ type HealthServer struct {
 	mux    *http.ServeMux
 
 	// optional conversion HTTPS server
-	convServer *http.Server
-	convMux    *http.ServeMux
+	hookSrv *http.Server
+	hookMux *http.ServeMux
 
 	// startup probes
 	started atomic.Bool
@@ -34,38 +35,59 @@ type HealthServer struct {
 	logLevel  string
 	startTime time.Time
 
-	// conversion options
-	convOpts ConversionOptions
+	// webhook options
+	opts WebhookOptions
 
 	// katalog for conversion rules
-	katalog katalog.ConversionRegistry
+	conversionRegistry katalog.ConversionRegistry
 
 	// conversion stats
 	conversionStats *ConversionStats
+
+	// admission stats (validation + mutation)
+	admissionStats *AdmissionStats
+
+	// Admission (Validation and Mutation)
+	admissionRegistry katalog.AdmissionRegistry
+
+	webhookOpts WebhookRegistrationOptions
+	// kubeClient is used for webhook configuration registration.
+	// Set via SetKubeClient after the HealthServer is constructed.
+	kubeClient kubernetes.Interface
 }
 
-type ConversionOptions struct {
+type WebhookOptions struct {
+	WebhooksEnabled  bool
 	ConvEnabled      bool
-	ConvCert         string
-	ConvKey          string
+	TLSCert          string
+	TLSKey           string
 	ConversionWindow int
 }
 
 // NewHealthServer creates a new health server.
-func NewHealthServer(client, port, logLevel string, katalog katalog.ConversionRegistry, convOpts ConversionOptions) *HealthServer {
+func NewHealthServer(
+	kubeclient kubernetes.Interface,
+	client, port, logLevel string,
+	conversionRegistry katalog.ConversionRegistry,
+	admissionRegistry katalog.AdmissionRegistry,
+	opts WebhookOptions,
+) *HealthServer {
 	if client == "" {
 		client = "service"
 	}
 
 	hs := &HealthServer{
-		client:          client,
-		port:            port,
-		convOpts:        convOpts,
-		mux:             http.NewServeMux(),
-		convMux:         http.NewServeMux(),
-		logLevel:        logLevel,
-		katalog:         katalog,
-		conversionStats: NewConversionStats(convOpts.ConversionWindow),
+		kubeClient:         kubeclient,
+		client:             client,
+		port:               port,
+		opts:               opts,
+		mux:                http.NewServeMux(),
+		hookMux:            http.NewServeMux(),
+		logLevel:           logLevel,
+		conversionRegistry: conversionRegistry,
+		admissionRegistry:  admissionRegistry,
+		conversionStats:    NewConversionStats(opts.ConversionWindow),
+		admissionStats:     NewAdmissionStats(opts.ConversionWindow),
 	}
 
 	hs.ready.Store(false)
@@ -75,9 +97,9 @@ func NewHealthServer(client, port, logLevel string, katalog katalog.ConversionRe
 }
 
 func (h *HealthServer) EnableConversion(certFile, keyFile string) {
-	h.convOpts.ConvEnabled = true
-	h.convOpts.ConvCert = certFile
-	h.convOpts.ConvKey = keyFile
+	h.opts.ConvEnabled = true
+	h.opts.TLSCert = certFile
+	h.opts.TLSKey = keyFile
 }
 
 // Register adds a route to the health server mux.
@@ -90,12 +112,21 @@ func (hs *HealthServer) Register(path string, handler http.HandlerFunc) {
 func (h *HealthServer) Start(ctx context.Context) error {
 	h.startTime = time.Now()
 	// Validate conversion options
-	if h.convOpts.ConvEnabled {
-		if h.convOpts.ConvCert == "" {
-			return fmt.Errorf("conversion server error: TLS_CERT is required")
+	if h.opts.ConvEnabled {
+		if h.opts.TLSCert == "" {
+			return fmt.Errorf("conversion server error: TLS_CERT is required for ENABLE_CONVERSION")
 		}
-		if h.convOpts.ConvKey == "" {
-			return fmt.Errorf("conversion server error: TLS_KEY is required")
+		if h.opts.TLSKey == "" {
+			return fmt.Errorf("conversion server error: TLS_KEY is required for ENABLE_CONVERSION")
+		}
+	}
+
+	if h.opts.WebhooksEnabled {
+		if h.opts.TLSCert == "" {
+			return fmt.Errorf("webhook server error: TLS_CERT is required for ENABLE_WEBHOOKS")
+		}
+		if h.opts.TLSKey == "" {
+			return fmt.Errorf("webhook server error: TLS_KEY is required for ENABLE_WEBHOOKS")
 		}
 	}
 
@@ -122,29 +153,58 @@ func (h *HealthServer) Start(ctx context.Context) error {
 	h.healthy.Store(true)
 
 	go func() {
-		logger.Info().Msgf("health server listening on %s", h.port)
+		logger.Info().Str("port", h.port).Msg("health server listening")
 		if err := h.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error().Err(err).Msg("health server error")
+			logger.Error().Err(err).Str("port", h.port).Msg("health server error")
 		}
 	}()
 
-	// optional HTTPS conversion server
-	if h.convOpts.ConvEnabled {
-		h.convMux.HandleFunc("/convert", h.conversionHandler)
+	// HTTPS server — started when conversion, webhooks, or both are enabled.
+	// All routes must be registered on hookMux BEFORE the server goroutine
+	// starts to avoid a data race on ServeMux.
+	if h.opts.ConvEnabled || h.opts.WebhooksEnabled {
+		if h.opts.ConvEnabled {
+			h.hookMux.HandleFunc("/convert", h.conversionHandler)
+		}
 
-		h.convServer = &http.Server{
+		if h.opts.WebhooksEnabled {
+			h.hookMux.HandleFunc("/validate", h.validationHandler)
+			h.hookMux.HandleFunc("/mutate", h.mutationHandler)
+			logger.Info().
+				Str("addr", ":8443").
+				Strs("endpoints", []string{"/validate", "/mutate"}).
+				Msg("admission webhook endpoints registered")
+		}
+
+		h.hookSrv = &http.Server{
 			Addr:    ":8443",
-			Handler: h.convMux,
+			Handler: h.hookMux,
 		}
 
 		go func() {
-			logger.Info().Msg("conversion https server listening on :8443")
-			fmt.Printf("\n\nCert: %s\n", h.convOpts.ConvCert)
-			fmt.Printf("Key: %s\n\n", h.convOpts.ConvKey)
-			if err := h.convServer.ListenAndServeTLS(h.convOpts.ConvCert, h.convOpts.ConvKey); err != nil && err != http.ErrServerClosed {
-				logger.Error().Err(err).Msg("conversion https server error")
+			logger.Info().
+				Str("addr", ":8443").
+				Str("cert_file", h.opts.TLSCert).
+				Str("key_file", h.opts.TLSKey).
+				Msg("https server listening")
+			if err := h.hookSrv.ListenAndServeTLS(h.opts.TLSCert, h.opts.TLSKey); err != nil && err != http.ErrServerClosed {
+				logger.Error().Err(err).Str("addr", ":8443").Msg("https server error")
 			}
 		}()
+
+		// Register ValidatingWebhookConfiguration and MutatingWebhookConfiguration
+		// with the API server. Best-effort — failures are logged but do not block
+		// startup. Re-trigger by restarting Orkestra.
+		if h.opts.WebhooksEnabled && h.kubeClient != nil && h.admissionRegistry != nil {
+			go func() {
+				wctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				if err := RegisterWebhooks(wctx, h.kubeClient, h.admissionRegistry, h.webhookOpts); err != nil {
+					logger.Error().Err(err).
+						Msg("webhook configuration registration failed — admission interception will not work. Check RBAC for admissionregistration.k8s.io")
+				}
+			}()
+		}
 	}
 
 	return nil
@@ -156,8 +216,8 @@ func (h *HealthServer) Shutdown(ctx context.Context) {
 			logger.Error().Err(err).Msg("http server shutdown error")
 		}
 	}
-	if h.convServer != nil {
-		if err := h.convServer.Shutdown(ctx); err != nil {
+	if h.hookSrv != nil {
+		if err := h.hookSrv.Shutdown(ctx); err != nil {
 			logger.Error().Err(err).Msg("https conversion server shutdown error")
 		}
 	}
@@ -209,4 +269,9 @@ func (h *HealthServer) Uptime() string {
 // GetConversionStats returns the conversion statistics for use in handlers.
 func (h *HealthServer) GetConversionStats() *ConversionStats {
 	return h.conversionStats
+}
+
+// GetAdmissionStats returns the admission statistics for use in handlers.
+func (h *HealthServer) GetAdmissionStats() *AdmissionStats {
+	return h.admissionStats
 }

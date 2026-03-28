@@ -20,12 +20,12 @@ func (k *Kontroller) runWorkerForGVK(ctx context.Context, gvk string, workerID s
 		wq = k.defaultWorkqueue
 	}
 
-	logger.Debug().Msgf("worker %s started for %s", workerID, gvk)
+	logger.Debug().Str("worker_id", workerID).Str("gvk", gvk).Msg("worker started")
 
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Debug().Msgf("worker %s for %s stopped (context cancelled)", workerID, gvk)
+			logger.Debug().Str("worker_id", workerID).Str("gvk", gvk).Msg("worker stopped")
 			return
 		default:
 			if !k.processNextItemForGVK(ctx, gvk) {
@@ -33,12 +33,12 @@ func (k *Kontroller) runWorkerForGVK(ctx context.Context, gvk string, workerID s
 			}
 		}
 		depth := float64(wq.Depth())
-		metrics.QueueDepth.WithLabelValues(gvk).Set(depth)
+		metrics.SetQueueDepth(gvk, depth)
 
 		// Resource count — read from this CRD's informer cache
 		if entry, ok := k.katalog.Get(gvk); ok && entry.Informer != nil {
 			count := float64(len(entry.Informer.GetIndexer().List()))
-			metrics.ResourceCount.WithLabelValues(gvk).Set(count)
+			metrics.SetResourceCount(gvk, count)
 		}
 	}
 }
@@ -82,7 +82,7 @@ func (k *Kontroller) processNextItemForGVK(ctx context.Context, gvk string) bool
 	k.mu.RUnlock()
 
 	if rec == nil {
-		logger.Error().Str("gvk", gvk).Msg("no reconciler found — dropping item")
+		logger.Error().Str("gvk", gvk).Str("key", item.Key).Msg("no reconciler found — dropping item")
 		wq.Queue.Forget(item)
 		return true
 	}
@@ -110,29 +110,29 @@ func (k *Kontroller) safeReconcile(
 	// record duration
 	start := time.Now()
 	defer func() {
-		metrics.ReconcileDuration.
-			WithLabelValues(gvk).
-			Observe(time.Since(start).Seconds())
+		metrics.ObserveReconcileDuration(gvk, time.Since(start).Seconds())
 
 		if r := recover(); r != nil {
 			buf := make([]byte, 4096)
 			n := runtime.Stack(buf, false)
 			err = fmt.Errorf("reconciler panic: %v", r)
 			logger.Error().
+				Str("gvk", gvk).
 				Str("key", key).
+				Str("panic", fmt.Sprint(r)).
 				Str("stack", string(buf[:n])).
-				Msgf("panic recovered: %v", r)
+				Msg("reconciler panic recovered")
 		}
 	}()
 
 	err = rec.Reconcile(ctx, key)
 	if err != nil {
 		health.RecordFailure(err, k.degradeThreshold[gvk])
-		metrics.ReconcileTotal.WithLabelValues(gvk, "error").Inc()
+		metrics.RecordReconcile(gvk, "error")
 		return err
 	}
 
 	health.RecordSuccess()
-	metrics.ReconcileTotal.WithLabelValues(gvk, "success").Inc()
+	metrics.RecordReconcile(gvk, "success")
 	return nil
 }
