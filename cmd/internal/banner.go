@@ -58,10 +58,10 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 			continue
 		}
 		if crd.IsInfoEnabled() {
-			fmt.Printf("  - %s%s%s:  %s/katalog/%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
+			fmt.Printf("  - %s%s%s (%s):  %s/katalog/%s%s\n", utils.ColorCyan, crd.APITypes.Kind, crd.Name, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
 		}
 		if crd.IsHealthEnabled() {
-			fmt.Printf("  - %s%s%s:  %s/katalog/%s/health%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
+			fmt.Printf("  - %s%s%s (%s):  %s/katalog/%s/health%s\n", utils.ColorCyan, crd.APITypes.Kind, crd.Name, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
 		}
 	}
 	fmt.Println("====================================================")

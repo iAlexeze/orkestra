@@ -43,7 +43,7 @@ spec:
           - name: ENABLE_CONVERSION
             value: "true"
           - name: ENABLE_WEBHOOKS
-            value: "true"
+            value: "false"
           - name: HEALTH_PORT
             value: "8080"
           - name: ORKESTRA_NAMESPACE
@@ -60,8 +60,8 @@ spec:
         args:
           - run
           - --katalog
-          # - /katalogs/conversion-test-katalog.yaml
-          - /katalogs/website-admission-test-katalog.yaml
+          - /katalogs/conversion-test-katalog.yaml
+          # - /katalogs/website-admission-test-katalog.yaml
 
         ports:
           - containerPort: 8080
@@ -78,7 +78,8 @@ spec:
       volumes:
         - name: katalogs
           configMap:
-            name: website-admission-test-katalog
+            # name: website-admission-test-katalog
+            name: conversion-test-katalog
 
         - name: tls
           secret:
