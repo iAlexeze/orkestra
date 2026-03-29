@@ -34,6 +34,23 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 	fmt.Printf("- Metrics:  %s/metrics%s\n", utils.ColorGreen, utils.ColorReset)
 
 	fmt.Println()
+	fmt.Println("Webhook Endpoints:")
+	if kfg.konfig.AdmissionEnabled() {
+		fmt.Printf("- Muatation:  %s/mutate%s\n", utils.ColorGreen, utils.ColorReset)
+		fmt.Printf("- Validation:  %s/validate%s\n", utils.ColorGreen, utils.ColorReset)
+
+		// Registration configuration
+		fmt.Printf("- Service Name: %s%s%s\n", utils.ColorCyan, kfg.konfig.WebhookRegistration().ServiceName, utils.ColorReset)
+		fmt.Printf("- Service Namespace: %s%s%s\n", utils.ColorCyan, kfg.konfig.WebhookRegistration().ServiceNamespace, utils.ColorReset)
+		fmt.Printf("- Failure Policy: %s%s%s\n", utils.ColorCyan, kfg.konfig.WebhookRegistration().FailurePolicy, utils.ColorReset)
+
+		fmt.Println()
+	}
+	if kfg.konfig.ConversionEnabled() {
+		fmt.Printf("- Conversion: %s/convert%s\n", utils.ColorGreen, utils.ColorReset)
+	}
+
+	fmt.Println()
 	fmt.Println("Katalog Endpoints:")
 	fmt.Printf("- Katalog:  %s/katalog%s\n", utils.ColorGreen, utils.ColorReset)
 	for _, crd := range kfg.katalog.Enabled() {
@@ -81,7 +98,13 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 
 		fmt.Printf("  %sNamespaced:%s    %v\n", utils.ColorYellow, utils.ColorReset,
 			map[bool]string{true: "Yes", false: "No"}[crd.IsNamespaced()])
-		fmt.Printf("  %sWorkers:%s       %d\n", utils.ColorYellow, utils.ColorReset, crd.Workers)
+
+		// Workers
+		if crd.Workers > 0 {
+			fmt.Printf("  %sWorkers:%s       %d\n", utils.ColorYellow, utils.ColorReset, crd.Workers)
+		} else {
+			fmt.Printf("  %sWorkers:%s       %d (default)\n", utils.ColorYellow, utils.ColorReset, kfg.konfig.Cluster().DefaultWorkers)
+		}
 
 		// Queue depth
 		if crd.Queue.MaxQueueDepth > 0 {

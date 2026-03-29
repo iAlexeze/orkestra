@@ -42,6 +42,10 @@ const (
 
 	// Finalizers
 	FinalizerOrkestra = "orkestra.konductor.io/finalizer"
+
+	// HTTPS Port
+	httpsPort      = ":8443"
+	httpsPortInt32 = 8443
 )
 
 var (

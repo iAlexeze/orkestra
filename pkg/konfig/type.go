@@ -1,6 +1,11 @@
 package konfig
 
-import "time"
+import (
+	"strings"
+	"time"
+
+	admissionv1 "k8s.io/api/admissionregistration/v1"
+)
 
 type Konfig struct {
 	ork          orkKonfig
@@ -26,10 +31,10 @@ type healthServer struct {
 }
 
 type clusterKonfig struct {
-	KubekonfigPath   string
-	MasterURL        string
-	Name             string
-	DefaultNamespace string `validate:"required"`
+	KubekonfigPath string
+	MasterURL      string
+	Name           string
+	Namespace      string `validate:"required"`
 
 	// Worload specific
 	DefaultResync  time.Duration
@@ -51,6 +56,25 @@ type webhookConfig struct {
 	// Certificates
 	TLSCert string
 	TLSKey  string
+
+	// Port
+	Port    string
+	PortInt int32
+
+	// Registration
+	WebhookRegistration webhookRegistration
+}
+
+type webhookRegistration struct {
+	ServiceName      string
+	ServiceNamespace string
+	FailurePolicy    string
+
+	TLSCert string // Same as the one above
+
+	// FailurePolicy admissionv1.FailurePolicyType
+	// Used to return the appropriate admission policy type
+	FailurePolicyType admissionv1.FailurePolicyType
 }
 
 type katalogKonfig struct {
@@ -60,10 +84,10 @@ type katalogKonfig struct {
 }
 
 type konductorElection struct {
-	ElectionNamespace string
-	LeaseDuration     time.Duration
-	RenewDeadline     time.Duration
-	RetryPeriod       time.Duration
+	Namespace     string
+	LeaseDuration time.Duration
+	RenewDeadline time.Duration
+	RetryPeriod   time.Duration
 }
 
 // Methods
@@ -121,4 +145,32 @@ func (k *Konfig) WebhookConfig() *webhookConfig {
 // RegistryConfig returns true is enabled
 func (k *Konfig) RegistryConfig() *registryConfig {
 	return &k.registry
+}
+
+// ConversionEnabled returns true if mutation rules
+func (k *Konfig) ConversionEnabled() bool {
+	return k.webhook.EnableConversion
+}
+
+// AdmissionEnabled returns true if admission rules
+func (k *Konfig) AdmissionEnabled() bool {
+	return k.webhook.EnableWebhooks
+}
+
+// WebhookRegistration
+func (k *Konfig) WebhookRegistration() *webhookRegistration {
+	// Convert failurePolicy input to failurePolicyType
+	switch strings.ToLower(k.webhook.WebhookRegistration.FailurePolicy) {
+	case "ignore":
+		k.webhook.WebhookRegistration.FailurePolicyType = admissionv1.Ignore
+	case "fail":
+		k.webhook.WebhookRegistration.FailurePolicyType = admissionv1.Fail
+	default:
+		k.webhook.WebhookRegistration.FailurePolicyType = admissionv1.Ignore
+	}
+
+	// Assign ports and return
+	k.webhook.Port = httpsPort
+	k.webhook.PortInt = httpsPortInt32
+	return &k.webhook.WebhookRegistration
 }

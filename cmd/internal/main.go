@@ -31,7 +31,7 @@ func Konduct(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 			printBanner(startup, konductor)
 		},
 		konductor.Options{
-			Namespace:     kfg.Cluster().DefaultNamespace,
+			Namespace:     kfg.Konductor().Namespace,
 			LeaseDuration: kfg.Konductor().LeaseDuration,
 			RenewDeadline: kfg.Konductor().RenewDeadline,
 			RetryPeriod:   kfg.Konductor().RetryPeriod,

@@ -37,7 +37,7 @@ spec:
 
       containers:
       - name: orkestra
-        image: ialexeze/ork:doit-1
+        image: ialexeze/ork:hookx-1
 
         env:
           - name: ENABLE_CONVERSION
@@ -46,7 +46,7 @@ spec:
             value: "true"
           - name: HEALTH_PORT
             value: "8080"
-          - name: NAMESPACE
+          - name: ORKESTRA_NAMESPACE
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace

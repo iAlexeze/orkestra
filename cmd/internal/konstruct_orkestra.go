@@ -83,10 +83,19 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		kube.Clientset(),
 		kfg.Ork().Name,
 		kfg.Health().Port,
+		kfg.WebhookConfig().Port,
 		kfg.Ork().LogLevel,
 		kat.ConversionRegistry(),
 		kat.AdmissionRegistry(),
-		health.WebhookOptions{
+		health.WebhookRegistrationOptions{
+			FailurePolicy:    kfg.WebhookRegistration().FailurePolicyType,
+			Port:             kfg.WebhookConfig().PortInt,
+			ServiceName:      kfg.WebhookRegistration().ServiceName,
+			ServiceNamespace: kfg.WebhookRegistration().ServiceNamespace,
+			TLSCertFile:      kfg.WebhookRegistration().TLSCert,
+		},
+		health.WebhookConfgurationOptions{
+			WebhooksEnabled:  kfg.WebhookConfig().EnableWebhooks,
 			ConvEnabled:      kfg.WebhookConfig().EnableConversion,
 			TLSCert:          kfg.WebhookConfig().TLSCert,
 			TLSKey:           kfg.WebhookConfig().TLSKey,
@@ -147,7 +156,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		queueRegistry,
 		defaultWq,
 		scheme,
-		kfg.Cluster().DefaultNamespace,
+		kfg.Cluster().Namespace,
 		kfg.Cluster().DefaultResync,
 	)
 
@@ -308,7 +317,14 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		if crd.IsInfoEnabled() {
 			hs.Register(
 				"/katalog/"+crdName,
-				kontroller.BuildCRDInfoHandler(crd, kfg, inf, crdHealth, hs.GetConversionStats(), hs.GetAdmissionStats()),
+				kontroller.BuildCRDInfoHandler(
+					crd,
+					kfg,
+					inf,
+					crdHealth,
+					hs.GetConversionStats(),
+					hs.GetAdmissionStats(),
+				),
 			)
 		}
 

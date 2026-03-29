@@ -55,8 +55,8 @@ func TestRunValidation_Equals_Passes(t *testing.T) {
 	cfg := &orktypes.ValidationConfig{
 		Rules: []orktypes.ValidationRule{
 			{
-				Field: "spec.env", 
-				Equals: "production", 
+				Field:   "spec.env",
+				Equals:  "production",
 				Message: "env must be production",
 			},
 		},
@@ -73,8 +73,8 @@ func TestRunValidation_Equals_Fails(t *testing.T) {
 	cfg := &orktypes.ValidationConfig{
 		Rules: []orktypes.ValidationRule{
 			{
-				Field: "spec.env", 
-				Equals: "production", 
+				Field:   "spec.env",
+				Equals:  "production",
 				Message: "env must be production",
 			},
 		},

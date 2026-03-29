@@ -29,6 +29,16 @@ func NewKatalog(m *merger.Merger, paths ...string) *Katalog {
 	// Register runtime objects
 	ork_runtime.RegisterRuntimeObjects()
 
+	// Build CRDs
+	entries, err = katalog.KomposeKatalogFromYaml(m, paths...)
+	if err != nil {
+		utils.Exit(err)
+	}
+
+	if len(entries) == 0 {
+		utils.Exit(fmt.Errorf("validation error: katalog empty"))
+	}
+
 	// Guard: if ObjectRegistry is empty, user forgot to run ork generate
 	for _, crd := range entries {
 		if len(orktypes.ObjectRegistry) == 0 && !crd.IsDynamic() {
@@ -38,15 +48,6 @@ func NewKatalog(m *merger.Merger, paths ...string) *Katalog {
 			))
 		}
 
-	}
-	// Build CRDs
-	entries, err = katalog.KomposeKatalogFromYaml(m, paths...)
-	if err != nil {
-		utils.Exit(err)
-	}
-
-	if len(entries) == 0 {
-		utils.Exit(fmt.Errorf("validation error: katalog empty"))
 	}
 
 	// Pass to enabled

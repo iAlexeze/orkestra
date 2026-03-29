@@ -30,13 +30,14 @@ type HealthServer struct {
 	healthy atomic.Bool
 	ready   atomic.Bool
 
-	port      string
+	httpPort  string
+	httpsPort string
 	client    string
 	logLevel  string
 	startTime time.Time
 
 	// webhook options
-	opts WebhookOptions
+	opts WebhookConfgurationOptions
 
 	// katalog for conversion rules
 	conversionRegistry katalog.ConversionRegistry
@@ -56,7 +57,7 @@ type HealthServer struct {
 	kubeClient kubernetes.Interface
 }
 
-type WebhookOptions struct {
+type WebhookConfgurationOptions struct {
 	WebhooksEnabled  bool
 	ConvEnabled      bool
 	TLSCert          string
@@ -67,10 +68,11 @@ type WebhookOptions struct {
 // NewHealthServer creates a new health server.
 func NewHealthServer(
 	kubeclient kubernetes.Interface,
-	client, port, logLevel string,
+	client, httpPort, httpsPort, logLevel string,
 	conversionRegistry katalog.ConversionRegistry,
 	admissionRegistry katalog.AdmissionRegistry,
-	opts WebhookOptions,
+	webhookOpts WebhookRegistrationOptions,
+	opts WebhookConfgurationOptions,
 ) *HealthServer {
 	if client == "" {
 		client = "service"
@@ -79,11 +81,13 @@ func NewHealthServer(
 	hs := &HealthServer{
 		kubeClient:         kubeclient,
 		client:             client,
-		port:               port,
+		httpPort:           httpPort,
+		httpsPort:          httpsPort,
 		opts:               opts,
 		mux:                http.NewServeMux(),
 		hookMux:            http.NewServeMux(),
 		logLevel:           logLevel,
+		webhookOpts:        webhookOpts,
 		conversionRegistry: conversionRegistry,
 		admissionRegistry:  admissionRegistry,
 		conversionStats:    NewConversionStats(opts.ConversionWindow),
@@ -98,6 +102,12 @@ func NewHealthServer(
 
 func (h *HealthServer) EnableConversion(certFile, keyFile string) {
 	h.opts.ConvEnabled = true
+	h.opts.TLSCert = certFile
+	h.opts.TLSKey = keyFile
+}
+
+func (h *HealthServer) EnableWebhooks(certFile, keyFile string) {
+	h.opts.WebhooksEnabled = true
 	h.opts.TLSCert = certFile
 	h.opts.TLSKey = keyFile
 }
@@ -130,8 +140,8 @@ func (h *HealthServer) Start(ctx context.Context) error {
 		}
 	}
 
-	if !strings.HasPrefix(h.port, ":") {
-		h.port = ":" + h.port
+	if !strings.HasPrefix(h.httpPort, ":") {
+		h.httpPort = ":" + h.httpPort
 	}
 
 	// health + ready + metrics on HTTP
@@ -145,7 +155,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 	h.mux.Handle("/metrics", promhttp.Handler())
 
 	h.server = &http.Server{
-		Addr:    h.port,
+		Addr:    h.httpPort,
 		Handler: h.mux,
 	}
 
@@ -153,9 +163,9 @@ func (h *HealthServer) Start(ctx context.Context) error {
 	h.healthy.Store(true)
 
 	go func() {
-		logger.Info().Str("port", h.port).Msg("health server listening")
+		logger.Info().Str("port", h.httpPort).Msg("health server listening")
 		if err := h.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error().Err(err).Str("port", h.port).Msg("health server error")
+			logger.Error().Err(err).Str("port", h.httpPort).Msg("health server error")
 		}
 	}()
 
@@ -165,30 +175,38 @@ func (h *HealthServer) Start(ctx context.Context) error {
 	if h.opts.ConvEnabled || h.opts.WebhooksEnabled {
 		if h.opts.ConvEnabled {
 			h.hookMux.HandleFunc("/convert", h.conversionHandler)
+			logger.Info().
+				Str("addr", h.httpsPort).
+				Str("endpoint", "/convert").
+				Msg("conversion webhook endpoint registered")
 		}
 
 		if h.opts.WebhooksEnabled {
 			h.hookMux.HandleFunc("/validate", h.validationHandler)
 			h.hookMux.HandleFunc("/mutate", h.mutationHandler)
 			logger.Info().
-				Str("addr", ":8443").
+				Str("addr", h.httpsPort).
 				Strs("endpoints", []string{"/validate", "/mutate"}).
 				Msg("admission webhook endpoints registered")
 		}
 
+		if !strings.HasPrefix(h.httpPort, ":") {
+			h.httpsPort = ":" + h.httpsPort
+		}
+
 		h.hookSrv = &http.Server{
-			Addr:    ":8443",
+			Addr:    h.httpsPort,
 			Handler: h.hookMux,
 		}
 
 		go func() {
 			logger.Info().
-				Str("addr", ":8443").
+				Str("addr", h.httpsPort).
 				Str("cert_file", h.opts.TLSCert).
 				Str("key_file", h.opts.TLSKey).
 				Msg("https server listening")
 			if err := h.hookSrv.ListenAndServeTLS(h.opts.TLSCert, h.opts.TLSKey); err != nil && err != http.ErrServerClosed {
-				logger.Error().Err(err).Str("addr", ":8443").Msg("https server error")
+				logger.Error().Err(err).Str("addr", h.httpsPort).Msg("https server error")
 			}
 		}()
 

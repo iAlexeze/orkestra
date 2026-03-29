@@ -20,7 +20,7 @@ package health
 //   // Set via SetKubeClient after the HealthServer is constructed.
 //   kubeClient kubernetes.Interface
 
-// ── Additions to WebhookOptions ───────────────────────────────────────────────
+// ── Additions to WebhookConfgurationOptions ───────────────────────────────────────────────
 //
 // Add ENABLE_WEBHOOKS support alongside ENABLE_CONVERSION.
 // In Start(), add:

@@ -150,6 +150,6 @@ func (c *CRDEntry) GetDependencies() []string {
 
 // Returns true when either validation or mutation rules are declared.
 // Used to decide whether to populate the admission block in the health response.
-func (e *CRDEntry) HasValidationOrMutationRules() bool {
-	return len(e.Validation.Rules) > 0 || len(e.Mutation.Rules) > 0
+func (c *CRDEntry) HasValidationOrMutationRules() bool {
+	return len(c.Validation.Rules) > 0 || len(c.Mutation.Rules) > 0
 }
