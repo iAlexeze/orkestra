@@ -1,10 +1,9 @@
 // pkg/reconciler/validation_test.go
-package reconciler_test
+package reconciler
 
 import (
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/reconciler"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -29,7 +28,7 @@ func validationObj(spec map[string]interface{}) *unstructured.Unstructured {
 
 func TestRunValidation_NilConfig_Passes(t *testing.T) {
 	obj := validationObj(map[string]interface{}{})
-	result := reconciler.RunValidation(obj, nil, "Website")
+	result := runValidation(obj, nil, "Website")
 
 	if !result.Passed {
 		t.Error("nil config must return Passed=true")
@@ -42,7 +41,7 @@ func TestRunValidation_NilConfig_Passes(t *testing.T) {
 func TestRunValidation_EmptyRules_Passes(t *testing.T) {
 	obj := validationObj(map[string]interface{}{})
 	cfg := &orktypes.ValidationConfig{}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 
 	if !result.Passed {
 		t.Error("empty rules must return Passed=true")
@@ -55,10 +54,14 @@ func TestRunValidation_Equals_Passes(t *testing.T) {
 	obj := validationObj(map[string]interface{}{"env": "production"})
 	cfg := &orktypes.ValidationConfig{
 		Rules: []orktypes.ValidationRule{
-			{Field: "spec.env", Equals: "production", Message: "env must be production"},
+			{
+				Field: "spec.env", 
+				Equals: "production", 
+				Message: "env must be production",
+			},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 
 	if !result.Passed {
 		t.Errorf("expected pass, got violations: %s", result.ViolationSummary())
@@ -69,10 +72,14 @@ func TestRunValidation_Equals_Fails(t *testing.T) {
 	obj := validationObj(map[string]interface{}{"env": "staging"})
 	cfg := &orktypes.ValidationConfig{
 		Rules: []orktypes.ValidationRule{
-			{Field: "spec.env", Equals: "production", Message: "env must be production"},
+			{
+				Field: "spec.env", 
+				Equals: "production", 
+				Message: "env must be production",
+			},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 
 	if result.Passed {
 		t.Error("expected failure")
@@ -94,7 +101,7 @@ func TestRunValidation_Exists_FieldPresent_Passes(t *testing.T) {
 			{Field: "spec.image", Operator: orktypes.ConditionExists, Message: "image is required"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	if !result.Passed {
 		t.Errorf("exists check should pass when field is present: %s", result.ViolationSummary())
 	}
@@ -107,7 +114,7 @@ func TestRunValidation_Exists_FieldAbsent_Fails(t *testing.T) {
 			{Field: "spec.image", Operator: orktypes.ConditionExists, Message: "image is required"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	if result.Passed {
 		t.Error("exists check should fail when field is absent")
 	}
@@ -122,7 +129,7 @@ func TestRunValidation_Prefix_Passes(t *testing.T) {
 			{Field: "spec.image", Prefix: "myorg/", Message: "image must come from myorg"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	if !result.Passed {
 		t.Errorf("prefix check should pass: %s", result.ViolationSummary())
 	}
@@ -135,7 +142,7 @@ func TestRunValidation_Prefix_Fails(t *testing.T) {
 			{Field: "spec.image", Prefix: "myorg/", Message: "image must come from myorg"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	if result.Passed {
 		t.Error("prefix check should fail when prefix does not match")
 	}
@@ -148,7 +155,7 @@ func TestRunValidation_Suffix_Passes(t *testing.T) {
 			{Field: "spec.image", Suffix: ":1.25", Message: "must pin to 1.25"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	if !result.Passed {
 		t.Errorf("suffix check should pass: %s", result.ViolationSummary())
 	}
@@ -161,7 +168,7 @@ func TestRunValidation_Contains_Passes(t *testing.T) {
 			{Field: "spec.image", Contains: "nginx", Message: "must use nginx"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	if !result.Passed {
 		t.Errorf("contains check should pass: %s", result.ViolationSummary())
 	}
@@ -176,7 +183,7 @@ func TestRunValidation_Min_AtMinValue_Passes(t *testing.T) {
 			{Field: "spec.replicas", Min: "3", Message: "replicas must be >= 3"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	if !result.Passed {
 		t.Errorf("min check at exact value should pass: %s", result.ViolationSummary())
 	}
@@ -189,7 +196,7 @@ func TestRunValidation_Min_BelowMin_Fails(t *testing.T) {
 			{Field: "spec.replicas", Min: "3", Message: "replicas must be >= 3"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	if result.Passed {
 		t.Error("min check should fail when value is below minimum")
 	}
@@ -202,7 +209,7 @@ func TestRunValidation_Max_AtMaxValue_Passes(t *testing.T) {
 			{Field: "spec.replicas", Max: "10", Message: "replicas must be <= 10"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	if !result.Passed {
 		t.Errorf("max check at exact value should pass: %s", result.ViolationSummary())
 	}
@@ -215,7 +222,7 @@ func TestRunValidation_Max_AboveMax_Fails(t *testing.T) {
 			{Field: "spec.replicas", Max: "10", Message: "replicas must be <= 10"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	if result.Passed {
 		t.Error("max check should fail when value exceeds maximum")
 	}
@@ -231,7 +238,7 @@ func TestRunValidation_Min_NonNumericValue_IsSkipped(t *testing.T) {
 		},
 	}
 	// Non-numeric field value with min rule — fails (not skipped)
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	// The test verifies it does not panic; pass/fail depends on implementation
 	_ = result
 }
@@ -249,7 +256,7 @@ func TestRunValidation_MultipleViolations_AllCollected(t *testing.T) {
 			{Field: "spec.image", Operator: orktypes.ConditionExists, Message: "image required"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 
 	if result.Passed {
 		t.Error("expected failure with multiple violations")
@@ -268,7 +275,7 @@ func TestValidationResult_Error_NilWhenPassed(t *testing.T) {
 			{Field: "spec.env", Equals: "production"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	if result.Error() != nil {
 		t.Errorf("expected nil error for passing result, got: %v", result.Error())
 	}
@@ -281,7 +288,7 @@ func TestValidationResult_Error_MessageIncludesViolation(t *testing.T) {
 			{Field: "spec.env", Equals: "production", Message: "must be production"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	err := result.Error()
 	if err == nil {
 		t.Fatal("expected error for failed validation")
@@ -298,7 +305,7 @@ func TestValidationResult_ViolationSummary_EmptyWhenPassed(t *testing.T) {
 			{Field: "spec.env", Equals: "production"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	if result.ViolationSummary() != "" {
 		t.Errorf("expected empty summary for passing result, got %q", result.ViolationSummary())
 	}
@@ -311,7 +318,7 @@ func TestValidationResult_ViolationSummary_NonEmpty(t *testing.T) {
 			{Field: "spec.image", Operator: orktypes.ConditionExists, Message: "image required"},
 		},
 	}
-	result := reconciler.RunValidation(obj, cfg, "Website")
+	result := runValidation(obj, cfg, "Website")
 	if result.ViolationSummary() == "" {
 		t.Error("expected non-empty violation summary for failing result")
 	}

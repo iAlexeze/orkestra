@@ -37,7 +37,7 @@ type MutationChange struct {
 	Type     string // "default" or "override"
 }
 
-// RunMutation applies mutation rules to the CR.
+// runMutation applies mutation rules to the CR.
 //
 // For each rule:
 //   - "default" rules: set the field only if it is currently absent or empty
@@ -49,7 +49,7 @@ type MutationChange struct {
 //
 // Returns a MutationResult. A non-zero Applied count means the CR was patched
 // and the caller should re-read the object before proceeding.
-func RunMutation(
+func runMutation(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
 	obj domain.Object,

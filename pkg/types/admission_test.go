@@ -8,8 +8,8 @@ package orktypes_test
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/stretchr/testify/assert"
 )
 
 // ── EffectiveAction ───────────────────────────────────────────────────────────

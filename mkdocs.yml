@@ -78,6 +78,7 @@ nav:
           - technical-docs/kontroller.md
           - technical-docs/ork-generate.md
           - technical-docs/orkestra-registry.md
+          - technical-docs/conversion-validation-mutation.md
           - technical-docs/CONTRIBUTING.md
       - CLI Reference:
           - reference/cli/index.md

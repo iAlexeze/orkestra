@@ -204,6 +204,17 @@ func (h *HealthServer) Start(ctx context.Context) error {
 						Msg("webhook configuration registration failed — admission interception will not work. Check RBAC for admissionregistration.k8s.io")
 				}
 			}()
+		} else {
+			// log reason
+			if !h.opts.WebhooksEnabled {
+				logger.Debug().Msg("webhook not enabled")
+			}
+			if h.kubeClient == nil {
+				logger.Debug().Msg("kube client not set")
+			}
+			if h.admissionRegistry == nil {
+				logger.Debug().Msg("admission registry not set")
+			}
 		}
 	}
 

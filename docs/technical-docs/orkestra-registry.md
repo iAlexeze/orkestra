@@ -177,9 +177,16 @@ secrets:
 `Create` / `Update` reads the source Secret from `fromNamespace` and creates a copy in the target namespace. Owner references point to the CR — when the CR is deleted, the copy is deleted. The source is not affected.
 
 **Pattern 3 — Distribute to multiple namespaces:**
+
 ```go
-orksecrets.CopyToNamespaces(ctx, kube, obj, spec, []string{"ns-a", "ns-b", "ns-c"})
+orksecrets.CopyToNamespaces(ctx, kube, obj, spec, []string{
+  "ns-a", 
+  "ns-b", 
+  "ns-c",
+  "ns-d",
+})
 ```
+
 Reads the source once. Creates copies in each namespace. More efficient than calling `Create` per namespace.
 
 ---
@@ -283,4 +290,13 @@ The `update` flag is `true` for `onReconcile` — drift correction always uses `
 
 See [Contributing — Adding a resource type](../technical-docs/CONTRIBUTING.md#adding-a-resource-type-to-orkestraregistry) for the complete step-by-step.
 
-The short version: add the `XxxTemplateSource` type, write `Create/Update/Delete/Resolve` functions following the contract above, add a `ResolveXxxTemplate` method to the Resolver, write a `runXxxs` function following the pattern in `run_deployments.go`, and call it from `runTemplateReconcile`.
+!!! note "The short version"
+    To add the `XxxTemplateSource` type,
+    
+    - Write `Create/Update/Delete/Resolve` functions following the contract above
+    
+    - Add a `ResolveXxxTemplate` method to the Resolver
+    
+    - Write a `runXxxs` function following the pattern in `run_deployments.go`, and call it from `runTemplateReconcile`.
+
+    - Write unit test for the new resource type.

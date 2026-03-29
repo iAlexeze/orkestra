@@ -153,8 +153,8 @@ pkg/
     run_pods.go          runPods()
     run_serviceaccounts.go runServiceAccounts()
     conditions.go        evaluateConditions() for when: blocks
-    validation.go        RunValidation() — reconcile-time validation
-    mutation.go          RunMutation() — reconcile-time mutation
+    validation.go        runValidation() — reconcile-time validation
+    mutation.go          runMutation() — reconcile-time mutation
 
   kontroller/
     informer_factory.go  InformerFactory, per-CRD informer creation

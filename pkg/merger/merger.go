@@ -144,7 +144,6 @@ func (m *Merger) ToMeta() orktypes.KatalogMeta {
 }
 
 func (m *Merger) SetRegistryURL(url string) {
-	m.mustBeMerged()
 	m.registryURL = url
 }
 

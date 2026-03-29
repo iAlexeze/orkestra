@@ -6,13 +6,17 @@
 test: vet test-unit
 
 # ── Unit tests ────────────────────────────────────────────────────────────────
-# Runs all pure-logic unit tests.
+# Runs all pure-logic unit tests co-located with the packages they test.
 #
 # Includes:
-#   ./pkg/health/...   — admission evaluation, stats, conversion logic
-#   ./pkg/types/...    — admission, condition, and conversion types
-#   ./pkg/metrics/...  — metric helper smoke tests
-#   ./tests/unit/...   — existing unit test suite
+#   ./pkg/health/...       — admission evaluation, stats, conversion logic
+#   ./pkg/types/...        — admission, condition, and conversion types
+#   ./pkg/metrics/...      — metric helper smoke tests
+#   ./pkg/queue/...        — workqueue and registry tests
+#   ./pkg/merger/...       — registry URL construction, source loading
+#   ./pkg/katalog/...      — dependency graph, topological sort, cycle detection
+#   ./pkg/kontroller/...   — CRD health lifecycle
+#   ./pkg/reconciler/...   — validation rules, mutation patch building, namespace guard
 #
 # Excludes pkg/inspect/test (requires a live Kubernetes cluster).
 #
@@ -24,7 +28,11 @@ test-unit:
 		./pkg/health/... \
 		./pkg/types/... \
 		./pkg/metrics/... \
-		./tests/unit/... \
+		./pkg/queue/... \
+		./pkg/merger/... \
+		./pkg/katalog/... \
+		./pkg/kontroller/... \
+		./pkg/reconciler/... \
 		-v -short -count=1
 
 # ── Race detector ─────────────────────────────────────────────────────────────
@@ -38,7 +46,11 @@ test-race:
 		./pkg/health/... \
 		./pkg/types/... \
 		./pkg/metrics/... \
-		./tests/unit/... \
+		./pkg/queue/... \
+		./pkg/merger/... \
+		./pkg/katalog/... \
+		./pkg/kontroller/... \
+		./pkg/reconciler/... \
 		-short -race -count=1
 
 # ── Integration tests ─────────────────────────────────────────────────────────
@@ -72,7 +84,11 @@ test-coverage:
 		./pkg/health/... \
 		./pkg/types/... \
 		./pkg/metrics/... \
-		./tests/unit/... \
+		./pkg/queue/... \
+		./pkg/merger/... \
+		./pkg/katalog/... \
+		./pkg/kontroller/... \
+		./pkg/reconciler/... \
 		-coverprofile=coverage.out -covermode=atomic -count=1
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report written to coverage.html"
@@ -84,7 +100,11 @@ test-coverage-text:
 		./pkg/health/... \
 		./pkg/types/... \
 		./pkg/metrics/... \
-		./tests/unit/... \
+		./pkg/queue/... \
+		./pkg/merger/... \
+		./pkg/katalog/... \
+		./pkg/kontroller/... \
+		./pkg/reconciler/... \
 		-coverprofile=coverage.out -covermode=atomic -count=1
 	@go tool cover -func=coverage.out | tail -5
 

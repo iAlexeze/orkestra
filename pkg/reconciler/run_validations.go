@@ -78,13 +78,13 @@ func (r *ValidationResult) Error() error {
 	return fmt.Errorf("validation failed: %s", strings.Join(msgs, "; "))
 }
 
-// RunValidation evaluates all validation rules against the CR object.
+// runValidation evaluates all validation rules against the CR object.
 // All rules are evaluated — multiple violations are collected and reported together.
 // Returns a ValidationResult. The caller decides whether to halt reconciliation.
 //
 // Called from generic.go before runTemplateReconcile (or after runMutation
 // when mutateFirst: true).
-func RunValidation(
+func runValidation(
 	obj domain.Object,
 	cfg *orktypes.ValidationConfig,
 	crdName string,

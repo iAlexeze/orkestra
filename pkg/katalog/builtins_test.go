@@ -1,11 +1,10 @@
 // pkg/katalog/builtins_test.go
-package katalog_test
+package katalog
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/katalog"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
@@ -32,7 +31,7 @@ func TestLookupBuiltIn_CoreGroup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.kind, func(t *testing.T) {
-			result := katalog.LookupBuiltIn(tt.kind)
+			result := LookupBuiltIn(tt.kind)
 			if !result.Found {
 				t.Fatalf("expected %q to be found in built-in registry", tt.kind)
 			}
@@ -65,7 +64,7 @@ func TestLookupBuiltIn_AppsGroup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.kind, func(t *testing.T) {
-			result := katalog.LookupBuiltIn(tt.kind)
+			result := LookupBuiltIn(tt.kind)
 			if !result.Found {
 				t.Fatalf("expected %q to be found", tt.kind)
 			}
@@ -87,7 +86,7 @@ func TestLookupBuiltIn_CaseInsensitive(t *testing.T) {
 	variants := []string{"Deployment", "deployment", "DEPLOYMENT", "dEpLoyMeNt"}
 	for _, v := range variants {
 		t.Run(v, func(t *testing.T) {
-			result := katalog.LookupBuiltIn(v)
+			result := LookupBuiltIn(v)
 			if !result.Found {
 				t.Errorf("expected %q to resolve to Deployment", v)
 			}
@@ -102,7 +101,7 @@ func TestLookupBuiltIn_NotFound(t *testing.T) {
 	unknowns := []string{"Website", "MyApp", "CustomCRD", ""}
 	for _, kind := range unknowns {
 		t.Run(kind, func(t *testing.T) {
-			result := katalog.LookupBuiltIn(kind)
+			result := LookupBuiltIn(kind)
 			if result.Found {
 				t.Errorf("expected %q to NOT be found in built-in registry", kind)
 			}
@@ -124,7 +123,7 @@ func TestLookupBuiltIn_CanonicalKindName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			result := katalog.LookupBuiltIn(tt.input)
+			result := LookupBuiltIn(tt.input)
 			if !result.Found {
 				t.Fatalf("expected %q to be found", tt.input)
 			}
@@ -136,7 +135,7 @@ func TestLookupBuiltIn_CanonicalKindName(t *testing.T) {
 }
 
 func TestAllBuiltInKinds_Sorted(t *testing.T) {
-	kinds := katalog.AllBuiltInKinds()
+	kinds := AllBuiltInKinds()
 
 	if len(kinds) == 0 {
 		t.Fatal("expected non-empty built-in kind list")
@@ -151,7 +150,7 @@ func TestAllBuiltInKinds_Sorted(t *testing.T) {
 }
 
 func TestAllBuiltInKinds_NoInternalAliases(t *testing.T) {
-	kinds := katalog.AllBuiltInKinds()
+	kinds := AllBuiltInKinds()
 	for _, k := range kinds {
 		if strings.Contains(k, "_") {
 			t.Errorf("internal alias leaked into AllBuiltInKinds: %q", k)
@@ -169,7 +168,7 @@ func TestEnrichCRDEntry_KindOnly_Deployment(t *testing.T) {
 		},
 	}
 
-	outcome, err := katalog.EnrichCRDEntry(entry)
+	outcome, err := EnrichCRDEntry(entry)
 
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
@@ -200,7 +199,7 @@ func TestEnrichCRDEntry_KindOnly_Pod(t *testing.T) {
 		APITypes: orktypes.APITypes{Kind: "Pod"},
 	}
 
-	outcome, err := katalog.EnrichCRDEntry(entry)
+	outcome, err := EnrichCRDEntry(entry)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -229,7 +228,7 @@ func TestEnrichCRDEntry_KindOnly_Namespace_ClusterScoped(t *testing.T) {
 		APITypes: orktypes.APITypes{Kind: "Namespace"},
 	}
 
-	_, err := katalog.EnrichCRDEntry(entry)
+	_, err := EnrichCRDEntry(entry)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -249,7 +248,7 @@ func TestEnrichCRDEntry_FullySpecified_NotNeeded(t *testing.T) {
 		},
 	}
 
-	outcome, err := katalog.EnrichCRDEntry(entry)
+	outcome, err := EnrichCRDEntry(entry)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -270,7 +269,7 @@ func TestEnrichCRDEntry_UnknownKind_Error(t *testing.T) {
 		// group, version, plural all empty — looks like kind-only but not a built-in
 	}
 
-	outcome, err := katalog.EnrichCRDEntry(entry)
+	outcome, err := EnrichCRDEntry(entry)
 
 	if err == nil {
 		t.Fatal("expected error for unknown kind with missing apiTypes fields")
@@ -299,7 +298,7 @@ func TestEnrichCRDEntry_PartiallySpecified_Error(t *testing.T) {
 		},
 	}
 
-	outcome, err := katalog.EnrichCRDEntry(entry)
+	outcome, err := EnrichCRDEntry(entry)
 
 	if err == nil {
 		t.Fatal("expected error for partially specified apiTypes")
@@ -319,7 +318,7 @@ func TestEnrichCRDEntry_CaseNormalization(t *testing.T) {
 		APITypes: orktypes.APITypes{Kind: "deployment"},
 	}
 
-	_, err := katalog.EnrichCRDEntry(entry)
+	_, err := EnrichCRDEntry(entry)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
