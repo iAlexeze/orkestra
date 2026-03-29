@@ -192,7 +192,8 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	// Always patch status — best-effort, never fails reconcile.
 	// Called with the outcome so Ready condition reflects reality.
 	// Must run before the error return so Ready=False is written on failure.
-	r.updatedPatchStatus(ctx, obj, err)
+	// r.updatedPatchStatus(ctx, obj, err)
+	r.patchStatusWithChildren(ctx, obj, err) // Layer 3: read children only on success — no point reading
 
 	if err != nil {
 		logger.FromContext(ctx).Error().Err(err).

@@ -285,7 +285,7 @@ func (r *GenericReconciler[T]) updatedPatchStatus(ctx context.Context, obj T, re
 	}
 }
 
-// ── Layer 3 design (not yet implemented) ─────────────────────────────────
+// ── Layer 3 design ─────────────────────────────────
 //
 // Layer 3 adds a "children" context to the resolver, allowing status fields
 // to reference child resource state:
@@ -308,6 +308,61 @@ func (r *GenericReconciler[T]) updatedPatchStatus(ctx context.Context, obj T, re
 // for resources in different namespaces or of types not watched by this instance.
 //
 // This is the Layer 3 milestone. Layer 1 and Layer 2 ship first.
+
+// ── patchStatusWithChildren ───────────────────────────────────────────────
+func (r *GenericReconciler[T]) patchStatusWithChildren(
+	ctx context.Context, obj T, reconcileErr error,
+) {
+	statusPatch := map[string]interface{}{}
+
+	// Layer 1: standard Ready condition — always
+	if r.rc.Status.ConditionsEnabled() {
+		cond := buildReadyCondition(reconcileErr, obj.GetGeneration())
+		statusPatch["conditions"] = []interface{}{cond}
+		statusPatch["observedGeneration"] = obj.GetGeneration()
+	}
+
+	// Layer 2 + 3: declarative fields — only on success
+	if reconcileErr == nil && r.rc.Status.HasFields() {
+		resolver, err := orktmpl.NewResolver(ctx, obj)
+		if err != nil {
+			logger.FromContext(ctx).Warn().Err(err).
+				Msg("status: failed to build resolver")
+			goto apply
+		}
+
+		// Layer 3: read child resource state and extend the resolver
+		// Only reads resources declared in the Katalog — bounded API cost
+		if r.rc.OnCreate != nil || r.rc.OnReconcile != nil {
+			children := ReadChildren(ctx, r.kube, obj, resolver, r.rc)
+			if len(children) > 0 {
+				resolver = resolver.WithChildren(children)
+			}
+		}
+
+		// Layer 2: resolve declarative status fields
+		// The resolver now has .children available in template expressions
+		fields, err := resolver.ResolveStatusFields(r.rc.Status.Fields)
+		if err != nil {
+			logger.FromContext(ctx).Warn().Err(err).
+				Msg("status: some fields failed to resolve")
+		}
+		for k, v := range fields {
+			statusPatch[k] = v
+		}
+	}
+
+apply:
+	if len(statusPatch) == 0 {
+		return
+	}
+
+	if err := r.kube.PatchStatus(ctx, obj, r.crd.GVR, statusPatch); err != nil {
+		logger.FromContext(ctx).Debug().Err(err).
+			Str("name", obj.GetName()).
+			Msg("status: patch failed — CRD may not have status subresource")
+	}
+}
 
 // childrenKey is the template context key for child resource state.
 // Reserved for Layer 3.

@@ -22,6 +22,7 @@ nav:
   - Concepts:
       - runtime-manual/concepts/index.md
       - runtime-manual/concepts/katalog.md
+      - runtime-manual/concepts/status-management.md
       - runtime-manual/concepts/komposer.md
       - runtime-manual/concepts/validation.md
       - runtime-manual/concepts/mutation.md
@@ -98,6 +99,7 @@ nav:
 - Reference:
     - reference/index.md
     - reference/katalog-schema.md
+    - reference/katalog-schema-status.md
     - reference/komposer-schema.md
     - reference/registry-schema.md
     - reference/validation-schema.md
