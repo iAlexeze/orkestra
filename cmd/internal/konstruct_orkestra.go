@@ -352,6 +352,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		crdHealthMap,
 		kfg.Cluster().DefaultWorkers,
 		katalog.NewDependencyGraph(kat),
+		kfg.Cluster().ShutdownTimeout,
 	)
 
 	// ── 7 Komponent list ─────────────────────────────────────────────────────
@@ -370,7 +371,10 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// Owns the full lifecycle of all komponents.
 	// Start  : sequential, in registration order.
 	// Shutdown: reverse order, on OS signal or fatal error.
-	o := ork.NewOrkestra(kfg.Cluster().DefaultResync, kfg.Ork().LogLevel)
+	o := ork.NewOrkestra(
+		kfg.Cluster().ShutdownGrace,
+		kfg.Ork().LogLevel,
+	)
 	o.Register(komponents)
 
 	return &orkestraKfg{

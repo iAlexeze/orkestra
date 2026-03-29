@@ -37,8 +37,10 @@ type clusterKonfig struct {
 	Namespace      string `validate:"required"`
 
 	// Worload specific
-	DefaultResync  time.Duration
-	DefaultWorkers int
+	DefaultResync   time.Duration
+	DefaultWorkers  int
+	ShutdownTimeout time.Duration
+	ShutdownGrace   time.Duration
 }
 
 type registryConfig struct {

@@ -145,7 +145,7 @@ func (k *Kubeclient) RestConfig() *rest.Config { return k.restConfig }
 func (k *Kubeclient) Clientset() kubernetes.Interface { return k.clientset }
 
 // Dynamic returns yhe dynamic interface. Useful in 'dynamic' reconciler mode
-func (k *Kubeclient) Dynamic() dynamic.Interface { return k.dynamic }
+func (k *Kubeclient) DynamicClient() dynamic.Interface { return k.dynamic }
 
 // Scheme returns the runtime scheme for yhe kubeclient
 func (k *Kubeclient) Scheme() *runtime.Scheme { return k.scheme }

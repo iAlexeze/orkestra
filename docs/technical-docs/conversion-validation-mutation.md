@@ -104,7 +104,7 @@ runMutation(ctx, kube, obj, cfg, gvr, crdName)
   │
   ├─ same rule evaluation logic as Path 1
   ├─ if any fields changed: builds a merge patch (not JSON patch)
-  └─ patches the object via kube.Dynamic().Resource(gvr).Patch(...)
+  └─ patches the object via kube.DynamicClient().Resource(gvr).Patch(...)
 ```
 
 The reconciler applies the patch back to the live object via the Kubernetes API. The caller should re-read the object from the informer cache after this returns with `Applied > 0`.

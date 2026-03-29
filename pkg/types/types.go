@@ -899,6 +899,11 @@ type ReconcilerConfig struct {
 	// Constructor — called once at startCRDWorkers time to build a custom reconciler.
 	// Must not be nil when Default: false — enforced by Katalog validation at startup.
 	Constructor NewReconcilerFunc `yaml:"-"`
+
+	// Status declares how Orkestra manages the CR's /status subresource.
+	// nil (default): Layer 1 only — standard Ready condition after every reconcile.
+	// non-nil: Layer 1 + Layer 2 declarative fields from Status.Fields.
+	Status *StatusConfig `yaml:"status,omitempty"`
 }
 
 // HookDeclaration declares where a Go hook function lives.

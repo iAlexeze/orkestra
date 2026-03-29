@@ -186,8 +186,13 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 		logger.FromContext(ctx).Info().
 			Str("name", obj.GetName()).
 			Msgf("reconciled %s (no-op)", r.crd.GVK)
-		return nil
+		// Status still patched for no-op reconcilers
 	}
+
+	// Always patch status — best-effort, never fails reconcile.
+	// Called with the outcome so Ready condition reflects reality.
+	// Must run before the error return so Ready=False is written on failure.
+	r.updatedPatchStatus(ctx, obj, err)
 
 	if err != nil {
 		logger.FromContext(ctx).Error().Err(err).

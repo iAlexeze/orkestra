@@ -163,11 +163,11 @@ func runMutation(
 
 	ns := obj.GetNamespace()
 	if ns != "" {
-		resource = kube.Dynamic().Resource(gvr).Namespace(ns).(interface {
+		resource = kube.DynamicClient().Resource(gvr).Namespace(ns).(interface {
 			Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (*unstructured.Unstructured, error)
 		})
 	} else {
-		resource = kube.Dynamic().Resource(gvr).(interface {
+		resource = kube.DynamicClient().Resource(gvr).(interface {
 			Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (*unstructured.Unstructured, error)
 		})
 	}
