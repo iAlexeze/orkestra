@@ -3,6 +3,12 @@
 A **Komposer** composes multiple Katalogs into one runtime. Where a Katalog
 declares CRDs, a Komposer declares where to find them.
 
+!!! tip "komposer is not a CRD"
+    A komposer is not a CRD and [here is why](../../faqs/why-not-crds.md).
+
+---
+
+## A Simple Komposer?
 ```yaml
 apiVersion: orkestra.konductor.io/v1Alpha
 kind: Komposer          # ← the distinction

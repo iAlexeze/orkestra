@@ -194,14 +194,20 @@ type resolvedChildName struct {
 }
 
 // firstValue returns the first value from a map[string]interface{}.
-// Returns nil when the map is empty.
+// Returns an empty object with an empty status map when the map is empty,
+// so that templates using {{ .children.deployment.status.readyReplicas }}
+// resolve to "" via missingkey=zero rather than nil-pointer-dereference.
 // Used to provide the singular shorthand: .children.deployment (instead of
 // requiring .children.deployments["my-site-deployment"] in the common case).
 func firstValue(m map[string]interface{}) interface{} {
 	for _, v := range m {
 		return v
 	}
-	return nil
+	// Resource not yet created or name resolution failed.
+	// Return a placeholder so template field access is safe.
+	return map[string]interface{}{
+		"status": map[string]interface{}{},
+	}
 }
 
 // mergeTemplates merges onCreate and onReconcile templates into one set.

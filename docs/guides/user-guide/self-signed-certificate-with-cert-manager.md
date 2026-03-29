@@ -1,16 +1,16 @@
 # 🟣 Using cert‑manager to Generate TLS Certificates for Orkestra
 
-> !!! tip 
-> This is the recommended method for production clusters.  
-> cert‑manager handles certificate issuance, rotation, and CA trust automatically.
+!!! tip "Recommended!" 
+    This is the recommended method for production clusters.  
+    cert‑manager handles certificate issuance, rotation, and CA trust automatically.
 
-> !!! warning
-> If you previously installed a self‑signed certificate manually,  
-> **delete the old secret** before switching to cert‑manager:
->
-> ```bash
-> kubectl delete secret orkestra-tls -n orkestra
-> ```
+!!! warning
+    If you previously installed a self‑signed certificate manually,  
+    **delete the old secret** before switching to cert‑manager:
+
+```bash
+ kubectl delete secret orkestra-tls -n orkestra
+```
 
 ---
 
@@ -130,6 +130,6 @@ conversion:
       caBundle: <base64-ca-from-secret>
 ```
 
-> !!! note
-> cert‑manager **does not automatically patch CRDs**.  
-> You must embed the CA bundle manually or automate it with a small controller.
+!!! note
+    cert‑manager **does not automatically patch CRDs**.  
+    You must embed the CA bundle manually or automate it with a small controller.

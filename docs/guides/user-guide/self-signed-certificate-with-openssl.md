@@ -3,18 +3,18 @@
 Orkestra’s conversion webhook requires TLS.  
 This guide walks you through generating a **self‑signed certificate** suitable for development and testing.
 
-> !!! warning
-> **Self‑signed certificates are strongly discouraged in production.** 
+!!! warning
+    **Self‑signed certificates are strongly discouraged in production.** 
 
-> They are not trusted by default, cannot be revoked, and require manual CA distribution.  
+    They are not trusted by default, cannot be revoked, and require manual CA distribution.  
 
-> For production clusters, use:
+    For production clusters, use:
 
-> - A real Certificate Authority (public or private)
+    - A real Certificate Authority (public or private)
 
-> - [cert‑manager](./self-signed-certificate-with-cert-manager.md) with a proper Issuer
+    - [cert‑manager](./self-signed-certificate-with-cert-manager.md) with a proper Issuer
 
-> - Your organization’s PKI
+    - Your organization’s PKI
 
 ---
 
@@ -60,8 +60,8 @@ DNS.3 = orkestra.orkestra.svc
 DNS.4 = orkestra.orkestra.svc.cluster.local
 ```
 
-> !!! tip 
-> These SANs must match the service name defined in your CRD’s webhook configuration.
+!!! tip 
+    These SANs must match the service name defined in your CRD’s webhook configuration.
 
 ---
 
@@ -77,9 +77,9 @@ openssl req -x509 -new -nodes \
   -subj "/CN=orkestra-ca"
 ```
 
-> !!! note
-> This CA will be used only to sign the webhook certificate.  
-> Kubernetes will trust this CA because you will embed it in the CRD.
+!!! note
+    This CA will be used only to sign the webhook certificate.  
+    Kubernetes will trust this CA because you will embed it in the CRD.
 
 ---
 
@@ -124,8 +124,8 @@ kubectl create secret tls orkestra-tls \
   -n orkestra
 ```
 
-> !!! tip 
-> Orkestra mounts this secret at `/tls/tls.crt` and `/tls/tls.key`.
+!!! tip 
+    Orkestra mounts this secret at `/tls/tls.crt` and `/tls/tls.key`.
 
 ---
 
@@ -151,8 +151,7 @@ conversion:
       caBundle: <BASE64_CA_CERT>
 ```
 
-> !!! warning
-> If the CA does not match the certificate used by the webhook server,  
-> Kubernetes will reject all conversion requests with:
->
-> `x509: certificate signed by unknown authority`
+!!! warning
+    If the CA does not match the certificate used by the webhook server,  
+    Kubernetes will reject all conversion requests with:
+    `x509: certificate signed by unknown authority`

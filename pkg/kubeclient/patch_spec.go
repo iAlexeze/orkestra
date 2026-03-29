@@ -12,17 +12,17 @@ import (
 
 // pkg/kubeclient/patch_spec.go
 func (k *Kubeclient) PatchSpec(
-    ctx context.Context,
-    obj domain.Object,
-    gvr schema.GroupVersionResource,
-    specFields map[string]interface{},
+	ctx context.Context,
+	obj domain.Object,
+	gvr schema.GroupVersionResource,
+	specFields map[string]interface{},
 ) error {
-    patch := map[string]interface{}{"spec": specFields}
-    patchBytes, _ := json.Marshal(patch)
+	patch := map[string]interface{}{"spec": specFields}
+	patchBytes, _ := json.Marshal(patch)
 
-    _, err := k.DynamicClient().
-        Resource(gvr).
-        Namespace(obj.GetNamespace()).
-        Patch(ctx, obj.GetName(), types.MergePatchType, patchBytes, metav1.PatchOptions{})
-    return err
+	_, err := k.DynamicClient().
+		Resource(gvr).
+		Namespace(obj.GetNamespace()).
+		Patch(ctx, obj.GetName(), types.MergePatchType, patchBytes, metav1.PatchOptions{})
+	return err
 }

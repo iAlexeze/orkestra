@@ -216,10 +216,10 @@ theme:
     - navigation.footer
   icon:
     repo: fontawesome/brands/github
-  favicon: assets/ork-logo-white.png
+  favicon: assets/fav.png
   font:
     text: Work Sans
-  logo: assets/ork-logo-white.png
+  logo: assets/fav.png
   name: material
   palette:
   - media: '(prefers-color-scheme: light)'

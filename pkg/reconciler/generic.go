@@ -59,6 +59,8 @@ type CRDInfo struct {
 	Finalizers       []string
 	ReconcilerConfig orktypes.ReconcilerConfig
 	Operator         string
+	Validation       *orktypes.ValidationConfig
+	Mutation         *orktypes.MutationConfig
 }
 
 func NewGenericReconciler[T domain.Object](
@@ -169,6 +171,34 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 // Priority: Go hooks → declarative templates → no-op.
 func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	var err error
+
+	// ── Reconcile-time mutation and validation ────────────────────────────────
+	// Ordering respects MutationConfig.MutateFirst:
+	//   false (default) — validate → mutate valid objects → reconcile
+	//   true            — mutate first (apply defaults) → validate → reconcile
+	//
+	// Mutation failures are non-fatal: logged, reconcile continues.
+	// Validation deny failures halt reconcile and return an error.
+
+	if r.crd.Mutation != nil && r.crd.Mutation.MutateFirst {
+		if mutErr := r.applyReconcileTimeMutation(ctx, obj); mutErr != nil {
+			logger.FromContext(ctx).Warn().Err(mutErr).
+				Str("name", obj.GetName()).
+				Msg("reconcile mutation failed")
+		}
+	}
+
+	if valErr := r.applyReconcileTimeValidation(ctx, obj); valErr != nil {
+		return valErr
+	}
+
+	if r.crd.Mutation == nil || !r.crd.Mutation.MutateFirst {
+		if mutErr := r.applyReconcileTimeMutation(ctx, obj); mutErr != nil {
+			logger.FromContext(ctx).Warn().Err(mutErr).
+				Str("name", obj.GetName()).
+				Msg("reconcile mutation failed")
+		}
+	}
 
 	switch {
 	case r.hooks.OnReconcile != nil:

@@ -133,7 +133,9 @@ When Orkestra receives SIGTERM or the context is cancelled, shutdown runs in rev
 This ensures that no reconcile is abandoned mid-execution. A CR that is being reconciled when SIGTERM arrives will complete its reconcile before the process exits.
 
 !!! note "In-flight reconcile timeout"
-    There is no explicit timeout on in-flight reconciles during shutdown. If a
-    reconcile is waiting on a slow external API call or has entered an infinite
-    loop, shutdown will wait indefinitely. Use `context.WithTimeout` in hooks
-    to prevent this.
+    Shutdown is bounded by SHUTDOWN_TIMEOUT (default 30 seconds) and
+    SHUTDOWN_GRACE_PERIOD (default 60 seconds).
+
+    SHUTDOWN_TIMEOUT (per-CRD worker drain) — how long to wait for in-flight reconciles
+
+    SHUTDOWN_GRACE_PERIOD (outer safety net) — how long before we force-exit regardless

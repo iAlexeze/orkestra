@@ -1,33 +1,39 @@
 <div align="center">
-
-<img src="./docs/assets/ork-logo-white.png" alt="Orkestra Logo" height="120" style="vertical-align: middle">
-<br>
-          O R K E S T R A
-
-**CRDs in. Operators out.**
-<br>
-<br>
-The Kubernetes operator runtime that needs no Programming Language.
-<br>
-<br>
-
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8.svg)](https://golang.org/)
-[![Kubernetes](https://img.shields.io/badge/Kubernetes-1.28+-326CE5.svg)](https://kubernetes.io/)
-[![Release](https://img.shields.io/github/v/release/orkestra-sh/orkestra)](https://github.com/orkestra-sh/orkestra/releases)
-
+  <img src="./docs/assets/fav.png" alt="Orkestra" height="96" />
+  <h1>Orkestra</h1>
+  <p><strong>The Kubernetes operator runtime that needs no programming language.</strong></p>
+  <p>
+    <a href="https://goreportcard.com/report/github.com/orkestra-sh/orkestra">
+      <img src="https://goreportcard.com/badge/github.com/ialexeze/orkestra" alt="Go Report Card" />
+    </a>
+    <a href="https://github.com/orkestra-sh/orkestra/releases">
+      <img src="https://img.shields.io/github/v/release/orkestra-sh/orkestra" alt="Release" />
+    </a>
+    <img src="https://img.shields.io/badge/Go-1.22+-00ADD8.svg" alt="Go Version" />
+    <img src="https://img.shields.io/badge/Kubernetes-1.28+-326CE5.svg" alt="Kubernetes" />
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
+  </p>
+  <p>
+    <a href="https://orkestra.readthedocs.io">Documentation</a> ·
+    <a href="https://orkestra.readthedocs.io/en/latest/getting-started">Getting Started</a> ·
+    <a href="https://github.com/orkestra-sh/orkestra/discussions">Discussions</a>
+  </p>
 </div>
 
 ---
 
-## What is Orkestra?
+You have a CRD. Kubernetes stores it, validates it, and serves it. The only missing piece is something that watches it and acts on it — an operator.
 
-Orkestra turns CRDs into operators. You write a **Katalog** YAML describing what you want. Orkestra handles the rest: create, reconcile, drift-correct, delete.
+Traditionally, that means weeks of Go: informers, workqueues, reconcile loops, code generation, Docker builds, Helm charts. Every operator is a software project.
+
+Orkestra removes that entirely. You declare what the operator should do. Orkestra runs it.
 
 ```yaml
-# katalog.yaml — a complete operator
+# This is a complete, production-grade operator.
 apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
+metadata:
+  name: website-operator
 spec:
   crds:
     - name: website
@@ -35,6 +41,7 @@ spec:
         group: demo.orkestra.io
         version: v1alpha1
         kind: Website
+        plural: websites
       reconciler:
         default: true
         onCreate:
@@ -52,160 +59,237 @@ spec:
 ork run --katalog katalog.yaml
 ```
 
-Apply a `Website` CR and Orkestra creates the Deployment and Service. Change the CR, Orkestra reconciles. Delete it, Orkestra cleans up.
-
-> **If you have a CRD, you already have everything you need. The rest is just a Katalog.**
+Apply a `Website` CR. Orkestra creates the Deployment and Service, sets owner references, emits events, and exposes a health endpoint — without a single line of Go written.
 
 ---
 
-## The Orkestra Model
+## What you get for free
 
-Here is the entire mental model of Orkestra in one diagram:
+Every CRD declared in a Katalog receives a complete, isolated operator stack:
 
-```mermaid
-flowchart LR
- subgraph Input["User Input"]
-        A[("Your CRD<br>(YAML schema)")]
-        B[("Katalog<br>(YAML logic)")]
-  end
- subgraph Output["Orkestra"]
-        C[("Orkestra Runtime")]
-        D[("OrkestraRegistry")]
-  end
-    A -- schema defines what --> C
-    B -- logic defines how --> C
-    C -- uses --> D
-    D -- provides implementations --> C
-    C -- manages --> K8s["Kubernetes API"]
+| What | Details |
+|---|---|
+| **Informer** | Watches your exact GVK and API version |
+| **Workqueue** | Per-CRD, deduplicated, rate-limited |
+| **Worker pool** | Configurable concurrency, isolated from other CRDs |
+| **Drift correction** | `reconcile: true` on any resource — corrected on every cycle |
+| **Owner references** | All child resources cascade-deleted with the CR |
+| **Finalizer management** | CRs protected from dirty deletion automatically |
+| **Kubernetes events** | Every reconcile emits a traceable event |
+| **Leader election** | Only one instance reconciles; followers maintain warm caches |
+| **Health API** | `/katalog/website/health`, `/katalog/website`, `/metrics` |
+| **Prometheus metrics** | Reconcile totals, queue depth, error rate — per CRD |
+| **Status management** | `Ready` condition + declarative status fields after every reconcile |
 
-    style A fill:transparent,stroke:#333,stroke-width:2px
-    style B fill:transparent,stroke:#333,stroke-width:2px
-    style C fill:#FF6D00,stroke:#333,stroke-width:4px,color:#FFFFFF
-    style D fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
-    style K8s fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
+Fifteen CRDs. One Orkestra instance. ~47 MB.
+
+---
+
+## Admission policy without a webhook server
+
+Validation and mutation rules live in the Katalog. No webhook server, no TLS certificate management, no separate deployment.
+
+```yaml
+validation:
+  - field: spec.image
+    prefix: "myorg/"
+    message: "images must come from the internal registry"
+    action: deny
+
+mutation:
+  - field: spec.replicas
+    default: "2"
 ```
 
-> **CRD → Katalog → Operator**  
-> If Kubernetes can store it, Orkestra can reconcile it.
+When `ENABLE_WEBHOOKS=true`, these rules intercept `kubectl apply` synchronously — rejection happens before the CR is stored. The same rules run at reconcile time for CRs that existed before the webhook was enabled. One declaration. Two enforcement points.
 
 ---
 
-## Features
+## Declarative version conversion
 
-| Capability | Description |
-|------------|-------------|
-| **Zero code** | No Go, no Python, no controller boilerplate. Just YAML. |
-| **Built‑in resources** | Pods, Deployments, Secrets — Kubernetes knows the rest. |
-| **Dependencies** | Declare `dependsOn` — Orkestra starts CRDs in order and shuts down in reverse. |
-| **Per‑CRD separation** | Each CRD gets its own informers, workqueue, and worker pool. |
-| **Admission policy** | Declare validation and mutation rules in the Katalog. No webhook server, no Go code, no cert management. |
-| **Version conversion** | Multi‑version CRDs with declarative conversion paths. No conversion functions to write. |
-| **Observability** | Health endpoints, Prometheus metrics, `ork status`. |
-| **Composition** | Komposer merges Katalogs from files, Helm, URLs. |
-| **Registry** | Reusable operator patterns — the standard Orkestra library for Kubernetes. |
+Multi-version CRDs with zero conversion code. No Go. No separate webhook deployment. No TLS to manage beyond the one certificate Orkestra already uses.
 
---- 
-## Why Orkestra?
+```yaml
+conversion:
+  storageVersion: v1
+  paths:
+    - from: v1alpha1
+      to: v1
+      spec:
+        image: "{{ .spec.image }}"
+        replicas: "{{ .spec.replicas }}"
+        seo:
+          enabled: false
+```
 
-Kubernetes made infrastructure declarative — but operators never caught up.  
-They still require Go code, controller boilerplate, code generation, and a full software lifecycle.
-
-Orkestra removes that barrier.
-
-- **Your CRD becomes your operator.**  
-- **Your YAML becomes your logic.**  
-- **Your runtime becomes the controller.**
-
-No SDKs.
-No scaffolding.
-No rebuilds.
-No redeploys.
-
-Orkestra brings operators back to the Kubernetes model:
-**declarative, composable, observable, and safe.**
+**Production result:** 62 conversions. 0 failures. 0.5 ms average latency.
 
 ---
 
-## By the numbers
+## Declarative status
 
-| | Traditional operators | Orkestra |
-|---|---|---|
-| **First working operator** | 3–6 weeks | < 1 hour |
-| **Memory for 15 CRDs** | 750 MB–3 GB | ~47 MB |
-| **Conversion latency** | 2–5 ms (external webhook) | 0.5 ms (in-process) |
-| **Admission policy** | 1 week (webhook server + Go) | One Katalog rule |
-| **Deployment manifests** | 15 (one per operator) | 1 |
+Status fields are declared alongside reconcile templates and resolved from the live CR and its child resources:
+
+```yaml
+status:
+  fields:
+    - path: phase
+      value: "Running"
+    - path: readyReplicas
+      value: "{{ .children.deployment.status.readyReplicas }}"
+    - path: endpoint
+      value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+```
+
+After every successful reconcile:
+
+```yaml
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+      reason: ReconcileSucceeded
+  phase: Running
+  readyReplicas: "2"
+  endpoint: my-site.default.svc.cluster.local
+```
 
 ---
 
-## Get started
+## Composable operator definitions
 
-You need a Kubernetes cluster (1.28+) and the `ork` CLI. Orkestra automatically discovers your cluster from your kubeconfig — no extra setup required.
+The Komposer composes Katalogs from multiple sources — files, Helm charts, Git repositories, OCI registries — into one runtime:
+
+```yaml
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Komposer
+metadata:
+  name: platform
+sources:
+  registry:
+    - url: ghcr.io/konduktor-io/orkestra-registry/postgres@v14
+      oci: true
+  files:
+    - ./katalogs/website.yaml
+spec:
+  crds:
+    - name: postgres
+      workers: 8        # override for production
+```
+
+Platform teams publish patterns. Application teams compose and override. The registry is OCI — distributed and versioned like container images.
+
+---
+
+## Install
 
 ```bash
-# Install
+# macOS / Linux (Homebrew)
 brew install iAlexeze/tap/ork
-# or
+
+# Linux / macOS (curl)
 curl -sSL https://raw.githubusercontent.com/orkestra-sh/orkestra/main/install.sh | bash
 
-# Create an operator
+# Verify
+ork version
+```
+
+---
+
+## Quick start
+
+```bash
+# Scaffold a new operator project
 ork init my-operator
 cd my-operator
 
-# Run it
+# Install the example CRD
+kubectl apply -f examples/website/website-crd.yaml
+
+# Start the operator
 ork run --katalog examples/website/website-katalog.yaml
-```
 
-You now have a running operator. Apply a sample CR:
-
-```bash
+# Apply a CR (in another terminal)
 kubectl apply -f examples/website/website-cr.yaml
+
+# Watch it reconcile
+ork status
+kubectl get deployments
 ```
-
-See the operator in action:
-
-```bash
-ork status -w
-curl localhost:8080/katalog/website/health
-```
-
-For detailed installation options, GPG verification, and production deployment, see the [Installation Guide](https://orkestra.readthedocs.io/en/latest/guides/user-guide/deployment/#installation).
 
 ---
 
-> For a step‑by‑step walkthrough of what happens during reconcile, see  
-> 👉 **[Start Here](https://orkestra.readthedocs.io/en/latest/guides/user-guide/getting-started/#what-just-happened)**.
+## The numbers
 
+| | Traditional | Orkestra |
+|---|---|---|
+| First working operator | 3–6 weeks | < 1 hour |
+| Memory for 15 CRDs | 750 MB–3 GB | ~47 MB |
+| Conversion latency | 2–5 ms (external webhook) | 0.5 ms (in-process) |
+| Admission policy setup | 1 week | One Katalog rule |
+| Deployment manifests | 15 (one per operator) | 1 |
+| On-call runbooks | 15 (one per operator) | 1 |
 
 ---
 
-## Safety by Design
+## When you do need Go
 
-Orkestra is built to be predictable and resilient:
+Declarative templates cover the common case. When your operator needs to call an external API, write a typed hook:
 
-- **CRD‑level isolation** — A panic in one CRD's reconciler does not crash others. `safeReconcile` recovers and logs the error.
-- **Idempotent registry operations** — Resources are created or updated safely. Running the same reconcile twice does not create duplicates.
-- **Explicit drift correction** — Templates with `onCreate.reconcile: true` or a separate `onReconcile` block run on every reconcile, correcting manual changes to your resources.
-- **Non‑blocking runtime** — The controller starts even if some CRDs are missing. Workers start when CRDs appear.
+```go
+func WebsiteHooks() domain.AnyReconcileHooks {
+    return domain.ReconcileHooks[*apiv1.Website]{
+        OnReconcile: func(ctx context.Context, obj *apiv1.Website) error {
+            // type-safe struct access
+            // call external APIs
+            // use OrkestraRegistry for the Kubernetes resources
+        },
+    }
+}
+```
 
-Full details: [Trust & Failure Model](https://orkestra.readthedocs.io/en/latest/publications/trust-and-failure-model)
+Declare it in the Katalog:
+
+```yaml
+reconciler:
+  hooks:
+    location: github.com/myorg/hooks
+    function: WebsiteHooks
+```
+
+Orkestra still provides the informer, queue, workers, finalizers, events, metrics, and status. You provide only the logic that genuinely requires code.
+
+---
+
+## Safety
+
+- **`safeReconcile`** — panics in any CRD's reconciler are caught and logged. Other CRDs are completely unaffected.
+- **Leader election** — warm-cache failover in under 15 seconds on leader failure.
+- **Idempotent operations** — every reconcile is safe to retry. No duplicates.
+- **Graceful shutdown** — in-flight reconciles complete before the process exits.
+
+Full failure model: [Trust & Failure Model](https://orkestra.readthedocs.io/en/latest/concepts/trust-and-failure-model)
 
 ---
 
 ## Documentation
 
-- **[Start Here](https://orkestra.readthedocs.io/en/latest/guides/user-guide/getting-started)** — Onboarding guide  
-- **[Katalog](https://orkestra.readthedocs.io/en/latest/runtime-manual/concepts/katalog)** — Declare operator behavior  
-- **[Komposer](https://orkestra.readthedocs.io/en/latest/runtime-manual/concepts/komposer)** — Compose multiple Katalogs  
-- **[Full Documentation Index](https://orkestra.readthedocs.io/en/latest)** — All guides, references, and internals  
+| | |
+|---|---|
+| [Getting Started](https://orkestra.readthedocs.io/en/latest/guides/user-guide/getting-started) | Your first operator in 5 minutes |
+| [Katalog Schema](https://orkestra.readthedocs.io/en/latest/reference/katalog-schema) | Complete field reference |
+| [Komposer Schema](https://orkestra.readthedocs.io/en/latest/reference/komposer-schema) | Composition reference |
+| [Registry](https://orkestra.readthedocs.io/en/latest/orkestra-registry/overview) | Distributing operator patterns |
+| [Technical Docs](https://orkestra.readthedocs.io/en/latest/technical-docs) | Internals and architecture |
+| [Whitepapers](https://orkestra.readthedocs.io/en/latest/papers) | The case for declarative operators |
 
 ---
 
 ## Community
 
-- [GitHub Issues](https://github.com/orkestra-sh/orkestra/issues)
-- [Discussions](https://github.com/orkestra-sh/orkestra/discussions)
-- Kubernetes Slack — `#orkestra` _(planned)_
+- [GitHub Issues](https://github.com/orkestra-sh/orkestra/issues) — bugs and feature requests
+- [GitHub Discussions](https://github.com/orkestra-sh/orkestra/discussions) — questions and ideas
+- [Contributing](./CONTRIBUTING.md) — how to get involved
 
 ---
 

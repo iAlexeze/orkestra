@@ -84,7 +84,12 @@ func (r *Resolver) Resolve(value string) (string, error) {
 		return "", fmt.Errorf("executing %q: %w", value, err)
 	}
 
-	return strings.TrimSpace(buf.String()), nil
+	// missingkey=zero makes missing map keys produce nil (interface{} zero value).
+	// Go's text/template renders nil interface{} as "<no value>", not "".
+	// Replace all occurrences so callers get "" as documented.
+	out := strings.TrimSpace(buf.String())
+	out = strings.ReplaceAll(out, "<no value>", "")
+	return out, nil
 }
 
 // ResolvePodTemplate resolves all template expressions in a PodTemplateSource.

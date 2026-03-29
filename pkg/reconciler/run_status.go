@@ -290,26 +290,22 @@ func (r *GenericReconciler[T]) updatedPatchStatus(ctx context.Context, obj T, re
 // Layer 3 adds a "children" context to the resolver, allowing status fields
 // to reference child resource state:
 //
-//   status:
-//     fields:
-//       - path: readyReplicas
-//         value: "{{ .children.deployment.status.readyReplicas }}"
-//       - path: loadBalancerIP
-//         value: "{{ .children.service.status.loadBalancer.ingress.0.ip }}"
+//	status:
+//	  fields:
+//	    - path: readyReplicas
+//	      value: "{{ .children.deployment.status.readyReplicas }}"
+//	    - path: loadBalancerIP
+//	      value: "{{ .children.service.status.loadBalancer.ingress.0.ip }}"
 //
 // Implementation requires:
-//   1. After runTemplateReconcile completes, read back child resources.
-//   2. Build a "children" map keyed by resource type and name.
-//   3. Extend NewResolver to accept an optional children map.
-//   4. Add "children" to the template data map.
+//  1. After runTemplateReconcile completes, read back child resources.
+//  2. Build a "children" map keyed by resource type and name.
+//  3. Extend NewResolver to accept an optional children map.
+//  4. Add "children" to the template data map.
 //
 // The child read-back uses the informer cache where possible (zero API calls
 // for resources Orkestra already watches) and falls back to a direct API call
 // for resources in different namespaces or of types not watched by this instance.
-//
-// This is the Layer 3 milestone. Layer 1 and Layer 2 ship first.
-
-// ── patchStatusWithChildren ───────────────────────────────────────────────
 func (r *GenericReconciler[T]) patchStatusWithChildren(
 	ctx context.Context, obj T, reconcileErr error,
 ) {

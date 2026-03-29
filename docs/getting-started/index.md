@@ -1,9 +1,9 @@
 # Getting Started
 
-> !!! tip 
-> This guide gets you from zero to a running operator in under five minutes.
-> If you want to understand the concepts before diving in, read
-> [Why Orkestra](../publications/why-orkestra.md) first.
+!!! tip 
+    This guide gets you from zero to a running operator in under five minutes.
+    If you want to understand the concepts before diving in, read
+    [Why Orkestra](../publications/why-orkestra.md) first.
 
 ---
 
@@ -13,9 +13,9 @@
 * [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/) configured and pointing at your cluster
 * A valid `kubeconfig` (default location `~/.kube/config`)
 
-> !!! note
-> Orkestra works with any Kubernetes distribution — kind, minikube, k3s,
-> EKS, GKE, AKS. No cluster-level changes are required before installing.
+!!! "kubernetes distribution"
+    Orkestra works with any Kubernetes distribution — kind, minikube, k3s,
+    EKS, GKE, AKS. No cluster-level changes are required before installing.
 
 ---
 
@@ -46,9 +46,9 @@ curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | 
 
 ### Verify the binary (recommended)
 
-> !!! tip 
-> Every Orkestra release is GPG-signed. Verifying before running is good
-> practice, especially in CI or shared environments.
+!!! note "Security first"
+    Every Orkestra release is GPG-signed. Verifying before running is good
+    practice, especially in CI or shared environments.
 
 ```bash
 # Import the Orkestra public key (once)
@@ -86,10 +86,10 @@ CRD → Katalog → Orkestra → Kubernetes
 * **Orkestra** — reconciles it. Watches CRs, resolves templates, calls the registry.
 * **Kubernetes** — stores it and notifies Orkestra when things change.
 
-> !!! note
-> Orkestra operates on unstructured CRDs — the same `map[string]interface{}`
-> representation Kubernetes uses internally. You do not need Go types, code
-> generation, or scheme registration for the common case.
+!!! note
+    Orkestra operates on unstructured CRDs — the same `map[string]interface{}`
+    representation Kubernetes uses internally. You do not need Go types, code
+    generation, or scheme registration for the common case.
 
 ---
 
@@ -106,10 +106,10 @@ ork init my-operator
 cd my-operator
 ```
 
-> !!! tip 
-> `ork init` creates a workspace with the Website example pre-configured.
-> Open `examples/website/website-katalog.yaml` to see what you are about
-> to run.
+!!! tip "ork init" 
+    `ork init` creates a workspace with the Website example pre-configured.
+    Open `examples/website/website-katalog.yaml` to see what you are about
+    to run.
 
 ### Step 2 — Apply the CRD
 
@@ -120,10 +120,11 @@ kubectl apply -f examples/website/website-crd.yaml
 This installs the `Website` CRD into your cluster. Orkestra does not
 install CRDs — it manages the resources that CRs create.
 
-> !!! note
-> The CRD only needs to be applied once. After that, `kubectl get websites`
-> will work in any namespace.
+!!! note
+    The CRD only needs to be applied once. After that, `kubectl get websites`
+    will work in any namespace.
 
+---
 ### Step 3 — Start Orkestra
 
 ```bash
@@ -133,9 +134,9 @@ ork run --katalog examples/website/website-katalog.yaml
 Orkestra starts, registers its informer for `Website` CRs, and waits. You
 will see the health server come up and the leader election complete.
 
-> !!! tip 
-> Open a second terminal and run `ork status` to see the live state of the
-> operator. You can also visit `localhost:8080/katalog/website` in a browser.
+!!! tip 
+    Open a second terminal and run `ork status` to see the live state of the
+    operator. You can also visit `localhost:8080/katalog/website` in a browser.
 
 ### Step 4 — Apply a CR
 
@@ -159,11 +160,11 @@ A Deployment and Service named after your `Website` CR should appear.
 Orkestra set owner references on both — deleting the `Website` CR will
 cascade-delete them automatically.
 
-> !!! warning
-> Do not delete the child Deployment or Service manually to test drift
-> correction until you have run at least one successful reconcile.
-> Orkestra detects drift on the next reconcile cycle (configured via
-> `resync`) — not immediately.
+!!! warning
+    Do not delete the child Deployment or Service manually to test drift
+    correction until you have run at least one successful reconcile.
+    Orkestra detects drift on the next reconcile cycle (configured via
+    `resync`) — not immediately.
 
 ### Step 6 — Explore the built-in endpoints
 
@@ -201,12 +202,13 @@ When you applied the `Website` CR, Orkestra executed this sequence:
 
 All of that from a Katalog entry and a CR. No code written.
 
-> !!! note
-> You can see the events Orkestra emits by running:
-> ```bash
-> kubectl describe website <name>
-> ```
-> Look for the Events section at the bottom.
+You can see the events Orkestra emits by running:
+
+```bash
+kubectl describe website <name>
+```
+
+Look for the Events section at the bottom.
 
 ---
 
@@ -222,10 +224,10 @@ kubectl delete -f examples/website/website-cr.yaml
 kubectl delete -f examples/website/website-crd.yaml
 ```
 
-> !!! warning
-> Deleting the `Website` CRD while CRs still exist will force-delete all
-> `Website` objects without running finalizers. Always delete CRs before
-> deleting their CRD in production.
+!!! warning "safe cleanup"
+    Deleting the `Website` CRD while CRs still exist will force-delete all
+    `Website` objects without running finalizers. Always delete CRs before
+    deleting their CRD in production.
 
 ---
 
@@ -273,10 +275,10 @@ kubectl port-forward svc/orkestra 8080:8080 -n orkestra-system
 ork status
 ```
 
-> !!! tip 
-> Run `ork validate --katalog <path>` before `ork run` to catch
-> configuration errors before they surface at runtime. It checks
-> apiTypes, enriches built-in Kinds, and validates the dependency graph.
+!!! tip "katalog validation"
+    Run `ork validate --katalog <path>` before `ork run` to catch
+    configuration errors before they surface at runtime. It checks
+    apiTypes, enriches built-in Kinds, and validates the dependency graph.
 
 ---
 

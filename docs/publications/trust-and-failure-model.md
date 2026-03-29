@@ -184,8 +184,8 @@ Workers stop accepting new queue items (queue.ShutDown())
   │
   ▼
 Workers exit when current reconcile completes
-  │  There is no timeout on in-flight reconciles
-  │  A reconcile that is waiting on a slow API call will block shutdown
+  │  Timeout is configurable using "SHUTDOWN_TIMEOUT" and "SHUTDOWN_GRACE_PERIOD"
+  │
   │
   ▼
 Informers stop watching
@@ -297,3 +297,9 @@ The operational question is not "can this process fail?" — all processes fail.
 | Leader lease expired (no follower) | Reconciliation paused until a leader is elected | New instance or connectivity restore |
 | CRD degraded | Reconciliation continues, health API shows degraded | Recovers when a reconcile succeeds |
 | Critical CRD degraded | Entire operator health shows degraded | `/health` returns 503 |
+
+
+---
+
+## Related Documentation
+- [Orkestra Shutdown](../reference/shutdown.md)

@@ -228,6 +228,8 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			Operator:         kat.Meta().Name,
 			Finalizers:       finalizers,
 			ReconcilerConfig: crd.ReconcilerConfig,
+			Validation:       crd.Validation,
+			Mutation:         crd.Mutation,
 		}
 		infCopy := inf
 
@@ -372,7 +374,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// Start  : sequential, in registration order.
 	// Shutdown: reverse order, on OS signal or fatal error.
 	o := ork.NewOrkestra(
-		kfg.Cluster().ShutdownGrace,
+		kfg.Cluster().ShutdownGracePeriod,
 		kfg.Ork().LogLevel,
 	)
 	o.Register(komponents)
