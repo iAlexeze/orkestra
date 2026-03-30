@@ -31,7 +31,12 @@ import (
 //   - last reconcile timestamp
 // ─────────────────────────────────────────────────────────────────────────────
 
-func BuildCRDHealthHandler(crd orktypes.CRDEntry, h *CRDHealth) http.HandlerFunc {
+func BuildCRDHealthHandler(
+	crd orktypes.CRDEntry,
+	kfg *konfig.Konfig,
+	inf cache.SharedIndexInformer,
+	h *CRDHealth,
+) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Snapshot both state flags once so message, status, and body fields
 		// are always consistent with each other — a reconcile completing mid-handler
@@ -56,6 +61,7 @@ func BuildCRDHealthHandler(crd orktypes.CRDEntry, h *CRDHealth) http.HandlerFunc
 			state = "degraded"
 		}
 
+		v := resolveCRDDisplayValues(crd, kfg, inf)
 		utils.WriteJSON(w, httpStatus, map[string]interface{}{
 			"name":             crd.Name,
 			"state":            state,
@@ -65,9 +71,10 @@ func BuildCRDHealthHandler(crd orktypes.CRDEntry, h *CRDHealth) http.HandlerFunc
 			"uptime":           h.Uptime(),
 			"queueDepth":       h.QueueDepth(crd.GVK().String()),
 			"errorRate":        h.ErrorRate(),
-			"consecutiveFails": h.consecutiveFails.Load(),
-			"totalReconciles":  h.totalReconciles.Load(),
-			"lastError":        h.lastError.Load(),
+			"consecutiveFails": h.ConsecutiveFails(),
+			"totalReconciles":  h.TotalReconciles(),
+			"resourceCount":    v.resourceCount,
+			"lastError":        h.LastError(),
 			"lastReconcile":    h.LastReconcile(),
 		})
 	}
@@ -119,6 +126,7 @@ func BuildCRDInfoHandler(
 			"maxQueueDepth":       v.maxQueueDepth,
 			"maxQueueDepthSource": v.maxQueueDepthSource,
 			"resourceCount":       v.resourceCount,
+			"totalReconciles":     h.TotalReconciles(),
 			"reconciler":          reconcilerInfo(crd),
 			"healthy":             h.IsHealthy(),
 			"started":             h.Started(),

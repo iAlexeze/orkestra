@@ -151,15 +151,14 @@ func (h *CRDHealth) Started() bool {
 // If not started, returns "not started". If starting, returns "starting".
 func (h *CRDHealth) StartedAt() string {
 	v := h.startTime.Load()
-	if v == nil {
+	t, ok := v.(time.Time)
+	if !ok {
 		return "not started"
 	}
-
-	if v.(time.Time).IsZero() {
+	if t.IsZero() {
 		return "starting"
 	}
-
-	return v.(time.Time).Round(time.Second).String()
+	return t.Round(time.Second).String()
 }
 
 // SetStarted marks the reconciler as started and records the start time.
@@ -190,9 +189,12 @@ func (h *CRDHealth) FailedReconciles() int64 {
 }
 
 // LastError returns the last recorded error message.
-// If no error has occurred, this will panic — callers should check before use.
+// If no error has occurred, it returns an empty string.
 func (h *CRDHealth) LastError() string {
-	return h.lastError.Load().(string)
+	if v, ok := h.lastError.Load().(string); ok {
+		return v
+	}
+	return ""
 }
 
 // ConsecutiveFails returns the number of consecutive failed reconciles.
@@ -204,10 +206,11 @@ func (h *CRDHealth) ConsecutiveFails() int64 {
 // If not started, returns "not started".
 func (h *CRDHealth) Uptime() string {
 	v := h.startTime.Load()
-	if v == nil {
+	t, ok := v.(time.Time)
+	if !ok {
 		return "not started"
 	}
-	return time.Since(v.(time.Time)).Round(time.Second).String()
+	return time.Since(t).Round(time.Second).String()
 }
 
 // WorkersActive returns the number of active workers for this CRD

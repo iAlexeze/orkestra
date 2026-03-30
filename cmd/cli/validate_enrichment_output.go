@@ -65,59 +65,11 @@ func printCRDValidationLine(entry orktypes.CRDEntry) {
 			scope,
 		)
 	}
-}
 
-// validateOutputExample shows what ork validate now produces.
-// This is documentation — not runnable code.
-//
-// Input Katalog:
-//
-//   crds:
-//     - name: deployment-governance
-//       apiTypes:
-//         kind: Deployment          # kind only — built-in
-//       validation:
-//         - field: spec.template.spec.containers[0].image
-//           prefix: "myorg/"
-//           message: "images must come from myorg registry"
-//           action: deny
-//
-//     - name: pod-governance
-//       apiTypes:
-//         kind: Pod                 # kind only — built-in
-//       validation:
-//         - field: metadata.ownerReferences
-//           operator: exists
-//           message: "all pods must have an owner reference"
-//           action: deny
-//
-//     - name: website
-//       apiTypes:
-//         kind: Website
-//         group: demo.orkestra.io
-//         version: v1alpha1
-//         plural: websites          # fully specified — custom CRD
-//       reconciler:
-//         default: true
-//
-// Output:
-//
-//   Validating platform-katalog.yaml...
-//
-//   ✓ deployment-governance
-//       kind: Deployment → enriched from built-in registry
-//       group: apps / version: v1 / plural: deployments / scope: Namespaced
-//
-//   ✓ pod-governance
-//       kind: Pod → enriched from built-in registry
-//       group: core / version: v1 / plural: pods / scope: Namespaced
-//
-//   ✓ website
-//       kind: Website / group: demo.orkestra.io / version: v1alpha1 / plural: websites / scope: Namespaced
-//
-//   ─────────────────────────────────────────────
-//   3 CRDs valid (2 built-in, 1 custom)
-//
-//   Built-in resources are watched using the Kubernetes dynamic client.
-//   No apiTypes.location or code generation required.
-// var _ = validateOutputExample
+	// Add mode / workers / resync
+	fmt.Printf("    \033[90mmode: %s / workers: %v / resync: %v\033[0m\n",
+		entry.Mode,
+		entry.Workers,
+		entry.Resync,
+	)
+}

@@ -144,6 +144,18 @@ func resolveConditionOp(c orktypes.Condition) (orktypes.ConditionOperator, strin
 	if c.Equals != "" {
 		return orktypes.ConditionEquals, c.Equals
 	}
+	if c.NotEquals != "" {
+		return orktypes.ConditionNotEquals, c.NotEquals
+	}
+	if c.Prefix != "" {
+		return orktypes.ConditionPrefix, c.Prefix
+	}
+	if c.Suffix != "" {
+		return orktypes.ConditionSuffix, c.Suffix
+	}
+	if c.Contains != "" {
+		return orktypes.ConditionContains, c.Contains
+	}
 
 	// Explicit operator.
 	if c.Operator != "" {

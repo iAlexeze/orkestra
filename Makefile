@@ -108,6 +108,30 @@ test-coverage-text:
 		-coverprofile=coverage.out -covermode=atomic -count=1
 	@go tool cover -func=coverage.out | tail -5
 
+# ── Docs (Docusaurus) ─────────────────────────────────────────────────────────
+# The Docusaurus site lives in website/ and reuses the existing docs/ directory.
+# MkDocs and Docusaurus coexist — same Markdown source, two renderers.
+
+docs-install:
+	@echo "Installing Docusaurus dependencies..."
+	cd website && npm install
+
+docs-start:
+	@echo "Starting Docusaurus dev server at http://localhost:3000 ..."
+	cd website && npm run start
+
+docs-build:
+	@echo "Building Docusaurus static site..."
+	cd website && npm run build
+
+docs-serve:
+	@echo "Serving production Docusaurus build..."
+	cd website && npm run serve
+
+docs-clear:
+	@echo "Clearing Docusaurus cache..."
+	cd website && npm run clear
+
 # ── Vet ───────────────────────────────────────────────────────────────────────
 vet:
 	@echo "Running go vet..."

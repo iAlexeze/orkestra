@@ -34,8 +34,8 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 	fmt.Printf("- Metrics:  %s/metrics%s\n", utils.ColorGreen, utils.ColorReset)
 
 	fmt.Println()
-	fmt.Println("Webhook Endpoints:")
 	if kfg.konfig.AdmissionEnabled() {
+		fmt.Println("Webhook Endpoints:")
 		fmt.Printf("- Muatation:  %s/mutate%s\n", utils.ColorGreen, utils.ColorReset)
 		fmt.Printf("- Validation:  %s/validate%s\n", utils.ColorGreen, utils.ColorReset)
 
@@ -58,10 +58,10 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 			continue
 		}
 		if crd.IsInfoEnabled() {
-			fmt.Printf("  - %s%s%s (%s):  %s/katalog/%s%s\n", utils.ColorCyan, crd.APITypes.Kind, crd.Name, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
+			fmt.Printf("  - %s%s%s (%s):  %s/katalog/%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, crd.Name, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
 		}
 		if crd.IsHealthEnabled() {
-			fmt.Printf("  - %s%s%s (%s):  %s/katalog/%s/health%s\n", utils.ColorCyan, crd.APITypes.Kind, crd.Name, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
+			fmt.Printf("  - %s%s%s (%s):  %s/katalog/%s/health%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, crd.Name, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
 		}
 	}
 	fmt.Println("====================================================")

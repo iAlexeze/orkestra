@@ -1,0 +1,41 @@
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: pipeline-operator
+  description: >
+    Custom constructor for the Pipeline CRD. The GenericReconciler is
+    replaced entirely — the constructor owns the full reconcile loop.
+    Demonstrates the state machine pattern: Pending → Running → Succeeded/Failed.
+
+spec:
+  crds:
+    - name: pipeline
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: Pipeline
+        plural: pipelines
+        # location enables typed mode — the informer delivers *apiv1.Pipeline
+        # instead of *unstructured.Unstructured.
+        location: github.com/myorg/pipeline-operator/api/v1alpha1
+
+      workers: 5       # pipelines can be IO-bound — more workers tolerated
+      resync: 10s      # short resync to check Job completion quickly
+
+      reconciler:
+        # default: false tells Orkestra NOT to use the GenericReconciler.
+        # The constructor below provides the complete reconcile implementation.
+        default: false
+
+        # constructor replaces the GenericReconciler entirely.
+        # The function must match:
+        #   func(kube *kubeclient.Kubeclient,
+        #        informer cache.SharedIndexInformer,
+        #        ev *event.Event) domain.Reconciler
+        constructor:
+          location: github.com/myorg/pipeline-operator/reconciler
+          function: NewPipelineReconciler
+
+        # Note: onCreate, onReconcile, onDelete, hooks, and status.fields
+        # are all ignored when reconciler.default is false. The constructor
+        # owns everything. Status is managed directly by PipelineReconciler.patchStatus.

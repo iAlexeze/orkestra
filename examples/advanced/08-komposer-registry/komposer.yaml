@@ -1,0 +1,47 @@
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Komposer
+metadata:
+  name: platform-full
+  description: >
+    Multi-source Komposer: OCI registry pattern + local Katalog + Helm chart.
+    Shows the full composition model for a platform team.
+
+# ── Sources ────────────────────────────────────────────────────────────────
+
+sources:
+  # OCI registry pattern — versioned, immutable
+  # Pull a published operator pattern from the Orkestra registry
+  registry:
+    - url: ghcr.io/konduktor-io/orkestra-registry/postgres@v14.2.0
+      oci: true
+      # version is pinned via @v14.2.0 — immutable, safe for production
+
+  # Local Katalog — your team's custom CRD
+  files:
+    - ./website-katalog.yaml
+
+  # Helm chart source — pulls CRD behavior definitions from a chart
+  helm:
+    - repo: https://charts.myorg.io
+      chart: platform-crds
+      version: 2.1.0
+      # auth:
+      #   type: bearer
+      #   fromEnv: HELM_REPO_TOKEN
+
+# ── Overrides ──────────────────────────────────────────────────────────────
+# Environment-specific tuning. Wins over all sources.
+
+spec:
+  crds:
+    # Override the postgres pattern for production
+    - name: postgres
+      workers: 8
+      resync: 30s
+      # All other postgres behavior inherited from the OCI pattern
+
+    # Override the website operator for production
+    - name: website
+      workers: 6
+      resync: 15s
+      critical: true   # website degrading degrades the entire operator health

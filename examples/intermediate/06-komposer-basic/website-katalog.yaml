@@ -1,0 +1,33 @@
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: website-base
+  description: Base website operator — shared across environments
+
+spec:
+  crds:
+    - name: website
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: Website
+        plural: websites
+      workers: 2
+      resync: 30s
+      reconciler:
+        default: true
+        status:
+          fields:
+            - path: phase
+              value: "Running"
+            - path: endpoint
+              value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+        onCreate:
+          deployments:
+            - image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              reconcile: true
+          services:
+            - port: "80"
+              targetPort: "{{ .spec.port }}"
+              reconcile: true

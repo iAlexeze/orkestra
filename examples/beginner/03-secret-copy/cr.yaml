@@ -1,0 +1,11 @@
+apiVersion: demo.orkestra.io/v1alpha1
+kind: SecretDistribution
+metadata:
+  name: db-creds
+  namespace: default
+spec:
+  secretName: database-credentials
+  sourceNamespace: platform
+  targetNamespaces:
+    - team-alpha
+    - team-beta

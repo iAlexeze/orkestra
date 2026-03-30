@@ -9,3 +9,8 @@ reviews/
 orkestra-certs/
 coverage.out
 coverage
+# Docusaurus
+website/node_modules
+website/build
+website/.docusaurus
+website/.cache-loader

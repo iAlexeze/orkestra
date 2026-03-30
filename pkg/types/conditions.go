@@ -39,6 +39,34 @@ type Condition struct {
 	//     - field: spec.environment
 	//       equals: production
 	Equals string `yaml:"equals,omitempty"`
+
+	// NotEquals is a shorthand for operator: notEquals.
+	// If set, Operator is ignored.
+	// 	when:
+	//     - field: spec.environment
+	//       notEquals: production
+	NotEquals string `yaml:"notEquals,omitempty"`
+
+	// Contains is a shorthand for operator: contains.
+	// If set, Operator is ignored.
+	// 	when:
+	//     - field: spec.environment
+	//       contains: prod
+	Contains string `yaml:"contains,omitempty"`
+
+	// Prefix is a shorthand for operator: prefix.
+	// If set, Operator is ignored.
+	// 	when:
+	//     - field: spec.environment
+	//       prefix: prod
+	Prefix string `yaml:"prefix,omitempty"`
+
+	// Suffix is a shorthand for operator: suffix.
+	// If set, Operator is ignored.
+	// 	when:
+	//     - field: spec.environment
+	//       suffix: prod
+	Suffix string `yaml:"suffix,omitempty"`
 }
 
 // ConditionOperator defines how a condition's field is compared to its value.

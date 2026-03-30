@@ -1,5 +1,5 @@
 nav:
-- Overview: index.md
+- Welcome: index.md
 - Basics:
   - basics/kubernetes-basics.md
   - basics/understanding-orkestra.md
@@ -40,7 +40,8 @@ nav:
         - runtime-manual/concepts/registry-sources/publishing-a-pattern.md
       - Hooks: runtime-manual/concepts/hooks.md
       - Constructors: runtime-manual/concepts/constructors.md
-      - Observability: runtime-manual/concepts/observability.md
+      - runtime-manual/concepts/observability-model.md
+      - runtime-manual/concepts/operator-patterns.md
       - Runtime: runtime-manual/concepts/runtime.md
       - Versioning: runtime-manual/concepts/versioning.md
       - Conversion Webhooks: runtime-manual/concepts/conditional-webhooks.md
@@ -66,6 +67,7 @@ nav:
   - Developer Guide:
       - guides/developer-guide/index.md
       - guides/developer-guide/development-environment.md
+      - guides/developer-guide/migrating-from-kubebuilder.md
       - Technical Docs:
           - technical-docs/index.md
           - technical-docs/generic-reconciler.md
@@ -112,17 +114,17 @@ nav:
     - How it Works: orkestra-registry/how-it-works.md
     - orkestra-registry/vision.md
 
-- Example Workflows:
-    - Overview: examples/index.md
-    - Beginner:
-      - examples/beginner/website/README.md
-      - examples/beginner/platform-namespace/README.md
-      - examples/beginner/komposer/README.md
-    - Intermediate:
-      - examples/intermediate/<.md>
-    - Advanced:
-      - examples/advanced/multi-versions-website/README.md
-      - examples/advanced/validation-mutation/README.md
+# - Example Workflows:
+#     - Overview: examples/index.md
+#     - Beginner:
+#       - examples/beginner/website/README.md
+#       - examples/beginner/platform-namespace/README.md
+#       - examples/beginner/komposer/README.md
+#     - Intermediate:
+#       - examples/intermediate/<.md>
+#     - Advanced:
+#       - examples/advanced/multi-versions-website/README.md
+#       - examples/advanced/validation-mutation/README.md
 
 - Publications:
     - publications/index.md
@@ -130,12 +132,17 @@ nav:
     - Declarative Operators Whitepaper: publications/declarative-operators-whitepaper.md
     - Declarative Version Conversion: publications/declarative-conversion.md
     - One Runtime, Many CRDs: publications/one-runtime-many-crds.md
+    - publications/operator-sprawl-problem.md
+    - publications/orkestra-and-gitops.md
     - publications/universal-observer-whitepaper.md
+    - publications/reconcile-contract.md
+    - publications/when-conditions-paper.md
     - publications/value-proposition.md
     - Orkestra Registry: publications/orkestra-registry.md
     - Trust and Safety: publications/trust-and-failure-model.md
     - Metrics Analysis: publications/metrics-analysis.md
     - Your CRD is Enough: publications/your-crd-is-enough.md
+    # - publications/operator-authoring-vs-infrastructure-controlplane.md
 
 - Use Cases:
     - Overview: use-cases/index.md

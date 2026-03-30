@@ -311,7 +311,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		if crd.IsHealthEnabled() {
 			hs.Register(
 				"/katalog/"+crdName+"/health",
-				kontroller.BuildCRDHealthHandler(crd, crdHealth),
+				kontroller.BuildCRDHealthHandler(crd, kfg, inf, crdHealth),
 			)
 		}
 

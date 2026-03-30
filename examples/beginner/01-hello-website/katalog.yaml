@@ -1,0 +1,24 @@
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: hello-website
+  description: The simplest possible operator. One CRD, one Deployment.
+
+spec:
+  crds:
+    - name: website
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: Website
+        plural: websites
+
+      reconciler:
+        default: true
+        onCreate:
+          deployments:
+            - image: "{{ .spec.image }}"
+              reconcile: false
+              # name defaults to: <cr-name>-deployment
+              # namespace defaults to: <cr-namespace>
+              # replicas defaults to: 1

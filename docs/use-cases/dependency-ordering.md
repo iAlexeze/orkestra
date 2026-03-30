@@ -11,8 +11,11 @@ crds:
     dependsOn: [project, managednamespace]
 ```
 
-!!! tip
-    Missing CRDs don’t block startup — Orkestra activates them when they appear and unblocks dependents automatically.
+:::tip
+
+Missing CRDs don’t block startup — Orkestra activates them when they appear and unblocks dependents automatically.
+
+:::
 
 ---
 

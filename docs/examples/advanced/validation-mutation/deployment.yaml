@@ -24,7 +24,7 @@ spec:
         fsGroup: 65532
       containers:
         - name: orkestra
-          image: ialexeze/ork:hookx
+          image: ialexeze/ork:example
           env:
             # ── Admission webhooks ──────────────────────────────────────────
             # ENABLE_WEBHOOKS=true requires ENABLE_CONVERSION=true

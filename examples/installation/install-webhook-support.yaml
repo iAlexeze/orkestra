@@ -1,0 +1,200 @@
+# Orkestra in-cluster deployment
+# Used by all advanced examples, with webhook support.
+#
+# Creates:
+#   - Namespace: orkestra-system
+#   - ServiceAccount: orkestra
+#   - ClusterRole + ClusterRoleBinding: full access for operator management
+#   - ConfigMap: placeholder for Katalog (mounted into the pod)
+#   - Deployment: Orkestra runtime
+#   - Service: health and webhook endpoint
+#
+# Usage:
+#   kubectl apply -f install.yaml
+#   kubectl wait --for=condition=available deployment/orkestra -n orkestra-system --timeout=60s
+#
+# To pass your Katalog, update the ConfigMap 'orkestra-katalog' in
+# orkestra-system and restart the Deployment, or use the Helm chart
+# for full production configuration.
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: orkestra-system
+  labels:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/managed-by: orkestra
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orkestra
+  namespace: orkestra-system
+  labels:
+    app.kubernetes.io/name: orkestra
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: orkestra
+  labels:
+    app.kubernetes.io/name: orkestra
+rules:
+  # Manage any resource declared in the Katalog
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Leader election lease
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "create", "update"]
+
+  # Emit Kubernetes events
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+
+  # Register webhook configurations
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources:
+      - validatingwebhookconfigurations
+      - mutatingwebhookconfigurations
+    verbs: ["get", "create", "update", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: orkestra
+  labels:
+    app.kubernetes.io/name: orkestra
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: orkestra
+subjects:
+  - kind: ServiceAccount
+    name: orkestra
+    namespace: orkestra-system
+
+---
+# Orkestra runtime Deployment.
+# The Katalog is mounted from the 'orkestra-katalog' ConfigMap.
+# Replace the ConfigMap data with your Katalog YAML before applying.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orkestra
+  namespace: orkestra-system
+  labels:
+    app.kubernetes.io/name: orkestra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orkestra
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orkestra
+    spec:
+      serviceAccountName: orkestra
+      containers:
+        - name: orkestra
+          # image: ghcr.io/orkestra-sh/orkestra:latest
+          image: ialexeze/ork:example
+          imagePullPolicy: Always
+          args:
+            - run
+            - --katalog=/etc/orkestra/katalog.yaml
+          env:
+            - name: HEALTH_PORT
+              value: "8080"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: DEFAULT_WORKERS
+              value: "3"
+            - name: DEFAULT_RESYNC
+              value: "15s"
+            - name: SHUTDOWN_TIMEOUT
+              value: "30s"
+            - name: SHUTDOWN_GRACE
+              value: "10s"
+            - name: ORKESTRA_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: ENABLE_WEBHOOKS
+              value: "true"
+            - name: ENABLE_CONVERSION
+              value: "true"
+            - name: TLS_CERT
+              value: "/tls/tls.crt"
+            - name: TLS_KEY
+              value: "/tls/tls.key"
+          ports:
+            - name: health
+              containerPort: 8080
+              protocol: TCP
+            - name: webhook
+              containerPort: 8443
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: katalog
+              mountPath: /etc/orkestra
+              readOnly: true
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+      volumes:
+        - name: katalog
+          configMap:
+            name: orkestra-katalog
+        - name: tls
+          secret:
+            secretName: orkestra-tls
+
+---
+# Service for health checks and webhook endpoints
+apiVersion: v1
+kind: Service
+metadata:
+  name: orkestra
+  namespace: orkestra-system
+  labels:
+    app.kubernetes.io/name: orkestra
+spec:
+  selector:
+    app.kubernetes.io/name: orkestra
+  ports:
+    - name: health
+      port: 8080
+      targetPort: health
+      protocol: TCP
+    - name: webhook
+      port: 443
+      targetPort: 8443
+      protocol: TCP

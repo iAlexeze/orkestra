@@ -1,0 +1,431 @@
+/**
+ * Orkestra Docusaurus theme
+ *
+ * Dark neutral base — charcoal/near-black background everywhere.
+ * Purple is accent-only: links, hover states, active sidebar items, buttons.
+ */
+
+/* ── Google Font ────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── Brand tokens ───────────────────────────────────────────────────────── */
+
+:root {
+  /* Purple accent — used for links, hover, active states */
+  --ifm-color-primary: #7c3aed;
+  --ifm-color-primary-dark: #6d28d9;
+  --ifm-color-primary-darker: #5b21b6;
+  --ifm-color-primary-darkest: #4c1d95;
+  --ifm-color-primary-light: #8b5cf6;
+  --ifm-color-primary-lighter: #a78bfa;
+  --ifm-color-primary-lightest: #c4b5fd;
+
+  --ifm-code-font-size: 92%;
+  --docusaurus-highlighted-code-line-bg: rgba(124, 58, 237, 0.1);
+
+  --ifm-font-family-base: 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
+  --ifm-heading-font-weight: 700;
+  --ifm-sidebar-width: 300px;
+}
+
+/* Dark mode — default for this site */
+[data-theme='dark'] {
+  --ifm-color-primary: #a78bfa;
+  --ifm-color-primary-dark: #8b5cf6;
+  --ifm-color-primary-darker: #7c3aed;
+  --ifm-color-primary-darkest: #6d28d9;
+  --ifm-color-primary-light: #c4b5fd;
+  --ifm-color-primary-lighter: #ddd6fe;
+  --ifm-color-primary-lightest: #ede9fe;
+
+  --docusaurus-highlighted-code-line-bg: rgba(167, 139, 250, 0.12);
+
+  /* Dark neutral backgrounds */
+  --ifm-background-color: #111118;
+  --ifm-background-surface-color: #16161e;
+  --ifm-card-background-color: #1c1c26;
+  --ifm-navbar-background-color: #0e0e14;
+  --ifm-footer-background-color: #0a0a10;
+
+  /* Borders */
+  --ifm-color-emphasis-200: #2a2a38;
+  --ifm-color-emphasis-300: #333344;
+  --ifm-color-emphasis-600: #8888a0;
+  --ifm-color-emphasis-700: #aaaabc;
+  --ifm-color-emphasis-800: #ccccdc;
+}
+
+/* ── Navbar ─────────────────────────────────────────────────────────────── */
+
+.navbar {
+  background: #0e0e14;
+  border-bottom: 1px solid #1e1e2e;
+  box-shadow: none;
+}
+
+[data-theme='light'] .navbar {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.navbar__title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.navbar__link:hover,
+.navbar__link--active {
+  color: var(--ifm-color-primary);
+}
+
+/* GitHub icon */
+.header-github-link::before {
+  content: '';
+  width: 24px;
+  height: 24px;
+  display: flex;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23aaaabc' d='M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12'/%3E%3C/svg%3E")
+    no-repeat center;
+}
+
+.header-github-link:hover::before {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23a78bfa' d='M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12'/%3E%3C/svg%3E");
+}
+
+[data-theme='light'] .header-github-link::before {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='%23374151' d='M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12'/%3E%3C/svg%3E");
+}
+
+/* ── Hero banner — dark, not purple ─────────────────────────────────────── */
+
+.heroBanner {
+  padding: 6rem 2rem 5rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+
+  /* Dark background with very subtle depth */
+  background: #0e0e14;
+  color: #e2e2f0;
+}
+
+/* Faint grid overlay */
+.heroBanner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 52px 52px;
+  pointer-events: none;
+}
+
+/* Subtle purple glow at the bottom of the hero — accent, not base */
+.heroBanner::after {
+  content: '';
+  position: absolute;
+  bottom: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 200px;
+  background: radial-gradient(ellipse, rgba(124, 58, 237, 0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+[data-theme='light'] .heroBanner {
+  background: #f8f9fb;
+  color: #111118;
+}
+
+[data-theme='light'] .heroBanner::after {
+  background: radial-gradient(ellipse, rgba(124, 58, 237, 0.08) 0%, transparent 70%);
+}
+
+.heroLogo {
+  width: 84px;
+  height: 84px;
+  border-radius: 18px;
+  box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.2), 0 8px 40px rgba(0, 0, 0, 0.5);
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.heroTitle {
+  font-size: 3.75rem !important;
+  font-weight: 800 !important;
+  color: #f0f0ff !important;
+  letter-spacing: -0.045em;
+  line-height: 1.05 !important;
+  margin-bottom: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme='light'] .heroTitle {
+  color: #111118 !important;
+}
+
+.heroSubtitle {
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: #9898b8;
+  margin-bottom: 0.75rem;
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme='light'] .heroSubtitle {
+  color: #4b4b6b;
+}
+
+.heroDescription {
+  font-size: 1.05rem;
+  color: #6868888;
+  max-width: 560px;
+  margin: 0 auto 2.75rem;
+  line-height: 1.65;
+  position: relative;
+  z-index: 1;
+  color: #7070908;
+}
+
+.heroDescription {
+  color: #606078;
+}
+
+[data-theme='dark'] .heroDescription {
+  color: #7878a0;
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.875rem;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+/* Primary CTA — white on dark, purple accent on hover */
+.btnPrimary {
+  background: #fff;
+  color: #111118;
+  border: none;
+  font-weight: 600;
+  padding: 0.75rem 1.75rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.btnPrimary:hover {
+  background: #a78bfa;
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.35);
+  text-decoration: none;
+}
+
+/* Secondary CTA — outlined */
+.btnSecondary {
+  background: transparent;
+  color: #9898b8;
+  border: 1px solid #2a2a38;
+  font-weight: 500;
+  padding: 0.75rem 1.75rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  text-decoration: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.btnSecondary:hover {
+  border-color: #a78bfa;
+  color: #a78bfa;
+  text-decoration: none;
+}
+
+[data-theme='light'] .btnSecondary {
+  color: #4b4b6b;
+  border-color: #d1d5db;
+}
+
+[data-theme='light'] .btnSecondary:hover {
+  border-color: #7c3aed;
+  color: #7c3aed;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+
+.menu__link:hover {
+  color: var(--ifm-color-primary);
+  background: rgba(167, 139, 250, 0.08);
+}
+
+.menu__link--active:not(.menu__link--sublist) {
+  background: rgba(124, 58, 237, 0.15);
+  color: var(--ifm-color-primary);
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+[data-theme='light'] .menu__link--active:not(.menu__link--sublist) {
+  background: rgba(124, 58, 237, 0.08);
+  color: #6d28d9;
+}
+
+/* ── Table of contents ──────────────────────────────────────────────────── */
+
+/* Inactive links — muted, not white */
+.table-of-contents__link {
+  color: #6868888;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+[data-theme='dark'] .table-of-contents__link {
+  color: #6a6a82;
+}
+
+[data-theme='light'] .table-of-contents__link {
+  color: #9ca3af;
+}
+
+/* Hover */
+.table-of-contents__link:hover {
+  color: #a78bfa;
+  text-decoration: none;
+}
+
+/* Active — left border accent, not bright text */
+.table-of-contents__link--active {
+  color: #a78bfa !important;
+  font-weight: 500;
+  border-left: 2px solid #7c3aed;
+  padding-left: 6px;
+  margin-left: -8px;
+}
+
+/* "On this page" heading */
+.table-of-contents__top-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #4a4a60;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+[data-theme='light'] .table-of-contents__top-label {
+  color: #9ca3af;
+}
+
+/* ── Code blocks ─────────────────────────────────────────────────────────── */
+
+.prism-code {
+  font-size: 0.88rem;
+}
+
+[data-theme='dark'] pre,
+[data-theme='dark'] .prism-code {
+  background: #131320 !important;
+}
+
+
+/* .footer {
+  background: #0a0a10 !important;
+  border-top: 1px solid #1e1e2e;
+}
+
+[data-theme='light'] .footer {
+  background: #f3f4f6 !important;
+  border-top: 1px solid #e5e7eb;
+} */
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+
+/* Force footer to always be dark */
+.footer {
+  background: #0a0a10 !important;
+  border-top: 1px solid #1e1e2e !important;
+  --ifm-footer-background-color: #0a0a10;
+  --ifm-footer-color: #e2e2f0;
+  --ifm-footer-link-color: #9898b8;
+  --ifm-footer-title-color: #f0f0ff;
+}
+
+/* Ensure footer text and links are visible */
+.footer,
+[data-theme='light'] .footer,
+[data-theme='dark'] .footer {
+  background: #0a0a10 !important;
+  border-top: 1px solid #1e1e2e !important;
+}
+
+/* Footer text colors */
+.footer__title {
+  color: #f0f0ff !important;
+}
+
+.footer__link-item,
+.footer a:not(.footer__logo) {
+  color: #9898b8 !important;
+}
+
+.footer__link-item:hover,
+.footer a:not(.footer__logo):hover {
+  color: #a78bfa !important;
+  text-decoration: none;
+}
+
+/* Footer copyright text */
+.footer__copyright {
+  color: #686888 !important;
+}
+
+/* ── Announcement bar ───────────────────────────────────────────────────── */
+
+div[class*='announcementBar'] {
+  background: #131320;
+  border-bottom: 1px solid #2a2a38;
+  color: #9898b8;
+  font-weight: 500;
+}
+
+div[class*='announcementBar'] a {
+  color: #a78bfa;
+  text-decoration: underline;
+}
+
+div[class*='announcementBar'] a:hover {
+  color: #c4b5fd;
+}
+
+/* ── Feature cards (HomepageFeatures) ───────────────────────────────────── */
+
+/* Override card border hover to purple accent */
+/* (see HomepageFeatures/styles.module.css for base styles) */
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 996px) {
+  .heroBanner {
+    padding: 3.5rem 1.5rem 3rem;
+  }
+
+  .heroTitle {
+    font-size: 2.5rem !important;
+  }
+
+  .heroSubtitle {
+    font-size: 1.1rem;
+  }
+}

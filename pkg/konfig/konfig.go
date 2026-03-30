@@ -28,7 +28,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			DefaultResync:       GetDurEnvSeconds("DEFAULT_RESYNC", 15),
 			DefaultWorkers:      GetIntEnv("DEFAULT_WORKERS", 3),
 			ShutdownTimeout:     GetDurEnvSeconds("SHUTDOWN_TIMEOUT", 10),
-			ShutdownGracePeriod: GetDurEnvSeconds("SHUTDOWN_GRACE_PERIOD", 5),
+			ShutdownGracePeriod: GetDurEnvSeconds("SHUTDOWN_GRACE_PERIOD", 60),
 		},
 		webhook: webhookConfig{
 			EnableWebhooks:   GetBoolEnv("ENABLE_WEBHOOKS", false),
