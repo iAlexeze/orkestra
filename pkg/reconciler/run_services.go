@@ -28,7 +28,7 @@ func runServices(
 		conditionPassed := evaluateConditions(owner, src.Conditions)
 
 		if !conditionPassed {
-			if update {
+			if update || src.Reconcile { // ← src.Reconcile here too to show that this resource is continuously managed
 				// Condition no longer passes — delete if owned by this CR
 				name, _ := resolver.Resolve(src.Name)
 				ns, _ := resolver.Resolve(src.Namespace)

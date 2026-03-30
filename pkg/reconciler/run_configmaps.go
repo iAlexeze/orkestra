@@ -39,7 +39,8 @@ func runConfigMaps(
 		conditionPassed := evaluateConditions(owner, src.Conditions)
 
 		if !conditionPassed {
-			if update {
+			if update || src.Reconcile { // ← src.Reconcile here too to show that this resource is continuously managed
+				// If conditions change, it should also affect it
 				// Condition no longer passes — delete if owned by this CR
 				name, _ := resolver.Resolve(src.Name)
 				ns, _ := resolver.Resolve(src.Namespace)

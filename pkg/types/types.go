@@ -513,6 +513,11 @@ type JobTemplateSource struct {
 	// behavior, and conditional provisioning without writing Go code.
 
 	Conditions []Condition `yaml:"when,omitempty"`
+
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile. Equivalent to declaring the same entry under both onCreate and
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
 }
 
 // ── CronJob ───────────────────────────────────────────────────────────────────
@@ -792,6 +797,11 @@ type ServiceAccountTemplateSource struct {
 	// behavior, and conditional provisioning without writing Go code.
 
 	Conditions []Condition `yaml:"when,omitempty"`
+
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile. Equivalent to declaring the same entry under both onCreate and
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
 }
 
 // ── HookTemplates ─────────────────────────────────────────────────────────────

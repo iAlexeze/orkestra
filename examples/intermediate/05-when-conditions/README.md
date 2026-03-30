@@ -50,7 +50,7 @@ service/my-platform-internal         ClusterIP
 Check status:
 
 ```bash
-kubectl get platform my-platform -o jsonpath='{.status.tier}'
+kubectl get platform my-platform -o jsonpath='{.status.tier}  && echo'
 # free
 ```
 
@@ -94,6 +94,9 @@ Wait one reconcile cycle:
 kubectl get services | grep my-platform
 # my-platform-lb is gone — conditions no longer pass, not re-created
 ```
+
+> [!NOTE]
+> It may take a few seconds for the cluster to completely clear the load balancer.
 
 ```bash
 kubectl get configmaps | grep my-platform
