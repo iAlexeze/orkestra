@@ -2,6 +2,8 @@
 package katalog
 
 import (
+	// "fmt"
+
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/merger"
@@ -22,6 +24,8 @@ func (k *Katalog) KomposeKatalogFromYaml(m *merger.Merger, paths ...string) ([]o
 	// Enrich enabled CRDs
 	for i := range k.enabledCRDs {
 		entry := &k.enabledCRDs[i]
+		// fmt.Printf("POST-MERGE: %s workers=%d onCreate=%v\n",
+		// 	entry.Name, entry.Workers, entry.ReconcilerConfig.OnCreate != nil)
 
 		outcome, err := EnrichCRDEntry(entry)
 		if err != nil {
@@ -44,7 +48,7 @@ func (k *Katalog) KomposeKatalogFromYaml(m *merger.Merger, paths ...string) ([]o
 }
 
 // Validate Config
-func (k *Katalog) ValidateConfig() (*Katalog, error) {
+func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	// Validate config
 	// -------------------------------------------------------------------------
 	// 1. Field-level validation (required, DNS group, workers <= 5, etc.)
@@ -75,7 +79,7 @@ func (k *Katalog) ValidateConfig() (*Katalog, error) {
 		return nil, err
 	}
 
-	if err := k.setDefaults(); err != nil {
+	if err := k.setDefaults(kfg); err != nil {
 		return nil, err
 	}
 

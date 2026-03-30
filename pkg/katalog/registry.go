@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/merger"
 	ork_runtime "github.com/ialexeze/orkestra/pkg/runtime"
@@ -21,7 +22,9 @@ import (
 // -----------------------------------------------------------------------------
 
 // NewKatalog returns a list of CRD data
-func NewKatalog(m *merger.Merger, paths ...string) *Katalog {
+func NewKatalog(m *merger.Merger, kfg *konfig.Konfig) *Katalog {
+	paths := kfg.Katalog().Paths
+
 	katalog := &Katalog{}
 	var entries []orktypes.CRDEntry
 	var err error
@@ -53,7 +56,7 @@ func NewKatalog(m *merger.Merger, paths ...string) *Katalog {
 	// Pass to enabled
 	katalog.enabledCRDs = entries
 
-	kat, err := katalog.ValidateConfig()
+	kat, err := katalog.ValidateConfig(kfg)
 	if err != nil {
 		utils.Exit(err)
 	}

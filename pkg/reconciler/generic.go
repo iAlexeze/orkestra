@@ -153,7 +153,7 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 		return err
 	}
 
-	// Ensure managed label — idempotent, like finalizer patching.
+	// Ensure managed label and annotations — idempotent, like finalizer patching.
 	// This is how ork reconcile knows what this operator instance manages.
 	if err := r.ensureManagedLabel(ctx, obj); err != nil {
 		return err

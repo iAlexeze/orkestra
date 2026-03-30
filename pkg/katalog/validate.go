@@ -262,7 +262,7 @@ func (k *Katalog) setGroupVersionKind() error {
 // ---------------------------------------------------------------------------------
 //
 // Set SetDefaults
-func (k *Katalog) setDefaults() error {
+func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 	for i := range k.enabledCRDs {
 		crd := &k.enabledCRDs[i]
 
@@ -306,6 +306,16 @@ func (k *Katalog) setDefaults() error {
 		// Handle finalizers
 		if len(crd.ReconcilerConfig.Finalizers) == 0 {
 			crd.ReconcilerConfig.Finalizers = k.Spec.Finalizers
+		}
+
+		// Handle Resync
+		if crd.Resync == 0 {
+			crd.Resync = kfg.Cluster().DefaultResync
+		}
+
+		// Handle Workers
+		if crd.Workers == 0 {
+			crd.Workers = kfg.Cluster().DefaultWorkers
 		}
 	}
 	return nil

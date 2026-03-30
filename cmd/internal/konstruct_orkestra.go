@@ -46,7 +46,7 @@ type orkestraKfg struct {
 func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) *orkestraKfg {
 
 	// ── 1. Katalog ────────────────────────────────────────────────────────────
-	kat := katalog.NewKatalog(m, kfg.Katalog().Paths...)
+	kat := katalog.NewKatalog(m, kfg)
 
 	// Orkestra's in-built merger resolves this per-source (src.URL > ORK_REGISTRY > merger.registryURL).
 	if registryURL := kfg.RegistryConfig().RegistryURL; registryURL != "" {

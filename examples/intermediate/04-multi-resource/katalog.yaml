@@ -28,7 +28,7 @@ spec:
         status:
           fields:
             - path: phase
-              value: "RunningAS"
+              value: "Running"
             - path: observedReplicas
               value: "{{ .spec.replicas }}"
             - path: endpoint

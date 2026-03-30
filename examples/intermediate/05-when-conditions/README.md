@@ -50,7 +50,7 @@ service/my-platform-internal         ClusterIP
 Check status:
 
 ```bash
-kubectl get platform my-platform -o jsonpath='{.status.tier}  && echo'
+kubectl get platform my-platform -o jsonpath='{.status.tier}'
 # free
 ```
 

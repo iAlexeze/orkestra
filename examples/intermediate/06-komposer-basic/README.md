@@ -79,8 +79,9 @@ ork run --katalog komposer.yaml
 ```
 
 > [!TIP]
-> If you are watching the logs, you will already see orkestra working on existing namespaces without creating a CR. This is the **Ongoing Validation** promise by Orkestra.
+> If you are watching the logs, you will already see orkestra working on existing namespaces and adding missing labels without creating a CR. This is the **Ongoing Validation** promise by Orkestra.
 
+> P
 
 ### 5. Apply the CR
 

@@ -33,8 +33,7 @@ spec:
 
           # Hard rule — replicas must be at least 1
           - field: spec.replicas
-            operator: gt
-            value: "0"
+            greaterThan: 0
             message: "replicas must be at least 1"
             action: deny
 
@@ -55,7 +54,7 @@ spec:
         mutateFirst: true        # at reconcile time: mutate before validate
         rules:
           - field: spec.replicas
-            default: "2"           # if replicas not declared, default to 2
+            default: 2           # if replicas not declared, default to 2
 
           - field: spec.port
             default: "8080"        # if port not declared, default to 8080

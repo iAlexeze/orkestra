@@ -88,6 +88,139 @@ func (m *Merger) Merge() error {
 	return nil
 }
 
+// mergeCRDEntry merges an override entry on top of a base entry.
+// The override wins on any field it explicitly declares.
+// Fields that are zero/nil/empty in the override are inherited from the base.
+//
+// This is how Komposer spec.crds works: you declare only what you want
+// to change. Everything else — reconciler templates, validation rules,
+// mutation rules, status config — is inherited from the source Katalog.
+func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
+	result := base // start from the full base
+
+	// ── Identity ─────────────────────────────────────────────────────────
+	// Name always comes from the override (it's the merge key)
+	// APITypes: override wins if declared, otherwise keep base
+	if override.APITypes.Kind != "" {
+		result.APITypes = override.APITypes
+	}
+
+	// ── Enabled ───────────────────────────────────────────────────────────
+	// Only override if explicitly set to false — zero value (true) means
+	// "not declared", so we keep the base value
+	if !override.IsEnabled() {
+		result.Enabled = override.Enabled
+	}
+
+	// ── Runtime tuning ────────────────────────────────────────────────────
+	// Override only when non-zero — zero means "not declared in override"
+	if override.Workers > 0 {
+		result.Workers = override.Workers
+	}
+	if override.Resync != 0 {
+		result.Resync = override.Resync
+	}
+	if override.Queue.MaxQueueDepth > 0 {
+		result.Queue.MaxQueueDepth = override.Queue.MaxQueueDepth
+	}
+	if override.Queue.DegradeThreshold > 0 {
+		result.Queue.DegradeThreshold = override.Queue.DegradeThreshold
+	}
+
+	// ── Namespace ─────────────────────────────────────────────────────────
+	if override.Namespace != "" {
+		result.Namespace = override.Namespace
+	}
+
+	// ── Critical ──────────────────────────────────────────────────────────
+	if override.IsCritical() {
+		result.Critical = override.Critical
+	}
+
+	// ── Dependencies ──────────────────────────────────────────────────────
+	// Override replaces entirely if declared — partial dependency override
+	// makes no semantic sense
+	if len(override.DependsOn) > 0 {
+		result.DependsOn = override.DependsOn
+	}
+
+	// ── Restricted namespaces — additive ──────────────────────────────────
+	// Restrictions are additive: override adds to base, never removes
+	if len(override.RestrictedNamespaces) > 0 {
+		seen := map[string]struct{}{}
+		for _, ns := range result.RestrictedNamespaces {
+			seen[ns] = struct{}{}
+		}
+		for _, ns := range override.RestrictedNamespaces {
+			if _, ok := seen[ns]; !ok {
+				result.RestrictedNamespaces = append(result.RestrictedNamespaces, ns)
+			}
+		}
+	}
+
+	// ── Finalizers — additive ─────────────────────────────────────────────
+	if len(override.ReconcilerConfig.Finalizers) > 0 {
+		seen := map[string]struct{}{}
+		for _, f := range result.ReconcilerConfig.Finalizers {
+			seen[f] = struct{}{}
+		}
+		for _, f := range override.ReconcilerConfig.Finalizers {
+			if _, ok := seen[f]; !ok {
+				result.ReconcilerConfig.Finalizers = append(
+					result.ReconcilerConfig.Finalizers, f)
+			}
+		}
+	}
+
+	// ── Reconciler config — override only declared blocks ─────────────────
+	// If the override declares onCreate, it replaces the base onCreate.
+	// If it doesn't declare it, the base onCreate is preserved.
+	// Same for onReconcile, onDelete, hooks, constructor, status.
+	rc := &result.ReconcilerConfig
+
+	if override.ReconcilerConfig.OnCreate != nil {
+		rc.OnCreate = override.ReconcilerConfig.OnCreate
+	}
+	if override.ReconcilerConfig.OnReconcile != nil {
+		rc.OnReconcile = override.ReconcilerConfig.OnReconcile
+	}
+	if override.ReconcilerConfig.OnDelete != nil {
+		rc.OnDelete = override.ReconcilerConfig.OnDelete
+	}
+	if override.ReconcilerConfig.HookFactory != nil {
+		rc.HookFactory = override.ReconcilerConfig.HookFactory
+	}
+	if override.ReconcilerConfig.Constructor != nil {
+		rc.Constructor = override.ReconcilerConfig.Constructor
+	}
+	if override.ReconcilerConfig.Status != nil {
+		rc.Status = override.ReconcilerConfig.Status
+	}
+
+	// ── Validation and mutation — override replaces if declared ───────────
+	// Platform teams may want to add stricter rules in production via the
+	// Komposer. Replacing rather than merging is the safe behaviour —
+	// merging rules from two sources could produce unexpected combinations.
+	if override.Validation != nil {
+		result.Validation = override.Validation
+	}
+	if override.Mutation != nil {
+		result.Mutation = override.Mutation
+	}
+
+	// ── Conversion — override replaces if declared ────────────────────────
+	if override.Conversion != nil {
+		result.Conversion = override.Conversion
+	}
+
+	// ── Endpoints ─────────────────────────────────────────────────────────
+	if override.IsEnabledAllEndpoints() {
+		result.Endpoints = override.Endpoints
+	}
+
+	return result
+}
+
 // ── Query methods ─────────────────────────────────────────────────────────────
 
 // Enabled returns only CRD entries where enabled: true.

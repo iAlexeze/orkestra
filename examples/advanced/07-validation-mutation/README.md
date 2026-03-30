@@ -40,9 +40,6 @@ before the validating webhook. This means:
 
 ---
 
-### 1. Create namespaces and the source Secret
-
-
 ## Step 1 — Deploy Orkestra in-cluster
 
 ```bash

@@ -175,7 +175,6 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 // Use pkg/orkestra-registry/template.Resolver to evaluate expressions first.
 //
 // The resolver already evaluated template expressions — here we just merge.
-// deployments/deployment.go
 func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerName string) ResolvedDeploymentSpec {
 	spec := ResolvedDeploymentSpec{
 		Name:        src.Name,

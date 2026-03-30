@@ -153,7 +153,7 @@ func (m *Merger) pullOCIPattern(url, version, tmpDir string, auth *utils.FileAut
 
 	// Build the ORAS pull command
 	// When the ork registry CLI is complete, this will use the ORAS Go library.
-	// For now, shell out to oras if available, otherwise return a clear error.
+	// For now, try shell out to oras if available, otherwise return a clear error.
 	if err := orasPull(ref, tmpDir, auth); err != nil {
 		return fmt.Errorf("OCI pull %q: %w\n\n"+
 			"  Ensure the oras CLI is installed: https://oras.land/docs/installation\n"+

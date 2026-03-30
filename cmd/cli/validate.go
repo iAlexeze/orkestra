@@ -24,7 +24,7 @@ var validateCmd = &cobra.Command{
 			return err
 		}
 
-		_, err = k.ValidateConfig()
+		_, err = k.ValidateConfig(kfg)
 		if err != nil {
 			return err
 		}

@@ -1,8 +1,5 @@
 # Katalog Schema — Status Block
 
-These sections add to the existing Katalog schema. Insert after the
-`reconciler.constructor` section and before `reconciler.onCreate`.
-
 ---
 
 ## `reconciler.status`

@@ -152,6 +152,7 @@ func evaluateValidationRule(obj *unstructured.Unstructured, rule orktypes.Valida
 			Rule:    string(op),
 			Value:   fieldVal,
 			Message: rule.Message,
+			Action:  rule.Action,
 		}
 	}
 
@@ -247,6 +248,13 @@ func resolveValidationOp(r orktypes.ValidationRule) (orktypes.ConditionOperator,
 		// Max maps to Lt — field must be <= max
 		return orktypes.ConditionLt, r.Max
 	}
+	if r.GreaterThan != "" {
+		return orktypes.ConditionGt, r.GreaterThan
+	}
+	if r.LessThan != "" {
+		return orktypes.ConditionLt, r.LessThan
+	}
+
 	if r.Operator != "" {
 		return r.Operator, r.Value
 	}
