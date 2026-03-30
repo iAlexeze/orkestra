@@ -115,19 +115,18 @@ curl localhost:8080/katalog/website/health | jq '{
 }'
 ```
 
----
-
-## Step 7 — Watch drift correction (optional)
-
-The Deployment has no `reconcile: true` in this example — it is created
-once and not continuously enforced. Delete the Deployment and observe:
-
-```bash
-kubectl delete deployment hello-deployment
+Expected output:
+```json
+{
+  "healthy": true,
+  "resourceCount": 1,
+  "totalReconciles": 1
+}
 ```
 
-The Deployment is gone and stays gone — because `reconcile: true` is not set.
-This is intentional: this example shows `onCreate` only.
+> [!NOTE]
+> Notice how there are no reconciles yet, — because `reconcile: true` is not set.
+> This is intentional: this example shows `onCreate` only.
 
 In example 02 you will add `reconcile: true` and see the difference.
 

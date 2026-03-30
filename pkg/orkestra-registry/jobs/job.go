@@ -113,6 +113,26 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	return nil
 }
 
+// DeleteIfOwned deletes the Job if it exists and is owned by the CR.
+func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+	owner domain.Object, name, namespace string) error {
+
+	existing, err := kube.Clientset().BatchV1().Jobs(namespace).
+		Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	// Only delete if we own it
+	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+		return nil
+	}
+	return kube.Clientset().BatchV1().Jobs(namespace).
+		Delete(ctx, name, metav1.DeleteOptions{})
+}
+
 // Resolve builds a ResolvedJobSpec from a JobTemplateSource.
 // Template expressions must already be evaluated by template.Resolver before calling.
 func Resolve(src orktypes.JobTemplateSource, backoffLimit int, ownerName string) ResolvedJobSpec {

@@ -48,22 +48,23 @@ type ValidationResult struct {
 	// Passed — true when all rules passed
 	Passed bool
 
-	// Warning
-	Warnings []string
-
 	// Deny
 	Deny bool
 
 	// Violations — one entry per failed rule
-	Violations []ValidationViolation
+	// Warning
+	Warnings []ValidationViolation // action: warn violations
+
+	Violations []ValidationViolation // action: deny violations
 }
 
 // ValidationViolation describes one failed validation rule.
 type ValidationViolation struct {
 	Field   string
 	Rule    string
-	Value   string // the actual CR field value that failed
-	Message string // the user-defined message from the Katalog
+	Value   string                    // the actual CR field value that failed
+	Message string                    // the user-defined message from the Katalog
+	Action  orktypes.ValidationAction // 'warn' or 'deny' as defined by user
 }
 
 // Error returns a combined error message for all violations.
@@ -84,47 +85,48 @@ func (r *ValidationResult) Error() error {
 //
 // Called from generic.go before runTemplateReconcile (or after runMutation
 // when mutateFirst: true).
-func runValidation(
-	obj domain.Object,
-	cfg *orktypes.ValidationConfig,
-	crdName string,
-) *ValidationResult {
+func runValidation(obj domain.Object, cfg *orktypes.ValidationConfig, crdName string) *ValidationResult {
 	result := &ValidationResult{Passed: true}
-
 	if cfg == nil || len(cfg.Rules) == 0 {
 		return result
 	}
 
 	u, ok := toUnstructured(obj)
 	if !ok {
-		// Typed objects — cannot evaluate dot-notation paths.
-		// Validation is skipped for typed CRDs. Use Go hooks for typed validation.
-		// TODO — Use templating to access typed fields
-		logger.Debug().
-			Str("crd", crdName).
-			Msg("validation: typed object — skipping declarative validation (use Go hooks)")
 		return result
 	}
 
 	for _, rule := range cfg.Rules {
 		violation := evaluateValidationRule(u, rule)
-		if violation != nil {
-			result.Passed = false
-			result.Violations = append(result.Violations, *violation)
+		if violation == nil {
+			continue
+		}
 
-			// Per-rejection detail metric — field and rule context
-			validationRejectedDetail.WithLabelValues(crdName, rule.Field, ruleType(rule)).Inc()
+		action := orktypes.EffectiveAction(rule.Action)
+		violation.Action = action
+
+		result.Violations = append(result.Violations, *violation)
+		validationRejectedDetail.WithLabelValues(crdName, rule.Field, ruleType(rule)).Inc()
+
+		switch action {
+		case orktypes.ValidationActionDeny:
+			result.Deny = true
+			result.Passed = false
+		case orktypes.ValidationActionWarn:
+			result.Warnings = append(result.Warnings, *violation)
+			// Warn does NOT set Deny, does NOT set Passed=false
 		}
 	}
 
-	// Aggregate metric — one counter per reconcile, labeled pass|reject
 	resultLabel := "passed"
 	if !result.Passed {
 		resultLabel = "rejected"
+	} else if len(result.Warnings) > 0 {
+		resultLabel = "warned"
 	}
 	validationTotal.WithLabelValues(crdName, resultLabel).Inc()
 
-	if !result.Passed {
+	if result.Deny {
 		logger.Info().
 			Str("crd", crdName).
 			Str("name", obj.GetName()).
@@ -331,7 +333,11 @@ func (r *ValidationResult) WarningSummary() string {
 	if len(r.Warnings) == 0 {
 		return ""
 	}
-	return strings.Join(r.Warnings, "; ")
+	msgs := make([]string, 0, len(r.Warnings))
+	for _, w := range r.Warnings {
+		msgs = append(msgs, fmt.Sprintf("field %q: %s", w.Field, w.Message))
+	}
+	return strings.Join(msgs, "; ")
 }
 
 // HasViolations returns true if any rules failed.

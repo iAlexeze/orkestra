@@ -26,6 +26,8 @@ is deleted, all copies are garbage-collected automatically.
 on the next reconcile cycle. The platform team manages one Secret. Every team
 namespace stays in sync automatically.
 
+> [!NOTE]
+> `SecretDistribution` is able to distribute secrets across the cluster because it is a **cluster-scoped CRD**.
 ---
 
 ## Steps

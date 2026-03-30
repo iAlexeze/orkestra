@@ -1,8 +1,7 @@
 apiVersion: demo.orkestra.io/v1alpha1
 kind: SecretDistribution
 metadata:
-  name: db-creds
-  namespace: default
+  name: db-creds      # No namespace as it is cluster-scoped
 spec:
   secretName: database-credentials
   sourceNamespace: platform

@@ -90,20 +90,20 @@ func runMutation(
 		var newVal string
 		var mutationType string
 
-		if rule.Override != "" {
+		if rule.Override != nil && rule.Override != "" {
 			// Override — always set, regardless of current value
-			resolved, err := resolver.Resolve(rule.Override)
+			resolved, err := resolver.Resolve(fmt.Sprintf("%v", rule.Override))
 			if err != nil {
 				return nil, fmt.Errorf("mutation: resolving override for field %q: %w", rule.Field, err)
 			}
 			newVal = resolved
 			mutationType = "override"
-		} else if rule.Default != "" {
+		} else if rule.Default != nil && rule.Default != "" {
 			// Default — set only if field is absent or empty
 			if found && currentVal != "" {
 				continue // field already has a value, skip
 			}
-			resolved, err := resolver.Resolve(rule.Default)
+			resolved, err := resolver.Resolve(fmt.Sprintf("%v", rule.Default))
 			if err != nil {
 				return nil, fmt.Errorf("mutation: resolving default for field %q: %w", rule.Field, err)
 			}
@@ -209,13 +209,12 @@ func runMutation(
 // setNestedPatch sets a value at a dot-notation path in a nested map.
 // Creates intermediate maps as needed.
 // "spec.replicas" with value "1" produces: {"spec": {"replicas": "1"}}
-func setNestedPatch(patch map[string]interface{}, path string, value string) {
+func setNestedPatch(patch map[string]interface{}, path string, value interface{}) {
 	parts := strings.Split(path, ".")
 	current := patch
-
 	for i, part := range parts {
 		if i == len(parts)-1 {
-			current[part] = value
+			current[part] = value // native type preserved
 			return
 		}
 		if _, ok := current[part]; !ok {
@@ -223,9 +222,8 @@ func setNestedPatch(patch map[string]interface{}, path string, value string) {
 		}
 		next, ok := current[part].(map[string]interface{})
 		if !ok {
-			// Overwrite non-map with map — shouldn't happen in practice
-			current[part] = map[string]interface{}{}
-			next = current[part].(map[string]interface{})
+			next = map[string]interface{}{}
+			current[part] = next
 		}
 		current = next
 	}

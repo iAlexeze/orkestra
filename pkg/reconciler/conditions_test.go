@@ -1,10 +1,9 @@
 // pkg/reconciler/conditions_test.go
-package reconciler_test
+package reconciler
 
 import (
 	"testing"
 
-	. "github.com/ialexeze/orkestra/pkg/reconciler"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -26,10 +25,10 @@ func buildUnstructured(spec map[string]interface{}) *unstructured.Unstructured {
 
 func TestEvaluateConditions_Empty(t *testing.T) {
 	obj := buildUnstructured(map[string]interface{}{})
-	if !EvaluateConditions(obj, nil) {
+	if !evaluateConditions(obj, nil) {
 		t.Error("empty conditions should always return true")
 	}
-	if !EvaluateConditions(obj, []orktypes.Condition{}) {
+	if !evaluateConditions(obj, []orktypes.Condition{}) {
 		t.Error("empty slice should always return true")
 	}
 }
@@ -38,12 +37,12 @@ func TestEvaluateConditions_EqualsShorthand(t *testing.T) {
 	obj := buildUnstructured(map[string]interface{}{"environment": "production"})
 
 	conds := []orktypes.Condition{{Field: "spec.environment", Equals: "production"}}
-	if !EvaluateConditions(obj, conds) {
+	if !evaluateConditions(obj, conds) {
 		t.Error("equals shorthand should pass when value matches")
 	}
 
 	conds = []orktypes.Condition{{Field: "spec.environment", Equals: "staging"}}
-	if EvaluateConditions(obj, conds) {
+	if evaluateConditions(obj, conds) {
 		t.Error("equals shorthand should fail when value does not match")
 	}
 }
@@ -58,7 +57,7 @@ func TestEvaluateConditions_AllMustPass(t *testing.T) {
 		{Field: "spec.environment", Equals: "production"},
 		{Field: "spec.enabled", Equals: "true"},
 	}
-	if !EvaluateConditions(obj, conds) {
+	if !evaluateConditions(obj, conds) {
 		t.Error("all conditions pass — should return true")
 	}
 
@@ -66,7 +65,7 @@ func TestEvaluateConditions_AllMustPass(t *testing.T) {
 		{Field: "spec.environment", Equals: "production"},
 		{Field: "spec.enabled", Equals: "false"},
 	}
-	if EvaluateConditions(obj, conds) {
+	if evaluateConditions(obj, conds) {
 		t.Error("one condition fails — should return false")
 	}
 }
@@ -147,7 +146,7 @@ func TestEvaluateConditions_Operators(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := EvaluateConditions(obj, []orktypes.Condition{tt.cond})
+			result := evaluateConditions(obj, []orktypes.Condition{tt.cond})
 			if result != tt.expect {
 				t.Errorf("expected %v, got %v", tt.expect, result)
 			}
@@ -186,7 +185,7 @@ func TestEvaluateConditions_NestedField(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cond := orktypes.Condition{Field: tt.field, Equals: tt.equals}
-			result := EvaluateConditions(obj, []orktypes.Condition{cond})
+			result := evaluateConditions(obj, []orktypes.Condition{cond})
 			if result != tt.expect {
 				t.Errorf("expected %v, got %v", tt.expect, result)
 			}
@@ -223,7 +222,7 @@ func TestResolveField_Types(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.field, func(t *testing.T) {
 			cond := orktypes.Condition{Field: tt.field, Equals: tt.expected}
-			if !EvaluateConditions(obj, []orktypes.Condition{cond}) {
+			if !evaluateConditions(obj, []orktypes.Condition{cond}) {
 				t.Errorf("field %q: expected value %q not matched", tt.field, tt.expected)
 			}
 		})

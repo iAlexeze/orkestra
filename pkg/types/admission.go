@@ -106,17 +106,20 @@ type ValidationRule struct {
 	Action ValidationAction `yaml:"action,omitempty" json:"action,omitempty"`
 
 	// Shorthands — use these for the common cases.
-	Equals    string `yaml:"equals,omitempty" json:"equals,omitempty"`
-	NotEquals string `yaml:"notEquals,omitempty" json:"notEquals,omitempty"`
-	Prefix    string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
-	Suffix    string `yaml:"suffix,omitempty" json:"suffix,omitempty"`
-	Contains  string `yaml:"contains,omitempty" json:"contains,omitempty"`
-	Min       string `yaml:"min,omitempty" json:"min,omitempty"` // numeric, inclusive
-	Max       string `yaml:"max,omitempty" json:"max,omitempty"` // numeric, inclusive
+	Equals      string `yaml:"equals,omitempty" json:"equals,omitempty"`
+	NotEquals   string `yaml:"notEquals,omitempty" json:"notEquals,omitempty"`
+	Prefix      string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
+	Suffix      string `yaml:"suffix,omitempty" json:"suffix,omitempty"`
+	Contains    string `yaml:"contains,omitempty" json:"contains,omitempty"`
+	Min         string `yaml:"min,omitempty" json:"min,omitempty"` // numeric, inclusive
+	Max         string `yaml:"max,omitempty" json:"max,omitempty"` // numeric, inclusive
+	GreaterThan string `yaml:"greaterThan,omitempty" json:"greaterThan,omitempty"`
+	LessThan    string `yaml:"lessThan,omitempty" json:"lessThan,omitempty"`
 
 	// Explicit operator form — use when no shorthand covers the comparison.
-	Operator ConditionOperator `yaml:"operator,omitempty" json:"operator,omitempty"`
-	Value    string            `yaml:"value,omitempty" json:"value,omitempty"`
+	Operator  ConditionOperator `yaml:"operator,omitempty" json:"operator,omitempty"`
+	Value     string            `yaml:"value,omitempty" json:"value,omitempty"`
+	ValueType string            `yaml:"valueType,omitempty"` // "string", "int", "bool"
 }
 
 // ValidationConfig holds all validation rules for a CRD.
@@ -187,11 +190,14 @@ type MutationRule struct {
 
 	// Default — set only if the field is absent or empty.
 	// Supports template expressions.
-	Default string `yaml:"default,omitempty" json:"default,omitempty"`
+	Default interface{} `yaml:"default,omitempty"` // accepts int, bool, string from YAML
 
 	// Override — always set, regardless of current value.
 	// Supports template expressions.
-	Override string `yaml:"override,omitempty" json:"override,omitempty"`
+	Override interface{} `yaml:"override,omitempty"` // accepts int, bool, string from YAML
+
+	// Value type
+	ValueType string `yaml:"valueType,omitempty"` // "string", "int" or "integer", "float" or "number", "bool" or "boolean"
 }
 
 // MutationConfig holds all mutation rules for a CRD.

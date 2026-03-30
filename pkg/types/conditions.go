@@ -67,6 +67,10 @@ type Condition struct {
 	//     - field: spec.environment
 	//       suffix: prod
 	Suffix string `yaml:"suffix,omitempty"`
+
+	// Numeric shorthands
+	GreaterThan string `yaml:"greaterThan,omitempty"`
+	LessThan    string `yaml:"lessThan,omitempty"`
 }
 
 // ConditionOperator defines how a condition's field is compared to its value.

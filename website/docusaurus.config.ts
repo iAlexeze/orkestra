@@ -85,7 +85,7 @@ const config: Config = {
     image: 'img/fav.png',
 
     colorMode: {
-      defaultMode: 'light',
+      defaultMode: 'dark',
       respectPrefersColorScheme: false,
     },
 

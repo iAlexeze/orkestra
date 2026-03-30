@@ -80,7 +80,7 @@ func (m *Merger) Merge() error {
 	m.result = merged
 	m.merged = true
 
-	logger.Info().
+	logger.Debug().
 		Int("entryPoints", len(m.entryPoints)).
 		Int("total", len(m.result)).
 		Int("enabled", len(m.Enabled())).

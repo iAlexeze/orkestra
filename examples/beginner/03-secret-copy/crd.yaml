@@ -34,4 +34,4 @@ spec:
     kind: SecretDistribution
     plural: secretdistributions
     singular: secretdistribution
-  scope: Namespaced
+  scope: Cluster  # This is so it can distribute to all namespaces

@@ -108,7 +108,7 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) ([]orktypes
 			Msg("merger: CRD loaded from Katalog")
 	}
 
-	logger.Info().
+	logger.Debug().
 		Str("path", path).
 		Int("crds", len(allCRDs)).
 		Msg("merger: Katalog loaded")
@@ -234,7 +234,7 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktype
 			Msg("merger: inline CRD overrides source")
 	}
 
-	logger.Info().
+	logger.Debug().
 		Str("path", path).
 		Int("crds", len(allCRDs)).
 		Msg("merger: Komposer loaded")

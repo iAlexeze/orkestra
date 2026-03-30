@@ -49,7 +49,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			RegistryURL: GetStrEnv("ORK_REGISTRY", ""),
 		},
 		healthServer: healthServer{
-			Port:         GetStrEnv("HEALTH_PORT", "5000"),
+			Port:         GetStrEnv("HEALTH_PORT", "8080"),
 			ReadTimeout:  GetDurEnvSeconds("SRV_READ_TIMEOUT", 5),
 			WriteTimeout: GetDurEnvSeconds("SRV_WRITE_TIMEOUT", 20),
 		},

@@ -25,11 +25,25 @@ func runServices(
 ) error {
 	for i, src := range srcs {
 		// 1. Evaluate conditions BEFORE resolving templates
-		if !EvaluateConditions(owner, src.Conditions) {
+		conditionPassed := evaluateConditions(owner, src.Conditions)
+
+		if !conditionPassed {
+			if update {
+				// Condition no longer passes — delete if owned by this CR
+				name, _ := resolver.Resolve(src.Name)
+				ns, _ := resolver.Resolve(src.Namespace)
+				if ns == "" {
+					ns = owner.GetNamespace()
+				}
+				if err := orksvc.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
+					return fmt.Errorf("services[%d]: conditional cleanup: %w", i, err)
+				}
+			}
 			logger.FromContext(ctx).Debug().
 				Str("resource", "ConfigMap").
 				Int("index", i).
 				Msg("conditions not met — skipping resource")
+
 			continue
 		}
 
@@ -50,6 +64,8 @@ func runServices(
 			if err := orksvc.Create(ctx, kube, owner, spec); err != nil {
 				return fmt.Errorf("services[%d].create: %w", i, err)
 			}
+
+			// reconcile: true
 			if src.Reconcile {
 				if err := orksvc.Update(ctx, kube, owner, spec); err != nil {
 					return fmt.Errorf("services[%d].reconcile: %w", i, err)

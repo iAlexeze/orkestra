@@ -39,14 +39,14 @@ import (
 // logic.
 //
 
-// EvaluateConditions reports whether *all* conditions pass for the given CR.
+// evaluateConditions reports whether *all* conditions pass for the given CR.
 //
 // - nil or empty slice → unconditional (true)
 // - typed CRDs → always true (cannot evaluate dot‑notation paths)
 // - unstructured CRDs → evaluate each condition using dot‑notation
 //
 // Any condition that fails causes the entire block to fail (AND semantics).
-func EvaluateConditions(obj domain.Object, conditions []orktypes.Condition) bool {
+func evaluateConditions(obj domain.Object, conditions []orktypes.Condition) bool {
 	if len(conditions) == 0 {
 		return true // no conditions → unconditional
 	}
@@ -155,6 +155,13 @@ func resolveConditionOp(c orktypes.Condition) (orktypes.ConditionOperator, strin
 	}
 	if c.Contains != "" {
 		return orktypes.ConditionContains, c.Contains
+	}
+
+	if c.GreaterThan != "" {
+		return orktypes.ConditionGt, c.GreaterThan
+	}
+	if c.LessThan != "" {
+		return orktypes.ConditionLt, c.LessThan
 	}
 
 	// Explicit operator.

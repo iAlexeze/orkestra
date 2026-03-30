@@ -180,26 +180,49 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	// Mutation failures are non-fatal: logged, reconcile continues.
 	// Validation deny failures halt reconcile and return an error.
 
-	if r.crd.Mutation != nil && r.crd.Mutation.MutateFirst {
+	// reconcileImpl — replace the validation call block with this:
+
+	// ── Reconcile-time mutation and validation ────────────────────────────────
+	mutationEnabled := r.crd.Mutation != nil && len(r.crd.Mutation.Rules) > 0
+	validationEnabled := r.crd.Validation != nil && len(r.crd.Validation.Rules) > 0
+
+	if mutationEnabled && r.crd.Mutation.MutateFirst {
 		if mutErr := r.applyReconcileTimeMutation(ctx, obj); mutErr != nil {
 			logger.FromContext(ctx).Warn().Err(mutErr).
 				Str("name", obj.GetName()).
-				Msg("reconcile mutation failed")
+				Msg("reconcile mutation failed — continuing")
 		}
 	}
 
-	if valErr := r.applyReconcileTimeValidation(ctx, obj); valErr != nil {
-		return valErr
+	if validationEnabled {
+		valResult := runValidation(obj, r.crd.Validation, r.crd.Kind)
+
+		// Warn violations: log and emit events but do NOT halt
+		for _, w := range valResult.Warnings {
+			logger.FromContext(ctx).Warn().
+				Str("name", obj.GetName()).
+				Str("crd", r.crd.GVK).
+				Str("resource", obj.GetNamespace()+"/"+obj.GetName()).
+				Str("field", w.Field).
+				Str("message", w.Message).
+				Msg("reconcile validation: warn")
+			r.event.Eventf(obj, corev1.EventTypeWarning, "ValidationWarning",
+				fmt.Sprintf("field %q: %s", w.Field, w.Message))
+		}
+
+		// Deny violations: halt reconcile
+		if valResult.Deny {
+			return valResult.DenialError()
+		}
 	}
 
-	if r.crd.Mutation == nil || !r.crd.Mutation.MutateFirst {
+	if mutationEnabled && !r.crd.Mutation.MutateFirst {
 		if mutErr := r.applyReconcileTimeMutation(ctx, obj); mutErr != nil {
 			logger.FromContext(ctx).Warn().Err(mutErr).
 				Str("name", obj.GetName()).
-				Msg("reconcile mutation failed")
+				Msg("reconcile mutation failed — continuing")
 		}
 	}
-
 	switch {
 	case r.hooks.OnReconcile != nil:
 		// Go hooks — user-provided, full type-safe access.
@@ -312,7 +335,7 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj dom
 		if err := runConfigMaps(ctx, kube, resolver, obj, t.ConfigMaps, false); err != nil {
 			return err
 		}
-		if err := runServiceAccounts(ctx, kube, resolver, obj, t.ServiceAccounts); err != nil {
+		if err := runServiceAccounts(ctx, kube, resolver, obj, t.ServiceAccounts, false); err != nil {
 			return err
 		}
 		if err := runCronJobs(ctx, kube, resolver, obj, t.CronJobs, false); err != nil {
@@ -334,10 +357,17 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj dom
 		if err := runConfigMaps(ctx, kube, resolver, obj, t.ConfigMaps, true); err != nil {
 			return err
 		}
+
+		// Added to use when condition in both ways
+		if err := runJobs(ctx, kube, resolver, obj, t.Jobs, true); err != nil {
+			return err
+		}
 		if err := runCronJobs(ctx, kube, resolver, obj, t.CronJobs, true); err != nil {
 			return err
 		}
-		// ServiceAccounts don't drift — no onReconcile needed
+		if err := runServiceAccounts(ctx, kube, resolver, obj, t.ServiceAccounts, true); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -358,7 +388,7 @@ func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, obj doma
 	}
 
 	if t := r.rc.OnDelete; t != nil {
-		if err := runJobs(ctx, kube, resolver, obj, t.Jobs); err != nil {
+		if err := runJobs(ctx, kube, resolver, obj, t.Jobs, false); err != nil {
 			return err
 		}
 	}

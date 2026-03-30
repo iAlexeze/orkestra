@@ -2,6 +2,7 @@ package template
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ialexeze/orkestra/domain"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
@@ -82,4 +83,37 @@ func objectToMap(obj domain.Object) (map[string]interface{}, error) {
 			"annotations": obj.GetAnnotations(),
 		},
 	}, nil
+}
+
+// resolveRawValue navigates a dot-notation path extracted from a template
+// expression and returns the raw value — preserving the original type
+// ([]interface{}, map, string, float64, bool) rather than stringifying it.
+//
+// Input: "{{ .spec.targetNamespaces }}" → navigates data["spec"]["targetNamespaces"]
+// Returns nil when the path does not exist.
+func resolveRawValue(data map[string]interface{}, expr string) interface{} {
+	// Extract the path from "{{ .spec.targetNamespaces }}"
+	path := strings.TrimSpace(expr)
+	path = strings.TrimPrefix(path, "{{")
+	path = strings.TrimSuffix(path, "}}")
+	path = strings.TrimSpace(path)
+	path = strings.TrimPrefix(path, ".")
+
+	if path == "" {
+		return nil
+	}
+
+	parts := strings.Split(path, ".")
+	var current interface{} = data
+	for _, part := range parts {
+		m, ok := current.(map[string]interface{})
+		if !ok {
+			return nil
+		}
+		current, ok = m[part]
+		if !ok {
+			return nil
+		}
+	}
+	return current
 }
