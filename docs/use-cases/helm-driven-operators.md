@@ -45,9 +45,10 @@ crds:
     plural: managednamespaces
 ```
 
-!!! tip
-    The chart defines the *shape* of the operator.  
-    The Komposer defines the *environment‑specific behavior*.
+:::tip
+The chart defines the *shape* of the operator.  
+The Komposer defines the *environment‑specific behavior*.
+:::
 
 ---
 
@@ -101,7 +102,7 @@ crds:
     plural: managednamespaces
 ```
 
-!!! note
+:::note
     Helm becomes the distribution mechanism; Orkestra becomes the runtime.  
     The platform team ships the chart.  
     Each environment applies overrides through a Komposer.

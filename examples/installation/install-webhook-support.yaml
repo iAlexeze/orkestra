@@ -105,8 +105,7 @@ spec:
       serviceAccountName: orkestra
       containers:
         - name: orkestra
-          # image: ghcr.io/orkestra-sh/orkestra:latest
-          image: ialexeze/ork:example
+          image: ialexeze/ork:valid
           imagePullPolicy: Always
           args:
             - run

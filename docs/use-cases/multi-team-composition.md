@@ -10,8 +10,9 @@ sources:
     - $SECURITY_KATALOG_URL
 ```
 
-!!! tip
-    Each team owns its Katalog. The Komposer composes them. No cross‑repo access required.
+:::tip
+Each team owns its Katalog. The Komposer composes them. No cross‑repo access required.
+:::
 
 ---
 

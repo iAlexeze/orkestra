@@ -14,8 +14,8 @@ The User Guide is for platform engineers, SREs, and application teams who want t
 | [Multi‑Version CRD Explained](./user-guide/multi-version-crd-explained.md) | How Orkestra manages multiple API versions declaratively. |
 | [Extending Orkestra](./user-guide/extending-orkestra.md) | Adding hooks, custom reconcilers, and new resource types. |
 | [Production Deployment](./user-guide/deployment.md/#helm-deployment) | High availability, TLS, RBAC, and resource tuning. |
-| [Generate a Certificate with Cert‑Manager](./user-guide/self-signed-certificate-with-cert-manager.md) | Production‑grade TLS for the conversion webhook. |
-| [Generate an OpenSSL Self‑Signed Certificate](./user-guide/self-signed-certificate-with-openssl.md) | Development‑only certificates. |
+| [Generate a Certificate with Cert‑Manager](./user-guide/certificate-with-cert-manager.md) | Production‑grade TLS for the conversion webhook. |
+| [Generate an OpenSSL Self‑Signed Certificate](./user-guide/certificate-with-openssl.md) | Development‑only certificates. |
 | [Choosing Katalog vs Komposer](./user-guide/choosing-katalog-vs-komposer.md) | When to use each, and how they work together. |
 | [Use Cases](../use-cases/index.md) | Real‑world examples of Orkestra in production. |
 | [Best Practices](./user-guide/best-practices.md) | Recommended patterns for CRDs, Katalogs, and dependencies. |

@@ -11,8 +11,9 @@ GET /katalog/{crd}
 GET /katalog/{crd}/health
 ```
 
-!!! tip
-    Metrics integrate directly with Prometheus and Grafana.
+:::tip
+Metrics integrate directly with Prometheus and Grafana.
+:::
 
 ---
 

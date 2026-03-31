@@ -71,7 +71,7 @@ that cross package boundaries live in `tests/unit/`.
 | `pkg/types` | `admission_test.go` | `EffectiveAction`, `IsDeny/IsWarn`, `HasDenyRules/HasWarnRules`, `WebhookValidationEnabled/WebhookMutationEnabled`, `EffectiveOperations` |
 | `pkg/types` | `types_test/restricted_test.go` | Restricted namespace matching and wildcard patterns |
 | `pkg/metrics` | `metrics_test.go` | Every public helper function: smoke test (no panic, no double-registration) |
-| `tests/unit/health` | `conversion_test.go` | External API: `ProcessConversionReviewForTest`, `ExportedApplyConversionfunc` |
+| `tests/unit/health` | `conversion_test.go` | External API: `ProcessConversionReviewForTest`, `ExportedApplyConversion` |
 | `tests/unit/kontroller` | `crd_health_test.go` | `CRDHealth`: initial state, `RecordSuccess/Failure`, threshold degradation, error rate, consecutive fail reset |
 | `tests/unit/queue` | `workqueue_test.go` | `Workqueue` and `QueueRegistry`: lifecycle (Start/Shutdown/Started), depth, registration, retrieval |
 | `tests/unit/reconciler` | `conditions_test.go` | Condition evaluation: all operators, nested field traversal, multi-condition AND logic |

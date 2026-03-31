@@ -32,5 +32,6 @@ This section shows what becomes possible when your operator is a file instead of
 - [Go hooks](./hooks.md)
 - [Custom constructors](./custom-constructors.md)
 
-!!! tip
-    Each use case is self‑contained. You can read them in any order.
+:::tip
+Each use case is self‑contained. You can read them in any order.
+:::

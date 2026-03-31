@@ -15,35 +15,97 @@ const config: Config = {
 
   // Broken links in the existing docs should warn, not fail the build
   onBrokenLinks: 'warn',
-  onBrokenMarkdownLinks: 'warn',
 
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
   },
-
+// siteConfig.markdown.hooks.onBrokenMarkdownLinks
   // 'detect' treats .md files as plain Markdown (not MDX) and .mdx as MDX.
   // This prevents MDX from choking on < <= >= and {expr} in existing docs
   // that were written for MkDocs, not React/JSX.
   markdown: {
     format: 'detect',
     mermaid: true,
+    hooks:
+      {
+        onBrokenMarkdownLinks: 'warn',
+      }
+
   },
+
+  // Preload fonts for better performance
+  headTags: [
+    // Preload Inter variable fonts
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'preload',
+        href: '/static/fonts/Inter-Italic-VariableFont-opsz-wght.ttf',
+        as: 'font',
+        type: 'font/ttf',
+        crossorigin: 'anonymous',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'preload',
+        href: '/static/fonts/Inter-Italic-VariableFont-opsz-wght.ttf',
+        as: 'font',
+        type: 'font/ttf',
+        crossorigin: 'anonymous',
+      },
+    },
+    // Preload static fallback weights for broader compatibility
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'preload',
+        href: '/static/fonts/static/Inter_18pt-Regular.ttf',
+        as: 'font',
+        type: 'font/ttf',
+        crossorigin: 'anonymous',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'preload',
+        href: '/static/fonts/static/Inter_18pt-Medium.ttf',
+        as: 'font',
+        type: 'font/ttf',
+        crossorigin: 'anonymous',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'preload',
+        href: '/static/fonts/static/Inter_18pt-SemiBold.ttf',
+        as: 'font',
+        type: 'font/ttf',
+        crossorigin: 'anonymous',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'preload',
+        href: '/static/fonts/static/Inter_18pt-Bold.ttf',
+        as: 'font',
+        type: 'font/ttf',
+        crossorigin: 'anonymous',
+      },
+    },
+  ],
+
   themes: [
     '@docusaurus/theme-mermaid',
-    [
-      '@easyops-cn/docusaurus-search-local',
-      {
-        hashed: true,
-        language: ['en'],
-        highlightSearchTermsOnTargetPage: true,
-        explicitSearchResultPath: true,
-        docsRouteBasePath: '/docs',
-        searchBarPosition: 'left',
-        searchBarShortcutHint: true,
-      },
-    ],
+    // Remove the local search plugin - we're using Algolia now
+    // '@easyops-cn/docusaurus-search-local', // REMOVED
   ],
+
   presets: [
     [
       'classic',
@@ -136,6 +198,41 @@ const config: Config = {
           'aria-label': 'GitHub repository',
         },
       ],
+    },
+
+    // Algolia DocSearch Configuration
+    //  https://docsearch.algolia.com/apply/
+    algolia: {
+      // The application ID provided by Algolia
+      appId: '1YJ1C111LH',
+      
+      // Public API key: it is safe to commit it (it's a public key)
+      apiKey: 'b4bbac9a499ecc51109f23abd327cf29',
+      
+      // The name of the index you created on Algolia
+      indexName: 'orkestra',
+      
+      // Optional: contextual search adds context to search results
+      contextualSearch: true,
+      
+      // Optional: search parameters
+      searchParameters: {},
+      
+      // Optional: placeholder for search input
+      placeholder: 'Search documentation...',
+      
+      // Optional: path for search page
+      searchPagePath: 'search',
+      
+      // Optional: whether to show search results immediately when typing
+      // (default: false)
+      // immediateSearch: false,
+      
+      // Optional: container for the search modal
+      // container: 'div[class*="searchBox"]',
+      
+      // Optional: insights plugin for analytics
+      // insights: false,
     },
 
     footer: {

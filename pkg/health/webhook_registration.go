@@ -5,10 +5,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,6 +40,11 @@ import (
 const (
 	validatingWebhookConfigName = "orkestra-validation"
 	mutatingWebhookConfigName   = "orkestra-mutation"
+
+	// Cleanup setup
+	maxAttempts          = 5
+	delayBetweenAttempts = 5 * time.Second
+	gracePeriodSeconds   = int64(30)
 )
 
 // WebhookRegistrationOptions holds the configuration for webhook registration.
@@ -111,6 +118,51 @@ func RegisterWebhooks(
 			Str("config", mutatingWebhookConfigName).
 			Msg("webhook: MutatingWebhookConfiguration registered")
 	}
+
+	return nil
+}
+
+// UnregisterWebhooks removes the ValidatingWebhookConfiguration and
+// MutatingWebhookConfiguration entries that were previously created from the
+// admission registry.
+//
+// Called from HealthServer.Shutdown() when ENABLE_WEBHOOKS=true, after the
+// runtime begins shutting down and the admission registry is no longer needed.
+//
+// The function is destructive — only call during shutdown. Any
+// webhook configurations created by Orkestra are cleaned up.
+func UnregisterWebhooks(
+	ctx context.Context,
+	client kubernetes.Interface,
+) error {
+
+	// Cleanup ValidatingWebhookConfiguration with retry
+	if err := utils.RetryBackoff(func() error {
+		return cleanupValidatingWebhook(ctx, client, validatingWebhookConfigName)
+	}, utils.RetryOptions{
+		Attempts: maxAttempts,
+		Delay:    delayBetweenAttempts,
+	},
+	); err != nil {
+		return fmt.Errorf("webhook cleanup: validating: %w", err)
+	}
+	logger.Info().
+		Str("config", validatingWebhookConfigName).
+		Msg("webhook: ValidatingWebhookConfiguration unregistered")
+
+	// Cleanup MutatingWebhookConfiguration with retry
+	if err := utils.RetryBackoff(func() error {
+		return cleanupMutatingWebhook(ctx, client, mutatingWebhookConfigName)
+	}, utils.RetryOptions{
+		Attempts: maxAttempts,
+		Delay:    delayBetweenAttempts,
+	}); err != nil {
+		return fmt.Errorf("webhook cleanup: mutating: %w", err)
+	}
+
+	logger.Info().
+		Str("config", mutatingWebhookConfigName).
+		Msg("webhook: MutatingWebhookConfiguration unregistered")
 
 	return nil
 }
@@ -274,6 +326,36 @@ func applyMutatingWebhookConfig(ctx context.Context, client kubernetes.Interface
 	return err
 }
 
+// cleanupValidatingWebhook deletes the ValidatingWebhookConfiguration.
+func cleanupMutatingWebhook(ctx context.Context, client kubernetes.Interface, cfgName string) error {
+	_, err := client.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(ctx, cfgName, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	// Delete if exisiting
+	return client.AdmissionregistrationV1().MutatingWebhookConfigurations().Delete(ctx, cfgName,
+		metav1.DeleteOptions{GracePeriodSeconds: int64Ptr(gracePeriodSeconds)})
+}
+
+// cleanupMutatingWebhook deletes the MutatingWebhookConfiguration.
+func cleanupValidatingWebhook(ctx context.Context, client kubernetes.Interface, cfgName string) error {
+	_, err := client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, cfgName, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	// Delete if existing
+	return client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete(ctx, cfgName,
+		metav1.DeleteOptions{GracePeriodSeconds: int64Ptr(gracePeriodSeconds)})
+}
+
 // readCABundle reads the TLS certificate file and returns it as raw bytes.
 // The API server requires this to trust Orkestra's TLS endpoint.
 func readCABundle(certFile string) ([]byte, error) {
@@ -291,6 +373,7 @@ func readCABundle(certFile string) ([]byte, error) {
 // ── Pointer helpers ───────────────────────────────────────────────────────
 
 func int32Ptr(i int32) *int32                                                   { return &i }
+func int64Ptr(i int64) *int64                                                   { return &i }
 func matchPolicyPtr(p admissionv1.MatchPolicyType) *admissionv1.MatchPolicyType { return &p }
 func reinvocationPolicyPtr(p admissionv1.ReinvocationPolicyType) *admissionv1.ReinvocationPolicyType {
 	return &p

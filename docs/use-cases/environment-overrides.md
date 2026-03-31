@@ -30,9 +30,10 @@ spec:
         default: true
 ```
 
-!!! note
-    Development uses `workers: 2`. Production uses `workers: 10`. The same
-    source Katalog, two different overrides, no fork.
+:::note
+Development uses `workers: 2`. Production uses `workers: 10`. The same
+source Katalog, two different overrides, no fork.
+:::
 
 ---
 

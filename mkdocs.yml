@@ -58,8 +58,8 @@ nav:
     - Multi Version CRD Explained: guides/user-guide/multi-version-crd-explained.md
     - Extending Orkestra: guides/user-guide/extending-orkestra.md
     - Production Deployment: guides/user-guide/deployment/#helm-deployment
-    - Generate a Certificate with Cert-Manager: guides/user-guide/self-signed-certificate-with-cert-manager.md
-    - Generate an OpenSSL Self-signed Certificate: guides/user-guide/self-signed-certificate-with-openssl.md
+    - Generate a Certificate with Cert-Manager: guides/user-guide/certificate-with-cert-manager.md
+    - Generate an OpenSSL Self-signed Certificate: guides/user-guide/certificate-with-openssl.md
     - Choosing Katalog vs Komposer: guides/user-guide/choosing-katalog-vs-komposer.md
     - Use Cases: use-cases/index.md
     - Best Practices: guides/user-guide/best-practices.md

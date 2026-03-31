@@ -1,20 +1,21 @@
-# 🟣 Using cert‑manager to Generate TLS Certificates for Orkestra
+# Generate TLS Certificates with CertManager
 
-!!! tip "Recommended!" 
-    This is the recommended method for production clusters.  
-    cert‑manager handles certificate issuance, rotation, and CA trust automatically.
+:::tip[Recommended!]
+This is the recommended method for production clusters.  
+cert‑manager handles certificate issuance, rotation, and CA trust automatically.
+:::
 
-!!! warning
-    If you previously installed a self‑signed certificate manually,  
-    **delete the old secret** before switching to cert‑manager:
+:::warning
+If you previously installed a self‑signed certificate manually,  
+delete the old secret before switching to cert‑manager:
 
-```bash
- kubectl delete secret orkestra-tls -n orkestra
-```
-
+  ```bash
+  kubectl delete secret orkestra-tls -n orkestra
+  ```
+:::
 ---
 
-# 1. Install cert‑manager
+## 1. Install cert‑manager
 
 If you don’t already have it:
 
@@ -30,9 +31,9 @@ kubectl get pods -n cert-manager
 
 ---
 
-# 2. Create a CA Issuer (self‑signed or external)
+## 2. Create a CA Issuer (self‑signed or external)
 
-## Option A — Self‑signed CA (simple, good for dev)
+### Option A — Self‑signed CA (simple, good for dev)
 
 ```yaml
 apiVersion: cert-manager.io/v1
@@ -43,7 +44,7 @@ spec:
   selfSigned: {}
 ```
 
-## Option B — Real CA (production)
+### Option B — Real CA (production)
 
 If you have an internal PKI:
 
@@ -64,7 +65,7 @@ Where `orkestra-ca-secret` contains:
 
 ---
 
-# 3. Create a Certificate for the Orkestra Webhook
+## 3. Create a Certificate for the Orkestra Webhook
 
 This is the key resource.  
 cert‑manager will:
@@ -106,7 +107,7 @@ secret/orchestra-tls
 
 ---
 
-# 4. Patch Your CRD to Use cert‑manager’s CA Bundle
+## 4. Patch Your CRD to Use cert‑manager’s CA Bundle
 
 cert‑manager stores the CA in the secret under `ca.crt`.
 
@@ -130,6 +131,7 @@ conversion:
       caBundle: <base64-ca-from-secret>
 ```
 
-!!! note
-    cert‑manager **does not automatically patch CRDs**.  
-    You must embed the CA bundle manually or automate it with a small controller.
+:::note
+cert‑manager **does not automatically patch CRDs**.  
+You must embed the CA bundle manually or automate it with a small controller.
+:::

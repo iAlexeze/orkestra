@@ -15,7 +15,7 @@ reconciler:
     function: NewApplicationReconciler
 ```
 
-!!! caution
-    You own the reconcile loop — Orkestra handles everything around it (informers, workqueue, metrics, health, leader election).
-```
+:::caution
+You own the reconcile loop — Orkestra handles everything around it (informers, workqueue, metrics, health, leader election).
+:::
 

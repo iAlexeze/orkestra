@@ -1,20 +1,21 @@
-# Using OpenSSL to Generate TLS Certificates for Orkestra
+# Generate Self-Signed Certificates
 
 Orkestra’s conversion webhook requires TLS.  
 This guide walks you through generating a **self‑signed certificate** suitable for development and testing.
 
-!!! warning
-    **Self‑signed certificates are strongly discouraged in production.** 
+:::warning
+**Self‑signed certificates are strongly discouraged in production.** 
 
-    They are not trusted by default, cannot be revoked, and require manual CA distribution.  
+They are not trusted by default, cannot be revoked, and require manual CA distribution.  
 
-    For production clusters, use:
+For production clusters, use:
 
-    - A real Certificate Authority (public or private)
+- A real Certificate Authority (public or private)
 
-    - [cert‑manager](./self-signed-certificate-with-cert-manager.md) with a proper Issuer
+- [cert‑manager](./certificate-with-cert-manager.md) with a proper Issuer
 
-    - Your organization’s PKI
+- Your organization’s PKI
+:::
 
 ---
 

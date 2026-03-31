@@ -98,8 +98,8 @@ Three options:
 
 | Approach | Suitable for |
 |---|---|
-| Self-signed (via [generate-certs.sh](./guides/user-guide/generate-certs.sh) or [Follow along here](./guides/user-guide/self-signed-certificate-with-openssl.md)) | Development and local testing only |
-| [cert-manager](./guides/user-guide/self-signed-certificate-with-cert-manager.md) `Certificate` resource | Production — automated rotation |
+| Self-signed (via [generate-certs.sh](./guides/user-guide/generate-certs.sh) or [Follow along here](./guides/user-guide/certificate-with-openssl.md)) | Development and local testing only |
+| [cert-manager](./guides/user-guide/certificate-with-cert-manager.md) `Certificate` resource | Production — automated rotation |
 | External PKI / corporate CA | Enterprise environments with existing certificate infrastructure |
 
 !!! warning "Self-signed certificates in production"

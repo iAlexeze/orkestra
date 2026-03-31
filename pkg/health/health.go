@@ -249,6 +249,10 @@ func (h *HealthServer) Shutdown(ctx context.Context) {
 		if err := h.hookSrv.Shutdown(ctx); err != nil {
 			logger.Error().Err(err).Msg("https conversion server shutdown error")
 		}
+		// Unregister Webhooks
+		if err := UnregisterWebhooks(ctx, h.kubeClient); err != nil {
+			logger.Error().Err(err).Msg("webhook cleanup error")
+		}
 	}
 	h.ready.Store(false)
 	h.healthy.Store(false)
