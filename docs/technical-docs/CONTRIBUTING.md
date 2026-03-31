@@ -11,7 +11,7 @@ Both matter. This document covers both.
 Read the following before making any code changes:
 
 - [Technical Documentation Index](./index.md) — architecture overview and component map
-- [Your CRD Is Enough](../publications/your-crd-is-enough.md) — the design philosophy
+- [Your CRD Is Enough](../blog/your-crd-is-enough.md) — the design philosophy
 - [Trust and Failure Model](../publications/trust-and-failure-model.md) — the failure guarantees the codebase must uphold
 
 Understanding these will prevent contributions that are technically correct but architecturally wrong. The most common mistakes from new contributors:
@@ -153,8 +153,8 @@ pkg/
     run_pods.go          runPods()
     run_serviceaccounts.go runServiceAccounts()
     conditions.go        evaluateConditions() for when: blocks
-    validation.go        RunValidation() — reconcile-time validation
-    mutation.go          RunMutation() — reconcile-time mutation
+    validation.go        runValidation() — reconcile-time validation
+    mutation.go          runMutation() — reconcile-time mutation
 
   kontroller/
     informer_factory.go  InformerFactory, per-CRD informer creation

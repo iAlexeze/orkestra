@@ -12,9 +12,9 @@ The Orkestra Registry provides reusable implementations for:
 - Finalizers  
 - Status helpers  
 
-!!! note
-    Templates and hooks call into the Registry — giving you production‑grade behavior without writing boilerplate.
-
+:::note
+Templates and hooks call into the Registry — giving you production‑grade behavior without writing boilerplate.
+:::
 
 ---
 

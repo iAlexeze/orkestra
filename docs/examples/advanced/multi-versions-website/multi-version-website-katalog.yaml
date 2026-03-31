@@ -47,27 +47,25 @@ spec:
               reconcile: true
 
       # ───────────────────────────────────────────────
-      # Declarative conversion rules (PER‑CRD)
+      # Declarative conversion rules (aligned to struct)
       # ───────────────────────────────────────────────
       conversion:
-        storageVersion: v1
+        storageVersion: "v1"
 
         paths:
-          # v1alpha1 → v1
-          - from:
-              version: v1alpha1
-              spec:
-                image: "{{ .spec.image }}"
-                replicas: "{{ .spec.replicas }}"
-                port: "{{ .spec.port }}"
-                seo:
-                  enabled: false   # default because v1alpha1 has no SEO
+          - from: "v1alpha1"
+            to: "v1"
+            spec:
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: "{{ .spec.port }}"
+              seo:
+                enabled: false
 
-          # v1 → v1alpha1
-          - to:
-              version: v1alpha1
-              spec:
-                image: "{{ .spec.image }}"
-                replicas: "{{ .spec.replicas }}"
-                port: "{{ .spec.port }}"
-                theme: "default"   # default because v1 has no theme
+          - from: "v1"
+            to: "v1alpha1"
+            spec:
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: "{{ .spec.port }}"
+              theme: "default"

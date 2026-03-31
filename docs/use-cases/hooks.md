@@ -15,8 +15,9 @@ reconciler:
     function: WebsiteHooks
 ```
 
-!!! note
-    Hooks run inside the GenericReconciler — you keep finalizers, metrics, events, and the workqueue.
+:::note
+Hooks run inside the GenericReconciler — you keep finalizers, metrics, events, and the workqueue.
+:::
 
 ---
 

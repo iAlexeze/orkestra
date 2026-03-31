@@ -6,8 +6,9 @@ A cluster can be fully restored from a Katalog.
 ork run --katalog https://git.company.com/platform/crds/prod-katalog.yaml
 ```
 
-!!! tip
-    The Katalog *is* the recovery plan — no binary rebuilds or config migrations.
+:::tip
+The Katalog *is* the recovery plan — no binary rebuilds or config migrations.
+:::
 
 ---
 

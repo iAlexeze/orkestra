@@ -87,7 +87,7 @@ func TestApplyConversion_UpConversion_V1alpha1ToV1(t *testing.T) {
 	obj := buildWebsiteV1Alpha1()
 	rules := websiteRules()
 
-	result, err := health.ExportedApplyConversionfunc(obj, rules, "demo.orkestra.io/v1")
+	result, err := health.ExportedApplyConversion(obj, rules, "demo.orkestra.io/v1")
 	if err != nil {
 		t.Fatalf("up-conversion failed: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestApplyConversion_DownConversion_V1ToV1alpha1(t *testing.T) {
 	obj := buildWebsiteV1()
 	rules := websiteRules()
 
-	result, err := health.ExportedApplyConversionfunc(obj, rules, "demo.orkestra.io/v1alpha1")
+	result, err := health.ExportedApplyConversion(obj, rules, "demo.orkestra.io/v1alpha1")
 	if err != nil {
 		t.Fatalf("down-conversion failed: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestApplyConversion_SameVersion_NoOp(t *testing.T) {
 	obj := buildWebsiteV1()
 	rules := websiteRules()
 
-	result, err := health.ExportedApplyConversionfunc(obj, rules, "demo.orkestra.io/v1")
+	result, err := health.ExportedApplyConversion(obj, rules, "demo.orkestra.io/v1")
 	if err != nil {
 		t.Fatalf("no-op conversion failed: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestApplyConversion_MissingPath_Error(t *testing.T) {
 		},
 	}
 
-	_, err := health.ExportedApplyConversionfunc(obj, rules, "demo.orkestra.io/v1beta1")
+	_, err := health.ExportedApplyConversion(obj, rules, "demo.orkestra.io/v1beta1")
 	if err == nil {
 		t.Error("expected error for missing conversion path")
 	}
@@ -207,7 +207,7 @@ func TestApplyConversion_BareVersionTarget(t *testing.T) {
 		},
 	}
 
-	result, err := health.ExportedApplyConversionfunc(obj, rules, "v1")
+	result, err := health.ExportedApplyConversion(obj, rules, "v1")
 	if err != nil {
 		t.Fatalf("bare version no-op failed: %v", err)
 	}

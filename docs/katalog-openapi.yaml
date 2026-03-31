@@ -88,7 +88,6 @@ components:
         mode: { type: string, enum: [dynamic, typed] }
         gvk: { type: object }
         gvr: { type: string }
-        critical: { type: boolean }
         namespaced: { type: boolean }
         namespace: { type: string }
         dependsOn:

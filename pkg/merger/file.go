@@ -85,6 +85,7 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) ([]orktypes
 	var allCRDs []orktypes.CRDEntry
 	localSeen := map[string]string{}
 
+	// ── Step 4: inline spec.crds — override any source CRD with same name ────
 	for _, crd := range doc.Spec.CRDs {
 		if crd.Name == "" {
 			return nil, fmt.Errorf("%q spec.crds: CRD with no name", path)
@@ -92,6 +93,7 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) ([]orktypes
 
 		inlineKey := "inline:" + path
 
+		// Duplicate within the same inline block — always an error
 		if existing, ok := localSeen[crd.Name]; ok && existing == inlineKey {
 			return nil, fmt.Errorf(
 				"%q spec.crds: duplicate CRD %q — each CRD name must be unique",
@@ -108,7 +110,7 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) ([]orktypes
 			Msg("merger: CRD loaded from Katalog")
 	}
 
-	logger.Info().
+	logger.Debug().
 		Str("path", path).
 		Int("crds", len(allCRDs)).
 		Msg("merger: Katalog loaded")
@@ -215,7 +217,6 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktype
 
 		inlineKey := "inline:" + path
 
-		// Duplicate within the same inline block — always an error
 		if existing, ok := localSeen[crd.Name]; ok && existing == inlineKey {
 			return nil, fmt.Errorf(
 				"%q spec.crds: duplicate CRD %q — each CRD name must be unique",
@@ -223,18 +224,26 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktype
 			)
 		}
 
-		// Override a source CRD with the same name — valid
-		allCRDs = removeCRD(allCRDs, crd.Name)
+		// ── Merge onto source, don't replace ────────────────
+		if base, found := findCRD(allCRDs, crd.Name); found {
+			merged := mergeCRDEntry(base, crd)
+			allCRDs = removeCRD(allCRDs, crd.Name)
+			allCRDs = append(allCRDs, merged)
+			logger.Debug().
+				Str("crd", crd.Name).
+				Str("source", "inline:"+path).
+				Msg("merger: inline override merged onto source entry")
+		} else {
+			allCRDs = append(allCRDs, crd)
+			logger.Debug().
+				Str("crd", crd.Name).
+				Str("source", "inline:"+path).
+				Msg("merger: new CRD from inline spec.crds")
+		}
+
 		localSeen[crd.Name] = inlineKey
-		allCRDs = append(allCRDs, crd)
-
-		logger.Debug().
-			Str("crd", crd.Name).
-			Str("source", "inline:"+path).
-			Msg("merger: inline CRD overrides source")
 	}
-
-	logger.Info().
+	logger.Debug().
 		Str("path", path).
 		Int("crds", len(allCRDs)).
 		Msg("merger: Komposer loaded")
@@ -243,41 +252,52 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktype
 	return allCRDs, nil
 }
 
+// findCRD returns the first CRD with the given name and true,
+// or a zero CRDEntry and false if not found.
+func findCRD(crds []orktypes.CRDEntry, name string) (orktypes.CRDEntry, bool) {
+	for _, crd := range crds {
+		if crd.Name == name {
+			return crd, true
+		}
+	}
+	return orktypes.CRDEntry{}, false
+}
+
 // loadSourceFile loads a file that is referenced from a Komposer sources block.
 // The file MUST be a Katalog — a Komposer cannot source another Komposer.
 // This prevents deep composition chains that are hard to reason about.
-func (m *Merger) loadSourceFile(komposerPath, sourcePath string) ([]orktypes.CRDEntry, error) {
-	data, err := utils.LoadFile(sourcePath)
-	if err != nil {
-		return nil, fmt.Errorf("reading %q: %w", sourcePath, err)
-	}
+// func (m *Merger) loadSourceFile(komposerPath, sourcePath string) ([]orktypes.CRDEntry, error) {
+// 	data, err := utils.LoadFile(sourcePath)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("reading %q: %w", sourcePath, err)
+// 	}
 
-	doc, err := parseKatalogDoc(data, sourcePath)
-	if err != nil {
-		return nil, err
-	}
-	if doc == nil {
-		logger.Debug().
-			Str("path", sourcePath).
-			Msg("merger: skipping source — not a valid Katalog document")
-		return nil, nil
-	}
+// 	doc, err := parseKatalogDoc(data, sourcePath)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	if doc == nil {
+// 		logger.Debug().
+// 			Str("path", sourcePath).
+// 			Msg("merger: skipping source — not a valid Katalog document")
+// 		return nil, nil
+// 	}
 
-	// Komposer sources must be Katalogs — not other Komposers
-	if doc.Kind == konfig.KomposerKind() {
-		return nil, fmt.Errorf(
-			"%q sources.files[%q]: a Komposer cannot source another Komposer — "+
-				"only Katalog files are valid sources",
-			komposerPath, sourcePath,
-		)
-	}
+// 	// Komposer sources must be Katalogs — not other Komposers
+// 	if doc.Kind == konfig.KomposerKind() {
+// 		return nil, fmt.Errorf(
+// 			"%q sources.files[%q]: a Komposer cannot source another Komposer — "+
+// 				"only Katalog files are valid sources",
+// 			komposerPath, sourcePath,
+// 		)
+// 	}
 
-	if doc.Kind != konfig.KatalogKind() {
-		return nil, fmt.Errorf(
-			"%q sources.files[%q]: expected kind %q, got %q",
-			komposerPath, sourcePath, konfig.KatalogKind(), doc.Kind,
-		)
-	}
+// 	if doc.Kind != konfig.KatalogKind() {
+// 		return nil, fmt.Errorf(
+// 			"%q sources.files[%q]: expected kind %q, got %q",
+// 			komposerPath, sourcePath, konfig.KatalogKind(), doc.Kind,
+// 		)
+// 	}
 
-	return m.loadKatalog(sourcePath, doc)
-}
+// 	return m.loadKatalog(sourcePath, doc)
+// }

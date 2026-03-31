@@ -13,6 +13,9 @@ It is the single source of truth for your operator. You write one YAML file. Ork
 
 If the Kubernetes API is the "data plane," the **Katalog is the control plane** for your operator.
 
+!!! tip "katalog is not a CRD"
+    A katalog is not a CRD and [here is why](../../faqs/why-not-crds.md).
+
 ---
 
 ## What Is a Katalog?

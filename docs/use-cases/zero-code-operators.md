@@ -25,9 +25,9 @@ spec:
               reconcile: true
 ```
 
-!!! note
-    Every Website CR automatically creates a Deployment and Service, corrects drift, and cleans up on deletion — all without writing Go.
-```
+:::note
+Every Website CR automatically creates a Deployment and Service, corrects drift, and cleans up on deletion — all without writing Go.
+:::
 
 ---
 

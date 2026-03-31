@@ -1,4 +1,4 @@
-# **Multi‑Version CRD Conversion**
+# Multi‑Version CRD Conversion
 
 Orkestra supports **declarative CRD version conversion**, enabling safe evolution of your APIs without breaking existing users.  
 You can define:
@@ -15,11 +15,12 @@ This allows you to ship new CRD versions while keeping older clients fully funct
 
 ---
 
-## **Why Conversion Matters**
+## Why Conversion Matters
 
-!!! note
-    Conversion is essential for long‑lived operators.  
-    It lets you evolve your API without forcing all clients to upgrade at once.
+:::important
+Conversion is essential for long‑lived operators.  
+It lets you evolve your API without forcing all clients to upgrade at once.
+:::
 
 Use cases include:
 
@@ -32,7 +33,7 @@ Use cases include:
 
 ---
 
-# **Basic Example — Renaming Fields**
+## Basic Example — Renaming Fields
 
 ```yaml
 conversion:
@@ -48,12 +49,13 @@ This means:
 - `spec.replicas` → `spec.scale.replicas`
 - `spec.image` → `spec.container.image`
 
-!!! tip
-    Orkestra handles both **up‑conversion** and **down‑conversion** automatically using the same mapping.
+:::tip
+Orkestra handles both **up‑conversion** and **down‑conversion** automatically using the same mapping.
+:::
 
 ---
 
-# **Defaulting Example**
+## Defaulting Example
 
 You can set defaults when fields are missing in older versions:
 
@@ -66,12 +68,13 @@ conversion:
     spec.scale.max: 5
 ```
 
-!!! note
-    Defaults apply only when the target field is absent — they do not override user‑provided values.
+:::note
+Defaults apply only when the target field is absent — they do not override user‑provided values.
+:::
 
 ---
 
-# **Removing Deprecated Fields**
+## Removing Deprecated Fields
 
 If a field is removed in a newer version, simply omit it from the mapping:
 
@@ -85,13 +88,14 @@ conversion:
     - spec.legacyMode
 ```
 
-!!! caution
-    Dropped fields are **not** preserved when converting back down.  
-    Use this only when the field is truly deprecated.
+:::caution
+Dropped fields are **not** preserved when converting back down.  
+Use this only when the field is truly deprecated.
+:::
 
 ---
 
-# **Type Change Example**
+## Type Change Example
 
 Convert a string into a structured object:
 
@@ -109,12 +113,13 @@ conversion:
         zone: string
 ```
 
-!!! tip
-    Type transforms allow you to migrate from flat specs to structured ones without breaking older clients.
+:::tip
+Type transforms allow you to migrate from flat specs to structured ones without breaking older clients.
+:::
 
 ---
 
-# **Multi‑Version Pipeline Example**
+## Multi‑Version Pipeline Example
 
 Orkestra supports multi‑hop conversion:
 
@@ -146,12 +151,13 @@ Orkestra automatically chains them:
 v1alpha1 → v1beta1 → v1
 ```
 
-!!! note
-    You do **not** need to define direct conversion between non‑adjacent versions.
+:::important
+You do **not** need to define direct conversion between non‑adjacent versions.
+:::
 
 ---
 
-# **Selecting Versions with a Komposer**
+## Selecting Versions with a Komposer
 
 Different environments can choose different CRD versions without forking the operator.
 
@@ -168,12 +174,13 @@ spec:
 
 Production can run `v1`, development can run `v1beta1`, and older clusters can stay on `v1alpha1`.
 
-!!! tip
-    Conversion ensures all versions behave consistently at runtime.
+:::tip
+Conversion ensures all versions behave consistently at runtime.
+:::
 
 ---
 
-# **Runtime Behavior**
+## Runtime Behavior
 
 When a CR is read:
 
@@ -190,7 +197,7 @@ This ensures:
 
 ---
 
-# **Full Example — Realistic Application CRD Evolution**
+## Full Example — Realistic Application CRD Evolution
 
 ### **v1alpha1**
 ```yaml
@@ -208,7 +215,7 @@ spec:
     replicas: 2
 ```
 
-### **v1**
+### v1
 ```yaml
 spec:
   runtime:
@@ -218,7 +225,7 @@ spec:
     max: 5
 ```
 
-### **Conversion Rules**
+### Conversion Rules
 
 ```yaml
 # v1alpha1 → v1beta1
@@ -242,8 +249,9 @@ conversion:
     spec.scale.max: 5
 ```
 
-!!! tip
-    This is a real‑world pattern: flatten → structured → stable.
+:::tip
+This is a real‑world pattern: flatten → structured → stable.
+:::
 
 ---
 

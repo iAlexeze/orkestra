@@ -150,12 +150,31 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	return nil
 }
 
+// DeleteIfOwned deletes the Deployment if it exists and is owned by the CR.
+func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+	owner domain.Object, name, namespace string) error {
+
+	existing, err := kube.Clientset().AppsV1().Deployments(namespace).
+		Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	// Only delete if we own it
+	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+		return nil
+	}
+	return kube.Clientset().AppsV1().Deployments(namespace).
+		Delete(ctx, name, metav1.DeleteOptions{})
+}
+
 // Resolve builds a ResolvedDeploymentSpec from a DeploymentTemplateSource.
 // Fields with template expressions must already be evaluated before calling Resolve.
 // Use pkg/orkestra-registry/template.Resolver to evaluate expressions first.
 //
 // The resolver already evaluated template expressions — here we just merge.
-// deployments/deployment.go
 func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerName string) ResolvedDeploymentSpec {
 	spec := ResolvedDeploymentSpec{
 		Name:        src.Name,

@@ -4,9 +4,10 @@ Orkestra is designed to run safely in production environments. This page covers
 the security model, what permissions Orkestra needs and why, how to scope them,
 and how to report vulnerabilities.
 
-!!! note
-    No security vulnerabilities have been reported for Orkestra at this time.
-    This page exists to help you adopt secure practices from day one.
+:::important
+No security vulnerabilities have been reported for Orkestra at this time.
+This page exists to help you adopt secure practices from day one.
+:::
 
 ---
 
@@ -80,11 +81,12 @@ Restrictions declared in a Komposer apply to all CRDs in that Komposer and canno
 be removed by a CRD-level declaration. Restrictions are additive — they only add
 constraints, never remove them.
 
-!!! tip "Restrict by default"
-    Add `kube-system`, `kube-public`, and your monitoring namespace to
-    `restrictedNamespaces` for every CRD. These namespaces rarely need
-    operator-managed resources, and restricting them reduces the attack surface
-    if a CR is maliciously crafted.
+:::tip[Restrict by default]
+Add `kube-system`, `kube-public`, and your monitoring namespace to
+`restrictedNamespaces` for every CRD. These namespaces rarely need
+operator-managed resources, and restricting them reduces the attack surface
+if a CR is maliciously crafted.
+:::
 
 ---
 
@@ -98,14 +100,15 @@ Three options:
 
 | Approach | Suitable for |
 |---|---|
-| Self-signed (via [generate-certs.sh](./guides/user-guide/generate-certs.sh) or [Follow along here](./guides/user-guide/self-signed-certificate-with-openssl.md)) | Development and local testing only |
-| [cert-manager](./guides/user-guide/self-signed-certificate-with-cert-manager.md) `Certificate` resource | Production — automated rotation |
+| Self-signed (via [generate-certs.sh](./guides/user-guide/generate-certs.sh) or [Follow along here](./guides/user-guide/certificate-with-openssl.md)) | Development and local testing only |
+| [cert-manager](./guides/user-guide/certificate-with-cert-manager.md) `Certificate` resource | Production — automated rotation |
 | External PKI / corporate CA | Enterprise environments with existing certificate infrastructure |
 
-!!! warning "Self-signed certificates in production"
-    Self-signed certificates cannot be revoked. They require manual CA distribution
-    to every node that the API server runs on. Do not use them in production.
-    Use cert-manager or your organisation's PKI.
+:::warning[Self-signed certificates in production]
+Self-signed certificates cannot be revoked. They require manual CA distribution
+to every node that the API server runs on. Do not use them in production.
+Use cert-manager or your organisation's PKI.
+:::
 
 ### Certificate SANs
 
@@ -162,9 +165,10 @@ env:
         key: github-token
 ```
 
-!!! warning "Never commit credentials"
-    `fromEnv` is not optional — it is the only way the auth block works.
-    There is no field for a literal token value. This is intentional.
+:::warning[Never commit credentials]
+`fromEnv` is not optional — it is the only way the auth block works.
+There is no field for a literal token value. This is intentional.
+:::
 
 ---
 
@@ -239,11 +243,12 @@ context is limited to the CR's fields.
 Validate third-party Katalogs with `ork validate` before running them. Review
 any Go hooks or constructors they reference — these are arbitrary code.
 
-!!! warning "Review external hooks"
-    A `hooks.location` in a Katalog points to arbitrary Go code that runs in
-    your cluster with Orkestra's permissions. Treat external hook modules with
-    the same scrutiny as any third-party dependency. Prefer patterns from the
-    official OrkestraRegistry for CRDs managed by the community.
+:::warning[Review external hooks]
+A `hooks.location` in a Katalog points to arbitrary Go code that runs in
+your cluster with Orkestra's permissions. Treat external hook modules with
+the same scrutiny as any third-party dependency. Prefer patterns from the
+official OrkestraRegistry for CRDs managed by the community.
+:::
 
 ---
 
@@ -264,14 +269,14 @@ cluster for a full audit trail of Orkestra's actions.
 
 ## Reporting vulnerabilities
 
-!!! warning "Do not open public GitHub issues for security vulnerabilities"
-
+:::warning[Do not open public GitHub issues for security vulnerabilities]
 If you discover a potential security issue in Orkestra:
 
 - Contact the maintainers privately before disclosure
 - Include steps to reproduce the issue
 - Include logs or details that help assess the severity and scope
 - Allow reasonable time for a fix before public disclosure
+:::
 
 Responsible disclosure protects the community. Maintainer contact details are
 in the repository.

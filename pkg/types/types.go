@@ -513,6 +513,11 @@ type JobTemplateSource struct {
 	// behavior, and conditional provisioning without writing Go code.
 
 	Conditions []Condition `yaml:"when,omitempty"`
+
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile. Equivalent to declaring the same entry under both onCreate and
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
 }
 
 // ── CronJob ───────────────────────────────────────────────────────────────────
@@ -792,6 +797,11 @@ type ServiceAccountTemplateSource struct {
 	// behavior, and conditional provisioning without writing Go code.
 
 	Conditions []Condition `yaml:"when,omitempty"`
+
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile. Equivalent to declaring the same entry under both onCreate and
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
 }
 
 // ── HookTemplates ─────────────────────────────────────────────────────────────
@@ -899,6 +909,11 @@ type ReconcilerConfig struct {
 	// Constructor — called once at startCRDWorkers time to build a custom reconciler.
 	// Must not be nil when Default: false — enforced by Katalog validation at startup.
 	Constructor NewReconcilerFunc `yaml:"-"`
+
+	// Status declares how Orkestra manages the CR's /status subresource.
+	// nil (default): Layer 1 only — standard Ready condition after every reconcile.
+	// non-nil: Layer 1 + Layer 2 declarative fields from Status.Fields.
+	Status *StatusConfig `yaml:"status,omitempty"`
 }
 
 // HookDeclaration declares where a Go hook function lives.
@@ -957,7 +972,7 @@ type CRDEntry struct {
 	// Critical — if true, Orkestra marks the entire controller as degraded when
 	// this CRD's health state transitions to degraded.
 	// Use for CRDs that are fundamental to the platform's correctness.
-	Critical *bool `yaml:"critical"`
+	// Critical *bool `yaml:"critical"`
 
 	// Description — human-readable description. Shown in /katalog API responses.
 	Description string `yaml:"description" validate:"omitempty"`

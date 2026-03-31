@@ -56,6 +56,12 @@ data:
         # Orkestra serves /convert and applies these rules declaratively.
         # ──────────────────────────────────────────────────────────────────────────
         - name: website-v1
+          workers: 7
+          queue:
+            default: false
+            degradeThreshold: 0.5
+            maxQueueDepth: 1000
+
           apiTypes:
             group: demo.orkestra.io
             version: v1

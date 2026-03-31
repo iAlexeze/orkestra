@@ -27,6 +27,7 @@ type validationViolation struct {
 	Message  string
 	Got      string // the actual field value that failed
 	RuleType string // operator name (e.g. "prefix", "exists") for metrics
+	Action   orktypes.ValidationAction
 }
 
 // evaluateValidationRules evaluates all rules and returns denials and warnings.
@@ -63,6 +64,7 @@ func evaluateOneRule(obj map[string]interface{}, rule orktypes.ValidationRule) *
 			Message:  rule.Message,
 			Got:      fieldVal,
 			RuleType: string(op),
+			Action:   rule.Action,
 		}
 	}
 
@@ -181,21 +183,21 @@ func (h *HealthServer) applyMutationRules(
 		var changeType string
 
 		switch {
-		case rule.Override != "":
+		case rule.Override != nil && anyToString(rule.Override) != "":
 			// Override — always apply regardless of current value
-			resolved, err := resolver.Resolve(rule.Override)
+			resolved, err := resolver.Resolve(anyToString(rule.Override))
 			if err != nil {
 				return nil, fmt.Errorf("mutation rule override for field %q: %w", rule.Field, err)
 			}
 			newVal = resolved
 			changeType = "override"
 
-		case rule.Default != "":
+		case rule.Default != nil:
 			// Default — apply only when field is absent or empty
 			if found && currentVal != "" {
 				continue // field already has a value — skip
 			}
-			resolved, err := resolver.Resolve(rule.Default)
+			resolved, err := resolver.Resolve(anyToString(rule.Default))
 			if err != nil {
 				return nil, fmt.Errorf("mutation rule default for field %q: %w", rule.Field, err)
 			}

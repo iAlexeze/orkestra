@@ -5,9 +5,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/ialexeze/orkestra/pkg/katalog"
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +40,16 @@ import (
 const (
 	validatingWebhookConfigName = "orkestra-validation"
 	mutatingWebhookConfigName   = "orkestra-mutation"
+
+	// Webhook Cleanup setup
+	// MaxAttempts — number of retries for cleanup operations.
+	maxAttempts = 5
+
+	// Delay — time between retry attempts.
+	delayBetweenAttempts = 5 * time.Second
+
+	// The duration in seconds before the webhook should be deleted.
+	gracePeriodSeconds = int64(30)
 )
 
 // WebhookRegistrationOptions holds the configuration for webhook registration.
@@ -47,7 +60,7 @@ type WebhookRegistrationOptions struct {
 	ServiceName string
 
 	// ServiceNamespace — the namespace where the Orkestra Service lives.
-	// Default: read from NAMESPACE environment variable.
+	// Default: read from ORKESTRA_NAMESPACE environment variable.
 	ServiceNamespace string
 
 	// Port — the HTTPS port. Must match the conversion server port.
@@ -57,27 +70,13 @@ type WebhookRegistrationOptions struct {
 	// FailurePolicy — what the API server does if Orkestra is unreachable.
 	// admissionv1.Ignore (default): allow the operation and continue.
 	// admissionv1.Fail: reject the operation if Orkestra cannot be reached.
+	// Configurable from FAILURE_POLICY environment variable.
 	FailurePolicy admissionv1.FailurePolicyType
 
 	// TLSCertFile — path to the TLS certificate file.
 	// The certificate is read and used as the caBundle in the webhook config.
 	// Default: read from TLS_CERT environment variable.
 	TLSCertFile string
-}
-
-// DefaultWebhookRegistrationOptions returns sensible defaults.
-func DefaultWebhookRegistrationOptions() WebhookRegistrationOptions {
-	svc := os.Getenv("ORKESTRA_SERVICE_NAME")
-	if svc == "" {
-		svc = "orkestra"
-	}
-	return WebhookRegistrationOptions{
-		ServiceName:      svc,
-		ServiceNamespace: os.Getenv("NAMESPACE"),
-		Port:             8443,
-		FailurePolicy:    admissionv1.Ignore, // safe default — don't block on Orkestra outage
-		TLSCertFile:      os.Getenv("TLS_CERT"),
-	}
 }
 
 // RegisterWebhooks creates or updates the ValidatingWebhookConfiguration and
@@ -128,6 +127,61 @@ func RegisterWebhooks(
 	return nil
 }
 
+// UnregisterWebhooks removes the ValidatingWebhookConfiguration and
+// MutatingWebhookConfiguration entries that were previously created from the
+// admission registry.
+//
+// Called from HealthServer.Shutdown() when ENABLE_WEBHOOKS=true, after the
+// runtime begins shutting down and the admission registry is no longer needed.
+//
+// The function is destructive — only call during shutdown. Any
+// webhook configurations created by Orkestra are cleaned up.
+type WebhookCleanupOptions struct {
+	mutating   bool
+	validating bool
+}
+
+func UnregisterWebhooks(
+	ctx context.Context,
+	client kubernetes.Interface,
+	opts WebhookCleanupOptions,
+) error {
+
+	// Cleanup ValidatingWebhookConfiguration with retry
+	if opts.validating {
+		if err := utils.RetryBackoff(func() error {
+			return cleanupValidatingWebhook(ctx, client, validatingWebhookConfigName)
+		}, utils.RetryOptions{
+			Attempts: maxAttempts,
+			Delay:    delayBetweenAttempts,
+		},
+		); err != nil {
+			return fmt.Errorf("webhook cleanup: validating: %w", err)
+		}
+		logger.Info().
+			Str("config", validatingWebhookConfigName).
+			Msg("webhook: ValidatingWebhookConfiguration unregistered")
+	}
+
+	// Cleanup MutatingWebhookConfiguration with retry
+	if opts.mutating {
+		if err := utils.RetryBackoff(func() error {
+			return cleanupMutatingWebhook(ctx, client, mutatingWebhookConfigName)
+		}, utils.RetryOptions{
+			Attempts: maxAttempts,
+			Delay:    delayBetweenAttempts,
+		}); err != nil {
+			return fmt.Errorf("webhook cleanup: mutating: %w", err)
+		}
+
+		logger.Info().
+			Str("config", mutatingWebhookConfigName).
+			Msg("webhook: MutatingWebhookConfiguration unregistered")
+
+	}
+	return nil
+}
+
 // registerValidatingWebhook creates or updates the ValidatingWebhookConfiguration.
 func registerValidatingWebhook(
 	ctx context.Context,
@@ -144,7 +198,7 @@ func registerValidatingWebhook(
 		ObjectMeta: metav1.ObjectMeta{
 			Name: validatingWebhookConfigName,
 			Labels: map[string]string{
-				"managed-by": "orkestra",
+				konfig.LabelManaged: konfig.LabelManagedValue,
 			},
 		},
 		Webhooks: []admissionv1.ValidatingWebhook{
@@ -197,7 +251,7 @@ func registerMutatingWebhook(
 		ObjectMeta: metav1.ObjectMeta{
 			Name: mutatingWebhookConfigName,
 			Labels: map[string]string{
-				"managed-by": "orkestra",
+				konfig.LabelManaged: konfig.LabelManagedValue,
 			},
 		},
 		Webhooks: []admissionv1.MutatingWebhook{
@@ -255,12 +309,15 @@ func buildAdmissionRules(gvrs []katalog.GVREntry) []admissionv1.RuleWithOperatio
 func applyWebhookConfig(ctx context.Context, client kubernetes.Interface, cfg *admissionv1.ValidatingWebhookConfiguration) error {
 	existing, err := client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, cfg.Name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
+		// Create if not exists
 		_, err = client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Create(ctx, cfg, metav1.CreateOptions{})
 		return err
 	}
 	if err != nil {
 		return err
 	}
+
+	// Update if existing
 	cfg.ResourceVersion = existing.ResourceVersion
 	_, err = client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Update(ctx, cfg, metav1.UpdateOptions{})
 	return err
@@ -270,15 +327,48 @@ func applyWebhookConfig(ctx context.Context, client kubernetes.Interface, cfg *a
 func applyMutatingWebhookConfig(ctx context.Context, client kubernetes.Interface, cfg *admissionv1.MutatingWebhookConfiguration) error {
 	existing, err := client.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(ctx, cfg.Name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
+		// Create if not exists
 		_, err = client.AdmissionregistrationV1().MutatingWebhookConfigurations().Create(ctx, cfg, metav1.CreateOptions{})
 		return err
 	}
 	if err != nil {
 		return err
 	}
+
+	// Update if existing
 	cfg.ResourceVersion = existing.ResourceVersion
 	_, err = client.AdmissionregistrationV1().MutatingWebhookConfigurations().Update(ctx, cfg, metav1.UpdateOptions{})
 	return err
+}
+
+// cleanupValidatingWebhook deletes the ValidatingWebhookConfiguration.
+func cleanupMutatingWebhook(ctx context.Context, client kubernetes.Interface, cfgName string) error {
+	_, err := client.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(ctx, cfgName, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	// Delete if exisiting
+	return client.AdmissionregistrationV1().MutatingWebhookConfigurations().Delete(ctx, cfgName,
+		metav1.DeleteOptions{GracePeriodSeconds: int64Ptr(gracePeriodSeconds)})
+}
+
+// cleanupMutatingWebhook deletes the MutatingWebhookConfiguration.
+func cleanupValidatingWebhook(ctx context.Context, client kubernetes.Interface, cfgName string) error {
+	_, err := client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, cfgName, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	// Delete if existing
+	return client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Delete(ctx, cfgName,
+		metav1.DeleteOptions{GracePeriodSeconds: int64Ptr(gracePeriodSeconds)})
 }
 
 // readCABundle reads the TLS certificate file and returns it as raw bytes.
@@ -298,6 +388,7 @@ func readCABundle(certFile string) ([]byte, error) {
 // ── Pointer helpers ───────────────────────────────────────────────────────
 
 func int32Ptr(i int32) *int32                                                   { return &i }
+func int64Ptr(i int64) *int64                                                   { return &i }
 func matchPolicyPtr(p admissionv1.MatchPolicyType) *admissionv1.MatchPolicyType { return &p }
 func reinvocationPolicyPtr(p admissionv1.ReinvocationPolicyType) *admissionv1.ReinvocationPolicyType {
 	return &p

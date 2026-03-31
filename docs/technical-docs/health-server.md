@@ -28,14 +28,25 @@ Serves `/convert`, `/validate`, and `/mutate`. Requires TLS certificates. Intend
 Both servers share the same `HealthServer` instance and access the same registries. The certificate used for `:8443` is also used as the `caBundle` in the webhook configurations Orkestra registers at startup.
 
 !!! note "ENABLE_CONVERSION and ENABLE_WEBHOOKS share the HTTPS server"
-    If `ENABLE_WEBHOOKS=true` is set without `ENABLE_CONVERSION=true`, the
-    HTTPS server would never start and `/validate`/`/mutate` would never be
-    reachable. Orkestra validates this at startup and returns an error:
-    ```
-    webhook server error: TLS_CERT is required for ENABLE_WEBHOOKS
-    ```
-    Always set both when enabling admission webhooks.
+    Orkestra starts a single HTTPS server whenever **either** `ENABLE_CONVERSION=true`
+    or `ENABLE_WEBHOOKS=true` is set. Conversion and admission webhooks both run
+    behind this shared TLS endpoint.
 
+    - If only conversion is enabled → `/convert` is served over HTTPS.  
+    - If only webhooks are enabled → `/validate` and `/mutate` are served.  
+    - If both are enabled → all three endpoints are registered on the same server.
+
+    Because this server is always HTTPS, **both features require TLS**:
+    whenever `ENABLE_CONVERSION=true` or `ENABLE_WEBHOOKS=true` is set, Orkestra
+    expects valid `TLS_CERT` and `TLS_KEY`. If they are missing, startup fails
+    fast with an error similar to:
+
+    ```text
+    https server error: TLS_CERT is required when conversion or webhooks are enabled
+    ```
+
+    Always set `TLS_CERT` and `TLS_KEY` whenever you enable conversion, webhooks,
+    or both.
 ---
 
 ## Startup sequence

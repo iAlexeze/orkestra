@@ -34,6 +34,30 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 	fmt.Printf("- Metrics:  %s/metrics%s\n", utils.ColorGreen, utils.ColorReset)
 
 	fmt.Println()
+	// ENABLE_WEBHOOKS=true
+	if kfg.katalog.HasMutationRules() || kfg.katalog.HasValidationRules() {
+		fmt.Println("Webhook Endpoints:")
+		if kfg.katalog.HasMutationRules() {
+			fmt.Printf("- Muatation:  %s/mutate%s\n", utils.ColorGreen, utils.ColorReset)
+		}
+		if kfg.katalog.HasValidationRules() {
+			fmt.Printf("- Validation:  %s/validate%s\n", utils.ColorGreen, utils.ColorReset)
+		}
+
+		// Registration configuration
+		fmt.Printf("- Service Name: %s%s%s\n", utils.ColorCyan, kfg.konfig.WebhookRegistration().ServiceName, utils.ColorReset)
+		fmt.Printf("- Service Namespace: %s%s%s\n", utils.ColorCyan, kfg.konfig.WebhookRegistration().ServiceNamespace, utils.ColorReset)
+		fmt.Printf("- Failure Policy: %s%s%s\n", utils.ColorCyan, kfg.konfig.WebhookRegistration().FailurePolicy, utils.ColorReset)
+
+		fmt.Println()
+	}
+
+	// ENABLE_CONVERSION=true
+	if kfg.katalog.HasConversionPaths() {
+		fmt.Printf("- Conversion: %s/convert%s\n", utils.ColorGreen, utils.ColorReset)
+	}
+
+	fmt.Println()
 	fmt.Println("Katalog Endpoints:")
 	fmt.Printf("- Katalog:  %s/katalog%s\n", utils.ColorGreen, utils.ColorReset)
 	for _, crd := range kfg.katalog.Enabled() {
@@ -41,10 +65,10 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 			continue
 		}
 		if crd.IsInfoEnabled() {
-			fmt.Printf("  - %s%s%s:  %s/katalog/%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
+			fmt.Printf("  - %s%s%s (%s):  %s/katalog/%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, crd.Name, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
 		}
 		if crd.IsHealthEnabled() {
-			fmt.Printf("  - %s%s%s:  %s/katalog/%s/health%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
+			fmt.Printf("  - %s%s%s (%s):  %s/katalog/%s/health%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, crd.Name, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
 		}
 	}
 	fmt.Println("====================================================")
@@ -81,7 +105,13 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 
 		fmt.Printf("  %sNamespaced:%s    %v\n", utils.ColorYellow, utils.ColorReset,
 			map[bool]string{true: "Yes", false: "No"}[crd.IsNamespaced()])
-		fmt.Printf("  %sWorkers:%s       %d\n", utils.ColorYellow, utils.ColorReset, crd.Workers)
+
+		// Workers
+		if crd.Workers > 0 {
+			fmt.Printf("  %sWorkers:%s       %d\n", utils.ColorYellow, utils.ColorReset, crd.Workers)
+		} else {
+			fmt.Printf("  %sWorkers:%s       %d (default)\n", utils.ColorYellow, utils.ColorReset, kfg.konfig.Cluster().DefaultWorkers)
+		}
 
 		// Queue depth
 		if crd.Queue.MaxQueueDepth > 0 {

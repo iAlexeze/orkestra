@@ -14,8 +14,9 @@ secrets:
     reconcile: true
 ```
 
-!!! note
-    When the source Secret rotates, all copies update automatically. Owner references ensure cleanup on CR deletion.
+:::note
+When the source Secret rotates, all copies update automatically. Owner references ensure cleanup on CR deletion.
+:::
 
 ---
 

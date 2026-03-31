@@ -36,11 +36,25 @@ func runSecrets(
 ) error {
 	for i, src := range srcs {
 		// 1. Evaluate conditions BEFORE resolving templates
-		if !EvaluateConditions(owner, src.Conditions) {
+		conditionPassed := evaluateConditions(owner, src.Conditions)
+
+		if !conditionPassed {
+			if update || src.Reconcile { // ← src.Reconcile here too to show that this resource is continuously managed
+				// Condition no longer passes — delete if owned by this CR
+				name, _ := resolver.Resolve(src.Name)
+				ns, _ := resolver.Resolve(src.Namespace)
+				if ns == "" {
+					ns = owner.GetNamespace()
+				}
+				if err := orksecrets.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
+					return fmt.Errorf("secrets[%d]: conditional cleanup: %w", i, err)
+				}
+			}
 			logger.FromContext(ctx).Debug().
-				Str("resource", "ConfigMap").
+				Str("resource", "Secret").
 				Int("index", i).
 				Msg("conditions not met — skipping resource")
+
 			continue
 		}
 
@@ -54,39 +68,29 @@ func runSecrets(
 		spec := orksecrets.Resolve(resolved, resolver.OwnerName())
 
 		// toNamespaces — copy to multiple namespaces at once
+		// toNamespaces — copy to multiple namespaces at once
 		if len(resolved.ToNamespaces) > 0 {
-			namespaces, err := resolver.ResolveStringSlice(resolved.ToNamespaces)
-			if err != nil {
-				return fmt.Errorf("secrets[%d].toNamespaces: %w", i, err)
-			}
+			// Use Update (sync-aware) when either:
+			//   update=true  → called from onReconcile block
+			//   src.Reconcile → declared reconcile: true in onCreate
+			// Use CopyToNamespaces (create-only) only for pure onCreate with no reconcile flag.
+			shouldSync := update || src.Reconcile
 
-			if update {
-				// reconcile: true — re-sync copies with the source Secret
-				for _, ns := range namespaces {
+			if shouldSync {
+				for _, ns := range resolved.ToNamespaces {
 					nsSpec := spec
 					nsSpec.Namespace = ns
 					if err := orksecrets.Update(ctx, kube, owner, nsSpec); err != nil {
-						return fmt.Errorf("secrets[%d].update namespace=%s: %w", i, ns, err)
+						return fmt.Errorf("secrets[%d].sync namespace=%s: %w", i, ns, err)
 					}
 				}
 			} else {
-				if err := orksecrets.CopyToNamespaces(ctx, kube, owner, spec, namespaces); err != nil {
+				if err := orksecrets.CopyToNamespaces(ctx, kube, owner, spec, resolved.ToNamespaces); err != nil {
 					return fmt.Errorf("secrets[%d].copyToNamespaces: %w", i, err)
-				}
-				if src.Reconcile {
-					for _, ns := range namespaces {
-						nsSpec := spec
-						nsSpec.Namespace = ns
-						if err := orksecrets.Update(ctx, kube, owner, nsSpec); err != nil {
-							return fmt.Errorf("secrets[%d].reconcile namespace=%s: %w", i, ns, err)
-						}
-					}
 				}
 			}
 			continue
-		}
-
-		// Single namespace
+		} // Single namespace
 		if update {
 			if err := orksecrets.Update(ctx, kube, owner, spec); err != nil {
 				return fmt.Errorf("secrets[%d].update: %w", i, err)
@@ -95,6 +99,8 @@ func runSecrets(
 			if err := orksecrets.Create(ctx, kube, owner, spec); err != nil {
 				return fmt.Errorf("secrets[%d].create: %w", i, err)
 			}
+
+			// reconcile: true
 			if src.Reconcile {
 				if err := orksecrets.Update(ctx, kube, owner, spec); err != nil {
 					return fmt.Errorf("secrets[%d].reconcile: %w", i, err)

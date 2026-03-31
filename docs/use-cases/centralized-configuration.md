@@ -15,10 +15,11 @@ https://internal.company.com/platform/crds/standard-katalog.yaml
 ork run --katalog https://internal.company.com/platform/crds/standard-katalog.yaml
 ```
 
-!!! note
-    Changes to the Katalog propagate to every cluster that consumes it on
-    the next Orkestra restart. No binary rebuilds. No deployments. One file
-    change, everywhere updated.
+:::note
+Changes to the Katalog propagate to every cluster that consumes it on
+the next Orkestra restart. No binary rebuilds. No deployments. One file
+change, everywhere updated.
+:::
 
 ---
 

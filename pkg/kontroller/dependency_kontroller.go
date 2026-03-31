@@ -196,6 +196,7 @@ type DependencyKontroller struct {
 	defaultWorkers int
 	startedAt      time.Time
 	queueReg       *queue.QueueRegistry
+	drainTimeout   time.Duration
 
 	// readyCh[gvk] is closed when a CRD has fully started its workers.
 	readyCh map[string]chan struct{}
@@ -215,6 +216,7 @@ func NewDependencyKontroller(
 	crdHealthMap map[string]*CRDHealth,
 	defaultWorkers int,
 	depGraph *katalog.DependencyGraph,
+	drainTimeout time.Duration,
 ) *DependencyKontroller {
 
 	return &DependencyKontroller{
@@ -222,6 +224,7 @@ func NewDependencyKontroller(
 		depGraph:       depGraph,
 		defaultWorkers: defaultWorkers,
 		queueReg:       queueRegistry,
+		drainTimeout:   drainTimeout,
 		readyCh:        make(map[string]chan struct{}),
 	}
 }
@@ -392,22 +395,41 @@ func (k *DependencyKontroller) stopCRDWorkers(gvk string) {
 	wg, okWG := k.wgs[gvk]
 	k.mu.RUnlock()
 
+	// Step 1: signal workers to stop accepting new work
 	if okCancel {
-		logger.Info().Str("gvk", gvk).Msg("cancelling workers")
 		cancel()
-	} else {
-		logger.Warn().Str("gvk", gvk).Msg("no cancel function found for workers")
 	}
 
-	if okWG {
-		logger.Info().Str("gvk", gvk).Msg("waiting for workers to drain")
+	// Step 2: shut down the queue — this unblocks any worker
+	// blocked on queue.Get() waiting for the next item.
+	// Without this, workers that finished their reconcile and
+	// are waiting for work will never exit.
+	if wq, ok := k.queueReg.For(gvk); ok {
+		wq.Queue.ShutDown()
+	}
+
+	if !okWG {
+		return
+	}
+
+	// Step 3: wait for workers to drain — with a timeout.
+	// The timeout is the safety net for stuck reconciles, not
+	// an execution budget for normal shutdown.
+	done := make(chan struct{})
+	go func() {
 		wg.Wait()
-		logger.Info().Str("gvk", gvk).Msg("workers drained")
-	} else {
-		logger.Warn().Str("gvk", gvk).Msg("no wait group found for workers")
-	}
+		close(done)
+	}()
 
-	logger.Info().Str("gvk", gvk).Msg("workers stopped")
+	select {
+	case <-done:
+		logger.Info().Str("gvk", gvk).Msg("workers drained cleanly")
+	case <-time.After(k.drainTimeout):
+		logger.Warn().Str("gvk", gvk).
+			Dur("timeout", k.drainTimeout).
+			Msg("drain timeout exceeded — workers may still be running. " +
+				"Consider increasing SHUTDOWN_TIMEOUT if reconciles call slow external APIs.")
+	}
 }
 
 // Name returns the name of the dependency kontroller

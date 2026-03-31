@@ -1,6 +1,11 @@
 package konfig
 
-import "time"
+import (
+	"strings"
+	"time"
+
+	admissionv1 "k8s.io/api/admissionregistration/v1"
+)
 
 type Konfig struct {
 	ork          orkKonfig
@@ -26,14 +31,16 @@ type healthServer struct {
 }
 
 type clusterKonfig struct {
-	KubekonfigPath   string
-	MasterURL        string
-	Name             string
-	DefaultNamespace string `validate:"required"`
+	KubekonfigPath string
+	MasterURL      string
+	Name           string
+	Namespace      string `validate:"required"`
 
 	// Worload specific
-	DefaultResync  time.Duration
-	DefaultWorkers int
+	DefaultResync       time.Duration
+	DefaultWorkers      int
+	ShutdownTimeout     time.Duration
+	ShutdownGracePeriod time.Duration
 }
 
 type registryConfig struct {
@@ -51,6 +58,25 @@ type webhookConfig struct {
 	// Certificates
 	TLSCert string
 	TLSKey  string
+
+	// Port
+	Port    string
+	PortInt int32
+
+	// Registration
+	WebhookRegistration webhookRegistration
+}
+
+type webhookRegistration struct {
+	ServiceName      string
+	ServiceNamespace string
+	FailurePolicy    string
+
+	TLSCert string // Same as the one above
+
+	// FailurePolicy admissionv1.FailurePolicyType
+	// Used to return the appropriate admission policy type
+	FailurePolicyType admissionv1.FailurePolicyType
 }
 
 type katalogKonfig struct {
@@ -60,13 +86,44 @@ type katalogKonfig struct {
 }
 
 type konductorElection struct {
-	ElectionNamespace string
-	LeaseDuration     time.Duration
-	RenewDeadline     time.Duration
-	RetryPeriod       time.Duration
+	Namespace     string
+	LeaseDuration time.Duration
+	RenewDeadline time.Duration
+	RetryPeriod   time.Duration
 }
 
 // Methods
+
+func NewDefaultKonfig() *Konfig {
+	return &Konfig{
+		ork: orkKonfig{
+			Name:        "orkestra",
+			ShortName:   "ork",
+			Environment: "development",
+			LogLevel:    "info",
+		},
+		cluster: clusterKonfig{
+			KubekonfigPath: "",
+			MasterURL:      "",
+			Name:           "orkestra",
+			Namespace:      "orkestra",
+		},
+		konductor: konductorElection{
+			Namespace:     "orkestra",
+			LeaseDuration: 15 * time.Second,
+			RenewDeadline: 10 * time.Second,
+			RetryPeriod:   2 * time.Second,
+		},
+		healthServer: healthServer{
+			Port:         "8080",
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 5 * time.Second,
+		},
+		katalog: katalogKonfig{
+			Paths: []string{"katalog.yaml"},
+		},
+	}
+}
 
 // IsDev returns true for development environment
 func (k *Konfig) IsDev() bool {
@@ -121,4 +178,32 @@ func (k *Konfig) WebhookConfig() *webhookConfig {
 // RegistryConfig returns true is enabled
 func (k *Konfig) RegistryConfig() *registryConfig {
 	return &k.registry
+}
+
+// ConversionEnabled returns true if mutation rules
+func (k *Konfig) ConversionEnabled() bool {
+	return k.webhook.EnableConversion
+}
+
+// AdmissionEnabled returns true if admission rules
+func (k *Konfig) AdmissionEnabled() bool {
+	return k.webhook.EnableWebhooks
+}
+
+// WebhookRegistration
+func (k *Konfig) WebhookRegistration() *webhookRegistration {
+	// Convert failurePolicy input to failurePolicyType
+	switch strings.ToLower(k.webhook.WebhookRegistration.FailurePolicy) {
+	case "ignore":
+		k.webhook.WebhookRegistration.FailurePolicyType = admissionv1.Ignore
+	case "fail":
+		k.webhook.WebhookRegistration.FailurePolicyType = admissionv1.Fail
+	default:
+		k.webhook.WebhookRegistration.FailurePolicyType = admissionv1.Ignore
+	}
+
+	// Assign ports and return
+	k.webhook.Port = httpsPort
+	k.webhook.PortInt = httpsPortInt32
+	return &k.webhook.WebhookRegistration
 }

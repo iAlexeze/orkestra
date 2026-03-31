@@ -81,7 +81,7 @@ ork run --katalog komposer.yaml    # Komposer — many sources merged
 | `namespaced` | bool | no | `true` |
 | `workers` | int | no | `3` |
 | `resync` | duration | no | `15s` |
-| `critical` | bool | no | `false` |
+<!-- | `critical` | bool | no | `false` | -->
 | `description` | string | no | `""` |
 | `dependsOn` | `[]string` | no | `[]` |
 | `restrictedNamespaces` | `[]string` | no | `[]` |
@@ -230,7 +230,6 @@ spec:
       enabled: true
       workers: 3
       resync: 30s
-      critical: false
       description: Web application — creates Deployment and Service
 
       apiTypes:

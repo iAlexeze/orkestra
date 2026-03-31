@@ -24,7 +24,7 @@ var templateCmd = &cobra.Command{
 		if _, err = k.KomposeKatalogFromYaml(m.m); err != nil {
 			return err
 		}
-		if _, err = k.ValidateConfig(); err != nil {
+		if _, err = k.ValidateConfig(kfg); err != nil {
 			return err
 		}
 

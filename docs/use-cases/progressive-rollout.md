@@ -10,8 +10,9 @@ ork run --katalog https://config.company.com/stable/katalog.yaml
 ork run --katalog https://config.company.com/candidate/katalog.yaml
 ```
 
-!!! note
-    Compare reconcile latency, error rates, and resource usage before promoting.
+:::note
+Compare reconcile latency, error rates, and resource usage before promoting.
+:::
 
 ---
 

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ialexeze/orkestra/cmd/internal"
 	"github.com/ialexeze/orkestra/pkg/logger"
@@ -42,7 +43,7 @@ var runCmd = &cobra.Command{
 		}
 
 		logger.Info().
-			Strs("katalogs", paths).
+			Str("katalogs", strings.Join(paths, ", ")).
 			Int("total", m.Count()).
 			Int("enabled", m.EnabledCount()).
 			Msg("katalogs merged")

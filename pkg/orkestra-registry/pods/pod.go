@@ -125,6 +125,26 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	return nil
 }
 
+// DeleteIfOwned deletes the Pod if it exists and is owned by the CR.
+func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+	owner domain.Object, name, namespace string) error {
+
+	existing, err := kube.Clientset().CoreV1().Pods(namespace).
+		Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	// Only delete if we own it
+	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+		return nil
+	}
+	return kube.Clientset().CoreV1().Pods(namespace).
+		Delete(ctx, name, metav1.DeleteOptions{})
+}
+
 // Resolve builds a ResolvedPodSpec from a PodTemplateSource.
 //
 // Fields are flat on the source struct. Template expressions

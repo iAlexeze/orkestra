@@ -156,12 +156,3 @@ func joinAPIVersion(group, version string) string {
 	}
 	return group + "/" + version
 }
-
-// ExportApplyVersion for tests
-func ExportedApplyConversionfunc(
-	obj map[string]interface{},
-	rules *orktypes.ConversionRules,
-	targetAPIVersion string, // full apiVersion from ConversionReview.Request.DesiredAPIVersion
-) (map[string]interface{}, error) {
-	return applyConversion(obj, rules, targetAPIVersion)
-}

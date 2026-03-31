@@ -184,8 +184,8 @@ Workers stop accepting new queue items (queue.ShutDown())
   │
   ▼
 Workers exit when current reconcile completes
-  │  There is no timeout on in-flight reconciles
-  │  A reconcile that is waiting on a slow API call will block shutdown
+  │  Timeout is configurable using "SHUTDOWN_TIMEOUT" and "SHUTDOWN_GRACE_PERIOD"
+  │
   │
   ▼
 Informers stop watching
@@ -200,17 +200,24 @@ HTTP server shuts down
 Process exits 0
 ```
 
+### Graceful shutdown timeline
+
+Orkestra performs a coordinated, configurable shutdown when it receives SIGTERM.  
+Two settings control how long the system waits for in‑flight work to finish:
+
+- **`SHUTDOWN_TIMEOUT`** — how long each CRD’s workers are allowed to drain ongoing reconciles before Orkestra moves on.  
+- **`SHUTDOWN_GRACE_PERIOD`** — the overall upper bound for the entire shutdown sequence; once this expires, Orkestra exits immediately.
+
+`SHUTDOWN_GRACE_PERIOD` should always be larger than `SHUTDOWN_TIMEOUT`.  
+Users can tune both values based on the expected duration of their reconcile or cleanup logic.
+
+---
+
 ### Finalizer safety during shutdown
 
 If a CR is being deleted (DeletionTimestamp set) and the reconcile is interrupted by shutdown before finalizers are removed, the CR will be stuck in terminating state until the next Orkestra instance starts and processes it.
 
 This is a safe state — the CR is not deleted, its child resources are not deleted, and the cluster is consistent. The next reconcile will run the `onDelete` templates or hooks and then remove the finalizers.
-
-### Kubernetes termination grace period
-
-The Kubernetes `terminationGracePeriodSeconds` on the Orkestra pod (default: 30 seconds) sets the maximum time between SIGTERM and SIGKILL. If Orkestra has not exited within 30 seconds, it is killed.
-
-For operators that run long `onDelete` hooks, increase `terminationGracePeriodSeconds` to match the expected cleanup time. A cleanup Job that takes 60 seconds to run requires at least a 90-second grace period.
 
 ---
 
@@ -227,7 +234,7 @@ Each CRD has one of four health states, reported by `/katalog/{crd}/health` and 
 
 **Degraded** does not stop reconciliation — workers continue running. It is a signal that something is systematically wrong. The CRD recovers to healthy when a reconcile succeeds (resets `consecutiveFails` to zero).
 
-**Critical CRDs:** A CRD marked `critical: true` that becomes degraded transitions the entire Orkestra health state to degraded. This causes the `/health` probe to return 503, which may trigger pod restart depending on the liveness probe configuration.
+<!-- **Critical CRDs:** A CRD marked `critical: true` that becomes degraded transitions the entire Orkestra health state to degraded. This causes the `/health` probe to return 503, which may trigger pod restart depending on the liveness probe configuration. -->
 
 ---
 
@@ -296,4 +303,9 @@ The operational question is not "can this process fail?" — all processes fail.
 | Mutation error | Object stored without defaults | Reconcile-time mutation applies defaults |
 | Leader lease expired (no follower) | Reconciliation paused until a leader is elected | New instance or connectivity restore |
 | CRD degraded | Reconciliation continues, health API shows degraded | Recovers when a reconcile succeeds |
-| Critical CRD degraded | Entire operator health shows degraded | `/health` returns 503 |
+
+
+---
+
+## Related Documentation
+- [Orkestra Shutdown](../reference/shutdown.md)

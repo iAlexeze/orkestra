@@ -1,0 +1,45 @@
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: status-update-kat
+  description: Test the status implememntation
+spec:
+  crds:
+    - name: website
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: Website
+        plural: websites
+
+      reconciler:
+        default: true
+
+        status:
+          # conditions: true  ← default, no need to declare
+          fields:
+            - path: phase
+              value: "Running"
+            - path: observedReplicas
+              value: "{{ .spec.replicas }}"
+            - path: endpoint
+              value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+            
+            # Layer 3 — from child resource status
+            - path: readyReplicas
+              value: "{{ .children.deployment.status.readyReplicas }}"
+            - path: availableReplicas
+              value: "{{ .children.deployment.status.availableReplicas }}"
+
+        onCreate:
+          deployments:
+            - image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              reconcile: true
+              # when:
+              #   - field: spec.replicas
+              #     operator: gt
+              #     value: 4
+              labels:
+                - key: status-checker
+                  value: "here-i-am"

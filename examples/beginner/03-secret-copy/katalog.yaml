@@ -1,0 +1,40 @@
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: secret-distribution
+  description: >
+    Demonstrates built-in kind enrichment and cross-namespace secret distribution.
+    Orkestra watches the SecretDistribution CRD and copies a named Secret
+    from a source namespace into every target namespace declared in the CR.
+
+spec:
+  crds:
+    - name: secret-distribution
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: SecretDistribution
+        plural: secretdistributions
+
+      reconciler:
+        default: true
+
+        status:
+          fields:
+            - path: phase
+              value: "Distributed"
+            - path: sourceSecret
+              value: "{{ .spec.secretName }}"
+            - path: sourceNamespace
+              value: "{{ .spec.sourceNamespace }}"
+
+        onCreate:
+          secrets:
+            - name: "{{ .spec.secretName }}"
+              fromSecret: "{{ .spec.secretName }}"
+              fromNamespace: "{{ .spec.sourceNamespace }}"
+              # toNamespaces copies the secret to each target namespace.
+              # Each element supports template expressions.
+              toNamespaces: 
+                - "{{ .spec.targetNamespaces }}"
+              reconcile: true   # re-sync if source secret changes

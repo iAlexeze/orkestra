@@ -6,8 +6,9 @@ Katalogs work offline.
 ork run --katalog /etc/orkestra/crds/production-katalog.yaml
 ```
 
-!!! note
-    Perfect for government, finance, healthcare, and other restricted environments.
+:::note
+Perfect for government, finance, healthcare, and other restricted environments.
+:::
 
 ---
 

@@ -46,7 +46,7 @@ type orkestraKfg struct {
 func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) *orkestraKfg {
 
 	// ── 1. Katalog ────────────────────────────────────────────────────────────
-	kat := katalog.NewKatalog(m, kfg.Katalog().Paths...)
+	kat := katalog.NewKatalog(m, kfg)
 
 	// Orkestra's in-built merger resolves this per-source (src.URL > ORK_REGISTRY > merger.registryURL).
 	if registryURL := kfg.RegistryConfig().RegistryURL; registryURL != "" {
@@ -66,11 +66,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// None of these are started here. Orkestra calls Start() in declaration order.
 
 	// Kubeclient
-	kube := kubeclient.NewKubeclient(kubeclient.Config{
-		Kubeconfig: kfg.Cluster().KubekonfigPath,
-		Masterurl:  kfg.Cluster().MasterURL,
-		Scheme:     scheme,
-	})
+	kube := kubeclient.NewKubeclient(kfg, scheme)
 
 	// Start kubeclient as it may be needed by some downstream services
 	// Example: Informerfactory now has to check for missing CRDs and needs rest config
@@ -79,20 +75,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	}
 
 	// Health server — created first so routes can be registered before Start().
-	hs := health.NewHealthServer(
-		kube.Clientset(),
-		kfg.Ork().Name,
-		kfg.Health().Port,
-		kfg.Ork().LogLevel,
-		kat.ConversionRegistry(),
-		kat.AdmissionRegistry(),
-		health.WebhookOptions{
-			ConvEnabled:      kfg.WebhookConfig().EnableConversion,
-			TLSCert:          kfg.WebhookConfig().TLSCert,
-			TLSKey:           kfg.WebhookConfig().TLSKey,
-			ConversionWindow: kfg.WebhookConfig().ConversionWindow,
-		},
-	)
+	hs := health.NewHealthServer(kube.Clientset(), kat, kfg)
 
 	// Event recorder — wraps kube, also not live until kube.Start().
 	ev := event.NewEvent(kube)
@@ -147,8 +130,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		queueRegistry,
 		defaultWq,
 		scheme,
-		kfg.Cluster().DefaultNamespace,
-		kfg.Cluster().DefaultResync,
+		kfg,
 	)
 
 	// ── 4c. Kontroller registry + per-CRD wiring ──────────────────────────────
@@ -170,9 +152,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		// Already populated by addRuntimeObjects() during validation.
 		object, _ := crd.GetRuntimeObjects()
 
-		wq := queueRegistry.Register(gvk, crd.SetMaxQueueDepth(
-			kfg.Katalog().DefaultMaxQueueDepth,
-		))
+		wq := queueRegistry.Register(gvk, crd.SetMaxQueueDepth(kfg.Katalog().DefaultMaxQueueDepth))
 
 		opts := informer.Options{
 			Name:   crd.APITypes.Kind,
@@ -187,7 +167,6 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		}
 
 		// For each CRD, choose typed or dynamic informer based on mode.
-
 		var inf cache.SharedIndexInformer
 
 		if crd.IsDynamic() {
@@ -219,11 +198,13 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			Operator:         kat.Meta().Name,
 			Finalizers:       finalizers,
 			ReconcilerConfig: crd.ReconcilerConfig,
+			Validation:       crd.Validation,
+			Mutation:         crd.Mutation,
 		}
 		infCopy := inf
 
+		// For each CRD, choose typed or generic Reconciler based on mode.
 		var factory func() domain.Reconciler
-
 		if crd.DefaultReconcile() {
 			// DynamicModeObject / TypedModeObject already set — GetRuntimeObjects handles mode.
 			// We need a domain.Object factory for GenericReconciler.
@@ -269,6 +250,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		ktrlRegistry.Register(gvk, crd, inf, factory)
 		logger.Debug().Str("gvk", gvk).Msg("CRD registered")
 	}
+
 	// ── 5a. Per-CRD health map ────────────────────────────────────────────────
 	// Built before routes and before NewDependencyKontroller so all three
 	// share pointers to the same CRDHealth instances.
@@ -300,7 +282,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		if crd.IsHealthEnabled() {
 			hs.Register(
 				"/katalog/"+crdName+"/health",
-				kontroller.BuildCRDHealthHandler(crd, crdHealth),
+				kontroller.BuildCRDHealthHandler(crd, kfg, inf, crdHealth),
 			)
 		}
 
@@ -308,7 +290,14 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		if crd.IsInfoEnabled() {
 			hs.Register(
 				"/katalog/"+crdName,
-				kontroller.BuildCRDInfoHandler(crd, kfg, inf, crdHealth, hs.GetConversionStats(), hs.GetAdmissionStats()),
+				kontroller.BuildCRDInfoHandler(
+					crd,
+					kfg,
+					inf,
+					crdHealth,
+					hs.GetConversionStats(),
+					hs.GetAdmissionStats(),
+				),
 			)
 		}
 
@@ -336,6 +325,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		crdHealthMap,
 		kfg.Cluster().DefaultWorkers,
 		katalog.NewDependencyGraph(kat),
+		kfg.Cluster().ShutdownTimeout,
 	)
 
 	// ── 7 Komponent list ─────────────────────────────────────────────────────
@@ -354,7 +344,10 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// Owns the full lifecycle of all komponents.
 	// Start  : sequential, in registration order.
 	// Shutdown: reverse order, on OS signal or fatal error.
-	o := ork.NewOrkestra(kfg.Cluster().DefaultResync, kfg.Ork().LogLevel)
+	o := ork.NewOrkestra(
+		kfg.Cluster().ShutdownGracePeriod,
+		kfg.Ork().LogLevel,
+	)
 	o.Register(komponents)
 
 	return &orkestraKfg{

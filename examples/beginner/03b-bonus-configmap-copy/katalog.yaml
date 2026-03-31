@@ -1,0 +1,40 @@
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: configmap-distribution
+  description: >
+    Demonstrates built-in kind enrichment and cross-namespace ConfigMap distribution.
+    Orkestra watches the ConfigMapDistribution CRD and copies a named ConfigMap
+    from a source namespace into every target namespace declared in the CR.
+
+spec:
+  crds:
+    - name: configmap-distribution
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: ConfigMapDistribution
+        plural: configmapdistributions
+
+      reconciler:
+        default: true
+
+        status:
+          fields:
+            - path: phase
+              value: "Distributed"
+            - path: sourceConfigMap
+              value: "{{ .spec.configMapName }}"
+            - path: sourceNamespace
+              value: "{{ .spec.sourceNamespace }}"
+
+        onCreate:
+          configMaps:
+            - name: "{{ .spec.configMapName }}"
+              fromConfigMap: "{{ .spec.configMapName }}"
+              fromNamespace: "{{ .spec.sourceNamespace }}"
+              # toNamespaces copies the ConfigMap to each target namespace.
+              # Each element supports template expressions.
+              toNamespaces:
+                - "{{ .spec.targetNamespaces }}"
+              reconcile: true   # re-sync if source ConfigMap changes

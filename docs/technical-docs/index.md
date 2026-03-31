@@ -2,7 +2,7 @@
 
 This section covers Orkestra's internals — the components, their responsibilities, how they fit together, and the design decisions behind them. It is written for engineers who are contributing to Orkestra, debugging production issues, or building advanced integrations.
 
-If you are new to Orkestra, start with [Getting Started](../getting-started/index.md) and [Your CRD Is Enough](../publications/your-crd-is-enough.md) before reading this section.
+If you are new to Orkestra, start with [Getting Started](../getting-started/index.md) and [Your CRD Is Enough](../blog/your-crd-is-enough.md) before reading this section.
 
 ---
 

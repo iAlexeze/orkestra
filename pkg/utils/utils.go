@@ -32,7 +32,15 @@ func Sleep(n int) {
 
 func BoolPtr(b bool) *bool { return &b }
 
-func Retry(fn func() error, attempts int, delay time.Duration) error {
+type RetryOptions struct {
+	Attempts int
+	Delay    time.Duration
+}
+
+func Retry(fn func() error, opts RetryOptions) error {
+	delay := opts.Delay
+	attempts := opts.Attempts
+
 	if attempts < 1 {
 		return errors.New("attempts must be >= 1")
 	}
@@ -59,8 +67,9 @@ func Jitter(d time.Duration) time.Duration {
 	return d + time.Duration(j)
 }
 
-func RetryBackoff(fn func() error, attempts int, base time.Duration) error {
-	delay := base
+func RetryBackoff(fn func() error, opts RetryOptions) error {
+	delay := opts.Delay
+	attempts := opts.Attempts
 
 	for i := 1; i <= attempts; i++ {
 		err := fn()

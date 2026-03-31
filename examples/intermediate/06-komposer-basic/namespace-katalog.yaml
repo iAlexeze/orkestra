@@ -1,0 +1,25 @@
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: namespace-operator
+  description: Platform namespace provisioner — built-in kind (Namespace)
+
+spec:
+  crds:
+    # Orkestra can watch built-in Kubernetes resources.
+    # Declare kind only — group, version, plural are enriched automatically.
+    - name: namespace-governance
+      apiTypes:
+        kind: Namespace           # built-in — no group/version/plural needed
+      workers: 1
+      reconciler:
+        default: true
+      # Governance-only: no onCreate templates.
+      # Validation rules declared here apply at reconcile time.
+      # With ENABLE_WEBHOOKS=true they also apply at admission time.
+      validation:
+        rules:
+          - field: metadata.labels.team
+            operator: exists
+            message: "all namespaces must declare a team owner"
+            action: warn

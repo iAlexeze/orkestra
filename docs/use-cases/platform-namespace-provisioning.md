@@ -25,8 +25,9 @@ onCreate:
       namespace: "{{ .spec.targetNamespace }}"
 ```
 
-!!! tip
-    This replaces multiple controllers (Namespace Configurator, ClusterSecret, custom scripts) with a single declarative entry.
+:::tip[What you just built]
+This replaces multiple controllers (Namespace Configurator, ClusterSecret, custom scripts) with a single declarative entry.
+:::
 
 ---
 

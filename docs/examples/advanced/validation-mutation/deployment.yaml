@@ -24,13 +24,13 @@ spec:
         fsGroup: 65532
       containers:
         - name: orkestra
-          image: ialexeze/ork:latest
+          image: ialexeze/ork:example
           env:
             # ── Admission webhooks ──────────────────────────────────────────
             # ENABLE_WEBHOOKS=true requires ENABLE_CONVERSION=true
             # (they share the same HTTPS server on :8443)
             - name: ENABLE_CONVERSION
-              value: "true"
+              value: "false"
             - name: ENABLE_WEBHOOKS
               value: "true"
 
@@ -43,7 +43,7 @@ spec:
             # ── Runtime ────────────────────────────────────────────────────
             - name: HEALTH_PORT
               value: "8080"
-            - name: NAMESPACE
+            - name: ORKESTRA_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace

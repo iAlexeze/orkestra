@@ -31,8 +31,9 @@ type postStart struct {
 
 func NewOrkestra(timeout time.Duration, logLevel string) *Orkestra {
 	return &Orkestra{
-		timeout: timeout,
-		done:    make(chan struct{}),
+		timeout:  timeout,
+		logLevel: logLevel,
+		done:     make(chan struct{}),
 	}
 }
 
@@ -92,37 +93,41 @@ func (o *Orkestra) gracefulShutdown(ctx context.Context, cancel context.CancelFu
 
 	select {
 	case sig := <-sigCh:
-		logger.Warn().Msgf("recieved shutdown signal: %v", sig)
-		logger.Warn().Msg("Shutting down orkestra...")
+		logger.Warn().Msgf("received shutdown signal: %v", sig)
 		cancel()
 
-		// shutdown komponents
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), o.timeout)
+		shutdownCtx, shutdownCancel := context.WithTimeout(
+			context.Background(), o.timeout,
+		)
 		defer shutdownCancel()
 
 		for _, comp := range utils.Reversed(o.komponents) {
-			name := comp.Name()
-			logger.Info().Msgf("shutting down: %s...", name)
-			if comp != nil {
-				// Special handling for event recorder - shut it down LAST
-				if name == eventHandler {
-					continue // Skip event handler for now
-				}
-				comp.Shutdown(shutdownCtx)
+			// Respect the timeout between iterations
+			select {
+			case <-shutdownCtx.Done():
+				logger.Warn().Msg("shutdown timeout exceeded — stopping")
+				close(o.done)
+				return
+			default:
 			}
-			utils.Sleep(1)
-			logger.Warn().Msgf("%s status: %v", name, utils.StatusOffline)
+
+			name := comp.Name()
+			if name == eventHandler {
+				continue
+			}
+
+			logger.Info().Msgf("shutting down: %s...", name)
+			comp.Shutdown(shutdownCtx)
+			logger.Warn().Msgf("%s: offline", name)
 		}
 
-		ev := o.GetKomponent(eventHandler)
-		if ev != nil {
+		// Event handler always last
+		if ev := o.GetKomponent(eventHandler); ev != nil {
 			ev.Shutdown(shutdownCtx)
-			logger.Warn().Msgf("%s status: %v", ev.Name(), utils.StatusOffline)
+			logger.Warn().Msgf("%s: offline", ev.Name())
 		}
 
-		logger.Warn().Msg("✅ All komponents shut down gracefully")
-
-		// Notify Wait() to terminate
+		logger.Warn().Msg("all komponents shut down gracefully")
 		close(o.done)
 
 	case <-ctx.Done():

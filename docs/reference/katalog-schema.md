@@ -144,7 +144,6 @@ Response:
 | `namespaced` | bool | `true` | no | Whether the CRD is namespace-scoped. Auto-detected when `apiTypes` is enriched. |
 | `workers` | int | `3` | no | Number of dedicated reconcile workers for this CRD. More workers = higher throughput. Each CRD's workers are isolated — they cannot be consumed by other CRDs. |
 | `resync` | duration | `15s` | no | How often to re-trigger reconciliation for all CRs of this type, even without a change event. Format: `"30s"`, `"5m"`, `"1h"`. |
-| `critical` | bool | `false` | no | If true, this CRD degrading degrades the entire operator health. Use for CRDs that are load-bearing for the platform. |
 
 ### `dependsOn`
 

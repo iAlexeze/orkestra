@@ -84,7 +84,12 @@ func (r *Resolver) Resolve(value string) (string, error) {
 		return "", fmt.Errorf("executing %q: %w", value, err)
 	}
 
-	return strings.TrimSpace(buf.String()), nil
+	// missingkey=zero makes missing map keys produce nil (interface{} zero value).
+	// Go's text/template renders nil interface{} as "<no value>", not "".
+	// Replace all occurrences so callers get "" as documented.
+	out := strings.TrimSpace(buf.String())
+	out = strings.ReplaceAll(out, "<no value>", "")
+	return out, nil
 }
 
 // ResolvePodTemplate resolves all template expressions in a PodTemplateSource.
@@ -298,16 +303,50 @@ func (r *Resolver) ResolveSecretTemplate(src orktypes.SecretTemplateSource) (ork
 		}
 	}
 
+	// toNamespaces needs special handling.
+	// Each element is either:
+	//   a) A literal namespace name → resolve as string
+	//   b) A template expression that resolves to a string → resolve as string
+	//   c) A template expression that resolves to a []interface{} (list field) →
+	//      extract each element individually
+	//
+	// Case (c) is what happens when toNamespaces: ["{{ .spec.targetNamespaces }}"]
+	// where .spec.targetNamespaces is a YAML list in the CR.
+
 	for i, v := range src.ToNamespaces {
-		rv, e := r.Resolve(v)
-		if e != nil {
-			return resolved, fmt.Errorf("secret.toNamespaces[%d]: %w", i, e)
+		if !strings.Contains(v, "{{") {
+			// Static string — no resolution needed
+			if v != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
+			}
+			continue
 		}
-		if rv != "" {
-			resolved.ToNamespaces = append(resolved.ToNamespaces, rv)
+
+		// Template expression — check if it resolves to a list field
+		raw := resolveRawValue(r.data, v)
+		switch typed := raw.(type) {
+		case []interface{}:
+			// List field — extract each string element
+			for _, item := range typed {
+				if s, ok := item.(string); ok && s != "" {
+					resolved.ToNamespaces = append(resolved.ToNamespaces, s)
+				}
+			}
+		case string:
+			if typed != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, typed)
+			}
+		default:
+			// Fall back to string resolution
+			rv, e := r.Resolve(v)
+			if e != nil {
+				return resolved, fmt.Errorf("secret.toNamespaces[%d]: %w", i, e)
+			}
+			if rv != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, rv)
+			}
 		}
 	}
-
 	return resolved, nil
 }
 
@@ -345,6 +384,51 @@ func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource
 				return resolved, fmt.Errorf("configmap.data[%q]: %w", k, e)
 			}
 			resolved.Data[k] = rv
+		}
+	}
+
+	// toNamespaces needs special handling.
+	// Each element is either:
+	//   a) A literal namespace name → resolve as string
+	//   b) A template expression that resolves to a string → resolve as string
+	//   c) A template expression that resolves to a []interface{} (list field) →
+	//      extract each element individually
+	//
+	// Case (c) is what happens when toNamespaces: ["{{ .spec.targetNamespaces }}"]
+	// where .spec.targetNamespaces is a YAML list in the CR.
+
+	for i, v := range src.ToNamespaces {
+		if !strings.Contains(v, "{{") {
+			// Static string — no resolution needed
+			if v != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
+			}
+			continue
+		}
+
+		// Template expression — check if it resolves to a list field
+		raw := resolveRawValue(r.data, v)
+		switch typed := raw.(type) {
+		case []interface{}:
+			// List field — extract each string element
+			for _, item := range typed {
+				if s, ok := item.(string); ok && s != "" {
+					resolved.ToNamespaces = append(resolved.ToNamespaces, s)
+				}
+			}
+		case string:
+			if typed != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, typed)
+			}
+		default:
+			// Fall back to string resolution
+			rv, e := r.Resolve(v)
+			if e != nil {
+				return resolved, fmt.Errorf("secret.toNamespaces[%d]: %w", i, e)
+			}
+			if rv != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, rv)
+			}
 		}
 	}
 

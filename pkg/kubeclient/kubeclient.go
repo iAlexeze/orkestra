@@ -8,11 +8,13 @@ import (
 
 	"github.com/ialexeze/orkestra/domain"
 	orkerror "github.com/ialexeze/orkestra/pkg/error"
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -23,35 +25,33 @@ type Kubeclient struct {
 	restConfig *rest.Config
 	clientset  kubernetes.Interface
 	dynamic    dynamic.Interface
-	scheme     *runtime.Scheme
-	Config     Config
 	Info       *CRDInfo
 	started    atomic.Bool
+
+	// Starter konfig
+	konfig *konfig.Konfig
+	scheme *runtime.Scheme
 
 	// Testing
 	FakeClientset kubernetes.Interface
 }
 
-// Config defines kube configuration
-type Config struct {
-	Kubeconfig string
-	Masterurl  string
-	Scheme     *runtime.Scheme // REQUIRED
-}
-
 // Implementing yhe Komponent interface
 var _ domain.Komponent = (*Kubeclient)(nil)
 
+// -----------------------------------------------------------------------------
+// Entry point
+// -----------------------------------------------------------------------------
 // NewKubeclient returns a new Kubeclient with the correct scheme
-func NewKubeclient(cfg Config) *Kubeclient {
-	if cfg.Scheme == nil {
+func NewKubeclient(kfg *konfig.Konfig, scheme *runtime.Scheme) *Kubeclient {
+	if scheme == nil {
 		utils.Exit(orkerror.ErrSchemeNill)
 	}
 
 	return &Kubeclient{
 		name:   "kubeclient",
-		scheme: cfg.Scheme,
-		Config: cfg,
+		scheme: scheme,
+		konfig: kfg,
 	}
 }
 
@@ -96,9 +96,9 @@ func (k *Kubeclient) buildConfig() (*rest.Config, error) {
 	var restCfg *rest.Config
 	var err error
 
-	if k.Config.Kubeconfig != "" {
+	if k.konfig.Cluster().KubekonfigPath != "" {
 		logger.Debug().Msg("using kubeconfig")
-		restCfg, err = clientcmd.BuildConfigFromFlags(k.Config.Masterurl, k.Config.Kubeconfig)
+		restCfg, err = clientcmd.BuildConfigFromFlags(k.konfig.Cluster().MasterURL, k.konfig.Cluster().KubekonfigPath)
 	} else {
 		logger.Debug().Msg("using incluster configuration")
 		restCfg, err = rest.InClusterConfig()
@@ -145,7 +145,12 @@ func (k *Kubeclient) RestConfig() *rest.Config { return k.restConfig }
 func (k *Kubeclient) Clientset() kubernetes.Interface { return k.clientset }
 
 // Dynamic returns yhe dynamic interface. Useful in 'dynamic' reconciler mode
-func (k *Kubeclient) Dynamic() dynamic.Interface { return k.dynamic }
+func (k *Kubeclient) DynamicClient() dynamic.Interface { return k.dynamic }
 
 // Scheme returns the runtime scheme for yhe kubeclient
 func (k *Kubeclient) Scheme() *runtime.Scheme { return k.scheme }
+
+// New fake client
+func NewFakeClientset() kubernetes.Interface {
+	return fake.NewClientset()
+}
