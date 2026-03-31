@@ -23,9 +23,11 @@ import (
 
 // NewKatalog returns a list of CRD data
 func NewKatalog(m *merger.Merger, kfg *konfig.Konfig) *Katalog {
-	paths := kfg.Katalog().Paths
-
 	katalog := &Katalog{}
+	katalog.konfig = kfg
+
+	paths := katalog.konfig.Katalog().Paths
+
 	var entries []orktypes.CRDEntry
 	var err error
 

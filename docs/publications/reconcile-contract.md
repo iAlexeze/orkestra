@@ -39,13 +39,13 @@ whether it has already been sent — in the CR's status or via an idempotency ke
 in the external system. A hook that calls a billing API must be safe to call
 twice with the same arguments.
 
-!!! warning "Non-idempotent hooks produce subtle production bugs"
+:::warning [Non-idempotent hooks produce subtle production bugs]
     A hook that charges a credit card on reconcile will charge twice if the
     reconcile is retried due to a transient network error. A hook that creates
     a DNS record will fail on the second reconcile if the record already exists
     and the error is not handled. These bugs are invisible in development and
     appear only under production load or network instability.
-
+:::
 ---
 
 ## No ordering between CRs

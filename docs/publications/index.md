@@ -8,8 +8,8 @@ This section contains high‑level papers, philosophical foundations, and in‑d
 
 | Document | Description |
 |----------|-------------|
-| [Your CRD Is Enough](./your-crd-is-enough.md) | The foundational essay. Argues that operators should be declarative and that the CRD itself contains everything needed for reconciliation. |
-| [Why Orkestra](./why-orkestra.md) | The case for declarative operators. Explains the paradox of writing imperative code to extend a declarative platform. |
+| [Your CRD Is Enough](../blog/your-crd-is-enough.md) | The foundational essay. Argues that operators should be declarative and that the CRD itself contains everything needed for reconciliation. |
+| [Why Orkestra](../blog/why-orkestra.md) | The case for declarative operators. Explains the paradox of writing imperative code to extend a declarative platform. |
 | [Trust & Failure Model](./trust-and-failure-model.md) | How Orkestra achieves resilience through per‑CRD isolation, panic recovery, and idempotent operations. |
 
 ---

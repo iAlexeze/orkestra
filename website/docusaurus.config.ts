@@ -171,23 +171,23 @@ const config: Config = {
       hideOnScroll: false,
       items: [
         {
+          to: '/docs/blog/why-orkestra',
+          label: 'Why Orkestra?',
+          position: 'left',
+        },
+        {
           type: 'docSidebar',
           sidebarId: 'docsSidebar',
           position: 'left',
-          label: 'Docs',
-        },
-        {
-          to: '/docs/reference/',
-          label: 'Reference',
-          position: 'left',
-        },
-        {
-          to: '/docs/use-cases/',
-          label: 'Use Cases',
-          position: 'left',
+          label: 'Documentation',
         },
         {
           to: '/docs/publications/',
+          label: 'Publications',
+          position: 'left',
+        },
+        {
+          to: '/docs/blog/',
           label: 'Blog',
           position: 'left',
         },
@@ -203,13 +203,8 @@ const config: Config = {
     // Algolia DocSearch Configuration
     //  https://docsearch.algolia.com/apply/
     algolia: {
-      // The application ID provided by Algolia
       appId: '1YJ1C111LH',
-      
-      // Public API key: it is safe to commit it (it's a public key)
-      apiKey: 'b4bbac9a499ecc51109f23abd327cf29',
-      
-      // The name of the index you created on Algolia
+      apiKey: 'b4bbac9a499ecc51109f23abd327cf29',      
       indexName: 'orkestra',
       
       // Optional: contextual search adds context to search results
@@ -227,9 +222,6 @@ const config: Config = {
       // Optional: whether to show search results immediately when typing
       // (default: false)
       // immediateSearch: false,
-      
-      // Optional: container for the search modal
-      // container: 'div[class*="searchBox"]',
       
       // Optional: insights plugin for analytics
       // insights: false,
@@ -282,7 +274,7 @@ const config: Config = {
         {
           title: 'More',
           items: [
-            {label: 'Blog', href: 'https://blog.orkestra.sh/'},
+            {label: 'Blog', href: '/docs/blog'},
             {label: 'Security', to: '/docs/security'},
             {label: 'Roadmap', to: '/docs/roadmap'},
             {label: 'Support', to: '/docs/support'},

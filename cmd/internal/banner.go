@@ -34,10 +34,15 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 	fmt.Printf("- Metrics:  %s/metrics%s\n", utils.ColorGreen, utils.ColorReset)
 
 	fmt.Println()
-	if kfg.konfig.AdmissionEnabled() {
+	// ENABLE_WEBHOOKS=true
+	if kfg.katalog.HasMutationRules() || kfg.katalog.HasValidationRules() {
 		fmt.Println("Webhook Endpoints:")
-		fmt.Printf("- Muatation:  %s/mutate%s\n", utils.ColorGreen, utils.ColorReset)
-		fmt.Printf("- Validation:  %s/validate%s\n", utils.ColorGreen, utils.ColorReset)
+		if kfg.katalog.HasMutationRules() {
+			fmt.Printf("- Muatation:  %s/mutate%s\n", utils.ColorGreen, utils.ColorReset)
+		}
+		if kfg.katalog.HasValidationRules() {
+			fmt.Printf("- Validation:  %s/validate%s\n", utils.ColorGreen, utils.ColorReset)
+		}
 
 		// Registration configuration
 		fmt.Printf("- Service Name: %s%s%s\n", utils.ColorCyan, kfg.konfig.WebhookRegistration().ServiceName, utils.ColorReset)
@@ -46,7 +51,9 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 
 		fmt.Println()
 	}
-	if kfg.konfig.ConversionEnabled() {
+
+	// ENABLE_CONVERSION=true
+	if kfg.katalog.HasConversionPaths() {
 		fmt.Printf("- Conversion: %s/convert%s\n", utils.ColorGreen, utils.ColorReset)
 	}
 

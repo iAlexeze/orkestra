@@ -1,7 +1,7 @@
 # Orkestra Runtime Flow
 A deep dive into how events move through Orkestra — from Kubernetes → Informers → Workers → Reconciler → Template Engine → Kubernetes.
 
-This document complements the [Architecture Overview](./architecture.md) by showing the **runtime execution path** in detail.
+This document complements the [Architecture Overview](./architecture-overview.md) by showing the **runtime execution path** in detail.
 
 ---
 

@@ -20,7 +20,7 @@ CRDs were meant to make Kubernetes extensible. But to turn a CRD into an operato
 
 Orkestra removes that barrier. You write a [Katalog](./getting-started/writing-your-first-katalog.md). Orkestra builds the operator.
 
-**[Your CRD is enough](./publications/your-crd-is-enough.md).**
+**[Your CRD is enough](./blog/your-crd-is-enough.md).**
 
 ---
 
@@ -124,7 +124,7 @@ Early adopters are using Orkestra to manage:
 | [Reference](./reference/katalog-schema.md) | Detailed documentation for every part of Orkestra |
 | [Architecture](./runtime-manual/architecture/index.md) | How Orkestra works under the hood |
 | [OrkestraRegistry](./orkestra-registry/index.md) | The operator standard library |
-| [Publications](./publications/why-orkestra.md) | High‑level papers and conceptual documents |
+| [Publications](./publications/from-programs-to-data.md) | High‑level papers and conceptual documents |
 
 ---
 

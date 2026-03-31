@@ -94,6 +94,37 @@ type konductorElection struct {
 
 // Methods
 
+func NewDefaultKonfig() *Konfig {
+	return &Konfig{
+		ork: orkKonfig{
+			Name:        "orkestra",
+			ShortName:   "ork",
+			Environment: "development",
+			LogLevel:    "info",
+		},
+		cluster: clusterKonfig{
+			KubekonfigPath: "",
+			MasterURL:      "",
+			Name:           "orkestra",
+			Namespace:      "orkestra",
+		},
+		konductor: konductorElection{
+			Namespace:     "orkestra",
+			LeaseDuration: 15 * time.Second,
+			RenewDeadline: 10 * time.Second,
+			RetryPeriod:   2 * time.Second,
+		},
+		healthServer: healthServer{
+			Port:         "8080",
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 5 * time.Second,
+		},
+		katalog: katalogKonfig{
+			Paths: []string{"katalog.yaml"},
+		},
+	}
+}
+
 // IsDev returns true for development environment
 func (k *Konfig) IsDev() bool {
 	return k.Ork().Environment == "devlopment"

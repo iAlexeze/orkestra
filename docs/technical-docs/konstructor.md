@@ -8,7 +8,7 @@ Understanding this function is understanding Orkestra.
 
 ## The critical constraint
 
-!!! warning "No live Kubernetes connections in konstructOrkestra"
+:::warning[No live Kubernetes connections in konstructOrkestra]
     Nothing that requires a running cluster runs in `konstructOrkestra`.
     Reconciler factories are closures — they capture the objects they need
     but are not called until `orkestra.Start()` has started the kubeclient
@@ -17,6 +17,7 @@ Understanding this function is understanding Orkestra.
     The one exception is `kube.Start(ctx)` — the kubeclient is started
     early because the informer factory needs the REST config to check for
     missing CRDs. All other komponents start later, in the komponent list.
+:::
 
 This constraint is what makes the wiring safe: you cannot call `reconcile` before the informer has synced, because the reconciler factory is not invoked until the `DependencyKontroller` starts workers, which happens after `infFactory.Start()`, which happens after `kube.Start()`.
 

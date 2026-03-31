@@ -11,7 +11,7 @@ Both matter. This document covers both.
 Read the following before making any code changes:
 
 - [Technical Documentation Index](./index.md) — architecture overview and component map
-- [Your CRD Is Enough](../publications/your-crd-is-enough.md) — the design philosophy
+- [Your CRD Is Enough](../blog/your-crd-is-enough.md) — the design philosophy
 - [Trust and Failure Model](../publications/trust-and-failure-model.md) — the failure guarantees the codebase must uphold
 
 Understanding these will prevent contributions that are technically correct but architecturally wrong. The most common mistakes from new contributors:

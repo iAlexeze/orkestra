@@ -129,6 +129,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'guides/user-guide/how-reconciliation-works',
             'guides/user-guide/multi-version-crd-explained',
+            'guides/user-guide/api-conversion',
             'guides/user-guide/extending-orkestra',
             'guides/user-guide/deployment',
             'guides/user-guide/certificate-with-cert-manager',
@@ -226,15 +227,28 @@ const sidebars: SidebarsConfig = {
       ],
     },
 
+    // ── Orkestra Registry ────────────────────────────────────────────────────
+    {
+      type: 'category',
+      label: 'Blog',
+      // link: {type: 'doc', id: 'blog/index'},
+      items: [
+        'blog/your-crd-is-enough',
+        'blog/why-orkestra',
+        'blog/no-autosync-by-design',
+      ],
+    },
+
     // ── Publications ─────────────────────────────────────────────────────────
     {
       type: 'category',
       label: 'Publications',
       link: {type: 'doc', id: 'publications/index'},
       items: [
-        'publications/why-orkestra',
-        'publications/declarative-operators-whitepaper',
+        // 'publications/declarative-operators-whitepaper',
+        'publications/from-programs-to-data',
         'publications/declarative-conversion',
+        'publications/no-trace-runtime',
         'publications/one-runtime-many-crds',
         'publications/operator-sprawl-problem',
         'publications/orkestra-and-gitops',
@@ -243,9 +257,9 @@ const sidebars: SidebarsConfig = {
         'publications/when-conditions-paper',
         'publications/value-proposition',
         'publications/orkestra-registry',
+        'publications/no-autosync-by-design',
         'publications/trust-and-failure-model',
         'publications/metrics-analysis',
-        'publications/your-crd-is-enough',
       ],
     },
 

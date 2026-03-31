@@ -20,5 +20,5 @@ func (h *HealthServer) SetKubeClient(c kubernetes.Interface) {
 
 // SetWebhookOpts configures webhook registration options.
 func (h *HealthServer) SetWebhookOpts(opts WebhookRegistrationOptions) {
-	h.webhookOpts = opts
+	h.hookReg = opts
 }

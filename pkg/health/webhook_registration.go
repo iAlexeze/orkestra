@@ -41,10 +41,15 @@ const (
 	validatingWebhookConfigName = "orkestra-validation"
 	mutatingWebhookConfigName   = "orkestra-mutation"
 
-	// Cleanup setup
-	maxAttempts          = 5
+	// Webhook Cleanup setup
+	// MaxAttempts — number of retries for cleanup operations.
+	maxAttempts = 5
+
+	// Delay — time between retry attempts.
 	delayBetweenAttempts = 5 * time.Second
-	gracePeriodSeconds   = int64(30)
+
+	// The duration in seconds before the webhook should be deleted.
+	gracePeriodSeconds = int64(30)
 )
 
 // WebhookRegistrationOptions holds the configuration for webhook registration.
@@ -131,39 +136,49 @@ func RegisterWebhooks(
 //
 // The function is destructive — only call during shutdown. Any
 // webhook configurations created by Orkestra are cleaned up.
+type WebhookCleanupOptions struct {
+	mutating   bool
+	validating bool
+}
+
 func UnregisterWebhooks(
 	ctx context.Context,
 	client kubernetes.Interface,
+	opts WebhookCleanupOptions,
 ) error {
 
 	// Cleanup ValidatingWebhookConfiguration with retry
-	if err := utils.RetryBackoff(func() error {
-		return cleanupValidatingWebhook(ctx, client, validatingWebhookConfigName)
-	}, utils.RetryOptions{
-		Attempts: maxAttempts,
-		Delay:    delayBetweenAttempts,
-	},
-	); err != nil {
-		return fmt.Errorf("webhook cleanup: validating: %w", err)
+	if opts.validating {
+		if err := utils.RetryBackoff(func() error {
+			return cleanupValidatingWebhook(ctx, client, validatingWebhookConfigName)
+		}, utils.RetryOptions{
+			Attempts: maxAttempts,
+			Delay:    delayBetweenAttempts,
+		},
+		); err != nil {
+			return fmt.Errorf("webhook cleanup: validating: %w", err)
+		}
+		logger.Info().
+			Str("config", validatingWebhookConfigName).
+			Msg("webhook: ValidatingWebhookConfiguration unregistered")
 	}
-	logger.Info().
-		Str("config", validatingWebhookConfigName).
-		Msg("webhook: ValidatingWebhookConfiguration unregistered")
 
 	// Cleanup MutatingWebhookConfiguration with retry
-	if err := utils.RetryBackoff(func() error {
-		return cleanupMutatingWebhook(ctx, client, mutatingWebhookConfigName)
-	}, utils.RetryOptions{
-		Attempts: maxAttempts,
-		Delay:    delayBetweenAttempts,
-	}); err != nil {
-		return fmt.Errorf("webhook cleanup: mutating: %w", err)
+	if opts.mutating {
+		if err := utils.RetryBackoff(func() error {
+			return cleanupMutatingWebhook(ctx, client, mutatingWebhookConfigName)
+		}, utils.RetryOptions{
+			Attempts: maxAttempts,
+			Delay:    delayBetweenAttempts,
+		}); err != nil {
+			return fmt.Errorf("webhook cleanup: mutating: %w", err)
+		}
+
+		logger.Info().
+			Str("config", mutatingWebhookConfigName).
+			Msg("webhook: MutatingWebhookConfiguration unregistered")
+
 	}
-
-	logger.Info().
-		Str("config", mutatingWebhookConfigName).
-		Msg("webhook: MutatingWebhookConfiguration unregistered")
-
 	return nil
 }
 

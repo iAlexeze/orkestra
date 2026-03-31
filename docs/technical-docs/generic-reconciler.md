@@ -112,7 +112,7 @@ controller_resource_count{crd}                                   updated (gauge)
 
 - `consecutiveFails` increments on error, resets to zero on success
 - When `consecutiveFails >= degradeThreshold`, the CRD transitions to degraded
-- A degraded CRD with `critical: true` marks the entire Orkestra instance as degraded
+<!-- - A degraded CRD with `critical: true` marks the entire Orkestra instance as degraded -->
 - Health state is exposed via `/katalog/{crd}/health` and `ork status`
 
 ---

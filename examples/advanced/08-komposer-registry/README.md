@@ -5,7 +5,7 @@ patterns from an OCI registry, combines them with a local Katalog and a Helm
 chart source, and applies environment-specific overrides.
 
 **What you learn:** OCI registry sources, version pinning, Helm chart sources,
-multi-source composition, `critical: true`, production Komposer structure.
+multi-source composition, production Komposer structure.
 
 **Builds on:** [06 — Basic Komposer](../../intermediate/06-komposer-basic/)
 
@@ -94,23 +94,13 @@ kubectl wait --for=condition=available deployment/orkestra \
 ```bash
 kubectl port-forward svc/orkestra 8080:8080 -n orkestra-system &
 
-curl localhost:8080/katalog | jq '.crds[] | {name: .name, workers: .workers, critical: .critical}'
+curl localhost:8080/katalog | jq '.crds[] | {name: .name, workers: .workers,}'
 ```
 
 Expected:
 ```json
-{"name": "postgres",  "workers": 8, "critical": false}
-{"name": "website",   "workers": 6, "critical": true}
-```
-
-### 5. Test `critical: true`
-
-Scale the Orkestra deployment replicas to observe critical CRD behavior:
-
-```bash
-# The website CRD is marked critical: true
-# If it degrades, the entire operator degrades
-curl localhost:8080/health   # 200 when healthy
+{"name": "postgres",  "workers": 8}
+{"name": "website",   "workers": 6}
 ```
 
 ---

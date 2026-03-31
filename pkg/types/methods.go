@@ -82,12 +82,12 @@ func (c *CRDEntry) IsEnabled() bool {
 
 // IsCritical reports whether this CRD is marked as critical. Critical CRDs may
 // influence startup ordering or health evaluation. Defaults to false.
-func (c *CRDEntry) IsCritical() bool {
-	if c.Critical == nil {
-		return false
-	}
-	return *c.Critical
-}
+// func (c *CRDEntry) IsCritical() bool {
+// 	if c.Critical == nil {
+// 		return false
+// 	}
+// 	return *c.Critical
+// }
 
 // IsNamespaced reports whether this CRD is namespaced. Defaults to true unless
 // explicitly overridden or determined by enrichment.
@@ -149,7 +149,8 @@ func (c *CRDEntry) GetDependencies() []string {
 }
 
 // Returns true when either validation or mutation rules are declared.
-// Used to decide whether to populate the admission block in the health response.
+// Used to decide whether to create the endpoints and/or populate the admission block in the health response.
+// Even when ENABLE_WEBHOOKS=true
 func (c *CRDEntry) HasValidationOrMutationRules() bool {
 	return len(c.Validation.Rules) > 0 || len(c.Mutation.Rules) > 0
 }

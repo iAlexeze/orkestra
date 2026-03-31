@@ -66,11 +66,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// None of these are started here. Orkestra calls Start() in declaration order.
 
 	// Kubeclient
-	kube := kubeclient.NewKubeclient(kubeclient.Config{
-		Kubeconfig: kfg.Cluster().KubekonfigPath,
-		Masterurl:  kfg.Cluster().MasterURL,
-		Scheme:     scheme,
-	})
+	kube := kubeclient.NewKubeclient(kfg, scheme)
 
 	// Start kubeclient as it may be needed by some downstream services
 	// Example: Informerfactory now has to check for missing CRDs and needs rest config
@@ -79,29 +75,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	}
 
 	// Health server — created first so routes can be registered before Start().
-	hs := health.NewHealthServer(
-		kube.Clientset(),
-		kfg.Ork().Name,
-		kfg.Health().Port,
-		kfg.WebhookConfig().Port,
-		kfg.Ork().LogLevel,
-		kat.ConversionRegistry(),
-		kat.AdmissionRegistry(),
-		health.WebhookRegistrationOptions{
-			FailurePolicy:    kfg.WebhookRegistration().FailurePolicyType,
-			Port:             kfg.WebhookConfig().PortInt,
-			ServiceName:      kfg.WebhookRegistration().ServiceName,
-			ServiceNamespace: kfg.WebhookRegistration().ServiceNamespace,
-			TLSCertFile:      kfg.WebhookRegistration().TLSCert,
-		},
-		health.WebhookConfgurationOptions{
-			WebhooksEnabled:  kfg.WebhookConfig().EnableWebhooks,
-			ConvEnabled:      kfg.WebhookConfig().EnableConversion,
-			TLSCert:          kfg.WebhookConfig().TLSCert,
-			TLSKey:           kfg.WebhookConfig().TLSKey,
-			ConversionWindow: kfg.WebhookConfig().ConversionWindow,
-		},
-	)
+	hs := health.NewHealthServer(kube.Clientset(), kat, kfg)
 
 	// Event recorder — wraps kube, also not live until kube.Start().
 	ev := event.NewEvent(kube)
@@ -156,8 +130,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		queueRegistry,
 		defaultWq,
 		scheme,
-		kfg.Cluster().Namespace,
-		kfg.Cluster().DefaultResync,
+		kfg,
 	)
 
 	// ── 4c. Kontroller registry + per-CRD wiring ──────────────────────────────
@@ -179,9 +152,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		// Already populated by addRuntimeObjects() during validation.
 		object, _ := crd.GetRuntimeObjects()
 
-		wq := queueRegistry.Register(gvk, crd.SetMaxQueueDepth(
-			kfg.Katalog().DefaultMaxQueueDepth,
-		))
+		wq := queueRegistry.Register(gvk, crd.SetMaxQueueDepth(kfg.Katalog().DefaultMaxQueueDepth))
 
 		opts := informer.Options{
 			Name:   crd.APITypes.Kind,
@@ -196,7 +167,6 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		}
 
 		// For each CRD, choose typed or dynamic informer based on mode.
-
 		var inf cache.SharedIndexInformer
 
 		if crd.IsDynamic() {
@@ -233,8 +203,8 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		}
 		infCopy := inf
 
+		// For each CRD, choose typed or generic Reconciler based on mode.
 		var factory func() domain.Reconciler
-
 		if crd.DefaultReconcile() {
 			// DynamicModeObject / TypedModeObject already set — GetRuntimeObjects handles mode.
 			// We need a domain.Object factory for GenericReconciler.
@@ -280,6 +250,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		ktrlRegistry.Register(gvk, crd, inf, factory)
 		logger.Debug().Str("gvk", gvk).Msg("CRD registered")
 	}
+
 	// ── 5a. Per-CRD health map ────────────────────────────────────────────────
 	// Built before routes and before NewDependencyKontroller so all three
 	// share pointers to the same CRDHealth instances.

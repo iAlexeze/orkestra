@@ -972,7 +972,7 @@ type CRDEntry struct {
 	// Critical — if true, Orkestra marks the entire controller as degraded when
 	// this CRD's health state transitions to degraded.
 	// Use for CRDs that are fundamental to the platform's correctness.
-	Critical *bool `yaml:"critical"`
+	// Critical *bool `yaml:"critical"`
 
 	// Description — human-readable description. Shown in /katalog API responses.
 	Description string `yaml:"description" validate:"omitempty"`

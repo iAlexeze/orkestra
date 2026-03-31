@@ -133,9 +133,9 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 	}
 
 	// ── Critical ──────────────────────────────────────────────────────────
-	if override.IsCritical() {
-		result.Critical = override.Critical
-	}
+	// if override.IsCritical() {
+	// 	result.Critical = override.Critical
+	// }
 
 	// ── Dependencies ──────────────────────────────────────────────────────
 	// Override replaces entirely if declared — partial dependency override

@@ -44,4 +44,3 @@ spec:
     - name: website
       workers: 6
       resync: 15s
-      critical: true   # website degrading degrades the entire operator health

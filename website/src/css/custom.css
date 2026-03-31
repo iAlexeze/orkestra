@@ -375,26 +375,6 @@ code:not(pre code) {
   opacity: 0.7;
 }
 
-/* ── Announcement bar ─────────────────────────────────────────────────────
-
-div[class*='announcementBar'] {
-  background: var(--ifm-color-primary);
-  border-bottom: none;
-  color: white;
-  font-weight: 500;
-  font-size: 0.875rem;
-}
-
-div[class*='announcementBar'] a {
-  color: white;
-  text-decoration: underline;
-  font-weight: 600;
-}
-
-div[class*='announcementBar'] a:hover {
-  color: rgba(255, 255, 255, 0.9);
-} */
-
 /* ── Announcement bar ───────────────────────────────────────────────────── */
 
 div[class*='announcementBar'] {

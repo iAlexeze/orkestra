@@ -4,13 +4,14 @@ Adding a new CRD to Orkestra means adding a **Katalog entry**.
 Orkestra builds the operator around it — informer, workqueue, workers, health API, metrics, finalizers, and lifecycle.  
 You declare the CRD. Orkestra manages it.
 
-!!! tip
-    The fastest way to extend Orkestra is to start with a minimal Katalog entry and iterate.  
-    You only add Go code when you *need* typed access or custom logic.
+:::tip
+The fastest way to extend Orkestra is to start with a minimal Katalog entry and iterate.  
+You only add Go code when you *need* typed access or complex custom logic.
+:::
 
 ---
 
-# What You Provide
+## What You Provide
 
 The minimum required for any CRD:
 
@@ -40,7 +41,7 @@ Everything else — typed Go structs, hooks, constructors — is optional.
 
 ---
 
-# Step 1 — Declare Your CRD in the Katalog
+## Step 1 — Declare Your CRD in the Katalog
 
 Every CRD entry needs:
 
@@ -74,31 +75,30 @@ Example:
     degradeThreshold: 5
 ```
 
-## Dynamic Mode vs Typed Mode
+### Dynamic Mode vs Typed Mode
 
-### Dynamic Mode (no `apiTypes.location`)
+#### Dynamic Mode (no `apiTypes.location`)
 - No Go types required  
 - Orkestra uses the dynamic client  
 - Templates resolve fields at runtime  
 - Perfect for rapid development and simple CRDs  
 
-### Typed Mode (`apiTypes.location` set)
+#### Typed Mode (`apiTypes.location` set)
 - Requires compiled Go structs  
 - Enables type‑safe access (`obj.Spec.Field`)  
 - Required for Go hooks and custom constructors  
 
-!!! note
-    Most users start in **dynamic mode** and move to **typed mode** only when they need compile‑time safety or custom logic.
+:::note
+Most users start in **dynamic mode** and move to **typed mode** only when they need compile‑time safety or custom logic.
+:::
 
 ---
 
-# Step 2 — Choose Your Reconcile Path
+## Step 2 — Choose Your Reconcile Path
 
 Orkestra supports three reconciliation styles.
 
----
-
-## Path A — Declarative Templates (Zero Code)
+### Path A — Declarative Templates (Zero Code)
 
 This is the simplest and most common path.
 
@@ -133,7 +133,7 @@ reconciler:
         command: ["sh", "-c", "cleanup.sh {{ .metadata.name }}"]
 ```
 
-### Why Declarative Templates?
+#### Why Declarative Templates?
 
 - No Go code  
 - No compilation  
@@ -141,19 +141,18 @@ reconciler:
 - Drift correction built‑in  
 - Fastest way to build operators  
 
-!!! tip
-    `reconcile: true` means the resource is also corrected on every reconcile — you declare it once and get both create and drift‑correction behavior.
-
+:::tip
+`reconcile: true` means the resource is also corrected on every reconcile — you declare it once and get both create and drift‑correction behavior.
+:::
 ---
 
-## Path B — Go Hooks
+### Path B — Go Hooks
 
 Use Go hooks when you need:
 
 - Type‑safe access to `obj.Spec`  
-- Conditional logic  
+- Complex conditional logic  
 - External API calls  
-- Status updates  
 - Complex orchestration  
 
 Katalog:
@@ -180,21 +179,26 @@ func MyResourceHooks() domain.AnyReconcileHooks {
                 Image:     obj.Spec.Image,
                 Replicas:  int32(obj.Spec.Replicas),
             }
+
+            // All above can be declared in a katalog
+            // However, you may want to add additional logic 
+
             return orkdeploy.Create(ctx, kube, obj, spec)
         },
         OnDelete: func(ctx context.Context, obj *apiv1.MyResource) error {
+          // Cleanup external resources
             return nil
         },
     }
 }
 ```
 
-!!! note
-    Go hooks require `apiTypes.location` and `ork generate runtime`.
-
+:::note
+Go hooks require `apiTypes.location` and `ork generate runtime` command to register the hook.
+:::
 ---
 
-## Path C — Custom Constructor
+### Path C — Custom Constructor
 
 Use this when you need:
 
@@ -231,13 +235,14 @@ func NewMyResourceReconciler(
 }
 ```
 
-!!! warning
-    Custom constructors give you full power — but also full responsibility.  
-    Use them only when declarative templates or hooks cannot express your logic.
+:::warning
+Custom constructors give you full power — but also full responsibility.  
+Use them only when declarative templates or hooks cannot express your logic.
+:::
 
 ---
 
-# Step 3 — Typed Mode: Create API Types
+## Step 3 — Typed Mode: Create API Types
 
 Skip this if you’re using dynamic mode.
 
@@ -258,7 +263,7 @@ controller-gen object paths=./api/types/myresource/...
 
 ---
 
-# Step 4 — Generate Runtime Wiring (Typed + Hooks Only)
+## Step 4 — Generate Runtime Wiring (Typed + Hooks Only)
 
 Dynamic CRDs skip this step.
 
@@ -278,7 +283,7 @@ What gets generated:
 
 ---
 
-# Step 5 — Apply the CRD and Run
+## Step 5 — Apply the CRD and Run
 
 ```bash
 kubectl apply -f myresource-crd.yaml
@@ -301,7 +306,7 @@ curl localhost:8080/katalog/myresource/health | jq
 
 ---
 
-# Summary
+## Summary
 
 | You Provide | Orkestra Provides |
 |------------|-------------------|

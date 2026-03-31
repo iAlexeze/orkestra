@@ -52,7 +52,7 @@ For each CRD:
 - If missing → informer is created but not started  
 - When the CRD appears → retry loop activates it  
 
-Informers feed events into the shared workqueue.
+Informers feed events into per-CRD workqueue.
 
 ---
 

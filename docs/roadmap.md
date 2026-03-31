@@ -305,7 +305,7 @@ The highest-value contributions right now:
 
 Open a [GitHub issue](https://github.com/iAlexeze/orkestra/issues) or
 [Discussion](https://github.com/iAlexeze/orkestra/discussions) for anything not
-covered above. See [CONTRIBUTING.md](./technical-docs/CONTRIBUTING.md) for the development setup
+covered above. See [Contributing to Orkestra](./technical-docs/CONTRIBUTING.md) for the development setup
 and code standards.
 
 ---

@@ -3,7 +3,7 @@
 !!! tip 
     This guide gets you from zero to a running operator in under five minutes.
     If you want to understand the concepts before diving in, read
-    [Why Orkestra](../publications/why-orkestra.md) first.
+    [Why Orkestra](../blog/why-orkestra.md) first.
 
 ---
 

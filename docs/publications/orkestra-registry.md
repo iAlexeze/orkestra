@@ -1,12 +1,14 @@
-# OrkestraRegistry: A Declarative Ecosystem for Kubernetes Operators
+# The Missing Package Manager for Kubernetes Operators
 
-*Orkestra Project — March 2026*
+*OrkestraRegistry — Declarative Distribution for Operator Behavior*
+
+  *Orkestra Project — March 2026*
 
 ---
 
 ## Abstract
 
-Kubernetes operator ecosystems have historically been ecosystems of binaries.
+<!-- Kubernetes operator ecosystems have historically been ecosystems of binaries.
 Each operator is a separate software project, compiled into a binary, deployed
 as a separate process, and maintained independently. OperatorHub.io lists
 hundreds of such operators — each with its own resource footprint, its own
@@ -24,8 +26,27 @@ architecture of the registry, the distribution model, the promotion path from
 typed extensions to declarative core patterns, and the long-term vision of a
 composable, versioned operator ecosystem. We argue that this model does for
 operators what package managers did for software dependencies: it makes
-reuse the default.
+reuse the default. -->
 
+The Kubernetes operator ecosystem solved automation but never solved distribution.
+
+Operators are shared as binaries — not because binaries are the right abstraction,
+but because no alternative existed. The result is an ecosystem where reuse is
+expensive, composition is rare, and every operator is an isolated system with its
+own runtime, lifecycle, and operational surface.
+
+OrkestraRegistry introduces a different model: operator behavior distributed as
+declarative artifacts. Instead of shipping controllers, it ships reconciliation
+logic. Instead of deploying processes, it composes patterns into a shared runtime.
+
+This changes the economics of the ecosystem. Operators become lightweight,
+versioned dependencies rather than standalone systems. Patterns evolve from
+imperative code to declarative specifications. Distribution moves from binaries
+to OCI-backed packages.
+
+The Kubernetes ecosystem has package managers for images and charts.
+OrkestraRegistry extends that model to operators — making reuse the default,
+and composition the norm.
 ---
 
 ## 1. The Binary Operator Ecosystem

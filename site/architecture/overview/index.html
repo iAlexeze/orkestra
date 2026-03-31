@@ -313,7 +313,7 @@ You describe <em>what</em> an operator should do in YAML (a <strong>Katalog</str
 <li>If missing → informer is created but not started  </li>
 <li>When the CRD appears → retry loop activates it  </li>
 </ul>
-<p>Informers feed events into the shared workqueue.</p>
+<p>Informers feed events into per-CRD workqueue.</p>
 <hr />
 <h2 id="4-dependencyaware-kontroller">4. Dependency‑Aware Kontroller</h2>
 <p>The Kontroller:</p>

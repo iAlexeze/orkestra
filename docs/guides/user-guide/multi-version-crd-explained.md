@@ -103,3 +103,7 @@ Orkestra makes this process:
 - Observable  
 - Testable  
 - Automatic  
+
+:::tip[Practical Usecase]
+See how it works in the next page
+:::

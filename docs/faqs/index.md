@@ -17,7 +17,7 @@ The code you would have written does not exist.
     Every operator framework before Orkestra reduced the code you write.
     Orkestra removes the need to write code at all.
 
-See [Your CRD Is Enough](../publications/your-crd-is-enough.md) for the full picture.
+See [Your CRD Is Enough](../blog/your-crd-is-enough.md) for the full picture.
 
 ---
 
@@ -477,7 +477,7 @@ Yes. Orkestra is designed for and demonstrated in production.
 
 - **Leader election** — only one instance actively reconciles; followers maintain warm caches for instant failover
 - **safeReconcile** — panics in any reconciler are caught; other CRDs are unaffected
-- **Per-CRD failure domains** — a degraded CRD does not affect others unless `critical: true`
+- **Per-CRD failure domains** — a degraded CRD does not affect others 
 - **Graceful shutdown** — in-flight reconciles complete before the process exits
 - **Conversion in production** — 62 conversions, 0 failures, sub-millisecond latency
 
