@@ -108,11 +108,11 @@ func BuildCRDInfoHandler(
 		v := resolveCRDDisplayValues(crd, kfg, inf)
 
 		response := map[string]interface{}{
-			"name":                crd.Name,
-			"description":         crd.Description,
-			"mode":                crd.Mode,
-			"gvk":                 crd.GVK().String(),
-			"gvr":                 crd.GroupVersionResource.String(),
+			"name":        crd.Name,
+			"description": crd.Description,
+			"mode":        crd.Mode,
+			"gvk":         crd.GVK().String(),
+			"gvr":         crd.GroupVersionResource.String(),
 			// "critical":            crd.Critical,
 			"namespaced":          crd.Namespaced,
 			"namespace":           crd.Namespace,
@@ -205,11 +205,11 @@ func BuildKatalogHandler(
 			v := resolveCRDDisplayValues(crd, kfg, inf)
 
 			crds = append(crds, map[string]interface{}{
-				"name":                crd.Name,
-				"description":         crd.Description,
-				"mode":                crd.Mode,
-				"gvk":                 gvk,
-				"gvr":                 crd.GroupVersionResource.String(),
+				"name":        crd.Name,
+				"description": crd.Description,
+				"mode":        crd.Mode,
+				"gvk":         gvk,
+				"gvr":         crd.GroupVersionResource.String(),
 				// "critical":            crd.Critical,
 				"namespaced":          crd.Namespaced,
 				"namespace":           crd.Namespace,

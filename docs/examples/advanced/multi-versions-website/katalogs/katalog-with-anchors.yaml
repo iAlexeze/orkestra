@@ -4,7 +4,7 @@
 # ============================================================
 
 # Common reconciler template for both versions
-commonReconciler: &commonReconciler
+xx-commonReconciler: &commonReconciler
   reconciler:
     default: true
     onCreate:
@@ -15,17 +15,18 @@ commonReconciler: &commonReconciler
         reconcile: true
 
 # Common spec mapping used in conversion paths
-commonSpec: &commonSpec
+xx-commonSpec: &commonSpec
   image: "{{ .spec.image }}"
   replicas: "{{ .spec.replicas }}"
   port: "{{ .spec.port }}"
 
 # Versions
-storageVersion: &storageVersion v1
-alpha: &alpha v1alpha1
+xx-versions:
+  storage: &storageVersion v1
+  alpha: &alpha v1alpha1
 
 # Common Type
-commonType: &commonType
+xx-commonType: &commonType
   group: demo.orkestra.io
   kind: Website
   plural: websites

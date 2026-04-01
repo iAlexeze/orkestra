@@ -6,7 +6,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: conversion-test-katalog
-  namespace: orkestra
+  namespace: orkestra-system
 data:
   conversion-test-katalog.yaml: |
 

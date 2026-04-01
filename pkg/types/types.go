@@ -843,7 +843,42 @@ type HookTemplates struct {
 	Secrets         []SecretTemplateSource         `yaml:"secrets"      validate:"omitempty"`
 	ConfigMaps      []ConfigMapTemplateSource      `yaml:"configMaps"      validate:"omitempty"`
 	ServiceAccounts []ServiceAccountTemplateSource `yaml:"serviceAccounts" validate:"omitempty"`
+
+	// TODO with placeholer
+	StatefulSets                []PlaceholderSource `yaml:"statefulSets"    validate:"omitempty"`
+	ReplicaSets                 []PlaceholderSource `yaml:"replicaSets"     validate:"omitempty"`
+	DaemonSets                  []PlaceholderSource `yaml:"daemonSets"      validate:"omitempty"`
+	Ingresses                   []PlaceholderSource `yaml:"ingresses"         validate:"omitempty"`
+	NetworkPolicies             []PlaceholderSource `yaml:"networkPolicies" validate:"omitempty"`
+	PersistentVolumes           []PlaceholderSource `yaml:"persistentVolumes" validate:"omitempty"`
+	PersistentVolumeClaims      []PlaceholderSource `yaml:"persistentVolumeClaims" validate:"omitempty"`
+	Volumes                     []PlaceholderSource `yaml:"volumes" validate:"omitempty"`
+	VolumeMounts                []PlaceholderSource `yaml:"volumeMounts" validate:"omitempty"`
+	Roles                       []PlaceholderSource `yaml:"roles" validate:"omitempty"`
+	RoleBindings                []PlaceholderSource `yaml:"roleBindings" validate:"omitempty"`
+	ClusterRoles                []PlaceholderSource `yaml:"clusterRoles" validate:"omitempty"`
+	ClusterRoleBindings         []PlaceholderSource `yaml:"clusterRoleBindings" validate:"omitempty"`
+	ServiceMonitors             []PlaceholderSource `yaml:"serviceMonitors" validate:"omitempty"`
+	PodDisruptionBudgets        []PlaceholderSource `yaml:"pdb" validate:"omitempty"`
+	PodSecurityPolicies         []PlaceholderSource `yaml:"podSecurityPolicies" validate:"omitempty"`
+	PriorityClasses             []PlaceholderSource `yaml:"priorityClasses" validate:"omitempty"`
+	LimitRanges                 []PlaceholderSource `yaml:"limitRanges" validate:"omitempty"`
+	ResourceQuotas              []PlaceholderSource `yaml:"resourceQuotas" validate:"omitempty"`
+	RuntimeClasses              []PlaceholderSource `yaml:"runtimeClasses" validate:"omitempty"`
+	PriorityLevelConfigurations []PlaceholderSource `yaml:"priorityLevelConfigurations" validate:"omitempty"`
+	HorizontalPodAutoscalers    []PlaceholderSource `yaml:"hpa" validate:"omitempty"`
+	PodTemplates                []PlaceholderSource `yaml:"podTemplates" validate:"omitempty"`
+
+	// Storage
+	StorageClasses   []PlaceholderSource `yaml:"storageClasses" validate:"omitempty"`
+	StorageLocations []PlaceholderSource `yaml:"storageLocations" validate:"omitempty"`
+	StoragePools     []PlaceholderSource `yaml:"storagePools" validate:"omitempty"`
+	StorageBackups   []PlaceholderSource `yaml:"storageBackups" validate:"omitempty"`
+	StorageSnapshots []PlaceholderSource `yaml:"storageSnapshots" validate:"omitempty"`
+	StorageVolumes   []PlaceholderSource `yaml:"storageVolumes" validate:"omitempty"`
 }
+
+type PlaceholderSource struct{}
 
 // ── ReconcilerConfig ──────────────────────────────────────────────────────────
 

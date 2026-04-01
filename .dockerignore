@@ -9,3 +9,9 @@ reviews/
 orkestra-certs/
 coverage.out/
 coverage
+
+# Generated
+zz_generated_rbac.yaml
+
+# certs
+certs/

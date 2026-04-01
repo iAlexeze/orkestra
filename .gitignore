@@ -14,3 +14,6 @@ website/node_modules
 website/build
 website/.docusaurus
 website/.cache-loader
+
+# Generated
+zz_generated_rbac.yaml

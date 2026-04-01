@@ -12,6 +12,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	DefaultNamespace = "orkestra-system"
+)
+
 var generateCmd = &cobra.Command{
 	Use:   "generate",
 	Short: "Generate Orkestra components",
@@ -249,6 +253,42 @@ var generateAllCmd = &cobra.Command{
 	},
 }
 
+var generateRbacCmd = &cobra.Command{
+	Use:   "rbac",
+	Short: "Generate RBAC ClusterRole for all CRDs in the Katalog",
+	Long: `Reads one or more katalog.yaml files, merges them, and generates a minimal
+ClusterRole containing only the RBAC rules required by the declared CRDs,
+including conditional webhook permissions when validation, mutation, or
+conversion rules are present.
+
+Example:
+  ork generate rbac --katalog ./website-katalog.yaml
+  ork generate rbac --katalog a.yaml --katalog b.yaml
+  ork generate rbac --katalog a.yaml,b.yaml`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		out, err := generateKatalog(cmd)
+		if err != nil {
+			return err
+		}
+
+		namespace, _ := cmd.Flags().GetString("namespace")
+		outputFile, _ := cmd.Flags().GetString("output")
+
+		log.Println("generating rbac...")
+
+		if err := generate.RBAC(out.m, namespace, outputFile); err != nil {
+			return fmt.Errorf("generate rbac: %w", err)
+		}
+
+		log.Println("rbac generated successfully")
+
+		if outputFile != "" {
+			log.Printf("out: %s\n", outputFile)
+		}
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(generateCmd)
 
@@ -260,6 +300,7 @@ func init() {
 	generateCmd.AddCommand(generateExamplesCmd)
 	generateCmd.AddCommand(generateTestsCmd)
 	generateCmd.AddCommand(generateAllCmd)
+	generateCmd.AddCommand(generateRbacCmd)
 
 	// Add flags to all commands that need katalog
 	for _, cmd := range []*cobra.Command{
@@ -269,9 +310,12 @@ func init() {
 		generateExamplesCmd,
 		generateTestsCmd,
 		generateAllCmd,
+		generateRbacCmd,
 	} {
-		cmd.Flags().StringSlice("katalog", []string{}, "Path(s) or URL(s) to katalog.yaml (required, can be specified multiple times or as comma-separated values)")
+		cmd.Flags().StringSliceP("katalog", "k", []string{}, "Path(s) or URL(s) to katalog.yaml (required, can be specified multiple times or as comma-separated values)")
 		cmd.Flags().Bool("dry-run", false, "Print generated output to stdout without writing files")
+		cmd.Flags().StringP("output", "o", "", "Write generated output to file")
+		cmd.Flags().StringP("namespace", "n", DefaultNamespace, "Namespace for the ServiceAccount")
 	}
 
 	// Mark katalog as required for all commands
