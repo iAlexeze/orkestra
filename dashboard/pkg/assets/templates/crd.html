@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ .CRD.Name }} – Orkestra</title>
+    <link rel="icon" type="image/png" href="/dashboard/assets/static/logo.png">
+    <link rel="alternate icon" href="/dashboard/assets/static/logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .progress-bar {
@@ -123,12 +125,16 @@
                 <div class="font-medium">{{ .CRD.Uptime }}</div>
             </div>
             <div>
-                <div class="text-gray-500">Started At</div>
-                <div class="font-medium">{{ .CRD.StartedAt }}</div>
+                <div>
+                <div class="text-xs text-gray-500">Started</div>
+                    <div class="font-semibold">{{ .CRD.StartedAgo }}</div>
+                    <div class="text-xs text-gray-400">{{ .CRD.StartedAt }}</div>
+                </div>
             </div>
             <div>
                 <div class="text-gray-500">Last Reconcile</div>
-                <div class="font-medium">{{ .CRD.LastReconcile }}</div>
+                <div class="font-semibold">{{ .CRD.LastReconcileAgo }}</div>
+                <div class="text-xs text-gray-400">{{ .CRD.LastReconcile }}</div>
             </div>
         </div>
 

@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'Orkestra',
   tagline: 'Zero-code Kubernetes Operator Runtime',
-  favicon: 'img/fav.png',
+  favicon: 'img/logo.png',
 
   url: 'https://orkestra.sh',
   baseUrl: '/',
@@ -144,7 +144,7 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/fav.png',
+    image: 'img/logo.png',
 
     colorMode: {
       defaultMode: 'dark',
@@ -165,8 +165,8 @@ const config: Config = {
       title: 'Orkestra',
       logo: {
         alt: 'Orkestra Logo',
-        src: 'img/fav.png',
-        srcDark: 'img/fav.png',
+        src: 'img/logo.png',
+        srcDark: 'img/logo.png',
       },
       hideOnScroll: false,
       items: [
@@ -231,7 +231,7 @@ const config: Config = {
       style: 'dark',
       logo: {
         alt: 'Orkestra',
-        src: 'img/fav.png',
+        src: 'img/logo.png',
         href: 'https://orkestra.sh',
         width: 120,
       },

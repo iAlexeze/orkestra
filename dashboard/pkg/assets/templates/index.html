@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Orkestra Dashboard</title>
+    <link rel="icon" type="image/png" href="/dashboard/assets/static/logo.png">
+    <link rel="alternate icon" href="/dashboard/assets/static/logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .progress-bar {
@@ -15,6 +17,12 @@
         .stats-card:hover {
             transform: translateY(-2px);
         }
+        .logo-animation {
+            transition: transform 0.3s ease;
+        }
+        .logo-animation:hover {
+            transform: rotate(5deg) scale(1.05);
+        }
     </style>
 </head>
 
@@ -22,16 +30,19 @@
 <div class="max-w-7xl mx-auto px-4 py-8">
 
     <!-- Header -->
-    <div class="mb-10 flex items-center justify-between">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-900">Orkestra</h1>
-            <p class="text-gray-500 text-sm mt-1">Declarative Operator Runtime</p>
-        </div>
-
-        <div class="flex gap-3">
-            <a href="/dashboard" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm">Dashboard</a>
-            <a href="/dashboard/status" class="px-4 py-2 bg-gray-200 rounded-lg text-sm hover:bg-gray-300">Status</a>
-            <a href="/dashboard/metrics" class="px-4 py-2 bg-gray-200 rounded-lg text-sm hover:bg-gray-300">Metrics</a>
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <img src="/dashboard/assets/static/logo.png" alt="Orkestra Logo" class="w-12 h-12 logo-animation">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Orkestra</h1>
+                    <p class="text-gray-500 text-sm mt-1">Declarative Operator Runtime</p>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <a href="/dashboard" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition">Dashboard</a>
+                <a href="/dashboard/metrics" class="px-4 py-2 bg-gray-200 rounded-lg text-sm hover:bg-gray-300 transition">Metrics</a>
+            </div>
         </div>
     </div>
 

@@ -1,6 +1,6 @@
 
 <div align="center">
-  <img src="./docs/assets/fav.png" alt="Orkestra" height="96" />
+  <img src="./docs/assets/logo.png" alt="Orkestra" height="96" />
   <h1>Orkestra</h1>
 
   <p><strong>CRDs in. Operators out.</strong></p>

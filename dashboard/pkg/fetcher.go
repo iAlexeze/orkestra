@@ -139,6 +139,11 @@ type CRDDetail struct {
     ConsecutiveFails int    `json:"consecutiveFails"`
     LastError       string  `json:"lastError"`
     LastReconcile   string  `json:"lastReconcile"`
+    
+ 
+    // Human readable
+    StartedAgo       string `json:"startedAgo"`
+    LastReconcileAgo string `json:"lastReconcileAgo"`
 
     // From info endpoint
     Name                string                 `json:"name"`
@@ -224,6 +229,10 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
         return nil, fmt.Errorf("fetching info: %w", err)
     }
 
+    // Format times for frontend
+    startedAt := parseTime(health.StartedAt)
+    lastReconcile := parseTime(health.LastReconcile)
+
     // Merge health into info
     detail := &CRDDetail{
         // From health
@@ -233,6 +242,10 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
         ConsecutiveFails: health.ConsecutiveFails,
         LastError:        health.LastError,
         LastReconcile:    health.LastReconcile,
+
+        // Human-friendly
+        StartedAgo:       timeAgo(startedAt),
+        LastReconcileAgo: timeAgo(lastReconcile),
 
         // From info
         Name:                info.Name,

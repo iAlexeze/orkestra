@@ -7,8 +7,9 @@ import (
     "strings"
 )
 
-//go:embed templates/*.html static/*
+//go:embed assets/templates/*.html assets/static/*
 var assets embed.FS
+var assetsDir = "assets/templates"
 
 type Dashboard struct {
     client *Client
@@ -40,11 +41,6 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Status page
-    if path == "/status" {
-        d.handleStatus(w, r)
-        return
-    }
     if path == "/metrics" {
         d.handleMetricsPage(w, r)
         return
@@ -106,8 +102,8 @@ func (d *Dashboard) handleIndex(w http.ResponseWriter, r *http.Request) {
     }
 
     // Parse template with function map
-    tmpl := template.New("index-v1.html").Funcs(templateFuncs)
-    tmpl, err = tmpl.ParseFS(assets, "templates/index-v1.html")
+    tmpl := template.New("index.html").Funcs(templateFuncs)
+    tmpl, err = tmpl.ParseFS(assets, assetsDir + "/index.html")
     if err != nil {
         http.Error(w, "Failed to parse template: "+err.Error(), http.StatusInternalServerError)
         return
@@ -128,8 +124,8 @@ func (d *Dashboard) handleCRD(w http.ResponseWriter, r *http.Request, name strin
     }
 
     // Parse the template with the same function map
-    tmpl := template.New("crd-v1.html").Funcs(templateFuncs)
-    tmpl, err = tmpl.ParseFS(assets, "templates/crd-v1.html")
+    tmpl := template.New("crd.html").Funcs(templateFuncs)
+    tmpl, err = tmpl.ParseFS(assets, assetsDir + "/crd.html")
     if err != nil {
         http.Error(w, "Failed to parse template: "+err.Error(), http.StatusInternalServerError)
         return
@@ -144,12 +140,7 @@ func (d *Dashboard) handleCRD(w http.ResponseWriter, r *http.Request, name strin
     }
 }
 
-func (d *Dashboard) handleStatus(w http.ResponseWriter, r *http.Request) {
-    tmpl := template.Must(template.ParseFS(assets, "templates/status.html"))
-    tmpl.Execute(w, nil)
-}
-
 func (d *Dashboard) handleMetricsPage(w http.ResponseWriter, r *http.Request) {
-    tmpl := template.Must(template.ParseFS(assets, "templates/metrics.html"))
+    tmpl := template.Must(template.ParseFS(assets, assetsDir + "/metrics.html"))
     tmpl.Execute(w, nil)
 }

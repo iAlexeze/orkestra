@@ -15,7 +15,7 @@ function HomepageHero(): React.JSX.Element {
     <header className={clsx('hero', styles.heroBanner)}>
       <div className="container">
         <img
-          src="img/fav.png"
+          src="img/logo.png"
           alt="Orkestra"
           className={styles.heroLogo}
         />
