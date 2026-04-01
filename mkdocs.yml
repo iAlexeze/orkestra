@@ -223,10 +223,10 @@ theme:
     - navigation.footer
   icon:
     repo: fontawesome/brands/github
-  favicon: assets/fav.png
+  favicon: assets/logo.png
   font:
     text: Work Sans
-  logo: assets/fav.png
+  logo: assets/logo.png
   name: material
   palette:
   - media: '(prefers-color-scheme: light)'

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orkestra Dashboard</title>
+    <link rel="icon" type="image/png" href="/dashboard/assets/static/logo.png">
+    <link rel="alternate icon" href="/dashboard/assets/static/logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        .stats-card {
+            transition: all 0.2s ease;
+        }
+        .stats-card:hover {
+            transform: translateY(-2px);
+        }
+        .logo-animation {
+            transition: transform 0.3s ease;
+        }
+        .logo-animation:hover {
+            transform: rotate(5deg) scale(1.05);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+<div class="max-w-7xl mx-auto px-4 py-8">
+
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <img src="/dashboard/assets/static/logo.png" alt="Orkestra Logo" class="w-12 h-12 logo-animation">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Orkestra</h1>
+                    <p class="text-gray-500 text-sm mt-1">Declarative Operator Runtime</p>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <a href="/dashboard" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition">Dashboard</a>
+                <a href="/dashboard/metrics" class="px-4 py-2 bg-gray-200 rounded-lg text-sm hover:bg-gray-300 transition">Metrics</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-4 rounded-xl shadow-sm border stats-card">
+            <div class="text-xs text-gray-500">CRDs</div>
+            <div class="text-2xl font-bold">{{ .TotalCRDs }}</div>
+            <div class="text-xs text-gray-400 mt-1">{{ .HealthyCount }} healthy</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border stats-card">
+            <div class="text-xs text-gray-500">Total Workers</div>
+            <div class="text-2xl font-bold">{{ .TotalWorkers }}</div>
+            <div class="text-xs text-gray-400 mt-1">Across all CRDs</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border stats-card">
+            <div class="text-xs text-gray-500">Resources</div>
+            <div class="text-2xl font-bold">{{ .TotalResources }}</div>
+            <div class="text-xs text-gray-400 mt-1">Live CRs in cache</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl shadow-sm border stats-card">
+            <div class="text-xs text-gray-500">System State</div>
+            <div class="text-sm font-medium {{ if eq .HealthyCount .TotalCRDs }}text-green-600{{ else }}text-yellow-600{{ end }}">
+                {{ if eq .HealthyCount .TotalCRDs }}Operational{{ else }}Degraded{{ end }}
+            </div>
+        </div>
+    </div>
+
+    <!-- CRDs Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        {{ range .CRDs }}
+        {{ $queuePercent := 0 }}
+        {{ if gt .MaxQueueDepth 0 }}
+            {{ $queuePercent = div (mul .QueueDepth 100) .MaxQueueDepth }}
+        {{ end }}
+
+        <div class="bg-white rounded-xl shadow-sm border hover:shadow-md transition stats-card">
+            <div class="p-6">
+                <!-- Title -->
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">{{ .Name }}</h2>
+                    <span class="flex items-center">
+                        <span class="relative flex h-3 w-3">
+                            {{ if .Healthy }}
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                            {{ else }}
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                            {{ end }}
+                        </span>
+                    </span>
+                </div>
+
+                <!-- Stats -->
+                <div class="space-y-3 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Workers</span>
+                        <span class="font-medium">
+                            {{ .WorkersActive }}/{{ .Workers }}
+                        </span>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-gray-500 mb-1">
+                            <span>Queue</span>
+                            <span>{{ .QueueDepth }}/{{ .MaxQueueDepth }}</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-blue-500 h-2 rounded-full progress-bar"
+                                 style="width: {{ $queuePercent }}%;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Resources</span>
+                        <span class="font-medium">{{ .ResourceCount }}</span>
+                    </div>
+
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Error Rate</span>
+                        <span class="{{ if gt .ErrorRate 0.0 }}text-red-600{{ else }}text-green-600{{ end }}">
+                            {{ printf "%.1f" .ErrorRate }}%
+                        </span>
+                    </div>
+
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Uptime</span>
+                        <span class="font-medium text-xs">{{ .Uptime }}</span>
+                    </div>
+                </div>
+
+                <!-- Link -->
+                <div class="mt-6 pt-4 border-t">
+                    <a href="/dashboard/crd/{{ .Name }}"
+                       class="text-sm text-blue-600 hover:underline">
+                        View details →
+                    </a>
+                </div>
+            </div>
+        </div>
+        {{ end }}
+
+    </div>
+
+    <!-- Empty State -->
+    {{ if eq (len .CRDs) 0 }}
+    <div class="mt-10 bg-yellow-50 border border-yellow-200 rounded-xl p-8 text-center">
+        <p class="text-yellow-800 font-medium">No CRDs orchestrated yet</p>
+        <p class="text-yellow-600 text-sm mt-1">
+            Apply a CRD and watch Orkestra bring it to life
+        </p>
+    </div>
+    {{ end }}
+
+</div>
+
+<script>
+setInterval(() => {
+    window.location.reload();
+}, 5000);
+</script>
+
+</body>
+</html>

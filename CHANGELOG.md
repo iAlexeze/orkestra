@@ -9,26 +9,26 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **RBAC Generator (`ork generate rbac`)** — produces a complete, ready‑to‑apply
-  ServiceAccount, ClusterRole, and ClusterRoleBinding with least‑privilege rules
-  derived directly from the Katalog.
-- **Table‑driven resource detection** — unified engine for determining which
-  Kubernetes resource types a CRD uses across OnCreate/OnReconcile/OnDelete.
-- **RBAC rule table** — declarative mapping of Kubernetes API groups and
-  resources, enabling automatic RBAC generation for all supported resource types.
-- **Placeholders for future resource types** — structured extension points for
-  HPAs, PDBs, NetworkPolicies, PodTemplates, storage classes, and more.
+- **Orkestra Dashboard** — a comprehensive web-based UI providing real-time visibility into operator operations
+  - **CRD Overview Dashboard**: displays all managed CRDs with key metrics including workers, queue depth, resource count, error rates, and health status
+  - **CRD Detail View**: in-depth metrics per CRD including runtime health, reconciliation statistics, version conversion webhook status, admission webhook metrics, and reconciler configuration details
+  - **System Metrics Dashboard**: real-time Go runtime metrics including GC pause times, heap memory usage, and goroutine counts with auto-refresh capabilities
+  - **Metrics API**: `/dashboard/api/metrics` endpoint exposing structured JSON metrics for programmatic access
+  - **Static Asset Embedding**: all dashboard assets embedded directly into the binary using Go's embed directive
+  - **Automatic Data Refresh**: dashboard auto-refreshes every 5-10 seconds for real-time monitoring
 
 ### Changed
 
-- **RBAC generation architecture** — replaced per‑resource `HasX()` helpers with
-  a single table‑driven detection model, eliminating duplication and ensuring
-  consistency across all resource types.
-- **Documentation** — updated security and RBAC sections to reflect Orkestra’s
-  security‑first, least‑privilege design and the new RBAC generator workflow.
+- **Documentation** — added comprehensive dashboard usage guide covering installation, navigation, and metrics interpretation
+- **End-to-End Testing** — validated dashboard functionality using all example workloads from beginner to advanced scenarios
+- **Examples** — updated example CRDs to demonstrate dashboard visibility features
 
-### Security
+### Fixed
 
-- **Least‑privilege by design** — Orkestra now generates RBAC rules strictly
-  based on declared CRDs and resource templates, eliminating wildcard or
-  over‑permissive roles commonly found in Kubernetes operators.
+- **Template Function Support** — added proper template function handling (`add`, `mul`, `div`, `formatTime`, `relativeTime`) for dynamic dashboard calculations
+- **Timestamp Formatting** — improved time display with local timezone conversion and relative time formatting for better UX
+
+### Remaining Work
+
+- **Hook Testing** — comprehensive testing of Go hooks and webhook integrations pending
+- **Constructor Testing** — validation of custom reconciler constructors in progress

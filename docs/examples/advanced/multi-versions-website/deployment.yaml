@@ -24,7 +24,7 @@ spec:
 
       containers:
       - name: orkestra
-        image: ialexeze/ork:history
+        image: ialexeze/ork:history-1
 
         env:
           - name: ENABLE_CONVERSION

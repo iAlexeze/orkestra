@@ -76,7 +76,8 @@ func (h *HealthServer) validationHandler(w http.ResponseWriter, r *http.Request)
 	if rules == nil || len(rules.Rules) == 0 {
 		// No rules for this resource — allow immediately
 		// This should not happen if the webhook configuration is correct,
-		// but is a safe fallback.
+		// since webhook endpoints is conditionally created.
+		// But it's a safe fallback.
 		h.writeAdmissionResponse(w, review.APIVersion, review.Kind, resp)
 		return
 	}
@@ -142,7 +143,7 @@ func (h *HealthServer) validationHandler(w http.ResponseWriter, r *http.Request)
 			msgs = append(msgs, fmt.Sprintf("field %q: %s (got: %q)", d.Field, d.Message, d.Got))
 		}
 		resp.Status = &AdmissionStatus{
-			Message: fmt.Sprintf("[orkestra] validation failed: %s", strings.Join(msgs, "; ")),
+			Message: fmt.Sprintf("\n\n[orkestra] validation failed: %s\n\n", strings.Join(msgs, "; ")),
 			Code:    400,
 		}
 

@@ -23,6 +23,7 @@ type KonductorElection struct {
 	kube       *kubeclient.Kubeclient
 	event      *event.Event
 	cancelFunc context.CancelFunc
+	runCancel  context.CancelFunc
 	run        func(context.Context)
 
 	election theElection
@@ -160,15 +161,21 @@ func (ko *KonductorElection) callbacks() leaderelection.LeaderCallbacks {
 				)
 			}
 
+			// Run the actual controller
+			// With a cancellable context - useful for OnStoppedLeading
+			runCtx, cancel := context.WithCancel(ctx)
+			ko.runCancel = cancel
+
 			ko.election.konductor = hostname()
 			if ko.election.onElected != nil {
 				ko.election.onElected(ko.election.konductor)
 			}
+
 			ko.election.startedKonducting.Store(true)
 
 			logger.Info().Msgf("%s 🏆 became konductor, starting controller...", ko.election.konductor)
 
-			ko.run(ctx)
+			ko.run(runCtx)
 		},
 		OnStoppedLeading: func() {
 			if ko.event.Recorder() != nil {
@@ -180,9 +187,13 @@ func (ko *KonductorElection) callbacks() leaderelection.LeaderCallbacks {
 					}, corev1.EventTypeWarning, "KonductorLost", "%s lost konducting", hostname(),
 				)
 			}
-			// Can perform additional clean up if needed on the actual konductor
-			// Example - TODO
 			if ko.election.startedKonducting.Load() {
+				// Cancel the run context
+				if ko.runCancel != nil {
+					ko.runCancel()
+					ko.runCancel = nil	// reset to always reflect current leadership session only
+				}
+
 				logger.Info().Msg("Performing cleanup on the actual konductor...")
 				ko.election.konductor = ""
 				ko.election.startedKonducting.Store(false)
@@ -190,7 +201,7 @@ func (ko *KonductorElection) callbacks() leaderelection.LeaderCallbacks {
 				logger.Info().Msg("No cleanup needed as we never started konducting.")
 			}
 
-			logger.Info().Msgf("%s👋 Stopped konducting - lease released", hostname())
+			logger.Info().Msgf("%s 👋 Stopped konducting - lease released", hostname())
 		},
 		OnNewLeader: func(identity string) {
 			if ko.event.Recorder() != nil {
