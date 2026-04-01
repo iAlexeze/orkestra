@@ -26,21 +26,53 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
         d.handleIndex(w, r)
         return
     }
+
+    // CRD endpoints
     if strings.HasPrefix(path, "/crd/") {
         name := strings.TrimPrefix(path, "/crd/")
         d.handleCRD(w, r, name)
         return
     }
+
+    // API endpoints for metrics data
+    if strings.HasPrefix(path, "/api/metrics") {
+        d.handleMetricsAPI(w, r)
+        return
+    }
+
+    // Status page
     if path == "/status" {
         d.handleStatus(w, r)
         return
     }
     if path == "/metrics" {
-        d.handleMetrics(w, r)
+        d.handleMetricsPage(w, r)
         return
     }
     // serve static files
     http.FileServer(http.FS(assets)).ServeHTTP(w, r)
+}
+
+type IndexData struct {
+    CRDs          []CRDSummary
+    TotalCRDs     int
+    TotalWorkers  int
+    TotalResources int
+    HealthyCount  int
+}
+
+// Define template functions once and reuse them
+var templateFuncs = template.FuncMap{
+    "mul": func(a, b int) int {
+        return a * b
+    },
+    "div": func(a, b int) int {
+        if b == 0 {
+            return 0
+        }
+        return a / b
+    },
+    "title": strings.Title,
 }
 
 func (d *Dashboard) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -50,10 +82,42 @@ func (d *Dashboard) handleIndex(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    tmpl := template.Must(template.ParseFS(assets, "templates/index.html"))
-    tmpl.Execute(w, map[string]interface{}{
-        "CRDs": katalog.CRDs,
-    })
+    // Calculate summary statistics
+    totalCRDs := len(katalog.CRDs)
+    totalWorkers := 0
+    totalResources := 0
+    healthyCount := 0
+
+    for _, crd := range katalog.CRDs {
+        totalWorkers += crd.Workers
+        totalResources += crd.ResourceCount
+        if crd.Healthy {
+            healthyCount++
+        }
+    }
+
+    // Prepare data for template
+    data := IndexData{
+        CRDs:          katalog.CRDs,
+        TotalCRDs:     totalCRDs,
+        TotalWorkers:  totalWorkers,
+        TotalResources: totalResources,
+        HealthyCount:  healthyCount,
+    }
+
+    // Parse template with function map
+    tmpl := template.New("index-v1.html").Funcs(templateFuncs)
+    tmpl, err = tmpl.ParseFS(assets, "templates/index-v1.html")
+    if err != nil {
+        http.Error(w, "Failed to parse template: "+err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    err = tmpl.Execute(w, data)
+    if err != nil {
+        http.Error(w, "Failed to execute template: "+err.Error(), http.StatusInternalServerError)
+        return
+    }
 }
 
 func (d *Dashboard) handleCRD(w http.ResponseWriter, r *http.Request, name string) {
@@ -63,8 +127,9 @@ func (d *Dashboard) handleCRD(w http.ResponseWriter, r *http.Request, name strin
         return
     }
 
-    // Parse the template fresh for each request (or cache it)
-    tmpl, err := template.ParseFS(assets, "templates/crd.html")
+    // Parse the template with the same function map
+    tmpl := template.New("crd-v1.html").Funcs(templateFuncs)
+    tmpl, err = tmpl.ParseFS(assets, "templates/crd-v1.html")
     if err != nil {
         http.Error(w, "Failed to parse template: "+err.Error(), http.StatusInternalServerError)
         return
@@ -84,7 +149,7 @@ func (d *Dashboard) handleStatus(w http.ResponseWriter, r *http.Request) {
     tmpl.Execute(w, nil)
 }
 
-func (d *Dashboard) handleMetrics(w http.ResponseWriter, r *http.Request) {
+func (d *Dashboard) handleMetricsPage(w http.ResponseWriter, r *http.Request) {
     tmpl := template.Must(template.ParseFS(assets, "templates/metrics.html"))
     tmpl.Execute(w, nil)
 }
