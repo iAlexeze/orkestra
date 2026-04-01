@@ -8,6 +8,7 @@ type KatalogFile struct {
 	APIVersion string          `yaml:"apiVersion"`
 	Kind       string          `yaml:"kind"`
 	Metadata   KatalogMeta     `yaml:"metadata"`
+	Anchors    map[string]any  `yaml:"anchors,omitempty"`
 	Sources    *KatalogSources `yaml:"sources,omitempty"`
 	Spec       KatalogSpec     `yaml:"spec"`
 }

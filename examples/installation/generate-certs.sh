@@ -23,8 +23,15 @@
 
 set -euo pipefail
 
-NAMESPACE="orkestra-system"
-SERVICE_NAME="orkestra"
+echo "=== Orkestra Self-Signed Certificate Generator ==="
+echo ""
+
+read -rp "Enter Orkestra service name (default: orkestra): " SERVICE_NAME
+SERVICE_NAME=${SERVICE_NAME:-orkestra}
+
+read -rp "Enter Orkestra namespace (default: orkestra-system): " NAMESPACE
+NAMESPACE=${NAMESPACE:-orkestra-system}
+
 CERT_DIR="/tmp/tls"
 
 mkdir -p "${CERT_DIR}"
@@ -81,6 +88,16 @@ echo ""
 echo "The caBundle for webhook configurations will be read from TLS_CERT=/tls/tls.crt"
 echo "Orkestra reads it at startup and injects it into the webhook configurations."
 
-# Cleanup Temporary Dir
-# rm -rf "${CERT_DIR}"
-#
+# 5. Output base64 CA bundle
+base64 -w0 "$CERT_DIR/ca.crt" > "$CERT_DIR/caBundle.txt"
+
+echo "Certificates generated successfully."
+echo ""
+echo "Add the contents of $CERT_DIR/caBundle.txt to your CRD's conversion webhook:"
+echo ""
+echo "conversion:"
+echo "  webhook:"
+echo "    clientConfig:"
+echo "      caBundle: <contents of caBundle.txt>"
+echo ""
+echo "Done."

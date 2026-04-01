@@ -1,68 +1,51 @@
-
-# ============================================================
-# Shared anchors
-# ============================================================
-
-# Common reconciler template for both versions
-xx-commonReconciler: &commonReconciler
-  reconciler:
-    default: true
-    onCreate:
-      - name: "{{ .metadata.name }}"
-        image: "{{ .spec.image }}"
-        replicas: "{{ .spec.replicas }}"
-        port: "{{ .spec.port }}"
-        reconcile: true
-
-# Common spec mapping used in conversion paths
-xx-commonSpec: &commonSpec
-  image: "{{ .spec.image }}"
-  replicas: "{{ .spec.replicas }}"
-  port: "{{ .spec.port }}"
-
-# Versions
-xx-versions:
-  storage: &storageVersion v1
-  alpha: &alpha v1alpha1
-
-# Common Type
-xx-commonType: &commonType
-  group: demo.orkestra.io
-  kind: Website
-  plural: websites
-
-
-# ── Katalog ─────────────────────────────────────────────────────────────
 apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
   name: multi-version-website
   description: Manages Website CRD with v1alpha1 and v1 versions
 
+# Anchors
+anchors:
+  commonReconciler: &commonReconciler
+    reconciler:
+      onCreate:
+        - name: "{{ .metadata.name }}"
+          image: "{{ .spec.image }}"
+          replicas: "{{ .spec.replicas }}"
+          port: "{{ .spec.port }}"
+          reconcile: true
+
+  commonSpec: &commonSpec
+    image: "{{ .spec.image }}"
+    replicas: "{{ .spec.replicas }}"
+    port: "{{ .spec.port }}"
+
+  versions:
+    storage: &storageVersion v1
+    alpha: &alpha v1alpha1
+
+  commonType: &commonType
+    group: demo.orkestra.io
+    kind: Website
+    plural: websites
+
 spec:
   crds:
-    # ============================================================
     # v1alpha1 CRD
-    # ============================================================
     - name: website-v1alpha1
       <<: *commonReconciler
       apiTypes:
         <<: *commonType
         version: *alpha
 
-
-    # ============================================================
     # v1 CRD
-    # ============================================================
     - name: website-v1
       <<: *commonReconciler
       apiTypes:
         <<: *commonType
         version: *storageVersion
 
-      # ============================================================
       # Declarative conversion rules (anchor‑powered)
-      # ============================================================
       conversion:
         storageVersion: *storageVersion
         paths:
