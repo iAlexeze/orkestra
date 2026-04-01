@@ -12,9 +12,10 @@ Start here. No cluster setup required beyond a CRD and the `ork` CLI.
 
 | Example | What you learn |
 |---|---|
-| [01 — Hello Website](./beginner/01-hello-website/) | Your first operator. One CRD, one Deployment. |
-| [02 — Website with Service](./beginner/02-website-with-service/) | Multiple resources. Drift correction. |
-| [03 — Copy Secret](./beginner/03-secret-copy/) | Built-in Kubernetes kinds. Cross-namespace secret distribution. |
+| [01 — Hello Website](./beginner/01-hello-website/README.md) | Your first operator. One CRD, one Deployment. |
+| [02 — Website with Service](./beginner/02-website-with-service/README.md) | Multiple resources. Drift correction. |
+| [03 — Copy Secret](./beginner/03-secret-copy/README.md) | Built-in Kubernetes kinds. Cross-namespace secret distribution. |
+| [BONUS — 04 Copy ConfigMap](./beginner/03b-bonus-configmap-copy/README.md) | Built-in Kubernetes kinds. Cross-namespace configmap distribution. |
 
 ### Intermediate — `ork run`
 
@@ -22,9 +23,9 @@ You know the basics. Now use more of Orkestra's surface.
 
 | Example | What you learn |
 |---|---|
-| [04 — Multi-Resource with Status](./intermediate/04-multi-resource/) | ConfigMap, status fields, child resource status propagation. |
-| [05 — When Conditions](./intermediate/05-when-conditions/) | Conditional resource creation. Topology that changes with CR state. |
-| [06 — Basic Komposer](./intermediate/06-komposer-basic/) | Composing two Katalogs. Environment-specific overrides. |
+| [04 — Multi-Resource with Status](./intermediate/04-multi-resource/README.md) | ConfigMap, status fields, child resource status propagation. |
+| [05 — When Conditions](./intermediate/05-when-conditions/README.md) | Conditional resource creation. Topology that changes with CR state. |
+| [06 — Basic Komposer](./intermediate/06-komposer-basic/README.md) | Composing two Katalogs. Environment-specific overrides. |
 
 ### Advanced — `kubectl apply`
 
@@ -32,10 +33,10 @@ Production deployment. Admission policy, registry composition, Go hooks, custom 
 
 | Example | What you learn |
 |---|---|
-| [07 — Validation and Mutation](./advanced/07-validation-mutation/) | Admission-time deny/warn. Defaults. Full status. |
-| [08 — Komposer with Registry](./advanced/08-komposer-registry/) | OCI registry source. Helm source. Multi-environment Komposer. |
-| [09 — Go Hooks](./advanced/09-hooks/) | Typed hooks. OrkestraRegistry from Go. External API calls. |
-| [10 — Custom Constructor](./advanced/10-constructor/) | Full reconciler control. Migration from existing operators. |
+| [07 — Validation and Mutation](./advanced/07-validation-mutation/README.md) | Admission-time deny/warn. Defaults. Full status. |
+| [08 — Komposer with Registry](./advanced/08-komposer-registry/README.md) | OCI registry source. Helm source. Multi-environment Komposer. |
+| [09 — Go Hooks](./advanced/09-hooks/README.md) | Typed hooks. OrkestraRegistry from Go. External API calls. |
+| [10 — Custom Constructor](./advanced/10-constructor/README.md) | Full reconciler control. Migration from existing operators. |
 
 ---
 
@@ -68,9 +69,9 @@ example-name/
 
 Advanced examples may also include:
 ```
-  komposer.yaml     Komposer configuration
-  hooks/            Go hook implementation
-  install.yaml      in-cluster Orkestra deployment
+  komposer.yaml         Komposer configuration
+  hooks/                Go hook implementation
+  install-xx-.yaml      in-cluster Orkestra deployment
 ```
 
 Run `chmod +x cleanup.sh` before running cleanup.

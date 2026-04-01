@@ -236,6 +236,9 @@ const sidebars: SidebarsConfig = {
         'blog/your-crd-is-enough',
         'blog/why-orkestra',
         'blog/no-autosync-by-design',
+        'blog/validation-is-not-enough.md',
+        'blog/security-by-default.md',
+        'blog/yaml-as-a-language.md',
       ],
     },
 

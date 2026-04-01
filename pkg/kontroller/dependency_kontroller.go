@@ -220,7 +220,11 @@ func NewDependencyKontroller(
 ) *DependencyKontroller {
 
 	return &DependencyKontroller{
-		Kontroller:     NewKontroller(kube, factory, katalog, events, hs, crdHealthMap, queueRegistry, defaultWorkqueue, defaultWorkers),
+		Kontroller: NewKontroller(
+			kube, factory, katalog,
+			events, hs, crdHealthMap, queueRegistry,
+			defaultWorkqueue, defaultWorkers,
+		),
 		depGraph:       depGraph,
 		defaultWorkers: defaultWorkers,
 		queueReg:       queueRegistry,

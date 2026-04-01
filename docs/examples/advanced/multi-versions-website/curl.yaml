@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: curl
-  namespace: orkestra
+  namespace: orkestra-system
 spec:
   replicas: 1
   selector:
@@ -20,4 +20,4 @@ spec:
         resources: {}
       restartPolicy: Always
 
-# curl -vk https://orkestra.orkestra.svc:8443/convert
+# curl -vk https://orkestra.orkestra-system.svc:8443/convert

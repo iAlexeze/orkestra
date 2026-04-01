@@ -138,6 +138,10 @@ func resolveValidationOperator(r orktypes.ValidationRule) (orktypes.ConditionOpe
 		return orktypes.ConditionSuffix, r.Suffix
 	case r.Contains != "":
 		return orktypes.ConditionContains, r.Contains
+	case r.GreaterThan != "":
+		return orktypes.ConditionGt, r.GreaterThan
+	case r.LessThan != "":
+		return orktypes.ConditionLt, r.LessThan
 	case r.Min != "":
 		return orktypes.ConditionGt, r.Min
 	case r.Max != "":
