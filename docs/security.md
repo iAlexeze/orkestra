@@ -1,73 +1,140 @@
+Here’s a **clean, tightened rewrite** of your Security doc that incorporates the new RBAC model and elevates it from “feature” → **core philosophy**.
+
+I’ve kept your structure but sharpened the narrative and made the permission model feel intentional, not incidental.
+
+---
+
 # Security
 
-Orkestra is designed to run safely in production environments. This page covers
-the security model, what permissions Orkestra needs and why, how to scope them,
-and how to report vulnerabilities.
+Orkestra is designed for production from the start.
+Security is not layered on later — it is part of the execution model.
 
-:::important
-No security vulnerabilities have been reported for Orkestra at this time.
-This page exists to help you adopt secure practices from day one.
-:::
+This page covers:
+
+* how Orkestra scopes permissions
+* how to run with least privilege
+* how TLS, webhooks, and external sources are secured
 
 ---
 
 ## The permission model
 
-Orkestra needs broad permissions because it is a general-purpose operator runtime.
-It watches and manages whatever CRDs are declared in the Katalog — which means
-it needs read and write access to those resource types.
+Orkestra does **not** require broad, wildcard permissions.
 
-The default ClusterRole grants:
+Instead, permissions are **derived directly from your Katalog**.
 
-```yaml
-rules:
-  # Manage any resource declared in the Katalog
-  - apiGroups: ["*"]
-    resources: ["*"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+Every CRD you declare defines:
 
-  # Leader election lease
-  - apiGroups: ["coordination.k8s.io"]
-    resources: ["leases"]
-    verbs: ["get", "create", "update"]
+* what Orkestra watches
+* what it creates
+* what it updates
 
-  # Emit Kubernetes events on managed CRs
-  - apiGroups: [""]
-    resources: ["events"]
-    verbs: ["create", "patch"]
+From that, Orkestra can compute the exact RBAC required.
 
-  # Register webhook configurations (when ENABLE_WEBHOOKS=true)
-  - apiGroups: ["admissionregistration.k8s.io"]
-    resources:
-      - validatingwebhookconfigurations
-      - mutatingwebhookconfigurations
-    verbs: ["get", "create", "update", "patch"]
-```
+This produces:
 
-### Scoping permissions
+* `ServiceAccount`
+* `ClusterRole`
+* `ClusterRoleBinding`
 
-If you know exactly which resource types Orkestra will manage, replace the
-`["*"]` rule with explicit rules:
+All scoped **only to the resources your Katalog actually uses**.
+
+---
+
+## What Orkestra needs
+
+Orkestra requires permissions in four areas — nothing more:
+
+### 1. Managed CRDs
+
+Read/write access to the resource types declared in your Katalog.
+
+### 2. Leader election
 
 ```yaml
-rules:
-  - apiGroups: ["demo.orkestra.io"]
-    resources: ["websites", "applications"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: ["apps"]
-    resources: ["deployments"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: [""]
-    resources: ["services", "secrets", "configmaps"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+apiGroups: ["coordination.k8s.io"]
+resources: ["leases"]
+verbs: ["get", "create", "update"]
 ```
 
-This is more work to maintain but reduces blast radius if Orkestra is compromised.
+### 3. Event emission
 
-### Namespace restriction
+```yaml
+apiGroups: [""]
+resources: ["events"]
+verbs: ["create", "patch"]
+```
 
-Use `restrictedNamespaces` in the Katalog to prevent Orkestra from creating child
-resources in sensitive namespaces:
+### 4. Admission webhooks *(only if used)*
+
+```yaml
+apiGroups: ["admissionregistration.k8s.io"]
+resources:
+  - validatingwebhookconfigurations
+  - mutatingwebhookconfigurations
+verbs: ["get", "create", "update", "patch"]
+```
+
+If your Katalog does not define validation, mutation, or conversion rules,
+these permissions are **not included**.
+
+---
+
+## From wildcard RBAC → precise RBAC
+
+Traditional operators often ship with:
+
+```yaml
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+```
+
+This is simple — but unsafe.
+
+Orkestra replaces this with **derived permissions**:
+
+```yaml
+- apiGroups: ["demo.orkestra.io", "platform.orkestra.io"]
+  resources: ["websites", "applications"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+```
+
+These rules:
+
+* are generated automatically
+* stay in sync with your Katalog
+* shrink the blast radius if compromised
+
+---
+
+## Why Orkestra does this
+
+Orkestra runs multiple CRDs in a single runtime.
+
+That makes **permission accuracy critical**.
+
+A wildcard role in a shared runtime would grant:
+
+* unintended access across unrelated CRDs
+* unnecessary privileges to external patterns
+* increased risk in multi-tenant clusters
+
+By deriving permissions from the Katalog:
+
+* each deployment has a **bounded capability**
+* external patterns cannot expand permissions silently
+* security scales with composition
+
+:::important
+Rerun the `ork generate` command each time you add a new CRD, to update Orkestra permissions
+:::
+
+---
+
+## Namespace restriction
+
+Use `restrictedNamespaces` to prevent resource creation in sensitive areas:
 
 ```yaml
 - name: website
@@ -77,84 +144,48 @@ resources in sensitive namespaces:
     - "*-system"
 ```
 
-Restrictions declared in a Komposer apply to all CRDs in that Komposer and cannot
-be removed by a CRD-level declaration. Restrictions are additive — they only add
-constraints, never remove them.
-
-:::tip[Restrict by default]
-Add `kube-system`, `kube-public`, and your monitoring namespace to
-`restrictedNamespaces` for every CRD. These namespaces rarely need
-operator-managed resources, and restricting them reduces the attack surface
-if a CR is maliciously crafted.
-:::
+Komposer-level restrictions apply globally and cannot be removed by CRDs.
 
 ---
 
 ## TLS certificates
 
-Orkestra's HTTPS server (`:8443`) serves the conversion webhook, validation webhook,
-and mutation webhook. All three share one certificate. The API server uses the
-certificate's CA as the `caBundle` in the webhook configurations.
+Orkestra exposes a single HTTPS server (`:8443`) for:
 
-Three options:
+* conversion webhooks
+* validation webhooks
+* mutation webhooks
 
-| Approach | Suitable for |
-|---|---|
-| Self-signed (via [generate-certs.sh](./guides/user-guide/generate-certs.sh) or [Follow along here](./guides/user-guide/certificate-with-openssl.md)) | Development and local testing only |
-| [cert-manager](./guides/user-guide/certificate-with-cert-manager.md) `Certificate` resource | Production — automated rotation |
-| External PKI / corporate CA | Enterprise environments with existing certificate infrastructure |
+All share **one certificate**.
 
-:::warning[Self-signed certificates in production]
-Self-signed certificates cannot be revoked. They require manual CA distribution
-to every node that the API server runs on. Do not use them in production.
-Use cert-manager or your organisation's PKI.
-:::
+### Options
 
-### Certificate SANs
+| Approach     | Use case                 |
+| ------------ | ------------------------ |
+| Self-signed  | Development only         |
+| cert-manager | Production (recommended) |
+| External PKI | Enterprise environments  |
 
-The certificate must include SANs for:
+### Required SANs
 
 ```
 DNS: orkestra.<namespace>.svc
 DNS: orkestra.<namespace>.svc.cluster.local
 ```
 
-Where `<namespace>` is the namespace where Orkestra runs. The Helm chart generates
-the correct cert-manager `Certificate` resource automatically.
-
-### Certificate rotation
-
-When using cert-manager, the certificate rotates automatically before expiry.
-Orkestra reads the certificate from the mounted Secret — a rolling restart picks
-up the new certificate. No manual intervention needed.
-
-If you manage certificates manually, rotate before expiry and restart Orkestra
-to load the new certificate.
-
 ---
 
 ## Credentials in sources
 
-Komposer sources that require authentication — private Git repositories, private
-OCI registries — must never have credentials in YAML. Use environment variable
-references:
+Authentication for external sources must use environment variables:
 
 ```yaml
-sources:
-  registry:
-    - url: https://github.com/myorg/private-registry@main
-      auth:
-        type: github
-        fromEnv: GITHUB_TOKEN   # resolved at startup, never stored
-
-  files:
-    - url: https://private.myorg.io/katalog.yaml
-      auth:
-        type: bearer
-        fromEnv: PLATFORM_TOKEN
+auth:
+  type: github
+  fromEnv: GITHUB_TOKEN
 ```
 
-In cluster deployments, inject credentials from Kubernetes Secrets:
+In Kubernetes:
 
 ```yaml
 env:
@@ -165,118 +196,85 @@ env:
         key: github-token
 ```
 
-:::warning[Never commit credentials]
-`fromEnv` is not optional — it is the only way the auth block works.
-There is no field for a literal token value. This is intentional.
-:::
-
 ---
 
 ## Admission webhook security
 
-When `ENABLE_WEBHOOKS=true`, Orkestra registers a `ValidatingWebhookConfiguration`
-and optionally a `MutatingWebhookConfiguration`. These tell the API server to call
-Orkestra during `kubectl apply`.
+When enabled, Orkestra registers only the rules it needs.
 
-**FailurePolicy:** Defaults to `Ignore`. If Orkestra is unreachable, the API server
-allows the operation through and reconcile-time validation catches violations later.
-Set `Fail` only with multiple Orkestra replicas and a PodDisruptionBudget.
+* **FailurePolicy:** defaults to `Ignore`
+* **Scope:** only CRDs with validation/mutation rules
+* **TLS:** shared with conversion webhook
 
-**Scope:** Orkestra only registers webhook rules for CRDs that have validation or
-mutation rules declared. CRDs without rules are not included — no unnecessary
-API server calls.
-
-**TLS:** The same certificate used for conversion serves the admission endpoints.
-One certificate, one server, one trust relationship with the API server.
+This avoids unnecessary API server calls and reduces failure impact.
 
 ---
 
 ## Supply chain security
 
-### Orkestra binary
-
-Every Orkestra release is GPG-signed. Verify before installing:
+### Binary verification
 
 ```bash
-# Import the public key (once)
-curl -sSL https://github.com/iAlexeze/orkestra/releases/download/v1.0.0/orkestra-public-key.asc \
-  | gpg --import
-
-# Verify the binary
 gpg --verify ork_linux_amd64.tar.gz.asc ork_linux_amd64.tar.gz
-# gpg: Good signature from "Orkestra Releases <releases@orkestra.io>"
 ```
 
-### Registry patterns
-
-Pin patterns to specific versions, not `latest`:
+### Pattern pinning
 
 ```yaml
-sources:
-  registry:
-    # Good — pinned, immutable
-    - url: ghcr.io/konduktor-io/orkestra-registry/postgres@v14.2.0
-      oci: true
+# Good
+- url: ghcr.io/.../postgres@v14.2.0
 
-    # Avoid — tracks whatever the author published last
-    - url: ghcr.io/konduktor-io/orkestra-registry/postgres@latest
-      oci: true
+# Avoid
+- url: ghcr.io/.../postgres@latest
 ```
 
-OCI version tags in the Orkestra registry are immutable — `postgres:v14.2.0`
-cannot be overwritten once published.
-
-For Git-based registries, pin to a commit SHA rather than a branch for the
-strongest immutability guarantee:
+For Git:
 
 ```yaml
-- url: https://github.com/myorg/registry@abc123def456
+- url: https://github.com/myorg/registry@<commit-sha>
 ```
 
-### Template expressions
+---
 
-Katalog templates are evaluated by Go's `text/template` against the live CR
-object. Template expressions cannot execute system commands or access the
-filesystem — Go `text/template` does not provide those capabilities. The template
-context is limited to the CR's fields.
+## Template safety
 
-Validate third-party Katalogs with `ork validate` before running them. Review
-any Go hooks or constructors they reference — these are arbitrary code.
+Katalog templates use Go `text/template`.
 
-:::warning[Review external hooks]
-A `hooks.location` in a Katalog points to arbitrary Go code that runs in
-your cluster with Orkestra's permissions. Treat external hook modules with
-the same scrutiny as any third-party dependency. Prefer patterns from the
-official OrkestraRegistry for CRDs managed by the community.
-:::
+They:
+
+* cannot execute commands
+* cannot access the filesystem
+* only read CR fields
 
 ---
 
 ## Logging and audit
 
-Orkestra emits structured logs via zerolog. Every reconcile cycle is logged at
-debug level. Errors are logged at error level with the CR name, CRD, and error
-details.
+* Structured logs via zerolog
+* Per-reconcile visibility
+* Kubernetes audit logs capture all API interactions
 
-Forward logs to your centralised system. Enable structured log parsing to extract
-the `crd`, `cr`, and `error` fields for alerting.
-
-Kubernetes audit logging captures every API call Orkestra makes — resource
-creates, updates, deletes, and event emissions. Enable audit logging in your
-cluster for a full audit trail of Orkestra's actions.
+Integrate with your central logging system for alerting and traceability.
 
 ---
 
 ## Reporting vulnerabilities
 
-:::warning[Do not open public GitHub issues for security vulnerabilities]
-If you discover a potential security issue in Orkestra:
+Report privately with:
 
-- Contact the maintainers privately before disclosure
-- Include steps to reproduce the issue
-- Include logs or details that help assess the severity and scope
-- Allow reasonable time for a fix before public disclosure
-:::
+* reproduction steps
+* logs
+* impact assessment
 
-Responsible disclosure protects the community. Maintainer contact details are
-in the repository.
+Responsible disclosure protects users.
+
+---
+
+## 🔚 Closing note
+
+Orkestra’s security model is simple:
+
+> It only has the permissions required to do what your Katalog declares — nothing more.
+
+That constraint is intentional.
+It keeps the system predictable, auditable, and safe at scale.

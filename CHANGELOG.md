@@ -9,31 +9,26 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- **Multi-version CRD conversion** — full support for declarative up-conversion, down-conversion, defaulting, and structural field mapping across CRD versions.
-- **Conversion mapping engine** — deterministic field transformation system supporting renamed fields, added/removed fields, nested object mapping, and type changes.
-- **Conversion pipeline integration** — conversions now run automatically during reconciliation with validation, fallback, and clear error reporting.
-- **OCI Registry Support** — Komposer can now load Katalogs from OCI registries (e.g., GitHub Container Registry, Docker Hub) using `sources.oci` references. This enables distribution of operator patterns as standard OCI artifacts.
-- **Registry Source Resolution** — OCI artifacts are fetched via ORAS library, cached locally, and merged into the runtime configuration.
-- **Pattern Packaging Standard** — defined artifact format for Katalogs: a tarball containing `crd.yaml`, `katalog.yaml`, `komposer.yaml`, `cr.yaml`, and `README.md` with a custom media type (`application/vnd.orkestra.katalog.v1.tar+gzip`).
-- **Documentation overhaul** — complete rewrite of the multi-version CRD, conversion rules, and versioning strategy sections with improved structure, diagrams, and examples.
-- **Registry Documentation** — new sections covering OCI publishing, pattern structure, and consumption in Komposers.
-- **Migration patterns** — new guidance for evolving CRDs safely across versions using Orkestra’s declarative conversion model.
+- **RBAC Generator (`ork generate rbac`)** — produces a complete, ready‑to‑apply
+  ServiceAccount, ClusterRole, and ClusterRoleBinding with least‑privilege rules
+  derived directly from the Katalog.
+- **Table‑driven resource detection** — unified engine for determining which
+  Kubernetes resource types a CRD uses across OnCreate/OnReconcile/OnDelete.
+- **RBAC rule table** — declarative mapping of Kubernetes API groups and
+  resources, enabling automatic RBAC generation for all supported resource types.
+- **Placeholders for future resource types** — structured extension points for
+  HPAs, PDBs, NetworkPolicies, PodTemplates, storage classes, and more.
 
 ### Changed
 
-- **Documentation structure** — reorganized to better separate beginner, intermediate, and advanced workflows; improved cross-linking and conceptual clarity.
-- **Versioning model** — clarified mental model for CRD evolution, conversion ordering, and reconciliation behavior across versions.
-- **Komposer Resolution** — extended to handle `oci://` scheme and resolve patterns from container registries.
-
-### Fixed
-
-- **Conversion validation errors** — improved detection and reporting of invalid or incomplete conversion rules.
-- **Mapping edge cases** — resolved issues with nested object transforms and missing field defaults during conversion.
-
-### Testing
-
-- **Registry source tests** — integration tests for OCI pull and pattern resolution (not yet enabled in CI; manual testing only).
+- **RBAC generation architecture** — replaced per‑resource `HasX()` helpers with
+  a single table‑driven detection model, eliminating duplication and ensuring
+  consistency across all resource types.
+- **Documentation** — updated security and RBAC sections to reflect Orkestra’s
+  security‑first, least‑privilege design and the new RBAC generator workflow.
 
 ### Security
 
-- No security changes in this release. OCI artifacts are fetched without signature verification in this version; signing planned for a future release.
+- **Least‑privilege by design** — Orkestra now generates RBAC rules strictly
+  based on declared CRDs and resource templates, eliminating wildcard or
+  over‑permissive roles commonly found in Kubernetes operators.
