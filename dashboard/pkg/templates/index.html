@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orkestra Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .health-badge {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .health-green { background-color: #10b981; }
+        .health-red { background-color: #ef4444; }
+        .health-yellow { background-color: #f59e0b; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Orkestra Dashboard</h1>
+                    <p class="text-gray-600 mt-1">Operator Runtime Visibility</p>
+                </div>
+                <div class="flex space-x-4">
+                    <a href="/dashboard" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition">Dashboard</a>
+                    <a href="/dashboard/status" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition">Status</a>
+                    <a href="/dashboard/metrics" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition">Metrics</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- CRD Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {{ range .CRDs }}
+            <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800">{{ .Name }}</h2>
+                        <span class="health-badge {{ if .Healthy }}health-green{{ else }}health-red{{ end }}"></span>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Workers</span>
+                            <span class="font-medium">{{ .WorkersActive }}/{{ .Workers }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Queue</span>
+                            <span class="font-medium">{{ .QueueDepth }}/{{ .MaxQueueDepth }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Resources</span>
+                            <span class="font-medium">{{ .ResourceCount }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Error Rate</span>
+                            <span class="font-medium {{ if gt .ErrorRate 0.0 }}text-orange-600{{ else }}text-green-600{{ end }}">
+                                {{ printf "%.1f" .ErrorRate }}%
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t border-gray-100">
+                        <a href="/dashboard/crd/{{ .Name }}" class="text-blue-600 hover:text-blue-800 hover:underline text-sm">
+                            View details →
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {{ end }}
+        </div>
+
+        {{ if eq (len .CRDs) 0 }}
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center">
+            <p class="text-yellow-800">No CRDs found. Orkestra may not be running or no CRDs are enabled.</p>
+        </div>
+        {{ end }}
+    </div>
+</body>
+</html>
