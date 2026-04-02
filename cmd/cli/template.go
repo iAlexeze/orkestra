@@ -79,7 +79,6 @@ var templateCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(templateCmd)
-	templateCmd.Flags().BoolP("verbose", "v", false, "Show full merged katalog output")
 	templateCmd.Flags().BoolP("json", "j", false, "Output CRDs as JSON")
 	templateCmd.Flags().BoolP("yaml", "y", false, "Output CRDs as YAML")
 	templateCmd.Flags().BoolP("graph", "g", false, "Show ASCII dependency graph")
