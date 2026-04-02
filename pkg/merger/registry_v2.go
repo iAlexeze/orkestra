@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
@@ -19,6 +20,8 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	orasauth "oras.land/oras-go/v2/registry/remote/auth"
 )
+
+const orasPullTimeout = 2 * time.Minute
 
 // loadRegistrySource loads a single registry pattern entry.
 //
@@ -177,7 +180,6 @@ func (m *Merger) deprecatedPullOCIPattern(url, version, tmpDir string, auth *uti
 }
 
 // pullOCIPattern fetches an OCI artifact and extracts it to tmpDir using ORAS Go library.
-// pullOCIPattern fetches an OCI artifact and extracts it to tmpDir using ORAS Go library.
 func (m *Merger) pullOCIPattern(url, version, tmpDir string, auth *utils.FileAuth) error {
 	// Normalise URL — OCI refs do not have scheme prefixes
 	ref := strings.TrimPrefix(strings.TrimPrefix(url, "https://"), "http://")
@@ -203,7 +205,8 @@ func (m *Merger) pullOCIPattern(url, version, tmpDir string, auth *utils.FileAut
 
 // orasPull pulls an OCI artifact using the ORAS Go library into dst.
 func orasPull(ref, dst string, auth *utils.FileAuth) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), orasPullTimeout)
+	defer cancel()
 
 	// Split repo and reference (tag or digest)
 	repoName, reference, ok := strings.Cut(ref, ":")
@@ -216,7 +219,8 @@ func orasPull(ref, dst string, auth *utils.FileAuth) error {
 		return fmt.Errorf("creating repository for %q: %w", repoName, err)
 	}
 
-	// Configure authentication (mirrors old CLI semantics)
+	// Configure authentication
+	// TODO: Not working with GHCR
 	if auth != nil {
 		repo.Client = &orasauth.Client{
 			ClientID: "orkestra",

@@ -43,6 +43,21 @@ func init() {
 	// Global flags — highest‑priority overrides for config resolution
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug logging")
 	rootCmd.PersistentFlags().String("kubeconfig", "", "Path to kubeconfig file")
+	rootCmd.PersistentFlags().StringSliceP("katalog", "k", nil, "Path(s) or URL(s) to crd-katalog.yaml (repeatable)")
+
+	// Mark katalog as required for all commands
+	for _, cmd := range []*cobra.Command{
+		validateCmd,
+		templateCmd,
+		generateRuntimeCmd,
+		generateDocsCmd,
+		generateDashboardsCmd,
+		generateExamplesCmd,
+		generateTestsCmd,
+		generateAllCmd,
+	} {
+		cobra.MarkFlagRequired(cmd.Flags(), "katalog")
+	}
 }
 
 func initConfig() {

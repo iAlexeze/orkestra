@@ -62,5 +62,4 @@ var validateCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(validateCmd)
-	validateCmd.Flags().StringSlice("katalog", nil, "Path(s) or URL(s) to crd-katalog.yaml (repeatable)")
 }

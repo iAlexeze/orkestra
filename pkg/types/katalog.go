@@ -104,5 +104,5 @@ type KatalogSpec struct {
 	Finalizers []string `yaml:"finalizers,omitempty"`
 
 	// CRDs — the CRD entries managed by this Orkestra instance.
-	CRDs []CRDEntry `yaml:"crds"`
+	CRDs []CRDEntry `yaml:"crds" validate:"required,dive"`
 }

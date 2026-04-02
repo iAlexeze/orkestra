@@ -79,9 +79,8 @@ var templateCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(templateCmd)
-	templateCmd.Flags().StringSlice("katalog", nil, "Path(s) or URL(s) to crd-katalog.yaml (repeatable)")
 	templateCmd.Flags().BoolP("verbose", "v", false, "Show full merged katalog output")
-	templateCmd.Flags().Bool("json", false, "Output CRDs as JSON")
-	templateCmd.Flags().Bool("yaml", false, "Output CRDs as YAML")
-	templateCmd.Flags().Bool("graph", false, "Show ASCII dependency graph")
+	templateCmd.Flags().BoolP("json", "j", false, "Output CRDs as JSON")
+	templateCmd.Flags().BoolP("yaml", "y", false, "Output CRDs as YAML")
+	templateCmd.Flags().BoolP("graph", "g", false, "Show ASCII dependency graph")
 }

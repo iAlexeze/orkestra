@@ -58,3 +58,6 @@ func containsValidKind(doc []byte) bool {
 	return strings.Contains(s, fmt.Sprintf("kind: %s", konfig.KatalogKind())) ||
 		strings.Contains(s, fmt.Sprintf("kind: %s", konfig.KomposerKind()))
 }
+
+// Export
+var ParseKatalogDoc = parseKatalogDoc
