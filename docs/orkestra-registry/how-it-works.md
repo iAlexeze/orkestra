@@ -81,9 +81,10 @@ typed-extensions/
     ...
 ```
 
-!!! tip
-    Every pattern in `orkestra-core/` contains exactly five files. This is
-    the standard. A pattern is not ready for the registry until it has all five.
+:::tip[standard-layout]
+Every pattern in `orkestra-core/` contains exactly five files. This is
+the standard. A pattern is not ready for the registry until it has all five.
+:::
 
 ### Core Katalog patterns
 

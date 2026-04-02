@@ -33,16 +33,16 @@ func timeAgo(t time.Time) string {
 }
 
 func parseTime(value string) time.Time {
-    t, err := time.Parse(time.RFC3339, value)
-    if err == nil {
-        return t
-    }
+	t, err := time.Parse(time.RFC3339, value)
+	if err == nil {
+		return t
+	}
 
-    // fallback for your current format
-    t, err = time.Parse("2006-01-02 15:04:05 -0700 MST", value)
-    if err == nil {
-        return t
-    }
+	// fallback for your current format
+	t, err = time.Parse("2006-01-02 15:04:05 -0700 MST", value)
+	if err == nil {
+		return t
+	}
 
-    return time.Time{}
+	return time.Time{}
 }

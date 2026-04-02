@@ -21,8 +21,6 @@ import (
 
 // loadHelmSource renders a Helm chart and extracts Katalog CRD definitions.
 // The chart must contain at least one template with kind: Katalog.
-// pkg/merger/helm.go
-
 func (m *Merger) loadHelmSource(src orktypes.HelmSource) ([]orktypes.CRDEntry, error) {
 	logger.Info().
 		Str("repo", src.Repo).

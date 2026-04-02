@@ -37,10 +37,11 @@ postgres/
     ...
 ```
 
-!!! warning "Never overwrite a published version"
-    Once a version directory is pushed and a consumer has pinned to it,
-    that version is a contract. Create a new version directory for changes.
-    Never modify a published version's files.
+:::warning[Never overwrite a published version]
+Once a version directory is pushed and a consumer has pinned to it,
+that version is a contract. Create a new version directory for changes.
+Never modify a published version's files.
+:::
 
 ---
 
@@ -148,10 +149,14 @@ spec:
       resync: 30s       # default is 1m — reduce for faster drift detection
 ```
 
-!!! note
-    The `komposer.yaml` in a published pattern references the pattern
-    itself — by its published OCI tag or Git URL. This means consumers can
-    run it directly as a quick-start without writing their own Komposer.
+:::note
+The `komposer.yaml` in a published pattern references the pattern
+itself — by its published OCI tag or Git URL. This means consumers can
+run it directly as a quick-start without writing their own Komposer.
+:::
+
+---
+
 
 ### `cr.yaml`
 
@@ -170,10 +175,11 @@ spec:
   user: myapp_user
 ```
 
-!!! tip
-    Use the simplest possible CR that demonstrates a successful reconcile.
-    Do not require fields that need pre-existing secrets or external systems
-    to already exist. 
+:::tip
+Use the simplest possible CR that demonstrates a successful reconcile.
+Do not require fields that need pre-existing secrets or external systems
+to already exist. 
+:::
 
 The consumer should be able to run:
 
@@ -242,7 +248,7 @@ Push the version directory as an OCI artifact using ORAS:
 cd my-operator/v1.0.0
 
 # Push all files as a single artifact
-oras push ghcr.io/myorg/my-operator:v1.0.0 \
+oras push ghcr.io/myorg/my-operator:v1.0.0 --artifact-type application/vnd.orkestra.katalog.v1.tar+gzip \
   crd.yaml:application/yaml \
   katalog.yaml:application/yaml \
   komposer.yaml:application/yaml \
@@ -253,11 +259,14 @@ oras push ghcr.io/myorg/my-operator:v1.0.0 \
 oras tag ghcr.io/myorg/my-operator:v1.0.0 latest
 ```
 
-!!! tip "Automate publishing with GitHub Actions"
-    The `orkestra-sh/orkestra-registry` repository includes a reference
-    CI pipeline that detects changed version directories and publishes them
-    automatically. Copy the workflow file as a starting point for your own
-    registry.
+> The artifact type is required: --artifact-type application/vnd.orkestra.katalog.v1.tar+gzip
+
+:::tip[Automate publishing with GitHub Actions]
+The `orkestra-sh/orkestra-registry` repository includes a reference
+CI pipeline that detects changed version directories and publishes them
+automatically. Copy the workflow file as a starting point for your own
+registry.
+:::
 
 ---
 

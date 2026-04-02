@@ -55,5 +55,4 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-	runCmd.Flags().StringSlice("katalog", []string{}, "Path(s) or URL(s) to katalog.yaml (required, can be specified multiple times or as comma-separated values)")
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ialexeze/orkestra/pkg/generate"
+	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/merger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
@@ -66,6 +67,7 @@ func parseKatalogPaths(paths []string) []string {
 type mergerOut struct {
 	m     *merger.Merger
 	crds  []orktypes.CRDEntry
+	kat   katalog.Katalog
 	paths []string
 }
 
@@ -83,9 +85,13 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 		return nil, fmt.Errorf("merge katalogs: %w", err)
 	}
 
+	var kat katalog.Katalog
+	kat.Spec = m.ToSpec()
+
 	return &mergerOut{
 		m:     m,
 		crds:  m.ToSpec().CRDs,
+		kat:   kat,
 		paths: katalogPaths,
 	}, nil
 }
@@ -312,21 +318,8 @@ func init() {
 		generateAllCmd,
 		generateRbacCmd,
 	} {
-		cmd.Flags().StringSliceP("katalog", "k", []string{}, "Path(s) or URL(s) to katalog.yaml (required, can be specified multiple times or as comma-separated values)")
 		cmd.Flags().Bool("dry-run", false, "Print generated output to stdout without writing files")
 		cmd.Flags().StringP("output", "o", "", "Write generated output to file")
 		cmd.Flags().StringP("namespace", "n", DefaultNamespace, "Namespace for the ServiceAccount")
-	}
-
-	// Mark katalog as required for all commands
-	for _, cmd := range []*cobra.Command{
-		generateRuntimeCmd,
-		generateDocsCmd,
-		generateDashboardsCmd,
-		generateExamplesCmd,
-		generateTestsCmd,
-		generateAllCmd,
-	} {
-		cobra.MarkFlagRequired(cmd.Flags(), "katalog")
 	}
 }

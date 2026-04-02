@@ -17,3 +17,5 @@ website/.cache-loader
 
 # Generated
 zz_generated_rbac.yaml
+*.tgz
+rbac.yaml

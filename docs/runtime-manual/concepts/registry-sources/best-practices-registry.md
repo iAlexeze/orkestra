@@ -19,7 +19,7 @@ the upstream pattern is updated. This is rarely what you want at runtime.
   oci: true
 
 # Production — pin to a specific version
-- url: ghcr.io/orkestra-sh/orkestra-registry/postgres@v14.2.0
+- url: ghcr.io/orkspace/patterns/postgres@v1.0.0
   oci: true
 ```
 
@@ -248,7 +248,7 @@ sources:
   registry:
     # Pinned to v14.2.0 — upgrade reviewed 2026-03. Next review: Q3 2026.
     # Changelog: https://github.com/orkestra-sh/orkestra-registry/releases
-    - url: ghcr.io/orkestra-sh/orkestra-registry/postgres@v14.2.0
+    - url: ghcr.io/orkspace/patterns/postgres@v1.0.0
       oci: true
 
     # Internal CRD — maintained by platform team

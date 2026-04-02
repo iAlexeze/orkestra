@@ -222,7 +222,7 @@ gpg --verify ork_linux_amd64.tar.gz.asc ork_linux_amd64.tar.gz
 
 ```yaml
 # Good
-- url: ghcr.io/.../postgres@v14.2.0
+- url: ghcr.io/.../postgres@v1.2.0
 
 # Avoid
 - url: ghcr.io/.../postgres@latest

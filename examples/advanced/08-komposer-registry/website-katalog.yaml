@@ -14,21 +14,20 @@ spec:
         plural: websites
 
       validation:
-        - field: spec.image
-          prefix: "myorg/"
-          message: "images must come from the internal registry"
-          action: deny
-        - field: spec.replicas
-          operator: gt
-          value: "0"
-          message: "replicas must be at least 1"
-          action: deny
+        rules:
+          - field: spec.image
+            prefix: "myorg/"
+            message: "images must come from the internal registry"
+            action: deny
+          - field: spec.replicas
+            greaterThan: 0
+            message: "replicas must be at least 1"
+            action: deny
 
       mutation:
-        mutateFirst: true
         rules:
           - field: spec.replicas
-            default: "2"
+            default: 2
           - field: spec.port
             default: "8080"
 

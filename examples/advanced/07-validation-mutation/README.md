@@ -49,7 +49,7 @@ kubectl apply -f crd.yaml
 
 ```bash
 # Create the 'orkestra-system' namespace
-kubectl apply -f namespace.yaml
+kubectl apply -f ../../installation/namespace.yaml
 ```
 
 ### Apply the Katalog ConfigMap

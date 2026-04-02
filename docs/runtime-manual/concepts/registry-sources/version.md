@@ -31,7 +31,7 @@ The version, tag, branch, or SHA to pull from the registry.
 
 ```yaml
 # Production — pinned
-- url: ghcr.io/orkestra-sh/orkestra-registry/postgres@v14.2.0
+- url: ghcr.io/orkspace/patterns/postgres@v1.0.0
   oci: true
 
 # Development — track latest

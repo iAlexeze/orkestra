@@ -188,9 +188,9 @@ pattern registry — versioned, searchable, consumable with a version reference.
 ```yaml
 sources:
   registry:
-    - url: konduktor-io/postgres@v14.2.0
+    - url: myorg-io/postgres@v1.0.0
       oci: true
-    - url: konduktor-io/monitoring@v0.3.0
+    - url: myorg-io/monitoring@v0.3.0
       oci: true
 ```
 
