@@ -5,22 +5,22 @@ patterns from an OCI registry, combines them with a local Katalog and a Helm
 chart source, and applies environment-specific overrides.
 
 **What you learn:** OCI registry sources, version pinning, Helm chart sources,
-multi-source composition, production Komposer structure.
+multi-source composition, production Komposer structure, disabling CRDs.
 
-**Builds on:** [06 — Basic Komposer](../../intermediate/06-komposer-basic/)
+**Builds on:** [06 — Basic Komposer](../../intermediate/06-komposer-basic/README.md)
 
 ---
 
 ## The composition
 
 ```
-OCI:  ghcr.io/konduktor-io/orkestra-registry/postgres@v14.2.0
+OCI:  ghcr.io/orkspace/postgres@v1.0.0
         → postgres CRD with production-tested operator behavior
 
 File: ./website-katalog.yaml
         → your team's custom website operator
 
-Helm: charts.myorg.io/platform-crds:2.1.0
+Helm: https://github.com/orkspace/charts.git
         → additional internal CRDs from a Helm chart
 
 Overrides (spec.crds):
@@ -38,7 +38,7 @@ An OCI pattern is a versioned artifact in a container registry. It contains
 exactly five files:
 
 ```
-postgres/v14.2.0/
+postgres/v1.0.0/
   crd.yaml        the PostgreSQL CRD definition
   katalog.yaml    operator behavior (what Orkestra reads)
   komposer.yaml   example import reference
@@ -46,7 +46,7 @@ postgres/v14.2.0/
   README.md       pattern documentation
 ```
 
-The `@v14.2.0` pin in the URL is immutable — once published, that version's
+The `@v1.0.0` pin in the URL is immutable — once published, that version's
 content cannot change. This is the guarantee that makes OCI distribution safe
 for production: you know exactly what you pulled.
 
@@ -60,6 +60,25 @@ for production: you know exactly what you pulled.
 ork template --katalog komposer.yaml
 ```
 
+Expected:
+```text
+Success: Katalog is valid
+
+Rendered CRDs:
+  - database
+  - cache
+  - postgres
+  - website
+```
+
+```bash
+# To see a more detailed output:
+ork template --katalog komposer.yaml --json | jq
+# or
+ork template --katalog komposer.yaml --yaml
+
+```
+
 This shows the merged result of all three sources with overrides applied —
 without pulling anything or touching a cluster.
 
@@ -69,21 +88,101 @@ without pulling anything or touching a cluster.
 ork validate --katalog komposer.yaml
 ```
 
+Expected:
+```text
+● database
+    kind: Database / group: demo.orkestra.io / version: v1alpha1 / plural: databases / scope: Namespaced
+    mode: dynamic / workers: 2 / resync: 1m0s
+
+● cache
+    kind: Cache / group: demo.orkestra.io / version: v1alpha1 / plural: caches / scope: Namespaced
+    mode: dynamic / workers: 2 / resync: 30s
+
+● postgres
+    kind: Postgres / group: postgres.orkestra.io / version: v1 / plural: postgreses / scope: Namespaced
+    mode: dynamic / workers: 8 / resync: 30s
+
+● website
+    kind: Website / group: demo.orkestra.io / version: v1alpha1 / plural: websites / scope: Namespaced
+    mode: dynamic / workers: 6 / resync: 15s
+
+────────────────────────────────────────────────────────────
+4 CRDs valid (0 built-in, 4 custom)
+```
+
 Validates all sources, checks for dependency cycles, verifies pattern structure.
 If the OCI registry is unreachable, `ork validate` reports which source failed.
+
+#### 2.1 Disable Database CRD
+Let's disable the `database` CRD. To do this, add an override block under `spec.crds` in [`komposer.yaml`](komposer.yaml) after the `website` block:
+
+
+```yaml
+  - name: database
+    enabled: false
+```
+
+Run `ork validate` again.
+
+Expected:
+```text
+● cache
+    kind: Cache / group: demo.orkestra.io / version: v1alpha1 / plural: caches / scope: Namespaced
+    mode: dynamic / workers: 2 / resync: 30s
+
+● postgres
+    kind: Postgres / group: postgres.orkestra.io / version: v1 / plural: postgreses / scope: Namespaced
+    mode: dynamic / workers: 8 / resync: 30s
+
+● website
+    kind: Website / group: demo.orkestra.io / version: v1alpha1 / plural: websites / scope: Namespaced
+    mode: dynamic / workers: 6 / resync: 15s
+
+────────────────────────────────────────────────────────────
+3 CRDs valid (0 built-in, 3 custom)
+```
+
+Now we have 3 valid CRDs to work with.
+
+> [!TIP]
+> If you want to enable the database CRD, you must uncomment the CRD block in [`crd.yaml`](crd.yaml) and [`cr.yaml`](cr.yaml).
+
+
+#### 2.2 Generate least-privilege RBAC for orkestra
+```bash
+ork generate rbac -k komposer.yaml -o rbac.yaml
+```
+This generates the following:
+- Service account
+- Cluster role    _**(just enough to manage your CRDs)**_
+- Cluster role binding
+
+This will be needed in the next step.
+
+> [!NOTE]
+> This is Orkestra's security-first approach.
+> **RBAC enforced from day 1**
+
+---
 
 ### 3. Deploy
 
 ```bash
 # Install CRDs
-kubectl apply -f website-crd.yaml
-# (postgres CRD comes from the OCI pattern — applied by Orkestra at startup)
+kubectl apply -f crd.yaml
+# (This file contains all CRDs)
+
+# Create the 'orkestra-system' namespace
+kubectl apply -f ../../installation/namespace.yaml
+
+# Apply RBAC generated in the previous step
+kubectl apply -f rbac.yaml
 
 # Apply Katalog ConfigMap
-kubectl apply -f orkestra-configmap.yaml
+kubectl apply -f orkestra-configmap.yaml  # (This is just a copy of the komposer.yaml file)
 
 # Deploy Orkestra
-kubectl apply -f ../../installation/install-webhook-support.yaml
+kubectl apply -f ../../installation/install.yaml
 
 kubectl wait --for=condition=available deployment/orkestra \
   -n orkestra-system --timeout=60s

@@ -1,99 +1,15 @@
-# Orkestra in-cluster deployment
-# Used for generic installation without webhook support.
-#
-# Creates:
-#   - Namespace: orkestra-system
-#   - ServiceAccount: orkestra
-#   - ClusterRole + ClusterRoleBinding: full access for operator management
-#   - ConfigMap: placeholder for Katalog (mounted into the pod)
-#   - Deployment: Orkestra runtime
-#   - Service: health endpoint
-#
-# Usage:
-#   kubectl apply -f install.yaml
-#   kubectl wait --for=condition=available deployment/orkestra -n orkestra-system --timeout=60s
-#
-# To pass your Katalog, update the ConfigMap 'orkestra-katalog' in
-# orkestra-system and restart the Deployment, or use the Helm chart
-# for full production configuration.
-
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: orkestra-system
-  labels:
-    app.kubernetes.io/name: orkestra
-    app.kubernetes.io/managed-by: orkestra
-
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: orkestra
-  namespace: orkestra-system
-  labels:
-    app.kubernetes.io/name: orkestra
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: orkestra
-  labels:
-    app.kubernetes.io/name: orkestra
-rules:
-  # Manage any resource declared in the Katalog
-  - apiGroups: ["*"]
-    resources: ["*"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-
-  # Leader election lease
-  - apiGroups: ["coordination.k8s.io"]
-    resources: ["leases"]
-    verbs: ["get", "create", "update"]
-
-  # Emit Kubernetes events
-  - apiGroups: [""]
-    resources: ["events"]
-    verbs: ["create", "patch"]
-
-  # Register webhook configurations
-  - apiGroups: ["admissionregistration.k8s.io"]
-    resources:
-      - validatingwebhookconfigurations
-      - mutatingwebhookconfigurations
-    verbs: ["get", "create", "update", "patch"]
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: orkestra
-  labels:
-    app.kubernetes.io/name: orkestra
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: orkestra
-subjects:
-  - kind: ServiceAccount
-    name: orkestra
-    namespace: orkestra-system
-
----
 # Orkestra runtime Deployment.
 # The Katalog is mounted from the 'orkestra-katalog' ConfigMap.
 # Replace the ConfigMap data with your Katalog YAML before applying.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: orkestra
+  name: orkestra-runtime
   namespace: orkestra-system
   labels:
     app.kubernetes.io/name: orkestra
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app.kubernetes.io/name: orkestra
@@ -105,8 +21,7 @@ spec:
       serviceAccountName: orkestra
       containers:
         - name: orkestra
-          # image: ghcr.io/orkestra-sh/orkestra:latest
-          image: ialexeze/ork:valid
+          image: ghcr.io/orkspace/orkestra:rc.0.0.1
           imagePullPolicy: Always
           args:
             - run

@@ -2,6 +2,7 @@
 package merger
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +13,11 @@ import (
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
+
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras-go/v2/registry/remote"
+	orasauth "oras.land/oras-go/v2/registry/remote/auth"
 )
 
 // loadRegistrySource loads a single registry pattern entry.
@@ -123,6 +129,7 @@ func (m *Merger) pullPattern(
 	cleanup = func() { os.RemoveAll(tmpDir) }
 
 	if oci {
+		// err = m.deprecatedPullOCIPattern(url, version, tmpDir, auth)
 		err = m.pullOCIPattern(url, version, tmpDir, auth)
 	} else {
 		err = m.pullGitPattern(url, version, tmpDir, auth)
@@ -138,9 +145,10 @@ func (m *Merger) pullPattern(
 
 // ── OCI pull ──────────────────────────────────────────────────────────────────
 
-// pullOCIPattern fetches an OCI artifact and extracts it to tmpDir.
+// DEPRECATED
+// deprecatedPullOCIPattern fetches an OCI artifact and extracts it to tmpDir.
 // Uses ORAS protocol. The artifact ref is constructed as: url:version
-func (m *Merger) pullOCIPattern(url, version, tmpDir string, auth *utils.FileAuth) error {
+func (m *Merger) deprecatedPullOCIPattern(url, version, tmpDir string, auth *utils.FileAuth) error {
 	// Normalise URL — OCI refs do not have scheme prefixes
 	ref := strings.TrimPrefix(strings.TrimPrefix(url, "https://"), "http://")
 	ref = strings.TrimSuffix(ref, "/")
@@ -154,7 +162,7 @@ func (m *Merger) pullOCIPattern(url, version, tmpDir string, auth *utils.FileAut
 	// Build the ORAS pull command
 	// When the ork registry CLI is complete, this will use the ORAS Go library.
 	// For now, try shell out to oras if available, otherwise return a clear error.
-	if err := orasPull(ref, tmpDir, auth); err != nil {
+	if err := shellOutOrasPull(ref, tmpDir, auth); err != nil {
 		return fmt.Errorf("OCI pull %q: %w\n\n"+
 			"  Ensure the oras CLI is installed: https://oras.land/docs/installation\n"+
 			"  Or use oci: false with a Git URL to pull via git instead.",
@@ -168,9 +176,96 @@ func (m *Merger) pullOCIPattern(url, version, tmpDir string, auth *utils.FileAut
 	return nil
 }
 
-// orasPull shells out to the oras CLI to pull an OCI artifact.
-// This is a bridge until the ORAS Go library is integrated natively.
+// pullOCIPattern fetches an OCI artifact and extracts it to tmpDir using ORAS Go library.
+// pullOCIPattern fetches an OCI artifact and extracts it to tmpDir using ORAS Go library.
+func (m *Merger) pullOCIPattern(url, version, tmpDir string, auth *utils.FileAuth) error {
+	// Normalise URL — OCI refs do not have scheme prefixes
+	ref := strings.TrimPrefix(strings.TrimPrefix(url, "https://"), "http://")
+	ref = strings.TrimSuffix(ref, "/")
+	ref = fmt.Sprintf("%s:%s", ref, version)
+
+	logger.Debug().
+		Str("ref", ref).
+		Str("dst", tmpDir).
+		Msg("registry: pulling OCI artifact with ORAS Go library")
+
+	if err := orasPull(ref, tmpDir, auth); err != nil {
+		return fmt.Errorf("OCI pull %q: %w", ref, err)
+	}
+
+	logger.Info().
+		Str("ref", ref).
+		Str("dst", tmpDir).
+		Msg("registry: OCI artifact pulled successfully")
+
+	return nil
+}
+
+// orasPull pulls an OCI artifact using the ORAS Go library into dst.
 func orasPull(ref, dst string, auth *utils.FileAuth) error {
+	ctx := context.Background()
+
+	// Split repo and reference (tag or digest)
+	repoName, reference, ok := strings.Cut(ref, ":")
+	if !ok || reference == "" {
+		return fmt.Errorf("invalid OCI reference %q: missing tag or digest", ref)
+	}
+
+	repo, err := remote.NewRepository(repoName)
+	if err != nil {
+		return fmt.Errorf("creating repository for %q: %w", repoName, err)
+	}
+
+	// Configure authentication (mirrors old CLI semantics)
+	if auth != nil {
+		repo.Client = &orasauth.Client{
+			ClientID: "orkestra",
+			Credential: func(ctx context.Context, registry string) (orasauth.Credential, error) {
+				switch strings.ToLower(auth.Type) {
+				case "basic":
+					if auth.Username != "" && auth.Password != "" {
+						return orasauth.Credential{
+							Username: auth.Username,
+							Password: auth.Password,
+						}, nil
+					}
+				case "bearer", "github":
+					if auth.BearerToken != "" {
+						// Token-style auth
+						return orasauth.Credential{
+							RefreshToken: auth.BearerToken,
+						}, nil
+					}
+				}
+				return orasauth.EmptyCredential, nil
+			},
+		}
+	}
+
+	// Local file store (extracts files into dst)
+	store, err := file.New(dst)
+	if err != nil {
+		return fmt.Errorf("creating file store: %w", err)
+	}
+	defer store.Close()
+
+	// Copy from remote repo@reference into local store
+	_, err = oras.Copy(ctx,
+		repo, reference, // source: repo + tag/digest
+		store, "", // dest: file store
+		oras.DefaultCopyOptions,
+	)
+	if err != nil {
+		return fmt.Errorf("pulling OCI artifact %q: %w", ref, err)
+	}
+
+	return nil
+}
+
+// DEPRECATED
+// shellOutOrasPull shells out to the oras CLI to pull an OCI artifact.
+// This is a bridge until the ORAS Go library is integrated natively.
+func shellOutOrasPull(ref, dst string, auth *utils.FileAuth) error {
 	args := []string{"pull", "--output", dst}
 
 	if auth != nil {

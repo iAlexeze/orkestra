@@ -1,8 +1,0 @@
-# Creates the namespace
-# Run this before applying the Config map and CR.
-
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: orkestra-system

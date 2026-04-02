@@ -75,17 +75,17 @@ func parseSimpleSystemMetrics(text string) SimpleSystemMetrics {
 	// Parse GC pause average
 	reGCPauseCount := regexp.MustCompile(`go_gc_duration_seconds_count (\d+)`)
 	reGCPauseSum := regexp.MustCompile(`go_gc_duration_seconds_sum ([\d\.]+)`)
-	
+
 	var gcCount int64
 	var gcSum float64
-	
+
 	if matches := reGCPauseCount.FindStringSubmatch(text); len(matches) > 1 {
 		gcCount, _ = strconv.ParseInt(matches[1], 10, 64)
 	}
 	if matches := reGCPauseSum.FindStringSubmatch(text); len(matches) > 1 {
 		gcSum, _ = strconv.ParseFloat(matches[1], 64)
 	}
-	
+
 	if gcCount > 0 {
 		metrics.GCPauseAvg = gcSum / float64(gcCount)
 	}

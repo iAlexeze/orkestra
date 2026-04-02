@@ -191,7 +191,7 @@ func (ko *KonductorElection) callbacks() leaderelection.LeaderCallbacks {
 				// Cancel the run context
 				if ko.runCancel != nil {
 					ko.runCancel()
-					ko.runCancel = nil	// reset to always reflect current leadership session only
+					ko.runCancel = nil // reset to always reflect current leadership session only
 				}
 
 				logger.Info().Msg("Performing cleanup on the actual konductor...")
