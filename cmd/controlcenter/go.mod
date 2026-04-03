@@ -1,3 +1,3 @@
-module github.com/ialexeze/orkestra-ui
+module github.com/orkspace/orkestra-cc
 
 go 1.26.1

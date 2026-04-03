@@ -1,6 +1,6 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
 # Full Go toolchain — only used during compilation, never in the final image.
-FROM golang:1.25-alpine AS builder
+FROM golang:alpine3.23 AS builder
 
 # Install git — needed for go modules that reference git repos
 RUN apk add --no-cache git ca-certificates tzdata

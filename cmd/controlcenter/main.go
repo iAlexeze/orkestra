@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	controlcenter "github.com/ialexeze/orkestra-ui/pkg"
+	controlcenter "github.com/orkspace/orkestra-cc/pkg"
 )
 
 var (
