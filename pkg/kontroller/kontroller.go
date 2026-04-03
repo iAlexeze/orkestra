@@ -35,6 +35,7 @@ type Kontroller struct {
 	defaultWorkers int
 	startedKtrl    atomic.Bool
 	started        map[string]bool
+	deactivated    map[string]bool
 	cancelFuncs    map[string]context.CancelFunc
 	wgs            map[string]*sync.WaitGroup
 	mu             sync.RWMutex
@@ -68,6 +69,7 @@ func NewKontroller(
 		defaultWorkers:   defaultWorkers,
 		crdHealthMap:     crdHealthMap,
 		started:          make(map[string]bool),
+		deactivated:      make(map[string]bool),
 		cancelFuncs:      make(map[string]context.CancelFunc),
 		total:            make(map[string]int),
 		failed:           make(map[string]int),

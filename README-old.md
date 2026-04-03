@@ -123,7 +123,7 @@ mutation:
     default: "2"
 ```
 
-With `ENABLE_WEBHOOKS=true`, these intercept `kubectl apply` synchronously. Without webhooks, they run on every reconcile cycle. One declaration. Two enforcement points.
+With `ENABLE_ADMISSION_WEBHOOK=true`, these intercept `kubectl apply` synchronously. Without webhooks, they run on every reconcile cycle. One declaration. Two enforcement points.
 
 ---
 

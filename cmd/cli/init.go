@@ -193,7 +193,7 @@ KATALOG_PATH=./examples/website/website-katalog.yaml
 DEFAULT_WORKERS=2
 DEFAULT_RESYNC=30s
 MAX_QUEUE_DEPTH=500
-HEALTH_PORT=8080
+ORK_PORT=8080
 `
 	return writeFile(root, ".env", content)
 }

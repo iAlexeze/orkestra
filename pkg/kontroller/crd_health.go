@@ -5,8 +5,10 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
 	//	"github.com/ialexeze/orkestra/pkg/reconciler"
 
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/queue"
 )
 
@@ -45,6 +47,7 @@ import (
 type CRDHealth struct {
 	name             string
 	started          atomic.Bool
+	pending          atomic.Bool
 	healthy          atomic.Bool
 	totalReconciles  atomic.Int64
 	failedReconciles atomic.Int64
@@ -52,13 +55,25 @@ type CRDHealth struct {
 	lastError        atomic.Value // stores string
 	lastReconcile    atomic.Value // stores time.Time
 	startTime        atomic.Value // stores time.Time
-	workersActive    atomic.Int64 // store number of active workers
+	workersActive    int          // store number of active workers
 	queueReg         *queue.QueueRegistry
 
 	// track CRD readines
 	lastCRDCheck time.Time
 	crdExists    atomic.Bool
 	crdCheckMu   sync.RWMutex
+}
+
+type OrkestraHealth struct {
+	name     string
+	orkReady atomic.Bool
+}
+
+// NewOrkestraHEalth initializes a CRDHealth tracker for Orkestra
+func NewOrkestraHealth() *OrkestraHealth {
+	h := &OrkestraHealth{name: konfig.Ork}
+	h.orkReady.Store(false)
+	return h
 }
 
 // NewCRDHealth initializes a CRDHealth tracker for a given CRD name.
@@ -119,6 +134,7 @@ func (h *CRDHealth) LastReconcile() string {
 	// Case 1: nothing stored yet
 	if v == nil {
 		if h.Started() {
+			h.pending.Store(true)
 			return "no reconciles yet"
 		}
 		return "not started"
@@ -128,6 +144,7 @@ func (h *CRDHealth) LastReconcile() string {
 	t, ok := v.(time.Time)
 	if !ok || t.IsZero() {
 		if h.Started() {
+			h.pending.Store(true)
 			return "no reconciles yet"
 		}
 		return "not started"
@@ -145,6 +162,11 @@ func (h *CRDHealth) IsHealthy() bool {
 // Started reports whether the reconciler has begun processing events.
 func (h *CRDHealth) Started() bool {
 	return h.started.Load()
+}
+
+// Pending reports the reconciler has started but yet not yet reconciled.
+func (h *CRDHealth) Pending() bool {
+	return h.pending.Load()
 }
 
 // StartedAt returns the timestamp when the reconciler first started.
@@ -166,11 +188,33 @@ func (h *CRDHealth) StartedAt() string {
 func (h *CRDHealth) SetStarted() {
 	h.startTime.CompareAndSwap(nil, time.Now())
 	h.started.Store(true)
+	h.pending.Store(true)
+}
+
+// SetOrkReady marks orkestra engine as ready
+func (h *OrkestraHealth) SetOrkReady() {
+	h.orkReady.Store(true)
+}
+
+// IsOrkReady is used to track ready state of orkestra
+func (h *OrkestraHealth) IsOrkReady() bool {
+	return h.orkReady.Load()
 }
 
 // SetNotStarted marks the reconciler as not started.
 func (h *CRDHealth) SetNotStarted() {
 	h.started.Store(false)
+}
+
+func (h *CRDHealth) SetMissingAtRuntime() {
+	h.crdCheckMu.Lock()
+	defer h.crdCheckMu.Unlock()
+
+	h.lastCRDCheck = time.Now()
+
+	h.crdExists.Store(false)
+
+	h.healthy.Store(false)
 }
 
 // Name returns the CRD name associated with this health tracker.
@@ -215,12 +259,12 @@ func (h *CRDHealth) Uptime() string {
 
 // WorkersActive returns the number of active workers for this CRD
 func (h *CRDHealth) SetWorkersActive(workers int) {
-	h.workersActive.Add(int64(workers))
+	h.workersActive = workers
 }
 
 // WorkersActive returns the number of active workers for this CRD
 func (h *CRDHealth) WorkersActive() int {
-	return int(h.workersActive.Load())
+	return h.workersActive
 }
 
 // QueueDepth returns the queue for this CRD

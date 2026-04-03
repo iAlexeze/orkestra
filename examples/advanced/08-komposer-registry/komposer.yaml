@@ -2,6 +2,8 @@ apiVersion: orkestra.konductor.io/v1Alpha
 kind: Komposer
 metadata:
   name: platform-full
+  author: orkspace
+  version: 0.1.0
   description: >
     Multi-source Komposer: OCI registry pattern + local Katalog + Helm chart.
     Shows the full composition model for a platform team.

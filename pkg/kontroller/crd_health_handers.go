@@ -2,6 +2,7 @@
 package kontroller
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -42,6 +43,7 @@ func BuildCRDHealthHandler(
 		// are always consistent with each other — a reconcile completing mid-handler
 		// cannot cause message and "healthy" to disagree.
 		isStarted := h.Started()
+		isPending := h.Pending()
 		isHealthy := h.IsHealthy()
 
 		var httpStatus int
@@ -49,6 +51,12 @@ func BuildCRDHealthHandler(
 
 		switch {
 		case !isStarted:
+			httpStatus = http.StatusServiceUnavailable
+			state = "not started"
+		case isStarted:
+			httpStatus = http.StatusOK
+			state = "started"
+		case isPending:
 			// CRD workers have not started yet — this is expected on fresh startup,
 			// not a sign of degradation. Report pending so probes don't false-alarm.
 			httpStatus = http.StatusOK
@@ -67,6 +75,7 @@ func BuildCRDHealthHandler(
 			"state":            state,
 			"healthy":          isHealthy,
 			"started":          isStarted,
+			"pending":          isPending,
 			"startedAt":        h.StartedAt(),
 			"uptime":           h.Uptime(),
 			"queueDepth":       h.QueueDepth(crd.GVK().String()),
@@ -130,6 +139,7 @@ func BuildCRDInfoHandler(
 			"reconciler":          reconcilerInfo(crd),
 			"healthy":             h.IsHealthy(),
 			"started":             h.Started(),
+			"pending":             h.Pending(),
 			"errorRate":           h.ErrorRate(),
 		}
 
@@ -188,9 +198,18 @@ func BuildKatalogHandler(
 	kfg *konfig.Konfig,
 	reg *ResourceKatalog,
 	healthMap map[string]*CRDHealth,
+	o *OrkestraHealth,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		crds := make([]map[string]interface{}, 0)
+
+		// Initialize status counters
+		statusCounts := StatusCounts{
+			Healthy:  0,
+			Degraded: 0,
+			Started:  0,
+			Pending:  0,
+		}
 
 		for _, crd := range kat.Enabled() {
 			gvk := crd.GVK().String()
@@ -204,13 +223,27 @@ func BuildKatalogHandler(
 
 			v := resolveCRDDisplayValues(crd, kfg, inf)
 
+			isHealthy := h.IsHealthy()
+			isStarted := h.Started()
+			isPending := h.Pending()
+
+			// Count statuses
+			if isHealthy {
+				statusCounts.Healthy++
+			} else if isStarted {
+				statusCounts.Started++
+			} else if isPending {
+				statusCounts.Pending++
+			} else {
+				statusCounts.Degraded++
+			}
+
 			crds = append(crds, map[string]interface{}{
-				"name":        crd.Name,
-				"description": crd.Description,
-				"mode":        crd.Mode,
-				"gvk":         gvk,
-				"gvr":         crd.GroupVersionResource.String(),
-				// "critical":            crd.Critical,
+				"name":                crd.Name,
+				"description":         crd.Description,
+				"mode":                crd.Mode,
+				"gvk":                 gvk,
+				"gvr":                 crd.GroupVersionResource.String(),
 				"namespaced":          crd.Namespaced,
 				"namespace":           crd.Namespace,
 				"dependsOn":           crd.DependsOn,
@@ -224,8 +257,9 @@ func BuildKatalogHandler(
 				"maxQueueDepthSource": v.maxQueueDepthSource,
 				"resourceCount":       v.resourceCount,
 				"reconciler":          reconcilerInfo(crd),
-				"healthy":             h.IsHealthy(),
-				"started":             h.Started(),
+				"healthy":             isHealthy,
+				"started":             isStarted,
+				"pending":             isPending,
 				"startedAt":           h.StartedAt(),
 				"uptime":              h.Uptime(),
 				"errorRate":           h.ErrorRate(),
@@ -236,33 +270,37 @@ func BuildKatalogHandler(
 			})
 		}
 
-		// Calculate overall health of the katalog
-		healthy := true
-		degradedReason := ""
-		degradedCRDs := []string{}
-
+		// Calculate overall health
+		healthy := statusCounts.Degraded == 0
 		status := http.StatusOK
-		for _, crd := range crds {
-			if !crd["healthy"].(bool) {
-				degradedCRDs = append(degradedCRDs, crd["name"].(string))
-				break
-			}
-		}
+		degradedReason := ""
 
-		if len(degradedCRDs) > 0 {
-			healthy = false
+		if !healthy {
 			status = http.StatusServiceUnavailable
-			degradedReason = strings.Join(degradedCRDs, ", ")
-			degradedReason = "degraded: " + degradedReason
+
+			var parts []string
+			if statusCounts.Degraded > 0 {
+				parts = append(parts, fmt.Sprintf("%d degraded", statusCounts.Degraded))
+			}
+			if statusCounts.Pending > 0 {
+				parts = append(parts, fmt.Sprintf("%d pending", statusCounts.Pending))
+			}
+			if statusCounts.Started > 0 {
+				parts = append(parts, fmt.Sprintf("%d started", statusCounts.Started))
+			}
+
+			degradedReason = strings.Join(parts, ", ")
 		}
 
-		utils.WriteJSON(w, http.StatusOK, KatalogResponse{
+		utils.WriteJSON(w, status, KatalogResponse{
 			CRDs:           crds,
 			Total:          len(kat.All()),
 			TotalEnabled:   len(kat.Enabled()),
+			OrkReady:       o.IsOrkReady(),
 			Healthy:        healthy,
 			Status:         status,
 			DegradedReason: degradedReason,
+			StatusCounts:   statusCounts,
 
 			// Metadata
 			Name:        kat.Meta().Name,
@@ -277,15 +315,24 @@ func BuildKatalogHandler(
 type KatalogResponse struct {
 	CRDs           []map[string]interface{} `json:"crds"`
 	TotalEnabled   int                      `json:"totalEnabled"`
+	OrkReady       bool                     `json:"OrkReady"`
 	Total          int                      `json:"total"`
 	Healthy        bool                     `json:"healthy"`
 	Status         int                      `json:"status"`
+	StatusCounts   StatusCounts             `json:"statusCounts"`
 	DegradedReason string                   `json:"degradedReason,omitempty"`
 	Name           string                   `json:"name,omitempty"`
 	Version        string                   `json:"version,omitempty"`
 	Author         string                   `json:"author,omitempty"`
 	Description    string                   `json:"description,omitempty"`
 	License        string                   `json:"license,omitempty"`
+}
+
+type StatusCounts struct {
+	Healthy  int `json:"healthy"`
+	Degraded int `json:"degraded"`
+	Started  int `json:"started"`
+	Pending  int `json:"pending"`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

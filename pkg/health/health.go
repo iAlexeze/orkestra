@@ -147,10 +147,10 @@ func (h *HealthServer) Start(ctx context.Context) error {
 
 	if h.hookKfg.WebhooksEnabled {
 		if h.hookKfg.TLSCert == "" {
-			return fmt.Errorf("webhook server error: TLS_CERT is required for ENABLE_WEBHOOKS")
+			return fmt.Errorf("webhook server error: TLS_CERT is required for ENABLE_ADMISSION_WEBHOOK")
 		}
 		if h.hookKfg.TLSKey == "" {
-			return fmt.Errorf("webhook server error: TLS_KEY is required for ENABLE_WEBHOOKS")
+			return fmt.Errorf("webhook server error: TLS_KEY is required for ENABLE_ADMISSION_WEBHOOK")
 		}
 	}
 

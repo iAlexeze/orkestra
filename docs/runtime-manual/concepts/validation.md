@@ -13,7 +13,7 @@ rules once and they apply at both.
 
 ### Admission time
 
-When `ENABLE_WEBHOOKS=true`, Orkestra registers a `ValidatingWebhookConfiguration`
+When `ENABLE_ADMISSION_WEBHOOK=true`, Orkestra registers a `ValidatingWebhookConfiguration`
 with the Kubernetes API server covering each CRD that has validation rules.
 The API server calls Orkestra's `/validate` endpoint synchronously during
 every `kubectl apply`.
@@ -37,7 +37,7 @@ stored. No polling. No event watching.
 ### Reconcile time
 
 The same validation rules run inside the reconcile loop, unconditionally —
-regardless of whether `ENABLE_WEBHOOKS` is set. This catches:
+regardless of whether `ENABLE_ADMISSION_WEBHOOK` is set. This catches:
 
 - CRs that existed before the webhook was enabled
 - CRs created via API calls that bypass the admission webhook
@@ -48,10 +48,10 @@ corrected. `action: warn` surfaces the violation on the `/katalog/{crd}`
 health endpoint as an active warning.
 
 !!! tip "Gradual rollout"
-    Start with `ENABLE_WEBHOOKS=false`. Deploy your validation rules and
+    Start with `ENABLE_ADMISSION_WEBHOOK=false`. Deploy your validation rules and
     observe `controller_validation_violations_total` in Prometheus. You can
     see exactly which CRs would have been rejected before enabling admission
-    interception. When you are confident in the rules, set `ENABLE_WEBHOOKS=true`.
+    interception. When you are confident in the rules, set `ENABLE_ADMISSION_WEBHOOK=true`.
 
 ---
 
@@ -191,14 +191,14 @@ Set the following environment variables:
 
 ```bash
 # Required environment variables
-ENABLE_WEBHOOKS=true     # starts the HTTPS server on :8443 and registers /validate and /mutate
+ENABLE_ADMISSION_WEBHOOK=true     # starts the HTTPS server on :8443 and registers /validate and /mutate
 TLS_CERT=/tls/tls.crt   # serving certificate (also used as CA bundle)
 TLS_KEY=/tls/tls.key    # serving key
 ```
 
 !!! tip "Combining with conversion"
     If you also use declarative CRD version conversion, set `ENABLE_CONVERSION=true`
-    alongside `ENABLE_WEBHOOKS=true`. Both features share the same HTTPS server.
+    alongside `ENABLE_ADMISSION_WEBHOOK=true`. Both features share the same HTTPS server.
     Either flag alone is sufficient to start it.
 
 Orkestra automatically creates the `ValidatingWebhookConfiguration` object

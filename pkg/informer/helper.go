@@ -92,6 +92,7 @@ func (f *Factory) Start(ctx context.Context) error {
 	for t, entry := range f.informers {
 		if entry == nil || entry.Informer == nil || entry.Missing {
 			logger.Warn().Str("gvk", t).Msg("informer entry nil or missing — skipping")
+			entry.WasNeverStarted = true
 			continue
 		}
 		// Each informer gets its own correct name
@@ -125,6 +126,7 @@ func (f *Factory) WaitForCacheSync(ctx context.Context) bool {
 
 	for _, entry := range f.informers {
 		if entry == nil || entry.Missing {
+			entry.WasNeverStarted = true
 			logger.Warn().
 				Str("name", entry.Name).
 				Msg("skipping cache sync — CRD missing or not registered")
@@ -214,6 +216,18 @@ func (f *Factory) crdExists(gvk *schema.GroupVersionKind) bool {
 	return false
 }
 
+// Registered CRDs
+func (f *Factory) Registered() map[string]*InformerEntry {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+
+	out := make(map[string]*InformerEntry, len(f.informers))
+	for k, v := range f.informers {
+		out[k] = v
+	}
+	return out
+}
+
 // Missing CRDs on startup
 func (f *Factory) Missing() map[string]*InformerEntry {
 	f.mu.RLock()
@@ -227,7 +241,7 @@ func (f *Factory) Missing() map[string]*InformerEntry {
 }
 
 // SetMissing CRDs on startup
-func (f *Factory) SetMissing(missing map[string]*InformerEntry) {
+func (f *Factory) SetMissingOnStartup(missing map[string]*InformerEntry) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 

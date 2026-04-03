@@ -27,11 +27,11 @@ func Init(filenames ...string) (*Konfig, error) {
 			// Workload
 			DefaultResync:       GetDurEnvSeconds("DEFAULT_RESYNC", 15),
 			DefaultWorkers:      GetIntEnv("DEFAULT_WORKERS", 3),
-			ShutdownTimeout:     GetDurEnvSeconds("SHUTDOWN_TIMEOUT", 10),
+			ShutdownTimeout:     GetDurEnvSeconds("SHUTDOWN_TIMEOUT", 30),
 			ShutdownGracePeriod: GetDurEnvSeconds("SHUTDOWN_GRACE_PERIOD", 60),
 		},
 		webhook: webhookConfig{
-			EnableWebhooks:   GetBoolEnv("ENABLE_WEBHOOKS", false),
+			EnableWebhooks:   GetBoolEnv("ENABLE_ADMISSION_WEBHOOK", false),
 			EnableConversion: GetBoolEnv("ENABLE_CONVERSION", false),
 			TLSCert:          GetStrEnv("TLS_CERT", ""),
 			TLSKey:           GetStrEnv("TLS_KEY", ""),
@@ -49,7 +49,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			RegistryURL: GetStrEnv("ORK_REGISTRY", ""),
 		},
 		healthServer: healthServer{
-			Port:         GetStrEnv("HEALTH_PORT", "8080"),
+			Port:         GetStrEnv("ORK_PORT", "8080"),
 			ReadTimeout:  GetDurEnvSeconds("SRV_READ_TIMEOUT", 5),
 			WriteTimeout: GetDurEnvSeconds("SRV_WRITE_TIMEOUT", 20),
 		},

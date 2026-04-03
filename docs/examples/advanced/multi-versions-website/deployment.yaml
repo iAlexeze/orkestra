@@ -29,9 +29,9 @@ spec:
         env:
           - name: ENABLE_CONVERSION
             value: "true"
-          - name: ENABLE_WEBHOOKS
+          - name: ENABLE_ADMISSION_WEBHOOK
             value: "false"
-          - name: HEALTH_PORT
+          - name: ORK_PORT
             value: "8080"
           - name: ORKESTRA_NAMESPACE
             valueFrom:

@@ -2,6 +2,8 @@ apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
   name: secret-distribution
+  author: orkspace
+  version: 0.1.0
   description: >
     Demonstrates built-in kind enrichment and cross-namespace secret distribution.
     Orkestra watches the SecretDistribution CRD and copies a named Secret

@@ -16,7 +16,7 @@ in-cluster deployment with `kubectl apply`.
 
 Orkestra enforces the same declared rules at two points:
 
-**Admission time** (`ENABLE_WEBHOOKS=true`) — synchronously during `kubectl apply`.
+**Admission time** (`ENABLE_ADMISSION_WEBHOOK=true`) — synchronously during `kubectl apply`.
 A `deny` rule rejects the request before the object is stored. The user sees
 the error immediately in their terminal.
 

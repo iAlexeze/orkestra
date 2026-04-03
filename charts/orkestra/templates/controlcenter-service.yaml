@@ -1,0 +1,26 @@
+{{- if .Values.controlCenter.enabled }}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "orkestra.fullname" . }}-cc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "orkestra.labels" . | nindent 4 }}
+    component: controlcenter
+  {{- with .Values.controlCenter.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.controlCenter.service.type }}
+  selector:
+    {{- include "orkestra.selectorLabels" . | nindent 4 }}
+    component: controlcenter
+  ports:
+    - name: http
+      port: {{ .Values.controlCenter.service.port }}
+      targetPort: http
+      protocol: TCP
+
+{{- end }}

@@ -10,8 +10,8 @@
 - `/katalog` and `/katalog/{crd}` operator health and statistics API
 - `/metrics` Prometheus exposition endpoint
 - `/convert` CRD version conversion webhook (when `ENABLE_CONVERSION=true`)
-- `/validate` admission validation webhook (when `ENABLE_WEBHOOKS=true`)
-- `/mutate` admission mutation webhook (when `ENABLE_WEBHOOKS=true`)
+- `/validate` admission validation webhook (when `ENABLE_ADMISSION_WEBHOOK=true`)
+- `/mutate` admission mutation webhook (when `ENABLE_ADMISSION_WEBHOOK=true`)
 
 ---
 
@@ -27,9 +27,9 @@ Serves `/convert`, `/validate`, and `/mutate`. Requires TLS certificates. Intend
 
 Both servers share the same `HealthServer` instance and access the same registries. The certificate used for `:8443` is also used as the `caBundle` in the webhook configurations Orkestra registers at startup.
 
-!!! note "ENABLE_CONVERSION and ENABLE_WEBHOOKS share the HTTPS server"
+!!! note "ENABLE_CONVERSION and ENABLE_ADMISSION_WEBHOOK share the HTTPS server"
     Orkestra starts a single HTTPS server whenever **either** `ENABLE_CONVERSION=true`
-    or `ENABLE_WEBHOOKS=true` is set. Conversion and admission webhooks both run
+    or `ENABLE_ADMISSION_WEBHOOK=true` is set. Conversion and admission webhooks both run
     behind this shared TLS endpoint.
 
     - If only conversion is enabled → `/convert` is served over HTTPS.  
@@ -37,7 +37,7 @@ Both servers share the same `HealthServer` instance and access the same registri
     - If both are enabled → all three endpoints are registered on the same server.
 
     Because this server is always HTTPS, **both features require TLS**:
-    whenever `ENABLE_CONVERSION=true` or `ENABLE_WEBHOOKS=true` is set, Orkestra
+    whenever `ENABLE_CONVERSION=true` or `ENABLE_ADMISSION_WEBHOOK=true` is set, Orkestra
     expects valid `TLS_CERT` and `TLS_KEY`. If they are missing, startup fails
     fast with an error similar to:
 
@@ -59,7 +59,7 @@ func (h *HealthServer) Start(ctx context.Context) error
 2. Registers `/health`, `/ready`, `/metrics` on the HTTP mux
 3. Starts the HTTP server in a goroutine
 4. If `ENABLE_CONVERSION=true`: registers `/convert` on the HTTPS mux, starts HTTPS server
-5. If `ENABLE_WEBHOOKS=true`: registers `/validate` and `/mutate` on the HTTPS mux, then registers webhook configurations with the API server in a background goroutine
+5. If `ENABLE_ADMISSION_WEBHOOK=true`: registers `/validate` and `/mutate` on the HTTPS mux, then registers webhook configurations with the API server in a background goroutine
 
 !!! warning "Webhook registration is best-effort"
     The `RegisterWebhooks` call in step 5 runs in a goroutine and does not block startup.
@@ -143,9 +143,9 @@ These are not a replacement for Prometheus — they reset on restart. They serve
 
 | Variable | Default | Effect |
 |---|---|---|
-| `HEALTH_PORT` | `8080` | HTTP server port |
+| `ORK_PORT` | `8080` | HTTP server port |
 | `ENABLE_CONVERSION` | `false` | Start HTTPS server and serve `/convert` |
-| `ENABLE_WEBHOOKS` | `false` | Serve `/validate` and `/mutate`, register webhook configs |
+| `ENABLE_ADMISSION_WEBHOOK` | `false` | Serve `/validate` and `/mutate`, register webhook configs |
 | `TLS_CERT` | — | Path to TLS certificate (required when conversion or webhooks enabled) |
 | `TLS_KEY` | — | Path to TLS key |
 | `CONVERSION_WINDOW` | `1000` | Rolling window size for latency percentile calculations |

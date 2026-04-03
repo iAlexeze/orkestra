@@ -69,6 +69,12 @@ func (q *Workqueue) Shutdown(ctx context.Context) {
 	}
 }
 
+// GetWithContext returns an item from the work queue.
+// Context (e.g., timeout, cancellation).
+func (q *Workqueue) GetWithContext(ctx context.Context) (QueueItem, bool) {
+	return q.Queue.Get()
+}
+
 // Name returns the name of the default workqueue
 func (q *Workqueue) Name() string {
 	return q.name

@@ -2,6 +2,8 @@ apiVersion: orkestra.konductor.io/v1Alpha
 kind: Komposer
 metadata:
   name: platform-komposer
+  author: orkspace
+  version: 0.1.0
   description: >
     Composes two Katalogs from local files into one runtime.
     The spec.crds block overrides the website CRD with production-tuned settings.

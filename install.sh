@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# install.sh — Orkestra CLI installer
+# install.sh — Orkestra CLI Installer (Runtime + Control Center)
 #
 # Usage:
 #   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash
 #
 # Options (via environment variables):
-#   ORK_VERSION     — pin a specific version (default: latest)
+#   ORK_VERSION     — pin a specific version (default: latest release)
 #   ORK_INSTALL_DIR — install directory (default: /usr/local/bin)
+#   ORK_SKIP_CC     — skip Control Center installation (default: false)
 #
 # Examples:
-#   # Install latest
+#   # Install latest (both runtime and control center)
 #   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash
 #
 #   # Install specific version
@@ -17,15 +18,20 @@
 #
 #   # Install to custom directory
 #   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
+#
+#   # Install runtime only (skip control center)
+#   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | ORK_SKIP_CC=true bash
 
 set -euo pipefail
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
 REPO="iAlexeze/orkestra"
-BINARY="ork"
+RUNTIME_BINARY="ork"
+CONTROL_CENTER_BINARY="orkcc"
 INSTALL_DIR="${ORK_INSTALL_DIR:-/usr/local/bin}"
 VERSION="${ORK_VERSION:-}"
+SKIP_CC="${ORK_SKIP_CC:-false}"
 
 # ── Colours ───────────────────────────────────────────────────────────────────
 
@@ -33,6 +39,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
@@ -53,6 +60,8 @@ cat <<'EOF'
           O R K E S T R A
 EOF
 echo -e "${RESET}"
+echo -e "${CYAN}  The Kubernetes operator runtime that needs no programming language${RESET}"
+echo
 
 # ── Detect OS and architecture ────────────────────────────────────────────────
 
@@ -82,12 +91,13 @@ resolve_version() {
         return
     fi
 
-    info "Fetching latest version..."
+    info "Fetching latest version from GitHub..."
 
     local latest
     latest=$(curl -sSf "https://api.github.com/repos/${REPO}/releases/latest" \
         | grep '"tag_name"' \
-        | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
+        | sed -E 's/.*"tag_name": "([^"]+)".*/\1/' \
+        | head -1)
 
     if [[ -z "${latest}" ]]; then
         fatal "Could not resolve latest version. Set ORK_VERSION manually."
@@ -99,24 +109,28 @@ resolve_version() {
 # ── Check dependencies ────────────────────────────────────────────────────────
 
 check_deps() {
+    local missing=()
     for cmd in curl tar; do
         if ! command -v "${cmd}" &>/dev/null; then
-            fatal "Required command not found: ${cmd}"
+            missing+=("${cmd}")
         fi
     done
+
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        fatal "Required commands not found: ${missing[*]}"
+    fi
 }
 
-# ── Download and install ──────────────────────────────────────────────────────
+# ── Download and install runtime ──────────────────────────────────────────────
 
-install_ork() {
+install_runtime() {
     local platform version download_url tmp_dir archive checksum_url
 
     platform=$(detect_platform)
     version=$(resolve_version)
 
-    info "Installing ${BOLD}ork ${version}${RESET} for ${platform}..."
+    info "Installing ${BOLD}ork${RESET} (runtime) version ${version} for ${platform}..."
 
-    # Expected release asset format: ork_linux_amd64.tar.gz
     archive="ork_${platform}.tar.gz"
     download_url="https://github.com/${REPO}/releases/download/${version}/${archive}"
     checksum_url="https://github.com/${REPO}/releases/download/${version}/checksums.txt"
@@ -141,36 +155,101 @@ install_ork() {
         cd "${tmp_dir}"
         if command -v sha256sum &>/dev/null; then
             grep "${archive}" checksums.txt | sha256sum --check --quiet \
-                || fatal "Checksum verification failed"
+                || fatal "Checksum verification failed for ${archive}"
         elif command -v shasum &>/dev/null; then
             grep "${archive}" checksums.txt | shasum -a 256 --check --quiet \
-                || fatal "Checksum verification failed"
+                || fatal "Checksum verification failed for ${archive}"
         else
             warn "sha256sum not available — skipping checksum verification"
         fi
         cd - >/dev/null
+    else
+        warn "No checksums.txt found — skipping verification"
     fi
 
     # Extract
-    info "Extracting..."
+    info "Extracting ${archive}..."
     tar -xzf "${tmp_dir}/${archive}" -C "${tmp_dir}"
 
     # Install
     info "Installing to ${INSTALL_DIR}..."
     if [[ ! -w "${INSTALL_DIR}" ]]; then
         warn "${INSTALL_DIR} requires elevated permissions"
-        sudo install -m 755 "${tmp_dir}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+        sudo install -m 755 "${tmp_dir}/${RUNTIME_BINARY}" "${INSTALL_DIR}/${RUNTIME_BINARY}"
     else
-        install -m 755 "${tmp_dir}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+        install -m 755 "${tmp_dir}/${RUNTIME_BINARY}" "${INSTALL_DIR}/${RUNTIME_BINARY}"
     fi
 
-    success "ork ${version} installed to ${INSTALL_DIR}/${BINARY}"
+    success "ork ${version} installed to ${INSTALL_DIR}/${RUNTIME_BINARY}"
+}
+
+# ── Download and install control center ───────────────────────────────────────
+
+install_control_center() {
+    if [[ "${SKIP_CC}" == "true" ]]; then
+        warn "Skipping Control Center installation (ORK_SKIP_CC=true)"
+        return
+    fi
+
+    local platform version download_url tmp_dir archive
+
+    platform=$(detect_platform)
+    version=$(resolve_version)
+
+    info "Installing ${BOLD}orkcc${RESET} (Control Center) version ${version} for ${platform}..."
+
+    archive="orkcc_${platform}.tar.gz"
+    download_url="https://github.com/${REPO}/releases/download/${version}/${archive}"
+
+    tmp_dir=$(mktemp -d)
+    # Don't set trap here — it's already set from runtime installation
+    # But we need to ensure cleanup still happens
+
+    info "Downloading ${archive}..."
+    if ! curl -sSfL "${download_url}" -o "${tmp_dir}/${archive}"; then
+        warn "Control Center download failed — continuing with runtime only"
+        rm -rf "${tmp_dir}"
+        return
+    fi
+
+    # Extract
+    info "Extracting ${archive}..."
+    tar -xzf "${tmp_dir}/${archive}" -C "${tmp_dir}"
+
+    # Install
+    if [[ ! -f "${tmp_dir}/${CONTROL_CENTER_BINARY}" ]]; then
+        warn "Control Center binary not found in archive — skipping"
+        rm -rf "${tmp_dir}"
+        return
+    fi
+
+    if [[ ! -w "${INSTALL_DIR}" ]]; then
+        sudo install -m 755 "${tmp_dir}/${CONTROL_CENTER_BINARY}" "${INSTALL_DIR}/${CONTROL_CENTER_BINARY}"
+    else
+        install -m 755 "${tmp_dir}/${CONTROL_CENTER_BINARY}" "${INSTALL_DIR}/${CONTROL_CENTER_BINARY}"
+    fi
+
+    success "orkcc ${version} installed to ${INSTALL_DIR}/${CONTROL_CENTER_BINARY}"
+
+    # Clean up temp dir (the trap will handle it, but we can remove early)
+    rm -rf "${tmp_dir}"
 }
 
 # ── Verify installation ───────────────────────────────────────────────────────
 
 verify_install() {
-    if ! command -v ork &>/dev/null; then
+    local has_ork=false
+    local has_orkcc=false
+
+    if command -v ork &>/dev/null; then
+        has_ork=true
+    fi
+
+    if command -v orkcc &>/dev/null; then
+        has_orkcc=true
+    fi
+
+    if [[ "${has_ork}" == "false" ]]; then
         warn "ork is not in your PATH."
         warn "Add ${INSTALL_DIR} to your PATH:"
         warn "  export PATH=\"\$PATH:${INSTALL_DIR}\""
@@ -178,26 +257,38 @@ verify_install() {
     fi
 
     echo
+    echo -e "${BOLD}Installed versions:${RESET}"
     ork version
+
+    if [[ "${has_orkcc}" == "true" ]]; then
+        orkcc --version 2>/dev/null || echo "orkcc version ${VERSION:-latest}"
+    fi
+
     echo
-    success "Installation complete."
+    success "Installation complete!"
     echo
-    echo -e "  ${BOLD}Get started:${RESET}"
-    echo -e "    ork init my-operator           Scaffold a new operator"
-    echo -e "    ork validate --katalog <path>  Validate a Katalog"
-    echo -e "    ork run --katalog <path>        Start the operator runtime"
+    echo -e "${BOLD}🚀 Get started:${RESET}"
+    echo -e "  ${CYAN}ork run --katalog my-katalog.yaml${RESET}    Start the operator runtime"
+    echo -e "  ${CYAN}ork validate --katalog my-katalog.yaml${RESET} Validate a Katalog"
+    echo -e "  ${CYAN}ork kompose --katalog komposer.yaml${RESET}   Compose multiple Katalogs"
     echo
-    echo -e "  ${BOLD}Documentation:${RESET}"
-    echo -e "    https://github.com/${REPO}"
+    echo -e "${BOLD}📊 Control Center:${RESET}"
+    echo -e "  ${CYAN}orkcc -u http://localhost:8080 -p 8090${RESET}  Start the web UI"
+    echo -e "  ${CYAN}ork control start${RESET}                        Launch from ork CLI (coming soon)"
+    echo
+    echo -e "${BOLD}📚 Documentation:${RESET}"
+    echo -e "  https://github.com/${REPO}"
     echo
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 main() {
+    echo
     check_deps
-    install_ork
+    install_runtime
+    install_control_center
     verify_install
 }
 
-main
+main "$@"

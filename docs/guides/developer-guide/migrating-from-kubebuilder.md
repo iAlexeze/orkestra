@@ -206,7 +206,7 @@ mutation:
 
 After migrating, delete the `ValidatingWebhookConfiguration` and
 `MutatingWebhookConfiguration` created by the Kubebuilder operator. Orkestra
-registers its own when `ENABLE_WEBHOOKS=true`.
+registers its own when `ENABLE_ADMISSION_WEBHOOK=true`.
 
 ---
 

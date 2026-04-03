@@ -96,7 +96,7 @@ The HTTPS server is **not started by default**.
 
 ### It is only started when:
 
-1. `ENABLE_CONVERSION=true` and/or `ENABLE_WEBHOOKS=true`
+1. `ENABLE_CONVERSION=true` and/or `ENABLE_ADMISSION_WEBHOOK=true`
 2. Valid TLS certificate + key paths are provided
 
 Either flag alone is sufficient. Both flags share the same HTTPS server on `:8443`.
@@ -104,7 +104,7 @@ Either flag alone is sufficient. Both flags share the same HTTPS server on `:844
 | Flag | Routes registered |
 |---|---|
 | `ENABLE_CONVERSION=true` | `/convert` |
-| `ENABLE_WEBHOOKS=true` | `/validate`, `/mutate` |
+| `ENABLE_ADMISSION_WEBHOOK=true` | `/validate`, `/mutate` |
 | Both | All three routes |
 
 If neither flag is set, Orkestra runs normally without exposing port 8443.
@@ -190,7 +190,7 @@ To also enable admission webhooks (validation and mutation), add:
 
 ```yaml
 env:
-  - name: ENABLE_WEBHOOKS
+  - name: ENABLE_ADMISSION_WEBHOOK
     value: "true"
 ```
 
@@ -208,7 +208,7 @@ Here’s the entire story in one clean block:
 - Kubernetes requires a webhook for both conversion and admission enforcement
 - Orkestra provides a **conditional HTTPS server** that only runs when enabled
 - Conversion is activated via `ENABLE_CONVERSION=true`
-- Admission webhooks are activated via `ENABLE_WEBHOOKS=true`
+- Admission webhooks are activated via `ENABLE_ADMISSION_WEBHOOK=true`
 - Both require user-provided TLS certificates and share the same server on `:8443`
 - The `/convert`, `/validate`, and `/mutate` endpoints are registered only when their
   respective feature is enabled

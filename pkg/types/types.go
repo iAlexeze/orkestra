@@ -76,7 +76,7 @@ type APITypes struct {
 	// List — Go type name for the CR list. Required for typed mode.
 	// Used by ork generate to emit ListRegistry entries.
 	// e.g. "ProjectList" → func() runtime.Object { return &projv1.ProjectList{} }
-	List string `yaml:"list" validate:"omitempty"`
+	List string `yaml:"objectList" validate:"omitempty"`
 
 	// Alias — Go import alias for the API types package. Optional.
 	// Auto-derived from the last two segments of Location if not set.
@@ -1123,7 +1123,7 @@ type CRDEntry struct {
 	Mutation *MutationConfig `yaml:"mutation,omitempty"`
 
 	// Webhooks controls per-CRD admission webhook behaviour.
-	// Only meaningful when ENABLE_WEBHOOKS=true.
+	// Only meaningful when ENABLE_ADMISSION_WEBHOOK=true.
 	// By default, any CRD with Validation or Mutation rules is included
 	// in the corresponding webhook configuration automatically.
 	// Set validation: false or mutation: false to opt a specific CRD out of

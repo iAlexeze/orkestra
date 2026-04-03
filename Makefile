@@ -1,4 +1,14 @@
-.PHONY: test test-unit test-race test-integration test-e2e test-all test-coverage test-coverage-text vet certs
+.PHONY: build dash test test-unit test-race test-integration test-e2e test-all test-coverage test-coverage-text vet certs
+
+
+# ── Local build ───────────────────────────────────────────────────────────
+build: 
+	@echo "Building Orkestra..."
+	gofmt -w . && go build -o ork ./cmd/orkestra
+
+dash:
+	@echo "Building Orkestra Dashboard"
+	gofmt -w . && go build -o dash .
 
 # ── Primary targets ───────────────────────────────────────────────────────────
 

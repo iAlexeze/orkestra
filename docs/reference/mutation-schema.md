@@ -63,7 +63,7 @@ empty string — `missingkey=zero` — no error on absent optional fields.
 ## `reconciler.webhooks.mutation` — per-CRD admission control
 
 Controls whether this CRD participates in the `MutatingWebhookConfiguration`
-when `ENABLE_WEBHOOKS=true`.
+when `ENABLE_ADMISSION_WEBHOOK=true`.
 
 ```yaml
 - name: website
@@ -107,7 +107,7 @@ Path conversion: dot-notation → JSON Pointer. `spec.replicas` → `/spec/repli
 ### Startup errors
 
 ```
-error: ENABLE_WEBHOOKS requires ENABLE_CONVERSION — set ENABLE_CONVERSION=true
+error: ENABLE_ADMISSION_WEBHOOK requires ENABLE_CONVERSION — set ENABLE_CONVERSION=true
 ```
 
 ```

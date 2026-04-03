@@ -150,7 +150,7 @@ func (c *CRDEntry) GetDependencies() []string {
 
 // Returns true when either validation or mutation rules are declared.
 // Used to decide whether to create the endpoints and/or populate the admission block in the health response.
-// Even when ENABLE_WEBHOOKS=true
+// Even when ENABLE_ADMISSION_WEBHOOK=true
 func (c *CRDEntry) HasValidationOrMutationRules() bool {
 	return len(c.Validation.Rules) > 0 || len(c.Mutation.Rules) > 0
 }

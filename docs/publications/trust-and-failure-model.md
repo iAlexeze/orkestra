@@ -74,7 +74,7 @@ Worst-case failover time: **leaseDuration** (default 15 seconds). In practice, i
 During this 15-second window, reconciliation is paused. CRs created or updated during this window are queued and will be processed when the new leader starts. No CR changes are lost — etcd stores them and the informer delivers them to the new leader's queue.
 
 !!! note "Admission webhooks during failover"
-    If ENABLE_WEBHOOKS=true, the /validate and /mutate endpoints are served
+    If ENABLE_ADMISSION_WEBHOOK=true, the /validate and /mutate endpoints are served
     by all running Orkestra pods (the HTTPS server runs in all instances, not
     just the leader). Admission interception continues during leader failover
     because the HTTPS server does not participate in leader election.
@@ -240,7 +240,7 @@ Each CRD has one of four health states, reported by `/katalog/{crd}/health` and 
 
 ## Admission webhook failure model
 
-If `ENABLE_WEBHOOKS=true` and the Orkestra HTTPS server is unreachable when the API server calls `/validate` or `/mutate`:
+If `ENABLE_ADMISSION_WEBHOOK=true` and the Orkestra HTTPS server is unreachable when the API server calls `/validate` or `/mutate`:
 
 The behavior depends on `FailurePolicy` in the webhook configuration:
 

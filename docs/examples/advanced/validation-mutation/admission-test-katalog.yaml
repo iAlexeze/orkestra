@@ -24,7 +24,7 @@ data:
             plural: websites
 
           # ── Per-CRD webhook control ──────────────────────────────────────────
-          # Both enabled by default when ENABLE_WEBHOOKS=true.
+          # Both enabled by default when ENABLE_ADMISSION_WEBHOOK=true.
           # Included here explicitly so you can see the knobs.
           webhooks:
             validation: true

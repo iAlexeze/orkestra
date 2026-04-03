@@ -2,6 +2,8 @@ apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
   name: application-operator
+  author: orkspace
+  version: 0.1.0
   description: >
     Deployment + Service + ConfigMap.
     Status Layer 3: readyReplicas propagated from the Deployment's live status.

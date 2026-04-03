@@ -64,7 +64,7 @@ reconciler:
 
 ## `action` values
 
-| Value | At admission (ENABLE_WEBHOOKS) | At reconcile time |
+| Value | At admission (ENABLE_ADMISSION_WEBHOOK) | At reconcile time |
 |---|---|---|
 | `deny` (default) | Synchronous rejection. `kubectl apply` returns error immediately. Object not stored. | Reconciliation halted. Warning event on CR. Workqueue retries with backoff. |
 | `warn` | Warning header in response. `kubectl` prints warning to stderr. Object stored. | Active warning recorded on `/katalog/{crd}` health API. Reconciliation continues. |
@@ -109,7 +109,7 @@ Field values are compared as strings after type coercion:
 ## `reconciler.webhooks` — per-CRD admission control
 
 Controls whether this CRD participates in admission webhooks when
-`ENABLE_WEBHOOKS=true`. By default, any CRD with validation rules is
+`ENABLE_ADMISSION_WEBHOOK=true`. By default, any CRD with validation rules is
 included in the `ValidatingWebhookConfiguration`.
 
 ```yaml
@@ -127,7 +127,7 @@ included in the `ValidatingWebhookConfiguration`.
 | `operations` | `[]string` | `["CREATE", "UPDATE"]` | Operations that trigger the webhook. Valid values: `CREATE`, `UPDATE`, `DELETE`, `CONNECT` |
 
 Set `validation: false` to use reconcile-time validation only for a specific
-CRD, even when `ENABLE_WEBHOOKS=true` globally.
+CRD, even when `ENABLE_ADMISSION_WEBHOOK=true` globally.
 
 ---
 
@@ -166,7 +166,7 @@ Events:
 ### Startup errors
 
 ```
-error: ENABLE_WEBHOOKS requires ENABLE_CONVERSION — set ENABLE_CONVERSION=true
+error: ENABLE_ADMISSION_WEBHOOK requires ENABLE_CONVERSION — set ENABLE_CONVERSION=true
 to start the HTTPS server that serves /validate and /mutate
 ```
 

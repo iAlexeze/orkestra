@@ -173,6 +173,7 @@ import (
 	"context"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -198,6 +199,10 @@ type DependencyKontroller struct {
 	queueReg       *queue.QueueRegistry
 	drainTimeout   time.Duration
 
+	// Orkestra health
+	anyOnline atomic.Bool
+	orkHealth *OrkestraHealth
+
 	// readyCh[gvk] is closed when a CRD has fully started its workers.
 	readyCh map[string]chan struct{}
 }
@@ -214,23 +219,28 @@ func NewDependencyKontroller(
 	queueRegistry *queue.QueueRegistry,
 	defaultWorkqueue *queue.Workqueue,
 	crdHealthMap map[string]*CRDHealth,
+	orkHealth *OrkestraHealth,
 	defaultWorkers int,
 	depGraph *katalog.DependencyGraph,
 	drainTimeout time.Duration,
 ) *DependencyKontroller {
 
-	return &DependencyKontroller{
+	kont := &DependencyKontroller{
 		Kontroller: NewKontroller(
 			kube, factory, katalog,
 			events, hs, crdHealthMap, queueRegistry,
 			defaultWorkqueue, defaultWorkers,
 		),
+		orkHealth:      orkHealth,
 		depGraph:       depGraph,
 		defaultWorkers: defaultWorkers,
 		queueReg:       queueRegistry,
 		drainTimeout:   drainTimeout,
 		readyCh:        make(map[string]chan struct{}),
 	}
+
+	kont.anyOnline.Store(false)
+	return kont
 }
 
 // RunOrDie starts CRDs in dependency order and blocks until leadership is lost.
@@ -264,8 +274,6 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 
 	// START RETRY LOOP ONCE, BEFORE ANY BLOCKING
 	go k.retryMissingCRDs(ctx)
-
-	anyOnline := false
 
 	// Process CRDs in dependency order
 	for _, name := range startupOrder {
@@ -323,13 +331,14 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 		close(k.readyCh[gvk])
 		logger.Info().Str("crd", name).Str("gvk", gvk).Int("workers", workers).Msg("workers started and ready")
 
-		anyOnline = true
+		k.anyOnline.Store(true)
 	}
 
 	// Mark controller started
 	k.startedKtrl.Store(true)
-	if anyOnline {
+	if k.anyOnline.Load() {
 		k.hs.SetReady()
+		k.orkHealth.SetOrkReady()
 		logger.Info().Str("component", k.Name()).Int("crds_online", len(startupOrder)).Msg("started")
 	} else {
 		logger.Warn().Str("component", k.Name()).Msg("started — all CRDs missing, waiting for retry loop")
@@ -340,6 +349,7 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 	logger.Info().Msg("leadership lost — beginning dependency-aware shutdown")
 	k.hs.Unhealthy()
 
+	// Shut down CRDs
 	shutdownOrder := k.depGraph.ShutdownOrder()
 	logger.Info().Str("order", strings.Join(shutdownOrder, " → ")).Msg("shutdown order")
 	for _, name := range shutdownOrder {
@@ -405,7 +415,7 @@ func (k *DependencyKontroller) stopCRDWorkers(gvk string) {
 	}
 
 	// Step 2: shut down the queue — this unblocks any worker
-	// blocked on queue.Get() waiting for the next item.
+	// blocked on queue.GetWithContext() waiting for the next item.
 	// Without this, workers that finished their reconcile and
 	// are waiting for work will never exit.
 	if wq, ok := k.queueReg.For(gvk); ok {

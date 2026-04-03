@@ -24,52 +24,111 @@ import (
 // Note: This loop handles activation only. Deactivation is not implemented —
 //
 //	if a CRD is deleted after startup, the informer continues running.
-//	This is an acceptable tradeoff for v1; CRD deletion is a rare administrative action.
+//	But workers are drained through deactivateCRD.
 func (k *DependencyKontroller) retryMissingCRDs(ctx context.Context) {
 	ticker := time.NewTicker(PostStartRetryInterval)
 	defer ticker.Stop()
+
+	// backoff starts small (fast retries)
 	backoff := PostStartBackoff
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
+
 		case <-ticker.C:
-			missing := k.informerFactory.Missing()
-			if len(missing) == 0 {
-				logger.Info().Msg("retry loop: no missing CRDs — stopping")
-				return
-			}
+			runtimeMissing := make(map[string]*informer.InformerEntry)
+			// ───────────────────────────────────────────────
+			// 1. Detect CRDs that disappeared at runtime
+			// ───────────────────────────────────────────────
+			registered := k.informerFactory.Registered()
 
-			logger.Debug().Msgf("retry loop: checking %d missing CRD(s)", len(missing))
-			stillMissing := make(map[string]*informer.InformerEntry)
-
-			for _, entry := range missing {
-				if ok, _ := k.crdExists(entry.GVK); ok {
-					k.activateCRD(ctx, entry)
-				} else {
-					stillMissing[entry.GVK.String()] = entry
-					logger.Debug().Msgf("retry loop: %s still not available", entry.GVK.String())
+			for gvkStr, entry := range registered {
+				if entry == nil || entry.Missing {
 					continue
+				}
+
+				ok, _ := k.crdExists(entry.GVK)
+				if !ok {
+					logger.Warn().Str("gvk", gvkStr).
+						Msg("CRD disappeared at runtime — marking missing")
+
+					entry.Missing = true
+					runtimeMissing[gvkStr] = entry
+					k.informerFactory.SetMissingOnStartup(runtimeMissing)
+					k.crdHealthMap[gvkStr].SetMissingAtRuntime()
+					// k.crdHealthMap[gvkStr].SetWorkersActive(0)
+
+					// Stop workers (queue stays alive)
+					if !k.deactivated[gvkStr] {
+						k.crdHealthMap[gvkStr].StartedAt()
+						logger.Info().Str("gvk", gvkStr).Msg("stopping workers")
+						k.deactivateCRD(gvkStr)
+					}
 				}
 			}
 
-			// Update missing map — only what's still missing remains
-			k.informerFactory.SetMissing(stillMissing)
+			// ───────────────────────────────────────────────
+			// 2. Handle CRDs currently missing
+			// ───────────────────────────────────────────────
+			missing := k.informerFactory.Missing()
+
+			if len(missing) == 0 {
+				// No missing CRDs → system healthy → slow mode
+				// Reset backoff so next missing event is fast again
+				backoff = PostStartBackoff
+
+				logger.Debug().Msg("retry loop: no missing CRDs")
+				continue
+			}
+
+			// Missing CRDs → fast mode
+			// Reset backoff so we retry quickly
+			backoff = PostStartBackoff
+
+			logger.Debug().Msgf("retry loop: checking %d missing CRD(s)", len(missing))
+
+			stillMissing := make(map[string]*informer.InformerEntry)
+
+			for gvkStr, entry := range missing {
+				ok, _ := k.crdExists(entry.GVK)
+				if ok {
+					// CRD reappeared → activate immediately
+					k.activateCRD(ctx, entry)
+					k.deactivated[gvkStr] = false
+				} else {
+					// Still missing → keep tracking it
+					stillMissing[gvkStr] = entry
+					k.crdHealthMap[gvkStr].SetMissingAtRuntime()
+
+					logger.Debug().Msgf("retry loop: %s still not available", gvkStr)
+				}
+			}
+
+			// Update missing map
+			k.informerFactory.SetMissingOnStartup(stillMissing)
 
 			if len(stillMissing) == 0 {
 				logger.Info().Msg("retry loop: all CRDs activated")
-				// All CRDs now online — mark controller fully ready
-				k.hs.SetReady()
-				return
+				if k.anyOnline.Load() {
+					k.hs.SetReady()
+					k.orkHealth.SetOrkReady()
+				}
+			} else {
+				logger.Info().Msgf("retry loop: %d CRD(s) still missing", len(stillMissing))
 			}
 
-			logger.Info().Msgf("retry loop: %d CRD(s) still missing", len(stillMissing))
+			// ───────────────────────────────────────────────
+			// 3. Exponential backoff (only when still missing)
+			// ───────────────────────────────────────────────
+			if len(stillMissing) > 0 {
+				time.Sleep(backoff)
 
-			// Exponential backoff — cap at 1 minute
-			time.Sleep(backoff)
-			if backoff < time.Minute {
-				backoff *= 2
+				// Cap at 1 minute
+				if backoff < time.Minute {
+					backoff *= 2
+				}
 			}
 		}
 	}
@@ -108,8 +167,12 @@ func (k *DependencyKontroller) activateCRD(ctx context.Context, entry *informer.
 	}
 
 	// Start the existing informer (it was created but not started at startup)
-	go entry.Informer.Run(ctx.Done())
-	logger.Info().Msgf("activateCRD: informer started for %s", name)
+	// Only start informer if it was never started (startup-missing case).
+	if entry.WasNeverStarted { // you can track this with a bool on InformerEntry
+		go entry.Informer.Run(ctx.Done())
+		entry.WasNeverStarted = false
+		logger.Info().Msgf("activateCRD: informer started for %s", name)
+	}
 
 	// Mark as no longer missing so the retry loop won't keep processing it
 	entry.Missing = false
@@ -120,6 +183,7 @@ func (k *DependencyKontroller) activateCRD(ctx context.Context, entry *informer.
 	k.startCRDWorkers(ctx, gvkStr, workers)
 
 	// Update health tracking
+	k.deactivated[gvkStr] = false
 	k.crdHealthMap[gvkStr].SetStarted()
 	k.crdHealthMap[gvkStr].SetWorkersActive(workers)
 
@@ -141,6 +205,38 @@ func (k *DependencyKontroller) activateCRD(ctx context.Context, entry *informer.
 	}
 
 	logger.Info().Msgf("CRD %s activated", name)
+}
+
+// deactivateCRD deactivates a missing crd at runtime
+func (k *DependencyKontroller) deactivateCRD(gvk string) {
+	// Only cancel context, don’t ShutDown the queue
+	k.mu.RLock()
+	cancel, okCancel := k.cancelFuncs[gvk]
+	wg, okWG := k.wgs[gvk]
+	k.mu.RUnlock()
+
+	if okCancel {
+		cancel()
+	}
+
+	if !okWG {
+		return
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		k.crdHealthMap[gvk].SetWorkersActive(0)
+		k.deactivated[gvk] = true
+		logger.Info().Str("gvk", gvk).Msg("workers drained cleanly")
+	case <-time.After(k.drainTimeout):
+		logger.Warn().Str("gvk", gvk).Msg("drain timeout exceeded")
+	}
 }
 
 // crdExists checks if a CRD is present in the cluster by querying the API server.
