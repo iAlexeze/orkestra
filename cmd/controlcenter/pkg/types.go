@@ -123,9 +123,12 @@ type CRDInfo struct {
 	Namespaced          bool                   `json:"namespaced"`
 	Namespace           string                 `json:"namespace"`
 	DependsOn           []string               `json:"dependsOn"`
-	Workers             int                    `json:"workers"`
-	WorkersActive       int                    `json:"workersActive"`
-	WorkersSource       string                 `json:"workersSource"`
+	Workers             int                      `json:"workers"`
+	WorkersActive       int32                    `json:"workersActive"`
+	WorkersIdle         int32                    `json:"workersIdle"`
+	WorkersProcessing   int32                    `json:"workersProcessing"`
+	WorkerDetails       map[string]string        `json:"workerDetails,omitempty"`
+	WorkersSource       string                   `json:"workersSource"`
 	Resync              string                 `json:"resync"`
 	ResyncSource        string                 `json:"resyncSource"`
 	QueueDepth          int                    `json:"queueDepth"`
@@ -188,8 +191,11 @@ type CRDDetail struct {
 	Namespace           string                 `json:"namespace"`
 	DependsOn           []string               `json:"dependsOn"`
 	Workers             int                    `json:"workers"`
-	WorkersActive       int                    `json:"workersActive"`
-	WorkersSource       string                 `json:"workersSource"`
+	WorkersActive       int32                    `json:"workersActive"`
+	WorkersIdle         int32                    `json:"workersIdle"`
+	WorkersProcessing   int32                    `json:"workersProcessing"`
+	WorkerDetails       map[string]string        `json:"workerDetails,omitempty"`
+	WorkersSource       string                   `json:"workersSource"`
 	Resync              string                 `json:"resync"`
 	ResyncSource        string                 `json:"resyncSource"`
 	QueueDepth          int                    `json:"queueDepth"`

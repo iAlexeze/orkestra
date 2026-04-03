@@ -185,7 +185,7 @@ func (k *DependencyKontroller) activateCRD(ctx context.Context, entry *informer.
 	// Update health tracking
 	k.deactivated[gvkStr] = false
 	k.crdHealthMap[gvkStr].SetStarted()
-	k.crdHealthMap[gvkStr].SetWorkersActive(workers)
+	k.crdHealthMap[gvkStr].SetTotalWorkers(int32(workers))
 
 	// Signal dependents that this CRD is now ready
 	// The ready channel was created during RunOrDie and may still be open
@@ -231,7 +231,12 @@ func (k *DependencyKontroller) deactivateCRD(gvk string) {
 
 	select {
 	case <-done:
-		k.crdHealthMap[gvk].SetWorkersActive(0)
+		k.crdHealthMap[gvk].ResetWorkerCounts()
+		k.crdHealthMap[gvk].workerStates.Range(func(key, value interface{}) bool {
+			k.crdHealthMap[gvk].workerStates.Store(key, WorkerStateStopped)
+			return true
+		})
+
 		k.deactivated[gvk] = true
 		logger.Info().Str("gvk", gvk).Msg("workers drained cleanly")
 	case <-time.After(k.drainTimeout):

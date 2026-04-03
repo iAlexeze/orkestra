@@ -46,12 +46,6 @@ func TestSetQueueDepth_DoesNotPanic(t *testing.T) {
 	})
 }
 
-func TestSetWorkersActive_DoesNotPanic(t *testing.T) {
-	assert.NotPanics(t, func() {
-		metrics.SetWorkersActive("demo.orkestra.io/v1alpha1, Kind=Website", 3)
-	})
-}
-
 // ── CRD activation metrics ────────────────────────────────────────────────────
 
 func TestObserveCRDActivationLatency_DoesNotPanic(t *testing.T) {

@@ -55,13 +55,22 @@ type CRDHealth struct {
 	lastError        atomic.Value // stores string
 	lastReconcile    atomic.Value // stores time.Time
 	startTime        atomic.Value // stores time.Time
-	workersActive    int          // store number of active workers
 	queueReg         *queue.QueueRegistry
 
 	// track CRD readines
 	lastCRDCheck time.Time
 	crdExists    atomic.Bool
 	crdCheckMu   sync.RWMutex
+
+	// track workers
+	activeWorkers     atomic.Int32
+	totalWorkers      atomic.Int32
+	idleWorkers       atomic.Int32
+	processingWorkers atomic.Int32
+
+	// Track individual worker states for debugging
+	workerStates sync.Map // workerID -> state (idle, processing, stopped)
+	gvk          string   // Store GVK for metrics
 }
 
 type OrkestraHealth struct {
@@ -255,16 +264,6 @@ func (h *CRDHealth) Uptime() string {
 		return "not started"
 	}
 	return time.Since(t).Round(time.Second).String()
-}
-
-// WorkersActive returns the number of active workers for this CRD
-func (h *CRDHealth) SetWorkersActive(workers int) {
-	h.workersActive = workers
-}
-
-// WorkersActive returns the number of active workers for this CRD
-func (h *CRDHealth) WorkersActive() int {
-	return h.workersActive
 }
 
 // QueueDepth returns the queue for this CRD
