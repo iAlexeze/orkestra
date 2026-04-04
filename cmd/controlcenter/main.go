@@ -36,8 +36,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Parse URLs
-	urls := parseURLs(*orkestraURLs)
+	// Parse and deduplicate URLs
+	urls := parseAndDedupeURLs(*orkestraURLs)
 	if len(urls) == 0 {
 		log.Fatal("ERROR: at least one Orkestra URL is required. Use -u flag.")
 	}
@@ -49,38 +49,8 @@ func main() {
 		Version:         version,
 	})
 
-	// Create a new mux to add health/ready endpoints before the control center handler
-	mux := http.NewServeMux()
-
-	// Health check endpoint - always returns OK for the control center itself
-	mux.HandleFunc("/controlcenter/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"status":"healthy","service":"orkestra-control-center","version":"%s"}`, version)
-	})
-
-	// Readiness check endpoint - checks if at least one backend is healthy
-	mux.HandleFunc("/controlcenter/ready", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		if cc.IsReady() {
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, `{"status":"ready","service":"orkestra-control-center"}`)
-		} else {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprintf(w, `{"status":"not ready","service":"orkestra-control-center","reason":"no healthy backends"}`)
-		}
-	})
-
-	// Version endpoint
-	mux.HandleFunc("/controlcenter/version", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"version":"%s","commit":"%s","buildDate":"%s"}`, version, commit, buildDate)
-	})
-
-	// Control center handler for all other routes
-	mux.Handle("/controlcenter/", http.StripPrefix("/controlcenter", cc))
-	mux.Handle("/", http.RedirectHandler("/controlcenter", http.StatusMovedPermanently))
+	// Setup routes
+	mux := setupRoutes(cc, version, commit, buildDate)
 
 	// Setup HTTP server
 	srv := &http.Server{
@@ -122,18 +92,32 @@ func main() {
 	log.Println("✅ Control Center stopped")
 }
 
-func parseURLs(input string) []string {
+// parseAndDedupeURLs parses a comma-separated URL string and removes duplicates
+func parseAndDedupeURLs(input string) []string {
 	parts := strings.Split(input, ",")
+	seen := make(map[string]bool)
 	urls := make([]string, 0, len(parts))
+
 	for _, p := range parts {
 		url := strings.TrimSpace(p)
-		if url != "" {
-			if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-				url = "http://" + url
-			}
-			url = strings.TrimSuffix(url, "/")
+		if url == "" {
+			continue
+		}
+
+		// Add scheme if missing
+		if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+			url = "http://" + url
+		}
+
+		// Remove trailing slash
+		url = strings.TrimSuffix(url, "/")
+
+		// Deduplicate
+		if !seen[url] {
+			seen[url] = true
 			urls = append(urls, url)
 		}
 	}
+
 	return urls
 }

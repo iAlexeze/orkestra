@@ -62,6 +62,21 @@ type StatusCounts struct {
 	Pending  int `json:"pending"`
 }
 
+// RBACInfo is the data for the main page
+type RBACInfo struct {
+	Rules      []RBACRule `json:"rules"`
+	Summary    string     `json:"summary"`
+	TotalRules int        `json:"totalRules"`
+}
+
+type RBACRule struct {
+	APIGroups []string `json:"apiGroups,omitempty"`
+	Resources []string `json:"resources,omitempty"`
+	Verbs     []string `json:"verbs,omitempty"`
+	// Human-readable description
+	Description string `json:"description,omitempty"`
+}
+
 // KatalogResponse is the response from the /katalog endpoint
 type KatalogResponse struct {
 	Total          int          `json:"total"`
@@ -95,6 +110,7 @@ type CRDSummary struct {
 	ResourceCount int      `json:"resourceCount"`
 	ErrorRate     float64  `json:"errorRate"`
 	Uptime        string   `json:"uptime"`
+	RBACCount     int      `json:"rbacCount,omitempty"`
 }
 
 // CRDHealth is the response from the /katalog/{crd}/health endpoint
@@ -154,6 +170,7 @@ type CRDInfo struct {
 	ErrorRate           float64                `json:"errorRate"`
 	Conversion          *ConversionStats       `json:"conversion"`
 	Admission           *AdmissionStats        `json:"admission"`
+	RBAC                RBACInfo               `json:"rbac,omitempty"`
 }
 
 // ConversionStats contains version conversion metrics
@@ -205,9 +222,9 @@ type CRDDetail struct {
 	HasUnhealthyDependencies bool                        `json:"hasUnhealthyDependencies"`
 	Dependencies             map[string]DependencyStatus `json:"dependencies,omitempty"`
 	Workers                  int                         `json:"workers"`
-	WorkersActive            int32                       `json:"workersActive"`
-	WorkersIdle              int32                       `json:"workersIdle"`
-	WorkersProcessing        int32                       `json:"workersProcessing"`
+	WorkersActive            int                         `json:"workersActive"`
+	WorkersIdle              int                         `json:"workersIdle"`
+	WorkersProcessing        int                         `json:"workersProcessing"`
 	WorkerDetails            map[string]string           `json:"workerDetails,omitempty"`
 	WorkersSource            string                      `json:"workersSource"`
 	Resync                   string                      `json:"resync"`
@@ -224,6 +241,8 @@ type CRDDetail struct {
 	ErrorRate                float64                     `json:"errorRate"`
 	Conversion               *ConversionStats            `json:"conversion"`
 	Admission                *AdmissionStats             `json:"admission"`
+	RBAC                     RBACInfo                    `json:"rbac,omitempty"`
+	RBACCount                int                         `json:"rbacCount,omitempty"`
 }
 
 type SimpleSystemMetrics struct {

@@ -90,7 +90,9 @@
     <div class="mb-8">
         <div class="flex items-center justify-between">
             <div class="flex items-center space-x-4">
-                <img src="/controlcenter/assets/static/logo.png" alt="Orkestra Logo" class="w-12 h-12 logo-animation">
+                <a href="/controlcenter">
+                    <img src="/controlcenter/assets/static/logo.png" alt="Orkestra Logo" class="w-12 h-12 logo-animation">
+                </a>
                 <div>
                     <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">Orkestra</h1>
                     <p class="text-gray-500 text-sm mt-1">Control Panel · {{ .KatalogName }}</p>
@@ -367,6 +369,12 @@
                         <span class="font-medium metric-value {{ if gt .ErrorRate 0.0 }}text-red-600 animate-pulse{{ else }}text-green-600{{ end }}">
                             {{ printf "%.1f" .ErrorRate }}%
                         </span>
+                    </div>
+
+                    <!-- RBAC -->
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">RBAC Rules</span>
+                        <span class="font-medium text-xs text-purple-600">{{ .RBACCount }} rules</span>
                     </div>
 
                     <div class="flex justify-between">

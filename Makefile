@@ -1,14 +1,52 @@
-.PHONY: build dash test test-unit test-race test-integration test-e2e test-all test-coverage test-coverage-text vet certs
+.PHONY: build orkcc clean test test-unit test-race test-integration test-e2e test-all test-coverage test-coverage-text vet certs
 
+# ── Configuration ────────────────────────────────────────────────────────────
+ORKESTRA_DIR := .
+CONTROL_CENTER_DIR := ./cmd/controlcenter
+OUTPUT_DIR := $(HOME)/.orkestra/bin
 
 # ── Local build ───────────────────────────────────────────────────────────
-build: 
+ork: 
 	@echo "Building Orkestra..."
-	gofmt -w . && go build -o ork ./cmd/orkestra
+	@mkdir -p $(OUTPUT_DIR)
+	cd $(ORKESTRA_DIR) && gofmt -w .
+	cd $(ORKESTRA_DIR) && go build -o $(OUTPUT_DIR)/ork ./cmd/orkestra
+	@echo "✅ Orkestra built successfully"
 
-dash:
-	@echo "Building Orkestra Dashboard"
-	gofmt -w . && go build -o dash .
+orkcc:
+	@echo "Building Orkestra Control Center..."
+	@mkdir -p $(OUTPUT_DIR)
+	cd $(CONTROL_CENTER_DIR) && gofmt -w .
+	cd $(CONTROL_CENTER_DIR) && go build -o $(OUTPUT_DIR)/orkcc .
+	@echo "✅ Orkestra Control Center built successfully"
+
+build: ork orkcc
+	@echo "✅ Both Orkestra and Control Center built successfully"
+
+clean:
+	@echo "Cleaning binaries..."
+	rm -f $(OUTPUT_DIR)/ork
+	rm -f $(OUTPUT_DIR)/orkcc
+	@echo "✅ Clean complete"
+
+# ── Install to system PATH (requires sudo) ───────────────────────────────────
+install: build
+	@echo "Installing to /usr/local/bin..."
+	sudo cp $(OUTPUT_DIR)/ork /usr/local/bin/
+	sudo cp $(OUTPUT_DIR)/orkcc /usr/local/bin/
+	@echo "✅ Installed successfully"
+
+# ── Uninstall from system ────────────────────────────────────────────────────
+uninstall:
+	@echo "Removing from /usr/local/bin..."
+	sudo rm -f /usr/local/bin/ork
+	sudo rm -f /usr/local/bin/orkcc
+	@echo "✅ Uninstalled successfully"
+
+# ── Add to PATH helper ───────────────────────────────────────────────────────
+path-help:
+	@echo "Add this to your ~/.bashrc or ~/.zshrc:"
+	@echo "export PATH=\$$PATH:$(OUTPUT_DIR)"
 
 # ── Primary targets ───────────────────────────────────────────────────────────
 

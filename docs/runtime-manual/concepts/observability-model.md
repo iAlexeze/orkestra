@@ -1,82 +1,165 @@
 # The Observability Model
 
-Orkestra provides a unified observability interface for every CRD it manages.
-This document assembles the full picture — the live API, the Prometheus metrics,
-the CLI tools, and how they relate to each other — so that an SRE can monitor
-an Orkestra deployment with confidence.
+Orkestra provides a unified observability interface for every CRD it manages — without custom instrumentation, without writing dashboards, without configuration. This document assembles the full picture: the Control Center UI, the live API, the Prometheus metrics, and how they relate to each other.
 
 ---
 
-## The design principle
+## The Design Principle
 
-Every CRD managed by Orkestra contributes to the same observability surface.
-There is no per-CRD monitoring setup. There is one health server, one metrics
-endpoint, one CLI interface. The data is the same regardless of whether Orkestra
-manages two CRDs or twenty.
+Every CRD managed by Orkestra contributes to the same observability surface. There is no per-CRD monitoring setup. There is one Control Center, one health server, one metrics endpoint, one CLI interface. The data is identical whether Orkestra manages two CRDs or twenty.
 
-The observability stack has two tiers:
+**Observability is free. It's built in. It's always on.**
 
-**Live operational state** — the `/katalog` endpoint. Reflects the current moment:
-queue depth right now, workers active right now, active warnings right now. Resets
-on restart. Consumed by `ork status`, `ork describe`, and dashboards.
+The observability stack has three tiers:
 
-**Historical metrics** — the `/metrics` endpoint. Prometheus counters and histograms.
-Persist across restarts (in Prometheus). Consumed by dashboards, alerts, and
-long-term trend analysis.
-
-Neither substitutes for the other. Use the live API to answer "what is happening
-right now." Use Prometheus to answer "what has been happening over time."
+| Tier | Interface | Purpose | Persistence |
+|------|-----------|---------|-------------|
+| **Control Center** | Web UI (`/controlcenter`) | Human-readable visualization | Live only |
+| **Live API** | `/katalog` endpoints | Structured JSON for automation | Live only |
+| **Prometheus** | `/metrics` endpoint | Historical trends, alerting | Persistent |
 
 ---
 
-## The `/katalog` endpoint
+## The Control Center
 
-`GET /katalog` returns the aggregate state of all managed CRDs:
+The Control Center is the primary observability interface. It visualizes everything the live API provides, organized for human consumption.
+
+### Landing Page (`/controlcenter`)
+
+Shows every Katalog discovered across all configured Orkestra instances:
+
+![Control Center Landing](../../assets/controlcenter/control-center-landing.png)
+
+- All Katalogs with health status badges
+- Summary statistics (total CRDs, workers, resources)
+- Quick navigation to each Katalog's Control Panel
+
+### Katalog Control Panel (`/controlcenter/katalog/{name}`)
+
+Per-Katalog deep dive:
+
+![Katalog Control Panel](../../assets/controlcenter/control-panel-website.png)
+
+- **Platform Health Cards** — Healthy, Started, Pending, Degraded counts
+- **Key Metrics** — CRDs managed, active workers, live resources
+- **CRD Grid** — Each CRD as a card with real-time state
+- **Queue Pressure** — Visual progress bar with color-coded warnings
+- **Error Rates** — Per-CRD error percentage with color coding
+
+### CRD Detail View (`/controlcenter/katalog/{name}/crd/{crd}`)
+
+Complete visibility into a single CRD:
+
+![CRD Detail](../../assets/controlcenter/pv-watcher-workers.png)
+
+- **Worker Pool Visualization** — Every worker goroutine shown as a card:
+  - ⚡ **Processing** — Blue, pulsing — actively reconciling
+  - 💤 **Idle** — Green — waiting for work
+  - ⛔ **Stopped** — Red — CRD deactivated
+- **Queue Pressure** — Progress bar with formatted large numbers (e.g., "15.2K / 50K")
+- **Runtime Health** — Uptime, start time, last reconcile, consecutive failures
+- **Version Conversion** — Request counts, latencies, success/failure rates
+- **Admission Webhooks** — Validation and mutation statistics
+- **Dependencies** — Health status of every dependency, clickable
+- **RBAC Permissions** — Derived permissions table (auditable by security teams)
+
+### Metrics Page (`/controlcenter/metrics`)
+
+Preview of what's coming in v2.0: historical graphs, time-series trends, and alerting configuration. Currently shows the planned roadmap.
+
+---
+
+## The Live API
+
+The `/katalog` endpoint powers the Control Center. It's also available directly for automation.
+
+### `GET /katalog`
+
+Returns the aggregate state of all managed CRDs:
 
 ```json
 {
-  "operator": "website-operator",
-  "healthy": true,
-  "uptime": "4h23m",
+  "name": "platform-katalog",
+  "healthy": false,
+  "OrkReady": true,
+  "degradedReason": "3 degraded, 6 started",
+  "statusCounts": {
+    "healthy": 4,
+    "degraded": 3,
+    "started": 6,
+    "pending": 0
+  },
   "crds": [
     {
       "name": "website",
-      "gvk": "demo.orkestra.io/v1alpha1, Kind=Website",
-      "healthy": true,
+      "state": "started",
+      "healthy": false,
       "workers": 3,
-      "workersActive": 2,
-      "resourceCount": 47,
+      "workersProcessing": 2,
+      "workersIdle": 1,
+      "workerDetails": {
+        "website-worker-0": "processing",
+        "website-worker-1": "processing",
+        "website-worker-2": "idle"
+      },
       "queueDepth": 0,
-      "reconcileTotal": 8312,
-      "reconcileErrors": 3,
+      "maxQueueDepth": 2000,
+      "errorRate": 0.73,
+      "resourceCount": 47,
+      "totalReconciles": 8312,
+      "rbacCount": 3,
+      "dependencies": ["postgres", "redis"],
       "conversion": {
+        "enabled": true,
         "total": 62,
+        "success": 62,
         "failures": 0,
         "avgLatencyMs": 0.5,
         "p95LatencyMs": 1.2
       },
       "admission": {
+        "webhooksEnabled": true,
         "validationTotal": 1204,
+        "validationAllowed": 1195,
         "validationDenied": 9,
-        "mutationApplied": 387,
-        "webhooksEnabled": true
+        "mutationTotal": 387,
+        "mutationApplied": 387
       }
     }
   ]
 }
 ```
 
-`GET /katalog/{crd}` returns the full detail for one CRD. `GET /katalog/{crd}/health`
-returns `200` or `503` for point health checks.
+### `GET /katalog/{crd}`
 
-**`ork status` is the `/katalog` endpoint rendered for the terminal.** There is no
-separate data source. The data is the same; the format differs.
+Full detail for one CRD, including RBAC rules and reconciler configuration.
+
+### `GET /katalog/{crd}/health`
+
+Returns `200 OK` if the CRD is healthy, `503 Service Unavailable` otherwise. Used by external monitoring systems.
+
+### `GET /katalog/{crd}/metrics`
+
+Prometheus-style metrics for a single CRD (useful for focused debugging).
+
+**`ork status` is the `/katalog` endpoint rendered for the terminal.** The data is the same; the format differs.
+
+```bash
+$ ork status
+CRD                   State     Workers  Queue  Errors   Uptime
+website               started   2/3      0      0.73%    4h23m
+postgres              healthy   3/3      0      0%       4h23m
+redis                 healthy   2/2      0      0%       4h23m
+namespace-manager     started   5/5      12     0%       4h23m
+```
+
+**`ork describe <crd>`** shows full CRD detail including worker pool state and dependencies.
 
 ---
 
-## The Prometheus metrics
+## The Prometheus Metrics
 
-Six metric families. Each tells a distinct operational story.
+Six metric families. Each tells a distinct operational story. All are automatically exposed at `/metrics` without configuration.
 
 ### `controller_reconcile_total{crd, result}`
 
@@ -96,9 +179,7 @@ rate(controller_reconcile_total{result="error"}[5m])
 
 ### `controller_reconcile_duration_seconds{crd}`
 
-Reconcile duration histogram. p95 and p99 tell you whether reconciles are taking
-longer than expected — which usually indicates API server latency, slow external
-calls in hooks, or queue backlog.
+Reconcile duration histogram. p95 and p99 tell you whether reconciles are taking longer than expected — which usually indicates API server latency, slow external calls in hooks, or queue backlog.
 
 **Alert:** p99 above 5 seconds.
 
@@ -110,9 +191,7 @@ histogram_quantile(0.99,
 
 ### `controller_queue_depth{crd}`
 
-Current items waiting in the workqueue. A persistently non-zero queue depth means
-workers cannot keep up with the event rate. The solution is increasing `workers`
-in the Katalog.
+Current items waiting in the workqueue. A persistently non-zero queue depth means workers cannot keep up with the event rate. The solution is increasing `workers` in the Katalog.
 
 **Alert:** Queue depth above 100 for more than 5 minutes.
 
@@ -120,15 +199,30 @@ in the Katalog.
 controller_queue_depth > 100
 ```
 
-### `controller_workers_active{crd}`
+### `controller_workers_processing{crd}` and `controller_workers_idle{crd}`
 
-Current active workers. Compare against the configured worker count to understand
-utilisation. If `workersActive` consistently equals `workers`, you are at capacity.
+Current worker states. The Control Center visualizes these per worker. Use Prometheus to track utilization over time:
+
+```promql
+# Worker utilization over time
+controller_workers_processing / (controller_workers_processing + controller_workers_idle)
+```
+
+**Alert:** All workers processing for more than 10 minutes with queue depth > 0.
+
+### `controller_workers_total{crd}`
+
+Configured worker count per CRD. Compare against processing/idle to understand capacity.
+
+### `controller_resource_count{crd}`
+
+Number of custom resources in the informer cache. Use this to track growth over time.
+
+**Alert:** Resource count growing faster than expected.
 
 ### `controller_admission_validation_total{crd, result, source}`
 
-Admission and reconcile-time validation outcomes. The `source` label is the
-operationally critical dimension.
+Admission and reconcile-time validation outcomes. The `source` label is the operationally critical dimension.
 
 ```
 source="admission"   — call from /validate (kubectl apply time)
@@ -145,90 +239,73 @@ rate(controller_admission_validation_total{result="denied",source="reconcile"}[5
 rate(controller_admission_validation_total{result="denied",source="admission"}[5m]) == 0
 ```
 
-### `controller_admission_validation_violations_total{crd, field, rule, action, source}`
-
-Per-field violation detail. Use this to understand which rules fire most and
-whether they fire at both enforcement points.
-
-```promql
-# Which fields are most often denied at admission?
-topk(5, sum by(field) (
-  controller_admission_validation_violations_total{action="deny",source="admission"}
-))
-```
-
 ### `controller_admission_mutation_total{crd, result, source}`
 
-Mutation outcomes. High `applied` rate at `source="admission"` means users
-frequently omit fields that your defaults cover — a signal that documentation
-or client tooling should improve.
+Mutation outcomes. High `applied` rate at `source="admission"` means users frequently omit fields that your defaults cover — a signal that documentation or client tooling should improve.
 
 ---
 
-## The CLI tools
-
-### `ork status`
+## The Relationship Between Interfaces
 
 ```
-CRD                   Workers  Queue  Health   Reconciles  Errors
-website               2/3      0      healthy  8,312       3
-platform-namespace    2/2      0      healthy  412         0
-database              4/4      12     healthy  1,891       0
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              OBSERVABILITY                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────────────┐ │
+│  │  Control Center │    │   Live API      │    │     Prometheus          │ │
+│  │                 │    │                 │    │                         │ │
+│  │  Human-readable │    │  Machine-readable│    │  Historical             │ │
+│  │  Real-time      │    │  Real-time      │    │  Alertable              │ │
+│  │  Visual         │    │  Structured     │    │  Queryable              │ │
+│  └────────┬────────┘    └────────┬────────┘    └───────────┬─────────────┘ │
+│           │                      │                         │               │
+│           ▼                      ▼                         ▼               │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                        Orkestra Runtime                             │   │
+│  │                                                                     │   │
+│  │  • Worker pools (14 workers)                                        │   │
+│  │  • Workqueues (per CRD)                                             │   │
+│  │  • Informer caches (170+ resources)                                 │   │
+│  │  • Reconciliation loops (4,200+ ops)                                │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The `Queue` column is the most actionable at a glance. A non-zero queue with
-workers all active means throughput is bounded — more workers or fewer CRs.
+**What each interface is for:**
 
-### `ork describe <crd> <name>`
-
-Full CR detail: spec, status, active warnings, recent events. The first diagnostic
-step when a user reports their CR is not being reconciled correctly.
-
-```bash
-ork describe website my-site
-```
-
-### `ork events <crd>`
-
-Recent Kubernetes events for all CRs of a type. Faster than `kubectl get events`
-when you want to see what the operator has been doing across multiple CRs.
-
-### `ork top`
-
-Per-CRD resource consumption: reconcile rate, queue depth, worker utilisation.
-The terminal equivalent of a Grafana dashboard row.
+| Question | Control Center | Live API | Prometheus |
+|----------|---------------|----------|------------|
+| "Is my operator healthy right now?" | ✅ Visual status | ✅ `healthy` field | ❌ Too slow |
+| "Why is this CRD degraded?" | ✅ Worker pool view | ✅ `state` field | ❌ No context |
+| "Is queue depth increasing over time?" | ⏳ Current only | ⏳ Current only | ✅ Historical |
+| "How many errors per hour?" | ⏳ Current rate | ⏳ Current rate | ✅ Historical |
+| "Did that change cause more errors?" | ❌ No history | ❌ No history | ✅ Compare before/after |
+| "What permissions does this CRD need?" | ✅ RBAC table | ✅ `rbac` field | ❌ N/A |
+| "Which dependency is failing?" | ✅ Dependency health | ✅ `dependencies` | ❌ N/A |
 
 ---
 
-## Building a dashboard
+## Building a Dashboard
 
-The `/katalog` endpoint is a structured JSON API. Any tool that can scrape JSON
-can build a dashboard from it. The recommended stack:
+The Control Center **is** the dashboard. For most users, no additional visualization is needed.
 
-**Grafana + Prometheus:** Scrape `/metrics` and query with PromQL. The metric names
-and label conventions are stable.
+For integration with existing monitoring stacks:
 
-**Out-of-the-box dashboards:** Planned for a future release. The API is already
-stable — the dashboard is a renderer, not a new data source.
+**Option 1: Embed the Control Center** — Iframe or reverse proxy into your existing portal. The Control Center is a standalone web app.
 
-**Minimum useful dashboard:**
+**Option 2: Scrape the JSON API** — `GET /katalog` returns structured data. Any dashboard tool that can fetch JSON can build panels.
 
-Four panels cover the operational questions that matter:
+**Option 3: Use Prometheus** — For long-term trends and alerting, scrape `/metrics`. The metric names and label conventions are stable.
 
-1. **Reconcile error rate** — `rate(controller_reconcile_total{result="error"}[5m])` per CRD
-2. **Queue depth** — `controller_queue_depth` per CRD
-3. **Worker utilisation** — `controller_workers_active / <configured workers>` per CRD
-4. **Validation denial rate** — `rate(controller_admission_validation_total{result="denied"}[5m])` by source
-
-These four panels answer the four operational questions: is reconciliation healthy,
-is there a backlog, is throughput bounded by workers, and is admission policy firing.
+**Out-of-the-box Grafana dashboards** are planned for a future release. The API is already stable — the dashboard is a renderer, not a new data source.
 
 ---
 
-## The status API as observability
+## The Status API as Observability
 
-The CR's own `/status` subresource is part of the observability model. After every
-successful reconcile, Orkestra writes:
+The CR's own `/status` subresource is part of the observability model. After every successful reconcile, Orkestra writes:
 
 ```yaml
 status:
@@ -241,17 +318,30 @@ status:
   readyReplicas: "3"
 ```
 
-This makes `kubectl get websites` itself informative. External tools — ArgoCD
-health checks, custom controllers, monitoring scripts — can watch for `Ready=True`
-on CRs without knowing anything about Orkestra's internal health model.
+This makes `kubectl get websites` itself informative. External tools — ArgoCD health checks, custom controllers, monitoring scripts — can watch for `Ready=True` on CRs without knowing anything about Orkestra's internal health model.
 
-The CR's status is the user-facing observability layer. Prometheus is the
-platform-facing observability layer. The `/katalog` API is the operator-facing
-observability layer. All three are available without any configuration.
+The CR's status is the **user-facing** observability layer. Prometheus is the **platform-facing** observability layer. The Control Center and `/katalog` API are the **operator-facing** observability layer. All three are available without any configuration.
 
+---
 
-- [Metrics](../../reference/metrics.md)
-- [Runtime](./runtime.md)
-- [Typed CRDs](./typed-crds.md)
+## Summary
+
+| What you need to know | Where to look |
+|-----------------------|---------------|
+| Is my operator working right now? | Control Center → Katalog health |
+| Why is this CRD degraded? | Control Center → Worker pool view → Last error |
+| Are workers keeping up with demand? | Control Center → Queue pressure bar |
+| What permissions does this CRD have? | Control Center → RBAC table |
+| Is this dependency causing the problem? | Control Center → Dependencies section |
+| How many errors per hour? | Prometheus → `controller_reconcile_total` |
+| Is reconciliation getting slower? | Prometheus → `controller_reconcile_duration_seconds` |
+| Are admission rules being enforced? | Control Center → Admission webhooks section |
+
+**Observability is not an add-on. It's built into the runtime.**
+
+---
+
+- [Metrics Reference](../../reference/metrics.md)
+- [Runtime Documentation](./runtime.md)
 - [Katalog Schema](../../reference/katalog-schema.md)
 - [Komposer Schema](../../reference/komposer-schema.md)

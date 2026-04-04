@@ -68,9 +68,9 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		HasUnhealthyDependencies: health.HasUnhealthyDependencies,
 		Dependencies:             health.Dependencies,
 		Workers:                  info.Workers,
-		WorkersActive:            info.WorkersActive,
-		WorkersIdle:              info.WorkersIdle,
-		WorkersProcessing:        info.WorkersProcessing,
+		WorkersActive:            int(info.WorkersActive),
+		WorkersIdle:              int(info.WorkersIdle),
+		WorkersProcessing:        int(info.WorkersProcessing),
 		WorkerDetails:            info.WorkerDetails,
 		WorkersSource:            info.WorkersSource,
 		Resync:                   info.Resync,
@@ -92,6 +92,8 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		ConsecutiveFails:         health.ConsecutiveFails,
 		LastError:                health.LastError,
 		LastReconcile:            health.LastReconcile,
+		RBAC:                     info.RBAC,
+		RBACCount:                info.RBAC.TotalRules,
 	}
 
 	// Format times
