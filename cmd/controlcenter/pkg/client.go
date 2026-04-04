@@ -156,10 +156,12 @@ func getState(health *CRDHealth) string {
 	if health.Healthy {
 		return "healthy"
 	}
-	if health.Started {
+
+	// A case where crd has started but there are errors
+	if health.Started && health.ConsecutiveFails == 0 {
 		return "started"
 	}
-	if health.Pending {
+	if health.Pending && health.LastReconcile == "no reconciles yet" && health.ConsecutiveFails == 0 {
 		return "pending"
 	}
 	return "degraded"

@@ -82,6 +82,7 @@ type KatalogResponse struct {
 // CRDSummary is a summary of a CRD
 type CRDSummary struct {
 	Name          string   `json:"name"`
+	State         string   `json:"state"` // "healthy", "started", "pending", "degraded"
 	Healthy       bool     `json:"healthy"`
 	Started       bool     `json:"started"`
 	Pending       bool     `json:"pending"`

@@ -113,6 +113,7 @@ func (h *CRDHealth) RecordSuccess() {
 	h.consecutiveFails.Store(0)
 	h.lastReconcile.Store(time.Now())
 	h.healthy.Store(true)
+	h.pending.Store(false)
 }
 
 // RecordFailure marks a failed reconcile event.
@@ -128,6 +129,7 @@ func (h *CRDHealth) RecordFailure(err error, degradeThreshold int) {
 	// If too many failures in a row, mark the reconciler unhealthy.
 	if h.consecutiveFails.Load() >= int64(degradeThreshold) {
 		h.healthy.Store(false)
+		h.pending.Store(false)
 	}
 }
 

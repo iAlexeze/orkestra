@@ -268,7 +268,7 @@ func BuildCRDInfoHandler(
 		if stats != nil {
 			snapshot := stats.GetStats()
 			response.Conversion = &ConversionStatsResponse{
-				Enabled:      true,
+				Enabled:      kfg.ConversionEnabled(),
 				Total:        snapshot.TotalRequests,
 				Success:      snapshot.SuccessRequests,
 				Failures:     snapshot.FailedRequests,
@@ -280,7 +280,7 @@ func BuildCRDInfoHandler(
 		if admStats != nil {
 			snap := admStats.GetStats(crd.Webhooks.WebhookValidationEnabled() || crd.Webhooks.WebhookMutationEnabled())
 			response.Admission = &AdmissionStatsResponse{
-				WebhooksEnabled:   snap.WebhooksEnabled,
+				WebhooksEnabled:   kfg.AdmissionEnabled(),
 				ValidationTotal:   snap.ValidationTotal,
 				ValidationAllowed: snap.ValidationAllowed,
 				ValidationDenied:  snap.ValidationDenied,
@@ -341,6 +341,7 @@ type CRDSummaryResponse struct {
 	ResourceCount       int               `json:"resourceCount"`
 	Reconciler          ReconcilerSummary `json:"reconciler"`
 	Healthy             bool              `json:"healthy"`
+	State               string            `json:"state"`
 	Started             bool              `json:"started"`
 	Pending             bool              `json:"pending"`
 	StartedAt           string            `json:"startedAt"`
@@ -405,19 +406,33 @@ func BuildKatalogHandler(
 			isHealthy := h.IsHealthy()
 			isStarted := h.Started()
 			isPending := h.Pending()
+			var state string
 
 			if isHealthy {
 				statusCounts.Healthy++
+				state = "healthy"
 			} else if isStarted {
 				statusCounts.Started++
+				if h.ConsecutiveFails() > 0 {
+					state = "degraded"
+				} else {
+					state = "started"
+				}
 			} else if isPending {
 				statusCounts.Pending++
+				if h.ConsecutiveFails() > 0 {
+					state = "degraded"
+				} else if h.LastReconcile() == "no reconciles yet" {
+					state = "pending"
+				}
 			} else {
 				statusCounts.Degraded++
+				state = "degraded"
 			}
 
 			crds = append(crds, CRDSummaryResponse{
 				Name:                crd.Name,
+				State:               state,
 				Description:         crd.Description,
 				Mode:                crd.Mode.String(),
 				GVK:                 gvk,

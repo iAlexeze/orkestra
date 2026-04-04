@@ -74,6 +74,12 @@
             font-feature-settings: "tnum";
             font-variant-numeric: tabular-nums;
         }
+        .crd-card {
+            transition: all 0.2s ease;
+        }
+        .crd-card:hover {
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 
@@ -298,20 +304,20 @@
         {{ end }}
 
         <div class="crd-card bg-white rounded-xl shadow-sm border hover:shadow-lg transition-all duration-300"
-             data-name="{{ .Name }}"
-             data-status="{{ if .Healthy }}healthy{{ else if .Started }}started{{ else if .Pending }}pending{{ else }}degraded{{ end }}">
+            data-name="{{ .Name }}"
+            data-status="{{ .State }}">
             <div class="p-6">
-                <!-- Title -->
+                <!-- Title with unified state badge (same as crd.html) -->
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-semibold text-gray-900">{{ .Name }}</h2>
                     <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
-                        {{ if .Healthy }}bg-green-100 text-green-800
-                        {{ else if .Started }}bg-blue-100 text-blue-800
-                        {{ else if .Pending }}bg-yellow-100 text-yellow-800
-                        {{ else }}bg-red-100 text-red-800{{ end }}">
-                        {{ if .Healthy }}✓ Healthy
-                        {{ else if .Started }}↻ Started
-                        {{ else if .Pending }}⏳ Pending
+                        {{- if eq .State "healthy" }} bg-green-100 text-green-800
+                        {{- else if eq .State "started" }} bg-blue-100 text-blue-800
+                        {{- else if eq .State "pending" }} bg-yellow-100 text-yellow-800
+                        {{- else }} bg-red-100 text-red-800{{ end }}">
+                        {{ if eq .State "healthy" }}✓ Healthy
+                        {{ else if eq .State "started" }}↻ Started
+                        {{ else if eq .State "pending" }}⏳ Pending
                         {{ else }}⚠️ Degraded{{ end }}
                     </span>
                 </div>
@@ -319,13 +325,14 @@
                 <!-- Stats -->
                 <div class="space-y-3 text-sm">
                     {{ if .DependsOn }}
-                        <div class="mt-2 flex items-center gap-1">
-                            <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
-                            </svg>
-                            <span class="text-xs text-gray-400">Depends on: {{ .DependsOn | join ", " }}</span>
-                        </div>
-                        {{ end }}
+                    <div class="flex items-center gap-1">
+                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                        </svg>
+                        <span class="text-xs text-gray-400">Depends on: {{ .DependsOn | join ", " }}</span>
+                    </div>
+                    {{ end }}
+                    
                     <div class="flex justify-between items-center">
                         <span class="text-gray-500">Workers</span>
                         <span class="font-medium metric-value">
@@ -340,7 +347,7 @@
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                             <div class="bg-gradient-to-r from-blue-400 to-blue-600 h-2 rounded-full progress-bar"
-                                 style="width: {{ $queuePercent }}%;">
+                                style="width: {{ $queuePercent }}%;">
                             </div>
                         </div>
                         {{ if gt $queuePercent 80 }}
@@ -371,7 +378,7 @@
                 <!-- Link to CRD details -->
                 <div class="mt-6 pt-4 border-t">
                     <a href="/controlcenter/katalog/{{ $.KatalogName }}/crd/{{ .Name }}"
-                       class="text-sm text-blue-600 hover:text-blue-800 transition flex items-center gap-1 group">
+                    class="text-sm text-blue-600 hover:text-blue-800 transition flex items-center gap-1 group">
                         <span>View details</span>
                         <svg class="w-3 h-3 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>

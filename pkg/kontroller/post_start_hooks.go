@@ -251,7 +251,6 @@ func (k *DependencyKontroller) crdExists(gvk *schema.GroupVersionKind) (bool, er
 	) == nil, nil
 }
 
-//
 // Future use
 // dependencyHealthChecker runs periodically to check dependency health
 func (k *DependencyKontroller) dependencyHealthChecker(ctx context.Context) {

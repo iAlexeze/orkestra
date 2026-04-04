@@ -236,7 +236,7 @@
             {{ else }}
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p class="text-blue-800 font-medium">⚙️ Conversion webhook not enabled</p>
-                <p class="text-blue-600 text-sm mt-1">Set <code>ENABLE_CONVERSION=true</code> and configure TLS certificates</p>
+                <p class="text-blue-600 text-sm mt-1">Set <code>ENABLE_CONVERSION=true</code> and configure TLS certificates with <code>TLS_CERT, TLS_KEY</code><p>
             </div>
             {{ end }}
         {{ else }}
@@ -275,13 +275,13 @@
             {{ else }}
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p class="text-blue-800 font-medium">🔌 Admission webhooks not enabled</p>
-                <p class="text-blue-600 text-sm mt-1">Validation and mutation rules are not being enforced</p>
+                <p class="text-blue-600 text-sm mt-1">Set <code>ENABLE_ADMISSION_WEBHOOK=true</code> and configure TLS certificates with <code>TLS_CERT, TLS_KEY</code></p>
             </div>
             {{ end }}
         {{ else }}
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p class="text-blue-800 font-medium">🔌 Admission webhooks not enabled</p>
-            <p class="text-blue-600 text-sm mt-1">Validation and mutation rules are not being enforced</p>
+            <p class="text-blue-600 text-sm mt-1">Set <code>ENABLE_ADMISSION_WEBHOOK=true</code> and configure TLS certificates to enable admission webhooks</code><p>
         </div>
         {{ end }}
     </div>

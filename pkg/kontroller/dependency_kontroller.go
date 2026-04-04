@@ -382,6 +382,7 @@ func (k *DependencyKontroller) startCRDWorkers(ctx context.Context, gvk string, 
 	wg := &sync.WaitGroup{}
 	k.wgs[gvk] = wg
 	k.crdHealthMap[gvk].SetStarted()
+
 	k.crdHealthMap[gvk].SetTotalWorkers(int32(workers))
 	k.crdHealthMap[gvk].gvk = gvk // Set GVK for metrics
 	k.started[gvk] = true
@@ -403,11 +404,6 @@ func (k *DependencyKontroller) startCRDWorkers(ctx context.Context, gvk string, 
 			k.runWorkerForGVK(crdCtx, gvk, id)
 		}(workerID)
 	}
-
-	// Set initial metrics
-	k.crdHealthMap[gvk].SetTotalWorkers(int32(workers))
-	k.crdHealthMap[gvk].SetIdleWorkers(int32(workers))
-	k.crdHealthMap[gvk].SetProcessingWorkers(0)
 }
 
 // stopCRDWorkers cancels the CRD context and waits for all workers to drain.
