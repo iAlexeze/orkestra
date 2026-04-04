@@ -6,7 +6,7 @@
 #
 # Options (via environment variables):
 #   ORK_VERSION     — pin a specific version (default: latest release)
-#   ORK_INSTALL_DIR — install directory (default: /usr/local/bin)
+#   ORK_INSTALL_DIR — install directory (default: $HOME/.orkestra/bin)
 #   ORK_SKIP_CC     — skip Control Center installation (default: false)
 #
 # Examples:
@@ -24,12 +24,15 @@
 
 set -euo pipefail
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# ── Configuration ────────────────────────────────────────────────────────────
 
 REPO="iAlexeze/orkestra"
 RUNTIME_BINARY="ork"
 CONTROL_CENTER_BINARY="orkcc"
-INSTALL_DIR="${ORK_INSTALL_DIR:-/usr/local/bin}"
+
+# Default to ~/.orkestra/bin (user-local, no sudo needed)
+DEFAULT_INSTALL_DIR="${HOME}/.orkestra/bin"
+INSTALL_DIR="${ORK_INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
 VERSION="${ORK_VERSION:-}"
 SKIP_CC="${ORK_SKIP_CC:-false}"
 
@@ -121,6 +124,35 @@ check_deps() {
     fi
 }
 
+# ── Create install directory if needed ────────────────────────────────────────
+
+ensure_install_dir() {
+    if [[ ! -d "${INSTALL_DIR}" ]]; then
+        info "Creating directory: ${INSTALL_DIR}"
+        mkdir -p "${INSTALL_DIR}"
+    fi
+}
+
+# ── Add to PATH helper (prints instructions) ──────────────────────────────────
+
+print_path_instructions() {
+    # Check if already in PATH
+    if echo "$PATH" | grep -q "${INSTALL_DIR}"; then
+        return
+    fi
+    
+    echo
+    echo -e "${YELLOW}⚠️  ${INSTALL_DIR} is not in your PATH${RESET}"
+    echo
+    echo "Add this to your ~/.bashrc, ~/.zshrc, or ~/.profile:"
+    echo
+    echo -e "  ${CYAN}export PATH=\"\$PATH:${INSTALL_DIR}\"${RESET}"
+    echo
+    echo "Then reload your shell:"
+    echo -e "  ${CYAN}source ~/.bashrc${RESET} (or restart your terminal)"
+    echo
+}
+
 # ── Download and install runtime ──────────────────────────────────────────────
 
 install_runtime() {
@@ -172,13 +204,9 @@ install_runtime() {
     tar -xzf "${tmp_dir}/${archive}" -C "${tmp_dir}"
 
     # Install
+    ensure_install_dir
     info "Installing to ${INSTALL_DIR}..."
-    if [[ ! -w "${INSTALL_DIR}" ]]; then
-        warn "${INSTALL_DIR} requires elevated permissions"
-        sudo install -m 755 "${tmp_dir}/${RUNTIME_BINARY}" "${INSTALL_DIR}/${RUNTIME_BINARY}"
-    else
-        install -m 755 "${tmp_dir}/${RUNTIME_BINARY}" "${INSTALL_DIR}/${RUNTIME_BINARY}"
-    fi
+    install -m 755 "${tmp_dir}/${RUNTIME_BINARY}" "${INSTALL_DIR}/${RUNTIME_BINARY}"
 
     success "ork ${version} installed to ${INSTALL_DIR}/${RUNTIME_BINARY}"
 }
@@ -202,8 +230,6 @@ install_control_center() {
     download_url="https://github.com/${REPO}/releases/download/${version}/${archive}"
 
     tmp_dir=$(mktemp -d)
-    # Don't set trap here — it's already set from runtime installation
-    # But we need to ensure cleanup still happens
 
     info "Downloading ${archive}..."
     if ! curl -sSfL "${download_url}" -o "${tmp_dir}/${archive}"; then
@@ -223,15 +249,12 @@ install_control_center() {
         return
     fi
 
-    if [[ ! -w "${INSTALL_DIR}" ]]; then
-        sudo install -m 755 "${tmp_dir}/${CONTROL_CENTER_BINARY}" "${INSTALL_DIR}/${CONTROL_CENTER_BINARY}"
-    else
-        install -m 755 "${tmp_dir}/${CONTROL_CENTER_BINARY}" "${INSTALL_DIR}/${CONTROL_CENTER_BINARY}"
-    fi
+    ensure_install_dir
+    install -m 755 "${tmp_dir}/${CONTROL_CENTER_BINARY}" "${INSTALL_DIR}/${CONTROL_CENTER_BINARY}"
 
     success "orkcc ${version} installed to ${INSTALL_DIR}/${CONTROL_CENTER_BINARY}"
 
-    # Clean up temp dir (the trap will handle it, but we can remove early)
+    # Clean up
     rm -rf "${tmp_dir}"
 }
 
@@ -241,18 +264,24 @@ verify_install() {
     local has_ork=false
     local has_orkcc=false
 
+    # Check if ork is in PATH or install directory
     if command -v ork &>/dev/null; then
         has_ork=true
+    elif [[ -f "${INSTALL_DIR}/ork" ]]; then
+        has_ork=true
+        # Temporarily add to PATH for this check
+        export PATH="${INSTALL_DIR}:$PATH"
     fi
 
     if command -v orkcc &>/dev/null; then
         has_orkcc=true
+    elif [[ -f "${INSTALL_DIR}/orkcc" ]]; then
+        has_orkcc=true
+        export PATH="${INSTALL_DIR}:$PATH"
     fi
 
     if [[ "${has_ork}" == "false" ]]; then
-        warn "ork is not in your PATH."
-        warn "Add ${INSTALL_DIR} to your PATH:"
-        warn "  export PATH=\"\$PATH:${INSTALL_DIR}\""
+        warn "ork installation failed"
         return
     fi
 
@@ -268,17 +297,20 @@ verify_install() {
     success "Installation complete!"
     echo
     echo -e "${BOLD}🚀 Get started:${RESET}"
-    echo -e "  ${CYAN}ork run --katalog my-katalog.yaml${RESET}    Start the operator runtime"
-    echo -e "  ${CYAN}ork validate --katalog my-katalog.yaml${RESET} Validate a Katalog"
-    echo -e "  ${CYAN}ork kompose --katalog komposer.yaml${RESET}   Compose multiple Katalogs"
+    echo -e "  ${CYAN}ork run --katalog my-katalog.yaml${RESET}        Start the operator runtime"
+    echo -e "  ${CYAN}ork validate --katalog my-katalog.yaml${RESET}    Validate a Katalog"
+    echo -e "  ${CYAN}ork kompose --katalog komposer.yaml${RESET}       Compose multiple Katalogs"
+    echo -e "  ${CYAN}ork generate rbac --katalog katalog.yaml${RESET}  Generate RBAC from Katalog"
     echo
     echo -e "${BOLD}📊 Control Center:${RESET}"
-    echo -e "  ${CYAN}orkcc -u http://localhost:8080 -p 8090${RESET}  Start the web UI"
-    echo -e "  ${CYAN}ork control start${RESET}                        Launch from ork CLI (coming soon)"
+    echo -e "  ${CYAN}ork control start${RESET}                         Start the web UI (port 8090)"
+    echo -e "  ${CYAN}ork control start --port 9090 --urls \"http://...\"${RESET}"
+    echo -e "  ${CYAN}ork control version${RESET}                       Show Control Center version"
     echo
     echo -e "${BOLD}📚 Documentation:${RESET}"
     echo -e "  https://github.com/${REPO}"
-    echo
+    
+    print_path_instructions
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────

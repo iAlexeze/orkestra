@@ -43,6 +43,52 @@ helm install orkestra orkestra/orkestra \
   --create-namespace
 ```
 
+### Security‑First Installation (Recommended)
+
+Orkestra follows a **security‑first** approach: RBAC permissions are derived from your Katalog, never guessed or over‑permissioned.
+
+**Step 1: Generate minimal RBAC**
+
+```bash
+# From your Katalog
+ork generate rbac --katalog my-katalog.yaml -o rbac.yaml
+
+# Or from a Komposer
+ork generate rbac --katalog komposer.yaml -o rbac.yaml
+```
+
+This generates a `ClusterRole`, `ClusterRoleBinding`, and `ServiceAccount` with **only** the permissions your operator actually needs.
+
+**Step 2: Apply RBAC**
+
+```bash
+kubectl apply -f rbac.yaml
+```
+
+**Step 3: Deploy the chart**
+
+```yaml
+# values.yaml
+runtime:
+  serviceAccount:
+    create: false           # Use the one from rbac.yaml
+    name: orkestra          # Must match the ServiceAccount name in rbac.yaml
+
+controlCenter:
+  serviceAccount:
+    create: false
+    name: orkestra-cc
+```
+
+```bash
+helm install orkestra orkestra/orkestra \
+  --namespace orkestra-system \
+  --create-namespace \
+  --values values.yaml
+```
+
+> **Why this matters**: Traditional operators are massively over‑permissioned. Orkestra generates RBAC from your **declared intent**, giving you least‑privilege security by default.
+
 ### Install runtime only (without Control Center)
 
 ```yaml
@@ -167,7 +213,8 @@ remain in the cluster and must be cleaned up separately if desired.
 | `runtime.service.type` | Service type | `ClusterIP` |
 | `runtime.service.port` | Service port | `8080` |
 | `runtime.resources` | Resource limits and requests | See values.yaml |
-| `runtime.serviceAccount.create` | Create ServiceAccount | `true` |
+| `runtime.serviceAccount.create` | Create ServiceAccount (set `false` when using generated RBAC) | `true` |
+| `runtime.serviceAccount.name` | ServiceAccount name (must match generated RBAC) | `""` |
 | `runtime.server.readTimeout` | HTTP server read timeout (seconds) | `30` |
 | `runtime.server.writeTimeout` | HTTP server write timeout (seconds) | `60` |
 | `runtime.config.logLevel` | Log level: debug, info, warn, error | `info` |
@@ -199,7 +246,8 @@ remain in the cluster and must be cleaned up separately if desired.
 | `controlCenter.image.tag` | Image tag | Chart `appVersion` |
 | `controlCenter.replicaCount` | Number of replicas | `1` |
 | `controlCenter.resources` | Resource limits and requests | See values.yaml |
-| `controlCenter.serviceAccount.create` | Create ServiceAccount | `true` |
+| `controlCenter.serviceAccount.create` | Create ServiceAccount (set `false` when using generated RBAC) | `true` |
+| `controlCenter.serviceAccount.name` | ServiceAccount name (must match generated RBAC) | `""` |
 | `controlCenter.config.orkestraURLs` | List of runtime URLs to monitor | `[]` |
 | `controlCenter.config.port` | Control Center port | `8090` |
 | `controlCenter.config.refreshInterval` | Katalog refresh interval | `10s` |
@@ -222,7 +270,6 @@ remain in the cluster and must be cleaned up separately if desired.
 | `fullnameOverride` | Override full name | `""` |
 | `registry.enabled` | Enable registry support | `true` |
 | `registry.url` | Global registry URL | `""` |
-| `rbac.create` | Create RBAC resources | `true` |
 | `hpa.enabled` | Enable HorizontalPodAutoscaler | `false` |
 | `hpa.runtime` | HPA configuration for runtime | See values.yaml |
 | `hpa.controlCenter` | HPA configuration for control center | See values.yaml |
@@ -243,12 +290,170 @@ remain in the cluster and must be cleaned up separately if desired.
 
 ---
 
+## RBAC: Security‑First Design
+
+Orkestra takes a fundamentally different approach to RBAC.
+
+### The Problem
+
+Most operators are massively over‑permissioned:
+
+```yaml
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+```
+
+This happens because permissions are written manually and drift over time.
+
+### The Orkestra Solution
+
+Permissions are **derived from your Katalog**, not written by hand.
+
+```bash
+# Generate minimal RBAC from your Katalog
+ork generate rbac --katalog my-katalog.yaml -o rbac.yaml
+```
+
+The generated `rbac.yaml` contains:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orkestra
+  namespace: orkestra-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: orkestra
+rules:
+  # Only the permissions your Katalog actually needs
+  - apiGroups: ["demo.orkestra.io"]
+    resources: ["websites"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # ... no wildcards, no excess permissions
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: orkestra
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: orkestra
+subjects:
+  - kind: ServiceAccount
+    name: orkestra
+    namespace: orkestra-system
+```
+
+### Applying Generated RBAC
+
+```bash
+# Apply the generated RBAC
+kubectl apply -f rbac.yaml
+
+# Then deploy the Helm chart with service account creation disabled
+helm install orkestra orkestra/orkestra \
+  --namespace orkestra-system \
+  --create-namespace \
+  --set runtime.serviceAccount.create=false \
+  --set runtime.serviceAccount.name=orkestra \
+  --set controlCenter.serviceAccount.create=false \
+  --set controlCenter.serviceAccount.name=orkestra-cc
+```
+
+### Why This Matters
+
+| Traditional Approach | Orkestra Approach |
+|---------------------|-------------------|
+| Manual RBAC writing | Derived from Katalog |
+| Drifts over time | Always in sync |
+| Over‑permissioned by default | Least privilege by default |
+| Hard to audit | Visible in UI (RBAC tab) |
+| Security afterthought | Security‑first |
+
+The Control Center even shows you the RBAC permissions per CRD:
+
+![RBAC Permissions in UI](docs/images/rbac-permissions.png)
+
+---
+
+## Security Defaults
+
+Out of the box, the chart applies:
+
+### Runtime
+- `runAsNonRoot: true` with uid/gid 1000
+- `readOnlyRootFilesystem: true` (with `/tmp` as an emptyDir)
+- `allowPrivilegeEscalation: false`
+- `capabilities.drop: [ALL]`
+- `seccompProfile: RuntimeDefault`
+- Pod anti-affinity spreads replicas across nodes
+
+### Control Center
+- `runAsNonRoot: true` with uid/gid 1001
+- `readOnlyRootFilesystem: true`
+- `allowPrivilegeEscalation: false`
+- `capabilities.drop: [ALL]`
+- No RBAC permissions (read-only access to Runtime API only)
+
+---
+
+## Observability
+
+After installing, Orkestra exposes:
+
+### Runtime Endpoints
+
+```bash
+kubectl port-forward svc/orkestra-runtime 8080:8080 -n orkestra-system
+
+curl localhost:8080/health          # liveness
+curl localhost:8080/ready           # readiness
+curl localhost:8080/metrics         # Prometheus metrics
+curl localhost:8080/katalog | jq    # all CRDs
+```
+
+### Control Center Endpoints
+
+```bash
+kubectl port-forward svc/orkestra-cc 8081:8081 -n orkestra-system
+
+# Open in browser
+open http://localhost:8081/controlcenter
+```
+
+### Prometheus Scrape Configuration
+
+```yaml
+- job_name: orkestra-runtime
+  static_configs:
+    - targets: ['orkestra-runtime.orkestra-system.svc.cluster.local:8080']
+  metrics_path: /metrics
+
+- job_name: orkestra-control-center
+  static_configs:
+    - targets: ['orkestra-cc.orkestra-system.svc.cluster.local:8081']
+  metrics_path: /metrics
+```
+
+---
+
 ## Production Example
 
 ```yaml
 # production-values.yaml
 runtime:
   replicaCount: 3
+  serviceAccount:
+    create: false
+    name: orkestra              # Matches generated RBAC
   resources:
     requests:
       cpu: 200m
@@ -271,6 +476,9 @@ runtime:
 controlCenter:
   enabled: true
   replicaCount: 2
+  serviceAccount:
+    create: false
+    name: orkestra-cc
   config:
     orkestraURLs:
       - http://orkestra-runtime:8080
@@ -330,85 +538,6 @@ affinity:
 
 ---
 
-## Observability
-
-After installing, Orkestra exposes:
-
-### Runtime Endpoints
-
-```bash
-kubectl port-forward svc/orkestra-runtime 8080:8080 -n orkestra-system
-
-curl localhost:8080/health          # liveness
-curl localhost:8080/ready           # readiness
-curl localhost:8080/metrics         # Prometheus metrics
-curl localhost:8080/katalog | jq    # all CRDs
-```
-
-### Control Center Endpoints
-
-```bash
-kubectl port-forward svc/orkestra-cc 8081:8081 -n orkestra-system
-
-# Open in browser
-open http://localhost:8081/controlcenter
-```
-
-### Prometheus Scrape Configuration
-
-```yaml
-- job_name: orkestra-runtime
-  static_configs:
-    - targets: ['orkestra-runtime.orkestra-system.svc.cluster.local:8080']
-  metrics_path: /metrics
-
-- job_name: orkestra-control-center
-  static_configs:
-    - targets: ['orkestra-cc.orkestra-system.svc.cluster.local:8081']
-  metrics_path: /metrics
-```
-
----
-
-## RBAC
-
-The chart creates a `ClusterRole` granting Orkestra Runtime the permissions it
-needs to watch and manage arbitrary CRDs. The permissions include:
-
-- `get/list/watch` CRDs from any API group (required for dynamic CRD discovery)
-- Full CRUD on resources declared in Katalogs (Deployments, Services, etc.)
-- Leader election leases in the `coordination.k8s.io` API group
-- Event creation for reconciliation tracking
-
-The Control Center receives **no RBAC permissions** — it only reads from the
-Runtime API and requires no direct cluster access.
-
-If your security policy does not permit wildcard permissions, set `rbac.create: false` and
-create a more restrictive ClusterRole yourself.
-
----
-
-## Security Defaults
-
-Out of the box, the chart applies:
-
-### Runtime
-- `runAsNonRoot: true` with uid/gid 1000
-- `readOnlyRootFilesystem: true` (with `/tmp` as an emptyDir)
-- `allowPrivilegeEscalation: false`
-- `capabilities.drop: [ALL]`
-- `seccompProfile: RuntimeDefault`
-- Pod anti-affinity spreads replicas across nodes
-
-### Control Center
-- `runAsNonRoot: true` with uid/gid 1001
-- `readOnlyRootFilesystem: true`
-- `allowPrivilegeEscalation: false`
-- `capabilities.drop: [ALL]`
-- No RBAC permissions (read-only access to Runtime API only)
-
----
-
 ## Troubleshooting
 
 ### Control Center cannot connect to Runtime
@@ -439,6 +568,17 @@ Check the ConfigMap and runtime logs:
 kubectl get configmap -n orkestra-system
 kubectl logs -n orkestra-system deployment/orkestra-runtime | grep -i katalog
 ```
+
+### RBAC permission denied
+
+If you see permission errors, regenerate RBAC:
+
+```bash
+ork generate rbac --katalog my-katalog.yaml -o rbac.yaml
+kubectl apply -f rbac.yaml
+```
+
+The generated RBAC always stays in sync with your Katalog.
 
 ---
 

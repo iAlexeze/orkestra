@@ -16,6 +16,7 @@ spec:
         version: v1alpha1
         kind: Website
         plural: websites
+      resync: 5s
 
       reconciler:
         default: true

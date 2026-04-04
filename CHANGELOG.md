@@ -9,24 +9,33 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+#### CLI
+- **`ork control start`** – Launch the Control Center directly from the `ork` CLI.
+- **`ork control version`** – Show Control Center version information.
+- Automatic binary discovery in `PATH` and `~/.orkestra/bin`.
+
 #### Control Center
-- **Worker pool visualization** – Real-time view of per-worker state (idle, processing, stopped) with color-coded cards and animations.
-- **Worker metrics** – Display total workers, active processing count, and idle count per CRD.
-- **Queue pressure warnings** – Visual alerts at 50% and 80% queue depth thresholds.
-- **Clickable dependencies** – Navigate directly from CRD detail view to dependent CRDs.
-- **Unified CRD state** – Consistent `state` field (healthy/started/pending/degraded) across all UI views.
+- Full integration with `ork control start` command supporting:
+  - Custom port (`--port`, `-p`)
+  - Multiple runtime URLs (`--urls`, `-u`)
+  - Configurable refresh interval (`--refresh`)
+  - Log level control (`--log-level`)
 
 ### Changed
 
-#### Control Center
-- Worker state tracking now uses atomic counters for accurate real-time visibility.
-- CRD health endpoint exposes `workersIdle`, `workersProcessing`, and `workerDetails`.
-- Unified state badge logic between control panel and CRD detail views.
+#### Installation
+- Default install directory changed from `/usr/local/bin` to `$HOME/.orkestra/bin` (user-local, no sudo required).
+- Install script now creates directory automatically and prints PATH instructions.
+- Makefile `OUTPUT_DIR` now uses `$(HOME)/.orkestra/bin` for consistency.
 
 ### Fixed
+- Control center now respects all CLI flags when launched via `ork control start`.
 
-- Worker counting logic – no more negative values in worker metrics.
-- Proper idle/processing state transitions in worker lifecycle.
-- Worker state initialization on CRD startup.
-- Clean worker state reset on CRD deactivation.
-- State consistency between `katalog.html` and `crd.html` templates.
+### Documentation
+- Added comprehensive Control Center documentation covering:
+  - Architecture (Control Center vs Control Panels)
+  - Health states (Orkestra Health vs Katalog Health)
+  - Worker pool visualization
+  - Queue pressure monitoring
+  - RBAC permissions viewer
+  - Dependency health tracking
