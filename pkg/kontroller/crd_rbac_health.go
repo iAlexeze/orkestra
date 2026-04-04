@@ -27,12 +27,14 @@ func generateRBACInfo(crd orktypes.CRDEntry, v crdDisplayValues) RBACInfo {
 	rules := []RBACRule{}
 
 	// 1. CRD itself
-	rules = append(rules, RBACRule{
-		APIGroups:   []string{crd.APITypes.Group},
-		Resources:   []string{crd.APITypes.Plural},
-		Verbs:       []string{"get", "list", "watch", "create", "update", "patch", "delete"},
-		Description: fmt.Sprintf("Manage %s custom resources", crd.Name),
-	})
+	if !crd.IsBuiltInType() {
+		rules = append(rules, RBACRule{
+			APIGroups:   []string{crd.APITypes.Group},
+			Resources:   []string{crd.APITypes.Plural},
+			Verbs:       []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+			Description: fmt.Sprintf("Manage %s custom resources", crd.Name),
+		})
+	}
 
 	// 2. Status subresource if needed
 	rules = append(rules, RBACRule{

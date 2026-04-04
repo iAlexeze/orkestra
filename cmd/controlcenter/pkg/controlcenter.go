@@ -94,25 +94,20 @@ func (cc *ControlCenter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("DEBUG: Request: %s %s -> path: %s", r.Method, r.URL.Path, path)
 
-	switch {
-	case path == "/":
+	// Handle root
+	if path == "/" {
 		cc.handleIndex(w, r)
-	case strings.HasPrefix(path, "/katalog/"):
-		relativePath := strings.TrimPrefix(path, "/")
-		cc.handleKatalog(w, r, relativePath)
-	case path == "/metrics":
-		cc.handleMetricsPage(w, r)
-	case path == "/debug/file":
-		cc.handleDebugFile(w, r)
-	case strings.HasPrefix(path, "/assets/"):
+		return
+	}
+
+	// Handle assets
+	if strings.HasPrefix(path, "/assets/") {
 		filePath := strings.TrimPrefix(path, "/assets/")
 		data, err := assets.ReadFile("assets/" + filePath)
 		if err != nil {
-			log.Printf("DEBUG: File not found: assets/%s", filePath)
 			cc.handleNotFound(w, r)
 			return
 		}
-
 		contentType := "application/octet-stream"
 		if strings.HasSuffix(filePath, ".png") {
 			contentType = "image/png"
@@ -121,13 +116,40 @@ func (cc *ControlCenter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else if strings.HasSuffix(filePath, ".js") {
 			contentType = "application/javascript"
 		}
-
 		w.Header().Set("Content-Type", contentType)
 		w.Write(data)
-	default:
-		log.Printf("DEBUG: 404 Not Found - path: %s", path)
-		cc.handleNotFound(w, r)
+		return
 	}
+
+	// Handle metrics
+	if path == "/metrics" {
+		cc.handleMetricsPage(w, r)
+		return
+	}
+
+	// Handle debug
+	if path == "/debug/file" {
+		cc.handleDebugFile(w, r)
+		return
+	}
+
+	// Handle katalog routes
+	if strings.HasPrefix(path, "/katalog/") {
+		relativePath := strings.TrimPrefix(path, "/")
+		cc.handleKatalog(w, r, relativePath)
+		return
+	}
+
+	// Handle health/ready/version (if they come through without prefix? they shouldn't)
+	if path == "/health" || path == "/ready" || path == "/version" {
+		// These should be handled by main.go's mux, but just in case
+		http.Redirect(w, r, "/controlcenter"+path, http.StatusMovedPermanently)
+		return
+	}
+
+	// Catch all other paths - 404
+	log.Printf("DEBUG: 404 Not Found - path: %s", path)
+	cc.handleNotFound(w, r)
 }
 
 // handleNotFound renders a custom 404 page
@@ -291,7 +313,10 @@ func (cc *ControlCenter) handleKatalog(w http.ResponseWriter, r *http.Request, r
 			cc.mu.RUnlock()
 			log.Printf("DEBUG: Available Katalogs: %v", available)
 
-			http.Error(w, fmt.Sprintf("Katalog '%s' not found. Available: %v", katalogName, available), http.StatusNotFound)
+			// http.Error(w, fmt.Sprintf("Katalog '%s' not found. Available: %v", katalogName, available), http.StatusNotFound)
+
+			// Render a nice 404 page instead of plain text
+			cc.handleNotFound(w, r)
 			return
 		}
 	}

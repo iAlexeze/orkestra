@@ -353,6 +353,7 @@ type CRDSummaryResponse struct {
 	Uptime              string            `json:"uptime"`
 	ErrorRate           float64           `json:"errorRate"`
 	Endpoints           EndpointInfo      `json:"endpoints"`
+	RBACCount           int               `json:"rbacCount,omitempty"`
 }
 
 type ReconcilerSummary struct {
@@ -453,6 +454,7 @@ func BuildKatalogHandler(
 				QueueDepth:          h.QueueDepth(gvk),
 				MaxQueueDepth:       v.maxQueueDepth,
 				MaxQueueDepthSource: v.maxQueueDepthSource,
+				RBACCount:           generateRBACInfo(crd, v).TotalRules,
 				ResourceCount:       v.resourceCount,
 				Reconciler: ReconcilerSummary{
 					Type:           "generic",
