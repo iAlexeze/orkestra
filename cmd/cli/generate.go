@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/ialexeze/orkestra/pkg/generate"
@@ -295,6 +296,97 @@ Example:
 	},
 }
 
+var generateConfigMapCmd = &cobra.Command{
+	Use:   "configmap",
+	Short: "Generate a ConfigMap embedding a Katalog or Komposer",
+	Long: `Reads a katalog.yaml or komposer.yaml file and produces a ConfigMap
+that embeds the file under data:<filename>. Useful for injecting Katalogs
+into the in-cluster Orkestra runtime.
+
+Example:
+  ork generate configmap -k katalog.yaml
+  ork generate configmap -k komposer.yaml -n orkestra-system -o out.yaml`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Get the katalog file path directly, don't validate
+		katalogPath, _ := cmd.Flags().GetString("katalog")
+		if katalogPath == "" {
+			return fmt.Errorf("--katalog is required")
+		}
+
+		namespace, _ := cmd.Flags().GetString("namespace")
+		outputFile, _ := cmd.Flags().GetString("output")
+
+		log.Println("generating configmap...")
+
+		if err := generate.ConfigMap(katalogPath, namespace, outputFile); err != nil {
+			return fmt.Errorf("generate configmap: %w", err)
+		}
+
+		log.Println("configmap generated successfully")
+		if outputFile != "" {
+			log.Printf("out: %s\n", outputFile)
+		}
+		return nil
+	},
+}
+
+var generateBundleCmd = &cobra.Command{
+	Use:   "bundle",
+	Short: "Generate a complete installation bundle (RBAC + ConfigMap)",
+	Long: `Generates a complete Orkestra installation bundle containing:
+  • ServiceAccounts (runtime + control center)
+  • ClusterRole (minimal permissions derived from your Katalog)
+  • ClusterRoleBinding
+  • ConfigMap embedding your Katalog
+
+The bundle is self-contained and ready to apply with kubectl.
+
+Examples:
+  ork generate bundle --katalog my-katalog.yaml
+  ork generate bundle --katalog my-katalog.yaml -o bundle.yaml
+  ork generate bundle --katalog my-katalog.yaml --namespace custom-ns`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Get the katalog paths as a slice
+		katalogPaths, _ := cmd.Flags().GetStringSlice("katalog")
+		if len(katalogPaths) == 0 {
+			return fmt.Errorf("--katalog is required")
+		}
+
+		// Use the first path for ConfigMap
+		katalogPath := katalogPaths[0]
+
+		// Generate RBAC from merged Katalog
+		out, err := generateKatalog(cmd)
+		if err != nil {
+			return err
+		}
+
+		namespace, _ := cmd.Flags().GetString("namespace")
+		outputFile, _ := cmd.Flags().GetString("output")
+
+		log.Println("generating bundle...")
+
+		rbacOut, err := generate.RenderRBACToString(out.m, namespace)
+		if err != nil {
+			return fmt.Errorf("generate rbac: %w", err)
+		}
+
+		configMapOut, err := generate.RenderConfigMapToString(katalogPath, namespace)
+		if err != nil {
+			return fmt.Errorf("generate configmap: %w", err)
+		}
+
+		bundle := rbacOut + "\n---\n" + configMapOut
+
+		if outputFile != "" {
+			return os.WriteFile(outputFile, []byte(bundle), 0644)
+		}
+
+		fmt.Println(bundle)
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(generateCmd)
 
@@ -307,8 +399,18 @@ func init() {
 	generateCmd.AddCommand(generateTestsCmd)
 	generateCmd.AddCommand(generateAllCmd)
 	generateCmd.AddCommand(generateRbacCmd)
+	generateCmd.AddCommand(generateConfigMapCmd)
+	generateCmd.AddCommand(generateBundleCmd)
 
-	// Add flags to all commands that need katalog
+	// Register --katalog flag for commands that need it
+	generateConfigMapCmd.Flags().StringP("katalog", "k", "", "Path to katalog.yaml or komposer.yaml")
+
+	// For bundle, use StringSliceP to be compatible with generateKatalog
+	generateBundleCmd.Flags().StringSliceP("katalog", "k", []string{}, "Path to katalog.yaml")
+
+	generateRbacCmd.Flags().StringSliceP("katalog", "k", []string{}, "Path to katalog.yaml (can be specified multiple times or as comma-separated)")
+
+	// Add shared flags
 	for _, cmd := range []*cobra.Command{
 		generateRuntimeCmd,
 		generateDocsCmd,
@@ -317,6 +419,16 @@ func init() {
 		generateTestsCmd,
 		generateAllCmd,
 		generateRbacCmd,
+	} {
+		cmd.Flags().Bool("dry-run", false, "Print generated output to stdout without writing files")
+		cmd.Flags().StringP("output", "o", "", "Write generated output to file")
+		cmd.Flags().StringP("namespace", "n", DefaultNamespace, "Namespace for the ServiceAccount")
+	}
+
+	// Add shared flags for configmap and bundle (without StringSlice)
+	for _, cmd := range []*cobra.Command{
+		generateConfigMapCmd,
+		generateBundleCmd,
 	} {
 		cmd.Flags().Bool("dry-run", false, "Print generated output to stdout without writing files")
 		cmd.Flags().StringP("output", "o", "", "Write generated output to file")

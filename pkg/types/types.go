@@ -592,6 +592,12 @@ type CronJobTemplateSource struct {
 	// behavior, and conditional provisioning without writing Go code.
 
 	Conditions []Condition `yaml:"when,omitempty"`
+
+	Suspend                    string `yaml:"suspend,omitempty"`
+	SuccessfulJobsHistoryLimit string `yaml:"successfulJobsHistoryLimit,omitempty"`
+	FailedJobsHistoryLimit     string `yaml:"failedJobsHistoryLimit,omitempty"`
+	ConcurrencyPolicy          string `yaml:"concurrencyPolicy,omitempty"`
+	StartingDeadlineSeconds    string `yaml:"startingDeadlineSeconds,omitempty"`
 }
 
 // ── ConfigMap ─────────────────────────────────────────────────────────────────

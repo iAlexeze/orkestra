@@ -1,6 +1,7 @@
 package template
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -67,22 +68,45 @@ func (r *Resolver) OwnerNamespace() string { return r.ownerNamespace }
 // Typed objects: only metadata fields are extracted. Spec fields are not accessible
 // without reflection or JSON round-trip. Typed object users should use Typed mode
 // hooks with 'Go' for full spec access rather than YAML template expressions.
+// func objectToMap(obj domain.Object) (map[string]interface{}, error) {
+// 	// Fast path — unstructured has full map natively
+// 	if u, ok := obj.(*unstructured.Unstructured); ok {
+// 		return u.Object, nil
+// 	}
+
+// 	// Typed fallback — metadata only
+// 	// spec fields not available without reflection on typed objects
+// 	return map[string]interface{}{
+// 		"metadata": map[string]interface{}{
+// 			"name":        obj.GetName(),
+// 			"namespace":   obj.GetNamespace(),
+// 			"labels":      obj.GetLabels(),
+// 			"annotations": obj.GetAnnotations(),
+// 		},
+// 	}, nil
+// }
+
+// Breakthrough with typed > may likely remove the need for hooks
+// or shrink it to the very least
 func objectToMap(obj domain.Object) (map[string]interface{}, error) {
-	// Fast path — unstructured has full map natively
+	// Unstructured — already a map, use directly
 	if u, ok := obj.(*unstructured.Unstructured); ok {
 		return u.Object, nil
 	}
 
-	// Typed fallback — metadata only
-	// spec fields not available without reflection on typed objects
-	return map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"name":        obj.GetName(),
-			"namespace":   obj.GetNamespace(),
-			"labels":      obj.GetLabels(),
-			"annotations": obj.GetAnnotations(),
-		},
-	}, nil
+	// Typed — marshal to JSON, unmarshal to map.
+	// This gives the complete object — spec, status, metadata — as
+	// map[string]interface{}, exactly like unstructured mode.
+	// The JSON round-trip preserves all field names from json struct tags.
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return nil, fmt.Errorf("objectToMap: %w", err)
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, fmt.Errorf("objectToMap: %w", err)
+	}
+	return result, nil
 }
 
 // resolveRawValue navigates a dot-notation path extracted from a template

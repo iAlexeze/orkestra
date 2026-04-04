@@ -2,6 +2,7 @@ package generate
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/ialexeze/orkestra/pkg/katalog"
@@ -13,25 +14,44 @@ import (
 )
 
 const (
-	ork = "orkestra"
+	ork   = "orkestra"
+	orkcc = "orkestra-cc"
 )
 
 func RBAC(m *merger.Merger, namespace, outputFile string) error {
+	out, err := renderRBAC(m, namespace)
+	if err != nil {
+		return err
+	}
+
+	if outputFile != "" {
+		return os.WriteFile(outputFile, out, 0644)
+	}
+
+	fmt.Println(string(out))
+	return nil
+}
+
+func renderRBAC(m *merger.Merger, namespace string) ([]byte, error) {
 	var kat katalog.Katalog
 	kat.Spec = m.ToSpec()
 
 	rules := kat.GenerateRBACRules()
 
-	// ServiceAccount
-	sa := corev1.ServiceAccount{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "ServiceAccount",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      ork,
-			Namespace: namespace,
-		},
+	// Build ServiceAccounts dynamically
+	var serviceAccounts []corev1.ServiceAccount
+	for _, name := range []string{ork, orkcc} {
+		sa := corev1.ServiceAccount{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "ServiceAccount",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+		}
+		serviceAccounts = append(serviceAccounts, sa)
 	}
 
 	// ClusterRole
@@ -69,31 +89,40 @@ func RBAC(m *merger.Merger, namespace, outputFile string) error {
 		},
 	}
 
-	// Marshal all three with YAML separators
+	// Collect all objects
+	objs := []interface{}{}
+	for _, sa := range serviceAccounts {
+		objs = append(objs, sa)
+	}
+	objs = append(objs, cr, crb)
+
+	// Marshal with separators
 	out := ""
-
-	objs := []interface{}{sa, cr, crb}
-
 	for i, obj := range objs {
 		b, err := yaml.Marshal(obj)
 		if err != nil {
-			return fmt.Errorf("marshal rbac: %w", err)
+			return nil, fmt.Errorf("marshal rbac: %w", err)
 		}
-
-		// Start each document with ---
 		out += "---\n" + string(b)
-
-		// Only add a separator if it's NOT the last document
 		if i < len(objs)-1 {
 			out += "\n"
 		}
 	}
 
-	// Write or print
-	if outputFile != "" {
-		return os.WriteFile(outputFile, []byte(out), 0644)
+	return []byte(out), nil
+}
+
+func rBACToWriter(w io.Writer, m *merger.Merger, namespace string) error {
+	out, err := renderRBAC(m, namespace)
+	if err != nil {
+		return err
 	}
 
-	fmt.Println(out)
-	return nil
+	_, err = w.Write(out)
+	return err
+}
+
+func RenderRBACToString(m *merger.Merger, namespace string) (string, error) {
+	out, err := renderRBAC(m, namespace)
+	return string(out), err
 }
