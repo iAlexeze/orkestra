@@ -248,6 +248,11 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 	logger.Info().Str("component", k.Name()).Msg("starting")
 	k.startedAt = time.Now()
 
+	// Mark as ready immediately - the kontroller can serve requests
+	k.hs.SetReady()
+	k.orkHealth.SetOrkReady()
+
+	// Startup order
 	startupOrder := k.depGraph.StartupOrder()
 	logger.Info().Str("order", strings.Join(startupOrder, " → ")).Msg("startup order")
 
@@ -274,6 +279,10 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 	// START RETRY LOOP ONCE, BEFORE ANY BLOCKING
 	go k.retryMissingCRDs(ctx)
 
+	// Start dependency health checker (runs until ctx is cancelled)
+	go k.dependencyHealthChecker(ctx)
+
+	// Periodically check dependency health if there are dependencies
 	// Process CRDs in dependency order
 	for _, name := range startupOrder {
 		node := k.depGraph.GetNode(name)
@@ -334,8 +343,6 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 	// Mark controller started
 	k.startedKtrl.Store(true)
 	if k.anyOnline.Load() {
-		k.hs.SetReady()
-		k.orkHealth.SetOrkReady()
 		logger.Info().Str("component", k.Name()).Int("crds_online", len(startupOrder)).Msg("started")
 	} else {
 		logger.Warn().Str("component", k.Name()).Msg("started — all CRDs missing, waiting for retry loop")

@@ -19,20 +19,22 @@ import (
 // ─────────────────────────────────────────────────────────────────────────────
 
 type CRDHealthResponse struct {
-	Name             string  `json:"name"`
-	State            string  `json:"state"` // "not started", "pending", "started", "healthy", "degraded"
-	Healthy          bool    `json:"healthy"`
-	Started          bool    `json:"started"`
-	Pending          bool    `json:"pending"`
-	StartedAt        string  `json:"startedAt"`
-	Uptime           string  `json:"uptime"`
-	QueueDepth       int     `json:"queueDepth"`
-	ErrorRate        float64 `json:"errorRate"`
-	ConsecutiveFails int64   `json:"consecutiveFails"`
-	TotalReconciles  int64   `json:"totalReconciles"`
-	ResourceCount    int     `json:"resourceCount"`
-	LastError        string  `json:"lastError"`
-	LastReconcile    string  `json:"lastReconcile"`
+	Name                     string                      `json:"name"`
+	State                    string                      `json:"state"` // "not started", "pending", "started", "healthy", "degraded"
+	Healthy                  bool                        `json:"healthy"`
+	Started                  bool                        `json:"started"`
+	Pending                  bool                        `json:"pending"`
+	StartedAt                string                      `json:"startedAt"`
+	Uptime                   string                      `json:"uptime"`
+	QueueDepth               int                         `json:"queueDepth"`
+	ErrorRate                float64                     `json:"errorRate"`
+	ConsecutiveFails         int64                       `json:"consecutiveFails"`
+	TotalReconciles          int64                       `json:"totalReconciles"`
+	ResourceCount            int                         `json:"resourceCount"`
+	LastError                string                      `json:"lastError"`
+	LastReconcile            string                      `json:"lastReconcile"`
+	HasUnhealthyDependencies bool                        `json:"hasUnhealthyDependencies"`
+	Dependencies             map[string]DependencyStatus `json:"dependencies,omitempty"`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -88,20 +90,22 @@ func BuildCRDHealthHandler(
 		v := resolveCRDDisplayValues(crd, kfg, inf)
 
 		response := CRDHealthResponse{
-			Name:             crd.Name,
-			State:            state,
-			Healthy:          isHealthy,
-			Started:          isStarted,
-			Pending:          isPending,
-			StartedAt:        h.StartedAt(),
-			Uptime:           h.Uptime(),
-			QueueDepth:       h.QueueDepth(crd.GVK().String()),
-			ErrorRate:        h.ErrorRate(),
-			ConsecutiveFails: h.ConsecutiveFails(),
-			TotalReconciles:  h.TotalReconciles(),
-			ResourceCount:    v.resourceCount,
-			LastError:        h.LastError(),
-			LastReconcile:    h.LastReconcile(),
+			Name:                     crd.Name,
+			State:                    state,
+			Healthy:                  isHealthy,
+			Started:                  isStarted,
+			Pending:                  isPending,
+			StartedAt:                h.StartedAt(),
+			Uptime:                   h.Uptime(),
+			QueueDepth:               h.QueueDepth(crd.GVK().String()),
+			ErrorRate:                h.ErrorRate(),
+			ConsecutiveFails:         h.ConsecutiveFails(),
+			TotalReconciles:          h.TotalReconciles(),
+			ResourceCount:            v.resourceCount,
+			LastError:                h.LastError(),
+			LastReconcile:            h.LastReconcile(),
+			Dependencies:             h.GetDependencyStatuses(),
+			HasUnhealthyDependencies: h.HasUnhealthyDependencies(),
 		}
 
 		utils.WriteJSON(w, httpStatus, response)

@@ -52,20 +52,23 @@
             <h1 class="text-3xl font-bold">{{ .CRD.Name }}</h1>
             
             {{ $state := .CRD.State }}
+            {{ $HasUnhealthyDependencies  := .CRD.HasUnhealthyDependencies  }}
             <span class="status-badge flex items-center gap-2 text-sm px-3 py-1 rounded-full
                 {{- if eq $state "healthy" }} bg-green-100 text-green-700
                 {{- else if eq $state "degraded" }} bg-red-100 text-red-700
                 {{- else if eq $state "pending" }} bg-yellow-100 text-yellow-700
                 {{- else if eq $state "started" }} bg-blue-100 text-blue-700
+                {{- else if $HasUnhealthyDependencies  }} bg-orange-100 text-orange-700
                 {{- else }} bg-gray-100 text-gray-700{{ end }}">
                 <span class="h-2 w-2 rounded-full 
                     {{- if eq $state "healthy" }} bg-green-500
                     {{- else if eq $state "degraded" }} bg-red-500
                     {{- else if eq $state "pending" }} bg-yellow-500
                     {{- else if eq $state "started" }} bg-blue-500
+                    {{- else if $HasUnhealthyDependencies  }} bg-orange-500
                     {{- else }} bg-gray-500{{ end }}">
                 </span>
-                {{ $state }}
+                {{ if $HasUnhealthyDependencies  }}Dependency Issue{{ else }}{{ $state }}{{ end }}
             </span>
         </div>
         <div class="text-sm text-gray-500 mt-2 font-mono">{{ .CRD.GVK }}</div>
@@ -284,7 +287,81 @@
     </div>
 
     <!-- Dependencies -->
-    {{ if .CRD.DependsOn }}
+    <!-- Dependencies Section -->
+{{ if .CRD.Dependencies }}
+<div class="bg-white p-6 rounded-xl border shadow-sm mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-900">Dependencies</h2>
+        {{ if .CRD.HasUnhealthyDependencies  }}
+        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+            ⚠️ Unhealthy Dependencies
+        </span>
+        {{ end }}
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {{ range $name, $dep := .CRD.Dependencies }}
+        <a href="/controlcenter/katalog/{{ $.KatalogName }}/crd/{{ $name }}" 
+           class="dependency-card block p-4 rounded-lg border transition-all hover:shadow-md
+               {{- if eq $dep.State "healthy" }} bg-green-50 border-green-200
+               {{- else if eq $dep.State "started" }} bg-blue-50 border-blue-200
+               {{- else if eq $dep.State "pending" }} bg-yellow-50 border-yellow-200
+               {{- else if eq $dep.State "degraded" }} bg-red-50 border-red-200
+               {{- else }} bg-gray-50 border-gray-200{{ end }}">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <span class="font-medium text-gray-900">{{ $name }}</span>
+                    {{ if $dep.Satisfied }}
+                        <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    {{ else }}
+                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    {{ end }}
+                </div>
+                <span class="text-xs px-2 py-0.5 rounded-full
+                    {{- if eq $dep.State "healthy" }} bg-green-200 text-green-800
+                    {{- else if eq $dep.State "started" }} bg-blue-200 text-blue-800
+                    {{- else if eq $dep.State "pending" }} bg-yellow-200 text-yellow-800
+                    {{- else if eq $dep.State "degraded" }} bg-red-200 text-red-800
+                    {{- else }} bg-gray-200 text-gray-800{{ end }}">
+                    {{ $dep.State }}
+                </span>
+            </div>
+            <div class="text-xs text-gray-500">
+                Condition: <span class="font-mono">{{ $dep.Condition }}</span>
+            </div>
+            <div class="text-xs text-gray-400 mt-1">
+                {{ if $dep.Satisfied }}✓ Satisfied{{ else }}✗ Not satisfied{{ end }}
+            </div>
+            {{ if $dep.LastCheck }}
+            <div class="text-xs text-gray-400 mt-1">
+                Last check: {{ $dep.LastCheck | formatTime }}
+            </div>
+            {{ end }}
+        </a>
+        {{ end }}
+    </div>
+    
+    <!-- Overall dependency health message -->
+    {{ if .CRD.HasUnhealthyDependencies  }}
+    <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <span class="text-sm text-red-700">
+                This CRD has unhealthy dependencies. Some operations may fail or be degraded.
+            </span>
+        </div>
+    </div>
+    {{ end }}
+</div>
+{{ end }}
+
+    <!-- {{ if .CRD.DependsOn }}
     <div class="bg-white p-6 rounded-xl border shadow-sm mb-8">
         <h2 class="text-lg font-semibold mb-4">Dependencies</h2>
         <div class="flex flex-wrap gap-2">
@@ -296,7 +373,7 @@
             {{ end }}
         </div>
     </div>
-    {{ end }}
+    {{ end }} -->
 
     <!-- Reconciler Configuration -->
     <div class="bg-white p-6 rounded-xl border shadow-sm">
