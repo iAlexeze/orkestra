@@ -2,6 +2,8 @@ apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
   name: platform-operator
+  author: orkspace
+  version: 0.1.0
   description: >
     Demonstrates when: conditions — conditional resource creation based on
     the CR's current state. The same CRD produces different resources at

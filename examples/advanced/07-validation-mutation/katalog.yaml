@@ -2,9 +2,11 @@ apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
   name: website-with-policy
+  author: orkspace
+  version: 0.1.0
   description: >
     Validation (deny + warn) and mutation (defaults + overrides).
-    Rules run at admission time (when ENABLE_WEBHOOKS=true) and at
+    Rules run at admission time (when ENABLE_ADMISSION_WEBHOOK=true) and at
     reconcile time on every cycle.
 
 spec:

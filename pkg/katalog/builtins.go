@@ -98,12 +98,12 @@ var builtInRegistry = map[string]BuiltInKind{
 		Namespaced: false,
 		APIPath:    "/api",
 	},
-	"endpoints": {
-		Group:      "",
+	"endpointslice": {
+		Group:      "discovery.k8s.io",
 		Version:    "v1",
-		Plural:     "endpoints",
+		Plural:     "endpointslices",
 		Namespaced: true,
-		APIPath:    "/api",
+		APIPath:    "/apis",
 	},
 	"event": {
 		Group:      "",
@@ -365,7 +365,7 @@ var canonicalKindNames = map[string]string{
 	"serviceaccount":           "ServiceAccount",
 	"persistentvolumeclaim":    "PersistentVolumeClaim",
 	"persistentvolume":         "PersistentVolume",
-	"endpoints":                "Endpoints",
+	"endpointSlice":            "EndpointSlice",
 	"event":                    "Event",
 	"node":                     "Node",
 	"resourcequota":            "ResourceQuota",

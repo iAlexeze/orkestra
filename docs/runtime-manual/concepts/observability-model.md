@@ -139,7 +139,7 @@ source="reconcile"   — call from the reconcile loop
 
 ```promql
 # CRs are being denied at reconcile time but NOT at admission time
-# Means ENABLE_WEBHOOKS is not set or the webhook is not intercepting
+# Means ENABLE_ADMISSION_WEBHOOK is not set or the webhook is not intercepting
 rate(controller_admission_validation_total{result="denied",source="reconcile"}[5m]) > 0
   AND
 rate(controller_admission_validation_total{result="denied",source="admission"}[5m]) == 0

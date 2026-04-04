@@ -49,7 +49,7 @@ All examples require:
 
 Advanced examples additionally require:
 - Orkestra deployed in-cluster: see [Deployment Guide](../docs/guides/deployment.md)
-- `ENABLE_WEBHOOKS=true` for validation/mutation examples
+- `ENABLE_ADMISSION_WEBHOOK=true` for validation/mutation examples
 - Go 1.22+ for hook and constructor examples
 
 ---

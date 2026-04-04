@@ -27,7 +27,7 @@ spec:
             - run
             - --katalog=/etc/orkestra/katalog.yaml
           env:
-            - name: HEALTH_PORT
+            - name: ORK_PORT
               value: "8080"
             - name: LOG_LEVEL
               value: "info"
@@ -43,7 +43,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            - name: ENABLE_WEBHOOKS
+            - name: ENABLE_ADMISSION_WEBHOOK
               value: "true"
             - name: ENABLE_CONVERSION
               value: "false"

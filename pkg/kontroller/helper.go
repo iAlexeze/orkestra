@@ -45,13 +45,18 @@ func (k *Kontroller) runWorkerForGVK(ctx context.Context, gvk string, workerID s
 
 // Process next item, but only for the specified GVK
 func (k *Kontroller) processNextItemForGVK(ctx context.Context, gvk string) bool {
+	if err := ctx.Err(); err != nil {
+		logger.Debug().Msg("process item: context cancelled")
+		return false
+	}
+
 	// Resolve queue — per-CRD if registered, default otherwise
 	wq, ok := k.queueRegistry.For(gvk)
 	if !ok {
 		wq = k.defaultWorkqueue
 	}
 
-	item, shutdown := wq.Queue.Get()
+	item, shutdown := wq.GetWithContext(ctx)
 	if shutdown {
 		return false
 	}

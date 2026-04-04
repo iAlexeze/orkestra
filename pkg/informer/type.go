@@ -40,8 +40,9 @@ type InformerEntry struct {
 	Missing  bool
 	GVK      *schema.GroupVersionKind
 	// Store the context and cancel function
-	Ctx    context.Context    // stored context
-	Cancel context.CancelFunc // stored cancel function
+	Ctx             context.Context    // stored context
+	Cancel          context.CancelFunc // stored cancel function
+	WasNeverStarted bool
 }
 
 // All mappings key: gvk

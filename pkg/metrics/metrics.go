@@ -231,14 +231,14 @@ func DecConversionRequests() {
 //   The source label is the operationally critical dimension.
 //   A high "denied" count with source="reconcile" and source="admission" means
 //   the deny rule is working at both points.
-//   A high "denied" count with source="reconcile" only means ENABLE_WEBHOOKS
+//   A high "denied" count with source="reconcile" only means ENABLE_ADMISSION_WEBHOOK
 //   is not set or the webhook is not intercepting — CRs are slipping through.
 //
 //   Alert example:
 //     rate(controller_admission_validation_total{result="denied",source="reconcile"}[5m]) > 0
 //     AND rate(controller_admission_validation_total{result="denied",source="admission"}[5m]) == 0
 //     → CRs are failing validation at reconcile time but not being caught at apply time
-//     → Check ENABLE_WEBHOOKS and webhook configuration
+//     → Check ENABLE_ADMISSION_WEBHOOK and webhook configuration
 
 var admissionValidationTotal = promauto.NewCounterVec(
 	prometheus.CounterOpts{
@@ -265,7 +265,7 @@ var admissionValidationTotal = promauto.NewCounterVec(
 //       controller_admission_validation_violations_total{action="deny",source="admission"}
 //     ))
 //
-//     # Which warn rules are never firing at admission (ENABLE_WEBHOOKS=false)?
+//     # Which warn rules are never firing at admission (ENABLE_ADMISSION_WEBHOOK=false)?
 //     sum by(field) (
 //       controller_admission_validation_violations_total{action="warn",source="reconcile"}
 //     )
@@ -295,7 +295,7 @@ var admissionValidationViolationsTotal = promauto.NewCounterVec(
 //   fields — a signal that client tooling or CRD documentation should improve.
 //
 //   High "applied" at source="reconcile" only (with source="admission" = 0)
-//   means ENABLE_WEBHOOKS is not set — defaults are being applied late,
+//   means ENABLE_ADMISSION_WEBHOOK is not set — defaults are being applied late,
 //   after the CR is stored without them.
 
 var admissionMutationTotal = promauto.NewCounterVec(

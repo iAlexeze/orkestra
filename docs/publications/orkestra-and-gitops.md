@@ -274,7 +274,7 @@ In development, run all rules as `warn` — developers need fast feedback withou
 being blocked. In staging, run deny rules but with a short denial list covering
 only security-critical rules. In production, full deny enforcement.
 
-This is expressed not by duplicating validation rules but by using `ENABLE_WEBHOOKS=true`
+This is expressed not by duplicating validation rules but by using `ENABLE_ADMISSION_WEBHOOK=true`
 only in production, and using `action: warn` in the base Katalog with environment
 overlays promoting selected rules to `action: deny`.
 

@@ -1,4 +1,4 @@
-{{- if not .Values.katalog.existingConfigMap }}
+{{- if and .Values.runtime.enabled (not .Values.runtime.katalog.existingConfigMap) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,7 +6,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
+    component: runtime
 data:
-  {{ .Values.katalog.configMapKey }}: |
-    {{- .Values.katalog.inline | nindent 4 }}
+  {{ .Values.runtime.katalog.configMapKey }}: |
+    {{- .Values.runtime.katalog.inline | nindent 4 }}
 {{- end }}

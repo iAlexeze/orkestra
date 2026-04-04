@@ -297,7 +297,7 @@ If you add a new operator, add it in both places.
 Webhooks are opt-in. They require TLS certificates and are disabled by default.
 
 ```bash
-export ENABLE_WEBHOOKS=true
+export ENABLE_ADMISSION_WEBHOOK=true
 export TLS_CERT=/path/to/tls.crt
 export TLS_KEY=/path/to/tls.key
 ```

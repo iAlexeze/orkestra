@@ -1,7 +1,7 @@
 # test/cr-warn-only.yaml
 # Test case D: SHOULD SUCCEED WITH WARNINGS — deny rules pass, warn rules fire
 #
-# Expected with ENABLE_WEBHOOKS=true:
+# Expected with ENABLE_ADMISSION_WEBHOOK=true:
 #   Warning: orkestra: field "metadata.labels.team": all Website resources should...
 #   Warning: orkestra: field "spec.enabled": spec.enabled should be declared explicitly
 #   website.demo.orkestra.io/warn-only-site created

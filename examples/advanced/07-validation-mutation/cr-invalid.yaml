@@ -1,5 +1,5 @@
 # Invalid CR — will be denied by the image prefix rule
-# With ENABLE_WEBHOOKS=true: denied at kubectl apply time
+# With ENABLE_ADMISSION_WEBHOOK=true: denied at kubectl apply time
 # Without webhooks: stored but reconcile halts with validation error
 apiVersion: demo.orkestra.io/v1alpha1
 kind: Website

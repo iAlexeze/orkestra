@@ -27,7 +27,7 @@ import (
 	orkdeploy "github.com/ialexeze/orkestra/pkg/orkestra-registry/deployments"
 	orksvc "github.com/ialexeze/orkestra/pkg/orkestra-registry/services"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
-	apiv1 "github.com/myorg/database-operator/api/v1alpha1"
+	apiv1 "orkestra-hooks-demo/v1alpha1"
 )
 
 // DatabaseHooks returns the hook implementation for the Database CRD.

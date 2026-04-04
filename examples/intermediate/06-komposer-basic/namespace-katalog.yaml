@@ -16,7 +16,7 @@ spec:
         default: true
       # Governance-only: no onCreate templates.
       # Validation rules declared here apply at reconcile time.
-      # With ENABLE_WEBHOOKS=true they also apply at admission time.
+      # With ENABLE_ADMISSION_WEBHOOK=true they also apply at admission time.
       validation:
         rules:
           - field: metadata.labels.team

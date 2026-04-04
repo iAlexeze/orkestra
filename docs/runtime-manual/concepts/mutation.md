@@ -12,7 +12,7 @@ Like validation, mutation runs at two points from one declaration.
 
 ### Admission time
 
-When `ENABLE_WEBHOOKS=true`, Orkestra registers a `MutatingWebhookConfiguration`.
+When `ENABLE_ADMISSION_WEBHOOK=true`, Orkestra registers a `MutatingWebhookConfiguration`.
 The API server calls `/mutate` before `/validate` — this is the standard
 Kubernetes ordering. Defaults are applied to the object before it reaches
 validation or storage.
@@ -165,7 +165,7 @@ Without `mutateFirst: true`, a CR with no `spec.replicas` would fail the
 Same requirements as validation:
 
 ```bash
-ENABLE_WEBHOOKS=true     # starts the HTTPS server on :8443 and registers /validate and /mutate
+ENABLE_ADMISSION_WEBHOOK=true     # starts the HTTPS server on :8443 and registers /validate and /mutate
 TLS_CERT=/tls/tls.crt
 TLS_KEY=/tls/tls.key
 ```

@@ -19,7 +19,7 @@ import (
 
 // ── Webhook configuration registration ────────────────────────────────────
 //
-// At startup, when ENABLE_WEBHOOKS=true, Orkestra creates or updates the
+// At startup, when ENABLE_ADMISSION_WEBHOOK=true, Orkestra creates or updates the
 // ValidatingWebhookConfiguration and MutatingWebhookConfiguration objects
 // that tell the API server to call Orkestra during admission.
 //
@@ -82,7 +82,7 @@ type WebhookRegistrationOptions struct {
 // RegisterWebhooks creates or updates the ValidatingWebhookConfiguration and
 // MutatingWebhookConfiguration based on the current admission registry.
 //
-// Called from HealthServer.Start() when ENABLE_WEBHOOKS=true, after the
+// Called from HealthServer.Start() when ENABLE_ADMISSION_WEBHOOK=true, after the
 // Katalog is fully loaded and the admission registry is populated.
 //
 // The function is idempotent — safe to call on restart. Existing configurations
@@ -131,7 +131,7 @@ func RegisterWebhooks(
 // MutatingWebhookConfiguration entries that were previously created from the
 // admission registry.
 //
-// Called from HealthServer.Shutdown() when ENABLE_WEBHOOKS=true, after the
+// Called from HealthServer.Shutdown() when ENABLE_ADMISSION_WEBHOOK=true, after the
 // runtime begins shutting down and the admission registry is no longer needed.
 //
 // The function is destructive — only call during shutdown. Any

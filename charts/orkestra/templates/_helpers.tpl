@@ -23,6 +23,7 @@ Create a default fully qualified app name.
 
 {{/*
 Chart label — name + version.
+Used for Helm chart tracking and upgrades.
 */}}
 {{- define "orkestra.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
@@ -30,6 +31,7 @@ Chart label — name + version.
 
 {{/*
 Common labels applied to every resource.
+Used for resource identification and grouping.
 */}}
 {{- define "orkestra.labels" -}}
 helm.sh/chart: {{ include "orkestra.chart" . }}
@@ -42,7 +44,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 
 {{/*
 Selector labels — used in Deployment selector and Service selector.
-Must remain stable across upgrades.
+MUST remain stable across upgrades (do not change).
 */}}
 {{- define "orkestra.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "orkestra.name" . }}
@@ -50,38 +52,113 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-ServiceAccount name.
+─────────────────────────────────────────────────────────────────────────────
+RUNTIME HELPER FUNCTIONS
+─────────────────────────────────────────────────────────────────────────────
 */}}
-{{- define "orkestra.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "orkestra.fullname" .) .Values.serviceAccount.name }}
+
+{{/*
+Runtime ServiceAccount name.
+Returns the name of the ServiceAccount for the Orkestra runtime.
+*/}}
+{{- define "orkestra.runtimeServiceAccountName" -}}
+{{- if .Values.runtime.serviceAccount.name }}
+{{- .Values.runtime.serviceAccount.name }}
 {{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- printf "%s-runtime" (include "orkestra.fullname" .) }}
 {{- end }}
 {{- end }}
 
 {{/*
-Image — respects tag override, falls back to appVersion.
+Runtime image — respects tag override, falls back to appVersion.
+Returns the full container image URL for the Orkestra runtime.
 */}}
-{{- define "orkestra.image" -}}
-{{- $tag := .Values.image.tag | default .Chart.AppVersion }}
-{{- printf "%s:%s" .Values.image.repository $tag }}
+{{- define "orkestra.runtimeImage" -}}
+{{- if .Values.runtime.image.tag }}
+{{- printf "%s:%s" .Values.runtime.image.repository .Values.runtime.image.tag }}
+{{- else }}
+{{- printf "%s:%s" .Values.runtime.image.repository .Chart.AppVersion }}
+{{- end }}
 {{- end }}
 
 {{/*
 Leader election namespace — defaults to release namespace.
+Returns where the leader election Lease should be stored.
 */}}
 {{- define "orkestra.leaderElectionNamespace" -}}
-{{- default .Release.Namespace .Values.leaderElection.namespace }}
+{{- default .Release.Namespace .Values.runtime.leaderElection.namespace }}
 {{- end }}
 
 {{/*
-ConfigMap name for the Katalog.
+Katalog ConfigMap name.
+Returns the name of the ConfigMap containing the Katalog definition.
 */}}
 {{- define "orkestra.katalogConfigMapName" -}}
-{{- if .Values.katalog.existingConfigMap }}
-{{- .Values.katalog.existingConfigMap }}
+{{- if .Values.runtime.katalog.existingConfigMap }}
+{{- .Values.runtime.katalog.existingConfigMap }}
 {{- else }}
 {{- printf "%s-katalog" (include "orkestra.fullname" .) }}
 {{- end }}
+{{- end }}
+
+{{/*
+─────────────────────────────────────────────────────────────────────────────
+CONTROL CENTER HELPER FUNCTIONS
+─────────────────────────────────────────────────────────────────────────────
+*/}}
+
+{{/*
+Control Center ServiceAccount name.
+Returns the name of the ServiceAccount for the Control Center.
+Note: Control Center typically needs minimal to no RBAC permissions.
+*/}}
+{{- define "orkestra.ccServiceAccountName" -}}
+{{- if .Values.controlCenter.serviceAccount.name }}
+{{- .Values.controlCenter.serviceAccount.name }}
+{{- else }}
+{{- printf "%s-cc" (include "orkestra.fullname" .) }}
+{{- end }}
+{{- end }}
+
+{{/*
+Control Center image — respects tag override, falls back to appVersion.
+Returns the full container image URL for the Orkestra Control Center.
+*/}}
+{{/*
+Control Center image — respects tag override, falls back to appVersion.
+*/}}
+{{- define "orkestra.ccImage" -}}
+{{- if .Values.controlCenter.image.tag }}
+{{- printf "%s:%s" .Values.controlCenter.image.repository .Values.controlCenter.image.tag }}
+{{- else }}
+{{- printf "%s:%s" .Values.controlCenter.image.repository .Chart.AppVersion }}
+{{- end }}
+{{- end }}
+
+{{/*
+Control Center URL list.
+Returns a comma-separated string of Orkestra runtime URLs to monitor.
+Supports both single URL (orkestraURL) and list (orkestraURLs) formats.
+*/}}
+{{- define "orkestra.ccURLs" -}}
+{{- if .Values.controlCenter.config.orkestraURLs }}
+{{- $urls := .Values.controlCenter.config.orkestraURLs }}
+{{- $result := "" }}
+{{- range $i, $url := $urls }}
+{{- if $i }}{{ $result = printf "%s,%s" $result $url }}{{ else }}{{ $result = $url }}{{ end }}
+{{- end }}
+{{- $result }}
+{{- else if .Values.controlCenter.config.orkestraURL }}
+{{- .Values.controlCenter.config.orkestraURL }}
+{{- else }}
+{{- printf "http://%s-runtime:8080" (include "orkestra.fullname" .) }}
+{{- end }}
+{{- end }}
+
+{{/*
+Control Center port.
+Returns the port number, with environment variable fallback.
+*/}}
+{{- define "orkestra.ccPort" -}}
+{{- .Values.controlCenter.config.port | default 8090 }}
 {{- end }}

@@ -5,7 +5,7 @@
 # spec.logLevel is absent → mutation sets it to "info" before validation
 # metadata.labels.managed-by is absent → override sets it to "orkestra"
 #
-# Expected with ENABLE_WEBHOOKS=true:
+# Expected with ENABLE_ADMISSION_WEBHOOK=true:
 #   website.demo.orkestra.io/defaults-site created
 #   (no error, no warning — replicas default satisfies min:1)
 #

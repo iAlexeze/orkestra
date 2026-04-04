@@ -125,7 +125,7 @@ mutation rules that apply to every Deployment.
 It imposes policy on resources owned by application teams. Validation with
 `action: warn` is advisory — the Deployment is stored but the platform team sees
 the violation in `/katalog/deployment-governance`. Validation with `action: deny`
-blocks apply-time if `ENABLE_WEBHOOKS=true`.
+blocks apply-time if `ENABLE_ADMISSION_WEBHOOK=true`.
 
 This pattern replaces a significant portion of what OPA or Kyverno is used for —
 at least for resources Orkestra manages — without a separate admission controller.

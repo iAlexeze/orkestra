@@ -43,7 +43,7 @@ statement, and they cannot be substituted for each other.
 ## 2. Admission: enforcement at the boundary
 
 Admission runs at the Kubernetes API server boundary — the moment an object is
-submitted via `kubectl apply` or any API client. When `ENABLE_WEBHOOKS=true`,
+submitted via `kubectl apply` or any API client. When `ENABLE_ADMISSION_WEBHOOK=true`,
 Orkestra registers a `ValidatingWebhookConfiguration` and a
 `MutatingWebhookConfiguration`. The API server calls Orkestra's `/validate` and
 `/mutate` endpoints synchronously during every CREATE and UPDATE operation.
@@ -88,7 +88,7 @@ website.demo.orkestra.io/my-site created
 
 Warn is advisory. It surfaces policy intent without blocking deployment.
 
-**The same rules run at reconcile time.** If `ENABLE_WEBHOOKS=false`, or if a CR
+**The same rules run at reconcile time.** If `ENABLE_ADMISSION_WEBHOOK=false`, or if a CR
 existed before the webhook was enabled, the same validation runs on every reconcile
 cycle. `action: deny` halts reconciliation. `action: warn` surfaces the violation
 on the `/katalog/{crd}` health endpoint as an active warning.

@@ -27,11 +27,11 @@ spec:
           image: ialexeze/ork:example
           env:
             # ── Admission webhooks ──────────────────────────────────────────
-            # ENABLE_WEBHOOKS=true requires ENABLE_CONVERSION=true
+            # ENABLE_ADMISSION_WEBHOOK=true requires ENABLE_CONVERSION=true
             # (they share the same HTTPS server on :8443)
             - name: ENABLE_CONVERSION
               value: "false"
-            - name: ENABLE_WEBHOOKS
+            - name: ENABLE_ADMISSION_WEBHOOK
               value: "true"
 
             # ── TLS (shared by conversion and admission) ────────────────────
@@ -41,7 +41,7 @@ spec:
               value: "/tls/tls.key"
 
             # ── Runtime ────────────────────────────────────────────────────
-            - name: HEALTH_PORT
+            - name: ORK_PORT
               value: "8080"
             - name: ORKESTRA_NAMESPACE
               valueFrom:

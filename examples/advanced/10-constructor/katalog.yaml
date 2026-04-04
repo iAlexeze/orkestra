@@ -2,6 +2,8 @@ apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
   name: pipeline-operator
+  author: orkspace
+  version: 0.1.0
   description: >
     Custom constructor for the Pipeline CRD. The GenericReconciler is
     replaced entirely — the constructor owns the full reconcile loop.

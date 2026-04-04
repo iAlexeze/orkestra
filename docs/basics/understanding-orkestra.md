@@ -222,7 +222,7 @@ standard resources and hooks only for the parts that genuinely need Go.
 
 Orkestra can validate and mutate CRs at two points:
 
-**At admission time** — when `ENABLE_WEBHOOKS=true`, Orkestra intercepts `kubectl apply`
+**At admission time** — when `ENABLE_ADMISSION_WEBHOOK=true`, Orkestra intercepts `kubectl apply`
 and either rejects the CR (deny) or applies defaults (mutation) before it is stored:
 
 ```yaml

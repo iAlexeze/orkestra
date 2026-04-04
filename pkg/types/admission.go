@@ -5,7 +5,7 @@ package orktypes
 //
 // These declarations control policy enforcement at two points:
 //
-//   1. Admission time  — when ENABLE_WEBHOOKS=true, the API server calls
+//   1. Admission time  — when ENABLE_ADMISSION_WEBHOOK=true, the API server calls
 //      Orkestra's /validate and /mutate endpoints synchronously during
 //      kubectl apply. The CR is rejected or mutated before storage.
 //
@@ -226,7 +226,7 @@ type MutationConfig struct {
 //     validation: true   # intercept at admission — ValidatingWebhookConfiguration
 //     mutation: true     # intercept at admission — MutatingWebhookConfiguration
 //
-// Both default to true when ENABLE_WEBHOOKS=true and the corresponding
+// Both default to true when ENABLE_ADMISSION_WEBHOOK=true and the corresponding
 // validation/mutation block has rules declared. Set to false to opt a specific
 // CRD out of admission interception while keeping its reconcile-time enforcement.
 type AdmissionWebhookConfig struct {

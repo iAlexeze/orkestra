@@ -2,6 +2,8 @@ apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
   name: database-operator
+  author: orkspace
+  version: 0.1.0
   description: >
     Typed Go hooks for the Database CRD. Demonstrates apiTypes.location,
     ork generate runtime, and OrkestraRegistry usage from Go.
@@ -18,7 +20,7 @@ spec:
         # responses into *apiv1.Database rather than *unstructured.Unstructured.
         # Required when hooks need type-safe struct access.
         # After setting this, run: ork generate runtime --katalog katalog.yaml
-        location: github.com/myorg/database-operator/api/v1alpha1
+        location: 09-hooks-example/09-hooks/v1alpha1
 
       workers: 3
       resync: 30s
@@ -29,7 +31,7 @@ spec:
         # Hooks run INSTEAD OF declarative templates when OnReconcile is defined.
         # The hook calls OrkestraRegistry directly for Kubernetes resources.
         hooks:
-          location: github.com/myorg/database-operator/hooks
+          location: 09-hooks-example/09-hooks/hooks
           function: DatabaseHooks
 
         # Status Layer 1 (Ready condition) is always automatic.

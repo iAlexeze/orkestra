@@ -2,6 +2,8 @@ apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
   name: hello-website
+  author: orkspace
+  version: 0.1.0
   description: The simplest possible operator. One CRD, one Deployment.
 
 spec:

@@ -307,8 +307,11 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			Msg("registered CRD health routes")
 	}
 
+	// Create Special Orkestra Health Tracker
+	orkHealth := kontroller.NewOrkestraHealth()
+
 	// GET /katalog — aggregate view: all CRDs, dependency graph, health summary
-	hs.Register("/katalog", kontroller.BuildKatalogHandler(kat, kfg, ktrlRegistry, crdHealthMap))
+	hs.Register("/katalog", kontroller.BuildKatalogHandler(kat, kfg, ktrlRegistry, crdHealthMap, orkHealth))
 
 	// ── 6. Dependency kontroller ──────────────────────────────────────────────
 	// Starts CRD workers in topological dependency order.
@@ -323,6 +326,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		queueRegistry,
 		defaultWq,
 		crdHealthMap,
+		orkHealth,
 		kfg.Cluster().DefaultWorkers,
 		katalog.NewDependencyGraph(kat),
 		kfg.Cluster().ShutdownTimeout,

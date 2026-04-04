@@ -247,7 +247,7 @@ ork validate --katalog katalog.yaml
 ### Does Orkestra require cert-manager?
 
 No. Orkestra needs TLS certificates for its HTTPS server (used by conversion
-and admission webhooks) when `ENABLE_CONVERSION=true` or `ENABLE_WEBHOOKS=true`.
+and admission webhooks) when `ENABLE_CONVERSION=true` or `ENABLE_ADMISSION_WEBHOOK=true`.
 Where those certificates come from is your choice.
 
 | Approach | Suitable for |
@@ -271,9 +271,9 @@ mounts the resulting Secret automatically.
 
 | Variable | Default | Description |
 |---|---|---|
-| `HEALTH_PORT` | `8080` | HTTP server port |
+| `ORK_PORT` | `8080` | HTTP server port |
 | `ENABLE_CONVERSION` | `false` | Enable the `/convert` HTTPS endpoint |
-| `ENABLE_WEBHOOKS` | `false` | Enable `/validate` and `/mutate` (requires `ENABLE_CONVERSION`) |
+| `ENABLE_ADMISSION_WEBHOOK` | `false` | Enable `/validate` and `/mutate` (requires `ENABLE_CONVERSION`) |
 | `TLS_CERT` | — | Path to TLS certificate |
 | `TLS_KEY` | — | Path to TLS key |
 | `ORK_REGISTRY` | — | Default registry URL for `sources.registry` entries without explicit URL |
@@ -335,7 +335,7 @@ Orkestra enriches them automatically from its internal registry:
     This is how you apply governance to Kubernetes built-in resources without
     OPA, Kyverno, or a separate admission controller. Orkestra watches the resource,
     validates it at reconcile time, and optionally intercepts at admission time
-    when `ENABLE_WEBHOOKS=true`.
+    when `ENABLE_ADMISSION_WEBHOOK=true`.
 
 Run `ork validate --katalog katalog.yaml` to see exactly what Orkestra resolves
 for a kind-only declaration.
@@ -389,7 +389,7 @@ are always set.
 
 Both run at two points:
 
-- **Admission time** — when `ENABLE_WEBHOOKS=true`, synchronously during `kubectl apply`
+- **Admission time** — when `ENABLE_ADMISSION_WEBHOOK=true`, synchronously during `kubectl apply`
 - **Reconcile time** — every reconcile cycle, regardless of webhook configuration
 
 Declare once, enforced at both points.
@@ -402,7 +402,7 @@ Declare once, enforced at both points.
 
 ---
 
-### Does `ENABLE_WEBHOOKS=true` block the API server if Orkestra is down?
+### Does `ENABLE_ADMISSION_WEBHOOK=true` block the API server if Orkestra is down?
 
 No — by design. The webhook configuration uses `FailurePolicy: Ignore` by default.
 If Orkestra is unreachable when the API server calls `/validate` or `/mutate`, the
@@ -513,7 +513,7 @@ rules:
     resources: ["events"]
     verbs: ["create", "patch"]
 
-  # Webhook configuration (when ENABLE_WEBHOOKS=true)
+  # Webhook configuration (when ENABLE_ADMISSION_WEBHOOK=true)
   - apiGroups: ["admissionregistration.k8s.io"]
     resources:
       - validatingwebhookconfigurations

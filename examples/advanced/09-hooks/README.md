@@ -61,10 +61,10 @@ registers the Go types at startup. Run this once, and again whenever you
 change `apiTypes` fields:
 
 ```bash
-ork generate runtime --katalog katalog.yaml --output ./cmd/
+ork generate runtime --katalog katalog.yaml
 ```
 
-This produces `cmd/zz_generated_runtime_registry.go`:
+This produces `pkg/zz_generated_runtime_registry.go` in your working directory.:
 
 ```go
 func init() {
@@ -90,7 +90,7 @@ func init() {
 
 ```bash
 go mod tidy
-go build ./...
+go build -o orkestra-demo .
 ```
 
 If code generation was not run, this fails with:
@@ -108,7 +108,7 @@ error: no object factory for demo.orkestra.io/v1alpha1, Kind=Database
 kubectl apply -f crd.yaml
 
 # Option A: local development
-ork run --katalog katalog.yaml
+./orkestra-demo run --katalog katalog.yaml
 
 # Option B: in-cluster (after building and pushing your image)
 kubectl apply -f orkestra-configmap.yaml
