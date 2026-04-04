@@ -57,36 +57,41 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 
 	// Merge health and info
 	detail := &CRDDetail{
-		Name:             info.Name,
-		Description:      info.Description,
-		Mode:             info.Mode,
-		GVK:              info.GVK,
-		GVR:              info.GVR,
-		Namespaced:       info.Namespaced,
-		Namespace:        info.Namespace,
-		DependsOn:        info.DependsOn,
-		Workers:          info.Workers,
-		WorkersActive:    info.WorkersActive,
-		WorkersSource:    info.WorkersSource,
-		Resync:           info.Resync,
-		ResyncSource:     info.ResyncSource,
-		QueueDepth:       info.QueueDepth,
-		MaxQueueDepth:    info.MaxQueueDepth,
-		ResourceCount:    info.ResourceCount,
-		TotalReconciles:  info.TotalReconciles,
-		Reconciler:       info.Reconciler,
-		Healthy:          health.Healthy,
-		Started:          health.Started,
-		Pending:          health.Pending,
-		ErrorRate:        health.ErrorRate,
-		Conversion:       info.Conversion,
-		Admission:        info.Admission,
-		State:            getState(health),
-		StartedAt:        health.StartedAt,
-		Uptime:           health.Uptime,
-		ConsecutiveFails: health.ConsecutiveFails,
-		LastError:        health.LastError,
-		LastReconcile:    health.LastReconcile,
+		Name:                     info.Name,
+		Description:              info.Description,
+		Mode:                     info.Mode,
+		GVK:                      info.GVK,
+		GVR:                      info.GVR,
+		Namespaced:               info.Namespaced,
+		Namespace:                info.Namespace,
+		DependsOn:                info.DependsOn,
+		HasUnhealthyDependencies: health.HasUnhealthyDependencies,
+		Dependencies:             health.Dependencies,
+		Workers:                  info.Workers,
+		WorkersActive:            info.WorkersActive,
+		WorkersIdle:              info.WorkersIdle,
+		WorkersProcessing:        info.WorkersProcessing,
+		WorkerDetails:            info.WorkerDetails,
+		WorkersSource:            info.WorkersSource,
+		Resync:                   info.Resync,
+		ResyncSource:             info.ResyncSource,
+		QueueDepth:               info.QueueDepth,
+		MaxQueueDepth:            info.MaxQueueDepth,
+		ResourceCount:            info.ResourceCount,
+		TotalReconciles:          info.TotalReconciles,
+		Reconciler:               info.Reconciler,
+		Healthy:                  health.Healthy,
+		Started:                  health.Started,
+		Pending:                  health.Pending,
+		ErrorRate:                health.ErrorRate,
+		Conversion:               info.Conversion,
+		Admission:                info.Admission,
+		State:                    getState(health),
+		StartedAt:                health.StartedAt,
+		Uptime:                   health.Uptime,
+		ConsecutiveFails:         health.ConsecutiveFails,
+		LastError:                health.LastError,
+		LastReconcile:            health.LastReconcile,
 	}
 
 	// Format times
@@ -151,10 +156,12 @@ func getState(health *CRDHealth) string {
 	if health.Healthy {
 		return "healthy"
 	}
-	if health.Started {
+
+	// A case where crd has started but there are errors
+	if health.Started && health.ConsecutiveFails == 0 {
 		return "started"
 	}
-	if health.Pending {
+	if health.Pending && health.LastReconcile == "no reconciles yet" && health.ConsecutiveFails == 0 {
 		return "pending"
 	}
 	return "degraded"

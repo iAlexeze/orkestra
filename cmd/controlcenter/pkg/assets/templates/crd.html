@@ -15,6 +15,27 @@
         code { background-color: #f3f4f6; padding: 2px 4px; border-radius: 4px; font-size: 0.875rem; }
         .status-badge { transition: all 0.2s ease; }
         .status-badge:hover { transform: scale(1.02); }
+        .worker-card {
+            transition: all 0.2s ease;
+        }
+        .worker-card:hover {
+            transform: translateY(-2px);
+        }
+        .worker-idle {
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        }
+        .worker-processing {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            animation: pulse-blue 2s infinite;
+        }
+        @keyframes pulse-blue {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .worker-stopped {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        }
     </style>
 </head>
 
@@ -31,20 +52,23 @@
             <h1 class="text-3xl font-bold">{{ .CRD.Name }}</h1>
             
             {{ $state := .CRD.State }}
+            {{ $HasUnhealthyDependencies  := .CRD.HasUnhealthyDependencies  }}
             <span class="status-badge flex items-center gap-2 text-sm px-3 py-1 rounded-full
                 {{- if eq $state "healthy" }} bg-green-100 text-green-700
                 {{- else if eq $state "degraded" }} bg-red-100 text-red-700
                 {{- else if eq $state "pending" }} bg-yellow-100 text-yellow-700
                 {{- else if eq $state "started" }} bg-blue-100 text-blue-700
+                {{- else if $HasUnhealthyDependencies  }} bg-orange-100 text-orange-700
                 {{- else }} bg-gray-100 text-gray-700{{ end }}">
                 <span class="h-2 w-2 rounded-full 
                     {{- if eq $state "healthy" }} bg-green-500
                     {{- else if eq $state "degraded" }} bg-red-500
                     {{- else if eq $state "pending" }} bg-yellow-500
                     {{- else if eq $state "started" }} bg-blue-500
+                    {{- else if $HasUnhealthyDependencies  }} bg-orange-500
                     {{- else }} bg-gray-500{{ end }}">
                 </span>
-                {{ $state }}
+                {{ if $HasUnhealthyDependencies  }}Dependency Issue{{ else }}{{ $state }}{{ end }}
             </span>
         </div>
         <div class="text-sm text-gray-500 mt-2 font-mono">{{ .CRD.GVK }}</div>
@@ -56,11 +80,21 @@
         {{ $queuePercent = div (mul .CRD.QueueDepth 100) .CRD.MaxQueueDepth }}
     {{ end }}
 
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <div class="bg-white p-4 rounded-xl border shadow-sm stats-card">
-            <div class="text-xs text-gray-500">Workers</div>
-            <div class="text-2xl font-bold">{{ .CRD.WorkersActive }}/{{ .CRD.Workers }}</div>
+            <div class="text-xs text-gray-500">Total Workers</div>
+            <div class="text-2xl font-bold">{{ .CRD.Workers }}</div>
             <div class="text-xs text-gray-400 mt-1">Source: {{ .CRD.WorkersSource }}</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border shadow-sm stats-card">
+            <div class="text-xs text-gray-500">Processing</div>
+            <div class="text-2xl font-bold text-blue-600">{{ .CRD.WorkersProcessing }}</div>
+            <div class="text-xs text-gray-400 mt-1">Actively reconciling</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border shadow-sm stats-card">
+            <div class="text-xs text-gray-500">Idle</div>
+            <div class="text-2xl font-bold text-gray-600">{{ .CRD.WorkersIdle }}</div>
+            <div class="text-xs text-gray-400 mt-1">Waiting for work</div>
         </div>
         <div class="bg-white p-4 rounded-xl border shadow-sm stats-card">
             <div class="text-xs text-gray-500">Queue</div>
@@ -68,15 +102,81 @@
             <div class="text-xs text-gray-400 mt-1">Max: {{ .CRD.MaxQueueDepth }}</div>
         </div>
         <div class="bg-white p-4 rounded-xl border shadow-sm stats-card">
-            <div class="text-xs text-gray-500">Resources</div>
-            <div class="text-2xl font-bold">{{ .CRD.ResourceCount }}</div>
-            <div class="text-xs text-gray-400 mt-1">Live CRs in cache</div>
-        </div>
-        <div class="bg-white p-4 rounded-xl border shadow-sm stats-card">
             <div class="text-xs text-gray-500">Reconciles</div>
             <div class="text-2xl font-bold">{{ .CRD.TotalReconciles }}</div>
             <div class="text-xs text-gray-400 mt-1">Error rate: {{ printf "%.1f" .CRD.ErrorRate }}%</div>
         </div>
+    </div>
+
+    <!-- Worker Pool Visualization -->
+    <div class="bg-white p-6 rounded-xl border shadow-sm mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-900">Worker Pool</h2>
+                <p class="text-xs text-gray-500 mt-1">
+                    {{ .CRD.WorkersProcessing }} of {{ .CRD.Workers }} workers actively processing
+                </p>
+            </div>
+            <div class="flex gap-3 text-xs">
+                <div class="flex items-center gap-1">
+                    <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span class="text-gray-600">Idle</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <div class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></div>
+                    <span class="text-gray-600">Processing</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                    <span class="text-gray-600">Stopped</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {{ range $workerID, $state := .CRD.WorkerDetails }}
+            <div class="worker-card rounded-lg p-3 text-center border
+                {{- if eq $state "idle" }} worker-idle border-gray-200
+                {{- else if eq $state "processing" }} worker-processing border-blue-200
+                {{- else }} worker-stopped border-red-200{{ end }}">
+                <div class="text-xs font-mono truncate" title="{{ $workerID }}">
+                    {{- if eq $state "processing" }}
+                    <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse mx-auto mb-1"></div>
+                    {{- else if eq $state "idle" }}
+                    <div class="w-2 h-2 bg-green-500 rounded-full mx-auto mb-1"></div>
+                    {{- else }}
+                    <div class="w-2 h-2 bg-red-500 rounded-full mx-auto mb-1"></div>
+                    {{- end }}
+                    <span class="text-xs {{ if eq $state "processing" }}text-blue-700{{ else if eq $state "idle" }}text-gray-600{{ else }}text-red-700{{ end }}">
+                        {{- if eq $state "processing" }}⚡{{ else if eq $state "idle" }}💤{{ else }}⛔{{ end }}
+                    </span>
+                    <div class="text-[10px] font-mono text-gray-500 truncate mt-1">{{ truncate $workerID 30 }}</div>
+                </div>
+            </div>
+            {{ end }}
+        </div>
+        
+        {{ if gt .CRD.WorkersProcessing 0 }}
+        <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-blue-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                <span class="text-sm text-blue-700">
+                    {{ .CRD.WorkersProcessing }} worker(s) actively reconciling
+                </span>
+            </div>
+        </div>
+        {{ else if eq .CRD.WorkersIdle .CRD.Workers }}
+        <div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="text-sm text-green-700">All workers idle — no pending reconciliations</span>
+            </div>
+        </div>
+        {{ end }}
     </div>
 
     <!-- Queue Visualization -->
@@ -89,6 +189,15 @@
             <div class="bg-blue-500 h-3 rounded-full progress-bar" style="width: {{ $queuePercent }}%;"></div>
         </div>
         <div class="text-xs text-gray-400 mt-2">Source: {{ .CRD.MaxQueueDepthSource }}</div>
+        {{ if gt $queuePercent 80 }}
+        <div class="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-xs text-red-600">⚠️ High queue pressure — consider increasing workers or checking reconcile performance</p>
+        </div>
+        {{ else if gt $queuePercent 50 }}
+        <div class="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p class="text-xs text-yellow-600">⚠️ Moderate queue pressure</p>
+        </div>
+        {{ end }}
     </div>
 
     <!-- Runtime Health -->
@@ -127,7 +236,7 @@
             {{ else }}
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p class="text-blue-800 font-medium">⚙️ Conversion webhook not enabled</p>
-                <p class="text-blue-600 text-sm mt-1">Set <code>ENABLE_CONVERSION=true</code> and configure TLS certificates</p>
+                <p class="text-blue-600 text-sm mt-1">Set <code>ENABLE_CONVERSION=true</code> and configure TLS certificates with <code>TLS_CERT, TLS_KEY</code><p>
             </div>
             {{ end }}
         {{ else }}
@@ -166,28 +275,105 @@
             {{ else }}
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p class="text-blue-800 font-medium">🔌 Admission webhooks not enabled</p>
-                <p class="text-blue-600 text-sm mt-1">Validation and mutation rules are not being enforced</p>
+                <p class="text-blue-600 text-sm mt-1">Set <code>ENABLE_ADMISSION_WEBHOOK=true</code> and configure TLS certificates with <code>TLS_CERT, TLS_KEY</code></p>
             </div>
             {{ end }}
         {{ else }}
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p class="text-blue-800 font-medium">🔌 Admission webhooks not enabled</p>
-            <p class="text-blue-600 text-sm mt-1">Validation and mutation rules are not being enforced</p>
+            <p class="text-blue-600 text-sm mt-1">Set <code>ENABLE_ADMISSION_WEBHOOK=true</code> and configure TLS certificates to enable admission webhooks</code><p>
         </div>
         {{ end }}
     </div>
 
     <!-- Dependencies -->
-    {{ if .CRD.DependsOn }}
+    <!-- Dependencies Section -->
+{{ if .CRD.Dependencies }}
+<div class="bg-white p-6 rounded-xl border shadow-sm mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-900">Dependencies</h2>
+        {{ if .CRD.HasUnhealthyDependencies  }}
+        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+            ⚠️ Unhealthy Dependencies
+        </span>
+        {{ end }}
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {{ range $name, $dep := .CRD.Dependencies }}
+        <a href="/controlcenter/katalog/{{ $.KatalogName }}/crd/{{ $name }}" 
+           class="dependency-card block p-4 rounded-lg border transition-all hover:shadow-md
+               {{- if eq $dep.State "healthy" }} bg-green-50 border-green-200
+               {{- else if eq $dep.State "started" }} bg-blue-50 border-blue-200
+               {{- else if eq $dep.State "pending" }} bg-yellow-50 border-yellow-200
+               {{- else if eq $dep.State "degraded" }} bg-red-50 border-red-200
+               {{- else }} bg-gray-50 border-gray-200{{ end }}">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <span class="font-medium text-gray-900">{{ $name }}</span>
+                    {{ if $dep.Satisfied }}
+                        <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    {{ else }}
+                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    {{ end }}
+                </div>
+                <span class="text-xs px-2 py-0.5 rounded-full
+                    {{- if eq $dep.State "healthy" }} bg-green-200 text-green-800
+                    {{- else if eq $dep.State "started" }} bg-blue-200 text-blue-800
+                    {{- else if eq $dep.State "pending" }} bg-yellow-200 text-yellow-800
+                    {{- else if eq $dep.State "degraded" }} bg-red-200 text-red-800
+                    {{- else }} bg-gray-200 text-gray-800{{ end }}">
+                    {{ $dep.State }}
+                </span>
+            </div>
+            <div class="text-xs text-gray-500">
+                Condition: <span class="font-mono">{{ $dep.Condition }}</span>
+            </div>
+            <div class="text-xs text-gray-400 mt-1">
+                {{ if $dep.Satisfied }}✓ Satisfied{{ else }}✗ Not satisfied{{ end }}
+            </div>
+            {{ if $dep.LastCheck }}
+            <div class="text-xs text-gray-400 mt-1">
+                Last check: {{ $dep.LastCheck | formatTime }}
+            </div>
+            {{ end }}
+        </a>
+        {{ end }}
+    </div>
+    
+    <!-- Overall dependency health message -->
+    {{ if .CRD.HasUnhealthyDependencies  }}
+    <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <span class="text-sm text-red-700">
+                This CRD has unhealthy dependencies. Some operations may fail or be degraded.
+            </span>
+        </div>
+    </div>
+    {{ end }}
+</div>
+{{ end }}
+
+    <!-- {{ if .CRD.DependsOn }}
     <div class="bg-white p-6 rounded-xl border shadow-sm mb-8">
         <h2 class="text-lg font-semibold mb-4">Dependencies</h2>
         <div class="flex flex-wrap gap-2">
             {{ range .CRD.DependsOn }}
-            <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">{{ . }}</span>
+            <a href="/controlcenter/katalog/{{ $.KatalogName }}/crd/{{ . }}" 
+               class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm hover:bg-blue-200 transition">
+                {{ . }}
+            </a>
             {{ end }}
         </div>
     </div>
-    {{ end }}
+    {{ end }} -->
 
     <!-- Reconciler Configuration -->
     <div class="bg-white p-6 rounded-xl border shadow-sm">

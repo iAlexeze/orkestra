@@ -81,36 +81,48 @@ type KatalogResponse struct {
 
 // CRDSummary is a summary of a CRD
 type CRDSummary struct {
-	Name          string  `json:"name"`
-	Healthy       bool    `json:"healthy"`
-	Started       bool    `json:"started"`
-	Pending       bool    `json:"pending"`
-	Workers       int     `json:"workers"`
-	WorkersActive int     `json:"workersActive"`
-	WorkersSource string  `json:"workersSource"`
-	QueueDepth    int     `json:"queueDepth"`
-	MaxQueueDepth int     `json:"maxQueueDepth"`
-	ResourceCount int     `json:"resourceCount"`
-	ErrorRate     float64 `json:"errorRate"`
-	Uptime        string  `json:"uptime"`
+	Name          string   `json:"name"`
+	State         string   `json:"state"` // "healthy", "started", "pending", "degraded"
+	Healthy       bool     `json:"healthy"`
+	Started       bool     `json:"started"`
+	Pending       bool     `json:"pending"`
+	Workers       int      `json:"workers"`
+	WorkersActive int      `json:"workersActive"`
+	DependsOn     []string `json:"dependsOn"`
+	WorkersSource string   `json:"workersSource"`
+	QueueDepth    int      `json:"queueDepth"`
+	MaxQueueDepth int      `json:"maxQueueDepth"`
+	ResourceCount int      `json:"resourceCount"`
+	ErrorRate     float64  `json:"errorRate"`
+	Uptime        string   `json:"uptime"`
 }
 
 // CRDHealth is the response from the /katalog/{crd}/health endpoint
 type CRDHealth struct {
-	Name             string  `json:"name"`
-	State            string  `json:"state"`
-	Healthy          bool    `json:"healthy"`
-	Started          bool    `json:"started"`
-	Pending          bool    `json:"pending"`
-	StartedAt        string  `json:"startedAt"`
-	Uptime           string  `json:"uptime"`
-	QueueDepth       int     `json:"queueDepth"`
-	ErrorRate        float64 `json:"errorRate"`
-	ConsecutiveFails int     `json:"consecutiveFails"`
-	TotalReconciles  int     `json:"totalReconciles"`
-	ResourceCount    int     `json:"resourceCount"`
-	LastError        string  `json:"lastError"`
-	LastReconcile    string  `json:"lastReconcile"`
+	Name                     string                      `json:"name"`
+	State                    string                      `json:"state"`
+	Healthy                  bool                        `json:"healthy"`
+	Started                  bool                        `json:"started"`
+	Pending                  bool                        `json:"pending"`
+	StartedAt                string                      `json:"startedAt"`
+	Uptime                   string                      `json:"uptime"`
+	QueueDepth               int                         `json:"queueDepth"`
+	ErrorRate                float64                     `json:"errorRate"`
+	ConsecutiveFails         int                         `json:"consecutiveFails"`
+	TotalReconciles          int                         `json:"totalReconciles"`
+	ResourceCount            int                         `json:"resourceCount"`
+	LastError                string                      `json:"lastError"`
+	LastReconcile            string                      `json:"lastReconcile"`
+	HasUnhealthyDependencies bool                        `json:"hasUnhealthyDependencies"`
+	Dependencies             map[string]DependencyStatus `json:"dependencies,omitempty"`
+}
+
+type DependencyStatus struct {
+	Name      string `json:"name"`
+	State     string `json:"state"`
+	Condition string `json:"condition"`
+	Satisfied bool   `json:"satisfied"`
+	LastCheck string `json:"lastCheck,omitempty"`
 }
 
 // CRDInfo is the response from the /katalog/{crd} endpoint
@@ -124,7 +136,10 @@ type CRDInfo struct {
 	Namespace           string                 `json:"namespace"`
 	DependsOn           []string               `json:"dependsOn"`
 	Workers             int                    `json:"workers"`
-	WorkersActive       int                    `json:"workersActive"`
+	WorkersActive       int32                  `json:"workersActive"`
+	WorkersIdle         int32                  `json:"workersIdle"`
+	WorkersProcessing   int32                  `json:"workersProcessing"`
+	WorkerDetails       map[string]string      `json:"workerDetails,omitempty"`
 	WorkersSource       string                 `json:"workersSource"`
 	Resync              string                 `json:"resync"`
 	ResyncSource        string                 `json:"resyncSource"`
@@ -171,39 +186,44 @@ type AdmissionStats struct {
 
 // CRDDetail combines health and info for a single CRD
 type CRDDetail struct {
-	State               string                 `json:"state"`
-	StartedAt           string                 `json:"startedAt"`
-	Uptime              string                 `json:"uptime"`
-	ConsecutiveFails    int                    `json:"consecutiveFails"`
-	LastError           string                 `json:"lastError"`
-	LastReconcile       string                 `json:"lastReconcile"`
-	StartedAgo          string                 `json:"startedAgo"`
-	LastReconcileAgo    string                 `json:"lastReconcileAgo"`
-	Name                string                 `json:"name"`
-	Description         string                 `json:"description"`
-	Mode                string                 `json:"mode"`
-	GVK                 string                 `json:"gvk"`
-	GVR                 string                 `json:"gvr"`
-	Namespaced          bool                   `json:"namespaced"`
-	Namespace           string                 `json:"namespace"`
-	DependsOn           []string               `json:"dependsOn"`
-	Workers             int                    `json:"workers"`
-	WorkersActive       int                    `json:"workersActive"`
-	WorkersSource       string                 `json:"workersSource"`
-	Resync              string                 `json:"resync"`
-	ResyncSource        string                 `json:"resyncSource"`
-	QueueDepth          int                    `json:"queueDepth"`
-	MaxQueueDepth       int                    `json:"maxQueueDepth"`
-	MaxQueueDepthSource string                 `json:"maxQueueDepthSource"`
-	ResourceCount       int                    `json:"resourceCount"`
-	TotalReconciles     int                    `json:"totalReconciles"`
-	Reconciler          map[string]interface{} `json:"reconciler"`
-	Healthy             bool                   `json:"healthy"`
-	Started             bool                   `json:"started"`
-	Pending             bool                   `json:"pending"`
-	ErrorRate           float64                `json:"errorRate"`
-	Conversion          *ConversionStats       `json:"conversion"`
-	Admission           *AdmissionStats        `json:"admission"`
+	State                    string                      `json:"state"`
+	StartedAt                string                      `json:"startedAt"`
+	Uptime                   string                      `json:"uptime"`
+	ConsecutiveFails         int                         `json:"consecutiveFails"`
+	LastError                string                      `json:"lastError"`
+	LastReconcile            string                      `json:"lastReconcile"`
+	StartedAgo               string                      `json:"startedAgo"`
+	LastReconcileAgo         string                      `json:"lastReconcileAgo"`
+	Name                     string                      `json:"name"`
+	Description              string                      `json:"description"`
+	Mode                     string                      `json:"mode"`
+	GVK                      string                      `json:"gvk"`
+	GVR                      string                      `json:"gvr"`
+	Namespaced               bool                        `json:"namespaced"`
+	Namespace                string                      `json:"namespace"`
+	DependsOn                []string                    `json:"dependsOn"`
+	HasUnhealthyDependencies bool                        `json:"hasUnhealthyDependencies"`
+	Dependencies             map[string]DependencyStatus `json:"dependencies,omitempty"`
+	Workers                  int                         `json:"workers"`
+	WorkersActive            int32                       `json:"workersActive"`
+	WorkersIdle              int32                       `json:"workersIdle"`
+	WorkersProcessing        int32                       `json:"workersProcessing"`
+	WorkerDetails            map[string]string           `json:"workerDetails,omitempty"`
+	WorkersSource            string                      `json:"workersSource"`
+	Resync                   string                      `json:"resync"`
+	ResyncSource             string                      `json:"resyncSource"`
+	QueueDepth               int                         `json:"queueDepth"`
+	MaxQueueDepth            int                         `json:"maxQueueDepth"`
+	MaxQueueDepthSource      string                      `json:"maxQueueDepthSource"`
+	ResourceCount            int                         `json:"resourceCount"`
+	TotalReconciles          int                         `json:"totalReconciles"`
+	Reconciler               map[string]interface{}      `json:"reconciler"`
+	Healthy                  bool                        `json:"healthy"`
+	Started                  bool                        `json:"started"`
+	Pending                  bool                        `json:"pending"`
+	ErrorRate                float64                     `json:"errorRate"`
+	Conversion               *ConversionStats            `json:"conversion"`
+	Admission                *AdmissionStats             `json:"admission"`
 }
 
 type SimpleSystemMetrics struct {

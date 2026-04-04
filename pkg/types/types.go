@@ -62,6 +62,10 @@ const (
 	CRDModeDynamic CRDMode = "dynamic"
 )
 
+func (m CRDMode) String() string {
+	return string(m)
+}
+
 // ── APITypes ──────────────────────────────────────────────────────────────────
 // Mirrors the apiTypes block in crd-katalog.yaml.
 // ork generate reads this block to emit ObjectRegistry + ListRegistry entries

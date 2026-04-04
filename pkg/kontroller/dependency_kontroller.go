@@ -171,12 +171,12 @@ package kontroller
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/event"
 
@@ -184,7 +184,6 @@ import (
 	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/metrics"
 	"github.com/ialexeze/orkestra/pkg/queue"
 )
 
@@ -249,6 +248,11 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 	logger.Info().Str("component", k.Name()).Msg("starting")
 	k.startedAt = time.Now()
 
+	// Mark as ready immediately - the kontroller can serve requests
+	k.hs.SetReady()
+	k.orkHealth.SetOrkReady()
+
+	// Startup order
 	startupOrder := k.depGraph.StartupOrder()
 	logger.Info().Str("order", strings.Join(startupOrder, " → ")).Msg("startup order")
 
@@ -275,6 +279,10 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 	// START RETRY LOOP ONCE, BEFORE ANY BLOCKING
 	go k.retryMissingCRDs(ctx)
 
+	// Start dependency health checker (runs until ctx is cancelled)
+	go k.dependencyHealthChecker(ctx)
+
+	// Periodically check dependency health if there are dependencies
 	// Process CRDs in dependency order
 	for _, name := range startupOrder {
 		node := k.depGraph.GetNode(name)
@@ -322,10 +330,8 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 		logger.Info().Str("gvk", gvk).Int("workers", workers).Msg("starting workers")
 		k.startCRDWorkers(ctx, gvk, workers)
 
-		// Update health and metrics
-		k.crdHealthMap[gvk].SetWorkersActive(workers)
+		// Update health
 		k.crdHealthMap[gvk].queueReg = k.queueReg
-		metrics.SetWorkersActive(gvk, float64(workers))
 
 		// Signal dependents
 		close(k.readyCh[gvk])
@@ -337,8 +343,6 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 	// Mark controller started
 	k.startedKtrl.Store(true)
 	if k.anyOnline.Load() {
-		k.hs.SetReady()
-		k.orkHealth.SetOrkReady()
 		logger.Info().Str("component", k.Name()).Int("crds_online", len(startupOrder)).Msg("started")
 	} else {
 		logger.Warn().Str("component", k.Name()).Msg("started — all CRDs missing, waiting for retry loop")
@@ -363,42 +367,42 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 
 // startCRDWorkers starts a worker pool for a specific CRD and is invoked in dependency order.
 func (k *DependencyKontroller) startCRDWorkers(ctx context.Context, gvk string, workers int) {
-	// Build reconciler once here — kube and ev are started by now
 	entry, ok := k.katalog.Get(gvk)
 	if !ok {
 		logger.Fatal().Str("gvk", gvk).Msg("no katalog entry found")
 		return
 	}
 
-	// CRD context
 	crdCtx, cancel := context.WithCancel(ctx)
-
-	rec := entry.ReconcilerFactory() // ← initialize reconciler factory for all CRDs once
+	rec := entry.ReconcilerFactory()
 
 	k.mu.Lock()
-
-	k.reconcilers[gvk] = rec // ← reconciler stored here
-
-	// cancel func for each
+	k.reconcilers[gvk] = rec
 	k.cancelFuncs[gvk] = cancel
-
-	// wait group for each
 	wg := &sync.WaitGroup{}
 	k.wgs[gvk] = wg
+	k.crdHealthMap[gvk].SetStarted()
 
-	// compute started for each
-	k.crdHealthMap[gvk].SetStarted() // ← health map
-	k.started[gvk] = true            // ← state map
+	k.crdHealthMap[gvk].SetTotalWorkers(int32(workers))
+	k.crdHealthMap[gvk].gvk = gvk // Set GVK for metrics
+	k.started[gvk] = true
 	k.total[gvk]++
-
 	k.mu.Unlock()
 
+	// Initialize all workers as idle (not processing)
 	for i := 0; i < workers; i++ {
-		wg.Add(1) // ← one crd at a time
-		go func(workerID string) {
+		wg.Add(1)
+		workerID := fmt.Sprintf("%s-worker-%d", gvk, i)
+		workerID = strings.ReplaceAll(workerID, ",", "")
+		workerID = strings.ReplaceAll(workerID, " ", "-")
+
+		// Mark as idle initially (not processing)
+		k.crdHealthMap[gvk].workerStates.Store(workerID, WorkerStateIdle)
+
+		go func(id string) {
 			defer wg.Done()
-			k.runWorkerForGVK(crdCtx, gvk, workerID)
-		}(uuid.New().String()) // ← for tracing
+			k.runWorkerForGVK(crdCtx, gvk, id)
+		}(workerID)
 	}
 }
 
@@ -426,7 +430,16 @@ func (k *DependencyKontroller) stopCRDWorkers(gvk string) {
 		return
 	}
 
-	// Step 3: wait for workers to drain — with a timeout.
+	// Reset worker counts after shutdown
+	if health, ok := k.crdHealthMap[gvk]; ok {
+		health.ResetWorkerCounts()
+		health.workerStates.Range(func(key, value interface{}) bool {
+			health.workerStates.Store(key, WorkerStateStopped)
+			return true
+		})
+	}
+
+	// Step 4: wait for workers to drain — with a timeout.
 	// The timeout is the safety net for stuck reconciles, not
 	// an execution budget for normal shutdown.
 	done := make(chan struct{})

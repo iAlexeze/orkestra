@@ -15,6 +15,29 @@ import (
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CRD Health Response
+// ─────────────────────────────────────────────────────────────────────────────
+
+type CRDHealthResponse struct {
+	Name                     string                      `json:"name"`
+	State                    string                      `json:"state"` // "not started", "pending", "started", "healthy", "degraded"
+	Healthy                  bool                        `json:"healthy"`
+	Started                  bool                        `json:"started"`
+	Pending                  bool                        `json:"pending"`
+	StartedAt                string                      `json:"startedAt"`
+	Uptime                   string                      `json:"uptime"`
+	QueueDepth               int                         `json:"queueDepth"`
+	ErrorRate                float64                     `json:"errorRate"`
+	ConsecutiveFails         int64                       `json:"consecutiveFails"`
+	TotalReconciles          int64                       `json:"totalReconciles"`
+	ResourceCount            int                         `json:"resourceCount"`
+	LastError                string                      `json:"lastError"`
+	LastReconcile            string                      `json:"lastReconcile"`
+	HasUnhealthyDependencies bool                        `json:"hasUnhealthyDependencies"`
+	Dependencies             map[string]DependencyStatus `json:"dependencies,omitempty"`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // CRD Health Handler
 // Returns the live health status of a single CRD reconciler.
 // This endpoint is used by:
@@ -30,8 +53,8 @@ import (
 //   - reconcile counters
 //   - last error
 //   - last reconcile timestamp
+//
 // ─────────────────────────────────────────────────────────────────────────────
-
 func BuildCRDHealthHandler(
 	crd orktypes.CRDEntry,
 	kfg *konfig.Konfig,
@@ -39,9 +62,6 @@ func BuildCRDHealthHandler(
 	h *CRDHealth,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Snapshot both state flags once so message, status, and body fields
-		// are always consistent with each other — a reconcile completing mid-handler
-		// cannot cause message and "healthy" to disagree.
 		isStarted := h.Started()
 		isPending := h.Pending()
 		isHealthy := h.IsHealthy()
@@ -50,43 +70,143 @@ func BuildCRDHealthHandler(
 		var state string
 
 		switch {
-		case !isStarted:
+		case !isStarted && !isPending:
 			httpStatus = http.StatusServiceUnavailable
 			state = "not started"
-		case isStarted:
-			httpStatus = http.StatusOK
-			state = "started"
 		case isPending:
-			// CRD workers have not started yet — this is expected on fresh startup,
-			// not a sign of degradation. Report pending so probes don't false-alarm.
 			httpStatus = http.StatusOK
 			state = "pending"
+		case isStarted && !isHealthy:
+			httpStatus = http.StatusServiceUnavailable
+			state = "degraded"
 		case isHealthy:
 			httpStatus = http.StatusOK
 			state = "healthy"
 		default:
-			httpStatus = http.StatusServiceUnavailable
-			state = "degraded"
+			httpStatus = http.StatusOK
+			state = "started"
 		}
 
 		v := resolveCRDDisplayValues(crd, kfg, inf)
-		utils.WriteJSON(w, httpStatus, map[string]interface{}{
-			"name":             crd.Name,
-			"state":            state,
-			"healthy":          isHealthy,
-			"started":          isStarted,
-			"pending":          isPending,
-			"startedAt":        h.StartedAt(),
-			"uptime":           h.Uptime(),
-			"queueDepth":       h.QueueDepth(crd.GVK().String()),
-			"errorRate":        h.ErrorRate(),
-			"consecutiveFails": h.ConsecutiveFails(),
-			"totalReconciles":  h.TotalReconciles(),
-			"resourceCount":    v.resourceCount,
-			"lastError":        h.LastError(),
-			"lastReconcile":    h.LastReconcile(),
-		})
+
+		response := CRDHealthResponse{
+			Name:                     crd.Name,
+			State:                    state,
+			Healthy:                  isHealthy,
+			Started:                  isStarted,
+			Pending:                  isPending,
+			StartedAt:                h.StartedAt(),
+			Uptime:                   h.Uptime(),
+			QueueDepth:               h.QueueDepth(crd.GVK().String()),
+			ErrorRate:                h.ErrorRate(),
+			ConsecutiveFails:         h.ConsecutiveFails(),
+			TotalReconciles:          h.TotalReconciles(),
+			ResourceCount:            v.resourceCount,
+			LastError:                h.LastError(),
+			LastReconcile:            h.LastReconcile(),
+			Dependencies:             h.GetDependencyStatuses(),
+			HasUnhealthyDependencies: h.HasUnhealthyDependencies(),
+		}
+
+		utils.WriteJSON(w, httpStatus, response)
 	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRD Info Response
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Future use
+type WorkerStats struct {
+	Workers           int32             `json:"workers"`
+	WorkersActive     int32             `json:"workersActive"`
+	WorkersIdle       int32             `json:"workersIdle"`
+	WorkersProcessing int32             `json:"workersProcessing"`
+	WorkerDetails     map[string]string `json:"workerDetails,omitempty"`
+}
+
+type CRDInfoResponse struct {
+	Name                string                   `json:"name"`
+	Description         string                   `json:"description"`
+	Mode                string                   `json:"mode"`
+	GVK                 string                   `json:"gvk"`
+	GVR                 string                   `json:"gvr"`
+	Namespaced          *bool                    `json:"namespaced"`
+	Namespace           string                   `json:"namespace"`
+	DependsOn           []string                 `json:"dependsOn,omitempty"`
+	Workers             int                      `json:"workers"`
+	WorkersActive       int32                    `json:"workersActive"`
+	WorkersIdle         int32                    `json:"workersIdle"`
+	WorkersProcessing   int32                    `json:"workersProcessing"`
+	WorkerDetails       map[string]string        `json:"workerDetails,omitempty"`
+	WorkersSource       string                   `json:"workersSource"`
+	Resync              string                   `json:"resync"`
+	ResyncSource        string                   `json:"resyncSource"`
+	QueueDepth          int                      `json:"queueDepth"`
+	MaxQueueDepth       int                      `json:"maxQueueDepth"`
+	MaxQueueDepthSource string                   `json:"maxQueueDepthSource"`
+	ResourceCount       int                      `json:"resourceCount"`
+	TotalReconciles     int64                    `json:"totalReconciles"`
+	Reconciler          ReconcilerInfo           `json:"reconciler"`
+	Healthy             bool                     `json:"healthy"`
+	Started             bool                     `json:"started"`
+	Pending             bool                     `json:"pending"`
+	ErrorRate           float64                  `json:"errorRate"`
+	Conversion          *ConversionStatsResponse `json:"conversion,omitempty"`
+	Admission           *AdmissionStatsResponse  `json:"admission,omitempty"`
+}
+
+type ReconcilerInfo struct {
+	Type        string                 `json:"type"`
+	Finalizers  FinalizersInfo         `json:"finalizers"`
+	Hooks       HooksInfo              `json:"hooks"`
+	Constructor ConstructorInfo        `json:"constructor"`
+	Templates   map[string]interface{} `json:"templates,omitempty"`
+}
+
+type FinalizersInfo struct {
+	Source string   `json:"source"`
+	Values []string `json:"values"`
+}
+
+type HooksInfo struct {
+	Configured bool   `json:"configured"`
+	Source     string `json:"source,omitempty"`
+	Location   string `json:"location,omitempty"`
+	Function   string `json:"function,omitempty"`
+}
+
+type ConstructorInfo struct {
+	Configured bool   `json:"configured"`
+	Source     string `json:"source,omitempty"`
+	Location   string `json:"location,omitempty"`
+	Function   string `json:"function,omitempty"`
+}
+
+type ConversionStatsResponse struct {
+	Enabled      bool  `json:"enabled"`
+	Total        int64 `json:"total"`
+	Success      int64 `json:"success"`
+	Failures     int64 `json:"failures"`
+	AvgLatencyMs int64 `json:"avgLatencyMs"`
+	P95LatencyMs int64 `json:"p95LatencyMs"`
+}
+
+type AdmissionStatsResponse struct {
+	WebhooksEnabled   bool    `json:"webhooksEnabled"`
+	ValidationTotal   int64   `json:"validationTotal"`
+	ValidationAllowed int64   `json:"validationAllowed"`
+	ValidationDenied  int64   `json:"validationDenied"`
+	ValidationWarned  int64   `json:"validationWarned"`
+	ValAvgLatencyMs   float64 `json:"valAvgLatencyMs"`
+	ValP95LatencyMs   float64 `json:"valP95LatencyMs"`
+	ValMaxLatencyMs   float64 `json:"valMaxLatencyMs"`
+	MutationTotal     int64   `json:"mutationTotal"`
+	MutationApplied   int64   `json:"mutationApplied"`
+	MutationSkipped   int64   `json:"mutationSkipped"`
+	MutAvgLatencyMs   float64 `json:"mutAvgLatencyMs"`
+	MutP95LatencyMs   float64 `json:"mutP95LatencyMs"`
+	MutMaxLatencyMs   float64 `json:"mutMaxLatencyMs"`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -103,8 +223,8 @@ func BuildCRDHealthHandler(
 //   - /katalog/<crd>
 //   - dashboards
 //   - operator introspection
+//
 // ─────────────────────────────────────────────────────────────────────────────
-
 func BuildCRDInfoHandler(
 	crd orktypes.CRDEntry,
 	kfg *konfig.Konfig,
@@ -116,69 +236,137 @@ func BuildCRDInfoHandler(
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := resolveCRDDisplayValues(crd, kfg, inf)
 
-		response := map[string]interface{}{
-			"name":        crd.Name,
-			"description": crd.Description,
-			"mode":        crd.Mode,
-			"gvk":         crd.GVK().String(),
-			"gvr":         crd.GroupVersionResource.String(),
-			// "critical":            crd.Critical,
-			"namespaced":          crd.Namespaced,
-			"namespace":           crd.Namespace,
-			"dependsOn":           crd.DependsOn,
-			"workers":             v.workers,
-			"workersActive":       h.WorkersActive(),
-			"workersSource":       v.workersSource,
-			"resync":              v.resync,
-			"resyncSource":        v.resyncSource,
-			"queueDepth":          h.QueueDepth(crd.GVK().String()),
-			"maxQueueDepth":       v.maxQueueDepth,
-			"maxQueueDepthSource": v.maxQueueDepthSource,
-			"resourceCount":       v.resourceCount,
-			"totalReconciles":     h.TotalReconciles(),
-			"reconciler":          reconcilerInfo(crd),
-			"healthy":             h.IsHealthy(),
-			"started":             h.Started(),
-			"pending":             h.Pending(),
-			"errorRate":           h.ErrorRate(),
+		response := CRDInfoResponse{
+			Name:                crd.Name,
+			Description:         crd.Description,
+			Mode:                crd.Mode.String(),
+			GVK:                 crd.GVK().String(),
+			GVR:                 crd.GroupVersionResource.String(),
+			Namespaced:          crd.Namespaced,
+			Namespace:           crd.Namespace,
+			DependsOn:           crd.DependsOn,
+			Workers:             v.workers,
+			WorkersActive:       h.GetActiveWorkers(),
+			WorkersIdle:         h.GetIdleWorkers(),
+			WorkersProcessing:   h.GetProcessingWorkers(),
+			WorkerDetails:       h.GetWorkerStates(),
+			WorkersSource:       v.workersSource,
+			Resync:              v.resync,
+			ResyncSource:        v.resyncSource,
+			QueueDepth:          h.QueueDepth(crd.GVK().String()),
+			MaxQueueDepth:       v.maxQueueDepth,
+			MaxQueueDepthSource: v.maxQueueDepthSource,
+			ResourceCount:       v.resourceCount,
+			TotalReconciles:     h.TotalReconciles(),
+			Reconciler:          reconcilerInfoStruct(crd),
+			Healthy:             h.IsHealthy(),
+			Started:             h.Started(),
+			Pending:             h.Pending(),
+			ErrorRate:           h.ErrorRate(),
 		}
 
-		// Add conversion stats if available
 		if stats != nil {
 			snapshot := stats.GetStats()
-			response["conversion"] = map[string]interface{}{
-				"enabled":      true,
-				"total":        snapshot.TotalRequests,
-				"success":      snapshot.SuccessRequests,
-				"failures":     snapshot.FailedRequests,
-				"avgLatencyMs": snapshot.AvgLatency.Milliseconds(),
-				"p95LatencyMs": snapshot.P95Latency.Milliseconds(),
+			response.Conversion = &ConversionStatsResponse{
+				Enabled:      kfg.ConversionEnabled(),
+				Total:        snapshot.TotalRequests,
+				Success:      snapshot.SuccessRequests,
+				Failures:     snapshot.FailedRequests,
+				AvgLatencyMs: snapshot.AvgLatency.Milliseconds(),
+				P95LatencyMs: snapshot.P95Latency.Milliseconds(),
 			}
 		}
 
-		// Add admission stats if available
 		if admStats != nil {
 			snap := admStats.GetStats(crd.Webhooks.WebhookValidationEnabled() || crd.Webhooks.WebhookMutationEnabled())
-			response["admission"] = map[string]interface{}{
-				"webhooksEnabled":   snap.WebhooksEnabled,
-				"validationTotal":   snap.ValidationTotal,
-				"validationAllowed": snap.ValidationAllowed,
-				"validationDenied":  snap.ValidationDenied,
-				"validationWarned":  snap.ValidationWarned,
-				"valAvgLatencyMs":   snap.ValAvgLatencyMs,
-				"valP95LatencyMs":   snap.ValP95LatencyMs,
-				"valMaxLatencyMs":   snap.ValMaxLatencyMs,
-				"mutationTotal":     snap.MutationTotal,
-				"mutationApplied":   snap.MutationApplied,
-				"mutationSkipped":   snap.MutationSkipped,
-				"mutAvgLatencyMs":   snap.MutAvgLatencyMs,
-				"mutP95LatencyMs":   snap.MutP95LatencyMs,
-				"mutMaxLatencyMs":   snap.MutMaxLatencyMs,
+			response.Admission = &AdmissionStatsResponse{
+				WebhooksEnabled:   kfg.AdmissionEnabled(),
+				ValidationTotal:   snap.ValidationTotal,
+				ValidationAllowed: snap.ValidationAllowed,
+				ValidationDenied:  snap.ValidationDenied,
+				ValidationWarned:  snap.ValidationWarned,
+				ValAvgLatencyMs:   snap.ValAvgLatencyMs,
+				ValP95LatencyMs:   snap.ValP95LatencyMs,
+				ValMaxLatencyMs:   snap.ValMaxLatencyMs,
+				MutationTotal:     snap.MutationTotal,
+				MutationApplied:   snap.MutationApplied,
+				MutationSkipped:   snap.MutationSkipped,
+				MutAvgLatencyMs:   snap.MutAvgLatencyMs,
+				MutP95LatencyMs:   snap.MutP95LatencyMs,
+				MutMaxLatencyMs:   snap.MutMaxLatencyMs,
 			}
 		}
 
 		utils.WriteJSON(w, http.StatusOK, response)
 	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Katalog Response
+// ─────────────────────────────────────────────────────────────────────────────
+
+type KatalogResponse struct {
+	CRDs           []CRDSummaryResponse `json:"crds"`
+	Total          int                  `json:"total"`
+	TotalEnabled   int                  `json:"totalEnabled"`
+	OrkReady       bool                 `json:"OrkReady"`
+	Healthy        bool                 `json:"healthy"`
+	Status         int                  `json:"status"`
+	DegradedReason string               `json:"degradedReason,omitempty"`
+	StatusCounts   StatusCounts         `json:"statusCounts"`
+	Name           string               `json:"name,omitempty"`
+	Version        string               `json:"version,omitempty"`
+	Author         string               `json:"author,omitempty"`
+	Description    string               `json:"description,omitempty"`
+	License        string               `json:"license,omitempty"`
+}
+
+type CRDSummaryResponse struct {
+	Name                string            `json:"name"`
+	Description         string            `json:"description"`
+	Mode                string            `json:"mode"`
+	GVK                 string            `json:"gvk"`
+	GVR                 string            `json:"gvr"`
+	Namespaced          *bool             `json:"namespaced"`
+	Namespace           string            `json:"namespace"`
+	DependsOn           []string          `json:"dependsOn,omitempty"`
+	Workers             int               `json:"workers"`
+	WorkersSource       string            `json:"workersSource"`
+	WorkersActive       int32             `json:"workersActive"`
+	Resync              string            `json:"resync"`
+	ResyncSource        string            `json:"resyncSource"`
+	QueueDepth          int               `json:"queueDepth"`
+	MaxQueueDepth       int               `json:"maxQueueDepth"`
+	MaxQueueDepthSource string            `json:"maxQueueDepthSource"`
+	ResourceCount       int               `json:"resourceCount"`
+	Reconciler          ReconcilerSummary `json:"reconciler"`
+	Healthy             bool              `json:"healthy"`
+	State               string            `json:"state"`
+	Started             bool              `json:"started"`
+	Pending             bool              `json:"pending"`
+	StartedAt           string            `json:"startedAt"`
+	Uptime              string            `json:"uptime"`
+	ErrorRate           float64           `json:"errorRate"`
+	Endpoints           EndpointInfo      `json:"endpoints"`
+}
+
+type ReconcilerSummary struct {
+	Type           string `json:"type"`
+	HasTemplates   bool   `json:"hasTemplates,omitempty"`
+	HasHooks       bool   `json:"hasHooks,omitempty"`
+	HasConstructor bool   `json:"hasConstructor,omitempty"`
+}
+
+type EndpointInfo struct {
+	Health string `json:"health"`
+	Info   string `json:"info"`
+}
+
+type StatusCounts struct {
+	Healthy  int `json:"healthy"`
+	Degraded int `json:"degraded"`
+	Started  int `json:"started"`
+	Pending  int `json:"pending"`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -192,7 +380,6 @@ func BuildCRDInfoHandler(
 //
 // This is the top‑level endpoint for dashboards and operator UIs.
 // ─────────────────────────────────────────────────────────────────────────────
-
 func BuildKatalogHandler(
 	kat *katalog.Katalog,
 	kfg *konfig.Konfig,
@@ -201,15 +388,8 @@ func BuildKatalogHandler(
 	o *OrkestraHealth,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		crds := make([]map[string]interface{}, 0)
-
-		// Initialize status counters
-		statusCounts := StatusCounts{
-			Healthy:  0,
-			Degraded: 0,
-			Started:  0,
-			Pending:  0,
-		}
+		crds := make([]CRDSummaryResponse, 0)
+		statusCounts := StatusCounts{}
 
 		for _, crd := range kat.Enabled() {
 			gvk := crd.GVK().String()
@@ -226,58 +406,74 @@ func BuildKatalogHandler(
 			isHealthy := h.IsHealthy()
 			isStarted := h.Started()
 			isPending := h.Pending()
+			var state string
 
-			// Count statuses
 			if isHealthy {
 				statusCounts.Healthy++
+				state = "healthy"
 			} else if isStarted {
 				statusCounts.Started++
+				if h.ConsecutiveFails() > 0 {
+					state = "degraded"
+				} else {
+					state = "started"
+				}
 			} else if isPending {
 				statusCounts.Pending++
+				if h.ConsecutiveFails() > 0 {
+					state = "degraded"
+				} else if h.LastReconcile() == "no reconciles yet" {
+					state = "pending"
+				}
 			} else {
 				statusCounts.Degraded++
+				state = "degraded"
 			}
 
-			crds = append(crds, map[string]interface{}{
-				"name":                crd.Name,
-				"description":         crd.Description,
-				"mode":                crd.Mode,
-				"gvk":                 gvk,
-				"gvr":                 crd.GroupVersionResource.String(),
-				"namespaced":          crd.Namespaced,
-				"namespace":           crd.Namespace,
-				"dependsOn":           crd.DependsOn,
-				"workers":             v.workers,
-				"workersSource":       v.workersSource,
-				"workersActive":       h.WorkersActive(),
-				"resync":              v.resync,
-				"resyncSource":        v.resyncSource,
-				"queueDepth":          h.QueueDepth(crd.GVK().String()),
-				"maxQueueDepth":       v.maxQueueDepth,
-				"maxQueueDepthSource": v.maxQueueDepthSource,
-				"resourceCount":       v.resourceCount,
-				"reconciler":          reconcilerInfo(crd),
-				"healthy":             isHealthy,
-				"started":             isStarted,
-				"pending":             isPending,
-				"startedAt":           h.StartedAt(),
-				"uptime":              h.Uptime(),
-				"errorRate":           h.ErrorRate(),
-				"endpoints": map[string]string{
-					"health": "/katalog/" + strings.ToLower(crd.Name) + "/health",
-					"info":   "/katalog/" + strings.ToLower(crd.Name),
+			crds = append(crds, CRDSummaryResponse{
+				Name:                crd.Name,
+				State:               state,
+				Description:         crd.Description,
+				Mode:                crd.Mode.String(),
+				GVK:                 gvk,
+				GVR:                 crd.GroupVersionResource.String(),
+				Namespaced:          crd.Namespaced,
+				Namespace:           crd.Namespace,
+				DependsOn:           crd.DependsOn,
+				Workers:             v.workers,
+				WorkersSource:       v.workersSource,
+				WorkersActive:       h.GetActiveWorkers(),
+				Resync:              v.resync,
+				ResyncSource:        v.resyncSource,
+				QueueDepth:          h.QueueDepth(gvk),
+				MaxQueueDepth:       v.maxQueueDepth,
+				MaxQueueDepthSource: v.maxQueueDepthSource,
+				ResourceCount:       v.resourceCount,
+				Reconciler: ReconcilerSummary{
+					Type:           "generic",
+					HasTemplates:   crd.ReconcilerConfig.OnCreate != nil,
+					HasHooks:       crd.ReconcilerConfig.Hooks != nil || crd.ReconcilerConfig.HookFactory != nil,
+					HasConstructor: crd.ReconcilerConfig.Constructor != nil,
+				},
+				Healthy:   isHealthy,
+				Started:   isStarted,
+				Pending:   isPending,
+				StartedAt: h.StartedAt(),
+				Uptime:    h.Uptime(),
+				ErrorRate: h.ErrorRate(),
+				Endpoints: EndpointInfo{
+					Health: "/katalog/" + strings.ToLower(crd.Name) + "/health",
+					Info:   "/katalog/" + strings.ToLower(crd.Name),
 				},
 			})
 		}
 
-		// Calculate overall health
 		healthy := statusCounts.Degraded == 0
 		status := http.StatusOK
 		degradedReason := ""
 
 		if !healthy {
 			status = http.StatusServiceUnavailable
-
 			var parts []string
 			if statusCounts.Degraded > 0 {
 				parts = append(parts, fmt.Sprintf("%d degraded", statusCounts.Degraded))
@@ -288,7 +484,6 @@ func BuildKatalogHandler(
 			if statusCounts.Started > 0 {
 				parts = append(parts, fmt.Sprintf("%d started", statusCounts.Started))
 			}
-
 			degradedReason = strings.Join(parts, ", ")
 		}
 
@@ -301,38 +496,84 @@ func BuildKatalogHandler(
 			Status:         status,
 			DegradedReason: degradedReason,
 			StatusCounts:   statusCounts,
-
-			// Metadata
-			Name:        kat.Meta().Name,
-			Version:     kat.Meta().Version,
-			Author:      kat.Meta().Author,
-			License:     kat.Meta().License,
-			Description: kat.Meta().Description,
+			Name:           kat.Meta().Name,
+			Version:        kat.Meta().Version,
+			Author:         kat.Meta().Author,
+			License:        kat.Meta().License,
+			Description:    kat.Meta().Description,
 		})
 	}
 }
 
-type KatalogResponse struct {
-	CRDs           []map[string]interface{} `json:"crds"`
-	TotalEnabled   int                      `json:"totalEnabled"`
-	OrkReady       bool                     `json:"OrkReady"`
-	Total          int                      `json:"total"`
-	Healthy        bool                     `json:"healthy"`
-	Status         int                      `json:"status"`
-	StatusCounts   StatusCounts             `json:"statusCounts"`
-	DegradedReason string                   `json:"degradedReason,omitempty"`
-	Name           string                   `json:"name,omitempty"`
-	Version        string                   `json:"version,omitempty"`
-	Author         string                   `json:"author,omitempty"`
-	Description    string                   `json:"description,omitempty"`
-	License        string                   `json:"license,omitempty"`
-}
+// Helper function to convert to struct-based reconciler info
+func reconcilerInfoStruct(crd orktypes.CRDEntry) ReconcilerInfo {
+	rc := crd.ReconcilerConfig
 
-type StatusCounts struct {
-	Healthy  int `json:"healthy"`
-	Degraded int `json:"degraded"`
-	Started  int `json:"started"`
-	Pending  int `json:"pending"`
+	reconcilerType := "generic"
+	if !crd.DefaultReconcile() {
+		reconcilerType = "custom"
+	}
+
+	finalizersInfo := FinalizersInfo{
+		Source: "default",
+		Values: []string{},
+	}
+	if len(rc.Finalizers) > 0 {
+		finalizersInfo.Source = "configured"
+		finalizersInfo.Values = rc.Finalizers
+	}
+
+	hooksInfo := HooksInfo{Configured: false}
+	if rc.Hooks != nil {
+		hooksInfo = HooksInfo{
+			Configured: true,
+			Source:     "yaml",
+			Location:   rc.Hooks.Location,
+			Function:   rc.Hooks.Function,
+		}
+	} else if rc.HookFactory != nil {
+		hooksInfo = HooksInfo{
+			Configured: true,
+			Source:     "go",
+		}
+	}
+
+	constructorInfo := ConstructorInfo{Configured: false}
+	if rc.ConstructorDecl != nil {
+		constructorInfo = ConstructorInfo{
+			Configured: true,
+			Source:     "yaml",
+			Location:   rc.ConstructorDecl.Location,
+			Function:   rc.ConstructorDecl.Function,
+		}
+	} else if rc.Constructor != nil {
+		constructorInfo = ConstructorInfo{
+			Configured: true,
+			Source:     "go",
+		}
+	}
+
+	result := ReconcilerInfo{
+		Type:        reconcilerType,
+		Finalizers:  finalizersInfo,
+		Hooks:       hooksInfo,
+		Constructor: constructorInfo,
+	}
+
+	if rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil {
+		result.Templates = make(map[string]interface{})
+		if rc.OnCreate != nil {
+			result.Templates["onCreate"] = templateSummary(rc.OnCreate)
+		}
+		if rc.OnReconcile != nil {
+			result.Templates["onReconcile"] = templateSummary(rc.OnReconcile)
+		}
+		if rc.OnDelete != nil {
+			result.Templates["onDelete"] = templateSummary(rc.OnDelete)
+		}
+	}
+
+	return result
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

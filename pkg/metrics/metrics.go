@@ -99,14 +99,36 @@ func SetQueueDepth(gvk string, depth float64) {
 // Gauge of how many workers are actively reconciling per CRD.
 // Helps tune worker counts and detect worker starvation.
 // ─────────────────────────────────────────────────────────────────────────────
-var workersActive = promauto.NewGaugeVec(prometheus.GaugeOpts{
-	Name: "controller_workers_active",
-	Help: "Number of active workers per CRD",
+var workersTotal = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "controller_workers_total",
+	Help: "Total number of workers per CRD",
+}, []string{"crd"})
+
+var workersIdle = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "controller_workers_idle",
+	Help: "Number of idle workers per CRD",
+}, []string{"crd"})
+
+var workersProcessing = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "controller_workers_processing",
+	Help: "Number of processing workers per CRD",
 }, []string{"crd"})
 
 // SetWorkersActive sets the active worker gauge for a CRD.
-func SetWorkersActive(gvk string, count float64) {
-	workersActive.WithLabelValues(gvk).Set(count)
+// func SetWorkersActive(gvk string, count float64) {
+// 	workersActive.WithLabelValues(gvk).Set(count)
+// }
+
+func SetWorkersTotal(gvk string, value float64) {
+	workersTotal.WithLabelValues(gvk).Set(value)
+}
+
+func SetWorkersProcessing(gvk string, value float64) {
+	workersProcessing.WithLabelValues(gvk).Set(value)
+}
+
+func SetWorkersIdle(gvk string, value float64) {
+	workersIdle.WithLabelValues(gvk).Set(value)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

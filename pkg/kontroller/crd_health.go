@@ -55,13 +55,35 @@ type CRDHealth struct {
 	lastError        atomic.Value // stores string
 	lastReconcile    atomic.Value // stores time.Time
 	startTime        atomic.Value // stores time.Time
-	workersActive    int          // store number of active workers
 	queueReg         *queue.QueueRegistry
 
 	// track CRD readines
 	lastCRDCheck time.Time
 	crdExists    atomic.Bool
 	crdCheckMu   sync.RWMutex
+
+	// track workers
+	activeWorkers     atomic.Int32
+	totalWorkers      atomic.Int32
+	idleWorkers       atomic.Int32
+	processingWorkers atomic.Int32
+
+	// Track individual worker states for debugging
+	workerStates sync.Map // workerID -> state (idle, processing, stopped)
+	gvk          string   // Store GVK for metrics
+
+	// Dependency tracking
+	dependencies     map[string]DependencyStatus
+	dependenciesMu   sync.RWMutex
+	hasUnhealthyDeps atomic.Bool // Overall dependency health status
+}
+
+type DependencyStatus struct {
+	Name      string `json:"name"`
+	State     string `json:"state"`     // "healthy", "degraded", "missing", "started"
+	Condition string `json:"condition"` // "started", "healthy", "ready"
+	Satisfied bool   `json:"satisfied"`
+	LastCheck string `json:"lastCheck,omitempty"`
 }
 
 type OrkestraHealth struct {
@@ -91,6 +113,7 @@ func (h *CRDHealth) RecordSuccess() {
 	h.consecutiveFails.Store(0)
 	h.lastReconcile.Store(time.Now())
 	h.healthy.Store(true)
+	h.pending.Store(false)
 }
 
 // RecordFailure marks a failed reconcile event.
@@ -106,6 +129,7 @@ func (h *CRDHealth) RecordFailure(err error, degradeThreshold int) {
 	// If too many failures in a row, mark the reconciler unhealthy.
 	if h.consecutiveFails.Load() >= int64(degradeThreshold) {
 		h.healthy.Store(false)
+		h.pending.Store(false)
 	}
 }
 
@@ -211,9 +235,7 @@ func (h *CRDHealth) SetMissingAtRuntime() {
 	defer h.crdCheckMu.Unlock()
 
 	h.lastCRDCheck = time.Now()
-
 	h.crdExists.Store(false)
-
 	h.healthy.Store(false)
 }
 
@@ -257,16 +279,6 @@ func (h *CRDHealth) Uptime() string {
 	return time.Since(t).Round(time.Second).String()
 }
 
-// WorkersActive returns the number of active workers for this CRD
-func (h *CRDHealth) SetWorkersActive(workers int) {
-	h.workersActive = workers
-}
-
-// WorkersActive returns the number of active workers for this CRD
-func (h *CRDHealth) WorkersActive() int {
-	return h.workersActive
-}
-
 // QueueDepth returns the queue for this CRD
 func (h *CRDHealth) QueueDepth(gvk string) int {
 	if h.queueReg == nil {
@@ -297,4 +309,61 @@ func (h *CRDHealth) LastCRDCheck() time.Time {
 	h.crdCheckMu.RLock()
 	defer h.crdCheckMu.RUnlock()
 	return h.lastCRDCheck
+}
+
+// Dependency tracking
+func (h *CRDHealth) UpdateDependencyStatus(depName string, status DependencyStatus) {
+	h.dependenciesMu.Lock()
+	defer h.dependenciesMu.Unlock()
+
+	if h.dependencies == nil {
+		h.dependencies = make(map[string]DependencyStatus)
+	}
+	status.LastCheck = time.Now().Format(time.RFC3339)
+	h.dependencies[depName] = status
+}
+
+// SetDependencyHealth updates a single dependency's status
+func (h *CRDHealth) SetDependencyHealth(depName string, status DependencyStatus) {
+	h.dependenciesMu.Lock()
+	defer h.dependenciesMu.Unlock()
+
+	if h.dependencies == nil {
+		h.dependencies = make(map[string]DependencyStatus)
+	}
+
+	status.LastCheck = time.Now().Format(time.RFC3339)
+	h.dependencies[depName] = status
+
+	// Recalculate overall health after updating
+	h.recalculateOverallDependencyHealth()
+}
+
+// recalculateOverallDependencyHealth checks all dependencies and updates the atomic bool
+func (h *CRDHealth) recalculateOverallDependencyHealth() {
+	anyUnhealthy := false
+	for _, dep := range h.dependencies {
+		if !dep.Satisfied {
+			anyUnhealthy = true
+			break
+		}
+	}
+	h.hasUnhealthyDeps.Store(anyUnhealthy)
+}
+
+// HasUnhealthyDependencies returns true if any dependency is not satisfied
+func (h *CRDHealth) HasUnhealthyDependencies() bool {
+	return h.hasUnhealthyDeps.Load()
+}
+
+// GetDependencyStatuses returns a copy of all dependency statuses
+func (h *CRDHealth) GetDependencyStatuses() map[string]DependencyStatus {
+	h.dependenciesMu.RLock()
+	defer h.dependenciesMu.RUnlock()
+
+	result := make(map[string]DependencyStatus, len(h.dependencies))
+	for k, v := range h.dependencies {
+		result[k] = v
+	}
+	return result
 }
