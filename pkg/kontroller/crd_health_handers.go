@@ -154,6 +154,7 @@ type CRDInfoResponse struct {
 	ErrorRate           float64                  `json:"errorRate"`
 	Conversion          *ConversionStatsResponse `json:"conversion,omitempty"`
 	Admission           *AdmissionStatsResponse  `json:"admission,omitempty"`
+	RBAC                RBACInfo                 `json:"rbac,omitempty"`
 }
 
 type ReconcilerInfo struct {
@@ -236,6 +237,9 @@ func BuildCRDInfoHandler(
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := resolveCRDDisplayValues(crd, kfg, inf)
 
+		// Generate RBAC info for this CRD
+		rbacInfo := generateRBACInfo(crd, v)
+
 		response := CRDInfoResponse{
 			Name:                crd.Name,
 			Description:         crd.Description,
@@ -263,6 +267,7 @@ func BuildCRDInfoHandler(
 			Started:             h.Started(),
 			Pending:             h.Pending(),
 			ErrorRate:           h.ErrorRate(),
+			RBAC:                rbacInfo,
 		}
 
 		if stats != nil {

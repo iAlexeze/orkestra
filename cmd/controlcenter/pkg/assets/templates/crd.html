@@ -375,6 +375,88 @@
     </div>
     {{ end }} -->
 
+    {{ if .CRD.RBAC }}
+    <div class="bg-white p-6 rounded-xl border shadow-sm mb-8">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-900">RBAC Permissions</h2>
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                {{ .CRD.RBAC.TotalRules }} rules
+            </span>
+        </div>
+        
+        <!-- Summary -->
+        <div class="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+                <span class="text-sm text-purple-700">
+                    {{ .CRD.Name }} requires: <strong>{{ .CRD.RBAC.Summary }}</strong>
+                </span>
+            </div>
+        </div>
+        
+        <!-- Rules Table -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">API Group</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resources</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verbs</th>
+                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {{ range .CRD.RBAC.Rules }}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-2 font-mono text-xs">
+                            {{ if .APIGroups }}
+                                {{ range .APIGroups }}{{ . }}{{ end }}
+                            {{ else }}
+                                <span class="text-gray-400">core</span>
+                            {{ end }}
+                        </td>
+                        <td class="px-4 py-2 font-mono text-xs">
+                            {{ range .Resources }}
+                            <span class="inline-block bg-gray-100 rounded px-1.5 py-0.5 mr-1 mb-1 text-xs">{{ . }}</span>
+                            {{ end }}
+                        </td>
+                        <td class="px-4 py-2">
+                            <div class="flex flex-wrap gap-1">
+                                {{ range .Verbs }}
+                                <span class="inline-block text-xs 
+                                    {{- if eq . "delete" }} text-red-600
+                                    {{- else if eq . "create" }} text-green-600
+                                    {{- else if eq . "update" }} text-yellow-600
+                                    {{- else }} text-gray-600{{ end }}">
+                                    {{ . }}
+                                </span>
+                                {{ end }}
+                            </div>
+                        </td>
+                        <td class="px-4 py-2 text-xs text-gray-500">{{ .Description }}</td>
+                    </tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Security Note -->
+        <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                <span class="text-xs text-blue-700">
+                    These permissions are <strong>derived from your Katalog</strong> — not manually written.
+                    Run <code class="bg-blue-100 px-1 rounded">ork generate rbac --katalog katalog.yaml</code> to generate the full ClusterRole.
+                </span>
+            </div>
+        </div>
+    </div>
+    {{ end }}
+
     <!-- Reconciler Configuration -->
     <div class="bg-white p-6 rounded-xl border shadow-sm">
         <h2 class="text-lg font-semibold mb-4">Reconciler Configuration</h2>

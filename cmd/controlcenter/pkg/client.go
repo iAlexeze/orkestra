@@ -92,6 +92,8 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		ConsecutiveFails:         health.ConsecutiveFails,
 		LastError:                health.LastError,
 		LastReconcile:            health.LastReconcile,
+		RBAC:                     info.RBAC,
+		RBACCount:                info.RBAC.TotalRules,
 	}
 
 	// Format times
