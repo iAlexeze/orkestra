@@ -108,40 +108,60 @@ When you apply a CronJob CR, Orkestra:
 
 ## Quick start
 
+### 1. Generate TLS certs for the webhook server.
+For this example, generate self-signed ones:
+
 ```bash
-# 1. Install the CRD
+# Generate certs (development only — use cert-manager in production)
+chmod +x ../installation/generate-certs.sh && ../installation/generate-certs.sh
+
+# This creates a secret 'orkestra-tls' with certificates for webhook support
+```
+
+>[!Note]
+> Add the contents of /tmp/tls/caBundle.txt to your CRD's conversion webhook:
+```yaml
+  conversion:
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        service:
+          name: orkestra
+          namespace: orkestra-system
+          path: /convert
+          port: 8443
+          
+        caBundle: <here>
+```
+
+```bash
+# 2. Install the CRD
 kubectl apply -f crd.yaml
 
-# 2. Create orkestra-system namespace (if not already present)
+## 3. Create orkestra-system namespace (if not already present)
 kubectl create namespace orkestra-system --dry-run=client -o yaml | kubectl apply -f -
 
-# 3.Generate and Apply least-privilege RBAC
-ork generate rbac -k komposer.yaml -o rbac.yaml
+## 4.Generate and Apply Runtime bundle
+This includes:
+  - RBAC: least-privilege RBAC 
+  - Config Map ready to apply
+ork generate bundle -k komposer.yaml -o bundle.yaml
 
-# or katalog
-ork generate rbac -k katalog.yaml -o rbac.yaml    # either way, you generate the same exact RBAC
+kubectl apply -f bundle.yaml
 ```
 
-You can confirm with this:
-ork diff rbac-kat.yaml rbac.yaml 
+---
 
-Expected:
-```text
---- rbac-kat.yaml
-+++ rbac.yaml
-```
-Finally, apply the RBAC:
+## 5. Deploy Orkestra and Control Center
 ```bash
-kubectl apply -f rbac.yaml
+kubectl apply -f ../installation/install-webhook-support.yaml
 ```
 
-# 4. Start Orkestra
-ork run --katalog katalog.yaml
 
-# 5. Apply a v2 CR
+# 6. Apply a v2 CR
 kubectl apply -f cr-v2.yaml
 
-# 6. Watch it reconcile
+# 7. Watch it reconcile
 kubectl get cronjobs
 # NAME             SCHEDULE      PHASE    AGE
 # print-hello-v2   */1 * * * *   Active   12s
@@ -150,7 +170,7 @@ kubectl get cronjobs
 # The schedule column shows the reconstructed cron expression
 # from the structured fields — cronExpr in the status declaration
 
-# 7. Apply a v1 CR — Orkestra converts it to v2 before storage
+# 8. Apply a v1 CR — Orkestra converts it to v2 before storage
 kubectl apply -f cr-v1.yaml
 
 # Read it back as v1 — converted from v2 on the way out

@@ -1,3 +1,106 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orkestra
+  namespace: orkestra-system
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orkestra-cc
+  namespace: orkestra-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: orkestra
+rules:
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - demo.orkestra.io
+  resources:
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - demo.orkestra.io
+  resources:
+  - cronjobs/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - demo.orkestra.io
+  resources:
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - demo.orkestra.io
+  resources:
+  - cronjobs/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - batch
+  resources:
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: orkestra
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: orkestra
+subjects:
+- kind: ServiceAccount
+  name: orkestra
+  namespace: orkestra-system
+
+---
 apiVersion: v1
 data:
   katalog.yaml: |
@@ -213,4 +316,3 @@ kind: ConfigMap
 metadata:
   name: orkestra-katalog
   namespace: orkestra-system
-
