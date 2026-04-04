@@ -222,9 +222,9 @@ type CRDDetail struct {
 	HasUnhealthyDependencies bool                        `json:"hasUnhealthyDependencies"`
 	Dependencies             map[string]DependencyStatus `json:"dependencies,omitempty"`
 	Workers                  int                         `json:"workers"`
-	WorkersActive            int32                       `json:"workersActive"`
-	WorkersIdle              int32                       `json:"workersIdle"`
-	WorkersProcessing        int32                       `json:"workersProcessing"`
+	WorkersActive            int                         `json:"workersActive"`
+	WorkersIdle              int                         `json:"workersIdle"`
+	WorkersProcessing        int                         `json:"workersProcessing"`
 	WorkerDetails            map[string]string           `json:"workerDetails,omitempty"`
 	WorkersSource            string                      `json:"workersSource"`
 	Resync                   string                      `json:"resync"`

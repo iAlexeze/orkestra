@@ -36,6 +36,10 @@
         .worker-stopped {
             background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
         }
+        .queue-number {
+            font-feature-settings: "tnum";
+            font-variant-numeric: tabular-nums;
+        }
     </style>
 </head>
 
@@ -98,8 +102,8 @@
         </div>
         <div class="bg-white p-4 rounded-xl border shadow-sm stats-card">
             <div class="text-xs text-gray-500">Queue</div>
-            <div class="text-2xl font-bold">{{ .CRD.QueueDepth }}</div>
-            <div class="text-xs text-gray-400 mt-1">Max: {{ .CRD.MaxQueueDepth }}</div>
+            <div class="text-2xl font-bold queue-number">{{ formatNumber .CRD.QueueDepth }}</div>
+            <div class="text-xs text-gray-400 mt-1">Max: {{ formatNumber .CRD.MaxQueueDepth }}</div>
         </div>
         <div class="bg-white p-4 rounded-xl border shadow-sm stats-card">
             <div class="text-xs text-gray-500">Reconciles</div>
@@ -133,29 +137,88 @@
             </div>
         </div>
         
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {{ range $workerID, $state := .CRD.WorkerDetails }}
-            <div class="worker-card rounded-lg p-3 text-center border
-                {{- if eq $state "idle" }} worker-idle border-gray-200
-                {{- else if eq $state "processing" }} worker-processing border-blue-200
-                {{- else }} worker-stopped border-red-200{{ end }}">
-                <div class="text-xs font-mono truncate" title="{{ $workerID }}">
-                    {{- if eq $state "processing" }}
-                    <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse mx-auto mb-1"></div>
-                    {{- else if eq $state "idle" }}
-                    <div class="w-2 h-2 bg-green-500 rounded-full mx-auto mb-1"></div>
-                    {{- else }}
-                    <div class="w-2 h-2 bg-red-500 rounded-full mx-auto mb-1"></div>
-                    {{- end }}
-                    <span class="text-xs {{ if eq $state "processing" }}text-blue-700{{ else if eq $state "idle" }}text-gray-600{{ else }}text-red-700{{ end }}">
-                        {{- if eq $state "processing" }}⚡{{ else if eq $state "idle" }}💤{{ else }}⛔{{ end }}
-                    </span>
-                    <div class="text-[10px] font-mono text-gray-500 truncate mt-1">{{ truncate $workerID 30 }}</div>
-                </div>
+        <!-- Worker utilization progress bar -->
+        <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+            <div class="bg-blue-500 h-2 rounded-full transition-all duration-500" 
+                 style="width: {{ div (mul .CRD.WorkersProcessing 100) .CRD.Workers }}%;">
             </div>
+        </div>
+        
+        <!-- Initial worker grid (first 10 workers) -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3" id="workerGrid">
+            {{ $workers := .CRD.WorkerDetails }}
+            {{ $displayLimit := 10 }}
+            {{ $index := 0 }}
+            
+            {{ range $workerID, $state := $workers }}
+                {{ if lt $index $displayLimit }}
+                <div class="worker-card rounded-lg p-3 text-center border worker-item
+                    {{- if eq $state "idle" }} worker-idle border-gray-200
+                    {{- else if eq $state "processing" }} worker-processing border-blue-200
+                    {{- else }} worker-stopped border-red-200{{ end }}">
+                    <div class="text-xs font-mono truncate" title="{{ $workerID }}">
+                        {{- if eq $state "processing" }}
+                        <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse mx-auto mb-1"></div>
+                        {{- else if eq $state "idle" }}
+                        <div class="w-2 h-2 bg-green-500 rounded-full mx-auto mb-1"></div>
+                        {{- else }}
+                        <div class="w-2 h-2 bg-red-500 rounded-full mx-auto mb-1"></div>
+                        {{- end }}
+                        <span class="text-xs {{ if eq $state "processing" }}text-blue-700{{ else if eq $state "idle" }}text-gray-600{{ else }}text-red-700{{ end }}">
+                            {{- if eq $state "processing" }}⚡{{ else if eq $state "idle" }}💤{{ else }}⛔{{ end }}
+                        </span>
+                        <div class="text-[10px] font-mono text-gray-500 truncate mt-1">{{ truncate $workerID 30 }}</div>
+                    </div>
+                </div>
+                {{ end }}
+                {{ $index = add $index 1 }}
             {{ end }}
         </div>
         
+        <!-- Hidden additional workers -->
+        {{ if gt (len .CRD.WorkerDetails) 10 }}
+        <div id="moreWorkers" class="hidden">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mt-3">
+                {{ $index2 := 0 }}
+                {{ range $workerID, $state := $workers }}
+                    {{ if ge $index2 10 }}
+                    <div class="worker-card rounded-lg p-3 text-center border worker-item
+                        {{- if eq $state "idle" }} worker-idle border-gray-200
+                        {{- else if eq $state "processing" }} worker-processing border-blue-200
+                        {{- else }} worker-stopped border-red-200{{ end }}">
+                        <div class="text-xs font-mono truncate" title="{{ $workerID }}">
+                            {{- if eq $state "processing" }}
+                            <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse mx-auto mb-1"></div>
+                            {{- else if eq $state "idle" }}
+                            <div class="w-2 h-2 bg-green-500 rounded-full mx-auto mb-1"></div>
+                            {{- else }}
+                            <div class="w-2 h-2 bg-red-500 rounded-full mx-auto mb-1"></div>
+                            {{- end }}
+                            <span class="text-xs {{ if eq $state "processing" }}text-blue-700{{ else if eq $state "idle" }}text-gray-600{{ else }}text-red-700{{ end }}">
+                                {{- if eq $state "processing" }}⚡{{ else if eq $state "idle" }}💤{{ else }}⛔{{ end }}
+                            </span>
+                            <div class="text-[10px] font-mono text-gray-500 truncate mt-1">{{ truncate $workerID 30 }}</div>
+                        </div>
+                    </div>
+                    {{ end }}
+                    {{ $index2 = add $index2 1 }}
+                {{ end }}
+            </div>
+        </div>
+        
+        <!-- Show More / Show Less button -->
+        <div class="mt-4 text-center">
+            <button id="toggleWorkersBtn" 
+                    class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition flex items-center gap-2 mx-auto">
+                <span id="toggleWorkersText">Show all {{ len .CRD.WorkerDetails }} workers</span>
+                <svg id="toggleIcon" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+        </div>
+        {{ end }}
+        
+        <!-- Status messages -->
         {{ if gt .CRD.WorkersProcessing 0 }}
         <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div class="flex items-center gap-2">
@@ -183,19 +246,42 @@
     <div class="bg-white p-6 rounded-xl border shadow-sm mb-8">
         <div class="flex justify-between items-center mb-2">
             <div class="text-sm text-gray-500">Queue Pressure</div>
-            <div class="text-sm font-medium">{{ .CRD.QueueDepth }}/{{ .CRD.MaxQueueDepth }}</div>
+            <div class="text-sm font-mono queue-number">
+                {{ if gt .CRD.QueueDepth 9999 }}
+                    <span title="{{ .CRD.QueueDepth }}">{{ div .CRD.QueueDepth 1000 }}k</span>
+                {{ else if gt .CRD.QueueDepth 999 }}
+                    <span title="{{ .CRD.QueueDepth }}">{{ div .CRD.QueueDepth 1000 }}k</span>
+                {{ else }}
+                    {{ .CRD.QueueDepth }}
+                {{ end }}
+                / 
+                {{ if gt .CRD.MaxQueueDepth 9999 }}
+                    <span title="{{ .CRD.MaxQueueDepth }}">{{ div .CRD.MaxQueueDepth 1000 }}k</span>
+                {{ else if gt .CRD.MaxQueueDepth 999 }}
+                    <span title="{{ .CRD.MaxQueueDepth }}">{{ div .CRD.MaxQueueDepth 1000 }}k</span>
+                {{ else }}
+                    {{ .CRD.MaxQueueDepth }}
+                {{ end }}
+            </div>
         </div>
         <div class="w-full bg-gray-200 rounded-full h-3">
-            <div class="bg-blue-500 h-3 rounded-full progress-bar" style="width: {{ $queuePercent }}%;"></div>
+            <div class="bg-blue-500 h-3 rounded-full progress-bar" style="width: {{ min $queuePercent 100 }}%;"></div>
         </div>
         <div class="text-xs text-gray-400 mt-2">Source: {{ .CRD.MaxQueueDepthSource }}</div>
+        
+        <!-- Queue depth warnings -->
         {{ if gt $queuePercent 80 }}
         <div class="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
-            <p class="text-xs text-red-600">⚠️ High queue pressure — consider increasing workers or checking reconcile performance</p>
+            <p class="text-xs text-red-600">
+                ⚠️ High queue pressure — <span class="font-mono queue-number">{{ formatNumber .CRD.QueueDepth }}</span> items waiting 
+                (max: <span class="font-mono queue-number">{{ formatNumber .CRD.MaxQueueDepth }}</span>)
+            </p>
         </div>
         {{ else if gt $queuePercent 50 }}
         <div class="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p class="text-xs text-yellow-600">⚠️ Moderate queue pressure</p>
+            <p class="text-xs text-yellow-600">
+                ⚠️ Moderate queue pressure — <span class="font-mono queue-number">{{ formatNumber .CRD.QueueDepth }}</span> items waiting
+            </p>
         </div>
         {{ end }}
     </div>
@@ -236,7 +322,7 @@
             {{ else }}
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p class="text-blue-800 font-medium">⚙️ Conversion webhook not enabled</p>
-                <p class="text-blue-600 text-sm mt-1">Set <code>ENABLE_CONVERSION=true</code> and configure TLS certificates with <code>TLS_CERT, TLS_KEY</code><p>
+                <p class="text-blue-600 text-sm mt-1">Set <code>ENABLE_CONVERSION=true</code> and configure TLS certificates with <code>TLS_CERT, TLS_KEY</code></p>
             </div>
             {{ end }}
         {{ else }}
@@ -281,100 +367,86 @@
         {{ else }}
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p class="text-blue-800 font-medium">🔌 Admission webhooks not enabled</p>
-            <p class="text-blue-600 text-sm mt-1">Set <code>ENABLE_ADMISSION_WEBHOOK=true</code> and configure TLS certificates to enable admission webhooks</code><p>
+            <p class="text-blue-600 text-sm mt-1">Set <code>ENABLE_ADMISSION_WEBHOOK=true</code> and configure TLS certificates to enable admission webhooks</p>
         </div>
         {{ end }}
     </div>
 
     <!-- Dependencies -->
-    <!-- Dependencies Section -->
-{{ if .CRD.Dependencies }}
-<div class="bg-white p-6 rounded-xl border shadow-sm mb-8">
-    <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-gray-900">Dependencies</h2>
-        {{ if .CRD.HasUnhealthyDependencies  }}
-        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-            ⚠️ Unhealthy Dependencies
-        </span>
-        {{ end }}
-    </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {{ range $name, $dep := .CRD.Dependencies }}
-        <a href="/controlcenter/katalog/{{ $.KatalogName }}/crd/{{ $name }}" 
-           class="dependency-card block p-4 rounded-lg border transition-all hover:shadow-md
-               {{- if eq $dep.State "healthy" }} bg-green-50 border-green-200
-               {{- else if eq $dep.State "started" }} bg-blue-50 border-blue-200
-               {{- else if eq $dep.State "pending" }} bg-yellow-50 border-yellow-200
-               {{- else if eq $dep.State "degraded" }} bg-red-50 border-red-200
-               {{- else }} bg-gray-50 border-gray-200{{ end }}">
-            <div class="flex items-center justify-between mb-2">
-                <div class="flex items-center gap-2">
-                    <span class="font-medium text-gray-900">{{ $name }}</span>
-                    {{ if $dep.Satisfied }}
-                        <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                    {{ else }}
-                        <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    {{ end }}
-                </div>
-                <span class="text-xs px-2 py-0.5 rounded-full
-                    {{- if eq $dep.State "healthy" }} bg-green-200 text-green-800
-                    {{- else if eq $dep.State "started" }} bg-blue-200 text-blue-800
-                    {{- else if eq $dep.State "pending" }} bg-yellow-200 text-yellow-800
-                    {{- else if eq $dep.State "degraded" }} bg-red-200 text-red-800
-                    {{- else }} bg-gray-200 text-gray-800{{ end }}">
-                    {{ $dep.State }}
-                </span>
-            </div>
-            <div class="text-xs text-gray-500">
-                Condition: <span class="font-mono">{{ $dep.Condition }}</span>
-            </div>
-            <div class="text-xs text-gray-400 mt-1">
-                {{ if $dep.Satisfied }}✓ Satisfied{{ else }}✗ Not satisfied{{ end }}
-            </div>
-            {{ if $dep.LastCheck }}
-            <div class="text-xs text-gray-400 mt-1">
-                Last check: {{ $dep.LastCheck | formatTime }}
-            </div>
-            {{ end }}
-        </a>
-        {{ end }}
-    </div>
-    
-    <!-- Overall dependency health message -->
-    {{ if .CRD.HasUnhealthyDependencies  }}
-    <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-        <div class="flex items-center gap-2">
-            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-            </svg>
-            <span class="text-sm text-red-700">
-                This CRD has unhealthy dependencies. Some operations may fail or be degraded.
-            </span>
-        </div>
-    </div>
-    {{ end }}
-</div>
-{{ end }}
-
-    <!-- {{ if .CRD.DependsOn }}
+    {{ if .CRD.Dependencies }}
     <div class="bg-white p-6 rounded-xl border shadow-sm mb-8">
-        <h2 class="text-lg font-semibold mb-4">Dependencies</h2>
-        <div class="flex flex-wrap gap-2">
-            {{ range .CRD.DependsOn }}
-            <a href="/controlcenter/katalog/{{ $.KatalogName }}/crd/{{ . }}" 
-               class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm hover:bg-blue-200 transition">
-                {{ . }}
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-900">Dependencies</h2>
+            {{ if .CRD.HasUnhealthyDependencies  }}
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                ⚠️ Unhealthy Dependencies
+            </span>
+            {{ end }}
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {{ range $name, $dep := .CRD.Dependencies }}
+            <a href="/controlcenter/katalog/{{ $.KatalogName }}/crd/{{ $name }}" 
+               class="dependency-card block p-4 rounded-lg border transition-all hover:shadow-md
+                   {{- if eq $dep.State "healthy" }} bg-green-50 border-green-200
+                   {{- else if eq $dep.State "started" }} bg-blue-50 border-blue-200
+                   {{- else if eq $dep.State "pending" }} bg-yellow-50 border-yellow-200
+                   {{- else if eq $dep.State "degraded" }} bg-red-50 border-red-200
+                   {{- else }} bg-gray-50 border-gray-200{{ end }}">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium text-gray-900">{{ $name }}</span>
+                        {{ if $dep.Satisfied }}
+                            <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        {{ else }}
+                            <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        {{ end }}
+                    </div>
+                    <span class="text-xs px-2 py-0.5 rounded-full
+                        {{- if eq $dep.State "healthy" }} bg-green-200 text-green-800
+                        {{- else if eq $dep.State "started" }} bg-blue-200 text-blue-800
+                        {{- else if eq $dep.State "pending" }} bg-yellow-200 text-yellow-800
+                        {{- else if eq $dep.State "degraded" }} bg-red-200 text-red-800
+                        {{- else }} bg-gray-200 text-gray-800{{ end }}">
+                        {{ $dep.State }}
+                    </span>
+                </div>
+                <div class="text-xs text-gray-500">
+                    Condition: <span class="font-mono">{{ $dep.Condition }}</span>
+                </div>
+                <div class="text-xs text-gray-400 mt-1">
+                    {{ if $dep.Satisfied }}✓ Satisfied{{ else }}✗ Not satisfied{{ end }}
+                </div>
+                {{ if $dep.LastCheck }}
+                <div class="text-xs text-gray-400 mt-1">
+                    Last check: {{ $dep.LastCheck | formatTime }}
+                </div>
+                {{ end }}
             </a>
             {{ end }}
         </div>
+        
+        <!-- Overall dependency health message -->
+        {{ if .CRD.HasUnhealthyDependencies  }}
+        <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <span class="text-sm text-red-700">
+                    This CRD has unhealthy dependencies. Some operations may fail or be degraded.
+                </span>
+            </div>
+        </div>
+        {{ end }}
     </div>
-    {{ end }} -->
+    {{ end }}
 
+    <!-- RBAC Permissions -->
     {{ if .CRD.RBAC }}
     <div class="bg-white p-6 rounded-xl border shadow-sm mb-8">
         <div class="flex items-center justify-between mb-4">
@@ -500,7 +572,31 @@
 </div>
 
 <script>
-setInterval(() => { window.location.reload(); }, 10000);
+// Toggle worker visibility
+const toggleBtn = document.getElementById('toggleWorkersBtn');
+const moreWorkers = document.getElementById('moreWorkers');
+const toggleIcon = document.getElementById('toggleIcon');
+const toggleText = document.getElementById('toggleWorkersText');
+
+if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+        const isHidden = moreWorkers.classList.contains('hidden');
+        if (isHidden) {
+            moreWorkers.classList.remove('hidden');
+            toggleIcon.style.transform = 'rotate(180deg)';
+            toggleText.textContent = 'Show fewer workers';
+        } else {
+            moreWorkers.classList.add('hidden');
+            toggleIcon.style.transform = 'rotate(0deg)';
+            toggleText.textContent = 'Show all {{ len .CRD.WorkerDetails }} workers';
+        }
+    });
+}
+
+// Auto-refresh every 10 seconds
+setInterval(() => {
+    window.location.reload();
+}, 10000);
 </script>
 
 </body>

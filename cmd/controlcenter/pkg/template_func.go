@@ -1,6 +1,7 @@
 package controlcenter
 
 import (
+	"fmt"
 	"html/template"
 	"strings"
 	"time"
@@ -26,6 +27,28 @@ var templateFuncs = template.FuncMap{
 			return s
 		}
 		return s[:n-3] + "..."
+	},
+	// formatNumber formats large numbers with K/M/B suffixes
+	"formatNumber": func(n int) string {
+		if n >= 1_000_000_000 {
+			return fmt.Sprintf("%.1fB", float64(n)/1_000_000_000)
+		}
+		if n >= 1_000_000 {
+			return fmt.Sprintf("%.1fM", float64(n)/1_000_000)
+		}
+		if n >= 10_000 {
+			return fmt.Sprintf("%.1fK", float64(n)/1_000)
+		}
+		return fmt.Sprintf("%d", n)
+	},
+	"add": func(a, b int) int {
+		return a + b
+	},
+	"min": func(a, b int) int {
+		if a < b {
+			return a
+		}
+		return b
 	},
 	// format a time string to a readable format
 	"formatTime": func(timeStr string) string {
