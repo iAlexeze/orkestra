@@ -299,6 +299,18 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 					hs.GetAdmissionStats(),
 				),
 			)
+
+			// GET /katalog/{crd}/cr               — list all CR instances
+			// GET /katalog/{crd}/cr/{ns}/{name}   — CR detail with children
+			// GET /katalog/{crd}/cr/{ns}/{name}/events — recent events for this CR
+			hs.Register(
+				"/katalog/"+crdName+"/cr",
+				kontroller.BuildCRListHandler(crd, inf),
+			)
+			hs.Register(
+				"/katalog/"+crdName+"/cr/",
+				kontroller.BuildCRDetailAndEventsHandler(crd, inf, kube),
+			)
 		}
 
 		logger.Debug().

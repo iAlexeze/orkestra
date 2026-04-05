@@ -77,6 +77,14 @@ func (k *Kontroller) processItemForGVK(ctx context.Context, gvk string, item que
 		wq = k.defaultWorkqueue
 	}
 
+	// Added to help shutdown workers and preserve the queue on missing crds
+	// After dequeuing, they check ctx.Done() at the top of the loop and exit.
+	// cThe queue is intact for reactivation. No ShutDown() called.
+	if item.Key == drainSentinel {
+		wq.Queue.Forget(item)
+		return
+	}
+
 	// With per-CRD queues this check is only needed for the default queue path
 	// where multiple GVKs share one queue
 	if item.GVK != gvk {

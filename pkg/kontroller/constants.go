@@ -13,4 +13,8 @@ const (
 	PostStartRetryInterval        = 3 * time.Second // DEBUG
 	PostStartBackoff              = 5 * time.Second
 	DependencyHealthCheckInterval = 10 * time.Second
+
+	// Draining
+	drainSentinel = "__drain_sentinel__"
+	drainTimeout  = 10 * time.Second
 )
