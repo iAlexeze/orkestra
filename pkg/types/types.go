@@ -2,9 +2,12 @@
 package types
 
 import (
+	"fmt"
+	"sort"
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
+	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -1002,6 +1005,93 @@ type ConstructorDeclaration struct {
 	Alias string `yaml:"alias" validate:"omitempty"`
 }
 
+// ── DependsOn types ───────────────────────────────────────────────────────────
+
+// DependsOnCondition is the value in the dependsOn map.
+// Condition values: "started" (workers running) or "healthy" (running + consecutive failures = 0).
+type DependsOnCondition struct {
+	Condition string `yaml:"condition"`
+}
+
+// UnmarshalYAML handles Format 2 (scalar) and Format 3 (map) for a single dependency value.
+//
+//	database: healthy          ← Format 2: scalar
+//	database:                  ← Format 3: map
+//	  condition: healthy
+func (d *DependsOnCondition) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.MappingNode {
+		type plain DependsOnCondition
+		return value.Decode((*plain)(d))
+	}
+	if value.Kind == yaml.ScalarNode {
+		d.Condition = value.Value
+		return nil
+	}
+	return fmt.Errorf("dependsOn value must be a string or map, got kind %v", value.Kind)
+}
+
+// DependsOnMap is the internal representation of all dependsOn formats.
+// All three YAML formats unmarshal into this type.
+type DependsOnMap map[string]DependsOnCondition
+
+// UnmarshalYAML handles all three dependsOn formats:
+//
+//	Format 1 — list (condition defaults to "started"):
+//	  dependsOn:
+//	    - database
+//
+//	Format 2 — key-value map (condition explicit):
+//	  dependsOn:
+//	    database: healthy
+//
+//	Format 3 — full map:
+//	  dependsOn:
+//	    database:
+//	      condition: healthy
+func (m *DependsOnMap) UnmarshalYAML(value *yaml.Node) error {
+	*m = make(DependsOnMap)
+
+	// Format 1: sequence (list of names) → condition = "started"
+	if value.Kind == yaml.SequenceNode {
+		for _, item := range value.Content {
+			if item.Kind == yaml.ScalarNode {
+				(*m)[item.Value] = DependsOnCondition{Condition: "started"}
+			}
+		}
+		return nil
+	}
+
+	// Format 2 + 3: mapping node
+	if value.Kind == yaml.MappingNode {
+		for i := 0; i < len(value.Content)-1; i += 2 {
+			key := value.Content[i].Value
+			val := value.Content[i+1]
+
+			var cond DependsOnCondition
+			if err := val.Decode(&cond); err != nil {
+				return fmt.Errorf("dependsOn[%s]: %w", key, err)
+			}
+			if cond.Condition == "" {
+				cond.Condition = "healthy"
+			}
+			(*m)[key] = cond
+		}
+		return nil
+	}
+
+	return fmt.Errorf("dependsOn must be a list or map")
+}
+
+// Names returns the dependency names in sorted order.
+func (m DependsOnMap) Names() []string {
+	names := make([]string, 0, len(m))
+	for name := range m {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
 // ── CRDEntry ──────────────────────────────────────────────────────────────────
 // One entry per CRD in the Katalog.
 //
@@ -1015,8 +1105,8 @@ type CRDEntry struct {
 	// ── Identity ──────────────────────────────────────────────────────────────
 
 	// Name — unique CRD identifier within the Katalog. Must be lowercase.
-	// Used for routing, health endpoints (/katalog/{name}), and log context.
-	Name string `yaml:"name" validate:"required,hostname_rfc1123"`
+	// Injected from the map key during loading — never set from YAML.
+	Name string `yaml:"-" validate:"required,hostname_rfc1123"`
 
 	// Enabled — include this CRD in the runtime. false = skipped entirely.
 	// WARNING: only set to false after stripping Orkestra finalizers from all
@@ -1092,10 +1182,11 @@ type CRDEntry struct {
 	// 0 → uses Orkestra-level default (DEFAULT_RESYNC env var).
 	Resync time.Duration `yaml:"resync" validate:"omitempty"`
 
-	// DependsOn — names of other CRDs that must be fully started before this one.
+	// DependsOn — names of other CRDs that must reach a condition before this one starts.
 	// Orkestra resolves the dependency graph and starts CRDs in topological order.
 	// Cycle detection runs at validation time — cycles fail fast with a clear error.
-	DependsOn []string `yaml:"dependsOn"`
+	// Supports three YAML formats (list, key-value, full map) — see DependsOnMap.
+	DependsOn DependsOnMap `yaml:"dependsOn,omitempty"`
 
 	// ── Reconciler + Queue ────────────────────────────────────────────────────
 	ReconcilerConfig ReconcilerConfig `yaml:"reconciler"`

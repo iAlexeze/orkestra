@@ -21,7 +21,7 @@ import (
 
 // loadHelmSource renders a Helm chart and extracts Katalog CRD definitions.
 // The chart must contain at least one template with kind: Katalog.
-func (m *Merger) loadHelmSource(src orktypes.HelmSource) ([]orktypes.CRDEntry, error) {
+func (m *Merger) loadHelmSource(src orktypes.HelmSource) (map[string]orktypes.CRDEntry, error) {
 	logger.Info().
 		Str("repo", src.Repo).
 		Str("chart", src.Chart).
@@ -265,7 +265,7 @@ func resolveRemoteChart(src orktypes.HelmSource) (string, func(), error) {
 }
 
 // renderAndExtract renders a chart from a local path and extracts Katalog CRDs.
-func renderAndExtract(src orktypes.HelmSource, chartPath string) ([]orktypes.CRDEntry, error) {
+func renderAndExtract(src orktypes.HelmSource, chartPath string) (map[string]orktypes.CRDEntry, error) {
 	settings := cli.New()
 
 	// ── Load value files ──────────────────────────────────────────────────────
@@ -326,8 +326,8 @@ func renderAndExtract(src orktypes.HelmSource, chartPath string) ([]orktypes.CRD
 
 // extractKatalogCRDs parses rendered Helm output and extracts
 // CRD definitions from any template with kind: Katalog.
-func extractKatalogCRDs(manifest, chartName string) ([]orktypes.CRDEntry, error) {
-	var allCRDs []orktypes.CRDEntry
+func extractKatalogCRDs(manifest, chartName string) (map[string]orktypes.CRDEntry, error) {
+	allCRDs := make(map[string]orktypes.CRDEntry)
 
 	// Split on YAML document separator — one chart renders multiple templates
 	docs := strings.Split(manifest, "\n---\n")
@@ -346,7 +346,10 @@ func extractKatalogCRDs(manifest, chartName string) ([]orktypes.CRDEntry, error)
 			continue // not a Katalog — skip
 		}
 
-		allCRDs = append(allCRDs, katalog.Spec.CRDs...)
+		for name, crd := range katalog.Spec.CRDs {
+			crd.Name = name
+			allCRDs[name] = crd
+		}
 
 		logger.Debug().
 			Str("chart", chartName).

@@ -67,7 +67,7 @@ var templateCmd = &cobra.Command{
 			for _, crd := range crds {
 				fmt.Printf("  - %s", crd.Name)
 				if len(crd.DependsOn) > 0 {
-					fmt.Printf("  (depends on: %v)", strings.Join(crd.DependsOn, ", "))
+					fmt.Printf("  (depends on: %v)", strings.Join(crd.DependsOn.Names(), ", "))
 				}
 				fmt.Println()
 			}

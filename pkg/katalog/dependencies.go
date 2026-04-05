@@ -34,21 +34,21 @@ func NewDependencyGraph(katalog *Katalog) *DependencyGraph {
 	}
 
 	// Create nodes
-	for _, crd := range crds {
-		g.nodes[crd.Name] = &Node{
-			Name: crd.Name,
+	for name, crd := range crds {
+		g.nodes[name] = &Node{
+			Name: name,
 			CRD:  crd,
 		}
 	}
 
 	// Create edges
-	for _, crd := range crds {
-		for _, dep := range crd.DependsOn {
+	for name, crd := range crds {
+		for dep := range crd.DependsOn {
 			if _, exists := g.nodes[dep]; !exists {
-				utils.Exit(fmt.Errorf("dependency %s not found for %s", dep, crd.Name))
+				utils.Exit(fmt.Errorf("dependency %s not found for %s", dep, name))
 			}
-			g.edges[dep] = append(g.edges[dep], crd.Name)
-			g.nodes[crd.Name].InDegree++
+			g.edges[dep] = append(g.edges[dep], name)
+			g.nodes[name].InDegree++
 			g.nodes[dep].OutDegree++
 		}
 	}

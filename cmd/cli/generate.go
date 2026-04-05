@@ -63,9 +63,16 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 	var kat katalog.Katalog
 	kat.Spec = m.ToSpec()
 
+	// Convert map to slice for generate functions
+	crdMap := m.ToSpec().CRDs
+	crds := make([]orktypes.CRDEntry, 0, len(crdMap))
+	for _, c := range crdMap {
+		crds = append(crds, c)
+	}
+
 	return &mergerOut{
 		m:     m,
-		crds:  m.ToSpec().CRDs,
+		crds:  crds,
 		kat:   kat,
 		paths: katalogPaths,
 	}, nil

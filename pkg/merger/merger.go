@@ -25,8 +25,8 @@ type Merger struct {
 	// entryPoints are the initial file paths/URLs passed from the CLI (ork run or or generate)
 	entryPoints []string
 
-	// result holds the merged CRD entries after Merge() completes
-	result []orktypes.CRDEntry
+	// result holds the merged CRD entries after Merge() completes — keyed by CRD name
+	result map[string]orktypes.CRDEntry
 
 	// merged tracks whether Merge() has been called
 	merged bool
@@ -52,28 +52,28 @@ func (m *Merger) Add(paths ...string) *Merger {
 }
 
 // Merge loads all entry points and their declared sources,
-// resolves Helm charts, and produces a single deduplicated CRD list.
+// resolves Helm charts, and produces a single deduplicated CRD map.
 // Safe to call multiple times — re-merges on each call.
 func (m *Merger) Merge() error {
-	// seen lives here — top level only
+	// seen lives here — top level only (tracks which file each name came from)
 	seen := map[string]string{}
-	var merged []orktypes.CRDEntry
+	merged := make(map[string]orktypes.CRDEntry)
 
 	for _, path := range m.entryPoints {
 		// loadKatalogFile manages its OWN internal dedup
-		// it does NOT receive seen — only returns the final CRD list
+		// it does NOT receive seen — only returns the final CRD map for this file
 		crds, err := m.loadKatalogFile(path)
 		if err != nil {
 			return fmt.Errorf("merger: loading %q: %w", path, err)
 		}
 
 		// Check duplicates HERE at the top level across entry points
-		for _, crd := range crds {
-			if err := checkDuplicate(seen, crd.Name, path); err != nil {
+		for name, crd := range crds {
+			if err := checkDuplicate(seen, name, path); err != nil {
 				return err
 			}
-			seen[crd.Name] = path
-			merged = append(merged, crd)
+			seen[name] = path
+			merged[name] = crd
 		}
 	}
 
@@ -224,19 +224,19 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 // ── Query methods ─────────────────────────────────────────────────────────────
 
 // Enabled returns only CRD entries where enabled: true.
-func (m *Merger) Enabled() []orktypes.CRDEntry {
+func (m *Merger) Enabled() map[string]orktypes.CRDEntry {
 	m.mustBeMerged()
-	var out []orktypes.CRDEntry
-	for _, crd := range m.result {
+	out := make(map[string]orktypes.CRDEntry)
+	for name, crd := range m.result {
 		if crd.IsEnabled() {
-			out = append(out, crd)
+			out[name] = crd
 		}
 	}
 	return out
 }
 
 // All returns all CRD entries including disabled ones.
-func (m *Merger) All() []orktypes.CRDEntry {
+func (m *Merger) All() map[string]orktypes.CRDEntry {
 	m.mustBeMerged()
 	return m.result
 }
@@ -244,12 +244,8 @@ func (m *Merger) All() []orktypes.CRDEntry {
 // Get returns a CRD entry by name. Returns (entry, true) if found.
 func (m *Merger) Get(name string) (orktypes.CRDEntry, bool) {
 	m.mustBeMerged()
-	for _, crd := range m.result {
-		if crd.Name == name {
-			return crd, true
-		}
-	}
-	return orktypes.CRDEntry{}, false
+	crd, ok := m.result[name]
+	return crd, ok
 }
 
 // Count returns total CRD count across all sources.

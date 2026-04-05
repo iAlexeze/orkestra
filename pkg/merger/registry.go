@@ -30,7 +30,7 @@ const (
 // For GitHub and GitLab URLs, raw file content is fetched directly via HTTPS —
 // no git clone needed, one HTTP request per katalog entry.
 // For all other URLs, the registry is cloned to a temp dir and files are read locally.
-func (m *Merger) loadRegistrySourceDeprecated(src orktypes.RegistrySource) ([]orktypes.CRDEntry, error) {
+func (m *Merger) loadRegistrySourceDeprecated(src orktypes.RegistrySource) (map[string]orktypes.CRDEntry, error) {
 	registryURL, err := m.resolveRegistryURL(src.URL)
 	if err != nil {
 		return nil, err
@@ -49,14 +49,16 @@ func (m *Merger) loadRegistrySourceDeprecated(src orktypes.RegistrySource) ([]or
 		return nil, fmt.Errorf("registry %q: auth: %w", registryURL, err)
 	}
 
-	var allCRDs []orktypes.CRDEntry
+	allCRDs := make(map[string]orktypes.CRDEntry)
 
 	for name, ref := range src.Katalog {
 		crds, err := m.loadRegistryKatalog(registryURL, name, ref, auth)
 		if err != nil {
 			return nil, fmt.Errorf("registry %q: katalog %q: %w", registryURL, name, err)
 		}
-		allCRDs = append(allCRDs, crds...)
+		for k, v := range crds {
+			allCRDs[k] = v
+		}
 
 		logger.Info().
 			Str("registry", registryURL).
@@ -79,7 +81,7 @@ func (m *Merger) loadRegistryKatalog(
 	registryURL, name string,
 	ref orktypes.RegistryRef,
 	auth *utils.FileAuth,
-) ([]orktypes.CRDEntry, error) {
+) (map[string]orktypes.CRDEntry, error) {
 	filePath := filepath.Join(registryKatalogPath, name, registryFileName)
 	gitRef := ref.Ref()
 

@@ -34,7 +34,7 @@ func toDTO(crd orktypes.CRDEntry) CRDEntryDTO {
 		Namespace:  crd.Namespace,
 		Workers:    crd.Workers,
 		Resync:     crd.Resync.String(),
-		DependsOn:  crd.DependsOn,
+		DependsOn:  crd.DependsOn.Names(),
 		Finalizers: crd.ReconcilerConfig.Finalizers,
 		Mode:       crd.Mode,
 	}
@@ -57,7 +57,7 @@ func printPrettyCRD(crd orktypes.CRDEntry) {
 
 	if len(crd.DependsOn) > 0 {
 		fmt.Println("  DependsOn:")
-		for _, dep := range crd.DependsOn {
+		for _, dep := range crd.DependsOn.Names() {
 			fmt.Printf("    - %s\n", dep)
 		}
 	}
@@ -75,16 +75,11 @@ func printPrettyCRD(crd orktypes.CRDEntry) {
 	fmt.Println()
 }
 
-func printGraph(crds []orktypes.CRDEntry) {
-	index := map[string]orktypes.CRDEntry{}
-	for _, c := range crds {
-		index[c.Name] = c
-	}
-
+func printGraph(crds map[string]orktypes.CRDEntry) {
 	fmt.Println("Dependency Graph:")
-	for _, crd := range crds {
-		fmt.Printf("%s\n", crd.Name)
-		for _, dep := range crd.DependsOn {
+	for name, crd := range crds {
+		fmt.Printf("%s\n", name)
+		for _, dep := range crd.DependsOn.Names() {
 			fmt.Printf("  └─ %s\n", dep)
 		}
 	}

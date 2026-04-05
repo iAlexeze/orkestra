@@ -12,7 +12,7 @@ metadata:
 
 spec:
   crds:
-    - name: pipeline
+    pipeline:
       apiTypes:
         group: demo.orkestra.io
         version: v1alpha1

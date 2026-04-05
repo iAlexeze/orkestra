@@ -15,23 +15,19 @@ import (
 //	YAML Builder
 //
 // -----------------------------------------------------------------------------
-func (k *Katalog) KomposeKatalogFromYaml(m *merger.Merger, paths ...string) ([]orktypes.CRDEntry, error) {
+func (k *Katalog) KomposeKatalogFromYaml(m *merger.Merger, paths ...string) (map[string]orktypes.CRDEntry, error) {
 	k.Spec = m.ToSpec()
 	k.enabledCRDs = m.Enabled() // Enabled CRDs for all operations
-	k.allCRDs = m.All()         // All CRDs for documentation
 	k.metadata = m.ToMeta()     // Metadata for CLI and health endpoints
 
-	// Enrich enabled CRDs
-	for i := range k.enabledCRDs {
-		entry := &k.enabledCRDs[i]
-		// fmt.Printf("POST-MERGE: %s workers=%d onCreate=%v\n",
-		// 	entry.Name, entry.Workers, entry.ReconcilerConfig.OnCreate != nil)
-
-		outcome, err := EnrichCRDEntry(entry)
+	// Enrich enabled CRDs — must copy back since map values are not addressable
+	for name, entry := range k.enabledCRDs {
+		outcome, err := EnrichCRDEntry(&entry)
 		if err != nil {
 			return nil, err
 		}
 		entry.EnrichmentOutcome = outcome
+		k.enabledCRDs[name] = entry
 	}
 
 	// initialize conversion registry and admission registry

@@ -8,7 +8,7 @@ spec:
   crds:
     # Orkestra can watch built-in Kubernetes resources.
     # Declare kind only — group, version, plural are enriched automatically.
-    - name: namespace-governance
+    namespace-governance:
       apiTypes:
         kind: Namespace           # built-in — no group/version/plural needed
       workers: 1

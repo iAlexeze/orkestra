@@ -11,7 +11,7 @@ metadata:
 
 spec:
   crds:
-    - name: saas-backend
+    saas-backend:
       apiTypes:
         group: demo.orkestra.io
         version: v1alpha1
