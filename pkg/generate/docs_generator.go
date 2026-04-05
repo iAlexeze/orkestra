@@ -37,7 +37,7 @@ func Docs(c []orktypes.CRDEntry, dryRun bool) error {
 			Namespace:   crd.Namespace,
 			Workers:     crd.Workers,
 			Resync:      crd.Resync.String(),
-			DependsOn:   crd.DependsOn,
+			DependsOn:   crd.DependsOn.Names(),
 		}
 
 		m.Queue.MaxQueueDepth = crd.Queue.MaxQueueDepth

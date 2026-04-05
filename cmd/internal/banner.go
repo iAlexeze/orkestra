@@ -132,7 +132,7 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 		// DependsOn
 		if len(crd.DependsOn) > 0 {
 			fmt.Printf("  %sDependsOn:%s     %s\n",
-				utils.ColorYellow, utils.ColorReset, strings.Join(crd.DependsOn, ", "))
+				utils.ColorYellow, utils.ColorReset, strings.Join(crd.DependsOn.Names(), ", "))
 		} else {
 			fmt.Printf("  %sDependsOn:%s     No dependencies\n", utils.ColorYellow, utils.ColorReset)
 		}

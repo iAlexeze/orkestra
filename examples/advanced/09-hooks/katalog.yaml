@@ -10,7 +10,7 @@ metadata:
 
 spec:
   crds:
-    - name: database
+    database:
       apiTypes:
         group: demo.orkestra.io
         version: v1alpha1

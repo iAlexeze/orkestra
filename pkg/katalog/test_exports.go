@@ -4,7 +4,7 @@ import orktypes "github.com/ialexeze/orkestra/pkg/types"
 
 // NewKatalogForTest creates a Katalog with pre-set enabledCRDs for testing.
 // Bypasses YAML parsing and ValidateConfig so tests can construct controlled graphs.
-func NewKatalogForTest(crds []orktypes.CRDEntry) *Katalog {
+func NewKatalogForTest(crds map[string]orktypes.CRDEntry) *Katalog {
 	return &Katalog{enabledCRDs: crds}
 }
 

@@ -8,9 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
@@ -30,18 +27,6 @@ func checkDuplicate(seen map[string]string, name, source string) error {
 		)
 	}
 	return nil
-}
-
-// removeCRD removes a CRD by name from the list (for inline override).
-func removeCRD(crds []orktypes.CRDEntry, name string) []orktypes.CRDEntry {
-	out := crds[:0]
-	for _, crd := range crds {
-		if crd.Name != name {
-			logger.Debug().Msgf("overriding with inline declaration for %s", crd.Name)
-			out = append(out, crd)
-		}
-	}
-	return out
 }
 
 // resolveEnvVar replaces $VAR_NAME with its environment variable value.

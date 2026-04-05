@@ -14,7 +14,7 @@ spec:
     # The current, storage version. All objects live here.
     # The API server calls /convert when a request comes in as v1.
     # Orkestra handles the conversion in-process — zero extra infrastructure.
-    - name: cronjob-v2
+    cronjob-v2:
       apiTypes:
         group: demo.orkestra.io
         version: v2
@@ -142,7 +142,7 @@ spec:
     # The legacy API. Objects applied as v1 are converted to v2 before
     # storage. Objects read as v1 are converted from v2 on the way out.
     # This CRD entry is present so Orkestra watches v1 events correctly.
-    - name: cronjob-v1
+    cronjob-v1:
       apiTypes:
         group: demo.orkestra.io
         version: v1

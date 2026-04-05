@@ -15,7 +15,7 @@ func ExportedGitLabRawURL(repoURL, ref, filePath string) string {
 // ExportedLoadRegistrySource loads from the deprecated catalog-map registry protocol
 // (sources.registry with katalog: map[string]RegistryRef).
 // Tests that verify catalog-map-based registry loading use this export.
-func ExportedLoadRegistrySource(m *Merger, src orktypes.RegistrySource) ([]orktypes.CRDEntry, error) {
+func ExportedLoadRegistrySource(m *Merger, src orktypes.RegistrySource) (map[string]orktypes.CRDEntry, error) {
 	return m.loadRegistrySourceDeprecated(src)
 }
 

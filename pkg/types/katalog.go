@@ -104,7 +104,8 @@ type KatalogSpec struct {
 	Finalizers []string `yaml:"finalizers,omitempty"`
 
 	// CRDs — the CRD entries managed by this Orkestra instance.
-	CRDs []CRDEntry `yaml:"crds"`
+	// Map key is the CRD name; Name field is injected from the key during loading.
+	CRDs map[string]CRDEntry `yaml:"crds"`
 
 	// Providers  — future implementation for providers
 	Providers []KatalogProviderRequirement `yaml:"providers,omitempty"`

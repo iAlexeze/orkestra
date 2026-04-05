@@ -26,9 +26,8 @@ type Katalog struct {
 	KomposerMetadata orktypes.KatalogMeta `yaml:"metadata"`
 
 	Spec orktypes.KatalogSpec `yaml:"spec"`
-	// Internal
-	enabledCRDs        []orktypes.CRDEntry `yaml:"-"` // filtered
-	allCRDs            []orktypes.CRDEntry `yaml:"-"` // all CRDs
+	// Internal — enabledCRDs is enriched and validated; Spec.CRDs holds all (including disabled)
+	enabledCRDs        map[string]orktypes.CRDEntry `yaml:"-"`
 	conversionRegistry *InMemoryConversionRegistry
 	admissionRegistry  *InMemoryAdmissionRegistry
 
@@ -36,12 +35,13 @@ type Katalog struct {
 	konfig *konfig.Konfig
 }
 
-func (k *Katalog) EnabledCRDs() []orktypes.CRDEntry {
+func (k *Katalog) EnabledCRDs() map[string]orktypes.CRDEntry {
 	return k.enabledCRDs
 }
 
-func (k *Katalog) AllCRDs() []orktypes.CRDEntry {
-	return k.allCRDs
+// AllCRDs returns all CRDs including disabled ones (from Spec).
+func (k *Katalog) AllCRDs() map[string]orktypes.CRDEntry {
+	return k.Spec.CRDs
 }
 
 func (k *Katalog) Metadata() orktypes.KatalogMeta {

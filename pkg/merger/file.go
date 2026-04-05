@@ -30,14 +30,14 @@ import (
 //   seen in Merge() catches duplicates.
 //
 // Inline overrides source:
-//   valid — removeCRD handles it silently.
+//   valid — map key collision triggers mergeCRDEntry.
 //
 // Inline duplicates inline:
 //   always an error.
 
 // loadKatalogFile parses one file and dispatches to the correct loader
-// based on its kind. Returns the deduplicated CRD list for this file tree.
-func (m *Merger) loadKatalogFile(path string) ([]orktypes.CRDEntry, error) {
+// based on its kind. Returns the deduplicated CRD map for this file tree.
+func (m *Merger) loadKatalogFile(path string) (map[string]orktypes.CRDEntry, error) {
 	data, err := utils.LoadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading %q: %w", path, err)
@@ -67,12 +67,8 @@ func (m *Merger) loadKatalogFile(path string) ([]orktypes.CRDEntry, error) {
 }
 
 // loadKatalog reads CRD definitions from a Katalog file.
-//
-// Katalogs declare CRDs in spec.crds only.
-// A Katalog must NOT declare sources — sources are a Komposer concern.
-// If a sources block is present, it is an error: the user should use
-// kind: Komposer instead.
-func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) ([]orktypes.CRDEntry, error) {
+// Map keys are the CRD names; Name is injected from the key.
+func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string]orktypes.CRDEntry, error) {
 	// Guard — sources in a Katalog is a mistake
 	if doc.Sources != nil && (len(doc.Sources.Files) > 0 || len(doc.Sources.Helm) > 0) {
 		return nil, fmt.Errorf(
@@ -82,53 +78,33 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) ([]orktypes
 		)
 	}
 
-	var allCRDs []orktypes.CRDEntry
-	localSeen := map[string]string{}
+	result := make(map[string]orktypes.CRDEntry, len(doc.Spec.CRDs))
 
-	// ── Step 4: inline spec.crds — override any source CRD with same name ────
-	for _, crd := range doc.Spec.CRDs {
-		if crd.Name == "" {
-			return nil, fmt.Errorf("%q spec.crds: CRD with no name", path)
+	for name, crd := range doc.Spec.CRDs {
+		if name == "" {
+			return nil, fmt.Errorf("%q spec.crds: CRD with empty key", path)
 		}
-
-		inlineKey := "inline:" + path
-
-		// Duplicate within the same inline block — always an error
-		if existing, ok := localSeen[crd.Name]; ok && existing == inlineKey {
-			return nil, fmt.Errorf(
-				"%q spec.crds: duplicate CRD %q — each CRD name must be unique",
-				path, crd.Name,
-			)
-		}
-
-		localSeen[crd.Name] = inlineKey
-		allCRDs = append(allCRDs, crd)
+		// Duplicate within the same file is impossible — map keys are unique.
+		crd.Name = name
+		result[name] = crd
 
 		logger.Debug().
-			Str("crd", crd.Name).
+			Str("crd", name).
 			Str("source", path).
 			Msg("merger: CRD loaded from Katalog")
 	}
 
 	logger.Debug().
 		Str("path", path).
-		Int("crds", len(allCRDs)).
+		Int("crds", len(result)).
 		Msg("merger: Katalog loaded")
 
 	m.metadata = doc.Metadata // This is a katalog
-	return allCRDs, nil
+	return result, nil
 }
 
 // loadKomposer resolves sources from a Komposer file and merges all CRDs.
-//
-// Komposers compose Katalogs — they do not declare CRDs directly except
-// as inline overrides in spec.crds (which win over source definitions).
-//
-// Source resolution order:
-//  1. File sources — each must be a Katalog (not another Komposer)
-//  2. Helm sources — rendered chart must contain a Katalog template
-//  3. Inline spec.crds — merged last, override any source CRD with same name
-func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktypes.CRDEntry, error) {
+func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[string]orktypes.CRDEntry, error) {
 	if doc.Sources == nil && len(doc.Spec.CRDs) == 0 {
 		logger.Warn().
 			Str("path", path).
@@ -137,7 +113,7 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktype
 	}
 
 	localSeen := map[string]string{}
-	var allCRDs []orktypes.CRDEntry
+	allCRDs := make(map[string]orktypes.CRDEntry)
 
 	// ── Step 1: registry sources ─────────────────────────────────────────────
 	if doc.Sources != nil {
@@ -147,16 +123,16 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktype
 				return nil, fmt.Errorf("%q sources.registry[%d]: %w", path, i, err)
 			}
 
-			for _, crd := range crds {
+			for name, crd := range crds {
 				srcName := fmt.Sprintf("registry:%d", i)
 				if regSrc.URL != "" {
 					srcName = "registry:" + regSrc.URL
 				}
-				if err := checkDuplicate(localSeen, crd.Name, srcName); err != nil {
+				if err := checkDuplicate(localSeen, name, srcName); err != nil {
 					return nil, fmt.Errorf("%q: %w", path, err)
 				}
-				localSeen[crd.Name] = srcName
-				allCRDs = append(allCRDs, crd)
+				localSeen[name] = srcName
+				allCRDs[name] = crd
 			}
 		}
 	}
@@ -183,12 +159,12 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktype
 				return nil, fmt.Errorf("%q sources.files[%q]: %w", path, resolved, err)
 			}
 
-			for _, crd := range crds {
-				if err := checkDuplicate(localSeen, crd.Name, "file:"+resolved); err != nil {
+			for name, crd := range crds {
+				if err := checkDuplicate(localSeen, name, "file:"+resolved); err != nil {
 					return nil, fmt.Errorf("%q: %w", path, err)
 				}
-				localSeen[crd.Name] = "file:" + resolved
-				allCRDs = append(allCRDs, crd)
+				localSeen[name] = "file:" + resolved
+				allCRDs[name] = crd
 			}
 		}
 		// ── Step 3: helm sources ──────────────────────────────────────────────
@@ -199,49 +175,50 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktype
 			}
 
 			srcName := fmt.Sprintf("helm:%s/%s@%s", helmSrc.Repo, helmSrc.Chart, helmSrc.Version)
-			for _, crd := range crds {
-				if err := checkDuplicate(localSeen, crd.Name, srcName); err != nil {
+			for name, crd := range crds {
+				if err := checkDuplicate(localSeen, name, srcName); err != nil {
 					return nil, fmt.Errorf("%q: %w", path, err)
 				}
-				localSeen[crd.Name] = srcName
-				allCRDs = append(allCRDs, crd)
+				localSeen[name] = srcName
+				allCRDs[name] = crd
 			}
 		}
 	}
 
 	// ── Step 4: inline spec.crds — override any source CRD with same name ────
-	for _, crd := range doc.Spec.CRDs {
-		if crd.Name == "" {
-			return nil, fmt.Errorf("%q spec.crds: CRD with no name", path)
+	inlineKey := "inline:" + path
+	for name, crd := range doc.Spec.CRDs {
+		if name == "" {
+			return nil, fmt.Errorf("%q spec.crds: CRD with empty key", path)
 		}
 
-		inlineKey := "inline:" + path
-
-		if existing, ok := localSeen[crd.Name]; ok && existing == inlineKey {
+		// Duplicate within the same inline block is impossible (map keys).
+		// But if same inline key was already recorded, it's a bug.
+		if existing, ok := localSeen[name]; ok && existing == inlineKey {
 			return nil, fmt.Errorf(
 				"%q spec.crds: duplicate CRD %q — each CRD name must be unique",
-				path, crd.Name,
+				path, name,
 			)
 		}
 
-		// ── Merge onto source, don't replace ────────────────
-		if base, found := findCRD(allCRDs, crd.Name); found {
-			merged := mergeCRDEntry(base, crd)
-			allCRDs = removeCRD(allCRDs, crd.Name)
-			allCRDs = append(allCRDs, merged)
+		crd.Name = name
+
+		// Merge onto source, don't replace
+		if base, found := allCRDs[name]; found {
+			allCRDs[name] = mergeCRDEntry(base, crd)
 			logger.Debug().
-				Str("crd", crd.Name).
-				Str("source", "inline:"+path).
+				Str("crd", name).
+				Str("source", inlineKey).
 				Msg("merger: inline override merged onto source entry")
 		} else {
-			allCRDs = append(allCRDs, crd)
+			allCRDs[name] = crd
 			logger.Debug().
-				Str("crd", crd.Name).
-				Str("source", "inline:"+path).
+				Str("crd", name).
+				Str("source", inlineKey).
 				Msg("merger: new CRD from inline spec.crds")
 		}
 
-		localSeen[crd.Name] = inlineKey
+		localSeen[name] = inlineKey
 	}
 	logger.Debug().
 		Str("path", path).
@@ -251,53 +228,3 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) ([]orktype
 	m.metadata = doc.Metadata // This is a komposer
 	return allCRDs, nil
 }
-
-// findCRD returns the first CRD with the given name and true,
-// or a zero CRDEntry and false if not found.
-func findCRD(crds []orktypes.CRDEntry, name string) (orktypes.CRDEntry, bool) {
-	for _, crd := range crds {
-		if crd.Name == name {
-			return crd, true
-		}
-	}
-	return orktypes.CRDEntry{}, false
-}
-
-// loadSourceFile loads a file that is referenced from a Komposer sources block.
-// The file MUST be a Katalog — a Komposer cannot source another Komposer.
-// This prevents deep composition chains that are hard to reason about.
-// func (m *Merger) loadSourceFile(komposerPath, sourcePath string) ([]orktypes.CRDEntry, error) {
-// 	data, err := utils.LoadFile(sourcePath)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("reading %q: %w", sourcePath, err)
-// 	}
-
-// 	doc, err := parseKatalogDoc(data, sourcePath)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	if doc == nil {
-// 		logger.Debug().
-// 			Str("path", sourcePath).
-// 			Msg("merger: skipping source — not a valid Katalog document")
-// 		return nil, nil
-// 	}
-
-// 	// Komposer sources must be Katalogs — not other Komposers
-// 	if doc.Kind == konfig.KomposerKind() {
-// 		return nil, fmt.Errorf(
-// 			"%q sources.files[%q]: a Komposer cannot source another Komposer — "+
-// 				"only Katalog files are valid sources",
-// 			komposerPath, sourcePath,
-// 		)
-// 	}
-
-// 	if doc.Kind != konfig.KatalogKind() {
-// 		return nil, fmt.Errorf(
-// 			"%q sources.files[%q]: expected kind %q, got %q",
-// 			komposerPath, sourcePath, konfig.KatalogKind(), doc.Kind,
-// 		)
-// 	}
-
-// 	return m.loadKatalog(sourcePath, doc)
-// }

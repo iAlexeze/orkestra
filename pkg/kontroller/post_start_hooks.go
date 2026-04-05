@@ -299,7 +299,7 @@ func (k *DependencyKontroller) checkDependencyHealthForGVK(gvk string) {
 	}
 
 	crd := entry.CRD
-	if len(crd.DependsOn) == 0 {
+	if len(crd.DependsOn) == 0 { //nolint:gocritic
 		return
 	}
 
@@ -312,7 +312,7 @@ func (k *DependencyKontroller) checkDependencyHealthForGVK(gvk string) {
 		}
 	}
 
-	for _, depName := range crd.DependsOn {
+	for depName := range crd.DependsOn {
 		depGVK, exists := nameToGVK[depName]
 		if !exists {
 			// Dependency not found in graph

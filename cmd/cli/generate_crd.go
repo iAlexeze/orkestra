@@ -107,15 +107,8 @@ func runGenerateCRD(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	crds := gen.kat.Enabled()
-	if crdName != "" {
-		crds = filterByName(crds, crdName)
-		if len(crds) == 0 {
-			return fmt.Errorf("CRD %q not found in Katalog", crdName)
-		}
-	} else if !all {
-		crds = crds[:1] // default: first CRD
-	}
+	crdMap := gen.kat.Enabled()
+	crds := filterByName(crdMap, crdName, all)
 
 	for _, crd := range crds {
 		gen := generate.NewCRDGenerator(crd)
@@ -160,15 +153,7 @@ func runGenerateCR(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	crds := gen.kat.Enabled()
-	if crdName != "" {
-		crds = filterByName(crds, crdName)
-		if len(crds) == 0 {
-			return fmt.Errorf("CRD %q not found in Katalog", crdName)
-		}
-	} else {
-		crds = crds[:1]
-	}
+	crds := filterByName(gen.kat.Enabled(), crdName, false)
 
 	var out [][]byte
 	for _, crd := range crds {
@@ -203,13 +188,24 @@ func runGenerateCR(cmd *cobra.Command, _ []string) error {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-func filterByName(crds []orktypes.CRDEntry, name string) []orktypes.CRDEntry {
-	name = strings.ToLower(name)
-	var result []orktypes.CRDEntry
-	for _, c := range crds {
-		if strings.ToLower(c.Name) == name {
-			result = append(result, c)
+// filterByName returns CRD entries from the map filtered by name.
+// If name is non-empty, only the matching entry is returned (error if missing).
+// If all is false and name is empty, only the first entry (alphabetically) is returned.
+// If all is true and name is empty, all entries are returned.
+func filterByName(crds map[string]orktypes.CRDEntry, name string, all bool) []orktypes.CRDEntry {
+	if name != "" {
+		name = strings.ToLower(name)
+		if c, ok := crds[name]; ok {
+			return []orktypes.CRDEntry{c}
 		}
+		return nil
+	}
+	result := make([]orktypes.CRDEntry, 0, len(crds))
+	for _, c := range crds {
+		result = append(result, c)
+	}
+	if !all && len(result) > 0 {
+		return result[:1]
 	}
 	return result
 }

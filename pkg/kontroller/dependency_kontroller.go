@@ -302,7 +302,7 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 		}
 
 		// Wait for dependencies
-		for _, depName := range crd.DependsOn {
+		for depName := range crd.DependsOn {
 			depGVK, ok := nameToGVK[depName]
 			if !ok {
 				logger.Error().Str("crd", name).Str("dependency", depName).Msg("dependency not found in dependency graph")

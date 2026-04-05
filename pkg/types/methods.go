@@ -143,9 +143,9 @@ func (c *CRDEntry) IsEnabledAllEndpoints() bool {
 	return *c.Endpoints.Enabled
 }
 
-// GetDependencies returns a list of dependencies for this CRD.
+// GetDependencies returns the dependency names for this CRD in sorted order.
 func (c *CRDEntry) GetDependencies() []string {
-	return c.DependsOn
+	return c.DependsOn.Names()
 }
 
 // Returns true when either validation or mutation rules are declared.

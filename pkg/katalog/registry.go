@@ -28,14 +28,11 @@ func NewKatalog(m *merger.Merger, kfg *konfig.Konfig) *Katalog {
 
 	paths := katalog.konfig.Katalog().Paths
 
-	var entries []orktypes.CRDEntry
-	var err error
-
 	// Register runtime objects
 	ork_runtime.RegisterRuntimeObjects()
 
 	// Build CRDs
-	entries, err = katalog.KomposeKatalogFromYaml(m, paths...)
+	entries, err := katalog.KomposeKatalogFromYaml(m, paths...)
 	if err != nil {
 		utils.Exit(err)
 	}
@@ -52,11 +49,7 @@ func NewKatalog(m *merger.Merger, kfg *konfig.Konfig) *Katalog {
 				paths[0],
 			))
 		}
-
 	}
-
-	// Pass to enabled
-	katalog.enabledCRDs = entries
 
 	kat, err := katalog.ValidateConfig(kfg)
 	if err != nil {

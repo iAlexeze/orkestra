@@ -12,7 +12,7 @@ import (
 
 // loadSourceFileWithAuth loads a Katalog source file with optional authentication.
 // The source must be a Katalog — Komposers cannot source other Komposers.
-func (m *Merger) loadSourceFileWithAuth(komposerPath, sourcePath string, auth *utils.FileAuth) ([]orktypes.CRDEntry, error) {
+func (m *Merger) loadSourceFileWithAuth(komposerPath, sourcePath string, auth *utils.FileAuth) (map[string]orktypes.CRDEntry, error) {
 	data, err := utils.LoadFileWithAuth(sourcePath, auth)
 	if err != nil {
 		return nil, fmt.Errorf("reading %q: %w", sourcePath, err)

@@ -7,13 +7,12 @@ import (
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
-func (k *Katalog) List() []orktypes.CRDEntry {
+func (k *Katalog) List() map[string]orktypes.CRDEntry {
 	return k.Spec.CRDs
 }
 
 // All returns every CRD in the katalog, including disabled ones.
-// Useful for CLI commands like `ork katalog list --all`.
-func (k *Katalog) All() []orktypes.CRDEntry {
+func (k *Katalog) All() map[string]orktypes.CRDEntry {
 	return k.Spec.CRDs
 }
 
@@ -24,16 +23,11 @@ func (k *Katalog) Meta() orktypes.KatalogMeta {
 
 // Exists returns true if a CRD with the given name exists in the katalog.
 func (k *Katalog) Exists(name string) bool {
-	for _, crd := range k.Spec.CRDs {
-		if crd.Name == name {
-			return true
-		}
-	}
-	return false
+	_, ok := k.Spec.CRDs[name]
+	return ok
 }
 
 // Describe returns a human‑readable summary of a CRD.
-// The CLI can print this directly.
 func (k *Katalog) Describe(name string) (string, error) {
 	crd, err := k.Get(name)
 	if err != nil {
@@ -54,8 +48,9 @@ func (k *Katalog) Describe(name string) (string, error) {
 	fmt.Fprintf(b, "Resync:      %s\n", crd.Resync)
 	fmt.Fprintf(b, "Enabled:     %v\n", crd.Enabled)
 
-	if len(crd.DependsOn) > 0 {
-		fmt.Fprintf(b, "Dependencies: %v\n", strings.Join(crd.DependsOn, " "))
+	deps := crd.DependsOn.Names()
+	if len(deps) > 0 {
+		fmt.Fprintf(b, "Dependencies: %v\n", strings.Join(deps, " "))
 	} else {
 		fmt.Fprint(b, "Dependencies: None")
 	}
@@ -66,7 +61,6 @@ func (k *Katalog) Describe(name string) (string, error) {
 }
 
 // Explain returns a technical explanation of how Orkestra handles this CRD.
-// Useful for `ork explain <crd>`.
 func (k *Katalog) Explain(name string) (string, error) {
 	crd, err := k.Get(name)
 	if err != nil {
@@ -85,10 +79,11 @@ func (k *Katalog) Explain(name string) (string, error) {
 	} else {
 		fmt.Fprintf(b, "Reconciler:   %T\n", crd.ReconcilerConfig.Constructor)
 	}
-	fmt.Fprintf(b, "Informer:     LIST, WATCH\n") // later: dynamic
+	fmt.Fprintf(b, "Informer:     LIST, WATCH\n")
 
-	if len(crd.DependsOn) > 0 {
-		fmt.Fprintf(b, "Dependencies: %v\n", strings.Join(crd.DependsOn, " "))
+	deps := crd.DependsOn.Names()
+	if len(deps) > 0 {
+		fmt.Fprintf(b, "Dependencies: %v\n", strings.Join(deps, " "))
 	} else {
 		fmt.Fprint(b, "Dependencies: None")
 	}
@@ -96,12 +91,11 @@ func (k *Katalog) Explain(name string) (string, error) {
 	return b.String(), nil
 }
 
-// Graph returns a map of CRD -> dependencies.
-// Useful for CLI graph visualization.
+// Graph returns a map of CRD name → dependency names.
 func (k *Katalog) Graph() map[string][]string {
-	graph := make(map[string][]string)
-	for _, crd := range k.enabledCRDs {
-		graph[crd.Name] = crd.DependsOn
+	graph := make(map[string][]string, len(k.enabledCRDs))
+	for name, crd := range k.enabledCRDs {
+		graph[name] = crd.DependsOn.Names()
 	}
 	return graph
 }
@@ -126,8 +120,8 @@ func (k *Katalog) Controllers() []string {
 // CRDNames returns the names of all enabled CRDs.
 func (k *Katalog) CRDNames() []string {
 	names := make([]string, 0, len(k.enabledCRDs))
-	for _, crd := range k.enabledCRDs {
-		names = append(names, crd.Name)
+	for name := range k.enabledCRDs {
+		names = append(names, name)
 	}
 	return names
 }
@@ -138,38 +132,31 @@ func (k *Katalog) Depends(crdName, target string) bool {
 	if err != nil {
 		return false
 	}
-	for _, dep := range crd.DependsOn {
-		if dep == target {
-			return true
-		}
-	}
-	return false
+	_, ok := crd.DependsOn[target]
+	return ok
 }
 
 // Dependents returns all CRDs that depend on the given CRD.
 func (k *Katalog) Dependents(name string) []string {
 	var out []string
 	for _, crd := range k.enabledCRDs {
-		for _, dep := range crd.DependsOn {
-			if dep == name {
-				out = append(out, crd.Name)
-			}
+		if _, ok := crd.DependsOn[name]; ok {
+			out = append(out, crd.Name)
 		}
 	}
 	return out
 }
 
 // Enabled returns only the enabled CRDs in the katalog.
-func (k *Katalog) Enabled() []orktypes.CRDEntry {
+func (k *Katalog) Enabled() map[string]orktypes.CRDEntry {
 	return k.enabledCRDs
 }
 
-// Get tries to get an enabled crd
+// Get returns an enabled CRD by name.
 func (k *Katalog) Get(name string) (*orktypes.CRDEntry, error) {
-	for _, crd := range k.enabledCRDs {
-		if crd.Name == name {
-			return &crd, nil
-		}
+	crd, ok := k.enabledCRDs[name]
+	if !ok {
+		return nil, fmt.Errorf("crd not found in katalog")
 	}
-	return nil, fmt.Errorf("crd not found in katalog")
+	return &crd, nil
 }

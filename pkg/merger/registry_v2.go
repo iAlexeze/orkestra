@@ -32,7 +32,7 @@ const orasPullTimeout = 2 * time.Minute
 //  4. Validate all 5 required files exist and are non-empty (fail fast)
 //  5. Load katalog.yaml or komposer.yaml based on UseKomposer
 //  6. Parse and return the CRD entries
-func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) ([]orktypes.CRDEntry, error) {
+func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]orktypes.CRDEntry, error) {
 	cleanURL, version := src.ResolvedURL()
 
 	logger.Info().
