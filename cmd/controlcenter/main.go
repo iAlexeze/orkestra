@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	controlcenter "github.com/orkspace/orkestra-cc/pkg"
+	cc "github.com/orkspace/orkestra-cc/cc"
 )
 
 var (
@@ -43,7 +43,7 @@ func main() {
 	}
 
 	// Create control center
-	cc := controlcenter.New(urls, controlcenter.Config{
+	cc := cc.New(urls, cc.Config{
 		RefreshInterval: *refresh,
 		LogLevel:        *logLevel,
 		Version:         version,
@@ -67,12 +67,12 @@ func main() {
 
 	go func() {
 		log.Printf("🚀 Orkestra Control Center starting on :%s", *port)
-		log.Printf("📡 Watching instances: %v", urls)
-		log.Printf("🔄 Refresh interval: %v", *refresh)
-		log.Printf("🌐 Control Center URL: http://localhost:%s/controlcenter", *port)
-		log.Printf("🏥 Health endpoint: http://localhost:%s/controlcenter/health", *port)
-		log.Printf("✅ Ready endpoint: http://localhost:%s/controlcenter/ready", *port)
-		log.Printf("📌 Version endpoint: http://localhost:%s/controlcenter/version", *port)
+		log.Printf("Watching instances: %v", urls)
+		log.Printf("Refresh interval: %v", *refresh)
+		log.Printf("Control Center URL: http://localhost:%s/controlcenter", *port)
+		log.Printf("Health endpoint: http://localhost:%s/controlcenter/health", *port)
+		log.Printf("Ready endpoint: http://localhost:%s/controlcenter/ready", *port)
+		log.Printf("Version endpoint: http://localhost:%s/controlcenter/version", *port)
 
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("❌ Server error: %v", err)

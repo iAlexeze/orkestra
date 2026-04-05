@@ -1,4 +1,4 @@
-package orktypes
+package types
 
 // ResourceCheck defines how to detect whether a CRD uses a given resource type.
 type ResourceCheck struct {

@@ -1,5 +1,5 @@
 // pkg/types/restricted.go
-package orktypes
+package types
 
 import "strings"
 

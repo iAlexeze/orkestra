@@ -7,6 +7,7 @@ import (
 
 	"github.com/ialexeze/orkestra/pkg/informer"
 	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/queue"
 	"github.com/ialexeze/orkestra/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -203,16 +204,25 @@ func (k *DependencyKontroller) activateCRD(ctx context.Context, entry *informer.
 	logger.Info().Msgf("CRD %s activated", name)
 }
 
-// deactivateCRD deactivates a missing crd at runtime
+// deactivateCRD — drain without permanent shutdown
 func (k *DependencyKontroller) deactivateCRD(gvk string) {
-	// Only cancel context, don’t ShutDown the queue
 	k.mu.RLock()
 	cancel, okCancel := k.cancelFuncs[gvk]
 	wg, okWG := k.wgs[gvk]
 	k.mu.RUnlock()
 
 	if okCancel {
-		cancel()
+		cancel() // signals workers via context
+	}
+
+	// Add a single sentinel item to each worker's queue to unblock
+	// any worker currently waiting in GetWithContext.
+	// Workers check ctx.Done() after dequeuing — sentinel is dropped.
+	if wq, ok := k.queueReg.For(gvk); ok {
+		numWorkers := k.katalog.GetWorkers(gvk, k.defaultWorkers)
+		for i := 0; i < numWorkers; i++ {
+			wq.Queue.Add(queue.QueueItem{GVK: gvk, Key: drainSentinel})
+		}
 	}
 
 	if !okWG {
@@ -220,10 +230,7 @@ func (k *DependencyKontroller) deactivateCRD(gvk string) {
 	}
 
 	done := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
+	go func() { wg.Wait(); close(done) }()
 
 	select {
 	case <-done:
@@ -232,10 +239,9 @@ func (k *DependencyKontroller) deactivateCRD(gvk string) {
 			k.crdHealthMap[gvk].workerStates.Store(key, WorkerStateStopped)
 			return true
 		})
-
 		k.deactivated[gvk] = true
 		logger.Info().Str("gvk", gvk).Msg("workers drained cleanly")
-	case <-time.After(k.drainTimeout):
+	case <-time.After(drainTimeout):
 		logger.Warn().Str("gvk", gvk).Msg("drain timeout exceeded")
 	}
 }

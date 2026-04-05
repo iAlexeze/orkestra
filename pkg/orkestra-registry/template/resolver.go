@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/note"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
@@ -74,7 +75,9 @@ func (r *Resolver) Resolve(value string) (string, error) {
 		return value, nil
 	}
 
-	tmpl, err := template.New("f").Option("missingkey=zero").Parse(value)
+	tmpl, err := template.New("f").Option("missingkey=zero").
+		Funcs(note.Map()). // ← notes registered here, once per resolution
+		Parse(value)
 	if err != nil {
 		return "", fmt.Errorf("parsing %q: %w", value, err)
 	}
@@ -91,6 +94,21 @@ func (r *Resolver) Resolve(value string) (string, error) {
 	out = strings.ReplaceAll(out, "<no value>", "")
 	return out, nil
 }
+
+// ── Performance note ──────────────────────────────────────────────────────────
+//
+// note.Map() is called on every Resolve() call that contains "{{".
+// Each call allocates a new FuncMap. For high-throughput operators this
+// can be optimised by making the FuncMap a package-level variable:
+//
+//   var orkNotes = note.Map()
+//
+// And referencing it in Resolve():
+//   .Funcs(orkNotes)
+//
+// This is a safe optimisation — note.Map() is a pure function that always
+// returns the same map. The template engine does not modify the FuncMap
+// after registration.
 
 // ResolvePodTemplate resolves all template expressions in a PodTemplateSource.
 // Returns a new PodTemplateSource with all expressions evaluated — safe to pass

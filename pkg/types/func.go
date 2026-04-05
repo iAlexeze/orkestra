@@ -1,4 +1,4 @@
-package orktypes
+package types
 
 import (
 	"github.com/ialexeze/orkestra/domain"

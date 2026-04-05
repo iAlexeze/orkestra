@@ -1,4 +1,30 @@
 // pkg/reconciler/run_status.go
+//
+// Status management — three layers:
+//
+// Layer 1 — Automatic Ready condition.
+//
+//	Written after every reconcile regardless of Katalog declarations.
+//	reason: ReconcileSucceeded on success, ReconcileError on failure.
+//	No Katalog declaration required. Requires subresources.status in the CRD.
+//
+// Layer 2 — Declarative status fields.
+//
+//	Written from status.fields declarations in the Katalog.
+//	Template expressions resolved against the live CR object map.
+//	Optional when: conditions gate individual field writes — this is what
+//	makes declarative state machines possible.
+//	Written only on successful reconcile.
+//
+// Layer 3 — Child resource propagation.
+//
+//	Children are read after runTemplateReconcile and injected into the
+//	resolver context via WithChildren. The returned resolver is used for
+//	all subsequent status resolution.
+//	Status field expressions reference children as:
+//	  {{ .children.deployment.status.readyReplicas }}
+//	  {{ .children.cronjob.status.lastScheduleTime }}
+//	Children are keyed by lowercase Kind — matches kubectl conventions.
 package reconciler
 
 import (
@@ -6,100 +32,97 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
 )
 
-// ── Status patching ────────────────────────────────────────────────────────
+// patchStatusWithChildren is the top-level status entry point called from
+// reconcileImpl after the reconcile work completes.
 //
-// patchStatus is called after every reconcile cycle — success or failure.
-// It is always best-effort: errors are logged but never returned to the
-// workqueue. A failure to update status should never block reconciliation.
-//
-// Two layers are applied on every call:
-//
-//   Layer 1 — standard Kubernetes Ready condition and observedGeneration.
-//             Always applied unless explicitly disabled in StatusConfig.
-//             Requires the CRD to declare: subresources: status: {}
-//             If the CRD has no status subresource, the 404 is swallowed silently.
-//
-//   Layer 2 — declarative status fields from reconciler.status.fields.
-//             Applied only when StatusConfig.Fields is non-empty.
-//             Resolved by the same template resolver as onCreate templates.
-//             Merged with Layer 1 — both patches go in one API call.
-//
-// The combined patch is applied via a single merge patch to the /status
-// subresource. If the CRD has no status subresource, the API server returns
-// a 404 which is silently swallowed — reconcile continues unaffected.
-
-// patchStatus writes the status update for obj after a reconcile cycle.
-// reconcileErr is nil on success and non-nil on failure.
-// Never returns an error — status patching is best-effort.
-func (r *GenericReconciler[T]) patchStatus(ctx context.Context, obj T, reconcileErr error) {
-	statusPatch := map[string]interface{}{}
-
-	// ── Layer 1: Standard Ready condition ──────────────────────────────────
-	if r.rc.Status.ConditionsEnabled() {
-		cond := buildReadyCondition(reconcileErr, obj.GetGeneration())
-		statusPatch["conditions"] = []interface{}{cond}
-		statusPatch["observedGeneration"] = obj.GetGeneration()
-	}
-
-	// ── Layer 2: Declarative status fields ─────────────────────────────────
-	if r.rc.Status.HasFields() {
-		resolver, err := orktmpl.NewResolver(ctx, obj)
-		if err != nil {
-			logger.FromContext(ctx).Warn().
-				Str("name", obj.GetName()).
-				Err(err).
-				Msg("status: failed to build resolver — declarative fields skipped")
-		} else {
-			fields, err := resolver.ResolveStatusFields(r.rc.Status.Fields)
-			if err != nil {
-				// Partial resolution — use whatever resolved successfully
-				logger.FromContext(ctx).Warn().
-					Str("name", obj.GetName()).
-					Err(err).
-					Msg("status: some field expressions failed to resolve")
-			}
-			// Merge declarative fields into the patch.
-			// Declarative fields win over Layer 1 on key conflict —
-			// if the user declares status.conditions explicitly, that takes priority.
-			for k, v := range fields {
-				statusPatch[k] = v
-			}
-		}
-	}
-
-	if len(statusPatch) == 0 {
+// Always called — even when reconcile returned an error — so that
+// Ready=False is written on failure. The error argument controls Layer 1.
+func (r *GenericReconciler[T]) patchStatusWithChildren(
+	ctx context.Context,
+	obj T,
+	reconcileErr error,
+) {
+	resolver, err := orktmpl.NewResolver(ctx, obj)
+	if err != nil {
+		logger.FromContext(ctx).Warn().Err(err).
+			Str("name", obj.GetName()).
+			Msg("status: could not build resolver — skipping status patch")
 		return
 	}
 
-	if err := r.kube.PatchStatus(ctx, obj, r.crd.GVR, statusPatch); err != nil {
-		// Not a warning — this is expected when the CRD has no status subresource.
-		// Log at debug so it does not pollute logs for CRDs that intentionally
-		// have no status.
-		logger.FromContext(ctx).Debug().
+	// ── Layer 3: extend resolver with child resource state ─────────────────
+	// WithChildren returns a new Resolver — the original is not modified.
+	// The new resolver's data map includes a "children" key so that
+	// status field expressions can reference child status:
+	//   {{ .children.cronjob.status.lastScheduleTime }}
+	if reconcileErr == nil && (r.rc.OnCreate != nil || r.rc.OnReconcile != nil) {
+		children := ReadChildren(ctx, r.kube, obj, resolver, r.rc)
+		resolver = resolver.WithChildren(children) // ← reassign — WithChildren returns new resolver
+	}
+
+	// ── Layer 1 + 2: patch status ──────────────────────────────────────────
+	if err := runStatusPatch(ctx, r, obj, resolver, reconcileErr); err != nil {
+		logger.FromContext(ctx).Warn().Err(err).
 			Str("name", obj.GetName()).
-			Err(err).
-			Msg("status: patch failed — CRD may not have a status subresource")
+			Msg("status: patch failed — continuing")
 	}
 }
 
-// buildReadyCondition constructs the standard Ready condition map.
+// runStatusPatch writes Layer 1 (Ready condition) and Layer 2 (declared fields).
+func runStatusPatch[T domain.Object](
+	ctx context.Context,
+	r *GenericReconciler[T],
+	obj T,
+	resolver *orktmpl.Resolver,
+	reconcileErr error,
+) error {
+	u, ok := toUnstructured(obj)
+	if !ok {
+		// Typed objects — currently no status patching for typed CRDs.
+		// Use Go hooks for typed status management.
+		return nil
+	}
+
+	patch := map[string]interface{}{}
+
+	// ── Layer 1: Ready condition ───────────────────────────────────────────
+	// Always written — on success and failure — so operators can monitor
+	// the Ready condition without knowing anything else about the CRD.
+	cond := buildReadyCondition(reconcileErr, obj.GetGeneration())
+	patch["conditions"] = []interface{}{cond}
+	patch["observedGeneration"] = obj.GetGeneration()
+
+	// ── Layer 2: Declared status fields (conditional) ─────────────────────
+	// Only written on successful reconcile. Errors in field resolution are
+	// logged as warnings and do not fail the reconcile.
+	if r.rc.Status != nil && r.rc.Status.HasFields() && reconcileErr == nil {
+		resolved, err := resolver.ResolveStatusFields(r.rc.Status.Fields)
+		if err != nil {
+			logger.FromContext(ctx).Warn().Err(err).
+				Str("name", obj.GetName()).
+				Msg("status: some fields failed to resolve")
+		}
+		for k, v := range resolved {
+			patch[k] = v
+		}
+	}
+
+	return r.kube.PatchStatus(ctx, u, r.crd.GVR, patch)
+}
+
+// buildReadyCondition constructs the standard Kubernetes Ready condition map.
 //
-// Format matches the Kubernetes meta/v1 Condition spec:
+// Signature: (reconcileErr error, generation int64)
+// — err nil   → Ready=True,  reason=ReconcileSucceeded
+// — err non-nil → Ready=False, reason=ReconcileError, message=err.Error() truncated
 //
-//	type:               Ready
-//	status:             "True" | "False"
-//	reason:             ReconcileSucceeded | ReconcileError
-//	message:            "" | <error message>
-//	lastTransitionTime: <RFC3339>
-//	observedGeneration: <metadata.generation>
-//
-// Using map[string]interface{} rather than metav1.Condition to avoid
-// a typed import in what must remain a lightweight patch operation.
-// The structure is identical to what the API server expects.
+// The condition is returned as map[string]interface{} for direct inclusion
+// in the status patch — avoids an extra metav1.Condition → unstructured conversion.
 func buildReadyCondition(reconcileErr error, generation int64) map[string]interface{} {
 	now := time.Now().UTC().Format(time.RFC3339)
 
@@ -114,8 +137,6 @@ func buildReadyCondition(reconcileErr error, generation int64) map[string]interf
 		}
 	}
 
-	// Truncate long error messages — the condition message field has a
-	// practical length limit. kubectl describe shows 256 chars cleanly.
 	msg := reconcileErr.Error()
 	if len(msg) > 256 {
 		msg = msg[:253] + "..."
@@ -131,238 +152,11 @@ func buildReadyCondition(reconcileErr error, generation int64) map[string]interf
 	}
 }
 
-// ── Integration point in generic.go ──────────────────────────────────────
-//
-// In reconcileImpl, replace the current success/error handling with:
-//
-//   err := r.dispatchReconcile(ctx, obj)
-//
-//   // Status patch is best-effort — always runs, never fails the reconcile.
-//   // Called with the reconcile outcome so the Ready condition reflects reality.
-//   r.patchStatus(ctx, obj, err)
-//
-//   if err != nil {
-//       logger.FromContext(ctx).Error().Err(err)...
-//       r.event.Eventf(obj, corev1.EventTypeWarning, ...)
-//       return err
-//   }
-//
-//   r.event.Eventf(obj, corev1.EventTypeNormal, ...)
-//   return nil
-//
-// patchStatus is called before the early return on error so that the
-// Ready=False condition is written even when reconciliation fails.
-// This is the correct behavior — users should see the error in status
-// without needing to query events or logs.
-
-// ── ReconcilerConfig addition ─────────────────────────────────────────────
-//
-// Add to ReconcilerConfig in pkg/types/types.go:
-//
-//   // Status declares how Orkestra should manage the CR's status subresource.
-//   // Layer 1 (standard conditions) is always active unless explicitly disabled.
-//   // Layer 2 (declarative fields) is active when Fields is non-empty.
-//   Status *orktypes.StatusConfig `yaml:"status,omitempty"`
-//
-// The nil check is handled by StatusConfig.ConditionsEnabled() and
-// StatusConfig.HasFields() — both are nil-safe.
-
-// ── Example Katalog with full status configuration ────────────────────────
-//
-//   reconciler:
-//     default: true
-//
-//     # Optional: disable automatic conditions if your CRD schema forbids them
-//     status:
-//       conditions: true   # default — can be omitted
-//
-//       # Layer 2: declarative fields
-//       fields:
-//         - path: phase
-//           value: "Running"
-//
-//         - path: observedReplicas
-//           value: "{{ .spec.replicas }}"
-//
-//         - path: endpoint
-//           value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
-//
-//         - path: version
-//           value: "{{ .spec.version }}"
-//
-//         - path: database.host     # nested → status.database.host
-//           value: "{{ .spec.host }}"
-//
-//         - path: database.port
-//           value: "{{ .spec.port }}"
-//
-// After a successful reconcile, kubectl get website my-site -o yaml shows:
-//
-//   status:
-//     conditions:
-//       - type: Ready
-//         status: "True"
-//         reason: ReconcileSucceeded
-//         message: ""
-//         lastTransitionTime: "2026-03-28T10:00:00Z"
-//         observedGeneration: 3
-//     observedGeneration: 3
-//     phase: Running
-//     observedReplicas: "3"
-//     endpoint: my-site.default.svc.cluster.local
-//     version: "1.25"
-//     database:
-//       host: db.platform.svc
-//       port: "5432"
-//
-// After a failed reconcile:
-//
-//   status:
-//     conditions:
-//       - type: Ready
-//         status: "False"
-//         reason: ReconcileError
-//         message: "deployment: image pull failed: rpc error..."
-//         lastTransitionTime: "2026-03-28T10:01:00Z"
-//         observedGeneration: 3
-//     observedGeneration: 3
-//     # declarative fields are NOT written on error — only on success
-//     # this prevents stale status values when the reconcile fails partway through
-
-// statusOnSuccessOnly controls whether declarative fields are written on
-// reconcile failure. Default: true — fields only written on success.
-// This prevents stale status when the reconcile fails partway through.
-// The Ready condition is always written regardless.
-const statusOnSuccessOnly = true
-
-// updatedPatchStatus is the full implementation using statusOnSuccessOnly.
-// This replaces the simpler patchStatus above once the integration is complete.
-func (r *GenericReconciler[T]) updatedPatchStatus(ctx context.Context, obj T, reconcileErr error) {
-	statusPatch := map[string]interface{}{}
-
-	// Layer 1: Standard conditions — always written, success or failure
-	if r.rc.Status.ConditionsEnabled() {
-		cond := buildReadyCondition(reconcileErr, obj.GetGeneration())
-		statusPatch["conditions"] = []interface{}{cond}
-		statusPatch["observedGeneration"] = obj.GetGeneration()
-	}
-
-	// Layer 2: Declarative fields — only written on success
-	// Rationale: if the reconcile fails partway through, the spec
-	// values the user declared may not reflect actual cluster state.
-	// Writing status.phase="Running" when the Deployment failed to create
-	// would be actively misleading.
-	if reconcileErr == nil && r.rc.Status.HasFields() {
-		resolver, err := orktmpl.NewResolver(ctx, obj)
-		if err != nil {
-			logger.FromContext(ctx).Warn().
-				Str("name", obj.GetName()).
-				Err(err).
-				Msg("status: failed to build resolver — declarative fields skipped")
-		} else {
-			fields, err := resolver.ResolveStatusFields(r.rc.Status.Fields)
-			if err != nil {
-				logger.FromContext(ctx).Warn().
-					Str("name", obj.GetName()).
-					Err(err).
-					Msg("status: some field expressions failed")
-			}
-			for k, v := range fields {
-				statusPatch[k] = v
-			}
-		}
-	}
-
-	if len(statusPatch) == 0 {
-		return
-	}
-
-	if err := r.kube.PatchStatus(ctx, obj, r.crd.GVR, statusPatch); err != nil {
-		logger.FromContext(ctx).Debug().
-			Str("name", obj.GetName()).
-			Err(err).
-			Msg("status: patch failed — CRD may not have status subresource declared")
-	}
+// parseNumeric parses a string as float64 for numeric comparisons.
+// Used by the gt and lt operators on child status fields like
+// .children.job.status.succeeded which arrive as "1", "0", etc.
+func parseNumeric(s string) (float64, error) {
+	var f float64
+	_, err := fmt.Sscanf(s, "%f", &f)
+	return f, err
 }
-
-// ── Layer 3 design ─────────────────────────────────
-//
-// Layer 3 adds a "children" context to the resolver, allowing status fields
-// to reference child resource state:
-//
-//	status:
-//	  fields:
-//	    - path: readyReplicas
-//	      value: "{{ .children.deployment.status.readyReplicas }}"
-//	    - path: loadBalancerIP
-//	      value: "{{ .children.service.status.loadBalancer.ingress.0.ip }}"
-//
-// Implementation requires:
-//  1. After runTemplateReconcile completes, read back child resources.
-//  2. Build a "children" map keyed by resource type and name.
-//  3. Extend NewResolver to accept an optional children map.
-//  4. Add "children" to the template data map.
-//
-// The child read-back uses the informer cache where possible (zero API calls
-// for resources Orkestra already watches) and falls back to a direct API call
-// for resources in different namespaces or of types not watched by this instance.
-func (r *GenericReconciler[T]) patchStatusWithChildren(
-	ctx context.Context, obj T, reconcileErr error,
-) {
-	statusPatch := map[string]interface{}{}
-
-	// Layer 1: standard Ready condition — always
-	if r.rc.Status.ConditionsEnabled() {
-		cond := buildReadyCondition(reconcileErr, obj.GetGeneration())
-		statusPatch["conditions"] = []interface{}{cond}
-		statusPatch["observedGeneration"] = obj.GetGeneration()
-	}
-
-	// Layer 2 + 3: declarative fields — only on success
-	if reconcileErr == nil && r.rc.Status.HasFields() {
-		resolver, err := orktmpl.NewResolver(ctx, obj)
-		if err != nil {
-			logger.FromContext(ctx).Warn().Err(err).
-				Msg("status: failed to build resolver")
-			goto apply
-		}
-
-		// Layer 3: read child resource state and extend the resolver
-		// Only reads resources declared in the Katalog — bounded API cost
-		if r.rc.OnCreate != nil || r.rc.OnReconcile != nil {
-			children := ReadChildren(ctx, r.kube, obj, resolver, r.rc)
-			if len(children) > 0 {
-				resolver = resolver.WithChildren(children)
-			}
-		}
-
-		// Layer 2: resolve declarative status fields
-		// The resolver now has .children available in template expressions
-		fields, err := resolver.ResolveStatusFields(r.rc.Status.Fields)
-		if err != nil {
-			logger.FromContext(ctx).Warn().Err(err).
-				Msg("status: some fields failed to resolve")
-		}
-		for k, v := range fields {
-			statusPatch[k] = v
-		}
-	}
-
-apply:
-	if len(statusPatch) == 0 {
-		return
-	}
-
-	if err := r.kube.PatchStatus(ctx, obj, r.crd.GVR, statusPatch); err != nil {
-		logger.FromContext(ctx).Debug().Err(err).
-			Str("name", obj.GetName()).
-			Msg("status: patch failed — CRD may not have status subresource")
-	}
-}
-
-// childrenKey is the template context key for child resource state.
-// Reserved for Layer 3.
-const childrenKey = "children"
-
-// placeholder to prevent unused const warning during development
-var _ = fmt.Sprintf("reserved context key: %s", childrenKey)

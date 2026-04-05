@@ -1,5 +1,5 @@
 // pkg/types/admission.go
-package orktypes
+package types
 
 // ── Validation and Mutation ────────────────────────────────────────────────
 //

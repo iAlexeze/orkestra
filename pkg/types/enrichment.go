@@ -1,4 +1,4 @@
-package orktypes
+package types
 
 // EnrichmentOutcome describes what happened when enrichment was attempted
 // for a CRD entry. Used by ork validate to print clear, actionable output.

@@ -1,5 +1,5 @@
 // pkg/types/registry.go
-package orktypes
+package types
 
 import "strings"
 

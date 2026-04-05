@@ -43,13 +43,14 @@ import (
 //  3. Add the field to orktypes.HookTemplates
 //     That is all — generic.go does not change.
 type GenericReconciler[T domain.Object] struct {
-	informer cache.SharedIndexInformer
-	event    *event.Event
-	kube     *kubeclient.Kubeclient
-	hooks    domain.ReconcileHooks[T]
-	rc       orktypes.ReconcilerConfig
-	newObj   func() T
-	crd      CRDInfo
+	providerRegistry orktypes.ProviderRegistry
+	informer         cache.SharedIndexInformer
+	event            *event.Event
+	kube             *kubeclient.Kubeclient
+	hooks            domain.ReconcileHooks[T]
+	rc               orktypes.ReconcilerConfig
+	newObj           func() T
+	crd              CRDInfo
 }
 
 type CRDInfo struct {
@@ -64,6 +65,7 @@ type CRDInfo struct {
 }
 
 func NewGenericReconciler[T domain.Object](
+	providerRegistry orktypes.ProviderRegistry,
 	crd CRDInfo,
 	informer cache.SharedIndexInformer,
 	ev *event.Event,
@@ -85,13 +87,14 @@ func NewGenericReconciler[T domain.Object](
 	}
 
 	return &GenericReconciler[T]{
-		crd:      crd,
-		rc:       crd.ReconcilerConfig,
-		informer: informer,
-		event:    ev,
-		kube:     kube,
-		hooks:    hooks,
-		newObj:   newObj,
+		providerRegistry: providerRegistry,
+		crd:              crd,
+		rc:               crd.ReconcilerConfig,
+		informer:         informer,
+		event:            ev,
+		kube:             kube,
+		hooks:            hooks,
+		newObj:           newObj,
 	}
 }
 
@@ -338,6 +341,9 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj dom
 		if err := runServiceAccounts(ctx, kube, resolver, obj, t.ServiceAccounts, false); err != nil {
 			return err
 		}
+		if err := runJobs(ctx, kube, resolver, obj, t.Jobs); err != nil {
+			return err
+		}
 		if err := runCronJobs(ctx, kube, resolver, obj, t.CronJobs, false); err != nil {
 			return err
 		}
@@ -359,7 +365,7 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj dom
 		}
 
 		// Added to use when condition in both ways
-		if err := runJobs(ctx, kube, resolver, obj, t.Jobs, true); err != nil {
+		if err := runJobs(ctx, kube, resolver, obj, t.Jobs); err != nil {
 			return err
 		}
 		if err := runCronJobs(ctx, kube, resolver, obj, t.CronJobs, true); err != nil {
@@ -388,7 +394,7 @@ func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, obj doma
 	}
 
 	if t := r.rc.OnDelete; t != nil {
-		if err := runJobs(ctx, kube, resolver, obj, t.Jobs, false); err != nil {
+		if err := runJobs(ctx, kube, resolver, obj, t.Jobs); err != nil {
 			return err
 		}
 	}

@@ -38,15 +38,19 @@ func (r *Resolver) ResolveStatusFields(fields []orktypes.StatusFieldSpec) (map[s
 			continue
 		}
 
+		// ── Evaluate when: conditions ──────────────────────────────────────
+		// evaluateConditions lives in this package (resolver_conditions.go).
+		// r.data already includes .children.* if WithChildren was called.
+		if len(f.When) > 0 && !evaluateConditions(r.data, f.When) {
+			continue
+		}
+
 		resolved, err := r.Resolve(f.Value)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("status.%s: %v", f.Path, err))
 			continue
 		}
 
-		// Set the value at the dot-notation path within the result map.
-		// "phase"         → result["phase"] = resolved
-		// "database.host" → result["database"]["host"] = resolved
 		if err := setNestedStatusField(result, f.Path, resolved); err != nil {
 			errs = append(errs, fmt.Sprintf("status.%s: %v", f.Path, err))
 		}

@@ -1,5 +1,5 @@
 // pkg/types/conditions.go
-package orktypes
+package types
 
 // ── Conditional provisioning ───────────────────────────────────────────────────
 //
@@ -98,6 +98,10 @@ const (
 
 	// ConditionNotExists — the field is absent or empty
 	// Value is ignored for this operator.
+	// Use for: first-reconcile detection (phase not yet written).
+	//   when:
+	//     - field: status.phase
+	//       operator: notExists
 	ConditionNotExists ConditionOperator = "notExists"
 
 	// ConditionGt — field value is numerically greater than condition value
@@ -105,4 +109,12 @@ const (
 
 	// ConditionLt — field value is numerically less than condition value
 	ConditionLt ConditionOperator = "lt"
+
+	// ConditionIn — field value is one of a comma-separated list.
+	// Empty string matches an empty field (for first-reconcile detection).
+	//   when:
+	//     - field: status.phase
+	//       operator: in
+	//       value: ",Pending"   # empty or "Pending"
+	ConditionIn ConditionOperator = "in"
 )

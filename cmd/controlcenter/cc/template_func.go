@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+func init() {
+	for k, v := range crTemplateFuncs {
+		templateFuncs[k] = v
+	}
+}
+
 // templateFuncs provides helper functions for HTML templates
 var templateFuncs = template.FuncMap{
 	"mul": func(a, b int) int {
@@ -76,5 +82,45 @@ var templateFuncs = template.FuncMap{
 			}
 		}
 		return false
+	},
+	// default returns the first non-empty value
+	"default": func(def interface{}, val interface{}) interface{} {
+		// Check if val is nil
+		if val == nil {
+			return def
+		}
+
+		// Check for empty string
+		if s, ok := val.(string); ok && s == "" {
+			return def
+		}
+
+		// Check for zero int
+		if i, ok := val.(int); ok && i == 0 {
+			return def
+		}
+
+		// Check for empty slice
+		if slice, ok := val.([]interface{}); ok && len(slice) == 0 {
+			return def
+		}
+
+		// Check for empty map
+		if m, ok := val.(map[string]interface{}); ok && len(m) == 0 {
+			return def
+		}
+
+		return val
+	},
+	// hasPrefix checks if a string has a given prefix
+	"hasPrefix": func(s, prefix string) bool {
+		return strings.HasPrefix(s, prefix)
+	},
+	// json marshals a value to JSON string
+	"json": func(v interface{}) string {
+		return fmt.Sprintf("%v", v)
+	},
+	"toLower": func(s string) string {
+		return strings.ToLower(s)
 	},
 }

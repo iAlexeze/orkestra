@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	controlcenter "github.com/orkspace/orkestra-cc/pkg"
+	"github.com/orkspace/orkestra-cc/cc"
 )
 
 // setupRoutes configures all HTTP routes for the control center
