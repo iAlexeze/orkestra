@@ -48,8 +48,18 @@
 
     <!-- Header -->
     <div class="mb-8">
-        <div class="flex items-center gap-4 mb-3">
+        <div class="flex items-center justify-between mb-3">
             <a href="/controlcenter/katalog/{{ .KatalogName }}" class="text-sm text-blue-600 hover:underline">← Back to Control Panel</a>
+            
+            <!-- View Custom Resources button -->
+            <a href="/controlcenter/katalog/{{ .KatalogName }}/crd/{{ .CRD.Name }}/cr"
+               class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+                <span>View Custom Resources</span>
+                <span class="bg-gray-200 text-gray-600 text-xs px-1.5 py-0.5 rounded-full">{{ .CRD.ResourceCount }}</span>
+            </a>
         </div>
 
         <div class="flex items-center gap-4 flex-wrap">

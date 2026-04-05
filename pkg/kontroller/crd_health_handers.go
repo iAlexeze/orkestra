@@ -501,10 +501,6 @@ func BuildKatalogHandler(
 			if !crd.Healthy && crd.State == "degraded" {
 				healthy = false
 				status = http.StatusServiceUnavailable
-				statusCounts.Degraded++
-				statusCounts.Healthy--
-				statusCounts.Started--
-				statusCounts.Pending--
 			}
 		}
 

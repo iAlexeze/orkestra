@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .CRDName }} — Orkestra</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
+    <link rel="alternate icon" href="/controlcenter/assets/static/logo.png">
+</head>
+
+<body class="bg-gray-50 text-gray-900">
+
+<!-- Header -->
+<header class="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3 text-sm">
+            <a href="/controlcenter" class="text-gray-400 hover:text-gray-700">Control Center</a>
+            <span class="text-gray-300">/</span>
+            <span class="font-medium text-gray-900">{{ .CRDName }}</span>
+        </div>
+        <span class="text-xs text-gray-400 font-mono">Live (15s)</span>
+    </div>
+</header>
+
+<!-- Page header -->
+<div class="bg-white border-b border-gray-100">
+    <div class="max-w-6xl mx-auto px-6 py-6">
+
+        <h1 class="text-2xl font-semibold mb-1">{{ .CRDName }}</h1>
+        <p class="text-sm text-gray-500 mb-4">
+            {{ .Total }} instance{{ if ne .Total 1 }}s{{ end }}
+        </p>
+
+        <!-- Status summary -->
+        <div class="flex gap-3 text-xs">
+            <span class="px-3 py-1 rounded-full bg-blue-50 text-blue-700">Active</span>
+            <span class="px-3 py-1 rounded-full bg-yellow-50 text-yellow-700">Pending</span>
+            <span class="px-3 py-1 rounded-full bg-red-50 text-red-700">Failed</span>
+        </div>
+
+    </div>
+</div>
+
+<!-- Content -->
+<main class="max-w-6xl mx-auto px-6 py-6 space-y-3">
+
+{{ if eq .Total 0 }}
+<div class="bg-white border border-gray-200 rounded-xl p-12 text-center">
+    <div class="text-4xl mb-3">📭</div>
+    <p class="text-gray-600 font-medium">No instances found</p>
+</div>
+{{ else }}
+
+{{ range .Items }}
+<a href="cr/{{ if .Namespace }}{{ .Namespace }}/{{ end }}{{ .Name }}"
+   class="block bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 hover:shadow-sm transition">
+
+    <div class="flex items-center justify-between">
+
+        <!-- Left -->
+        <div>
+            <div class="font-mono text-sm font-medium text-gray-900">
+                {{ .Name }}
+            </div>
+            <div class="text-xs text-gray-400 font-mono mt-0.5">
+                {{ if .Namespace }}{{ .Namespace }}{{ else }}cluster-wide{{ end }}
+            </div>
+        </div>
+
+        <!-- Right -->
+        <div class="flex items-center gap-4 text-xs">
+
+            <!-- Phase -->
+            {{ if .Phase }}
+            <span class="px-2.5 py-1 rounded-full
+                {{ if eq .Phase "Succeeded" }}bg-green-50 text-green-700
+                {{ else if eq .Phase "Failed" }}bg-red-50 text-red-700
+                {{ else if hasPrefix .Phase "Running" }}bg-blue-50 text-blue-700
+                {{ else if eq .Phase "Pending" }}bg-yellow-50 text-yellow-700
+                {{ else }}bg-gray-100 text-gray-600{{ end }}">
+                {{ .Phase }}
+            </span>
+            {{ end }}
+
+            <!-- Ready -->
+            {{ if .Ready }}
+            <span class="text-green-600">● Ready</span>
+            {{ else }}
+            <span class="text-gray-400">● Not ready</span>
+            {{ end }}
+
+            <!-- Age -->
+            <span class="text-gray-400 font-mono">{{ .Age }}</span>
+
+            <!-- Gen -->
+            <span class="text-gray-300">gen {{ .Generation }}</span>
+
+        </div>
+
+    </div>
+</a>
+{{ end }}
+
+{{ end }}
+
+</main>
+
+</body>
+</html>
