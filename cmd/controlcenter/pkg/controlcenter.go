@@ -16,34 +16,44 @@ import (
 
 //go:embed assets/templates/*.html assets/static/*
 var assets embed.FS
-var assetsDir = "assets/templates"
 
-// Config holds configuration for the control center
+const assetsDir = "assets/templates"
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Config
+// ─────────────────────────────────────────────────────────────────────────────
+
 type Config struct {
 	RefreshInterval time.Duration
 	LogLevel        string
 	Version         string
 }
 
-// Instance represents a single Orkestra runtime instance
+// ─────────────────────────────────────────────────────────────────────────────
+// Instance — one connected Orkestra runtime
+// ─────────────────────────────────────────────────────────────────────────────
+
 type Instance struct {
 	URL     string
 	Client  *Client
 	Katalog *KatalogResponse
 }
 
-// ControlCenter aggregates data from multiple Orkestra instances
+// ─────────────────────────────────────────────────────────────────────────────
+// ControlCenter
+// ─────────────────────────────────────────────────────────────────────────────
+
 type ControlCenter struct {
 	urls      []string
-	instances map[string]*Instance
+	instances map[string]*Instance // keyed by URL
 	mu        sync.RWMutex
 	config    Config
 	ready     atomic.Bool
 }
 
-// New creates a new ControlCenter instance
+// New creates and starts a ControlCenter. Background fetches begin immediately.
 func New(urls []string, config Config) *ControlCenter {
-	instances := make(map[string]*Instance)
+	instances := make(map[string]*Instance, len(urls))
 	for _, url := range urls {
 		instances[url] = &Instance{
 			URL:    url,
@@ -55,16 +65,21 @@ func New(urls []string, config Config) *ControlCenter {
 		instances: instances,
 		config:    config,
 	}
-	cc.ready.Store(false)
 	go cc.backgroundFetchLoop()
 	return cc
 }
 
+func (cc *ControlCenter) IsReady() bool { return cc.ready.Load() }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Background fetch
+// ─────────────────────────────────────────────────────────────────────────────
+
 func (cc *ControlCenter) backgroundFetchLoop() {
 	cc.fetchAllKatalogs()
-	ticker := time.NewTicker(cc.config.RefreshInterval)
-	defer ticker.Stop()
-	for range ticker.C {
+	t := time.NewTicker(cc.config.RefreshInterval)
+	defer t.Stop()
+	for range t.C {
 		cc.fetchAllKatalogs()
 	}
 }
@@ -72,179 +87,262 @@ func (cc *ControlCenter) backgroundFetchLoop() {
 func (cc *ControlCenter) fetchAllKatalogs() {
 	cc.mu.Lock()
 	defer cc.mu.Unlock()
-	anySuccess := false
-	for _, instance := range cc.instances {
-		katalog, err := instance.Client.FetchKatalog()
+	anyOK := false
+	for _, inst := range cc.instances {
+		kat, err := inst.Client.FetchKatalog()
 		if err != nil {
-			log.Printf("Failed to fetch from %s: %v", instance.URL, err)
+			log.Printf("WARN: fetch from %s: %v", inst.URL, err)
 			continue
 		}
-		instance.Katalog = katalog
-		anySuccess = true
-		log.Printf("Fetched Katalog '%s' from %s (%d CRDs)", katalog.Name, instance.URL, len(katalog.CRDs))
+		inst.Katalog = kat
+		anyOK = true
+		log.Printf("INFO: fetched katalog %q from %s (%d CRDs)", kat.Name, inst.URL, len(kat.CRDs))
 	}
-	cc.ready.Store(anySuccess)
+	cc.ready.Store(anyOK)
 }
 
-// ServeHTTP implements http.Handler
-func (cc *ControlCenter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/controlcenter")
-	if path == "" {
-		path = "/"
-	}
-	log.Printf("DEBUG: Request: %s %s -> path: %s", r.Method, r.URL.Path, path)
+// ─────────────────────────────────────────────────────────────────────────────
+// Instance lookups
+// ─────────────────────────────────────────────────────────────────────────────
 
-	// Handle root
-	if path == "/" {
-		cc.handleIndex(w, r)
-		return
-	}
-
-	// Handle assets
-	if strings.HasPrefix(path, "/assets/") {
-		filePath := strings.TrimPrefix(path, "/assets/")
-		data, err := assets.ReadFile("assets/" + filePath)
-		if err != nil {
-			cc.handleNotFound(w, r)
-			return
-		}
-		contentType := "application/octet-stream"
-		if strings.HasSuffix(filePath, ".png") {
-			contentType = "image/png"
-		} else if strings.HasSuffix(filePath, ".css") {
-			contentType = "text/css"
-		} else if strings.HasSuffix(filePath, ".js") {
-			contentType = "application/javascript"
-		}
-		w.Header().Set("Content-Type", contentType)
-		w.Write(data)
-		return
-	}
-
-	// Handle metrics
-	if path == "/metrics" {
-		cc.handleMetricsPage(w, r)
-		return
-	}
-
-	// Handle debug
-	if path == "/debug/file" {
-		cc.handleDebugFile(w, r)
-		return
-	}
-
-	// Handle katalog routes
-	if strings.HasPrefix(path, "/katalog/") {
-		relativePath := strings.TrimPrefix(path, "/")
-		cc.handleKatalog(w, r, relativePath)
-		return
-	}
-
-	// Handle health/ready/version (if they come through without prefix? they shouldn't)
-	if path == "/health" || path == "/ready" || path == "/version" {
-		// These should be handled by main.go's mux, but just in case
-		http.Redirect(w, r, "/controlcenter"+path, http.StatusMovedPermanently)
-		return
-	}
-
-	// Catch all other paths - 404
-	log.Printf("DEBUG: 404 Not Found - path: %s", path)
-	cc.handleNotFound(w, r)
-}
-
-// handleNotFound renders a custom 404 page
-func (cc *ControlCenter) handleNotFound(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusNotFound)
-
-	// Parse a simple inline template for 404
-	tmpl := `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 - Orkestra Control Center</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
-</head>
-<body class="bg-gray-50">
-    <div class="min-h-screen flex items-center justify-center px-4">
-        <div class="text-center">
-            <div class="text-6xl mb-4">🔍</div>
-            <h1 class="text-4xl font-bold text-gray-900 mb-2">404</h1>
-            <p class="text-gray-600 mb-4">Page not found</p>
-            <p class="text-sm text-gray-500 mb-6">The page you're looking for doesn't exist or has been moved.</p>
-            <a href="/controlcenter" class="inline-flex items-center px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition">
-                ← Back to Control Center
-            </a>
-        </div>
-    </div>
-</body>
-</html>`
-
-	fmt.Fprint(w, tmpl)
-}
-
-func (cc *ControlCenter) getInstanceByName(katalogName string) (*Instance, bool) {
+// instanceByKatalogName returns the instance whose loaded katalog has the given name.
+func (cc *ControlCenter) instanceByKatalogName(name string) (*Instance, bool) {
 	cc.mu.RLock()
 	defer cc.mu.RUnlock()
-	for _, instance := range cc.instances {
-		if instance.Katalog != nil && instance.Katalog.Name == katalogName {
-			return instance, true
+	for _, inst := range cc.instances {
+		if inst.Katalog != nil && inst.Katalog.Name == name {
+			return inst, true
 		}
 	}
 	return nil, false
 }
 
-func (cc *ControlCenter) handleIndex(w http.ResponseWriter, r *http.Request) {
-	log.Printf("DEBUG: handleIndex called")
-
+// clientFor returns the Client for an instance URL.
+// Falls back to the first available client if the URL is not found.
+func (cc *ControlCenter) clientFor(instanceURL string) *Client {
 	cc.mu.RLock()
-	instances := make([]*Instance, 0, len(cc.instances))
-	for _, instance := range cc.instances {
-		if instance.Katalog != nil {
-			instances = append(instances, instance)
+	defer cc.mu.RUnlock()
+	if inst, ok := cc.instances[instanceURL]; ok {
+		return inst.Client
+	}
+	// URL not found — return first available client as fallback
+	for _, inst := range cc.instances {
+		return inst.Client
+	}
+	return NewClient(instanceURL, cc.config.RefreshInterval, cc.config.LogLevel)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rendering helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+// renderTemplate parses and executes a named template from the embedded FS.
+// Writes directly to w. On error, renders a 500 page.
+func (cc *ControlCenter) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
+	tmpl, err := template.New(name).Funcs(templateFuncs).ParseFS(assets, assetsDir+"/"+name)
+	if err != nil {
+		log.Printf("ERROR: parse %s: %v", name, err)
+		cc.renderError(w, nil, fmt.Sprintf("Template error: %v", err))
+		return
+	}
+
+	buf := new(bytes.Buffer)
+	if err := tmpl.Execute(buf, data); err != nil {
+		log.Printf("ERROR: execute %s: %v", name, err)
+		cc.renderError(w, nil, fmt.Sprintf("Render error: %v", err))
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	buf.WriteTo(w)
+}
+
+// renderError renders an inline error page. r is optional (may be nil).
+func (cc *ControlCenter) renderError(w http.ResponseWriter, _ *http.Request, message string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusInternalServerError)
+	fmt.Fprintf(w, `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<script src="https://cdn.tailwindcss.com"></script></head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen">
+  <div class="text-center p-8">
+    <div class="text-5xl mb-4">⚠️</div>
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h1>
+    <p class="text-gray-600 mb-6 max-w-md font-mono text-sm">%s</p>
+    <a href="/controlcenter" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition">
+      ← Control Center
+    </a>
+  </div>
+</body></html>`, message)
+}
+
+// handleNotFound renders a 404 page.
+func (cc *ControlCenter) handleNotFound(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusNotFound)
+	fmt.Fprint(w, `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png"></head>
+<body class="bg-gray-50">
+  <div class="min-h-screen flex items-center justify-center px-4">
+    <div class="text-center">
+      <div class="text-6xl mb-4">🔍</div>
+      <h1 class="text-4xl font-bold text-gray-900 mb-2">404</h1>
+      <p class="text-gray-600 mb-6">The page you're looking for doesn't exist.</p>
+      <a href="/controlcenter" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition">
+        ← Back to Control Center
+      </a>
+    </div>
+  </div>
+</body></html>`)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Router
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ServeHTTP dispatches all /controlcenter/** requests.
+//
+// Route table (after stripping /controlcenter prefix):
+//
+//	/                                                   → index
+//	/assets/**                                          → static files
+//	/metrics                                            → metrics page
+//	/debug/file                                         → debug
+//	/katalog/{katalog}                                  → katalog panel
+//	/katalog/{katalog}/crd/{crd}                        → CRD detail
+//	/katalog/{katalog}/crd/{crd}/cr                     → CR list
+//	/katalog/{katalog}/crd/{crd}/cr/{name}              → CR detail (cluster-scoped)
+//	/katalog/{katalog}/crd/{crd}/cr/{ns}/{name}         → CR detail (namespaced)
+func (cc *ControlCenter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/controlcenter")
+	if path == "" || path == "/" {
+		cc.handleIndex(w, r)
+		return
+	}
+
+	log.Printf("DEBUG: %s %s", r.Method, path)
+
+	switch {
+	case strings.HasPrefix(path, "/assets/"):
+		cc.serveAsset(w, r, strings.TrimPrefix(path, "/assets/"))
+
+	case path == "/metrics":
+		cc.handleMetricsPage(w, r)
+
+	case path == "/debug/file":
+		cc.handleDebugFile(w, r)
+
+	case strings.HasPrefix(path, "/katalog/"):
+		// Strip leading slash and split
+		parts := strings.Split(strings.Trim(path, "/"), "/")
+		cc.routeKatalog(w, r, parts)
+
+	default:
+		cc.handleNotFound(w, r)
+	}
+}
+
+// routeKatalog dispatches /katalog/** paths.
+// parts has no leading slash: ["katalog", "{name}", ...]
+func (cc *ControlCenter) routeKatalog(w http.ResponseWriter, r *http.Request, parts []string) {
+	// parts[0] == "katalog"
+	if len(parts) < 2 {
+		cc.handleNotFound(w, r)
+		return
+	}
+
+	katalogName := parts[1]
+
+	switch {
+	// /katalog/{name}/crd/{crd}/cr[/...]
+	case len(parts) >= 5 && parts[2] == "crd" && parts[4] == "cr":
+		crdName := parts[3]
+		inst, ok := cc.instanceByKatalogName(katalogName)
+		if !ok {
+			cc.handleNotFound(w, r)
+			return
+		}
+		cc.routeCR(w, r, inst.URL, inst.Katalog.Name, crdName, parts[4:])
+
+	// /katalog/{name}/crd/{crd}
+	case len(parts) >= 4 && parts[2] == "crd":
+		cc.handleCRDDetail(w, r, katalogName, parts[3])
+
+	// /katalog/{name}
+	default:
+		cc.handleKatalogPanel(w, r, katalogName)
+	}
+}
+
+// routeCR dispatches CR sub-paths.
+// crParts: ["cr"], ["cr", "{name}"], ["cr", "{ns}", "{name}"]
+func (cc *ControlCenter) routeCR(w http.ResponseWriter, r *http.Request, instanceURL, katalogName, crdName string, crParts []string) {
+	// crParts[0] == "cr"
+	switch len(crParts) {
+	case 1:
+		// /cr → list
+		cc.handleCRList(w, r, instanceURL, katalogName, crdName)
+	case 2:
+		// /cr/{name} → cluster-scoped detail
+		cc.handleCRDetail(w, r, instanceURL, katalogName, crdName, "", crParts[1])
+	case 3:
+		// /cr/{ns}/{name} → namespaced detail
+		cc.handleCRDetail(w, r, instanceURL, katalogName, crdName, crParts[1], crParts[2])
+	default:
+		cc.handleNotFound(w, r)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page handlers
+// ─────────────────────────────────────────────────────────────────────────────
+
+func (cc *ControlCenter) handleIndex(w http.ResponseWriter, _ *http.Request) {
+	cc.mu.RLock()
+	insts := make([]*Instance, 0, len(cc.instances))
+	for _, inst := range cc.instances {
+		if inst.Katalog != nil {
+			insts = append(insts, inst)
 		}
 	}
 	cc.mu.RUnlock()
 
-	log.Printf("DEBUG: Found %d instances with Katalogs", len(instances))
-
-	sort.Slice(instances, func(i, j int) bool {
-		return instances[i].Katalog.Name < instances[j].Katalog.Name
+	sort.Slice(insts, func(i, j int) bool {
+		return insts[i].Katalog.Name < insts[j].Katalog.Name
 	})
 
 	var summaries []KatalogSummary
 	totalCRDs, totalWorkers, totalResources, healthyKatalogs := 0, 0, 0, 0
 
-	for _, instance := range instances {
-		katalog := instance.Katalog
+	for _, inst := range insts {
+		kat := inst.Katalog
 		healthyCRDs := 0
-		for _, crd := range katalog.CRDs {
+		for _, crd := range kat.CRDs {
 			if crd.Healthy {
 				healthyCRDs++
 			}
 		}
 		summaries = append(summaries, KatalogSummary{
-			Name:           katalog.Name,
-			Description:    katalog.Description,
-			Version:        katalog.Version,
-			Healthy:        katalog.Healthy,
-			TotalCRDs:      len(katalog.CRDs),
+			Name:           kat.Name,
+			Description:    kat.Description,
+			Version:        kat.Version,
+			Healthy:        kat.Healthy,
+			TotalCRDs:      len(kat.CRDs),
 			HealthyCRDs:    healthyCRDs,
-			TotalWorkers:   sumWorkers(katalog.CRDs),
-			TotalResources: sumResources(katalog.CRDs),
+			TotalWorkers:   sumWorkers(kat.CRDs),
+			TotalResources: sumResources(kat.CRDs),
 		})
-		totalCRDs += len(katalog.CRDs)
-		totalWorkers += sumWorkers(katalog.CRDs)
-		totalResources += sumResources(katalog.CRDs)
-		if katalog.Healthy {
+		totalCRDs += len(kat.CRDs)
+		totalWorkers += sumWorkers(kat.CRDs)
+		totalResources += sumResources(kat.CRDs)
+		if kat.Healthy {
 			healthyKatalogs++
 		}
 	}
 
-	data := IndexData{
+	cc.renderTemplate(w, "index.html", IndexData{
 		Katalogs:        summaries,
 		TotalKatalogs:   len(summaries),
 		HealthyKatalogs: healthyKatalogs,
@@ -253,124 +351,51 @@ func (cc *ControlCenter) handleIndex(w http.ResponseWriter, r *http.Request) {
 		TotalResources:  totalResources,
 		AnyHealthy:      len(summaries) > 0,
 		OrkestraURLs:    strings.Join(cc.urls, ", "),
-	}
-
-	tmpl, err := template.New("index.html").Funcs(templateFuncs).ParseFS(assets, assetsDir+"/index.html")
-	if err != nil {
-		log.Printf("ERROR: Template parse error: %v", err)
-		http.Error(w, fmt.Sprintf("Template error: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	buf := new(bytes.Buffer)
-	if err := tmpl.Execute(buf, data); err != nil {
-		log.Printf("ERROR: Template execute error: %v", err)
-		http.Error(w, fmt.Sprintf("Execute error: %v", err), http.StatusInternalServerError)
-		return
-	}
-	buf.WriteTo(w)
-	log.Printf("DEBUG: handleIndex completed successfully")
+	})
 }
 
-func (cc *ControlCenter) handleKatalog(w http.ResponseWriter, r *http.Request, relativePath string) {
-	// relativePath is like "katalog/hello-website" or "katalog/hello-website/crd/website"
-	parts := strings.Split(relativePath, "/")
-	log.Printf("DEBUG: handleKatalog - relativePath: %s, parts: %v", relativePath, parts)
-
-	if len(parts) < 2 {
-		log.Printf("DEBUG: Invalid path, need at least 2 parts")
-		http.NotFound(w, r)
-		return
-	}
-
-	katalogName := parts[1] // parts[0] is "katalog", parts[1] is the name
-	log.Printf("DEBUG: Looking for Katalog: %s", katalogName)
-
-	// Handle CRD detail view
-	if len(parts) >= 4 && parts[2] == "crd" {
-		crdName := parts[3]
-		log.Printf("DEBUG: CRD detail view - crd: %s", crdName)
-		cc.handleCRDDetail(w, r, katalogName, crdName)
-		return
-	}
-
-	// Find the instance
-	instance, found := cc.getInstanceByName(katalogName)
-	if !found || instance.Katalog == nil {
-		log.Printf("DEBUG: Katalog %s not found, attempting fetch...", katalogName)
+func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Request, katalogName string) {
+	inst, ok := cc.instanceByKatalogName(katalogName)
+	if !ok {
+		// Try a fresh fetch once before giving up
 		cc.fetchAllKatalogs()
-		instance, found = cc.getInstanceByName(katalogName)
-		if !found || instance.Katalog == nil {
-			log.Printf("DEBUG: Katalog %s still not found after fetch", katalogName)
-
-			cc.mu.RLock()
-			available := make([]string, 0)
-			for _, inst := range cc.instances {
-				if inst.Katalog != nil {
-					available = append(available, inst.Katalog.Name)
-				}
-			}
-			cc.mu.RUnlock()
-			log.Printf("DEBUG: Available Katalogs: %v", available)
-
-			// http.Error(w, fmt.Sprintf("Katalog '%s' not found. Available: %v", katalogName, available), http.StatusNotFound)
-
-			// Render a nice 404 page instead of plain text
+		inst, ok = cc.instanceByKatalogName(katalogName)
+		if !ok {
 			cc.handleNotFound(w, r)
 			return
 		}
 	}
 
-	katalog := instance.Katalog
-	log.Printf("DEBUG: Rendering Katalog: %s with %d CRDs", katalog.Name, len(katalog.CRDs))
-
-	data := KatalogData{
-		CRDs:               katalog.CRDs,
-		OrkReady:           katalog.OrkReady,
-		TotalCRDs:          len(katalog.CRDs),
-		TotalWorkers:       sumWorkers(katalog.CRDs),
-		TotalResources:     sumResources(katalog.CRDs),
-		HealthyCount:       countHealthyCRDs(katalog.CRDs),
-		KatalogName:        katalog.Name,
-		KatalogDescription: katalog.Description,
-		KatalogHealthy:     katalog.Healthy,
-		KatalogVersion:     katalog.Version,
-		KatalogAuthor:      katalog.Author,
-		KatalogLicense:     katalog.License,
-		DegradedReason:     katalog.DegradedReason,
-		StatusCounts:       katalog.StatusCounts,
-	}
-
-	tmpl, err := template.New("katalog.html").Funcs(templateFuncs).ParseFS(assets, assetsDir+"/katalog.html")
-	if err != nil {
-		log.Printf("ERROR: Template parse error: %v", err)
-		http.Error(w, fmt.Sprintf("Template error: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	buf := new(bytes.Buffer)
-	if err := tmpl.Execute(buf, data); err != nil {
-		log.Printf("ERROR: Template execute error: %v", err)
-		http.Error(w, fmt.Sprintf("Execute error: %v", err), http.StatusInternalServerError)
-		return
-	}
-	buf.WriteTo(w)
-	log.Printf("DEBUG: handleKatalog completed successfully")
+	kat := inst.Katalog
+	cc.renderTemplate(w, "katalog.html", KatalogData{
+		CRDs:               kat.CRDs,
+		OrkReady:           kat.OrkReady,
+		TotalCRDs:          len(kat.CRDs),
+		TotalWorkers:       sumWorkers(kat.CRDs),
+		TotalResources:     sumResources(kat.CRDs),
+		HealthyCount:       countHealthyCRDs(kat.CRDs),
+		KatalogName:        kat.Name,
+		KatalogDescription: kat.Description,
+		KatalogHealthy:     kat.Healthy,
+		KatalogVersion:     kat.Version,
+		KatalogAuthor:      kat.Author,
+		KatalogLicense:     kat.License,
+		DegradedReason:     kat.DegradedReason,
+		StatusCounts:       kat.StatusCounts,
+	})
 }
 
 func (cc *ControlCenter) handleCRDDetail(w http.ResponseWriter, r *http.Request, katalogName, crdName string) {
-	log.Printf("DEBUG: handleCRDDetail - katalog: %s, crd: %s", katalogName, crdName)
-
-	instance, found := cc.getInstanceByName(katalogName)
-	if !found {
-		log.Printf("DEBUG: Katalog %s not found for CRD detail", katalogName)
-		http.Error(w, fmt.Sprintf("Katalog '%s' not found", katalogName), http.StatusNotFound)
+	inst, ok := cc.instanceByKatalogName(katalogName)
+	if !ok {
+		cc.renderError(w, r, fmt.Sprintf("Katalog %q not found", katalogName))
 		return
 	}
 
-	crd, err := instance.Client.FetchCRDDetail(crdName)
+	crd, err := inst.Client.FetchCRDDetail(crdName)
 	if err != nil {
-		log.Printf("Failed to fetch CRD %s: %v", crdName, err)
+		log.Printf("WARN: fetch CRD %s: %v", crdName, err)
+		// Render a degraded view rather than a hard error
 		crd = &CRDDetail{
 			Name:        crdName,
 			State:       "offline",
@@ -381,113 +406,149 @@ func (cc *ControlCenter) handleCRDDetail(w http.ResponseWriter, r *http.Request,
 		}
 	}
 
-	tmpl, err := template.New("crd.html").Funcs(templateFuncs).ParseFS(assets, assetsDir+"/crd.html")
-	if err != nil {
-		log.Printf("ERROR: Template parse error: %v", err)
-		http.Error(w, fmt.Sprintf("Template error: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	buf := new(bytes.Buffer)
-	if err := tmpl.Execute(buf, map[string]interface{}{
+	cc.renderTemplate(w, "crd.html", map[string]interface{}{
 		"CRD":         crd,
 		"KatalogName": katalogName,
-	}); err != nil {
-		log.Printf("ERROR: Template execute error: %v", err)
-		http.Error(w, fmt.Sprintf("Execute error: %v", err), http.StatusInternalServerError)
-		return
-	}
-	buf.WriteTo(w)
+	})
 }
 
-func (cc *ControlCenter) handleMetricsPage(w http.ResponseWriter, r *http.Request) {
-	log.Printf("DEBUG: handleMetricsPage called")
-	tmpl, err := template.ParseFS(assets, assetsDir+"/metrics.html")
+// handleCRList renders the CR instance list for one CRD.
+// Route: /katalog/{katalog}/crd/{crd}/cr
+func (cc *ControlCenter) handleCRList(w http.ResponseWriter, r *http.Request, instanceURL, katalogName, crdName string) {
+	client := cc.clientFor(instanceURL)
+
+	list, err := client.FetchCRList(instanceURL, crdName)
 	if err != nil {
-		log.Printf("ERROR: Template parse error: %v", err)
-		http.Error(w, fmt.Sprintf("Failed to parse template: %v", err), http.StatusInternalServerError)
+		cc.renderError(w, r, fmt.Sprintf("Could not load CR list for %s: %v", crdName, err))
 		return
 	}
-	buf := new(bytes.Buffer)
-	if err := tmpl.Execute(buf, nil); err != nil {
-		log.Printf("ERROR: Template execute error: %v", err)
-		http.Error(w, fmt.Sprintf("Failed to execute template: %v", err), http.StatusInternalServerError)
+
+	cc.renderTemplate(w, "cr_list.html", CRListView{
+		Instance: instanceURL,
+		CRDName:  crdName,
+		GVK:      list.GVK,
+		Total:    list.Total,
+		Items:    list.Items,
+		BackURL:  fmt.Sprintf("/controlcenter/katalog/%s/crd/%s", katalogName, crdName),
+	})
+}
+
+// handleCRDetail renders one CR instance with its children and events.
+// Route: /katalog/{katalog}/crd/{crd}/cr/{ns}/{name}  (namespace may be empty)
+func (cc *ControlCenter) handleCRDetail(w http.ResponseWriter, r *http.Request, instanceURL, katalogName, crdName, namespace, name string) {
+	client := cc.clientFor(instanceURL)
+
+	detail, err := client.FetchCRDetail(instanceURL, crdName, namespace, name)
+	if err != nil {
+		cc.renderError(w, r, fmt.Sprintf("Could not load CR %s/%s: %v", namespace, name, err))
 		return
 	}
-	buf.WriteTo(w)
-}
 
-func (cc *ControlCenter) IsReady() bool {
-	return cc.ready.Load()
-}
-
-// Helper functions
-func sumWorkers(crds []CRDSummary) int {
-	sum := 0
-	for _, crd := range crds {
-		sum += crd.Workers
+	// Events are best-effort — never block or error on failure
+	var events []CREvent
+	var eventTotal int
+	if evResp, err := client.FetchCREvents(instanceURL, crdName, namespace, name); err == nil {
+		events = evResp.Events
+		eventTotal = evResp.Total
 	}
-	return sum
-}
 
-func sumResources(crds []CRDSummary) int {
-	sum := 0
-	for _, crd := range crds {
-		sum += crd.ResourceCount
-	}
-	return sum
-}
-
-func countHealthyCRDs(crds []CRDSummary) int {
-	count := 0
-	for _, crd := range crds {
-		if crd.Healthy {
-			count++
+	// Extract phase from status for template convenience
+	phase := ""
+	if detail.Status != nil {
+		if p, ok := detail.Status["phase"].(string); ok {
+			phase = p
 		}
 	}
-	return count
+
+	cc.renderTemplate(w, "cr_detail.html", CRDetailView{
+		Instance:   instanceURL,
+		CRDName:    crdName,
+		CR:         *detail,
+		Events:     events,
+		EventTotal: eventTotal,
+		Phase:      phase,
+		BackURL:    fmt.Sprintf("/controlcenter/katalog/%s/crd/%s", katalogName, crdName),
+	})
 }
 
-// Debug
+// ─────────────────────────────────────────────────────────────────────────────
+// Asset and utility handlers
+// ─────────────────────────────────────────────────────────────────────────────
+
+func (cc *ControlCenter) serveAsset(w http.ResponseWriter, r *http.Request, filePath string) {
+	data, err := assets.ReadFile("assets/" + filePath)
+	if err != nil {
+		cc.handleNotFound(w, r)
+		return
+	}
+	switch {
+	case strings.HasSuffix(filePath, ".css"):
+		w.Header().Set("Content-Type", "text/css")
+	case strings.HasSuffix(filePath, ".js"):
+		w.Header().Set("Content-Type", "application/javascript")
+	case strings.HasSuffix(filePath, ".png"):
+		w.Header().Set("Content-Type", "image/png")
+	case strings.HasSuffix(filePath, ".svg"):
+		w.Header().Set("Content-Type", "image/svg+xml")
+	default:
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
+	w.Write(data)
+}
+
+func (cc *ControlCenter) handleMetricsPage(w http.ResponseWriter, _ *http.Request) {
+	cc.renderTemplate(w, "metrics.html", nil)
+}
+
 func (cc *ControlCenter) handleDebugFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
-
-	// Get the file path from query param
 	filePath := r.URL.Query().Get("path")
 	if filePath == "" {
 		filePath = "assets/static/logo.png"
 	}
-
-	fmt.Fprintf(w, "Trying to read: %s\n\n", filePath)
-
-	// Try to read the file
+	fmt.Fprintf(w, "Reading: %s\n\n", filePath)
 	data, err := assets.ReadFile(filePath)
 	if err != nil {
-		fmt.Fprintf(w, "ERROR: %v\n\n", err)
-	} else {
-		fmt.Fprintf(w, "SUCCESS: Read %d bytes\n", len(data))
-		fmt.Fprintf(w, "First 20 bytes: %x\n", data[:min(20, len(data))])
-	}
-
-	// List all files in assets/static/
-	fmt.Fprintf(w, "\nFiles in assets/static/:\n")
-	staticFiles, err := assets.ReadDir("assets/static")
-	if err != nil {
-		fmt.Fprintf(w, "Error reading assets/static: %v\n", err)
+		fmt.Fprintf(w, "ERROR: %v\n", err)
 		return
 	}
+	fmt.Fprintf(w, "OK: %d bytes\n", len(data))
 
-	for _, f := range staticFiles {
-		if f.IsDir() {
-			fmt.Fprintf(w, "  📁 %s/\n", f.Name())
-			subFiles, _ := assets.ReadDir("assets/static/" + f.Name())
-			for _, sf := range subFiles {
-				fmt.Fprintf(w, "    📄 %s\n", sf.Name())
-			}
-		} else {
-			fmt.Fprintf(w, "  📄 %s\n", f.Name())
+	entries, _ := assets.ReadDir("assets/static")
+	fmt.Fprintf(w, "\nassets/static/:\n")
+	for _, e := range entries {
+		fmt.Fprintf(w, "  %s\n", e.Name())
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Aggregate helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+func sumWorkers(crds []CRDSummary) int {
+	n := 0
+	for _, c := range crds {
+		n += c.Workers
+	}
+	return n
+}
+
+func sumResources(crds []CRDSummary) int {
+	n := 0
+	for _, c := range crds {
+		n += c.ResourceCount
+	}
+	return n
+}
+
+func countHealthyCRDs(crds []CRDSummary) int {
+	n := 0
+	for _, c := range crds {
+		if c.Healthy {
+			n++
 		}
 	}
+	return n
 }
 
 func min(a, b int) int {

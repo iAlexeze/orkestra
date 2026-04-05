@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+func init() {
+	for k, v := range crTemplateFuncs {
+		templateFuncs[k] = v
+	}
+}
+
 // templateFuncs provides helper functions for HTML templates
 var templateFuncs = template.FuncMap{
 	"mul": func(a, b int) int {

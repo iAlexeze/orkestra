@@ -4,58 +4,52 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sync"
+	"strings"
 	"time"
 )
 
-// Client is an HTTP client for a single Orkestra runtime instance
+// Client is an HTTP client for one Orkestra runtime instance.
+// All methods are safe for concurrent use.
 type Client struct {
-	baseURL         string
-	client          *http.Client
-	refreshInterval time.Duration
-	mu              sync.RWMutex
+	baseURL    string
+	httpClient *http.Client // field name used throughout — do not rename
 }
 
-// NewClient creates a new client
-func NewClient(baseURL string, refreshInterval time.Duration, logLevel string) *Client {
+// NewClient creates a Client targeting the given base URL.
+func NewClient(baseURL string, _ time.Duration, _ string) *Client {
 	return &Client{
-		baseURL:         baseURL,
-		refreshInterval: refreshInterval,
-		client: &http.Client{
+		baseURL: baseURL,
+		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 	}
 }
 
-// FetchKatalog retrieves the Katalog from the instance
-func (c *Client) FetchKatalog() (*KatalogResponse, error) {
-	resp, err := c.client.Get(c.baseURL + "/katalog")
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+// ─────────────────────────────────────────────────────────────────────────────
+// Katalog endpoints
+// ─────────────────────────────────────────────────────────────────────────────
 
-	var result KatalogResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
-	}
-	return &result, nil
+// FetchKatalog calls GET /katalog.
+func (c *Client) FetchKatalog() (*KatalogResponse, error) {
+	return getJSON[KatalogResponse](c, "/katalog")
 }
 
-// FetchCRDDetail retrieves detailed information for a specific CRD
+// ─────────────────────────────────────────────────────────────────────────────
+// CRD endpoints
+// ─────────────────────────────────────────────────────────────────────────────
+
+// FetchCRDDetail fetches health + info for a single CRD and merges them.
 func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
-	// Fetch health and info separately
-	health, err := c.fetchCRDHealth(name)
+	health, err := getJSON[CRDHealth](c, "/katalog/"+name+"/health")
 	if err != nil {
 		return nil, fmt.Errorf("fetching health: %w", err)
 	}
 
-	info, err := c.fetchCRDInfo(name)
+	info, err := getJSON[CRDInfo](c, "/katalog/"+name)
 	if err != nil {
 		return nil, fmt.Errorf("fetching info: %w", err)
 	}
 
-	// Merge health and info
 	detail := &CRDDetail{
 		Name:                     info.Name,
 		Description:              info.Description,
@@ -96,75 +90,146 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		RBACCount:                info.RBAC.TotalRules,
 	}
 
-	// Format times
-	if health.StartedAt != "" && health.StartedAt != "not started" {
-		if t, err := time.Parse(time.RFC3339, health.StartedAt); err == nil {
-			duration := time.Since(t)
-			if duration < time.Minute {
-				detail.StartedAgo = fmt.Sprintf("%ds ago", int(duration.Seconds()))
-			} else if duration < time.Hour {
-				detail.StartedAgo = fmt.Sprintf("%dm ago", int(duration.Minutes()))
-			} else {
-				detail.StartedAgo = fmt.Sprintf("%dh ago", int(duration.Hours()))
-			}
-		}
-	}
-
-	if health.LastReconcile != "" && health.LastReconcile != "no reconciles yet" {
-		if t, err := time.Parse(time.RFC3339, health.LastReconcile); err == nil {
-			duration := time.Since(t)
-			if duration < time.Minute {
-				detail.LastReconcileAgo = fmt.Sprintf("%ds ago", int(duration.Seconds()))
-			} else if duration < time.Hour {
-				detail.LastReconcileAgo = fmt.Sprintf("%dm ago", int(duration.Minutes()))
-			} else {
-				detail.LastReconcileAgo = fmt.Sprintf("%dh ago", int(duration.Hours()))
-			}
-		}
-	}
+	detail.StartedAgo = humanDuration(health.StartedAt)
+	detail.LastReconcileAgo = humanDuration(health.LastReconcile)
 
 	return detail, nil
 }
 
-func (c *Client) fetchCRDHealth(name string) (*CRDHealth, error) {
-	resp, err := c.client.Get(c.baseURL + "/katalog/" + name + "/health")
+// ─────────────────────────────────────────────────────────────────────────────
+// CR endpoints
+// ─────────────────────────────────────────────────────────────────────────────
+
+// FetchCRList calls GET /katalog/{crd}/cr.
+func (c *Client) FetchCRList(instanceURL, crdName string) (*CRListResponse, error) {
+	url := fmt.Sprintf("%s/katalog/%s/cr", instanceURL, strings.ToLower(crdName))
+	resp, err := c.httpClient.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("fetching CR list for %s: %w", crdName, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusServiceUnavailable {
+		return &CRListResponse{CRD: crdName, Items: []CRSummary{}}, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("CR list: HTTP %d for %s", resp.StatusCode, crdName)
+	}
+
+	var result CRListResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decoding CR list for %s: %w", crdName, err)
+	}
+	return &result, nil
+}
+
+// FetchCRDetail calls GET /katalog/{crd}/cr[/{namespace}]/{name}.
+func (c *Client) FetchCRDetail(instanceURL, crdName, namespace, name string) (*CRDetailResponse, error) {
+	var path string
+	if namespace != "" {
+		path = fmt.Sprintf("%s/katalog/%s/cr/%s/%s", instanceURL, strings.ToLower(crdName), namespace, name)
+	} else {
+		path = fmt.Sprintf("%s/katalog/%s/cr/%s", instanceURL, strings.ToLower(crdName), name)
+	}
+
+	resp, err := c.httpClient.Get(path)
+	if err != nil {
+		return nil, fmt.Errorf("fetching CR detail %s/%s: %w", namespace, name, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("CR %q not found in namespace %q", name, namespace)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("CR detail: HTTP %d", resp.StatusCode)
+	}
+
+	var result CRDetailResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decoding CR detail: %w", err)
+	}
+	return &result, nil
+}
+
+// FetchCREvents calls GET /katalog/{crd}/cr[/{namespace}]/{name}/events.
+// Best-effort — returns empty on any error.
+func (c *Client) FetchCREvents(instanceURL, crdName, namespace, name string) (*CREventsResponse, error) {
+	var path string
+	if namespace != "" {
+		path = fmt.Sprintf("%s/katalog/%s/cr/%s/%s/events", instanceURL, strings.ToLower(crdName), namespace, name)
+	} else {
+		path = fmt.Sprintf("%s/katalog/%s/cr/%s/events", instanceURL, strings.ToLower(crdName), name)
+	}
+
+	resp, err := c.httpClient.Get(path)
+	if err != nil {
+		return &CREventsResponse{Name: name, Events: []CREvent{}}, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return &CREventsResponse{Name: name, Events: []CREvent{}}, nil
+	}
+
+	var result CREventsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return &CREventsResponse{Name: name, Events: []CREvent{}}, nil
+	}
+	return &result, nil
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+// getJSON is a generic GET → JSON decode helper.
+func getJSON[T any](c *Client, path string) (*T, error) {
+	resp, err := c.httpClient.Get(c.baseURL + path)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var result CRDHealth
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusServiceUnavailable {
+		return nil, fmt.Errorf("HTTP %d from %s%s", resp.StatusCode, c.baseURL, path)
 	}
-	return &result, nil
+
+	var v T
+	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
+		return nil, fmt.Errorf("decoding response from %s: %w", path, err)
+	}
+	return &v, nil
 }
 
-func (c *Client) fetchCRDInfo(name string) (*CRDInfo, error) {
-	resp, err := c.client.Get(c.baseURL + "/katalog/" + name)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var result CRDInfo
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
-	}
-	return &result, nil
-}
-
-func getState(health *CRDHealth) string {
-	if health.Healthy {
+func getState(h *CRDHealth) string {
+	if h.Healthy {
 		return "healthy"
 	}
-
-	// A case where crd has started but there are errors
-	if health.Started && health.ConsecutiveFails == 0 {
+	if h.Started && h.ConsecutiveFails == 0 {
 		return "started"
 	}
-	if health.Pending && health.LastReconcile == "no reconciles yet" && health.ConsecutiveFails == 0 {
+	if h.Pending && h.LastReconcile == "no reconciles yet" && h.ConsecutiveFails == 0 {
 		return "pending"
 	}
 	return "degraded"
+}
+
+func humanDuration(rfc3339 string) string {
+	if rfc3339 == "" || rfc3339 == "not started" || rfc3339 == "no reconciles yet" {
+		return ""
+	}
+	t, err := time.Parse(time.RFC3339, rfc3339)
+	if err != nil {
+		return ""
+	}
+	d := time.Since(t)
+	switch {
+	case d < time.Minute:
+		return fmt.Sprintf("%ds ago", int(d.Seconds()))
+	case d < time.Hour:
+		return fmt.Sprintf("%dm ago", int(d.Minutes()))
+	default:
+		return fmt.Sprintf("%dh ago", int(d.Hours()))
+	}
 }

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .CRDName }} — Orkestra Control Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
+    <link rel="alternate icon" href="/controlcenter/assets/static/logo.png">
+    <meta http-equiv="refresh" content="15">
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<!-- ── Top bar ────────────────────────────────────────────────────────────── -->
+<header class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
+    <div class="flex items-center gap-3">
+        <a href="/controlcenter" class="text-gray-400 hover:text-gray-700 text-sm">Control Center</a>
+        <span class="text-gray-300">/</span>
+        <a href="{{ .BackURL }}" class="text-gray-400 hover:text-gray-700 text-sm">{{ .CRDName }}</a>
+        <span class="text-gray-300">/</span>
+        <span class="text-sm font-medium text-gray-900">Instances</span>
+    </div>
+    <div class="flex items-center gap-4">
+        <span class="text-xs text-gray-400 font-mono">{{ .GVK }}</span>
+        <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-mono">
+            auto-refresh 15s
+        </span>
+    </div>
+</header>
+
+<!-- ── Page header ────────────────────────────────────────────────────────── -->
+<div class="px-6 py-6 border-b border-gray-100 bg-white">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-semibold text-gray-900 font-mono">{{ .CRDName }}</h1>
+            <p class="text-sm text-gray-500 mt-0.5">{{ .Total }} instance{{ if ne .Total 1 }}s{{ end }}</p>
+        </div>
+        <a href="{{ .BackURL }}"
+           class="text-sm text-gray-500 hover:text-gray-900 flex items-center gap-1 transition">
+            ← CRD overview
+        </a>
+    </div>
+</div>
+
+<!-- ── CR table ───────────────────────────────────────────────────────────── -->
+<main class="max-w-6xl mx-auto px-6 py-6">
+
+    {{ if eq .Total 0 }}
+    <div class="bg-white border border-gray-200 rounded-xl p-12 text-center">
+        <div class="text-4xl mb-3">📭</div>
+        <p class="text-gray-600 font-medium">No instances found</p>
+        <p class="text-sm text-gray-400 mt-1">
+            Apply a CR to see it here: <span class="font-mono">kubectl apply -f cr.yaml</span>
+        </p>
+    </div>
+    {{ else }}
+
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-200">
+                <tr>
+                    <th class="text-left px-4 py-3 font-medium text-gray-500 uppercase tracking-wide text-xs">Name</th>
+                    <th class="text-left px-4 py-3 font-medium text-gray-500 uppercase tracking-wide text-xs">Namespace</th>
+                    <th class="text-left px-4 py-3 font-medium text-gray-500 uppercase tracking-wide text-xs">Phase</th>
+                    <th class="text-left px-4 py-3 font-medium text-gray-500 uppercase tracking-wide text-xs">Ready</th>
+                    <th class="text-left px-4 py-3 font-medium text-gray-500 uppercase tracking-wide text-xs">Age</th>
+                    <th class="text-left px-4 py-3 font-medium text-gray-500 uppercase tracking-wide text-xs">Generation</th>
+                    <th class="px-4 py-3"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+            {{ range .Items }}
+            <tr class="hover:bg-gray-50 transition group">
+                <td class="px-4 py-3 font-mono font-medium text-gray-900">{{ .Name }}</td>
+                <td class="px-4 py-3 text-gray-500 font-mono text-xs">
+                    {{ if .Namespace }}{{ .Namespace }}{{ else }}<span class="text-gray-300">—</span>{{ end }}
+                </td>
+                <td class="px-4 py-3">
+                    {{ if .Phase }}
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
+                        {{ if eq .Phase "Succeeded" }}bg-green-50 text-green-700 ring-1 ring-green-200
+                        {{ else if eq .Phase "Failed" }}bg-red-50 text-red-700 ring-1 ring-red-200
+                        {{ else if hasPrefix .Phase "Running" }}bg-blue-50 text-blue-700 ring-1 ring-blue-200
+                        {{ else if eq .Phase "Pending" }}bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200
+                        {{ else }}bg-gray-100 text-gray-600 ring-1 ring-gray-200{{ end }}">
+                        {{ if eq .Phase "Succeeded" }}✓
+                        {{ else if eq .Phase "Failed" }}✗
+                        {{ else if hasPrefix .Phase "Running" }}◌
+                        {{ else if eq .Phase "Pending" }}◷
+                        {{ end }}
+                        {{ .Phase }}
+                    </span>
+                    {{ else }}
+                    <span class="text-gray-300 text-xs">—</span>
+                    {{ end }}
+                </td>
+                <td class="px-4 py-3">
+                    {{ if .Ready }}
+                    <span class="inline-flex items-center gap-1 text-xs text-green-700">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"></span>
+                        Ready
+                    </span>
+                    {{ else }}
+                    <span class="inline-flex items-center gap-1 text-xs text-gray-400">
+                        <span class="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block"></span>
+                        {{ if .ReadyReason }}{{ .ReadyReason }}{{ else }}Not ready{{ end }}
+                    </span>
+                    {{ end }}
+                </td>
+                <td class="px-4 py-3 text-gray-500 font-mono text-xs">{{ .Age }}</td>
+                <td class="px-4 py-3 text-gray-400 text-xs">{{ .Generation }}</td>
+                <td class="px-4 py-3 text-right">
+                    <a href="cr/{{ if .Namespace }}{{ .Namespace }}/{{ end }}{{ .Name }}"
+                       class="opacity-0 group-hover:opacity-100 transition text-xs text-gray-500
+                              hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-lg">
+                        View →
+                    </a>
+                </td>
+            </tr>
+            {{ end }}
+            </tbody>
+        </table>
+    </div>
+    {{ end }}
+</main>
+
+</body>
+</html>
