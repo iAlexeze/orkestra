@@ -133,7 +133,15 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		kfg,
 	)
 
-	// ── 4c. Kontroller registry + per-CRD wiring ──────────────────────────────
+	// ── 4c. Provider registry — before factory closures ───────────────────────────
+	// Must be declared here so the factory closures below capture it.
+	// By the time ReconcilerFactory() is called in startCRDWorkers, the
+	// registry is fully populated. Go closures capture the variable reference,
+	// not the value at declaration time — but since loadProviders returns a
+	// fully initialised registry, this is equivalent.
+	providerRegistry := loadProviders(ctx)
+
+	// ── 4d. Kontroller registry + per-CRD wiring ──────────────────────────────
 	// Registers informers and reconciler factories per CRD.
 	// Factories are closures — NewGenericReconciler / Constructor called
 	// only after orkestra starts, guaranteeing kube and ev are live.
@@ -220,6 +228,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 
 			factory = func() domain.Reconciler {
 				return reconciler.NewGenericReconciler(
+					providerRegistry,
 					crdInfo,
 					infCopy,
 					ev,
@@ -356,7 +365,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		ktrl,          // Kontroller is last — depends on everything above being started first.
 	}
 
-	// ── 8. Orkestra ────────────────────────────────────────────────────────────
+	// ── 9. Orkestra ────────────────────────────────────────────────────────────
 	// Owns the full lifecycle of all komponents.
 	// Start  : sequential, in registration order.
 	// Shutdown: reverse order, on OS signal or fatal error.

@@ -76,21 +76,23 @@ type CREventsResponse struct {
 
 // CRListView is the data passed to cr_list.html.
 type CRListView struct {
-	Instance string // Orkestra instance URL
-	CRDName  string // e.g. "pipeline"
-	GVK      string // e.g. "demo.orkestra.io/v1alpha1, Kind=Pipeline"
-	Total    int
-	Items    []CRSummary
-	BackURL  string // back to /katalog/{crd}
+	KatalogName string // e.g. "demo"
+	Instance    string // Orkestra instance URL
+	CRDName     string // e.g. "pipeline"
+	GVK         string // e.g. "demo.orkestra.io/v1alpha1, Kind=Pipeline"
+	Total       int
+	Items       []CRSummary
+	BackURL     string // back to /katalog/{crd}
 }
 
 // CRDetailView is the data passed to cr_detail.html.
 type CRDetailView struct {
-	Instance   string
-	CRDName    string
-	CR         CRDetailResponse
-	Events     []CREvent
-	EventTotal int
-	Phase      string // extracted from status.phase for convenience
-	BackURL    string // back to /katalog/{crd}/cr
+	KatalogName string // e.g. "demo"
+	Instance    string
+	CRDName     string
+	CR          CRDetailResponse
+	Events      []CREvent
+	EventTotal  int
+	Phase       string // extracted from status.phase for convenience
+	BackURL     string // back to /katalog/{crd}/cr
 }

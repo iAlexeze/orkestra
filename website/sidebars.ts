@@ -69,6 +69,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'runtime-manual/concepts/katalog',
             'runtime-manual/concepts/komposer',
+            'runtime-manual/concepts/provider',
             'runtime-manual/concepts/status-management',
             'runtime-manual/concepts/conditional-status-fields',
             'runtime-manual/concepts/conditional-provisioning',
@@ -267,6 +268,7 @@ const sidebars: SidebarsConfig = {
         'publications/when-conditions-paper',
         'publications/value-proposition',
         'publications/orkestra-registry',
+        'publications/provider-library',
         'publications/no-autosync-by-design',
         'publications/trust-and-failure-model',
         'publications/metrics-analysis',

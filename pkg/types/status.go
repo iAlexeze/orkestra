@@ -1,5 +1,5 @@
 // pkg/types/status.go
-package orktypes
+package types
 
 // ── Status management ──────────────────────────────────────────────────────
 //

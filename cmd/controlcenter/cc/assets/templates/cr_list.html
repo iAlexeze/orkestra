@@ -3,108 +3,382 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .CRDName }} — Orkestra</title>
+    <title>{{ .CRDName }} · Resources · Orkestra Control Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
     <link rel="alternate icon" href="/controlcenter/assets/static/logo.png">
+    <style>
+        .resource-row {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .resource-row:hover {
+            background-color: #f9fafb;
+        }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .resource-row.hide {
+            display: none;
+        }
+        .pagination-btn {
+            transition: all 0.2s ease;
+        }
+        .pagination-btn:hover:not(:disabled) {
+            background-color: #e5e7eb;
+        }
+        .pagination-btn.active {
+            background-color: #1f2937;
+            color: white;
+        }
+    </style>
 </head>
+<body class="bg-gray-50">
 
-<body class="bg-gray-50 text-gray-900">
-
-<!-- Header -->
-<header class="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
-    <div class="max-w-6xl mx-auto flex items-center justify-between">
-        <div class="flex items-center gap-3 text-sm">
-            <a href="/controlcenter" class="text-gray-400 hover:text-gray-700">Control Center</a>
-            <span class="text-gray-300">/</span>
-            <span class="font-medium text-gray-900">{{ .CRDName }}</span>
+<!-- ── Breadcrumb Navigation ──────────────────────────────────────────────── -->
+<header class="bg-white border-b border-gray-200 px-6 py-3 sticky top-0 z-10 shadow-sm">
+    <div class="max-w-6xl mx-auto">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 text-sm breadcrumb">
+                <a href="/controlcenter" class="text-gray-400 hover:text-gray-600 transition">Control Center</a>
+                <svg class="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+                <a href="/controlcenter/katalog/{{ .KatalogName }}" class="text-gray-400 hover:text-gray-600 transition">{{ .KatalogName }}</a>
+                <svg class="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+                <a href="{{ .BackURL }}" class="text-gray-400 hover:text-gray-600 transition">{{ .CRDName }}</a>
+                <svg class="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+                <span class="text-gray-700 font-medium">Resources</span>
+            </div>
+            <span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-mono">auto-refresh 15s</span>
         </div>
-        <span class="text-xs text-gray-400 font-mono">Live (15s)</span>
     </div>
 </header>
 
-<!-- Page header -->
-<div class="bg-white border-b border-gray-100">
-    <div class="max-w-6xl mx-auto px-6 py-6">
+<!-- ── Page header ────────────────────────────────────────────────────────── -->
+<div class="px-6 py-6 bg-white border-b border-gray-100">
+    <div class="max-w-6xl mx-auto">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-semibold text-gray-900">{{ .CRDName }}</h1>
+                <div class="flex items-center gap-3 mt-1">
+                    <span class="text-xs text-gray-400 font-mono">{{ .GVK }}</span>
+                    <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{{ .Total }} resource{{ if ne .Total 1 }}s{{ end }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-        <h1 class="text-2xl font-semibold mb-1">{{ .CRDName }}</h1>
-        <p class="text-sm text-gray-500 mb-4">
-            {{ .Total }} instance{{ if ne .Total 1 }}s{{ end }}
+<!-- ── Search and Filter Bar ───────────────────────────────────────────────── -->
+<main class="max-w-6xl mx-auto px-6 py-6">
+    <div class="mb-6 flex flex-wrap gap-3 items-center justify-between">
+        <div class="flex flex-wrap gap-2">
+            <button data-filter="all" class="filter-btn active px-3 py-1.5 text-sm rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition">📊 All ({{ .Total }})</button>
+            <button data-filter="ready" class="filter-btn px-3 py-1.5 text-sm rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition">✅ Ready</button>
+            <button data-filter="not-ready" class="filter-btn px-3 py-1.5 text-sm rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition">⏳ Not Ready</button>
+            <button data-filter="succeeded" class="filter-btn px-3 py-1.5 text-sm rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition">✓ Succeeded</button>
+            <button data-filter="failed" class="filter-btn px-3 py-1.5 text-sm rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition">✗ Failed</button>
+            <button data-filter="running" class="filter-btn px-3 py-1.5 text-sm rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition">◌ Running</button>
+            <button data-filter="pending" class="filter-btn px-3 py-1.5 text-sm rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition">◷ Pending</button>
+        </div>
+        <div class="relative">
+            <input type="text" id="searchInput" placeholder="🔍 Search by name or namespace..." 
+                   class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 w-64">
+        </div>
+    </div>
+
+    <!-- ── Resource table with pagination ─────────────────────────────────────── -->
+    {{ if eq .Total 0 }}
+    <div class="bg-white border border-gray-200 rounded-xl p-12 text-center">
+        <div class="text-5xl mb-3">📭</div>
+        <p class="text-gray-600 font-medium">No resources found</p>
+        <p class="text-sm text-gray-400 mt-1">
+            Apply a Custom Resource to see it here:
+            <code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">kubectl apply -f cr.yaml</code>
         </p>
-
-        <!-- Status summary -->
-        <div class="flex gap-3 text-xs">
-            <span class="px-3 py-1 rounded-full bg-blue-50 text-blue-700">Active</span>
-            <span class="px-3 py-1 rounded-full bg-yellow-50 text-yellow-700">Pending</span>
-            <span class="px-3 py-1 rounded-full bg-red-50 text-red-700">Failed</span>
-        </div>
-
     </div>
-</div>
-
-<!-- Content -->
-<main class="max-w-6xl mx-auto px-6 py-6 space-y-3">
-
-{{ if eq .Total 0 }}
-<div class="bg-white border border-gray-200 rounded-xl p-12 text-center">
-    <div class="text-4xl mb-3">📭</div>
-    <p class="text-gray-600 font-medium">No instances found</p>
-</div>
-{{ else }}
-
-{{ range .Items }}
-<a href="cr/{{ if .Namespace }}{{ .Namespace }}/{{ end }}{{ .Name }}"
-   class="block bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 hover:shadow-sm transition">
-
-    <div class="flex items-center justify-between">
-
-        <!-- Left -->
-        <div>
-            <div class="font-mono text-sm font-medium text-gray-900">
-                {{ .Name }}
-            </div>
-            <div class="text-xs text-gray-400 font-mono mt-0.5">
-                {{ if .Namespace }}{{ .Namespace }}{{ else }}cluster-wide{{ end }}
-            </div>
-        </div>
-
-        <!-- Right -->
-        <div class="flex items-center gap-4 text-xs">
-
-            <!-- Phase -->
-            {{ if .Phase }}
-            <span class="px-2.5 py-1 rounded-full
-                {{ if eq .Phase "Succeeded" }}bg-green-50 text-green-700
-                {{ else if eq .Phase "Failed" }}bg-red-50 text-red-700
-                {{ else if hasPrefix .Phase "Running" }}bg-blue-50 text-blue-700
-                {{ else if eq .Phase "Pending" }}bg-yellow-50 text-yellow-700
-                {{ else }}bg-gray-100 text-gray-600{{ end }}">
-                {{ .Phase }}
-            </span>
+    {{ else }}
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-200">
+                <tr>
+                    <th class="text-left px-5 py-3 font-medium text-gray-500 uppercase tracking-wide text-xs">Name</th>
+                    <th class="text-left px-5 py-3 font-medium text-gray-500 uppercase tracking-wide text-xs">Namespace</th>
+                    <th class="text-left px-5 py-3 font-medium text-gray-500 uppercase tracking-wide text-xs">Phase</th>
+                    <th class="text-left px-5 py-3 font-medium text-gray-500 uppercase tracking-wide text-xs">Ready</th>
+                    <th class="text-left px-5 py-3 font-medium text-gray-500 uppercase tracking-wide text-xs">Age</th>
+                    <th class="text-left px-5 py-3 font-medium text-gray-500 uppercase tracking-wide text-xs">Generation</th>
+                </tr>
+            </thead>
+            <tbody id="resourceTableBody" class="divide-y divide-gray-100">
+            {{ range .Items }}
+            <tr class="resource-row" 
+                data-name="{{ .Name | toLower }}"
+                data-namespace="{{ .Namespace | toLower }}"
+                data-phase="{{ .Phase | toLower }}"
+                data-ready="{{ .Ready }}"
+                onclick="window.location.href='cr/{{ if .Namespace }}{{ .Namespace }}/{{ end }}{{ .Name }}'">
+                <td class="px-5 py-3.5 font-mono font-medium text-gray-900 hover:text-blue-600">{{ .Name }}</td>
+                <td class="px-5 py-3.5 text-gray-500 font-mono text-xs">
+                    {{ if .Namespace }}{{ .Namespace }}{{ else }}<span class="text-gray-300">—</span>{{ end }}
+                </td>
+                <td class="px-5 py-3.5">
+                    {{ if .Phase }}
+                    <span class="phase-badge inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
+                        {{ if eq .Phase "Succeeded" }}bg-green-50 text-green-700 ring-1 ring-green-200
+                        {{ else if eq .Phase "Failed" }}bg-red-50 text-red-700 ring-1 ring-red-200
+                        {{ else if hasPrefix .Phase "Running" }}bg-blue-50 text-blue-700 ring-1 ring-blue-200
+                        {{ else if eq .Phase "Pending" }}bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200
+                        {{ else }}bg-gray-100 text-gray-600 ring-1 ring-gray-200{{ end }}">
+                        {{ if eq .Phase "Succeeded" }}✓
+                        {{ else if eq .Phase "Failed" }}✗
+                        {{ else if hasPrefix .Phase "Running" }}◌
+                        {{ else if eq .Phase "Pending" }}◷
+                        {{ end }}
+                        {{ .Phase }}
+                    </span>
+                    {{ else }}
+                    <span class="text-gray-300 text-xs">—</span>
+                    {{ end }}
+                </td>
+                <td class="px-5 py-3.5">
+                    {{ if .Ready }}
+                    <span class="ready-badge inline-flex items-center gap-1.5 text-xs text-green-700">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                        Ready
+                    </span>
+                    {{ else }}
+                    <span class="ready-badge inline-flex items-center gap-1.5 text-xs text-amber-600">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                        {{ if .ReadyReason }}{{ .ReadyReason }}{{ else }}Not ready{{ end }}
+                    </span>
+                    {{ end }}
+                </td>
+                <td class="px-5 py-3.5 text-gray-500 font-mono text-xs">{{ .Age }}</td>
+                <td class="px-5 py-3.5 text-gray-400 text-xs">{{ .Generation }}</td>
+            </td>
             {{ end }}
-
-            <!-- Ready -->
-            {{ if .Ready }}
-            <span class="text-green-600">● Ready</span>
-            {{ else }}
-            <span class="text-gray-400">● Not ready</span>
-            {{ end }}
-
-            <!-- Age -->
-            <span class="text-gray-400 font-mono">{{ .Age }}</span>
-
-            <!-- Gen -->
-            <span class="text-gray-300">gen {{ .Generation }}</span>
-
-        </div>
-
+            </tbody>
+        </table>
     </div>
-</a>
-{{ end }}
-
-{{ end }}
-
+    
+    <!-- Pagination Controls -->
+    <div id="paginationControls" class="mt-6 flex items-center justify-between">
+        <div class="text-sm text-gray-500">
+            Showing <span id="pageStart">0</span> - <span id="pageEnd">0</span> of <span id="totalCount">{{ .Total }}</span> resources
+        </div>
+        <div class="flex gap-2">
+            <button id="prevPage" class="pagination-btn px-3 py-1.5 text-sm rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                ← Previous
+            </button>
+            <div id="pageNumbers" class="flex gap-1">
+                <!-- Page numbers will be inserted here -->
+            </div>
+            <button id="nextPage" class="pagination-btn px-3 py-1.5 text-sm rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                Next →
+            </button>
+        </div>
+    </div>
+    
+    <!-- Empty filter state -->
+    <div id="emptyFilterState" class="mt-6 bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center hidden">
+        <p class="text-yellow-800 font-medium">No resources match your filter</p>
+        <p class="text-yellow-600 text-sm mt-1">Try changing your search or filter criteria</p>
+    </div>
+    {{ end }}
 </main>
 
+<script>
+const PAGE_SIZE = 20;
+let currentFilter = 'all';
+let currentSearch = '';
+let currentPage = 1;
+let allRows = [];
+
+function getAllRows() {
+    return Array.from(document.querySelectorAll('#resourceTableBody .resource-row'));
+}
+
+function filterRows() {
+    allRows = getAllRows();
+    
+    allRows.forEach(row => {
+        const name = row.dataset.name || '';
+        const namespace = row.dataset.namespace || '';
+        const phase = row.dataset.phase || '';
+        const ready = row.dataset.ready === 'true';
+        
+        let matchesFilter = false;
+        if (currentFilter === 'all') {
+            matchesFilter = true;
+        } else if (currentFilter === 'ready' && ready === true) {
+            matchesFilter = true;
+        } else if (currentFilter === 'not-ready' && ready === false) {
+            matchesFilter = true;
+        } else if (currentFilter === 'succeeded' && phase === 'succeeded') {
+            matchesFilter = true;
+        } else if (currentFilter === 'failed' && phase === 'failed') {
+            matchesFilter = true;
+        } else if (currentFilter === 'running' && phase.includes('running')) {
+            matchesFilter = true;
+        } else if (currentFilter === 'pending' && phase === 'pending') {
+            matchesFilter = true;
+        }
+        
+        let matchesSearch = true;
+        if (currentSearch) {
+            matchesSearch = name.includes(currentSearch) || namespace.includes(currentSearch);
+        }
+        
+        if (matchesFilter && matchesSearch) {
+            row.classList.remove('filtered-out');
+        } else {
+            row.classList.add('filtered-out');
+        }
+    });
+    
+    // Get visible rows after filtering
+    const visibleRows = allRows.filter(row => !row.classList.contains('filtered-out'));
+    const totalFiltered = visibleRows.length;
+    
+    // Show/hide empty filter state
+    const emptyState = document.getElementById('emptyFilterState');
+    if (emptyState) {
+        if (totalFiltered === 0 && allRows.length > 0) {
+            emptyState.classList.remove('hidden');
+        } else {
+            emptyState.classList.add('hidden');
+        }
+    }
+    
+    // Update pagination with filtered rows
+    updatePagination(visibleRows);
+}
+
+function updatePagination(visibleRows) {
+    const totalPages = Math.ceil(visibleRows.length / PAGE_SIZE);
+    
+    // Adjust current page if out of bounds
+    if (currentPage > totalPages && totalPages > 0) {
+        currentPage = totalPages;
+    }
+    if (currentPage < 1) {
+        currentPage = 1;
+    }
+    
+    // Hide all rows first
+    allRows.forEach(row => {
+        row.style.display = 'none';
+    });
+    
+    // Show only rows for current page (only those not filtered out)
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const end = start + PAGE_SIZE;
+    const pageRows = visibleRows.slice(start, end);
+    
+    pageRows.forEach(row => {
+        row.style.display = '';
+    });
+    
+    // Update pagination UI
+    const totalCount = visibleRows.length;
+    const pageStart = totalCount === 0 ? 0 : start + 1;
+    const pageEnd = Math.min(end, totalCount);
+    
+    document.getElementById('pageStart').textContent = pageStart;
+    document.getElementById('pageEnd').textContent = pageEnd;
+    document.getElementById('totalCount').textContent = totalCount;
+    
+    // Update prev/next buttons
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    
+    prevBtn.disabled = currentPage <= 1;
+    nextBtn.disabled = currentPage >= totalPages;
+    
+    // Generate page numbers
+    generatePageNumbers(currentPage, totalPages);
+}
+
+function generatePageNumbers(currentPage, totalPages) {
+    const container = document.getElementById('pageNumbers');
+    container.innerHTML = '';
+    
+    // Show at most 5 page numbers
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    
+    if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.className = `pagination-btn w-8 h-8 text-sm rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition ${i === currentPage ? 'active bg-gray-900 text-white border-gray-900' : ''}`;
+        btn.onclick = () => {
+            currentPage = i;
+            filterRows();
+        };
+        container.appendChild(btn);
+    }
+}
+
+// Filter buttons
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => {
+            b.classList.remove('active', 'bg-gray-900', 'text-white');
+            b.classList.add('bg-gray-200', 'text-gray-700');
+        });
+        btn.classList.remove('bg-gray-200', 'text-gray-700');
+        btn.classList.add('active', 'bg-gray-900', 'text-white');
+        
+        currentFilter = btn.dataset.filter;
+        currentPage = 1;
+        filterRows();
+    });
+});
+
+// Search input
+const searchInput = document.getElementById('searchInput');
+if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+        currentSearch = e.target.value.toLowerCase();
+        currentPage = 1;
+        filterRows();
+    });
+}
+
+// Previous page button
+document.getElementById('prevPage').addEventListener('click', () => {
+    if (currentPage > 1) {
+        currentPage--;
+        filterRows();
+    }
+});
+
+// Next page button
+document.getElementById('nextPage').addEventListener('click', () => {
+    const visibleRows = allRows.filter(row => !row.classList.contains('filtered-out'));
+    const totalPages = Math.ceil(visibleRows.length / PAGE_SIZE);
+    if (currentPage < totalPages) {
+        currentPage++;
+        filterRows();
+    }
+});
+
+// Initialize
+setTimeout(() => {
+    allRows = getAllRows();
+    filterRows();
+}, 100);
+
+// Auto-refresh every 15 seconds
+setTimeout(() => { window.location.reload(); }, 15000);
+</script>
 </body>
 </html>

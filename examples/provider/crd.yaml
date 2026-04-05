@@ -1,0 +1,60 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: saasbackends.demo.orkestra.io
+spec:
+  group: demo.orkestra.io
+  scope: Namespaced
+  names:
+    plural: saasbackends
+    singular: saasbackend
+    kind: SaasBackend
+    shortNames: [sb]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Replicas
+          type: string
+          jsonPath: .status.replicas
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [image, region]
+              properties:
+                image:
+                  type: string
+                region:
+                  type: string
+                  description: AWS region for S3 bucket
+                replicas:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                port:
+                  type: integer
+                enableStorage:
+                  type: string
+                enableVersioning:
+                  type: string
+                enableEvents:
+                  type: string
+                domain:
+                  type: string
+                hostedZoneId:
+                  type: string
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true

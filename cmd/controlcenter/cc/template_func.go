@@ -120,4 +120,7 @@ var templateFuncs = template.FuncMap{
 	"json": func(v interface{}) string {
 		return fmt.Sprintf("%v", v)
 	},
+	"toLower": func(s string) string {
+		return strings.ToLower(s)
+	},
 }

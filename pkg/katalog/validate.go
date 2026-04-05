@@ -373,6 +373,16 @@ func (k *Katalog) addRuntimeObjects() error {
 func (k *Katalog) addReconcilers() error {
 	for i := range k.enabledCRDs {
 		crd := &k.enabledCRDs[i]
+		rc := crd.ReconcilerConfig
+
+		// Add providers block
+		if len(rc.ProviderBlocks) > 0 {
+			blocks, err := orktypes.ParseProviderBlocks(rc.RawProviders)
+			if err != nil {
+				return err
+			}
+			rc.ProviderBlocks = blocks
+		}
 
 		if !crd.IsDynamic() {
 
@@ -390,7 +400,7 @@ func (k *Katalog) addReconcilers() error {
 				)
 			}
 
-			crd.ReconcilerConfig.Constructor = constructorFn // ← sets the Go function field
+			rc.Constructor = constructorFn // ← sets the Go function field
 		}
 	}
 	return nil

@@ -1,5 +1,5 @@
 // pkg/types/conversion.go
-package orktypes
+package types
 
 // CRDConversion declares declarative version conversion rules for a CRD.
 // When enabled, Orkestra serves the /convert endpoint and translates

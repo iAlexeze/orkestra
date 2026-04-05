@@ -420,83 +420,168 @@ func buildCRDetail(u *unstructured.Unstructured, children map[string]ChildSummar
 
 // readChildrenForEndpoint reads child resources from the API server.
 //
-// Rather than requiring the ReconcilerConfig (which would create an import
-// cycle via mergeTemplates in pkg/reconciler), we query each known resource
-// type by the orkestra-owner label. This is equivalent to ReadChildren in
-// the reconciler but works from the kontroller package without any imports
-// from pkg/reconciler.
+// Performance contract:
+//   - All GVR queries run in parallel — total latency = slowest single query,
+//     not sum of all queries.
+//   - A hard 3-second deadline is applied regardless of the request context.
+//     Children are best-effort; a slow API server does not block the CR detail page.
+//   - When the ReconcilerConfig has no template blocks declared (e.g. a typed
+//     CRD using only hooks/constructor), the function returns immediately with
+//     an empty map — no API calls made.
 //
 // Returns a map keyed by lowercase kind — same convention as .children.* in templates.
 func readChildrenForEndpoint(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
 	owner *unstructured.Unstructured,
-	_ orktypes.ReconcilerConfig, // kept for signature compatibility, unused
+	rc orktypes.ReconcilerConfig,
 ) map[string]ChildSummary {
-	result := map[string]ChildSummary{}
 	if kube == nil {
-		return result
+		return map[string]ChildSummary{}
 	}
+
+	// Fast path: if no template blocks are declared, this CRD creates no
+	// labelled children. Skip all API calls entirely.
+	if !hasTemplateBlocks(rc) {
+		return map[string]ChildSummary{}
+	}
+
+	// Hard deadline — children are supplementary. Never let a slow API server
+	// block the CR detail page for more than 3 seconds.
+	fetchCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
 
 	ns := owner.GetNamespace()
 	labelSelector := fmt.Sprintf("orkestra-owner=%s", owner.GetName())
 
+	type result struct {
+		key  string
+		item *ChildSummary
+	}
+
+	ch := make(chan result, len(knownChildGVRs))
+
+	// Fan out — all GVR queries in parallel
 	for _, entry := range knownChildGVRs {
-		resource := kube.DynamicClient().Resource(entry.GVR)
+		entry := entry // capture
+		go func() {
+			item := fetchOneChildKind(fetchCtx, kube, ns, labelSelector, entry)
+			ch <- result{key: entry.Key, item: item}
+		}()
+	}
 
-		var list *unstructured.UnstructuredList
-		var err error
-
-		if ns != "" {
-			list, err = resource.Namespace(ns).List(ctx, metav1.ListOptions{
-				LabelSelector: labelSelector,
-				Limit:         1, // only need the first for the summary
-			})
-		} else {
-			// Cluster-scoped owner — search all namespaces
-			list, err = resource.List(ctx, metav1.ListOptions{
-				LabelSelector: labelSelector,
-				Limit:         1,
-			})
-		}
-
-		if err != nil || len(list.Items) == 0 {
-			continue
-		}
-
-		obj := list.Items[0]
-		status, _ := obj.Object["status"].(map[string]interface{})
-		if status == nil {
-			status = map[string]interface{}{}
-		}
-
-		// Use the object's own Kind field when available (populated by API server).
-		// Fall back to the key title-cased (e.g. "job" → "Job").
-		kind := obj.GetKind()
-		if kind == "" {
-			kind = strings.ToUpper(entry.Key[:1]) + entry.Key[1:]
-		}
-
-		result[entry.Key] = ChildSummary{
-			Name:      obj.GetName(),
-			Namespace: obj.GetNamespace(),
-			Kind:      kind,
-			Status:    status,
-			Ready:     isChildReady(obj.Object),
+	// Collect — respect the deadline
+	children := make(map[string]ChildSummary, len(knownChildGVRs))
+	for range knownChildGVRs {
+		select {
+		case r := <-ch:
+			if r.item != nil {
+				children[r.key] = *r.item
+			}
+		case <-fetchCtx.Done():
+			// Deadline exceeded — return whatever arrived so far.
+			// The caller renders partial children rather than timing out.
+			return children
 		}
 	}
 
-	return result
+	return children
+}
+
+// fetchOneChildKind lists the first resource of one GVR owned by the CR.
+// Returns nil when no resource exists or on any error.
+func fetchOneChildKind(
+	ctx context.Context,
+	kube *kubeclient.Kubeclient,
+	ns, labelSelector string,
+	entry struct {
+		GVR schema.GroupVersionResource
+		Key string
+	},
+) *ChildSummary {
+	resource := kube.DynamicClient().Resource(entry.GVR)
+
+	var list *unstructured.UnstructuredList
+	var err error
+
+	opts := metav1.ListOptions{
+		LabelSelector:   labelSelector,
+		Limit:           1,
+		ResourceVersion: "0", // serve from API server watch cache, not etcd
+		// ResourceVersion "0" means "any cached version is acceptable" — the API
+		// server satisfies this from its in-memory watch cache rather than querying
+		// etcd. This is the same optimization kubectl uses. Without it, every List
+		// call is an etcd round-trip and can take 2-5 seconds under load.
+	}
+
+	if ns != "" {
+		list, err = resource.Namespace(ns).List(ctx, opts)
+	} else {
+		list, err = resource.List(ctx, opts)
+	}
+
+	if err != nil || len(list.Items) == 0 {
+		return nil
+	}
+
+	obj := list.Items[0]
+	status, _ := obj.Object["status"].(map[string]interface{})
+	if status == nil {
+		status = map[string]interface{}{}
+	}
+
+	kind := obj.GetKind()
+	if kind == "" {
+		kind = strings.ToUpper(entry.Key[:1]) + entry.Key[1:]
+	}
+
+	return &ChildSummary{
+		Name:      obj.GetName(),
+		Namespace: obj.GetNamespace(),
+		Kind:      kind,
+		Status:    status,
+		Ready:     isChildReady(obj.Object),
+	}
+}
+
+// hasTemplateBlocks returns true if the ReconcilerConfig has any declarative
+// template blocks that would cause Orkestra to create labelled child resources.
+// Used to skip the children fetch for CRDs that use hooks/constructor only.
+func hasTemplateBlocks(rc orktypes.ReconcilerConfig) bool {
+	if rc.OnCreate != nil {
+		t := rc.OnCreate
+		if len(t.Deployments) > 0 || len(t.Services) > 0 ||
+			len(t.Jobs) > 0 || len(t.CronJobs) > 0 ||
+			len(t.ConfigMaps) > 0 || len(t.Secrets) > 0 ||
+			len(t.ServiceAccounts) > 0 || len(t.Pods) > 0 {
+			return true
+		}
+	}
+	if rc.OnReconcile != nil {
+		t := rc.OnReconcile
+		if len(t.Deployments) > 0 || len(t.Services) > 0 ||
+			len(t.Jobs) > 0 || len(t.CronJobs) > 0 ||
+			len(t.ConfigMaps) > 0 || len(t.Secrets) > 0 ||
+			len(t.ServiceAccounts) > 0 || len(t.Pods) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // fetchCREvents lists Kubernetes events for a specific CR by name.
 // Uses field selectors — no label selector needed since events reference
 // their involved object directly.
+// Capped at a 3-second deadline — events are supplementary information.
 func fetchCREvents(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
 	namespace, name, kind string,
 ) ([]CREvent, error) {
+	// Hard deadline — events should never block the page render
+	evCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
 	if namespace == "" {
 		namespace = metav1.NamespaceAll
 	}
@@ -513,9 +598,10 @@ func fetchCREvents(
 		)
 	}
 
-	eventList, err := kube.Clientset().CoreV1().Events(namespace).List(ctx, metav1.ListOptions{
-		FieldSelector: selector.String(),
-		Limit:         100, // cap at 100 — events are noisy
+	eventList, err := kube.Clientset().CoreV1().Events(namespace).List(evCtx, metav1.ListOptions{
+		FieldSelector:   selector.String(),
+		Limit:           100,
+		ResourceVersion: "0", // watch cache — avoids etcd round-trip
 	})
 	if err != nil {
 		return nil, err

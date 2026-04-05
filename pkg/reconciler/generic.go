@@ -43,13 +43,14 @@ import (
 //  3. Add the field to orktypes.HookTemplates
 //     That is all — generic.go does not change.
 type GenericReconciler[T domain.Object] struct {
-	informer cache.SharedIndexInformer
-	event    *event.Event
-	kube     *kubeclient.Kubeclient
-	hooks    domain.ReconcileHooks[T]
-	rc       orktypes.ReconcilerConfig
-	newObj   func() T
-	crd      CRDInfo
+	providerRegistry orktypes.ProviderRegistry
+	informer         cache.SharedIndexInformer
+	event            *event.Event
+	kube             *kubeclient.Kubeclient
+	hooks            domain.ReconcileHooks[T]
+	rc               orktypes.ReconcilerConfig
+	newObj           func() T
+	crd              CRDInfo
 }
 
 type CRDInfo struct {
@@ -64,6 +65,7 @@ type CRDInfo struct {
 }
 
 func NewGenericReconciler[T domain.Object](
+	providerRegistry orktypes.ProviderRegistry,
 	crd CRDInfo,
 	informer cache.SharedIndexInformer,
 	ev *event.Event,
@@ -85,13 +87,14 @@ func NewGenericReconciler[T domain.Object](
 	}
 
 	return &GenericReconciler[T]{
-		crd:      crd,
-		rc:       crd.ReconcilerConfig,
-		informer: informer,
-		event:    ev,
-		kube:     kube,
-		hooks:    hooks,
-		newObj:   newObj,
+		providerRegistry: providerRegistry,
+		crd:              crd,
+		rc:               crd.ReconcilerConfig,
+		informer:         informer,
+		event:            ev,
+		kube:             kube,
+		hooks:            hooks,
+		newObj:           newObj,
 	}
 }
 

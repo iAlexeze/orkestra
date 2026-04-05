@@ -3,7 +3,7 @@
 // These types form the public contract between the Katalog schema and the
 // admission/reconcile enforcement engine. Tests verify that default behaviours
 // and policy helper methods match the documented semantics.
-package orktypes_test
+package types_test
 
 import (
 	"testing"

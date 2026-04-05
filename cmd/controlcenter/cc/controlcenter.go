@@ -424,12 +424,13 @@ func (cc *ControlCenter) handleCRList(w http.ResponseWriter, r *http.Request, in
 	}
 
 	cc.renderTemplate(w, "cr_list.html", CRListView{
-		Instance: instanceURL,
-		CRDName:  crdName,
-		GVK:      list.GVK,
-		Total:    list.Total,
-		Items:    list.Items,
-		BackURL:  fmt.Sprintf("/controlcenter/katalog/%s/crd/%s", katalogName, crdName),
+		KatalogName: katalogName,
+		Instance:    instanceURL,
+		CRDName:     crdName,
+		GVK:         list.GVK,
+		Total:       list.Total,
+		Items:       list.Items,
+		BackURL:     fmt.Sprintf("/controlcenter/katalog/%s/crd/%s", katalogName, crdName),
 	})
 }
 
@@ -461,13 +462,14 @@ func (cc *ControlCenter) handleCRDetail(w http.ResponseWriter, r *http.Request, 
 	}
 
 	cc.renderTemplate(w, "cr_detail.html", CRDetailView{
-		Instance:   instanceURL,
-		CRDName:    crdName,
-		CR:         *detail,
-		Events:     events,
-		EventTotal: eventTotal,
-		Phase:      phase,
-		BackURL:    fmt.Sprintf("/controlcenter/katalog/%s/crd/%s", katalogName, crdName),
+		KatalogName: katalogName,
+		Instance:    instanceURL,
+		CRDName:     crdName,
+		CR:          *detail,
+		Events:      events,
+		EventTotal:  eventTotal,
+		Phase:       phase,
+		BackURL:     fmt.Sprintf("/controlcenter/katalog/%s/crd/%s", katalogName, crdName),
 	})
 }
 

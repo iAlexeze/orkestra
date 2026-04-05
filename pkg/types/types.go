@@ -1,5 +1,5 @@
 // pkg/orktypes/types.go
-package orktypes
+package types
 
 import (
 	"time"
@@ -959,6 +959,15 @@ type ReconcilerConfig struct {
 	// nil (default): Layer 1 only — standard Ready condition after every reconcile.
 	// non-nil: Layer 1 + Layer 2 declarative fields from Status.Fields.
 	Status *StatusConfig `yaml:"status,omitempty"`
+
+	// ProviderBlocks holds the parsed provider declarations from the Katalog.
+	// Populated during Katalog loading via ParseProviderBlocks.
+	// Not a YAML field — parsed from RawProviders after unmarshal.
+	ProviderBlocks []ProviderBlock `yaml:"-"`
+
+	// RawProviders is the raw YAML map, populated during unmarshal.
+	// Converted to ProviderBlocks in the Katalog loading step.
+	RawProviders map[string][]map[string]interface{} `yaml:"providers,omitempty"`
 }
 
 // HookDeclaration declares where a Go hook function lives.

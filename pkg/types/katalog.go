@@ -1,5 +1,5 @@
 // pkg/types/katalog.go
-package orktypes
+package types
 
 // KatalogFile is the top-level structure of a crd-katalog.yaml file.
 // It contains optional sources (files and helm charts) plus inline CRDs.
@@ -105,4 +105,7 @@ type KatalogSpec struct {
 
 	// CRDs — the CRD entries managed by this Orkestra instance.
 	CRDs []CRDEntry `yaml:"crds"`
+
+	// Providers  — future implementation for providers
+	Providers []KatalogProviderRequirement `yaml:"providers,omitempty"`
 }

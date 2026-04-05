@@ -1,5 +1,5 @@
 // pkg/types/sources.go
-package orktypes
+package types
 
 import (
 	"fmt"

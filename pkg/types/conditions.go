@@ -1,5 +1,5 @@
 // pkg/types/conditions.go
-package orktypes
+package types
 
 // ── Conditional provisioning ───────────────────────────────────────────────────
 //
