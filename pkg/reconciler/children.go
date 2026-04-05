@@ -18,6 +18,7 @@ import (
 // ── Child resource GVRs ───────────────────────────────────────────────────
 // These are the GVRs for every resource type the OrkestraRegistry creates.
 // Used to read back child resources after reconcile completes.
+// When you add a new resource, make it avaialble here to be read by orkestra
 
 var (
 	deploymentGVR     = schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}
@@ -94,8 +95,8 @@ func ReadChildren(
 	if len(templates.ConfigMaps) > 0 {
 		m := readResourceGroup(ctx, kube, obj, resolver, configMapGVR,
 			configMapNames(resolver, templates.ConfigMaps))
-		children["configMaps"] = m
-		children["configMap"] = firstValue(m)
+		children["configmaps"] = m
+		children["configmap"] = firstValue(m)
 	}
 
 	// ── Jobs ──────────────────────────────────────────────────────────────
@@ -110,8 +111,8 @@ func ReadChildren(
 	if len(templates.CronJobs) > 0 {
 		m := readResourceGroup(ctx, kube, obj, resolver, cronJobGVR,
 			cronJobNames(resolver, templates.CronJobs))
-		children["cronJobs"] = m
-		children["cronJob"] = firstValue(m)
+		children["cronjobs"] = m
+		children["cronjob"] = firstValue(m)
 	}
 
 	// ── Pods ──────────────────────────────────────────────────────────────
@@ -126,8 +127,8 @@ func ReadChildren(
 	if len(templates.ServiceAccounts) > 0 {
 		m := readResourceGroup(ctx, kube, obj, resolver, serviceAccountGVR,
 			serviceAccountNames(resolver, templates.ServiceAccounts))
-		children["serviceAccounts"] = m
-		children["serviceAccount"] = firstValue(m)
+		children["serviceaccounts"] = m
+		children["serviceaccount"] = firstValue(m)
 	}
 
 	return children
@@ -294,12 +295,30 @@ func configMapNames(resolver *orktmpl.Resolver, srcs []orktypes.ConfigMapTemplat
 	return names
 }
 
+// func jobNames(resolver *orktmpl.Resolver, srcs []orktypes.JobTemplateSource) []resolvedChildName {
+// 	names := make([]resolvedChildName, 0, len(srcs))
+// 	for _, s := range srcs {
+// 		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
+// 			names = append(names, n)
+// 		}
+// 	}
+// 	return names
+// }
+
+// jobNames collects all job names from the template list.
+// Conditions are NOT evaluated here — we read all declared children
+// so status can reference any of them regardless of phase.
+// Conditions only gate creation in run_jobs.go.
 func jobNames(resolver *orktmpl.Resolver, srcs []orktypes.JobTemplateSource) []resolvedChildName {
-	names := make([]resolvedChildName, 0, len(srcs))
-	for _, s := range srcs {
-		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
-			names = append(names, n)
+	var names []resolvedChildName
+	for _, src := range srcs {
+		// ← no condition check here
+		name, err := resolver.Resolve(src.Name)
+		if err != nil || name == "" {
+			continue
 		}
+		ns, _ := resolver.Resolve(src.Namespace)
+		names = append(names, resolvedChildName{name: name, namespace: ns})
 	}
 	return names
 }

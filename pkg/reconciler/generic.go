@@ -338,6 +338,9 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj dom
 		if err := runServiceAccounts(ctx, kube, resolver, obj, t.ServiceAccounts, false); err != nil {
 			return err
 		}
+		if err := runJobs(ctx, kube, resolver, obj, t.Jobs); err != nil {
+			return err
+		}
 		if err := runCronJobs(ctx, kube, resolver, obj, t.CronJobs, false); err != nil {
 			return err
 		}
@@ -359,7 +362,7 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj dom
 		}
 
 		// Added to use when condition in both ways
-		if err := runJobs(ctx, kube, resolver, obj, t.Jobs, true); err != nil {
+		if err := runJobs(ctx, kube, resolver, obj, t.Jobs); err != nil {
 			return err
 		}
 		if err := runCronJobs(ctx, kube, resolver, obj, t.CronJobs, true); err != nil {
@@ -388,7 +391,7 @@ func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, obj doma
 	}
 
 	if t := r.rc.OnDelete; t != nil {
-		if err := runJobs(ctx, kube, resolver, obj, t.Jobs, false); err != nil {
+		if err := runJobs(ctx, kube, resolver, obj, t.Jobs); err != nil {
 			return err
 		}
 	}

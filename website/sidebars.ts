@@ -68,10 +68,15 @@ const sidebars: SidebarsConfig = {
           link: {type: 'doc', id: 'runtime-manual/concepts/index'},
           items: [
             'runtime-manual/concepts/katalog',
-            'runtime-manual/concepts/status-management',
             'runtime-manual/concepts/komposer',
+            'runtime-manual/concepts/status-management',
+            'runtime-manual/concepts/conditional-status-fields',
+            'runtime-manual/concepts/conditional-provisioning',
+            'runtime-manual/concepts/conditional-webhooks',
+            'runtime-manual/concepts/notes',
             'runtime-manual/concepts/validation',
             'runtime-manual/concepts/mutation',
+            'runtime-manual/concepts/versioning',
 
             // Registry Sources
             {
@@ -251,6 +256,8 @@ const sidebars: SidebarsConfig = {
         // 'publications/declarative-operators-whitepaper',
         'publications/from-programs-to-data',
         'publications/declarative-conversion',
+        'publications/declarative-state-machines',
+        'publications/introducing-orkestra-notes',
         'publications/no-trace-runtime',
         'publications/one-runtime-many-crds',
         'publications/operator-sprawl-problem',

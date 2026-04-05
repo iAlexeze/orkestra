@@ -107,6 +107,14 @@ func evaluateOne(obj *unstructured.Unstructured, cond orktypes.Condition) bool {
 
 	// ── Numeric comparisons ───────────────────────────────────────────────────
 	case orktypes.ConditionGt, orktypes.ConditionLt:
+		// Treat absent or empty numeric fields as "0".
+		// Kubernetes omits zero-value integer fields from unstructured status
+		// (e.g. Job.status.succeeded is absent until at least one pod succeeds).
+		// An absent count is semantically zero — not an error.
+		if fieldVal == "" {
+			fieldVal = "0"
+		}
+
 		fv, err1 := strconv.ParseFloat(fieldVal, 64)
 		cv, err2 := strconv.ParseFloat(val, 64)
 		if err1 != nil || err2 != nil {

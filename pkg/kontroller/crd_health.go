@@ -237,6 +237,9 @@ func (h *CRDHealth) SetMissingAtRuntime() {
 	h.lastCRDCheck = time.Now()
 	h.crdExists.Store(false)
 	h.healthy.Store(false)
+	h.pending.Store(false)
+	h.consecutiveFails.Add(1)
+	h.lastError.Store("CRD missing at runtime")
 }
 
 // Name returns the CRD name associated with this health tracker.

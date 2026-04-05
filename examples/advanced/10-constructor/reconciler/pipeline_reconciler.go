@@ -30,11 +30,11 @@ import (
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
+	apiv1 "github.com/ialexeze/orkestra/examples/advanced/10-constructor/v1aplha"
 	"github.com/ialexeze/orkestra/pkg/event"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	orkjobs "github.com/ialexeze/orkestra/pkg/orkestra-registry/jobs"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
-	apiv1 "github.com/myorg/pipeline-operator/api/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,6 +43,7 @@ import (
 
 const (
 	finalizerName = "orkestra.konductor.io/pipeline-cleanup"
+	backoffLimit  = 5
 )
 
 // PipelineReconciler implements domain.Reconciler for the Pipeline CRD.
@@ -72,7 +73,7 @@ func NewPipelineReconciler(
 // Reconcile is called by Orkestra's worker pool for every queued Pipeline key.
 // It is wrapped in safeReconcile — panics are caught and returned as errors.
 func (r *PipelineReconciler) Reconcile(ctx context.Context, key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	namespace, _, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		return fmt.Errorf("invalid key %q: %w", key, err)
 	}
@@ -91,7 +92,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, key string) error {
 	if !ok {
 		return fmt.Errorf("unexpected type %T for key %q", raw, key)
 	}
-	pipeline = pipeline.DeepCopy()
+	pipeline = pipeline.DeepCopyObject().(*apiv1.Pipeline)
 
 	// ── Deletion handling ──────────────────────────────────────────────────
 	if pipeline.DeletionTimestamp != nil {
@@ -101,7 +102,7 @@ func (r *PipelineReconciler) Reconcile(ctx context.Context, key string) error {
 	// ── Finalizer ─────────────────────────────────────────────────────────
 	if !containsFinalizer(pipeline, finalizerName) {
 		pipeline.Finalizers = append(pipeline.Finalizers, finalizerName)
-		if err := r.kube.PatchFinalizers(ctx, pipeline, pipelineGVR(), pipeline.Finalizers); err != nil {
+		if err := r.kube.PatchFinalizers(ctx, pipeline, apiv1.GroupVersionResource, pipeline.Finalizers); err != nil {
 			return fmt.Errorf("adding finalizer: %w", err)
 		}
 	}
@@ -140,6 +141,7 @@ func (r *PipelineReconciler) handlePending(ctx context.Context, p *apiv1.Pipelin
 			Image:     p.Spec.Image,
 			Command:   firstStep.Command,
 		},
+		backoffLimit,
 		p.Name,
 	)
 	if err := orkjobs.Create(ctx, r.kube, p, jobSpec); err != nil {
@@ -219,6 +221,7 @@ func (r *PipelineReconciler) advanceStep(ctx context.Context, p *apiv1.Pipeline)
 			Image:     p.Spec.Image,
 			Command:   nextStep.Command,
 		},
+		backoffLimit,
 		p.Name,
 	)
 	if err := orkjobs.Create(ctx, r.kube, p, jobSpec); err != nil {
@@ -240,7 +243,7 @@ func (r *PipelineReconciler) handleDeletion(ctx context.Context, p *apiv1.Pipeli
 			newFinalizers = append(newFinalizers, f)
 		}
 	}
-	return r.kube.PatchFinalizers(ctx, p, pipelineGVR(), newFinalizers)
+	return r.kube.PatchFinalizers(ctx, p, apiv1.GroupVersionResource, newFinalizers)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -263,7 +266,7 @@ func (r *PipelineReconciler) patchStatus(ctx context.Context, p *apiv1.Pipeline)
 	if p.Status.CompletionTime != nil {
 		patch["completionTime"] = p.Status.CompletionTime.Format(time.RFC3339)
 	}
-	return r.kube.PatchStatus(ctx, p, pipelineGVR(), patch)
+	return r.kube.PatchStatus(ctx, p, apiv1.GroupVersionResource, patch)
 }
 
 func (r *PipelineReconciler) getJob(ctx context.Context, namespace, name string) (*batchv1.Job, error) {
@@ -314,14 +317,4 @@ func contains(s, sub string) bool {
 	return len(s) >= len(sub) && (s == sub ||
 		len(s) > 0 && len(sub) > 0 &&
 			(s[:len(sub)] == sub || contains(s[1:], sub)))
-}
-
-func pipelineGVR() interface{} {
-	// Returns the GVR for Pipeline — used by PatchFinalizers and PatchStatus.
-	// In the real codebase this is schema.GroupVersionResource.
-	return struct {
-		Group    string
-		Version  string
-		Resource string
-	}{"demo.orkestra.io", "v1alpha1", "pipelines"}
 }

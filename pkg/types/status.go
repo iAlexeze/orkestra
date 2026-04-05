@@ -57,7 +57,53 @@ type StatusFieldSpec struct {
 	// Resolved against the full CR object map at reconcile time.
 	// Empty string is written as-is — declare a static empty string to clear a field.
 	Value string `yaml:"value" json:"value"`
+
+	// When is an optional list of conditions that must all pass before
+	// this field is written. If absent or empty, the field is always written.
+	//
+	// All conditions are AND-ed together.
+	// To express OR logic, declare multiple StatusField entries for the same path.
+	//
+	// Conditions are evaluated against the full CR object map — the same
+	// map available to template expressions. This means .status.phase,
+	// .spec.image, .children.job.status.succeeded are all accessible.
+	When []Condition `yaml:"when,omitempty"`
 }
+
+// MORE NOTES ON StatusFieldSpec
+//
+// StatusFieldSpec extends the basic status field declaration with optional
+// when: conditions. When conditions are present, the field is only written
+// if all conditions pass against the current CR state.
+//
+// This is the primitive that makes declarative state machines possible.
+// Without it, status.fields writes unconditionally after every reconcile.
+// With it, different phase values can be written based on current state.
+//
+// Example — a three-phase state machine declared entirely in YAML:
+//
+//	status:
+//	  fields:
+//	    - path: phase
+//	      value: "Pending"
+//	      when:
+//	        - field: status.phase
+//	          operator: notExists
+//
+//	    - path: phase
+//	      value: "Running"
+//	      when:
+//	        - field: status.phase
+//	          equals: "Pending"
+//
+//	    - path: phase
+//	      value: "Succeeded"
+//	      when:
+//	        - field: status.phase
+//	          equals: "Running"
+//	        - field: children.job.status.succeeded
+//	          operator: gt
+//	          value: "0"
 
 // StatusConfig declares the declarative status behavior for a CRD.
 // Declared under spec.crds[].reconciler.status in the Katalog.

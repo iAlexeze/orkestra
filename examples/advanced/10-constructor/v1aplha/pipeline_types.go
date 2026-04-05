@@ -63,7 +63,32 @@ type PipelineList struct {
 }
 
 var (
-	GroupVersion  = schema.GroupVersion{Group: "demo.orkestra.io", Version: "v1alpha1"}
+	Group    = "demo.orkestra.io"
+	Kind     = "Pipeline"
+	Version  = "v1alpha1"
+	Resource = "pipelines"
+
+	GroupVersion = schema.GroupVersion{
+		Group:   Group,
+		Version: Version,
+	}
+	GroupKind = schema.GroupKind{
+		Group: Group,
+		Kind:  Kind,
+	}
+	GroupVersionKind = schema.GroupVersionKind{
+		Group:   Group,
+		Version: Version,
+		Kind:    Kind,
+	}
+	GroupVersionResource = schema.GroupVersionResource{
+		Group:    Group,
+		Version:  Version,
+		Resource: Resource,
+	}
+)
+
+var (
 	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
 	AddToScheme   = SchemeBuilder.AddToScheme
 )

@@ -316,3 +316,4 @@ kind: ConfigMap
 metadata:
   name: orkestra-katalog
   namespace: orkestra-system
+

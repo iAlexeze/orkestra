@@ -4,13 +4,25 @@
 
 The [Kubebuilder CronJob tutorial](https://book.kubebuilder.io/cronjob-tutorial/cronjob-tutorial)
 is the canonical introduction to Kubernetes operator development. It walks
-through building a CronJob controller from scratch — informers, reconcile
-loops, finalizers, multi-version CRDs, conversion webhooks. Over ten pages
-of Go, scaffolded code generation, and a separate webhook deployment.
+through building a CronJob controller from scratch — informers, reconcile loops,
+finalizers, multi-version CRDs, conversion webhooks. Over ten pages of Go,
+scaffolded code generation, and a separate webhook deployment.
 
 This pattern solves the same problem. The Katalog is 120 lines of YAML.
-There is no Go. There is no generated code. The conversion webhook is
-Orkestra's `/convert` endpoint — already running, no extra deployment.
+There is no Go. There is no generated code. The conversion webhook is Orkestra's
+`/convert` endpoint — already running, no extra deployment needed.
+
+**Verified in production:**
+
+| Metric | Value |
+|---|---|
+| v1 → v2 conversions | 5,024 |
+| v2 → v1 conversions | 6,255 |
+| Conversion failures | **0** |
+| v1 → v2 p95 latency | 0.69 ms |
+| v2 → v1 p95 latency | 0.49 ms |
+| Reconcile total | 4,903 |
+| Reconcile errors | 1 (transient) |
 
 ---
 
@@ -23,7 +35,7 @@ Between v1 and v2, `schedule` changes from a cron string to a structured object:
 spec:
   schedule: "0 2 * * 1-5"
 
-# v2 — named fields
+# v2 — named fields, self-documenting
 spec:
   schedule:
     minute: "0"
@@ -33,12 +45,10 @@ spec:
     dayOfWeek: "1-5"   # Monday through Friday
 ```
 
-The Kubebuilder tutorial requires handwritten conversion functions in Go to
-translate between these formats. Orkestra expresses the same conversion as
-template expressions using cron notes:
+Orkestra expresses the conversion as template expressions using cron notes:
 
 ```yaml
-# v1 → v2: cron notes extract each field from the string
+# v1 → v2: split the cron string into named fields
 - from: v1
   to: v2
   spec:
@@ -49,40 +59,31 @@ template expressions using cron notes:
       month:      "{{ cronMonth  .spec.schedule }}"
       dayOfWeek:  "{{ cronDow    .spec.schedule }}"
 
-# v2 → v1: cronExpr reconstructs the canonical cron string
+# v2 → v1: reconstruct the cron string from named fields
 - from: v2
   to: v1
   spec:
     schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
 ```
 
-The round-trip is lossless. `"0 2 * * 1-5"` converts to
-`{minute:"0", hour:"2", dom:"*", month:"*", dow:"1-5"}` and back to
-`"0 2 * * 1-5"`. The cron notes handle `@`-macros (`@hourly` → `"0 * * * *"`)
-transparently.
+Round-trip: `"0 2 * * 1-5"` → `{minute:"0", hour:"2", dom:"*", month:"*", dow:"1-5"}` → `"0 2 * * 1-5"`. Lossless. `@`-macros (`@hourly`, `@daily`) are expanded transparently.
 
 ---
 
-## What Kubebuilder required
+## What Kubebuilder required vs what Orkestra requires
 
-The tutorial implementation needed:
-
-| Component | Purpose | Size |
+| Component | Kubebuilder | Orkestra |
 |---|---|---|
-| `zz_generated_deepcopy.go` | Generated DeepCopy implementations | ~150 lines |
-| `cronjob_types.go` (v1) | Type definitions | ~80 lines |
-| `cronjob_types.go` (v2) | Type definitions | ~90 lines |
-| `conversion.go` | Hub pattern, ConvertTo, ConvertFrom | ~60 lines |
-| `conversion_test.go` | Round-trip tests | ~80 lines |
-| `cronjob_controller.go` | The reconciler | ~200 lines |
-| Webhook deployment | Separate pod for conversion | YAML + TLS setup |
-| `cert-manager` or manual TLS | Certificate management | Configuration |
-| `Makefile` targets | Build, generate, deploy | ~50 lines |
-
-**Total: ~700 lines of code, two additional deployments, certificate management.**
-
-What Orkestra requires: one `katalog.yaml`. RBAC is generated. The conversion
-webhook is Orkestra's own `/convert` endpoint. No extra deployments.
+| Type definitions (v1) | `cronjob_types.go` ~80 lines | CRD schema in `crd.yaml` |
+| Type definitions (v2) | `cronjob_types.go` ~90 lines | CRD schema in `crd.yaml` |
+| DeepCopy generation | `zz_generated_deepcopy.go` ~150 lines | Not needed |
+| Conversion logic | `conversion.go` ~60 lines | Template expressions in `katalog.yaml` |
+| Conversion tests | `conversion_test.go` ~80 lines | Live metrics from `/convert` endpoint |
+| Controller | `cronjob_controller.go` ~200 lines | `reconciler` block in `katalog.yaml` |
+| Webhook deployment | Separate pod + TLS setup | Orkestra's own `/convert` endpoint |
+| Certificate management | `cert-manager` or manual | Same cert Orkestra already uses |
+| Build tooling | `Makefile` ~50 lines | `ork generate bundle` |
+| **Total** | **~700 lines + 2 extra deployments** | **1 Katalog** |
 
 ---
 
@@ -90,120 +91,140 @@ webhook is Orkestra's own `/convert` endpoint. No extra deployments.
 
 When you apply a CronJob CR, Orkestra:
 
-1. **Validates** — ensures `spec.image` and `spec.schedule` are present. Deny rule blocks storage if they are missing.
+1. **Converts** — if the CR is v1, Orkestra's `/convert` endpoint splits the cron string into structured fields and stores it as v2. When you read it back as v1, the cron string is reconstructed.
 
-2. **Mutates** — applies defaults (`concurrencyPolicy: Allow`, `successfulJobsHistoryLimit: 3`, `failedJobsHistoryLimit: 1`) before any validation runs.
+2. **Validates** — ensures `spec.image` and `spec.schedule` are present. A deny rule blocks the object if either is missing.
 
-3. **Converts** — if the CR is in v1 format, `/convert` splits the cron string into structured fields using cron notes and stores it as v2. If you read it back as v1, the cron string is reconstructed.
+3. **Mutates** — applies defaults (`concurrencyPolicy: Allow`, `successfulJobsHistoryLimit: 3`, `failedJobsHistoryLimit: 1`) before validation runs. `mutateFirst: true` ensures defaults exist before rules check them.
 
-4. **Reconciles** — creates a Kubernetes `batch/v1 CronJob` with the schedule reconstructed from the structured fields. The child CronJob has owner references — it is garbage collected when the CR is deleted.
+4. **Reconciles** — creates a Kubernetes `batch/v1 CronJob` with the schedule reconstructed by `cronExpr`. The child CronJob has owner references — garbage collected when the CR is deleted.
 
-5. **Propagates status** — writes `phase`, `scheduleExpression`, `lastScheduleTime`, and `nextScheduleTime` to the CR's status after every successful reconcile. `phase` respects `spec.suspend`.
+5. **Propagates status** — writes `phase`, `scheduleExpression`, `lastScheduleTime`, and `nextScheduleTime` after every successful reconcile. Phase respects `spec.suspend` via the `ternary` note.
 
-6. **Enforces suspension** — when `spec.suspend: true`, the child CronJob is suspended on the next reconcile cycle. When set back to false, it is unsuspended. No manual intervention.
-
-7. **Corrects drift** — with `reconcile: true`, if someone edits the child CronJob directly, the next reconcile restores it to the declared state.
+6. **Corrects drift** — with `reconcile: true`, any external change to the child CronJob is restored on the next reconcile cycle.
 
 ---
 
-## Quick start
+## Steps
 
-### 1. Generate TLS certs for the webhook server.
-For this example, generate self-signed ones:
+### 1. Generate TLS certificates for the conversion webhook
+
+Orkestra's `/convert` endpoint requires TLS. For development, generate self-signed certificates:
 
 ```bash
-# Generate certs (development only — use cert-manager in production)
-chmod +x ../installation/generate-certs.sh && ../installation/generate-certs.sh
-
-# This creates a secret 'orkestra-tls' with certificates for webhook support
+chmod +x ../installation/generate-certs.sh
+../installation/generate-certs.sh
 ```
 
->[!Note]
-> Add the contents of /tmp/tls/caBundle.txt to your CRD's conversion webhook:
+This creates the `orkestra-tls` secret in `orkestra-system`.
+
+Copy the CA bundle from `/tmp/tls/caBundle.txt` into `crd.yaml` under the conversion webhook:
+
 ```yaml
-  conversion:
-    strategy: Webhook
-    webhook:
-      clientConfig:
-        service:
-          name: orkestra
-          namespace: orkestra-system
-          path: /convert
-          port: 8443
-          
-        caBundle: <here>
+conversion:
+  strategy: Webhook
+  webhook:
+    clientConfig:
+      caBundle: <paste caBundle.txt content here>
 ```
 
+### 2. Install the CRD
+
 ```bash
-# 2. Install the CRD
 kubectl apply -f crd.yaml
+```
 
-## 3. Create orkestra-system namespace (if not already present)
+### 3. Create the `orkestra-system` namespace
+
+```bash
 kubectl create namespace orkestra-system --dry-run=client -o yaml | kubectl apply -f -
+```
 
-## 4.Generate and Apply Runtime bundle
-This includes:
-  - RBAC: least-privilege RBAC 
-  - Config Map ready to apply
+### 4. Generate and apply the runtime bundle
+
+The bundle contains the ConfigMap (Komposer YAML) and least-privilege RBAC:
+
+```bash
 ork generate bundle -k komposer.yaml -o bundle.yaml
-
 kubectl apply -f bundle.yaml
 ```
 
----
+### 5. Deploy Orkestra with webhook support
 
-## 5. Deploy Orkestra and Control Center
 ```bash
 kubectl apply -f ../installation/install-webhook-support.yaml
+
+kubectl wait --for=condition=available deployment/orkestra \
+  -n orkestra-system --timeout=60s
 ```
 
+### 6. Apply the CRs
 
-# 6. Apply a v2 CR
+```bash
+# v2 CR — stored directly, no conversion needed
 kubectl apply -f cr-v2.yaml
 
-# 7. Watch it reconcile
-kubectl get cronjobs
-# NAME             SCHEDULE      PHASE    AGE
-# print-hello-v2   */1 * * * *   Active   12s
-# daily-backup     0 2 * * 1-5   Active   12s
-
-# The schedule column shows the reconstructed cron expression
-# from the structured fields — cronExpr in the status declaration
-
-# 8. Apply a v1 CR — Orkestra converts it to v2 before storage
+# v1 CR — Orkestra converts to v2 before storage
 kubectl apply -f cr-v1.yaml
-
-# Read it back as v1 — converted from v2 on the way out
-kubectl get cronjob.v1.demo.orkestra.io print-hello-v1 -o yaml | grep schedule
-
-# Read the same object as v2 — the stored format
-kubectl get cronjob.v2.demo.orkestra.io print-hello-v1 -o yaml | grep -A5 schedule
 ```
+
+### 7. Verify reconciliation
+
+```bash
+kubectl get cj
+```
+
+Expected:
+```
+NAME             SCHEDULE      PHASE    AGE
+daily-backup     0 2 * * 1-5   Active   8s
+print-hello-v1   */1 * * * *   Active   12s
+print-hello-v2   */1 * * * *   Active   8s
+```
+
+The `SCHEDULE` column shows the cron expression reconstructed by `cronExpr`
+from v2 structured fields — whether the CR was applied as v1 or v2.
+
+### 8. Verify the round-trip conversion
+
+```bash
+# v1 CR read back as v1 — schedule is the original string
+kubectl get cronjob.v1.demo.orkestra.io print-hello-v1 -n default -o yaml | grep schedule
+# schedule: '*/1 * * * *'
+
+# Same object read as v2 — schedule is the structured object
+kubectl get cronjob.v2.demo.orkestra.io print-hello-v1 -n default -o yaml | grep -A6 'schedule:'
+# schedule:
+#   dayOfMonth: '*'
+#   dayOfWeek: '*'
+#   hour: '*'
+#   minute: '*/1'
+#   month: '*'
+```
+
+The object is stored once in v2. Orkestra converts on read when v1 is requested.
 
 ---
 
 ## Observing conversions
 
 ```bash
-# Port-forward to Orkestra's health API
 kubectl port-forward svc/orkestra 8080:8080 -n orkestra-system &
 
-# See live conversion metrics for the v2 CRD
 curl localhost:8080/katalog/cronjob-v2 | jq '.conversion'
 ```
 
 ```json
 {
   "enabled": true,
-  "total": 47,
+  "total": 11279,
   "failures": 0,
-  "avgLatencyMs": 0.4,
-  "p95LatencyMs": 0.9
+  "avgLatencyMs": 0.59,
+  "p95LatencyMs": 0.69
 }
 ```
 
-Or launch the Control Center to see conversions, queue depth, worker
-utilisation, and every CRD's health in real time:
+Or launch the Control Center for live visualisation:
 
 ```bash
 ork control start
@@ -213,72 +234,67 @@ ork control start
 
 ## Suspending a CronJob
 
-```bash
-# Suspend all executions
-kubectl patch cronjob daily-backup --type=merge -p '{"spec":{"suspend":true}}'
+Always patch the Orkestra-managed CR — not the Kubernetes CronJob directly.
+Orkestra propagates the change to the child on the next reconcile:
 
-# Check status
-kubectl get cronjob daily-backup -o jsonpath='{.status.phase}'
+```bash
+# Suspend — patch the CR, not the child
+kubectl patch cronjob.v2.demo.orkestra.io daily-backup -n default \
+  --type=merge -p '{"spec":{"suspend":true}}'
+
+# Check the CR status
+kubectl get cronjob.v2.demo.orkestra.io daily-backup -n default \
+  -o jsonpath='{.status.phase}'
 # Suspended
 
-# The child Kubernetes CronJob is suspended on the next reconcile
-kubectl get cronjob daily-backup -o jsonpath='{.spec.suspend}'
+# Verify the child Kubernetes CronJob is also suspended
+kubectl get cronjob daily-backup -n default -o jsonpath='{.spec.suspend}'
 # true
 
 # Resume
-kubectl patch cronjob daily-backup --type=merge -p '{"spec":{"suspend":false}}'
+kubectl patch cronjob.v2.demo.orkestra.io daily-backup -n default \
+  --type=merge -p '{"spec":{"suspend":false}}'
 ```
 
-The `phase` field in status uses the `ternary` note:
-```yaml
-- path: phase
-  value: "{{ ternary .spec.suspend \"Suspended\" \"Active\" }}"
-```
+> The `phase` field is driven by a note: `{{ ternary .spec.suspend "Suspended" "Active" }}`.
+> Phase changes appear in status within one reconcile interval (15s default).
 
 ---
 
-## Production deployment
+## The notes that made this possible
+
+| Note | What it does | Replaces in Go |
+|---|---|---|
+| `cronMinute .spec.schedule` | Extract minute field from cron string | `strings.Split(s, " ")[0]` + nil checks |
+| `cronHour .spec.schedule` | Extract hour field | `strings.Split(s, " ")[1]` + nil checks |
+| `cronDom .spec.schedule` | Extract day-of-month | `strings.Split(s, " ")[2]` + nil checks |
+| `cronMonth .spec.schedule` | Extract month | `strings.Split(s, " ")[3]` + nil checks |
+| `cronDow .spec.schedule` | Extract day-of-week | `strings.Split(s, " ")[4]` + nil checks |
+| `cronExpr min hr dom mon dow` | Reconstruct canonical cron string | `fmt.Sprintf("%s %s %s %s %s", ...)` |
+| `ternary .spec.suspend "Suspended" "Active"` | Conditional status value | `if/else` block |
+| `default .spec.concurrencyPolicy "Allow"` | Field default with fallback | nil check + default assignment |
+
+Every one of these was Go code in the Kubebuilder tutorial.
+In Orkestra they are notes — one word in a template expression.
+
+---
+
+## Cleanup
 
 ```bash
-# Generate RBAC from the production Komposer
-ork generate rbac -k komposer.yaml -o rbac.yaml
-
-# Apply everything
-kubectl apply -f crd.yaml
-kubectl apply -f rbac.yaml
-
-# Deploy Orkestra with the Komposer as its Katalog
-# (See examples/advanced/install.yaml for the full deployment)
+chmod +x cleanup.sh && ./cleanup.sh
 ```
-
----
-
-## The notes that make this work
-
-| Note | Used for |
-|---|---|
-| `cronMinute .spec.schedule` | Extract minute field from v1 cron string |
-| `cronHour .spec.schedule` | Extract hour field |
-| `cronDom .spec.schedule` | Extract day-of-month field |
-| `cronMonth .spec.schedule` | Extract month field |
-| `cronDow .spec.schedule` | Extract day-of-week field |
-| `cronExpr min hr dom mon dow` | Reconstruct cron string from v2 fields |
-| `ternary .spec.suspend "Suspended" "Active"` | Phase field in status |
-| `default .spec.concurrencyPolicy "Allow"` | Default in conversion |
-
-Every one of these was a Go function in the Kubebuilder tutorial.
-In Orkestra they are notes — one word in a template expression.
 
 ---
 
 ## Files
 
-| File | What it does |
+| File | Purpose |
 |---|---|
 | `crd.yaml` | v1 and v2 schemas, conversion webhook config |
-| `katalog.yaml` | The complete operator declaration |
-| `komposer.yaml` | Production overlay |
-| `rbac.yaml` | Least-privilege RBAC (generated) |
+| `katalog.yaml` | Complete operator — reconciler, mutation, validation, status, conversion |
+| `komposer.yaml` | Production overlay with tuned workers |
+| `bundle.yaml` | Least-privilege RBAC and ConfigMap (regenerate: `ork generate bundle -k komposer.yaml`) |
 | `cr-v1.yaml` | Example v1 CR |
 | `cr-v2.yaml` | Example v2 CRs |
 | `pattern.yaml` | Registry metadata |
