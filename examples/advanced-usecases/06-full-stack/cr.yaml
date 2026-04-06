@@ -11,6 +11,6 @@ spec:
     - eu-west-1
     - ap-southeast-1
   replicasPerRegion: 1
-  serviceUrl: "https://controlcenter.orkestra.sh/controlcenter/health"   # replace with your service
+  serviceUrl: "https://controlcenter.orkestra.sh/controlcenter"   # replace with your service
   environment: "production"
   notify: "true"

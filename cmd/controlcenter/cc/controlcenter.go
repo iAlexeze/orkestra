@@ -213,6 +213,8 @@ func (cc *ControlCenter) renderError(w http.ResponseWriter, _ *http.Request, mes
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Error – Orkestra Control Center</title>
 <link rel="stylesheet" href="/controlcenter/assets/static/css/style.css">
+<link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
+<link rel="stylesheet" href="/controlcenter/assets/static/css/style.css">
 <script>(function(){var t=localStorage.getItem('cc-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
 </head>
 <body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg-base)">

@@ -74,19 +74,19 @@
         <div class="flex items-center gap-3 mb-2" style="flex-wrap:wrap">
           <h1 class="font-mono" style="font-size:20px;font-weight:700;margin:0">{{ .CR.Name }}</h1>
           {{ if .Phase }}
-          <span class="cc-badge
-            {{- if eq .Phase "Succeeded" }} cc-badge-healthy
-            {{- else if eq .Phase "Failed" }} cc-badge-degraded
-            {{- else if hasPrefix .Phase "Running" }} cc-badge-started
-            {{- else if eq .Phase "Pending" }} cc-badge-pending
-            {{- else }}" style="background:var(--bg-elevated);border-color:var(--border);color:var(--text-muted){{ end }}">
-            {{- if eq .Phase "Succeeded" }}✓ {{ end -}}
-            {{- if eq .Phase "Failed" }}✗ {{ end -}}
-            {{- if hasPrefix .Phase "Running" }}◌ {{ end -}}
-            {{- if eq .Phase "Pending" }}◷ {{ end -}}
-            {{ .Phase }}
-          </span>
+            {{ if eq .Phase "Succeeded" }}
+            <span class="cc-badge cc-badge-healthy">✓ {{ .Phase }}</span>
+            {{ else if eq .Phase "Failed" }}
+            <span class="cc-badge cc-badge-degraded">✗ {{ .Phase }}</span>
+            {{ else if hasPrefix .Phase "Running" }}
+            <span class="cc-badge cc-badge-started">◌ {{ .Phase }}</span>
+            {{ else if eq .Phase "Pending" }}
+            <span class="cc-badge cc-badge-pending">◷ {{ .Phase }}</span>
+            {{ else }}
+            <span class="cc-badge" style="background:var(--bg-elevated);border-color:var(--border);color:var(--text-muted)">{{ .Phase }}</span>
+            {{ end }}
           {{ end }}
+          </span>
           {{ if .CR.Ready }}
           <span class="cc-badge cc-badge-healthy"><span class="cc-status-dot healthy"></span>Ready</span>
           {{ else }}
@@ -239,7 +239,11 @@
             </thead>
             <tbody id="eventsTableBody">
               {{ range .Events }}
-              <tr class="event-row{{ if eq .Type "Warning" }}" style="background:rgba(245,158,11,0.04){{ end }}">
+              {{ if eq .Type "Warning" }}
+              <tr class="event-row" style="background:rgba(245,158,11,0.04)">
+              {{ else }}
+              <tr class="event-row">
+              {{ end }}
                 <td>
                   {{ if eq .Type "Warning" }}
                   <span class="text-amber text-xs font-medium">Warning</span>

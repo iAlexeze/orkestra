@@ -3,7 +3,7 @@ apiVersion: advanced.orkestra.io/v1alpha1
 kind: FlexApp
 metadata:
   name: my-flex-app
-  namespace: default
+  namespace: payments-dev
 spec:
   image: nginx:1.25
   notify: "true"

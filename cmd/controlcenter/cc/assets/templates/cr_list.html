@@ -125,18 +125,17 @@
             <td class="font-mono text-xs text-muted">{{ if .Namespace }}{{ .Namespace }}{{ else }}<span style="color:var(--border)">—</span>{{ end }}</td>
             <td>
               {{ if .Phase }}
-              <span class="cc-badge
-                {{- if eq .Phase "Succeeded" }} cc-badge-healthy
-                {{- else if eq .Phase "Failed" }} cc-badge-degraded
-                {{- else if hasPrefix .Phase "Running" }} cc-badge-started
-                {{- else if eq .Phase "Pending" }} cc-badge-pending
-                {{- else }}" style="background:var(--bg-elevated);border-color:var(--border);color:var(--text-muted){{ end }}">
-                {{- if eq .Phase "Succeeded" }}✓ {{ end -}}
-                {{- if eq .Phase "Failed" }}✗ {{ end -}}
-                {{- if hasPrefix .Phase "Running" }}◌ {{ end -}}
-                {{- if eq .Phase "Pending" }}◷ {{ end -}}
-                {{ .Phase }}
-              </span>
+                {{ if eq .Phase "Succeeded" }}
+                <span class="cc-badge cc-badge-healthy">✓ {{ .Phase }}</span>
+                {{ else if eq .Phase "Failed" }}
+                <span class="cc-badge cc-badge-degraded">✗ {{ .Phase }}</span>
+                {{ else if hasPrefix .Phase "Running" }}
+                <span class="cc-badge cc-badge-started">◌ {{ .Phase }}</span>
+                {{ else if eq .Phase "Pending" }}
+                <span class="cc-badge cc-badge-pending">◷ {{ .Phase }}</span>
+                {{ else }}
+                <span class="cc-badge" style="background:var(--bg-elevated);border-color:var(--border);color:var(--text-muted)">{{ .Phase }}</span>
+                {{ end }}
               {{ else }}
               <span style="color:var(--border)">—</span>
               {{ end }}

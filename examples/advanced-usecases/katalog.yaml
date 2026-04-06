@@ -107,7 +107,7 @@ spec:
                 - field: external.health-check.status
                   equals: "200"
 
-          configmaps:
+          configMaps:
             - name: "{{ .metadata.name }}-flags"
               data:
                 flags: "{{ .external.feature-flags.body }}"
@@ -217,7 +217,7 @@ spec:
                 - field: cross.db.status.phase
                   equals: "Ready"
 
-          configmaps:
+          configMaps:
             - name: "{{ .metadata.name }}-config"
               data:
                 DB_HOST: "{{ .cross.db.status.endpoint }}"
@@ -430,7 +430,7 @@ spec:
                 - field: cross.db.status.phase
                   equals: "Ready"
 
-          configmaps:
+          configMaps:
             - name: "{{ .metadata.name }}-config"
               data:
                 DB_HOST: "{{ .cross.db.status.endpoint }}"

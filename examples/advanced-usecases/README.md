@@ -9,15 +9,32 @@ in the Control Center.
 
 ## Before you start
 
-Apply the CRDs and start the operator. Then open the Control Center:
+Apply the CRDs and start Orkestra. Then open the Control Center:
 
+### CRDs
+```bash
+kubectl apply -f 01-multi-region/crd.yaml
+kubectl apply -f 02-external-gate/crd.yaml
+kubectl apply -f 03-cross-crd/crd.yaml
+kubectl apply -f 04-once-secret/crd.yaml
+kubectl apply -f 05-anyof/crd.yaml
+kubectl apply -f 06-full-stack/crd.yaml
 ```
-http://localhost:9090/controlcenter
+
+### Orkestra
+Follow the steps in [here](../kubebuilder-conversion/README.md#steps) to deploy Orkestra with webhook support for admission control.
+
+```bash
+kubectl port-forward svc/orkestra -n orkestra-system 9090:9090 &  # port-forward to view control center
+
+# Accessible here: http://localhost:9090
 ```
 
-You will see all Katalogs. Click into **advanced-usecases** to watch
-reconciliation happen in real time.
+You will see the `advanced use case` Katalog
+Click into **advanced-usecases** to watch reconciliation happen in real time.
 
+> [!NOTE]
+> All CRDs are currently in **`started`** state. This is expected as no reconciles have occured yet.
 ---
 
 ## Example 01 — Multi-Region Deployment (forEach)
@@ -67,8 +84,8 @@ kubectl apply -f 01-multi-region/cr.yaml
 
 **Watch it in the Control Center:**
 1. Open the Control Center → advanced-usecases → multi-region-app
-2. Click **View Resources** — you will see all three Deployments appear
-3. Click on any resource to see its current phase, children, and events
+2. Click **View Resources** — you will see `1` resource the CR
+3. Click on the resource to see the 3 deployments created, current phase, and events
 
 The Deployments are named `my-app-us-east-1`, `my-app-eu-west-1`,
 `my-app-ap-southeast-1`. All owned by the CR, all managed for drift.
@@ -122,10 +139,13 @@ spec:
 kubectl apply -f 02-external-gate/cr.yaml
 ```
 
+> [!TIP]
+> Apply with an unavialable endpoint first to see the gate work before updating to a reachable URL and reapply.
+
 **Watch it:**
 1. Control Center → gated-app → View Resources
 2. If the health endpoint returns 200: Deployment appears immediately
-3. If the health endpoint is down: Deployment does not appear, reconcile retries
+3. If the health endpoint is down: Deployment does not appear, reconcile retries and you will see the reconcile error and message
 4. Click the resource → Events tab shows "external call health-check: 200"
 
 Try bringing the health endpoint down and watch the Deployment disappear on
