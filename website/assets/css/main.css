@@ -721,8 +721,8 @@ p:last-child { margin-bottom: 0; }
 
 .section-title {
   font-size: clamp(1.75rem, 3vw, 2.25rem);
-  font-weight: 800;
-  letter-spacing: -0.025em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   margin-bottom: 0.75rem;
 }
 
@@ -1347,19 +1347,19 @@ code:not(pre > code) {
 
 .prose h2 {
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 600;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--color-border);
 }
 
 .prose h3 {
   font-size: 1.2rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .prose h4 {
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .prose p {
@@ -1466,9 +1466,71 @@ code:not(pre > code) {
   margin: 1.5rem 0;
 }
 
-/* Chroma syntax highlighting overrides */
+/* ── Prose Code Blocks (Hugo/Chroma fenced blocks) ─────────── */
 .prose .highlight {
+  position: relative;
   margin: 1.5rem 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: var(--shadow-lg);
+  background: var(--color-code-bg);
+}
+
+/* Language label bar — injected by JS */
+.prose .highlight .code-lang-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 1rem;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  user-select: none;
+}
+
+.prose .highlight pre.chroma {
+  margin: 0;
+  padding: 1.25rem 1.5rem;
+  background: var(--color-code-bg) !important;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.75;
+  border-radius: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.prose .highlight pre.chroma code {
+  background: none !important;
+  padding: 0;
+  border: none;
+  font-size: inherit;
+  border-radius: 0;
+  color: var(--color-code-text);
+}
+
+/* Copy button: position relative to highlight container */
+.prose .highlight .code-copy-btn {
+  top: 0.4rem;
+  right: 0.75rem;
+}
+
+/* Light mode: keep code blocks dark */
+[data-theme="light"] .prose .highlight {
+  border-color: rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-md);
+}
+[data-theme="light"] .prose .highlight pre.chroma {
+  background: #1E1E2E !important;
+}
+[data-theme="light"] .prose .highlight .code-lang-label {
+  background: rgba(0,0,0,0.4);
 }
 
 /* ── 18. TOC ─────────────────────────────────────────────── */
@@ -1819,6 +1881,17 @@ code:not(pre > code) {
   background: rgba(220, 38, 38, 0.08);
 }
 
+.callout-note {
+  background: rgba(51, 108, 229, 0.05);
+  border-color: rgba(51, 108, 229, 0.3);
+  border-left: 4px solid var(--color-info);
+}
+
+.callout-note .callout-header {
+  color: var(--color-info);
+  background: rgba(51, 108, 229, 0.08);
+}
+
 /* ── 23. Compare Shortcode ───────────────────────────────── */
 .shortcode-compare {
   display: grid;
@@ -1970,6 +2043,11 @@ code:not(pre > code) {
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
+}
+
+.footer-logo .logo-img {
+  height: 20px;
+  width: auto;
 }
 
 .footer-logo-text {

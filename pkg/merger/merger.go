@@ -4,6 +4,7 @@ package merger
 import (
 	"fmt"
 
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
@@ -33,9 +34,15 @@ type Merger struct {
 
 	// metadata gets the metadata from the document processed
 	// used by cli and health endpoints
-	metadata orktypes.KatalogMeta
+	apiMetadata apiMetadata
 
 	registryURL string // set from ORK_REGISTRY via SetRegistryURL
+}
+
+type apiMetadata struct {
+	APIVersion string               `json:"apiVersion" yaml:"apiVersion"`
+	Kind       string               `json:"kind" yaml:"kind"`
+	Metadata   orktypes.KatalogMeta `json:"metadata" yaml:"metadata"`
 }
 
 // New creates a Merger with the given entry point file paths or URLs.
@@ -266,10 +273,10 @@ func (m *Merger) ToSpec() orktypes.KatalogSpec {
 	return orktypes.KatalogSpec{CRDs: m.result}
 }
 
-// ToMeta returns the merged result as a KatalogMeta.
-func (m *Merger) ToMeta() orktypes.KatalogMeta {
+// APIMetadata returns the merged result as a KatalogMeta with apiversion and kind.
+func (m *Merger) APIMetadata() apiMetadata {
 	m.mustBeMerged()
-	return m.metadata
+	return m.apiMetadata
 }
 
 func (m *Merger) SetRegistryURL(url string) {
@@ -279,4 +286,28 @@ func (m *Merger) SetRegistryURL(url string) {
 func (m *Merger) GetRegistryURL() string {
 	m.mustBeMerged()
 	return m.registryURL
+}
+
+// ToUI returns a UI-friendly representation of the merged Katalog.
+// This method extracts only the fields needed for display in the Control Center:
+//   - API version and kind (always "Katalog" at runtime)
+//   - Metadata (name, description, version, author, license)
+//   - All merged CRD definitions
+//
+// Internal fields (Scheme, GroupVersionKind, etc.) are excluded because they
+// have `yaml:"-" json:"-"` tags and won't be serialized to JSON.
+//
+// This method is used by the /katalog/raw endpoint to provide a clean,
+// readable view of the Katalog that created the current operator.
+func (m *Merger) ToUI() *orktypes.KatalogForUI {
+	m.mustBeMerged()
+
+	return &orktypes.KatalogForUI{
+		APIVersion: m.apiMetadata.APIVersion,
+		Kind:       konfig.KatalogKind(),
+		Metadata:   m.apiMetadata.Metadata,
+		Spec: orktypes.KatalogSpecForUI{
+			CRDs: m.result,
+		},
+	}
 }

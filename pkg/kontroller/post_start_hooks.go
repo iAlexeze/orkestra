@@ -59,7 +59,7 @@ func (k *DependencyKontroller) retryMissingCRDs(ctx context.Context) {
 					runtimeMissing[gvkStr] = entry
 					k.informerFactory.SetMissingOnStartup(runtimeMissing)
 					k.crdHealthMap[gvkStr].SetMissingAtRuntime()
-					// k.crdHealthMap[gvkStr].SetWorkersActive(0)
+					k.orkHealth.SetKatalogDegraded()
 
 					// Stop workers (queue stays alive)
 					if !k.deactivated[gvkStr] {
@@ -81,6 +81,8 @@ func (k *DependencyKontroller) retryMissingCRDs(ctx context.Context) {
 				backoff = PostStartBackoff
 
 				logger.Debug().Msg("retry loop: no missing CRDs")
+				k.allOnline.Store(true)
+				k.orkHealth.SetKatalogReady()
 				continue
 			}
 

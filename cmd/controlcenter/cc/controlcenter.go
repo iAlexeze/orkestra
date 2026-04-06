@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"sort"
@@ -331,9 +332,17 @@ func (cc *ControlCenter) routeKatalog(w http.ResponseWriter, r *http.Request, pa
 		}
 		cc.routeCR(w, r, inst.URL, inst.Katalog.Name, crdName, parts[4:])
 
+	// /katalog/{name}/crd/{crd}/raw  or  /katalog/{name}/crd/{crd}/enriched
+	case len(parts) == 5 && parts[2] == "crd" && (parts[4] == "raw" || parts[4] == "enriched"):
+		cc.handleProxyCRDSpec(w, r, katalogName, parts[3], parts[4])
+
 	// /katalog/{name}/crd/{crd}
 	case len(parts) >= 4 && parts[2] == "crd":
 		cc.handleCRDDetail(w, r, katalogName, parts[3])
+
+	// /katalog/{name}/raw  or  /katalog/{name}/enriched
+	case len(parts) == 3 && (parts[2] == "raw" || parts[2] == "enriched"):
+		cc.handleProxyKatalogSpec(w, r, katalogName, parts[2])
 
 	// /katalog/{name}
 	default:
@@ -358,6 +367,47 @@ func (cc *ControlCenter) routeCR(w http.ResponseWriter, r *http.Request, instanc
 	default:
 		cc.handleNotFound(w, r)
 	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Raw / Enriched proxy handlers
+// ─────────────────────────────────────────────────────────────────────────────
+
+// handleProxyCRDSpec proxies GET /katalog/{crd}/raw or /katalog/{crd}/enriched
+// from the Orkestra runtime and returns the JSON body to the browser.
+func (cc *ControlCenter) handleProxyCRDSpec(w http.ResponseWriter, r *http.Request, katalogName, crdName, kind string) {
+	inst, ok := cc.instanceByKatalogName(katalogName)
+	if !ok {
+		http.Error(w, "katalog not found", http.StatusNotFound)
+		return
+	}
+	target := inst.URL + "/katalog/" + crdName + "/" + kind
+	cc.proxyJSON(w, target)
+}
+
+// handleProxyKatalogSpec proxies GET /katalog/raw or /katalog/enriched
+// from the Orkestra runtime and returns the JSON body to the browser.
+func (cc *ControlCenter) handleProxyKatalogSpec(w http.ResponseWriter, r *http.Request, katalogName, kind string) {
+	inst, ok := cc.instanceByKatalogName(katalogName)
+	if !ok {
+		http.Error(w, "katalog not found", http.StatusNotFound)
+		return
+	}
+	target := inst.URL + "/katalog/" + kind
+	cc.proxyJSON(w, target)
+}
+
+// proxyJSON fetches target and pipes the JSON response body to w.
+func (cc *ControlCenter) proxyJSON(w http.ResponseWriter, target string) {
+	resp, err := http.Get(target) //nolint:gosec
+	if err != nil {
+		http.Error(w, "upstream error: "+err.Error(), http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(resp.StatusCode)
+	io.Copy(w, resp.Body) //nolint:errcheck
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -514,8 +564,16 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 	}
 
 	kat := inst.Katalog
+
+	// Sort CRDs by name for consistent display
+	sortedCRDs := make([]CRDSummary, len(kat.CRDs))
+	copy(sortedCRDs, kat.CRDs)
+	sort.Slice(sortedCRDs, func(i, j int) bool {
+		return sortedCRDs[i].Name < sortedCRDs[j].Name
+	})
+
 	cc.renderTemplate(w, "katalog.html", KatalogData{
-		CRDs:               kat.CRDs,
+		CRDs:               sortedCRDs,
 		OrkReady:           kat.OrkReady,
 		TotalCRDs:          len(kat.CRDs),
 		TotalWorkers:       sumWorkers(kat.CRDs),

@@ -99,7 +99,14 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 		Int("crds", len(result)).
 		Msg("merger: Katalog loaded")
 
-	m.metadata = doc.Metadata // This is a katalog
+	// This is a katalog
+	apiMetadata := apiMetadata{
+		APIVersion: doc.APIVersion,
+		Kind:       doc.Kind,
+		Metadata:   doc.Metadata,
+	}
+	m.apiMetadata = apiMetadata
+
 	return result, nil
 }
 
@@ -225,6 +232,13 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 		Int("crds", len(allCRDs)).
 		Msg("merger: Komposer loaded")
 
-	m.metadata = doc.Metadata // This is a komposer
+	// This is a komposer
+	apiMetadata := apiMetadata{
+		APIVersion: doc.APIVersion,
+		Kind:       doc.Kind,
+		Metadata:   doc.Metadata,
+	}
+
+	m.apiMetadata = apiMetadata
 	return allCRDs, nil
 }

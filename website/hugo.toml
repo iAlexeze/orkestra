@@ -17,7 +17,7 @@ enableGitInfo = true
 [params]
   description = "The declarative control plane for Kubernetes operators"
   github = "https://github.com/iAlexeze/orkestra"
-  controlcenter = "https://controlcenter.orkestra.sh"
+  controlcenter = "https://cc.orkestra.sh"
   version = "v1"
 
   # Algolia DocSearch — apply at https://docsearch.algolia.com/apply/

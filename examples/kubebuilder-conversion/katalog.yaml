@@ -81,6 +81,28 @@ spec:
               failedJobsHistoryLimit:     "{{ default .spec.failedJobsHistoryLimit 1 }}"
               suspend:                    "{{ default .spec.suspend false }}"
 
+      # ── Admission Validation and Mutation ─────────────────────────────────────────────────────────
+      # Defaults applied before validation, before reconcile
+      mutation:
+        mutateFirst: true
+        rules:
+          - field: spec.concurrencyPolicy
+            default: "Allow"
+          - field: spec.successfulJobsHistoryLimit
+            default: 3
+          - field: spec.failedJobsHistoryLimit
+            default: 1
+          - field: spec.suspend
+            default: false
+
+      # Validation — deny if image is empty
+      validation:
+        rules:
+          - field: spec.image
+            operator: exists
+            message: "spec.image is required"
+            action: deny
+
       # ── Reconciler ─────────────────────────────────────────────────────────
       reconciler:
         default: true
@@ -107,14 +129,10 @@ spec:
 
             # Last schedule time from the child CronJob
             - path: lastScheduleTime
-              value: "{{ default .children.cronjob.status.lastScheduleTime \"\" }}"
+              value: "{{ .children.cronjob.status.lastScheduleTime }}"
 
             - path: nextScheduleTime
-              value: "{{ default .children.cronjob.status.nextScheduleTime \"\" }}"
-              # The default note provides a graceful empty value when the child hasn't run yet.
-              # That is the immediate fix. Once the CronJob has run at least once, 
-              # lastScheduleTime will be populated and default returns it. 
-              # Until then it returns "" — which is the correct behaviour for a job that has not fired yet.
+              value: "{{ .children.cronjob.status.nextScheduleTime }}"
 
         # Creates the Kubernetes CronJob resource
         # The schedule field reconstructs the standard cron expression
@@ -148,8 +166,29 @@ spec:
         version: v1
         kind: CronJob
         plural: cronjobs
+
       workers: 2
       resync: 30s
+
+      mutation:
+        mutateFirst: true
+        rules:
+          - field: spec.concurrencyPolicy
+            default: "Allow"
+          - field: spec.suspend
+            default: false
+
+      validation:
+        rules:
+          - field: spec.image
+            operator: exists
+            message: "spec.image is required"
+            action: deny
+          - field: spec.schedule
+            operator: exists
+            message: "spec.schedule is required"
+            action: deny
+
       reconciler:
         default: true
         status:

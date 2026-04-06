@@ -1,7 +1,7 @@
 // pkg/types/katalog_spec_providers.go
 //
 // In ReconcilerConfig:
-//   ProviderBlocks []ProviderBlock `yaml:"-"` // parsed from providers: map
+//   ProviderBlocks []ProviderBlock `yaml:"-" json:"-"` // parsed from providers: map
 //
 // And a new raw field for YAML parsing:
 //   RawProviders map[string][]map[string]interface{} `yaml:"providers,omitempty"`

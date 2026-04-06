@@ -186,6 +186,7 @@
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/when-conditions-paper/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/concepts/conditional-status-fields/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
@@ -203,11 +204,13 @@
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/declarative-operators-whitepaper/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/publications/declarative-state-machines/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/declarative-state-machines/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/publications/declarative-conversion/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
@@ -216,8 +219,10 @@
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/declarative-conversion/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/evolve-apis-without-code/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/use-cases/disaster-recovery/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
@@ -229,6 +234,7 @@
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/from-programs-to-data/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/guides/certificate-with-openssl/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
@@ -249,6 +255,7 @@
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/introducing-orkestra-notes/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/use-cases/dependency-ordering/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
@@ -275,11 +282,13 @@
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/one-runtime-many-crds/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/publications/operator-authoring-vs-infrastructure-controlplane/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/operator-authoring-vs-infrastructure-controlplane/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/cli/describe/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
@@ -318,11 +327,13 @@
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/orkestra-and-gitops/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/cli/deprecated/deprecated-cli/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/no-autosync-by-design/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/publications/no-autosync-by-design/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
@@ -340,11 +351,13 @@
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/metrics-analysis-old/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/publications/metrics-analysis/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/metrics-analysis/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/reference/katalog-api/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
@@ -356,11 +369,13 @@
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/value-proposition/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/publications/universal-observer-whitepaper/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/universal-observer-whitepaper/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/use-cases/platform-namespace-provisioning/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
@@ -390,6 +405,7 @@
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/orkestra-registry/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/concepts/observability-model/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
@@ -398,55 +414,61 @@
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/operator-sprawl-problem/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/publications/provider-library/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/provider-library/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/publications/reconcile-contract/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/reconcile-contract/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/publications/no-trace-runtime/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/no-trace-runtime/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/publications/trust-and-failure-model/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/trust-and-failure-model/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/use-cases/zero-code-operators/</loc>
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:8191/blog/</loc>
-    <lastmod>2025-10-15T00:00:00+00:00</lastmod>
-  </url><url>
     <loc>http://localhost:8191/tags/concepts/</loc>
-    <lastmod>2025-10-15T00:00:00+00:00</lastmod>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/blog/declarative-state-machines/</loc>
-    <lastmod>2025-10-15T00:00:00+00:00</lastmod>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/tags/engineering/</loc>
-    <lastmod>2025-10-15T00:00:00+00:00</lastmod>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/tags/</loc>
-    <lastmod>2025-10-15T00:00:00+00:00</lastmod>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/tags/announcement/</loc>
-    <lastmod>2025-09-01T00:00:00+00:00</lastmod>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/blog/introducing-orkestra/</loc>
-    <lastmod>2025-09-01T00:00:00+00:00</lastmod>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/tags/release/</loc>
-    <lastmod>2025-09-01T00:00:00+00:00</lastmod>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/docs/concepts/secret-rotation/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:8191/blog/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/categories/</loc>
   </url><url>
@@ -457,5 +479,6 @@
     <lastmod>2026-04-06T05:32:57+00:00</lastmod>
   </url><url>
     <loc>http://localhost:8191/publications/</loc>
+    <lastmod>2026-04-06T15:47:01+00:00</lastmod>
   </url>
 </urlset>

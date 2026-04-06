@@ -21,7 +21,7 @@ spec:
       serviceAccountName: orkestra
       containers:
         - name: orkestra
-          image: ialexeze/ork:runtime.0.1-with-data
+          image: ialexeze/ork:runtime.0xnull
           imagePullPolicy: Always
           args:
             - run

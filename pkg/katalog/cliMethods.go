@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
@@ -159,4 +160,27 @@ func (k *Katalog) Get(name string) (*orktypes.CRDEntry, error) {
 		return nil, fmt.Errorf("crd not found in katalog")
 	}
 	return &crd, nil
+}
+
+// ToUI returns a UI-friendly representation of the merged Katalog.
+// This method extracts only the fields needed for display in the Control Center:
+//   - API version and kind (always "Katalog" at runtime)
+//   - Metadata (name, description, version, author, license)
+//   - All merged CRD definitions
+//
+// Internal fields (Scheme, GroupVersionKind, etc.) are excluded because they
+// have `yaml:"-" json:"-"` tags and won't be serialized to JSON.
+//
+// This method is used by the /katalog/raw endpoint to provide a clean,
+// readable view of the Katalog that created the current operator.
+func (k *Katalog) ToUI() *orktypes.KatalogForUI {
+
+	return &orktypes.KatalogForUI{
+		APIVersion: k.APIVersion,
+		Kind:       konfig.KatalogKind(),
+		Metadata:   k.metadata,
+		Spec: orktypes.KatalogSpecForUI{
+			CRDs: k.Spec.CRDs,
+		},
+	}
 }
