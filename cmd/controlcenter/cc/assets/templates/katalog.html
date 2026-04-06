@@ -56,7 +56,7 @@
         </svg>
       </button>
       <nav class="cc-breadcrumb">
-        <a href="/controlcenter">All Katalogs</a>
+        <a href="/controlcenter">Control Panel</a>
         <span class="sep">›</span>
         <span class="current">{{ .KatalogName }}</span>
       </nav>
@@ -86,7 +86,12 @@
         <div class="cc-info-card-head">
           <div class="cc-flex-1">
             <div class="flex items-center gap-3 mb-2" style="flex-wrap:wrap">
-              <h2 style="font-size:18px;font-weight:700;color:var(--text-primary);margin:0">{{ .KatalogName }}</h2>
+              <h2 class="cc-katalog-name-link" onclick="showKatalogViewer('raw')"
+                  title="Click to inspect Katalog config"
+                  style="font-size:18px;font-weight:700;color:var(--text-primary);margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
+                {{ .KatalogName }}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.45"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              </h2>
               {{ if .KatalogHealthy }}
               <span class="cc-badge cc-badge-healthy"><span class="cc-status-dot healthy"></span>Healthy</span>
               {{ else }}
@@ -334,6 +339,184 @@
     </div>
   </main>
 
+  <!-- YAML Viewer Modal -->
+  <div id="yamlModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.6);overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px">
+      <div style="background:#111827;border-radius:12px;box-shadow:0 25px 50px rgba(0,0,0,0.5);max-width:900px;width:100%;max-height:85vh;display:flex;flex-direction:column">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid #374151;background:#1F2937;border-radius:12px 12px 0 0">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="display:flex;gap:4px;background:#374151;border-radius:8px;padding:2px">
+              <button id="ym-rawBtn" onclick="switchYAMLView('raw')" style="padding:4px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;background:var(--accent,#6366F1);color:white;transition:all .15s">Your Config</button>
+              <button id="ym-enrichedBtn" onclick="switchYAMLView('enriched')" style="padding:4px 12px;font-size:12px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:#9CA3AF;transition:all .15s">Orkestra Enriched</button>
+            </div>
+            <span style="font-size:11px;color:#9CA3AF;font-family:monospace" id="ym-title">{{ .KatalogName }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button id="ym-copyBtn" onclick="copyYAML()" style="font-size:12px;color:#9CA3AF;background:#374151;border:none;cursor:pointer;padding:4px 10px;border-radius:6px">Copy YAML</button>
+            <button onclick="closeYAMLModal()" style="background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:20px;line-height:1">&times;</button>
+          </div>
+        </div>
+        <!-- Body -->
+        <div style="flex:1;overflow:auto;padding:16px;background:#111827">
+          <pre id="ym-content" style="font-size:12px;font-family:monospace;color:#E2E8F0;line-height:1.7;margin:0;white-space:pre"></pre>
+        </div>
+        <!-- Footer -->
+        <div style="padding:10px 20px;border-top:1px solid #374151;background:#1F2937;border-radius:0 0 12px 12px;font-size:11px;color:#6B7280;display:flex;justify-content:space-between">
+          <span>📄 Your Config — what you wrote in the Katalog file</span>
+          <span>⚡ Orkestra Enriched — runtime-resolved values</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="/controlcenter/assets/static/js/dashboard.js"></script>
+  <script>
+  /* ── Katalog config popup ─────────────────────────────────── */
+  (function () {
+    var ymRawData = null, ymEnrichedData = null, ymView = 'raw';
+
+    /* JSON → YAML */
+    function toYAML(obj, indent) {
+      indent = indent || 0;
+      var pad = '  '.repeat(indent);
+      if (obj === null) return 'null';
+      if (obj === true) return 'true';
+      if (obj === false) return 'false';
+      if (typeof obj === 'number') return String(obj);
+      if (typeof obj === 'string') {
+        if (/[\n:#{}\[\],&*?|<>=!%@`]/.test(obj) || obj === '' || /^\s|\s$/.test(obj))
+          return '"' + obj.replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n') + '"';
+        return obj;
+      }
+      if (Array.isArray(obj)) {
+        if (!obj.length) return '[]';
+        return obj.map(function(v) {
+          var inner = toYAML(v, indent + 1);
+          if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+            var ls = inner.split('\n');
+            return pad + '- ' + ls[0].trimStart() + (ls.length > 1 ? '\n' + ls.slice(1).join('\n') : '');
+          }
+          return pad + '- ' + inner;
+        }).join('\n');
+      }
+      if (typeof obj === 'object') {
+        var keys = Object.keys(obj);
+        if (!keys.length) return '{}';
+        return keys.map(function(k) {
+          var v = obj[k];
+          var key = /[:#{}[\],&*?|<>=!%@`\s]/.test(k) ? '"'+k+'"' : k;
+          return (typeof v === 'object' && v !== null)
+            ? pad + key + ':\n' + toYAML(v, indent + 1)
+            : pad + key + ': ' + toYAML(v, indent);
+        }).join('\n');
+      }
+      return String(obj);
+    }
+
+    /* YAML syntax highlighter */
+    function colorVal(v) {
+      if (!v) return '';
+      if (v === 'true' || v === 'false') return '<span style="color:#F59E0B">'+v+'</span>';
+      if (v === 'null') return '<span style="color:#6B7280">'+v+'</span>';
+      if (/^-?\d+(\.\d+)?$/.test(v)) return '<span style="color:#FB923C">'+v+'</span>';
+      if (/^"/.test(v)) return '<span style="color:#34D399">'+v+'</span>';
+      return '<span style="color:#E2E8F0">'+v+'</span>';
+    }
+    function highlightYAML(yaml) {
+      var esc = yaml.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return esc.split('\n').map(function(line) {
+        if (/^\s*#/.test(line)) return '<span style="color:#6B7280">'+line+'</span>';
+        var m = line.match(/^(\s*)([\w".\-]+)(:)(\s*)(.*)?$/);
+        if (m) return m[1]+'<span style="color:#818CF8">'+m[2]+'</span><span style="color:#6B7280">:</span>'+m[4]+colorVal(m[5]||'');
+        var lm = line.match(/^(\s*)(-)(\s+)(.*)?$/);
+        if (lm) return lm[1]+'<span style="color:#6B7280">-</span>'+lm[3]+colorVal(lm[4]||'');
+        return line;
+      }).join('\n');
+    }
+
+    function renderContent() {
+      var el = document.getElementById('ym-content');
+      if (!el) return;
+      var data = ymView === 'raw' ? ymRawData : ymEnrichedData;
+      if (!data) { el.textContent = 'No data available'; return; }
+      el.innerHTML = highlightYAML(toYAML(data, 0));
+    }
+
+    function setActiveTab(view) {
+      var rb = document.getElementById('ym-rawBtn');
+      var eb = document.getElementById('ym-enrichedBtn');
+      if (!rb || !eb) return;
+      if (view === 'raw') {
+        rb.style.background = '#6366F1'; rb.style.color = 'white';
+        eb.style.background = 'transparent'; eb.style.color = '#9CA3AF';
+      } else {
+        eb.style.background = '#6366F1'; eb.style.color = 'white';
+        rb.style.background = 'transparent'; rb.style.color = '#9CA3AF';
+      }
+    }
+
+    /* Public: called from onclick on the katalog name */
+    window.showKatalogViewer = function(view) {
+      ymView = view || 'raw';
+      var modal = document.getElementById('yamlModal');
+      var content = document.getElementById('ym-content');
+      if (!modal || !content) return;
+      modal.style.display = 'block';
+      content.textContent = 'Loading…';
+      setActiveTab(ymView);
+
+      if (ymRawData || ymEnrichedData) { renderContent(); return; }
+
+      Promise.all([
+        fetch('/controlcenter/katalog/{{ .KatalogName }}/raw'),
+        fetch('/controlcenter/katalog/{{ .KatalogName }}/enriched')
+      ]).then(function(responses) {
+        return Promise.all(responses.map(function(r) { return r.ok ? r.json() : null; }));
+      }).then(function(results) {
+        ymRawData = results[0];
+        ymEnrichedData = results[1];
+        renderContent();
+      }).catch(function(err) {
+        var el = document.getElementById('ym-content');
+        if (el) el.textContent = 'Error loading config: ' + err.message;
+      });
+    };
+
+    /* Public: tab switch called from HTML onclick */
+    window.switchYAMLView = function(view) {
+      ymView = view;
+      setActiveTab(view);
+      renderContent();
+    };
+
+    /* Public: copy called from HTML onclick */
+    window.copyYAML = function() {
+      var data = ymView === 'raw' ? ymRawData : ymEnrichedData;
+      if (!data) return;
+      navigator.clipboard.writeText(toYAML(data, 0)).then(function() {
+        var btn = document.getElementById('ym-copyBtn');
+        if (!btn) return;
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy YAML'; }, 2000);
+      });
+    };
+
+    /* Public: close */
+    window.closeYAMLModal = function() {
+      var modal = document.getElementById('yamlModal');
+      if (modal) modal.style.display = 'none';
+    };
+
+    /* Wire up close-on-backdrop-click after DOM is ready */
+    document.addEventListener('DOMContentLoaded', function() {
+      var modal = document.getElementById('yamlModal');
+      if (!modal) return;
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) window.closeYAMLModal();
+      });
+    });
+  }());
+  </script>
 </body>
 </html>

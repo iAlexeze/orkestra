@@ -21,13 +21,13 @@ var (
 type Katalog struct {
 	APIVersion string               `yaml:"apiVersion"`
 	Kind       string               `yaml:"kind"`
-	metadata   orktypes.KatalogMeta `yaml:"-"`
+	metadata   orktypes.KatalogMeta `yaml:"-" json:"-"`
 
 	KomposerMetadata orktypes.KatalogMeta `yaml:"metadata"`
 
 	Spec orktypes.KatalogSpec `yaml:"spec"`
 	// Internal — enabledCRDs is enriched and validated; Spec.CRDs holds all (including disabled)
-	enabledCRDs        map[string]orktypes.CRDEntry `yaml:"-"`
+	enabledCRDs        map[string]orktypes.CRDEntry `yaml:"-" json:"-"`
 	conversionRegistry *InMemoryConversionRegistry
 	admissionRegistry  *InMemoryAdmissionRegistry
 

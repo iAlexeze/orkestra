@@ -359,14 +359,18 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// All routes registered before hs.Start() — the mux is shared.
 	//
 	// Per-CRD routes:
-	//   /katalog/{crd}/health       → 200 healthy, 503 degraded
-	//   /katalog/{crd}              → CRD config + live reconcile stats
-	//   /katalog/{crd}/cr           → all CR instances (informer cache, <1ms)
-	//   /katalog/{crd}/cr/{ns}/{n}  → CR detail + children (watch cache, <50ms)
-	//   /katalog/{crd}/cr/{...}/events → recent events (watch cache, <50ms)
+	//   /katalog/{crd}/health       		→ 200 healthy, 503 degraded
+	//   /katalog/{crd}              		→ CRD config + live reconcile stats
+	//	 /katalog/{crd}/raw			 		→ the user's config
+	//   /katalog/{crd}/enriched	 		→ the runtime config
+	//   /katalog/{crd}/cr           		→ all CR instances (informer cache, <1ms)
+	//   /katalog/{crd}/cr/{ns}/{n}  		→ CR detail + children (watch cache, <50ms)
+	//   /katalog/{crd}/cr/{...}/events 	→ recent events (watch cache, <50ms)
 	//
 	// Aggregate:
-	//   /katalog                    → all CRDs, dependency graph, health summary
+	//	 /katalog/raw				 		→ the user's katalog config
+	//	 /katalog/enriched				 	→ the runtime katalog config
+	//   /katalog                    		→ all CRDs, dependency graph, health summary
 	for _, crd := range kat.Enabled() {
 		gvk := crd.GVK().String()
 		crdHealth := crdHealthMap[gvk]
@@ -405,13 +409,27 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			)
 		}
 
+		// Register raw and enriched CRD definition endpoint
+		hs.Register(
+			"/katalog/"+crdName+"/raw",
+			kontroller.BuildCRDRawHandler(m, crd.Name),
+		)
+		hs.Register(
+			"/katalog/"+crdName+"/enriched",
+			kontroller.BuildCRDEnrichedHandler(kat, crd.Name),
+		)
+
 		logger.Debug().
 			Str("health", "/katalog/"+crdName+"/health").
 			Str("info", "/katalog/"+crdName).
+			Str("raw", "/katalog/"+crdName+"/raw").
+			Str("enriched", "/katalog/"+crdName+"/enriched").
 			Msg("registered CRD routes")
 	}
 
 	orkHealth := kontroller.NewOrkestraHealth()
+	hs.Register("/katalog/raw", kontroller.BuildRawKatalogHandler(m))
+	hs.Register("/katalog/enriched", kontroller.BuildEnrichedKatalogHandler(kat))
 	hs.Register("/katalog", kontroller.BuildKatalogHandler(kat, kfg, ktrlRegistry, crdHealthMap, orkHealth))
 
 	// ── 6. Dependency kontroller ──────────────────────────────────────────────

@@ -112,7 +112,28 @@
     });
   }
 
-  /* ── 3. Mobile Sidebar Drawer ──────────────────────────── */
+  /* ── 3. Language Label for Code Blocks ─────────────────── */
+  function addLangLabels() {
+    var highlights = document.querySelectorAll('.prose .highlight');
+    highlights.forEach(function (wrap) {
+      if (wrap.querySelector('.code-lang-label')) return;
+      var code = wrap.querySelector('code');
+      if (!code) return;
+      var lang = '';
+      code.classList.forEach(function (cls) {
+        if (cls.startsWith('language-')) {
+          lang = cls.replace('language-', '');
+        }
+      });
+      if (!lang || lang === 'plaintext' || lang === 'text') return;
+      var label = document.createElement('div');
+      label.className = 'code-lang-label';
+      label.textContent = lang;
+      wrap.insertBefore(label, wrap.firstChild);
+    });
+  }
+
+  /* ── 4. Mobile Sidebar Drawer ──────────────────────────── */
   function initSidebar() {
     var sidebar = document.getElementById('docs-sidebar');
     var overlay = document.getElementById('sidebar-overlay');
@@ -357,6 +378,7 @@
   /* ── 10. Init all ─────────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', function () {
     addCopyButtons();
+    addLangLabels();
     initSidebar();
     initSidebarSections();
     initTOC();

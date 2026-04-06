@@ -494,22 +494,12 @@ func BuildKatalogHandler(
 			degradedReason = strings.Join(parts, ", ")
 		}
 
-		// Additional check for a healthy katalog
-		// TODO: There should be a better way to consolidate this
-		// into one source of truth for all katalogs
-		for _, crd := range crds {
-			if !crd.Healthy && crd.State == "degraded" {
-				healthy = false
-				status = http.StatusServiceUnavailable
-			}
-		}
-
 		utils.WriteJSON(w, status, KatalogResponse{
 			CRDs:           crds,
 			Total:          len(kat.All()),
 			TotalEnabled:   len(kat.Enabled()),
 			OrkReady:       o.IsOrkReady(),
-			Healthy:        healthy,
+			Healthy:        o.IsKatalogReady(),
 			Status:         status,
 			DegradedReason: degradedReason,
 			StatusCounts:   statusCounts,

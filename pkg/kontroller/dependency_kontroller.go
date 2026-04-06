@@ -198,8 +198,9 @@ type DependencyKontroller struct {
 	queueReg       *queue.QueueRegistry
 	drainTimeout   time.Duration
 
-	// Orkestra health
+	// Orkestra and katalog health
 	anyOnline atomic.Bool
+	allOnline atomic.Bool
 	orkHealth *OrkestraHealth
 
 	// readyCh[gvk] is closed when a CRD has fully started its workers.
@@ -252,9 +253,15 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 	k.hs.SetReady()
 	k.orkHealth.SetOrkReady()
 
+	// Track allOnline
+	k.allOnline.Store(false)
+	var totalCRDs, onlineCRDs int
+
 	// Startup order
 	startupOrder := k.depGraph.StartupOrder()
 	logger.Info().Str("order", strings.Join(startupOrder, " → ")).Msg("startup order")
+
+	totalCRDs = len(startupOrder)
 
 	// Build name → GVK mapping
 	nameToGVK := make(map[string]string)
@@ -338,6 +345,7 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 		logger.Info().Str("crd", name).Str("gvk", gvk).Int("workers", workers).Msg("workers started and ready")
 
 		k.anyOnline.Store(true)
+		onlineCRDs++
 	}
 
 	// Mark controller started
@@ -346,6 +354,15 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 		logger.Info().Str("component", k.Name()).Int("crds_online", len(startupOrder)).Msg("started")
 	} else {
 		logger.Warn().Str("component", k.Name()).Msg("started — all CRDs missing, waiting for retry loop")
+	}
+
+	// Compute final katalog health
+	if onlineCRDs == totalCRDs {
+		k.allOnline.Store(true)
+		k.orkHealth.SetKatalogReady()
+	} else {
+		k.allOnline.Store(false)
+		k.orkHealth.SetKatalogDegraded()
 	}
 
 	// Block until leadership lost

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="The Missing Package Manager for Kubernetes Operators — Orkestra">
 <meta property="og:description" content="*OrkestraRegistry — Declarative Distribution for Operator Behavior*">
-<meta property="og:url" content="http://localhost:8191/publications/orkestra-registry/">
+<meta property="og:url" content="https://orkestra.sh/publications/orkestra-registry/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.e4e59efb69ddf205af473c23d6ef6c1d33e679af451644cb448c3f24ded94953.css">
+<link rel="stylesheet" href="/css/main.min.3a158893da18f7a50a3a30d5b58e06a6ffb4feed1bd6bef21ea14ce0d1986319.css">
 
 
 
@@ -50,7 +50,7 @@
 </script>
 
 </head>
-<body class="page-content">
+<body class="page-publication-single">
 
   <nav class="navbar" role="navigation" aria-label="Main navigation">
   <div class="navbar-inner">
@@ -175,924 +175,37 @@
 
 
   <main id="main-content" tabindex="-1">
+
     
-<div class="docs-layout">
-  <aside class="docs-sidebar" id="docs-sidebar" role="navigation" aria-label="Documentation navigation">
-  <div class="sidebar-inner">
-    
-    <div class="docsearch-wrapper">
-      
-      <div id="docsearch"></div>
-      
-    </div>
+    <header class="paper-header">
+      <div class="paper-header-inner">
+        <a href="/publications/" class="pub-back-link">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Publications
+        </a>
 
-    <nav class="sidebar-nav">
-      
-      
-      
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/getting-started/" class="sidebar-section-link">Getting Started</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Getting Started">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">
-                  Basic Reconciliation
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/getting-started/installation/" class="sidebar-link">
-                  Installation
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/getting-started/quickstart/" class="sidebar-link">
-                  Quick Start
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/getting-started/writing-your-first-katalog/" class="sidebar-link">
-                  Writing Your First Katalog
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/getting-started/writing-your-first-komposer/" class="sidebar-link">
-                  Writing Your First Komposer
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/basics/" class="sidebar-section-link">Basics</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Basics">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/basics/kubernetes-basics/" class="sidebar-link">
-                  Kubernetes Basics
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/basics/katalog-manifest/" class="sidebar-link">
-                  The Katalog Manifest
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/basics/understanding-orkestra/" class="sidebar-link">
-                  Understanding Orkestra
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/concepts/" class="sidebar-section-link">Concepts</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Concepts">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/concepts/secret-rotation/" class="sidebar-link">
-                  
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/conditional-provisioning/" class="sidebar-link">
-                  **Conditional Provisioning in Orkestra**
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/runtime/" class="sidebar-link">
-                  **Orkestra Runtime**
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/typed-crds/" class="sidebar-link">
-                  **Typed CRDs**
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/conditional-status-fields/" class="sidebar-link">
-                  Conditional Status Fields
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/constructors/" class="sidebar-link">
-                  Constructors
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/crd-runtime-health/" class="sidebar-link">
-                  CRD Runtime Health
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/hooks/" class="sidebar-link">
-                  Hooks
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/dependency-model/" class="sidebar-link">
-                  How Dependencies Work
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/reconciler-model/" class="sidebar-link">
-                  How Reconciliation Works
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/katalog/" class="sidebar-link">
-                  Katalog
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/komposer/" class="sidebar-link">
-                  Komposer
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/mutation/" class="sidebar-link">
-                  Mutation
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/notes/" class="sidebar-link">
-                  Notes
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/observability/" class="sidebar-link">
-                  Observability
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/operator-patterns/" class="sidebar-link">
-                  Operator Patterns
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/conditional-webhooks/" class="sidebar-link">
-                  Orkestra Conversion Webhook
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/health-subsystem/" class="sidebar-link">
-                  Orkestra Health Subsystem
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/komponent/" class="sidebar-link">
-                  Orkestra Komponents
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/provider/" class="sidebar-link">
-                  Providers
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/providers/" class="sidebar-link">
-                  Providers
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/registry/" class="sidebar-link">
-                  Registry
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/registry-sources/" class="sidebar-link">
-                  Registry Sources
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/status-management/" class="sidebar-link">
-                  Status Management
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/templating/" class="sidebar-link">
-                  Templating in Orkestra
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/observability-model/" class="sidebar-link">
-                  The Observability Model
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/validation/" class="sidebar-link">
-                  Validation
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/versioning/" class="sidebar-link">
-                  Versioning in Orkestra
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/architecture/" class="sidebar-section-link">Architecture</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Architecture">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/architecture/crd-lifecycle/" class="sidebar-link">
-                  CRD Lifecycle in Orkestra
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/full-architecture-view/" class="sidebar-link">
-                  Full Architecture View
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/architecture-diagrams/" class="sidebar-link">
-                  Orkestra Architecture Diagrams
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/design-philosophy/" class="sidebar-link">
-                  Orkestra Design Philosophy
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/architecture-overview/" class="sidebar-link">
-                  Orkestra Full Architecture Overview
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/runtime-flow/" class="sidebar-link">
-                  Orkestra Runtime Flow
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/guides/" class="sidebar-section-link">Guides</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Guides">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/guides/best-practices/" class="sidebar-link">
-                  Best Practices for Orkestra Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/choosing-katalog-vs-komposer/" class="sidebar-link">
-                  Choosing Between Katalog and Komposer
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/deployment/" class="sidebar-link">
-                  Deploying Orkestra
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/api-conversion/" class="sidebar-link">
-                  Evolve APIs Without Webhooks or Code
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/extending-orkestra/" class="sidebar-link">
-                  Extending Orkestra
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/certificate-with-openssl/" class="sidebar-link">
-                  Generate Self-Signed Certificates
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/certificate-with-cert-manager/" class="sidebar-link">
-                  Generate TLS Certificates with CertManager
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/how-reconciliation-works/" class="sidebar-link">
-                  How Reconciliation Works
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/multi-version-crd-explained/" class="sidebar-link">
-                  Multi‑Version CRDs Explained
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/deprecated/use-cases/" class="sidebar-link">
-                  Orkestra Use Cases
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/testing-operators/" class="sidebar-link">
-                  Testing Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/kat-source-of-truth/" class="sidebar-link">
-                  The Katalog as Single Source of Truth
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/writing-custom-reconcilers/" class="sidebar-link">
-                  Writing Custom Reconcilers
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/writing-hooks/" class="sidebar-link">
-                  Writing Hooks
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/cli/" class="sidebar-section-link">CLI Reference</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle CLI Reference">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/cli/describe/" class="sidebar-link">
-                  ork describe
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/events/" class="sidebar-link">
-                  ork events
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/generate-runtime/" class="sidebar-link">
-                  ork generate runtime
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/get/" class="sidebar-link">
-                  ork get
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/init/" class="sidebar-link">
-                  ork init
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/reconcile/" class="sidebar-link">
-                  ork reconcile
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/run/" class="sidebar-link">
-                  ork run
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/status/" class="sidebar-link">
-                  ork status
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/template/" class="sidebar-link">
-                  ork template
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/validate/" class="sidebar-link">
-                  ork validate
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/version/" class="sidebar-link">
-                  ork version
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/deprecated/deprecated-cli/" class="sidebar-link">
-                  Orkestra CLI Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/inspect-live-crd/" class="sidebar-link">
-                  Orkestra Inspect Commands
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/reference/" class="sidebar-section-link">Reference</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Reference">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/reference/metrics/" class="sidebar-link">
-                  **Orkestra Metrics**
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
-                  Katalog and Komposer Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-schema/" class="sidebar-link">
-                  Katalog Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-schema-status/" class="sidebar-link">
-                  Katalog Schema — Status Block
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/komposer-schema/" class="sidebar-link">
-                  Komposer Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/mutation-schema/" class="sidebar-link">
-                  Mutation Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/cli/" class="sidebar-link">
-                  Orkestra CLI Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-api/" class="sidebar-link">
-                  Orkestra Runtime API Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/registry-schema/" class="sidebar-link">
-                  Registry Source Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/runtime/" class="sidebar-link">
-                  Runtime
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/shutdown/" class="sidebar-link">
-                  Shutdown
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/validation-schema/" class="sidebar-link">
-                  Validation Schema
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/use-cases/" class="sidebar-section-link">Use Cases</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Use Cases">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/use-cases/air-gapped/" class="sidebar-link">
-                  Air‑Gapped Environments
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/centralized-configuration/" class="sidebar-link">
-                  Centralised Operator Configuration (GitOps)
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/custom-constructors/" class="sidebar-link">
-                  Custom Constructors
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/disaster-recovery/" class="sidebar-link">
-                  Disaster Recovery
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/environment-overrides/" class="sidebar-link">
-                  Environment-specific Tuning
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/hooks/" class="sidebar-link">
-                  Go Hooks
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/helm-driven-operators/" class="sidebar-link">
-                  Helm‑Driven Operator Configuration
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/dependency-ordering/" class="sidebar-link">
-                  Multi‑CRD Dependency Ordering
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/multi-team-composition/" class="sidebar-link">
-                  Multi‑Team Composition
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/conversion/" class="sidebar-link">
-                  Multi‑Version CRD Conversion
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/observability/" class="sidebar-link">
-                  Observability
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/platform-namespace-provisioning/" class="sidebar-link">
-                  Platform Namespace Provisioning
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/progressive-rollout/" class="sidebar-link">
-                  Progressive Rollout of Operator Behavior
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/registry/" class="sidebar-link">
-                  Registry‑Powered Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/secret-distribution/" class="sidebar-link">
-                  Secret Distribution Across Namespaces
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/zero-code-operators/" class="sidebar-link">
-                  Zero‑Code Operators
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/publications/" class="sidebar-section-link">Publications</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Publications">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/publications/when-conditions-paper/" class="sidebar-link">
-                  Conditional Provisioning: When Conditions and the Two Enforcement Boundaries
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/declarative-operators-whitepaper/" class="sidebar-link">
-                  Declarative Operators: A New Model for Kubernetes Extensibility
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/declarative-state-machines/" class="sidebar-link">
-                  Declarative State Machines in Kubernetes Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/declarative-conversion/" class="sidebar-link">
-                  Declarative Version Conversion for Kubernetes CRDs
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/evolve-apis-without-code/" class="sidebar-link">
-                  Declarative Version Conversion for Kubernetes CRDs
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/from-programs-to-data/" class="sidebar-link">
-                  From Programs To Data
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/introducing-orkestra-notes/" class="sidebar-link">
-                  Introducing Orkestra Notes
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/one-runtime-many-crds/" class="sidebar-link">
-                  One Runtime, Many CRDs: Fulfilling the Operator Pattern
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/operator-authoring-vs-infrastructure-controlplane/" class="sidebar-link">
-                  Operator Authoring vs Infrastructure Control Plane
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/orkestra-and-gitops/" class="sidebar-link">
-                  Orkestra and GitOps: The Complete Integration Story
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/no-autosync-by-design/" class="sidebar-link">
-                  Orkestra Does Not Auto-Sync — And That’s the Point
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/metrics-analysis-old/" class="sidebar-link">
-                  Orkestra Metrics Analysis
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/metrics-analysis/" class="sidebar-link">
-                  Orkestra Metrics Analysis: Control Center Deep Dive
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/value-proposition/" class="sidebar-link">
-                  Orkestra Value Proposition
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/universal-observer-whitepaper/" class="sidebar-link">
-                  Orkestra: The Universal Observer That Belongs in Kubernetes Core
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/orkestra-registry/" class="sidebar-link">
-                  The Missing Package Manager for Kubernetes Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/operator-sprawl-problem/" class="sidebar-link">
-                  The Operator Sprawl Problem
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/provider-library/" class="sidebar-link">
-                  The Orkestra Provider Model
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/reconcile-contract/" class="sidebar-link">
-                  The Reconcile Contract
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/no-trace-runtime/" class="sidebar-link">
-                  The Runtime That Leaves No Trace
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/trust-and-failure-model/" class="sidebar-link">
-                  Trust and Failure Model
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-      
-    </nav>
-  </div>
-</aside>
+        <h1 class="paper-title">The Missing Package Manager for Kubernetes Operators</h1>
 
-
-<div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
-
-
-  <article class="docs-content" id="docs-content">
-    <div class="docs-content-inner">
-      
-<nav class="breadcrumbs" aria-label="Breadcrumb">
-  <div class="breadcrumb-item">
-    <a href="/">Home</a>
-  </div>
-  
-  
-    
-  
-    
-    <div class="breadcrumb-item">
-      <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-      <a href="/publications/">Publications</a>
-    </div>
-    
-  
-  <div class="breadcrumb-item active">
-    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-    The Missing Package Manager for Kubernetes Operators
-  </div>
-</nav>
-
-
-
-      <header class="docs-header">
-        <h1 class="docs-title">The Missing Package Manager for Kubernetes Operators</h1>
         
-        <p class="docs-description">*OrkestraRegistry — Declarative Distribution for Operator Behavior*</p>
+        <p class="paper-subtitle">*OrkestraRegistry — Declarative Distribution for Operator Behavior*</p>
         
-        <div class="docs-meta">
-          
 
+        <div class="paper-meta">
           
-          <span class="docs-reading-time">2 min read</span>
+          <span class="paper-meta-item">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            2 min read
+          </span>
           
         </div>
-      </header>
 
-      <div class="docs-body prose">
+        
+      </div>
+    </header>
+
+    
+    <div class="paper-layout">
+      <article class="paper-body prose">
         <p><em>OrkestraRegistry — Declarative Distribution for Operator Behavior</em></p>
 <p><em>Orkestra Project — March 2026</em></p>
 <hr>
@@ -1157,63 +270,23 @@ through declarative conversion rules.</p>
 <p><em>Orkestra — Declarative Operators for Kubernetes</em>
 <em>March 2026 — <a href="https://github.com/iAlexeze/orkestra">https://github.com/iAlexeze/orkestra</a></em></p>
 
-      </div>
+      </article>
 
       
-      <nav class="docs-pagination" aria-label="Page navigation">
-        
-        <a href="/publications/operator-sprawl-problem/" class="pagination-link pagination-prev">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          <div>
-            <span class="pagination-label">Previous</span>
-            <span class="pagination-title">The Operator Sprawl Problem</span>
-          </div>
-        </a>
-        
-        
-        <a href="/publications/universal-observer-whitepaper/" class="pagination-link pagination-next">
-          <div>
-            <span class="pagination-label">Next</span>
-            <span class="pagination-title">Orkestra: The Universal Observer That Belongs in Kubernetes Core</span>
-          </div>
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </a>
-        
-      </nav>
+      <aside class="paper-footer-aside">
+        <div class="paper-aside-card">
+          <div class="paper-aside-title">Share this paper</div>
+          <a href="https://github.com/iAlexeze/orkestra/discussions" target="_blank" rel="noopener noreferrer" class="paper-aside-link">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            Discuss on GitHub
+          </a>
+          <a href="/publications/" class="paper-aside-link">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            All Publications
+          </a>
+        </div>
+      </aside>
     </div>
-  </article>
-
-  
-<aside class="docs-toc" id="docs-toc" aria-label="Table of contents">
-  <div class="toc-inner">
-    <p class="toc-title">On this page</p>
-    <nav id="TableOfContents">
-  <ul>
-    <li><a href="#abstract">Abstract</a></li>
-    <li><a href="#2-orkestraregistry">2. OrkestraRegistry</a>
-      <ul>
-        <li><a href="#21-what-a-pattern-is">2.1 What a pattern is</a></li>
-        <li><a href="#22-distribution-as-oci-artifacts">2.2 Distribution as OCI artifacts</a></li>
-        <li><a href="#23-consuming-patterns">2.3 Consuming patterns</a></li>
-      </ul>
-    </li>
-    <li><a href="#8-conclusion">8. Conclusion</a></li>
-  </ul>
-</nav>
-    <div class="toc-footer">
-      <a href="https://github.com/iAlexeze/orkestra/edit/main/docs/publications/orkestra-registry.md" target="_blank" rel="noopener noreferrer" class="edit-on-github">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-        </svg>
-        Edit on GitHub
-      </a>
-    </div>
-  </div>
-</aside>
-
-
-</div>
 
   </main>
 
@@ -1281,25 +354,142 @@ through declarative conversion rules.</p>
 
 
   
-  
-  <script src="/js/main.min.b0ef969079d43df81dbcfc1611c66605d62a7ce906aac181917cdc66b92a5223.js" defer></script>
+  <script src="/js/main.min.f2df583e131a595404870b2d956fe54827dcacf44666bb51201fbf1d6524fa40.js" defer></script>
 
-  
-  
-  <script src="https://cdn.jsdelivr.net/npm/@docsearch/js@3" crossorigin></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var el = document.getElementById('docsearch');
-      if (!el) return;
-      docsearch({
-        appId: "\"1YJ1C111LH\"",
-        apiKey: "\"b4bbac9a499ecc51109f23abd327cf29\"",
-        indexName: "\"orkestra\"",
-        container: '#docsearch',
-        debug: false,
-      });
-    });
-  </script>
-  
+  <style>
+     
+    .paper-header {
+      background: linear-gradient(160deg, rgba(76,32,133,0.12) 0%, transparent 70%);
+      border-bottom: 1px solid var(--color-border);
+      padding: 4rem 0 3rem;
+    }
+    .paper-header-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+    .pub-back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      margin-bottom: 1.75rem;
+      transition: color var(--transition-fast);
+    }
+    .pub-back-link:hover { color: var(--color-primary); }
+
+    .paper-title {
+      font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      color: var(--color-text);
+      margin: 0 0 1rem;
+    }
+    .paper-subtitle {
+      font-size: 1.125rem;
+      color: var(--color-text-muted);
+      line-height: 1.6;
+      margin: 0 0 1.5rem;
+      max-width: 640px;
+    }
+    .paper-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .paper-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+    }
+    .paper-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .paper-tag {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.65rem;
+      background: rgba(76,32,133,0.1);
+      color: var(--color-primary);
+      border: 1px solid rgba(76,32,133,0.2);
+      border-radius: 20px;
+      letter-spacing: 0.02em;
+    }
+    [data-theme="dark"] .paper-tag {
+      background: rgba(167,139,250,0.1);
+      color: #A78BFA;
+      border-color: rgba(167,139,250,0.2);
+    }
+
+     
+    .paper-layout {
+      display: grid;
+      grid-template-columns: 1fr 240px;
+      gap: 3rem;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 3rem 2rem 5rem;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .paper-layout {
+        grid-template-columns: 1fr;
+      }
+      .paper-aside-card { order: -1; }
+    }
+
+    .paper-body {
+      max-width: 72ch;
+      min-width: 0;
+    }
+
+     
+    .paper-footer-aside {
+      position: sticky;
+      top: calc(var(--navbar-height) + 2rem);
+    }
+    .paper-aside-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .paper-aside-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--color-text-faint);
+      margin-bottom: 0.5rem;
+    }
+    .paper-aside-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius);
+      transition: background var(--transition-fast), color var(--transition-fast);
+    }
+    .paper-aside-link:hover {
+      background: var(--color-surface-2);
+      color: var(--color-text);
+    }
+  </style>
 </body>
 </html>

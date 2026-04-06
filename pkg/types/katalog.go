@@ -110,3 +110,18 @@ type KatalogSpec struct {
 	// Providers  — future implementation for providers
 	Providers []KatalogProviderRequirement `yaml:"providers,omitempty"`
 }
+
+// KatalogForUI is a UI-friendly representation of the merged Katalog.
+// It contains only the fields needed for display in the Control Center,
+// excluding internal runtime fields.
+type KatalogForUI struct {
+	APIVersion string           `json:"apiVersion"` // Orkestra API version
+	Kind       string           `json:"kind"`       // Always "Katalog" at runtime
+	Metadata   KatalogMeta      `json:"metadata"`   // Katalog metadata (name, description, etc.)
+	Spec       KatalogSpecForUI `json:"spec"`       // CRD definitions
+}
+
+// KatalogSpecForUI contains the CRD definitions for UI display.
+type KatalogSpecForUI struct {
+	CRDs map[string]CRDEntry `json:"crds"` // Map of CRD name to CRD definition
+}

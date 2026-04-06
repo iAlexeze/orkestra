@@ -89,12 +89,14 @@ type DependencyStatus struct {
 type OrkestraHealth struct {
 	name     string
 	orkReady atomic.Bool
+	katReady atomic.Bool
 }
 
 // NewOrkestraHEalth initializes a CRDHealth tracker for Orkestra
 func NewOrkestraHealth() *OrkestraHealth {
 	h := &OrkestraHealth{name: konfig.Ork}
 	h.orkReady.Store(false)
+	h.katReady.Store(false)
 	return h
 }
 
@@ -223,6 +225,21 @@ func (h *OrkestraHealth) SetOrkReady() {
 // IsOrkReady is used to track ready state of orkestra
 func (h *OrkestraHealth) IsOrkReady() bool {
 	return h.orkReady.Load()
+}
+
+// SetKatalogReady marks a katalog as ready
+func (h *OrkestraHealth) SetKatalogReady() {
+	h.katReady.Store(true)
+}
+
+// SetKatalogDegraded marks a katalog as degraded
+func (h *OrkestraHealth) SetKatalogDegraded() {
+	h.katReady.Store(false)
+}
+
+// IsKatalogReady is used to track ready state of a katalog
+func (h *OrkestraHealth) IsKatalogReady() bool {
+	return h.katReady.Load()
 }
 
 // SetNotStarted marks the reconciler as not started.

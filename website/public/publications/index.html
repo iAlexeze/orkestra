@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Publications — Orkestra">
 <meta property="og:description" content="Technical papers, whitepapers, and deep-dives from the Orkestra team">
-<meta property="og:url" content="http://localhost:8191/publications/">
+<meta property="og:url" content="https://orkestra.sh/publications/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.e4e59efb69ddf205af473c23d6ef6c1d33e679af451644cb448c3f24ded94953.css">
+<link rel="stylesheet" href="/css/main.min.3a158893da18f7a50a3a30d5b58e06a6ffb4feed1bd6bef21ea14ce0d1986319.css">
 
 
 
@@ -50,1505 +50,777 @@
 </script>
 
 </head>
-<body class="page-section">
+<body class="page-publications">
 
   <nav class="navbar" role="navigation" aria-label="Main navigation">
-  <div class="navbar-inner">
-    
-    <a href="/" class="navbar-logo" aria-label="Orkestra home">
-      <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
-      <span class="logo-text">Orkestra</span>
-      <span class="version-badge">v1</span>
-    </a>
-
-    
-    <ul class="navbar-links" role="list">
-      
-      <li>
-        <a href="/docs/" class="navbar-link"
-          >
-          Docs
-          
-        </a>
-      </li>
-      
-      <li>
-        <a href="/publications/" class="navbar-link"
-          >
-          Publications
-          
-        </a>
-      </li>
-      
-      <li>
-        <a href="/docs/use-cases/" class="navbar-link"
-          >
-          Use Cases
-          
-        </a>
-      </li>
-      
-      <li>
-        <a href="/blog/" class="navbar-link"
-          >
-          Blog
-          
-        </a>
-      </li>
-      
-    </ul>
-
-    
-    <div class="navbar-controls">
-      
-      <a href="https://controlcenter.orkestra.sh" class="btn-controlcenter" target="_blank" rel="noopener noreferrer" aria-label="Open Control Center">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
-        </svg>
-        Control Center
-        <span class="cc-live-dot" title="Live instance"></span>
+    <div class="navbar-inner">
+      <a href="/" class="navbar-logo" aria-label="Orkestra home">
+        <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
+        <span class="logo-text">Orkestra</span>
+        <span class="version-badge">v1</span>
       </a>
-
-      
-      <a href="https://github.com/iAlexeze/orkestra" class="btn-github" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-          <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-        </svg>
-        <span>GitHub</span>
-      </a>
-
-      
-      <button class="btn-theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
-        <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="5"/>
-          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-        </svg>
-        <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
-        </svg>
-      </button>
-
-      
-      <button class="btn-hamburger" id="mobile-menu-toggle" aria-label="Toggle menu" aria-expanded="false">
-        <span class="hamburger-bar"></span>
-        <span class="hamburger-bar"></span>
-        <span class="hamburger-bar"></span>
-      </button>
+      <ul class="navbar-links" role="list">
+        
+        <li>
+          <a href="/docs/" class="navbar-link"
+            >
+            Docs
+          </a>
+        </li>
+        
+        <li>
+          <a href="/publications/" class="navbar-link"
+            >
+            Publications
+          </a>
+        </li>
+        
+        <li>
+          <a href="/docs/use-cases/" class="navbar-link"
+            >
+            Use Cases
+          </a>
+        </li>
+        
+        <li>
+          <a href="/blog/" class="navbar-link"
+            >
+            Blog
+          </a>
+        </li>
+        
+      </ul>
+      <div class="navbar-controls">
+        <a href="https://controlcenter.orkestra.sh" class="btn-controlcenter" target="_blank" rel="noopener noreferrer" aria-label="Open Control Center">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+          </svg>
+          Control Center
+          <span class="cc-live-dot" title="Live instance"></span>
+        </a>
+        <a href="https://github.com/iAlexeze/orkestra" class="btn-github" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+          <span>GitHub</span>
+        </a>
+        <button class="btn-theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+          <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+          </svg>
+        </button>
+        <button class="btn-hamburger" id="mobile-menu-toggle" aria-label="Toggle menu" aria-expanded="false">
+          <span class="hamburger-bar"></span>
+          <span class="hamburger-bar"></span>
+          <span class="hamburger-bar"></span>
+        </button>
+      </div>
     </div>
-  </div>
-
-  
-  <div class="navbar-mobile" id="mobile-menu" aria-hidden="true">
-    <ul role="list">
-      
-      <li>
-        <a href="/docs/" class="navbar-mobile-link"
-          >
-          Docs
-        </a>
-      </li>
-      
-      <li>
-        <a href="/publications/" class="navbar-mobile-link"
-          >
-          Publications
-        </a>
-      </li>
-      
-      <li>
-        <a href="/docs/use-cases/" class="navbar-mobile-link"
-          >
-          Use Cases
-        </a>
-      </li>
-      
-      <li>
-        <a href="/blog/" class="navbar-mobile-link"
-          >
-          Blog
-        </a>
-      </li>
-      
-    </ul>
-  </div>
-</nav>
-
+    <div class="navbar-mobile" id="mobile-menu" aria-hidden="true">
+      <ul role="list">
+        
+        <li>
+          <a href="/docs/" class="navbar-mobile-link"
+            >
+            Docs
+          </a>
+        </li>
+        
+        <li>
+          <a href="/publications/" class="navbar-mobile-link"
+            >
+            Publications
+          </a>
+        </li>
+        
+        <li>
+          <a href="/docs/use-cases/" class="navbar-mobile-link"
+            >
+            Use Cases
+          </a>
+        </li>
+        
+        <li>
+          <a href="/blog/" class="navbar-mobile-link"
+            >
+            Blog
+          </a>
+        </li>
+        
+      </ul>
+    </div>
+  </nav>
 
   <main id="main-content" tabindex="-1">
     
-<div class="docs-layout">
-  <aside class="docs-sidebar" id="docs-sidebar" role="navigation" aria-label="Documentation navigation">
-  <div class="sidebar-inner">
-    
-    <div class="docsearch-wrapper">
-      
-      <div id="docsearch"></div>
-      
-    </div>
-
-    <nav class="sidebar-nav">
-      
-      
-      
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/getting-started/" class="sidebar-section-link">Getting Started</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Getting Started">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">
-                  Basic Reconciliation
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/getting-started/installation/" class="sidebar-link">
-                  Installation
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/getting-started/quickstart/" class="sidebar-link">
-                  Quick Start
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/getting-started/writing-your-first-katalog/" class="sidebar-link">
-                  Writing Your First Katalog
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/getting-started/writing-your-first-komposer/" class="sidebar-link">
-                  Writing Your First Komposer
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/basics/" class="sidebar-section-link">Basics</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Basics">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/basics/kubernetes-basics/" class="sidebar-link">
-                  Kubernetes Basics
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/basics/katalog-manifest/" class="sidebar-link">
-                  The Katalog Manifest
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/basics/understanding-orkestra/" class="sidebar-link">
-                  Understanding Orkestra
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/concepts/" class="sidebar-section-link">Concepts</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Concepts">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/concepts/secret-rotation/" class="sidebar-link">
-                  
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/conditional-provisioning/" class="sidebar-link">
-                  **Conditional Provisioning in Orkestra**
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/runtime/" class="sidebar-link">
-                  **Orkestra Runtime**
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/typed-crds/" class="sidebar-link">
-                  **Typed CRDs**
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/conditional-status-fields/" class="sidebar-link">
-                  Conditional Status Fields
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/constructors/" class="sidebar-link">
-                  Constructors
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/crd-runtime-health/" class="sidebar-link">
-                  CRD Runtime Health
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/hooks/" class="sidebar-link">
-                  Hooks
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/dependency-model/" class="sidebar-link">
-                  How Dependencies Work
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/reconciler-model/" class="sidebar-link">
-                  How Reconciliation Works
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/katalog/" class="sidebar-link">
-                  Katalog
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/komposer/" class="sidebar-link">
-                  Komposer
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/mutation/" class="sidebar-link">
-                  Mutation
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/notes/" class="sidebar-link">
-                  Notes
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/observability/" class="sidebar-link">
-                  Observability
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/operator-patterns/" class="sidebar-link">
-                  Operator Patterns
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/conditional-webhooks/" class="sidebar-link">
-                  Orkestra Conversion Webhook
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/health-subsystem/" class="sidebar-link">
-                  Orkestra Health Subsystem
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/komponent/" class="sidebar-link">
-                  Orkestra Komponents
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/provider/" class="sidebar-link">
-                  Providers
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/providers/" class="sidebar-link">
-                  Providers
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/registry/" class="sidebar-link">
-                  Registry
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/registry-sources/" class="sidebar-link">
-                  Registry Sources
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/status-management/" class="sidebar-link">
-                  Status Management
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/templating/" class="sidebar-link">
-                  Templating in Orkestra
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/observability-model/" class="sidebar-link">
-                  The Observability Model
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/validation/" class="sidebar-link">
-                  Validation
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/versioning/" class="sidebar-link">
-                  Versioning in Orkestra
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/architecture/" class="sidebar-section-link">Architecture</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Architecture">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/architecture/crd-lifecycle/" class="sidebar-link">
-                  CRD Lifecycle in Orkestra
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/full-architecture-view/" class="sidebar-link">
-                  Full Architecture View
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/architecture-diagrams/" class="sidebar-link">
-                  Orkestra Architecture Diagrams
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/design-philosophy/" class="sidebar-link">
-                  Orkestra Design Philosophy
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/architecture-overview/" class="sidebar-link">
-                  Orkestra Full Architecture Overview
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/runtime-flow/" class="sidebar-link">
-                  Orkestra Runtime Flow
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/guides/" class="sidebar-section-link">Guides</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Guides">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/guides/best-practices/" class="sidebar-link">
-                  Best Practices for Orkestra Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/choosing-katalog-vs-komposer/" class="sidebar-link">
-                  Choosing Between Katalog and Komposer
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/deployment/" class="sidebar-link">
-                  Deploying Orkestra
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/api-conversion/" class="sidebar-link">
-                  Evolve APIs Without Webhooks or Code
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/extending-orkestra/" class="sidebar-link">
-                  Extending Orkestra
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/certificate-with-openssl/" class="sidebar-link">
-                  Generate Self-Signed Certificates
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/certificate-with-cert-manager/" class="sidebar-link">
-                  Generate TLS Certificates with CertManager
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/how-reconciliation-works/" class="sidebar-link">
-                  How Reconciliation Works
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/multi-version-crd-explained/" class="sidebar-link">
-                  Multi‑Version CRDs Explained
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/deprecated/use-cases/" class="sidebar-link">
-                  Orkestra Use Cases
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/testing-operators/" class="sidebar-link">
-                  Testing Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/kat-source-of-truth/" class="sidebar-link">
-                  The Katalog as Single Source of Truth
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/writing-custom-reconcilers/" class="sidebar-link">
-                  Writing Custom Reconcilers
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/writing-hooks/" class="sidebar-link">
-                  Writing Hooks
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/cli/" class="sidebar-section-link">CLI Reference</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle CLI Reference">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/cli/describe/" class="sidebar-link">
-                  ork describe
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/events/" class="sidebar-link">
-                  ork events
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/generate-runtime/" class="sidebar-link">
-                  ork generate runtime
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/get/" class="sidebar-link">
-                  ork get
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/init/" class="sidebar-link">
-                  ork init
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/reconcile/" class="sidebar-link">
-                  ork reconcile
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/run/" class="sidebar-link">
-                  ork run
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/status/" class="sidebar-link">
-                  ork status
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/template/" class="sidebar-link">
-                  ork template
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/validate/" class="sidebar-link">
-                  ork validate
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/version/" class="sidebar-link">
-                  ork version
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/deprecated/deprecated-cli/" class="sidebar-link">
-                  Orkestra CLI Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/inspect-live-crd/" class="sidebar-link">
-                  Orkestra Inspect Commands
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/reference/" class="sidebar-section-link">Reference</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Reference">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/reference/metrics/" class="sidebar-link">
-                  **Orkestra Metrics**
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
-                  Katalog and Komposer Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-schema/" class="sidebar-link">
-                  Katalog Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-schema-status/" class="sidebar-link">
-                  Katalog Schema — Status Block
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/komposer-schema/" class="sidebar-link">
-                  Komposer Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/mutation-schema/" class="sidebar-link">
-                  Mutation Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/cli/" class="sidebar-link">
-                  Orkestra CLI Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-api/" class="sidebar-link">
-                  Orkestra Runtime API Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/registry-schema/" class="sidebar-link">
-                  Registry Source Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/runtime/" class="sidebar-link">
-                  Runtime
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/shutdown/" class="sidebar-link">
-                  Shutdown
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/validation-schema/" class="sidebar-link">
-                  Validation Schema
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/use-cases/" class="sidebar-section-link">Use Cases</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Use Cases">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/use-cases/air-gapped/" class="sidebar-link">
-                  Air‑Gapped Environments
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/centralized-configuration/" class="sidebar-link">
-                  Centralised Operator Configuration (GitOps)
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/custom-constructors/" class="sidebar-link">
-                  Custom Constructors
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/disaster-recovery/" class="sidebar-link">
-                  Disaster Recovery
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/environment-overrides/" class="sidebar-link">
-                  Environment-specific Tuning
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/hooks/" class="sidebar-link">
-                  Go Hooks
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/helm-driven-operators/" class="sidebar-link">
-                  Helm‑Driven Operator Configuration
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/dependency-ordering/" class="sidebar-link">
-                  Multi‑CRD Dependency Ordering
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/multi-team-composition/" class="sidebar-link">
-                  Multi‑Team Composition
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/conversion/" class="sidebar-link">
-                  Multi‑Version CRD Conversion
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/observability/" class="sidebar-link">
-                  Observability
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/platform-namespace-provisioning/" class="sidebar-link">
-                  Platform Namespace Provisioning
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/progressive-rollout/" class="sidebar-link">
-                  Progressive Rollout of Operator Behavior
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/registry/" class="sidebar-link">
-                  Registry‑Powered Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/secret-distribution/" class="sidebar-link">
-                  Secret Distribution Across Namespaces
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/zero-code-operators/" class="sidebar-link">
-                  Zero‑Code Operators
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/publications/" class="sidebar-section-link">Publications</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Publications">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/publications/when-conditions-paper/" class="sidebar-link">
-                  Conditional Provisioning: When Conditions and the Two Enforcement Boundaries
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/declarative-operators-whitepaper/" class="sidebar-link">
-                  Declarative Operators: A New Model for Kubernetes Extensibility
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/declarative-state-machines/" class="sidebar-link">
-                  Declarative State Machines in Kubernetes Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/declarative-conversion/" class="sidebar-link">
-                  Declarative Version Conversion for Kubernetes CRDs
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/evolve-apis-without-code/" class="sidebar-link">
-                  Declarative Version Conversion for Kubernetes CRDs
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/from-programs-to-data/" class="sidebar-link">
-                  From Programs To Data
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/introducing-orkestra-notes/" class="sidebar-link">
-                  Introducing Orkestra Notes
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/one-runtime-many-crds/" class="sidebar-link">
-                  One Runtime, Many CRDs: Fulfilling the Operator Pattern
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/operator-authoring-vs-infrastructure-controlplane/" class="sidebar-link">
-                  Operator Authoring vs Infrastructure Control Plane
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/orkestra-and-gitops/" class="sidebar-link">
-                  Orkestra and GitOps: The Complete Integration Story
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/no-autosync-by-design/" class="sidebar-link">
-                  Orkestra Does Not Auto-Sync — And That’s the Point
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/metrics-analysis-old/" class="sidebar-link">
-                  Orkestra Metrics Analysis
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/metrics-analysis/" class="sidebar-link">
-                  Orkestra Metrics Analysis: Control Center Deep Dive
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/value-proposition/" class="sidebar-link">
-                  Orkestra Value Proposition
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/universal-observer-whitepaper/" class="sidebar-link">
-                  Orkestra: The Universal Observer That Belongs in Kubernetes Core
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/orkestra-registry/" class="sidebar-link">
-                  The Missing Package Manager for Kubernetes Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/operator-sprawl-problem/" class="sidebar-link">
-                  The Operator Sprawl Problem
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/provider-library/" class="sidebar-link">
-                  The Orkestra Provider Model
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/reconcile-contract/" class="sidebar-link">
-                  The Reconcile Contract
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/no-trace-runtime/" class="sidebar-link">
-                  The Runtime That Leaves No Trace
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/trust-and-failure-model/" class="sidebar-link">
-                  Trust and Failure Model
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-      
-    </nav>
-  </div>
-</aside>
-
-
-<div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
-
-
-  <article class="docs-content" id="docs-content">
-    <div class="docs-content-inner">
-      
-<nav class="breadcrumbs" aria-label="Breadcrumb">
-  <div class="breadcrumb-item">
-    <a href="/">Home</a>
-  </div>
-  
-  
-    
-  
-  <div class="breadcrumb-item active">
-    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-    Publications
-  </div>
-</nav>
-
-
-
-      <header class="docs-header">
-        <h1 class="docs-title">Publications</h1>
-        
-        <p class="docs-description">Technical papers, whitepapers, and deep-dives from the Orkestra team</p>
-        
-      </header>
-
-      
-
-      
-      <div class="docs-card-grid">
-        
-        <a href="/publications/when-conditions-paper/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">Conditional Provisioning: When Conditions and the Two Enforcement Boundaries</h3>
-            
-            <p class="docs-card-desc">*Orkestra Project — March 2026*</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
+    <header class="pub-list-header">
+      <div class="pub-list-header-inner">
+        <a href="/" class="pub-back-link">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back to Home
         </a>
+        <h1 class="pub-list-title">Publications</h1>
         
-        <a href="/publications/declarative-operators-whitepaper/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">Declarative Operators: A New Model for Kubernetes Extensibility</h3>
-            
-            <p class="docs-card-desc">*Orkestra Project — March 2026*</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
+        <p class="pub-list-description">Technical papers, whitepapers, and deep-dives from the Orkestra team</p>
         
-        <a href="/publications/declarative-state-machines/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">Declarative State Machines in Kubernetes Operators</h3>
-            
-            <p class="docs-card-desc">**How Orkestra eliminates the constructor pattern.**</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/declarative-conversion/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">Declarative Version Conversion for Kubernetes CRDs</h3>
-            
-            <p class="docs-card-desc">*Orkestra Project — March 2026*</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/evolve-apis-without-code/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">Declarative Version Conversion for Kubernetes CRDs</h3>
-            
-            <p class="docs-card-desc">Kubernetes supports multi-version CRDs, but the ecosystem largely avoids them.</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/from-programs-to-data/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">From Programs To Data</h3>
-            
-            <p class="docs-card-desc">*Orkestra Project — March 2026*</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/introducing-orkestra-notes/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">Introducing Orkestra Notes</h3>
-            
-            <p class="docs-card-desc">**Pure transformation functions for the declarative operator runtime.**</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/one-runtime-many-crds/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">One Runtime, Many CRDs: Fulfilling the Operator Pattern</h3>
-            
-            <p class="docs-card-desc">*Orkestra Project — March 2026*</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/operator-authoring-vs-infrastructure-controlplane/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">Operator Authoring vs Infrastructure Control Plane</h3>
-            
-            <p class="docs-card-desc">Orkestra and Crossplane are often mentioned in the same conversation. Both</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/orkestra-and-gitops/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">Orkestra and GitOps: The Complete Integration Story</h3>
-            
-            <p class="docs-card-desc">*Orkestra Project — March 2026*</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/no-autosync-by-design/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">Orkestra Does Not Auto-Sync — And That&#39;s the Point</h3>
-            
-            <p class="docs-card-desc">*Orkestra Project — March 2026*</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/metrics-analysis-old/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">Orkestra Metrics Analysis</h3>
-            
-            <p class="docs-card-desc">---</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/metrics-analysis/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">Orkestra Metrics Analysis: Control Center Deep Dive</h3>
-            
-            <p class="docs-card-desc">---</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/value-proposition/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">Orkestra Value Proposition</h3>
-            
-            <p class="docs-card-desc">*Orkestra Project — March 2026*</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/universal-observer-whitepaper/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">Orkestra: The Universal Observer That Belongs in Kubernetes Core</h3>
-            
-            <p class="docs-card-desc">*Orkestra Project — March 2026*</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/orkestra-registry/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">The Missing Package Manager for Kubernetes Operators</h3>
-            
-            <p class="docs-card-desc">*OrkestraRegistry — Declarative Distribution for Operator Behavior*</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/operator-sprawl-problem/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">The Operator Sprawl Problem</h3>
-            
-            <p class="docs-card-desc">*Orkestra Project — March 2026*</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/provider-library/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">The Orkestra Provider Model</h3>
-            
-            <p class="docs-card-desc">**Extending declarative operators to external infrastructure.**</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/reconcile-contract/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">The Reconcile Contract</h3>
-            
-            <p class="docs-card-desc">This document describes exactly what Orkestra guarantees about how and when</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/no-trace-runtime/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">The Runtime That Leaves No Trace</h3>
-            
-            <p class="docs-card-desc">*Why a continuous operator should exist without becoming part of your cluster.*</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/publications/trust-and-failure-model/" class="docs-card">
-          <div class="docs-card-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
-          </div>
-          <div class="docs-card-body">
-            <h3 class="docs-card-title">Trust and Failure Model</h3>
-            
-            <p class="docs-card-desc">This document describes exactly what happens when Orkestra fails, degrades, or is deliberately stopped. It covers every ...</p>
-            
-          </div>
-          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
+        <div class="pub-list-meta">
+          <span class="pub-count">21 papers</span>
+        </div>
       </div>
-      
-    </div>
-  </article>
+    </header>
 
-  
-<aside class="docs-toc" id="docs-toc" aria-label="Table of contents">
-  <div class="toc-inner">
-    <p class="toc-title">On this page</p>
-    <nav id="TableOfContents"></nav>
-    <div class="toc-footer">
-      <a href="https://github.com/iAlexeze/orkestra/edit/main/docs/publications/_index.md" target="_blank" rel="noopener noreferrer" class="edit-on-github">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-        </svg>
-        Edit on GitHub
-      </a>
-    </div>
-  </div>
-</aside>
-
-
-</div>
-
+    
+    <section class="pub-list-section">
+      <div class="pub-list-inner">
+        <div class="pub-grid">
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/trust-and-failure-model/" class="pub-card-link">Trust and Failure Model</a>
+              </h2>
+              
+              <p class="pub-card-desc">This document describes exactly what happens when Orkestra fails, degrades, or is deliberately stopped. It covers every &hellip;</p>
+              
+              
+              <p class="pub-card-summary"><p>This document describes exactly what happens when Orkestra fails, degrades, or is deliberately stopped. It covers every failure mode — process crash, panic, leader loss, API server …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    3 min read
+                  </span>
+                </div>
+                <a href="/publications/trust-and-failure-model/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/no-trace-runtime/" class="pub-card-link">The Runtime That Leaves No Trace</a>
+              </h2>
+              
+              <p class="pub-card-desc"><em>Why a continuous operator should exist without becoming part of your cluster.</em></p>
+              
+              
+              <p class="pub-card-summary"><p><em>Why a continuous operator should exist without becoming part of your cluster.</em></p>
+<hr>
+<h2 id="the-mistake-we-stopped-seeing">The Mistake We Stopped Seeing</h2>
+<p>Kubernetes taught us to think declaratively.</p>
+<p>You declare a resource. …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    5 min read
+                  </span>
+                </div>
+                <a href="/publications/no-trace-runtime/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/reconcile-contract/" class="pub-card-link">The Reconcile Contract</a>
+              </h2>
+              
+              <p class="pub-card-desc">This document describes exactly what Orkestra guarantees about how and when</p>
+              
+              
+              <p class="pub-card-summary"><p>This document describes exactly what Orkestra guarantees about how and when
+reconciliation happens. Understanding these guarantees prevents an entire class
+of operator bugs — hooks …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    3 min read
+                  </span>
+                </div>
+                <a href="/publications/reconcile-contract/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/provider-library/" class="pub-card-link">The Orkestra Provider Model</a>
+              </h2>
+              
+              <p class="pub-card-desc"><strong>Extending declarative operators to external infrastructure.</strong></p>
+              
+              
+              <p class="pub-card-summary"><p><strong>Extending declarative operators to external infrastructure.</strong></p>
+<hr>
+<h2 id="the-problem-with-external-resources">The problem with external resources</h2>
+<p>Kubernetes operators manage Kubernetes resources. The reconcile loop reads a
+CR, …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    3 min read
+                  </span>
+                </div>
+                <a href="/publications/provider-library/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/operator-sprawl-problem/" class="pub-card-link">The Operator Sprawl Problem</a>
+              </h2>
+              
+              <p class="pub-card-desc"><em>Orkestra Project — March 2026</em></p>
+              
+              
+              <p class="pub-card-summary"><p><em>Orkestra Project — March 2026</em></p>
+<hr>
+<h2 id="abstract">Abstract</h2>
+<p>Kubernetes operator adoption has grown faster than the tooling to manage it.
+The CNCF Annual Survey 2023 found that 96% of organisations use …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    4 min read
+                  </span>
+                </div>
+                <a href="/publications/operator-sprawl-problem/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/orkestra-registry/" class="pub-card-link">The Missing Package Manager for Kubernetes Operators</a>
+              </h2>
+              
+              <p class="pub-card-desc"><em>OrkestraRegistry — Declarative Distribution for Operator Behavior</em></p>
+              
+              
+              <p class="pub-card-summary"><p><em>OrkestraRegistry — Declarative Distribution for Operator Behavior</em></p>
+<p><em>Orkestra Project — March 2026</em></p>
+<hr>
+<h2 id="abstract">Abstract</h2>
+<p>The Kubernetes operator ecosystem solved automation but never solved …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    2 min read
+                  </span>
+                </div>
+                <a href="/publications/orkestra-registry/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/universal-observer-whitepaper/" class="pub-card-link">Orkestra: The Universal Observer That Belongs in Kubernetes Core</a>
+              </h2>
+              
+              <p class="pub-card-desc"><em>Orkestra Project — March 2026</em></p>
+              
+              
+              <p class="pub-card-summary"><p><em>Orkestra Project — March 2026</em></p>
+<hr>
+<h2 id="abstract">Abstract</h2>
+<p>Kubernetes extensibility is built on a structural absence. The API server
+stores and serves custom resources. It knows their schema. It …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    3 min read
+                  </span>
+                </div>
+                <a href="/publications/universal-observer-whitepaper/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/value-proposition/" class="pub-card-link">Orkestra Value Proposition</a>
+              </h2>
+              
+              <p class="pub-card-desc"><em>Orkestra Project — March 2026</em></p>
+              
+              
+              <p class="pub-card-summary"><p><em>Orkestra Project — March 2026</em></p>
+<hr>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>Kubernetes operator management is a significant and underappreciated cost
+centre in platform engineering. The operator-per-CRD …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    3 min read
+                  </span>
+                </div>
+                <a href="/publications/value-proposition/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/metrics-analysis/" class="pub-card-link">Orkestra Metrics Analysis: Control Center Deep Dive</a>
+              </h2>
+              
+              <p class="pub-card-desc"><hr>
+</p>
+              
+              
+              <p class="pub-card-summary"><h3 id="managing-170-resources-across-5-crds-with-zero-code--observable-by-default">Managing 170+ Resources Across 5 CRDs with Zero Code — Observable by Default</h3>
+<hr>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>This document analyzes the Prometheus metrics from a running Orkestra instance …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    3 min read
+                  </span>
+                </div>
+                <a href="/publications/metrics-analysis/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/metrics-analysis-old/" class="pub-card-link">Orkestra Metrics Analysis</a>
+              </h2>
+              
+              <p class="pub-card-desc"><hr>
+</p>
+              
+              
+              <p class="pub-card-summary"><h3 id="managing-170-resources-across-5-crds-with-zero-code">Managing 170+ Resources Across 5 CRDs with Zero Code</h3>
+<hr>
+<h2 id="executive-summary"><strong>Executive Summary</strong></h2>
+<p>This document analyzes the Prometheus metrics from a running Orkestra instance managing <strong>5 CRDs</strong> (3 built-in …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    2 min read
+                  </span>
+                </div>
+                <a href="/publications/metrics-analysis-old/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/no-autosync-by-design/" class="pub-card-link">Orkestra Does Not Auto-Sync — And That&#39;s the Point</a>
+              </h2>
+              
+              <p class="pub-card-desc"><em>Orkestra Project — March 2026</em></p>
+              
+              
+              <p class="pub-card-summary"><p><em>Orkestra Project — March 2026</em></p>
+<hr>
+<h2 id="abstract">Abstract</h2>
+<p>Most modern infrastructure tools default to continuous synchronization. If the source changes, the system updates. This model works well for …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    4 min read
+                  </span>
+                </div>
+                <a href="/publications/no-autosync-by-design/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/orkestra-and-gitops/" class="pub-card-link">Orkestra and GitOps: The Complete Integration Story</a>
+              </h2>
+              
+              <p class="pub-card-desc"><em>Orkestra Project — March 2026</em></p>
+              
+              
+              <p class="pub-card-summary"><p><em>Orkestra Project — March 2026</em></p>
+<hr>
+<h2 id="abstract">Abstract</h2>
+<p>GitOps is how serious platform teams deploy to Kubernetes. A Git repository is
+the source of truth. A tool — ArgoCD or Flux — watches the …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    3 min read
+                  </span>
+                </div>
+                <a href="/publications/orkestra-and-gitops/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/operator-authoring-vs-infrastructure-controlplane/" class="pub-card-link">Operator Authoring vs Infrastructure Control Plane</a>
+              </h2>
+              
+              <p class="pub-card-desc">Orkestra and Crossplane are often mentioned in the same conversation. Both</p>
+              
+              
+              <p class="pub-card-summary"><p>Orkestra and Crossplane are often mentioned in the same conversation. Both
+are Kubernetes-native. Both are declarative. Both deal with CRDs. Engineers
+evaluating one will encounter …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    3 min read
+                  </span>
+                </div>
+                <a href="/publications/operator-authoring-vs-infrastructure-controlplane/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/one-runtime-many-crds/" class="pub-card-link">One Runtime, Many CRDs: Fulfilling the Operator Pattern</a>
+              </h2>
+              
+              <p class="pub-card-desc"><em>Orkestra Project — March 2026</em></p>
+              
+              
+              <p class="pub-card-summary"><p><em>Orkestra Project — March 2026</em></p>
+<hr>
+<h2 id="abstract">Abstract</h2>
+<p>Kubernetes operator frameworks have consistently advocated for one operator
+per CRD. This principle, grounded in software engineering …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    9 min read
+                  </span>
+                </div>
+                <a href="/publications/one-runtime-many-crds/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/introducing-orkestra-notes/" class="pub-card-link">Introducing Orkestra Notes</a>
+              </h2>
+              
+              <p class="pub-card-desc"><strong>Pure transformation functions for the declarative operator runtime.</strong></p>
+              
+              
+              <p class="pub-card-summary"><p><strong>Pure transformation functions for the declarative operator runtime.</strong></p>
+<hr>
+<h2 id="the-problem-with-template-expressions">The problem with template expressions</h2>
+<p>From the beginning, Orkestra&rsquo;s template expressions covered the …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    7 min read
+                  </span>
+                </div>
+                <a href="/publications/introducing-orkestra-notes/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/from-programs-to-data/" class="pub-card-link">From Programs To Data</a>
+              </h2>
+              
+              <p class="pub-card-desc"><em>Orkestra Project — March 2026</em></p>
+              
+              
+              <p class="pub-card-summary"><p><em>Orkestra Project — March 2026</em></p>
+<hr>
+<h2 id="abstract"><strong>Abstract</strong></h2>
+<p>Kubernetes operators were introduced as programs that encode operational knowledge.
+A decade later, the ecosystem has scaled that model — …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    5 min read
+                  </span>
+                </div>
+                <a href="/publications/from-programs-to-data/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/evolve-apis-without-code/" class="pub-card-link">Declarative Version Conversion for Kubernetes CRDs</a>
+              </h2>
+              
+              <p class="pub-card-desc">Kubernetes supports multi-version CRDs, but the ecosystem largely avoids them.</p>
+              
+              
+              <p class="pub-card-summary"><h2 id="abstract">Abstract</h2>
+<p>Kubernetes supports multi-version CRDs, but the ecosystem largely avoids them.</p>
+<p>The reason is not conceptual complexity — it is implementation cost.
+Conversion requires …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    3 min read
+                  </span>
+                </div>
+                <a href="/publications/evolve-apis-without-code/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/declarative-conversion/" class="pub-card-link">Declarative Version Conversion for Kubernetes CRDs</a>
+              </h2>
+              
+              <p class="pub-card-desc"><em>Orkestra Project — March 2026</em></p>
+              
+              
+              <p class="pub-card-summary"><p><em>Orkestra Project — March 2026</em></p>
+<hr>
+<h2 id="abstract">Abstract</h2>
+<p>Kubernetes CRDs support multiple simultaneous API versions, enabling APIs
+to evolve without breaking existing clients. The standard …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    9 min read
+                  </span>
+                </div>
+                <a href="/publications/declarative-conversion/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/declarative-state-machines/" class="pub-card-link">Declarative State Machines in Kubernetes Operators</a>
+              </h2>
+              
+              <p class="pub-card-desc"><strong>How Orkestra eliminates the constructor pattern.</strong></p>
+              
+              
+              <p class="pub-card-summary"><p><strong>How Orkestra eliminates the constructor pattern.</strong></p>
+<hr>
+<h2 id="the-state-machine-problem">The state machine problem</h2>
+<p>Many Kubernetes operators implement state machines. A CI/CD pipeline moves
+through Pending → …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    8 min read
+                  </span>
+                </div>
+                <a href="/publications/declarative-state-machines/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/declarative-operators-whitepaper/" class="pub-card-link">Declarative Operators: A New Model for Kubernetes Extensibility</a>
+              </h2>
+              
+              <p class="pub-card-desc"><em>Orkestra Project — March 2026</em></p>
+              
+              
+              <p class="pub-card-summary"><p><em>Orkestra Project — March 2026</em></p>
+<hr>
+<h2 id="abstract">Abstract</h2>
+<p>Kubernetes operators encode domain knowledge as reconciliation logic. Every
+major operator framework to date requires this logic to be …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    12 min read
+                  </span>
+                </div>
+                <a href="/publications/declarative-operators-whitepaper/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+          <article class="pub-card">
+            <div class="pub-card-body">
+              <h2 class="pub-card-title">
+                <a href="/publications/when-conditions-paper/" class="pub-card-link">Conditional Provisioning: When Conditions and the Two Enforcement Boundaries</a>
+              </h2>
+              
+              <p class="pub-card-desc"><em>Orkestra Project — March 2026</em></p>
+              
+              
+              <p class="pub-card-summary"><p><em>Orkestra Project — March 2026</em></p>
+<hr>
+<h2 id="abstract">Abstract</h2>
+<p>Orkestra provides two mechanisms for controlling what resources exist in a cluster:
+<code>when:</code> conditions and admission rules. They are not …</p></p>
+              
+              <div class="pub-card-footer">
+                <div class="pub-card-meta">
+                  
+                  <span class="pub-card-reading">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    4 min read
+                  </span>
+                </div>
+                <a href="/publications/when-conditions-paper/" class="pub-card-cta">
+                  Read paper
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+          
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">
@@ -1615,25 +887,148 @@
 
 
   
-  
-  <script src="/js/main.min.b0ef969079d43df81dbcfc1611c66605d62a7ce906aac181917cdc66b92a5223.js" defer></script>
+  <script src="/js/main.min.f2df583e131a595404870b2d956fe54827dcacf44666bb51201fbf1d6524fa40.js" defer></script>
 
-  
-  
-  <script src="https://cdn.jsdelivr.net/npm/@docsearch/js@3" crossorigin></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      var el = document.getElementById('docsearch');
-      if (!el) return;
-      docsearch({
-        appId: "\"1YJ1C111LH\"",
-        apiKey: "\"b4bbac9a499ecc51109f23abd327cf29\"",
-        indexName: "\"orkestra\"",
-        container: '#docsearch',
-        debug: false,
-      });
-    });
-  </script>
-  
+  <style>
+    .pub-list-header {
+      background: linear-gradient(135deg, rgba(76,32,133,0.15) 0%, rgba(17,17,34,0.95) 60%);
+      border-bottom: 1px solid var(--color-border);
+      padding: 4rem 0 3rem;
+    }
+    .pub-list-header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+    .pub-back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      margin-bottom: 1.5rem;
+      transition: color var(--transition);
+    }
+    .pub-back-link:hover { color: var(--color-primary); }
+    .pub-list-title {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0 0 1rem;
+    }
+    .pub-list-description {
+      font-size: 1.1rem;
+      color: var(--color-text-muted);
+      max-width: 600px;
+      line-height: 1.6;
+      margin: 0 0 1rem;
+    }
+    .pub-count {
+      font-size: 0.8rem;
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+      background: rgba(255,255,255,0.05);
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+      border: 1px solid var(--color-border);
+    }
+    .pub-list-section {
+      padding: 3rem 0 5rem;
+    }
+    .pub-list-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+    .pub-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+    }
+    @media (max-width: 768px) {
+      .pub-grid { grid-template-columns: 1fr; }
+    }
+    .pub-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+    }
+    .pub-card:hover {
+      border-color: rgba(76,32,133,0.4);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+    .pub-card-body {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    .pub-card-title {
+      font-size: 1.05rem;
+      font-weight: 500;
+      margin: 0 0 0.75rem;
+      line-height: 1.4;
+    }
+    .pub-card-link {
+      color: var(--color-text);
+      text-decoration: none;
+      transition: color var(--transition);
+    }
+    .pub-card-link:hover { color: var(--color-primary); }
+    .pub-card-desc {
+      font-size: 0.875rem;
+      color: var(--color-primary);
+      font-style: italic;
+      margin: 0 0 0.5rem;
+    }
+    .pub-card-summary {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      line-height: 1.6;
+      margin: 0 0 1rem;
+      flex: 1;
+    }
+    .pub-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: auto;
+      padding-top: 1rem;
+      border-top: 1px solid var(--color-border);
+    }
+    .pub-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .pub-card-date, .pub-card-reading {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+    }
+    .pub-card-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--color-primary);
+      text-decoration: none;
+      transition: gap var(--transition);
+      white-space: nowrap;
+    }
+    .pub-card-cta:hover { gap: 0.5rem; }
+  </style>
 </body>
 </html>
