@@ -1,6 +1,6 @@
 <aside class="docs-sidebar" id="docs-sidebar" role="navigation" aria-label="Documentation navigation">
   <div class="sidebar-inner">
-    <!-- Algolia DocSearch -->
+    <!-- Search -->
     <div class="docsearch-wrapper">
       {{ if and .Site.Params.algolia.appId .Site.Params.algolia.searchKey }}
       <div id="docsearch"></div>
@@ -16,15 +16,17 @@
         {{ range $docsSection.Sections.ByWeight }}
           {{ $section := . }}
           {{ $isActiveSection := or ($currentPage.IsDescendant $section) (eq $currentPage $section) }}
-          <div class="sidebar-section open">
-            <a href="{{ $section.RelPermalink }}" class="sidebar-section-header{{ if $isActiveSection }} active-section{{ end }}">
-              <span class="sidebar-section-title">{{ $section.Title }}</span>
-              <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path d="M19 9l-7 7-7-7"/>
-              </svg>
-            </a>
-            <ul class="sidebar-section-pages" role="list">
-              {{ range $section.Pages.ByWeight }}
+          <div class="sidebar-section{{ if $isActiveSection }} open{{ end }}">
+            <div class="sidebar-section-header{{ if $isActiveSection }} active-section{{ end }}">
+              <a href="{{ $section.RelPermalink }}" class="sidebar-section-link">{{ $section.Title }}</a>
+              <button class="sidebar-section-toggle" aria-expanded="{{ if $isActiveSection }}true{{ else }}false{{ end }}" aria-label="Toggle {{ $section.Title }}">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list"{{ if not $isActiveSection }} style="display:none"{{ end }}>
+              {{ range $section.Pages.ByTitle }}
               <li>
                 <a href="{{ .RelPermalink }}" class="sidebar-link{{ if eq $currentPage . }} active{{ end }}">
                   {{ .Title }}

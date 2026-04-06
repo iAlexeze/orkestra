@@ -771,6 +771,9 @@ type SecretTemplateSource struct {
 	// Labels — applied to Secret metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
 
+	// Annotations — applied to Secret metadata.
+	Annotations map[string]string `json:"annotations,omitempty"`
+
 	// FromSecret — name of an existing Secret to copy data from.
 	// Orkestra reads this at reconcile time — copies stay in sync with the source.
 	FromSecret string `yaml:"fromSecret" validate:"omitempty"`
@@ -822,6 +825,45 @@ type SecretTemplateSource struct {
 
 	// AnyOf holds OR conditions (same as other resource types)
 	AnyOf []Condition `yaml:"anyOf,omitempty"`
+
+	// RotateAfter declares a time-based rotation threshold.
+	// When set alongside once: true, the Secret is recreated when its age
+	// exceeds this duration. The creation time is tracked via the annotation:
+	//   orkestra.konductor.io/generated-at: "2026-04-06T08:00:00Z"
+	//
+	// Supported formats: 30s, 5m, 12h, 90d, 1y
+	// Days (d) and years (y) are extensions beyond Go's standard duration format.
+	//
+	// Example:
+	//   secrets:
+	//     - name: "{{ .metadata.name }}-credentials"
+	//       once: true
+	//       rotateAfter: 90d
+	//       data:
+	//         password: "{{ randomAlphanumeric 32 }}"
+	RotateAfter string `yaml:"rotateAfter,omitempty"`
+
+	// TLS declares self-signed CA and server certificate generation.
+	// When set, the data: block is ignored — the Secret is created as type
+	// kubernetes.io/tls with fields: tls.crt, tls.key, ca.crt
+	//
+	// Default Secret name when name is empty: "orkestra-tls"
+	// Default validFor when empty: same as rotateAfter, or "1y"
+	//
+	// Example:
+	//   secrets:
+	//     - name: "{{ .metadata.name }}-tls"
+	//       once: true
+	//       rotateAfter: 1y
+	//       tls:
+	//         commonName: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc"
+	//         dnsNames:
+	//           - "{{ .metadata.name }}"
+	//           - "{{ .metadata.name }}.{{ .metadata.namespace }}"
+	//           - "{{ .metadata.name }}.{{ .metadata.namespace }}.svc"
+	//           - "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+	//         validFor: 1y
+	TLS *TLSSpec `yaml:"tls,omitempty"`
 }
 
 // ── ServiceAccount ────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 baseURL = "https://orkestra.sh/"
 languageCode = "en-us"
 title = "Orkestra"
+enableGitInfo = true
 
 [markup]
   [markup.highlight]
@@ -33,14 +34,17 @@ title = "Orkestra"
     url = "/docs/"
     weight = 1
   [[menu.main]]
-    name = "Examples"
-    url = "/docs/getting-started/"
+    name = "Publications"
+    url = "/publications/"
     weight = 2
   [[menu.main]]
     name = "Use Cases"
     url = "/docs/use-cases/"
     weight = 3
   [[menu.main]]
-    name = "GitHub"
-    url = "https://github.com/iAlexeze/orkestra"
+    name = "Blog"
+    url = "/blog/"
     weight = 4
+[caches]
+  [caches.images]
+    dir = ':cacheDir/images'

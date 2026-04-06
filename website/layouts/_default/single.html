@@ -12,9 +12,12 @@
         <p class="docs-description">{{ . }}</p>
         {{ end }}
         <div class="docs-meta">
-          <time datetime="{{ .Date.Format "2006-01-02" }}" class="docs-date">
-            Updated {{ .Date.Format "Jan 2, 2006" }}
+          {{ with .Lastmod }}
+          <time datetime="{{ .Format "2006-01-02" }}" class="docs-date">
+            Updated {{ .Format "Jan 2, 2006" }}
           </time>
+          {{ end }}
+
           {{ with .ReadingTime }}
           <span class="docs-reading-time">{{ . }} min read</span>
           {{ end }}

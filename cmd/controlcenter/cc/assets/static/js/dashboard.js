@@ -34,10 +34,16 @@
     });
   }
 
-  /* ── 2. Mobile sidebar toggle ──────────────────────────────── */
+  /* ── 2. Sidebar: mobile toggle + collapsible ───────────────── */
   var mobileToggle = document.getElementById('cc-mobile-toggle');
   var sidebar = document.getElementById('cc-sidebar');
   var overlay = document.getElementById('cc-overlay');
+  var collapseToggle = document.getElementById('cc-sidebar-toggle');
+
+  // Restore collapsed state
+  if (sidebar && localStorage.getItem('cc-sidebar-collapsed') === '1') {
+    sidebar.classList.add('collapsed');
+  }
 
   function openSidebar() {
     if (sidebar) sidebar.classList.add('open');
@@ -63,18 +69,159 @@
     overlay.addEventListener('click', closeSidebar);
   }
 
-  /* ── 3. SSE live connection ────────────────────────────────── */
+  // Desktop collapse toggle — sync tooltips on nav items
+  function syncNavTooltips(isCollapsed) {
+    document.querySelectorAll('.cc-nav-item').forEach(function (item) {
+      if (isCollapsed) {
+        // Extract text content (strip svg text)
+        var text = '';
+        item.childNodes.forEach(function (n) {
+          if (n.nodeType === Node.TEXT_NODE) text += n.textContent.trim();
+        });
+        if (text) item.setAttribute('title', text);
+      } else {
+        item.removeAttribute('title');
+      }
+    });
+  }
+
+  // Apply tooltip state on load
+  if (sidebar) syncNavTooltips(sidebar.classList.contains('collapsed'));
+
+  if (collapseToggle && sidebar) {
+    collapseToggle.addEventListener('click', function () {
+      var collapsed = sidebar.classList.toggle('collapsed');
+      localStorage.setItem('cc-sidebar-collapsed', collapsed ? '1' : '0');
+      syncNavTooltips(collapsed);
+    });
+  }
+
+  /* ── 2b. Grid / List view toggle ──────────────────────────── */
+  var VIEW_KEY = 'cc-view';
+  var cardGrid = document.getElementById('crdGrid') || document.getElementById('crCardGrid');
+  var viewBtns = document.querySelectorAll('.cc-view-btn');
+
+  function setView(view) {
+    if (cardGrid) {
+      if (view === 'list') {
+        cardGrid.classList.add('list-view');
+      } else {
+        cardGrid.classList.remove('list-view');
+      }
+    }
+    viewBtns.forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-view') === view);
+    });
+    localStorage.setItem(VIEW_KEY, view);
+  }
+
+  // Read page default from whichever toggle button has 'active' in the HTML
+  var pageDefaultView = 'grid';
+  viewBtns.forEach(function (btn) {
+    if (btn.classList.contains('active')) {
+      pageDefaultView = btn.getAttribute('data-view') || 'grid';
+    }
+  });
+  // Restore saved view, falling back to page's own default
+  var savedView = localStorage.getItem(VIEW_KEY) || pageDefaultView;
+  setView(savedView);
+
+  viewBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      setView(btn.getAttribute('data-view'));
+    });
+  });
+
+  /* ── 3. SSE live connection + partial DOM updates ──────────── */
   var sseDot = document.getElementById('sse-dot');
   var sseRetryDelay = 1000;
   var sseMaxRetry = 30000;
   var sseSource = null;
+  var sseDisconnectedBanner = null;
 
   function setSseConnected(connected) {
-    if (!sseDot) return;
-    if (connected) {
-      sseDot.classList.add('connected');
+    if (sseDot) {
+      if (connected) {
+        sseDot.classList.add('connected');
+      } else {
+        sseDot.classList.remove('connected');
+      }
+    }
+    // Show/hide disconnected banner
+    if (!connected) {
+      if (!sseDisconnectedBanner) {
+        sseDisconnectedBanner = document.createElement('div');
+        sseDisconnectedBanner.id = 'cc-disconnected-banner';
+        sseDisconnectedBanner.className = 'cc-alert cc-alert-warn cc-disconnected-banner';
+        sseDisconnectedBanner.innerHTML =
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+          '<span>Disconnected from runtime — data may be stale</span>';
+        var page = document.querySelector('.cc-page');
+        if (page) page.insertBefore(sseDisconnectedBanner, page.firstChild);
+      }
     } else {
-      sseDot.classList.remove('connected');
+      if (sseDisconnectedBanner) {
+        sseDisconnectedBanner.remove();
+        sseDisconnectedBanner = null;
+      }
+    }
+  }
+
+  /* Partial DOM update — fetch snapshot JSON and update elements in-place */
+  function setText(el, val) {
+    if (el && el.textContent !== String(val)) el.textContent = val;
+  }
+
+  function fetchAndApplyUpdate() {
+    fetch('/controlcenter/api/snapshot', { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('snapshot ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        applySnapshot(data);
+      })
+      .catch(function (err) {
+        console.warn('CC live update failed:', err);
+      });
+  }
+
+  function applySnapshot(data) {
+    var s = data.stats;
+    if (!s) return;
+
+    // ── Global stats (index page) ──
+    setText(document.querySelector('[data-live="totalKatalogs"]'), s.totalKatalogs);
+    setText(document.querySelector('[data-live="totalCRDs"]'), s.totalCRDs);
+    setText(document.querySelector('[data-live="totalWorkers"]'), s.totalWorkers);
+    setText(document.querySelector('[data-live="totalResources"]'), s.totalResources);
+    var healthyEl = document.querySelector('[data-live="healthyKatalogs"]');
+    if (healthyEl) setText(healthyEl, s.healthyKatalogs + ' healthy');
+
+    // ── Per-katalog cards (index page) ──
+    if (data.katalogs && data.katalogs.length) {
+      data.katalogs.forEach(function (kat) {
+        var card = document.querySelector('[data-katalog="' + CSS.escape(kat.name) + '"]');
+        if (!card) return;
+
+        // Badge
+        var badge = card.querySelector('[data-live="badge"]');
+        if (badge) {
+          var healthy = kat.healthy;
+          badge.className = 'cc-badge ' + (healthy ? 'cc-badge-healthy' : 'cc-badge-degraded');
+          badge.innerHTML = healthy
+            ? '<span class="cc-status-dot healthy"></span>Healthy'
+            : '<span class="cc-status-dot degraded"></span>Degraded';
+        }
+
+        // Meta values
+        var crdEl = card.querySelector('[data-live="totalCRDs"]');
+        if (crdEl) {
+          crdEl.innerHTML = kat.totalCRDs + ' <span class="text-muted">(' + kat.healthyCRDs + ' healthy)</span>';
+        }
+        setText(card.querySelector('[data-live="totalWorkers"]'), kat.totalWorkers);
+        setText(card.querySelector('[data-live="totalResources"]'), kat.totalResources);
+      });
     }
   }
 
@@ -87,18 +234,21 @@
     try {
       sseSource = new EventSource('/controlcenter/sse');
     } catch (e) {
+      setSseConnected(false);
       scheduleReconnect();
       return;
     }
 
     sseSource.onopen = function () {
       setSseConnected(true);
-      sseRetryDelay = 1000; // reset backoff
+      sseRetryDelay = 1000;
     };
 
     sseSource.onmessage = function (e) {
-      if (e.data === 'reload') {
-        window.location.reload();
+      if (e.data === 'reload' || e.data === 'update' || e.data === 'connected') {
+        if (e.data !== 'connected') {
+          fetchAndApplyUpdate();
+        }
       }
     };
 
@@ -493,5 +643,13 @@
       }
     });
   }
+
+  /* ── Row click navigation via data-href ────────────────────── */
+  document.querySelectorAll('[data-href]').forEach(function (row) {
+    row.style.cursor = 'pointer';
+    row.addEventListener('click', function () {
+      window.location.href = row.getAttribute('data-href');
+    });
+  });
 
 })();

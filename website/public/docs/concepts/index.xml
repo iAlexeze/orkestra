@@ -196,5 +196,12 @@
       <guid>http://localhost:8191/docs/concepts/observability-model/</guid>
       <description>&lt;p&gt;Orkestra provides a unified observability interface for every CRD it manages — without custom instrumentation, without writing dashboards, without configuration. This document assembles the full picture: the Control Center UI, the live API, the Prometheus metrics, and how they relate to each other.&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;the-design-principle&#34;&gt;The Design Principle&lt;/h2&gt;&#xA;&lt;p&gt;Every CRD managed by Orkestra contributes to the same observability surface. There is no per-CRD monitoring setup. There is one Control Center, one health server, one metrics endpoint, one CLI interface. The data is identical whether Orkestra manages two CRDs or twenty.&lt;/p&gt;</description>
     </item>
+    <item>
+      <title></title>
+      <link>http://localhost:8191/docs/concepts/secret-rotation/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost:8191/docs/concepts/secret-rotation/</guid>
+      <description>&lt;h1 id=&#34;secret-rotation-and-tls-certificate-generation&#34;&gt;Secret Rotation and TLS Certificate Generation&lt;/h1&gt;&#xA;&lt;p&gt;Orkestra manages the full credential lifecycle declaratively — generation,&#xA;storage, and rotation — without external tools like cert-manager or Vault&#xA;for the common cases.&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;the-problem&#34;&gt;The problem&lt;/h2&gt;&#xA;&lt;p&gt;Credentials have two failure modes:&lt;/p&gt;&#xA;&lt;p&gt;&lt;strong&gt;Never rotating:&lt;/strong&gt; A compromised credential stays compromised indefinitely.&#xA;A certificate that expires brings down the application.&lt;/p&gt;&#xA;&lt;p&gt;&lt;strong&gt;Rotating incorrectly:&lt;/strong&gt; Generating a new value on every reconcile cycle&#xA;breaks every application currently using the old value. The reconcile loop&#xA;runs every 30 seconds. Random generation inside it is catastrophically wrong.&lt;/p&gt;</description>
+    </item>
   </channel>
 </rss>

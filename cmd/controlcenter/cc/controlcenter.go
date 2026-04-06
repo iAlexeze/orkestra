@@ -3,6 +3,7 @@ package controlcenter
 import (
 	"bytes"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -92,6 +93,9 @@ func (cc *ControlCenter) fetchAllKatalogs() {
 		kat, err := inst.Client.FetchKatalog()
 		if err != nil {
 			log.Printf("WARN: fetch from %s: %v", inst.URL, err)
+			// Clear stale data — if the API is unreachable the katalog must
+			// disappear from the UI rather than show outdated information.
+			inst.Katalog = nil
 			continue
 		}
 		inst.Katalog = kat
@@ -140,7 +144,7 @@ func (cc *ControlCenter) ServeSSE(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-ch:
-			fmt.Fprintf(w, "data: reload\n\n")
+			fmt.Fprintf(w, "data: update\n\n")
 			flusher.Flush()
 		case <-r.Context().Done():
 			return
@@ -286,6 +290,9 @@ func (cc *ControlCenter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case path == "/sse":
 		cc.ServeSSE(w, r)
 
+	case path == "/api/snapshot":
+		cc.handleAPISnapshot(w, r)
+
 	case path == "/metrics":
 		cc.handleMetricsPage(w, r)
 
@@ -356,6 +363,88 @@ func (cc *ControlCenter) routeCR(w http.ResponseWriter, r *http.Request, instanc
 // ─────────────────────────────────────────────────────────────────────────────
 // Page handlers
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Live snapshot API — used by JS for partial DOM updates (no full-page reload)
+// ─────────────────────────────────────────────────────────────────────────────
+
+type StatsSnap struct {
+	TotalKatalogs   int `json:"totalKatalogs"`
+	HealthyKatalogs int `json:"healthyKatalogs"`
+	TotalCRDs       int `json:"totalCRDs"`
+	TotalWorkers    int `json:"totalWorkers"`
+	TotalResources  int `json:"totalResources"`
+}
+
+type KatalogSnap struct {
+	Name           string `json:"name"`
+	Healthy        bool   `json:"healthy"`
+	TotalCRDs      int    `json:"totalCRDs"`
+	HealthyCRDs    int    `json:"healthyCRDs"`
+	TotalWorkers   int    `json:"totalWorkers"`
+	TotalResources int    `json:"totalResources"`
+}
+
+type SnapshotData struct {
+	Stats    StatsSnap     `json:"stats"`
+	Katalogs []KatalogSnap `json:"katalogs"`
+	Updated  string        `json:"updated"`
+}
+
+func (cc *ControlCenter) handleAPISnapshot(w http.ResponseWriter, _ *http.Request) {
+	cc.mu.RLock()
+	insts := make([]*Instance, 0, len(cc.instances))
+	for _, inst := range cc.instances {
+		if inst.Katalog != nil {
+			insts = append(insts, inst)
+		}
+	}
+	cc.mu.RUnlock()
+
+	sort.Slice(insts, func(i, j int) bool {
+		return insts[i].Katalog.Name < insts[j].Katalog.Name
+	})
+
+	stats := StatsSnap{}
+	var katalogs []KatalogSnap
+
+	for _, inst := range insts {
+		kat := inst.Katalog
+		healthyCRDs := 0
+		for _, crd := range kat.CRDs {
+			if crd.Healthy {
+				healthyCRDs++
+			}
+		}
+		stats.TotalKatalogs++
+		stats.TotalCRDs += len(kat.CRDs)
+		stats.TotalWorkers += sumWorkers(kat.CRDs)
+		stats.TotalResources += sumResources(kat.CRDs)
+		if kat.Healthy {
+			stats.HealthyKatalogs++
+		}
+		katalogs = append(katalogs, KatalogSnap{
+			Name:           kat.Name,
+			Healthy:        kat.Healthy,
+			TotalCRDs:      len(kat.CRDs),
+			HealthyCRDs:    healthyCRDs,
+			TotalWorkers:   sumWorkers(kat.CRDs),
+			TotalResources: sumResources(kat.CRDs),
+		})
+	}
+
+	if katalogs == nil {
+		katalogs = []KatalogSnap{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-cache")
+	json.NewEncoder(w).Encode(SnapshotData{
+		Stats:    stats,
+		Katalogs: katalogs,
+		Updated:  time.Now().UTC().Format(time.RFC3339),
+	})
+}
 
 func (cc *ControlCenter) handleIndex(w http.ResponseWriter, _ *http.Request) {
 	cc.mu.RLock()

@@ -13,10 +13,18 @@
   <!-- Sidebar -->
   <aside class="cc-sidebar" id="cc-sidebar">
     <div class="cc-sidebar-logo">
-      <a href="/controlcenter">
-        <img src="/controlcenter/assets/static/logo.png" alt="Orkestra" width="32" height="32">
-        <span>Control Center</span>
-      </a>
+      <div class="cc-sidebar-logo-row">
+        <a href="/controlcenter">
+          <img src="/controlcenter/assets/static/logo.png" alt="Orkestra" width="32" height="32">
+          <span>Orkestra CC</span>
+        </a>
+        <button class="cc-sidebar-toggle" id="cc-sidebar-toggle" title="Collapse sidebar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+            <path d="M9 18l-6-6 6-6" opacity="0.4"/>
+          </svg>
+        </button>
+      </div>
     </div>
     <nav class="cc-sidebar-nav">
       <a href="/controlcenter" class="cc-nav-item">
@@ -50,7 +58,11 @@
 
   <main class="cc-main">
     <div class="cc-navbar">
-      <button class="cc-mobile-toggle" id="cc-mobile-toggle">☰</button>
+      <button class="cc-mobile-toggle" id="cc-mobile-toggle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
       <nav class="cc-breadcrumb">
         <a href="/controlcenter">Control Center</a>
         <span class="sep">›</span>
@@ -68,12 +80,12 @@
     <div class="cc-page">
 
       <!-- Page header -->
-      <div class="flex items-center justify-between mb-6">
+      <div class="cc-header-actions">
         <div>
-          <h1 style="font-size:20px;font-weight:700;margin:0 0 4px">{{ .CRDName }}</h1>
-          <div class="flex gap-3 items-center">
-            <span class="font-mono text-muted text-xs">{{ .GVK }}</span>
-            <span class="cc-badge" style="background:var(--bg-elevated);border-color:var(--border);color:var(--text-muted)">{{ .Total }} resource{{ if ne .Total 1 }}s{{ end }}</span>
+          <h1 class="cc-page-title">{{ .CRDName }}</h1>
+          <div class="cc-header-meta">
+            <span class="cc-td-mono">{{ .GVK }}</span>
+            <span class="cc-badge cc-badge-neutral">{{ .Total }} resource{{ if ne .Total 1 }}s{{ end }}</span>
           </div>
         </div>
       </div>
@@ -95,13 +107,28 @@
         <button data-filter="failed" class="cr-filter-btn cc-filter-btn">Failed</button>
         <button data-filter="running" class="cr-filter-btn cc-filter-btn">Running</button>
         <button data-filter="pending" class="cr-filter-btn cc-filter-btn">Pending</button>
-        <div style="margin-left:auto">
+        <div class="cc-filter-bar-end">
           <input type="text" id="crSearchInput" placeholder="Search by name or namespace..." class="cc-search-input">
+        </div>
+        <div class="cc-view-toggle">
+          <button class="cc-view-btn active" data-view="list" title="List view">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
+              <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+          </button>
+          <button class="cc-view-btn" data-view="grid" title="Grid view">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+            </svg>
+          </button>
         </div>
       </div>
 
-      <!-- Table -->
-      <div class="cc-table-wrap">
+      <!-- Table / Card Grid (toggled by view toggle) -->
+      <div class="cc-table-wrap list-view" id="crCardGrid">
         <table class="cc-table">
           <thead>
             <tr>
@@ -120,40 +147,30 @@
               data-namespace="{{ .Namespace | toLower }}"
               data-phase="{{ .Phase | toLower }}"
               data-ready="{{ .Ready }}"
-              onclick="window.location.href='cr/{{ if .Namespace }}{{ .Namespace }}/{{ end }}{{ .Name }}'">
-            <td class="font-mono" style="font-weight:500;color:var(--text-primary)">{{ .Name }}</td>
-            <td class="font-mono text-xs text-muted">{{ if .Namespace }}{{ .Namespace }}{{ else }}<span style="color:var(--border)">—</span>{{ end }}</td>
-            <td>
+              data-href="{{ if .Namespace }}cr/{{ .Namespace }}/{{ .Name }}{{ else }}cr/{{ .Name }}{{ end }}">
+            <td class="cc-td-name" data-label="Name">{{ .Name }}</td>
+            <td class="cc-td-mono" data-label="Namespace">{{ if .Namespace }}{{ .Namespace }}{{ else }}<span class="cc-text-dim">—</span>{{ end }}</td>
+            <td class="cc-phase-cell" data-label="Phase">
               {{ if .Phase }}
-                {{ if eq .Phase "Succeeded" }}
-                <span class="cc-badge cc-badge-healthy">✓ {{ .Phase }}</span>
-                {{ else if eq .Phase "Failed" }}
-                <span class="cc-badge cc-badge-degraded">✗ {{ .Phase }}</span>
-                {{ else if hasPrefix .Phase "Running" }}
-                <span class="cc-badge cc-badge-started">◌ {{ .Phase }}</span>
-                {{ else if eq .Phase "Pending" }}
-                <span class="cc-badge cc-badge-pending">◷ {{ .Phase }}</span>
-                {{ else }}
-                <span class="cc-badge" style="background:var(--bg-elevated);border-color:var(--border);color:var(--text-muted)">{{ .Phase }}</span>
-                {{ end }}
+                {{ phaseBadge .Phase }}
               {{ else }}
-              <span style="color:var(--border)">—</span>
+              <span class="cc-text-dim">—</span>
               {{ end }}
             </td>
-            <td>
+            <td data-label="Ready">
               {{ if .Ready }}
-              <span class="cc-badge cc-badge-healthy" style="gap:4px">
+              <span class="cc-badge cc-badge-healthy cc-badge-icon">
                 <span class="cc-status-dot healthy"></span>Ready
               </span>
               {{ else }}
-              <span class="cc-badge cc-badge-pending" style="gap:4px">
+              <span class="cc-badge cc-badge-pending cc-badge-icon">
                 <span class="cc-status-dot pending anim-pulse"></span>
                 {{ if .ReadyReason }}{{ .ReadyReason }}{{ else }}Not ready{{ end }}
               </span>
               {{ end }}
             </td>
-            <td class="font-mono text-xs text-muted">{{ .Age }}</td>
-            <td class="text-xs text-muted">{{ .Generation }}</td>
+            <td class="cc-td-mono" data-label="Age">{{ .Age }}</td>
+            <td class="cc-td-mono" data-label="Generation">{{ .Generation }}</td>
           </tr>
           {{ end }}
           </tbody>

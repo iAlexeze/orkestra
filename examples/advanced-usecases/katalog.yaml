@@ -3,15 +3,14 @@ kind: Katalog
 metadata:
   name: advanced-usecases
   author: orkspace
-  version: 0.1.0
+  version: 0.2.0
   description: >
     Advanced Orkestra patterns — forEach, external:, cross:, once:, anyOf:.
-    Each CRD in this Katalog demonstrates one pattern that previously required
-    custom Go code. Apply any CR and watch the result in the Control Center.
+    Each CRD demonstrates one pattern that previously required custom Go code.
 
 spec:
   crds:
-    # ── 01. forEach — N resources from a list ──────────────────────────────
+    # ── 01. forEach — N resources from a list ──────────────────────────────────
     multi-region-app:
       apiTypes:
         group: advanced.orkestra.io
@@ -29,7 +28,7 @@ spec:
             action: deny
           - field: spec.regions
             operator: exists
-            message: "spec.regions is required (list of region strings)"
+            message: "spec.regions is required"
             action: deny
 
       mutation:
@@ -47,6 +46,7 @@ spec:
               forEach:
                 field: spec.regions
                 as: item
+
         status:
           fields:
             - path: phase
@@ -54,16 +54,22 @@ spec:
               when:
                 - field: status.phase
                   operator: notExists
+
+            # NOTE: children.deployment captures one deployment (last in list).
+            # Until ReadChildren aggregates forEach-created resources, use exists.
+            # The aggregation fix is tracked — once merged, change to gt/value: "0"
             - path: phase
               value: "Ready"
               when:
                 - field: children.deployment.status.readyReplicas
-                  operator: gt
-                  value: "0"
+                  operator: exists
+
             - path: regionsDeployed
               value: "{{ len .spec.regions }}"
 
-    # ── 02. external: — gate resources on HTTP call ────────────────────────
+    # ── 02. external: — gate resources on HTTP call ────────────────────────────
+    # IMPORTANT: external call names must be valid Go identifiers — no hyphens.
+    # Use camelCase: healthCheck not health-check. Template access: {{ .external.healthCheck.status }}
     gated-app:
       apiTypes:
         group: advanced.orkestra.io
@@ -87,34 +93,34 @@ spec:
         default: true
         onReconcile:
           external:
-            - name: health-check
+            - name: healthCheck               # camelCase — valid Go identifier
               url: "{{ .spec.serviceUrl }}/health"
               method: GET
               expectedStatus: 200
-              continueOnError: false   # deployment blocked until healthy
+              continueOnError: false
               timeout: 5s
 
-            - name: feature-flags
+            - name: featureFlags             # camelCase
               url: "{{ .spec.serviceUrl }}/flags/{{ .metadata.name }}"
               method: GET
-              continueOnError: true    # missing flags don't block deploy
+              continueOnError: true
               timeout: 3s
 
           deployments:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
               when:
-                - field: external.health-check.status
+                - field: external.healthCheck.status   # dot access works — no hyphens
                   equals: "200"
 
           configMaps:
             - name: "{{ .metadata.name }}-flags"
               data:
-                flags: "{{ .external.feature-flags.body }}"
+                flags: "{{ .external.featureFlags.body }}"
               when:
-                - field: external.feature-flags.called
+                - field: external.featureFlags.called
                   equals: "true"
-                - field: external.feature-flags.error
+                - field: external.featureFlags.error
                   operator: notExists
 
         status:
@@ -127,25 +133,24 @@ spec:
             - path: phase
               value: "Waiting"
               when:
-                - field: external.health-check.status
+                - field: external.healthCheck.status
                   operator: notExists
             - path: phase
               value: "Degraded"
               when:
-                - field: external.health-check.status
+                - field: external.healthCheck.status
                   operator: exists
-                - field: external.health-check.status
+                - field: external.healthCheck.status
                   notEquals: "200"
             - path: phase
               value: "Ready"
               when:
                 - field: children.deployment.status.readyReplicas
-                  operator: gt
-                  value: "0"
+                  operator: exists
             - path: lastHealthCheck
-              value: "{{ .external.health-check.status }}"
+              value: "{{ .external.healthCheck.status }}"  # works — no hyphen
 
-    # ── 03. cross: — observe another CRD's CR ─────────────────────────────
+    # ── 03. cross: — observe another CRD's CR ──────────────────────────────────
     managed-database:
       apiTypes:
         group: advanced.orkestra.io
@@ -164,6 +169,7 @@ spec:
           services:
             - name: "{{ .metadata.name }}-postgres"
               port: "5432"
+
         status:
           fields:
             - path: phase
@@ -175,8 +181,7 @@ spec:
               value: "Ready"
               when:
                 - field: children.deployment.status.readyReplicas
-                  operator: gt
-                  value: "0"
+                  operator: exists
             - path: endpoint
               value: "{{ .metadata.name }}-postgres.{{ .metadata.namespace }}.svc.cluster.local:5432"
 
@@ -189,7 +194,7 @@ spec:
       workers: 2
       resync: 30s
       dependsOn:
-        managed-database: healthy  # workers start only after managed-database CRD is healthy
+        managed-database: healthy
 
       validation:
         rules:
@@ -199,9 +204,6 @@ spec:
 
       reconciler:
         default: true
-
-        # Observe the ManagedDatabase CR with the same name
-        # This reads from the managed-database informer cache — zero API calls
         cross:
           - kind: managed-database
             selector:
@@ -237,6 +239,11 @@ spec:
               value: "WaitingForDatabase"
               when:
                 - field: cross.db.status.phase
+                  operator: notExists
+            - path: phase
+              value: "WaitingForDatabase"
+              when:
+                - field: cross.db.status.phase
                   notEquals: "Ready"
             - path: phase
               value: "Ready"
@@ -244,15 +251,14 @@ spec:
                 - field: cross.db.status.phase
                   equals: "Ready"
                 - field: children.deployment.status.readyReplicas
-                  operator: gt
-                  value: "0"
+                  operator: exists
             - path: databaseEndpoint
               value: "{{ .cross.db.status.endpoint }}"
               when:
                 - field: cross.db.found
                   equals: "true"
 
-    # ── 04. once: — idempotent secret generation ───────────────────────────
+    # ── 04. once: — idempotent secret generation ───────────────────────────────
     secure-app:
       apiTypes:
         group: advanced.orkestra.io
@@ -272,15 +278,12 @@ spec:
         default: true
         onCreate:
           secrets:
-            # Generated once — randomAlphanumeric is called only when the
-            # Secret does not exist. Every subsequent reconcile skips this.
             - name: "{{ .metadata.name }}-credentials"
               once: true
               data:
                 password:  "{{ randomAlphanumeric 32 }}"
                 apiKey:    "{{ randomHex 16 }}"
                 jwtSecret: "{{ randomBase64 32 }}"
-
           deployments:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
@@ -296,12 +299,11 @@ spec:
               value: "Ready"
               when:
                 - field: children.deployment.status.readyReplicas
-                  operator: gt
-                  value: "0"
+                  operator: exists
             - path: credentialsSecret
               value: "{{ .metadata.name }}-credentials"
 
-    # ── 05. anyOf: — OR condition logic ────────────────────────────────────
+    # ── 05. anyOf: — OR condition logic ────────────────────────────────────────
     flex-app:
       apiTypes:
         group: advanced.orkestra.io
@@ -320,7 +322,6 @@ spec:
 
         onReconcile:
           jobs:
-            # Cleanup job — runs when phase is Failed OR Succeeded (OR logic)
             - name: "{{ .metadata.name }}-cleanup"
               image: alpine:3.19
               command: ["/bin/sh", "-c", "echo 'cleanup complete'"]
@@ -330,7 +331,6 @@ spec:
                 - field: status.phase
                   equals: "Succeeded"
 
-            # Notification — requires notify=true AND (Failed OR Succeeded)
             - name: "{{ .metadata.name }}-notify"
               image: alpine:3.19
               command: ["/bin/sh", "-c", "echo 'notification sent'"]
@@ -357,7 +357,7 @@ spec:
                   operator: gt
                   value: "0"
 
-    # ── 06. Full stack — all patterns combined ─────────────────────────────
+    # ── 06. Full stack — all patterns combined ──────────────────────────────────
     full-stack-app:
       apiTypes:
         group: advanced.orkestra.io
@@ -390,8 +390,6 @@ spec:
 
       reconciler:
         default: true
-
-        # Cross-CRD: observe a matching ManagedDatabase CR
         cross:
           - kind: managed-database
             selector:
@@ -404,19 +402,18 @@ spec:
             # Generated once — credential stays stable across reconciles
             - name: "{{ .metadata.name }}-creds"
               once: true
+              rotateAfter: 30s
               data:
                 password: "{{ randomAlphanumeric 32 }}"
 
         onReconcile:
-          # External health check before creating deployments
           external:
-            - name: health-check
+            - name: healthCheck
               url: "{{ .spec.serviceUrl }}/health"
               expectedStatus: 200
               continueOnError: false
               timeout: 5s
 
-          # N regional deployments — one per spec.regions entry
           deployments:
             - name: "{{ .metadata.name }}-{{ .item }}"
               image: "{{ .spec.image }}"
@@ -425,7 +422,7 @@ spec:
                 field: spec.regions
                 as: item
               when:
-                - field: external.health-check.status
+                - field: external.healthCheck.status
                   equals: "200"
                 - field: cross.db.status.phase
                   equals: "Ready"
@@ -440,7 +437,6 @@ spec:
                   equals: "true"
 
           jobs:
-            # Cleanup — anyOf: Failed OR Succeeded
             - name: "{{ .metadata.name }}-cleanup"
               image: alpine:3.19
               command: ["/bin/sh", "-c", "echo cleanup"]
@@ -465,20 +461,19 @@ spec:
             - path: phase
               value: "HealthCheckFailed"
               when:
-                - field: external.health-check.status
+                - field: external.healthCheck.status
                   operator: exists
-                - field: external.health-check.status
+                - field: external.healthCheck.status
                   notEquals: "200"
             - path: phase
               value: "Ready"
               when:
                 - field: cross.db.status.phase
                   equals: "Ready"
-                - field: external.health-check.status
+                - field: external.healthCheck.status
                   equals: "200"
                 - field: children.deployment.status.readyReplicas
-                  operator: gt
-                  value: "0"
+                  operator: exists
             - path: regionsDeployed
               value: "{{ len .spec.regions }}"
             - path: databaseEndpoint

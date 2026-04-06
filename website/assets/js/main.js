@@ -182,24 +182,28 @@
     var toggles = document.querySelectorAll('.sidebar-section-toggle');
 
     toggles.forEach(function (toggle) {
-      toggle.addEventListener('click', function () {
-        var section = toggle.closest('.sidebar-section');
-        var isOpen = section.classList.contains('open');
-        var expanded = !isOpen;
+      var section = toggle.closest('.sidebar-section');
+      var pagesList = section ? section.querySelector('.sidebar-section-pages') : null;
 
-        section.classList.toggle('open', expanded);
-        toggle.setAttribute('aria-expanded', String(expanded));
+      // Sync initial aria state
+      var isOpen = section ? section.classList.contains('open') : false;
+      toggle.setAttribute('aria-expanded', String(isOpen));
 
-        var pagesList = section.querySelector('.sidebar-section-pages');
+      toggle.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!section) return;
+
+        var nowOpen = section.classList.contains('open');
+        var willOpen = !nowOpen;
+
+        section.classList.toggle('open', willOpen);
+        toggle.setAttribute('aria-expanded', String(willOpen));
+
         if (pagesList) {
-          pagesList.style.display = expanded ? 'flex' : 'none';
+          pagesList.style.display = willOpen ? 'flex' : 'none';
         }
       });
-
-      // Ensure initial state matches CSS
-      var section = toggle.closest('.sidebar-section');
-      var isOpen = section.classList.contains('open');
-      toggle.setAttribute('aria-expanded', String(isOpen));
     });
   }
 

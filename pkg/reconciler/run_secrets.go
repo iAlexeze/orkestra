@@ -1,12 +1,21 @@
 // pkg/reconciler/run_secrets.go
 //
-// Changes from previous version:
-//   - evaluateConditions(owner, ...) → orktypes.EvaluateWhen(resolver.Data(), ...)
-//     Uses the exported pkg/types evaluator which supports anyOf: in addition to when:
-//   - once: true support added before template resolution
-//     Checks Secret existence before evaluating randomAlphanumeric or other notes
-//   - anyOf: []Condition field on SecretTemplateSource now evaluated
-//     (requires adding AnyOf []Condition yaml:"anyOf,omitempty" to SecretTemplateSource)
+// Adds to the previous version:
+//   - orktypes.EvaluateWhen instead of evaluateConditions (fixes anyOf: being ignored)
+//   - rotateAfter: <duration> support — time-based credential rotation
+//   - tls: {...} support — self-signed CA + signed certificate generation
+//
+// Execution order per secret declaration:
+//
+//  1. EvaluateWhen(when:, anyOf:)          — skip if conditions fail
+//  2. Once/rotation check
+//     a. once: true, rotateAfter set       — check annotation, delete if expired
+//     b. once: true, no rotateAfter        — skip if exists
+//     c. once: false                       — standard create/update
+//  3. Resolve template expressions         — randomAlphanumeric evaluated here
+//  4. TLS generation (if tls: is set)      — generate CA + cert, skip data resolution
+//  5. Create/Update/CopyToNamespaces
+//  6. Annotate with generated-at           — only when rotateAfter is set
 package reconciler
 
 import (
@@ -21,29 +30,6 @@ import (
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
-// runSecrets resolves and applies Secret template declarations.
-//
-// Execution per declaration:
-//  1. Evaluate when: (allOf) and anyOf: conditions — skip if failing
-//  2. once: guard — skip if Secret already exists (for random generation)
-//  3. Resolve template expressions (randomAlphanumeric etc. evaluated here)
-//  4. Apply via create/update/copyToNamespaces
-//
-// once: true — idempotent secret generation:
-//
-//	secrets:
-//	  - name: "{{ .metadata.name }}-credentials"
-//	    once: true
-//	    data:
-//	      password: "{{ randomAlphanumeric 32 }}"
-//
-// The template is only evaluated when the Secret does not exist.
-// On every subsequent reconcile the existence check short-circuits before
-// template evaluation — randomAlphanumeric is never called again.
-//
-// WARNING: once: true is incompatible with reconcile: true.
-// Both on the same declaration logs a warning and once: is ignored —
-// the caller opted into continuous reconciliation.
 func runSecrets(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
@@ -53,13 +39,13 @@ func runSecrets(
 	update bool,
 ) error {
 	for i, src := range srcs {
-		// ── Step 1: condition evaluation ─────────────────────────────────────
-		// EvaluateWhen handles both when: (AND) and anyOf: (OR).
-		// Uses resolver.Data() which has the full CR including .children.* and
-		// .external.* — same context as template expressions.
+		// ── Step 1: condition evaluation ────────────────────────────────────────
+		// EvaluateWhen checks both when: (AND) and anyOf: (OR).
+		// IMPORTANT: must use resolver.Data() not the owner object directly.
+		// resolver.Data() includes .children.*, .external.*, .cross.* — the owner
+		// object alone does not have these injected fields.
 		if !orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf) {
 			if update || src.Reconcile {
-				// Condition no longer passes — delete if owned by this CR
 				name, _ := resolver.Resolve(src.Name)
 				ns, _ := resolver.Resolve(src.Namespace)
 				if ns == "" {
@@ -76,54 +62,112 @@ func runSecrets(
 			continue
 		}
 
-		// ── Step 2: once: guard ───────────────────────────────────────────────
-		// Must run BEFORE template resolution so random notes are not evaluated.
-		// Skip when update=true or reconcile=true (incompatible with once:).
-		if src.Once {
-			if src.Reconcile {
-				logOnceReconcileConflict(ctx, src.Name)
-			} else if !update {
-				// Resolve the name to check existence — static resolution only,
-				// no random notes involved in the name itself.
-				name, _ := resolver.Resolve(src.Name)
-				ns, _ := resolver.Resolve(src.Namespace)
-				if ns == "" {
-					ns = owner.GetNamespace()
-				}
-				exists, err := secretExists(ctx, kube, ns, name)
+		// Resolve name and namespace early — needed for existence checks
+		name, _ := resolver.Resolve(src.Name)
+		if name == "" && src.TLS != nil {
+			// TLS secrets default to "orkestra-tls" when no name declared
+			name = "orkestra-tls"
+		}
+		ns, _ := resolver.Resolve(src.Namespace)
+		if ns == "" {
+			ns = owner.GetNamespace()
+		}
+
+		// ── Step 2: once: / rotateAfter: logic ──────────────────────────────────
+		if src.Once && !update && !src.Reconcile {
+			if src.RotateAfter != "" {
+				// Rotation mode: check if the Secret has exceeded its threshold
+				needsRotation, err := secretNeedsRotation(ctx, kube, ns, name, src.RotateAfter)
 				if err != nil {
-					return fmt.Errorf("secrets[%d]: once: existence check: %w", i, err)
+					return fmt.Errorf("secrets[%d]: rotation check: %w", i, err)
 				}
-				if exists {
-					logger.FromContext(ctx).Debug().
+				if needsRotation {
+					logger.FromContext(ctx).Info().
 						Str("secret", name).
-						Str("namespace", ns).
-						Msg("once: secret already exists — skipping (random values preserved)")
-					continue
+						Str("rotateAfter", src.RotateAfter).
+						Msg("secret rotation threshold exceeded — regenerating")
+					if err := deleteSecretForRotation(ctx, kube, ns, name); err != nil {
+						return fmt.Errorf("secrets[%d]: rotation delete: %w", i, err)
+					}
+					// Fall through to create with fresh values
+				} else {
+					// Check plain existence (Secret may not exist yet)
+					exists, err := secretExists(ctx, kube, ns, name)
+					if err != nil {
+						return fmt.Errorf("secrets[%d]: existence check: %w", i, err)
+					}
+					if exists {
+						logger.FromContext(ctx).Debug().
+							Str("secret", name).
+							Msg("once: secret exists and rotation not due — skipping")
+						continue
+					}
+					// Does not exist — fall through to create
 				}
-				// Does not exist — fall through to create
+			} else {
+				// Plain once: no rotation — skip if exists
+				if src.Reconcile {
+					logOnceReconcileConflict(ctx, name)
+				} else {
+					exists, err := secretExists(ctx, kube, ns, name)
+					if err != nil {
+						return fmt.Errorf("secrets[%d]: once: existence check: %w", i, err)
+					}
+					if exists {
+						logger.FromContext(ctx).Debug().
+							Str("secret", name).
+							Msg("once: secret already exists — skipping (values preserved)")
+						continue
+					}
+				}
 			}
 		}
 
-		// ── Step 3: resolve template expressions ──────────────────────────────
+		// ── Step 3 + 4: TLS generation path ─────────────────────────────────────
+		// When tls: is declared, ignore the data: block entirely and generate
+		// a self-signed CA + signed certificate instead.
+		if src.TLS != nil {
+			if err := runTLSSecret(ctx, kube, resolver, owner, src, name, ns, update); err != nil {
+				return fmt.Errorf("secrets[%d].tls: %w", i, err)
+			}
+			continue
+		}
+
+		// ── Step 3: resolve template expressions ────────────────────────────────
 		// randomAlphanumeric, randomHex, randomBase64 are evaluated here.
-		// The once: guard above ensures this only runs on first creation.
+		// The once: check above ensures this only runs on first creation or after rotation.
 		resolved, err := resolver.ResolveSecretTemplate(src)
 		if err != nil {
 			return fmt.Errorf("secrets[%d]: %w", i, err)
 		}
+		// Apply resolved name/ns (may have been resolved before ResolveSecretTemplate)
+		if resolved.Name == "" {
+			resolved.Name = name
+		}
+		if resolved.Namespace == "" {
+			resolved.Namespace = ns
+		}
 
-		// ── Step 4: apply ─────────────────────────────────────────────────────
+		// ── Step 5: apply ────────────────────────────────────────────────────────
 		spec := orksecrets.Resolve(resolved, resolver.OwnerName())
+
+		// Attach rotation annotation when rotateAfter is declared
+		if src.RotateAfter != "" && spec.Annotations == nil {
+			spec.Annotations = generationAnnotations(src.RotateAfter)
+		} else if src.RotateAfter != "" {
+			for k, v := range generationAnnotations(src.RotateAfter) {
+				spec.Annotations[k] = v
+			}
+		}
 
 		if len(resolved.ToNamespaces) > 0 {
 			shouldSync := update || src.Reconcile
 			if shouldSync {
-				for _, ns := range resolved.ToNamespaces {
+				for _, targetNs := range resolved.ToNamespaces {
 					nsSpec := spec
-					nsSpec.Namespace = ns
+					nsSpec.Namespace = targetNs
 					if err := orksecrets.Update(ctx, kube, owner, nsSpec); err != nil {
-						return fmt.Errorf("secrets[%d].sync namespace=%s: %w", i, ns, err)
+						return fmt.Errorf("secrets[%d].sync namespace=%s: %w", i, targetNs, err)
 					}
 				}
 			} else {
@@ -150,4 +194,63 @@ func runSecrets(
 		}
 	}
 	return nil
+}
+
+// runTLSSecret handles the tls: path — generates a self-signed CA and server
+// certificate and creates/updates a kubernetes.io/tls Secret.
+func runTLSSecret(
+	ctx context.Context,
+	kube *kubeclient.Kubeclient,
+	resolver *orktmpl.Resolver,
+	owner domain.Object,
+	src orktypes.SecretTemplateSource,
+	name, namespace string,
+	update bool,
+) error {
+	// Resolve DNS names — template expressions supported per entry
+	dnsNames := make([]string, 0, len(src.TLS.DNSNames))
+	for _, raw := range src.TLS.DNSNames {
+		resolved, err := resolver.Resolve(raw)
+		if err != nil {
+			return fmt.Errorf("resolving dnsName %q: %w", raw, err)
+		}
+		if resolved != "" {
+			dnsNames = append(dnsNames, resolved)
+		}
+	}
+
+	commonName, err := resolver.Resolve(src.TLS.CommonName)
+	if err != nil {
+		return fmt.Errorf("resolving commonName: %w", err)
+	}
+	if commonName == "" {
+		// Default: <name>.<namespace>.svc
+		commonName = name + "." + namespace + ".svc"
+	}
+
+	validFor := src.TLS.ValidFor
+	if validFor == "" {
+		validFor = src.RotateAfter // use rotation period as validity duration
+	}
+	if validFor == "" {
+		validFor = "1y"
+	}
+
+	bundle, err := GenerateTLSBundle(commonName, dnsNames, validFor)
+	if err != nil {
+		return fmt.Errorf("generating TLS bundle: %w", err)
+	}
+
+	// ownerMeta := owner.(interface {
+	// 	GetName() string
+	// 	// 	GetNamespace() string
+	// 	// })
+	// 
+	// 	// return createTLSSecret(ctx, kube, ownerMeta.(interface {
+	// 	GetName() string
+	// 	GetNamespace() string
+	// 	GetUID() interface{}
+	// }), name, namespace, src.RotateAfter, bundle)
+
+	return createTLSSecret(ctx, kube, owner, name, namespace, src.RotateAfter, bundle)
 }

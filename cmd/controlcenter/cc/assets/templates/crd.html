@@ -13,10 +13,18 @@
   <!-- Sidebar -->
   <aside class="cc-sidebar" id="cc-sidebar">
     <div class="cc-sidebar-logo">
-      <a href="/controlcenter">
-        <img src="/controlcenter/assets/static/logo.png" alt="Orkestra" width="32" height="32">
-        <span>Multi-Runtime View</span>
-      </a>
+      <div class="cc-sidebar-logo-row">
+        <a href="/controlcenter">
+          <img src="/controlcenter/assets/static/logo.png" alt="Orkestra" width="32" height="32">
+          <span>Orkestra CC</span>
+        </a>
+        <button class="cc-sidebar-toggle" id="cc-sidebar-toggle" title="Collapse sidebar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+            <path d="M9 18l-6-6 6-6" opacity="0.4"/>
+          </svg>
+        </button>
+      </div>
     </div>
     <nav class="cc-sidebar-nav">
       <a href="/controlcenter" class="cc-nav-item">
@@ -46,7 +54,11 @@
 
   <main class="cc-main">
     <div class="cc-navbar">
-      <button class="cc-mobile-toggle" id="cc-mobile-toggle">☰</button>
+      <button class="cc-mobile-toggle" id="cc-mobile-toggle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
       <nav class="cc-breadcrumb">
         <a href="/controlcenter">Control Center</a>
         <span class="sep">›</span>

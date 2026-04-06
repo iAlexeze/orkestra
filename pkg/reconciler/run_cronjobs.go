@@ -39,7 +39,7 @@ func runCronJobs(
 ) error {
 	for i, src := range srcs {
 		// 1. Evaluate conditions BEFORE resolving templates
-		conditionPassed := evaluateConditions(owner, src.Conditions)
+		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf)
 
 		if !conditionPassed {
 			if update || src.Reconcile { // ← src.Reconcile here too to show that this resource is continuously managed
