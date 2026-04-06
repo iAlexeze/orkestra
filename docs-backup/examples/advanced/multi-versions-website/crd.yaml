@@ -1,0 +1,86 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: websites.demo.orkestra.io
+spec:
+  group: demo.orkestra.io
+  scope: Namespaced
+  names:
+    plural: websites
+    singular: website
+    kind: Website
+    listKind: WebsiteList
+
+  versions:
+    # ───────────────────────────────────────────────
+    # v1alpha1 — simple version with "theme"
+    # ───────────────────────────────────────────────
+    - name: v1alpha1
+      served: true
+      storage: false
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: ["image"]
+              properties:
+                image:
+                  type: string
+                replicas:
+                  type: integer
+                  default: 1
+                port:
+                  type: integer
+                  default: 80
+                theme:
+                  type: string
+
+    # ───────────────────────────────────────────────
+    # v1 — adds "seo" block, removes "theme"
+    # ───────────────────────────────────────────────
+    - name: v1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: ["image"]
+              properties:
+                image:
+                  type: string
+                replicas:
+                  type: integer
+                  default: 1
+                port:
+                  type: integer
+                  default: 80
+                seo:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+
+  # ───────────────────────────────────────────────
+  # Conversion webhook → Orkestra HTTPS endpoint
+  # ───────────────────────────────────────────────
+  conversion:
+    strategy: Webhook
+    webhook:
+      clientConfig:
+        service:
+          name: orkestra
+          namespace: orkestra-system
+          path: /convert
+          port: 8443
+        caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUREVENDQWZXZ0F3SUJBZ0lVYXdkOG04TGd3TWVKaDVhS3RRbHFhM1hLazdzd0RRWUpLb1pJaHZjTkFRRUwKQlFBd0ZqRVVNQklHQTFVRUF3d0xiM0pyWlhOMGNtRXRZMkV3SGhjTk1qWXdOREF4TVRNek16RXpXaGNOTWpjdwpOREF4TVRNek16RXpXakFXTVJRd0VnWURWUVFEREF0dmNtdGxjM1J5WVMxallUQ0NBU0l3RFFZSktvWklodmNOCkFRRUJCUUFEZ2dFUEFEQ0NBUW9DZ2dFQkFOcGNTbGJUcXBya0x0cTJEUzNYaXdSUzJMa2NsQ04xQTcyTjUweEsKQnJ0MGxiUmZWa2ZpV3ZvbGkrNElkeGFjalVNREdtMlM4bHZIOVEzdXBCbFZSNmdCbkdHN3ZjcUwzendRbkthQgpBbk5pVnl5USt0K29hbklLS3NEbGp6Wi85Z0xhZklVRElxaTF4am1oNXhGUlRnUjc4aW9taXg5dXd2WGE0RFBsClc4UnFlSkRpSUVTSG1sRUduaERZOVVzRUREQURrenZtcnpxR0tYMjlWYjcydzVqSGs5bllrV0ZrWlhsbzcyRnAKTjNTWng2SDZQMzlQMkc3MUZNaTNzbldYVkxiTDZoZ2tHRHdOYldncHVJT0toZjdTa3Q0Vkc1QUVjMjA3Qjc5NApTaDVZbWF3eUpRUC8vNzVKUVZqSndoVUVha2M1QjBqR0hFZWcrV1RjekhlY21QTUNBd0VBQWFOVE1GRXdIUVlEClZSME9CQllFRlBRTFExUmlhVGNueHM5ZHNhSDdnM1hXM0dVVU1COEdBMVVkSXdRWU1CYUFGUFFMUTFSaWFUY24KeHM5ZHNhSDdnM1hXM0dVVU1BOEdBMVVkRXdFQi93UUZNQU1CQWY4d0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQgpBR3p6V1JEdEUxaStoYWgwVkZnQi9lUkFvZm5YR1pwZm1ReDRWM1lTUUNJUzNJbFUrOXVpeHFMWG8xVlN2OURKCnp0SVR6MmNwZEx0TGlHT3phY1JRaHZhdnBHU1NnalkrK2J0dElUUjhWTW9RQ3BLaUxMN3NwSUJscWtueXZXK2wKbklzZEJBUTZxNCtlRmdPTENPeDdTbW51aCtJK3NyeDFnNmo1S0w3VUhBdElZR3gzcFAyRkVNdG9JU2FjSW9DYwpYRDhmTVVlZVRWaUNLYzdQeXgrY0JLY00yd0MrRWhuN0NYQlUxVkczVWdIcE1ibEs2alZUZU5PbEFWNUdnWkk2CncydWJDcVUvN0xuQm91MmZuWlhzYWxJTWRJL1U2NUhEd1pDWG02N29zTkxaUnlaYmZodWdVY2xGL0tRY2tPMXUKVDR3Tm5MNzRHRGl1ZFM0WnVHUEgvTTQ9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+      conversionReviewVersions: ["v1"]

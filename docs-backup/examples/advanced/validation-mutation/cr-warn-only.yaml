@@ -1,0 +1,26 @@
+# test/cr-warn-only.yaml
+# Test case D: SHOULD SUCCEED WITH WARNINGS — deny rules pass, warn rules fire
+#
+# Expected with ENABLE_ADMISSION_WEBHOOK=true:
+#   Warning: orkestra: field "metadata.labels.team": all Website resources should...
+#   Warning: orkestra: field "spec.enabled": spec.enabled should be declared explicitly
+#   website.demo.orkestra.io/warn-only-site created
+#
+# After apply, check the health API to see active warnings:
+#   curl localhost:8080/katalog/website | jq '.validation.activeWarnings'
+#   Should show two active warnings for "warn-only-site"
+#
+# After adding the labels, apply again:
+#   kubectl label website warn-only-site team=platform
+#   The active warning for metadata.labels.team clears on next reconcile
+apiVersion: demo.orkestra.io/v1alpha1
+kind: Website
+metadata:
+  name: warn-only-site
+  namespace: orkestra
+  # no team label   → warn fires
+spec:
+  image: myorg/nginx:1.25
+  replicas: 2
+  port: 8080
+  # enabled absent  → warn fires

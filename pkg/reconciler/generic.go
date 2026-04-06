@@ -7,9 +7,9 @@ import (
 
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/event"
+	"github.com/ialexeze/orkestra/pkg/kontroller"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
-	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -43,6 +43,7 @@ import (
 //  3. Add the field to orktypes.HookTemplates
 //     That is all — generic.go does not change.
 type GenericReconciler[T domain.Object] struct {
+	katalogRegistry  *kontroller.ResourceKatalog
 	providerRegistry orktypes.ProviderRegistry
 	informer         cache.SharedIndexInformer
 	event            *event.Event
@@ -65,13 +66,14 @@ type CRDInfo struct {
 }
 
 func NewGenericReconciler[T domain.Object](
-	providerRegistry orktypes.ProviderRegistry,
 	crd CRDInfo,
 	informer cache.SharedIndexInformer,
 	ev *event.Event,
 	kube *kubeclient.Kubeclient,
 	anyHooks domain.AnyReconcileHooks,
 	newObj func() T,
+	katalogRegistry *kontroller.ResourceKatalog,
+	providerRegistry orktypes.ProviderRegistry,
 ) *GenericReconciler[T] {
 
 	var hooks domain.ReconcileHooks[T]
@@ -87,6 +89,7 @@ func NewGenericReconciler[T domain.Object](
 	}
 
 	return &GenericReconciler[T]{
+		katalogRegistry:  katalogRegistry,
 		providerRegistry: providerRegistry,
 		crd:              crd,
 		rc:               crd.ReconcilerConfig,
@@ -302,102 +305,6 @@ func (r *GenericReconciler[T]) handleDeletion(ctx context.Context, obj T) error 
 	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.Kind+"Deleted",
 		fmt.Sprintf("Successfully deleted %s %s/%s",
 			r.crd.GVK, obj.GetNamespace(), obj.GetName()))
-
-	return nil
-}
-
-// ── Template dispatch ─────────────────────────────────────────────────────────
-// runTemplateReconcile and runTemplateOnDelete are the only places in this file
-// that know which resource types exist. Adding a new resource type means adding
-// one line here and one new run_<resource>.go file. generic.go changes no further.
-
-// runTemplateReconcile interprets onCreate and onReconcile blocks.
-// Each resource type is handled by its own run_xxx() function.
-func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj domain.Object) error {
-	kube, ok := kubeclient.FromContext(ctx)
-	if !ok {
-		return fmt.Errorf("kubeclient not found in context")
-	}
-
-	resolver, err := orktmpl.NewResolver(ctx, obj)
-	if err != nil {
-		return fmt.Errorf("building resolver: %w", err)
-	}
-
-	// ── onCreate ─────────────────────────────────────────────────────────────
-	if t := r.rc.OnCreate; t != nil {
-		if err := runDeployments(ctx, kube, resolver, obj, t.Deployments, false); err != nil {
-			return err
-		}
-		if err := runServices(ctx, kube, resolver, obj, t.Services, false); err != nil {
-			return err
-		}
-		if err := runSecrets(ctx, kube, resolver, obj, t.Secrets, false); err != nil {
-			return err
-		}
-		if err := runConfigMaps(ctx, kube, resolver, obj, t.ConfigMaps, false); err != nil {
-			return err
-		}
-		if err := runServiceAccounts(ctx, kube, resolver, obj, t.ServiceAccounts, false); err != nil {
-			return err
-		}
-		if err := runJobs(ctx, kube, resolver, obj, t.Jobs); err != nil {
-			return err
-		}
-		if err := runCronJobs(ctx, kube, resolver, obj, t.CronJobs, false); err != nil {
-			return err
-		}
-	}
-
-	// ── onReconcile ──────────────────────────────────────────────────────────
-	if t := r.rc.OnReconcile; t != nil {
-		if err := runDeployments(ctx, kube, resolver, obj, t.Deployments, true); err != nil {
-			return err
-		}
-		if err := runServices(ctx, kube, resolver, obj, t.Services, true); err != nil {
-			return err
-		}
-		if err := runSecrets(ctx, kube, resolver, obj, t.Secrets, true); err != nil {
-			return err
-		}
-		if err := runConfigMaps(ctx, kube, resolver, obj, t.ConfigMaps, true); err != nil {
-			return err
-		}
-
-		// Added to use when condition in both ways
-		if err := runJobs(ctx, kube, resolver, obj, t.Jobs); err != nil {
-			return err
-		}
-		if err := runCronJobs(ctx, kube, resolver, obj, t.CronJobs, true); err != nil {
-			return err
-		}
-		if err := runServiceAccounts(ctx, kube, resolver, obj, t.ServiceAccounts, true); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// runTemplateOnDelete interprets the onDelete block.
-// Currently handles Jobs — the primary onDelete use case.
-// Owner references handle all other resource cleanup automatically.
-func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, obj domain.Object) error {
-	kube, ok := kubeclient.FromContext(ctx)
-	if !ok {
-		return fmt.Errorf("kubeclient not found in context")
-	}
-
-	resolver, err := orktmpl.NewResolver(ctx, obj)
-	if err != nil {
-		return fmt.Errorf("building resolver: %w", err)
-	}
-
-	if t := r.rc.OnDelete; t != nil {
-		if err := runJobs(ctx, kube, resolver, obj, t.Jobs); err != nil {
-			return err
-		}
-	}
 
 	return nil
 }

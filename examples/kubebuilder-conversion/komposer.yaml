@@ -13,10 +13,10 @@ sources:
 
 spec:
   crds:
-    - name: cronjob-v2
+    cronjob-v2:
       workers: 8
       resync: 15s
 
-    - name: cronjob-v1
+    cronjob-v1:
       workers: 4
       resync: 15s

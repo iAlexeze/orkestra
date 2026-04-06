@@ -46,6 +46,9 @@ type ResolvedSecretSpec struct {
 
 	// Labels — applied to Secret metadata.
 	Labels map[string]string
+
+	// Annotations — applied to Secret metadata.
+	Annotations map[string]string
 }
 
 // Create creates a Secret in the target namespace if it does not already exist.

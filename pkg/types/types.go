@@ -303,6 +303,14 @@ type DeploymentTemplateSource struct {
 	// behavior, and conditional provisioning without writing Go code.
 
 	Conditions []Condition `yaml:"when,omitempty"`
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	AnyOf []Condition `yaml:"anyOf,omitempty"`
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -376,6 +384,15 @@ type ServiceTemplateSource struct {
 	// behavior, and conditional provisioning without writing Go code.
 
 	Conditions []Condition `yaml:"when,omitempty"`
+
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	AnyOf []Condition `yaml:"anyOf,omitempty"`
 }
 
 // ── Pod ───────────────────────────────────────────────────────────────────────
@@ -444,6 +461,15 @@ type PodTemplateSource struct {
 	// behavior, and conditional provisioning without writing Go code.
 
 	Conditions []Condition `yaml:"when,omitempty"`
+
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	AnyOf []Condition `yaml:"anyOf,omitempty"`
 }
 
 // ── Job ───────────────────────────────────────────────────────────────────────
@@ -525,6 +551,15 @@ type JobTemplateSource struct {
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
 	// onReconcile. When false (default), only runs on onCreate (idempotent create).
 	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	AnyOf []Condition `yaml:"anyOf,omitempty"`
 }
 
 // ── CronJob ───────────────────────────────────────────────────────────────────
@@ -601,6 +636,15 @@ type CronJobTemplateSource struct {
 	FailedJobsHistoryLimit     string `yaml:"failedJobsHistoryLimit,omitempty"`
 	ConcurrencyPolicy          string `yaml:"concurrencyPolicy,omitempty"`
 	StartingDeadlineSeconds    string `yaml:"startingDeadlineSeconds,omitempty"`
+
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	AnyOf []Condition `yaml:"anyOf,omitempty"`
 }
 
 // ── ConfigMap ─────────────────────────────────────────────────────────────────
@@ -675,6 +719,14 @@ type ConfigMapTemplateSource struct {
 	// behavior, and conditional provisioning without writing Go code.
 
 	Conditions []Condition `yaml:"when,omitempty"`
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	AnyOf []Condition `yaml:"anyOf,omitempty"`
 }
 
 // ── Secret ─────────────────────────────────────────────────────────────────────
@@ -719,6 +771,9 @@ type SecretTemplateSource struct {
 	// Labels — applied to Secret metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
 
+	// Annotations — applied to Secret metadata.
+	Annotations map[string]string `json:"annotations,omitempty"`
+
 	// FromSecret — name of an existing Secret to copy data from.
 	// Orkestra reads this at reconcile time — copies stay in sync with the source.
 	FromSecret string `yaml:"fromSecret" validate:"omitempty"`
@@ -758,6 +813,57 @@ type SecretTemplateSource struct {
 	// behavior, and conditional provisioning without writing Go code.
 
 	Conditions []Condition `yaml:"when,omitempty"`
+
+	// Once controls idempotent secret generation.
+	// true  — evaluate templates and create only when the Secret does not exist.
+	//         Use with random notes (randomAlphanumeric, randomHex, randomBase64).
+	// false — standard create/update behavior (default).
+	Once bool `yaml:"once,omitempty"`
+
+	// ForEach declares dynamic expansion (same as other resource types)
+	ForEach *ForEachSpec `yaml:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions (same as other resource types)
+	AnyOf []Condition `yaml:"anyOf,omitempty"`
+
+	// RotateAfter declares a time-based rotation threshold.
+	// When set alongside once: true, the Secret is recreated when its age
+	// exceeds this duration. The creation time is tracked via the annotation:
+	//   orkestra.konductor.io/generated-at: "2026-04-06T08:00:00Z"
+	//
+	// Supported formats: 30s, 5m, 12h, 90d, 1y
+	// Days (d) and years (y) are extensions beyond Go's standard duration format.
+	//
+	// Example:
+	//   secrets:
+	//     - name: "{{ .metadata.name }}-credentials"
+	//       once: true
+	//       rotateAfter: 90d
+	//       data:
+	//         password: "{{ randomAlphanumeric 32 }}"
+	RotateAfter string `yaml:"rotateAfter,omitempty"`
+
+	// TLS declares self-signed CA and server certificate generation.
+	// When set, the data: block is ignored — the Secret is created as type
+	// kubernetes.io/tls with fields: tls.crt, tls.key, ca.crt
+	//
+	// Default Secret name when name is empty: "orkestra-tls"
+	// Default validFor when empty: same as rotateAfter, or "1y"
+	//
+	// Example:
+	//   secrets:
+	//     - name: "{{ .metadata.name }}-tls"
+	//       once: true
+	//       rotateAfter: 1y
+	//       tls:
+	//         commonName: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc"
+	//         dnsNames:
+	//           - "{{ .metadata.name }}"
+	//           - "{{ .metadata.name }}.{{ .metadata.namespace }}"
+	//           - "{{ .metadata.name }}.{{ .metadata.namespace }}.svc"
+	//           - "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+	//         validFor: 1y
+	TLS *TLSSpec `yaml:"tls,omitempty"`
 }
 
 // ── ServiceAccount ────────────────────────────────────────────────────────────
@@ -815,6 +921,15 @@ type ServiceAccountTemplateSource struct {
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
 	// onReconcile. When false (default), only runs on onCreate (idempotent create).
 	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	AnyOf []Condition `yaml:"anyOf,omitempty"`
 }
 
 // ── HookTemplates ─────────────────────────────────────────────────────────────
@@ -856,6 +971,16 @@ type HookTemplates struct {
 	Secrets         []SecretTemplateSource         `yaml:"secrets"      validate:"omitempty"`
 	ConfigMaps      []ConfigMapTemplateSource      `yaml:"configMaps"      validate:"omitempty"`
 	ServiceAccounts []ServiceAccountTemplateSource `yaml:"serviceAccounts" validate:"omitempty"`
+
+	// External declares HTTP calls to make before resource creation.
+	// Results available as .external.<n>.status, .body, .error
+	External []ExternalCallSpec `yaml:"external,omitempty"`
+
+	// TODO: find a better location for it
+	// Ordered controls whether deletion happens sequentially with verification.
+	// true  — delete groups in order, verify each is gone before proceeding
+	// false — delete all resources via owner references (default, parallel)
+	Ordered bool `yaml:"ordered,omitempty"`
 
 	// TODO with placeholer
 	StatefulSets                []PlaceholderSource `yaml:"statefulSets"    validate:"omitempty"`
@@ -971,6 +1096,10 @@ type ReconcilerConfig struct {
 	// RawProviders is the raw YAML map, populated during unmarshal.
 	// Converted to ProviderBlocks in the Katalog loading step.
 	RawProviders map[string][]map[string]interface{} `yaml:"providers,omitempty"`
+
+	// Cross declares cross-CRD observations.
+	// Read before any resource groups — results available as .cross.<as>.status.*
+	Cross []CrossCRDDeclaration `yaml:"cross,omitempty"`
 }
 
 // HookDeclaration declares where a Go hook function lives.

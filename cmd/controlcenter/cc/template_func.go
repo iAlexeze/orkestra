@@ -123,4 +123,19 @@ var templateFuncs = template.FuncMap{
 	"toLower": func(s string) string {
 		return strings.ToLower(s)
 	},
+	// phaseBadge returns safe HTML for a phase badge without CSS variables in template actions
+	"phaseBadge": func(phase string) template.HTML {
+		switch {
+		case phase == "Succeeded":
+			return template.HTML(`<span class="cc-badge cc-badge-healthy">✓ ` + template.HTMLEscapeString(phase) + `</span>`)
+		case phase == "Failed":
+			return template.HTML(`<span class="cc-badge cc-badge-degraded">✗ ` + template.HTMLEscapeString(phase) + `</span>`)
+		case strings.HasPrefix(phase, "Running"):
+			return template.HTML(`<span class="cc-badge cc-badge-started">◌ ` + template.HTMLEscapeString(phase) + `</span>`)
+		case phase == "Pending":
+			return template.HTML(`<span class="cc-badge cc-badge-pending">◷ ` + template.HTMLEscapeString(phase) + `</span>`)
+		default:
+			return template.HTML(`<span class="cc-badge cc-badge-neutral">` + template.HTMLEscapeString(phase) + `</span>`)
+		}
+	},
 }

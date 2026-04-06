@@ -1,0 +1,11 @@
+# 02 — external: health gate
+# Change spec.serviceUrl to a URL that returns 200 to unblock the Deployment
+apiVersion: advanced.orkestra.io/v1alpha1
+kind: GatedApp
+metadata:
+  name: my-gated-app
+  namespace: default
+spec:
+  image: nginx:1.25
+  serviceUrl: "https://controlcenter.orkestra.sh/controlcenter"   # replace with your service
+

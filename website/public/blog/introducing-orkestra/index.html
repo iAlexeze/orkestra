@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en-us" data-theme="">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+<title>Introducing Orkestra: Declarative Kubernetes Operators Without the Go — Orkestra</title>
+
+<meta name="description" content="Write a YAML file, get a production-grade Kubernetes operator. No controller code, no informers, no boilerplate.">
+<meta name="author" content="Orkestra">
+
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="Introducing Orkestra: Declarative Kubernetes Operators Without the Go — Orkestra">
+<meta property="og:description" content="Write a YAML file, get a production-grade Kubernetes operator. No controller code, no informers, no boilerplate.">
+<meta property="og:url" content="http://localhost:8191/blog/introducing-orkestra/">
+<meta property="og:site_name" content="Orkestra">
+
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Introducing Orkestra: Declarative Kubernetes Operators Without the Go — Orkestra">
+<meta name="twitter:description" content="Write a YAML file, get a production-grade Kubernetes operator. No controller code, no informers, no boilerplate.">
+
+
+<link rel="icon" type="image/png" href="/img/fav.png">
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+
+
+
+<link rel="stylesheet" href="/css/main.min.e4e59efb69ddf205af473c23d6ef6c1d33e679af451644cb448c3f24ded94953.css">
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3" crossorigin>
+
+
+
+<script>
+  (function() {
+    var saved = localStorage.getItem('theme');
+    
+    var theme = saved ? saved : 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+
+</head>
+<body class="page-content">
+
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+  <div class="navbar-inner">
+    
+    <a href="/" class="navbar-logo" aria-label="Orkestra home">
+      <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
+      <span class="logo-text">Orkestra</span>
+      <span class="version-badge">v1</span>
+    </a>
+
+    
+    <ul class="navbar-links" role="list">
+      
+      <li>
+        <a href="/docs/" class="navbar-link"
+          >
+          Docs
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-link"
+          >
+          Publications
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/docs/use-cases/" class="navbar-link"
+          >
+          Use Cases
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/blog/" class="navbar-link"
+          >
+          Blog
+          
+        </a>
+      </li>
+      
+    </ul>
+
+    
+    <div class="navbar-controls">
+      
+      <a href="https://controlcenter.orkestra.sh" class="btn-controlcenter" target="_blank" rel="noopener noreferrer" aria-label="Open Control Center">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+        Control Center
+        <span class="cc-live-dot" title="Live instance"></span>
+      </a>
+
+      
+      <a href="https://github.com/iAlexeze/orkestra" class="btn-github" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+        </svg>
+        <span>GitHub</span>
+      </a>
+
+      
+      <button class="btn-theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+        </svg>
+      </button>
+
+      
+      <button class="btn-hamburger" id="mobile-menu-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+      </button>
+    </div>
+  </div>
+
+  
+  <div class="navbar-mobile" id="mobile-menu" aria-hidden="true">
+    <ul role="list">
+      
+      <li>
+        <a href="/docs/" class="navbar-mobile-link"
+          >
+          Docs
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-mobile-link"
+          >
+          Publications
+        </a>
+      </li>
+      
+      <li>
+        <a href="/docs/use-cases/" class="navbar-mobile-link"
+          >
+          Use Cases
+        </a>
+      </li>
+      
+      <li>
+        <a href="/blog/" class="navbar-mobile-link"
+          >
+          Blog
+        </a>
+      </li>
+      
+    </ul>
+  </div>
+</nav>
+
+
+  <main id="main-content" tabindex="-1">
+    
+<div class="blog-single-layout">
+  <article class="blog-single">
+    <header class="blog-single-header">
+      <a href="/blog/" class="blog-back-link">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        All posts
+      </a>
+
+      
+      <div class="blog-tags" style="margin-top:1.5rem">
+        
+        <span class="blog-tag">release</span>
+        
+        <span class="blog-tag">announcement</span>
+        
+      </div>
+      
+
+      <h1 class="blog-single-title">Introducing Orkestra: Declarative Kubernetes Operators Without the Go</h1>
+
+      
+      <p class="blog-single-desc">Write a YAML file, get a production-grade Kubernetes operator. No controller code, no informers, no boilerplate.</p>
+      
+
+      <div class="blog-single-meta">
+        <span class="blog-author">Orkestra Team</span>
+        <time class="blog-date" datetime="2025-09-01">September 1, 2025</time>
+        <span class="blog-reading-time">1 min read</span>
+      </div>
+    </header>
+
+    <div class="blog-single-body prose">
+      <p>Kubernetes operators are powerful — but writing one from scratch means dealing with controllers, informers, workqueues, RBAC, CRD schemas, and hundreds of lines of Go before you&rsquo;ve even started on your business logic.</p>
+<p>Orkestra flips this model. You write a single YAML file — a <strong>Katalog</strong> — and Orkestra generates and runs the full operator: CRD registration, controller setup, reconciliation loop, status propagation, drift correction, and live observability dashboard.</p>
+<h2 id="the-core-idea">The core idea</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: website-operator
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">website</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">apiTypes</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">group</span>: demo.orkestra.io
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">version</span>: v1alpha1
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">kind</span>: Website
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconciler</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">onCreate</span>:
+</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">deployments</span>:
+</span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
+</span></span></code></pre></div><p>That&rsquo;s a complete operator. Apply it, and Orkestra registers the <code>Website</code> CRD, starts the reconciler, and launches the Control Center dashboard — all in under a minute.</p>
+<h2 id="whats-included">What&rsquo;s included</h2>
+<ul>
+<li><strong>Zero-code operators</strong> — declare CRD schema, managed resources, and lifecycle in YAML</li>
+<li><strong>Dependency ordering</strong> — <code>dependsOn</code> between CRDs, startup sequencing guaranteed</li>
+<li><strong>Drift correction</strong> — <code>reconcile: true</code> on any resource keeps it in sync</li>
+<li><strong>Status propagation</strong> — template expressions written automatically to <code>.status</code></li>
+<li><strong>Control Center</strong> — live dashboard on port 8090, built into the runtime</li>
+</ul>
+<h2 id="try-it">Try it</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run --katalog ./katalog.yaml
+</span></span></code></pre></div><p>See the <a href="/docs/getting-started/">Getting Started guide</a> to build your first operator in under 10 minutes.</p>
+
+    </div>
+
+    <footer class="blog-single-footer">
+      <a href="/blog/" class="blog-back-link">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Back to Blog
+      </a>
+      
+      <a href="https://github.com/iAlexeze/orkestra/discussions" target="_blank" rel="noopener noreferrer" class="blog-discuss-link">
+        Discuss on GitHub
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
+      </a>
+      
+    </footer>
+  </article>
+
+  <aside class="blog-single-toc">
+    
+    <div class="toc-inner">
+      <p class="toc-title">On this page</p>
+      <nav id="TableOfContents">
+  <ul>
+    <li><a href="#the-core-idea">The core idea</a></li>
+    <li><a href="#whats-included">What&rsquo;s included</a></li>
+    <li><a href="#try-it">Try it</a></li>
+  </ul>
+</nav>
+    </div>
+    
+  </aside>
+</div>
+
+  </main>
+
+  <footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a href="/" class="footer-logo" aria-label="Orkestra home">
+        <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="28">
+        <span class="footer-logo-text">Orkestra</span>
+      </a>
+      <p class="footer-tagline">The declarative control plane<br>for Kubernetes operators.</p>
+      <div class="footer-social">
+        <a href="https://github.com/iAlexeze/orkestra" target="_blank" rel="noopener noreferrer" aria-label="GitHub" class="footer-social-link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+        </a>
+        <a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer" aria-label="Twitter / X" class="footer-social-link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4 class="footer-col-title">Documentation</h4>
+        <ul role="list">
+          <li><a href="/docs/getting-started/">Getting Started</a></li>
+          <li><a href="/docs/basics/">Basics</a></li>
+          <li><a href="/docs/concepts/">Concepts</a></li>
+          <li><a href="/docs/guides/">Guides</a></li>
+          <li><a href="/docs/reference/">Reference</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-col-title">Community</h4>
+        <ul role="list">
+          <li><a href="https://github.com/iAlexeze/orkestra" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/issues" target="_blank" rel="noopener noreferrer">Issues</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/discussions" target="_blank" rel="noopener noreferrer">Discussions</a></li>
+          <li><a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer">@orkspace</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-col-title">Resources</h4>
+        <ul role="list">
+          <li><a href="https://github.com/iAlexeze/orkestra/releases" target="_blank" rel="noopener noreferrer">Releases</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
+          <li><a href="/docs/reference/">API Reference</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>&copy; 2026 Orkestra. Released under the Apache 2.0 License.</p>
+    <p class="footer-built">Built with <a href="https://gohugo.io" target="_blank" rel="noopener noreferrer">Hugo</a></p>
+  </div>
+</footer>
+
+
+  
+  
+  <script src="/js/main.min.b0ef969079d43df81dbcfc1611c66605d62a7ce906aac181917cdc66b92a5223.js" defer></script>
+
+  
+  
+  <script src="https://cdn.jsdelivr.net/npm/@docsearch/js@3" crossorigin></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var el = document.getElementById('docsearch');
+      if (!el) return;
+      docsearch({
+        appId: "\"1YJ1C111LH\"",
+        apiKey: "\"b4bbac9a499ecc51109f23abd327cf29\"",
+        indexName: "\"orkestra\"",
+        container: '#docsearch',
+        debug: false,
+      });
+    });
+  </script>
+  
+</body>
+</html>

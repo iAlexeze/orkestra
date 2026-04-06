@@ -66,25 +66,23 @@ func handleNotFound(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusNotFound)
 	fmt.Fprintf(w, `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 - Orkestra Control Center</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>404 – Orkestra Control Center</title>
     <link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
+    <link rel="stylesheet" href="/controlcenter/assets/static/css/style.css">
+    <script>(function(){var t=localStorage.getItem('cc-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
 </head>
-<body class="bg-gray-50">
-    <div class="min-h-screen flex items-center justify-center px-4">
-        <div class="text-center">
-            <div class="text-6xl mb-4">🔍</div>
-            <h1 class="text-4xl font-bold text-gray-900 mb-2">404</h1>
-            <p class="text-gray-600 mb-4">Page not found</p>
-            <p class="text-sm text-gray-500 mb-6">The page you're looking for doesn't exist or has been moved.</p>
-            <a href="/controlcenter" class="inline-flex items-center px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition">
-                ← Back to Control Center
-            </a>
-        </div>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg-base)">
+    <div style="text-align:center;padding:40px;max-width:400px">
+        <div style="font-size:60px;font-weight:700;color:var(--text-muted);margin-bottom:8px">404</div>
+        <h1 style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:8px">Page not found</h1>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:6px">The page you're looking for doesn't exist or has been moved.</p>
+        <a href="/controlcenter" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--accent);color:#fff;border-radius:6px;text-decoration:none;font-size:13px;margin-top:16px">
+            ← Back to Control Center
+        </a>
     </div>
 </body>
 </html>`)

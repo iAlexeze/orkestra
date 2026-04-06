@@ -60,7 +60,7 @@ metadata:
 
 spec:
   crds:
-    - name: website
+    website:
       apiTypes:
         group: demo.orkestra.io
         version: v1alpha1

@@ -45,17 +45,17 @@ data:
     spec:
       crds:
         # Override the postgres pattern for production
-        - name: postgres
+        postgres:
           workers: 8
           resync: 30s
           # All other postgres behavior inherited from the OCI pattern
 
         # Override the website operator for production
-        - name: website
+        website:
           workers: 6
           resync: 15s
           # All other website behavior inherited from the local Katalog
         
         # Disable the database operator since we now have Postrgres
-        - name: database
+        database:
           enabled: false

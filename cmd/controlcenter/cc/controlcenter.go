@@ -3,6 +3,7 @@ package controlcenter
 import (
 	"bytes"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -14,7 +15,7 @@ import (
 	"time"
 )
 
-//go:embed assets/templates/*.html assets/static/*
+//go:embed assets/templates/*.html assets/static/* assets/static/css/* assets/static/js/*
 var assets embed.FS
 
 const assetsDir = "assets/templates"
@@ -44,11 +45,12 @@ type Instance struct {
 // ─────────────────────────────────────────────────────────────────────────────
 
 type ControlCenter struct {
-	urls      []string
-	instances map[string]*Instance // keyed by URL
-	mu        sync.RWMutex
-	config    Config
-	ready     atomic.Bool
+	urls        []string
+	instances   map[string]*Instance // keyed by URL
+	mu          sync.RWMutex
+	config      Config
+	ready       atomic.Bool
+	subscribers sync.Map // map[chan struct{}]struct{}
 }
 
 // New creates and starts a ControlCenter. Background fetches begin immediately.
@@ -86,12 +88,14 @@ func (cc *ControlCenter) backgroundFetchLoop() {
 
 func (cc *ControlCenter) fetchAllKatalogs() {
 	cc.mu.Lock()
-	defer cc.mu.Unlock()
 	anyOK := false
 	for _, inst := range cc.instances {
 		kat, err := inst.Client.FetchKatalog()
 		if err != nil {
 			log.Printf("WARN: fetch from %s: %v", inst.URL, err)
+			// Clear stale data — if the API is unreachable the katalog must
+			// disappear from the UI rather than show outdated information.
+			inst.Katalog = nil
 			continue
 		}
 		inst.Katalog = kat
@@ -99,6 +103,53 @@ func (cc *ControlCenter) fetchAllKatalogs() {
 		log.Printf("INFO: fetched katalog %q from %s (%d CRDs)", kat.Name, inst.URL, len(kat.CRDs))
 	}
 	cc.ready.Store(anyOK)
+	cc.mu.Unlock()
+	cc.notifySubscribers()
+}
+
+// notifySubscribers sends a signal to all connected SSE clients.
+func (cc *ControlCenter) notifySubscribers() {
+	cc.subscribers.Range(func(key, _ interface{}) bool {
+		ch := key.(chan struct{})
+		select {
+		case ch <- struct{}{}:
+		default:
+		}
+		return true
+	})
+}
+
+// ServeSSE handles Server-Sent Events for live page reloads.
+func (cc *ControlCenter) ServeSSE(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	ch := make(chan struct{}, 1)
+	cc.subscribers.Store(ch, struct{}{})
+	defer cc.subscribers.Delete(ch)
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	// Send initial connection confirmation
+	fmt.Fprintf(w, "data: connected\n\n")
+	flusher.Flush()
+
+	for {
+		select {
+		case <-ch:
+			fmt.Fprintf(w, "data: update\n\n")
+			flusher.Flush()
+		case <-r.Context().Done():
+			return
+		}
+	}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -162,14 +213,20 @@ func (cc *ControlCenter) renderError(w http.ResponseWriter, _ *http.Request, mes
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusInternalServerError)
 	fmt.Fprintf(w, `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8">
-<script src="https://cdn.tailwindcss.com"></script></head>
-<body class="bg-gray-50 flex items-center justify-center min-h-screen">
-  <div class="text-center p-8">
-    <div class="text-5xl mb-4">⚠️</div>
-    <h1 class="text-2xl font-bold text-gray-900 mb-2">Something went wrong</h1>
-    <p class="text-gray-600 mb-6 max-w-md font-mono text-sm">%s</p>
-    <a href="/controlcenter" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition">
+<html lang="en" data-theme="dark">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Error – Orkestra Control Center</title>
+<link rel="stylesheet" href="/controlcenter/assets/static/css/style.css">
+<link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
+<link rel="stylesheet" href="/controlcenter/assets/static/css/style.css">
+<script>(function(){var t=localStorage.getItem('cc-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg-base)">
+  <div style="text-align:center;padding:40px;max-width:480px">
+    <div style="font-size:36px;margin-bottom:16px;opacity:0.6">⚠</div>
+    <h1 style="font-size:20px;font-weight:700;color:var(--text-primary);margin-bottom:8px">Something went wrong</h1>
+    <p style="font-size:12px;font-family:monospace;color:var(--text-muted);margin-bottom:24px;word-break:break-all">%s</p>
+    <a href="/controlcenter" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--accent);color:#fff;border-radius:6px;text-decoration:none;font-size:13px">
       ← Control Center
     </a>
   </div>
@@ -181,19 +238,21 @@ func (cc *ControlCenter) handleNotFound(w http.ResponseWriter, _ *http.Request) 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusNotFound)
 	fmt.Fprint(w, `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8">
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png"></head>
-<body class="bg-gray-50">
-  <div class="min-h-screen flex items-center justify-center px-4">
-    <div class="text-center">
-      <div class="text-6xl mb-4">🔍</div>
-      <h1 class="text-4xl font-bold text-gray-900 mb-2">404</h1>
-      <p class="text-gray-600 mb-6">The page you're looking for doesn't exist.</p>
-      <a href="/controlcenter" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition">
-        ← Back to Control Center
-      </a>
-    </div>
+<html lang="en" data-theme="dark">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>404 – Orkestra Control Center</title>
+<link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
+<link rel="stylesheet" href="/controlcenter/assets/static/css/style.css">
+<script>(function(){var t=localStorage.getItem('cc-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg-base)">
+  <div style="text-align:center;padding:40px;max-width:400px">
+    <div style="font-size:60px;font-weight:700;color:var(--text-muted);margin-bottom:8px">404</div>
+    <h1 style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:8px">Page not found</h1>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px">The page you're looking for doesn't exist.</p>
+    <a href="/controlcenter" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--accent);color:#fff;border-radius:6px;text-decoration:none;font-size:13px">
+      ← Back to Control Center
+    </a>
   </div>
 </body></html>`)
 }
@@ -227,6 +286,12 @@ func (cc *ControlCenter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.HasPrefix(path, "/assets/"):
 		cc.serveAsset(w, r, strings.TrimPrefix(path, "/assets/"))
+
+	case path == "/sse":
+		cc.ServeSSE(w, r)
+
+	case path == "/api/snapshot":
+		cc.handleAPISnapshot(w, r)
 
 	case path == "/metrics":
 		cc.handleMetricsPage(w, r)
@@ -298,6 +363,88 @@ func (cc *ControlCenter) routeCR(w http.ResponseWriter, r *http.Request, instanc
 // ─────────────────────────────────────────────────────────────────────────────
 // Page handlers
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Live snapshot API — used by JS for partial DOM updates (no full-page reload)
+// ─────────────────────────────────────────────────────────────────────────────
+
+type StatsSnap struct {
+	TotalKatalogs   int `json:"totalKatalogs"`
+	HealthyKatalogs int `json:"healthyKatalogs"`
+	TotalCRDs       int `json:"totalCRDs"`
+	TotalWorkers    int `json:"totalWorkers"`
+	TotalResources  int `json:"totalResources"`
+}
+
+type KatalogSnap struct {
+	Name           string `json:"name"`
+	Healthy        bool   `json:"healthy"`
+	TotalCRDs      int    `json:"totalCRDs"`
+	HealthyCRDs    int    `json:"healthyCRDs"`
+	TotalWorkers   int    `json:"totalWorkers"`
+	TotalResources int    `json:"totalResources"`
+}
+
+type SnapshotData struct {
+	Stats    StatsSnap     `json:"stats"`
+	Katalogs []KatalogSnap `json:"katalogs"`
+	Updated  string        `json:"updated"`
+}
+
+func (cc *ControlCenter) handleAPISnapshot(w http.ResponseWriter, _ *http.Request) {
+	cc.mu.RLock()
+	insts := make([]*Instance, 0, len(cc.instances))
+	for _, inst := range cc.instances {
+		if inst.Katalog != nil {
+			insts = append(insts, inst)
+		}
+	}
+	cc.mu.RUnlock()
+
+	sort.Slice(insts, func(i, j int) bool {
+		return insts[i].Katalog.Name < insts[j].Katalog.Name
+	})
+
+	stats := StatsSnap{}
+	var katalogs []KatalogSnap
+
+	for _, inst := range insts {
+		kat := inst.Katalog
+		healthyCRDs := 0
+		for _, crd := range kat.CRDs {
+			if crd.Healthy {
+				healthyCRDs++
+			}
+		}
+		stats.TotalKatalogs++
+		stats.TotalCRDs += len(kat.CRDs)
+		stats.TotalWorkers += sumWorkers(kat.CRDs)
+		stats.TotalResources += sumResources(kat.CRDs)
+		if kat.Healthy {
+			stats.HealthyKatalogs++
+		}
+		katalogs = append(katalogs, KatalogSnap{
+			Name:           kat.Name,
+			Healthy:        kat.Healthy,
+			TotalCRDs:      len(kat.CRDs),
+			HealthyCRDs:    healthyCRDs,
+			TotalWorkers:   sumWorkers(kat.CRDs),
+			TotalResources: sumResources(kat.CRDs),
+		})
+	}
+
+	if katalogs == nil {
+		katalogs = []KatalogSnap{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-cache")
+	json.NewEncoder(w).Encode(SnapshotData{
+		Stats:    stats,
+		Katalogs: katalogs,
+		Updated:  time.Now().UTC().Format(time.RFC3339),
+	})
+}
 
 func (cc *ControlCenter) handleIndex(w http.ResponseWriter, _ *http.Request) {
 	cc.mu.RLock()

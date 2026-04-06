@@ -117,4 +117,21 @@ const (
 	//       operator: in
 	//       value: ",Pending"   # empty or "Pending"
 	ConditionIn ConditionOperator = "in"
+
+	// ConditionUnique — field value is unique across all existing CR instances.
+	//
+	// Only valid in validation rules (deny action). Checks the informer cache
+	// for any existing CR with the same field value.
+	//
+	//	validation:
+	//	  rules:
+	//	    - field: spec.domain
+	//	      operator: unique
+	//	      message: "spec.domain must be unique across all instances"
+	//	      action: deny
+	//
+	// Not valid in when: blocks on template sources — uniqueness requires
+	// informer access which is not available during template evaluation.
+	// In when: context it is treated as always-true (see EvaluateOneCond).
+	ConditionUnique ConditionOperator = "unique"
 )

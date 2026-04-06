@@ -1,50 +1,21 @@
 # Changelog
 
-## [Unreleased] — (April 6, 2026)
+## [Unreleased] — Control Center Redesign, Hugo Website, Renewable Secrets/Certs
 
 ### **Added**
-- Introduced `DependsOnMap` with a unified YAML unmarshalling layer supporting all three dependency formats:
-  - **List form:**  
-    ```yaml
-    dependsOn:
-      - database
-    ```
-  - **Simple map:**  
-    ```yaml
-    dependsOn:
-      database: healthy
-    ```
-  - **Structured map:**  
-    ```yaml
-    dependsOn:
-      database:
-        condition: healthy
-    ```
-- Added `DependsOnMap.Names()` for deterministic ordering of dependency keys.
+- New Hugo‑based Orkestra website with automated GitHub Pages publishing.
+- Renewable secrets via `rotateAfter`, enabling time‑bound credential rotation.
+- Renewable certificate generation using the same rotation model.
 
 ### **Changed**
-- Migrated `spec.crds` from a list of CRD entries to a **map-based schema**:
-  ```yaml
-  crds:
-    website:
-      apiTypes:
-        ...
-  ```
-  The map key is now the authoritative CRD name, injected into `CRDEntry` during load.
-- Updated `KatalogSpec` to reflect the new CRD map structure:
-  ```go
-  CRDs map[string]CRDEntry `yaml:"crds"`
-  ```
-- Normalized dependency conditions:
-  - List entries default to `started`
-  - Map entries default to `healthy` when unspecified
+- Complete redesign of the Control Center UI for improved flow and user experience.
+- Updated secret and certificate controllers to support rotation semantics.
 
 ### **Improved**
-- Simplified merging, validation, and tooling by eliminating CRD name duplication.
-- Increased readability and expressiveness of dependency graphs.
-- Reduced ambiguity in dependency state handling across the reconciler pipeline.
+- More consistent UX across the Control Center.
+- Stronger security posture through automatic secret/cert renewal.
+- Streamlined documentation workflow.
 
-### **Breaking Changes**
-- `spec.crds` is no longer a list; existing Katalogs using the old format must be updated.
-- Any tooling or generators relying on the old list structure must be adapted to the new map-based schema.
+### **Deployed**
+- Updated Control Center UI deployed to **cc.orkestra.sh**.
 

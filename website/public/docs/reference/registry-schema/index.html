@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="en-us" data-theme="">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+<title>Registry Source Schema — Orkestra</title>
+
+<meta name="description" content="Complete schema reference for `sources.registry` entries in a Komposer.">
+<meta name="author" content="Orkestra">
+
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="Registry Source Schema — Orkestra">
+<meta property="og:description" content="Complete schema reference for `sources.registry` entries in a Komposer.">
+<meta property="og:url" content="http://localhost:8191/docs/reference/registry-schema/">
+<meta property="og:site_name" content="Orkestra">
+
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Registry Source Schema — Orkestra">
+<meta name="twitter:description" content="Complete schema reference for `sources.registry` entries in a Komposer.">
+
+
+<link rel="icon" type="image/png" href="/img/fav.png">
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+
+
+
+<link rel="stylesheet" href="/css/main.min.e4e59efb69ddf205af473c23d6ef6c1d33e679af451644cb448c3f24ded94953.css">
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3" crossorigin>
+
+
+
+<script>
+  (function() {
+    var saved = localStorage.getItem('theme');
+    
+    var theme = saved ? saved : 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+
+</head>
+<body class="page-content docs-body">
+
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+  <div class="navbar-inner">
+    
+    <a href="/" class="navbar-logo" aria-label="Orkestra home">
+      <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
+      <span class="logo-text">Orkestra</span>
+      <span class="version-badge">v1</span>
+    </a>
+
+    
+    <ul class="navbar-links" role="list">
+      
+      <li>
+        <a href="/docs/" class="navbar-link"
+          >
+          Docs
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-link"
+          >
+          Publications
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/docs/use-cases/" class="navbar-link"
+          >
+          Use Cases
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/blog/" class="navbar-link"
+          >
+          Blog
+          
+        </a>
+      </li>
+      
+    </ul>
+
+    
+    <div class="navbar-controls">
+      
+      <a href="https://controlcenter.orkestra.sh" class="btn-controlcenter" target="_blank" rel="noopener noreferrer" aria-label="Open Control Center">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+        Control Center
+        <span class="cc-live-dot" title="Live instance"></span>
+      </a>
+
+      
+      <a href="https://github.com/iAlexeze/orkestra" class="btn-github" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+        </svg>
+        <span>GitHub</span>
+      </a>
+
+      
+      <button class="btn-theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+        </svg>
+      </button>
+
+      
+      <button class="btn-hamburger" id="mobile-menu-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+      </button>
+    </div>
+  </div>
+
+  
+  <div class="navbar-mobile" id="mobile-menu" aria-hidden="true">
+    <ul role="list">
+      
+      <li>
+        <a href="/docs/" class="navbar-mobile-link"
+          >
+          Docs
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-mobile-link"
+          >
+          Publications
+        </a>
+      </li>
+      
+      <li>
+        <a href="/docs/use-cases/" class="navbar-mobile-link"
+          >
+          Use Cases
+        </a>
+      </li>
+      
+      <li>
+        <a href="/blog/" class="navbar-mobile-link"
+          >
+          Blog
+        </a>
+      </li>
+      
+    </ul>
+  </div>
+</nav>
+
+
+  <main id="main-content" tabindex="-1">
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar" id="docs-sidebar" role="navigation" aria-label="Documentation navigation">
+  <div class="sidebar-inner">
+    
+    <div class="docsearch-wrapper">
+      
+      <div id="docsearch"></div>
+      
+    </div>
+
+    <nav class="sidebar-nav">
+      
+      
+      
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/getting-started/" class="sidebar-section-link">Getting Started</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Getting Started">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">
+                  Basic Reconciliation
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/getting-started/installation/" class="sidebar-link">
+                  Installation
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/getting-started/quickstart/" class="sidebar-link">
+                  Quick Start
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/getting-started/writing-your-first-katalog/" class="sidebar-link">
+                  Writing Your First Katalog
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/getting-started/writing-your-first-komposer/" class="sidebar-link">
+                  Writing Your First Komposer
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/basics/" class="sidebar-section-link">Basics</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Basics">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/basics/kubernetes-basics/" class="sidebar-link">
+                  Kubernetes Basics
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/basics/katalog-manifest/" class="sidebar-link">
+                  The Katalog Manifest
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/basics/understanding-orkestra/" class="sidebar-link">
+                  Understanding Orkestra
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/concepts/" class="sidebar-section-link">Concepts</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Concepts">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/concepts/secret-rotation/" class="sidebar-link">
+                  
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/conditional-provisioning/" class="sidebar-link">
+                  **Conditional Provisioning in Orkestra**
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/runtime/" class="sidebar-link">
+                  **Orkestra Runtime**
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/typed-crds/" class="sidebar-link">
+                  **Typed CRDs**
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/conditional-status-fields/" class="sidebar-link">
+                  Conditional Status Fields
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/constructors/" class="sidebar-link">
+                  Constructors
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/crd-runtime-health/" class="sidebar-link">
+                  CRD Runtime Health
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/hooks/" class="sidebar-link">
+                  Hooks
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/dependency-model/" class="sidebar-link">
+                  How Dependencies Work
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/reconciler-model/" class="sidebar-link">
+                  How Reconciliation Works
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/katalog/" class="sidebar-link">
+                  Katalog
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/komposer/" class="sidebar-link">
+                  Komposer
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/mutation/" class="sidebar-link">
+                  Mutation
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/notes/" class="sidebar-link">
+                  Notes
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/observability/" class="sidebar-link">
+                  Observability
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/operator-patterns/" class="sidebar-link">
+                  Operator Patterns
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/conditional-webhooks/" class="sidebar-link">
+                  Orkestra Conversion Webhook
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/health-subsystem/" class="sidebar-link">
+                  Orkestra Health Subsystem
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/komponent/" class="sidebar-link">
+                  Orkestra Komponents
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/provider/" class="sidebar-link">
+                  Providers
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/providers/" class="sidebar-link">
+                  Providers
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/registry/" class="sidebar-link">
+                  Registry
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/registry-sources/" class="sidebar-link">
+                  Registry Sources
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/status-management/" class="sidebar-link">
+                  Status Management
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/templating/" class="sidebar-link">
+                  Templating in Orkestra
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/observability-model/" class="sidebar-link">
+                  The Observability Model
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/validation/" class="sidebar-link">
+                  Validation
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/versioning/" class="sidebar-link">
+                  Versioning in Orkestra
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/architecture/" class="sidebar-section-link">Architecture</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Architecture">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/architecture/crd-lifecycle/" class="sidebar-link">
+                  CRD Lifecycle in Orkestra
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/full-architecture-view/" class="sidebar-link">
+                  Full Architecture View
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/architecture-diagrams/" class="sidebar-link">
+                  Orkestra Architecture Diagrams
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/design-philosophy/" class="sidebar-link">
+                  Orkestra Design Philosophy
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/architecture-overview/" class="sidebar-link">
+                  Orkestra Full Architecture Overview
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/runtime-flow/" class="sidebar-link">
+                  Orkestra Runtime Flow
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/guides/" class="sidebar-section-link">Guides</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Guides">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/guides/best-practices/" class="sidebar-link">
+                  Best Practices for Orkestra Operators
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/choosing-katalog-vs-komposer/" class="sidebar-link">
+                  Choosing Between Katalog and Komposer
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/deployment/" class="sidebar-link">
+                  Deploying Orkestra
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/api-conversion/" class="sidebar-link">
+                  Evolve APIs Without Webhooks or Code
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/extending-orkestra/" class="sidebar-link">
+                  Extending Orkestra
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/certificate-with-openssl/" class="sidebar-link">
+                  Generate Self-Signed Certificates
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/certificate-with-cert-manager/" class="sidebar-link">
+                  Generate TLS Certificates with CertManager
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/how-reconciliation-works/" class="sidebar-link">
+                  How Reconciliation Works
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/multi-version-crd-explained/" class="sidebar-link">
+                  Multi‑Version CRDs Explained
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/deprecated/use-cases/" class="sidebar-link">
+                  Orkestra Use Cases
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/testing-operators/" class="sidebar-link">
+                  Testing Operators
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/kat-source-of-truth/" class="sidebar-link">
+                  The Katalog as Single Source of Truth
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/writing-custom-reconcilers/" class="sidebar-link">
+                  Writing Custom Reconcilers
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/writing-hooks/" class="sidebar-link">
+                  Writing Hooks
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/cli/" class="sidebar-section-link">CLI Reference</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle CLI Reference">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/cli/describe/" class="sidebar-link">
+                  ork describe
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/events/" class="sidebar-link">
+                  ork events
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/generate-runtime/" class="sidebar-link">
+                  ork generate runtime
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/get/" class="sidebar-link">
+                  ork get
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/init/" class="sidebar-link">
+                  ork init
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/reconcile/" class="sidebar-link">
+                  ork reconcile
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/run/" class="sidebar-link">
+                  ork run
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/status/" class="sidebar-link">
+                  ork status
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/template/" class="sidebar-link">
+                  ork template
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/validate/" class="sidebar-link">
+                  ork validate
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/version/" class="sidebar-link">
+                  ork version
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/deprecated/deprecated-cli/" class="sidebar-link">
+                  Orkestra CLI Reference
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/inspect-live-crd/" class="sidebar-link">
+                  Orkestra Inspect Commands
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section open">
+            <div class="sidebar-section-header active-section">
+              <a href="/docs/reference/" class="sidebar-section-link">Reference</a>
+              <button class="sidebar-section-toggle" aria-expanded="true" aria-label="Toggle Reference">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list">
+              
+              <li>
+                <a href="/docs/reference/metrics/" class="sidebar-link">
+                  **Orkestra Metrics**
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
+                  Katalog and Komposer Reference
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/katalog-schema/" class="sidebar-link">
+                  Katalog Schema
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/katalog-schema-status/" class="sidebar-link">
+                  Katalog Schema — Status Block
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/komposer-schema/" class="sidebar-link">
+                  Komposer Schema
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/mutation-schema/" class="sidebar-link">
+                  Mutation Schema
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/cli/" class="sidebar-link">
+                  Orkestra CLI Reference
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/katalog-api/" class="sidebar-link">
+                  Orkestra Runtime API Reference
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/registry-schema/" class="sidebar-link active">
+                  Registry Source Schema
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/runtime/" class="sidebar-link">
+                  Runtime
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/shutdown/" class="sidebar-link">
+                  Shutdown
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/validation-schema/" class="sidebar-link">
+                  Validation Schema
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/use-cases/" class="sidebar-section-link">Use Cases</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Use Cases">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/use-cases/air-gapped/" class="sidebar-link">
+                  Air‑Gapped Environments
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/centralized-configuration/" class="sidebar-link">
+                  Centralised Operator Configuration (GitOps)
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/custom-constructors/" class="sidebar-link">
+                  Custom Constructors
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/disaster-recovery/" class="sidebar-link">
+                  Disaster Recovery
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/environment-overrides/" class="sidebar-link">
+                  Environment-specific Tuning
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/hooks/" class="sidebar-link">
+                  Go Hooks
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/helm-driven-operators/" class="sidebar-link">
+                  Helm‑Driven Operator Configuration
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/dependency-ordering/" class="sidebar-link">
+                  Multi‑CRD Dependency Ordering
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/multi-team-composition/" class="sidebar-link">
+                  Multi‑Team Composition
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/conversion/" class="sidebar-link">
+                  Multi‑Version CRD Conversion
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/observability/" class="sidebar-link">
+                  Observability
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/platform-namespace-provisioning/" class="sidebar-link">
+                  Platform Namespace Provisioning
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/progressive-rollout/" class="sidebar-link">
+                  Progressive Rollout of Operator Behavior
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/registry/" class="sidebar-link">
+                  Registry‑Powered Operators
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/secret-distribution/" class="sidebar-link">
+                  Secret Distribution Across Namespaces
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/zero-code-operators/" class="sidebar-link">
+                  Zero‑Code Operators
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/publications/" class="sidebar-section-link">Publications</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Publications">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/publications/when-conditions-paper/" class="sidebar-link">
+                  Conditional Provisioning: When Conditions and the Two Enforcement Boundaries
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/declarative-operators-whitepaper/" class="sidebar-link">
+                  Declarative Operators: A New Model for Kubernetes Extensibility
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/declarative-state-machines/" class="sidebar-link">
+                  Declarative State Machines in Kubernetes Operators
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/declarative-conversion/" class="sidebar-link">
+                  Declarative Version Conversion for Kubernetes CRDs
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/evolve-apis-without-code/" class="sidebar-link">
+                  Declarative Version Conversion for Kubernetes CRDs
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/from-programs-to-data/" class="sidebar-link">
+                  From Programs To Data
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/introducing-orkestra-notes/" class="sidebar-link">
+                  Introducing Orkestra Notes
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/one-runtime-many-crds/" class="sidebar-link">
+                  One Runtime, Many CRDs: Fulfilling the Operator Pattern
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/operator-authoring-vs-infrastructure-controlplane/" class="sidebar-link">
+                  Operator Authoring vs Infrastructure Control Plane
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/orkestra-and-gitops/" class="sidebar-link">
+                  Orkestra and GitOps: The Complete Integration Story
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/no-autosync-by-design/" class="sidebar-link">
+                  Orkestra Does Not Auto-Sync — And That’s the Point
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/metrics-analysis-old/" class="sidebar-link">
+                  Orkestra Metrics Analysis
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/metrics-analysis/" class="sidebar-link">
+                  Orkestra Metrics Analysis: Control Center Deep Dive
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/value-proposition/" class="sidebar-link">
+                  Orkestra Value Proposition
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/universal-observer-whitepaper/" class="sidebar-link">
+                  Orkestra: The Universal Observer That Belongs in Kubernetes Core
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/orkestra-registry/" class="sidebar-link">
+                  The Missing Package Manager for Kubernetes Operators
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/operator-sprawl-problem/" class="sidebar-link">
+                  The Operator Sprawl Problem
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/provider-library/" class="sidebar-link">
+                  The Orkestra Provider Model
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/reconcile-contract/" class="sidebar-link">
+                  The Reconcile Contract
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/no-trace-runtime/" class="sidebar-link">
+                  The Runtime That Leaves No Trace
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/trust-and-failure-model/" class="sidebar-link">
+                  Trust and Failure Model
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+      
+    </nav>
+  </div>
+</aside>
+
+
+<div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
+
+  <article class="docs-content" id="docs-content">
+    <div class="docs-content-inner">
+      
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <div class="breadcrumb-item">
+    <a href="/">Home</a>
+  </div>
+  
+  
+    
+  
+    
+    <div class="breadcrumb-item">
+      <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      <a href="/docs/">Documentation</a>
+    </div>
+    
+  
+    
+    <div class="breadcrumb-item">
+      <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      <a href="/docs/reference/">Reference</a>
+    </div>
+    
+  
+  <div class="breadcrumb-item active">
+    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+    Registry Source Schema
+  </div>
+</nav>
+
+
+
+      <header class="docs-header">
+        <h1 class="docs-title">Registry Source Schema</h1>
+        
+        <p class="docs-description">Complete schema reference for `sources.registry` entries in a Komposer.</p>
+        
+        <div class="docs-meta">
+          
+          <time datetime="2026-04-06" class="docs-date">
+            Updated Apr 6, 2026
+          </time>
+          
+
+          
+          <span class="docs-reading-time">5 min read</span>
+          
+        </div>
+      </header>
+
+      <div class="docs-body prose">
+        <p>Complete schema reference for <code>sources.registry</code> entries in a Komposer.</p>
+<hr>
+<h2 id="registrysource">RegistrySource</h2>
+<p>One entry in <code>sources.registry</code>. Pulls a single pattern from a registry,
+validates its structure, and loads either <code>katalog.yaml</code> or <code>komposer.yaml</code>.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">registry</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: &lt;string&gt;              <span style="color:#6272a4"># required</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: &lt;string&gt;          <span style="color:#6272a4"># optional — ignored when @ present in url</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">oci: &lt;bool&gt;                # optional, default</span>: <span style="color:#ff79c6">false</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">useKomposer: &lt;bool&gt;        # optional, default</span>: <span style="color:#ff79c6">false</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:                      <span style="color:#6272a4"># optional</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: &lt;string&gt;
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">fromEnv</span>: &lt;string&gt;
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">usernameFromEnv</span>: &lt;string&gt;
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">passwordFromEnv</span>: &lt;string&gt;
+</span></span></code></pre></div><hr>
+<h3 id="url"><code>url</code></h3>
+<p><strong>Type:</strong> <code>string</code><br>
+<strong>Required:</strong> yes</p>
+<p>The URL of the registry source. Supports two forms:</p>
+<p><strong>Shorthand — version embedded with <code>@</code>:</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">url</span>: ghcr.io/orkestra-sh/orkestra-registry/postgres@v14
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">url</span>: https://github.com/myorg/registry@main
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">url</span>: https://github.com/myorg/registry@abc123def456
+</span></span></code></pre></div><p>The string is split on the last <code>@</code>. Everything before is the clean URL.
+Everything after is the version. When <code>@</code> is present, the <code>version</code> field
+is ignored.</p>
+<p><strong>Explicit — version as a separate field:</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">url</span>: ghcr.io/orkestra-sh/orkestra-registry/postgres
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">version</span>: v14.2.0
+</span></span></code></pre></div><p>!!! note
+Do not include scheme prefixes (<code>oci://</code>, <code>https://</code> for OCI refs).
+Orkestra constructs the correct protocol from the <code>oci</code> field and the
+URL format.</p>
+<pre><code>HTTP/HTTPS prefixes are valid for Git sources:
+`https://github.com/myorg/registry` is a Git source.
+
+For OCI sources, use the registry hostname directly:
+`ghcr.io/myorg/postgres` — not `oci://ghcr.io/myorg/postgres`.
+</code></pre>
+<hr>
+<h3 id="version"><code>version</code></h3>
+<p><strong>Type:</strong> <code>string</code><br>
+<strong>Required:</strong> no<br>
+<strong>Default:</strong> <code>main</code> (Git) or <code>latest</code> (OCI)</p>
+<p>The version, tag, branch, or SHA to pull.</p>
+<table>
+  <thead>
+      <tr>
+          <th>Source type</th>
+          <th>Meaning</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>OCI</td>
+          <td>Artifact tag: <code>v14</code>, <code>v14.2.0</code>, <code>latest</code></td>
+      </tr>
+      <tr>
+          <td>Git (GitHub/GitLab)</td>
+          <td>Branch, tag, or SHA: <code>main</code>, <code>v1.0.0</code>, <code>abc123</code></td>
+      </tr>
+      <tr>
+          <td>Git (generic)</td>
+          <td>Branch, tag, or SHA passed to <code>git clone --branch</code></td>
+      </tr>
+  </tbody>
+</table>
+<p>!!! note &ldquo;Precedence&rdquo;
+Ignored when <code>@</code> is present in the <code>url</code> field. The <code>@</code> shorthand always
+takes priority.</p>
+<hr>
+<h3 id="oci"><code>oci</code></h3>
+<p><strong>Type:</strong> <code>bool</code><br>
+<strong>Required:</strong> no<br>
+<strong>Default:</strong> <code>false</code></p>
+<p>Controls the pull mechanism.</p>
+<table>
+  <thead>
+      <tr>
+          <th>Value</th>
+          <th>Behaviour</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>false</code></td>
+          <td>Pull via Git or raw HTTP. GitHub and GitLab use raw file HTTP (one request per file). Other URLs use <code>git clone</code>.</td>
+      </tr>
+      <tr>
+          <td><code>true</code></td>
+          <td>Pull as an OCI artifact using the ORAS protocol. Artifact ref is <code>url:version</code>.</td>
+      </tr>
+  </tbody>
+</table>
+<p>!!! warning &ldquo;ORAS dependency for <code>oci: true</code>&rdquo;
+OCI pulls require the <code>oras</code> CLI to be installed and available on <code>PATH</code>.
+Install from <a href="https://oras.land/docs/installation">oras.land</a>. Native
+Go library integration will remove this requirement in a future release.</p>
+<hr>
+<h3 id="usekomposer"><code>useKomposer</code></h3>
+<p><strong>Type:</strong> <code>bool</code><br>
+<strong>Required:</strong> no<br>
+<strong>Default:</strong> <code>false</code></p>
+<p>Controls which source file is loaded from the pattern.</p>
+<table>
+  <thead>
+      <tr>
+          <th>Value</th>
+          <th>File loaded</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>false</code></td>
+          <td><code>katalog.yaml</code> — CRD definitions and reconcile templates</td>
+      </tr>
+      <tr>
+          <td><code>true</code></td>
+          <td><code>komposer.yaml</code> — full upstream operator source tree</td>
+      </tr>
+  </tbody>
+</table>
+<p>!!! warning &ldquo;Exactly one file is loaded&rdquo;
+You cannot load both <code>katalog.yaml</code> and <code>komposer.yaml</code> from a single
+registry entry. The field makes the choice explicit and enforced.</p>
+<pre><code>If the loaded file's kind does not match the expected kind
+(`useKomposer: false` expects `kind: Katalog`, `useKomposer: true`
+expects `kind: Komposer`), Orkestra will error with a kind mismatch
+message.
+</code></pre>
+<hr>
+<h3 id="auth"><code>auth</code></h3>
+<p><strong>Type:</strong> <code>object</code><br>
+<strong>Required:</strong> no<br>
+<strong>Default:</strong> unauthenticated</p>
+<p>Authentication for the registry. Credentials are resolved from environment
+variables at pull time — never from literal values in YAML.</p>
+<h4 id="authtype"><code>auth.type</code></h4>
+<p><strong>Type:</strong> <code>string</code><br>
+<strong>Required:</strong> yes (when <code>auth</code> is set)</p>
+<table>
+  <thead>
+      <tr>
+          <th>Value</th>
+          <th>Description</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>github</code></td>
+          <td>GitHub personal access token or GitHub App token. Sent as <code>Authorization: Bearer &lt;token&gt;</code>. Requires <code>fromEnv</code>.</td>
+      </tr>
+      <tr>
+          <td><code>bearer</code></td>
+          <td>Generic bearer token. Sent as <code>Authorization: Bearer &lt;token&gt;</code>. Requires <code>fromEnv</code>.</td>
+      </tr>
+      <tr>
+          <td><code>basic</code></td>
+          <td>HTTP Basic Authentication. Requires <code>usernameFromEnv</code> and <code>passwordFromEnv</code>.</td>
+      </tr>
+  </tbody>
+</table>
+<p>For OCI registries with <code>oci: true</code>, <code>basic</code> auth is passed to <code>oras</code> as
+<code>--username</code> and <code>--password</code>. The <code>bearer</code> and <code>github</code> types are passed
+as <code>--password</code> (ORAS accepts tokens via the password flag).</p>
+<h4 id="authfromenv"><code>auth.fromEnv</code></h4>
+<p><strong>Type:</strong> <code>string</code><br>
+<strong>Required:</strong> when <code>auth.type</code> is <code>github</code> or <code>bearer</code></p>
+<p>Name of the environment variable containing the token.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">type</span>: github
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">fromEnv</span>: GITHUB_TOKEN    <span style="color:#6272a4"># reads process.env[&#34;GITHUB_TOKEN&#34;]</span>
+</span></span></code></pre></div><h4 id="authusernamefromenv"><code>auth.usernameFromEnv</code></h4>
+<p><strong>Type:</strong> <code>string</code><br>
+<strong>Required:</strong> when <code>auth.type</code> is <code>basic</code></p>
+<p>Name of the environment variable containing the username.</p>
+<h4 id="authpasswordfromenv"><code>auth.passwordFromEnv</code></h4>
+<p><strong>Type:</strong> <code>string</code><br>
+<strong>Required:</strong> when <code>auth.type</code> is <code>basic</code></p>
+<p>Name of the environment variable containing the password.</p>
+<hr>
+<h2 id="requiredfiles">RequiredFiles</h2>
+<p>The five files every valid registry pattern must contain, each non-empty:</p>
+<table>
+  <thead>
+      <tr>
+          <th>File</th>
+          <th>Purpose</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>crd.yaml</code></td>
+          <td>The CRD definition(s) to install in the cluster before running the operator</td>
+      </tr>
+      <tr>
+          <td><code>katalog.yaml</code></td>
+          <td>Operator behavior — reconcile templates, conversion rules, workers, resync</td>
+      </tr>
+      <tr>
+          <td><code>komposer.yaml</code></td>
+          <td>Example showing how to import and override this pattern</td>
+      </tr>
+      <tr>
+          <td><code>cr.yaml</code></td>
+          <td>Example custom resource — the minimal CR to test the operator</td>
+      </tr>
+      <tr>
+          <td><code>README.md</code></td>
+          <td>Documentation — field reference, recommended overrides, examples</td>
+      </tr>
+  </tbody>
+</table>
+<p>!!! note
+These files are validated after every pull, including during <code>ork validate</code>.
+Missing or empty files cause an immediate error with a message listing all
+violations.</p>
+<hr>
+<h2 id="full-example">Full example</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">registry</span>:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># ── Minimal — OCI shorthand, all defaults ─────────────────────────────────</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: ghcr.io/orkestra-sh/orkestra-registry/postgres@v14
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">oci</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># ── Explicit OCI — url and version separate ───────────────────────────────</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: ghcr.io/orkestra-sh/orkestra-registry/redis
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: v7.2.0
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">oci</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># ── Private OCI registry with basic auth ──────────────────────────────────</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: registry.myorg.com/operators/internal-crd@v2.1.0
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">oci</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: basic
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">usernameFromEnv</span>: REGISTRY_USER
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">passwordFromEnv</span>: REGISTRY_PASSWORD
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># ── GitHub — raw HTTP, no clone needed ────────────────────────────────────</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://github.com/myorg/orkestra-registry@v1.0.0
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># ── GitHub private repo ───────────────────────────────────────────────────</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://github.com/myorg/private-patterns@main
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: github
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">fromEnv</span>: GITHUB_TOKEN
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># ── GitLab with bearer token ──────────────────────────────────────────────</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://gitlab.company.com/platform/operators@production
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: bearer
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">fromEnv</span>: GITLAB_TOKEN
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># ── Internal team — load their Komposer exactly as-is ────────────────────</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://github.com/myorg/canonical-registry@main
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">useKomposer</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># ── Generic Git server ────────────────────────────────────────────────────</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://git.myorg.com/platform/operators@main
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: basic
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">usernameFromEnv</span>: GIT_USER
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">passwordFromEnv</span>: GIT_PASSWORD
+</span></span></code></pre></div><hr>
+<h2 id="error-messages-reference">Error messages reference</h2>
+<table>
+  <thead>
+      <tr>
+          <th>Error</th>
+          <th>Cause</th>
+          <th>Resolution</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>failed structure validation: missing: &lt;file&gt;</code></td>
+          <td>Required file absent from pattern</td>
+          <td>Add the file to the upstream pattern</td>
+      </tr>
+      <tr>
+          <td><code>failed structure validation: empty: &lt;file&gt;</code></td>
+          <td>Required file present but zero bytes</td>
+          <td>Populate the file in the upstream pattern</td>
+      </tr>
+      <tr>
+          <td><code>invalid URL</code></td>
+          <td>Malformed URL, whitespace, or <code>oci://</code> prefix</td>
+          <td>Remove scheme prefix or fix the URL</td>
+      </tr>
+      <tr>
+          <td><code>reference not found</code></td>
+          <td>Version tag or branch does not exist</td>
+          <td>Check available versions in the registry</td>
+      </tr>
+      <tr>
+          <td><code>authentication required (401)</code></td>
+          <td>Missing or expired credentials</td>
+          <td>Set the environment variable and check token expiry</td>
+      </tr>
+      <tr>
+          <td><code>access denied (403)</code></td>
+          <td>Token lacks read permission</td>
+          <td>Grant read access to the repository or registry</td>
+      </tr>
+      <tr>
+          <td><code>executable file not found: oras</code></td>
+          <td><code>oras</code> not installed, <code>oci: true</code> used</td>
+          <td>Install <code>oras</code>: <code>brew install oras</code></td>
+      </tr>
+      <tr>
+          <td><code>useKomposer is false but katalog.yaml contains kind &quot;Komposer&quot;</code></td>
+          <td>Kind mismatch</td>
+          <td>Set <code>useKomposer: true</code> or check pattern structure</td>
+      </tr>
+      <tr>
+          <td><code>useKomposer is true but komposer.yaml contains kind &quot;Katalog&quot;</code></td>
+          <td>Kind mismatch</td>
+          <td>Remove <code>useKomposer: true</code> or check pattern structure</td>
+      </tr>
+  </tbody>
+</table>
+
+      </div>
+
+      
+      <nav class="docs-pagination" aria-label="Page navigation">
+        
+        <a href="/docs/reference/runtime/" class="pagination-link pagination-prev">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <div>
+            <span class="pagination-label">Previous</span>
+            <span class="pagination-title">Runtime</span>
+          </div>
+        </a>
+        
+        
+        <a href="/docs/reference/katalog-api/" class="pagination-link pagination-next">
+          <div>
+            <span class="pagination-label">Next</span>
+            <span class="pagination-title">Orkestra Runtime API Reference</span>
+          </div>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        
+      </nav>
+    </div>
+  </article>
+
+  
+<aside class="docs-toc" id="docs-toc" aria-label="Table of contents">
+  <div class="toc-inner">
+    <p class="toc-title">On this page</p>
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#registrysource">RegistrySource</a>
+      <ul>
+        <li><a href="#url"><code>url</code></a></li>
+        <li><a href="#version"><code>version</code></a></li>
+        <li><a href="#oci"><code>oci</code></a></li>
+        <li><a href="#usekomposer"><code>useKomposer</code></a></li>
+        <li><a href="#auth"><code>auth</code></a></li>
+      </ul>
+    </li>
+    <li><a href="#requiredfiles">RequiredFiles</a></li>
+    <li><a href="#full-example">Full example</a></li>
+    <li><a href="#error-messages-reference">Error messages reference</a></li>
+  </ul>
+</nav>
+    <div class="toc-footer">
+      <a href="https://github.com/iAlexeze/orkestra/edit/main/docs/docs/reference/registry-schema.md" target="_blank" rel="noopener noreferrer" class="edit-on-github">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Edit on GitHub
+      </a>
+    </div>
+  </div>
+</aside>
+
+
+</div>
+
+  </main>
+
+  <footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a href="/" class="footer-logo" aria-label="Orkestra home">
+        <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="28">
+        <span class="footer-logo-text">Orkestra</span>
+      </a>
+      <p class="footer-tagline">The declarative control plane<br>for Kubernetes operators.</p>
+      <div class="footer-social">
+        <a href="https://github.com/iAlexeze/orkestra" target="_blank" rel="noopener noreferrer" aria-label="GitHub" class="footer-social-link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+        </a>
+        <a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer" aria-label="Twitter / X" class="footer-social-link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4 class="footer-col-title">Documentation</h4>
+        <ul role="list">
+          <li><a href="/docs/getting-started/">Getting Started</a></li>
+          <li><a href="/docs/basics/">Basics</a></li>
+          <li><a href="/docs/concepts/">Concepts</a></li>
+          <li><a href="/docs/guides/">Guides</a></li>
+          <li><a href="/docs/reference/">Reference</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-col-title">Community</h4>
+        <ul role="list">
+          <li><a href="https://github.com/iAlexeze/orkestra" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/issues" target="_blank" rel="noopener noreferrer">Issues</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/discussions" target="_blank" rel="noopener noreferrer">Discussions</a></li>
+          <li><a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer">@orkspace</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-col-title">Resources</h4>
+        <ul role="list">
+          <li><a href="https://github.com/iAlexeze/orkestra/releases" target="_blank" rel="noopener noreferrer">Releases</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
+          <li><a href="/docs/reference/">API Reference</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>&copy; 2026 Orkestra. Released under the Apache 2.0 License.</p>
+    <p class="footer-built">Built with <a href="https://gohugo.io" target="_blank" rel="noopener noreferrer">Hugo</a></p>
+  </div>
+</footer>
+
+
+  
+  
+  <script src="/js/main.min.b0ef969079d43df81dbcfc1611c66605d62a7ce906aac181917cdc66b92a5223.js" defer></script>
+
+  
+  
+  <script src="https://cdn.jsdelivr.net/npm/@docsearch/js@3" crossorigin></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var el = document.getElementById('docsearch');
+      if (!el) return;
+      docsearch({
+        appId: "\"1YJ1C111LH\"",
+        apiKey: "\"b4bbac9a499ecc51109f23abd327cf29\"",
+        indexName: "\"orkestra\"",
+        container: '#docsearch',
+        debug: false,
+      });
+    });
+  </script>
+  
+</body>
+</html>

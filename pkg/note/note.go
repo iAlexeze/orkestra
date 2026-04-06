@@ -63,6 +63,7 @@ func buildNotes() template.FuncMap {
 	register(m, mathNotes())
 	register(m, typeNotes())
 	register(m, conditionalNotes())
+	register(m, randomNotes())
 	return m
 }
 
