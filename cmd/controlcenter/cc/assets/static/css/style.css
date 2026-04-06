@@ -62,8 +62,10 @@
   --text-inverse:  #FFFFFF;
   --accent:        #4F46E5;
   --accent-hover:  #4338CA;
-  --sidebar-bg:    #1A1D2E;
-  --sidebar-border:#2D3748;
+
+  /* Sidebar stays dark - NO CHANGES to sidebar colors */
+  --sidebar-bg:    #12151F;
+  --sidebar-border:#1E2235;
 }
 
 /* ── Reset & Base ──────────────────────────────────────────── */
@@ -132,7 +134,7 @@ code, .mono {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: var(--text-primary);
+  color: #E2E8F0;  /* CHANGED: Fixed light color for dark sidebar */
 }
 
 .cc-sidebar-nav {
@@ -146,7 +148,7 @@ code, .mono {
   gap: 8px;
   padding: 8px 10px;
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: #94A3B8;  /* CHANGED: Fixed light gray for dark sidebar */
   font-size: 13px;
   font-weight: 500;
   text-decoration: none;
@@ -157,7 +159,7 @@ code, .mono {
 
 .cc-nav-item:hover {
   background: var(--bg-hover);
-  color: var(--text-primary);
+  color: #E2E8F0;  /* CHANGED: Fixed lighter on hover */
   text-decoration: none;
 }
 
@@ -173,7 +175,7 @@ code, .mono {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: #64748B;  /* CHANGED: Fixed muted color for dark sidebar */
   padding: 8px 10px 4px;
   margin-top: 8px;
 }
@@ -188,7 +190,7 @@ code, .mono {
 
 .cc-refresh-label {
   font-size: 11px;
-  color: var(--text-muted);
+  color: #64748B;  /* CHANGED: Fixed muted color for dark sidebar */
 }
 
 /* ── Sidebar Overlay (mobile) ──────────────────────────────── */

@@ -273,6 +273,8 @@ whether a resource should be created based on any one of several conditions.
 func shouldCreateResource(obj *v1alpha1.FlexApp) bool {
     return obj.Status.Phase == "Failed" || obj.Status.Phase == "Succeeded"
 }
+
+# And more...
 ```
 
 **Katalog:**
@@ -336,12 +338,14 @@ This is the showcase example. One Katalog, one CR apply, everything declarative.
 - Cleanup Job appears when phase becomes Succeeded or Failed (anyOf:)
 
 ```yaml
-# 06-full-stack/katalog.yaml — see the file for full declaration
+# katalog.yaml — see the file for full declaration
 ```
 
 **Apply:**
+> [!NOTE]
+> Make sure you applied [database-cr](./03-cross-crd/database-cr.yaml) in [example 03](README.md/#example-03--cross-crd-dependency-cross) since the full stack app depends on the database
+
 ```bash
-kubectl apply -f 06-full-stack/database-cr.yaml
 kubectl apply -f 06-full-stack/cr.yaml
 ```
 
