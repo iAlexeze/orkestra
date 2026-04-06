@@ -22,7 +22,7 @@ sources:
 # Use this for environment-specific tuning without modifying the base Katalog.
 spec:
   crds:
-    - name: website
+    website:
       apiTypes:
         group: demo.orkestra.io
         version: v1alpha1

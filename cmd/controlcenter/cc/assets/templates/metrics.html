@@ -1,236 +1,169 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Metrics – Orkestra Control Center</title>
-    <link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
-    <link rel="alternate icon" href="/controlcenter/assets/static/logo.png">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .roadmap-card {
-            transition: all 0.2s ease;
-        }
-        .roadmap-card:hover {
-            transform: translateY(-2px);
-        }
-        .logo-animation {
-            transition: transform 0.3s ease;
-        }
-        .logo-animation:hover {
-            transform: rotate(5deg) scale(1.05);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metrics – Orkestra Control Center</title>
+  <link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
+  <link rel="stylesheet" href="/controlcenter/assets/static/css/style.css">
+  <script>(function(){var t=localStorage.getItem('cc-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
 </head>
+<body class="cc-root">
 
-<body class="bg-gray-50">
-<div class="max-w-7xl mx-auto px-4 py-8">
+  <!-- Sidebar -->
+  <aside class="cc-sidebar" id="cc-sidebar">
+    <div class="cc-sidebar-logo">
+      <a href="/controlcenter">
+        <img src="/controlcenter/assets/static/logo.png" alt="Orkestra" width="32" height="32">
+        <span>Control Center</span>
+      </a>
+    </div>
+    <nav class="cc-sidebar-nav">
+      <a href="/controlcenter" class="cc-nav-item">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        All Katalogs
+      </a>
+      <a href="/controlcenter/metrics" class="cc-nav-item active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Metrics
+      </a>
+    </nav>
+    <div class="cc-sidebar-footer">
+      <span class="cc-refresh-dot" id="sse-dot" title="Live connection"></span>
+      <span class="cc-refresh-label">Live</span>
+    </div>
+  </aside>
+  <div class="cc-sidebar-overlay" id="cc-overlay"></div>
 
-    <!-- Header -->
-    <div class="mb-8">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-                <a href="/controlcenter">
-                    <img src="/controlcenter/assets/static/logo.png" alt="Orkestra Logo" class="w-12 h-12 logo-animation">
-                </a>
-                <div>
-                    <h1 class="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">Orkestra</h1>
-                    <p class="text-gray-500 text-sm mt-1">Control Center · Metrics (Preview)</p>
-                </div>
-            </div>
-            <div class="flex gap-3">
-                <a href="/controlcenter" class="px-4 py-2 bg-gray-200 rounded-lg text-sm hover:bg-gray-300 transition">← Back</a>
-            </div>
-        </div>
+  <main class="cc-main">
+    <div class="cc-navbar">
+      <button class="cc-mobile-toggle" id="cc-mobile-toggle">☰</button>
+      <nav class="cc-breadcrumb">
+        <a href="/controlcenter">Control Center</a>
+        <span class="sep">›</span>
+        <span class="current">Metrics</span>
+      </nav>
+      <div class="cc-navbar-right">
+        <button class="cc-theme-toggle" id="cc-theme-toggle" title="Toggle theme">☀️</button>
+      </div>
     </div>
 
-    <!-- Coming Soon Banner -->
-    <div class="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
-        <div class="flex items-center gap-3">
-            <div class="text-3xl">📊</div>
-            <div>
-                <h2 class="text-lg font-semibold text-blue-800">Metrics Dashboard – Coming in v2.0</h2>
-                <p class="text-blue-600 text-sm mt-1">
-                    Real-time metrics aggregation across all Orkestra instances is under active development.
-                </p>
-            </div>
+    <div class="cc-page">
+
+      <!-- Coming soon banner -->
+      <div class="cc-alert" style="background:var(--color-started-bg);border-color:var(--color-started-border);color:var(--color-started);margin-bottom:24px">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <div>
+          <div class="cc-alert-title" style="color:var(--color-started)">Metrics Dashboard – Coming in v2.0</div>
+          <div class="cc-alert-text" style="color:var(--color-started);opacity:0.85">Real-time metrics aggregation across all Orkestra instances is under active development.</div>
         </div>
+      </div>
+
+      <!-- What's coming -->
+      <h2 class="cc-section-title">What to Expect</h2>
+      <div class="cc-card-grid mb-8">
+
+        <div class="cc-card">
+          <div class="cc-card-body">
+            <div class="flex items-center gap-3 mb-3">
+              <span style="font-size:22px">⬡</span>
+              <h3 class="cc-card-title" style="margin:0">Per-Katalog Metrics</h3>
+            </div>
+            <p class="cc-card-desc">View reconciliation rates, error rates, and queue depths for each Katalog independently. Drill down from the Katalog panel to see instance-specific metrics.</p>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border-subtle)">Planned for v2.0</div>
+          </div>
+        </div>
+
+        <div class="cc-card">
+          <div class="cc-card-body">
+            <div class="flex items-center gap-3 mb-3">
+              <span style="font-size:22px">⚙</span>
+              <h3 class="cc-card-title" style="margin:0">System Health</h3>
+            </div>
+            <p class="cc-card-desc">Go runtime metrics: goroutines, memory allocation, GC pauses, and thread counts. Available per instance to help debug performance issues.</p>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border-subtle)">Planned for v2.0</div>
+          </div>
+        </div>
+
+        <div class="cc-card">
+          <div class="cc-card-body">
+            <div class="flex items-center gap-3 mb-3">
+              <span style="font-size:22px">⇄</span>
+              <h3 class="cc-card-title" style="margin:0">Conversion &amp; Admission</h3>
+            </div>
+            <p class="cc-card-desc">Track version conversion latency and success rates. Monitor validation and mutation webhook performance across all CRDs.</p>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border-subtle)">Planned for v2.0</div>
+          </div>
+        </div>
+
+        <div class="cc-card">
+          <div class="cc-card-body">
+            <div class="flex items-center gap-3 mb-3">
+              <span style="font-size:22px">↑</span>
+              <h3 class="cc-card-title" style="margin:0">Time Series</h3>
+            </div>
+            <p class="cc-card-desc">Historical graphs showing trends over time. Identify patterns in reconciliation latency, queue growth, and error rates.</p>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border-subtle)">Planned for v2.0</div>
+          </div>
+        </div>
+
+        <div class="cc-card">
+          <div class="cc-card-body">
+            <div class="flex items-center gap-3 mb-3">
+              <span style="font-size:22px">◎</span>
+              <h3 class="cc-card-title" style="margin:0">Alerting</h3>
+            </div>
+            <p class="cc-card-desc">Configure alerts for high error rates, queue backpressure, or degraded CRDs. Integrations with Slack, PagerDuty, and email.</p>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border-subtle)">Planned for v2.0</div>
+          </div>
+        </div>
+
+        <div class="cc-card">
+          <div class="cc-card-body">
+            <div class="flex items-center gap-3 mb-3">
+              <span style="font-size:22px">↗</span>
+              <h3 class="cc-card-title" style="margin:0">Export</h3>
+            </div>
+            <p class="cc-card-desc">Export metrics to CSV, JSON, or Prometheus format. Integrate with existing monitoring stacks and data lakes.</p>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border-subtle)">Planned for v2.0</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Preview Table -->
+      <h2 class="cc-section-title">Preview: System Metrics (Mock Data)</h2>
+      <div class="cc-table-wrap mb-8">
+        <table class="cc-metrics-table">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Instance 1 (8080)</th>
+              <th>Instance 2 (8082)</th>
+              <th>Aggregate</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Goroutines</td><td>211</td><td>187</td><td style="font-weight:600">398</td></tr>
+            <tr><td>Memory (alloc)</td><td>41.9 MB</td><td>38.2 MB</td><td style="font-weight:600">80.1 MB</td></tr>
+            <tr><td>GC P95</td><td>0.19 ms</td><td>0.21 ms</td><td style="font-weight:600">0.20 ms</td></tr>
+            <tr><td>Threads</td><td>11</td><td>11</td><td style="font-weight:600">22</td></tr>
+            <tr><td>Total Reconciles</td><td>12,456</td><td>9,872</td><td style="font-weight:600">22,328</td></tr>
+            <tr><td>Error Rate (avg)</td><td style="color:var(--color-degraded)">0.04%</td><td style="color:var(--color-healthy)">0.00%</td><td style="font-weight:600;color:var(--color-pending)">0.02%</td></tr>
+          </tbody>
+        </table>
+        <div style="padding:10px 16px;background:var(--bg-elevated);border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);text-align:center">
+          Real-time metrics aggregation will be available in Orkestra v2.0
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:13px;color:var(--text-muted)">
+        Have ideas for metrics? <a href="https://github.com/orkspace/orkestra/issues" target="_blank" rel="noopener">Open an issue on GitHub</a>
+      </div>
+
     </div>
+  </main>
 
-    <!-- Preview of what's coming -->
-    <div class="mb-8">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">What to Expect</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            
-            <!-- Per-Katalog Metrics -->
-            <div class="roadmap-card bg-white rounded-xl shadow-sm border p-6">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="text-2xl">🎯</div>
-                    <h3 class="font-semibold text-gray-900">Per-Katalog Metrics</h3>
-                </div>
-                <p class="text-gray-600 text-sm">
-                    View reconciliation rates, error rates, and queue depths for each Katalog independently.
-                    Drill down from the Katalog panel to see instance-specific metrics.
-                </p>
-                <div class="mt-3 pt-3 border-t text-xs text-gray-400">
-                    Planned for v2.0
-                </div>
-            </div>
-
-            <!-- System Metrics -->
-            <div class="roadmap-card bg-white rounded-xl shadow-sm border p-6">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="text-2xl">⚙️</div>
-                    <h3 class="font-semibold text-gray-900">System Health</h3>
-                </div>
-                <p class="text-gray-600 text-sm">
-                    Go runtime metrics: goroutines, memory allocation, GC pauses, and thread counts.
-                    Available per instance to help debug performance issues.
-                </p>
-                <div class="mt-3 pt-3 border-t text-xs text-gray-400">
-                    Planned for v2.0
-                </div>
-            </div>
-
-            <!-- Conversion & Admission Metrics -->
-            <div class="roadmap-card bg-white rounded-xl shadow-sm border p-6">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="text-2xl">🔄</div>
-                    <h3 class="font-semibold text-gray-900">Conversion & Admission</h3>
-                </div>
-                <p class="text-gray-600 text-sm">
-                    Track version conversion latency and success rates. Monitor validation and mutation
-                    webhook performance across all CRDs.
-                </p>
-                <div class="mt-3 pt-3 border-t text-xs text-gray-400">
-                    Planned for v2.0
-                </div>
-            </div>
-
-            <!-- Historical Data -->
-            <div class="roadmap-card bg-white rounded-xl shadow-sm border p-6">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="text-2xl">📈</div>
-                    <h3 class="font-semibold text-gray-900">Time Series</h3>
-                </div>
-                <p class="text-gray-600 text-sm">
-                    Historical graphs showing trends over time. Identify patterns in reconciliation
-                    latency, queue growth, and error rates.
-                </p>
-                <div class="mt-3 pt-3 border-t text-xs text-gray-400">
-                    Planned for v2.0
-                </div>
-            </div>
-
-            <!-- Alerting -->
-            <div class="roadmap-card bg-white rounded-xl shadow-sm border p-6">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="text-2xl">🔔</div>
-                    <h3 class="font-semibold text-gray-900">Alerting</h3>
-                </div>
-                <p class="text-gray-600 text-sm">
-                    Configure alerts for high error rates, queue backpressure, or degraded CRDs.
-                    Integrations with Slack, PagerDuty, and email.
-                </p>
-                <div class="mt-3 pt-3 border-t text-xs text-gray-400">
-                    Planned for v2.0
-                </div>
-            </div>
-
-            <!-- Export -->
-            <div class="roadmap-card bg-white rounded-xl shadow-sm border p-6">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="text-2xl">📤</div>
-                    <h3 class="font-semibold text-gray-900">Export</h3>
-                </div>
-                <p class="text-gray-600 text-sm">
-                    Export metrics to CSV, JSON, or Prometheus format. Integrate with existing
-                    monitoring stacks and data lakes.
-                </p>
-                <div class="mt-3 pt-3 border-t text-xs text-gray-400">
-                    Planned for v2.0
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Preview Metrics Table (mock data to show what's possible) -->
-    <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <div class="px-6 py-4 border-b bg-gray-50">
-            <h3 class="font-semibold text-gray-900">Preview: System Metrics (Mock Data)</h3>
-            <p class="text-xs text-gray-500 mt-1">Example of what will be available per instance</p>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-                <thead class="bg-gray-50 text-gray-600">
-                    <tr>
-                        <th class="px-6 py-3 text-left font-medium">Metric</th>
-                        <th class="px-6 py-3 text-left font-medium">Instance 1 (8080)</th>
-                        <th class="px-6 py-3 text-left font-medium">Instance 2 (8082)</th>
-                        <th class="px-6 py-3 text-left font-medium">Aggregate</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    <tr>
-                        <td class="px-6 py-3 font-mono text-xs">Goroutines</td>
-                        <td class="px-6 py-3 font-mono text-xs">211</td>
-                        <td class="px-6 py-3 font-mono text-xs">187</td>
-                        <td class="px-6 py-3 font-mono text-xs font-medium">398</td>
-                    </tr>
-                    <tr>
-                        <td class="px-6 py-3 font-mono text-xs">Memory (alloc)</td>
-                        <td class="px-6 py-3 font-mono text-xs">41.9 MB</td>
-                        <td class="px-6 py-3 font-mono text-xs">38.2 MB</td>
-                        <td class="px-6 py-3 font-mono text-xs font-medium">80.1 MB</td>
-                    </tr>
-                    <tr>
-                        <td class="px-6 py-3 font-mono text-xs">GC P95</td>
-                        <td class="px-6 py-3 font-mono text-xs">0.19 ms</td>
-                        <td class="px-6 py-3 font-mono text-xs">0.21 ms</td>
-                        <td class="px-6 py-3 font-mono text-xs font-medium">0.20 ms</td>
-                    </tr>
-                    <tr>
-                        <td class="px-6 py-3 font-mono text-xs">Threads</td>
-                        <td class="px-6 py-3 font-mono text-xs">11</td>
-                        <td class="px-6 py-3 font-mono text-xs">11</td>
-                        <td class="px-6 py-3 font-mono text-xs font-medium">22</td>
-                    </tr>
-                    <tr>
-                        <td class="px-6 py-3 font-mono text-xs">Total Reconciles</td>
-                        <td class="px-6 py-3 font-mono text-xs">12,456</td>
-                        <td class="px-6 py-3 font-mono text-xs">9,872</td>
-                        <td class="px-6 py-3 font-mono text-xs font-medium">22,328</td>
-                    </tr>
-                    <tr>
-                        <td class="px-6 py-3 font-mono text-xs">Error Rate (avg)</td>
-                        <td class="px-6 py-3 font-mono text-xs text-red-600">0.04%</td>
-                        <td class="px-6 py-3 font-mono text-xs text-green-600">0.00%</td>
-                        <td class="px-6 py-3 font-mono text-xs font-medium text-yellow-600">0.02%</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="px-6 py-3 bg-gray-50 border-t text-xs text-gray-500 text-center">
-            ⚡ Real-time metrics aggregation will be available in Orkestra v2.0
-        </div>
-    </div>
-
-    <!-- Call to Action -->
-    <div class="mt-8 text-center">
-        <p class="text-gray-500 text-sm">
-            Have ideas for metrics you'd like to see? 
-            <a href="https://github.com/orkspace/orkestra/issues" target="_blank" class="text-blue-600 hover:underline">
-                Open an issue on GitHub
-            </a>
-        </p>
-    </div>
-
-</div>
-
-<script>
-// Simple placeholder - no real metrics yet
-console.log('Metrics page - coming in v2.0');
-</script>
-
+  <script src="/controlcenter/assets/static/js/dashboard.js"></script>
 </body>
 </html>

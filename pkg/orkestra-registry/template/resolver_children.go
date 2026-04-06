@@ -24,12 +24,8 @@ func (r *Resolver) WithChildren(children map[string]interface{}) *Resolver {
 	// Shallow copy the data map so the original resolver is unchanged.
 	// The copy shares the same nested maps — children is added as a new
 	// top-level key only.
-	newData := make(map[string]interface{}, len(r.data)+1)
-	for k, v := range r.data {
-		newData[k] = v
-	}
+	newData := r.shallowCopy()
 	newData["children"] = children
-
 	return &Resolver{
 		data:           newData,
 		ownerName:      r.ownerName,

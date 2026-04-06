@@ -1,0 +1,55 @@
+{{ define "main" }}
+<div class="docs-layout">
+  {{ partial "sidebar.html" . }}
+
+  <article class="docs-content" id="docs-content">
+    <div class="docs-content-inner">
+      {{ partial "breadcrumbs.html" . }}
+
+      <header class="docs-header">
+        <h1 class="docs-title">{{ .Title }}</h1>
+        {{ with .Description }}
+        <p class="docs-description">{{ . }}</p>
+        {{ end }}
+      </header>
+
+      {{ with .Content }}
+      <div class="docs-body prose">
+        {{ . }}
+      </div>
+      {{ end }}
+
+      {{ if .Pages }}
+      <div class="docs-card-grid">
+        {{ range .Pages.ByWeight }}
+        <a href="{{ .RelPermalink }}" class="docs-card">
+          <div class="docs-card-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+          </div>
+          <div class="docs-card-body">
+            <h3 class="docs-card-title">{{ .Title }}</h3>
+            {{ with .Description }}
+            <p class="docs-card-desc">{{ . }}</p>
+            {{ else }}
+            <p class="docs-card-desc">{{ .Summary | truncate 120 }}</p>
+            {{ end }}
+          </div>
+          <svg class="docs-card-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+        {{ end }}
+      </div>
+      {{ end }}
+    </div>
+  </article>
+
+  {{ partial "toc.html" . }}
+</div>
+{{ end }}

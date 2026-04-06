@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Basics on Orkestra</title>
+    <link>http://localhost:8191/docs/basics/</link>
+    <description>Recent content in Basics on Orkestra</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <atom:link href="http://localhost:8191/docs/basics/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Kubernetes Basics</title>
+      <link>http://localhost:8191/docs/basics/kubernetes-basics/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost:8191/docs/basics/kubernetes-basics/</guid>
+      <description>&lt;p&gt;!!! tip &amp;ldquo;Skip if you know Kubernetes&amp;rdquo;&#xA;This page is for engineers who are new to Kubernetes or who want a clear&#xA;mental model before reading about Orkestra. If you already know what CRDs,&#xA;operators, and reconciliation are, go straight to&#xA;&lt;a href=&#34;./understanding-orkestra.md&#34;&gt;Understanding Orkestra&lt;/a&gt;.&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;what-kubernetes-is&#34;&gt;What Kubernetes is&lt;/h2&gt;&#xA;&lt;p&gt;Kubernetes is a platform for running software in containers. You tell it what you&#xA;want — three copies of this application, always available, updated without downtime&#xA;— and it makes it happen. When something breaks, Kubernetes notices and fixes it.&#xA;When you change your mind, Kubernetes adjusts.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>The Katalog Manifest</title>
+      <link>http://localhost:8191/docs/basics/katalog-manifest/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost:8191/docs/basics/katalog-manifest/</guid>
+      <description>&lt;p&gt;The &lt;code&gt;Katalog&lt;/code&gt; manifest is the central artifact in Orkestra. It describes your CRD, the child resources the operator should manage, status conditions, and observability settings — all in a single YAML file.&lt;/p&gt;&#xA;&lt;h2 id=&#34;structure-overview&#34;&gt;Structure overview&lt;/h2&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-yaml&#34; data-lang=&#34;yaml&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#ff79c6&#34;&gt;apiVersion&lt;/span&gt;: orkestra.sh/v1&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#ff79c6&#34;&gt;kind&lt;/span&gt;: Katalog&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#ff79c6&#34;&gt;metadata&lt;/span&gt;:&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#ff79c6&#34;&gt;name&lt;/span&gt;: &amp;lt;operator-name&amp;gt;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#ff79c6&#34;&gt;namespace&lt;/span&gt;: &amp;lt;namespace&amp;gt;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#ff79c6&#34;&gt;spec&lt;/span&gt;:&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#ff79c6&#34;&gt;crd&lt;/span&gt;:          &lt;span style=&#34;color:#6272a4&#34;&gt;# CRD definition&lt;/span&gt;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#ff79c6&#34;&gt;resources&lt;/span&gt;:    &lt;span style=&#34;color:#6272a4&#34;&gt;# Child resources to manage&lt;/span&gt;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#ff79c6&#34;&gt;status&lt;/span&gt;:       &lt;span style=&#34;color:#6272a4&#34;&gt;# Status conditions&lt;/span&gt;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#ff79c6&#34;&gt;hooks&lt;/span&gt;:        &lt;span style=&#34;color:#6272a4&#34;&gt;# Lifecycle hooks (optional)&lt;/span&gt;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#ff79c6&#34;&gt;observe&lt;/span&gt;:      &lt;span style=&#34;color:#6272a4&#34;&gt;# Observability settings&lt;/span&gt;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#ff79c6&#34;&gt;validation&lt;/span&gt;:   &lt;span style=&#34;color:#6272a4&#34;&gt;# Admission validation (optional)&lt;/span&gt;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#ff79c6&#34;&gt;stateMachine&lt;/span&gt;: &lt;span style=&#34;color:#6272a4&#34;&gt;# State machine (optional)&lt;/span&gt;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;the-crd-section&#34;&gt;The &lt;code&gt;crd&lt;/code&gt; section&lt;/h2&gt;&#xA;&lt;p&gt;Defines the Custom Resource Definition that Orkestra will register.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Understanding Orkestra</title>
+      <link>http://localhost:8191/docs/basics/understanding-orkestra/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost:8191/docs/basics/understanding-orkestra/</guid>
+      <description>&lt;p&gt;Orkestra is a declarative operator runtime. It takes the problem described in&#xA;&lt;a href=&#34;./kubernetes-basics.md&#34;&gt;Kubernetes Basics&lt;/a&gt; — operators are hard to write — and&#xA;removes it. Not by making the code easier to write. By removing the need to write&#xA;code at all.&lt;/p&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;the-shift&#34;&gt;The shift&lt;/h2&gt;&#xA;&lt;p&gt;Every operator framework before Orkestra accepted a premise: operators are software&#xA;projects. You scaffold a project, write Go, compile a binary, build an image, deploy&#xA;it. The frameworks made this faster. None made it unnecessary.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

@@ -52,12 +52,6 @@ func (r *Resolver) ResolveStringSlice(values []string) ([]string, error) {
 	return resolved, nil
 }
 
-// OwnerName returns the CR name. Used by registry Resolve() for default naming.
-func (r *Resolver) OwnerName() string { return r.ownerName }
-
-// OwnerNamespace returns the CR namespace.
-func (r *Resolver) OwnerNamespace() string { return r.ownerNamespace }
-
 // ── Internal ──────────────────────────────────────────────────────────────────
 
 // objectToMap converts a domain.Object to map[string]interface{} for template execution.
@@ -140,24 +134,4 @@ func resolveRawValue(data map[string]interface{}, expr string) interface{} {
 		}
 	}
 	return current
-}
-
-// Data returns the resolver's internal object map.
-//
-// The map contains the full CR as seen by template expressions:
-//
-//	.spec.*      — all spec fields
-//	.status.*    — current status (from informer cache)
-//	.metadata.*  — name, namespace, labels, annotations, generation
-//	.children.*  — child resources, populated after WithChildren is called
-//
-// The returned map is the live internal map — do not mutate it.
-// Call WithChildren before Data() if you need children in the map.
-//
-// Used by:
-//   - resolveStatusFields — condition evaluation on status.fields when: blocks
-//   - runProviders        — condition evaluation on provider declaration when: blocks
-//   - evaluateConditions  — any code that needs the full object context
-func (r *Resolver) Data() map[string]interface{} {
-	return r.data
 }

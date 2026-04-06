@@ -1,4 +1,12 @@
 // pkg/reconciler/run_secrets.go
+//
+// Changes from previous version:
+//   - evaluateConditions(owner, ...) → orktypes.EvaluateWhen(resolver.Data(), ...)
+//     Uses the exported pkg/types evaluator which supports anyOf: in addition to when:
+//   - once: true support added before template resolution
+//     Checks Secret existence before evaluating randomAlphanumeric or other notes
+//   - anyOf: []Condition field on SecretTemplateSource now evaluated
+//     (requires adding AnyOf []Condition yaml:"anyOf,omitempty" to SecretTemplateSource)
 package reconciler
 
 import (
@@ -15,17 +23,27 @@ import (
 
 // runSecrets resolves and applies Secret template declarations.
 //
-// Secrets have two additional behaviours beyond Deployments and Services:
+// Execution per declaration:
+//  1. Evaluate when: (allOf) and anyOf: conditions — skip if failing
+//  2. once: guard — skip if Secret already exists (for random generation)
+//  3. Resolve template expressions (randomAlphanumeric etc. evaluated here)
+//  4. Apply via create/update/copyToNamespaces
 //
-// fromSecret — when src.FromSecret is set, the registry copies data from
-// an existing Secret in another namespace rather than using static data.
-// This is the primary use case: copy a platform secret into every tenant namespace.
+// once: true — idempotent secret generation:
 //
-// toNamespaces — when src.ToNamespaces is non-empty, the registry creates
-// one copy of the Secret in each listed namespace. Resolved once, written N times.
+//	secrets:
+//	  - name: "{{ .metadata.name }}-credentials"
+//	    once: true
+//	    data:
+//	      password: "{{ randomAlphanumeric 32 }}"
 //
-// reconcile: true — on every reconcile, re-reads the source Secret and syncs
-// any changes. This keeps copies up to date when credentials rotate.
+// The template is only evaluated when the Secret does not exist.
+// On every subsequent reconcile the existence check short-circuits before
+// template evaluation — randomAlphanumeric is never called again.
+//
+// WARNING: once: true is incompatible with reconcile: true.
+// Both on the same declaration logs a warning and once: is ignored —
+// the caller opted into continuous reconciliation.
 func runSecrets(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
@@ -35,11 +53,12 @@ func runSecrets(
 	update bool,
 ) error {
 	for i, src := range srcs {
-		// 1. Evaluate conditions BEFORE resolving templates
-		conditionPassed := evaluateConditions(owner, src.Conditions)
-
-		if !conditionPassed {
-			if update || src.Reconcile { // ← src.Reconcile here too to show that this resource is continuously managed
+		// ── Step 1: condition evaluation ─────────────────────────────────────
+		// EvaluateWhen handles both when: (AND) and anyOf: (OR).
+		// Uses resolver.Data() which has the full CR including .children.* and
+		// .external.* — same context as template expressions.
+		if !orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf) {
+			if update || src.Reconcile {
 				// Condition no longer passes — delete if owned by this CR
 				name, _ := resolver.Resolve(src.Name)
 				ns, _ := resolver.Resolve(src.Namespace)
@@ -53,29 +72,52 @@ func runSecrets(
 			logger.FromContext(ctx).Debug().
 				Str("resource", "Secret").
 				Int("index", i).
-				Msg("conditions not met — skipping resource")
-
+				Msg("conditions not met — skipping secret")
 			continue
 		}
 
-		// 2. Resolve template expressions
+		// ── Step 2: once: guard ───────────────────────────────────────────────
+		// Must run BEFORE template resolution so random notes are not evaluated.
+		// Skip when update=true or reconcile=true (incompatible with once:).
+		if src.Once {
+			if src.Reconcile {
+				logOnceReconcileConflict(ctx, src.Name)
+			} else if !update {
+				// Resolve the name to check existence — static resolution only,
+				// no random notes involved in the name itself.
+				name, _ := resolver.Resolve(src.Name)
+				ns, _ := resolver.Resolve(src.Namespace)
+				if ns == "" {
+					ns = owner.GetNamespace()
+				}
+				exists, err := secretExists(ctx, kube, ns, name)
+				if err != nil {
+					return fmt.Errorf("secrets[%d]: once: existence check: %w", i, err)
+				}
+				if exists {
+					logger.FromContext(ctx).Debug().
+						Str("secret", name).
+						Str("namespace", ns).
+						Msg("once: secret already exists — skipping (random values preserved)")
+					continue
+				}
+				// Does not exist — fall through to create
+			}
+		}
+
+		// ── Step 3: resolve template expressions ──────────────────────────────
+		// randomAlphanumeric, randomHex, randomBase64 are evaluated here.
+		// The once: guard above ensures this only runs on first creation.
 		resolved, err := resolver.ResolveSecretTemplate(src)
 		if err != nil {
 			return fmt.Errorf("secrets[%d]: %w", i, err)
 		}
 
-		// 3. Build registry spec and apply
+		// ── Step 4: apply ─────────────────────────────────────────────────────
 		spec := orksecrets.Resolve(resolved, resolver.OwnerName())
 
-		// toNamespaces — copy to multiple namespaces at once
-		// toNamespaces — copy to multiple namespaces at once
 		if len(resolved.ToNamespaces) > 0 {
-			// Use Update (sync-aware) when either:
-			//   update=true  → called from onReconcile block
-			//   src.Reconcile → declared reconcile: true in onCreate
-			// Use CopyToNamespaces (create-only) only for pure onCreate with no reconcile flag.
 			shouldSync := update || src.Reconcile
-
 			if shouldSync {
 				for _, ns := range resolved.ToNamespaces {
 					nsSpec := spec
@@ -90,7 +132,8 @@ func runSecrets(
 				}
 			}
 			continue
-		} // Single namespace
+		}
+
 		if update {
 			if err := orksecrets.Update(ctx, kube, owner, spec); err != nil {
 				return fmt.Errorf("secrets[%d].update: %w", i, err)
@@ -99,8 +142,6 @@ func runSecrets(
 			if err := orksecrets.Create(ctx, kube, owner, spec); err != nil {
 				return fmt.Errorf("secrets[%d].create: %w", i, err)
 			}
-
-			// reconcile: true
 			if src.Reconcile {
 				if err := orksecrets.Update(ctx, kube, owner, spec); err != nil {
 					return fmt.Errorf("secrets[%d].reconcile: %w", i, err)

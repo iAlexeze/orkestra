@@ -1,466 +1,309 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .CR.Name }} — {{ .CRDName }} — Orkestra Control Center</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
-    <link rel="alternate icon" href="/controlcenter/assets/static/logo.png">
-    <meta http-equiv="refresh" content="10">
-    <style>
-        .section-card { transition: all 0.2s ease; }
-        .section-card:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); }
-        .child-summary { cursor: pointer; transition: all 0.2s ease; }
-        .child-summary:hover { background-color: #f9fafb; }
-        details > summary { list-style: none; }
-        details > summary::-webkit-details-marker { display: none; }
-        .breadcrumb a:hover { text-decoration: underline; }
-        .event-row {
-            transition: all 0.2s ease;
-        }
-        .event-row:hover {
-            background-color: #f9fafb;
-        }
-        .pagination-btn {
-            transition: all 0.2s ease;
-        }
-        .pagination-btn:hover:not(:disabled) {
-            background-color: #e5e7eb;
-        }
-        .pagination-btn.active {
-            background-color: #1f2937;
-            color: white;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ .CR.Name }} — {{ .CRDName }} – Orkestra Control Center</title>
+  <link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
+  <link rel="stylesheet" href="/controlcenter/assets/static/css/style.css">
+  <script>(function(){var t=localStorage.getItem('cc-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
 </head>
-<body class="bg-gray-50">
+<body class="cc-root">
 
-<!-- ── Breadcrumb Navigation ──────────────────────────────────────────────── -->
-<header class="bg-white border-b border-gray-200 px-6 py-3 sticky top-0 z-10 shadow-sm">
-    <div class="max-w-6xl mx-auto">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2 text-sm breadcrumb">
-                <a href="/controlcenter" class="text-gray-400 hover:text-gray-600 transition">Control Center</a>
-                <svg class="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-                <a href="/controlcenter/katalog/{{ .KatalogName }}" class="text-gray-400 hover:text-gray-600 transition">{{ .KatalogName }}</a>
-                <svg class="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-                <a href="{{ .BackURL }}" class="text-gray-400 hover:text-gray-600 transition">{{ .CRDName }}</a>
-                <svg class="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-                <a href="{{ .BackURL }}/cr" class="text-gray-400 hover:text-gray-600 transition">Resources</a>
-                <svg class="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-                <span class="text-gray-700 font-medium font-mono">{{ .CR.Name }}</span>
-            </div>
-            <span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full font-mono">auto-refresh 10s</span>
-        </div>
+  <!-- Sidebar -->
+  <aside class="cc-sidebar" id="cc-sidebar">
+    <div class="cc-sidebar-logo">
+      <a href="/controlcenter">
+        <img src="/controlcenter/assets/static/logo.png" alt="Orkestra" width="32" height="32">
+        <span>Control Center</span>
+      </a>
     </div>
-</header>
-
-<!-- ── Page header ────────────────────────────────────────────────────────── -->
-<div class="px-6 py-5 bg-white border-b border-gray-100">
-    <div class="max-w-6xl mx-auto">
-        <div class="flex items-start justify-between">
-            <div>
-                <div class="flex items-center gap-3 mb-1 flex-wrap">
-                    <h1 class="text-xl font-semibold font-mono text-gray-900">{{ .CR.Name }}</h1>
-                    {{ if .Phase }}
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
-                        {{ if eq .Phase "Succeeded" }}bg-green-50 text-green-700 ring-1 ring-green-200
-                        {{ else if eq .Phase "Failed" }}bg-red-50 text-red-700 ring-1 ring-red-200
-                        {{ else if hasPrefix .Phase "Running" }}bg-blue-50 text-blue-700 ring-1 ring-blue-200
-                        {{ else if eq .Phase "Pending" }}bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200
-                        {{ else }}bg-gray-100 text-gray-600 ring-1 ring-gray-200{{ end }}">
-                        {{ if eq .Phase "Succeeded" }}✓
-                        {{ else if eq .Phase "Failed" }}✗
-                        {{ else if hasPrefix .Phase "Running" }}◌
-                        {{ else }}◷{{ end }}
-                        {{ .Phase }}
-                    </span>
-                    {{ end }}
-                    {{ if .CR.Ready }}
-                    <span class="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-1 rounded-full ring-1 ring-green-200">
-                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"></span> Ready
-                    </span>
-                    {{ else }}
-                    <span class="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-full ring-1 ring-amber-200">
-                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block animate-pulse"></span>
-                        {{ if .CR.ReadyReason }}{{ .CR.ReadyReason }}{{ else }}Not ready{{ end }}
-                    </span>
-                    {{ end }}
-                </div>
-                <div class="flex items-center gap-4 text-xs text-gray-400 font-mono">
-                    {{ if .CR.Namespace }}<span>namespace: {{ .CR.Namespace }}</span>{{ end }}
-                    <span>generation: {{ .CR.Generation }}</span>
-                    <span>created: {{ formatTime .CR.CreationTimestamp }}</span>
-                </div>
-            </div>
-        </div>
+    <nav class="cc-sidebar-nav">
+      <a href="/controlcenter" class="cc-nav-item">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        All Katalogs
+      </a>
+      <div class="cc-nav-section">Context</div>
+      <a href="/controlcenter/katalog/{{ .KatalogName }}" class="cc-nav-item">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        {{ .KatalogName }}
+      </a>
+      <a href="{{ .BackURL }}" class="cc-nav-item">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        {{ .CRDName }}
+      </a>
+      <a href="{{ .BackURL }}/cr" class="cc-nav-item">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>
+        Resources
+      </a>
+      <span class="cc-nav-item active" style="cursor:default">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        {{ .CR.Name }}
+      </span>
+    </nav>
+    <div class="cc-sidebar-footer">
+      <span class="cc-refresh-dot" id="sse-dot" title="Live connection"></span>
+      <span class="cc-refresh-label">Live</span>
     </div>
-</div>
+  </aside>
+  <div class="cc-sidebar-overlay" id="cc-overlay"></div>
 
-<main class="max-w-6xl mx-auto px-6 py-6 space-y-6">
+  <main class="cc-main">
+    <div class="cc-navbar">
+      <button class="cc-mobile-toggle" id="cc-mobile-toggle">☰</button>
+      <nav class="cc-breadcrumb">
+        <a href="/controlcenter">Control Center</a>
+        <span class="sep">›</span>
+        <a href="/controlcenter/katalog/{{ .KatalogName }}">{{ .KatalogName }}</a>
+        <span class="sep">›</span>
+        <a href="{{ .BackURL }}">{{ .CRDName }}</a>
+        <span class="sep">›</span>
+        <a href="{{ .BackURL }}/cr">Resources</a>
+        <span class="sep">›</span>
+        <span class="current font-mono">{{ .CR.Name }}</span>
+      </nav>
+      <div class="cc-navbar-right">
+        <button class="cc-theme-toggle" id="cc-theme-toggle" title="Toggle theme">☀️</button>
+      </div>
+    </div>
 
-    <!-- ── Status fields ──────────────────────────────────────────────────── -->
-    {{ if .CR.Status }}
-    <section class="section-card">
-        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Status</h2>
-        <div class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
-            {{ range $key, $val := .CR.Status }}
-            {{ if ne $key "conditions" }}
-            <div class="flex items-start px-4 py-3">
-                <span class="w-40 shrink-0 text-xs font-mono text-gray-400">{{ $key }}</span>
-                <span class="text-sm font-mono text-gray-900 break-all">
-                    {{ if eq (printf "%T" $val) "string" }}
-                        {{ $val }}
-                    {{ else }}
-                        {{ $val }}
-                    {{ end }}
-                </span>
-            </div>
-            {{ end }}
-            {{ end }}
+    <div class="cc-page">
+
+      <!-- CR Header -->
+      <div style="margin-bottom:24px">
+        <div class="flex items-center gap-3 mb-2" style="flex-wrap:wrap">
+          <h1 class="font-mono" style="font-size:20px;font-weight:700;margin:0">{{ .CR.Name }}</h1>
+          {{ if .Phase }}
+          <span class="cc-badge
+            {{- if eq .Phase "Succeeded" }} cc-badge-healthy
+            {{- else if eq .Phase "Failed" }} cc-badge-degraded
+            {{- else if hasPrefix .Phase "Running" }} cc-badge-started
+            {{- else if eq .Phase "Pending" }} cc-badge-pending
+            {{- else }}" style="background:var(--bg-elevated);border-color:var(--border);color:var(--text-muted){{ end }}">
+            {{- if eq .Phase "Succeeded" }}✓ {{ end -}}
+            {{- if eq .Phase "Failed" }}✗ {{ end -}}
+            {{- if hasPrefix .Phase "Running" }}◌ {{ end -}}
+            {{- if eq .Phase "Pending" }}◷ {{ end -}}
+            {{ .Phase }}
+          </span>
+          {{ end }}
+          {{ if .CR.Ready }}
+          <span class="cc-badge cc-badge-healthy"><span class="cc-status-dot healthy"></span>Ready</span>
+          {{ else }}
+          <span class="cc-badge cc-badge-pending"><span class="cc-status-dot pending anim-pulse"></span>{{ if .CR.ReadyReason }}{{ .CR.ReadyReason }}{{ else }}Not ready{{ end }}</span>
+          {{ end }}
         </div>
-    </section>
-    {{ end }}
+        <div class="flex gap-4 font-mono" style="font-size:11px;color:var(--text-muted)">
+          {{ if .CR.Namespace }}<span>namespace: {{ .CR.Namespace }}</span>{{ end }}
+          <span>generation: {{ .CR.Generation }}</span>
+          <span>created: {{ formatTime .CR.CreationTimestamp }}</span>
+        </div>
+      </div>
 
-    <!-- ── Conditions table ───────────────────────────────────────────────── -->
-    <section class="section-card">
-        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Conditions</h2>
-        <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <table class="w-full text-sm">
-                <thead class="bg-gray-50 border-b border-gray-100">
-                    <tr>
-                        <th class="text-left px-4 py-2.5 text-xs font-medium text-gray-400 uppercase">Type</th>
-                        <th class="text-left px-4 py-2.5 text-xs font-medium text-gray-400 uppercase">Status</th>
-                        <th class="text-left px-4 py-2.5 text-xs font-medium text-gray-400 uppercase">Reason</th>
-                        <th class="text-left px-4 py-2.5 text-xs font-medium text-gray-400 uppercase">Last Transition</th>
-                        <th class="text-left px-4 py-2.5 text-xs font-medium text-gray-400 uppercase">Message</th>
-                    </tr>
-                </thead>
-                <tbody>
-                {{ if .CR.Status }}
-                {{ $conditions := index .CR.Status "conditions" }}
-                {{ if $conditions }}
-                {{ range $conditions }}
-                {{ $cond := . }}
-                <tr class="border-t border-gray-50">
-                    <td class="px-4 py-3 font-mono text-xs text-gray-900">{{ index $cond "type" }}</td>
-                    <td class="px-4 py-3">
-                        {{ if eq (printf "%v" (index $cond "status")) "True" }}
-                        <span class="text-green-700 text-xs font-medium">True</span>
-                        {{ else }}
-                        <span class="text-red-600 text-xs font-medium">False</span>
-                        {{ end }}
-                    </td>
-                    <td class="px-4 py-3 text-xs font-mono text-gray-600">{{ index $cond "reason" }}</td>
-                    <td class="px-4 py-3 text-xs text-gray-400 font-mono">{{ formatTime (printf "%v" (index $cond "lastTransitionTime")) }}</td>
-                    <td class="px-4 py-3 text-xs text-gray-500">{{ index $cond "message" }}</td>
-                </tr>
-                {{ end }}
+      <!-- Status fields -->
+      {{ if .CR.Status }}
+      <div class="cc-section">
+        <h2 class="cc-section-title">Status</h2>
+        <div class="cc-kv-table">
+          {{ range $key, $val := .CR.Status }}
+          {{ if ne $key "conditions" }}
+          <div class="cc-kv-row">
+            <span class="cc-kv-key">{{ $key }}</span>
+            <span class="cc-kv-val">{{ $val }}</span>
+          </div>
+          {{ end }}
+          {{ end }}
+        </div>
+      </div>
+      {{ end }}
+
+      <!-- Conditions -->
+      <div class="cc-section">
+        <h2 class="cc-section-title">Conditions</h2>
+        <div class="cc-table-wrap">
+          <table class="cc-table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Reason</th>
+                <th>Last Transition</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody>
+            {{ if .CR.Status }}
+            {{ $conditions := index .CR.Status "conditions" }}
+            {{ if $conditions }}
+            {{ range $conditions }}
+            {{ $cond := . }}
+            <tr style="cursor:default">
+              <td class="font-mono text-xs">{{ index $cond "type" }}</td>
+              <td>
+                {{ if eq (printf "%v" (index $cond "status")) "True" }}
+                <span class="text-green text-xs font-medium">True</span>
                 {{ else }}
-                <tr><td colspan="5" class="px-4 py-6 text-center text-gray-400 text-xs">No conditions yet</td></tr>
+                <span class="text-red text-xs font-medium">False</span>
                 {{ end }}
-                {{ end }}
-                </tbody>
-            </table>
+              </td>
+              <td class="font-mono text-xs text-muted">{{ index $cond "reason" }}</td>
+              <td class="font-mono text-xs text-muted">{{ formatTime (printf "%v" (index $cond "lastTransitionTime")) }}</td>
+              <td class="text-xs text-muted">{{ index $cond "message" }}</td>
+            </tr>
+            {{ end }}
+            {{ else }}
+            <tr style="cursor:default"><td colspan="5" style="text-align:center;color:var(--text-muted);font-size:12px;padding:20px">No conditions yet</td></tr>
+            {{ end }}
+            {{ end }}
+            </tbody>
+          </table>
         </div>
-    </section>
+      </div>
 
-    <!-- ── Child Resources (collapsible, on-demand) ─────────────────────────── -->
-    {{ if .CR.Children }}
-    <section class="section-card">
+      <!-- Child Resources (collapsible) -->
+      {{ if .CR.Children }}
+      <div class="cc-section">
+        <h2 class="cc-section-title">Child Resources</h2>
         <details>
-            <summary class="cursor-pointer">
-                <div class="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3 hover:bg-gray-50 transition child-summary">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                            Child Resources
-                            <span class="ml-2 bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded text-xs font-normal">
-                                {{ len .CR.Children }}
-                            </span>
-                        </h2>
-                    </div>
-                    <span class="text-xs text-gray-400">Click to expand</span>
-                </div>
-            </summary>
-            <div class="mt-3 space-y-3">
-                {{ range $kind, $child := .CR.Children }}
-                <div class="bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 transition">
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="text-xs font-medium text-gray-400 uppercase tracking-wide px-2 py-0.5 bg-gray-100 rounded">{{ $kind }}</span>
-                                <span class="font-mono text-sm font-medium text-gray-900">{{ $child.Name }}</span>
-                                {{ if $child.Namespace }}
-                                <span class="text-xs text-gray-400 font-mono">{{ $child.Namespace }}</span>
-                                {{ end }}
-                            </div>
-                            
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                                {{ if $child.Status }}
-                                    {{ range $k, $v := $child.Status }}
-                                    {{ if ne $v nil }}
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-gray-400">{{ $k }}:</span>
-                                        <span class="font-mono text-gray-700 font-medium">
-                                            {{ if eq (printf "%v" $v) "0" }}<span class="text-gray-300">0</span>
-                                            {{ else if eq (printf "%v" $v) "1" }}<span class="text-green-600">{{ $v }}</span>
-                                            {{ else }}{{ $v }}{{ end }}
-                                        </span>
-                                    </div>
-                                    {{ end }}
-                                    {{ end }}
-                                {{ else }}
-                                <div class="text-gray-400 col-span-full">No status available</div>
-                                {{ end }}
-                            </div>
-                            
-                            <div class="mt-2">
-                                {{ if $child.Ready }}
-                                <span class="inline-flex items-center gap-1 text-xs text-green-600">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Ready
-                                </span>
-                                {{ else }}
-                                <span class="inline-flex items-center gap-1 text-xs text-amber-600">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Not ready
-                                </span>
-                                {{ end }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {{ end }}
+          <summary>
+            <div class="cc-details-summary">
+              <div class="flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                <span>Child Resources</span>
+                <span class="cc-badge" style="background:var(--bg-elevated);border-color:var(--border);color:var(--text-muted)">{{ len .CR.Children }}</span>
+              </div>
+              <span style="font-size:11px;color:var(--text-muted)">Click to expand</span>
             </div>
-        </details>
-    </section>
-    {{ end }}
-
-    <!-- ── Events with Pagination (10 per page) ─────────────────────────────── -->
-    <section class="section-card">
-        <div class="flex items-center justify-between mb-3">
-            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Events
-                {{ if gt .EventTotal 0 }}
-                <span class="ml-2 bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded text-xs font-normal">
-                    {{ .EventTotal }}
-                </span>
+          </summary>
+          <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">
+            {{ range $kind, $child := .CR.Children }}
+            <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="cc-badge" style="background:var(--bg-elevated);border-color:var(--border);color:var(--text-muted);text-transform:uppercase">{{ $kind }}</span>
+                <span class="font-mono" style="font-weight:500">{{ $child.Name }}</span>
+                {{ if $child.Namespace }}<span class="font-mono text-muted text-xs">{{ $child.Namespace }}</span>{{ end }}
+                {{ if $child.Ready }}
+                <span class="cc-badge cc-badge-healthy" style="margin-left:auto"><span class="cc-status-dot healthy"></span>Ready</span>
+                {{ else }}
+                <span class="cc-badge cc-badge-pending" style="margin-left:auto"><span class="cc-status-dot pending anim-pulse"></span>Not ready</span>
                 {{ end }}
-            </h2>
+              </div>
+              {{ if $child.Status }}
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px">
+                {{ range $k, $v := $child.Status }}
+                {{ if ne $v nil }}
+                <div style="display:flex;justify-content:space-between">
+                  <span class="text-muted">{{ $k }}:</span>
+                  <span class="font-mono" style="font-weight:500">{{ $v }}</span>
+                </div>
+                {{ end }}
+                {{ end }}
+              </div>
+              {{ else }}
+              <div class="text-muted text-xs">No status available</div>
+              {{ end }}
+            </div>
+            {{ end }}
+          </div>
+        </details>
+      </div>
+      {{ end }}
+
+      <!-- Events -->
+      <div class="cc-section">
+        <div class="cc-section-header">
+          <h2 class="cc-section-title" style="margin:0">Events
+            {{ if gt .EventTotal 0 }}
+            <span class="cc-badge" style="background:var(--bg-elevated);border-color:var(--border);color:var(--text-muted);margin-left:6px">{{ .EventTotal }}</span>
+            {{ end }}
+          </h2>
         </div>
 
         {{ if eq .EventTotal 0 }}
-        <div class="bg-white border border-gray-200 rounded-xl p-8 text-center">
-            <p class="text-sm text-gray-400">No events yet</p>
-            <p class="text-xs text-gray-300 mt-1">Events appear here once the operator reconciles this CR</p>
+        <div class="cc-empty-state" style="padding:24px">
+          <div class="cc-empty-state-title">No events yet</div>
+          <p class="cc-empty-state-text">Events appear here once the operator reconciles this CR.</p>
         </div>
         {{ else }}
-        <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50 border-b border-gray-100">
-                        <tr>
-                            <th class="text-left px-4 py-2.5 text-xs font-medium text-gray-400 uppercase w-20">Type</th>
-                            <th class="text-left px-4 py-2.5 text-xs font-medium text-gray-400 uppercase w-36">Reason</th>
-                            <th class="text-left px-4 py-2.5 text-xs font-medium text-gray-400 uppercase">Message</th>
-                            <th class="text-left px-4 py-2.5 text-xs font-medium text-gray-400 uppercase w-16">Count</th>
-                            <th class="text-left px-4 py-2.5 text-xs font-medium text-gray-400 uppercase w-20">Age</th>
-                            <th class="text-left px-4 py-2.5 text-xs font-medium text-gray-400 uppercase w-28">Source</th>
-                        </tr>
-                    </thead>
-                    <tbody id="eventsTableBody" class="divide-y divide-gray-50">
-                        {{ range .Events }}
-                        <tr class="event-row {{ if eq .Type "Warning" }}bg-amber-50/40{{ end }} hover:bg-gray-50 transition">
-                            <td class="px-4 py-2.5">
-                                {{ if eq .Type "Warning" }}
-                                <span class="text-xs font-medium text-amber-600">⚠ Warning</span>
-                                {{ else }}
-                                <span class="text-xs font-medium text-gray-500">● Normal</span>
-                                {{ end }}
-                            </td>
-                            <td class="px-4 py-2.5 text-xs font-mono text-gray-700">{{ .Reason }}</td>
-                            <td class="px-4 py-2.5 text-xs text-gray-600 max-w-xs truncate" title="{{ .Message }}">
-                                {{ truncate .Message 120 }}
-                            </td>
-                            <td class="px-4 py-2.5 text-xs font-mono text-gray-400">
-                                {{ if gt .Count 1 }}
-                                <span class="bg-gray-100 px-1.5 py-0.5 rounded">×{{ .Count }}</span>
-                                {{ else }}1{{ end }}
-                            </td>
-                            <td class="px-4 py-2.5 text-xs font-mono text-gray-400">{{ .Age }}</td>
-                            <td class="px-4 py-2.5 text-xs text-gray-400 truncate">{{ .Source }}</td>
-                        </tr>
-                        {{ end }}
-                    </tbody>
-                </table>
+        <div class="cc-table-wrap">
+          <table class="cc-table">
+            <thead>
+              <tr>
+                <th style="width:80px">Type</th>
+                <th style="width:140px">Reason</th>
+                <th>Message</th>
+                <th style="width:60px">Count</th>
+                <th style="width:80px">Age</th>
+                <th style="width:120px">Source</th>
+              </tr>
+            </thead>
+            <tbody id="eventsTableBody">
+              {{ range .Events }}
+              <tr class="event-row{{ if eq .Type "Warning" }}" style="background:rgba(245,158,11,0.04){{ end }}">
+                <td>
+                  {{ if eq .Type "Warning" }}
+                  <span class="text-amber text-xs font-medium">Warning</span>
+                  {{ else }}
+                  <span class="text-muted text-xs">Normal</span>
+                  {{ end }}
+                </td>
+                <td class="font-mono text-xs">{{ .Reason }}</td>
+                <td class="text-xs text-muted truncate" style="max-width:300px" title="{{ .Message }}">{{ truncate .Message 120 }}</td>
+                <td class="font-mono text-xs text-muted">
+                  {{ if gt .Count 1 }}
+                  <span class="cc-badge" style="background:var(--bg-elevated);border-color:var(--border);color:var(--text-muted);padding:1px 5px">×{{ .Count }}</span>
+                  {{ else }}1{{ end }}
+                </td>
+                <td class="font-mono text-xs text-muted">{{ .Age }}</td>
+                <td class="text-xs text-muted truncate">{{ .Source }}</td>
+              </tr>
+              {{ end }}
+            </tbody>
+          </table>
+
+          {{ if gt .EventTotal 10 }}
+          <div style="padding:10px 16px;background:var(--bg-elevated);border-top:1px solid var(--border)">
+            <div class="cc-pagination">
+              <div class="cc-pagination-info">
+                Showing <span id="eventStart">1</span>–<span id="eventEnd">10</span> of <span id="eventTotalCount">{{ .EventTotal }}</span> events
+              </div>
+              <div class="cc-pagination-btns">
+                <button id="eventPrevPageBtn" class="cc-page-btn" disabled>← Prev</button>
+                <div id="eventPageNumbers" class="cc-pagination-btns"></div>
+                <button id="eventNextPageBtn" class="cc-page-btn">Next →</button>
+              </div>
             </div>
-            
-            <!-- Event Pagination Controls -->
-            {{ if gt .EventTotal 10 }}
-            <div class="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                <div class="text-xs text-gray-500">
-                    Showing <span id="eventStart">1</span> - <span id="eventEnd">10</span> of <span id="eventTotalCount">{{ .EventTotal }}</span> events
-                </div>
-                <div class="flex gap-2">
-                    <button id="eventPrevPageBtn" class="event-page-btn px-3 py-1 text-xs rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition" disabled>
-                        ← Previous
-                    </button>
-                    <div id="eventPageNumbers" class="flex gap-1">
-                        <!-- Page numbers will be inserted here -->
-                    </div>
-                    <button id="eventNextPageBtn" class="event-page-btn px-3 py-1 text-xs rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition">
-                        Next →
-                    </button>
-                </div>
-            </div>
-            {{ end }}
+          </div>
+          {{ end }}
         </div>
         {{ end }}
-    </section>
+      </div>
 
-    <!-- ── Labels (collapsible) ──────────────────────────────────────────────── -->
-    {{ if .CR.Labels }}
-    <section>
-        <details class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <summary class="px-4 py-3 text-xs font-medium text-gray-500 cursor-pointer hover:bg-gray-50 select-none">
-                Labels ({{ len .CR.Labels }})
-            </summary>
-            <div class="border-t border-gray-100 divide-y divide-gray-50">
+      <!-- Labels (collapsible) -->
+      {{ if .CR.Labels }}
+      <div class="cc-section">
+        <details>
+          <summary>
+            <div class="cc-details-summary">
+              <span>Labels ({{ len .CR.Labels }})</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </summary>
+          <div class="cc-kv-table" style="margin-top:4px">
             {{ range $k, $v := .CR.Labels }}
-            <div class="flex items-center px-4 py-2 gap-4">
-                <span class="text-xs font-mono text-gray-400 w-64 shrink-0">{{ $k }}</span>
-                <span class="text-xs font-mono text-gray-700">{{ $v }}</span>
+            <div class="cc-kv-row">
+              <span class="cc-kv-key">{{ $k }}</span>
+              <span class="cc-kv-val">{{ $v }}</span>
             </div>
             {{ end }}
-            </div>
+          </div>
         </details>
-    </section>
-    {{ end }}
+      </div>
+      {{ end }}
 
-</main>
+    </div>
+  </main>
 
-<script>
-// Event Pagination (10 events per page)
-const EVENT_PAGE_SIZE = 10;
-let eventCurrentPage = 1;
-let eventRows = [];
-
-function initEventPagination() {
-    eventRows = Array.from(document.querySelectorAll('#eventsTableBody .event-row'));
-    const totalEvents = eventRows.length;
-    
-    if (totalEvents <= EVENT_PAGE_SIZE) {
-        // Hide pagination if not needed
-        const paginationContainer = document.querySelector('#eventsTableBody')?.closest('.bg-white')?.querySelector('.px-4.py-3');
-        if (paginationContainer) paginationContainer.style.display = 'none';
-        return;
-    }
-    
-    updateEventPage();
-}
-
-function updateEventPage() {
-    const totalEvents = eventRows.length;
-    const totalPages = Math.ceil(totalEvents / EVENT_PAGE_SIZE);
-    
-    // Adjust current page if out of bounds
-    if (eventCurrentPage > totalPages) eventCurrentPage = totalPages;
-    if (eventCurrentPage < 1) eventCurrentPage = 1;
-    
-    // Hide all rows
-    eventRows.forEach(row => {
-        row.style.display = 'none';
-    });
-    
-    // Show only rows for current page
-    const start = (eventCurrentPage - 1) * EVENT_PAGE_SIZE;
-    const end = Math.min(start + EVENT_PAGE_SIZE, totalEvents);
-    
-    for (let i = start; i < end; i++) {
-        if (eventRows[i]) eventRows[i].style.display = '';
-    }
-    
-    // Update UI
-    document.getElementById('eventStart').textContent = start + 1;
-    document.getElementById('eventEnd').textContent = end;
-    document.getElementById('eventTotalCount').textContent = totalEvents;
-    
-    // Update prev/next buttons
-    const prevBtn = document.getElementById('eventPrevPageBtn');
-    const nextBtn = document.getElementById('eventNextPageBtn');
-    
-    if (prevBtn) prevBtn.disabled = eventCurrentPage <= 1;
-    if (nextBtn) nextBtn.disabled = eventCurrentPage >= totalPages;
-    
-    // Generate page numbers
-    generateEventPageNumbers(eventCurrentPage, totalPages);
-}
-
-function generateEventPageNumbers(currentPage, totalPages) {
-    const container = document.getElementById('eventPageNumbers');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    // Show at most 5 page numbers
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, startPage + 4);
-    
-    if (endPage - startPage < 4) {
-        startPage = Math.max(1, endPage - 4);
-    }
-    
-    for (let i = startPage; i <= endPage; i++) {
-        const btn = document.createElement('button');
-        btn.textContent = i;
-        btn.className = `event-page-num w-7 h-7 text-xs rounded border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 transition ${i === currentPage ? 'active bg-gray-900 text-white border-gray-900' : ''}`;
-        btn.onclick = () => {
-            eventCurrentPage = i;
-            updateEventPage();
-        };
-        container.appendChild(btn);
-    }
-}
-
-// Event listeners for pagination buttons
-const eventPrevBtn = document.getElementById('eventPrevPageBtn');
-const eventNextBtn = document.getElementById('eventNextPageBtn');
-
-if (eventPrevBtn) {
-    eventPrevBtn.addEventListener('click', () => {
-        if (eventCurrentPage > 1) {
-            eventCurrentPage--;
-            updateEventPage();
-        }
-    });
-}
-
-if (eventNextBtn) {
-    eventNextBtn.addEventListener('click', () => {
-        const totalPages = Math.ceil(eventRows.length / EVENT_PAGE_SIZE);
-        if (eventCurrentPage < totalPages) {
-            eventCurrentPage++;
-            updateEventPage();
-        }
-    });
-}
-
-// Initialize event pagination after DOM is ready
-setTimeout(() => {
-    initEventPagination();
-}, 100);
-
-console.log('CR Detail page loaded');
-</script>
+  <script src="/controlcenter/assets/static/js/dashboard.js"></script>
 </body>
 </html>
