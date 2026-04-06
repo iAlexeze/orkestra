@@ -2,38 +2,38 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Tags on Orkestra</title>
-    <link>https://orkestra.sh/tags/</link>
+    <link>http://localhost:8191/tags/</link>
     <description>Recent content in Tags on Orkestra</description>
     <generator>Hugo</generator>
     <language>en-us</language>
     <lastBuildDate>Mon, 06 Apr 2026 15:47:01 +0000</lastBuildDate>
-    <atom:link href="https://orkestra.sh/tags/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:8191/tags/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Concepts</title>
-      <link>https://orkestra.sh/tags/concepts/</link>
+      <link>http://localhost:8191/tags/concepts/</link>
       <pubDate>Wed, 15 Oct 2025 00:00:00 +0000</pubDate>
-      <guid>https://orkestra.sh/tags/concepts/</guid>
+      <guid>http://localhost:8191/tags/concepts/</guid>
       <description></description>
     </item>
     <item>
       <title>Engineering</title>
-      <link>https://orkestra.sh/tags/engineering/</link>
+      <link>http://localhost:8191/tags/engineering/</link>
       <pubDate>Wed, 15 Oct 2025 00:00:00 +0000</pubDate>
-      <guid>https://orkestra.sh/tags/engineering/</guid>
+      <guid>http://localhost:8191/tags/engineering/</guid>
       <description></description>
     </item>
     <item>
       <title>Announcement</title>
-      <link>https://orkestra.sh/tags/announcement/</link>
+      <link>http://localhost:8191/tags/announcement/</link>
       <pubDate>Mon, 01 Sep 2025 00:00:00 +0000</pubDate>
-      <guid>https://orkestra.sh/tags/announcement/</guid>
+      <guid>http://localhost:8191/tags/announcement/</guid>
       <description></description>
     </item>
     <item>
       <title>Release</title>
-      <link>https://orkestra.sh/tags/release/</link>
+      <link>http://localhost:8191/tags/release/</link>
       <pubDate>Mon, 01 Sep 2025 00:00:00 +0000</pubDate>
-      <guid>https://orkestra.sh/tags/release/</guid>
+      <guid>http://localhost:8191/tags/release/</guid>
       <description></description>
     </item>
   </channel>

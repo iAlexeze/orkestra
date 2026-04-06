@@ -491,14 +491,26 @@
     };
 
     /* Public: copy called from HTML onclick */
-    window.copyYAML = function() {
+   window.copyYAML = function() {
       var data = ymView === 'raw' ? ymRawData : ymEnrichedData;
       if (!data) return;
+      var btn = document.getElementById('ym-copyBtn');
+      if (!btn) return;
+      
       navigator.clipboard.writeText(toYAML(data, 0)).then(function() {
-        var btn = document.getElementById('ym-copyBtn');
-        if (!btn) return;
-        btn.textContent = 'Copied!';
-        setTimeout(function() { btn.textContent = 'Copy YAML'; }, 2000);
+        var originalText = btn.textContent;
+        btn.innerHTML = '✓ Copied!';
+        btn.classList.add('copied');
+        setTimeout(function() { 
+          btn.innerHTML = originalText;
+          btn.classList.remove('copied');
+        }, 2000);
+      }).catch(function(err) {
+        console.error('Failed to copy:', err);
+        btn.textContent = '❌ Failed';
+        setTimeout(function() { 
+          btn.textContent = 'Copy YAML';
+        }, 2000);
       });
     };
 

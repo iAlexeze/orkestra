@@ -564,8 +564,16 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 	}
 
 	kat := inst.Katalog
+
+	// Sort CRDs by name for consistent display
+	sortedCRDs := make([]CRDSummary, len(kat.CRDs))
+	copy(sortedCRDs, kat.CRDs)
+	sort.Slice(sortedCRDs, func(i, j int) bool {
+		return sortedCRDs[i].Name < sortedCRDs[j].Name
+	})
+
 	cc.renderTemplate(w, "katalog.html", KatalogData{
-		CRDs:               kat.CRDs,
+		CRDs:               sortedCRDs,
 		OrkReady:           kat.OrkReady,
 		TotalCRDs:          len(kat.CRDs),
 		TotalWorkers:       sumWorkers(kat.CRDs),

@@ -1829,3 +1829,16 @@ details > summary::-webkit-details-marker { display: none; }
   font-size: 11px;
   color: #4B5563;
 }
+
+/* Copied */
+#ym-copyBtn {
+  transition: all 0.2s ease;
+}
+#ym-copyBtn.copied {
+  background: #10B981 !important;
+  color: white !important;
+}
+#ym-copyBtn:hover {
+  background: #10B981 !important;
+  color: white !important;
+}

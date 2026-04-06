@@ -26,7 +26,7 @@ spec:
       serviceAccountName: orkestra-cc
       containers:
         - name: control-center
-          image: ialexeze/ork:controlcenter.0.11rc
+          image: ialexeze/ork:controlcenter.0xnull
           imagePullPolicy: Always
           args:
             - -u
