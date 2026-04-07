@@ -1,4 +1,4 @@
-.PHONY: build orkcc clean test test-unit test-race test-integration test-e2e test-all test-coverage test-coverage-text vet certs docs docs-build docs-serve
+.PHONY: build orkcc clean test test-unit test-race test-integration test-e2e test-all test-coverage test-coverage-text vet certs docs docs-build docs-serve site site-sync site-build site-start hugo-install
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
@@ -160,27 +160,66 @@ test-coverage-text:
 # The Hugo site lives in website/ and renders the docs/ directory.
 # Requires the hugo binary — install with: brew install hugo  or  snap install hugo
 
-HUGO_BIN ?= $(shell which hugo 2>/dev/null || echo /tmp/hugo)
 DOCS_PORT ?= 8191
 
 docs:
+	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
 	@echo "Starting Hugo docs server at http://localhost:$(DOCS_PORT) ..."
-	@$(HUGO_BIN) server \
-		--source website \
-		--port $(DOCS_PORT) \
-		--bind 0.0.0.0 \
-		--disableFastRender \
-		--logLevel warn
+	hugo server --source website --port $(DOCS_PORT) --bind 0.0.0.0 --disableFastRender --logLevel warn
 	@echo "✅ Docs server stopped"
 
 docs-build:
+	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
 	@echo "Building Hugo static site..."
-	$(HUGO_BIN) --source website --minify
+	hugo --source website --minify
 	@echo "✅ Hugo site built to website/public/"
 
 docs-serve:
+	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
 	@echo "Serving production Hugo build on port $(DOCS_PORT)..."
-	$(HUGO_BIN) server --source website --port $(DOCS_PORT) --bind 0.0.0.0 --renderStaticToDisk
+	hugo server --source website --port $(DOCS_PORT) --bind 0.0.0.0 --renderStaticToDisk
+
+# ── Hugo site (orkestra-site/) ────────────────────────────────────────────────
+# The redesigned marketing + docs site.
+# Requires hugo >= 0.120: brew install hugo  or  snap install hugo --channel=extended
+
+SITE_DIR  := ./orkestra-site
+SITE_PORT ?= 8565
+HUGO      := $(shell which hugo 2>/dev/null)
+
+# Install Hugo extended if not present (Linux/macOS)
+.PHONY: hugo-install
+hugo-install:
+	@if [ -n "$(HUGO)" ]; then echo "Hugo already installed: $(HUGO)"; exit 0; fi; \
+	OS=$$(uname -s | tr '[:upper:]' '[:lower:]'); \
+	ARCH=$$(uname -m); \
+	if [ "$$ARCH" = "x86_64" ]; then ARCH="amd64"; elif [ "$$ARCH" = "aarch64" ] || [ "$$ARCH" = "arm64" ]; then ARCH="arm64"; fi; \
+	VER="0.147.0"; \
+	if [ "$$OS" = "darwin" ]; then \
+	  brew install hugo && exit 0; \
+	fi; \
+	URL="https://github.com/gohugoio/hugo/releases/download/v$${VER}/hugo_extended_$${VER}_$${OS}-$${ARCH}.tar.gz"; \
+	echo "Installing Hugo v$${VER} from $$URL ..."; \
+	curl -sSL "$$URL" | tar -xz -C /tmp hugo && sudo mv /tmp/hugo /usr/local/bin/hugo; \
+	echo "✅ Hugo installed: $$(hugo version)"
+
+site-sync:
+	@echo "Syncing docs/ → orkestra-site/content/docs/ ..."
+	@bash $(SITE_DIR)/scripts/sync-docs.sh
+	@echo "✅ Docs synced"
+
+site: site-sync
+	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
+	@echo "Starting Hugo site at http://localhost:$(SITE_PORT) ..."
+	hugo server --source $(SITE_DIR) --port $(SITE_PORT) --bind 0.0.0.0 --disableFastRender
+
+site-start: site
+
+site-build: site-sync
+	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
+	@echo "Building Hugo site..."
+	hugo --source $(SITE_DIR) --minify
+	@echo "✅ Site built to orkestra-site/public/"
 
 # ── Vet ───────────────────────────────────────────────────────────────────────
 vet:

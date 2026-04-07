@@ -138,8 +138,16 @@
   var sseMaxRetry = 30000;
   var sseSource = null;
   var sseDisconnectedBanner = null;
+  // Only show the disconnected banner after this many consecutive failures
+  var SSE_BANNER_THRESHOLD = 4;
+  var sseFailCount = 0;
 
   function setSseConnected(connected) {
+    if (connected) {
+      // Reset failure counter on successful connection
+      sseFailCount = 0;
+    }
+
     if (sseDot) {
       if (connected) {
         sseDot.classList.add('connected');
@@ -147,9 +155,11 @@
         sseDot.classList.remove('connected');
       }
     }
-    // Show/hide disconnected banner
+
+    // Show disconnected banner only after several consecutive failures
     if (!connected) {
-      if (!sseDisconnectedBanner) {
+      sseFailCount++;
+      if (sseFailCount >= SSE_BANNER_THRESHOLD && !sseDisconnectedBanner) {
         sseDisconnectedBanner = document.createElement('div');
         sseDisconnectedBanner.id = 'cc-disconnected-banner';
         sseDisconnectedBanner.className = 'cc-alert cc-alert-warn cc-disconnected-banner';

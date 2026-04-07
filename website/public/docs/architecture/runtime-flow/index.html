@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=9292&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Orkestra Runtime Flow — Orkestra">
 <meta property="og:description" content="Step-by-step trace of a reconcile event: from watch notification through the workqueue, worker pool, template engine, and back to Kubernetes.">
-<meta property="og:url" content="http://localhost:9292/docs/architecture/runtime-flow/">
+<meta property="og:url" content="http://localhost:8191/docs/architecture/runtime-flow/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -944,8 +944,8 @@
         
         <div class="docs-meta">
           
-          <time datetime="2026-04-06" class="docs-date">
-            Updated Apr 6, 2026
+          <time datetime="2026-04-07" class="docs-date">
+            Updated Apr 7, 2026
           </time>
           
 
@@ -1009,7 +1009,7 @@
 </ul>
 <hr>
 <h2 id="4-dispatch-by-gvk"><strong>4. Dispatch by GVK</strong></h2>
-<p>The KontrollerRegistry maps:</p>
+<p>The KordinatorRegistry maps:</p>
 <pre tabindex="0"><code>GVK → Reconciler
 </code></pre><p>This allows Orkestra to support:</p>
 <ul>

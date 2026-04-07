@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=9292&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Orkestra Komponents — Orkestra">
 <meta property="og:description" content="Orkestra is made of several pieces, each with one job. They start in a specific order and shut down in reverse. This doc...">
-<meta property="og:url" content="http://localhost:9292/docs/concepts/komponent/">
+<meta property="og:url" content="http://localhost:8191/docs/concepts/komponent/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -944,8 +944,8 @@
         
         <div class="docs-meta">
           
-          <time datetime="2026-04-06" class="docs-date">
-            Updated Apr 6, 2026
+          <time datetime="2026-04-07" class="docs-date">
+            Updated Apr 7, 2026
           </time>
           
 
@@ -1086,8 +1086,8 @@ kubectl get events --watch
 <p>The informer also keeps a local cache. This means workers never need to ask the Kubernetes API for the current state. They read from the cache, which is fast and reduces load on the cluster.</p>
 <p>Each CRD can have its own resync interval. A resync is like a &ldquo;just checking&rdquo; event — even if nothing changed, the informer re‑adds the resource to the queue so Orkestra can make sure everything is still correct.</p>
 <hr>
-<h2 id="kontrollerregistry">KontrollerRegistry</h2>
-<p>The KontrollerRegistry is a lookup table. It maps a CRD (like <code>Website</code>) to:</p>
+<h2 id="kordinatorregistry">KordinatorRegistry</h2>
+<p>The KordinatorRegistry is a lookup table. It maps a CRD (like <code>Website</code>) to:</p>
 <ul>
 <li>Its informer (how to watch it)</li>
 <li>Its reconciler (how to reconcile it)</li>
@@ -1095,7 +1095,7 @@ kubectl get events --watch
 </ul>
 <p>When a worker picks up a task, it looks in this registry to find the right reconciler for that CRD.</p>
 <hr>
-<h2 id="DependencyKordinator">DependencyKordinator</h2>
+<h2 id="dependencykordinator">DependencyKordinator</h2>
 <p>This is the brain of Orkestra. It makes sure CRDs start in the right order.</p>
 <h3 id="how-it-starts">How It Starts</h3>
 <ol>
@@ -1217,8 +1217,8 @@ kubectl get events --watch
     <li><a href="#eventrecorder">EventRecorder</a></li>
     <li><a href="#queueregistry-and-defaultworkqueue">QueueRegistry and DefaultWorkqueue</a></li>
     <li><a href="#sharedinformerfactory">SharedInformerFactory</a></li>
-    <li><a href="#kontrollerregistry">KontrollerRegistry</a></li>
-    <li><a href="#DependencyKordinator">DependencyKordinator</a>
+    <li><a href="#kordinatorregistry">KordinatorRegistry</a></li>
+    <li><a href="#dependencykordinator">DependencyKordinator</a>
       <ul>
         <li><a href="#how-it-starts">How It Starts</a></li>
         <li><a href="#how-it-processes-tasks">How It Processes Tasks</a></li>

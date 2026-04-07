@@ -1,0 +1,36 @@
+{{ $pages := .CurrentSection.Pages }}
+{{ $current := . }}
+{{ $prev := $current.PrevInSection }}
+{{ $next := $current.NextInSection }}
+
+{{ if or $prev $next }}
+<nav class="prev-next" aria-label="Pagination">
+  <div class="prev-next-inner">
+    {{ if $prev }}
+    <a href="{{ $prev.RelPermalink }}" class="prev-link">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      <div>
+        <span class="nav-label">Previous</span>
+        <span class="nav-title">{{ $prev.Title }}</span>
+      </div>
+    </a>
+    {{ else }}
+    <div></div>
+    {{ end }}
+
+    {{ if $next }}
+    <a href="{{ $next.RelPermalink }}" class="next-link">
+      <div>
+        <span class="nav-label">Next</span>
+        <span class="nav-title">{{ $next.Title }}</span>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </a>
+    {{ end }}
+  </div>
+</nav>
+{{ end }}
