@@ -1,7 +1,7 @@
 ---
 title: "Writing Your First Komposer"
 weight: 2
-description: "A **Komposer** tells Orkestra *where* to load katalogs from."
+description: ""
 ---
 
 A **Komposer** tells Orkestra *where* to load katalogs from.  

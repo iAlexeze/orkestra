@@ -17,83 +17,60 @@ mkdir my-website-operator && cd my-website-operator
 Create `katalog.yaml`:
 
 ```yaml
-apiVersion: orkestra.sh/v1
+apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
-  name: website-operator
-  namespace: default
+  name: hello-website
+  author: orkspace
+  version: 0.1.0
+  description: The simplest possible operator. One CRD, one Deployment.
+
 spec:
-  crd:
-    group: apps.example.com
-    kind: Website
-    version: v1alpha1
-    scope: Namespaced
-    description: "Manages a simple web application deployment"
-  resources:
-    - kind: Deployment
-      name: "{{ .Name }}"
-      namespace: "{{ .Namespace }}"
-      template: ./templates/deployment.yaml
-    - kind: Service
-      name: "{{ .Name }}-svc"
-      namespace: "{{ .Namespace }}"
-      template: ./templates/service.yaml
-  status:
-    conditions:
-      - type: Ready
-        description: "Website is fully reconciled"
-      - type: Degraded
-        description: "Website reconciliation failed"
-  observe:
-    events: true
-    controlCenter: true
+  crds:
+    website:
+      apiTypes:
+        group: demo.orkestra.io
+        version: v1alpha1
+        kind: Website
+        plural: websites
+
+      reconciler:
+        default: true
+        onCreate:
+          deployments:
+            - image: "{{ .spec.image }}"
+              # name defaults to: <cr-name>-deployment
+              # namespace defaults to: <cr-namespace>
+              # replicas defaults to: 1
 ```
 
-## 3. Create resource templates
+## Apply the website CRD
 
-Create `templates/deployment.yaml`:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
+```bash
+kubectl apply -f - <<EOF
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
 metadata:
-  name: "{{ .Name }}"
-  namespace: "{{ .Namespace }}"
-  labels:
-    app: "{{ .Name }}"
-    managed-by: orkestra
+  name: websites.apps.example.com
 spec:
-  replicas: {{ .Spec.replicas | default 1 }}
-  selector:
-    matchLabels:
-      app: "{{ .Name }}"
-  template:
-    metadata:
-      labels:
-        app: "{{ .Name }}"
-    spec:
-      containers:
-        - name: website
-          image: "{{ .Spec.image }}"
-          ports:
-            - containerPort: 80
-```
-
-Create `templates/service.yaml`:
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: "{{ .Name }}-svc"
-  namespace: "{{ .Namespace }}"
-spec:
-  selector:
-    app: "{{ .Name }}"
-  ports:
-    - port: 80
-      targetPort: 80
-  type: ClusterIP
+  group: apps.example.com
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                image:
+                  type: string
+                  replicas:
+                  type: integer
+                  default: 1
+EOF
 ```
 
 ## 4. Start the operator

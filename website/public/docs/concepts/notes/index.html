@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=9292&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Notes — Orkestra">
 <meta property="og:description" content="Notes are pure transformation functions available in every Orkestra template">
-<meta property="og:url" content="http://localhost:8191/docs/concepts/notes/">
+<meta property="og:url" content="http://localhost:9292/docs/concepts/notes/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.3a158893da18f7a50a3a30d5b58e06a6ffb4feed1bd6bef21ea14ce0d1986319.css">
+<link rel="stylesheet" href="/css/main.min.e4f35e028b4e342d94b5258699fa7b53e53b1f54212c3a40fb2a70e627bba458.css">
 
 
 
@@ -291,12 +291,6 @@
               </li>
               
               <li>
-                <a href="/docs/concepts/conditional-provisioning/" class="sidebar-link">
-                  **Conditional Provisioning in Orkestra**
-                </a>
-              </li>
-              
-              <li>
                 <a href="/docs/concepts/runtime/" class="sidebar-link">
                   **Orkestra Runtime**
                 </a>
@@ -305,6 +299,12 @@
               <li>
                 <a href="/docs/concepts/typed-crds/" class="sidebar-link">
                   **Typed CRDs**
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/conditional-provisioning/" class="sidebar-link">
+                  Conditional Provisioning in Orkestra
                 </a>
               </li>
               
@@ -511,6 +511,94 @@
           
           <div class="sidebar-section">
             <div class="sidebar-section-header">
+              <a href="/docs/cli/" class="sidebar-section-link">CLI Reference</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle CLI Reference">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/cli/describe/" class="sidebar-link">
+                  ork describe
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/events/" class="sidebar-link">
+                  ork events
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/generate-runtime/" class="sidebar-link">
+                  ork generate runtime
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/get/" class="sidebar-link">
+                  ork get
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/init/" class="sidebar-link">
+                  ork init
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/reconcile/" class="sidebar-link">
+                  ork reconcile
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/run/" class="sidebar-link">
+                  ork run
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/status/" class="sidebar-link">
+                  ork status
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/template/" class="sidebar-link">
+                  ork template
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/validate/" class="sidebar-link">
+                  ork validate
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/version/" class="sidebar-link">
+                  ork version
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/inspect-live-crd/" class="sidebar-link">
+                  Orkestra Inspect Commands
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
               <a href="/docs/guides/" class="sidebar-section-link">Guides</a>
               <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Guides">
                 <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -601,188 +689,6 @@
               <li>
                 <a href="/docs/guides/writing-hooks/" class="sidebar-link">
                   Writing Hooks
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/cli/" class="sidebar-section-link">CLI Reference</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle CLI Reference">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/cli/describe/" class="sidebar-link">
-                  ork describe
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/events/" class="sidebar-link">
-                  ork events
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/generate-runtime/" class="sidebar-link">
-                  ork generate runtime
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/get/" class="sidebar-link">
-                  ork get
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/init/" class="sidebar-link">
-                  ork init
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/reconcile/" class="sidebar-link">
-                  ork reconcile
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/run/" class="sidebar-link">
-                  ork run
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/status/" class="sidebar-link">
-                  ork status
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/template/" class="sidebar-link">
-                  ork template
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/validate/" class="sidebar-link">
-                  ork validate
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/version/" class="sidebar-link">
-                  ork version
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/deprecated/deprecated-cli/" class="sidebar-link">
-                  Orkestra CLI Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/inspect-live-crd/" class="sidebar-link">
-                  Orkestra Inspect Commands
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/reference/" class="sidebar-section-link">Reference</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Reference">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/reference/metrics/" class="sidebar-link">
-                  **Orkestra Metrics**
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
-                  Katalog and Komposer Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-schema/" class="sidebar-link">
-                  Katalog Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-schema-status/" class="sidebar-link">
-                  Katalog Schema — Status Block
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/komposer-schema/" class="sidebar-link">
-                  Komposer Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/mutation-schema/" class="sidebar-link">
-                  Mutation Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/cli/" class="sidebar-link">
-                  Orkestra CLI Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-api/" class="sidebar-link">
-                  Orkestra Runtime API Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/registry-schema/" class="sidebar-link">
-                  Registry Source Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/runtime/" class="sidebar-link">
-                  Runtime
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/shutdown/" class="sidebar-link">
-                  Shutdown
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/validation-schema/" class="sidebar-link">
-                  Validation Schema
                 </a>
               </li>
               
@@ -905,8 +811,8 @@
           
           <div class="sidebar-section">
             <div class="sidebar-section-header">
-              <a href="/docs/publications/" class="sidebar-section-link">Publications</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Publications">
+              <a href="/docs/reference/" class="sidebar-section-link">Reference</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Reference">
                 <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path d="M19 9l-7 7-7-7"/>
                 </svg>
@@ -915,128 +821,74 @@
             <ul class="sidebar-section-pages" role="list" style="display:none">
               
               <li>
-                <a href="/docs/publications/when-conditions-paper/" class="sidebar-link">
-                  Conditional Provisioning: When Conditions and the Two Enforcement Boundaries
+                <a href="/docs/reference/metrics/" class="sidebar-link">
+                  **Orkestra Metrics**
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/declarative-operators-whitepaper/" class="sidebar-link">
-                  Declarative Operators: A New Model for Kubernetes Extensibility
+                <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
+                  Katalog and Komposer Reference
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/declarative-state-machines/" class="sidebar-link">
-                  Declarative State Machines in Kubernetes Operators
+                <a href="/docs/reference/katalog-schema/" class="sidebar-link">
+                  Katalog Schema
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/declarative-conversion/" class="sidebar-link">
-                  Declarative Version Conversion for Kubernetes CRDs
+                <a href="/docs/reference/katalog-schema-status/" class="sidebar-link">
+                  Katalog Schema — Status Block
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/evolve-apis-without-code/" class="sidebar-link">
-                  Declarative Version Conversion for Kubernetes CRDs
+                <a href="/docs/reference/komposer-schema/" class="sidebar-link">
+                  Komposer Schema
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/from-programs-to-data/" class="sidebar-link">
-                  From Programs To Data
+                <a href="/docs/reference/mutation-schema/" class="sidebar-link">
+                  Mutation Schema
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/introducing-orkestra-notes/" class="sidebar-link">
-                  Introducing Orkestra Notes
+                <a href="/docs/reference/cli/" class="sidebar-link">
+                  Orkestra CLI Reference
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/one-runtime-many-crds/" class="sidebar-link">
-                  One Runtime, Many CRDs: Fulfilling the Operator Pattern
+                <a href="/docs/reference/katalog-api/" class="sidebar-link">
+                  Orkestra Runtime API Reference
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/operator-authoring-vs-infrastructure-controlplane/" class="sidebar-link">
-                  Operator Authoring vs Infrastructure Control Plane
+                <a href="/docs/reference/registry-schema/" class="sidebar-link">
+                  Registry Source Schema
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/orkestra-and-gitops/" class="sidebar-link">
-                  Orkestra and GitOps: The Complete Integration Story
+                <a href="/docs/reference/runtime/" class="sidebar-link">
+                  Runtime
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/no-autosync-by-design/" class="sidebar-link">
-                  Orkestra Does Not Auto-Sync — And That’s the Point
+                <a href="/docs/reference/shutdown/" class="sidebar-link">
+                  Shutdown
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/metrics-analysis-old/" class="sidebar-link">
-                  Orkestra Metrics Analysis
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/metrics-analysis/" class="sidebar-link">
-                  Orkestra Metrics Analysis: Control Center Deep Dive
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/value-proposition/" class="sidebar-link">
-                  Orkestra Value Proposition
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/universal-observer-whitepaper/" class="sidebar-link">
-                  Orkestra: The Universal Observer That Belongs in Kubernetes Core
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/orkestra-registry/" class="sidebar-link">
-                  The Missing Package Manager for Kubernetes Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/operator-sprawl-problem/" class="sidebar-link">
-                  The Operator Sprawl Problem
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/provider-library/" class="sidebar-link">
-                  The Orkestra Provider Model
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/reconcile-contract/" class="sidebar-link">
-                  The Reconcile Contract
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/no-trace-runtime/" class="sidebar-link">
-                  The Runtime That Leaves No Trace
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/trust-and-failure-model/" class="sidebar-link">
-                  Trust and Failure Model
+                <a href="/docs/reference/validation-schema/" class="sidebar-link">
+                  Validation Schema
                 </a>
               </li>
               

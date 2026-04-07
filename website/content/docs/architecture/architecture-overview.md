@@ -1,7 +1,7 @@
 ---
 title: "Orkestra Full Architecture Overview"
 weight: 1
-description: "Orkestra is a **declarative operator runtime**."
+description: "A complete walkthrough of Orkestra's internal structure: CRD discovery, worker pools, reconcile event flow, and self-healing behavior."
 ---
 
 Orkestra is a **declarative operator runtime**.  

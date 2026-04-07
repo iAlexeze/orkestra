@@ -1,7 +1,7 @@
 ---
 title: "Orkestra Runtime Flow"
 weight: 2
-description: "A deep dive into how events move through Orkestra — from Kubernetes → Informers → Workers → Reconciler → Template Engine..."
+description: "Step-by-step trace of a reconcile event: from watch notification through the workqueue, worker pool, template engine, and back to Kubernetes."
 ---
 
 A deep dive into how events move through Orkestra — from Kubernetes → Informers → Workers → Reconciler → Template Engine → Kubernetes.
