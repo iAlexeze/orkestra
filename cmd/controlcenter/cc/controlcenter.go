@@ -33,11 +33,13 @@ type Config struct {
 // ─────────────────────────────────────────────────────────────────────────────
 // Instance — one connected Orkestra runtime
 // ─────────────────────────────────────────────────────────────────────────────
-
 type Instance struct {
-	URL     string
-	Client  *Client
-	Katalog *KatalogResponse
+	URL       string
+	Client    *Client
+	Katalog   *KatalogResponse
+	Healthy   bool
+	LastError string
+	LastCheck time.Time
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,14 +108,30 @@ func (cc *ControlCenter) fetchAllKatalogs() {
 	cc.mu.Lock()
 	anyOK := false
 	for _, inst := range cc.instances {
-		kat, err := inst.Client.FetchKatalog()
+		err := inst.Client.CheckHealth()
+		inst.LastCheck = time.Now()
+
 		if err != nil {
+			inst.Healthy = false
+			inst.LastError = err.Error()
 			log.Printf("WARN: fetch from %s: %v", inst.URL, err)
 			// Clear stale data — if the API is unreachable the katalog must
 			// disappear from the UI rather than show outdated information.
 			inst.Katalog = nil
 			continue
 		}
+
+		inst.Healthy = true
+		inst.LastError = ""
+
+		// only fetch katalog if healthy
+		kat, err := inst.Client.FetchKatalog()
+		if err != nil {
+			inst.Katalog = nil
+			continue
+		}
+
+		inst.Katalog = kat
 		inst.Katalog = kat
 		anyOK = true
 		log.Printf("INFO: fetched katalog %q from %s (%d CRDs)", kat.Name, inst.URL, len(kat.CRDs))
@@ -627,8 +645,29 @@ func (cc *ControlCenter) handleCRDetail(w http.ResponseWriter, r *http.Request, 
 }
 
 func (cc *ControlCenter) handleListInstances(w http.ResponseWriter, r *http.Request) {
-	urls := cc.ListInstances()
-	writeJSON(w, http.StatusOK, map[string]interface{}{"urls": urls})
+	cc.mu.RLock()
+	defer cc.mu.RUnlock()
+
+	type InstanceDTO struct {
+		URL       string    `json:"url"`
+		Healthy   bool      `json:"healthy"`
+		LastError string    `json:"lastError,omitempty"`
+		LastCheck time.Time `json:"lastCheck"`
+	}
+
+	out := make([]InstanceDTO, 0, len(cc.instances))
+	for _, inst := range cc.instances {
+		out = append(out, InstanceDTO{
+			URL:       inst.URL,
+			Healthy:   inst.Healthy,
+			LastError: inst.LastError,
+			LastCheck: inst.LastCheck,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"instances": out,
+	})
 }
 
 func (cc *ControlCenter) handleAddInstance(w http.ResponseWriter, r *http.Request) {

@@ -81,38 +81,74 @@
         return r.json();
       })
       .then(function (data) {
-        renderList(data.urls || []);
+        renderList(data.instances || []);
       })
       .catch(function (err) {
         listEl.innerHTML = '<div class="rt-list-empty rt-list-error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Failed to load: ' + esc(err.message) + '</div>';
       });
   }
 
-  /* ── Render list ───────────────────────────────────────────── */
-  function renderList(urls) {
-    if (countEl) countEl.textContent = urls.length + (urls.length === 1 ? ' runtime' : ' runtimes');
+/* ── Render list ───────────────────────────────────────────── */
+  function renderList(instances) {
+    if (countEl) {
+      countEl.textContent =
+        instances.length + (instances.length === 1 ? ' runtime' : ' runtimes');
+    }
 
-    if (!urls.length) {
-      listEl.innerHTML = '<div class="rt-list-empty"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16" stroke-dasharray="2 2"/></svg><span>No runtimes configured.<br>Add one above.</span></div>';
+    if (!instances.length) {
+      listEl.innerHTML =
+        '<div class="rt-list-empty">' +
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+        '<circle cx="12" cy="12" r="10"/>' +
+        '<line x1="12" y1="8" x2="12" y2="16" stroke-dasharray="2 2"/>' +
+        '</svg>' +
+        '<span>No runtimes configured.<br>Add one above.</span>' +
+        '</div>';
       return;
     }
 
     var html = '';
-    urls.forEach(function (url, idx) {
-      html += '<div class="rt-item" data-url="' + esc(url) + '" id="rt-item-' + idx + '">';
+
+    instances.forEach(function (inst, idx) {
+      var statusText = 'offline';
+      var statusClass = 'rt-status-offline';
+      var dotClass = 'offline';
+
+      if (inst.healthy) {
+        statusText = 'online';
+        statusClass = 'rt-status-online';
+        dotClass = 'online';
+      } else if (inst.lastError) {
+        // Optional: trim noisy Go errors
+        if (inst.lastError.includes('connection refused')) {
+          statusText = 'offline';
+        } else if (inst.lastError.includes('timeout')) {
+          statusText = 'timeout';
+        } else {
+          statusText = inst.lastError;
+        }
+      }
+
+      html += '<div class="rt-item" data-url="' + esc(inst.url) + '" id="rt-item-' + idx + '">';
       html += '  <div class="rt-item-left">';
-      html += '    <span class="rt-item-dot" id="rt-dot-' + idx + '"></span>';
+      html += '    <span class="rt-item-dot ' + dotClass + '"></span>';
       html += '    <div class="rt-item-info">';
-      html += '      <span class="rt-item-url" id="rt-url-' + idx + '">' + esc(url) + '</span>';
-      html += '      <span class="rt-item-status" id="rt-status-' + idx + '">checking…</span>';
+      html += '      <span class="rt-item-url">' + esc(inst.url) + '</span>';
+      html += '      <span class="rt-item-status ' + statusClass + '">' + esc(statusText) + '</span>';
       html += '    </div>';
       html += '  </div>';
       html += '  <div class="rt-item-actions">';
-      html += '    <button class="rt-action-btn rt-edit-btn" data-url="' + esc(url) + '" title="Edit URL" aria-label="Edit">';
-      html += '      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+      html += '    <button class="rt-action-btn rt-edit-btn" data-url="' + esc(inst.url) + '" title="Edit URL" aria-label="Edit">';
+      html += '      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
+      html += '        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>';
+      html += '        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>';
+      html += '      </svg>';
       html += '    </button>';
-      html += '    <button class="rt-action-btn rt-delete-btn" data-url="' + esc(url) + '" title="Remove" aria-label="Remove">';
-      html += '      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+      html += '    <button class="rt-action-btn rt-delete-btn" data-url="' + esc(inst.url) + '" title="Remove" aria-label="Remove">';
+      html += '      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
+      html += '        <polyline points="3 6 5 6 21 6"/>';
+      html += '        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>';
+      html += '      </svg>';
       html += '    </button>';
       html += '  </div>';
       html += '</div>';
@@ -122,43 +158,16 @@
 
     // Attach edit / delete handlers
     listEl.querySelectorAll('.rt-edit-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () { startInlineEdit(btn.dataset.url); });
-    });
-    listEl.querySelectorAll('.rt-delete-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () { confirmDelete(btn.dataset.url, btn); });
-    });
-
-    // Async health check per runtime
-    urls.forEach(function (url, idx) {
-      checkHealth(url, idx);
-    });
-  }
-
-  /* ── Health check ──────────────────────────────────────────── */
-  function checkHealth(url, idx) {
-    var dot    = document.getElementById('rt-dot-' + idx);
-    var status = document.getElementById('rt-status-' + idx);
-    var healthUrl = url.replace(/\/$/, '') + '/health';
-
-    fetch(healthUrl, { cache: 'no-store', signal: AbortSignal.timeout(5000) })
-      .then(function (r) {
-        if (!dot || !status) return;
-        if (r.ok) {
-          dot.className = 'rt-item-dot online';
-          status.textContent = 'online';
-          status.className = 'rt-item-status rt-status-online';
-        } else {
-          dot.className = 'rt-item-dot offline';
-          status.textContent = 'HTTP ' + r.status;
-          status.className = 'rt-item-status rt-status-offline';
-        }
-      })
-      .catch(function () {
-        if (!dot || !status) return;
-        dot.className = 'rt-item-dot offline';
-        status.textContent = 'unreachable';
-        status.className = 'rt-item-status rt-status-offline';
+      btn.addEventListener('click', function () {
+        startInlineEdit(btn.dataset.url);
       });
+    });
+
+    listEl.querySelectorAll('.rt-delete-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        confirmDelete(btn.dataset.url, btn);
+      });
+    });
   }
 
   /* ── Add runtime ───────────────────────────────────────────── */
