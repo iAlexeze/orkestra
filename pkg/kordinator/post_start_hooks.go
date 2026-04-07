@@ -1,4 +1,4 @@
-package kontroller
+package kordinator
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/ialexeze/orkestra/pkg/informer"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/queue"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -26,7 +27,7 @@ import (
 //
 //	if a CRD is deleted after startup, the informer continues running.
 //	But workers are drained through deactivateCRD.
-func (k *DependencyKontroller) retryMissingCRDs(ctx context.Context) {
+func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 	ticker := time.NewTicker(PostStartRetryInterval)
 	defer ticker.Stop()
 
@@ -59,7 +60,25 @@ func (k *DependencyKontroller) retryMissingCRDs(ctx context.Context) {
 					runtimeMissing[gvkStr] = entry
 					k.informerFactory.SetMissingOnStartup(runtimeMissing)
 					k.crdHealthMap[gvkStr].SetMissingAtRuntime()
+					k.crdHealthMap[gvkStr].SetDegraded()
 					k.orkHealth.SetKatalogDegraded()
+
+					// Get the dependants
+					deps := k.depGraph.GetDependents(entry.Name)
+					if len(deps) > 0 {
+						for _, dep := range deps {
+							crd := k.depGraph.GetNode(dep).CRD
+							if crd.DependsOn[entry.Name].Condition == string(orktypes.DependencyConditionHealthy) {
+								// Degrade this dependant though could still be processing,
+								// But lets operators know what is happening
+								k.crdHealthMap[crd.GVK().String()].SetDegraded() // TODO: look again here
+							} else {
+								// Just log this
+								logger.Info().Str("gvk", gvkStr).
+									Msgf("dependency %s is unhealthy", entry.Name)
+							}
+						}
+					}
 
 					// Stop workers (queue stays alive)
 					if !k.deactivated[gvkStr] {
@@ -100,10 +119,13 @@ func (k *DependencyKontroller) retryMissingCRDs(ctx context.Context) {
 					// CRD reappeared → activate immediately
 					k.activateCRD(ctx, entry)
 					k.deactivated[gvkStr] = false
+					k.crdHealthMap[gvkStr].SetStarted()
 				} else {
 					// Still missing → keep tracking it
 					stillMissing[gvkStr] = entry
 					k.crdHealthMap[gvkStr].SetMissingAtRuntime()
+					k.crdHealthMap[gvkStr].SetDegraded()
+					k.orkHealth.SetKatalogDegraded()
 
 					logger.Debug().Msgf("retry loop: %s still not available", gvkStr)
 				}
@@ -113,9 +135,13 @@ func (k *DependencyKontroller) retryMissingCRDs(ctx context.Context) {
 			k.informerFactory.SetMissingOnStartup(stillMissing)
 
 			if len(stillMissing) == 0 {
+				k.allOnline.Store(true)
+				k.orkHealth.SetKatalogReady()
 				logger.Info().Msg("retry loop: all CRDs activated")
 			} else {
 				logger.Info().Msgf("retry loop: %d CRD(s) still missing", len(stillMissing))
+				k.allOnline.Store(false)
+				k.orkHealth.SetKatalogDegraded()
 			}
 
 			// ───────────────────────────────────────────────
@@ -153,7 +179,7 @@ func (k *DependencyKontroller) retryMissingCRDs(ctx context.Context) {
 // Parameters:
 //   - ctx: context for cancellation propagation
 //   - entry: the informer entry from the missing map (contains the pre-created informer)
-func (k *DependencyKontroller) activateCRD(ctx context.Context, entry *informer.InformerEntry) {
+func (k *DependencyKordinator) activateCRD(ctx context.Context, entry *informer.InformerEntry) {
 	gvkStr := entry.GVK.String()
 	name := entry.Name
 
@@ -186,19 +212,44 @@ func (k *DependencyKontroller) activateCRD(ctx context.Context, entry *informer.
 	k.crdHealthMap[gvkStr].SetStarted()
 	k.crdHealthMap[gvkStr].SetTotalWorkers(int32(workers))
 
-	// Signal dependents that this CRD is now ready
-	// The ready channel was created during RunOrDie and may still be open
-	if ch, exists := k.readyCh[gvkStr]; exists {
+	// Signal dependents that this CRD has now started
+	// The started channel was created during Kordinate and may still be open
+	if ch, exists := k.startedCh[gvkStr]; exists {
 		select {
 		case <-ch:
 			// Channel already closed (should not happen, but safe)
-			logger.Debug().Msgf("activateCRD: ready channel for %q was already closed", name)
+			logger.Debug().Msgf("activateCRD: started channel for %q was already closed", name)
 		default:
 			close(ch)
+			k.crdHealthMap[gvkStr].SetStarted()
 			deps := k.depGraph.GetDependents(name)
 			if len(deps) > 0 {
-				logger.Info().Msgf("activateCRD: closed ready channel for %q — unblocking %d dependent(s): %s",
+				logger.Info().Msgf("activateCRD: closed started channel for %q — unblocking %d dependent(s): %s",
 					name, len(deps), strings.Join(deps, ", "))
+			}
+		}
+	}
+
+	// Check dependencies whose dependency condition is 'healthy' and leave healthy channel open
+	deps := k.depGraph.GetDependents(name)
+	if len(deps) > 0 {
+		for _, dep := range deps {
+			crd := k.NameToCRD(dep)
+			if crd.DependsOn.ConditionHealthy(name) {
+				if ch, exists := k.healthyCh[crd.GVK().String()]; exists {
+					select {
+					case <-ch:
+						// Channel already closed (should not happen, but safe)
+						logger.Debug().Msgf("activateCRD: healthy channel for %q was already closed", name)
+					default:
+						if !k.crdHealthMap[crd.GVK().String()].IsHealthy() {
+							continue
+						}
+						close(ch)
+						k.crdHealthMap[crd.GVK().String()].SetStarted()
+						logger.Info().Msgf("activateCRD: closed healthy channel for %q", name)
+					}
+				}
 			}
 		}
 	}
@@ -207,7 +258,7 @@ func (k *DependencyKontroller) activateCRD(ctx context.Context, entry *informer.
 }
 
 // deactivateCRD — drain without permanent shutdown
-func (k *DependencyKontroller) deactivateCRD(gvk string) {
+func (k *DependencyKordinator) deactivateCRD(gvk string) {
 	k.mu.RLock()
 	cancel, okCancel := k.cancelFuncs[gvk]
 	wg, okWG := k.wgs[gvk]
@@ -250,117 +301,11 @@ func (k *DependencyKontroller) deactivateCRD(gvk string) {
 
 // crdExists checks if a CRD is present in the cluster by querying the API server.
 // Returns (true, nil) if the CRD exists, (false, nil) if not, (false, error) on failure.
-func (k *DependencyKontroller) crdExists(gvk *schema.GroupVersionKind) (bool, error) {
+func (k *DependencyKordinator) crdExists(gvk *schema.GroupVersionKind) (bool, error) {
 	return utils.WaitForCRD(
 		k.kube.RestConfig(),
 		gvk.Group,
 		gvk.Kind,
 		gvk.Version,
 	) == nil, nil
-}
-
-// Future use
-// dependencyHealthChecker runs periodically to check dependency health
-func (k *DependencyKontroller) dependencyHealthChecker(ctx context.Context) {
-	ticker := time.NewTicker(5 * time.Second) // Check every 5 seconds
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			k.checkAllDependencyHealth()
-		}
-	}
-}
-
-// checkAllDependencyHealth iterates through all active CRDs and updates dependency status
-func (k *DependencyKontroller) checkAllDependencyHealth() {
-	k.mu.RLock()
-	activeCRDs := make([]string, 0, len(k.started))
-	for gvk := range k.started {
-		activeCRDs = append(activeCRDs, gvk)
-	}
-	k.mu.RUnlock()
-
-	for _, gvk := range activeCRDs {
-		k.checkDependencyHealthForGVK(gvk)
-	}
-}
-
-func (k *DependencyKontroller) checkDependencyHealthForGVK(gvk string) {
-	entry, ok := k.katalog.Get(gvk)
-	if !ok {
-		return
-	}
-
-	health := k.crdHealthMap[gvk]
-	if health == nil {
-		return
-	}
-
-	crd := entry.CRD
-	if len(crd.DependsOn) == 0 { //nolint:gocritic
-		return
-	}
-
-	// Build GVK mapping for dependencies
-	nameToGVK := make(map[string]string)
-	for _, name := range k.depGraph.StartupOrder() {
-		node := k.depGraph.GetNode(name)
-		if node != nil {
-			nameToGVK[name] = node.CRD.GroupVersionKind.String()
-		}
-	}
-
-	for depName := range crd.DependsOn {
-		depGVK, exists := nameToGVK[depName]
-		if !exists {
-			// Dependency not found in graph
-			health.SetDependencyHealth(depName, DependencyStatus{
-				Name:      depName,
-				State:     "missing",
-				Condition: "started",
-				Satisfied: false,
-			})
-			continue
-		}
-
-		depHealth := k.crdHealthMap[depGVK]
-		if depHealth == nil {
-			health.SetDependencyHealth(depName, DependencyStatus{
-				Name:      depName,
-				State:     "unknown",
-				Condition: "started",
-				Satisfied: false,
-			})
-			continue
-		}
-
-		// Determine if dependency condition is satisfied
-		satisfied := false
-		state := "degraded"
-
-		if depHealth.IsHealthy() {
-			satisfied = true
-			state = "healthy"
-		} else if depHealth.Started() {
-			satisfied = true // Default condition is "started"
-			state = "started"
-		} else if depHealth.Pending() {
-			satisfied = false
-			state = "pending"
-		} else {
-			satisfied = false
-			state = "degraded"
-		}
-
-		health.SetDependencyHealth(depName, DependencyStatus{
-			Name:      depName,
-			State:     state,
-			Condition: "started",
-			Satisfied: satisfied,
-		})
-	}
 }

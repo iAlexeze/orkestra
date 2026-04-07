@@ -29,7 +29,7 @@ registry.Register(awsprovider.New(sess))
 registry.Register(mongoprovider.New(uri))
 ```
 
-Pass the registry to `NewDependencyKontroller`. It is threaded into every
+Pass the registry to `NewDependencyKordinator`. It is threaded into every
 `GenericReconciler` that runs template reconciliation.
 
 A provider name that is not registered is skipped with a warning — it does

@@ -1,5 +1,5 @@
-// pkg/kontroller/crd_health_handlers.go
-package kontroller
+// pkg/kordinator/crd_health_handlers.go
+package kordinator
 
 import (
 	"fmt"
@@ -327,33 +327,34 @@ type KatalogResponse struct {
 }
 
 type CRDSummaryResponse struct {
-	Name                string            `json:"name"`
-	Description         string            `json:"description"`
-	Mode                string            `json:"mode"`
-	GVK                 string            `json:"gvk"`
-	GVR                 string            `json:"gvr"`
-	Namespaced          *bool             `json:"namespaced"`
-	Namespace           string            `json:"namespace"`
-	DependsOn           []string          `json:"dependsOn,omitempty"`
-	Workers             int               `json:"workers"`
-	WorkersSource       string            `json:"workersSource"`
-	WorkersActive       int32             `json:"workersActive"`
-	Resync              string            `json:"resync"`
-	ResyncSource        string            `json:"resyncSource"`
-	QueueDepth          int               `json:"queueDepth"`
-	MaxQueueDepth       int               `json:"maxQueueDepth"`
-	MaxQueueDepthSource string            `json:"maxQueueDepthSource"`
-	ResourceCount       int               `json:"resourceCount"`
-	Reconciler          ReconcilerSummary `json:"reconciler"`
-	Healthy             bool              `json:"healthy"`
-	State               string            `json:"state"`
-	Started             bool              `json:"started"`
-	Pending             bool              `json:"pending"`
-	StartedAt           string            `json:"startedAt"`
-	Uptime              string            `json:"uptime"`
-	ErrorRate           float64           `json:"errorRate"`
-	Endpoints           EndpointInfo      `json:"endpoints"`
-	RBACCount           int               `json:"rbacCount,omitempty"`
+	Name                     string            `json:"name"`
+	Description              string            `json:"description"`
+	Mode                     string            `json:"mode"`
+	GVK                      string            `json:"gvk"`
+	GVR                      string            `json:"gvr"`
+	Namespaced               *bool             `json:"namespaced"`
+	Namespace                string            `json:"namespace"`
+	DependsOn                []string          `json:"dependsOn,omitempty"`
+	HasUnhealthyDependencies bool              `json:"hasUnhealthyDependencies"`
+	Workers                  int               `json:"workers"`
+	WorkersSource            string            `json:"workersSource"`
+	WorkersActive            int32             `json:"workersActive"`
+	Resync                   string            `json:"resync"`
+	ResyncSource             string            `json:"resyncSource"`
+	QueueDepth               int               `json:"queueDepth"`
+	MaxQueueDepth            int               `json:"maxQueueDepth"`
+	MaxQueueDepthSource      string            `json:"maxQueueDepthSource"`
+	ResourceCount            int               `json:"resourceCount"`
+	Reconciler               ReconcilerSummary `json:"reconciler"`
+	Healthy                  bool              `json:"healthy"`
+	State                    string            `json:"state"`
+	Started                  bool              `json:"started"`
+	Pending                  bool              `json:"pending"`
+	StartedAt                string            `json:"startedAt"`
+	Uptime                   string            `json:"uptime"`
+	ErrorRate                float64           `json:"errorRate"`
+	Endpoints                EndpointInfo      `json:"endpoints"`
+	RBACCount                int               `json:"rbacCount,omitempty"`
 }
 
 type ReconcilerSummary struct {
@@ -437,25 +438,26 @@ func BuildKatalogHandler(
 			}
 
 			crds = append(crds, CRDSummaryResponse{
-				Name:                crd.Name,
-				State:               state,
-				Description:         crd.Description,
-				Mode:                crd.Mode.String(),
-				GVK:                 gvk,
-				GVR:                 crd.GroupVersionResource.String(),
-				Namespaced:          crd.Namespaced,
-				Namespace:           crd.Namespace,
-				DependsOn:           crd.DependsOn.Names(),
-				Workers:             v.workers,
-				WorkersSource:       v.workersSource,
-				WorkersActive:       h.GetActiveWorkers(),
-				Resync:              v.resync,
-				ResyncSource:        v.resyncSource,
-				QueueDepth:          h.QueueDepth(gvk),
-				MaxQueueDepth:       v.maxQueueDepth,
-				MaxQueueDepthSource: v.maxQueueDepthSource,
-				RBACCount:           generateRBACInfo(crd, v).TotalRules,
-				ResourceCount:       v.resourceCount,
+				Name:                     crd.Name,
+				State:                    state,
+				HasUnhealthyDependencies: h.HasUnhealthyDependencies(),
+				Description:              crd.Description,
+				Mode:                     crd.Mode.String(),
+				GVK:                      gvk,
+				GVR:                      crd.GroupVersionResource.String(),
+				Namespaced:               crd.Namespaced,
+				Namespace:                crd.Namespace,
+				DependsOn:                crd.DependsOn.Names(),
+				Workers:                  v.workers,
+				WorkersSource:            v.workersSource,
+				WorkersActive:            h.GetActiveWorkers(),
+				Resync:                   v.resync,
+				ResyncSource:             v.resyncSource,
+				QueueDepth:               h.QueueDepth(gvk),
+				MaxQueueDepth:            v.maxQueueDepth,
+				MaxQueueDepthSource:      v.maxQueueDepthSource,
+				RBACCount:                generateRBACInfo(crd, v).TotalRules,
+				ResourceCount:            v.resourceCount,
 				Reconciler: ReconcilerSummary{
 					Type:           "generic",
 					HasTemplates:   crd.ReconcilerConfig.OnCreate != nil,

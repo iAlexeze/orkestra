@@ -71,20 +71,28 @@
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.5;vertical-align:middle;margin-left:2px"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
         </span>
         <span style="margin-left:8px">
-          {{- if eq .CRD.State "healthy" }}
-          <span class="cc-badge cc-badge-healthy" data-tooltip="Healthy - All systems operational">
+          {{- if .CRD.HasUnhealthyDependencies }}
+          <span class="cc-badge cc-badge-pending" data-tooltip="Unhealthy dependencies">
+            <span class="cc-status-dot pending"></span>Dependency Issue
+          </span>
+
+          {{- else if eq .CRD.State "healthy" }}
+          <span class="cc-badge cc-badge-healthy">
             <span class="cc-status-dot healthy"></span>Healthy
           </span>
-          {{- else if eq .CRD.State "started" }}
-          <span class="cc-badge cc-badge-started" data-tooltip="Started - Workers running">
-            <span class="cc-status-dot started"></span>Started
-          </span>
+
           {{- else if eq .CRD.State "pending" }}
-          <span class="cc-badge cc-badge-pending" data-tooltip="Pending - Waiting for dependencies">
+          <span class="cc-badge cc-badge-pending">
             <span class="cc-status-dot pending"></span>Pending
           </span>
+
+          {{- else if eq .CRD.State "started" }}
+          <span class="cc-badge cc-badge-started">
+            <span class="cc-status-dot started"></span>Started
+          </span>
+
           {{- else }}
-          <span class="cc-badge cc-badge-degraded" data-tooltip="Degraded - Needs attention">
+          <span class="cc-badge cc-badge-degraded">
             <span class="cc-status-dot degraded"></span>Degraded
           </span>
           {{- end }}
@@ -362,7 +370,8 @@
                 <span class="cc-badge cc-badge-degraded">{{ $dep.State }}</span>
                 {{- end }}
               </div>
-              <div class="text-xs text-muted mb-1">Condition: <span class="font-mono">{{ $dep.Condition }}</span></div>
+              <div class="text-xs text-muted mb-1">Acceptable Condition: <span class="font-mono">{{ $dep.AcceptableCondition }}</span></div>
+              <div class="text-xs text-muted mb-1">Dependency Condition: <span class="font-mono">{{ $dep.Condition }}</span></div>
               <div class="text-xs {{ if $dep.Satisfied }}text-green{{ else }}text-red{{ end }}">
                 {{ if $dep.Satisfied }}Satisfied{{ else }}Not satisfied{{ end }}
               </div>

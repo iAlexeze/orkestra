@@ -63,7 +63,7 @@ test: vet test-unit
 #   ./pkg/queue/...        — workqueue and registry tests
 #   ./pkg/merger/...       — registry URL construction, source loading
 #   ./pkg/katalog/...      — dependency graph, topological sort, cycle detection
-#   ./pkg/kontroller/...   — CRD health lifecycle
+#   ./pkg/kordinator/...   — CRD health lifecycle
 #   ./pkg/reconciler/...   — validation rules, mutation patch building, namespace guard
 #
 # Excludes pkg/inspect/test (requires a live Kubernetes cluster).
@@ -79,7 +79,7 @@ test-unit:
 		./pkg/queue/... \
 		./pkg/merger/... \
 		./pkg/katalog/... \
-		./pkg/kontroller/... \
+		./pkg/kordinator/... \
 		./pkg/reconciler/... \
 		-v -short -count=1
 
@@ -97,7 +97,7 @@ test-race:
 		./pkg/queue/... \
 		./pkg/merger/... \
 		./pkg/katalog/... \
-		./pkg/kontroller/... \
+		./pkg/kordinator/... \
 		./pkg/reconciler/... \
 		-short -race -count=1
 
@@ -135,7 +135,7 @@ test-coverage:
 		./pkg/queue/... \
 		./pkg/merger/... \
 		./pkg/katalog/... \
-		./pkg/kontroller/... \
+		./pkg/kordinator/... \
 		./pkg/reconciler/... \
 		-coverprofile=coverage.out -covermode=atomic -count=1
 	go tool cover -html=coverage.out -o coverage.html
@@ -151,7 +151,7 @@ test-coverage-text:
 		./pkg/queue/... \
 		./pkg/merger/... \
 		./pkg/katalog/... \
-		./pkg/kontroller/... \
+		./pkg/kordinator/... \
 		./pkg/reconciler/... \
 		-coverprofile=coverage.out -covermode=atomic -count=1
 	@go tool cover -func=coverage.out | tail -5

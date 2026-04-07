@@ -75,7 +75,7 @@ runProviders(ctx, obj, resolver, blocks, registry, kube)
 
 The registry is built once in `loadProviders(ctx)` at startup and captured
 in each reconciler factory closure. It never passes through
-`DependencyKontroller` or `ReconcilerFactory`.
+`DependencyKordinator` or `ReconcilerFactory`.
 
 ---
 

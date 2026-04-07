@@ -992,7 +992,7 @@
           <td>Watches for changes to your CRDs</td>
       </tr>
       <tr>
-          <td><strong>DependencyKontroller</strong></td>
+          <td><strong>DependencyKordinator</strong></td>
           <td>Makes sure CRDs start in the right order</td>
       </tr>
       <tr>
@@ -1095,7 +1095,7 @@ kubectl get events --watch
 </ul>
 <p>When a worker picks up a task, it looks in this registry to find the right reconciler for that CRD.</p>
 <hr>
-<h2 id="dependencykontroller">DependencyKontroller</h2>
+<h2 id="DependencyKordinator">DependencyKordinator</h2>
 <p>This is the brain of Orkestra. It makes sure CRDs start in the right order.</p>
 <h3 id="how-it-starts">How It Starts</h3>
 <ol>
@@ -1155,12 +1155,12 @@ kubectl get events --watch
 4. QueueRegistry starts — to-do lists are ready
 5. DefaultWorkqueue starts — shared to-do list is ready
 6. SharedInformerFactory starts — begins watching for changes
-7. DependencyKontroller starts — waits for dependencies, starts workers
+7. DependencyKordinator starts — waits for dependencies, starts workers
 8. KonductorElection starts — picks a leader, runs the workers on the leader
 9. HealthServer starts listening — now ready to answer health checks
 </code></pre><p>When you press Ctrl+C:</p>
 <pre tabindex="0"><code>1. KonductorElection stops — leader releases the lock
-2. DependencyKontroller stops — workers finish and stop
+2. DependencyKordinator stops — workers finish and stop
 3. SharedInformerFactory stops — stops watching for changes
 4. Queues stop — no new tasks accepted
 5. EventRecorder stops — flushes remaining events
@@ -1218,7 +1218,7 @@ kubectl get events --watch
     <li><a href="#queueregistry-and-defaultworkqueue">QueueRegistry and DefaultWorkqueue</a></li>
     <li><a href="#sharedinformerfactory">SharedInformerFactory</a></li>
     <li><a href="#kontrollerregistry">KontrollerRegistry</a></li>
-    <li><a href="#dependencykontroller">DependencyKontroller</a>
+    <li><a href="#DependencyKordinator">DependencyKordinator</a>
       <ul>
         <li><a href="#how-it-starts">How It Starts</a></li>
         <li><a href="#how-it-processes-tasks">How It Processes Tasks</a></li>

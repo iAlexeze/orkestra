@@ -1,9 +1,9 @@
-// pkg/kontroller/cr_routes.go
+// pkg/kordinator/cr_routes.go
 //
 // Route registration for CR endpoints.
 //
 // Call RegisterCRRoutes alongside the existing per-CRD handler registrations
-// in pkg/kontroller/server.go (or wherever BuildCRDInfoHandler is called).
+// in pkg/kordinator/server.go (or wherever BuildCRDInfoHandler is called).
 //
 // The existing registration looks like:
 //
@@ -20,7 +20,7 @@
 //   /katalog/{crd}/cr/{namespace}/{name}   → CR detail (namespaced)
 //   /katalog/{crd}/cr/{...}/events         → CR events
 
-package kontroller
+package kordinator
 
 import (
 	"net/http"

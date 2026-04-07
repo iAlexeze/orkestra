@@ -1250,7 +1250,8 @@ code, .mono {
 [data-tooltip]::after {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: 100%;
+  /* top: 100%; */
+  bottom: -28px;
   left: 50%;
   transform: translateX(-50%) translateY(-4px);
   background: var(--bg-hover);
@@ -1265,6 +1266,7 @@ code, .mono {
   pointer-events: none;
   font-family: monospace;
 }
+[data-tooltip]:hover::before { opacity: 1; }
 [data-tooltip]:hover::after { display: block; }
 
 /* ── Collapsible details ───────────────────────────────────── */

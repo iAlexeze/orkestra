@@ -100,7 +100,7 @@ On `Start()`:
 - CRD routes are registered before startup  
 - `started = true`  
 - `healthy = true`  
-- `ready = false` (until dependency kontroller starts)
+- `ready = false` (until dependency kordinator starts)
 
 ### Ready
 

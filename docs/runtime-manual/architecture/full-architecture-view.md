@@ -79,11 +79,11 @@ subgraph TemplateEngine["Template Engine"]
 end
 
 %% ============================
-%% WORKERS + KONTROLLER
+%% WORKERS + KORDINATOR
 %% ============================
-subgraph Kontroller["Dependency‑Aware Kontroller"]
+subgraph Kordinator["Dependency‑Aware Kordinator"]
     direction LR
-    C["Dependency Kontroller"]
+    C["Dependency Kordinator"]
     subgraph Pools["Worker Pools"]
         W1["Workers: CRD A (3)"]
         W2["Workers: CRD B (2)"]

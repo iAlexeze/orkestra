@@ -1,21 +1,21 @@
 // pkg/reconciler/generic_registry.go
 //
-// KatalogRegistry — the interface GenericReconciler needs from the kontroller
+// KatalogRegistry — the interface GenericReconciler needs from the Kordinator
 // registry to perform zero-API-call cross-CRD observation.
 //
-// Why a local interface instead of importing pkg/kontroller directly:
+// Why a local interface instead of importing pkg/kordinator directly:
 //
-//	pkg/reconciler → pkg/kontroller would create an import cycle.
-//	pkg/kontroller already imports pkg/reconciler (for domain.Reconciler).
+//	pkg/reconciler → pkg/kordinator would create an import cycle.
+//	pkg/kordinator already imports pkg/reconciler (for domain.Reconciler).
 //	A local interface breaks the cycle — Go's implicit interface satisfaction
-//	means *kontroller.ResourceKatalog satisfies this automatically.
+//	means *kordinator.ResourceKatalog satisfies this automatically.
 package reconciler
 
 import "k8s.io/client-go/tools/cache"
 
 // KatalogRegistry is the interface GenericReconciler uses to look up sibling
 // CRD informers for cross-CRD observation.
-// Satisfied by *kontroller.ResourceKatalog without importing that package.
+// Satisfied by *kordinator.ResourceKatalog without importing that package.
 type KatalogRegistry interface {
 	// GetInformerByName returns the SharedIndexInformer for a CRD by its
 	// lowercase name (the map key in spec.crds).

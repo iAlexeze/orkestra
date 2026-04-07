@@ -14,7 +14,7 @@ Orkestra is made of several pieces, each with one job. They start in a specific 
 | **QueueRegistry** | Holds a to-do list for each CRD |
 | **DefaultWorkqueue** | A shared to-do list for simple CRDs |
 | **SharedInformerFactory** | Watches for changes to your CRDs |
-| **DependencyKontroller** | Makes sure CRDs start in the right order |
+| **DependencyKordinator** | Makes sure CRDs start in the right order |
 | **KonductorElection** | Picks one leader when multiple copies run |
 | **Orkestra** | Starts and stops everything, in the right order |
 
@@ -103,9 +103,9 @@ Each CRD can have its own resync interval. A resync is like a "just checking" ev
 
 ---
 
-## KontrollerRegistry
+## KordinatorRegistry
 
-The KontrollerRegistry is a lookup table. It maps a CRD (like `Website`) to:
+The KordinatorRegistry is a lookup table. It maps a CRD (like `Website`) to:
 
 - Its informer (how to watch it)
 - Its reconciler (how to reconcile it)
@@ -115,7 +115,7 @@ When a worker picks up a task, it looks in this registry to find the right recon
 
 ---
 
-## DependencyKontroller
+## DependencyKordinator
 
 This is the brain of Orkestra. It makes sure CRDs start in the right order.
 
@@ -194,7 +194,7 @@ If any component fails to start, Orkestra stops and tells you what went wrong.
 4. QueueRegistry starts — to-do lists are ready
 5. DefaultWorkqueue starts — shared to-do list is ready
 6. SharedInformerFactory starts — begins watching for changes
-7. DependencyKontroller starts — waits for dependencies, starts workers
+7. DependencyKordinator starts — waits for dependencies, starts workers
 8. KonductorElection starts — picks a leader, runs the workers on the leader
 9. HealthServer starts listening — now ready to answer health checks
 ```
@@ -203,7 +203,7 @@ When you press Ctrl+C:
 
 ```
 1. KonductorElection stops — leader releases the lock
-2. DependencyKontroller stops — workers finish and stop
+2. DependencyKordinator stops — workers finish and stop
 3. SharedInformerFactory stops — stops watching for changes
 4. Queues stop — no new tasks accepted
 5. EventRecorder stops — flushes remaining events

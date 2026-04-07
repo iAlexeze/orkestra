@@ -23,11 +23,12 @@ var (
 
 func main() {
 	var (
-		orkestraURLs = flag.String("u", "http://localhost:8080", "Comma-separated URLs of Orkestra runtime instances")
-		port         = flag.String("p", "8090", "Port to serve the control center on")
-		refresh      = flag.Duration("refresh", 10*time.Second, "Refresh interval for fetching Katalogs")
-		logLevel     = flag.String("log-level", "info", "Log level (debug, info, warn, error)")
-		showVersion  = flag.Bool("version", false, "Show version information")
+		orkestraURLs  = flag.String("u", "", "Comma-separated URLs of Orkestra runtime instances")
+		ignoreDefault = flag.Bool("ignore-default", false, "Do not add the default localhost:8080 URL; start with no instances")
+		port          = flag.String("p", "8090", "Port to serve the control center on")
+		refresh       = flag.Duration("refresh", 10*time.Second, "Refresh interval for fetching Katalogs")
+		logLevel      = flag.String("log-level", "info", "Log level (debug, info, warn, error)")
+		showVersion   = flag.Bool("version", false, "Show version information")
 	)
 	flag.Parse()
 
@@ -38,8 +39,12 @@ func main() {
 
 	// Parse and deduplicate URLs
 	urls := parseAndDedupeURLs(*orkestraURLs)
+	if len(urls) == 0 && !*ignoreDefault {
+		log.Fatal("ERROR: at least one Orkestra URL is required. Use -u flag or --ignore-default.")
+	}
+
 	if len(urls) == 0 {
-		log.Fatal("ERROR: at least one Orkestra URL is required. Use -u flag.")
+		urls = append(urls, "http://localhost:8080")
 	}
 
 	// Create control center

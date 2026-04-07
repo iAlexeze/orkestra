@@ -1,14 +1,13 @@
 package controlcenter
 
 import (
-	"bytes"
 	"embed"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -56,15 +55,31 @@ type ControlCenter struct {
 
 // New creates and starts a ControlCenter. Background fetches begin immediately.
 func New(urls []string, config Config) *ControlCenter {
-	instances := make(map[string]*Instance, len(urls))
-	for _, url := range urls {
+	// Load previously stored URLs
+	stored, _ := LoadRuntimeStorage()
+	allURLs := make(map[string]bool)
+	for _, u := range urls {
+		allURLs[normalizeURL(u)] = true
+	}
+	if stored != nil {
+		for _, u := range stored.URLs {
+			allURLs[normalizeURL(u)] = true
+		}
+	}
+	finalURLs := make([]string, 0, len(allURLs))
+	for u := range allURLs {
+		finalURLs = append(finalURLs, u)
+	}
+
+	instances := make(map[string]*Instance)
+	for _, url := range finalURLs {
 		instances[url] = &Instance{
 			URL:    url,
 			Client: NewClient(url, config.RefreshInterval, config.LogLevel),
 		}
 	}
 	cc := &ControlCenter{
-		urls:      urls,
+		urls:      finalURLs,
 		instances: instances,
 		config:    config,
 	}
@@ -185,80 +200,6 @@ func (cc *ControlCenter) clientFor(instanceURL string) *Client {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Rendering helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-// renderTemplate parses and executes a named template from the embedded FS.
-// Writes directly to w. On error, renders a 500 page.
-func (cc *ControlCenter) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
-	tmpl, err := template.New(name).Funcs(templateFuncs).ParseFS(assets, assetsDir+"/"+name)
-	if err != nil {
-		log.Printf("ERROR: parse %s: %v", name, err)
-		cc.renderError(w, nil, fmt.Sprintf("Template error: %v", err))
-		return
-	}
-
-	buf := new(bytes.Buffer)
-	if err := tmpl.Execute(buf, data); err != nil {
-		log.Printf("ERROR: execute %s: %v", name, err)
-		cc.renderError(w, nil, fmt.Sprintf("Render error: %v", err))
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	buf.WriteTo(w)
-}
-
-// renderError renders an inline error page. r is optional (may be nil).
-func (cc *ControlCenter) renderError(w http.ResponseWriter, _ *http.Request, message string) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusInternalServerError)
-	fmt.Fprintf(w, `<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Error – Orkestra Control Center</title>
-<link rel="stylesheet" href="/controlcenter/assets/static/css/style.css">
-<link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
-<link rel="stylesheet" href="/controlcenter/assets/static/css/style.css">
-<script>(function(){var t=localStorage.getItem('cc-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
-</head>
-<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg-base)">
-  <div style="text-align:center;padding:40px;max-width:480px">
-    <div style="font-size:36px;margin-bottom:16px;opacity:0.6">⚠</div>
-    <h1 style="font-size:20px;font-weight:700;color:var(--text-primary);margin-bottom:8px">Something went wrong</h1>
-    <p style="font-size:12px;font-family:monospace;color:var(--text-muted);margin-bottom:24px;word-break:break-all">%s</p>
-    <a href="/controlcenter" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--accent);color:#fff;border-radius:6px;text-decoration:none;font-size:13px">
-      ← Control Center
-    </a>
-  </div>
-</body></html>`, message)
-}
-
-// handleNotFound renders a 404 page.
-func (cc *ControlCenter) handleNotFound(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusNotFound)
-	fmt.Fprint(w, `<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>404 – Orkestra Control Center</title>
-<link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
-<link rel="stylesheet" href="/controlcenter/assets/static/css/style.css">
-<script>(function(){var t=localStorage.getItem('cc-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
-</head>
-<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg-base)">
-  <div style="text-align:center;padding:40px;max-width:400px">
-    <div style="font-size:60px;font-weight:700;color:var(--text-muted);margin-bottom:8px">404</div>
-    <h1 style="font-size:18px;font-weight:600;color:var(--text-primary);margin-bottom:8px">Page not found</h1>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px">The page you're looking for doesn't exist.</p>
-    <a href="/controlcenter" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--accent);color:#fff;border-radius:6px;text-decoration:none;font-size:13px">
-      ← Back to Control Center
-    </a>
-  </div>
-</body></html>`)
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Router
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -304,7 +245,14 @@ func (cc *ControlCenter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Strip leading slash and split
 		parts := strings.Split(strings.Trim(path, "/"), "/")
 		cc.routeKatalog(w, r, parts)
-
+	case path == "/api/instances" && r.Method == http.MethodGet:
+		cc.handleListInstances(w, r)
+	case path == "/api/instances" && r.Method == http.MethodPost:
+		cc.handleAddInstance(w, r)
+	case strings.HasPrefix(path, "/api/instances/") && r.Method == http.MethodPut:
+		cc.handleUpdateInstance(w, r)
+	case strings.HasPrefix(path, "/api/instances/") && r.Method == http.MethodDelete:
+		cc.handleDeleteInstance(w, r)
 	default:
 		cc.handleNotFound(w, r)
 	}
@@ -676,6 +624,74 @@ func (cc *ControlCenter) handleCRDetail(w http.ResponseWriter, r *http.Request, 
 		Phase:       phase,
 		BackURL:     fmt.Sprintf("/controlcenter/katalog/%s/crd/%s", katalogName, crdName),
 	})
+}
+
+func (cc *ControlCenter) handleListInstances(w http.ResponseWriter, r *http.Request) {
+	urls := cc.ListInstances()
+	writeJSON(w, http.StatusOK, map[string]interface{}{"urls": urls})
+}
+
+func (cc *ControlCenter) handleAddInstance(w http.ResponseWriter, r *http.Request) {
+	var req struct{ URL string }
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
+		return
+	}
+	if err := cc.AddInstance(req.URL); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusConflict)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"status": "added"})
+}
+
+func (cc *ControlCenter) handleUpdateInstance(w http.ResponseWriter, r *http.Request) {
+	// Path: /api/instances/encodedOldURL
+	encoded := strings.TrimPrefix(r.URL.Path, "/api/instances/")
+	oldURL, err := url.PathUnescape(encoded)
+	if err != nil {
+		http.Error(w, `{"error":"invalid URL"}`, http.StatusBadRequest)
+		return
+	}
+	var req struct{ URL string }
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
+		return
+	}
+	newURL := normalizeURL(req.URL)
+	if err := cc.UpdateInstance(oldURL, newURL); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusConflict)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
+}
+
+func (cc *ControlCenter) handleDeleteInstance(w http.ResponseWriter, r *http.Request) {
+	encoded := strings.TrimPrefix(r.URL.Path, "/api/instances/")
+	urlStr, err := url.PathUnescape(encoded)
+	if err != nil {
+		http.Error(w, `{"error":"invalid URL"}`, http.StatusBadRequest)
+		return
+	}
+	if err := cc.DeleteInstance(urlStr); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+}
+
+// normalizeURL adds scheme and removes trailing slash.
+func normalizeURL(raw string) string {
+	u := strings.TrimSpace(raw)
+	if u == "" {
+		return ""
+	}
+	if !strings.HasPrefix(u, "http://") && !strings.HasPrefix(u, "https://") {
+		u = "http://" + u
+	}
+	return strings.TrimSuffix(u, "/")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

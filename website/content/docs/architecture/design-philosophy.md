@@ -123,7 +123,7 @@ Startup:
 3. Event recorder  
 4. Queues  
 5. Informers  
-6. DependencyKontroller  
+6. DependencyKordinator  
 
 Shutdown is the reverse.
 

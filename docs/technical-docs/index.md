@@ -64,7 +64,7 @@ Running — informers watch, workers reconcile, health reports
 | [Katalog](./katalog.md) | `pkg/katalog/` | Loading, enrichment, conversion registry, admission registry |
 | [GenericReconciler](./generic-reconciler.md) | `pkg/reconciler/` | Per-CRD reconcile loop: lifecycle, finalizers, templates, hooks, metrics |
 | [Informer + Queue](./informer-factory.md) | `pkg/informer/` | Per-CRD informer factory, typed and dynamic informers |
-| [Kontroller](./kontroller.md) | `pkg/kontroller/` | DependencyKontroller, KontrollerRegistry, QueueRegistry, CRDHealth, HTTP handlers |
+| [Kordinator](./kordinator.md) | `pkg/kordinator/` | DependencyKordinator, KordinatorRegistry, QueueRegistry, CRDHealth, HTTP handlers |
 | [OrkestraRegistry](./orkestra-registry.md) | `pkg/orkestra-registry/` | Resource implementations: Deployment, Service, Secret, etc. |
 | [Template Resolver](./orkestra-registry.md#the-resolver) | `pkg/orkestra-registry/template/` | Go text/template evaluation against live CR objects |
 | [ork generate](./ork-generate.md) | `cmd/ork/` | Code generation for typed-mode CRDs, hooks, and constructors |
@@ -101,7 +101,7 @@ github.com/ialexeze/orkestra/
     katalog/                Katalog loading, enrichment, registries
     merger/                 Source resolution (files, helm, registry)
     reconciler/             GenericReconciler, conditions, validation, mutation
-    kontroller/             Informer factory, queue registry, health tracking
+    kordinator/             Informer factory, queue registry, health tracking
     types/                  All public types (CRDEntry, APITypes, ValidationRule, etc.)
     orkestra-registry/      Resource implementations (Deployment, Service, etc.)
       template/             Template resolver

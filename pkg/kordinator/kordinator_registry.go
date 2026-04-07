@@ -1,5 +1,5 @@
-// pkg/config/pkg/kontroller/registry.go
-package kontroller
+// pkg/config/pkg/kordinator/registry.go
+package kordinator
 
 import (
 	"sync"
@@ -21,7 +21,7 @@ type ResourceKatalog struct {
 	entries map[string]RegistryEntry
 }
 
-func NewKontrollerRegistry() *ResourceKatalog {
+func NewKordinatorRegistry() *ResourceKatalog {
 	return &ResourceKatalog{
 		entries: make(map[string]RegistryEntry),
 	}

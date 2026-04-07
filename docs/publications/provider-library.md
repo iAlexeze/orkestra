@@ -439,7 +439,7 @@ import (
 registry := orktypes.NewProviderRegistry()
 registry.Register(myprovider.New(myClient))
 
-// Pass registry to GenericReconciler or DependencyKontroller
+// Pass registry to GenericReconciler or DependencyKordinator
 ```
 
 ---

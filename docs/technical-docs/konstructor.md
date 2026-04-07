@@ -19,7 +19,7 @@ Understanding this function is understanding Orkestra.
     missing CRDs. All other komponents start later, in the komponent list.
 :::
 
-This constraint is what makes the wiring safe: you cannot call `reconcile` before the informer has synced, because the reconciler factory is not invoked until the `DependencyKontroller` starts workers, which happens after `infFactory.Start()`, which happens after `kube.Start()`.
+This constraint is what makes the wiring safe: you cannot call `reconcile` before the informer has synced, because the reconciler factory is not invoked until the `DependencyKordinator` starts workers, which happens after `infFactory.Start()`, which happens after `kube.Start()`.
 
 ---
 
@@ -85,9 +85,9 @@ infFactory := informer.SharedInformerFactory(
 )
 ```
 
-The informer factory is created but not started. `infFactory.Start()` is called by the `DependencyKontroller` after all other komponents are running. The factory routes watch events to queues via `handleEvent`.
+The informer factory is created but not started. `infFactory.Start()` is called by the `DependencyKordinator` after all other komponents are running. The factory routes watch events to queues via `handleEvent`.
 
-### Step 4c — Kontroller registry and per-CRD wiring
+### Step 4c — Kordinator registry and per-CRD wiring
 
 This is the most important loop in `konstructOrkestra`. For each enabled CRD:
 
@@ -117,28 +117,28 @@ for _, crd := range kat.Enabled() {
         }
     }
 
-    // 4. Register in the kontroller registry
-    ktrlRegistry.Register(gvk, crd, inf, factory)
+    // 4. Register in the Kordinator registry
+    kordRegistry.Register(gvk, crd, inf, factory)
 }
 ```
 
 **Why `crd := crd` is critical:** Go loop variables are shared across iterations. Without this capture, every closure would reference the same `crd` — the last one in the loop. This is one of the most common Go bugs in loop-closure code. Every CRD must capture its own copy.
 
-**Why the factory is a closure, not an immediate call:** `NewGenericReconciler` needs a live event recorder (`ev`) and kubeclient. Neither is running yet — they start in the komponent list. The closure captures the references; the call happens later when the `DependencyKontroller` starts workers.
+**Why the factory is a closure, not an immediate call:** `NewGenericReconciler` needs a live event recorder (`ev`) and kubeclient. Neither is running yet — they start in the komponent list. The closure captures the references; the call happens later when the `DependencyKordinator` starts workers.
 
 ### Step 5a — CRD health map
 
 ```go
-crdHealthMap := make(map[string]*kontroller.CRDHealth)
+crdHealthMap := make(map[string]*kordinator.CRDHealth)
 for _, crd := range kat.Enabled() {
-    crdHealthMap[gvk] = kontroller.NewCRDHealth(crd.Name)
+    crdHealthMap[gvk] = kordinator.NewCRDHealth(crd.Name)
 }
 ```
 
 One `CRDHealth` instance per CRD, keyed by GVK string. Three components share pointers to these instances:
 - Workers: call `RecordSuccess` / `RecordFailure` on every reconcile
 - Route handlers: read health state on every HTTP request
-- `DependencyKontroller`: uses health state for degradation logic
+- `DependencyKordinator`: uses health state for degradation logic
 
 Shared pointers mean no copying — a worker incrementing a counter is immediately visible to the health handler reading it. `CRDHealth` uses `sync/atomic` for all counter operations.
 
@@ -146,27 +146,27 @@ Shared pointers mean no copying — a worker incrementing a counter is immediate
 
 ```go
 for _, crd := range kat.Enabled() {
-    hs.Register("/katalog/"+crdName+"/health", kontroller.BuildCRDHealthHandler(...))
-    hs.Register("/katalog/"+crdName,           kontroller.BuildCRDInfoHandler(...))
+    hs.Register("/katalog/"+crdName+"/health", kordinator.BuildCRDHealthHandler(...))
+    hs.Register("/katalog/"+crdName,           kordinator.BuildCRDInfoHandler(...))
 }
-hs.Register("/katalog", kontroller.BuildKatalogHandler(...))
+hs.Register("/katalog", kordinator.BuildKatalogHandler(...))
 ```
 
 Routes are registered before `hs.Start()`. The handlers close over the `CRDHealth` pointers, the informer (for cache-based resource count), and the conversion/admission stats.
 
 `BuildCRDInfoHandler` receives `hs.GetConversionStats()` and `hs.GetAdmissionStats()` — the same stats objects that the conversion and admission handlers write to. The info endpoint always shows the live stats.
 
-### Step 6 — Dependency Kontroller
+### Step 6 — Dependency Kordinator
 
 ```go
-ktrl := kontroller.NewDependencyKontroller(
-    kube, infFactory, ktrlRegistry, ev, hs,
+kord := kordinator.NewDependencyKordinator(
+    kube, infFactory, kordRegistry, ev, hs,
     queueRegistry, defaultWq, crdHealthMap,
     kfg.Cluster().DefaultWorkers, katalog.NewDependencyGraph(kat),
 )
 ```
 
-`NewDependencyGraph(kat)` computes the topological start order from `dependsOn` declarations. The `DependencyKontroller` uses this to start CRD workers in the correct order — a CRD that depends on `project` does not start workers until `project`'s informer has synced and its workers are running.
+`NewDependencyGraph(kat)` computes the topological start order from `dependsOn` declarations. The `DependencyKordinator` uses this to start CRD workers in the correct order — a CRD that depends on `project` does not start workers until `project`'s informer has synced and its workers are running.
 
 ### Step 7 — Komponent list
 
@@ -178,15 +178,15 @@ komponents := []domain.Komponent{
     queueRegistry, // 4. per-CRD queues — starts their internal loops
     defaultWq,     // 5. shared fallback queue
     infFactory,    // 6. informer factory — watches start, caches populate
-    ktrl,          // 7. dependency kontroller — starts workers in order
+    kord,          // 7. dependency Kordinator — starts workers in order
 }
 ```
 
 **Startup order is declared explicitly.** `Orkestra` calls `Start()` on each in slice order. Each `Start()` must not return until the komponent is ready for the next one to use it.
 
-`hs` starts first so the `/health` endpoint is reachable immediately — the pod passes liveness checks even before the informer has synced. `/ready` returns 503 until `ktrl` calls `hs.SetReady()` after all CRD workers are started.
+`hs` starts first so the `/health` endpoint is reachable immediately — the pod passes liveness checks even before the informer has synced. `/ready` returns 503 until `kord` calls `hs.SetReady()` after all CRD workers are started.
 
-**Shutdown order is reverse.** `ktrl` shuts down first — workers stop, in-flight reconciles complete. Then informers stop. Then queues drain. Then the event recorder. Then kube. Then the health server (last, so it can report unhealthy during shutdown).
+**Shutdown order is reverse.** `kord` shuts down first — workers stop, in-flight reconciles complete. Then informers stop. Then queues drain. Then the event recorder. Then kube. Then the health server (last, so it can report unhealthy during shutdown).
 
 ### Step 8 — Orkestra
 
@@ -227,14 +227,14 @@ konfig (env vars, flags)
   ├──► QueueRegistry ──────────────── per-CRD workqueue
   │                    │
   │                    ▼
-  ├──► KontrollerRegistry ─────────── (gvk → informer + factory)
+  ├──► KordinatorRegistry ─────────── (gvk → informer + factory)
   │
   ├──► CRDHealthMap ─────────────── (gvk → *CRDHealth)
   │         │                                │
   │         ▼                                ▼
   ├──► HealthServer routes          worker RecordSuccess/Failure
   │
-  └──► DependencyKontroller ─────── starts workers in dependency order
+  └──► DependencyKordinator ─────── starts workers in dependency order
               │
               └──► factory() → GenericReconciler or Constructor
 ```
@@ -250,7 +250,7 @@ type orkestraKfg struct {
     komp       *[]domain.Komponent            // owned by Orkestra, managed lifecycle
     event      *event.Event                   // used by reconcilers for CR events
     kube       *kubeclient.Kubeclient         // used by reconcilers for API calls
-    kontroller *kontroller.DependencyKontroller // used by ork status for live state
+    kord *kordinator.DependencyKordinator // used by ork status for live state
     orkestra   *ork.Orkestra                  // started by cmd/run.go
 }
 ```

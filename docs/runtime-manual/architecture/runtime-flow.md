@@ -69,7 +69,7 @@ This wrapper:
 
 ## **4. Dispatch by GVK**
 
-The KontrollerRegistry maps:
+The KordinatorRegistry maps:
 
 ```
 GVK → Reconciler

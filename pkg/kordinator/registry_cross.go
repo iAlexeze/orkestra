@@ -1,15 +1,15 @@
-// pkg/kontroller/registry_cross.go
+// pkg/kordinator/registry_cross.go
 //
 // GetInformerByName — satisfies reconciler.KatalogRegistry.
 //
 // Allows GenericReconciler to look up a sibling CRD's SharedIndexInformer
-// for cross-CRD observation without importing pkg/kontroller directly
+// for cross-CRD observation without importing pkg/kordinator directly
 // (which would create an import cycle).
 //
 // The lookup is by CRD name (the map key in spec.crds — lowercase).
 // The GVK string stored in the registry is used internally; callers
 // only need to know the short name.
-package kontroller
+package kordinator
 
 import (
 	"strings"

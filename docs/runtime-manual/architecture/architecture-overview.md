@@ -17,7 +17,7 @@ Orkestra consists of four major subsystems:
 2. **Runtime Core**  
    Informers, workqueues, reconciler registry, template engine.
 
-3. **Dependency‑Aware Kontroller**  
+3. **Dependency‑Aware Kordinator**  
    Starts CRDs in topological order, handles activation/deactivation, manages worker pools.
 
 4. **Reconciler Layer**  
@@ -95,11 +95,11 @@ subgraph TemplateEngine["Template Engine"]
 end
 
 %% ============================
-%% WORKERS + KONTROLLER
+%% WORKERS + Kordinator
 %% ============================
-subgraph Kontroller["Dependency‑Aware Kontroller"]
+subgraph Kordinator["Dependency‑Aware Kordinator"]
     direction LR
-    C["Dependency Kontroller"]
+    C["Dependency Kordinator"]
     subgraph Pools["Worker Pools"]
         W1["Workers: CRD A (3)"]
         W2["Workers: CRD B (2)"]
@@ -228,13 +228,13 @@ Informers feed events into per-CRD workqueue.
 
 ---
 
-## **4. Dependency‑Aware Kontroller**
+## **4. Dependency‑Aware Kordinator**
 
-The Kontroller:
+The Kordinator:
 
 - Computes startup order (topological sort)
 - Waits for dependencies using ready channels
-- Starts worker pools per CRD
+- Starts internal kontroller with worker pools per CRD
 - Monitors CRD existence
 - Deactivates CRDs when deleted
 - Reactivates CRDs when they reappear

@@ -131,7 +131,7 @@ main()
         │         /katalog/{crd}/health, /katalog/{crd}, /katalog/{crd}/cr, ...
         │         Registered on hs.mux before Start() binds the port
         │
-        ├── 6. DependencyKontroller
+        ├── 6. DependencyKordinator
         │         Holds the dependency graph
         │         Does not start workers yet — waits for orkestra.Start()
         │
@@ -158,7 +158,7 @@ main()
    │                              WATCH for changes
    │                            closes "synced" channel when cache is populated
    │
-7. DependencyKontroller.Start()
+7. DependencyKordinator.Start()
       reads dependency graph → topological order
       for each CRD in topo order:
         wait until dependsOn CRDs meet their condition

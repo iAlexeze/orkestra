@@ -96,21 +96,22 @@ type KatalogResponse struct {
 
 // CRDSummary is a summary of a CRD
 type CRDSummary struct {
-	Name          string   `json:"name"`
-	State         string   `json:"state"` // "healthy", "started", "pending", "degraded"
-	Healthy       bool     `json:"healthy"`
-	Started       bool     `json:"started"`
-	Pending       bool     `json:"pending"`
-	Workers       int      `json:"workers"`
-	WorkersActive int      `json:"workersActive"`
-	DependsOn     []string `json:"dependsOn"`
-	WorkersSource string   `json:"workersSource"`
-	QueueDepth    int      `json:"queueDepth"`
-	MaxQueueDepth int      `json:"maxQueueDepth"`
-	ResourceCount int      `json:"resourceCount"`
-	ErrorRate     float64  `json:"errorRate"`
-	Uptime        string   `json:"uptime"`
-	RBACCount     int      `json:"rbacCount,omitempty"`
+	Name                     string   `json:"name"`
+	State                    string   `json:"state"` // "healthy", "started", "pending", "degraded"
+	Healthy                  bool     `json:"healthy"`
+	Started                  bool     `json:"started"`
+	Pending                  bool     `json:"pending"`
+	Workers                  int      `json:"workers"`
+	WorkersActive            int      `json:"workersActive"`
+	DependsOn                []string `json:"dependsOn"`
+	WorkersSource            string   `json:"workersSource"`
+	QueueDepth               int      `json:"queueDepth"`
+	MaxQueueDepth            int      `json:"maxQueueDepth"`
+	ResourceCount            int      `json:"resourceCount"`
+	ErrorRate                float64  `json:"errorRate"`
+	Uptime                   string   `json:"uptime"`
+	RBACCount                int      `json:"rbacCount,omitempty"`
+	HasUnhealthyDependencies bool     `json:"hasUnhealthyDependencies"`
 }
 
 // CRDHealth is the response from the /katalog/{crd}/health endpoint
@@ -134,43 +135,45 @@ type CRDHealth struct {
 }
 
 type DependencyStatus struct {
-	Name      string `json:"name"`
-	State     string `json:"state"`
-	Condition string `json:"condition"`
-	Satisfied bool   `json:"satisfied"`
-	LastCheck string `json:"lastCheck,omitempty"`
+	Name                string `json:"name"`
+	State               string `json:"state"`
+	Condition           string `json:"condition"`
+	Satisfied           bool   `json:"satisfied"`
+	LastCheck           string `json:"lastCheck,omitempty"`
+	AcceptableCondition string `json:"acceptableCondition"` // "started", "healthy", "ready"
 }
 
 // CRDInfo is the response from the /katalog/{crd} endpoint
 type CRDInfo struct {
-	Name                string                 `json:"name"`
-	Description         string                 `json:"description"`
-	Mode                string                 `json:"mode"`
-	GVK                 string                 `json:"gvk"`
-	GVR                 string                 `json:"gvr"`
-	Namespaced          bool                   `json:"namespaced"`
-	Namespace           string                 `json:"namespace"`
-	DependsOn           []string               `json:"dependsOn"`
-	Workers             int                    `json:"workers"`
-	WorkersActive       int32                  `json:"workersActive"`
-	WorkersIdle         int32                  `json:"workersIdle"`
-	WorkersProcessing   int32                  `json:"workersProcessing"`
-	WorkerDetails       map[string]string      `json:"workerDetails,omitempty"`
-	WorkersSource       string                 `json:"workersSource"`
-	Resync              string                 `json:"resync"`
-	ResyncSource        string                 `json:"resyncSource"`
-	QueueDepth          int                    `json:"queueDepth"`
-	MaxQueueDepth       int                    `json:"maxQueueDepth"`
-	MaxQueueDepthSource string                 `json:"maxQueueDepthSource"`
-	ResourceCount       int                    `json:"resourceCount"`
-	TotalReconciles     int                    `json:"totalReconciles"`
-	Reconciler          map[string]interface{} `json:"reconciler"`
-	Healthy             bool                   `json:"healthy"`
-	Started             bool                   `json:"started"`
-	ErrorRate           float64                `json:"errorRate"`
-	Conversion          *ConversionStats       `json:"conversion"`
-	Admission           *AdmissionStats        `json:"admission"`
-	RBAC                RBACInfo               `json:"rbac,omitempty"`
+	Name                     string                 `json:"name"`
+	Description              string                 `json:"description"`
+	Mode                     string                 `json:"mode"`
+	GVK                      string                 `json:"gvk"`
+	GVR                      string                 `json:"gvr"`
+	Namespaced               bool                   `json:"namespaced"`
+	Namespace                string                 `json:"namespace"`
+	DependsOn                []string               `json:"dependsOn"`
+	Workers                  int                    `json:"workers"`
+	WorkersActive            int32                  `json:"workersActive"`
+	WorkersIdle              int32                  `json:"workersIdle"`
+	WorkersProcessing        int32                  `json:"workersProcessing"`
+	WorkerDetails            map[string]string      `json:"workerDetails,omitempty"`
+	WorkersSource            string                 `json:"workersSource"`
+	Resync                   string                 `json:"resync"`
+	ResyncSource             string                 `json:"resyncSource"`
+	QueueDepth               int                    `json:"queueDepth"`
+	MaxQueueDepth            int                    `json:"maxQueueDepth"`
+	MaxQueueDepthSource      string                 `json:"maxQueueDepthSource"`
+	ResourceCount            int                    `json:"resourceCount"`
+	TotalReconciles          int                    `json:"totalReconciles"`
+	Reconciler               map[string]interface{} `json:"reconciler"`
+	Healthy                  bool                   `json:"healthy"`
+	Started                  bool                   `json:"started"`
+	ErrorRate                float64                `json:"errorRate"`
+	Conversion               *ConversionStats       `json:"conversion"`
+	Admission                *AdmissionStats        `json:"admission"`
+	RBAC                     RBACInfo               `json:"rbac,omitempty"`
+	HasUnhealthyDependencies bool                   `json:"hasUnhealthyDependencies"`
 }
 
 // ConversionStats contains version conversion metrics

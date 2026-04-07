@@ -6,9 +6,8 @@
 // in ReadCrossFromDeclarations. That function calls fetchCrossViaHTTP when the
 // informer is unavailable (cross-binary, cross-cluster).
 //
-// The full informer-cache path requires threading the kontroller registry into
-// GenericReconciler — currently pending. Once wired, ReadCrossFromInformer is
-// called instead of fetchCrossViaHTTP for same-binary CRDs.
+// The full informer-cache path requires threading the Kordinator registry into
+// GenericReconciler. ReadCrossFromInformer is called instead of fetchCrossViaHTTP for same-binary CRDs.
 package reconciler
 
 import (
@@ -22,6 +21,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
+const (
+	callTimeout = 5 * time.Second
+)
+
 // fetchCrossViaHTTP fetches a CR's detail from an Orkestra CR endpoint.
 // The endpoint should be the /katalog/{crd}/cr/{namespace}/{name} URL
 // which is already built and running on every Orkestra instance.
@@ -32,7 +35,7 @@ func fetchCrossViaHTTP(ctx context.Context, endpoint, token string) map[string]i
 		return nil
 	}
 
-	callCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	callCtx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(callCtx, http.MethodGet, endpoint, nil)
