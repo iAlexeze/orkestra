@@ -1,26 +1,26 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=9292&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
 <title>Full Architecture View — Orkestra</title>
 
-<meta name="description" content="This page provides the complete visual representation of the Orkestra runtime.">
+<meta name="description" content="The unified diagram showing every Orkestra subsystem in one view — use this as a reference map.">
 <meta name="author" content="Orkestra">
 
 
 <meta property="og:type" content="article">
 <meta property="og:title" content="Full Architecture View — Orkestra">
-<meta property="og:description" content="This page provides the complete visual representation of the Orkestra runtime.">
-<meta property="og:url" content="http://localhost:8191/docs/architecture/full-architecture-view/">
+<meta property="og:description" content="The unified diagram showing every Orkestra subsystem in one view — use this as a reference map.">
+<meta property="og:url" content="http://localhost:9292/docs/architecture/full-architecture-view/">
 <meta property="og:site_name" content="Orkestra">
 
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Full Architecture View — Orkestra">
-<meta name="twitter:description" content="This page provides the complete visual representation of the Orkestra runtime.">
+<meta name="twitter:description" content="The unified diagram showing every Orkestra subsystem in one view — use this as a reference map.">
 
 
 <link rel="icon" type="image/png" href="/img/fav.png">
@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.3a158893da18f7a50a3a30d5b58e06a6ffb4feed1bd6bef21ea14ce0d1986319.css">
+<link rel="stylesheet" href="/css/main.min.e4f35e028b4e342d94b5258699fa7b53e53b1f54212c3a40fb2a70e627bba458.css">
 
 
 
@@ -291,12 +291,6 @@
               </li>
               
               <li>
-                <a href="/docs/concepts/conditional-provisioning/" class="sidebar-link">
-                  **Conditional Provisioning in Orkestra**
-                </a>
-              </li>
-              
-              <li>
                 <a href="/docs/concepts/runtime/" class="sidebar-link">
                   **Orkestra Runtime**
                 </a>
@@ -305,6 +299,12 @@
               <li>
                 <a href="/docs/concepts/typed-crds/" class="sidebar-link">
                   **Typed CRDs**
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/conditional-provisioning/" class="sidebar-link">
+                  Conditional Provisioning in Orkestra
                 </a>
               </li>
               
@@ -511,6 +511,94 @@
           
           <div class="sidebar-section">
             <div class="sidebar-section-header">
+              <a href="/docs/cli/" class="sidebar-section-link">CLI Reference</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle CLI Reference">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/cli/describe/" class="sidebar-link">
+                  ork describe
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/events/" class="sidebar-link">
+                  ork events
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/generate-runtime/" class="sidebar-link">
+                  ork generate runtime
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/get/" class="sidebar-link">
+                  ork get
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/init/" class="sidebar-link">
+                  ork init
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/reconcile/" class="sidebar-link">
+                  ork reconcile
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/run/" class="sidebar-link">
+                  ork run
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/status/" class="sidebar-link">
+                  ork status
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/template/" class="sidebar-link">
+                  ork template
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/validate/" class="sidebar-link">
+                  ork validate
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/version/" class="sidebar-link">
+                  ork version
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/inspect-live-crd/" class="sidebar-link">
+                  Orkestra Inspect Commands
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
               <a href="/docs/guides/" class="sidebar-section-link">Guides</a>
               <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Guides">
                 <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -601,188 +689,6 @@
               <li>
                 <a href="/docs/guides/writing-hooks/" class="sidebar-link">
                   Writing Hooks
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/cli/" class="sidebar-section-link">CLI Reference</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle CLI Reference">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/cli/describe/" class="sidebar-link">
-                  ork describe
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/events/" class="sidebar-link">
-                  ork events
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/generate-runtime/" class="sidebar-link">
-                  ork generate runtime
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/get/" class="sidebar-link">
-                  ork get
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/init/" class="sidebar-link">
-                  ork init
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/reconcile/" class="sidebar-link">
-                  ork reconcile
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/run/" class="sidebar-link">
-                  ork run
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/status/" class="sidebar-link">
-                  ork status
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/template/" class="sidebar-link">
-                  ork template
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/validate/" class="sidebar-link">
-                  ork validate
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/version/" class="sidebar-link">
-                  ork version
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/deprecated/deprecated-cli/" class="sidebar-link">
-                  Orkestra CLI Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/inspect-live-crd/" class="sidebar-link">
-                  Orkestra Inspect Commands
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/reference/" class="sidebar-section-link">Reference</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Reference">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/reference/metrics/" class="sidebar-link">
-                  **Orkestra Metrics**
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
-                  Katalog and Komposer Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-schema/" class="sidebar-link">
-                  Katalog Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-schema-status/" class="sidebar-link">
-                  Katalog Schema — Status Block
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/komposer-schema/" class="sidebar-link">
-                  Komposer Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/mutation-schema/" class="sidebar-link">
-                  Mutation Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/cli/" class="sidebar-link">
-                  Orkestra CLI Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-api/" class="sidebar-link">
-                  Orkestra Runtime API Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/registry-schema/" class="sidebar-link">
-                  Registry Source Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/runtime/" class="sidebar-link">
-                  Runtime
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/shutdown/" class="sidebar-link">
-                  Shutdown
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/validation-schema/" class="sidebar-link">
-                  Validation Schema
                 </a>
               </li>
               
@@ -905,8 +811,8 @@
           
           <div class="sidebar-section">
             <div class="sidebar-section-header">
-              <a href="/docs/publications/" class="sidebar-section-link">Publications</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Publications">
+              <a href="/docs/reference/" class="sidebar-section-link">Reference</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Reference">
                 <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path d="M19 9l-7 7-7-7"/>
                 </svg>
@@ -915,128 +821,74 @@
             <ul class="sidebar-section-pages" role="list" style="display:none">
               
               <li>
-                <a href="/docs/publications/when-conditions-paper/" class="sidebar-link">
-                  Conditional Provisioning: When Conditions and the Two Enforcement Boundaries
+                <a href="/docs/reference/metrics/" class="sidebar-link">
+                  **Orkestra Metrics**
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/declarative-operators-whitepaper/" class="sidebar-link">
-                  Declarative Operators: A New Model for Kubernetes Extensibility
+                <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
+                  Katalog and Komposer Reference
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/declarative-state-machines/" class="sidebar-link">
-                  Declarative State Machines in Kubernetes Operators
+                <a href="/docs/reference/katalog-schema/" class="sidebar-link">
+                  Katalog Schema
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/declarative-conversion/" class="sidebar-link">
-                  Declarative Version Conversion for Kubernetes CRDs
+                <a href="/docs/reference/katalog-schema-status/" class="sidebar-link">
+                  Katalog Schema — Status Block
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/evolve-apis-without-code/" class="sidebar-link">
-                  Declarative Version Conversion for Kubernetes CRDs
+                <a href="/docs/reference/komposer-schema/" class="sidebar-link">
+                  Komposer Schema
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/from-programs-to-data/" class="sidebar-link">
-                  From Programs To Data
+                <a href="/docs/reference/mutation-schema/" class="sidebar-link">
+                  Mutation Schema
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/introducing-orkestra-notes/" class="sidebar-link">
-                  Introducing Orkestra Notes
+                <a href="/docs/reference/cli/" class="sidebar-link">
+                  Orkestra CLI Reference
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/one-runtime-many-crds/" class="sidebar-link">
-                  One Runtime, Many CRDs: Fulfilling the Operator Pattern
+                <a href="/docs/reference/katalog-api/" class="sidebar-link">
+                  Orkestra Runtime API Reference
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/operator-authoring-vs-infrastructure-controlplane/" class="sidebar-link">
-                  Operator Authoring vs Infrastructure Control Plane
+                <a href="/docs/reference/registry-schema/" class="sidebar-link">
+                  Registry Source Schema
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/orkestra-and-gitops/" class="sidebar-link">
-                  Orkestra and GitOps: The Complete Integration Story
+                <a href="/docs/reference/runtime/" class="sidebar-link">
+                  Runtime
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/no-autosync-by-design/" class="sidebar-link">
-                  Orkestra Does Not Auto-Sync — And That’s the Point
+                <a href="/docs/reference/shutdown/" class="sidebar-link">
+                  Shutdown
                 </a>
               </li>
               
               <li>
-                <a href="/docs/publications/metrics-analysis-old/" class="sidebar-link">
-                  Orkestra Metrics Analysis
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/metrics-analysis/" class="sidebar-link">
-                  Orkestra Metrics Analysis: Control Center Deep Dive
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/value-proposition/" class="sidebar-link">
-                  Orkestra Value Proposition
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/universal-observer-whitepaper/" class="sidebar-link">
-                  Orkestra: The Universal Observer That Belongs in Kubernetes Core
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/orkestra-registry/" class="sidebar-link">
-                  The Missing Package Manager for Kubernetes Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/operator-sprawl-problem/" class="sidebar-link">
-                  The Operator Sprawl Problem
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/provider-library/" class="sidebar-link">
-                  The Orkestra Provider Model
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/reconcile-contract/" class="sidebar-link">
-                  The Reconcile Contract
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/no-trace-runtime/" class="sidebar-link">
-                  The Runtime That Leaves No Trace
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/publications/trust-and-failure-model/" class="sidebar-link">
-                  Trust and Failure Model
+                <a href="/docs/reference/validation-schema/" class="sidebar-link">
+                  Validation Schema
                 </a>
               </li>
               
@@ -1088,7 +940,7 @@
       <header class="docs-header">
         <h1 class="docs-title">Full Architecture View</h1>
         
-        <p class="docs-description">This page provides the complete visual representation of the Orkestra runtime.</p>
+        <p class="docs-description">The unified diagram showing every Orkestra subsystem in one view — use this as a reference map.</p>
         
         <div class="docs-meta">
           
@@ -1110,134 +962,134 @@ It complements the conceptual explanation in the<br>
 <p>The diagram below shows how Orkestra loads Katalogs, discovers CRDs, initializes informers, manages worker pools, dispatches reconcile events, and applies templates to the Kubernetes API.</p>
 <hr>
 <h2 id="full-system-diagram">Full System Diagram</h2>
-<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">flowchart TB
+<pre class="mermaid">flowchart TB
 
 %% ============================
 %% PRE-RUNTIME (KATALOG BUILD)
 %% ============================
-subgraph PreRuntime[&#34;Pre‑Runtime (Build Phase)&#34;]
+subgraph PreRuntime["Pre‑Runtime (Build Phase)"]
     direction LR
-    KOMP[&#34;Komposer&lt;br/&gt;(merge files, Helm, URLs)&#34;]
-    KAT[&#34;Katalog Loader&lt;br/&gt;(validation + defaults)&#34;]
-    KOMP --&gt; KAT
+    KOMP["Komposer<br/>(merge files, Helm, URLs)"]
+    KAT["Katalog Loader<br/>(validation + defaults)"]
+    KOMP --> KAT
 end
 
 %% ============================
 %% CRDs
 %% ============================
-subgraph CRDs[&#34;Custom Resources (User‑Defined)&#34;]
-    P[&#34;CRD A&lt;br/&gt;(enabled: true, workers: 3, resync: 10m)&#34;]
-    M[&#34;CRD B&lt;br/&gt;(enabled: true, workers: 2, resync: 30s, dependsOn: A)&#34;]
-    D[&#34;Disabled CRD&lt;br/&gt;(enabled: false)&#34;]
+subgraph CRDs["Custom Resources (User‑Defined)"]
+    P["CRD A<br/>(enabled: true, workers: 3, resync: 10m)"]
+    M["CRD B<br/>(enabled: true, workers: 2, resync: 30s, dependsOn: A)"]
+    D["Disabled CRD<br/>(enabled: false)"]
 end
 
 %% ============================
 %% API SERVER
 %% ============================
-subgraph API[&#34;Kubernetes API Server&#34;]
+subgraph API["Kubernetes API Server"]
 end
 
 %% ============================
 %% CORE COMPONENTS
 %% ============================
-subgraph Core[&#34;Core Components&#34;]
-    KC[&#34;KubeClient&#34;]
-    CF[&#34;Client Factory&#34;]
-    EV[&#34;Event Recorder&#34;]
-    HS[&#34;Health Server&#34;]
-    WQ[&#34;Shared Workqueue&#34;]
+subgraph Core["Core Components"]
+    KC["KubeClient"]
+    CF["Client Factory"]
+    EV["Event Recorder"]
+    HS["Health Server"]
+    WQ["Shared Workqueue"]
 end
 
 %% ============================
 %% INFORMERS
 %% ============================
-subgraph Informers[&#34;Informer Factory&#34;]
+subgraph Informers["Informer Factory"]
     direction LR
-    SIF[&#34;SharedInformerFactory&#34;]
-    PI[&#34;Informer: CRD A&lt;br/&gt;resync: 10m&#34;]
-    MI[&#34;Informer: CRD B&lt;br/&gt;resync: 30s&#34;]
-    DI[&#34;Informer: Disabled CRD&lt;br/&gt;(not started)&#34;]
+    SIF["SharedInformerFactory"]
+    PI["Informer: CRD A<br/>resync: 10m"]
+    MI["Informer: CRD B<br/>resync: 30s"]
+    DI["Informer: Disabled CRD<br/>(not started)"]
 end
 
 %% ============================
 %% RUNTIME KATALOG
 %% ============================
-subgraph RuntimeKatalog[&#34;Runtime Katalog&#34;]
-    REG[&#34;Reconciler Registry&lt;br/&gt;(GVK → Reconciler)&#34;]
-    R1[&#34;Entry: CRD A&#34;]
-    R2[&#34;Entry: CRD B&#34;]
+subgraph RuntimeKatalog["Runtime Katalog"]
+    REG["Reconciler Registry<br/>(GVK → Reconciler)"]
+    R1["Entry: CRD A"]
+    R2["Entry: CRD B"]
 end
 
 %% ============================
 %% TEMPLATE ENGINE
 %% ============================
-subgraph TemplateEngine[&#34;Template Engine&#34;]
+subgraph TemplateEngine["Template Engine"]
     direction TB
-    RES[&#34;Template Resolver&lt;br/&gt;(fields, defaults, conditions)&#34;]
-    TE[&#34;Resource Builders&lt;br/&gt;(Deployments, Services, Secrets…)&#34;]
+    RES["Template Resolver<br/>(fields, defaults, conditions)"]
+    TE["Resource Builders<br/>(Deployments, Services, Secrets…)"]
 end
 
 %% ============================
 %% WORKERS + KONTROLLER
 %% ============================
-subgraph Kontroller[&#34;Dependency‑Aware Kontroller&#34;]
+subgraph Kontroller["Dependency‑Aware Kontroller"]
     direction LR
-    C[&#34;Dependency Kontroller&#34;]
-    subgraph Pools[&#34;Worker Pools&#34;]
-        W1[&#34;Workers: CRD A (3)&#34;]
-        W2[&#34;Workers: CRD B (2)&#34;]
+    C["Dependency Kontroller"]
+    subgraph Pools["Worker Pools"]
+        W1["Workers: CRD A (3)"]
+        W2["Workers: CRD B (2)"]
     end
-    DISPATCH[&#34;GVK Dispatch&#34;]
+    DISPATCH["GVK Dispatch"]
 end
 
 %% ============================
 %% RECONCILERS
 %% ============================
-subgraph Reconcilers[&#34;Reconciler Layer&#34;]
-    GR[&#34;GenericReconciler&lt;br/&gt;(zero‑code)&#34;]
-    subgraph Hooks[&#34;Optional Hooks&#34;]
-        H1[&#34;OnReconcile&#34;]
-        H2[&#34;OnDelete&#34;]
-        H3[&#34;OnNotFound&#34;]
+subgraph Reconcilers["Reconciler Layer"]
+    GR["GenericReconciler<br/>(zero‑code)"]
+    subgraph Hooks["Optional Hooks"]
+        H1["OnReconcile"]
+        H2["OnDelete"]
+        H3["OnNotFound"]
     end
 end
 
 %% ============================
 %% HIGH AVAILABILITY
 %% ============================
-subgraph HA[&#34;High Availability&#34;]
-    LE[&#34;Leader Election&#34;]
+subgraph HA["High Availability"]
+    LE["Leader Election"]
 end
 
 %% ============================
 %% CONNECTIONS
 %% ============================
-CRDs --&gt; API
-API --&gt; KC
-KC --&gt; CF
-CF --&gt; SIF
-SIF -.-&gt;|enabled| PI &amp; MI
-SIF -.-&gt;|disabled| DI
+CRDs --> API
+API --> KC
+KC --> CF
+CF --> SIF
+SIF -.->|enabled| PI & MI
+SIF -.->|disabled| DI
 
-PI --&gt; WQ
-MI --&gt; WQ
+PI --> WQ
+MI --> WQ
 
-WQ --&gt; C
-C --&gt; Pools
-Pools --&gt; DISPATCH
-DISPATCH --&gt; REG
-REG --&gt; R1 &amp; R2
-R1 --&gt; GR
-R2 --&gt; GR
+WQ --> C
+C --> Pools
+Pools --> DISPATCH
+DISPATCH --> REG
+REG --> R1 & R2
+R1 --> GR
+R2 --> GR
 
-GR --&gt; RES
-RES --&gt; TE
-GR --&gt; EV
+GR --> RES
+RES --> TE
+GR --> EV
 
-LE --&gt; C
-EV --&gt; API
+LE --> C
+EV --> API
 
-KAT --&gt; REG
+KAT --> REG
 
 %% ============================
 %% STYLING
@@ -1253,14 +1105,33 @@ style Pools fill:darkgreen,stroke:#333,stroke-width:2px
 style GR fill:#00C853,stroke:#333,stroke-width:2px,color:#FFFFFF
 style LE fill:#FF6D00,stroke:#333,stroke-width:2px
 style Hooks fill:nofill,stroke:#333,stroke-width:2px
-style TemplateEngine stroke:#333,stroke-width:2px,color:#FFFFFF
-</code></pre><h2 id="whats-next">What’s Next?</h2>
+style TemplateEngine stroke:#333,stroke-width:2px,color:#FFFFFF</pre>
+
+<h2 id="whats-next">What’s Next?</h2>
 <p>Explore the conceptual explanation:</p>
 <p>👉 <a href="./index.md">Architecture Overview</a></p>
 <p>Or dive into the runtime execution path:</p>
 <p>👉 <a href="./runtime-flow.md">Runtime Flow</a></p>
 
       </div>
+      <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({
+          startOnLoad: true,
+          theme: 'dark',
+          themeVariables: {
+            background: '#1a1b26',
+            primaryColor: '#6366F1',
+            primaryTextColor: '#E2E8F0',
+            primaryBorderColor: 'rgba(99,102,241,0.4)',
+            lineColor: 'rgba(255,255,255,0.2)',
+            secondaryColor: '#1e1f2e',
+            tertiaryColor: '#0f1117',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '14px'
+          }
+        });
+      </script>
 
       
       <nav class="docs-pagination" aria-label="Page navigation">

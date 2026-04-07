@@ -1,7 +1,7 @@
 ---
 title: "Orkestra Design Philosophy"
 weight: 4
-description: "Why Orkestra is built the way it is — and what principles guide its architecture."
+description: "The core principles behind Orkestra's design: data over code, stability over dynamism, composition over inheritance, and simplicity over power."
 ---
 
 Why Orkestra is built the way it is — and what principles guide its architecture.

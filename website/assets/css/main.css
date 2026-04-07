@@ -1028,7 +1028,8 @@ code:not(pre > code) {
   opacity: 0;
 }
 
-.code-block:hover .code-copy-btn {
+.code-block:hover .code-copy-btn,
+.prose .highlight:hover .code-copy-btn {
   opacity: 1;
 }
 
@@ -1296,24 +1297,25 @@ code:not(pre > code) {
 }
 
 .docs-header {
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.25rem;
   border-bottom: 1px solid var(--color-border);
 }
 
 .docs-title {
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
-  font-weight: 800;
-  letter-spacing: -0.025em;
+  font-size: clamp(1.3rem, 2.5vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.015em;
   color: var(--color-text);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
+  line-height: 1.25;
 }
 
 .docs-description {
-  font-size: 1.0625rem;
+  font-size: 0.9375rem;
   color: var(--color-text-muted);
   line-height: 1.6;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .docs-meta {
@@ -1340,15 +1342,21 @@ code:not(pre > code) {
 .prose h4,
 .prose h5,
 .prose h6 {
-  margin-top: 2em;
-  margin-bottom: 0.75em;
+  margin-top: 1.75em;
+  margin-bottom: 0.6em;
   scroll-margin-top: calc(var(--navbar-height) + 1rem);
 }
 
-.prose h2 {
+.prose h1 {
   font-size: 1.5rem;
   font-weight: 600;
-  padding-bottom: 0.5rem;
+  letter-spacing: -0.01em;
+}
+
+.prose h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  padding-bottom: 0.4rem;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -1467,70 +1475,96 @@ code:not(pre > code) {
 }
 
 /* ── Prose Code Blocks (Hugo/Chroma fenced blocks) ─────────── */
+/*
+ * Hugo Chroma outputs: <div class="highlight"><pre tabindex="0" style="...">
+ * The <pre> has NO class="chroma" — it uses inline styles for syntax colors.
+ * We must use `.highlight pre` (not `.highlight pre.chroma`) and override
+ * the inline background with !important.
+ */
 .prose .highlight {
   position: relative;
   margin: 1.5rem 0;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.08);
   box-shadow: var(--shadow-lg);
   background: var(--color-code-bg);
 }
 
-/* Language label bar — injected by JS */
+/* Language label bar — injected by addLangLabels() in main.js */
 .prose .highlight .code-lang-label {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.4rem 1rem;
-  background: rgba(0,0,0,0.3);
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  padding: 0.35rem 1rem;
+  background: rgba(0,0,0,0.35);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
   font-family: var(--font-mono);
   font-size: 0.6875rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.35);
+  color: rgba(255,255,255,0.3);
   user-select: none;
 }
 
-.prose .highlight pre.chroma {
-  margin: 0;
-  padding: 1.25rem 1.5rem;
-  background: var(--color-code-bg) !important;
+/* The actual <pre> Hugo outputs — no .chroma class, uses inline styles */
+.prose .highlight pre {
+  margin: 0 !important;
+  padding: 1.25rem 1.5rem !important;
+  background: var(--color-code-bg) !important; /* override Dracula inline bg */
   overflow-x: auto;
   font-family: var(--font-mono);
   font-size: 0.875rem;
   line-height: 1.75;
   border-radius: 0;
   -webkit-overflow-scrolling: touch;
+  /* Dracula inline style also sets tab-size; we preserve it */
 }
 
-.prose .highlight pre.chroma code {
+.prose .highlight pre code {
   background: none !important;
-  padding: 0;
-  border: none;
-  font-size: inherit;
-  border-radius: 0;
-  color: var(--color-code-text);
+  padding: 0 !important;
+  border: none !important;
+  font-size: inherit !important;
+  border-radius: 0 !important;
+  /* Let Dracula's per-span inline colors provide the syntax highlighting */
 }
 
-/* Copy button: position relative to highlight container */
+/* Chroma line-wrap spans — Dracula outputs each line as display:flex */
+.prose .highlight pre span[style*="display:flex"] {
+  display: block !important; /* flatten to block; flex adds unwanted stretch */
+}
+
+/* Copy button sits in the top-right of the highlight container */
 .prose .highlight .code-copy-btn {
-  top: 0.4rem;
-  right: 0.75rem;
+  position: absolute;
+  top: 0.35rem;
+  right: 0.6rem;
 }
 
-/* Light mode: keep code blocks dark */
+/* Always keep code dark regardless of page theme */
 [data-theme="light"] .prose .highlight {
-  border-color: rgba(0,0,0,0.1);
-  box-shadow: var(--shadow-md);
+  border-color: rgba(0,0,0,0.12);
 }
-[data-theme="light"] .prose .highlight pre.chroma {
-  background: #1E1E2E !important;
+[data-theme="light"] .prose .highlight pre {
+  background: #1a1b26 !important;
 }
 [data-theme="light"] .prose .highlight .code-lang-label {
-  background: rgba(0,0,0,0.4);
+  background: rgba(0,0,0,0.45);
+}
+
+/* ── Mermaid diagrams ────────────────────────────────────── */
+.prose pre.mermaid {
+  background: transparent !important;
+  border: none !important;
+  padding: 1.5rem 0 !important;
+  text-align: center;
+  overflow: visible;
+}
+.prose pre.mermaid svg {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-lg);
 }
 
 /* ── 18. TOC ─────────────────────────────────────────────── */
@@ -1729,79 +1763,68 @@ code:not(pre > code) {
 }
 
 /* ── 21. Doc Card Grid ───────────────────────────────────── */
-.docs-card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-.docs-card {
+/* ── Docs index — clean link list (Crossplane style) ─────── */
+.docs-index-nav {
+  margin-top: 1.75rem;
   display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1.25rem;
-  background: var(--color-surface);
+  flex-direction: column;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  text-decoration: none;
-  transition: all var(--transition-fast);
+  overflow: hidden;
 }
 
-.docs-card:hover {
-  border-color: var(--color-accent);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-}
-
-.docs-card-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius);
-  background: rgba(76, 32, 133, 0.08);
-  border: 1px solid rgba(76, 32, 133, 0.12);
+.docs-index-item {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: var(--color-primary);
-  flex-shrink: 0;
+  gap: 1rem;
+  padding: 0.875rem 1.25rem;
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-border);
+  transition: background var(--transition-fast);
+  color: inherit;
 }
-
-[data-theme="dark"] .docs-card-icon {
-  color: #A78BFA;
-  background: rgba(167, 139, 250, 0.08);
-  border-color: rgba(167, 139, 250, 0.12);
+.docs-index-item:last-child {
+  border-bottom: none;
 }
-
-.docs-card-body {
-  flex: 1;
-  min-width: 0;
+.docs-index-item:hover {
+  background: var(--color-surface-2, var(--color-surface));
 }
-
-.docs-card-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--color-text);
-  margin-bottom: 0.375rem;
+.docs-index-item:hover .docs-index-item-title {
+  color: var(--color-accent);
 }
-
-.docs-card-desc {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-  line-height: 1.55;
-  margin: 0;
-}
-
-.docs-card-arrow {
-  color: var(--color-text-faint);
-  flex-shrink: 0;
-  margin-top: 0.125rem;
-  transition: transform var(--transition-fast), color var(--transition-fast);
-}
-
-.docs-card:hover .docs-card-arrow {
+.docs-index-item:hover .docs-index-item-arrow {
   transform: translateX(3px);
   color: var(--color-accent);
+}
+
+.docs-index-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.docs-index-item-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text);
+  transition: color var(--transition-fast);
+}
+
+.docs-index-item-desc {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.docs-index-item-arrow {
+  flex-shrink: 0;
+  color: var(--color-text-faint);
+  transition: transform var(--transition-fast), color var(--transition-fast);
 }
 
 /* ── 22. Callout Shortcode ───────────────────────────────── */
@@ -2353,8 +2376,8 @@ code:not(pre > code) {
     justify-content: center;
   }
 
-  .docs-card-grid {
-    grid-template-columns: 1fr;
+  .docs-index-item-desc {
+    display: none; /* hide desc on small screens for cleaner list */
   }
 
   .footer-links {
@@ -2506,19 +2529,6 @@ code:not(pre > code) {
   font-size: 1rem;
 }
 
-/* Make docs-title reasonable — not gigantic */
-.docs-title {
-  font-size: clamp(1.5rem, 3vw, 2rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--color-text);
-  margin-bottom: 0.5rem;
-}
-
-.docs-description {
-  font-size: 1rem;
-  line-height: 1.65;
-}
 
 /* ── Control Center navbar button ──────────────────────────── */
 .btn-controlcenter {

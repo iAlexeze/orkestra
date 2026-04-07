@@ -1,7 +1,7 @@
 ---
 title: "CRD Lifecycle in Orkestra"
 weight: 3
-description: "How Orkestra activates, deactivates, and reactivates CRDs — automatically and safely."
+description: "The lifecycle stages a CRD goes through inside Orkestra: registration, activation, health tracking, and graceful deactivation."
 ---
 
 How Orkestra activates, deactivates, and reactivates CRDs — automatically and safely.

@@ -67,63 +67,47 @@
   </nav>
 
   <main id="main-content" tabindex="-1">
-    <!-- Publications Header -->
-    <header class="pub-list-header">
-      <div class="pub-list-header-inner">
-        <a href="/" class="pub-back-link">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          Back to Home
-        </a>
-        <h1 class="pub-list-title">{{ .Title }}</h1>
-        {{ with .Description }}
-        <p class="pub-list-description">{{ . }}</p>
-        {{ end }}
-        <div class="pub-list-meta">
-          <span class="pub-count">{{ len .Pages }} papers</span>
-        </div>
-      </div>
-    </header>
+    <div class="pub-page-inner">
 
-    <!-- Publications Grid -->
-    <section class="pub-list-section">
-      <div class="pub-list-inner">
-        <div class="pub-grid">
-          {{ range .Pages.ByDate.Reverse }}
-          <article class="pub-card">
-            <div class="pub-card-body">
-              <h2 class="pub-card-title">
-                <a href="{{ .RelPermalink }}" class="pub-card-link">{{ .Title }}</a>
-              </h2>
-              {{ with .Description }}
-              <p class="pub-card-desc">{{ . | markdownify }}</p>
-              {{ end }}
-              {{ if .Summary }}
-              <p class="pub-card-summary">{{ .Summary | truncate 180 }}</p>
-              {{ end }}
-              <div class="pub-card-footer">
-                <div class="pub-card-meta">
-                  {{ with .Date }}
-                  <span class="pub-card-date">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    {{ .Format "Jan 2006" }}
-                  </span>
-                  {{ end }}
-                  <span class="pub-card-reading">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    {{ .ReadingTime }} min read
-                  </span>
-                </div>
-                <a href="{{ .RelPermalink }}" class="pub-card-cta">
-                  Read paper
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </a>
-              </div>
-            </div>
-          </article>
-          {{ end }}
-        </div>
-      </div>
-    </section>
+      <!-- Page header -->
+      <header class="pub-page-header">
+        <a href="/" class="pub-back-link">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Home
+        </a>
+        <h1 class="pub-page-title">{{ .Title }}</h1>
+        {{ with .Description }}
+        <p class="pub-page-desc">{{ . }}</p>
+        {{ end }}
+        <p class="pub-page-count">{{ len .Pages }} papers</p>
+      </header>
+
+      <!-- Paper list -->
+      <ol class="pub-scholar-list" reversed>
+        {{ range .Pages.ByDate.Reverse }}
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="{{ .RelPermalink }}" class="pub-scholar-link">{{ .Title }}</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            {{ with .Date }}<span>{{ .Format "January 2006" }}</span>{{ end }}
+            <span class="pub-meta-sep">·</span>
+            <span>{{ .ReadingTime }} min read</span>
+            {{ with .Params.tags }}
+            <span class="pub-meta-sep">·</span>
+            {{ range . }}<span class="pub-scholar-tag">{{ . }}</span>{{ end }}
+            {{ end }}
+          </div>
+          {{ with .Description }}
+          <p class="pub-scholar-abstract">{{ . | markdownify }}</p>
+          {{ else }}{{ with .Summary }}
+          <p class="pub-scholar-abstract">{{ . | truncate 200 }}</p>
+          {{ end }}{{ end }}
+        </li>
+        {{ end }}
+      </ol>
+
+    </div>
   </main>
 
   {{ partial "footer.html" . }}
@@ -132,145 +116,108 @@
   <script src="{{ $js.RelPermalink }}" defer></script>
 
   <style>
-    .pub-list-header {
-      background: linear-gradient(135deg, rgba(76,32,133,0.15) 0%, rgba(17,17,34,0.95) 60%);
-      border-bottom: 1px solid var(--color-border);
-      padding: 4rem 0 3rem;
-    }
-    .pub-list-header-inner {
-      max-width: 1100px;
+    .pub-page-inner {
+      max-width: 780px;
       margin: 0 auto;
-      padding: 0 2rem;
+      padding: 3.5rem 2rem 6rem;
     }
     .pub-back-link {
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      font-size: 0.85rem;
+      gap: 0.35rem;
+      font-size: 0.8125rem;
       color: var(--color-text-muted);
       text-decoration: none;
-      margin-bottom: 1.5rem;
-      transition: color var(--transition);
+      margin-bottom: 2rem;
+      transition: color var(--transition-fast);
     }
     .pub-back-link:hover { color: var(--color-primary); }
-    .pub-list-title {
-      font-size: clamp(2rem, 4vw, 3rem);
-      font-weight: 700;
+    .pub-page-header {
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.75rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .pub-page-title {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 600;
       letter-spacing: -0.02em;
-      background: var(--gradient-brand);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin: 0 0 1rem;
-    }
-    .pub-list-description {
-      font-size: 1.1rem;
-      color: var(--color-text-muted);
-      max-width: 600px;
-      line-height: 1.6;
-      margin: 0 0 1rem;
-    }
-    .pub-count {
-      font-size: 0.8rem;
-      color: var(--color-text-muted);
-      font-family: var(--font-mono);
-      background: rgba(255,255,255,0.05);
-      padding: 0.2rem 0.6rem;
-      border-radius: 20px;
-      border: 1px solid var(--color-border);
-    }
-    .pub-list-section {
-      padding: 3rem 0 5rem;
-    }
-    .pub-list-inner {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 2rem;
-    }
-    .pub-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.5rem;
-    }
-    @media (max-width: 768px) {
-      .pub-grid { grid-template-columns: 1fr; }
-    }
-    .pub-card {
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-lg);
-      transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
-    }
-    .pub-card:hover {
-      border-color: rgba(76,32,133,0.4);
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-lg);
-    }
-    .pub-card-body {
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-    }
-    .pub-card-title {
-      font-size: 1.05rem;
-      font-weight: 500;
-      margin: 0 0 0.75rem;
-      line-height: 1.4;
-    }
-    .pub-card-link {
       color: var(--color-text);
-      text-decoration: none;
-      transition: color var(--transition);
-    }
-    .pub-card-link:hover { color: var(--color-primary); }
-    .pub-card-desc {
-      font-size: 0.875rem;
-      color: var(--color-primary);
-      font-style: italic;
       margin: 0 0 0.5rem;
     }
-    .pub-card-summary {
-      font-size: 0.875rem;
+    .pub-page-desc {
+      font-size: 0.9375rem;
       color: var(--color-text-muted);
       line-height: 1.6;
-      margin: 0 0 1rem;
-      flex: 1;
+      margin: 0 0 0.75rem;
     }
-    .pub-card-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      margin-top: auto;
-      padding-top: 1rem;
-      border-top: 1px solid var(--color-border);
-    }
-    .pub-card-meta {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-    .pub-card-date, .pub-card-reading {
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-      font-size: 0.75rem;
-      color: var(--color-text-muted);
+    .pub-page-count {
+      font-size: 0.8125rem;
       font-family: var(--font-mono);
+      color: var(--color-text-faint);
+      margin: 0;
     }
-    .pub-card-cta {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      font-size: 0.8rem;
-      font-weight: 600;
+
+    /* Scholar list */
+    .pub-scholar-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .pub-scholar-item {
+      padding: 1.5rem 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .pub-scholar-item:last-child {
+      border-bottom: none;
+    }
+    .pub-scholar-title {
+      font-size: 1rem;
+      font-weight: 400;
+      margin: 0 0 0.3rem;
+      line-height: 1.4;
+    }
+    .pub-scholar-link {
       color: var(--color-primary);
       text-decoration: none;
-      transition: gap var(--transition);
-      white-space: nowrap;
     }
-    .pub-card-cta:hover { gap: 0.5rem; }
+    .pub-scholar-link:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .pub-scholar-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.78125rem;
+      font-family: var(--font-mono);
+      color: var(--color-text-faint);
+      margin-bottom: 0.5rem;
+    }
+    .pub-meta-sep {
+      opacity: 0.4;
+    }
+    .pub-scholar-tag {
+      font-size: 0.71875rem;
+      font-family: var(--font-mono);
+      color: var(--color-text-faint);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--color-border);
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+    }
+    .pub-scholar-abstract {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      line-height: 1.65;
+      margin: 0;
+      max-width: 68ch;
+    }
+    .pub-scholar-abstract strong, .pub-scholar-abstract em {
+      font-weight: inherit;
+      font-style: inherit;
+      color: inherit;
+    }
   </style>
 </body>
 </html>

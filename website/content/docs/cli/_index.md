@@ -1,6 +1,7 @@
 ---
 title: "CLI Reference"
-weight: 5
+weight: 4
+description: "Orkestra CLI Reference"
 ---
 
 # Orkestra CLI Reference

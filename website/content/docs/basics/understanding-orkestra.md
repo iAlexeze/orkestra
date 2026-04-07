@@ -1,15 +1,14 @@
 ---
 title: "Understanding Orkestra"
 weight: 2
-description: "Orkestra is a declarative operator runtime. It takes the problem described in"
+description: "With Orkestra, operators are just declarations, not code."
 ---
 
 Orkestra is a declarative operator runtime. It takes the problem described in
-[Kubernetes Basics](./kubernetes-basics.md) — operators are hard to write — and
+[Kubernetes Basics](kubernetes-basics.md#why-operators-are-hard-to-write) — operators are hard to write — and
 removes it. Not by making the code easier to write. By removing the need to write
 code at all.
 
----
 
 ## The shift
 
@@ -37,7 +36,7 @@ metadata:
 
 spec:
   crds:
-    - name: website
+    website
       apiTypes:
         group: demo.orkestra.io
         version: v1alpha1
@@ -65,17 +64,27 @@ ork run --katalog katalog.yaml
 
 That is the operator.
 
+You want to visualize what is actually happening?
+```bash
+# in another terminal:
+
+ork control start
+```
+
 ---
 
 ## What Orkestra provides automatically
 
 For every CRD entry in a Katalog, Orkestra creates a complete, isolated operator stack:
 
+**Observability** — This is not an afterthought. Orkestra ships with a **Control Center** available for every `ork run`.
+
 **Informer** — watches the exact GVK you declared. The API server notifies Orkestra
 the instant a `Website` object is created, updated, or deleted.
 
 **Workqueue** — buffers and deduplicates events. Three rapid updates to the same
-`Website` produce one reconcile, not three.
+`Website` produce one reconcile, not three. Isolated — every CRD gets its own
+workqueue.
 
 **Worker pool** — multiple goroutines process the queue concurrently. Configure with
 `workers: 4`. Isolated — another CRD's workload cannot consume this CRD's workers.
@@ -120,7 +129,7 @@ None of this is written by you. All of it is provided by declaring a Katalog ent
 The `{{ .spec.image }}` syntax is standard Go `text/template` evaluated against the
 live CR object. Every field in the CR is accessible:
 
-```
+```bash
 {{ .metadata.name }}        CR name
 {{ .metadata.namespace }}   CR namespace
 {{ .spec.image }}           spec field
@@ -150,6 +159,8 @@ kubectl apply -f website.yaml
 8. Owner references are set on both child resources
 9. A `Reconciled` event is emitted on the CR
 10. Metrics are updated: `controller_reconcile_total{result="success"} +1`
+11. And you can visualize the journey with `ork control start`
+
 
 The entire path — from `kubectl apply` to Deployment existing — takes under a second
 on a healthy cluster.
@@ -163,12 +174,13 @@ Add more CRD entries to the Katalog:
 ```yaml
 spec:
   crds:
-    - name: website
+    website:
       # ...
-    - name: application
-      dependsOn: [website]
+    application:
+      dependsOn: 
+        website: healthy        // default - started
       # ...
-    - name: platform-namespace
+    platform-namespace:
       # ...
 ```
 
@@ -178,7 +190,7 @@ dependency ordering: if `application` depends on `website`, Orkestra starts `web
 first and waits for its informer to sync before starting `application`.
 
 All three run in one Orkestra process. One deployment to manage. One health endpoint
-to monitor. One upgrade to perform.
+to monitor. One upgrade to perform. One place to observe.
 
 ---
 
@@ -187,20 +199,19 @@ to monitor. One upgrade to perform.
 Orkestra's declarative layer covers the common case — creating and drift-correcting
 Kubernetes resources from CR fields. Some use cases need more:
 
-- Calling an external API (create a database user inside PostgreSQL)
-- Complex conditional logic beyond `when:` conditions
-- Type-safe struct field access for performance-critical reconcilers
+- Complex conditional logic beyond `when:`, `forEach:`, `anyOf:`, and `allOf:` conditions
+- Edge-triggered operations
 
 For these, **hooks** are the answer. A hook is a Go function you write that runs
 inside the reconcile loop. Orkestra still provides the informer, queue, workers,
 finalizers, events, and metrics. You provide the logic.
 
 ```go
+// You only write what you need
 func WebsiteHooks() domain.AnyReconcileHooks {
     return domain.ReconcileHooks[*apiv1.Website]{
         OnReconcile: func(ctx context.Context, obj *apiv1.Website) error {
-            // type-safe access: obj.Spec.Image, obj.Spec.Replicas
-            // call external APIs
+            // do something
             // return nil on success, error to requeue
         },
     }
@@ -238,7 +249,7 @@ validation:
 
 mutation:
   - field: spec.replicas
-    default: "2"
+    default: 2
 ```
 
 **At reconcile time** — the same rules run on every reconcile cycle, catching

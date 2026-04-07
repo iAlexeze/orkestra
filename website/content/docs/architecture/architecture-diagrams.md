@@ -1,7 +1,7 @@
 ---
 title: "Orkestra Architecture Diagrams"
 weight: 6
-description: "This document provides a complete, visual overview of how Orkestra works internally."
+description: "Visual diagrams of every Orkestra component — the runtime core, reconciler loop, worker pool, and webhook layer."
 ---
 
 ### A visual guide to the internal components of the Orkestra runtime

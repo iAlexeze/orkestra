@@ -1,10 +1,8 @@
 ---
-title: "**Conditional Provisioning in Orkestra**"
+title: "Conditional Provisioning in Orkestra"
 weight: 11
-description: "**Declarative, per‑resource conditions for dynamic operator behavior**"
+description: "Declarative, per‑resource conditions for dynamic operator behavior"
 ---
-
-**Declarative, per‑resource conditions for dynamic operator behavior**
 
 Conditional provisioning lets you declare **when** a resource should be created, updated, or skipped — based entirely on the fields of the Custom Resource (CR) being reconciled.
 

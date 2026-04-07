@@ -1,7 +1,7 @@
 ---
 title: "Full Architecture View"
 weight: 5
-description: "This page provides the complete visual representation of the Orkestra runtime."
+description: "The unified diagram showing every Orkestra subsystem in one view — use this as a reference map."
 ---
 
 This page provides the complete visual representation of the Orkestra runtime.  

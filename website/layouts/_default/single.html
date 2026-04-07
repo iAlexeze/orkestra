@@ -27,6 +27,26 @@
       <div class="docs-body prose">
         {{ .Content }}
       </div>
+      {{- if .Page.Store.Get "hasMermaid" }}
+      <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({
+          startOnLoad: true,
+          theme: 'dark',
+          themeVariables: {
+            background: '#1a1b26',
+            primaryColor: '#6366F1',
+            primaryTextColor: '#E2E8F0',
+            primaryBorderColor: 'rgba(99,102,241,0.4)',
+            lineColor: 'rgba(255,255,255,0.2)',
+            secondaryColor: '#1e1f2e',
+            tertiaryColor: '#0f1117',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '14px'
+          }
+        });
+      </script>
+      {{- end }}
 
       <!-- Pagination -->
       <nav class="docs-pagination" aria-label="Page navigation">
