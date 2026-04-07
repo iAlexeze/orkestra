@@ -1,0 +1,229 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Orkestra Runtime Deployment
+# The Katalog is mounted from the 'orkestra-katalog' ConfigMap.
+# Replace the ConfigMap data with your Katalog YAML before applying if needed.
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orkestra-runtime
+  namespace: orkestra-system
+  labels:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/component: runtime
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orkestra
+      app.kubernetes.io/component: runtime
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orkestra
+        app.kubernetes.io/component: runtime
+    spec:
+      serviceAccountName: orkestra
+      containers:
+        - name: orkestra
+          image: ghcr.io/orkspace/orkestra:1.0.0
+          imagePullPolicy: Always
+          args:
+            - run
+            - --katalog=/etc/orkestra/katalog.yaml
+          env:
+            - name: ORK_PORT
+              value: "8080"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: DEFAULT_WORKERS
+              value: "3"
+            - name: DEFAULT_RESYNC
+              value: "15s"
+            - name: SHUTDOWN_TIMEOUT
+              value: "30s"
+            - name: SHUTDOWN_GRACE
+              value: "10s"
+            - name: ORKESTRA_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          ports:
+            - name: health
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: katalog
+              mountPath: /etc/orkestra
+              readOnly: true
+      volumes:
+        - name: katalog
+          configMap:
+            name: orkestra-katalog
+
+---
+# Runtime Service for health checks
+apiVersion: v1
+kind: Service
+metadata:
+  name: orkestra-runtime
+  namespace: orkestra-system
+  labels:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/component: runtime
+spec:
+  selector:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/component: runtime
+  ports:
+    - name: health
+      port: 8080
+      targetPort: health
+      protocol: TCP
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# Orkestra Control Center Deployment
+# Provides web UI for monitoring multiple Orkestra runtimes
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orkestra-cc
+  namespace: orkestra-system
+  labels:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/component: control-center
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orkestra
+      app.kubernetes.io/component: control-center
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orkestra
+        app.kubernetes.io/component: control-center
+    spec:
+      serviceAccountName: orkestra-cc
+      containers:
+        - name: control-center
+          image: ghcr.io/workspace/orkestra-cc:1.0.0
+          imagePullPolicy: Always
+          args:
+            - -u
+            - "http://orkestra-runtime:8080"
+            - -p
+            - "8090"
+            - --refresh
+            - "10s"
+            - --log-level
+            - "info"
+          env:
+            - name: LOG_LEVEL
+              value: "info"
+          ports:
+            - name: http
+              containerPort: 8090
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /controlcenter/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /controlcenter/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+            capabilities:
+              drop:
+                - ALL
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+
+---
+# Control Center Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: orkestra-cc
+  namespace: orkestra-system
+  labels:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/component: control-center
+spec:
+  selector:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/component: control-center
+  ports:
+    - name: http
+      port: 8090
+      targetPort: http
+      protocol: TCP
+  type: ClusterIP
+
+---
+# Optional: Control Center Ingress (expose to outside)
+# Uncomment to expose the Control Center externally
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: orkestra-cc
+#   namespace: orkestra-system
+#   annotations:
+#     kubernetes.io/ingress.class: nginx
+#     cert-manager.io/cluster-issuer: letsencrypt-prod
+# spec:
+#   tls:
+#   - hosts:
+#     - control-center.orkestra.example.com
+#     secretName: orkestra-cc-tls
+#   rules:
+#   - host: control-center.orkestra.example.com
+#     http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: orkestra-cc
+#             port:
+#               number: 8090

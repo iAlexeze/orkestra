@@ -1,13 +1,14 @@
 // pkg/types/katalog.go
-package orktypes
+package types
 
 // KatalogFile is the top-level structure of a crd-katalog.yaml file.
 // It contains optional sources (files and helm charts) plus inline CRDs.
-// The merger resolves all sources and merges everything into one KatalogSpec.
+// Orkestra's in-built merger resolves all sources and merges everything into one KatalogSpec.
 type KatalogFile struct {
 	APIVersion string          `yaml:"apiVersion"`
 	Kind       string          `yaml:"kind"`
 	Metadata   KatalogMeta     `yaml:"metadata"`
+	Anchors    map[string]any  `yaml:"anchors,omitempty"`
 	Sources    *KatalogSources `yaml:"sources,omitempty"`
 	Spec       KatalogSpec     `yaml:"spec"`
 }
@@ -16,20 +17,41 @@ type KatalogFile struct {
 type KatalogMeta struct {
 	Name        string `yaml:"name"`
 	Description string `yaml:"description,omitempty"`
+	Version     string `yaml:"version,omitempty"`
+	Author      string `yaml:"author,omitempty"`
+	License     string `yaml:"license,omitempty"`
 }
 
-// KatalogSources declares additional CRD definitions to merge in.
+// KatalogSources declares where to load CRD definitions from.
 // Sources are loaded before spec.crds — inline CRDs are merged last
 // and win on name conflict (allowing local overrides of remote definitions).
+//
+// Only valid on kind: Komposer documents.
 type KatalogSources struct {
-	// Files — local file paths or remote URLs to other Katalog files.
+	// Files — local paths, remote URLs, or environment variable references.
 	// Each entry must be a valid Katalog YAML (apiVersion, kind, spec.crds).
 	// Supports environment variable references: $MY_KATALOG_URL
-	Files []string `yaml:"files,omitempty"`
+	//
+	// Simple form: just a path string (no auth)
+	//   files:
+	//     - ./katalogs/project.yaml
+	//     - https://public.url/katalog.yaml
+	//     - $MY_KATALOG_URL
+	//
+	// Authenticated form: a FileSource struct with auth block
+	//   files:
+	//     - url: https://private.url/katalog.yaml
+	//       auth:
+	//         type: bearer
+	//         fromEnv: MY_TOKEN
+	Files []FileSource `yaml:"files,omitempty"`
 
 	// Helm — Helm chart sources. Each chart is rendered with the provided
 	// value files and the resulting Katalog templates are extracted and merged.
 	Helm []HelmSource `yaml:"helm,omitempty"`
+
+	// Registry - Registry sources.
+	Registry []RegistrySource `yaml:"registry,omitempty"`
 }
 
 // HelmSource declares a Helm chart that produces Katalog CRD definitions.
@@ -82,5 +104,24 @@ type KatalogSpec struct {
 	Finalizers []string `yaml:"finalizers,omitempty"`
 
 	// CRDs — the CRD entries managed by this Orkestra instance.
-	CRDs []CRDEntry `yaml:"crds"`
+	// Map key is the CRD name; Name field is injected from the key during loading.
+	CRDs map[string]CRDEntry `yaml:"crds"`
+
+	// Providers  — future implementation for providers
+	Providers []KatalogProviderRequirement `yaml:"providers,omitempty"`
+}
+
+// KatalogForUI is a UI-friendly representation of the merged Katalog.
+// It contains only the fields needed for display in the Control Center,
+// excluding internal runtime fields.
+type KatalogForUI struct {
+	APIVersion string           `json:"apiVersion"` // Orkestra API version
+	Kind       string           `json:"kind"`       // Always "Katalog" at runtime
+	Metadata   KatalogMeta      `json:"metadata"`   // Katalog metadata (name, description, etc.)
+	Spec       KatalogSpecForUI `json:"spec"`       // CRD definitions
+}
+
+// KatalogSpecForUI contains the CRD definitions for UI display.
+type KatalogSpecForUI struct {
+	CRDs map[string]CRDEntry `json:"crds"` // Map of CRD name to CRD definition
 }

@@ -63,7 +63,7 @@ func initDynamic(name string) error {
 		{"Writing website example Katalog", func() error { return writeExampleKatalog(name) }},
 		{"Writing website CRD", func() error { return writeExampleCRD(name) }},
 		{"Writing sample CR", func() error { return writeExampleCR(name) }},
-		{"Writing .env.example", func() error { return writeEnvExample(name) }},
+		{"Writing .env", func() error { return writeEnv(name) }},
 		{"Writing .gitignore", func() error { return writeDynamicGitignore(name) }},
 		{"Writing README", func() error { return writeDynamicReadme(name) }},
 	}
@@ -101,7 +101,7 @@ func initTyped(name, module string) error {
 		{"Writing example Katalog", func() error { return writeExampleKatalog(name) }},
 		{"Writing example CRD", func() error { return writeExampleCRD(name) }},
 		{"Writing sample CR", func() error { return writeExampleCR(name) }},
-		{"Writing .env.example", func() error { return writeEnvExample(name) }},
+		{"Writing .env", func() error { return writeEnv(name) }},
 		{"Writing .gitignore", func() error { return writeTypedGitignore(name) }},
 		{"Writing README", func() error { return writeTypedReadme(name, module) }},
 		{"Downloading dependencies (go mod tidy)", func() error { return goModTidy(name) }},
@@ -185,17 +185,17 @@ require (
 	return writeFile(root, "go.mod", content)
 }
 
-func writeEnvExample(root string) error {
+func writeEnv(root string) error {
 	content := `# Orkestra configuration — copy to .env
-KUBECONFIG=~/.kube/config
+KUBECONFIG=""
+LOG_LEVEL=""
 KATALOG_PATH=./examples/website/website-katalog.yaml
 DEFAULT_WORKERS=2
 DEFAULT_RESYNC=30s
 MAX_QUEUE_DEPTH=500
-HEALTH_PORT=8080
-LOG_LEVEL=info
+ORK_PORT=8080
 `
-	return writeFile(root, ".env.example", content)
+	return writeFile(root, ".env", content)
 }
 
 func writeDynamicGitignore(root string) error {

@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en-us" data-theme="">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=9292&amp;path=livereload" data-no-instant defer></script>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+<title>The Missing Package Manager for Kubernetes Operators — Orkestra</title>
+
+<meta name="description" content="*OrkestraRegistry — Declarative Distribution for Operator Behavior*">
+<meta name="author" content="Orkestra">
+
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="The Missing Package Manager for Kubernetes Operators — Orkestra">
+<meta property="og:description" content="*OrkestraRegistry — Declarative Distribution for Operator Behavior*">
+<meta property="og:url" content="http://localhost:9292/publications/orkestra-registry/">
+<meta property="og:site_name" content="Orkestra">
+
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Missing Package Manager for Kubernetes Operators — Orkestra">
+<meta name="twitter:description" content="*OrkestraRegistry — Declarative Distribution for Operator Behavior*">
+
+
+<link rel="icon" type="image/png" href="/img/fav.png">
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+
+
+
+<link rel="stylesheet" href="/css/main.min.e4f35e028b4e342d94b5258699fa7b53e53b1f54212c3a40fb2a70e627bba458.css">
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3" crossorigin>
+
+
+
+<script>
+  (function() {
+    var saved = localStorage.getItem('theme');
+    
+    var theme = saved ? saved : 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+
+</head>
+<body class="page-publication-single">
+
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+  <div class="navbar-inner">
+    
+    <a href="/" class="navbar-logo" aria-label="Orkestra home">
+      <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
+      <span class="logo-text">Orkestra</span>
+      <span class="version-badge">v1</span>
+    </a>
+
+    
+    <ul class="navbar-links" role="list">
+      
+      <li>
+        <a href="/docs/" class="navbar-link"
+          >
+          Docs
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-link"
+          >
+          Publications
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/docs/use-cases/" class="navbar-link"
+          >
+          Use Cases
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/blog/" class="navbar-link"
+          >
+          Blog
+          
+        </a>
+      </li>
+      
+    </ul>
+
+    
+    <div class="navbar-controls">
+      
+      <a href="https://cc.orkestra.sh" class="btn-controlcenter" target="_blank" rel="noopener noreferrer" aria-label="Open Control Center">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+        Control Center
+        <span class="cc-live-dot" title="Live instance"></span>
+      </a>
+
+      
+      <a href="https://github.com/iAlexeze/orkestra" class="btn-github" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+        </svg>
+        <span>GitHub</span>
+      </a>
+
+      
+      <button class="btn-theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+        </svg>
+      </button>
+
+      
+      <button class="btn-hamburger" id="mobile-menu-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+      </button>
+    </div>
+  </div>
+
+  
+  <div class="navbar-mobile" id="mobile-menu" aria-hidden="true">
+    <ul role="list">
+      
+      <li>
+        <a href="/docs/" class="navbar-mobile-link"
+          >
+          Docs
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-mobile-link"
+          >
+          Publications
+        </a>
+      </li>
+      
+      <li>
+        <a href="/docs/use-cases/" class="navbar-mobile-link"
+          >
+          Use Cases
+        </a>
+      </li>
+      
+      <li>
+        <a href="/blog/" class="navbar-mobile-link"
+          >
+          Blog
+        </a>
+      </li>
+      
+    </ul>
+  </div>
+</nav>
+
+
+  <main id="main-content" tabindex="-1">
+
+    
+    <header class="paper-header">
+      <div class="paper-header-inner">
+        <a href="/publications/" class="pub-back-link">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Publications
+        </a>
+
+        <h1 class="paper-title">The Missing Package Manager for Kubernetes Operators</h1>
+
+        
+        <p class="paper-subtitle">*OrkestraRegistry — Declarative Distribution for Operator Behavior*</p>
+        
+
+        <div class="paper-meta">
+          
+          <span class="paper-meta-item">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            2 min read
+          </span>
+          
+        </div>
+
+        
+      </div>
+    </header>
+
+    
+    <div class="paper-layout">
+      <article class="paper-body prose">
+        <p><em>OrkestraRegistry — Declarative Distribution for Operator Behavior</em></p>
+<p><em>Orkestra Project — March 2026</em></p>
+<hr>
+<h2 id="abstract">Abstract</h2>
+<p>The Kubernetes operator ecosystem solved automation but never solved distribution.</p>
+<p>Operators are shared as binaries — not because binaries are the right abstraction,
+but because no alternative existed. The result is an ecosystem where reuse is
+expensive, composition is rare, and every operator is an isolated system with its
+own runtime, lifecycle, and operational surface.</p>
+<p>OrkestraRegistry introduces a different model: operator behavior distributed as
+declarative artifacts. Instead of shipping controllers, it ships reconciliation
+logic. Instead of deploying processes, it composes patterns into a shared runtime.</p>
+<p>This changes the economics of the ecosystem. Operators become lightweight,
+versioned dependencies rather than standalone systems. Patterns evolve from
+imperative code to declarative specifications. Distribution moves from binaries
+to OCI-backed packages.</p>
+<p>The Kubernetes ecosystem has package managers for images and charts.
+OrkestraRegistry extends that model to operators — making reuse the default,
+and composition the norm.</p>
+<hr>
+<h2 id="2-orkestraregistry">2. OrkestraRegistry</h2>
+<p>OrkestraRegistry is the operator ecosystem for Orkestra. It distributes
+operator behavior — YAML Katalogs — as OCI artifacts. The Orkestra runtime
+interprets these Katalogs. Multiple patterns compose into a single process.</p>
+<h3 id="21-what-a-pattern-is">2.1 What a pattern is</h3>
+<p>A pattern is a directory with five files:</p>
+<pre tabindex="0"><code>postgres/v14/
+  crd.yaml          the CRD definition to install
+  katalog.yaml      operator behavior — reconcile templates, conversion rules
+  komposer.yaml     example showing how to import and override
+  cr.yaml           example custom resource
+  README.md         field documentation and recommended overrides
+</code></pre><h3 id="22-distribution-as-oci-artifacts">2.2 Distribution as OCI artifacts</h3>
+<p>Patterns are published as OCI artifacts — the same distribution format as
+container images. This is a deliberate choice with consequences for the
+entire ecosystem.</p>
+<p>OCI registries are already operated by every cloud provider, every enterprise
+IT organization, and most development teams. The tooling — authentication,
+access control, replication, scanning, retention policies — is mature.</p>
+<h3 id="23-consuming-patterns">2.3 Consuming patterns</h3>
+<p>A Komposer references OCI patterns in its <code>sources.oci</code> block:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">registry</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: ghcr.io/orkestra-sh/registry/postgres:v14
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">oci</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Production overrides — win on name conflict with any source</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: postgres
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">4</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">resync</span>: 30s
+</span></span></code></pre></div><hr>
+<h2 id="8-conclusion">8. Conclusion</h2>
+<p>The operator ecosystem will not remain an ecosystem of binaries indefinitely.
+The operational cost is too high. The barrier to contribution is too steep.
+The reuse rate is too low.</p>
+<p>OrkestraRegistry demonstrates the alternative: operator behavior distributed
+as declarations, composed at runtime, overridden without forking, upgraded
+through declarative conversion rules.</p>
+<p>The infrastructure is ready. The ecosystem follows the patterns.</p>
+<hr>
+<p><em>Orkestra — Declarative Operators for Kubernetes</em>
+<em>March 2026 — <a href="https://github.com/iAlexeze/orkestra">https://github.com/iAlexeze/orkestra</a></em></p>
+
+      </article>
+
+      
+      <aside class="paper-footer-aside">
+        <div class="paper-aside-card">
+          <div class="paper-aside-title">Share this paper</div>
+          <a href="https://github.com/iAlexeze/orkestra/discussions" target="_blank" rel="noopener noreferrer" class="paper-aside-link">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            Discuss on GitHub
+          </a>
+          <a href="/publications/" class="paper-aside-link">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            All Publications
+          </a>
+        </div>
+      </aside>
+    </div>
+
+  </main>
+
+  <footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a href="/" class="footer-logo" aria-label="Orkestra home">
+        <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="28">
+        <span class="footer-logo-text">Orkestra</span>
+      </a>
+      <p class="footer-tagline">The declarative control plane<br>for Kubernetes operators.</p>
+      <div class="footer-social">
+        <a href="https://github.com/iAlexeze/orkestra" target="_blank" rel="noopener noreferrer" aria-label="GitHub" class="footer-social-link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+        </a>
+        <a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer" aria-label="Twitter / X" class="footer-social-link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4 class="footer-col-title">Documentation</h4>
+        <ul role="list">
+          <li><a href="/docs/getting-started/">Getting Started</a></li>
+          <li><a href="/docs/basics/">Basics</a></li>
+          <li><a href="/docs/concepts/">Concepts</a></li>
+          <li><a href="/docs/guides/">Guides</a></li>
+          <li><a href="/docs/reference/">Reference</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-col-title">Community</h4>
+        <ul role="list">
+          <li><a href="https://github.com/iAlexeze/orkestra" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/issues" target="_blank" rel="noopener noreferrer">Issues</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/discussions" target="_blank" rel="noopener noreferrer">Discussions</a></li>
+          <li><a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer">@orkspace</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-col-title">Resources</h4>
+        <ul role="list">
+          <li><a href="https://github.com/iAlexeze/orkestra/releases" target="_blank" rel="noopener noreferrer">Releases</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
+          <li><a href="/docs/reference/">API Reference</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>&copy; 2026 Orkestra. Released under the Apache 2.0 License.</p>
+    <p class="footer-built">Built with <a href="https://gohugo.io" target="_blank" rel="noopener noreferrer">Hugo</a></p>
+  </div>
+</footer>
+
+
+  
+  <script src="/js/main.min.f2df583e131a595404870b2d956fe54827dcacf44666bb51201fbf1d6524fa40.js" defer></script>
+
+  <style>
+     
+    .paper-header {
+      background: linear-gradient(160deg, rgba(76,32,133,0.12) 0%, transparent 70%);
+      border-bottom: 1px solid var(--color-border);
+      padding: 4rem 0 3rem;
+    }
+    .paper-header-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+    .pub-back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      margin-bottom: 1.75rem;
+      transition: color var(--transition-fast);
+    }
+    .pub-back-link:hover { color: var(--color-primary); }
+
+    .paper-title {
+      font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      color: var(--color-text);
+      margin: 0 0 1rem;
+    }
+    .paper-subtitle {
+      font-size: 1.125rem;
+      color: var(--color-text-muted);
+      line-height: 1.6;
+      margin: 0 0 1.5rem;
+      max-width: 640px;
+    }
+    .paper-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .paper-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+      font-family: var(--font-mono);
+    }
+    .paper-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .paper-tag {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.65rem;
+      background: rgba(76,32,133,0.1);
+      color: var(--color-primary);
+      border: 1px solid rgba(76,32,133,0.2);
+      border-radius: 20px;
+      letter-spacing: 0.02em;
+    }
+    [data-theme="dark"] .paper-tag {
+      background: rgba(167,139,250,0.1);
+      color: #A78BFA;
+      border-color: rgba(167,139,250,0.2);
+    }
+
+     
+    .paper-layout {
+      display: grid;
+      grid-template-columns: 1fr 240px;
+      gap: 3rem;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 3rem 2rem 5rem;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .paper-layout {
+        grid-template-columns: 1fr;
+      }
+      .paper-aside-card { order: -1; }
+    }
+
+    .paper-body {
+      max-width: 72ch;
+      min-width: 0;
+    }
+
+     
+    .paper-footer-aside {
+      position: sticky;
+      top: calc(var(--navbar-height) + 2rem);
+    }
+    .paper-aside-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .paper-aside-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--color-text-faint);
+      margin-bottom: 0.5rem;
+    }
+    .paper-aside-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius);
+      transition: background var(--transition-fast), color var(--transition-fast);
+    }
+    .paper-aside-link:hover {
+      background: var(--color-surface-2);
+      color: var(--color-text);
+    }
+  </style>
+</body>
+</html>

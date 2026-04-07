@@ -6,9 +6,11 @@ import (
 	"fmt"
 
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,6 +46,9 @@ type ResolvedSecretSpec struct {
 
 	// Labels — applied to Secret metadata.
 	Labels map[string]string
+
+	// Annotations — applied to Secret metadata.
+	Annotations map[string]string
 }
 
 // Create creates a Secret in the target namespace if it does not already exist.
@@ -236,6 +241,26 @@ func CopyToNamespaces(
 	return nil
 }
 
+// DeleteIfOwned deletes the Secret if it exists and is owned by the CR.
+func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+	owner domain.Object, name, namespace string) error {
+
+	existing, err := kube.Clientset().CoreV1().Secrets(namespace).
+		Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	// Only delete if we own it
+	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+		return nil
+	}
+	return kube.Clientset().CoreV1().Secrets(namespace).
+		Delete(ctx, name, metav1.DeleteOptions{})
+}
+
 // Resolve builds a ResolvedSecretSpec from a SecretTemplateSource.
 // Template expressions must already be evaluated by template.Resolver before calling.
 func Resolve(src orktypes.SecretTemplateSource, ownerName string) ResolvedSecretSpec {
@@ -261,8 +286,8 @@ func Resolve(src orktypes.SecretTemplateSource, ownerName string) ResolvedSecret
 	}
 
 	// System labels
-	spec.Labels["managed-by"] = "orkestra"
-	spec.Labels["orkestra-owner"] = ownerName
+	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
+	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
 
 	return spec
 }
@@ -324,8 +349,8 @@ func buildSecret(owner domain.Object, spec ResolvedSecretSpec, namespace string,
 					Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
 					Name:               owner.GetName(),
 					UID:                owner.GetUID(),
-					Controller:         boolPtr(true),
-					BlockOwnerDeletion: boolPtr(true),
+					Controller:         utils.BoolPtr(true),
+					BlockOwnerDeletion: utils.BoolPtr(true),
 				},
 			},
 		},
@@ -379,5 +404,3 @@ func stringDataEqual(a, b map[string]string) bool {
 	}
 	return true
 }
-
-func boolPtr(b bool) *bool { return &b }

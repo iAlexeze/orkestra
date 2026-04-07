@@ -3,6 +3,7 @@ package queue
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -54,6 +55,38 @@ func (qr *QueueRegistry) For(gvk string) (*Workqueue, bool) {
 	return wq, true
 }
 
+// Depth returns the queue depth for a given GVK
+func (qr *QueueRegistry) Depth(gvk string) int {
+	qr.mu.RLock()
+	defer qr.mu.RUnlock()
+
+	wq, ok := qr.queues[gvk]
+	if !ok {
+		return 0
+	}
+
+	if wq.Queue == nil {
+		return 0
+	}
+
+	return wq.Depth()
+}
+
+// ShutdownQueue drains the queue of a given CRD
+func (qr *QueueRegistry) ShutdownQueue(gvkStr string) error {
+	qr.mu.Lock()
+	defer qr.mu.Unlock()
+
+	q, ok := qr.queues[gvkStr]
+	if !ok {
+		return fmt.Errorf("queue not found for %s", gvkStr)
+	}
+
+	q.Queue.ShutDown()
+	delete(qr.queues, gvkStr)
+	return nil
+}
+
 // Shutdown drains all registered workqueues
 // This is called by orkestra.Shutdown() for graceful degradation
 func (qr *QueueRegistry) Shutdown(ctx context.Context) {
@@ -72,7 +105,8 @@ var _ domain.Komponent = (*QueueRegistry)(nil)
 
 // Called by orkestra.Start() to start the workqueue registry
 func (qr *QueueRegistry) Start(ctx context.Context) error {
-	logger.Debug().Msgf("right here in %s with %v queues", qr.name, len(qr.queues))
+	count := len(qr.queues)
+	logger.Debug().Str("name", qr.name).Int("queues", count).Msg("queue registry started")
 
 	qr.started.Store(true)
 	return nil

@@ -3,9 +3,7 @@ package merger
 
 import (
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -23,9 +21,7 @@ import (
 
 // loadHelmSource renders a Helm chart and extracts Katalog CRD definitions.
 // The chart must contain at least one template with kind: Katalog.
-// pkg/merger/helm.go
-
-func (m *Merger) loadHelmSource(src orktypes.HelmSource) ([]orktypes.CRDEntry, error) {
+func (m *Merger) loadHelmSource(src orktypes.HelmSource) (map[string]orktypes.CRDEntry, error) {
 	logger.Info().
 		Str("repo", src.Repo).
 		Str("chart", src.Chart).
@@ -113,18 +109,15 @@ func resolveLocalChart(src orktypes.HelmSource) (string, func(), error) {
 }
 
 // resolveGitChart clones the git repository to a temp directory
-// and returns the path to the chart within it.
 func resolveGitChart(src orktypes.HelmSource) (string, func(), error) {
 	tmpDir, err := os.MkdirTemp("", "orkestra-git-*")
 	if err != nil {
-		return "", nil, fmt.Errorf("creating temp dir for git clone: %w", err)
+		return "", nil, fmt.Errorf("creating temp dir: %w", err)
 	}
 
 	cleanup := func() { os.RemoveAll(tmpDir) }
 
-	// Build the git clone command
-	// ref can be a branch, tag, or commit
-	ref := src.Version // version doubles as git ref for git sources
+	ref := src.Version
 	if ref == "" {
 		ref = "HEAD"
 	}
@@ -134,33 +127,12 @@ func resolveGitChart(src orktypes.HelmSource) (string, func(), error) {
 		Str("ref", ref).
 		Msg("merger: cloning git repository")
 
-	// Shallow clone at the specific ref
-	cmd := exec.Command("git", "clone",
-		"--depth", "1",
-		"--branch", ref,
-		src.Repo,
-		tmpDir,
-	)
-	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
-
-	if err := cmd.Run(); err != nil {
-		// Branch clone failed — try as commit hash with full clone
-		cmd = exec.Command("git", "clone", src.Repo, tmpDir)
-		if err2 := cmd.Run(); err2 != nil {
-			cleanup()
-			return "", nil, fmt.Errorf("cloning %q: %w", src.Repo, err)
-		}
-
-		// Checkout the specific commit/ref
-		checkout := exec.Command("git", "-C", tmpDir, "checkout", ref)
-		if err3 := checkout.Run(); err3 != nil {
-			cleanup()
-			return "", nil, fmt.Errorf("checking out %q in %q: %w", ref, src.Repo, err3)
-		}
+	if err := gitClone(src.Repo, tmpDir, ref); err != nil {
+		cleanup()
+		return "", nil, err
 	}
 
-	// Chart lives at src.Path within the repo, or src.Chart, or root
+	// Resolve chart path
 	chartPath := tmpDir
 	if src.Path != "" {
 		chartPath = filepath.Join(tmpDir, src.Path)
@@ -181,6 +153,75 @@ func resolveGitChart(src orktypes.HelmSource) (string, func(), error) {
 
 	return chartPath, cleanup, nil
 }
+
+// and returns the path to the chart within it.
+// func resolveGitChart(src orktypes.HelmSource) (string, func(), error) {
+// 	tmpDir, err := os.MkdirTemp("", "orkestra-git-*")
+// 	if err != nil {
+// 		return "", nil, fmt.Errorf("creating temp dir for git clone: %w", err)
+// 	}
+
+// 	cleanup := func() { os.RemoveAll(tmpDir) }
+
+// 	// Build the git clone command
+// 	// ref can be a branch, tag, or commit
+// 	ref := src.Version // version doubles as git ref for git sources
+// 	if ref == "" {
+// 		ref = "HEAD"
+// 	}
+
+// 	logger.Info().
+// 		Str("repo", src.Repo).
+// 		Str("ref", ref).
+// 		Msg("merger: cloning git repository")
+
+// 	// Shallow clone at the specific ref
+// 	cmd := exec.Command("git", "clone",
+// 		"--depth", "1",
+// 		"--branch", ref,
+// 		src.Repo,
+// 		tmpDir,
+// 	)
+// 	cmd.Stdout = io.Discard
+// 	cmd.Stderr = io.Discard
+
+// 	if err := cmd.Run(); err != nil {
+// 		// Branch clone failed — try as commit hash with full clone
+// 		cmd = exec.Command("git", "clone", src.Repo, tmpDir)
+// 		if err2 := cmd.Run(); err2 != nil {
+// 			cleanup()
+// 			return "", nil, fmt.Errorf("cloning %q: %w", src.Repo, err)
+// 		}
+
+// 		// Checkout the specific commit/ref
+// 		checkout := exec.Command("git", "-C", tmpDir, "checkout", ref)
+// 		if err3 := checkout.Run(); err3 != nil {
+// 			cleanup()
+// 			return "", nil, fmt.Errorf("checking out %q in %q: %w", ref, src.Repo, err3)
+// 		}
+// 	}
+
+// 	// Chart lives at src.Path within the repo, or src.Chart, or root
+// 	chartPath := tmpDir
+// 	if src.Path != "" {
+// 		chartPath = filepath.Join(tmpDir, src.Path)
+// 	} else if src.Chart != "" {
+// 		chartPath = filepath.Join(tmpDir, src.Chart)
+// 	}
+
+// 	if _, err := os.Stat(chartPath); err != nil {
+// 		cleanup()
+// 		return "", nil, fmt.Errorf("chart path %q not found in repo %q", chartPath, src.Repo)
+// 	}
+
+// 	logger.Info().
+// 		Str("repo", src.Repo).
+// 		Str("ref", ref).
+// 		Str("chartPath", chartPath).
+// 		Msg("merger: git repo cloned")
+
+// 	return chartPath, cleanup, nil
+// }
 
 // resolveRemoteChart pulls a chart from a remote Helm repository.
 func resolveRemoteChart(src orktypes.HelmSource) (string, func(), error) {
@@ -224,7 +265,7 @@ func resolveRemoteChart(src orktypes.HelmSource) (string, func(), error) {
 }
 
 // renderAndExtract renders a chart from a local path and extracts Katalog CRDs.
-func renderAndExtract(src orktypes.HelmSource, chartPath string) ([]orktypes.CRDEntry, error) {
+func renderAndExtract(src orktypes.HelmSource, chartPath string) (map[string]orktypes.CRDEntry, error) {
 	settings := cli.New()
 
 	// ── Load value files ──────────────────────────────────────────────────────
@@ -285,8 +326,8 @@ func renderAndExtract(src orktypes.HelmSource, chartPath string) ([]orktypes.CRD
 
 // extractKatalogCRDs parses rendered Helm output and extracts
 // CRD definitions from any template with kind: Katalog.
-func extractKatalogCRDs(manifest, chartName string) ([]orktypes.CRDEntry, error) {
-	var allCRDs []orktypes.CRDEntry
+func extractKatalogCRDs(manifest, chartName string) (map[string]orktypes.CRDEntry, error) {
+	allCRDs := make(map[string]orktypes.CRDEntry)
 
 	// Split on YAML document separator — one chart renders multiple templates
 	docs := strings.Split(manifest, "\n---\n")
@@ -305,7 +346,10 @@ func extractKatalogCRDs(manifest, chartName string) ([]orktypes.CRDEntry, error)
 			continue // not a Katalog — skip
 		}
 
-		allCRDs = append(allCRDs, katalog.Spec.CRDs...)
+		for name, crd := range katalog.Spec.CRDs {
+			crd.Name = name
+			allCRDs[name] = crd
+		}
 
 		logger.Debug().
 			Str("chart", chartName).

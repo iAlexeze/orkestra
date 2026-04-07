@@ -5,16 +5,13 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
-
-// -----------------------------------------------------------------------------
-// Entry point
-// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // Validation: Pretty error reporting
@@ -25,17 +22,7 @@ func (k *Katalog) handleValidationErrors(err error) {
 
 	if errs, ok := err.(validator.ValidationErrors); ok {
 		for _, e := range errs {
-			// Extract index from namespace: Katalog.CRDs[3].Workers
-			var index int
-			fmt.Sscanf(e.StructNamespace(), "Katalog.CRDs[%d]", &index)
-
-			crdName := "(unknown)"
-			if index >= 0 && index < len(k.enabledCRDs) {
-				crdName = k.enabledCRDs[index].Name
-			}
-
-			fmt.Printf("CRD '%s': field '%s' failed on '%s'\n",
-				crdName, e.Field(), e.Tag())
+			fmt.Printf("CRD field '%s' failed on '%s'\n", e.Field(), e.Tag())
 		}
 	} else {
 		fmt.Println(err)
@@ -46,16 +33,8 @@ func (k *Katalog) handleValidationErrors(err error) {
 // Validate uniqueness
 // -----------------------------------------------------------------------------
 func (k *Katalog) validateUniqueness() error {
-	if err := k.validateGVKUniqueness(); err != nil {
-		return err
-	}
-	if err := k.validateNameUniqueness(); err != nil {
-		return err
-	}
-	if err := k.validatePluralUniqueness(); err != nil {
-		return err
-	}
-	return nil
+	// Name uniqueness is guaranteed by map keys — only check GVK uniqueness.
+	return k.validateGVKUniqueness()
 }
 
 // -----------------------------------------------------------------------------
@@ -65,69 +44,31 @@ func (k *Katalog) validateUniqueness() error {
 func (k *Katalog) validateGVKUniqueness() error {
 	seen := make(map[string]string) // key -> name
 
-	for _, crd := range k.enabledCRDs {
+	for name, crd := range k.enabledCRDs {
 		key := fmt.Sprintf("%s/%s/%s", crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind)
 
 		if existing, ok := seen[key]; ok {
 			return fmt.Errorf(
 				"duplicate GVK detected: %s/%s, Kind=%s (CRDs: %s and %s)",
-				crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind, existing, crd.Name,
+				crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind, existing, name,
 			)
 		}
 
-		seen[key] = crd.Name
-	}
-
-	return nil
-}
-
-// -----------------------------------------------------------------------------
-// Validation: Name uniqueness
-// -----------------------------------------------------------------------------
-
-func (k *Katalog) validateNameUniqueness() error {
-	seen := make(map[string]bool)
-
-	for _, crd := range k.enabledCRDs {
-		if seen[crd.Name] {
-			return fmt.Errorf("duplicate CRD name detected: %s", crd.Name)
-		}
-		seen[crd.Name] = true
-	}
-
-	return nil
-}
-
-// -----------------------------------------------------------------------------
-// Validation: Name uniqueness
-// -----------------------------------------------------------------------------
-
-func (k *Katalog) validatePluralUniqueness() error {
-	seen := make(map[string]string)
-
-	for _, crd := range k.enabledCRDs {
-		if existing, ok := seen[crd.APITypes.Plural]; ok {
-			return fmt.Errorf("duplicate plural detected: %s (CRDs: %s and %s)",
-				crd.APITypes.Plural, existing, crd.Name)
-		}
-		seen[crd.APITypes.Plural] = crd.Name
+		seen[key] = name
 	}
 
 	return nil
 }
 
 func (k *Katalog) validateReconcilerMode() error {
-	for i := range k.enabledCRDs {
-		crd := &k.enabledCRDs[i]
+	for name, crd := range k.enabledCRDs {
 		mode := crd.Mode
 
 		switch mode {
 		case "":
-			// No mode declared — default to dynamic
 			logger.Debug().
-				Str("crd", crd.Name).
+				Str("crd", name).
 				Msg("reconciler mode not set — defaulting to 'dynamic'")
-
 			crd.Mode = orktypes.CRDModeDynamic
 
 		case orktypes.CRDModeDynamic, orktypes.CRDModeTyped:
@@ -136,11 +77,13 @@ func (k *Katalog) validateReconcilerMode() error {
 		default:
 			return fmt.Errorf(
 				"CRD %q: reconciler mode %q is not supported — use %q or %q",
-				crd.Name, mode,
+				name, mode,
 				orktypes.CRDModeDynamic,
 				orktypes.CRDModeTyped,
 			)
 		}
+
+		k.enabledCRDs[name] = crd
 	}
 	return nil
 }
@@ -150,20 +93,20 @@ func (k *Katalog) validateReconcilerMode() error {
 // -----------------------------------------------------------------------------
 
 func (k *Katalog) validateDependsOn() error {
-	// Build lookup map
-	exists := make(map[string]bool)
-	for _, crd := range k.enabledCRDs {
-		exists[crd.Name] = true
+	// Build lookup set from enabled CRD names (map keys)
+	exists := make(map[string]bool, len(k.enabledCRDs))
+	for name := range k.enabledCRDs {
+		exists[name] = true
 	}
 
 	// Validate references
-	for _, crd := range k.enabledCRDs {
-		for _, dep := range crd.DependsOn {
-			if dep == crd.Name {
-				return fmt.Errorf("CRD '%s' cannot depend on itself", crd.Name)
+	for name, crd := range k.enabledCRDs {
+		for dep := range crd.DependsOn {
+			if dep == name {
+				return fmt.Errorf("CRD '%s' cannot depend on itself", name)
 			}
 			if !exists[dep] {
-				return fmt.Errorf("CRD '%s' depends on unknown or disabled CRD '%s'", crd.Name, dep)
+				return fmt.Errorf("CRD '%s' depends on unknown or disabled CRD '%s'", name, dep)
 			}
 		}
 	}
@@ -177,9 +120,9 @@ func (k *Katalog) validateDependsOn() error {
 // -----------------------------------------------------------------------------
 
 func (k *Katalog) detectDependencyCycles() error {
-	graph := make(map[string][]string)
-	for _, crd := range k.enabledCRDs {
-		graph[crd.Name] = crd.DependsOn
+	graph := make(map[string][]string, len(k.enabledCRDs))
+	for name, crd := range k.enabledCRDs {
+		graph[name] = crd.DependsOn.Names()
 	}
 
 	visited := make(map[string]bool)
@@ -220,9 +163,7 @@ func (k *Katalog) detectDependencyCycles() error {
 //
 // Set GroupVersionKind
 func (k *Katalog) setGroupVersionKind() error {
-	for i := range k.enabledCRDs {
-		crd := &k.enabledCRDs[i]
-
+	for name, crd := range k.enabledCRDs {
 		crd.GroupVersionKind = schema.GroupVersionKind{
 			Group:   crd.APITypes.Group,
 			Version: crd.APITypes.Version,
@@ -240,20 +181,22 @@ func (k *Katalog) setGroupVersionKind() error {
 		}
 
 		if crd.GroupVersionKind.Empty() {
-			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.group, apiTypes.version, apiTypes.kind", crd.Name)
+			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.group, apiTypes.version, apiTypes.kind", name)
 		}
 
 		if crd.GroupVersion.Empty() {
-			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.group, apiTypes.version", crd.Name)
+			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.group, apiTypes.version", name)
 		}
 
 		if crd.APITypes.Kind == "" {
-			return fmt.Errorf("CRD '%s': missing required field: apiTypes.kind", crd.Name)
+			return fmt.Errorf("CRD '%s': missing required field: apiTypes.kind", name)
 		}
 
 		if crd.GroupVersionResource.Empty() {
-			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.plural", crd.Name)
+			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.plural", name)
 		}
+
+		k.enabledCRDs[name] = crd
 	}
 	return nil
 }
@@ -261,12 +204,24 @@ func (k *Katalog) setGroupVersionKind() error {
 // ---------------------------------------------------------------------------------
 //
 // Set SetDefaults
-func (k *Katalog) setDefaults() error {
-	for i := range k.enabledCRDs {
-		crd := &k.enabledCRDs[i]
+func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
+	for name, crd := range k.enabledCRDs {
+		// Add labels
+		crd.Labels = append(crd.Labels, orktypes.ResourceLabel{
+			Key:   konfig.LabelManaged,
+			Value: konfig.LabelManagedValue,
+		})
+
+		// Name is already set from map key — normalise it
+		crd.Name = strings.ReplaceAll(crd.Name, " ", "")
+		crd.Name = strings.ToLower(crd.Name)
+
+		if crd.Name == "" {
+			return fmt.Errorf("CRD with key '%s': empty name after normalisation", name)
+		}
 
 		// Handle namespaced and cluster-scoped crds
-		if !crd.Namespaced && crd.Namespace != "" {
+		if !crd.IsNamespaced() && crd.Namespace != "" {
 			logger.Warn().Msgf("%s is clusterscoped. Namespace %s will be ignored", crd.APITypes.Kind, crd.Namespace)
 			crd.Namespace = ""
 		}
@@ -278,8 +233,6 @@ func (k *Katalog) setDefaults() error {
 		}
 
 		// Handle plural name
-		crd.Name = strings.ToLower(crd.Name)
-
 		if crd.APITypes.Plural == "" {
 			logger.Debug().Msgf("Plural name for %s is empty. Setting to '%ss'", crd.APITypes.Kind, crd.Name)
 			crd.APITypes.Plural = fmt.Sprintf("%ss", strings.ToLower(crd.Name))
@@ -294,6 +247,18 @@ func (k *Katalog) setDefaults() error {
 		if len(crd.ReconcilerConfig.Finalizers) == 0 {
 			crd.ReconcilerConfig.Finalizers = k.Spec.Finalizers
 		}
+
+		// Handle Resync
+		if crd.Resync == 0 {
+			crd.Resync = kfg.Cluster().DefaultResync
+		}
+
+		// Handle Workers
+		if crd.Workers == 0 {
+			crd.Workers = kfg.Cluster().DefaultWorkers
+		}
+
+		k.enabledCRDs[name] = crd
 	}
 	return nil
 }
@@ -302,12 +267,10 @@ func (k *Katalog) setDefaults() error {
 //
 // Add RuntimeObjects
 func (k *Katalog) addRuntimeObjects() error {
-	for i := range k.enabledCRDs {
-		crd := &k.enabledCRDs[i]
+	for name, crd := range k.enabledCRDs {
 		gvk := crd.GroupVersionKind
 
 		if crd.IsDynamic() {
-			// Set dynamic factories so GetRuntimeObjects works consistently
 			g := crd.APITypes.Group
 			v := crd.APITypes.Version
 			ki := crd.APITypes.Kind
@@ -326,6 +289,7 @@ func (k *Katalog) addRuntimeObjects() error {
 				})
 				return ul
 			}
+			k.enabledCRDs[name] = crd
 			continue
 		}
 
@@ -341,6 +305,7 @@ func (k *Katalog) addRuntimeObjects() error {
 
 		crd.DynamicModeObject = objFn
 		crd.ListDynamicModeObject = listFn
+		k.enabledCRDs[name] = crd
 	}
 	return nil
 }
@@ -348,13 +313,20 @@ func (k *Katalog) addRuntimeObjects() error {
 // ---------------------------------------------------------------------------------
 // Add reconcilers
 func (k *Katalog) addReconcilers() error {
-	for i := range k.enabledCRDs {
-		crd := &k.enabledCRDs[i]
+	for name, crd := range k.enabledCRDs {
+		rc := crd.ReconcilerConfig
+
+		// Add providers block
+		if len(rc.ProviderBlocks) > 0 {
+			blocks, err := orktypes.ParseProviderBlocks(rc.RawProviders)
+			if err != nil {
+				return err
+			}
+			rc.ProviderBlocks = blocks
+		}
 
 		if !crd.IsDynamic() {
-
-			// Default → skip registry lookup
-			if crd.ReconcilerConfig.Default {
+			if crd.DefaultReconcile() {
 				continue
 			}
 
@@ -363,12 +335,15 @@ func (k *Katalog) addReconcilers() error {
 				return fmt.Errorf(
 					"CRD %q: no constructor registered — "+
 						"check reconciler.constructor in Katalog and re-run ork generate runtime",
-					crd.Name,
+					name,
 				)
 			}
 
-			crd.ReconcilerConfig.Constructor = constructorFn // ← sets the Go function field
+			rc.Constructor = constructorFn
 		}
+
+		crd.ReconcilerConfig = rc
+		k.enabledCRDs[name] = crd
 	}
 	return nil
 }
@@ -376,13 +351,13 @@ func (k *Katalog) addReconcilers() error {
 // ---------------------------------------------------------------------------------
 // Add hooks
 func (k *Katalog) addHooks() error {
-	for i := range k.enabledCRDs {
-		crd := &k.enabledCRDs[i]
-		if !crd.ReconcilerConfig.Default {
+	for name, crd := range k.enabledCRDs {
+		if !crd.DefaultReconcile() {
 			continue
 		}
 		if hookFn, ok := orktypes.HookRegistry[crd.GroupVersionKind]; ok {
 			crd.ReconcilerConfig.HookFactory = hookFn
+			k.enabledCRDs[name] = crd
 		}
 		// not found — fine, GenericReconciler runs without hooks
 	}

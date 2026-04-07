@@ -1,0 +1,494 @@
+// cmd/internal/konstruct.go
+//
+// konstructOrkestra — the complete Orkestra runtime wiring.
+//
+// This file is the single place where all runtime komponents are assembled.
+// It is the equivalent of a dependency injection container — every komponent
+// is created here, every dependency is threaded here, and nothing is started
+// here. Starting happens in orkestra.Start() in declaration order.
+//
+// ── Architecture overview ─────────────────────────────────────────────────
+//
+//   Katalog (YAML)
+//       │
+//       ▼
+//   merger → katalog.Katalog          One Katalog per operator binary.
+//       │                             Holds all CRD declarations, reconciler
+//       │                             configs, validation/mutation rules.
+//       │
+//       ▼
+//   kubeclient.Kubeclient             REST config, dynamic client, typed
+//       │                             clientset. Started first — everything else
+//       │                             needs it.
+//       │
+//       ├──► ClientProvider           One REST client constructor per CRD.
+//       │                             Deferred — constructed on first use.
+//       │
+//       ├──► SharedInformerFactory    One SharedIndexInformer per CRD.
+//       │        │                    Starts watching the API server on Start().
+//       │        │                    Routes watch events into per-CRD workqueues.
+//       │        │
+//       │        └──► per-CRD informer (cache.SharedIndexInformer)
+//       │                 Holds all CR instances in memory.
+//       │                 Zero API calls for reads after initial sync.
+//       │
+//       ├──► ProviderRegistry         AWS, MongoDB, Stripe — external infra providers.
+//       │                             Registered before factory closures so all
+//       │                             reconcilers share the same registry.
+//       │
+//       ├──► ResourceKatalog          Maps GVK → (CRD, informer, reconcilerFactory).
+//       │    (ktrlRegistry)           Also implements KatalogRegistry for cross-CRD
+//       │                             observation via GetInformerByName.
+//       │
+//       ├──► per-CRD reconciler factory closure
+//       │        Captures: crdInfo, infCopy, ev, kube, anyHooks, newObj,
+//       │                  providerRegistry, ktrlRegistry
+//       │        Called by startCRDWorkers after orkestra.Start().
+//       │        Returns a *GenericReconciler[T] ready to process items.
+//       │
+//       ├──► DependencyKordinator     Starts CRD workers in topological order.
+//       │                             Waits for dependencies to meet their declared
+//       │                             condition (started | healthy) before starting
+//       │                             dependent workers.
+//       │
+//       └──► HealthServer             HTTP server for health, Katalog API, and
+//                                     Control Center. Routes registered before Start().
+//
+// ── Reconcile loop (per CR item dequeued) ────────────────────────────────
+//
+//   workqueue.Get(key)
+//       │
+//       ▼
+//   GenericReconciler.Reconcile(ctx, key)
+//       │
+//       ├── informer.GetIndexer().GetByKey(key)   (in-memory, zero API call)
+//       │
+//       ├── ensureFinalizers / ensureManagedLabel / ensureManagedAnnotations
+//       │
+//       ├── handleDeletion  (if DeletionTimestamp set)
+//       │     └── runTemplateOnDelete → provider.Delete → removeFinalizers
+//       │
+//       └── reconcileImpl
+//             ├── mutation  (apply defaults)
+//             ├── validation (deny violations halt, warn violations log)
+//             │
+//             ├── OnReconcile hook (Go typed hook, if registered)
+//             │
+//             └── runTemplateReconcile  (declarative path)
+//                   ├── 1. NewResolver(obj)           .spec.*, .status.*, .metadata.*
+//                   ├── 2. readCross(decls)           .cross.<kind>.status.*
+//                   │         └── katalogRegistry.GetInformerByName(kind)
+//                   │               └── informer.GetIndexer().GetByKey(key)
+//                   │                     zero API calls for same-binary CRDs
+//                   ├── 3. runExternal(calls)         .external.<n>.status, .body
+//                   │         └── http.Do(req) per call, sequential
+//                   ├── 4. forEach expansion           N sources → N reconciles
+//                   ├── 5. runResourceGroup(onCreate)
+//                   │         runDeployments, runServices, runSecrets (once:),
+//                   │         runConfigMaps, runServiceAccounts, runJobs, runCronJobs
+//                   ├── 6. runResourceGroup(onReconcile) — same, update=true
+//                   └── 7. runProviders(blocks)        aws:, mongodb:, stripe:
+//                               └── provider.Reconcile(ctx, req) per block
+//
+//   After reconcileImpl:
+//       patchStatusWithChildren(ctx, obj, err)
+//           ├── ReadChildren → .children.*  (API server, parallel, RV="0")
+//           ├── resolveStatusFields(when:, anyOf:, template expressions)
+//           └── PATCH /status
+
+package internal
+
+import (
+	"context"
+	"strings"
+
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/event"
+	"github.com/ialexeze/orkestra/pkg/health"
+	"github.com/ialexeze/orkestra/pkg/informer"
+	"github.com/ialexeze/orkestra/pkg/katalog"
+	"github.com/ialexeze/orkestra/pkg/konfig"
+	"github.com/ialexeze/orkestra/pkg/kordinator"
+	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/merger"
+	ork "github.com/ialexeze/orkestra/pkg/orkestra"
+	"github.com/ialexeze/orkestra/pkg/queue"
+	"github.com/ialexeze/orkestra/pkg/reconciler"
+	"k8s.io/client-go/tools/cache"
+)
+
+// orkestraKfg is the assembled runtime — returned to main.go so it can call
+// orkestra.Start(ctx) and block until shutdown.
+type orkestraKfg struct {
+	konfig   *konfig.Konfig
+	katalog  *katalog.Katalog
+	komp     *[]domain.Komponent
+	event    *event.Event
+	kube     *kubeclient.Kubeclient
+	kord     *kordinator.DependencyKordinator
+	orkestra *ork.Orkestra
+}
+
+// konstructOrkestra wires the entire Orkestra runtime.
+//
+// Nothing is started here. Every component is constructed and threaded together
+// as closures and pointers. orkestra.Start() calls komponent.Start() in
+// registration order, and komponent.Stop() in reverse order on shutdown.
+//
+// The method is intentionally long — this is the one place where all wiring
+// is visible. Splitting it would scatter the dependency graph across files
+// and make it harder to reason about startup order.
+func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) *orkestraKfg {
+
+	// ── 1. Katalog ────────────────────────────────────────────────────────────
+	// Loads and validates the YAML Katalog. After this point, kat.Enabled()
+	// returns only CRDs that passed schema validation and are not disabled.
+	// Invalid CRDs are logged and excluded — they do not block the operator.
+	kat := katalog.NewKatalog(m, kfg)
+
+	if registryURL := kfg.RegistryConfig().RegistryURL; registryURL != "" {
+		m.SetRegistryURL(registryURL)
+		logger.Info().Str("registry", registryURL).Msg("registry URL configured from ORK_REGISTRY")
+	}
+
+	// ── 2. Scheme ─────────────────────────────────────────────────────────────
+	// Each CRD type (e.g. *PipelineList) must be registered with the scheme so
+	// the REST client knows how to decode API server responses. For dynamic CRDs
+	// (unstructured mode), this is a no-op — they use the dynamic client.
+	scheme, err := katalog.NewSchemeRegistry(kat)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to build scheme registry")
+	}
+
+	// ── 3. Core komponents ────────────────────────────────────────────────────
+	// Created here, started later by orkestra in registration order.
+
+	kube := kubeclient.NewKubeclient(kfg, scheme)
+
+	// kubeclient is started immediately — the informer factory's missing-CRD
+	// check needs the REST config during construction, before orkestra.Start().
+	if err := kube.Start(ctx); err != nil {
+		logger.Fatal().Err(err).Msg("failed to start kubeclient")
+	}
+
+	// HealthServer — HTTP mux created now, routes registered below, Start()
+	// binds the port later. Routes must be registered before Start().
+	hs := health.NewHealthServer(kube.Clientset(), kat, kfg)
+
+	ev := event.NewEvent(kube)
+	defaultWq := queue.NewWorkqueue()
+	queueRegistry := queue.NewQueueRegistry()
+
+	// ── 4a. REST client provider ──────────────────────────────────────────────
+	// Associates each CRD type with a constructor that builds a typed REST
+	// client. The constructor is deferred — called on first informer use.
+	// Dynamic CRDs skip this — they use the dynamic client directly.
+	provider := kube.NewClientProvider()
+
+	for _, crd := range kat.Enabled() {
+		crd := crd
+		if crd.IsDynamic() {
+			continue
+		}
+		object, list := crd.GetRuntimeObjects()
+		logger.Debug().Str("gvk", crd.GVK().String()).Msg("registering CRD client provider")
+
+		provider.Register(object, func(k *kubeclient.Kubeclient) (informer.GenericClient, error) {
+			return k.NewClient(list, kubeclient.CRDInfo{
+				Kind:         crd.APITypes.Kind,
+				Group:        crd.APITypes.Group,
+				Version:      crd.APITypes.Version,
+				APIPath:      crd.APITypes.APIPath,
+				GroupVersion: crd.GroupVersion,
+				Plural:       crd.APITypes.Plural,
+				Namespace:    crd.Namespace,
+				Namespaced:   crd.IsNamespaced(),
+			})
+		})
+	}
+
+	// ── 4b. Shared informer factory ───────────────────────────────────────────
+	// Creates one SharedIndexInformer per CRD. On Start(), each informer opens
+	// a watch against the API server and populates its in-memory cache.
+	// Watch events are routed into per-CRD workqueues via handleEvent.
+	infFactory := informer.SharedInformerFactory(
+		provider,
+		kube.RestConfig(),
+		queueRegistry,
+		defaultWq,
+		scheme,
+		kfg,
+	)
+
+	// ── 4c. Provider registry ─────────────────────────────────────────────────
+	// External infrastructure providers (AWS, MongoDB, etc.).
+	// Must be built BEFORE the factory loop so all reconciler closures capture
+	// the same fully-initialised registry. loadProviders is non-fatal —
+	// unavailable providers log a warning and the operator starts regardless.
+	providerRegistry := loadProviders(ctx)
+
+	// ── 4d. Kordinator registry + per-CRD wiring ──────────────────────────────
+	// ktrlRegistry maps GVK → (CRDEntry, SharedIndexInformer, ReconcilerFactory).
+	// It also implements reconciler.KatalogRegistry via GetInformerByName,
+	// enabling cross-CRD observation with zero API server calls.
+	ktrlRegistry := kordinator.NewKordinatorRegistry()
+
+	logger.Debug().Msg("wiring CRDs into kordinator registry...")
+
+	finalizers := kfg.Finalizers()
+	for _, crd := range kat.Enabled() {
+		crd := crd
+		gvk := crd.GVK().String()
+		gvr := crd.GroupVersionResource
+		crd.Workers = crd.SetWorkers(kfg.Cluster().DefaultWorkers)
+
+		object, _ := crd.GetRuntimeObjects()
+
+		wq := queueRegistry.Register(gvk, crd.SetMaxQueueDepth(kfg.Katalog().DefaultMaxQueueDepth))
+
+		opts := informer.Options{
+			Name:   crd.APITypes.Kind,
+			Resync: crd.Resync,
+		}
+		if crd.DefaultQueue() {
+			opts.Wq = nil // use the shared default queue
+		} else {
+			opts.Wq = wq
+		}
+
+		// Choose typed or dynamic informer.
+		// Dynamic CRDs use *unstructured.Unstructured — no Go type needed.
+		// Typed CRDs use the registered concrete Go type for type-safe access.
+		var inf cache.SharedIndexInformer
+
+		if crd.IsDynamic() {
+			lw := kube.NewDynamicListerWatcher(kubeclient.CRDInfo{
+				Kind:         crd.APITypes.Kind,
+				Group:        crd.APITypes.Group,
+				Version:      crd.APITypes.Version,
+				APIPath:      crd.APITypes.APIPath,
+				GroupVersion: crd.GroupVersion,
+				Plural:       crd.APITypes.Plural,
+				Namespace:    crd.Namespace,
+				Namespaced:   crd.IsNamespaced(),
+			})
+			inf = infFactory.ForListerWatcher(lw, object, ctx, opts)
+		} else {
+			inf = infFactory.For(object, ctx, opts)
+		}
+
+		finalizers = append(finalizers, crd.ReconcilerConfig.Finalizers...)
+
+		crdInfo := reconciler.CRDInfo{
+			Kind:             crd.APITypes.Kind,
+			GVK:              gvk,
+			GVR:              gvr,
+			Operator:         kat.Meta().Name,
+			Finalizers:       finalizers,
+			ReconcilerConfig: crd.ReconcilerConfig,
+			Validation:       crd.Validation,
+			Mutation:         crd.Mutation,
+		}
+		infCopy := inf
+
+		// Build the reconciler factory.
+		// For default: true CRDs — GenericReconciler interprets the Katalog declaratively.
+		// For default: false CRDs — a custom Constructor is required.
+		//
+		// The factory is a closure — it captures all values at construction time
+		// and is called by startCRDWorkers after informers are synced.
+		// Each call returns a fresh reconciler instance for one worker goroutine.
+		var factory func() domain.Reconciler
+
+		if crd.DefaultReconcile() {
+			objCopy := object
+
+			var anyHooks domain.AnyReconcileHooks
+			if crd.ReconcilerConfig.HookFactory != nil {
+				anyHooks = crd.ReconcilerConfig.HookFactory()
+			}
+
+			logger.Debug().Str("gvk", gvk).Msg("wiring GenericReconciler factory")
+
+			factory = func() domain.Reconciler {
+				return reconciler.NewGenericReconciler(
+					crdInfo,
+					infCopy,
+					ev,
+					kube,
+					anyHooks,
+					func() domain.Object {
+						return objCopy.DeepCopyObject().(domain.Object)
+					},
+					ktrlRegistry,     // cross-CRD informer lookup via GetInformerByName
+					providerRegistry, // aws:, mongodb:, etc. block dispatch
+				)
+			}
+		} else {
+			if crd.ReconcilerConfig.Constructor == nil {
+				logger.Fatal().
+					Str("gvk", gvk).
+					Msg("reconciler.default is false but no Constructor provided")
+			}
+
+			logger.Debug().Str("gvk", gvk).Msg("wiring custom reconciler factory")
+
+			factory = func() domain.Reconciler {
+				return crd.ReconcilerConfig.Constructor(kube, infCopy, ev)
+			}
+		}
+
+		// Register informs the DependencyKordinator which informer and factory
+		// belong to this CRD. Workers are not started yet — that happens in Start().
+		ktrlRegistry.Register(gvk, crd, inf, factory)
+		logger.Debug().Str("gvk", gvk).Msg("CRD registered")
+	}
+
+	// ── 5a. CRD health map ────────────────────────────────────────────────────
+	// One CRDHealth per CRD — shared between the DependencyKordinator
+	// (which updates it on each reconcile) and the HTTP health routes
+	// (which read it on each request). All three reference the same pointers.
+	crdHealthMap := make(map[string]*kordinator.CRDHealth)
+	for _, crd := range kat.Enabled() {
+		gvk := crd.GVK().String()
+		crdHealthMap[gvk] = kordinator.NewCRDHealth(crd.Name)
+	}
+
+	// ── 5b. HTTP routes ───────────────────────────────────────────────────────
+	// All routes registered before hs.Start() — the mux is shared.
+	//
+	// Per-CRD routes:
+	//   /katalog/{crd}/health       		→ 200 healthy, 503 degraded
+	//   /katalog/{crd}              		→ CRD config + live reconcile stats
+	//	 /katalog/{crd}/raw			 		→ the user's config
+	//   /katalog/{crd}/enriched	 		→ the runtime config
+	//   /katalog/{crd}/cr           		→ all CR instances (informer cache, <1ms)
+	//   /katalog/{crd}/cr/{ns}/{n}  		→ CR detail + children (watch cache, <50ms)
+	//   /katalog/{crd}/cr/{...}/events 	→ recent events (watch cache, <50ms)
+	//
+	// Aggregate:
+	//	 /katalog/raw				 		→ the user's katalog config
+	//	 /katalog/enriched				 	→ the runtime katalog config
+	//   /katalog                    		→ all CRDs, dependency graph, health summary
+	for _, crd := range kat.Enabled() {
+		gvk := crd.GVK().String()
+		crdHealth := crdHealthMap[gvk]
+		crdName := strings.ToLower(crd.Name)
+
+		entry, _ := ktrlRegistry.Get(gvk)
+		inf := entry.Informer
+
+		if !crd.IsEnabledAllEndpoints() {
+			continue
+		}
+
+		if crd.IsHealthEnabled() {
+			hs.Register(
+				"/katalog/"+crdName+"/health",
+				kordinator.BuildCRDHealthHandler(crd, kfg, inf, crdHealth),
+			)
+		}
+
+		if crd.IsInfoEnabled() {
+			hs.Register(
+				"/katalog/"+crdName,
+				kordinator.BuildCRDInfoHandler(
+					crd, kfg, inf, crdHealth,
+					hs.GetConversionStats(),
+					hs.GetAdmissionStats(),
+				),
+			)
+			hs.Register(
+				"/katalog/"+crdName+"/cr",
+				kordinator.BuildCRListHandler(crd, inf),
+			)
+			hs.Register(
+				"/katalog/"+crdName+"/cr/",
+				kordinator.BuildCRDetailAndEventsHandler(crd, inf, kube),
+			)
+		}
+
+		// Register raw and enriched CRD definition endpoint
+		hs.Register(
+			"/katalog/"+crdName+"/raw",
+			kordinator.BuildCRDRawHandler(m, crd.Name),
+		)
+		hs.Register(
+			"/katalog/"+crdName+"/enriched",
+			kordinator.BuildCRDEnrichedHandler(kat, crd.Name),
+		)
+
+		logger.Debug().
+			Str("health", "/katalog/"+crdName+"/health").
+			Str("info", "/katalog/"+crdName).
+			Str("raw", "/katalog/"+crdName+"/raw").
+			Str("enriched", "/katalog/"+crdName+"/enriched").
+			Msg("registered CRD routes")
+	}
+
+	orkHealth := kordinator.NewOrkestraHealth()
+	hs.Register("/katalog/raw", kordinator.BuildRawKatalogHandler(m))
+	hs.Register("/katalog/enriched", kordinator.BuildEnrichedKatalogHandler(kat))
+	hs.Register("/katalog", kordinator.BuildKatalogHandler(kat, kfg, ktrlRegistry, crdHealthMap, orkHealth))
+
+	// ── 6. Dependency kordinator ──────────────────────────────────────────────
+	// Starts CRD workers in topological order defined by the dependency graph.
+	// For each CRD, waits until all declared dependsOn CRDs meet their
+	// condition (started | healthy) before calling factory() and starting workers.
+	//
+	// Worker lifecycle:
+	//   Start() → wait for informer sync → call factory() per worker → run loop
+	//   Shutdown → drain queue → stop workers → remove from active set
+	kord := kordinator.NewDependencyKordinator(
+		kube,
+		infFactory,
+		ktrlRegistry,
+		ev,
+		hs,
+		queueRegistry,
+		defaultWq,
+		crdHealthMap,
+		orkHealth,
+		kfg.Cluster().DefaultWorkers,
+		katalog.NewDependencyGraph(kat),
+		kfg.Cluster().ShutdownTimeout,
+	)
+
+	// ── 7. Komponent list ─────────────────────────────────────────────────────
+	// Start order: each komponent must start after its dependencies.
+	// Stop order: reverse of start order (automatic).
+	//
+	// HealthServer starts first so it can serve /readyz during startup.
+	// Kubeclient is already started above but is still registered so
+	// orkestra manages its Stop().
+	komponents := []domain.Komponent{
+		hs,            // 1. HTTP server — /readyz, /livez, /katalog routes
+		kube,          // 2. REST clients — already started, managed for Stop()
+		ev,            // 3. event recorder — depends on kube
+		queueRegistry, // 4. per-CRD bounded queues
+		defaultWq,     // 5. default unbounded queue
+		infFactory,    // 6. informer factory — starts watchers, closes ready channel
+		kord,          // 7. dependency kordinator — starts workers in topo order
+	}
+
+	// ── 8. Orkestra ───────────────────────────────────────────────────────────
+	// The supervisor. Calls Start() on each komponent in order.
+	// On OS signal (SIGTERM/SIGINT) or fatal error, calls Stop() in reverse.
+	// Graceful shutdown: drains queues before stopping workers.
+	o := ork.NewOrkestra(
+		kfg.Cluster().ShutdownGracePeriod,
+		kfg.Ork().LogLevel,
+	)
+	o.Register(komponents)
+
+	return &orkestraKfg{
+		konfig:   kfg,
+		katalog:  kat,
+		komp:     &komponents,
+		event:    ev,
+		kube:     kube,
+		kord:     kord,
+		orkestra: o,
+	}
+}

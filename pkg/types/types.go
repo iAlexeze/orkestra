@@ -1,12 +1,13 @@
 // pkg/orktypes/types.go
-package orktypes
+package types
 
 import (
+	"fmt"
+	"sort"
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -58,11 +59,25 @@ var ReconcilerRegistry = map[schema.GroupVersionKind]NewReconcilerFunc{}
 //	   mode: dynamic   		# force dynamic even if location is set
 //	   mode: typed          # force typed even if location is empty
 type CRDMode string
+type DependencyCondtion string
 
 const (
 	CRDModeTyped   CRDMode = "typed"
 	CRDModeDynamic CRDMode = "dynamic"
+
+	DependencyConditionStarted DependencyCondtion = "started"
+	DependencyConditionHealthy DependencyCondtion = "healthy"
+
+	// Future
+	DependencyCondtionPending   DependencyCondtion = "pending"
+	DependencyCondtionReady     DependencyCondtion = "ready"
+	DependencyConditionDegraded DependencyCondtion = "degraded"
+	DependencyConditionDeleted  DependencyCondtion = "deleted"
 )
+
+func (m CRDMode) String() string {
+	return string(m)
+}
 
 // ── APITypes ──────────────────────────────────────────────────────────────────
 // Mirrors the apiTypes block in crd-katalog.yaml.
@@ -73,46 +88,46 @@ type APITypes struct {
 	// Object — Go type name for a single CR instance. Required for typed mode.
 	// Used by ork generate to emit ObjectRegistry entries.
 	// e.g. "Project" → func() runtime.Object { return &projv1.Project{} }
-	Object string `yaml:"object" validate:"omitempty"`
+	Object string `yaml:"object" json:"object,omitempty" validate:"omitempty"`
 
 	// List — Go type name for the CR list. Required for typed mode.
 	// Used by ork generate to emit ListRegistry entries.
 	// e.g. "ProjectList" → func() runtime.Object { return &projv1.ProjectList{} }
-	List string `yaml:"list" validate:"omitempty"`
+	List string `yaml:"objectList" json:"objectList,omitempty" validate:"omitempty"`
 
 	// Alias — Go import alias for the API types package. Optional.
 	// Auto-derived from the last two segments of Location if not set.
 	// e.g. "projv1" → import projv1 "github.com/.../project/v1alpha1"
-	Alias string `yaml:"alias" validate:"omitempty"`
+	Alias string `yaml:"alias" json:"alias,omitempty" validate:"omitempty"`
 
 	// Group — Kubernetes API group. Required in all modes.
 	// e.g. "platform.orkestra.io"
-	Group string `yaml:"group" validate:"required,hostname_rfc1123"`
+	Group string `yaml:"group" json:"group" validate:"required,hostname_rfc1123"`
 
 	// Version — API version. Required in all modes.
 	// e.g. "v1alpha1"
-	Version string `yaml:"version" validate:"required"`
+	Version string `yaml:"version" json:"version" validate:"required"`
 
 	// Kind — resource Kind. Required in all modes.
 	// e.g. "Project"
-	Kind string `yaml:"kind" validate:"required"`
+	Kind string `yaml:"kind" json:"kind" validate:"required"`
 
 	// Plural — lowercase plural resource name. Required in all modes.
 	// Used for REST client URL construction.
 	// e.g. "projects"
-	Plural string `yaml:"plural" validate:"required"`
+	Plural string `yaml:"plural" json:"plural" validate:"required"`
 
 	// APIPath — REST API path prefix. Default: /apis.
 	// Override to /api only for core Kubernetes types (Pod, ConfigMap, etc.)
 	// Almost always leave this empty — Orkestra defaults it to /apis.
-	APIPath string `yaml:"apiPath" validate:"omitempty"`
+	APIPath string `yaml:"apiPath" json:"apiPath,omitempty" validate:"omitempty"`
 
 	// Location — fully qualified Go import path for the API types package.
 	// Required for typed mode. Used by ork generate for import statements
 	// and scheme registration in RegisterScheme().
 	// Not needed for dynamic mode — omit entirely.
 	// e.g. "github.com/ialexeze/orkestra/api/types/project/v1alpha1"
-	Location string `yaml:"location" validate:"omitempty"`
+	Location string `yaml:"location" json:"location,omitempty" validate:"omitempty"`
 }
 
 // ── Queue ─────────────────────────────────────────────────────────────────────
@@ -121,17 +136,17 @@ type Queue struct {
 	// Default: true — uses the shared default workqueue instead of a per-CRD queue.
 	// Suitable for low-volume CRDs where queue isolation is not required.
 	// Default: false — each CRD gets its own isolated workqueue.
-	Default bool `yaml:"default"`
+	Default *bool `yaml:"default" json:"default,omitempty"`
 
 	// MaxQueueDepth — maximum number of items in the per-CRD queue.
 	// New items are rejected when the queue is full.
 	// 0 → uses Orkestra-level default set by MAX_QUEUE_DEPTH env var.
-	MaxQueueDepth int `yaml:"maxQueueDepth" validate:"omitempty,gte=0"`
+	MaxQueueDepth int `yaml:"maxQueueDepth" json:"maxQueueDepth,omitempty" validate:"omitempty,gte=0"`
 
 	// DegradeThreshold — number of consecutive reconcile failures before the
 	// CRD health state transitions from healthy to degraded.
 	// 0 → uses Orkestra-level default.
-	DegradeThreshold int `yaml:"degradeThreshold" validate:"omitempty,gte=0"`
+	DegradeThreshold int `yaml:"degradeThreshold" json:"degradeThreshold,omitempty" validate:"omitempty,gte=0"`
 }
 
 // ── Shared resource value types ───────────────────────────────────────────────
@@ -141,8 +156,8 @@ type Queue struct {
 // expressions evaluated against the live CR at reconcile time.
 // e.g. {key: "app", value: "{{ .metadata.name }}"}
 type ResourceLabel struct {
-	Key   string `yaml:"key"   validate:"required"`
-	Value string `yaml:"value" validate:"required"`
+	Key   string `yaml:"key" json:"key" validate:"required"`
+	Value string `yaml:"value" json:"value" validate:"required"`
 }
 
 // ResourceRequirements mirrors Kubernetes resource requests and limits.
@@ -150,16 +165,15 @@ type ResourceLabel struct {
 // are not supported here.
 // e.g. requests: {cpu: "100m", memory: "128Mi"}
 type ResourceRequirements struct {
-	Requests map[string]string `yaml:"requests" validate:"omitempty"`
-	Limits   map[string]string `yaml:"limits"   validate:"omitempty"`
+	Requests map[string]string `yaml:"requests" json:"requests,omitempty" validate:"omitempty"`
+	Limits   map[string]string `yaml:"limits" json:"limits,omitempty" validate:"omitempty"`
 }
 
-// ── Hook template source types — Option B flat format ────────────────────────
+// ── Hook template source types — flat format ────────────────────────
 //
 // All template source types use a single flat field layout.
-// There is no explicit fromCRD / fromKatalog split in the YAML.
 //
-// Instead, Orkestra uses Option B inference:
+// Instead, Orkestra uses:
 //   Any string field containing "{{" → treated as a Go text/template expression.
 //                                       Evaluated against the live CR at reconcile time.
 //   Any string field without "{{"    → treated as a static value. Used as-is.
@@ -230,52 +244,83 @@ type ResourceRequirements struct {
 //	          memory: 512Mi
 type DeploymentTemplateSource struct {
 	// Version — OrkestraRegistry implementation version to use. Omit for latest.
-	Version string `yaml:"version" validate:"omitempty"`
+	Version string `yaml:"version" json:"version,omitempty" validate:"omitempty"`
 
 	// Name — Deployment and primary container name.
 	// Supports template expressions.
 	// Default when omitted: "{{ .metadata.name }}-deployment"
-	Name string `yaml:"name" validate:"omitempty"`
+	Name string `yaml:"name" json:"name,omitempty" validate:"omitempty"`
 
 	// Image — container image. Required (must be declared here or resolvable from CR).
 	// Static:  "nginx:1.25"
 	// Dynamic: "{{ .spec.image }}"
-	Image string `yaml:"image" validate:"omitempty"`
+	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
 	// Replicas — number of pod replicas as a string.
 	// Static:  "3"
 	// Dynamic: "{{ .spec.replicas }}"
 	// Default: "1"
-	Replicas string `yaml:"replicas" validate:"omitempty"`
+	Replicas string `yaml:"replicas" json:"replicas,omitempty" validate:"omitempty"`
 
 	// Port — primary container port as a string.
 	// Static:  "8080"
 	// Dynamic: "{{ .spec.port }}"
 	// Omit to expose no port.
-	Port string `yaml:"port" validate:"omitempty"`
+	Port string `yaml:"port" json:"port,omitempty" validate:"omitempty"`
 
 	// Namespace — target namespace for the Deployment.
 	// Default when omitted: "{{ .metadata.namespace }}" (same namespace as the CR).
-	Namespace string `yaml:"namespace" validate:"omitempty"`
+	Namespace string `yaml:"namespace" json:"namespace,omitempty" validate:"omitempty"`
 
 	// Labels — applied to the Deployment ObjectMeta and the pod template.
 	// Label values support template expressions.
 	// Orkestra always adds: managed-by=orkestra, orkestra-owner=<cr-name>
-	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty" validate:"omitempty"`
 
 	// Annotations — applied to the Deployment ObjectMeta only.
 	// Annotation values support template expressions.
-	Annotations []ResourceLabel `yaml:"annotations" validate:"omitempty"`
+	Annotations []ResourceLabel `yaml:"annotations" json:"annotations,omitempty" validate:"omitempty"`
 
 	// Resources — CPU and memory requests/limits for the primary container.
 	// Values are static Kubernetes quantity strings.
 	// Template expressions are not supported in resource quantities.
-	Resources *ResourceRequirements `yaml:"resources" validate:"omitempty"`
+	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
 
 	// Reconcile: true — also apply this declaration as drift correction on every
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
 	// onReconcile. When false (default), only runs on onCreate (idempotent create).
-	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+	Reconcile bool `yaml:"reconcile" json:"reconcile,omitempty" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -296,36 +341,68 @@ type DeploymentTemplateSource struct {
 //	          value: "{{ .metadata.name }}"
 type ServiceTemplateSource struct {
 	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version" validate:"omitempty"`
+	Version string `yaml:"version" json:"version,omitempty" validate:"omitempty"`
 
 	// Name — Service name.
 	// Default when omitted: "{{ .metadata.name }}-svc"
-	Name string `yaml:"name" validate:"omitempty"`
+	Name string `yaml:"name" json:"name,omitempty" validate:"omitempty"`
 
 	// Type — Kubernetes Service type.
 	// Accepted values: ClusterIP, NodePort, LoadBalancer.
 	// Default: ClusterIP.
-	Type string `yaml:"type" validate:"omitempty"`
+	Type string `yaml:"type" json:"type,omitempty" validate:"omitempty"`
 
 	// Port — Service port as a string.
 	// Static: "80" or Dynamic: "{{ .spec.servicePort }}"
-	Port string `yaml:"port" validate:"omitempty"`
+	Port string `yaml:"port" json:"port" validate:"omitempty"`
 
 	// TargetPort — container port the Service routes traffic to.
 	// Static: "8080" or Dynamic: "{{ .spec.containerPort }}"
-	TargetPort string `yaml:"targetPort" validate:"omitempty"`
+	TargetPort string `yaml:"targetPort" json:"targetPort,omitempty" validate:"omitempty"`
 
 	// Namespace — target namespace.
 	// Default when omitted: "{{ .metadata.namespace }}"
-	Namespace string `yaml:"namespace" validate:"omitempty"`
+	Namespace string `yaml:"namespace" json:"namespace,omitempty" validate:"omitempty"`
 
 	// Labels — applied to Service metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty" validate:"omitempty"`
 
 	// Reconcile: true — also apply this declaration as drift correction on every
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
 	// onReconcile. When false (default), only runs on onCreate (idempotent create).
-	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+	Reconcile bool `yaml:"reconcile" json:"reconcile,omitempty" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
 // ── Pod ───────────────────────────────────────────────────────────────────────
@@ -345,32 +422,64 @@ type ServiceTemplateSource struct {
 //	      port: "9090"
 type PodTemplateSource struct {
 	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version" validate:"omitempty"`
+	Version string `yaml:"version" json:"version,omitempty" validate:"omitempty"`
 
 	// Name — Pod name.
 	// Default when omitted: "{{ .metadata.name }}-pod"
-	Name string `yaml:"name" validate:"omitempty"`
+	Name string `yaml:"name" json:"name,omitempty" validate:"omitempty"`
 
 	// Image — container image. Required.
 	// Static: "busybox:1.35" or Dynamic: "{{ .spec.image }}"
-	Image string `yaml:"image" validate:"omitempty"`
+	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
 	// Port — container port as a string.
 	// Static: "8080" or Dynamic: "{{ .spec.port }}"
-	Port string `yaml:"port" validate:"omitempty"`
+	Port string `yaml:"port" json:"port,omitempty" validate:"omitempty"`
 
 	// Namespace — target namespace.
 	// Default when omitted: "{{ .metadata.namespace }}"
-	Namespace string `yaml:"namespace" validate:"omitempty"`
+	Namespace string `yaml:"namespace" json:"namespace,omitempty" validate:"omitempty"`
 
 	// Labels — applied to Pod metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty" validate:"omitempty"`
 
 	// Annotations — applied to Pod metadata. Values support template expressions.
-	Annotations []ResourceLabel `yaml:"annotations" validate:"omitempty"`
+	Annotations []ResourceLabel `yaml:"annotations" json:"annotations,omitempty" validate:"omitempty"`
 
 	// Resources — static CPU and memory requests/limits.
-	Resources *ResourceRequirements `yaml:"resources" validate:"omitempty"`
+	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
 // ── Job ───────────────────────────────────────────────────────────────────────
@@ -396,34 +505,71 @@ type PodTemplateSource struct {
 //	      backoffLimit: 3
 type JobTemplateSource struct {
 	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version" validate:"omitempty"`
+	Version string `yaml:"version" json:"version,omitempty" validate:"omitempty"`
 
 	// Name — Job name.
 	// Default when omitted: "{{ .metadata.name }}-job"
-	Name string `yaml:"name" validate:"omitempty"`
+	Name string `yaml:"name" json:"name,omitempty" validate:"omitempty"`
 
 	// Image — container image. Required.
-	Image string `yaml:"image" validate:"omitempty"`
+	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
 	// Command — container entrypoint command.
 	// Each element is resolved independently — template expressions are supported per element.
 	// e.g. ["sh", "-c", "echo cleaning up {{ .metadata.name }}"]
-	Command []string `yaml:"command" validate:"omitempty"`
+	Command []string `yaml:"command" json:"command,omitempty" validate:"omitempty"`
 
 	// Args — arguments passed to the container command.
 	// Each element supports template expressions independently.
-	Args []string `yaml:"args" validate:"omitempty"`
+	Args []string `yaml:"args" json:"args,omitempty" validate:"omitempty"`
 
 	// BackoffLimit — number of Pod restart attempts before the Job is marked Failed.
 	// Default: 3.
-	BackoffLimit int `yaml:"backoffLimit" validate:"omitempty"`
+	BackoffLimit int `yaml:"backoffLimit" json:"backoffLimit,omitempty" validate:"omitempty"`
 
 	// Namespace — target namespace.
 	// Default when omitted: "{{ .metadata.namespace }}"
-	Namespace string `yaml:"namespace" validate:"omitempty"`
+	Namespace string `yaml:"namespace" json:"namespace,omitempty" validate:"omitempty"`
 
 	// Labels — applied to Job metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile. Equivalent to declaring the same entry under both onCreate and
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile" json:"reconcile,omitempty" validate:"omitempty"`
+
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
 // ── CronJob ───────────────────────────────────────────────────────────────────
@@ -440,37 +586,75 @@ type JobTemplateSource struct {
 //	      command: ["sh", "-c", "sync.sh"]
 type CronJobTemplateSource struct {
 	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version" validate:"omitempty"`
+	Version string `yaml:"version" json:"version,omitempty" validate:"omitempty"`
 
 	// Name — CronJob name.
 	// Default when omitted: "{{ .metadata.name }}-cronjob"
-	Name string `yaml:"name" validate:"omitempty"`
+	Name string `yaml:"name" json:"name,omitempty" validate:"omitempty"`
 
 	// Schedule — cron schedule expression. Required.
 	// Static: "0 * * * *" (every hour)
 	// Dynamic: "{{ .spec.schedule }}"
-	Schedule string `yaml:"schedule" validate:"required"`
+	Schedule string `yaml:"schedule" json:"schedule" validate:"required"`
 
 	// Image — container image. Required.
-	Image string `yaml:"image" validate:"omitempty"`
+	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
 	// Command — container entrypoint. Each element supports template expressions.
-	Command []string `yaml:"command" validate:"omitempty"`
+	Command []string `yaml:"command" json:"command,omitempty" validate:"omitempty"`
 
 	// Args — container arguments. Each element supports template expressions.
-	Args []string `yaml:"args" validate:"omitempty"`
+	Args []string `yaml:"args" json:"args,omitempty" validate:"omitempty"`
 
 	// Namespace — target namespace.
 	// Default when omitted: "{{ .metadata.namespace }}"
-	Namespace string `yaml:"namespace" validate:"omitempty"`
+	Namespace string `yaml:"namespace" json:"namespace,omitempty" validate:"omitempty"`
 
 	// Labels — applied to CronJob metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty" validate:"omitempty"`
 
 	// Reconcile: true — also apply this declaration as drift correction on every
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
 	// onReconcile. When false (default), only runs on onCreate (idempotent create).
-	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+	Reconcile bool `yaml:"reconcile" json:"reconcile,omitempty" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	Suspend                    string `yaml:"suspend,omitempty" json:"suspend,omitempty"`
+	SuccessfulJobsHistoryLimit string `yaml:"successfulJobsHistoryLimit,omitempty" json:"successfulJobsHistoryLimit,omitempty"`
+	FailedJobsHistoryLimit     string `yaml:"failedJobsHistoryLimit,omitempty" json:"failedJobsHistoryLimit,omitempty"`
+	ConcurrencyPolicy          string `yaml:"concurrencyPolicy,omitempty" json:"concurrencyPolicy,omitempty"`
+	StartingDeadlineSeconds    string `yaml:"startingDeadlineSeconds,omitempty" json:"startingDeadlineSeconds,omitempty"`
+
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
 // ── ConfigMap ─────────────────────────────────────────────────────────────────
@@ -490,38 +674,69 @@ type CronJobTemplateSource struct {
 //	        MAX_CONNECTIONS: "100"
 type ConfigMapTemplateSource struct {
 	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version" validate:"omitempty"`
+	Version string `yaml:"version" json:"version,omitempty" validate:"omitempty"`
 
 	// Name — ConfigMap name.
 	// Default when omitted: "{{ .metadata.name }}-config"
-	Name string `yaml:"name" validate:"omitempty"`
+	Name string `yaml:"name" json:"name,omitempty" validate:"omitempty"`
 
 	// Namespace — target namespace.
 	// Default when omitted: "{{ .metadata.namespace }}"
-	Namespace string `yaml:"namespace" validate:"omitempty"`
+	Namespace string `yaml:"namespace" json:"namespace,omitempty" validate:"omitempty"`
 
 	// ToNamespaces - a list of target namespaces
 	// Default when omitted: "{{ .metadata.namespace }}"
-	ToNamespaces []string `yaml:"toNamespaces" validate:"omitempty"`
+	ToNamespaces []string `yaml:"toNamespaces" json:"toNamespaces,omitempty" validate:"omitempty"`
 
 	// Data — static key-value configuration entries.
 	// Values are plain strings — template expressions are not supported here.
-	Data map[string]string `yaml:"data" validate:"omitempty"`
+	Data map[string]string `yaml:"data" json:"data,omitempty" validate:"omitempty"`
 
 	// Labels — applied to ConfigMap metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty" validate:"omitempty"`
 	// FromConfigMap — name of an existing ConfigMap to copy data from.
 	// Orkestra reads this at reconcile time — copies stay in sync with the source.
-	FromConfigMap string `yaml:"fromConfigMap" validate:"omitempty"`
+	FromConfigMap string `yaml:"fromConfigMap" json:"fromConfigMap,omitempty" validate:"omitempty"`
 
 	// FromNamespace — namespace where FromConfigMap lives.
 	// Default: same namespace as the CR.
-	FromNamespace string `yaml:"fromNamespace" validate:"omitempty"`
+	FromNamespace string `yaml:"fromNamespace" json:"fromNamespace,omitempty" validate:"omitempty"`
 
 	// Reconcile: true — also apply this declaration as drift correction on every
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
 	// onReconcile. When false (default), only runs on onCreate (idempotent create).
-	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+	Reconcile bool `yaml:"reconcile" json:"reconcile,omitempty" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
 // ── Secret ─────────────────────────────────────────────────────────────────────
@@ -544,44 +759,121 @@ type ConfigMapTemplateSource struct {
 // You may also copy from an existing Secret using FromSecret.
 type SecretTemplateSource struct {
 	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version" validate:"omitempty"`
+	Version string `yaml:"version" json:"version,omitempty" validate:"omitempty"`
 
 	// Name — Secret name.
 	// Default when omitted: "{{ .metadata.name }}-secret"
-	Name string `yaml:"name" validate:"omitempty"`
+	Name string `yaml:"name" json:"name,omitempty" validate:"omitempty"`
 
 	// Namespace — target namespace.
 	// Default when omitted: "{{ .metadata.namespace }}"
-	Namespace string `yaml:"namespace" validate:"omitempty"`
+	Namespace string `yaml:"namespace" json:"namespace,omitempty" validate:"omitempty"`
 
 	// Type — Kubernetes Secret type.
 	// Default: "Opaque"
-	Type string `yaml:"type" validate:"omitempty"`
+	Type string `yaml:"type" json:"type,omitempty" validate:"omitempty"`
 
 	// Data — static key-value entries.
 	// Values are plain strings — template expressions are not supported here.
 	// If you need templated or dynamic values, use a custom Go hook.
-	Data map[string]string `yaml:"data" validate:"omitempty"`
+	Data map[string]string `yaml:"data" json:"data,omitempty" validate:"omitempty"`
 
 	// Labels — applied to Secret metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty" validate:"omitempty"`
+
+	// Annotations — applied to Secret metadata.
+	Annotations map[string]string `yaml:"annotations,omitempty" json:"annotations,omitempty"`
 
 	// FromSecret — name of an existing Secret to copy data from.
 	// Orkestra reads this at reconcile time — copies stay in sync with the source.
-	FromSecret string `yaml:"fromSecret" validate:"omitempty"`
+	FromSecret string `yaml:"fromSecret" json:"fromSecret,omitempty" validate:"omitempty"`
 
 	// FromNamespace — namespace where FromSecret lives.
 	// Default: same namespace as the CR.
-	FromNamespace string `yaml:"fromNamespace" validate:"omitempty"`
+	FromNamespace string `yaml:"fromNamespace" json:"fromNamespace,omitempty" validate:"omitempty"`
 
 	// ToNamespaces - a list of target namespaces
 	// Default when omitted: "{{ .metadata.namespace }}"
-	ToNamespaces []string `yaml:"toNamespaces" validate:"omitempty"`
+	ToNamespaces []string `yaml:"toNamespaces" json:"toNamespaces,omitempty" validate:"omitempty"`
 
 	// Reconcile: true — also apply this declaration as drift correction on every
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
 	// onReconcile. When false (default), only runs on onCreate (idempotent create).
-	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+	Reconcile bool `yaml:"reconcile" json:"reconcile,omitempty" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	// Once controls idempotent secret generation.
+	// true  — evaluate templates and create only when the Secret does not exist.
+	//         Use with random notes (randomAlphanumeric, randomHex, randomBase64).
+	// false — standard create/update behavior (default).
+	Once bool `yaml:"once,omitempty" json:"once,omitempty"`
+
+	// ForEach declares dynamic expansion (same as other resource types)
+	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions (same as other resource types)
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// RotateAfter declares a time-based rotation threshold.
+	// When set alongside once: true, the Secret is recreated when its age
+	// exceeds this duration. The creation time is tracked via the annotation:
+	//   orkestra.konductor.io/generated-at: "2026-04-06T08:00:00Z"
+	//
+	// Supported formats: 30s, 5m, 12h, 90d, 1y
+	// Days (d) and years (y) are extensions beyond Go's standard duration format.
+	//
+	// Example:
+	//   secrets:
+	//     - name: "{{ .metadata.name }}-credentials"
+	//       once: true
+	//       rotateAfter: 90d
+	//       data:
+	//         password: "{{ randomAlphanumeric 32 }}"
+	RotateAfter string `yaml:"rotateAfter,omitempty" json:"rotateAfter,omitempty"`
+
+	// TLS declares self-signed CA and server certificate generation.
+	// When set, the data: block is ignored — the Secret is created as type
+	// kubernetes.io/tls with fields: tls.crt, tls.key, ca.crt
+	//
+	// Default Secret name when name is empty: "orkestra-tls"
+	// Default validFor when empty: same as rotateAfter, or "1y"
+	//
+	// Example:
+	//   secrets:
+	//     - name: "{{ .metadata.name }}-tls"
+	//       once: true
+	//       rotateAfter: 1y
+	//       tls:
+	//         commonName: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc"
+	//         dnsNames:
+	//           - "{{ .metadata.name }}"
+	//           - "{{ .metadata.name }}.{{ .metadata.namespace }}"
+	//           - "{{ .metadata.name }}.{{ .metadata.namespace }}.svc"
+	//           - "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+	//         validFor: 1y
+	TLS *TLSSpec `yaml:"tls,omitempty" json:"tls,omitempty"`
 }
 
 // ── ServiceAccount ────────────────────────────────────────────────────────────
@@ -599,18 +891,55 @@ type SecretTemplateSource struct {
 //	          value: "{{ .metadata.name }}"
 type ServiceAccountTemplateSource struct {
 	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version" validate:"omitempty"`
+	Version string `yaml:"version" json:"version,omitempty" validate:"omitempty"`
 
 	// Name — ServiceAccount name.
 	// Default when omitted: "{{ .metadata.name }}-sa"
-	Name string `yaml:"name" validate:"omitempty"`
+	Name string `yaml:"name" json:"name,omitempty" validate:"omitempty"`
 
 	// Namespace — target namespace.
 	// Default when omitted: "{{ .metadata.namespace }}"
-	Namespace string `yaml:"namespace" validate:"omitempty"`
+	Namespace string `yaml:"namespace" json:"namespace,omitempty" validate:"omitempty"`
 
 	// Labels — applied to ServiceAccount metadata. Values support template expressions.
-	Labels []ResourceLabel `yaml:"labels" validate:"omitempty"`
+	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty" validate:"omitempty"`
+
+	// Conditions declares the set of runtime predicates that must all evaluate to
+	// true for this resource template to be applied during reconciliation.
+	//
+	// Each condition inspects a field on the live Custom Resource using dot-notation
+	// (e.g. "spec.enabled", "metadata.labels.tier") and compares it against a value
+	// using the chosen operator. All conditions in the list are AND‑ed together.
+	//
+	// If any condition fails, the resource is skipped for that reconcile cycle.
+	// This is not an error — it simply means “do not create/update this resource
+	// right now”. This enables expressive, data‑driven orchestration such as:
+	//
+	//   when:
+	//     - field: spec.exposePublicly
+	//       equals: "true"
+	//     - field: spec.environment
+	//       prefix: "prod"
+	//
+	// Conditions allow templates to be selectively activated based on the CR’s
+	// state, enabling dynamic topologies, feature flags, environment‑specific
+	// behavior, and conditional provisioning without writing Go code.
+
+	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile. Equivalent to declaring the same entry under both onCreate and
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile" json:"reconcile,omitempty" validate:"omitempty"`
+
+	// ForEach declares dynamic expansion over a list field.
+	// When set, one source declaration becomes N declarations — one per list element.
+	// .item and .<as> are available in template expressions within this declaration.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
+	// Works alongside the existing Conditions (when:) field which uses AND semantics.
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
 // ── HookTemplates ─────────────────────────────────────────────────────────────
@@ -644,15 +973,60 @@ type ServiceAccountTemplateSource struct {
 //	    - Jobs that must complete successfully before the CR can be considered deleted
 //	    - Notification or archival tasks that must run before deletion is finalized
 type HookTemplates struct {
-	Deployments     []DeploymentTemplateSource     `yaml:"deployments"     validate:"omitempty"`
-	Services        []ServiceTemplateSource        `yaml:"services"        validate:"omitempty"`
-	Pods            []PodTemplateSource            `yaml:"pods"            validate:"omitempty"`
-	Jobs            []JobTemplateSource            `yaml:"jobs"            validate:"omitempty"`
-	CronJobs        []CronJobTemplateSource        `yaml:"cronJobs"        validate:"omitempty"`
-	Secrets         []SecretTemplateSource         `yaml:"secrets"      validate:"omitempty"`
-	ConfigMaps      []ConfigMapTemplateSource      `yaml:"configMaps"      validate:"omitempty"`
-	ServiceAccounts []ServiceAccountTemplateSource `yaml:"serviceAccounts" validate:"omitempty"`
+	Deployments     []DeploymentTemplateSource     `yaml:"deployments" json:"deployments,omitempty" validate:"omitempty"`
+	Services        []ServiceTemplateSource        `yaml:"services" json:"services,omitempty" validate:"omitempty"`
+	Pods            []PodTemplateSource            `yaml:"pods" json:"pods,omitempty" validate:"omitempty"`
+	Jobs            []JobTemplateSource            `yaml:"jobs" json:"jobs,omitempty" validate:"omitempty"`
+	CronJobs        []CronJobTemplateSource        `yaml:"cronJobs" json:"cronJobs,omitempty" validate:"omitempty"`
+	Secrets         []SecretTemplateSource         `yaml:"secrets" json:"secrets,omitempty" validate:"omitempty"`
+	ConfigMaps      []ConfigMapTemplateSource      `yaml:"configMaps" json:"configMaps,omitempty" validate:"omitempty"`
+	ServiceAccounts []ServiceAccountTemplateSource `yaml:"serviceAccounts" json:"serviceAccounts,omitempty" validate:"omitempty"`
+
+	// External declares HTTP calls to make before resource creation.
+	// Results available as .external.<n>.status, .body, .error
+	External []ExternalCallSpec `yaml:"external,omitempty" json:"external,omitempty"`
+
+	// TODO: find a better location for it
+	// Ordered controls whether deletion happens sequentially with verification.
+	// true  — delete groups in order, verify each is gone before proceeding
+	// false — delete all resources via owner references (default, parallel)
+	Ordered bool `yaml:"ordered,omitempty" json:"ordered,omitempty"`
+
+	// TODO with placeholer
+	StatefulSets                []PlaceholderSource `yaml:"statefulSets" json:"statefulSets,omitempty" validate:"omitempty"`
+	ReplicaSets                 []PlaceholderSource `yaml:"replicaSets" json:"replicaSets,omitempty" validate:"omitempty"`
+	DaemonSets                  []PlaceholderSource `yaml:"daemonSets" json:"daemonSets,omitempty" validate:"omitempty"`
+	Ingresses                   []PlaceholderSource `yaml:"ingresses" json:"ingresses,omitempty" validate:"omitempty"`
+	NetworkPolicies             []PlaceholderSource `yaml:"networkPolicies" json:"networkPolicies,omitempty" validate:"omitempty"`
+	PersistentVolumes           []PlaceholderSource `yaml:"persistentVolumes" json:"persistentVolumes,omitempty" validate:"omitempty"`
+	PersistentVolumeClaims      []PlaceholderSource `yaml:"persistentVolumeClaims" json:"persistentVolumeClaims,omitempty" validate:"omitempty"`
+	Volumes                     []PlaceholderSource `yaml:"volumes" json:"volumes,omitempty" validate:"omitempty"`
+	VolumeMounts                []PlaceholderSource `yaml:"volumeMounts" json:"volumeMounts,omitempty" validate:"omitempty"`
+	Roles                       []PlaceholderSource `yaml:"roles" json:"roles,omitempty" validate:"omitempty"`
+	RoleBindings                []PlaceholderSource `yaml:"roleBindings" json:"roleBindings,omitempty" validate:"omitempty"`
+	ClusterRoles                []PlaceholderSource `yaml:"clusterRoles" json:"clusterRoles,omitempty" validate:"omitempty"`
+	ClusterRoleBindings         []PlaceholderSource `yaml:"clusterRoleBindings" json:"clusterRoleBindings,omitempty" validate:"omitempty"`
+	ServiceMonitors             []PlaceholderSource `yaml:"serviceMonitors" json:"serviceMonitors,omitempty" validate:"omitempty"`
+	PodDisruptionBudgets        []PlaceholderSource `yaml:"pdb" json:"pdb,omitempty" validate:"omitempty"`
+	PodSecurityPolicies         []PlaceholderSource `yaml:"podSecurityPolicies" json:"podSecurityPolicies,omitempty" validate:"omitempty"`
+	PriorityClasses             []PlaceholderSource `yaml:"priorityClasses" json:"priorityClasses,omitempty" validate:"omitempty"`
+	LimitRanges                 []PlaceholderSource `yaml:"limitRanges" json:"limitRanges,omitempty" validate:"omitempty"`
+	ResourceQuotas              []PlaceholderSource `yaml:"resourceQuotas" json:"resourceQuotas,omitempty" validate:"omitempty"`
+	RuntimeClasses              []PlaceholderSource `yaml:"runtimeClasses" json:"runtimeClasses,omitempty" validate:"omitempty"`
+	PriorityLevelConfigurations []PlaceholderSource `yaml:"priorityLevelConfigurations" json:"priorityLevelConfigurations,omitempty" validate:"omitempty"`
+	HorizontalPodAutoscalers    []PlaceholderSource `yaml:"hpa" json:"hpa,omitempty" validate:"omitempty"`
+	PodTemplates                []PlaceholderSource `yaml:"podTemplates" json:"podTemplates,omitempty" validate:"omitempty"`
+
+	// Storage
+	StorageClasses   []PlaceholderSource `yaml:"storageClasses" json:"storageClasses,omitempty" validate:"omitempty"`
+	StorageLocations []PlaceholderSource `yaml:"storageLocations" json:"storageLocations,omitempty" validate:"omitempty"`
+	StoragePools     []PlaceholderSource `yaml:"storagePools" json:"storagePools,omitempty" validate:"omitempty"`
+	StorageBackups   []PlaceholderSource `yaml:"storageBackups" json:"storageBackups,omitempty" validate:"omitempty"`
+	StorageSnapshots []PlaceholderSource `yaml:"storageSnapshots" json:"storageSnapshots,omitempty" validate:"omitempty"`
+	StorageVolumes   []PlaceholderSource `yaml:"storageVolumes" json:"storageVolumes,omitempty" validate:"omitempty"`
 }
+
+type PlaceholderSource struct{}
 
 // ── ReconcilerConfig ──────────────────────────────────────────────────────────
 
@@ -667,13 +1041,13 @@ type ReconcilerConfig struct {
 	// false — Custom reconciler. The user provides the full reconcile implementation.
 	//         Constructor must be declared (in YAML mode) or set directly (Go mode).
 	//         GenericReconciler is not used — the user owns the entire lifecycle.
-	Default bool `yaml:"default" validate:"omitempty"`
+	Default *bool `yaml:"default" json:"default,omitempty" validate:"omitempty"`
 
 	// Finalizers — per-CRD finalizer list. Overrides the Katalog-level finalizer.
 	// Applied by GenericReconciler when a CR is first created.
 	// Stripped one-by-one before delete to unblock Kubernetes garbage collection.
 	// If empty, falls back to the Katalog-level finalizer declaration.
-	Finalizers []string `yaml:"finalizers" validate:"omitempty"`
+	Finalizers []string `yaml:"finalizers" json:"finalizers,omitempty" validate:"omitempty"`
 
 	// ── YAML mode declarations ────────────────────────────────────────────────
 	// These fields declare where Go functions live in your codebase or in remote modules.
@@ -685,12 +1059,12 @@ type ReconcilerConfig struct {
 	// Use this when you want full Go control over reconcile logic.
 	// For declarative resource management without Go code, use OnCreate/OnReconcile/OnDelete.
 	// Only one of Hooks or OnCreate/OnReconcile/OnDelete should be used — not both.
-	Hooks *HookDeclaration `yaml:"hooks" validate:"omitempty"`
+	Hooks *HookDeclaration `yaml:"hooks" json:"hooks,omitempty" validate:"omitempty"`
 
 	// ConstructorDecl — declares a custom reconciler constructor for Default: false CRDs.
 	// The function at Location.Function must match: NewReconcilerFunc
 	// Required when Default: false in YAML mode.
-	ConstructorDecl *ConstructorDeclaration `yaml:"constructor" validate:"omitempty"`
+	ConstructorDecl *ConstructorDeclaration `yaml:"constructor" json:"constructor,omitempty" validate:"omitempty"`
 
 	// ── Declarative hook templates ────────────────────────────────────────────
 	// Only valid when Default: true and mode: dynamic.
@@ -700,29 +1074,42 @@ type ReconcilerConfig struct {
 	// Registered automatically in HookRegistry at startup via generated init().
 
 	// OnCreate — resources to create when the CR is first reconciled.
-	OnCreate *HookTemplates `yaml:"onCreate" validate:"omitempty"`
+	OnCreate *HookTemplates `yaml:"onCreate" json:"onCreate,omitempty" validate:"omitempty"`
 
 	// OnReconcile — drift correction resources applied on every reconcile.
 	// Omit if onCreate alone is sufficient.
-	OnReconcile *HookTemplates `yaml:"onReconcile" validate:"omitempty"`
+	OnReconcile *HookTemplates `yaml:"onReconcile" json:"onReconcile,omitempty" validate:"omitempty"`
 
 	// OnDelete — cleanup resources applied before finalizer removal.
 	// Omit for resources covered by owner reference cascade deletion.
-	OnDelete *HookTemplates `yaml:"onDelete" validate:"omitempty"`
-
-	// ── Go mode function references ───────────────────────────────────────────
-	// These fields are never set from YAML — tagged yaml:"-".
-	// In YAML mode: populated by addHooks() and addReconcilers() after registry lookup.
-	// In Go mode:   set directly in BuildKatalogFromGo() before calling Konduct().
+	OnDelete *HookTemplates `yaml:"onDelete" json:"onDelete,omitempty" validate:"omitempty"`
 
 	// HookFactory — called once at startCRDWorkers time to produce typed hooks.
 	// nil → GenericReconciler runs with no user hooks.
 	//       Finalizers, events, and metrics are still handled automatically.
-	HookFactory func() domain.AnyReconcileHooks `yaml:"-"`
+	HookFactory func() domain.AnyReconcileHooks `yaml:"-" json:"-"`
 
 	// Constructor — called once at startCRDWorkers time to build a custom reconciler.
 	// Must not be nil when Default: false — enforced by Katalog validation at startup.
-	Constructor NewReconcilerFunc `yaml:"-"`
+	Constructor NewReconcilerFunc `yaml:"-" json:"-"`
+
+	// Status declares how Orkestra manages the CR's /status subresource.
+	// nil (default): Layer 1 only — standard Ready condition after every reconcile.
+	// non-nil: Layer 1 + Layer 2 declarative fields from Status.Fields.
+	Status *StatusConfig `yaml:"status,omitempty" json:"status,omitempty"`
+
+	// ProviderBlocks holds the parsed provider declarations from the Katalog.
+	// Populated during Katalog loading via ParseProviderBlocks.
+	// Not a YAML field — parsed from RawProviders after unmarshal.
+	ProviderBlocks []ProviderBlock `yaml:"-" json:"-"`
+
+	// RawProviders is the raw YAML map, populated during unmarshal.
+	// Converted to ProviderBlocks in the Katalog loading step.
+	RawProviders map[string][]map[string]interface{} `yaml:"providers,omitempty" json:"providers,omitempty"`
+
+	// Cross declares cross-CRD observations.
+	// Read before any resource groups — results available as .cross.<as>.status.*
+	Cross []CrossCRDDeclaration `yaml:"cross,omitempty" json:"cross,omitempty"`
 }
 
 // HookDeclaration declares where a Go hook function lives.
@@ -731,15 +1118,15 @@ type ReconcilerConfig struct {
 type HookDeclaration struct {
 	// Location — fully qualified Go import path. Local or remote module.
 	// e.g. "github.com/myorg/hooks" or "github.com/ialexeze/orkestra/pkg/reconciler/hooks"
-	Location string `yaml:"location" validate:"required"`
+	Location string `yaml:"location" json:"location" validate:"required"`
 
 	// Function — exported function name at Location that returns hooks.
 	// e.g. "ProjectHooks"
-	Function string `yaml:"function" validate:"required"`
+	Function string `yaml:"function" json:"function" validate:"required"`
 
 	// Alias — Go import alias. Optional, auto-derived from Location if omitted.
 	// e.g. "projecthooks"
-	Alias string `yaml:"alias" validate:"omitempty"`
+	Alias string `yaml:"alias" json:"alias,omitempty" validate:"omitempty"`
 }
 
 // ConstructorDeclaration declares where a custom reconciler constructor lives.
@@ -747,14 +1134,113 @@ type HookDeclaration struct {
 // The declared function must match: NewReconcilerFunc
 type ConstructorDeclaration struct {
 	// Location — fully qualified Go import path. Local or remote module.
-	Location string `yaml:"location" validate:"required"`
+	Location string `yaml:"location" json:"location" validate:"required"`
 
 	// Function — exported constructor function name at Location.
 	// e.g. "NewManagedNamespaceReconciler"
-	Function string `yaml:"function" validate:"required"`
+	Function string `yaml:"function" json:"function" validate:"required"`
 
 	// Alias — Go import alias. Optional, auto-derived from Location if omitted.
-	Alias string `yaml:"alias" validate:"omitempty"`
+	Alias string `yaml:"alias" json:"alias,omitempty" validate:"omitempty"`
+}
+
+// ── DependsOn types ───────────────────────────────────────────────────────────
+
+// DependsOnCondition is the value in the dependsOn map.
+// Condition values: "started" (workers running) or "healthy" (running + consecutive failures = 0).
+type DependsOnCondition struct {
+	Condition string `yaml:"condition" json:"condition"`
+}
+
+// UnmarshalYAML handles Format 2 (scalar) and Format 3 (map) for a single dependency value.
+//
+//	database: healthy          ← Format 2: scalar
+//	database:                  ← Format 3: map
+//	  condition: healthy
+func (d *DependsOnCondition) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.MappingNode {
+		type plain DependsOnCondition
+		return value.Decode((*plain)(d))
+	}
+	if value.Kind == yaml.ScalarNode {
+		d.Condition = value.Value
+		return nil
+	}
+	return fmt.Errorf("dependsOn value must be a string or map, got kind %v", value.Kind)
+}
+
+// DependsOnMap is the internal representation of all dependsOn formats.
+// All three YAML formats unmarshal into this type.
+type DependsOnMap map[string]DependsOnCondition
+
+// UnmarshalYAML handles all three dependsOn formats:
+//
+//	Format 1 — list (condition defaults to "started"):
+//	  dependsOn:
+//	    - database
+//
+//	Format 2 — key-value map (condition explicit):
+//	  dependsOn:
+//	    database: healthy
+//
+//	Format 3 — full map:
+//	  dependsOn:
+//	    database:
+//	      condition: healthy
+func (m *DependsOnMap) UnmarshalYAML(value *yaml.Node) error {
+	*m = make(DependsOnMap)
+
+	// Format 1: sequence (list of names) → condition = "started"
+	if value.Kind == yaml.SequenceNode {
+		for _, item := range value.Content {
+			if item.Kind == yaml.ScalarNode {
+				(*m)[item.Value] = DependsOnCondition{Condition: "started"}
+			}
+		}
+		return nil
+	}
+
+	// Format 2 + 3: mapping node
+	if value.Kind == yaml.MappingNode {
+		for i := 0; i < len(value.Content)-1; i += 2 {
+			key := value.Content[i].Value
+			val := value.Content[i+1]
+
+			var cond DependsOnCondition
+			if err := val.Decode(&cond); err != nil {
+				return fmt.Errorf("dependsOn[%s]: %w", key, err)
+			}
+			if cond.Condition == "" {
+				cond.Condition = string(DependencyConditionStarted)
+			}
+			(*m)[key] = cond
+		}
+		return nil
+	}
+
+	return fmt.Errorf("dependsOn must be a list or map")
+}
+
+// Names returns the dependency names in sorted order.
+func (m DependsOnMap) Names() []string {
+	names := make([]string, 0, len(m))
+	for name := range m {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// ConditionHealthy returns true if the dependency condition is healthy
+func (m DependsOnMap) ConditionHealthy(name string) bool {
+	cond, ok := m[name]
+	return ok && cond.Condition == string(DependencyConditionHealthy)
+}
+
+// ConditionStarted returns true if the dependency condition is started
+func (m DependsOnMap) ConditionStarted(name string) bool {
+	cond, ok := m[name]
+	return ok && cond.Condition == string(DependencyConditionStarted)
 }
 
 // ── CRDEntry ──────────────────────────────────────────────────────────────────
@@ -770,29 +1256,29 @@ type CRDEntry struct {
 	// ── Identity ──────────────────────────────────────────────────────────────
 
 	// Name — unique CRD identifier within the Katalog. Must be lowercase.
-	// Used for routing, health endpoints (/katalog/{name}), and log context.
-	Name string `yaml:"name" validate:"required,hostname_rfc1123"`
+	// Injected from the map key during loading — never set from YAML.
+	Name string `yaml:"-" json:"name" validate:"required,hostname_rfc1123"`
 
 	// Enabled — include this CRD in the runtime. false = skipped entirely.
 	// WARNING: only set to false after stripping Orkestra finalizers from all
 	// live CRs — disabled CRDs with live finalizers will cause stuck objects.
-	Enabled bool `yaml:"enabled"`
+	Enabled *bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
 
 	// Critical — if true, Orkestra marks the entire controller as degraded when
 	// this CRD's health state transitions to degraded.
 	// Use for CRDs that are fundamental to the platform's correctness.
-	Critical bool `yaml:"critical"`
+	// Critical *bool `yaml:"critical" json:"critical,omitempty"`
 
 	// Description — human-readable description. Shown in /katalog API responses.
-	Description string `yaml:"description" validate:"omitempty"`
+	Description string `yaml:"description,omitempty" json:"description,omitempty" validate:"omitempty"`
 
 	// Mode — see CRDMode for full documentation.
 	// Auto-detected when omitted based on whether apiTypes.location is set.
-	Mode CRDMode `yaml:"mode" validate:"omitempty,oneof=typed dynamic"`
+	Mode CRDMode `yaml:"mode,omitempty" json:"mode,omitempty" validate:"omitempty,oneof=typed dynamic"`
 
 	// ── API Types ─────────────────────────────────────────────────────────────
 	// See APITypes for full field documentation.
-	APITypes APITypes `yaml:"apiTypes" validate:"required"`
+	APITypes APITypes `yaml:"apiTypes" json:"apiTypes" validate:"required"`
 
 	// ── Runtime objects ───────────────────────────────────────────────────────
 	// Set by addRuntimeObjects() during Katalog validation. Never set from YAML.
@@ -804,150 +1290,125 @@ type CRDEntry struct {
 	// Dynamic mode: DynamicModeObject and ListDynamicModeObject are factory functions
 	//                    that return *unstructured.Unstructured and *unstructured.UnstructuredList.
 	//                    These are always set by addRuntimeObjects() — never nil after validation.
-	TypedModeObject       runtime.Object        `yaml:"-"`
-	ListTypedModeObject   runtime.Object        `yaml:"-"`
-	DynamicModeObject     func() runtime.Object `yaml:"-"`
-	ListDynamicModeObject func() runtime.Object `yaml:"-"`
+	TypedModeObject       runtime.Object        `yaml:"-" json:"-"`
+	ListTypedModeObject   runtime.Object        `yaml:"-" json:"-"`
+	DynamicModeObject     func() runtime.Object `yaml:"-" json:"-"`
+	ListDynamicModeObject func() runtime.Object `yaml:"-" json:"-"`
 
 	// Scheme — AddToScheme function generated by controller-gen for this API type.
 	// Required for typed mode so the REST client can decode API server responses.
 	// Not needed for dynamic mode — the dynamic client bypasses scheme decoding.
 	// Set in BuildKatalogFromGo() for Go mode. Handled by RegisterScheme() for YAML mode.
-	Scheme func(s *runtime.Scheme) error `yaml:"-"`
+	Scheme func(s *runtime.Scheme) error `yaml:"-" json:"-"`
 
 	// ── Computed GVK/GVR ─────────────────────────────────────────────────────
 	// Set by setGroupVersionKind() during Katalog validation.
 	// Derived from APITypes fields. Never set manually.
-	GroupVersion         *schema.GroupVersion        `yaml:"-"`
-	GroupVersionKind     schema.GroupVersionKind     `yaml:"-"`
-	GroupVersionResource schema.GroupVersionResource `yaml:"-"`
+	GroupVersion         *schema.GroupVersion        `yaml:"-" json:"-"`
+	GroupVersionKind     schema.GroupVersionKind     `yaml:"-" json:"-"`
+	GroupVersionResource schema.GroupVersionResource `yaml:"-" json:"-"`
 
 	// ── Scope ─────────────────────────────────────────────────────────────────
 
 	// Namespaced — true if this CRD is namespace-scoped, false if cluster-scoped.
-	Namespaced bool `yaml:"namespaced"`
+	// Default is true
+	Namespaced *bool `yaml:"namespaced,omitempty" json:"namespaced,omitempty"`
 
 	// Namespace — target namespace for namespace-scoped CRDs.
 	// Informer watches this namespace only. Empty = all namespaces.
-	Namespace string `yaml:"namespace" validate:"omitempty"`
+	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty" validate:"omitempty"`
 
 	// ── Runtime behaviour ─────────────────────────────────────────────────────
 
 	// Workers — number of concurrent reconcile workers for this CRD.
 	// Higher values increase throughput but also increase API server load.
 	// 0 → uses Orkestra-level default (DEFAULT_WORKERS env var).
-	Workers int `yaml:"workers" validate:"omitempty,gte=1,lte=50"`
+	Workers int `yaml:"workers,omitempty" json:"workers,omitempty" validate:"omitempty,gte=1,lte=50"`
+
+	// WorkersActive — records number of active concurrent reconcile workers for this CRD.
+	WorkersActive int `yaml:"workersActive,omitempty" json:"workersActive,omitempty" validate:"omitempty,gte=1,lte=50"`
 
 	// Resync — full re-list interval for the informer cache.
 	// Triggers a reconcile for every cached object at this interval.
 	// 0 → uses Orkestra-level default (DEFAULT_RESYNC env var).
-	Resync time.Duration `yaml:"resync" validate:"omitempty"`
+	Resync time.Duration `yaml:"resync,omitempty" json:"resync,omitempty" validate:"omitempty"`
 
-	// DependsOn — names of other CRDs that must be fully started before this one.
+	// DependsOn — names of other CRDs that must reach a condition before this one starts.
 	// Orkestra resolves the dependency graph and starts CRDs in topological order.
 	// Cycle detection runs at validation time — cycles fail fast with a clear error.
-	DependsOn []string `yaml:"dependsOn"`
+	// Supports three YAML formats (list, key-value, full map) — see DependsOnMap.
+	DependsOn DependsOnMap `yaml:"dependsOn,omitempty" json:"dependsOn,omitempty"`
 
 	// ── Reconciler + Queue ────────────────────────────────────────────────────
-	ReconcilerConfig ReconcilerConfig `yaml:"reconciler"`
-	Queue            Queue            `yaml:"queue"`
+	ReconcilerConfig ReconcilerConfig `yaml:"reconciler,omitempty" json:"reconciler,omitempty"`
+	Queue            Queue            `yaml:"queue,omitempty" json:"queue,omitempty"`
+	Labels           []ResourceLabel  `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+
+	// IsBuiltIn is set to true when this CRD entry was enriched from the
+	// built-in Kubernetes resource registry. Used for ork validate output
+	// and informational logging only — does not affect runtime behavior.
+	IsBuiltIn bool `yaml:"-" json:"-"` // never serialized — runtime state only
+
+	// BuiltInGroup is the display name of the API group for built-in resources.
+	// "core" for resources in the core group (empty string group).
+	// Only set when IsBuiltIn is true.
+	BuiltInGroup string `yaml:"-" json:"-"` // never serialized
+
+	// EnrichmentOutcome records the result of the API type enrichment phase.
+	// During validation, built‑in Kubernetes kinds (e.g., Pod, Deployment, Secret)
+	// are automatically enriched with their full API metadata — group, version,
+	// plural, API path, and namespaced scope. This allows users to specify only:
+	//
+	//	apiTypes:
+	//	  kind: Pod
+	//
+	// and rely on Orkestra to resolve all remaining fields based on the
+	// Kubernetes discovery API. Custom resources are enriched using their declared
+	// group/version/kind. This field is never serialized and is used internally to
+	// report enrichment status and drive downstream runtime behavior.
+	EnrichmentOutcome EnrichmentOutcome `yaml:"-" json:"-"` // never serialized
+
+	// Endpoints defines which operator HTTP endpoints are enabled for this CRD.
+	Endpoints EndpointsConfig `yaml:"endpoints,omitempty" json:"endpoints,omitempty"`
+
+	// Restricted Namespaces
+	RestrictedNamespaces RestrictedNamespaces `yaml:"restrictedNamespaces,omitempty" json:"restrictedNamespaces,omitempty"`
+
+	// Conversion is useful for handling multi-version crd
+	Conversion *CRDConversion `yaml:"conversion,omitempty" json:"conversion,omitempty"`
+
+	// Validation is a list of rules
+	Validation *ValidationConfig `yaml:"validation,omitempty" json:"validation,omitempty"`
+
+	// Mutation is a list of rules
+	Mutation *MutationConfig `yaml:"mutation,omitempty" json:"mutation,omitempty"`
+
+	// Webhooks controls per-CRD admission webhook behaviour.
+	// Only meaningful when ENABLE_ADMISSION_WEBHOOK=true.
+	// By default, any CRD with Validation or Mutation rules is included
+	// in the corresponding webhook configuration automatically.
+	// Set validation: false or mutation: false to opt a specific CRD out of
+	// admission-time interception while keeping its reconcile-time enforcement.
+	Webhooks AdmissionWebhookConfig `yaml:"webhooks,omitempty" json:"webhooks,omitempty"`
 }
 
-// ── CRDEntry helpers ──────────────────────────────────────────────────────────
-func (c *CRDEntry) OrkMode() string {
-	if c.IsDynamic() {
-		return konfig.DynamicMode
-	}
-	return konfig.TypedMode
+type ConversionVersionSpec struct {
+	Version string                 `json:"version"`
+	Spec    map[string]interface{} `json:"spec"`
 }
 
-// GetRuntimeObjects returns the object and list constructors for the current Katalog mode.
-func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
-	return c.DynamicModeObject(), c.ListDynamicModeObject()
-}
-
-// Deprecated
-// YAML mode: returns DynamicModeObject() and ListDynamicModeObject() — set by addRuntimeObjects().
-// Go mode:   returns TypedModeObject and ListTypedModeObject — set in BuildKatalogFromGo().
-// func (c *CRDEntry) GetRuntimeObjects() (runtime.Object, runtime.Object) {
-// 	if c.IsDynamic() {
-// 		return c.DynamicModeObject(), c.ListDynamicModeObject()
-// 	}
-// 	return c.TypedModeObject, c.ListTypedModeObject
-// }
-
-// SetMaxQueueDepth returns the resolved queue depth for this CRD.
-// Returns the per-CRD value if explicitly set, otherwise the Orkestra-level default.
-func (c *CRDEntry) SetMaxQueueDepth(def int) int {
-	if c.Queue.MaxQueueDepth == 0 {
-		return def
-	}
-	return c.Queue.MaxQueueDepth
-}
-
-// SetWorkers returns the resolved worker count for this CRD.
-// Returns the per-CRD value if explicitly set, otherwise the Orkestra-level default.
-func (c *CRDEntry) SetWorkers(def int) int {
-	if c.Workers == 0 {
-		return def
-	}
-	return c.Workers
-}
-
-// IsDynamic returns true if this CRD uses dynamic mode.
+// EndpointsConfig controls which HTTP endpoints are exposed by the operator.
 //
-// Resolution order (first match wins):
-//  1. mode: dynamic explicitly declared → true
-//  2. mode: typed explicitly declared        → false
-//  3. apiTypes.location is empty             → true  (no compiled types available)
-//  4. apiTypes.location is set               → false (compiled types available)
-func (c *CRDEntry) IsDynamic() bool {
-	switch c.Mode {
-	case CRDModeDynamic:
-		return true
-	case CRDModeTyped:
-		return false
-	}
-	return c.APITypes.Location == ""
-}
+// This allows users to selectively enable/disable endpoints while keeping
+// the configuration minimal and declarative.
+type EndpointsConfig struct {
+	// Enabled if false disables all endpoints for this CRD
+	// Default is true
+	Enabled *bool `yaml:"enabled" json:"enabled,omitempty"`
 
-// HasTemplates returns true if any declarative hook templates are declared on this CRD.
-// Used by ork generate to decide whether to emit entries in __generated_runtime_hooks.go.
-func (c *CRDEntry) HasTemplates() bool {
-	rc := c.ReconcilerConfig
-	return rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil
-}
+	// Health controls whether the /health endpoint is served.
+	Health *bool `yaml:"health" json:"health,omitempty"`
 
-// GVK returns the computed GroupVersionKind. Shorthand for logging and routing.
-func (c *CRDEntry) GVK() schema.GroupVersionKind {
-	return c.GroupVersionKind
-}
-
-// GVR returns the computed GroupVersionResource. Used for dynamic client calls.
-func (c *CRDEntry) GVR() schema.GroupVersionResource {
-	return c.GroupVersionResource
-}
-
-// New Object
-func (c *CRDEntry) NewObject() runtime.Object {
-	if c.IsDynamic() {
-		return &unstructured.Unstructured{}
-	}
-
-	if c.TypedModeObject == nil {
-		return c.DynamicModeObject()
-	}
-	return c.TypedModeObject
-}
-
-// New List
-func (c *CRDEntry) NewList() runtime.Object {
-	if c.IsDynamic() {
-		return &unstructured.UnstructuredList{}
-	}
-
-	if c.ListTypedModeObject == nil {
-		return c.ListDynamicModeObject()
-	}
-	return c.ListTypedModeObject
+	// Info controls whether the /info endpoint is served.
+	Info *bool `yaml:"info" json:"info,omitempty"`
 }

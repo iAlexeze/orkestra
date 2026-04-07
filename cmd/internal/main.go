@@ -25,13 +25,13 @@ func Konduct(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	ko := konductor.NewKonductorElection(
 		startup.kube,
 		startup.event,
-		func(ctx context.Context) { startup.kontroller.RunOrDie(ctx) }, // kontroller run
+		func(ctx context.Context) { startup.kord.Kordinate(ctx) }, // kordinator kordination
 		func(konductor string) {
 			// Banner prints here — konductor is the actual winner
 			printBanner(startup, konductor)
 		},
 		konductor.Options{
-			Namespace:     kfg.Cluster().DefaultNamespace,
+			Namespace:     kfg.Konductor().Namespace,
 			LeaseDuration: kfg.Konductor().LeaseDuration,
 			RenewDeadline: kfg.Konductor().RenewDeadline,
 			RetryPeriod:   kfg.Konductor().RetryPeriod,

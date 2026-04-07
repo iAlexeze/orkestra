@@ -7,9 +7,11 @@ import (
 	"strconv"
 
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -136,8 +138,28 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	return nil
 }
 
+// DeleteIfOwned deletes the Service if it exists and is owned by the CR.
+func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+	owner domain.Object, name, namespace string) error {
+
+	existing, err := kube.Clientset().CoreV1().Services(namespace).
+		Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	// Only delete if we own it
+	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+		return nil
+	}
+	return kube.Clientset().CoreV1().Services(namespace).
+		Delete(ctx, name, metav1.DeleteOptions{})
+}
+
 // Resolve builds a ResolvedServiceSpec from a ServiceTemplateSource.
-// Option B — all fields already resolved by template.Resolver before calling here.
+// All fields already resolved by template.Resolver before calling here.
 // This function assembles the spec and applies defaults.
 func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServiceSpec {
 	spec := ResolvedServiceSpec{
@@ -178,8 +200,8 @@ func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServi
 	}
 
 	// System labels
-	spec.Labels["managed-by"] = "orkestra"
-	spec.Labels["orkestra-owner"] = ownerName
+	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
+	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
 
 	return spec
 }
@@ -225,8 +247,8 @@ func buildService(owner domain.Object, spec ResolvedServiceSpec, namespace strin
 					Kind:               kind,
 					Name:               owner.GetName(),
 					UID:                owner.GetUID(),
-					Controller:         boolPtr(true),
-					BlockOwnerDeletion: boolPtr(true),
+					Controller:         utils.BoolPtr(true),
+					BlockOwnerDeletion: utils.BoolPtr(true),
 				},
 			},
 		},
@@ -267,5 +289,3 @@ func resolveNamespace(owner domain.Object, spec ResolvedServiceSpec) string {
 	}
 	return "default"
 }
-
-func boolPtr(b bool) *bool { return &b }

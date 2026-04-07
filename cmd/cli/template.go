@@ -24,7 +24,7 @@ var templateCmd = &cobra.Command{
 		if _, err = k.KomposeKatalogFromYaml(m.m); err != nil {
 			return err
 		}
-		if _, err = k.ValidateConfig(); err != nil {
+		if _, err = k.ValidateConfig(kfg); err != nil {
 			return err
 		}
 
@@ -67,7 +67,7 @@ var templateCmd = &cobra.Command{
 			for _, crd := range crds {
 				fmt.Printf("  - %s", crd.Name)
 				if len(crd.DependsOn) > 0 {
-					fmt.Printf("  (depends on: %v)", strings.Join(crd.DependsOn, ", "))
+					fmt.Printf("  (depends on: %v)", strings.Join(crd.DependsOn.Names(), ", "))
 				}
 				fmt.Println()
 			}
@@ -79,9 +79,7 @@ var templateCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(templateCmd)
-	templateCmd.Flags().StringSlice("katalog", nil, "Path(s) or URL(s) to crd-katalog.yaml (repeatable)")
-	templateCmd.Flags().BoolP("verbose", "v", false, "Show full merged katalog output")
-	templateCmd.Flags().Bool("json", false, "Output CRDs as JSON")
-	templateCmd.Flags().Bool("yaml", false, "Output CRDs as YAML")
-	templateCmd.Flags().Bool("graph", false, "Show ASCII dependency graph")
+	templateCmd.Flags().BoolP("json", "j", false, "Output CRDs as JSON")
+	templateCmd.Flags().BoolP("yaml", "y", false, "Output CRDs as YAML")
+	templateCmd.Flags().BoolP("graph", "g", false, "Show ASCII dependency graph")
 }

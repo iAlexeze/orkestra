@@ -84,7 +84,7 @@ import (
 //
 // Reconciler entries — constructor functions for custom reconcilers.
 //   Called by addReconcilers() during Katalog validation to wire Constructor
-//   onto the CRD entry. DependencyKontroller calls Constructor() once at
+//   onto the CRD entry. DependencyKordinator calls Constructor() once at
 //   startCRDWorkers time to build the reconciler.
 func RegisterRuntimeObjects() {
 {{ range .Entries }}
@@ -162,7 +162,7 @@ func Runtime(m *merger.Merger, dryRun bool) error {
 	)
 
 	for _, crd := range crds {
-		if !crd.Enabled {
+		if !crd.IsEnabled() {
 			continue
 		}
 
@@ -208,7 +208,7 @@ func Runtime(m *merger.Merger, dryRun bool) error {
 		// This is NOT needed for declarative template CRDs — those are handled
 		// at runtime by GenericReconciler.runTemplateReconcile() with no
 		// registration required.
-		if crd.ReconcilerConfig.Default && crd.ReconcilerConfig.Hooks != nil {
+		if crd.DefaultReconcile() && crd.ReconcilerConfig.Hooks != nil {
 			h := crd.ReconcilerConfig.Hooks
 
 			if err := validateHookEntry(h, crd.Name); err != nil {
@@ -238,7 +238,7 @@ func Runtime(m *merger.Merger, dryRun bool) error {
 		// reconciler.default: false means the user owns the entire reconcile loop.
 		// We need to import their constructor and register it in ReconcilerRegistry
 		// so addReconcilers() can wire it at startup.
-		if !crd.ReconcilerConfig.Default {
+		if !crd.DefaultReconcile() {
 			if crd.ReconcilerConfig.ConstructorDecl == nil {
 				return fmt.Errorf(
 					"CRD %q: reconciler.default is false but no constructor declared — "+

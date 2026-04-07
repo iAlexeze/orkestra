@@ -2,7 +2,7 @@
 package katalog
 
 import (
-	"fmt"
+	// "fmt"
 
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
@@ -15,15 +15,38 @@ import (
 //	YAML Builder
 //
 // -----------------------------------------------------------------------------
-func (k *Katalog) KomposeKatalogFromYaml(m *merger.Merger, paths ...string) ([]orktypes.CRDEntry, error) {
+func (k *Katalog) KomposeKatalogFromYaml(m *merger.Merger, paths ...string) (map[string]orktypes.CRDEntry, error) {
 	k.Spec = m.ToSpec()
-	k.enabledCRDs = m.Enabled()
+	k.enabledCRDs = m.Enabled()           // Enabled CRDs for all operations
+	k.metadata = m.APIMetadata().Metadata // Metadata for CLI and health endpoints
+	k.APIVersion = m.APIMetadata().APIVersion
+	k.Kind = m.APIMetadata().Kind
+
+	// Enrich enabled CRDs — must copy back since map values are not addressable
+	for name, entry := range k.enabledCRDs {
+		outcome, err := EnrichCRDEntry(&entry)
+		if err != nil {
+			return nil, err
+		}
+		entry.EnrichmentOutcome = outcome
+		k.enabledCRDs[name] = entry
+	}
+
+	// initialize conversion registry and admission registry
+	k.conversionRegistry = NewInMemoryConversionRegistry()
+	k.admissionRegistry = NewInMemoryAdmissionRegistry()
+
+	// now safe to register rules
+	for _, entry := range k.Spec.CRDs {
+		k.admissionRegistry.RegisterAdmissionRulesFromEntry(entry)
+		k.conversionRegistry.registerConversionRulesFromSpec(entry)
+	}
 
 	return k.enabledCRDs, nil
 }
 
 // Validate Config
-func (k *Katalog) ValidateConfig() (*Katalog, error) {
+func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	// Validate config
 	// -------------------------------------------------------------------------
 	// 1. Field-level validation (required, DNS group, workers <= 5, etc.)
@@ -54,7 +77,7 @@ func (k *Katalog) ValidateConfig() (*Katalog, error) {
 		return nil, err
 	}
 
-	if err := k.setDefaults(); err != nil {
+	if err := k.setDefaults(kfg); err != nil {
 		return nil, err
 	}
 
@@ -62,7 +85,7 @@ func (k *Katalog) ValidateConfig() (*Katalog, error) {
 	// 5. Add Reconcilers		// ReconcilerRegistry → Constructor
 	// -------------------------------------------------------------------------
 	if err := k.addReconcilers(); err != nil {
-		logger.Error().Err(err).Msgf("Add Reconcilers error: %v", err)
+		logger.Error().Err(err).Msg("failed to add reconcilers")
 		return nil, err
 	}
 	// -------------------------------------------------------------------------
@@ -86,35 +109,4 @@ func (k *Katalog) ValidateConfig() (*Katalog, error) {
 		return nil, err
 	}
 	return k, nil
-}
-
-// Helpers
-func (k *Katalog) empty() bool {
-	return len(k.Spec.CRDs) == 0
-}
-
-func (k *Katalog) enabledEmpty() bool {
-	return len(k.enabledCRDs) == 0
-}
-
-// Filter enabled CRDs
-func (k *Katalog) filterEnabled() error {
-	if k.empty() {
-		return fmt.Errorf("Katalog is empty")
-	}
-
-	// Filter enabled CRDs
-	for _, crd := range k.Spec.CRDs {
-		if crd.Enabled {
-			k.enabledCRDs = append(k.enabledCRDs, crd)
-		} else {
-			logger.Warn().Msgf("%s disabled. skipping...", crd.Name)
-		}
-	}
-
-	if k.enabledEmpty() {
-		return fmt.Errorf("no enabled CRDs found")
-	}
-
-	return nil
 }

@@ -43,6 +43,11 @@ func parseKatalogDoc(doc []byte, source string) (*orktypes.KatalogFile, error) {
 		)
 	}
 
+	// Name is required irrespective of kind
+	if katalog.Metadata.Name == "" {
+		return nil, fmt.Errorf("%q: missing metadata.name", source)
+	}
+
 	return &katalog, nil
 }
 
@@ -53,3 +58,6 @@ func containsValidKind(doc []byte) bool {
 	return strings.Contains(s, fmt.Sprintf("kind: %s", konfig.KatalogKind())) ||
 		strings.Contains(s, fmt.Sprintf("kind: %s", konfig.KomposerKind()))
 }
+
+// Export
+var ParseKatalogDoc = parseKatalogDoc

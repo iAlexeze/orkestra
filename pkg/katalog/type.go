@@ -3,6 +3,7 @@ package katalog
 import (
 	"reflect"
 
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
@@ -18,7 +19,36 @@ var (
 // Structs
 // -----------------------------------------------------------------------------
 type Katalog struct {
+	APIVersion string               `yaml:"apiVersion"`
+	Kind       string               `yaml:"kind"`
+	metadata   orktypes.KatalogMeta `yaml:"-" json:"-"`
+
+	KomposerMetadata orktypes.KatalogMeta `yaml:"metadata"`
+
 	Spec orktypes.KatalogSpec `yaml:"spec"`
-	// Internal
-	enabledCRDs []orktypes.CRDEntry `yaml:"-"` // filtered
+	// Internal — enabledCRDs is enriched and validated; Spec.CRDs holds all (including disabled)
+	enabledCRDs        map[string]orktypes.CRDEntry `yaml:"-" json:"-"`
+	conversionRegistry *InMemoryConversionRegistry
+	admissionRegistry  *InMemoryAdmissionRegistry
+
+	// konfig for managing katalog-related user inputs from env
+	konfig *konfig.Konfig
+}
+
+func (k *Katalog) EnabledCRDs() map[string]orktypes.CRDEntry {
+	return k.enabledCRDs
+}
+
+// AllCRDs returns all CRDs including disabled ones (from Spec).
+func (k *Katalog) AllCRDs() map[string]orktypes.CRDEntry {
+	return k.Spec.CRDs
+}
+
+func (k *Katalog) Metadata() orktypes.KatalogMeta {
+	return k.metadata
+}
+
+// Empty katalog for testing
+func NewEmptyKatalog() *Katalog {
+	return &Katalog{}
 }

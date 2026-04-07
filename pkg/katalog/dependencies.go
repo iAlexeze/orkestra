@@ -3,24 +3,41 @@ package katalog
 
 import (
 	"fmt"
+	"sort"
+	"sync"
 
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
+// DependencyGraph represents the CRD dependency DAG for a Katalog.
+// Each CRD is a node, and edges represent "A must start before B" relationships.
+//
+// The graph is used to:
+//   - compute deterministic startup order (topological sort)
+//   - compute deterministic shutdown order (reverse topological sort)
+//   - validate dependency correctness (no cycles, no missing CRDs)
+//   - expose dependency metadata to the runtime
+//
+// The graph is immutable after construction.
 type DependencyGraph struct {
-	nodes   map[string]*Node
-	edges   map[string][]string
-	katalog *Katalog
+	nodes        map[string]*Node    // CRD name → node
+	edges        map[string][]string // dependency → list of dependents
+	katalog      *Katalog            // owning katalog
+	startupOrder []string            // cached topological order
+	once         sync.Once           // ensures StartupOrder is computed once
 }
 
+// Node represents a single CRD in the dependency graph.
 type Node struct {
 	Name      string
 	CRD       orktypes.CRDEntry
-	InDegree  int
-	OutDegree int
+	InDegree  int // number of CRDs this CRD depends on
+	OutDegree int // number of CRDs that depend on this CRD
 }
 
+// NewDependencyGraph constructs the dependency DAG for all enabled CRDs.
+// It validates that all declared dependencies exist and builds the adjacency lists.
 func NewDependencyGraph(katalog *Katalog) *DependencyGraph {
 	crds := katalog.enabledCRDs
 	g := &DependencyGraph{
@@ -29,22 +46,23 @@ func NewDependencyGraph(katalog *Katalog) *DependencyGraph {
 		katalog: katalog,
 	}
 
-	// Create nodes
-	for _, crd := range crds {
-		g.nodes[crd.Name] = &Node{
-			Name: crd.Name,
+	// Create nodes for each CRD
+	for name, crd := range crds {
+		g.nodes[name] = &Node{
+			Name: name,
 			CRD:  crd,
 		}
 	}
 
-	// Create edges
-	for _, crd := range crds {
-		for _, dep := range crd.DependsOn {
+	// Create directed edges: dep → dependent
+	// Example: if B depends on A, then edge A → B
+	for name, crd := range crds {
+		for dep := range crd.DependsOn {
 			if _, exists := g.nodes[dep]; !exists {
-				utils.Exit(fmt.Errorf("dependency %s not found for %s", dep, crd.Name))
+				utils.Exit(fmt.Errorf("dependency %s not found for %s", dep, name))
 			}
-			g.edges[dep] = append(g.edges[dep], crd.Name)
-			g.nodes[crd.Name].InDegree++
+			g.edges[dep] = append(g.edges[dep], name)
+			g.nodes[name].InDegree++
 			g.nodes[dep].OutDegree++
 		}
 	}
@@ -52,65 +70,103 @@ func NewDependencyGraph(katalog *Katalog) *DependencyGraph {
 	return g
 }
 
-// Topological sort for startup order
+// StartupOrder returns a deterministic topological ordering of CRDs.
+// CRDs with no dependencies appear first; dependents appear after their prerequisites.
+//
+// This order is used by the runtime to start CRDs in the correct sequence.
+//
+// The result is cached and computed only once.
 func (g *DependencyGraph) StartupOrder() []string {
-	var order []string
-	queue := []string{}
-
-	// Find nodes with no dependencies (in-degree 0)
-	for name, node := range g.nodes {
-		if node.InDegree == 0 {
-			queue = append(queue, name)
+	g.once.Do(func() {
+		// Copy indegree so we don't mutate original graph
+		indegree := make(map[string]int, len(g.nodes))
+		for name, node := range g.nodes {
+			indegree[name] = node.InDegree
 		}
-	}
 
-	for len(queue) > 0 {
-		current := queue[0]
-		queue = queue[1:]
-		order = append(order, current)
+		// Deterministic ordering: sort all node names
+		var names []string
+		for name := range g.nodes {
+			names = append(names, name)
+		}
+		sort.Strings(names)
 
-		for _, neighbor := range g.edges[current] {
-			g.nodes[neighbor].InDegree--
-			if g.nodes[neighbor].InDegree == 0 {
-				queue = append(queue, neighbor)
+		// Initialize queue with all nodes that have no dependencies
+		var queue []string
+		for _, name := range names {
+			if indegree[name] == 0 {
+				queue = append(queue, name)
 			}
 		}
-	}
 
-	if len(order) != len(g.nodes) {
-		utils.Exit(fmt.Errorf("circular dependency detected"))
-	}
+		var order []string
 
-	return order
+		// Kahn's algorithm (deterministic variant)
+		for len(queue) > 0 {
+			// Always pick the first (queue is kept sorted)
+			current := queue[0]
+			queue = queue[1:]
+
+			order = append(order, current)
+
+			// Process dependents in sorted order
+			neighbors := append([]string{}, g.edges[current]...)
+			sort.Strings(neighbors)
+
+			for _, neighbor := range neighbors {
+				indegree[neighbor]--
+				if indegree[neighbor] == 0 {
+					queue = append(queue, neighbor)
+				}
+			}
+
+			// Keep queue sorted for determinism
+			sort.Strings(queue)
+		}
+
+		if len(order) != len(g.nodes) {
+			utils.Exit(fmt.Errorf("circular dependency detected"))
+		}
+
+		g.startupOrder = order
+	})
+
+	return g.startupOrder
 }
 
-// Reverse topological sort for shutdown order
+// ShutdownOrder returns the reverse of the startup order.
+// This ensures CRDs are stopped only after all dependents have been drained.
 func (g *DependencyGraph) ShutdownOrder() []string {
 	// Reverse it
 	return utils.Reversed(g.StartupOrder())
 }
 
-// Constructors
+// GetNode returns the node for a CRD name.
 func (g *DependencyGraph) GetNode(name string) *Node {
 	return g.nodes[name]
 }
 
+// GetNodes returns all nodes in the graph.
 func (g *DependencyGraph) GetNodes() map[string]*Node {
 	return g.nodes
 }
 
+// GetEdges returns the adjacency list: dependency → dependents.
 func (g *DependencyGraph) GetEdges() map[string][]string {
 	return g.edges
 }
 
+// GetInDegree returns how many CRDs this CRD depends on.
 func (g *DependencyGraph) GetInDegree(name string) int {
 	return g.nodes[name].InDegree
 }
 
+// GetOutDegree returns how many CRDs depend on this CRD.
 func (g *DependencyGraph) GetOutDegree(name string) int {
 	return g.nodes[name].OutDegree
 }
 
+// GetDependents returns all CRDs that depend on the given CRD.
 func (g *DependencyGraph) GetDependents(name string) []string {
 	var dependents []string
 	for dep, deps := range g.edges {
@@ -123,6 +179,20 @@ func (g *DependencyGraph) GetDependents(name string) []string {
 	return dependents
 }
 
+// GetDependencies returns all CRDs that the given CRD depends on.
 func (g *DependencyGraph) GetDependencies(name string) []string {
 	return g.edges[name]
+}
+
+// Validate performs basic sanity checks on the graph.
+func (g *DependencyGraph) Validate() error {
+	for name, node := range g.nodes {
+		if node.InDegree < 0 {
+			return fmt.Errorf("negative in-degree for %s", name)
+		}
+		if node.OutDegree < 0 {
+			return fmt.Errorf("negative out-degree for %s", name)
+		}
+	}
+	return nil
 }

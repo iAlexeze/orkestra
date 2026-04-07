@@ -9,12 +9,12 @@ import (
 	"text/template"
 
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/note"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
 // Resolver evaluates Go text/template expressions against a live CR object.
 //
-// Option B inference — no explicit fromCRD/fromKatalog split required.
 // Any field value containing "{{" is treated as a template expression and
 // evaluated against the CR. Any value without "{{" is returned as-is.
 //
@@ -51,6 +51,15 @@ func NewResolver(ctx context.Context, obj domain.Object) (*Resolver, error) {
 	}, nil
 }
 
+// NewResolverFromMap creates a Resolver from a plain map[string]interface{}.
+// Used by conversion webhooks where we work with unstructured JSON.
+func NewResolverFromMap(data map[string]interface{}) *Resolver {
+	return &Resolver{
+		data: data,
+		// ownerName/ownerNamespace are optional here; only needed for defaults.
+	}
+}
+
 // Resolve evaluates a single field value against the CR.
 //
 // If value contains "{{" it is a template expression — evaluated
@@ -66,7 +75,9 @@ func (r *Resolver) Resolve(value string) (string, error) {
 		return value, nil
 	}
 
-	tmpl, err := template.New("f").Option("missingkey=zero").Parse(value)
+	tmpl, err := template.New("f").Option("missingkey=zero").
+		Funcs(note.Map()). // ← notes registered here, once per resolution
+		Parse(value)
 	if err != nil {
 		return "", fmt.Errorf("parsing %q: %w", value, err)
 	}
@@ -76,8 +87,28 @@ func (r *Resolver) Resolve(value string) (string, error) {
 		return "", fmt.Errorf("executing %q: %w", value, err)
 	}
 
-	return strings.TrimSpace(buf.String()), nil
+	// missingkey=zero makes missing map keys produce nil (interface{} zero value).
+	// Go's text/template renders nil interface{} as "<no value>", not "".
+	// Replace all occurrences so callers get "" as documented.
+	out := strings.TrimSpace(buf.String())
+	out = strings.ReplaceAll(out, "<no value>", "")
+	return out, nil
 }
+
+// ── Performance note ──────────────────────────────────────────────────────────
+//
+// note.Map() is called on every Resolve() call that contains "{{".
+// Each call allocates a new FuncMap. For high-throughput operators this
+// can be optimised by making the FuncMap a package-level variable:
+//
+//   var orkNotes = note.Map()
+//
+// And referencing it in Resolve():
+//   .Funcs(orkNotes)
+//
+// This is a safe optimisation — note.Map() is a pure function that always
+// returns the same map. The template engine does not modify the FuncMap
+// after registration.
 
 // ResolvePodTemplate resolves all template expressions in a PodTemplateSource.
 // Returns a new PodTemplateSource with all expressions evaluated — safe to pass
@@ -290,16 +321,50 @@ func (r *Resolver) ResolveSecretTemplate(src orktypes.SecretTemplateSource) (ork
 		}
 	}
 
+	// toNamespaces needs special handling.
+	// Each element is either:
+	//   a) A literal namespace name → resolve as string
+	//   b) A template expression that resolves to a string → resolve as string
+	//   c) A template expression that resolves to a []interface{} (list field) →
+	//      extract each element individually
+	//
+	// Case (c) is what happens when toNamespaces: ["{{ .spec.targetNamespaces }}"]
+	// where .spec.targetNamespaces is a YAML list in the CR.
+
 	for i, v := range src.ToNamespaces {
-		rv, e := r.Resolve(v)
-		if e != nil {
-			return resolved, fmt.Errorf("secret.toNamespaces[%d]: %w", i, e)
+		if !strings.Contains(v, "{{") {
+			// Static string — no resolution needed
+			if v != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
+			}
+			continue
 		}
-		if rv != "" {
-			resolved.ToNamespaces = append(resolved.ToNamespaces, rv)
+
+		// Template expression — check if it resolves to a list field
+		raw := resolveRawValue(r.data, v)
+		switch typed := raw.(type) {
+		case []interface{}:
+			// List field — extract each string element
+			for _, item := range typed {
+				if s, ok := item.(string); ok && s != "" {
+					resolved.ToNamespaces = append(resolved.ToNamespaces, s)
+				}
+			}
+		case string:
+			if typed != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, typed)
+			}
+		default:
+			// Fall back to string resolution
+			rv, e := r.Resolve(v)
+			if e != nil {
+				return resolved, fmt.Errorf("secret.toNamespaces[%d]: %w", i, e)
+			}
+			if rv != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, rv)
+			}
 		}
 	}
-
 	return resolved, nil
 }
 
@@ -337,6 +402,51 @@ func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource
 				return resolved, fmt.Errorf("configmap.data[%q]: %w", k, e)
 			}
 			resolved.Data[k] = rv
+		}
+	}
+
+	// toNamespaces needs special handling.
+	// Each element is either:
+	//   a) A literal namespace name → resolve as string
+	//   b) A template expression that resolves to a string → resolve as string
+	//   c) A template expression that resolves to a []interface{} (list field) →
+	//      extract each element individually
+	//
+	// Case (c) is what happens when toNamespaces: ["{{ .spec.targetNamespaces }}"]
+	// where .spec.targetNamespaces is a YAML list in the CR.
+
+	for i, v := range src.ToNamespaces {
+		if !strings.Contains(v, "{{") {
+			// Static string — no resolution needed
+			if v != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, v)
+			}
+			continue
+		}
+
+		// Template expression — check if it resolves to a list field
+		raw := resolveRawValue(r.data, v)
+		switch typed := raw.(type) {
+		case []interface{}:
+			// List field — extract each string element
+			for _, item := range typed {
+				if s, ok := item.(string); ok && s != "" {
+					resolved.ToNamespaces = append(resolved.ToNamespaces, s)
+				}
+			}
+		case string:
+			if typed != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, typed)
+			}
+		default:
+			// Fall back to string resolution
+			rv, e := r.Resolve(v)
+			if e != nil {
+				return resolved, fmt.Errorf("secret.toNamespaces[%d]: %w", i, e)
+			}
+			if rv != "" {
+				resolved.ToNamespaces = append(resolved.ToNamespaces, rv)
+			}
 		}
 	}
 

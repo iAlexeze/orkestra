@@ -2,12 +2,8 @@ package utils
 
 import (
 	"errors"
-	"fmt"
-	"io"
 	"math/rand/v2"
-	"net/http"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -34,7 +30,17 @@ func Sleep(n int) {
 	time.Sleep(time.Duration(n) * time.Second)
 }
 
-func Retry(fn func() error, attempts int, delay time.Duration) error {
+func BoolPtr(b bool) *bool { return &b }
+
+type RetryOptions struct {
+	Attempts int
+	Delay    time.Duration
+}
+
+func Retry(fn func() error, opts RetryOptions) error {
+	delay := opts.Delay
+	attempts := opts.Attempts
+
 	if attempts < 1 {
 		return errors.New("attempts must be >= 1")
 	}
@@ -61,8 +67,9 @@ func Jitter(d time.Duration) time.Duration {
 	return d + time.Duration(j)
 }
 
-func RetryBackoff(fn func() error, attempts int, base time.Duration) error {
-	delay := base
+func RetryBackoff(fn func() error, opts RetryOptions) error {
+	delay := opts.Delay
+	attempts := opts.Attempts
 
 	for i := 1; i <= attempts; i++ {
 		err := fn()
@@ -96,33 +103,4 @@ func Exit(err error) {
 		os.Stderr.WriteString(err.Error() + "\n")
 	}
 	os.Exit(1)
-}
-
-// LoadFile loads a file from local disk or HTTP(S)
-func LoadFile(path string) ([]byte, error) {
-	if path == "" {
-		return nil, fmt.Errorf("file path is empty")
-	}
-
-	// Remote file
-	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
-		resp, err := http.Get(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to download %s: %w", path, err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("remote file returned status %d", resp.StatusCode)
-		}
-
-		return io.ReadAll(resp.Body)
-	}
-
-	// Local file
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return nil, fmt.Errorf("file %s does not exist", path)
-	}
-
-	return os.ReadFile(path)
 }

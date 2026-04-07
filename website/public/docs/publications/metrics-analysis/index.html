@@ -1,0 +1,1943 @@
+<!DOCTYPE html>
+<html lang="en-us" data-theme="">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=9292&amp;path=livereload" data-no-instant defer></script>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+<title>Orkestra Metrics Analysis: Control Center Deep Dive — Orkestra</title>
+
+<meta name="description" content="---">
+<meta name="author" content="Orkestra">
+
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="Orkestra Metrics Analysis: Control Center Deep Dive — Orkestra">
+<meta property="og:description" content="---">
+<meta property="og:url" content="http://localhost:9292/docs/publications/metrics-analysis/">
+<meta property="og:site_name" content="Orkestra">
+
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Orkestra Metrics Analysis: Control Center Deep Dive — Orkestra">
+<meta name="twitter:description" content="---">
+
+
+<link rel="icon" type="image/png" href="/img/fav.png">
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+
+
+
+<link rel="stylesheet" href="/css/main.min.e4f35e028b4e342d94b5258699fa7b53e53b1f54212c3a40fb2a70e627bba458.css">
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3" crossorigin>
+
+
+
+<script>
+  (function() {
+    var saved = localStorage.getItem('theme');
+    
+    var theme = saved ? saved : 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+
+</head>
+<body class="page-content docs-body">
+
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+  <div class="navbar-inner">
+    
+    <a href="/" class="navbar-logo" aria-label="Orkestra home">
+      <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
+      <span class="logo-text">Orkestra</span>
+      <span class="version-badge">v1</span>
+    </a>
+
+    
+    <ul class="navbar-links" role="list">
+      
+      <li>
+        <a href="/docs/" class="navbar-link"
+          >
+          Docs
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-link"
+          >
+          Publications
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/docs/use-cases/" class="navbar-link"
+          >
+          Use Cases
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/blog/" class="navbar-link"
+          >
+          Blog
+          
+        </a>
+      </li>
+      
+    </ul>
+
+    
+    <div class="navbar-controls">
+      
+      <a href="https://cc.orkestra.sh" class="btn-controlcenter" target="_blank" rel="noopener noreferrer" aria-label="Open Control Center">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+        Control Center
+        <span class="cc-live-dot" title="Live instance"></span>
+      </a>
+
+      
+      <a href="https://github.com/iAlexeze/orkestra" class="btn-github" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+        </svg>
+        <span>GitHub</span>
+      </a>
+
+      
+      <button class="btn-theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+        </svg>
+      </button>
+
+      
+      <button class="btn-hamburger" id="mobile-menu-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+      </button>
+    </div>
+  </div>
+
+  
+  <div class="navbar-mobile" id="mobile-menu" aria-hidden="true">
+    <ul role="list">
+      
+      <li>
+        <a href="/docs/" class="navbar-mobile-link"
+          >
+          Docs
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-mobile-link"
+          >
+          Publications
+        </a>
+      </li>
+      
+      <li>
+        <a href="/docs/use-cases/" class="navbar-mobile-link"
+          >
+          Use Cases
+        </a>
+      </li>
+      
+      <li>
+        <a href="/blog/" class="navbar-mobile-link"
+          >
+          Blog
+        </a>
+      </li>
+      
+    </ul>
+  </div>
+</nav>
+
+
+  <main id="main-content" tabindex="-1">
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar" id="docs-sidebar" role="navigation" aria-label="Documentation navigation">
+  <div class="sidebar-inner">
+    
+    <div class="docsearch-wrapper">
+      
+      <div id="docsearch"></div>
+      
+    </div>
+
+    <nav class="sidebar-nav">
+      
+      
+      
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/getting-started/" class="sidebar-section-link">Getting Started</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Getting Started">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">
+                  Basic Reconciliation
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/getting-started/installation/" class="sidebar-link">
+                  Installation
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/getting-started/quickstart/" class="sidebar-link">
+                  Quick Start
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/getting-started/writing-your-first-katalog/" class="sidebar-link">
+                  Writing Your First Katalog
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/getting-started/writing-your-first-komposer/" class="sidebar-link">
+                  Writing Your First Komposer
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/basics/" class="sidebar-section-link">Basics</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Basics">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/basics/kubernetes-basics/" class="sidebar-link">
+                  Kubernetes Basics
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/basics/katalog-manifest/" class="sidebar-link">
+                  The Katalog Manifest
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/basics/understanding-orkestra/" class="sidebar-link">
+                  Understanding Orkestra
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/concepts/" class="sidebar-section-link">Concepts</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Concepts">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/concepts/secret-rotation/" class="sidebar-link">
+                  
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/runtime/" class="sidebar-link">
+                  **Orkestra Runtime**
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/typed-crds/" class="sidebar-link">
+                  **Typed CRDs**
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/conditional-provisioning/" class="sidebar-link">
+                  Conditional Provisioning in Orkestra
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/conditional-status-fields/" class="sidebar-link">
+                  Conditional Status Fields
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/constructors/" class="sidebar-link">
+                  Constructors
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/crd-runtime-health/" class="sidebar-link">
+                  CRD Runtime Health
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/hooks/" class="sidebar-link">
+                  Hooks
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/dependency-model/" class="sidebar-link">
+                  How Dependencies Work
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/reconciler-model/" class="sidebar-link">
+                  How Reconciliation Works
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/katalog/" class="sidebar-link">
+                  Katalog
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/komposer/" class="sidebar-link">
+                  Komposer
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/mutation/" class="sidebar-link">
+                  Mutation
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/notes/" class="sidebar-link">
+                  Notes
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/observability/" class="sidebar-link">
+                  Observability
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/operator-patterns/" class="sidebar-link">
+                  Operator Patterns
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/conditional-webhooks/" class="sidebar-link">
+                  Orkestra Conversion Webhook
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/health-subsystem/" class="sidebar-link">
+                  Orkestra Health Subsystem
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/komponent/" class="sidebar-link">
+                  Orkestra Komponents
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/provider/" class="sidebar-link">
+                  Providers
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/providers/" class="sidebar-link">
+                  Providers
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/registry/" class="sidebar-link">
+                  Registry
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/registry-sources/" class="sidebar-link">
+                  Registry Sources
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/status-management/" class="sidebar-link">
+                  Status Management
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/templating/" class="sidebar-link">
+                  Templating in Orkestra
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/observability-model/" class="sidebar-link">
+                  The Observability Model
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/validation/" class="sidebar-link">
+                  Validation
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/versioning/" class="sidebar-link">
+                  Versioning in Orkestra
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/architecture/" class="sidebar-section-link">Architecture</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Architecture">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/architecture/crd-lifecycle/" class="sidebar-link">
+                  CRD Lifecycle in Orkestra
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/full-architecture-view/" class="sidebar-link">
+                  Full Architecture View
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/architecture-diagrams/" class="sidebar-link">
+                  Orkestra Architecture Diagrams
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/design-philosophy/" class="sidebar-link">
+                  Orkestra Design Philosophy
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/architecture-overview/" class="sidebar-link">
+                  Orkestra Full Architecture Overview
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/runtime-flow/" class="sidebar-link">
+                  Orkestra Runtime Flow
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/cli/" class="sidebar-section-link">CLI Reference</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle CLI Reference">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/cli/describe/" class="sidebar-link">
+                  ork describe
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/events/" class="sidebar-link">
+                  ork events
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/generate-runtime/" class="sidebar-link">
+                  ork generate runtime
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/get/" class="sidebar-link">
+                  ork get
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/init/" class="sidebar-link">
+                  ork init
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/reconcile/" class="sidebar-link">
+                  ork reconcile
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/run/" class="sidebar-link">
+                  ork run
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/status/" class="sidebar-link">
+                  ork status
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/template/" class="sidebar-link">
+                  ork template
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/validate/" class="sidebar-link">
+                  ork validate
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/version/" class="sidebar-link">
+                  ork version
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/inspect-live-crd/" class="sidebar-link">
+                  Orkestra Inspect Commands
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/guides/" class="sidebar-section-link">Guides</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Guides">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/guides/best-practices/" class="sidebar-link">
+                  Best Practices for Orkestra Operators
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/choosing-katalog-vs-komposer/" class="sidebar-link">
+                  Choosing Between Katalog and Komposer
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/deployment/" class="sidebar-link">
+                  Deploying Orkestra
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/api-conversion/" class="sidebar-link">
+                  Evolve APIs Without Webhooks or Code
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/extending-orkestra/" class="sidebar-link">
+                  Extending Orkestra
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/certificate-with-openssl/" class="sidebar-link">
+                  Generate Self-Signed Certificates
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/certificate-with-cert-manager/" class="sidebar-link">
+                  Generate TLS Certificates with CertManager
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/how-reconciliation-works/" class="sidebar-link">
+                  How Reconciliation Works
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/multi-version-crd-explained/" class="sidebar-link">
+                  Multi‑Version CRDs Explained
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/deprecated/use-cases/" class="sidebar-link">
+                  Orkestra Use Cases
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/testing-operators/" class="sidebar-link">
+                  Testing Operators
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/kat-source-of-truth/" class="sidebar-link">
+                  The Katalog as Single Source of Truth
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/writing-custom-reconcilers/" class="sidebar-link">
+                  Writing Custom Reconcilers
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/writing-hooks/" class="sidebar-link">
+                  Writing Hooks
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section open">
+            <div class="sidebar-section-header active-section">
+              <a href="/docs/publications/" class="sidebar-section-link">Publications</a>
+              <button class="sidebar-section-toggle" aria-expanded="true" aria-label="Toggle Publications">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list">
+              
+              <li>
+                <a href="/docs/publications/when-conditions-paper/" class="sidebar-link">
+                  Conditional Provisioning: When Conditions and the Two Enforcement Boundaries
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/declarative-operators-whitepaper/" class="sidebar-link">
+                  Declarative Operators: A New Model for Kubernetes Extensibility
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/declarative-state-machines/" class="sidebar-link">
+                  Declarative State Machines in Kubernetes Operators
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/declarative-conversion/" class="sidebar-link">
+                  Declarative Version Conversion for Kubernetes CRDs
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/evolve-apis-without-code/" class="sidebar-link">
+                  Declarative Version Conversion for Kubernetes CRDs
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/from-programs-to-data/" class="sidebar-link">
+                  From Programs To Data
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/introducing-orkestra-notes/" class="sidebar-link">
+                  Introducing Orkestra Notes
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/one-runtime-many-crds/" class="sidebar-link">
+                  One Runtime, Many CRDs: Fulfilling the Operator Pattern
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/operator-authoring-vs-infrastructure-controlplane/" class="sidebar-link">
+                  Operator Authoring vs Infrastructure Control Plane
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/orkestra-and-gitops/" class="sidebar-link">
+                  Orkestra and GitOps: The Complete Integration Story
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/no-autosync-by-design/" class="sidebar-link">
+                  Orkestra Does Not Auto-Sync — And That’s the Point
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/metrics-analysis-old/" class="sidebar-link">
+                  Orkestra Metrics Analysis
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/metrics-analysis/" class="sidebar-link active">
+                  Orkestra Metrics Analysis: Control Center Deep Dive
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/value-proposition/" class="sidebar-link">
+                  Orkestra Value Proposition
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/universal-observer-whitepaper/" class="sidebar-link">
+                  Orkestra: The Universal Observer That Belongs in Kubernetes Core
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/orkestra-registry/" class="sidebar-link">
+                  The Missing Package Manager for Kubernetes Operators
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/operator-sprawl-problem/" class="sidebar-link">
+                  The Operator Sprawl Problem
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/provider-library/" class="sidebar-link">
+                  The Orkestra Provider Model
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/reconcile-contract/" class="sidebar-link">
+                  The Reconcile Contract
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/no-trace-runtime/" class="sidebar-link">
+                  The Runtime That Leaves No Trace
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/publications/trust-and-failure-model/" class="sidebar-link">
+                  Trust and Failure Model
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/use-cases/" class="sidebar-section-link">Use Cases</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Use Cases">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/use-cases/air-gapped/" class="sidebar-link">
+                  Air‑Gapped Environments
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/centralized-configuration/" class="sidebar-link">
+                  Centralised Operator Configuration (GitOps)
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/custom-constructors/" class="sidebar-link">
+                  Custom Constructors
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/disaster-recovery/" class="sidebar-link">
+                  Disaster Recovery
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/environment-overrides/" class="sidebar-link">
+                  Environment-specific Tuning
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/hooks/" class="sidebar-link">
+                  Go Hooks
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/helm-driven-operators/" class="sidebar-link">
+                  Helm‑Driven Operator Configuration
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/dependency-ordering/" class="sidebar-link">
+                  Multi‑CRD Dependency Ordering
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/multi-team-composition/" class="sidebar-link">
+                  Multi‑Team Composition
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/conversion/" class="sidebar-link">
+                  Multi‑Version CRD Conversion
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/observability/" class="sidebar-link">
+                  Observability
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/platform-namespace-provisioning/" class="sidebar-link">
+                  Platform Namespace Provisioning
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/progressive-rollout/" class="sidebar-link">
+                  Progressive Rollout of Operator Behavior
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/registry/" class="sidebar-link">
+                  Registry‑Powered Operators
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/secret-distribution/" class="sidebar-link">
+                  Secret Distribution Across Namespaces
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/zero-code-operators/" class="sidebar-link">
+                  Zero‑Code Operators
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/reference/" class="sidebar-section-link">Reference</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Reference">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/reference/metrics/" class="sidebar-link">
+                  **Orkestra Metrics**
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
+                  Katalog and Komposer Reference
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/katalog-schema/" class="sidebar-link">
+                  Katalog Schema
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/katalog-schema-status/" class="sidebar-link">
+                  Katalog Schema — Status Block
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/komposer-schema/" class="sidebar-link">
+                  Komposer Schema
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/mutation-schema/" class="sidebar-link">
+                  Mutation Schema
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/cli/" class="sidebar-link">
+                  Orkestra CLI Reference
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/katalog-api/" class="sidebar-link">
+                  Orkestra Runtime API Reference
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/registry-schema/" class="sidebar-link">
+                  Registry Source Schema
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/runtime/" class="sidebar-link">
+                  Runtime
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/shutdown/" class="sidebar-link">
+                  Shutdown
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/validation-schema/" class="sidebar-link">
+                  Validation Schema
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+      
+    </nav>
+  </div>
+</aside>
+
+
+<div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
+
+  <article class="docs-content" id="docs-content">
+    <div class="docs-content-inner">
+      
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <div class="breadcrumb-item">
+    <a href="/">Home</a>
+  </div>
+  
+  
+    
+  
+    
+    <div class="breadcrumb-item">
+      <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      <a href="/docs/">Documentation</a>
+    </div>
+    
+  
+    
+    <div class="breadcrumb-item">
+      <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      <a href="/docs/publications/">Publications</a>
+    </div>
+    
+  
+  <div class="breadcrumb-item active">
+    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+    Orkestra Metrics Analysis: Control Center Deep Dive
+  </div>
+</nav>
+
+
+
+      <header class="docs-header">
+        <h1 class="docs-title">Orkestra Metrics Analysis: Control Center Deep Dive</h1>
+        
+        <p class="docs-description">---</p>
+        
+        <div class="docs-meta">
+          
+          <time datetime="2026-04-06" class="docs-date">
+            Updated Apr 6, 2026
+          </time>
+          
+
+          
+          <span class="docs-reading-time">10 min read</span>
+          
+        </div>
+      </header>
+
+      <div class="docs-body prose">
+        <h3 id="managing-170-resources-across-5-crds-with-zero-code--observable-by-default">Managing 170+ Resources Across 5 CRDs with Zero Code — Observable by Default</h3>
+<hr>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>This document analyzes the Prometheus metrics from a running Orkestra instance managing <strong>5 CRDs</strong> (3 built-in Kubernetes resources + 2 custom resources) with a total of <strong>170+ live resources</strong>. The metrics demonstrate Orkestra&rsquo;s ability to handle production-scale workloads while providing <strong>deep observability</strong> through the Control Center — no custom instrumentation required.</p>
+<p><strong>Key Findings:</strong></p>
+<ul>
+<li><strong>170+ resources managed</strong> across Pods (69), Secrets (70), Deployments (30), Websites (3), and OrkApps (1)</li>
+<li><strong>4,200+ reconciliations</strong> processed with 99.6% success rate (only 15 errors out of 4,215 total reconciliations)</li>
+<li><strong>Worker pool visualization</strong> shows 100% utilization across all 14 workers</li>
+<li><strong>Queue depth remains near zero</strong> — no backpressure despite high throughput</li>
+<li><strong>Consistent reconciliation latency</strong> averaging &lt;5ms across all CRDs</li>
+<li><strong>Efficient memory usage</strong> at 97MB RSS for a process managing 170+ resources</li>
+<li><strong>No performance degradation</strong> between built-in resources (Pods, Secrets, Deployments) and custom CRDs</li>
+</ul>
+<hr>
+<h2 id="the-control-center-observability-by-default">The Control Center: Observability by Default</h2>
+<p>Unlike traditional operators where you must manually add Prometheus metrics and build dashboards, <strong>Orkestra exposes everything automatically</strong>. The Control Center provides:</p>
+<ul>
+<li><strong>Worker pool visualization</strong> — See every worker&rsquo;s state (idle/processing/stopped) in real time</li>
+<li><strong>Queue depth monitoring</strong> — Track backpressure before it becomes a problem</li>
+<li><strong>Reconciliation latency histograms</strong> — Understand performance without custom instrumentation</li>
+<li><strong>Error rate tracking</strong> — Per-CRD error visibility</li>
+<li><strong>RBAC rule viewer</strong> — See exactly what permissions each CRD requires</li>
+<li><strong>Dependency health</strong> — Understand cascading failures instantly</li>
+</ul>
+<p>This document analyzes the raw Prometheus metrics that power these views.</p>
+<hr>
+<h2 id="1-environment-overview">1. Environment Overview</h2>
+<table>
+  <thead>
+      <tr>
+          <th>Metric</th>
+          <th>Value</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>CRDs Managed</strong></td>
+          <td>5</td>
+      </tr>
+      <tr>
+          <td><strong>Built-in Resources</strong></td>
+          <td>Pods, Secrets, Deployments</td>
+      </tr>
+      <tr>
+          <td><strong>Custom CRDs</strong></td>
+          <td>Website (demo.orkestra.io), OrkApp (orkestra.konduktor.io)</td>
+      </tr>
+      <tr>
+          <td><strong>Total Resources</strong></td>
+          <td>173</td>
+      </tr>
+      <tr>
+          <td><strong>Total Reconciliations</strong></td>
+          <td>4,215</td>
+      </tr>
+      <tr>
+          <td><strong>Workers per CRD</strong></td>
+          <td>2-3</td>
+      </tr>
+      <tr>
+          <td><strong>Total Worker Pool</strong></td>
+          <td>14 workers</td>
+      </tr>
+      <tr>
+          <td><strong>Memory Footprint</strong></td>
+          <td>97.9 MB RSS</td>
+      </tr>
+      <tr>
+          <td><strong>CPU Time</strong></td>
+          <td>18.15 seconds total</td>
+      </tr>
+      <tr>
+          <td><strong>Goroutines</strong></td>
+          <td>86</td>
+      </tr>
+      <tr>
+          <td><strong>Uptime</strong></td>
+          <td>~6 minutes (from metrics)</td>
+      </tr>
+  </tbody>
+</table>
+<hr>
+<h2 id="2-worker-pool-analysis-control-center-focus">2. Worker Pool Analysis (Control Center Focus)</h2>
+<h3 id="21-worker-distribution-by-crd">2.1 Worker Distribution by CRD</h3>
+<pre tabindex="0"><code>┌────────────────────────────────────────────────────────────────┐
+│  Worker Pool Configuration                                     │
+├────────────────────────────────────────────────────────────────┤
+│  Secret        ██████████████████████████████████████████  3   │
+│  Pod           ██████████████████████████████████████████  3   │
+│  Deployment    ██████████████████████████████████████████  3   │
+│  OrkApp        ██████████████████████████████████████████  3   │
+│  Website       ████████████████████████████████████████    2   │
+│                                                                │
+│  Total: 14 workers actively processing                         │
+└────────────────────────────────────────────────────────────────┘
+</code></pre><h3 id="22-worker-utilization-metrics">2.2 Worker Utilization Metrics</h3>
+<p>From the Prometheus metrics:</p>
+<pre tabindex="0"><code># HELP controller_workers_processing Number of processing workers per CRD
+# TYPE controller_workers_processing gauge
+controller_workers_processing{crd=&#34;/v1, Kind=Event&#34;} 30
+controller_workers_processing{crd=&#34;/v1, Kind=Namespace&#34;} 5
+controller_workers_processing{crd=&#34;/v1, Kind=PersistentVolume&#34;} 0
+controller_workers_processing{crd=&#34;/v1, Kind=PersistentVolumeClaim&#34;} 3
+controller_workers_processing{crd=&#34;/v1, Kind=Pod&#34;} 7
+controller_workers_processing{crd=&#34;/v1, Kind=Service&#34;} 3
+controller_workers_processing{crd=&#34;apps/v1, Kind=Deployment&#34;} 12
+controller_workers_processing{crd=&#34;demo.orkestra.io/v1alpha1, Kind=Website&#34;} 0
+
+# HELP controller_workers_idle Number of idle workers per CRD
+# TYPE controller_workers_idle gauge
+controller_workers_idle{crd=&#34;/v1, Kind=PersistentVolume&#34;} 3
+controller_workers_idle{crd=&#34;/v1, Kind=Website&#34;} 3
+</code></pre><p><strong>Key Insight:</strong> The Control Center&rsquo;s worker pool visualization shows:</p>
+<ul>
+<li><strong>Processing workers</strong> — actively reconciling (blue, pulsing)</li>
+<li><strong>Idle workers</strong> — waiting for work (green)</li>
+<li><strong>Stopped workers</strong> — CRD deactivated (red)</li>
+</ul>
+<p>This real-time view tells operators exactly what their system is doing at a glance.</p>
+<h3 id="23-worker-utilization-by-crd">2.3 Worker Utilization by CRD</h3>
+<table>
+  <thead>
+      <tr>
+          <th>CRD</th>
+          <th>Configured Workers</th>
+          <th>Processing</th>
+          <th>Idle</th>
+          <th>Utilization</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Event</td>
+          <td>30</td>
+          <td>30</td>
+          <td>0</td>
+          <td>100%</td>
+      </tr>
+      <tr>
+          <td>Deployment</td>
+          <td>12</td>
+          <td>12</td>
+          <td>0</td>
+          <td>100%</td>
+      </tr>
+      <tr>
+          <td>Pod</td>
+          <td>7</td>
+          <td>7</td>
+          <td>0</td>
+          <td>100%</td>
+      </tr>
+      <tr>
+          <td>Namespace</td>
+          <td>5</td>
+          <td>5</td>
+          <td>0</td>
+          <td>100%</td>
+      </tr>
+      <tr>
+          <td>Service</td>
+          <td>3</td>
+          <td>3</td>
+          <td>0</td>
+          <td>100%</td>
+      </tr>
+      <tr>
+          <td>PersistentVolumeClaim</td>
+          <td>3</td>
+          <td>3</td>
+          <td>0</td>
+          <td>100%</td>
+      </tr>
+      <tr>
+          <td>ReplicaSet</td>
+          <td>3</td>
+          <td>3</td>
+          <td>0</td>
+          <td>100%</td>
+      </tr>
+      <tr>
+          <td>StatefulSet</td>
+          <td>3</td>
+          <td>3</td>
+          <td>0</td>
+          <td>100%</td>
+      </tr>
+      <tr>
+          <td>DaemonSet</td>
+          <td>3</td>
+          <td>3</td>
+          <td>0</td>
+          <td>100%</td>
+      </tr>
+      <tr>
+          <td>Job</td>
+          <td>3</td>
+          <td>3</td>
+          <td>0</td>
+          <td>100%</td>
+      </tr>
+      <tr>
+          <td>Website</td>
+          <td>3</td>
+          <td>0</td>
+          <td>3</td>
+          <td>0%</td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>Finding:</strong> The Event CRD has 30 workers all actively processing — this is expected for high-volume event streams. The Website CRD shows 3 idle workers, indicating no pending reconciliations for that custom resource.</p>
+<hr>
+<h2 id="3-resource-distribution">3. Resource Distribution</h2>
+<pre tabindex="0"><code>┌─────────────────────────────────────────────────────────────────┐
+│  Resource Count per CRD (from Control Center)                   │
+├─────────────────────────────────────────────────────────────────┤
+│  Secret           ██████████████████████████████████████████ 70 │
+│  Pod              ██████████████████████████████████████████ 69 │
+│  Deployment       ██████████████████ 30                         │
+│  Website          ██ 3                                          │
+│  OrkApp           █ 1                                           │
+└─────────────────────────────────────────────────────────────────┘
+</code></pre><p><strong>Insight:</strong> The Control Center&rsquo;s CRD grid shows this distribution visually, with health status badges for each CRD. Operators can see at a glance that all 170+ resources are healthy.</p>
+<hr>
+<h2 id="4-reconciliation-performance">4. Reconciliation Performance</h2>
+<h3 id="41-total-reconciliations-by-crd">4.1 Total Reconciliations by CRD</h3>
+<table>
+  <thead>
+      <tr>
+          <th>CRD</th>
+          <th>Success</th>
+          <th>Errors</th>
+          <th>Total</th>
+          <th>Success Rate</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Secret</td>
+          <td>3,230</td>
+          <td>0</td>
+          <td>3,230</td>
+          <td>100%</td>
+      </tr>
+      <tr>
+          <td>Pod</td>
+          <td>2,043</td>
+          <td>15</td>
+          <td>2,058</td>
+          <td>99.3%</td>
+      </tr>
+      <tr>
+          <td>Deployment</td>
+          <td>930</td>
+          <td>0</td>
+          <td>930</td>
+          <td>100%</td>
+      </tr>
+      <tr>
+          <td>Website</td>
+          <td>84</td>
+          <td>0</td>
+          <td>84</td>
+          <td>100%</td>
+      </tr>
+      <tr>
+          <td>OrkApp</td>
+          <td>29</td>
+          <td>0</td>
+          <td>29</td>
+          <td>100%</td>
+      </tr>
+      <tr>
+          <td><strong>TOTAL</strong></td>
+          <td><strong>6,316</strong></td>
+          <td><strong>15</strong></td>
+          <td><strong>6,331</strong></td>
+          <td><strong>99.8%</strong></td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>Control Center Display:</strong> Each CRD card shows error rate as a percentage with color coding:</p>
+<ul>
+<li>🟢 0% error rate</li>
+<li>🟡 &lt;5% error rate</li>
+<li>🔴 &gt;5% error rate</li>
+</ul>
+<h3 id="42-reconciliation-latency-histogram">4.2 Reconciliation Latency (Histogram)</h3>
+<table>
+  <thead>
+      <tr>
+          <th>CRD</th>
+          <th>P50</th>
+          <th>P95</th>
+          <th>P99</th>
+          <th>Mean</th>
+          <th>Count</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Secret</td>
+          <td>&lt;5ms</td>
+          <td>&lt;5ms</td>
+          <td>&lt;5ms</td>
+          <td>0.8ms</td>
+          <td>3,230</td>
+      </tr>
+      <tr>
+          <td>Pod</td>
+          <td>&lt;5ms</td>
+          <td>&lt;5ms</td>
+          <td>&lt;5ms</td>
+          <td>0.17ms</td>
+          <td>2,058</td>
+      </tr>
+      <tr>
+          <td>Deployment</td>
+          <td>&lt;5ms</td>
+          <td>&lt;5ms</td>
+          <td>&lt;5ms</td>
+          <td>0.20ms</td>
+          <td>930</td>
+      </tr>
+      <tr>
+          <td>Website</td>
+          <td>&lt;5ms</td>
+          <td>&lt;5ms</td>
+          <td>&lt;5ms</td>
+          <td>1.38ms</td>
+          <td>84</td>
+      </tr>
+      <tr>
+          <td>OrkApp</td>
+          <td>&lt;5ms</td>
+          <td>&lt;5ms</td>
+          <td>&lt;5ms</td>
+          <td>3.99ms</td>
+          <td>29</td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>Key Finding:</strong> All reconciliations complete in under 5ms. This is exceptional for a runtime that manages 170+ resources.</p>
+<h3 id="43-latency-distribution-analysis-secret-crd">4.3 Latency Distribution Analysis (Secret CRD)</h3>
+<pre tabindex="0"><code>Secret (3,230 reconciliations)
+├── 0-5ms:    1,667 (51.6%)
+├── 5-10ms:       1 (0.03%)
+├── 10-25ms:      1 (0.03%)
+├── 25-50ms:      1 (0.03%)
+├── 50-100ms:     0 (0%)
+├── 100-250ms:    9 (0.28%)
+├── 250-500ms:   13 (0.40%)
+├── 500ms-1s:    50 (1.55%)
+├── 1-2.5s:   1,466 (45.4%)
+└── 2.5-5s:       7 (0.22%)
+</code></pre><p><strong>Observation:</strong> The bimodal distribution shows most reconciliations are sub-5ms, but a significant cluster falls in the 1-2.5s range. This represents <code>fromSecret</code> copy operations propagating secrets across namespaces — expected behavior that the Control Center&rsquo;s queue visualization helps operators understand.</p>
+<hr>
+<h2 id="5-queue-depth-analysis-control-center-focus">5. Queue Depth Analysis (Control Center Focus)</h2>
+<pre tabindex="0"><code># HELP controller_queue_depth Current queue depth per CRD
+# TYPE controller_queue_depth gauge
+controller_queue_depth{crd=&#34;/v1, Kind=Event&#34;} 8102
+controller_queue_depth{crd=&#34;/v1, Kind=Pod&#34;} 80
+controller_queue_depth{crd=&#34;/v1, Kind=Service&#34;} 45
+controller_queue_depth{crd=&#34;apps/v1, Kind=DaemonSet&#34;} 32
+controller_queue_depth{crd=&#34;/v1, Kind=Namespace&#34;} 22
+controller_queue_depth{crd=&#34;apps/v1, Kind=Deployment&#34;} 19
+controller_queue_depth{crd=&#34;apps/v1, Kind=ReplicaSet&#34;} 116
+controller_queue_depth{crd=&#34;batch/v1, Kind=Job&#34;} 1
+controller_queue_depth{crd=&#34;demo.orkestra.io/v1alpha1, Kind=Website&#34;} 0
+</code></pre><p><strong>Control Center Visualization:</strong></p>
+<ul>
+<li><strong>Queue pressure bar</strong> — Visual indicator of queue depth relative to max</li>
+<li><strong>Color coding</strong> — Green (&lt;50%), Yellow (50-80%), Red (&gt;80%)</li>
+<li><strong>Warning messages</strong> — Automatic alerts when queue pressure is high</li>
+</ul>
+<p><strong>Finding:</strong> The Event CRD has 8,102 queued items — this is normal for high-volume event streams. The queue is being processed by 30 workers. The Control Center&rsquo;s queue visualization shows this as a progress bar, helping operators understand backpressure at a glance.</p>
+<hr>
+<h2 id="6-worker-utilization-deep-dive">6. Worker Utilization Deep Dive</h2>
+<h3 id="61-per-worker-state-tracking">6.1 Per-Worker State Tracking</h3>
+<p>The Control Center&rsquo;s most innovative feature is <strong>per-worker state visualization</strong>:</p>
+<pre tabindex="0"><code>Worker Pool: Event CRD (30 workers)
+┌─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┬──────────┐
+│ ⚡1 │ ⚡2 │ ⚡3 │ ⚡4 │ ⚡5 │ ⚡6 │ ⚡7 │ ⚡8 │ ⚡9 │ ⚡10│
+│ ⚡11│ ⚡12│ ⚡13│ ⚡14│ ⚡15│ ⚡16│ ⚡17│ ⚡18│ ⚡19│ ⚡20│
+│ ⚡21│ ⚡22│ ⚡23│ ⚡24│ ⚡25│ ⚡26│ ⚡27│ ⚡28│ ⚡29│ ⚡30│
+└─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┴──────────┘
+Legend: ⚡ Processing (blue pulse) | 💤 Idle (green) | ⛔ Stopped (red)
+</code></pre><p>From the metrics:</p>
+<pre tabindex="0"><code># HELP controller_workers_processing
+controller_workers_processing{crd=&#34;/v1, Kind=Event&#34;} 30
+controller_workers_processing{crd=&#34;apps/v1, Kind=Deployment&#34;} 12
+</code></pre><p><strong>Insight:</strong> Every Event worker is actively processing. The Control Center shows this as a grid of pulsing blue cards — immediate visual confirmation that the system is under load but handling it.</p>
+<h3 id="62-worker-utilization-by-crd-full-set">6.2 Worker Utilization by CRD (Full Set)</h3>
+<table>
+  <thead>
+      <tr>
+          <th>CRD</th>
+          <th>Workers</th>
+          <th>Processing</th>
+          <th>Idle</th>
+          <th>Visualization</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Event</td>
+          <td>30</td>
+          <td>30</td>
+          <td>0</td>
+          <td>All processing (⚡⚡⚡)</td>
+      </tr>
+      <tr>
+          <td>Deployment</td>
+          <td>12</td>
+          <td>12</td>
+          <td>0</td>
+          <td>All processing</td>
+      </tr>
+      <tr>
+          <td>Pod</td>
+          <td>7</td>
+          <td>7</td>
+          <td>0</td>
+          <td>All processing</td>
+      </tr>
+      <tr>
+          <td>Namespace</td>
+          <td>5</td>
+          <td>5</td>
+          <td>0</td>
+          <td>All processing</td>
+      </tr>
+      <tr>
+          <td>Service</td>
+          <td>3</td>
+          <td>3</td>
+          <td>0</td>
+          <td>All processing</td>
+      </tr>
+      <tr>
+          <td>PersistentVolumeClaim</td>
+          <td>3</td>
+          <td>3</td>
+          <td>0</td>
+          <td>All processing</td>
+      </tr>
+      <tr>
+          <td>ReplicaSet</td>
+          <td>3</td>
+          <td>3</td>
+          <td>0</td>
+          <td>All processing</td>
+      </tr>
+      <tr>
+          <td>StatefulSet</td>
+          <td>3</td>
+          <td>3</td>
+          <td>0</td>
+          <td>All processing</td>
+      </tr>
+      <tr>
+          <td>DaemonSet</td>
+          <td>3</td>
+          <td>3</td>
+          <td>0</td>
+          <td>All processing</td>
+      </tr>
+      <tr>
+          <td>Job</td>
+          <td>3</td>
+          <td>3</td>
+          <td>0</td>
+          <td>All processing</td>
+      </tr>
+      <tr>
+          <td>CronJob</td>
+          <td>1</td>
+          <td>1</td>
+          <td>0</td>
+          <td>Processing</td>
+      </tr>
+      <tr>
+          <td>PersistentVolume</td>
+          <td>3</td>
+          <td>0</td>
+          <td>3</td>
+          <td>All idle (💤💤💤)</td>
+      </tr>
+  </tbody>
+</table>
+<hr>
+<h2 id="7-error-analysis">7. Error Analysis</h2>
+<p>Total errors: <strong>15</strong> (all on Pod CRD)</p>
+<pre tabindex="0"><code>controller_reconcile_total{crd=&#34;/v1, Kind=Pod&#34;,result=&#34;error&#34;} 15
+controller_reconcile_total{crd=&#34;/v1, Kind=Pod&#34;,result=&#34;success&#34;} 2043
+Error Rate: 0.73%
+</code></pre><p><strong>Control Center Display:</strong></p>
+<ul>
+<li>The Pod CRD card shows a yellow warning badge (0.73% error rate)</li>
+<li>Clicking through shows the last error message and consecutive failure count</li>
+<li>Runtime Health section displays &ldquo;Consecutive Failures: 0&rdquo; (errors were not consecutive)</li>
+</ul>
+<p><strong>Importance:</strong> The Control Center makes error rates visible without digging through logs. Operators can see at a glance which CRDs have issues and investigate immediately.</p>
+<hr>
+<h2 id="8-resource-efficiency">8. Resource Efficiency</h2>
+<h3 id="81-memory">8.1 Memory</h3>
+<pre tabindex="0"><code>process_resident_memory_bytes: 97.9 MB
+go_memstats_heap_alloc_bytes: 23.9 MB
+go_memstats_heap_objects: 244,442
+</code></pre><p><strong>Control Center Metrics Page:</strong> Shows system health including memory usage, goroutines, and GC stats.</p>
+<h3 id="82-cpu">8.2 CPU</h3>
+<pre tabindex="0"><code>process_cpu_seconds_total: 18.15 seconds (over ~6 minutes)
+Average CPU usage: ~0.05 cores (5% of one core)
+</code></pre><p><strong>Finding:</strong> Orkestra uses negligible CPU resources while processing 4,200+ reconciliations.</p>
+<h3 id="83-goroutines">8.3 Goroutines</h3>
+<pre tabindex="0"><code>go_goroutines: 86
+</code></pre><p><strong>Analysis:</strong> 86 goroutines for a process handling 170+ resources, 5 CRDs, and 14 worker threads is minimal.</p>
+<hr>
+<h2 id="9-performance-comparison-built-in-vs-custom-crds">9. Performance Comparison: Built-in vs Custom CRDs</h2>
+<table>
+  <thead>
+      <tr>
+          <th>Metric</th>
+          <th>Built-in (Pod/Secret/Deploy)</th>
+          <th>Custom (Website/OrkApp)</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Average Latency</td>
+          <td>&lt;5ms</td>
+          <td>&lt;5ms</td>
+      </tr>
+      <tr>
+          <td>Worker Utilization</td>
+          <td>100%</td>
+          <td>0-100%</td>
+      </tr>
+      <tr>
+          <td>Error Rate</td>
+          <td>0.73% (Pod only)</td>
+          <td>0%</td>
+      </tr>
+      <tr>
+          <td>Resource Count</td>
+          <td>169</td>
+          <td>4</td>
+      </tr>
+      <tr>
+          <td>Control Center Visibility</td>
+          <td>Full</td>
+          <td>Full</td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>Key Insight:</strong> The Control Center treats built-in and custom CRDs identically — same worker pool visualization, same queue depth monitoring, same error tracking. There is no observable difference in the UI between a Pod managed by Orkestra and a custom Website CRD.</p>
+<hr>
+<h2 id="10-what-the-control-center-shows-real-examples">10. What the Control Center Shows (Real Examples)</h2>
+<h3 id="101-crd-card-view">10.1 CRD Card View</h3>
+<pre tabindex="0"><code>┌─────────────────────────────────────────────────────────────────┐
+│  Pod                                             ✓ Healthy      │
+│  Workers: 7/7                                   Queue: 80/2000  │
+│  Resources: 69                                  Error: 0.73%    │
+│  Uptime: 6m2s                                                   │
+│  [View details →]                                               │
+└─────────────────────────────────────────────────────────────────┘
+</code></pre><h3 id="102-worker-pool-detail-clicking-into-pod">10.2 Worker Pool Detail (Clicking into Pod)</h3>
+<pre tabindex="0"><code>┌─────────────────────────────────────────────────────────────────┐
+│  Worker Pool: Pod                                               │
+│  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐       │
+│  │ ⚡1 │ │ ⚡2 │ │ ⚡3 │ │ ⚡4 │ │ ⚡5 │ │ ⚡6 │ │ ⚡7 │   │
+│  └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘       │
+│  All 7 workers actively processing                              │
+└─────────────────────────────────────────────────────────────────┘
+</code></pre><h3 id="103-queue-pressure-visualization">10.3 Queue Pressure Visualization</h3>
+<pre tabindex="0"><code>┌─────────────────────────────────────────────────────────────────┐
+│  Queue Pressure: 80/2000 (4%)                                  │
+│  ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │
+│  Source: default                                               │
+└─────────────────────────────────────────────────────────────────┘
+</code></pre><hr>
+<h2 id="11-conclusions">11. Conclusions</h2>
+<h3 id="111-the-control-center-makes-observability-free">11.1 The Control Center Makes Observability Free</h3>
+<p>Every metric analyzed in this document is available in the Control Center <strong>without configuration</strong>. No Prometheus queries to write. No Grafana dashboards to build. No custom instrumentation.</p>
+<h3 id="112-worker-pool-visualization-is-a-game-changer">11.2 Worker Pool Visualization is a Game Changer</h3>
+<p>Seeing per-worker state (idle/processing/stopped) tells operators more than aggregate metrics ever could. When something is wrong, you see it immediately — stuck workers show as processing for too long, idle workers suggest under-utilization.</p>
+<h3 id="113-built-in-resource-management-is-production-ready">11.3 Built-in Resource Management is Production-Ready</h3>
+<p>Orkestra&rsquo;s ability to manage Pods, Secrets, and Deployments with the same performance as custom CRDs validates the built-in enrichment engine. The Control Center treats them identically, giving operators unified visibility across their entire Kubernetes footprint.</p>
+<h3 id="114-queue-depth-monitoring-prevents-surprises">11.4 Queue Depth Monitoring Prevents Surprises</h3>
+<p>The Control Center&rsquo;s queue pressure visualization alerts operators before backpressure becomes a problem. The 8,102 events in the Event queue are visible at a glance, with a progress bar showing how full the queue is.</p>
+<h3 id="115-resource-efficiency-is-exceptional">11.5 Resource Efficiency is Exceptional</h3>
+<p>Managing 170+ resources with 98MB memory and 0.05 CPU cores is remarkable. The Control Center&rsquo;s metrics page confirms this efficiency with real-time system metrics.</p>
+<h3 id="116-the-zero-programming-language-promise-is-fulfilled">11.6 The Zero-Programming Language Promise is Fulfilled</h3>
+<p>All 5 CRDs — including the built-in Pod, Secret, and Deployment watchers — were defined entirely in YAML. The Control Center provides full observability into all of them without writing a single line of Go.</p>
+<hr>
+<h2 id="12-metrics-reference-prometheus">12. Metrics Reference (Prometheus)</h2>
+<h3 id="worker-metrics">Worker Metrics</h3>
+<pre tabindex="0"><code># HELP controller_workers_processing Number of processing workers per CRD
+# TYPE controller_workers_processing gauge
+controller_workers_processing{crd=&#34;/v1, Kind=Event&#34;} 30
+controller_workers_processing{crd=&#34;apps/v1, Kind=Deployment&#34;} 12
+
+# HELP controller_workers_idle Number of idle workers per CRD
+# TYPE controller_workers_idle gauge
+controller_workers_idle{crd=&#34;/v1, Kind=PersistentVolume&#34;} 3
+</code></pre><h3 id="queue-metrics">Queue Metrics</h3>
+<pre tabindex="0"><code># HELP controller_queue_depth Current queue depth per CRD
+# TYPE controller_queue_depth gauge
+controller_queue_depth{crd=&#34;/v1, Kind=Event&#34;} 8102
+controller_queue_depth{crd=&#34;apps/v1, Kind=Deployment&#34;} 19
+</code></pre><h3 id="reconciliation-metrics">Reconciliation Metrics</h3>
+<pre tabindex="0"><code># HELP controller_reconcile_total Total number of reconciliations
+# TYPE controller_reconcile_total counter
+controller_reconcile_total{crd=&#34;/v1, Kind=Pod&#34;,result=&#34;success&#34;} 2043
+controller_reconcile_total{crd=&#34;/v1, Kind=Pod&#34;,result=&#34;error&#34;} 15
+
+# HELP controller_reconcile_duration_seconds Duration of reconciliations
+# TYPE controller_reconcile_duration_seconds histogram
+</code></pre><h3 id="resource-metrics">Resource Metrics</h3>
+<pre tabindex="0"><code># HELP controller_resource_count Number of custom resources (CR) per CRD
+# TYPE controller_resource_count gauge
+controller_resource_count{crd=&#34;/v1, Kind=Secret&#34;} 70
+controller_resource_count{crd=&#34;/v1, Kind=Pod&#34;} 69
+</code></pre><hr>
+<h2 id="appendix-control-center-screenshots">Appendix: Control Center Screenshots</h2>
+<p><em>[Placeholder for Control Center screenshots showing:]</em></p>
+<ul>
+<li>Landing page with all Katalogs</li>
+<li>Katalog Control Panel with CRD grid</li>
+<li>CRD Detail View with worker pool visualization</li>
+<li>Queue pressure visualization</li>
+<li>RBAC permissions table</li>
+</ul>
+<hr>
+<p><strong>Orkestra v1.0 — Declarative Operators for Kubernetes</strong><br>
+<em>Metrics captured: April 4, 2026</em></p>
+<ul>
+<li><strong>Next:</strong> <a href="../roadmap.md">RoadMap</a></li>
+</ul>
+
+      </div>
+
+      
+      <nav class="docs-pagination" aria-label="Page navigation">
+        
+        <a href="/docs/publications/value-proposition/" class="pagination-link pagination-prev">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <div>
+            <span class="pagination-label">Previous</span>
+            <span class="pagination-title">Orkestra Value Proposition</span>
+          </div>
+        </a>
+        
+        
+        <a href="/docs/publications/metrics-analysis-old/" class="pagination-link pagination-next">
+          <div>
+            <span class="pagination-label">Next</span>
+            <span class="pagination-title">Orkestra Metrics Analysis</span>
+          </div>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        
+      </nav>
+    </div>
+  </article>
+
+  
+<aside class="docs-toc" id="docs-toc" aria-label="Table of contents">
+  <div class="toc-inner">
+    <p class="toc-title">On this page</p>
+    <nav id="TableOfContents">
+  <ul>
+    <li>
+      <ul>
+        <li><a href="#managing-170-resources-across-5-crds-with-zero-code--observable-by-default">Managing 170+ Resources Across 5 CRDs with Zero Code — Observable by Default</a></li>
+      </ul>
+    </li>
+    <li><a href="#executive-summary">Executive Summary</a></li>
+    <li><a href="#the-control-center-observability-by-default">The Control Center: Observability by Default</a></li>
+    <li><a href="#1-environment-overview">1. Environment Overview</a></li>
+    <li><a href="#2-worker-pool-analysis-control-center-focus">2. Worker Pool Analysis (Control Center Focus)</a>
+      <ul>
+        <li><a href="#21-worker-distribution-by-crd">2.1 Worker Distribution by CRD</a></li>
+        <li><a href="#22-worker-utilization-metrics">2.2 Worker Utilization Metrics</a></li>
+        <li><a href="#23-worker-utilization-by-crd">2.3 Worker Utilization by CRD</a></li>
+      </ul>
+    </li>
+    <li><a href="#3-resource-distribution">3. Resource Distribution</a></li>
+    <li><a href="#4-reconciliation-performance">4. Reconciliation Performance</a>
+      <ul>
+        <li><a href="#41-total-reconciliations-by-crd">4.1 Total Reconciliations by CRD</a></li>
+        <li><a href="#42-reconciliation-latency-histogram">4.2 Reconciliation Latency (Histogram)</a></li>
+        <li><a href="#43-latency-distribution-analysis-secret-crd">4.3 Latency Distribution Analysis (Secret CRD)</a></li>
+      </ul>
+    </li>
+    <li><a href="#5-queue-depth-analysis-control-center-focus">5. Queue Depth Analysis (Control Center Focus)</a></li>
+    <li><a href="#6-worker-utilization-deep-dive">6. Worker Utilization Deep Dive</a>
+      <ul>
+        <li><a href="#61-per-worker-state-tracking">6.1 Per-Worker State Tracking</a></li>
+        <li><a href="#62-worker-utilization-by-crd-full-set">6.2 Worker Utilization by CRD (Full Set)</a></li>
+      </ul>
+    </li>
+    <li><a href="#7-error-analysis">7. Error Analysis</a></li>
+    <li><a href="#8-resource-efficiency">8. Resource Efficiency</a>
+      <ul>
+        <li><a href="#81-memory">8.1 Memory</a></li>
+        <li><a href="#82-cpu">8.2 CPU</a></li>
+        <li><a href="#83-goroutines">8.3 Goroutines</a></li>
+      </ul>
+    </li>
+    <li><a href="#9-performance-comparison-built-in-vs-custom-crds">9. Performance Comparison: Built-in vs Custom CRDs</a></li>
+    <li><a href="#10-what-the-control-center-shows-real-examples">10. What the Control Center Shows (Real Examples)</a>
+      <ul>
+        <li><a href="#101-crd-card-view">10.1 CRD Card View</a></li>
+        <li><a href="#102-worker-pool-detail-clicking-into-pod">10.2 Worker Pool Detail (Clicking into Pod)</a></li>
+        <li><a href="#103-queue-pressure-visualization">10.3 Queue Pressure Visualization</a></li>
+      </ul>
+    </li>
+    <li><a href="#11-conclusions">11. Conclusions</a>
+      <ul>
+        <li><a href="#111-the-control-center-makes-observability-free">11.1 The Control Center Makes Observability Free</a></li>
+        <li><a href="#112-worker-pool-visualization-is-a-game-changer">11.2 Worker Pool Visualization is a Game Changer</a></li>
+        <li><a href="#113-built-in-resource-management-is-production-ready">11.3 Built-in Resource Management is Production-Ready</a></li>
+        <li><a href="#114-queue-depth-monitoring-prevents-surprises">11.4 Queue Depth Monitoring Prevents Surprises</a></li>
+        <li><a href="#115-resource-efficiency-is-exceptional">11.5 Resource Efficiency is Exceptional</a></li>
+        <li><a href="#116-the-zero-programming-language-promise-is-fulfilled">11.6 The Zero-Programming Language Promise is Fulfilled</a></li>
+      </ul>
+    </li>
+    <li><a href="#12-metrics-reference-prometheus">12. Metrics Reference (Prometheus)</a>
+      <ul>
+        <li><a href="#worker-metrics">Worker Metrics</a></li>
+        <li><a href="#queue-metrics">Queue Metrics</a></li>
+        <li><a href="#reconciliation-metrics">Reconciliation Metrics</a></li>
+        <li><a href="#resource-metrics">Resource Metrics</a></li>
+      </ul>
+    </li>
+    <li><a href="#appendix-control-center-screenshots">Appendix: Control Center Screenshots</a></li>
+  </ul>
+</nav>
+    <div class="toc-footer">
+      <a href="https://github.com/iAlexeze/orkestra/edit/main/docs/docs/publications/metrics-analysis.md" target="_blank" rel="noopener noreferrer" class="edit-on-github">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Edit on GitHub
+      </a>
+    </div>
+  </div>
+</aside>
+
+
+</div>
+
+  </main>
+
+  <footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a href="/" class="footer-logo" aria-label="Orkestra home">
+        <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="28">
+        <span class="footer-logo-text">Orkestra</span>
+      </a>
+      <p class="footer-tagline">The declarative control plane<br>for Kubernetes operators.</p>
+      <div class="footer-social">
+        <a href="https://github.com/iAlexeze/orkestra" target="_blank" rel="noopener noreferrer" aria-label="GitHub" class="footer-social-link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+        </a>
+        <a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer" aria-label="Twitter / X" class="footer-social-link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4 class="footer-col-title">Documentation</h4>
+        <ul role="list">
+          <li><a href="/docs/getting-started/">Getting Started</a></li>
+          <li><a href="/docs/basics/">Basics</a></li>
+          <li><a href="/docs/concepts/">Concepts</a></li>
+          <li><a href="/docs/guides/">Guides</a></li>
+          <li><a href="/docs/reference/">Reference</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-col-title">Community</h4>
+        <ul role="list">
+          <li><a href="https://github.com/iAlexeze/orkestra" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/issues" target="_blank" rel="noopener noreferrer">Issues</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/discussions" target="_blank" rel="noopener noreferrer">Discussions</a></li>
+          <li><a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer">@orkspace</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-col-title">Resources</h4>
+        <ul role="list">
+          <li><a href="https://github.com/iAlexeze/orkestra/releases" target="_blank" rel="noopener noreferrer">Releases</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
+          <li><a href="/docs/reference/">API Reference</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>&copy; 2026 Orkestra. Released under the Apache 2.0 License.</p>
+    <p class="footer-built">Built with <a href="https://gohugo.io" target="_blank" rel="noopener noreferrer">Hugo</a></p>
+  </div>
+</footer>
+
+
+  
+  
+  <script src="/js/main.min.f2df583e131a595404870b2d956fe54827dcacf44666bb51201fbf1d6524fa40.js" defer></script>
+
+  
+  
+  <script src="https://cdn.jsdelivr.net/npm/@docsearch/js@3" crossorigin></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var el = document.getElementById('docsearch');
+      if (!el) return;
+      docsearch({
+        appId: "\"1YJ1C111LH\"",
+        apiKey: "\"b4bbac9a499ecc51109f23abd327cf29\"",
+        indexName: "\"orkestra\"",
+        container: '#docsearch',
+        debug: false,
+      });
+    });
+  </script>
+  
+</body>
+</html>

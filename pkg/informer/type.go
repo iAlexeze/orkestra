@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/queue"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -38,6 +39,10 @@ type InformerEntry struct {
 	Resync   time.Duration
 	Missing  bool
 	GVK      *schema.GroupVersionKind
+	// Store the context and cancel function
+	Ctx             context.Context    // stored context
+	Cancel          context.CancelFunc // stored cancel function
+	WasNeverStarted bool
 }
 
 // All mappings key: gvk
@@ -65,17 +70,16 @@ func SharedInformerFactory(
 	queueRegistry *queue.QueueRegistry,
 	defaultWq *queue.Workqueue,
 	scheme *runtime.Scheme,
-	namespace string,
-	defaultResync time.Duration,
+	kfg *konfig.Konfig,
 ) *Factory {
 	return &Factory{
 		clientProvider: cp,
 		restConfig:     restConfig,
 		queueRegistry:  queueRegistry,
 		defaultWq:      defaultWq,
-		namespace:      namespace,
+		namespace:      kfg.Cluster().Namespace,
 		scheme:         scheme,
-		defaultResync:  defaultResync,
+		defaultResync:  kfg.Cluster().DefaultResync,
 		informers:      make(map[string]*InformerEntry),
 		missing:        make(map[string]*InformerEntry),
 		ready:          make(chan struct{}),

@@ -1,6 +1,23 @@
 .env
-test/
+unknown/
 _runtime_*/
 example-crds/
 ork
+orkcc
+orkestra-demo
 ork.md
+ork.yaml
+reviews/
+orkestra-certs/
+coverage.out
+coverage
+# Docusaurus
+website/node_modules
+website/build
+website/.docusaurus
+website/.cache-loader
+
+# Generated
+zz_generated_rbac.yaml
+*.tgz
+rbac.yaml

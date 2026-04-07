@@ -7,9 +7,11 @@ import (
 	"reflect"
 
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -222,6 +224,26 @@ func CopyToNamespaces(
 	return nil
 }
 
+// DeleteIfOwned ConfigMaps the Job if it exists and is owned by the CR.
+func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+	owner domain.Object, name, namespace string) error {
+
+	existing, err := kube.Clientset().CoreV1().ConfigMaps(namespace).
+		Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	// Only delete if we own it
+	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+		return nil
+	}
+	return kube.Clientset().CoreV1().ConfigMaps(namespace).
+		Delete(ctx, name, metav1.DeleteOptions{})
+}
+
 // Resolve builds a ResolvedConfigMapSpec from a ConfigMapTemplateSource.
 // Template expressions must already be evaluated by template.Resolver before calling.
 func Resolve(src orktypes.ConfigMapTemplateSource, ownerName string) ResolvedConfigMapSpec {
@@ -242,8 +264,8 @@ func Resolve(src orktypes.ConfigMapTemplateSource, ownerName string) ResolvedCon
 		spec.Labels[l.Key] = l.Value
 	}
 
-	spec.Labels["managed-by"] = "orkestra"
-	spec.Labels["orkestra-owner"] = ownerName
+	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
+	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
 
 	return spec
 }
@@ -306,8 +328,8 @@ func buildConfigMap(owner domain.Object, spec ResolvedConfigMapSpec, namespace s
 					Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
 					Name:               owner.GetName(),
 					UID:                owner.GetUID(),
-					Controller:         boolPtr(true),
-					BlockOwnerDeletion: boolPtr(true),
+					Controller:         utils.BoolPtr(true),
+					BlockOwnerDeletion: utils.BoolPtr(true),
 				},
 			},
 		},
@@ -331,5 +353,3 @@ func resolveNamespace(owner domain.Object, spec ResolvedConfigMapSpec) string {
 	}
 	return "default"
 }
-
-func boolPtr(b bool) *bool { return &b }

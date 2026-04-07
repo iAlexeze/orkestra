@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="en-us" data-theme="">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=9292&amp;path=livereload" data-no-instant defer></script>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+<title>Komposer — Orkestra</title>
+
+<meta name="description" content="A **Komposer** composes multiple Katalogs into one runtime. Where a Katalog">
+<meta name="author" content="Orkestra">
+
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="Komposer — Orkestra">
+<meta property="og:description" content="A **Komposer** composes multiple Katalogs into one runtime. Where a Katalog">
+<meta property="og:url" content="http://localhost:9292/docs/concepts/komposer/">
+<meta property="og:site_name" content="Orkestra">
+
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Komposer — Orkestra">
+<meta name="twitter:description" content="A **Komposer** composes multiple Katalogs into one runtime. Where a Katalog">
+
+
+<link rel="icon" type="image/png" href="/img/fav.png">
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+
+
+
+<link rel="stylesheet" href="/css/main.min.e4f35e028b4e342d94b5258699fa7b53e53b1f54212c3a40fb2a70e627bba458.css">
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3" crossorigin>
+
+
+
+<script>
+  (function() {
+    var saved = localStorage.getItem('theme');
+    
+    var theme = saved ? saved : 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+
+</head>
+<body class="page-content docs-body">
+
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+  <div class="navbar-inner">
+    
+    <a href="/" class="navbar-logo" aria-label="Orkestra home">
+      <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
+      <span class="logo-text">Orkestra</span>
+      <span class="version-badge">v1</span>
+    </a>
+
+    
+    <ul class="navbar-links" role="list">
+      
+      <li>
+        <a href="/docs/" class="navbar-link"
+          >
+          Docs
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-link"
+          >
+          Publications
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/docs/use-cases/" class="navbar-link"
+          >
+          Use Cases
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/blog/" class="navbar-link"
+          >
+          Blog
+          
+        </a>
+      </li>
+      
+    </ul>
+
+    
+    <div class="navbar-controls">
+      
+      <a href="https://cc.orkestra.sh" class="btn-controlcenter" target="_blank" rel="noopener noreferrer" aria-label="Open Control Center">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+        Control Center
+        <span class="cc-live-dot" title="Live instance"></span>
+      </a>
+
+      
+      <a href="https://github.com/iAlexeze/orkestra" class="btn-github" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+        </svg>
+        <span>GitHub</span>
+      </a>
+
+      
+      <button class="btn-theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+        <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+        </svg>
+      </button>
+
+      
+      <button class="btn-hamburger" id="mobile-menu-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+      </button>
+    </div>
+  </div>
+
+  
+  <div class="navbar-mobile" id="mobile-menu" aria-hidden="true">
+    <ul role="list">
+      
+      <li>
+        <a href="/docs/" class="navbar-mobile-link"
+          >
+          Docs
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-mobile-link"
+          >
+          Publications
+        </a>
+      </li>
+      
+      <li>
+        <a href="/docs/use-cases/" class="navbar-mobile-link"
+          >
+          Use Cases
+        </a>
+      </li>
+      
+      <li>
+        <a href="/blog/" class="navbar-mobile-link"
+          >
+          Blog
+        </a>
+      </li>
+      
+    </ul>
+  </div>
+</nav>
+
+
+  <main id="main-content" tabindex="-1">
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar" id="docs-sidebar" role="navigation" aria-label="Documentation navigation">
+  <div class="sidebar-inner">
+    
+    <div class="docsearch-wrapper">
+      
+      <div id="docsearch"></div>
+      
+    </div>
+
+    <nav class="sidebar-nav">
+      
+      
+      
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/getting-started/" class="sidebar-section-link">Getting Started</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Getting Started">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">
+                  Basic Reconciliation
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/getting-started/installation/" class="sidebar-link">
+                  Installation
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/getting-started/quickstart/" class="sidebar-link">
+                  Quick Start
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/getting-started/writing-your-first-katalog/" class="sidebar-link">
+                  Writing Your First Katalog
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/getting-started/writing-your-first-komposer/" class="sidebar-link">
+                  Writing Your First Komposer
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/basics/" class="sidebar-section-link">Basics</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Basics">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/basics/kubernetes-basics/" class="sidebar-link">
+                  Kubernetes Basics
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/basics/katalog-manifest/" class="sidebar-link">
+                  The Katalog Manifest
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/basics/understanding-orkestra/" class="sidebar-link">
+                  Understanding Orkestra
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section open">
+            <div class="sidebar-section-header active-section">
+              <a href="/docs/concepts/" class="sidebar-section-link">Concepts</a>
+              <button class="sidebar-section-toggle" aria-expanded="true" aria-label="Toggle Concepts">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list">
+              
+              <li>
+                <a href="/docs/concepts/secret-rotation/" class="sidebar-link">
+                  
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/runtime/" class="sidebar-link">
+                  **Orkestra Runtime**
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/typed-crds/" class="sidebar-link">
+                  **Typed CRDs**
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/conditional-provisioning/" class="sidebar-link">
+                  Conditional Provisioning in Orkestra
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/conditional-status-fields/" class="sidebar-link">
+                  Conditional Status Fields
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/constructors/" class="sidebar-link">
+                  Constructors
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/crd-runtime-health/" class="sidebar-link">
+                  CRD Runtime Health
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/hooks/" class="sidebar-link">
+                  Hooks
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/dependency-model/" class="sidebar-link">
+                  How Dependencies Work
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/reconciler-model/" class="sidebar-link">
+                  How Reconciliation Works
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/katalog/" class="sidebar-link">
+                  Katalog
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/komposer/" class="sidebar-link active">
+                  Komposer
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/mutation/" class="sidebar-link">
+                  Mutation
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/notes/" class="sidebar-link">
+                  Notes
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/observability/" class="sidebar-link">
+                  Observability
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/operator-patterns/" class="sidebar-link">
+                  Operator Patterns
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/conditional-webhooks/" class="sidebar-link">
+                  Orkestra Conversion Webhook
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/health-subsystem/" class="sidebar-link">
+                  Orkestra Health Subsystem
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/komponent/" class="sidebar-link">
+                  Orkestra Komponents
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/provider/" class="sidebar-link">
+                  Providers
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/providers/" class="sidebar-link">
+                  Providers
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/registry/" class="sidebar-link">
+                  Registry
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/registry-sources/" class="sidebar-link">
+                  Registry Sources
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/status-management/" class="sidebar-link">
+                  Status Management
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/templating/" class="sidebar-link">
+                  Templating in Orkestra
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/observability-model/" class="sidebar-link">
+                  The Observability Model
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/validation/" class="sidebar-link">
+                  Validation
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/concepts/versioning/" class="sidebar-link">
+                  Versioning in Orkestra
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/architecture/" class="sidebar-section-link">Architecture</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Architecture">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/architecture/crd-lifecycle/" class="sidebar-link">
+                  CRD Lifecycle in Orkestra
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/full-architecture-view/" class="sidebar-link">
+                  Full Architecture View
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/architecture-diagrams/" class="sidebar-link">
+                  Orkestra Architecture Diagrams
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/design-philosophy/" class="sidebar-link">
+                  Orkestra Design Philosophy
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/architecture-overview/" class="sidebar-link">
+                  Orkestra Full Architecture Overview
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/architecture/runtime-flow/" class="sidebar-link">
+                  Orkestra Runtime Flow
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/cli/" class="sidebar-section-link">CLI Reference</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle CLI Reference">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/cli/describe/" class="sidebar-link">
+                  ork describe
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/events/" class="sidebar-link">
+                  ork events
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/generate-runtime/" class="sidebar-link">
+                  ork generate runtime
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/get/" class="sidebar-link">
+                  ork get
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/init/" class="sidebar-link">
+                  ork init
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/reconcile/" class="sidebar-link">
+                  ork reconcile
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/run/" class="sidebar-link">
+                  ork run
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/status/" class="sidebar-link">
+                  ork status
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/template/" class="sidebar-link">
+                  ork template
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/validate/" class="sidebar-link">
+                  ork validate
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/version/" class="sidebar-link">
+                  ork version
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/cli/inspect-live-crd/" class="sidebar-link">
+                  Orkestra Inspect Commands
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/guides/" class="sidebar-section-link">Guides</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Guides">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/guides/best-practices/" class="sidebar-link">
+                  Best Practices for Orkestra Operators
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/choosing-katalog-vs-komposer/" class="sidebar-link">
+                  Choosing Between Katalog and Komposer
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/deployment/" class="sidebar-link">
+                  Deploying Orkestra
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/api-conversion/" class="sidebar-link">
+                  Evolve APIs Without Webhooks or Code
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/extending-orkestra/" class="sidebar-link">
+                  Extending Orkestra
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/certificate-with-openssl/" class="sidebar-link">
+                  Generate Self-Signed Certificates
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/certificate-with-cert-manager/" class="sidebar-link">
+                  Generate TLS Certificates with CertManager
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/how-reconciliation-works/" class="sidebar-link">
+                  How Reconciliation Works
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/multi-version-crd-explained/" class="sidebar-link">
+                  Multi‑Version CRDs Explained
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/deprecated/use-cases/" class="sidebar-link">
+                  Orkestra Use Cases
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/testing-operators/" class="sidebar-link">
+                  Testing Operators
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/kat-source-of-truth/" class="sidebar-link">
+                  The Katalog as Single Source of Truth
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/writing-custom-reconcilers/" class="sidebar-link">
+                  Writing Custom Reconcilers
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/guides/writing-hooks/" class="sidebar-link">
+                  Writing Hooks
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/use-cases/" class="sidebar-section-link">Use Cases</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Use Cases">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/use-cases/air-gapped/" class="sidebar-link">
+                  Air‑Gapped Environments
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/centralized-configuration/" class="sidebar-link">
+                  Centralised Operator Configuration (GitOps)
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/custom-constructors/" class="sidebar-link">
+                  Custom Constructors
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/disaster-recovery/" class="sidebar-link">
+                  Disaster Recovery
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/environment-overrides/" class="sidebar-link">
+                  Environment-specific Tuning
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/hooks/" class="sidebar-link">
+                  Go Hooks
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/helm-driven-operators/" class="sidebar-link">
+                  Helm‑Driven Operator Configuration
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/dependency-ordering/" class="sidebar-link">
+                  Multi‑CRD Dependency Ordering
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/multi-team-composition/" class="sidebar-link">
+                  Multi‑Team Composition
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/conversion/" class="sidebar-link">
+                  Multi‑Version CRD Conversion
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/observability/" class="sidebar-link">
+                  Observability
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/platform-namespace-provisioning/" class="sidebar-link">
+                  Platform Namespace Provisioning
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/progressive-rollout/" class="sidebar-link">
+                  Progressive Rollout of Operator Behavior
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/registry/" class="sidebar-link">
+                  Registry‑Powered Operators
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/secret-distribution/" class="sidebar-link">
+                  Secret Distribution Across Namespaces
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/use-cases/zero-code-operators/" class="sidebar-link">
+                  Zero‑Code Operators
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+          
+          
+          <div class="sidebar-section">
+            <div class="sidebar-section-header">
+              <a href="/docs/reference/" class="sidebar-section-link">Reference</a>
+              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Reference">
+                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+            </div>
+            <ul class="sidebar-section-pages" role="list" style="display:none">
+              
+              <li>
+                <a href="/docs/reference/metrics/" class="sidebar-link">
+                  **Orkestra Metrics**
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
+                  Katalog and Komposer Reference
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/katalog-schema/" class="sidebar-link">
+                  Katalog Schema
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/katalog-schema-status/" class="sidebar-link">
+                  Katalog Schema — Status Block
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/komposer-schema/" class="sidebar-link">
+                  Komposer Schema
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/mutation-schema/" class="sidebar-link">
+                  Mutation Schema
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/cli/" class="sidebar-link">
+                  Orkestra CLI Reference
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/katalog-api/" class="sidebar-link">
+                  Orkestra Runtime API Reference
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/registry-schema/" class="sidebar-link">
+                  Registry Source Schema
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/runtime/" class="sidebar-link">
+                  Runtime
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/shutdown/" class="sidebar-link">
+                  Shutdown
+                </a>
+              </li>
+              
+              <li>
+                <a href="/docs/reference/validation-schema/" class="sidebar-link">
+                  Validation Schema
+                </a>
+              </li>
+              
+            </ul>
+          </div>
+        
+      
+    </nav>
+  </div>
+</aside>
+
+
+<div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
+
+  <article class="docs-content" id="docs-content">
+    <div class="docs-content-inner">
+      
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <div class="breadcrumb-item">
+    <a href="/">Home</a>
+  </div>
+  
+  
+    
+  
+    
+    <div class="breadcrumb-item">
+      <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      <a href="/docs/">Documentation</a>
+    </div>
+    
+  
+    
+    <div class="breadcrumb-item">
+      <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      <a href="/docs/concepts/">Concepts</a>
+    </div>
+    
+  
+  <div class="breadcrumb-item active">
+    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+    Komposer
+  </div>
+</nav>
+
+
+
+      <header class="docs-header">
+        <h1 class="docs-title">Komposer</h1>
+        
+        <p class="docs-description">A **Komposer** composes multiple Katalogs into one runtime. Where a Katalog</p>
+        
+        <div class="docs-meta">
+          
+          <time datetime="2026-04-06" class="docs-date">
+            Updated Apr 6, 2026
+          </time>
+          
+
+          
+          <span class="docs-reading-time">9 min read</span>
+          
+        </div>
+      </header>
+
+      <div class="docs-body prose">
+        <p>A <strong>Komposer</strong> composes multiple Katalogs into one runtime. Where a Katalog
+declares CRDs, a Komposer declares where to find them.</p>
+<p>!!! tip &ldquo;komposer is not a CRD&rdquo;
+A komposer is not a CRD and <a href="../../faqs/why-not-crds.md">here is why</a>.</p>
+<hr>
+<h2 id="a-simple-komposer">A Simple Komposer?</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer          <span style="color:#6272a4"># ← the distinction</span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: platform-komposer
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
+</span></span><span style="display:flex;"><span>    - ./katalogs/website.yaml
+</span></span><span style="display:flex;"><span>    - ./katalogs/platform-namespace.yaml
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">helm</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">repo</span>: ./charts
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">chart</span>: platform-crds
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: <span style="color:#bd93f9">0.1.0</span>
+</span></span></code></pre></div><hr>
+<h2 id="katalog-vs-komposer">Katalog vs Komposer</h2>
+<p>These are the only two valid document kinds in Orkestra. They have
+completely different responsibilities and the distinction is enforced.</p>
+<table>
+  <thead>
+      <tr>
+          <th></th>
+          <th>Katalog</th>
+          <th>Komposer</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>Purpose</strong></td>
+          <td>Declare CRDs</td>
+          <td>Compose Katalogs</td>
+      </tr>
+      <tr>
+          <td><strong>Has <code>spec.crds</code></strong></td>
+          <td>Yes</td>
+          <td>Only as inline overrides</td>
+      </tr>
+      <tr>
+          <td><strong>Has <code>sources</code></strong></td>
+          <td>❌ Error</td>
+          <td>✅ Required</td>
+      </tr>
+      <tr>
+          <td><strong>Can source another Komposer</strong></td>
+          <td>—</td>
+          <td>❌ Error</td>
+      </tr>
+      <tr>
+          <td><strong>Entry point for <code>ork run</code></strong></td>
+          <td>Yes</td>
+          <td>Yes</td>
+      </tr>
+  </tbody>
+</table>
+<p>A Katalog with a <code>sources</code> block is an error:</p>
+<pre tabindex="0"><code>&#34;./katalog.yaml&#34;: kind Katalog cannot declare sources —
+use kind: Komposer to compose multiple Katalogs
+</code></pre><p>A Komposer sourcing another Komposer is an error:</p>
+<pre tabindex="0"><code>&#34;./komposer.yaml&#34; sources.files[&#34;./other-komposer.yaml&#34;]:
+a Komposer cannot source another Komposer —
+only Katalog files are valid sources
+</code></pre><p>This keeps composition shallow and predictable. You always know exactly
+what a source contains.</p>
+<hr>
+<h2 id="komposer-structure">Komposer structure</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: my-komposer
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">description</span>: Optional description
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
+</span></span><span style="display:flex;"><span>    - ./katalogs/project.yaml
+</span></span><span style="display:flex;"><span>    - https://raw.githubusercontent.com/myorg/crds/main/katalog.yaml
+</span></span><span style="display:flex;"><span>    - $REMOTE_KATALOG_URL
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">helm</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">repo</span>: https://charts.myorg.io
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">chart</span>: platform-crds
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: <span style="color:#bd93f9">1.2.0</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">valueFiles</span>:
+</span></span><span style="display:flex;"><span>        - ./values/production.yaml
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6272a4"># Optional — inline CRD overrides</span>
+</span></span><span style="display:flex;"><span><span style="color:#6272a4"># Merged last. Win on name conflict with any source.</span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: website
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">4</span>    <span style="color:#6272a4"># override the source definition for this environment</span>
+</span></span><span style="display:flex;"><span>      ...
+</span></span></code></pre></div><hr>
+<h2 id="file-sources">File sources</h2>
+<p>File sources load Katalog YAML from local file paths or remote URLs.
+Each file must be a valid Katalog (<code>kind: Katalog</code>). Files that are not
+valid Katalog documents are silently skipped.</p>
+<h3 id="simple-form">Simple form</h3>
+<p>No authentication required. Works for local paths, public URLs, and
+environment variable references.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
+</span></span><span style="display:flex;"><span>    - ./katalogs/project.yaml              <span style="color:#6272a4"># local relative path</span>
+</span></span><span style="display:flex;"><span>    - /absolute/path/to/namespace.yaml     <span style="color:#6272a4"># local absolute path</span>
+</span></span><span style="display:flex;"><span>    - https://raw.github.com/.../app.yaml  <span style="color:#6272a4"># public remote URL</span>
+</span></span><span style="display:flex;"><span>    - $REMOTE_KATALOG_URL                  <span style="color:#6272a4"># environment variable</span>
+</span></span></code></pre></div><h3 id="environment-variables">Environment variables</h3>
+<p>Any entry starting with <code>$</code> is resolved via <code>os.Getenv</code> at startup.
+The resolved value must be a valid file path or URL.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
+</span></span><span style="display:flex;"><span>    - $PLATFORM_KATALOG
+</span></span><span style="display:flex;"><span>    - $APP_KATALOG_URL
+</span></span></code></pre></div><p>If the variable is not set or empty, Orkestra fails with a clear error
+naming the variable.</p>
+<hr>
+<h2 id="authenticated-file-sources">Authenticated file sources</h2>
+<p>Private Katalog files behind authentication use the struct form with an
+<code>auth</code> block. Credentials are <strong>always resolved from environment variables</strong>
+at startup — they never appear as literal values in the Komposer YAML.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Simple form — no auth (existing behaviour unchanged)</span>
+</span></span><span style="display:flex;"><span>    - ./katalogs/public.yaml
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Authenticated form — private source</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://private.myorg.io/crds/platform-katalog.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: bearer
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">fromEnv</span>: PLATFORM_KATALOG_TOKEN
+</span></span></code></pre></div><p>Both forms can be mixed freely in the same <code>sources.files</code> list.</p>
+<h3 id="bearer-token">Bearer token</h3>
+<p>Use for any API that accepts <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://internal.company.com/crds/platform-katalog.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: bearer
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">fromEnv</span>: PLATFORM_KATALOG_TOKEN
+</span></span></code></pre></div><p>Set the environment variable before running:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">export</span> <span style="color:#8be9fd;font-style:italic">PLATFORM_KATALOG_TOKEN</span><span style="color:#ff79c6">=</span>your-token-here
+</span></span><span style="display:flex;"><span>ork run --katalog komposer.yaml
+</span></span></code></pre></div><p>In a Kubernetes deployment, inject it from a Secret:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># Helm values</span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">extraEnvFrom</span>:
+</span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">secretRef</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">name</span>: orkestra-katalog-creds
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl create secret generic orkestra-katalog-creds <span style="color:#f1fa8c">\
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  --namespace orkestra-system <span style="color:#f1fa8c">\
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  --from-literal<span style="color:#ff79c6">=</span><span style="color:#8be9fd;font-style:italic">PLATFORM_KATALOG_TOKEN</span><span style="color:#ff79c6">=</span>your-token-here
+</span></span></code></pre></div><h3 id="github-token">GitHub token</h3>
+<p>Use for raw content from private GitHub repositories.
+The token needs <code>repo</code> scope for private repository access.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://raw.githubusercontent.com/myorg/private-crds/main/katalog.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: github
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">fromEnv</span>: GITHUB_TOKEN
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">export</span> <span style="color:#8be9fd;font-style:italic">GITHUB_TOKEN</span><span style="color:#ff79c6">=</span>ghp_xxxxxxxxxxxx
+</span></span><span style="display:flex;"><span>ork run --katalog komposer.yaml
+</span></span></code></pre></div><p><code>github</code> and <code>bearer</code> produce the same <code>Authorization: Bearer</code> header.
+Use <code>github</code> when the token is a GitHub PAT — it makes the intent clear
+to anyone reading the Komposer.</p>
+<h3 id="basic-auth">Basic auth</h3>
+<p>Use for Artifactory, Nexus, and other corporate artifact stores.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://artifactory.company.com/orkestra/katalog.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: basic
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">usernameFromEnv</span>: ARTIFACTORY_USER
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">passwordFromEnv</span>: ARTIFACTORY_PASSWORD
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">export</span> <span style="color:#8be9fd;font-style:italic">ARTIFACTORY_USER</span><span style="color:#ff79c6">=</span>svc-orkestra
+</span></span><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">export</span> <span style="color:#8be9fd;font-style:italic">ARTIFACTORY_PASSWORD</span><span style="color:#ff79c6">=</span>xxxx
+</span></span><span style="display:flex;"><span>ork run --katalog komposer.yaml
+</span></span></code></pre></div><h3 id="mixing-auth-types">Mixing auth types</h3>
+<p>Multiple sources with different auth requirements in one Komposer:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Public — no auth</span>
+</span></span><span style="display:flex;"><span>    - https://raw.github.com/myorg/public-crds/main/katalog.yaml
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Private GitHub repo</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://raw.githubusercontent.com/myorg/private-crds/main/katalog.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: github
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">fromEnv</span>: GITHUB_TOKEN
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Internal API with bearer token</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://config.platform.myorg.io/crds/infra-katalog.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: bearer
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">fromEnv</span>: PLATFORM_KATALOG_TOKEN
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Artifactory with basic auth</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://artifactory.company.com/orkestra/security-katalog.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: basic
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">usernameFromEnv</span>: ARTIFACTORY_USER
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">passwordFromEnv</span>: ARTIFACTORY_PASSWORD
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Environment variable (resolved to a URL, then fetched)</span>
+</span></span><span style="display:flex;"><span>    - $SECURITY_KATALOG_URL
+</span></span></code></pre></div><h3 id="injecting-credentials-in-kubernetes">Injecting credentials in Kubernetes</h3>
+<p>Never put credential values in <code>values.yaml</code> or ConfigMaps committed to
+source control. Always use Kubernetes Secrets.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl create secret generic orkestra-katalog-creds <span style="color:#f1fa8c">\
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  --namespace orkestra-system <span style="color:#f1fa8c">\
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  --from-literal<span style="color:#ff79c6">=</span><span style="color:#8be9fd;font-style:italic">GITHUB_TOKEN</span><span style="color:#ff79c6">=</span>ghp_xxxx <span style="color:#f1fa8c">\
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  --from-literal<span style="color:#ff79c6">=</span><span style="color:#8be9fd;font-style:italic">PLATFORM_KATALOG_TOKEN</span><span style="color:#ff79c6">=</span>bearer_yyyy <span style="color:#f1fa8c">\
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  --from-literal<span style="color:#ff79c6">=</span><span style="color:#8be9fd;font-style:italic">ARTIFACTORY_USER</span><span style="color:#ff79c6">=</span>svc-orkestra <span style="color:#f1fa8c">\
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  --from-literal<span style="color:#ff79c6">=</span><span style="color:#8be9fd;font-style:italic">ARTIFACTORY_PASSWORD</span><span style="color:#ff79c6">=</span>zzzz
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># Helm values</span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">extraEnvFrom</span>:
+</span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">secretRef</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">name</span>: orkestra-katalog-creds
+</span></span></code></pre></div><p>All variables in the Secret become environment variables in the Orkestra
+container at startup, where they are read by <code>auth.fromEnv</code>.</p>
+<hr>
+<h2 id="helm-sources">Helm sources</h2>
+<p>Helm sources render a Helm chart and extract Katalog CRD definitions
+from the rendered output. The chart must contain at least one template
+with <code>kind: Katalog</code>.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">helm</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">repo</span>: https://charts.myorg.io
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">chart</span>: platform-crds
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: <span style="color:#bd93f9">1.2.0</span>                  <span style="color:#6272a4"># required — pin for reproducibility</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">valueFiles</span>:
+</span></span><span style="display:flex;"><span>        - ./values/production.yaml
+</span></span><span style="display:flex;"><span>        - https://config.io/vals.yaml
+</span></span><span style="display:flex;"><span>        - $ENVIRONMENT_VALUES
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">values</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">environment</span>: production       <span style="color:#6272a4"># inline overrides (like helm --set)</span>
+</span></span></code></pre></div><h3 id="local-charts">Local charts</h3>
+<p>When <code>repo</code> is a file system path, Orkestra loads the chart directly.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">helm</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">repo</span>: ./charts
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">chart</span>: platform-crds
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: <span style="color:#bd93f9">0.1.0</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">valueFiles</span>:
+</span></span><span style="display:flex;"><span>        - ./values/local.yaml
+</span></span></code></pre></div><h3 id="git-based-charts">Git-based charts</h3>
+<p>When <code>repo</code> is a Git URL, Orkestra clones at <code>version</code> (branch, tag,
+or commit hash) and loads the chart from <code>path</code> within the repo.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">helm</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">repo</span>: https://github.com/myorg/helm-charts.git
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: v1.2.0
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">path</span>: charts/platform-crds
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">valueFiles</span>:
+</span></span><span style="display:flex;"><span>        - ./values/production.yaml
+</span></span></code></pre></div><h3 id="the-helm-chart-template">The Helm chart template</h3>
+<p>The chart renders a template with <code>kind: Katalog</code>. Orkestra extracts
+CRD definitions from the rendered output.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># charts/platform-crds/templates/katalog.yaml</span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: {{ .Release.Name }}-katalog
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
+</span></span><span style="display:flex;"><span>    {{- range .Values.crds }}
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: {{ .name }}
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">enabled</span>: {{ .enabled | default true }}
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">apiTypes</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">group</span>: {{ $.Values.apiGroup }}
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">version</span>: {{ $.Values.apiVersion | default &#34;v1alpha1&#34; }}
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">kind</span>: {{ .kind }}
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">plural</span>: {{ .plural }}
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconciler</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: {{ .reconciler.default | default true }}
+</span></span><span style="display:flex;"><span>    {{- end }}
+</span></span></code></pre></div><p>Version pinning is required for remote and Git sources. Omit it and
+the same <code>ork run</code> may produce different behaviour as charts update.</p>
+<hr>
+<h2 id="inline-overrides">Inline overrides</h2>
+<p>CRDs declared in <code>spec.crds</code> on a Komposer are merged last and win on
+name conflict. Use this to override a source definition for a specific
+environment without forking the source.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">https://platform.internal/crds.yaml  # defines &#39;website&#39; with workers</span>: <span style="color:#bd93f9">2</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Override — production needs more workers</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: website
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">4</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">apiTypes</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">group</span>: demo.orkestra.io
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">version</span>: v1alpha1
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">kind</span>: Website
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">plural</span>: websites
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconciler</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
+</span></span></code></pre></div><hr>
+<h2 id="merge-rules">Merge rules</h2>
+<p><strong>Sources load in declaration order</strong> — files first in <code>sources.files</code>
+order, then helm in <code>sources.helm</code> order.</p>
+<p><strong>Duplicate names across sources are errors:</strong></p>
+<pre tabindex="0"><code>merger: duplicate CRD &#34;website&#34;: defined in
+  &#34;file:./katalogs/website.yaml&#34; and
+  &#34;url:https://remote/app.yaml&#34;
+</code></pre><p><strong>Inline <code>spec.crds</code> override silently</strong> — intentional. This is the
+override mechanism.</p>
+<p><strong>Inline self-duplicates are errors:</strong></p>
+<pre tabindex="0"><code>&#34;./komposer.yaml&#34; spec.crds: duplicate CRD &#34;website&#34; — each name must be unique
+</code></pre><p><strong>Disabled CRDs survive the merge.</strong> Disable a source CRD inline:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: legacy-resource
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">enabled</span>: <span style="color:#ff79c6">false</span>
+</span></span></code></pre></div><hr>
+<h2 id="cli-commands">CLI commands</h2>
+<p>All CLI commands that accept <code>--katalog</code> also accept a Komposer path.
+The merger handles both transparently.</p>
+<h3 id="ork-validate"><code>ork validate</code></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate --katalog ./komposer.yaml
+</span></span><span style="display:flex;"><span>ork validate --katalog ./infra.yaml --katalog ./apps.yaml
+</span></span><span style="display:flex;"><span>ork validate --katalog <span style="color:#8be9fd;font-style:italic">$KATALOG_PATH</span>
+</span></span></code></pre></div><h3 id="ork-template"><code>ork template</code></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork template --katalog ./komposer.yaml
+</span></span><span style="display:flex;"><span>ork template --katalog ./komposer.yaml --graph
+</span></span><span style="display:flex;"><span>ork template --katalog ./komposer.yaml --json
+</span></span></code></pre></div><h3 id="ork-generate-runtime"><code>ork generate runtime</code></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork generate runtime --katalog ./komposer.yaml
+</span></span><span style="display:flex;"><span>ork generate runtime --katalog ./komposer.yaml --dry-run
+</span></span></code></pre></div><h3 id="ork-run"><code>ork run</code></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run --katalog ./komposer.yaml
+</span></span><span style="display:flex;"><span>ork run --katalog ./infra.yaml --katalog ./apps.yaml
+</span></span></code></pre></div><hr>
+<h2 id="complete-examples">Complete examples</h2>
+<h3 id="single-katalog--no-komposer-needed">Single Katalog — no Komposer needed</h3>
+<p>Most operators need only a Katalog. A Komposer is only needed when you
+are composing definitions from multiple sources.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># katalog.yaml</span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: website-katalog
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: website
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">enabled</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">apiTypes</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">group</span>: demo.orkestra.io
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">version</span>: v1alpha1
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">kind</span>: Website
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">plural</span>: websites
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconciler</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">onCreate</span>:
+</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">deployments</span>:
+</span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
+</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">replicas</span>: <span style="color:#f1fa8c">&#34;{{ .spec.replicas }}&#34;</span>
+</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run --katalog ./katalog.yaml
+</span></span></code></pre></div><h3 id="multi-team-composition">Multi-team composition</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># komposer.yaml</span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: platform-komposer
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
+</span></span><span style="display:flex;"><span>    - ./katalogs/website.yaml
+</span></span><span style="display:flex;"><span>    - ./katalogs/platform-namespace.yaml
+</span></span><span style="display:flex;"><span>    - https://raw.github.com/myorg/app-crds/main/katalog.yaml
+</span></span><span style="display:flex;"><span>    - $SECURITY_KATALOG_URL
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: application
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">4</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">apiTypes</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">group</span>: platform.myorg.io
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">version</span>: v1alpha1
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">kind</span>: Application
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">plural</span>: applications
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">location</span>: github.com/myorg/apis/application/v1alpha1
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconciler</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">hooks</span>:
+</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">location</span>: github.com/myorg/hooks
+</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">function</span>: ApplicationHooks
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork template --katalog ./komposer.yaml --graph
+</span></span><span style="display:flex;"><span>ork validate --katalog ./komposer.yaml
+</span></span><span style="display:flex;"><span>ork run --katalog ./komposer.yaml
+</span></span></code></pre></div><h3 id="enterprise--private-sources-with-mixed-auth">Enterprise — private sources with mixed auth</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># enterprise-komposer.yaml</span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: enterprise-komposer
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Public shared baseline</span>
+</span></span><span style="display:flex;"><span>    - https://raw.github.com/myorg/public-baseline/main/katalog.yaml
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Private GitHub repo — platform CRDs</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://raw.githubusercontent.com/myorg/platform-crds/main/katalog.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: github
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">fromEnv</span>: GITHUB_TOKEN
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Internal API — security team CRDs</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://api.security.myorg.io/orkestra/katalog.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: bearer
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">fromEnv</span>: SECURITY_API_TOKEN
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Artifactory — compliance CRDs</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://artifactory.myorg.io/orkestra/compliance-katalog.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: basic
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">usernameFromEnv</span>: ARTIFACTORY_USER
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">passwordFromEnv</span>: ARTIFACTORY_PASSWORD
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">helm</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">repo</span>: https://charts.myorg.io
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">chart</span>: platform-crds
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: <span style="color:#bd93f9">3.2.1</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">valueFiles</span>:
+</span></span><span style="display:flex;"><span>        - ./values/enterprise-production.yaml
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Production environment override — more workers than the shared default</span>
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: application
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">10</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">resync</span>: 30s
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">apiTypes</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">group</span>: platform.myorg.io
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">version</span>: v1alpha1
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">kind</span>: Application
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">plural</span>: applications
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconciler</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#6272a4"># All credentials injected from a Kubernetes Secret</span>
+</span></span><span style="display:flex;"><span>kubectl create secret generic orkestra-katalog-creds <span style="color:#f1fa8c">\
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  --namespace orkestra-system <span style="color:#f1fa8c">\
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  --from-literal<span style="color:#ff79c6">=</span><span style="color:#8be9fd;font-style:italic">GITHUB_TOKEN</span><span style="color:#ff79c6">=</span>ghp_xxxx <span style="color:#f1fa8c">\
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  --from-literal<span style="color:#ff79c6">=</span><span style="color:#8be9fd;font-style:italic">SECURITY_API_TOKEN</span><span style="color:#ff79c6">=</span>bearer_yyyy <span style="color:#f1fa8c">\
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  --from-literal<span style="color:#ff79c6">=</span><span style="color:#8be9fd;font-style:italic">ARTIFACTORY_USER</span><span style="color:#ff79c6">=</span>svc-orkestra <span style="color:#f1fa8c">\
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  --from-literal<span style="color:#ff79c6">=</span><span style="color:#8be9fd;font-style:italic">ARTIFACTORY_PASSWORD</span><span style="color:#ff79c6">=</span>zzzz
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#6272a4"># Validate before deploying</span>
+</span></span><span style="display:flex;"><span>ork validate --katalog enterprise-komposer.yaml
+</span></span><span style="display:flex;"><span>ork template --katalog enterprise-komposer.yaml --graph
+</span></span></code></pre></div><h3 id="helm-chart--local-katalog--inline-override">Helm chart + local Katalog + inline override</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># production-komposer.yaml</span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: production-komposer
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">helm</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">repo</span>: https://charts.myorg.io
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">chart</span>: platform-crds
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: <span style="color:#bd93f9">2.1.0</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">valueFiles</span>:
+</span></span><span style="display:flex;"><span>        - ./values/base.yaml
+</span></span><span style="display:flex;"><span>        - ./values/production.yaml
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
+</span></span><span style="display:flex;"><span>    - https://shared.platform.io/common-crds.yaml
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: database
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">2</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">resync</span>: 5m
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">apiTypes</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">group</span>: platform.myorg.io
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">version</span>: v1alpha1
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">kind</span>: Database
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">plural</span>: databases
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconciler</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">false</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">constructor</span>:
+</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">location</span>: github.com/myorg/reconcilers
+</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">function</span>: NewDatabaseReconciler
+</span></span></code></pre></div><hr>
+<h2 id="adding-new-source-types">Adding new source types</h2>
+<p>Sources are implemented as functions on the Merger in <code>pkg/merger/</code>.
+Adding a new source type is three steps.</p>
+<p><strong>1. Add to <code>KatalogSources</code> in <code>pkg/types</code>:</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">type</span> KatalogSources <span style="color:#8be9fd;font-style:italic">struct</span> {
+</span></span><span style="display:flex;"><span>    Files []FileSource <span style="color:#f1fa8c">`yaml:&#34;files,omitempty&#34;`</span>
+</span></span><span style="display:flex;"><span>    Helm  []HelmSource <span style="color:#f1fa8c">`yaml:&#34;helm,omitempty&#34;`</span>
+</span></span><span style="display:flex;"><span>    S3    []S3Source   <span style="color:#f1fa8c">`yaml:&#34;s3,omitempty&#34;`</span>   <span style="color:#6272a4">// ← new</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><strong>2. Add <code>loadS3Source</code> in <code>pkg/merger/</code>:</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">func</span> (m <span style="color:#ff79c6">*</span>Merger) <span style="color:#50fa7b">loadS3Source</span>(src orktypes.S3Source) ([]orktypes.CRDEntry, <span style="color:#8be9fd">error</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4">// fetch from S3, parse with parseKatalogDoc, return []CRDEntry</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><strong>3. Call it from <code>loadKomposer</code> in <code>pkg/merger/file.go</code>:</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#ff79c6">for</span> i, s3Src <span style="color:#ff79c6">:=</span> <span style="color:#ff79c6">range</span> doc.Sources.S3 {
+</span></span><span style="display:flex;"><span>    crds, err <span style="color:#ff79c6">:=</span> m.<span style="color:#50fa7b">loadS3Source</span>(s3Src)
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">if</span> err <span style="color:#ff79c6">!=</span> <span style="color:#ff79c6">nil</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">return</span> <span style="color:#ff79c6">nil</span>, fmt.<span style="color:#50fa7b">Errorf</span>(<span style="color:#f1fa8c">&#34;%q sources.s3[%d]: %w&#34;</span>, path, i, err)
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#6272a4">// dedup and append</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><strong>Current implementations:</strong></p>
+<table>
+  <thead>
+      <tr>
+          <th>Source</th>
+          <th>Declaration</th>
+          <th>Auth supported</th>
+          <th>Status</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Local file</td>
+          <td><code>sources.files: - ./path</code></td>
+          <td>No (local)</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td>Remote URL</td>
+          <td><code>sources.files: - https://...</code></td>
+          <td>No</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td>Remote URL + bearer</td>
+          <td><code>sources.files: - url: ... auth: type: bearer</code></td>
+          <td>Yes</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td>Remote URL + GitHub token</td>
+          <td><code>sources.files: - url: ... auth: type: github</code></td>
+          <td>Yes</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td>Remote URL + basic auth</td>
+          <td><code>sources.files: - url: ... auth: type: basic</code></td>
+          <td>Yes</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td>Environment variable</td>
+          <td><code>sources.files: - $VAR</code></td>
+          <td>No</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td>Remote Helm repository</td>
+          <td><code>sources.helm.repo: https://...</code></td>
+          <td>No</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td>Local Helm chart</td>
+          <td><code>sources.helm.repo: ./charts</code></td>
+          <td>No</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td>Git-based Helm chart</td>
+          <td><code>sources.helm.repo: https://...git</code></td>
+          <td>No</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td>Inline <code>spec.crds</code></td>
+          <td><code>spec.crds: [...]</code></td>
+          <td>No</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td>S3 / GCS / Azure Blob</td>
+          <td><code>sources.s3</code></td>
+          <td>—</td>
+          <td>Planned</td>
+      </tr>
+      <tr>
+          <td>Kubernetes ConfigMap</td>
+          <td><code>sources.configMap</code></td>
+          <td>—</td>
+          <td>Planned</td>
+      </tr>
+  </tbody>
+</table>
+<hr>
+<blockquote>
+<p>For a complete list of all configurable options, see the <strong><a href="../../reference/katalog-komposer-reference.md">Katalog and Komposer Reference</a></strong>.<br>
+For real‑world examples, see the <strong><a href="../../use-cases/index.md">Use Cases</a></strong> documentation.</p></blockquote>
+
+      </div>
+
+      
+      <nav class="docs-pagination" aria-label="Page navigation">
+        
+        <a href="/docs/concepts/dependency-model/" class="pagination-link pagination-prev">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <div>
+            <span class="pagination-label">Previous</span>
+            <span class="pagination-title">How Dependencies Work</span>
+          </div>
+        </a>
+        
+        
+        <a href="/docs/concepts/katalog/" class="pagination-link pagination-next">
+          <div>
+            <span class="pagination-label">Next</span>
+            <span class="pagination-title">Katalog</span>
+          </div>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        
+      </nav>
+    </div>
+  </article>
+
+  
+<aside class="docs-toc" id="docs-toc" aria-label="Table of contents">
+  <div class="toc-inner">
+    <p class="toc-title">On this page</p>
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#a-simple-komposer">A Simple Komposer?</a></li>
+    <li><a href="#katalog-vs-komposer">Katalog vs Komposer</a></li>
+    <li><a href="#komposer-structure">Komposer structure</a></li>
+    <li><a href="#file-sources">File sources</a>
+      <ul>
+        <li><a href="#simple-form">Simple form</a></li>
+        <li><a href="#environment-variables">Environment variables</a></li>
+      </ul>
+    </li>
+    <li><a href="#authenticated-file-sources">Authenticated file sources</a>
+      <ul>
+        <li><a href="#bearer-token">Bearer token</a></li>
+        <li><a href="#github-token">GitHub token</a></li>
+        <li><a href="#basic-auth">Basic auth</a></li>
+        <li><a href="#mixing-auth-types">Mixing auth types</a></li>
+        <li><a href="#injecting-credentials-in-kubernetes">Injecting credentials in Kubernetes</a></li>
+      </ul>
+    </li>
+    <li><a href="#helm-sources">Helm sources</a>
+      <ul>
+        <li><a href="#local-charts">Local charts</a></li>
+        <li><a href="#git-based-charts">Git-based charts</a></li>
+        <li><a href="#the-helm-chart-template">The Helm chart template</a></li>
+      </ul>
+    </li>
+    <li><a href="#inline-overrides">Inline overrides</a></li>
+    <li><a href="#merge-rules">Merge rules</a></li>
+    <li><a href="#cli-commands">CLI commands</a>
+      <ul>
+        <li><a href="#ork-validate"><code>ork validate</code></a></li>
+        <li><a href="#ork-template"><code>ork template</code></a></li>
+        <li><a href="#ork-generate-runtime"><code>ork generate runtime</code></a></li>
+        <li><a href="#ork-run"><code>ork run</code></a></li>
+      </ul>
+    </li>
+    <li><a href="#complete-examples">Complete examples</a>
+      <ul>
+        <li><a href="#single-katalog--no-komposer-needed">Single Katalog — no Komposer needed</a></li>
+        <li><a href="#multi-team-composition">Multi-team composition</a></li>
+        <li><a href="#enterprise--private-sources-with-mixed-auth">Enterprise — private sources with mixed auth</a></li>
+        <li><a href="#helm-chart--local-katalog--inline-override">Helm chart + local Katalog + inline override</a></li>
+      </ul>
+    </li>
+    <li><a href="#adding-new-source-types">Adding new source types</a></li>
+  </ul>
+</nav>
+    <div class="toc-footer">
+      <a href="https://github.com/iAlexeze/orkestra/edit/main/docs/docs/concepts/komposer.md" target="_blank" rel="noopener noreferrer" class="edit-on-github">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Edit on GitHub
+      </a>
+    </div>
+  </div>
+</aside>
+
+
+</div>
+
+  </main>
+
+  <footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a href="/" class="footer-logo" aria-label="Orkestra home">
+        <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="28">
+        <span class="footer-logo-text">Orkestra</span>
+      </a>
+      <p class="footer-tagline">The declarative control plane<br>for Kubernetes operators.</p>
+      <div class="footer-social">
+        <a href="https://github.com/iAlexeze/orkestra" target="_blank" rel="noopener noreferrer" aria-label="GitHub" class="footer-social-link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+        </a>
+        <a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer" aria-label="Twitter / X" class="footer-social-link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4 class="footer-col-title">Documentation</h4>
+        <ul role="list">
+          <li><a href="/docs/getting-started/">Getting Started</a></li>
+          <li><a href="/docs/basics/">Basics</a></li>
+          <li><a href="/docs/concepts/">Concepts</a></li>
+          <li><a href="/docs/guides/">Guides</a></li>
+          <li><a href="/docs/reference/">Reference</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-col-title">Community</h4>
+        <ul role="list">
+          <li><a href="https://github.com/iAlexeze/orkestra" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/issues" target="_blank" rel="noopener noreferrer">Issues</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/discussions" target="_blank" rel="noopener noreferrer">Discussions</a></li>
+          <li><a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer">@orkspace</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-col-title">Resources</h4>
+        <ul role="list">
+          <li><a href="https://github.com/iAlexeze/orkestra/releases" target="_blank" rel="noopener noreferrer">Releases</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
+          <li><a href="/docs/reference/">API Reference</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>&copy; 2026 Orkestra. Released under the Apache 2.0 License.</p>
+    <p class="footer-built">Built with <a href="https://gohugo.io" target="_blank" rel="noopener noreferrer">Hugo</a></p>
+  </div>
+</footer>
+
+
+  
+  
+  <script src="/js/main.min.f2df583e131a595404870b2d956fe54827dcacf44666bb51201fbf1d6524fa40.js" defer></script>
+
+  
+  
+  <script src="https://cdn.jsdelivr.net/npm/@docsearch/js@3" crossorigin></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var el = document.getElementById('docsearch');
+      if (!el) return;
+      docsearch({
+        appId: "\"1YJ1C111LH\"",
+        apiKey: "\"b4bbac9a499ecc51109f23abd327cf29\"",
+        indexName: "\"orkestra\"",
+        container: '#docsearch',
+        debug: false,
+      });
+    });
+  </script>
+  
+</body>
+</html>

@@ -16,7 +16,7 @@ func Examples(crds []orktypes.CRDEntry, dryRun bool) error {
 	now := time.Now().UTC()
 
 	for _, crd := range crds {
-		if !crd.Enabled {
+		if !crd.IsEnabled() {
 			continue
 		}
 
@@ -27,7 +27,7 @@ func Examples(crds []orktypes.CRDEntry, dryRun bool) error {
 				Group:      crd.APITypes.Group,
 				Version:    crd.APITypes.Version,
 				Kind:       crd.APITypes.Kind,
-				Namespaced: crd.Namespaced,
+				Namespaced: crd.IsNamespaced(),
 				Namespace:  crd.Namespace,
 			},
 		}

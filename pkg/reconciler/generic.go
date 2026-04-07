@@ -4,13 +4,12 @@ package reconciler
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/event"
+	"github.com/ialexeze/orkestra/pkg/kordinator"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
-	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -23,7 +22,8 @@ import (
 //   - Context enrichment
 //   - Cache reads
 //   - Deletion routing
-//   - Finalizer management
+//   - Finalizer/Annotation/Labele management
+//   - Template interpretation
 //   - Reconcile priority (Go hooks → declarative templates → no-op)
 //   - Event firing and logging
 //
@@ -43,13 +43,15 @@ import (
 //  3. Add the field to orktypes.HookTemplates
 //     That is all — generic.go does not change.
 type GenericReconciler[T domain.Object] struct {
-	informer cache.SharedIndexInformer
-	event    *event.Event
-	kube     *kubeclient.Kubeclient
-	hooks    domain.ReconcileHooks[T]
-	rc       orktypes.ReconcilerConfig
-	newObj   func() T
-	crd      CRDInfo
+	katalogRegistry  *kordinator.ResourceKatalog
+	providerRegistry orktypes.ProviderRegistry
+	informer         cache.SharedIndexInformer
+	event            *event.Event
+	kube             *kubeclient.Kubeclient
+	hooks            domain.ReconcileHooks[T]
+	rc               orktypes.ReconcilerConfig
+	newObj           func() T
+	crd              CRDInfo
 }
 
 type CRDInfo struct {
@@ -58,6 +60,9 @@ type CRDInfo struct {
 	GVR              schema.GroupVersionResource
 	Finalizers       []string
 	ReconcilerConfig orktypes.ReconcilerConfig
+	Operator         string
+	Validation       *orktypes.ValidationConfig
+	Mutation         *orktypes.MutationConfig
 }
 
 func NewGenericReconciler[T domain.Object](
@@ -67,6 +72,8 @@ func NewGenericReconciler[T domain.Object](
 	kube *kubeclient.Kubeclient,
 	anyHooks domain.AnyReconcileHooks,
 	newObj func() T,
+	katalogRegistry *kordinator.ResourceKatalog,
+	providerRegistry orktypes.ProviderRegistry,
 ) *GenericReconciler[T] {
 
 	var hooks domain.ReconcileHooks[T]
@@ -82,18 +89,24 @@ func NewGenericReconciler[T domain.Object](
 	}
 
 	return &GenericReconciler[T]{
-		crd:      crd,
-		rc:       crd.ReconcilerConfig,
-		informer: informer,
-		event:    ev,
-		kube:     kube,
-		hooks:    hooks,
-		newObj:   newObj,
+		katalogRegistry:  katalogRegistry,
+		providerRegistry: providerRegistry,
+		crd:              crd,
+		rc:               crd.ReconcilerConfig,
+		informer:         informer,
+		event:            ev,
+		kube:             kube,
+		hooks:            hooks,
+		newObj:           newObj,
 	}
 }
 
 var _ domain.Reconciler = (*GenericReconciler[domain.Object])(nil)
 
+// Reconcile dispatches to the correct reconcile implementation.
+// Order:
+//  1. Conditional provisioning (when blocks) — handled by runTemplateReconcile
+//  2. Go hooks → Declarative templates → No-op (through reconcileImpl())
 func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error {
 	ctx = kubeclient.WithKubeclient(ctx, r.kube)
 	if err := ctx.Err(); err != nil {
@@ -146,14 +159,76 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 		return err
 	}
 
-	return r.reconcile(ctx, obj)
+	// Ensure managed label and annotations — idempotent, like finalizer patching.
+	// This is how ork reconcile knows what this operator instance manages.
+	if err := r.ensureManagedLabel(ctx, obj); err != nil {
+		return err
+	}
+
+	if err := r.ensureManagedAnnotations(ctx, obj, r.crd.Operator); err != nil {
+		return err
+	}
+
+	// ── Step 5: Reconcile implementation ──────────────────────────────────────
+	return r.reconcileImpl(ctx, obj)
 }
 
-// reconcile dispatches to the correct reconcile implementation.
+// reconcileImpl dispatches to the correct reconcile implementation.
 // Priority: Go hooks → declarative templates → no-op.
-func (r *GenericReconciler[T]) reconcile(ctx context.Context, obj T) error {
+func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	var err error
 
+	// ── Reconcile-time mutation and validation ────────────────────────────────
+	// Ordering respects MutationConfig.MutateFirst:
+	//   false (default) — validate → mutate valid objects → reconcile
+	//   true            — mutate first (apply defaults) → validate → reconcile
+	//
+	// Mutation failures are non-fatal: logged, reconcile continues.
+	// Validation deny failures halt reconcile and return an error.
+
+	// reconcileImpl — replace the validation call block with this:
+
+	// ── Reconcile-time mutation and validation ────────────────────────────────
+	mutationEnabled := r.crd.Mutation != nil && len(r.crd.Mutation.Rules) > 0
+	validationEnabled := r.crd.Validation != nil && len(r.crd.Validation.Rules) > 0
+
+	if mutationEnabled && r.crd.Mutation.MutateFirst {
+		if mutErr := r.applyReconcileTimeMutation(ctx, obj); mutErr != nil {
+			logger.FromContext(ctx).Warn().Err(mutErr).
+				Str("name", obj.GetName()).
+				Msg("reconcile mutation failed — continuing")
+		}
+	}
+
+	if validationEnabled {
+		valResult := runValidation(obj, r.crd.Validation, r.crd.Kind)
+
+		// Warn violations: log and emit events but do NOT halt
+		for _, w := range valResult.Warnings {
+			logger.FromContext(ctx).Warn().
+				Str("name", obj.GetName()).
+				Str("crd", r.crd.GVK).
+				Str("resource", obj.GetNamespace()+"/"+obj.GetName()).
+				Str("field", w.Field).
+				Str("message", w.Message).
+				Msg("reconcile validation: warn")
+			r.event.Eventf(obj, corev1.EventTypeWarning, "ValidationWarning",
+				fmt.Sprintf("field %q: %s", w.Field, w.Message))
+		}
+
+		// Deny violations: halt reconcile
+		if valResult.Deny {
+			return valResult.DenialError()
+		}
+	}
+
+	if mutationEnabled && !r.crd.Mutation.MutateFirst {
+		if mutErr := r.applyReconcileTimeMutation(ctx, obj); mutErr != nil {
+			logger.FromContext(ctx).Warn().Err(mutErr).
+				Str("name", obj.GetName()).
+				Msg("reconcile mutation failed — continuing")
+		}
+	}
 	switch {
 	case r.hooks.OnReconcile != nil:
 		// Go hooks — user-provided, full type-safe access.
@@ -170,8 +245,14 @@ func (r *GenericReconciler[T]) reconcile(ctx context.Context, obj T) error {
 		logger.FromContext(ctx).Info().
 			Str("name", obj.GetName()).
 			Msgf("reconciled %s (no-op)", r.crd.GVK)
-		return nil
+		// Status still patched for no-op reconcilers
 	}
+
+	// Always patch status — best-effort, never fails reconcile.
+	// Called with the outcome so Ready condition reflects reality.
+	// Must run before the error return so Ready=False is written on failure.
+	// r.updatedPatchStatus(ctx, obj, err)
+	r.patchStatusWithChildren(ctx, obj, err) // Layer 3: read children only on success — no point reading
 
 	if err != nil {
 		logger.FromContext(ctx).Error().Err(err).
@@ -226,177 +307,4 @@ func (r *GenericReconciler[T]) handleDeletion(ctx context.Context, obj T) error 
 			r.crd.GVK, obj.GetNamespace(), obj.GetName()))
 
 	return nil
-}
-
-// ── Template dispatch ─────────────────────────────────────────────────────────
-// runTemplateReconcile and runTemplateOnDelete are the only places in this file
-// that know which resource types exist. Adding a new resource type means adding
-// one line here and one new run_<resource>.go file. generic.go changes no further.
-
-// runTemplateReconcile interprets onCreate and onReconcile blocks.
-// Each resource type is handled by its own run_xxx() function.
-func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj domain.Object) error {
-	kube, ok := kubeclient.FromContext(ctx)
-	if !ok {
-		return fmt.Errorf("kubeclient not found in context")
-	}
-
-	resolver, err := orktmpl.NewResolver(ctx, obj)
-	if err != nil {
-		return fmt.Errorf("building resolver: %w", err)
-	}
-
-	// ── onCreate ─────────────────────────────────────────────────────────────
-	if t := r.rc.OnCreate; t != nil {
-		if err := runDeployments(ctx, kube, resolver, obj, t.Deployments, false); err != nil {
-			return err
-		}
-		if err := runServices(ctx, kube, resolver, obj, t.Services, false); err != nil {
-			return err
-		}
-		if err := runSecrets(ctx, kube, resolver, obj, t.Secrets, false); err != nil {
-			return err
-		}
-		if err := runConfigMaps(ctx, kube, resolver, obj, t.ConfigMaps, false); err != nil {
-			return err
-		}
-		if err := runServiceAccounts(ctx, kube, resolver, obj, t.ServiceAccounts); err != nil {
-			return err
-		}
-		if err := runCronJobs(ctx, kube, resolver, obj, t.CronJobs, false); err != nil {
-			return err
-		}
-	}
-
-	// ── onReconcile ──────────────────────────────────────────────────────────
-	if t := r.rc.OnReconcile; t != nil {
-		if err := runDeployments(ctx, kube, resolver, obj, t.Deployments, true); err != nil {
-			return err
-		}
-		if err := runServices(ctx, kube, resolver, obj, t.Services, true); err != nil {
-			return err
-		}
-		if err := runSecrets(ctx, kube, resolver, obj, t.Secrets, true); err != nil {
-			return err
-		}
-		if err := runConfigMaps(ctx, kube, resolver, obj, t.ConfigMaps, true); err != nil {
-			return err
-		}
-		if err := runCronJobs(ctx, kube, resolver, obj, t.CronJobs, true); err != nil {
-			return err
-		}
-		// ServiceAccounts don't drift — no onReconcile needed
-	}
-
-	return nil
-}
-
-// runTemplateOnDelete interprets the onDelete block.
-// Currently handles Jobs — the primary onDelete use case.
-// Owner references handle all other resource cleanup automatically.
-func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, obj domain.Object) error {
-	kube, ok := kubeclient.FromContext(ctx)
-	if !ok {
-		return fmt.Errorf("kubeclient not found in context")
-	}
-
-	resolver, err := orktmpl.NewResolver(ctx, obj)
-	if err != nil {
-		return fmt.Errorf("building resolver: %w", err)
-	}
-
-	if t := r.rc.OnDelete; t != nil {
-		if err := runJobs(ctx, kube, resolver, obj, t.Jobs); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// ── Finalizer management ──────────────────────────────────────────────────────
-
-func (r *GenericReconciler[T]) ensureFinalizers(ctx context.Context, obj T) error {
-	if len(r.crd.Finalizers) == 0 {
-		return nil
-	}
-
-	needsUpdate := false
-	for _, f := range r.crd.Finalizers {
-		if !ContainsFinalizer(obj, f) {
-			needsUpdate = true
-			break
-		}
-	}
-	if !needsUpdate {
-		return nil
-	}
-
-	newFinalizers := obj.GetFinalizers()
-	for _, f := range r.crd.Finalizers {
-		if !ContainsFinalizer(obj, f) {
-			newFinalizers = append(newFinalizers, f)
-		}
-	}
-
-	logger.Debug().
-		Str("name", obj.GetName()).
-		Msgf("adding finalizers: %v → %v", obj.GetFinalizers(), newFinalizers)
-
-	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.Kind+"FinalizerAdded",
-		fmt.Sprintf("Added finalizers to %s/%s", obj.GetNamespace(), obj.GetName()))
-
-	return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR, newFinalizers)
-}
-
-func (r *GenericReconciler[T]) removeFinalizers(ctx context.Context, obj T) error {
-	if len(obj.GetFinalizers()) == 0 {
-		return nil
-	}
-
-	newFinalizers := make([]string, 0, len(obj.GetFinalizers()))
-	for _, f := range obj.GetFinalizers() {
-		if !slices.Contains(r.crd.Finalizers, f) {
-			newFinalizers = append(newFinalizers, f)
-		}
-	}
-
-	if len(newFinalizers) == len(obj.GetFinalizers()) {
-		return nil
-	}
-
-	logger.Debug().
-		Str("name", obj.GetName()).
-		Msgf("removing finalizers: %v → %v", obj.GetFinalizers(), newFinalizers)
-
-	return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR, newFinalizers)
-}
-
-// ── Finalizer helpers — exported for custom reconcilers ───────────────────────
-
-func AddFinalizer(o domain.Object, finalizer string) (updated bool) {
-	if ContainsFinalizer(o, finalizer) {
-		return false
-	}
-	o.SetFinalizers(append(o.GetFinalizers(), finalizer))
-	return true
-}
-
-func RemoveFinalizer(o domain.Object, finalizer string) (updated bool) {
-	f := o.GetFinalizers()
-	length := len(f)
-	index := 0
-	for i := range length {
-		if f[i] == finalizer {
-			continue
-		}
-		f[index] = f[i]
-		index++
-	}
-	o.SetFinalizers(f[:index])
-	return length != index
-}
-
-func ContainsFinalizer(o domain.Object, finalizer string) bool {
-	return slices.Contains(o.GetFinalizers(), finalizer)
 }

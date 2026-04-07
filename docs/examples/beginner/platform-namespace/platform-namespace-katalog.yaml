@@ -1,0 +1,112 @@
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: platform-namespace-katalog
+  description: >-
+    Manages the PlatformNamespace CRD.
+    For every PlatformNamespace CR, Orkestra provisions a complete namespace
+    with configuration, secrets, and a service account — ready for workloads.
+
+spec:
+  finalizers:
+    - finalizer.platform.orkestra.io/platformnamespace
+
+  crds:
+    platformnamespace:
+      enabled: true
+      namespaced: false   # cluster-scoped — provisions namespaces across the cluster
+      workers: 10
+      resync: 1m
+
+      apiTypes:
+        group: platform.orkestra.io
+        version: v1alpha1
+        kind: PlatformNamespace
+        plural: platformnamespaces
+
+      reconciler:
+        default: true
+
+        finalizers:
+          - finalizer.platform.orkestra.io/platformnamespace
+
+        # ── onCreate ──────────────────────────────────────────────────────
+        # Everything a namespace needs to be production-ready.
+        # All resources are owned by the PlatformNamespace CR —
+        # deleted automatically when the CR is deleted.
+
+        onCreate:
+
+          # ConfigMap — environment and logging configuration
+          # Workloads in this namespace read from this ConfigMap.
+          configMaps:
+            - name: "{{ .metadata.name }}-config"
+              namespace: "{{ .spec.targetNamespace }}"
+              reconcile: true
+              data:
+                ENVIRONMENT: "{{ .spec.environment }}"
+                LOG_LEVEL: "{{ .spec.logLevel }}"
+                TEAM: "{{ .spec.team }}"
+                NAMESPACE: "{{ .spec.targetNamespace }}"
+              labels:
+                - key: team
+                  value: "{{ .spec.team }}"
+                - key: managed-by
+                  value: orkestra
+
+          # Secret — copy the registry pull secret into this namespace
+          # so workloads can pull images without manual intervention.
+          # Only created when spec.pullSecret is declared on the CR.
+          secrets:
+            - name: "{{ .spec.pullSecret }}"
+              namespace: "{{ .spec.targetNamespace }}"
+              fromSecret: "{{ .spec.pullSecret }}"
+              fromNamespace: platform
+              reconcile: true
+              labels:
+                - key: team
+                  value: "{{ .spec.team }}"
+                - key: managed-by
+                  value: orkestra
+
+          # ServiceAccount — standard workload identity for this namespace
+          serviceAccounts:
+            - name: "{{ .spec.team }}-sa"
+              namespace: "{{ .spec.targetNamespace }}"
+              labels:
+                - key: team
+                  value: "{{ .spec.team }}"
+                - key: managed-by
+                  value: orkestra
+
+        # ── onReconcile ───────────────────────────────────────────────────
+        # Re-sync configuration on every reconcile loop.
+        # If LOG_LEVEL changes in the CR spec, the ConfigMap is updated.
+        # If the pull secret rotates in the platform namespace, the copy
+        # is updated automatically.
+        onReconcile:
+          configMaps:
+            - name: "{{ .metadata.name }}-config"
+              namespace: "{{ .spec.targetNamespace }}"
+              data:
+                ENVIRONMENT: "{{ .spec.environment }}"
+                LOG_LEVEL: "{{ .spec.logLevel }}"
+                TEAM: "{{ .spec.team }}"
+                NAMESPACE: "{{ .spec.targetNamespace }}"
+
+          secrets:
+            - name: "{{ .spec.pullSecret }}"
+              namespace: "{{ .spec.targetNamespace }}"
+              fromSecret: "{{ .spec.pullSecret }}"
+              fromNamespace: platform
+
+        # ── onDelete ──────────────────────────────────────────────────────
+        # Owner references handle ConfigMap, Secret, and ServiceAccount
+        # cleanup automatically. No explicit onDelete needed.
+
+      queue:
+        maxQueueDepth: 200
+
+      description: >-
+        Provisions a namespace with environment configuration, pull secret,
+        and service account. Everything a team needs to deploy workloads.

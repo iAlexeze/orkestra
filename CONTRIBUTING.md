@@ -4,7 +4,7 @@
 
 First off, thank you for considering contributing to Orkestra. It's people like you that make Orkestra such a great tool.
 
-**Orkestra** is a declarative Kubernetes operator framework that aims to make operators accessible, composable, and observable — all without writing Go. Whether you're fixing a bug, adding a feature, improving documentation, or just asking questions, your help is appreciated.
+**Orkestra** is a declarative Kubernetes operator runtime that aims to make operators accessible, composable, and observable — all without writing Go. Whether you're fixing a bug, adding a feature, improving documentation, or just asking questions, your help is appreciated.
 
 This document provides guidelines for contributing. These are guidelines, not rules — use your best judgment, and feel free to propose changes to this document itself.
 
@@ -12,7 +12,7 @@ This document provides guidelines for contributing. These are guidelines, not ru
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by the [Orkestra Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to [your-email@example.com].
+This project and everyone participating in it is governed by the [Orkestra Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to [Email](ialexeze@gmail.com).
 
 ---
 
@@ -174,7 +174,7 @@ orkestra/
 ├── cmd/           # CLI entry points
 ├── pkg/           # Public packages
 │   ├── generate/  # Code generation
-│   ├── kontroller/# Core controller logic
+│   ├── kordinator/# Core controller cordination logic
 │   ├── kubeclient/# Kubernetes client
 │   ├── merger/    # Katalog merging
 │   └── types/     # Shared types

@@ -6,9 +6,11 @@ import (
 	"fmt"
 
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -123,9 +125,29 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	return nil
 }
 
+// DeleteIfOwned deletes the Pod if it exists and is owned by the CR.
+func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+	owner domain.Object, name, namespace string) error {
+
+	existing, err := kube.Clientset().CoreV1().Pods(namespace).
+		Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	// Only delete if we own it
+	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+		return nil
+	}
+	return kube.Clientset().CoreV1().Pods(namespace).
+		Delete(ctx, name, metav1.DeleteOptions{})
+}
+
 // Resolve builds a ResolvedPodSpec from a PodTemplateSource.
 //
-// Option B — fields are flat on the source struct. Template expressions
+// Fields are flat on the source struct. Template expressions
 // must already be evaluated by template.Resolver before calling Resolve.
 // This function only reads already-resolved string values and assembles the spec.
 //
@@ -158,8 +180,8 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string) ResolvedPodSpec {
 	}
 
 	// System labels — always present
-	spec.Labels["managed-by"] = "orkestra"
-	spec.Labels["orkestra-owner"] = ownerName
+	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
+	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
 
 	return spec
 }
@@ -179,8 +201,8 @@ func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *core
 					Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
 					Name:               owner.GetName(),
 					UID:                owner.GetUID(),
-					Controller:         boolPtr(true),
-					BlockOwnerDeletion: boolPtr(true),
+					Controller:         utils.BoolPtr(true),
+					BlockOwnerDeletion: utils.BoolPtr(true),
 				},
 			},
 		},
@@ -251,5 +273,3 @@ func parsePort(s string) int {
 	fmt.Sscanf(s, "%d", &p)
 	return p
 }
-
-func boolPtr(b bool) *bool { return &b }

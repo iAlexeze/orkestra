@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/merger"
 	ork_runtime "github.com/ialexeze/orkestra/pkg/runtime"
@@ -21,13 +22,24 @@ import (
 // -----------------------------------------------------------------------------
 
 // NewKatalog returns a list of CRD data
-func NewKatalog(m *merger.Merger, paths ...string) *Katalog {
+func NewKatalog(m *merger.Merger, kfg *konfig.Konfig) *Katalog {
 	katalog := &Katalog{}
-	var entries []orktypes.CRDEntry
-	var err error
+	katalog.konfig = kfg
+
+	paths := katalog.konfig.Katalog().Paths
 
 	// Register runtime objects
 	ork_runtime.RegisterRuntimeObjects()
+
+	// Build CRDs
+	entries, err := katalog.KomposeKatalogFromYaml(m, paths...)
+	if err != nil {
+		utils.Exit(err)
+	}
+
+	if len(entries) == 0 {
+		utils.Exit(fmt.Errorf("validation error: katalog empty"))
+	}
 
 	// Guard: if ObjectRegistry is empty, user forgot to run ork generate
 	for _, crd := range entries {
@@ -37,22 +49,9 @@ func NewKatalog(m *merger.Merger, paths ...string) *Katalog {
 				paths[0],
 			))
 		}
-
-	}
-	// Build CRDs
-	entries, err = katalog.KomposeKatalogFromYaml(m, paths...)
-	if err != nil {
-		utils.Exit(err)
 	}
 
-	if len(entries) == 0 {
-		utils.Exit(fmt.Errorf("validation error: katalog empty"))
-	}
-
-	// Pass to enabled
-	katalog.enabledCRDs = entries
-
-	kat, err := katalog.ValidateConfig()
+	kat, err := katalog.ValidateConfig(kfg)
 	if err != nil {
 		utils.Exit(err)
 	}
@@ -96,7 +95,7 @@ func NewSchemeRegistry(k *Katalog) (*runtime.Scheme, error) {
 func (k *Katalog) updateResourceMapAndReturn() (*Katalog, error) {
 	// Map the type of the object
 	for _, c := range k.enabledCRDs {
-		if k.enabledEmpty() {
+		if len(k.enabledCRDs) == 0 {
 			return nil, fmt.Errorf("no enabled CRDs found")
 		}
 
@@ -111,9 +110,10 @@ func (k *Katalog) updateResourceMapAndReturn() (*Katalog, error) {
 	return k, nil
 }
 
+// Deprecated: Every use case now is dynamic. Scheme registration is handled by `ork generate`
 func (k *Katalog) registerGoScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
 	for _, c := range k.enabledCRDs {
-		if k.enabledEmpty() {
+		if len(k.enabledCRDs) == 0 {
 			return nil, fmt.Errorf("no enabled CRDs found")
 		}
 
@@ -128,7 +128,7 @@ func (k *Katalog) registerGoScheme(scheme *runtime.Scheme) (*runtime.Scheme, err
 // these GVKs as *unstructured.Unstructured instead of failing
 func (k *Katalog) registerDynamicScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
 	for _, crd := range k.enabledCRDs {
-		if crd.IsDynamic() && crd.APITypes.Location == "" {
+		if crd.IsDynamic() && crd.APITypes.Location == "" && !crd.IsBuiltInType() {
 			// Register Object
 			scheme.AddKnownTypeWithName(
 				schema.GroupVersionKind{

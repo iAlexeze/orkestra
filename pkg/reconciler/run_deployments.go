@@ -7,6 +7,7 @@ import (
 
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/ialexeze/orkestra/pkg/logger"
 	orkdeploy "github.com/ialexeze/orkestra/pkg/orkestra-registry/deployments"
 	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
@@ -29,6 +30,31 @@ func runDeployments(
 	update bool,
 ) error {
 	for i, src := range srcs {
+
+		// 1. Evaluate conditions BEFORE resolving templates
+		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf)
+
+		if !conditionPassed {
+			if update || src.Reconcile { // ← src.Reconcile here too to show that this resource is continuously managed
+				// Condition no longer passes — delete if owned by this CR
+				name, _ := resolver.Resolve(src.Name)
+				ns, _ := resolver.Resolve(src.Namespace)
+				if ns == "" {
+					ns = owner.GetNamespace()
+				}
+				if err := orkdeploy.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
+					return fmt.Errorf("deployments[%d]: conditional cleanup: %w", i, err)
+				}
+			}
+			logger.FromContext(ctx).Debug().
+				Str("resource", "Deployment").
+				Int("index", i).
+				Msg("conditions not met — skipping resource")
+
+			continue
+		}
+
+		// 2. Resolve template expressions
 		resolved, err := resolver.ResolveDeploymentTemplate(src)
 		if err != nil {
 			return fmt.Errorf("deployments[%d]: %w", i, err)
@@ -39,6 +65,7 @@ func runDeployments(
 			fmt.Sscanf(resolved.Replicas, "%d", &staticReplicas)
 		}
 
+		// 3. Build registry spec and apply
 		spec := orkdeploy.Resolve(resolved, staticReplicas, resolver.OwnerName())
 
 		if update {
@@ -49,6 +76,8 @@ func runDeployments(
 			if err := orkdeploy.Create(ctx, kube, owner, spec); err != nil {
 				return fmt.Errorf("deployments[%d].create: %w", i, err)
 			}
+
+			// reconcile: true
 			if src.Reconcile {
 				if err := orkdeploy.Update(ctx, kube, owner, spec); err != nil {
 					return fmt.Errorf("deployments[%d].reconcile: %w", i, err)

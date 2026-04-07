@@ -3,21 +3,18 @@ package kubeclient
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync/atomic"
 
 	"github.com/ialexeze/orkestra/domain"
 	orkerror "github.com/ialexeze/orkestra/pkg/error"
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/utils"
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -28,32 +25,33 @@ type Kubeclient struct {
 	restConfig *rest.Config
 	clientset  kubernetes.Interface
 	dynamic    dynamic.Interface
-	scheme     *runtime.Scheme
-	Config     Config
 	Info       *CRDInfo
 	started    atomic.Bool
-}
 
-// Config defines kube configuration
-type Config struct {
-	Kubeconfig string
-	Masterurl  string
-	Scheme     *runtime.Scheme // REQUIRED
+	// Starter konfig
+	konfig *konfig.Konfig
+	scheme *runtime.Scheme
+
+	// Testing
+	FakeClientset kubernetes.Interface
 }
 
 // Implementing yhe Komponent interface
 var _ domain.Komponent = (*Kubeclient)(nil)
 
+// -----------------------------------------------------------------------------
+// Entry point
+// -----------------------------------------------------------------------------
 // NewKubeclient returns a new Kubeclient with the correct scheme
-func NewKubeclient(cfg Config) *Kubeclient {
-	if cfg.Scheme == nil {
+func NewKubeclient(kfg *konfig.Konfig, scheme *runtime.Scheme) *Kubeclient {
+	if scheme == nil {
 		utils.Exit(orkerror.ErrSchemeNill)
 	}
 
 	return &Kubeclient{
 		name:   "kubeclient",
-		scheme: cfg.Scheme,
-		Config: cfg,
+		scheme: scheme,
+		konfig: kfg,
 	}
 }
 
@@ -98,9 +96,9 @@ func (k *Kubeclient) buildConfig() (*rest.Config, error) {
 	var restCfg *rest.Config
 	var err error
 
-	if k.Config.Kubeconfig != "" {
+	if k.konfig.Cluster().KubekonfigPath != "" {
 		logger.Debug().Msg("using kubeconfig")
-		restCfg, err = clientcmd.BuildConfigFromFlags(k.Config.Masterurl, k.Config.Kubeconfig)
+		restCfg, err = clientcmd.BuildConfigFromFlags(k.konfig.Cluster().MasterURL, k.konfig.Cluster().KubekonfigPath)
 	} else {
 		logger.Debug().Msg("using incluster configuration")
 		restCfg, err = rest.InClusterConfig()
@@ -121,57 +119,6 @@ func (k *Kubeclient) RestClientFor(apiPath, group, version string) (*rest.RESTCl
 // On-demand dynamic client
 func (k *Kubeclient) DynamicClientFor(apiPath, group, version string) (dynamic.Interface, error) {
 	return k.dynamic, nil
-}
-
-// TODO: cleanup
-func (k *Kubeclient) PatchFinalizers(
-	ctx context.Context,
-	obj runtime.Object,
-	gvr schema.GroupVersionResource,
-	finalizers []string,
-) error {
-	accessor, err := meta.Accessor(obj)
-	if err != nil {
-		return fmt.Errorf("getting accessor: %w", err)
-	}
-
-	// Build a minimal merge patch — only touch finalizers
-	// Never send the full object — avoids resourceVersion conflicts
-	patch := map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"finalizers": finalizers,
-		},
-	}
-
-	body, err := json.Marshal(patch)
-	if err != nil {
-		return fmt.Errorf("marshalling finalizer patch: %w", err)
-	}
-
-	namespace := accessor.GetNamespace()
-	name := accessor.GetName()
-
-	if namespace == "" {
-		// Cluster-scoped resource
-		_, err = k.dynamic.Resource(gvr).Patch(
-			ctx,
-			name,
-			types.MergePatchType,
-			body,
-			metav1.PatchOptions{},
-		)
-	} else {
-		// Namespace-scoped resource
-		_, err = k.dynamic.Resource(gvr).Namespace(namespace).Patch(
-			ctx,
-			name,
-			types.MergePatchType,
-			body,
-			metav1.PatchOptions{},
-		)
-	}
-
-	return err
 }
 
 // Notes
@@ -198,7 +145,12 @@ func (k *Kubeclient) RestConfig() *rest.Config { return k.restConfig }
 func (k *Kubeclient) Clientset() kubernetes.Interface { return k.clientset }
 
 // Dynamic returns yhe dynamic interface. Useful in 'dynamic' reconciler mode
-func (k *Kubeclient) Dynamic() dynamic.Interface { return k.dynamic }
+func (k *Kubeclient) DynamicClient() dynamic.Interface { return k.dynamic }
 
 // Scheme returns the runtime scheme for yhe kubeclient
 func (k *Kubeclient) Scheme() *runtime.Scheme { return k.scheme }
+
+// New fake client
+func NewFakeClientset() kubernetes.Interface {
+	return fake.NewClientset()
+}

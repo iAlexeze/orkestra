@@ -87,14 +87,15 @@ func (f *Factory) Start(ctx context.Context) error {
 	// Signal readiness first — unblocks any List/Watch already waiting
 	close(f.ready)
 
-	logger.Info().Msgf("starting %d informers...", len(f.informers))
+	logger.Info().Int("count", len(f.informers)).Msg("starting informers")
 
 	for t, entry := range f.informers {
-		if entry == nil || entry.Informer == nil {
-			logger.Warn().Msgf("nil informer entry for type %s — skipping", t)
+		if entry == nil || entry.Informer == nil || entry.Missing {
+			logger.Warn().Str("gvk", t).Msg("informer entry nil or missing — skipping")
+			entry.WasNeverStarted = true
 			continue
 		}
-		// Each informer gets its own correct name — no shared opts field
+		// Each informer gets its own correct name
 		logger.Debug().
 			Str("name", entry.Name).
 			Str("type", t).
@@ -125,6 +126,7 @@ func (f *Factory) WaitForCacheSync(ctx context.Context) bool {
 
 	for _, entry := range f.informers {
 		if entry == nil || entry.Missing {
+			entry.WasNeverStarted = true
 			logger.Warn().
 				Str("name", entry.Name).
 				Msg("skipping cache sync — CRD missing or not registered")
@@ -181,7 +183,7 @@ func (f *Factory) IsReady() bool {
 func (f *Factory) gvkFromObject(obj interface{}) (*schema.GroupVersionKind, error) {
 	runtimeObj, ok := obj.(runtime.Object)
 	if !ok {
-		logger.Error().Msgf("object is not a runtime.Object: %T", obj)
+		logger.Error().Str("type", fmt.Sprintf("%T", obj)).Msg("object is not a runtime.Object — event dropped")
 		return nil, fmt.Errorf("object is not a runtime.Object: %T", obj)
 	}
 
@@ -189,7 +191,7 @@ func (f *Factory) gvkFromObject(obj interface{}) (*schema.GroupVersionKind, erro
 	// GetObjectKind().GroupVersionKind() returns empty.
 	gvks, _, err := f.scheme.ObjectKinds(runtimeObj)
 	if err != nil || len(gvks) == 0 {
-		logger.Error().Err(err).Msgf("failed to resolve GVK for %T — event dropped", obj)
+		logger.Error().Err(err).Str("type", fmt.Sprintf("%T", obj)).Msg("failed to resolve GVK — event dropped")
 		return nil, fmt.Errorf("failed to resolve GVK for %T — event dropped", obj)
 	}
 
@@ -214,6 +216,18 @@ func (f *Factory) crdExists(gvk *schema.GroupVersionKind) bool {
 	return false
 }
 
+// Registered CRDs
+func (f *Factory) Registered() map[string]*InformerEntry {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+
+	out := make(map[string]*InformerEntry, len(f.informers))
+	for k, v := range f.informers {
+		out[k] = v
+	}
+	return out
+}
+
 // Missing CRDs on startup
 func (f *Factory) Missing() map[string]*InformerEntry {
 	f.mu.RLock()
@@ -227,11 +241,19 @@ func (f *Factory) Missing() map[string]*InformerEntry {
 }
 
 // SetMissing CRDs on startup
-func (f *Factory) SetMissing(missing map[string]*InformerEntry) {
+func (f *Factory) SetMissingOnStartup(missing map[string]*InformerEntry) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
 	f.missing = missing
+}
+
+// RemoveMissing CRDs in between runs
+func (f *Factory) RemoveMissing(gvkStr string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	delete(f.missing, gvkStr)
 }
 
 // IsMissing CRDs on startup

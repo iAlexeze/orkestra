@@ -39,12 +39,12 @@ func (q *Workqueue) Enqueue(obj interface{}, gvk string) {
 
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		logger.Error().Err(err).Msg("enqueue: failed to get key")
+		logger.Error().Err(err).Str("gvk", gvk).Msg("enqueue: failed to get key")
 		return
 	}
 
 	q.Queue.Add(QueueItem{Key: key, GVK: gvk})
-	logger.Debug().Msgf("Enqueued: %s, gvk: %s", key, gvk)
+	logger.Debug().Str("key", key).Str("gvk", gvk).Msg("enqueued")
 }
 
 // Methods to implement the komponent interface
@@ -52,8 +52,7 @@ var _ domain.Komponent = (*Workqueue)(nil)
 
 // Start is called by orkestra.Start() after all komoonents are registered
 func (q *Workqueue) Start(ctx context.Context) error {
-	logger.Debug().Msgf("right here in %s", q.name)
-
+	logger.Debug().Str("name", q.name).Msg("workqueue started")
 	q.started.Store(true)
 	return nil
 }
@@ -68,6 +67,12 @@ func (q *Workqueue) Shutdown(ctx context.Context) {
 	if q.Queue != nil {
 		q.Queue.ShutDown()
 	}
+}
+
+// GetWithContext returns an item from the work queue.
+// Context (e.g., timeout, cancellation).
+func (q *Workqueue) GetWithContext(ctx context.Context) (QueueItem, bool) {
+	return q.Queue.Get()
 }
 
 // Name returns the name of the default workqueue

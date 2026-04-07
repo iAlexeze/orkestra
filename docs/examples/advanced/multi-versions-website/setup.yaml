@@ -1,0 +1,141 @@
+# ───────────────────────────────────────────────────────────────
+# Namespace
+# ───────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: orkestra-system
+---
+# ───────────────────────────────────────────────────────────────
+# Secret
+# ───────────────────────────────────────────────────────────────
+apiVersion: v1
+data:
+  tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURiRENDQWxTZ0F3SUJBZ0lVQloyelhBbnp3ZnpsRFo4Mm9LMlpOR1BoY0Frd0RRWUpLb1pJaHZjTkFRRUwKQlFBd0ZqRVVNQklHQTFVRUF3d0xiM0pyWlhOMGNtRXRZMkV3SGhjTk1qWXdNekkyTURReE1qRXhXaGNOTWpjdwpNekkyTURReE1qRXhXakFnTVI0d0hBWURWUVFEREJWdmNtdGxjM1J5WVM1dmNtdGxjM1J5WVM1emRtTXdnZ0VpCk1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLQW9JQkFRREhCWSs1QWpyUDg3UW1oQ1hCR1poR0FuekoKak5yM2Q0d2hjcG1qUDA2TjdlUy9HdTR3QllqUFh1YkVtQ01Pc2ZYN1J5NzNPWmh1SWJLNkZDU3F1T3pnS0ZRSApMUi82dm84U2xPSkpoNU1LQUVmVVRMWDFnUkgraXhiR2VwaG45aWN2cldtMnh2eTNzUlRuMDBLTkJyeTlRTHY2CnpneENXdExwdzhNUHd4R1JRemhFM3BldEtxVm1obG9FRlNUbjdOMGY1eEd0ZUJXUkF1dmhBZmc2VFU2eWR5ZVoKK3RCQ2pJWi9ucXNNN0J5NkpPbEFPTGZMTXNNV25reU56MkFPdGdEdWd5aUZzRXVZNjhUNnlsdmhWamsvNW1HWgpQd2QvbU1JaXVTdGczS0svZkI0K1V1SzZqMERiNEs0bzdxL3pTeDZTR2d4U0hsejlTZ3hjZ0p3c2pob3RBZ01CCkFBR2pnYWN3Z2FRd1lnWURWUjBSQkZzd1dZSUliM0pyWlhOMGNtR0NFVzl5YTJWemRISmhMbTl5YTJWemRISmgKZ2hWdmNtdGxjM1J5WVM1dmNtdGxjM1J5WVM1emRtT0NJMjl5YTJWemRISmhMbTl5YTJWemRISmhMbk4yWXk1agpiSFZ6ZEdWeUxteHZZMkZzTUIwR0ExVWREZ1FXQkJSVlVzcVQ5RURlNGlOY2RMYWlJSTY4enJGZUxUQWZCZ05WCkhTTUVHREFXZ0JSV2FvMEhqRmFjVk44YW1YdDJValg1SEdPa2FUQU5CZ2txaGtpRzl3MEJBUXNGQUFPQ0FRRUEKaytXczV3VWRVT1ZhZmVraUh1NFk0UTR1REduYVhHb0RZWDlOY3lYWDVuZk1PZnR0anllWWd0eUZaYUtsbmlVVwpBbmFDRTFKdG1xejhLSkpabGpWQ25GV0M2TlZLM2dRUkZUdDBDWnAvS3RDSDRNNHBUMEF5QkUyeitBUlRGaW1QCnJhRnBwY29wWkt4MFN4YWM3dmsyWit1U1FVamVnRjFOUHB6VGVNN2hyM3NDNjBqNlIwOEs1NlNuSWNYVFQrUmEKczNBTmY2bi9PK1RUdUtaWkUwUTdteS93TTcxbDBFR2RUazlkc2VsRStHa3VERUgxUjlaeFViQm1pQ0VmQXpLUwpPWjFXWTRqN2VXWEtMNlRLbHdTaFhmc0NQeWJHR1NrN1NIT3kwaSs2dWV1MVVWTjM1YlIvZENWOEg1VHZZSlFGCkNhR0Z2MmE0U0t4N2FTQjdDeHRQZGc9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+  tls.key: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2UUlCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktjd2dnU2pBZ0VBQW9JQkFRREhCWSs1QWpyUDg3UW0KaENYQkdaaEdBbnpKak5yM2Q0d2hjcG1qUDA2TjdlUy9HdTR3QllqUFh1YkVtQ01Pc2ZYN1J5NzNPWmh1SWJLNgpGQ1NxdU96Z0tGUUhMUi82dm84U2xPSkpoNU1LQUVmVVRMWDFnUkgraXhiR2VwaG45aWN2cldtMnh2eTNzUlRuCjAwS05Ccnk5UUx2NnpneENXdExwdzhNUHd4R1JRemhFM3BldEtxVm1obG9FRlNUbjdOMGY1eEd0ZUJXUkF1dmgKQWZnNlRVNnlkeWVaK3RCQ2pJWi9ucXNNN0J5NkpPbEFPTGZMTXNNV25reU56MkFPdGdEdWd5aUZzRXVZNjhUNgp5bHZoVmprLzVtR1pQd2QvbU1JaXVTdGczS0svZkI0K1V1SzZqMERiNEs0bzdxL3pTeDZTR2d4U0hsejlTZ3hjCmdKd3NqaG90QWdNQkFBRUNnZ0VBQ0Q2dnZJOWVGbDFYT2oxQlB5V3JURU13SGoxcW1OUG9CejZ6SkxNcnN1K0gKQ1crNUxGNGVVOUR2cUhkUkJIdlUzK3NNQkF2cng2dzN0a085WFNFNkZ2TTB2L05ibnN5a0tyWG1SZnVLMk9BNApHWkJ2L1ZLeWh5UUY5b1QvcVZibU9yQnBiN3dBbmkrRTJUSEVVUWxWYWxXek0rbXpVbEJtNm01RXQzTnlWOTBwClI2U1pYLzE1d1diV29GbFVxaDZkdy9TWmtNeDRYV1ZxM3c2aktqTmhzTFRIYmo0OGZFY1R6ZkE1bnBwempKek4KQ1YyRTVnSVA3dmRMcytvbEtVc0pnVlFBdjh0Qi8vWHEyM1hTVStYUHUyMUVSNytWVThDak9uZFREaTJVdlArZwpRQ28xcE5IWHBaNERlSUNHcFlDM2t6djVNRHhDNnBMNktiM0lDQ3IyOVFLQmdRRHpJUTFucTFER3RJWGRnZ0xDCkRZWXIyOFlTbU1oMURnOGxiR1QvZHlzdkxIbFJyRi9Ca3ljQnBLbThtdndDcHVOVXJrNEJkclN1MDM2cWlBdjAKK0pmdWduMkMrdEd4L1NXUnE1K0lhV0F2cWdlbmtjSVBDbmo0dzFFTTlSVnh6cmMvODNYdHVoNGx0eXZ4ZFc2cQp1SHMvYlFiZzQvd0pYeVRwa3pQMFp2aVRnd0tCZ1FEUmpzRW9CLzU2a2VNUW54NFRzMWFVVy9NM1ZiNVNLeGYxCkxkalRXQSsvSmxZVVFKejRBY0Q1TlhrclIyZnVhWmY3NWJCcVlFaFd2QlBJa1ZRTnNtN2wrZm55Z01lY3l6WGIKcldUdDVZT2FaTmE5VS9pVU1jM0JXU0dpWVlqZmF4L1Y2NVg1Vmh0QjJvZnd5Nk9OMnNvYzBOSkI4akYrUUxaMgppeEtYNzRzOGp3S0JnRFp2RXdJLzcvRGRJQStNK1RNYk5nd0J3NklNUk8wNFBabmlYK1oyZHR1eitHR1oxMEtPCndLLzBmdkEwUHZJVkRWYTdROG0rR3d2OVhDR3dIZ1UxMTBaV1B1V2haR3VXUXVBUGJjTnIzRll2bWxFaEtES1gKNUtmRml4TDhtRldIczYyRXc4VjY0eDhNbUxFUjJyb3NYYVBBdEVhTHBMVXdjU0kraStaUFc1NGpBb0dBYWhYRAprTmxqS1hlYkpIbjR4dTVkNFNNZllCN25Cei9MbEJJT2x3Y1lpYU1GcHFFREZjWUZnK05mSU5xNE1ZaUJLVU1nCjZPa3ZGY0dHbmwxNzJLZEEzdW1LY0Fwamd1dVlxMG4vTXpPaVNOSE5wL0RQZ1c0cEJEMXorbmszeWlxMzVocXEKUkp3amxsWGp4YkhCYlhtYUliWlJDcE5xSE1qejFkVVhwNVRidnQ4Q2dZRUF4Q1VwaVNSU0pwV2tvVktZeUFNTgp5ZXQwZGdXbm5EOG9UOTBZQ1BsbjFqZWgvNU1PTitsTXlJZW1icmNxc1BzTnlCV3hoMDJvaVJUQklUVjlCNEdlCm5GUDcyVFI0K215RWxzU1h1MGdMWk1GVTdIcytKYUFjb3pRZFBzazA0NWlUWGZ3cUxaTWM1OGNTTGxDL1ZJOWsKMlJlT2tCM0UyblAxcW1tcjZkWVRUL009Ci0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS0K
+kind: Secret
+metadata:
+  name: orkestra-tls
+  namespace: orkestra-system
+type: kubernetes.io/tls
+
+# ───────────────────────────────────────────────────────────────
+# Ingress
+# ───────────────────────────────────────────────────────────────
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: orkestra-ingress
+  namespace: orkestra-system
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: xx.orkestra.sh
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: orkestra
+                port:
+                  number: 8080
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orkestra
+  namespace: orkestra-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: orkestra
+rules:
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - demo.orkestra.io
+  resources:
+  - websites
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - demo.orkestra.io
+  resources:
+  - websites/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - demo.orkestra.io
+  resources:
+  - websites
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - demo.orkestra.io
+  resources:
+  - websites/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: orkestra
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: orkestra
+subjects:
+- kind: ServiceAccount
+  name: orkestra
+  namespace: orkestra-system
+

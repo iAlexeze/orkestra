@@ -22,7 +22,7 @@ var (
 func Docs(c []orktypes.CRDEntry, dryRun bool) error {
 	var crds []CRDMeta
 	for _, crd := range c {
-		if !crd.Enabled {
+		if !crd.IsEnabled() {
 			continue
 		}
 
@@ -33,21 +33,21 @@ func Docs(c []orktypes.CRDEntry, dryRun bool) error {
 			Version:     crd.APITypes.Version,
 			Kind:        crd.APITypes.Kind,
 			Plural:      crd.APITypes.Plural,
-			Namespaced:  crd.Namespaced,
+			Namespaced:  crd.IsNamespaced(),
 			Namespace:   crd.Namespace,
 			Workers:     crd.Workers,
 			Resync:      crd.Resync.String(),
-			DependsOn:   crd.DependsOn,
+			DependsOn:   crd.DependsOn.Names(),
 		}
 
 		m.Queue.MaxQueueDepth = crd.Queue.MaxQueueDepth
-		m.Queue.Default = crd.Queue.Default
+		m.Queue.Default = crd.DefaultQueue()
 
 		m.API.Object = crd.APITypes.Object
 		m.API.List = crd.APITypes.List
 		m.API.Alias = crd.APITypes.Alias
 
-		m.Reconciler.Default = crd.ReconcilerConfig.Default
+		m.Reconciler.Default = crd.DefaultReconcile()
 		if crd.ReconcilerConfig.Constructor != nil {
 			m.Reconciler.Function = crd.ReconcilerConfig.ConstructorDecl.Function
 		}

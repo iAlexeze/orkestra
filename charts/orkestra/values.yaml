@@ -1,0 +1,250 @@
+# ── Runtime ────────────────────────────────────────────────────────────────────
+runtime:
+  enabled: true
+  
+  image:
+    repository: ghcr.io/orkspace/orkestra
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8080
+    annotations: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+
+  # Health server (runtime only)
+  server:
+    readTimeout: 30
+    writeTimeout: 60
+    port: 8080
+
+  # Runtime-specific config
+  config:
+    logLevel: info
+    defaultWorkers: 2
+    defaultResync: 30s
+    maxQueueDepth: 500
+    degradeThreshold: 10
+    environment: development
+    watchNamespace: ""
+
+  # Probes
+  livenessProbe:
+    httpGet:
+      path: /controlcenter/health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+  readinessProbe:
+    httpGet:
+      path: /controlcenter/ready
+      port: http
+    initialDelaySeconds: 3
+    periodSeconds: 5
+
+  # ── Security ───────────────────────────────────────────────────────────────────
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+    capabilities:
+      drop:
+        - ALL
+
+  # Leader election (runtime only)
+  leaderElection:
+    enabled: true
+    leaseDuration: 15s
+    renewDeadline: 10s
+    retryPeriod: 5s
+
+  # Webhooks for admission control and CRD conversion (runtime only)
+  webhooks:
+    enabled: false                 # master switch - if false, nothing is enabled
+    admission: false               # ENABLE_ADMISSION_WEBHOOK
+    conversion: false              # ENABLE_CONVERSION
+    existingSecret: ""             # TLS secret name (required if enabled)
+    certSecretKey: tls.crt         # key in secret for certificate
+    keySecretKey: tls.key          # key in secret for private key
+
+  # Katalog (runtime only)
+  katalog:
+    inline: |
+      apiVersion: orkestra.konductor.io/v1Alpha
+      kind: Katalog
+      metadata:
+        name: default-katalog
+      spec:
+        crds: []
+    existingConfigMap: ""
+    configMapKey: katalog.yaml
+    mountPath: /etc/orkestra/katalog
+
+# ── Control Center ────────────────────────────────────────────────────────────
+controlCenter:
+  enabled: true
+
+  image:
+    repository: ghcr.io/orkspace/orkestra-cc
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  # No RBAC needed - control center only reads from runtime API
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+
+  # Control center config
+  config:
+    # Multiple Orkestra URLs
+    orkestraURLs:
+      - http://orkestra-runtime-1:8080
+      - http://orkestra-runtime-2:8080
+      - http://orkestra-prod:8080
+    
+    # Or single URL (backward compatible)
+    # orkestraURL: http://orkestra-runtime:8080
+    
+    port: 8090
+    refreshInterval: 10s
+    logLevel: info
+
+  service:
+    type: ClusterIP
+    port: 8081
+    annotations: {}
+
+  ingress:
+    enabled: true
+    className: ""
+    annotations: {}
+    hosts:
+      - host: orkestra-cc.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+  # Security (control center doesn't need root)
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1001
+    capabilities:
+      drop:
+        - ALL
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001
+
+  # Probes
+  livenessProbe:
+    httpGet:
+      path: /controlcenter/health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+  readinessProbe:
+    httpGet:
+      path: /controlcenter/ready
+      port: http
+    initialDelaySeconds: 3
+    periodSeconds: 5
+
+# ── Shared ────────────────────────────────────────────────────────────────────
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Registry (shared)
+registry:
+  enabled: true
+  url: ""
+
+# ── RBAC ───────────────────────────────────────────────────────────────────────
+rbac:
+  create: true
+
+# Global HPA (if you want to scale both)
+hpa:
+  enabled: false
+  runtime:
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+  controlCenter:
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+
+# ── Network Policy ─────────────────────────────────────────────────────────────
+networkPolicy:
+  enabled: false
+  ingressFrom: []
+  #  - namespaceSelector:
+  #      matchLabels:
+  #        kubernetes.io/metadata.name: monitoring
+  #  - podSelector:
+  #      matchLabels:
+  #        app: prometheus
+
+# Global PDB
+pdb:
+  runtime:
+    enabled: true
+    minAvailable: 1
+  controlCenter:
+    enabled: true
+    minAvailable: 1
+
+# Scheduling (shared)
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+
+# Extra (shared)
+extraEnv: []
+extraEnvFrom: []
+extraVolumes: []
+extraVolumeMounts: []
+podAnnotations: {}
+podLabels: {}

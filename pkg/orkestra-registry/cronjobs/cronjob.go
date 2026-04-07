@@ -4,11 +4,15 @@ package cronjobs
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -16,36 +20,57 @@ import (
 )
 
 // ResolvedCronJobSpec is the fully resolved CronJob specification.
+// All template expressions have been evaluated before this struct is populated.
 type ResolvedCronJobSpec struct {
 	// Name — CronJob name. Required.
 	Name string
 
-	// Namespace — target namespace. Required.
+	// Namespace — target namespace.
 	Namespace string
 
-	// Schedule — cron schedule expression. Required.
-	// e.g. "0 * * * *" (every hour), "*/5 * * * *" (every 5 minutes)
+	// Schedule — standard cron expression. Required.
+	// e.g. "*/5 * * * *", "0 2 * * 1-5"
 	Schedule string
 
 	// Image — container image. Required.
 	Image string
 
-	// Command — container entrypoint. Optional.
+	// Command — container entrypoint override.
 	Command []string
 
-	// Args — container arguments. Optional.
+	// Args — container arguments.
 	Args []string
 
-	// Labels — applied to CronJob metadata.
+	// Suspend — when true, all subsequent executions are suspended.
+	// The currently running job is not affected.
+	Suspend bool
+
+	// ConcurrencyPolicy — how to treat concurrent executions.
+	// One of: Allow (default), Forbid, Replace.
+	ConcurrencyPolicy batchv1.ConcurrencyPolicy
+
+	// StartingDeadlineSeconds — deadline for starting the job if it
+	// misses its scheduled time. nil means no deadline.
+	StartingDeadlineSeconds *int64
+
+	// SuccessfulJobsHistoryLimit — number of successful finished jobs to keep.
+	// nil means the Kubernetes default (3).
+	SuccessfulJobsHistoryLimit *int32
+
+	// FailedJobsHistoryLimit — number of failed finished jobs to keep.
+	// nil means the Kubernetes default (1).
+	FailedJobsHistoryLimit *int32
+
+	// Labels — applied to CronJob and pod metadata.
 	Labels map[string]string
 }
 
 // Create creates a CronJob if it does not already exist.
-// Idempotent — skips if the CronJob exists.
-// Owner reference set so CronJob is garbage collected when CR is deleted.
+// Idempotent — skips creation if the CronJob already exists.
+// Sets owner reference so the CronJob is garbage collected when the CR is deleted.
 func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedCronJobSpec) error {
 	if err := validateSpec(spec); err != nil {
-		return fmt.Errorf("cronjob.Create: invalid spec: %w", err)
+		return fmt.Errorf("cronjob.Create: %w", err)
 	}
 
 	namespace := resolveNamespace(owner, spec)
@@ -66,7 +91,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 
 	_, err = kube.Clientset().BatchV1().CronJobs(namespace).Create(ctx, cj, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("cronjob.Create: creating cronjob %q in %q: %w", spec.Name, namespace, err)
+		return fmt.Errorf("cronjob.Create: creating %q in %q: %w", spec.Name, namespace, err)
 	}
 
 	logger.Info().
@@ -79,10 +104,11 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Update reconciles an existing CronJob to match the resolved spec.
-// Drift-corrects the schedule and image. If not found, creates it.
+// Detects drift across schedule, image, suspend, concurrencyPolicy,
+// and history limits. Creates the CronJob if it does not exist.
 func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedCronJobSpec) error {
 	if err := validateSpec(spec); err != nil {
-		return fmt.Errorf("cronjob.Update: invalid spec: %w", err)
+		return fmt.Errorf("cronjob.Update: %w", err)
 	}
 
 	namespace := resolveNamespace(owner, spec)
@@ -96,17 +122,75 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 				Msg("cronjob not found during reconcile — recreating")
 			return Create(ctx, kube, owner, spec)
 		}
-		return fmt.Errorf("cronjob.Update: getting cronjob %q: %w", spec.Name, err)
+		return fmt.Errorf("cronjob.Update: getting %q: %w", spec.Name, err)
 	}
 
-	// Check for schedule or image drift
-	currentSchedule := existing.Spec.Schedule
-	currentImage := ""
+	// ── Drift detection ───────────────────────────────────────────────────
+	drifted := false
+	updated := existing.DeepCopy()
+
+	if existing.Spec.Schedule != spec.Schedule {
+		updated.Spec.Schedule = spec.Schedule
+		drifted = true
+		logger.Info().Str("cronjob", spec.Name).
+			Str("desired", spec.Schedule).Msg("cronjob schedule drifted")
+	}
+
+	if existing.Spec.Suspend == nil || *existing.Spec.Suspend != spec.Suspend {
+		updated.Spec.Suspend = utils.BoolPtr(spec.Suspend)
+		drifted = true
+		logger.Info().Str("cronjob", spec.Name).
+			Bool("desired", spec.Suspend).Msg("cronjob suspend drifted")
+	}
+
+	if spec.ConcurrencyPolicy != "" && existing.Spec.ConcurrencyPolicy != spec.ConcurrencyPolicy {
+		updated.Spec.ConcurrencyPolicy = spec.ConcurrencyPolicy
+		drifted = true
+	}
+
+	if spec.StartingDeadlineSeconds != nil {
+		if existing.Spec.StartingDeadlineSeconds == nil ||
+			*existing.Spec.StartingDeadlineSeconds != *spec.StartingDeadlineSeconds {
+			updated.Spec.StartingDeadlineSeconds = spec.StartingDeadlineSeconds
+			drifted = true
+		}
+	}
+
+	if spec.SuccessfulJobsHistoryLimit != nil {
+		if existing.Spec.SuccessfulJobsHistoryLimit == nil ||
+			*existing.Spec.SuccessfulJobsHistoryLimit != *spec.SuccessfulJobsHistoryLimit {
+			updated.Spec.SuccessfulJobsHistoryLimit = spec.SuccessfulJobsHistoryLimit
+			drifted = true
+		}
+	}
+
+	if spec.FailedJobsHistoryLimit != nil {
+		if existing.Spec.FailedJobsHistoryLimit == nil ||
+			*existing.Spec.FailedJobsHistoryLimit != *spec.FailedJobsHistoryLimit {
+			updated.Spec.FailedJobsHistoryLimit = spec.FailedJobsHistoryLimit
+			drifted = true
+		}
+	}
+
 	if len(existing.Spec.JobTemplate.Spec.Template.Spec.Containers) > 0 {
-		currentImage = existing.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Image
+		container := &updated.Spec.JobTemplate.Spec.Template.Spec.Containers[0]
+		if container.Image != spec.Image {
+			container.Image = spec.Image
+			drifted = true
+			logger.Info().Str("cronjob", spec.Name).
+				Str("desired", spec.Image).Msg("cronjob image drifted")
+		}
+		if len(spec.Command) > 0 {
+			container.Command = spec.Command
+			drifted = true
+		}
+		if len(spec.Args) > 0 {
+			container.Args = spec.Args
+			drifted = true
+		}
 	}
 
-	if currentSchedule == spec.Schedule && currentImage == spec.Image {
+	if !drifted {
 		logger.Debug().
 			Str("cronjob", spec.Name).
 			Str("namespace", namespace).
@@ -114,17 +198,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return nil
 	}
 
-	updated := existing.DeepCopy()
-	updated.Spec.Schedule = spec.Schedule
-	if len(updated.Spec.JobTemplate.Spec.Template.Spec.Containers) > 0 {
-		updated.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Image = spec.Image
-		updated.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Command = spec.Command
-		updated.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args = spec.Args
-	}
-
 	_, err = kube.Clientset().BatchV1().CronJobs(namespace).Update(ctx, updated, metav1.UpdateOptions{})
 	if err != nil {
-		return fmt.Errorf("cronjob.Update: updating cronjob %q: %w", spec.Name, err)
+		return fmt.Errorf("cronjob.Update: updating %q: %w", spec.Name, err)
 	}
 
 	logger.Info().
@@ -148,7 +224,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 				Msg("cronjob already deleted — skipping")
 			return nil
 		}
-		return fmt.Errorf("cronjob.Delete: deleting cronjob %q in %q: %w", spec.Name, namespace, err)
+		return fmt.Errorf("cronjob.Delete: deleting %q in %q: %w", spec.Name, namespace, err)
 	}
 
 	logger.Info().
@@ -160,8 +236,28 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	return nil
 }
 
+// DeleteIfOwned deletes the CronJob only if it is labelled as owned by the CR.
+func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+	owner domain.Object, name, namespace string) error {
+
+	existing, err := kube.Clientset().BatchV1().CronJobs(namespace).
+		Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("cronjob.DeleteIfOwned: getting %q: %w", name, err)
+	}
+	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+		return nil
+	}
+	return kube.Clientset().BatchV1().CronJobs(namespace).
+		Delete(ctx, name, metav1.DeleteOptions{})
+}
+
 // Resolve builds a ResolvedCronJobSpec from a CronJobTemplateSource.
-// Template expressions must already be evaluated by template.Resolver before calling.
+// All template expressions in src must already have been evaluated by
+// template.Resolver — Resolve only performs type conversion and defaults.
 func Resolve(src orktypes.CronJobTemplateSource, ownerName string) ResolvedCronJobSpec {
 	spec := ResolvedCronJobSpec{
 		Name:      src.Name,
@@ -177,12 +273,57 @@ func Resolve(src orktypes.CronJobTemplateSource, ownerName string) ResolvedCronJ
 		spec.Name = ownerName + "-cronjob"
 	}
 
+	// ── Suspend ───────────────────────────────────────────────────────────
+	if src.Suspend != "" {
+		spec.Suspend = parseBool(src.Suspend)
+	}
+
+	// ── ConcurrencyPolicy ─────────────────────────────────────────────────
+	switch strings.ToLower(src.ConcurrencyPolicy) {
+	case "forbid":
+		spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
+	case "replace":
+		spec.ConcurrencyPolicy = batchv1.ReplaceConcurrent
+	default:
+		spec.ConcurrencyPolicy = batchv1.AllowConcurrent
+	}
+
+	// ── StartingDeadlineSeconds ───────────────────────────────────────────
+	if src.StartingDeadlineSeconds != "" {
+		if n, err := strconv.ParseInt(src.StartingDeadlineSeconds, 10, 64); err == nil && n > 0 {
+			spec.StartingDeadlineSeconds = &n
+		}
+	}
+
+	// ── SuccessfulJobsHistoryLimit ────────────────────────────────────────
+	if src.SuccessfulJobsHistoryLimit != "" {
+		if n, err := strconv.ParseInt(src.SuccessfulJobsHistoryLimit, 10, 32); err == nil {
+			n32 := int32(n)
+			spec.SuccessfulJobsHistoryLimit = &n32
+		}
+	} else {
+		n := int32(3) // Kubernetes default
+		spec.SuccessfulJobsHistoryLimit = &n
+	}
+
+	// ── FailedJobsHistoryLimit ────────────────────────────────────────────
+	if src.FailedJobsHistoryLimit != "" {
+		if n, err := strconv.ParseInt(src.FailedJobsHistoryLimit, 10, 32); err == nil {
+			n32 := int32(n)
+			spec.FailedJobsHistoryLimit = &n32
+		}
+	} else {
+		n := int32(1) // Kubernetes default
+		spec.FailedJobsHistoryLimit = &n
+	}
+
+	// ── Labels ────────────────────────────────────────────────────────────
 	for _, l := range src.Labels {
 		spec.Labels[l.Key] = l.Value
 	}
 
-	spec.Labels["managed-by"] = "orkestra"
-	spec.Labels["orkestra-owner"] = ownerName
+	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
+	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
 
 	return spec
 }
@@ -190,7 +331,7 @@ func Resolve(src orktypes.CronJobTemplateSource, ownerName string) ResolvedCronJ
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildCronJob(owner domain.Object, spec ResolvedCronJobSpec, namespace string) *batchv1.CronJob {
-	return &batchv1.CronJob{
+	cj := &batchv1.CronJob{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,
 			Namespace: namespace,
@@ -201,13 +342,18 @@ func buildCronJob(owner domain.Object, spec ResolvedCronJobSpec, namespace strin
 					Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
 					Name:               owner.GetName(),
 					UID:                owner.GetUID(),
-					Controller:         boolPtr(true),
-					BlockOwnerDeletion: boolPtr(true),
+					Controller:         utils.BoolPtr(true),
+					BlockOwnerDeletion: utils.BoolPtr(true),
 				},
 			},
 		},
 		Spec: batchv1.CronJobSpec{
-			Schedule: spec.Schedule,
+			Schedule:                   spec.Schedule,
+			Suspend:                    utils.BoolPtr(spec.Suspend),
+			ConcurrencyPolicy:          spec.ConcurrencyPolicy,
+			StartingDeadlineSeconds:    spec.StartingDeadlineSeconds,
+			SuccessfulJobsHistoryLimit: spec.SuccessfulJobsHistoryLimit,
+			FailedJobsHistoryLimit:     spec.FailedJobsHistoryLimit,
 			JobTemplate: batchv1.JobTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: spec.Labels,
@@ -233,6 +379,8 @@ func buildCronJob(owner domain.Object, spec ResolvedCronJobSpec, namespace strin
 			},
 		},
 	}
+
+	return cj
 }
 
 func validateSpec(spec ResolvedCronJobSpec) error {
@@ -262,4 +410,12 @@ func resolveNamespace(owner domain.Object, spec ResolvedCronJobSpec) string {
 	return "default"
 }
 
-func boolPtr(b bool) *bool { return &b }
+// parseBool interprets common boolean representations from template expressions.
+func parseBool(s string) bool {
+	switch s {
+	case "true", "True", "TRUE", "1", "yes", "YES":
+		return true
+	default:
+		return false
+	}
+}

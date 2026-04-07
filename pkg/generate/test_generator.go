@@ -13,7 +13,7 @@ var testTemplate = template.Must(
 
 func Tests(crds []orktypes.CRDEntry, dryRun bool) error {
 	for _, crd := range crds {
-		if !crd.Enabled {
+		if !crd.IsEnabled() {
 			continue
 		}
 

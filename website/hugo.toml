@@ -1,0 +1,50 @@
+baseURL = "https://orkestra.sh/"
+languageCode = "en-us"
+title = "Orkestra"
+enableGitInfo = true
+
+[markup]
+  [markup.highlight]
+    style = "dracula"
+    lineNos = false
+    codeFences = true
+  [markup.goldmark.renderer]
+    unsafe = true
+  [markup.tableOfContents]
+    endLevel = 3
+    startLevel = 2
+
+[params]
+  description = "The declarative control plane for Kubernetes operators"
+  github = "https://github.com/iAlexeze/orkestra"
+  controlcenter = "https://cc.orkestra.sh"
+  version = "v1"
+
+  # Algolia DocSearch — apply at https://docsearch.algolia.com/apply/
+  # Fill these in once approved (free for open source projects)
+  [params.algolia]
+    appId = "1YJ1C111LH"
+    searchKey = "b4bbac9a499ecc51109f23abd327cf29"
+    indexName = "orkestra"
+
+
+[menu]
+  [[menu.main]]
+    name = "Docs"
+    url = "/docs/"
+    weight = 1
+  [[menu.main]]
+    name = "Publications"
+    url = "/publications/"
+    weight = 2
+  [[menu.main]]
+    name = "Use Cases"
+    url = "/docs/use-cases/"
+    weight = 3
+  [[menu.main]]
+    name = "Blog"
+    url = "/blog/"
+    weight = 4
+[caches]
+  [caches.images]
+    dir = ':cacheDir/images'

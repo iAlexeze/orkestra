@@ -1,7 +1,6 @@
 package konfig
 
 import (
-	"log"
 	"os"
 	"strconv"
 	"time"
@@ -10,38 +9,52 @@ import (
 )
 
 func Init(filenames ...string) (*Konfig, error) {
-	err := godotenv.Load(filenames...)
-	if err != nil {
-		log.Print("No '.env' file found. Defaulting to system defined variables...")
-	}
+	// load .env files for tesing...
+	_ = godotenv.Load(filenames...)
 
 	kfg := &Konfig{
 		ork: orkKonfig{
-			Name:        orkestra,
-			ShortName:   ork,
-			Version:     GetStrEnv("ORK_VERSION", "1.0.0"),
+			Name:        Orkestra,
+			ShortName:   Ork,
 			Environment: GetStrEnv("ORK_ENV", "development"),
-			LogLevel:    GetStrEnv("LOG_LEVEL", "info"),
 		},
 		cluster: clusterKonfig{
-			KubekonfigPath:   GetStrEnv("KUBEKONFIG", ""),
-			MasterURL:        GetStrEnv("MASTER_URL", ""),
-			InCluster:        GetBoolEnv("IN_CLUSTER", false),
-			Name:             GetStrEnv("CLUSTER_NAME", "kubernetes-crd-example"),
-			DefaultNamespace: GetStrEnv("DEFAULT_NAMESPACE", "default"),
+			// KubekonfigPath:   GetStrEnv("KUBEKONFIG", ""),
+			MasterURL: GetStrEnv("MASTER_URL", ""),
+			Name:      GetStrEnv("CLUSTER_NAME", "orkestra-cluster"),
+			Namespace: GetStrEnv("ORKESTRA_NAMESPACE", "default"),
 
 			// Workload
-			DefaultResync:  GetDurEnvSeconds("DEFAULT_RESYNC", 15),
-			Finalizer:      GetStrEnv("FINALIZER", "konduktor.orkestra.io/finalizer"),
-			LabelSelector:  GetStrEnv("LABEL_SELECTOR", "ork=estra"),
-			DefaultWorkers: GetIntEnv("DEFAULT_WORKERS", 3),
+			DefaultResync:       GetDurEnvSeconds("DEFAULT_RESYNC", 15),
+			DefaultWorkers:      GetIntEnv("DEFAULT_WORKERS", 3),
+			ShutdownTimeout:     GetDurEnvSeconds("SHUTDOWN_TIMEOUT", 30),
+			ShutdownGracePeriod: GetDurEnvSeconds("SHUTDOWN_GRACE_PERIOD", 60),
+		},
+		webhook: webhookConfig{
+			EnableWebhooks:   GetBoolEnv("ENABLE_ADMISSION_WEBHOOK", false),
+			EnableConversion: GetBoolEnv("ENABLE_CONVERSION", false),
+			TLSCert:          GetStrEnv("TLS_CERT", ""),
+			TLSKey:           GetStrEnv("TLS_KEY", ""),
+			ConversionWindow: GetIntEnv("CONVERSION_WINDOW", 100),
+
+			// Registration
+			WebhookRegistration: webhookRegistration{
+				FailurePolicy:    GetStrEnv("FAILURE_POLICY", "Ignore"),
+				ServiceName:      GetStrEnv("ORKESTRA_SERVICE_NAME", "orkestra"),
+				ServiceNamespace: GetStrEnv("ORKESTRA_NAMESPACE", "default"),
+				TLSCert:          GetStrEnv("TLS_CERT", ""),
+			},
+		},
+		registry: registryConfig{
+			RegistryURL: GetStrEnv("ORK_REGISTRY", ""),
 		},
 		healthServer: healthServer{
-			Port:         GetStrEnv("PORT", "5000"),
+			Port:         GetStrEnv("ORK_PORT", "8080"),
 			ReadTimeout:  GetDurEnvSeconds("SRV_READ_TIMEOUT", 5),
 			WriteTimeout: GetDurEnvSeconds("SRV_WRITE_TIMEOUT", 20),
 		},
 		konductor: konductorElection{
+			Namespace:     GetStrEnv("ORKESTRA_NAMESPACE", "default"),
 			LeaseDuration: GetDurEnvSeconds("LEASE_DURATION", 60),
 			RenewDeadline: GetDurEnvSeconds("RENEW_DEADLINE", 40),
 			RetryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),
@@ -57,7 +70,7 @@ func Init(filenames ...string) (*Konfig, error) {
 	kfg.normalizeEnvironment()
 
 	// validate struct
-	if err = Validate().Struct(kfg); err != nil {
+	if err := Validate().Struct(kfg); err != nil {
 		return nil, err
 	}
 

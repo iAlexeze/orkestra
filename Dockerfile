@@ -1,51 +1,57 @@
-# ---- Build Stage ----
-FROM golang:1.25-alpine AS builder
+# ── Stage 1: Build ────────────────────────────────────────────────────────────
+FROM golang:alpine3.23 AS builder
 
-# Install build dependencies
-RUN apk add --no-cache git ca-certificates
+# Install git and build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
 
-# Set working directory
-WORKDIR /app
+WORKDIR /build
 
-# Copy go mod files first (for better layer caching)
+# Copy dependency files first — Docker cache layer reuse
 COPY go.mod go.sum ./
-RUN go mod download
 
-# Copy source code
+# Set Go proxy for faster downloads in CI
+ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
+
+# Download dependencies with retry
+RUN for i in 1 2 3; do \
+      go mod download && break || sleep 10; \
+    done
+
+# Copy the rest of the source
 COPY . .
 
-# Build Orkestra
-# - CGO_ENABLED=0 for static binary
-# - ldflags to strip debug info and reduce size
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s" \
-    -o bin/orkestra ./cmd
+# Build arguments
+ARG VERSION=dev
+ARG COMMIT=none
+ARG BUILD_DATE=unknown
 
-# ---- Final Stage ----
-FROM alpine:3.19
+# Build with limited parallelism to avoid OOM
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -p=2 \
+    -trimpath \
+    -gcflags="all=-l=4" \
+    -ldflags="-s -w -extldflags '-static' \
+      -X github.com/iAlexeze/orkestra/pkg/version.Version=${VERSION} \
+      -X github.com/iAlexeze/orkestra/pkg/version.Commit=${COMMIT} \
+      -X github.com/iAlexeze/orkestra/pkg/version.Date=${BUILD_DATE}" \
+    -o /build/ork \
+    ./cmd/orkestra/
 
-# Install ca-certificates for TLS and curl for health checks
-RUN apk add --no-cache ca-certificates curl jq
+# Verify the binary
+RUN file /build/ork && ldd /build/ork 2>&1 || echo "Statically linked"
 
-# Create non-root user for security
-RUN addgroup -g 1000 -S appuser && \
-    adduser -u 1000 -S appuser -G appuser
+# ── Stage 2: Final image ───────────────────────────────────────────────────────
+FROM gcr.io/distroless/static-debian12:nonroot
 
-# Set working directory
-WORKDIR /app
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=builder /build/ork /usr/local/bin/ork
 
-# Copy binary from builder
-COPY --from=builder /app/bin/orkestra /app/orkestra
+USER 65532:65532
 
-# Copy .env.example as reference (optional)
-COPY --from=builder /app/.env.example /app/.env.example
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["/usr/local/bin/ork", "version"]
 
-# Create directory for potential volume mounts
-RUN mkdir -p /app/config && \
-    chown -R appuser:appuser /app
-
-# Switch to non-root user
-USER appuser
-
-# Run orkestra
-ENTRYPOINT ["/app/orkestra"]
+ENTRYPOINT ["/usr/local/bin/ork"]
+CMD ["--help"]

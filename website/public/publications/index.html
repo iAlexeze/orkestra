@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en-us" data-theme="">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=9292&amp;path=livereload" data-no-instant defer></script>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+<title>Publications — Orkestra</title>
+
+<meta name="description" content="Technical papers, whitepapers, and deep-dives from the Orkestra team">
+<meta name="author" content="Orkestra">
+
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="Publications — Orkestra">
+<meta property="og:description" content="Technical papers, whitepapers, and deep-dives from the Orkestra team">
+<meta property="og:url" content="http://localhost:9292/publications/">
+<meta property="og:site_name" content="Orkestra">
+
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Publications — Orkestra">
+<meta name="twitter:description" content="Technical papers, whitepapers, and deep-dives from the Orkestra team">
+
+
+<link rel="icon" type="image/png" href="/img/fav.png">
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+
+
+
+<link rel="stylesheet" href="/css/main.min.e4f35e028b4e342d94b5258699fa7b53e53b1f54212c3a40fb2a70e627bba458.css">
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3" crossorigin>
+
+
+
+<script>
+  (function() {
+    var saved = localStorage.getItem('theme');
+    
+    var theme = saved ? saved : 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+
+</head>
+<body class="page-publications">
+
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="navbar-inner">
+      <a href="/" class="navbar-logo" aria-label="Orkestra home">
+        <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="36" width="36">
+        <span class="logo-text">Orkestra</span>
+        <span class="version-badge">v1</span>
+      </a>
+      <ul class="navbar-links" role="list">
+        
+        <li>
+          <a href="/docs/" class="navbar-link"
+            >
+            Docs
+          </a>
+        </li>
+        
+        <li>
+          <a href="/publications/" class="navbar-link"
+            >
+            Publications
+          </a>
+        </li>
+        
+        <li>
+          <a href="/docs/use-cases/" class="navbar-link"
+            >
+            Use Cases
+          </a>
+        </li>
+        
+        <li>
+          <a href="/blog/" class="navbar-link"
+            >
+            Blog
+          </a>
+        </li>
+        
+      </ul>
+      <div class="navbar-controls">
+        <a href="https://cc.orkestra.sh" class="btn-controlcenter" target="_blank" rel="noopener noreferrer" aria-label="Open Control Center">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+          </svg>
+          Control Center
+          <span class="cc-live-dot" title="Live instance"></span>
+        </a>
+        <a href="https://github.com/iAlexeze/orkestra" class="btn-github" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+          <span>GitHub</span>
+        </a>
+        <button class="btn-theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+          <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+          </svg>
+        </button>
+        <button class="btn-hamburger" id="mobile-menu-toggle" aria-label="Toggle menu" aria-expanded="false">
+          <span class="hamburger-bar"></span>
+          <span class="hamburger-bar"></span>
+          <span class="hamburger-bar"></span>
+        </button>
+      </div>
+    </div>
+    <div class="navbar-mobile" id="mobile-menu" aria-hidden="true">
+      <ul role="list">
+        
+        <li>
+          <a href="/docs/" class="navbar-mobile-link"
+            >
+            Docs
+          </a>
+        </li>
+        
+        <li>
+          <a href="/publications/" class="navbar-mobile-link"
+            >
+            Publications
+          </a>
+        </li>
+        
+        <li>
+          <a href="/docs/use-cases/" class="navbar-mobile-link"
+            >
+            Use Cases
+          </a>
+        </li>
+        
+        <li>
+          <a href="/blog/" class="navbar-mobile-link"
+            >
+            Blog
+          </a>
+        </li>
+        
+      </ul>
+    </div>
+  </nav>
+
+  <main id="main-content" tabindex="-1">
+    <div class="pub-page-inner">
+
+      
+      <header class="pub-page-header">
+        <a href="/" class="pub-back-link">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Home
+        </a>
+        <h1 class="pub-page-title">Publications</h1>
+        
+        <p class="pub-page-desc">Technical papers, whitepapers, and deep-dives from the Orkestra team</p>
+        
+        <p class="pub-page-count">21 papers</p>
+      </header>
+
+      
+      <ol class="pub-scholar-list" reversed>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/trust-and-failure-model/" class="pub-scholar-link">Trust and Failure Model</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>3 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract">This document describes exactly what happens when Orkestra fails, degrades, or is deliberately stopped. It covers every &hellip;</p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/no-trace-runtime/" class="pub-scholar-link">The Runtime That Leaves No Trace</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>5 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><em>Why a continuous operator should exist without becoming part of your cluster.</em></p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/reconcile-contract/" class="pub-scholar-link">The Reconcile Contract</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>3 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract">This document describes exactly what Orkestra guarantees about how and when</p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/provider-library/" class="pub-scholar-link">The Orkestra Provider Model</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>3 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><strong>Extending declarative operators to external infrastructure.</strong></p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/operator-sprawl-problem/" class="pub-scholar-link">The Operator Sprawl Problem</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>4 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><em>Orkestra Project — March 2026</em></p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/orkestra-registry/" class="pub-scholar-link">The Missing Package Manager for Kubernetes Operators</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>2 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><em>OrkestraRegistry — Declarative Distribution for Operator Behavior</em></p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/universal-observer-whitepaper/" class="pub-scholar-link">Orkestra: The Universal Observer That Belongs in Kubernetes Core</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>3 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><em>Orkestra Project — March 2026</em></p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/value-proposition/" class="pub-scholar-link">Orkestra Value Proposition</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>3 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><em>Orkestra Project — March 2026</em></p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/metrics-analysis/" class="pub-scholar-link">Orkestra Metrics Analysis: Control Center Deep Dive</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>3 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><hr>
+</p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/metrics-analysis-old/" class="pub-scholar-link">Orkestra Metrics Analysis</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>2 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><hr>
+</p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/no-autosync-by-design/" class="pub-scholar-link">Orkestra Does Not Auto-Sync — And That&#39;s the Point</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>4 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><em>Orkestra Project — March 2026</em></p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/orkestra-and-gitops/" class="pub-scholar-link">Orkestra and GitOps: The Complete Integration Story</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>3 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><em>Orkestra Project — March 2026</em></p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/operator-authoring-vs-infrastructure-controlplane/" class="pub-scholar-link">Operator Authoring vs Infrastructure Control Plane</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>3 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract">Orkestra and Crossplane are often mentioned in the same conversation. Both</p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/one-runtime-many-crds/" class="pub-scholar-link">One Runtime, Many CRDs: Fulfilling the Operator Pattern</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>9 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><em>Orkestra Project — March 2026</em></p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/introducing-orkestra-notes/" class="pub-scholar-link">Introducing Orkestra Notes</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>7 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><strong>Pure transformation functions for the declarative operator runtime.</strong></p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/from-programs-to-data/" class="pub-scholar-link">From Programs To Data</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>5 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><em>Orkestra Project — March 2026</em></p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/evolve-apis-without-code/" class="pub-scholar-link">Declarative Version Conversion for Kubernetes CRDs</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>3 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract">Kubernetes supports multi-version CRDs, but the ecosystem largely avoids them.</p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/declarative-conversion/" class="pub-scholar-link">Declarative Version Conversion for Kubernetes CRDs</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>9 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><em>Orkestra Project — March 2026</em></p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/declarative-state-machines/" class="pub-scholar-link">Declarative State Machines in Kubernetes Operators</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>8 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><strong>How Orkestra eliminates the constructor pattern.</strong></p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/declarative-operators-whitepaper/" class="pub-scholar-link">Declarative Operators: A New Model for Kubernetes Extensibility</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>12 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><em>Orkestra Project — March 2026</em></p>
+          
+        </li>
+        
+        <li class="pub-scholar-item">
+          <h2 class="pub-scholar-title">
+            <a href="/publications/when-conditions-paper/" class="pub-scholar-link">Conditional Provisioning: When Conditions and the Two Enforcement Boundaries</a>
+          </h2>
+          <div class="pub-scholar-meta">
+            
+            <span class="pub-meta-sep">·</span>
+            <span>4 min read</span>
+            
+          </div>
+          
+          <p class="pub-scholar-abstract"><em>Orkestra Project — March 2026</em></p>
+          
+        </li>
+        
+      </ol>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <a href="/" class="footer-logo" aria-label="Orkestra home">
+        <img src="/img/logo.png" alt="Orkestra" class="logo-img" height="28">
+        <span class="footer-logo-text">Orkestra</span>
+      </a>
+      <p class="footer-tagline">The declarative control plane<br>for Kubernetes operators.</p>
+      <div class="footer-social">
+        <a href="https://github.com/iAlexeze/orkestra" target="_blank" rel="noopener noreferrer" aria-label="GitHub" class="footer-social-link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+        </a>
+        <a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer" aria-label="Twitter / X" class="footer-social-link">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="footer-links">
+      <div class="footer-col">
+        <h4 class="footer-col-title">Documentation</h4>
+        <ul role="list">
+          <li><a href="/docs/getting-started/">Getting Started</a></li>
+          <li><a href="/docs/basics/">Basics</a></li>
+          <li><a href="/docs/concepts/">Concepts</a></li>
+          <li><a href="/docs/guides/">Guides</a></li>
+          <li><a href="/docs/reference/">Reference</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-col-title">Community</h4>
+        <ul role="list">
+          <li><a href="https://github.com/iAlexeze/orkestra" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/issues" target="_blank" rel="noopener noreferrer">Issues</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/discussions" target="_blank" rel="noopener noreferrer">Discussions</a></li>
+          <li><a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer">@orkspace</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4 class="footer-col-title">Resources</h4>
+        <ul role="list">
+          <li><a href="https://github.com/iAlexeze/orkestra/releases" target="_blank" rel="noopener noreferrer">Releases</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a></li>
+          <li><a href="https://github.com/iAlexeze/orkestra/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
+          <li><a href="/docs/reference/">API Reference</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <p>&copy; 2026 Orkestra. Released under the Apache 2.0 License.</p>
+    <p class="footer-built">Built with <a href="https://gohugo.io" target="_blank" rel="noopener noreferrer">Hugo</a></p>
+  </div>
+</footer>
+
+
+  
+  <script src="/js/main.min.f2df583e131a595404870b2d956fe54827dcacf44666bb51201fbf1d6524fa40.js" defer></script>
+
+  <style>
+    .pub-page-inner {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 3.5rem 2rem 6rem;
+    }
+    .pub-back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      margin-bottom: 2rem;
+      transition: color var(--transition-fast);
+    }
+    .pub-back-link:hover { color: var(--color-primary); }
+    .pub-page-header {
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.75rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .pub-page-title {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--color-text);
+      margin: 0 0 0.5rem;
+    }
+    .pub-page-desc {
+      font-size: 0.9375rem;
+      color: var(--color-text-muted);
+      line-height: 1.6;
+      margin: 0 0 0.75rem;
+    }
+    .pub-page-count {
+      font-size: 0.8125rem;
+      font-family: var(--font-mono);
+      color: var(--color-text-faint);
+      margin: 0;
+    }
+
+     
+    .pub-scholar-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .pub-scholar-item {
+      padding: 1.5rem 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .pub-scholar-item:last-child {
+      border-bottom: none;
+    }
+    .pub-scholar-title {
+      font-size: 1rem;
+      font-weight: 400;
+      margin: 0 0 0.3rem;
+      line-height: 1.4;
+    }
+    .pub-scholar-link {
+      color: var(--color-primary);
+      text-decoration: none;
+    }
+    .pub-scholar-link:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .pub-scholar-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.78125rem;
+      font-family: var(--font-mono);
+      color: var(--color-text-faint);
+      margin-bottom: 0.5rem;
+    }
+    .pub-meta-sep {
+      opacity: 0.4;
+    }
+    .pub-scholar-tag {
+      font-size: 0.71875rem;
+      font-family: var(--font-mono);
+      color: var(--color-text-faint);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--color-border);
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+    }
+    .pub-scholar-abstract {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      line-height: 1.65;
+      margin: 0;
+      max-width: 68ch;
+    }
+    .pub-scholar-abstract strong, .pub-scholar-abstract em {
+      font-weight: inherit;
+      font-style: inherit;
+      color: inherit;
+    }
+  </style>
+</body>
+</html>

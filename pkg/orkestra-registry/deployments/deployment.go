@@ -7,9 +7,11 @@ import (
 	"strconv"
 
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/ialexeze/orkestra/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -148,13 +150,31 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	return nil
 }
 
+// DeleteIfOwned deletes the Deployment if it exists and is owned by the CR.
+func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+	owner domain.Object, name, namespace string) error {
+
+	existing, err := kube.Clientset().AppsV1().Deployments(namespace).
+		Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	// Only delete if we own it
+	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+		return nil
+	}
+	return kube.Clientset().AppsV1().Deployments(namespace).
+		Delete(ctx, name, metav1.DeleteOptions{})
+}
+
 // Resolve builds a ResolvedDeploymentSpec from a DeploymentTemplateSource.
 // Fields with template expressions must already be evaluated before calling Resolve.
 // Use pkg/orkestra-registry/template.Resolver to evaluate expressions first.
 //
-// Option B inference — no explicit fromCRD/fromKatalog split needed.
 // The resolver already evaluated template expressions — here we just merge.
-// deployments/deployment.go
 func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerName string) ResolvedDeploymentSpec {
 	spec := ResolvedDeploymentSpec{
 		Name:        src.Name,
@@ -198,8 +218,8 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 	}
 
 	// Orkestra system labels — always added
-	spec.Labels["managed-by"] = "orkestra"
-	spec.Labels["orkestra-owner"] = ownerName
+	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
+	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
 
 	return spec
 }
@@ -221,8 +241,8 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 					Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
 					Name:               owner.GetName(),
 					UID:                owner.GetUID(),
-					Controller:         boolPtr(true),
-					BlockOwnerDeletion: boolPtr(true),
+					Controller:         utils.BoolPtr(true),
+					BlockOwnerDeletion: utils.BoolPtr(true),
 				},
 			},
 		},
@@ -301,5 +321,3 @@ func buildResourceRequirements(r *orktypes.ResourceRequirements) corev1.Resource
 	}
 	return req
 }
-
-func boolPtr(b bool) *bool { return &b }
