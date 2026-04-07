@@ -10,14 +10,16 @@ import (
 )
 
 var (
-	ccPort     string
-	ccURLs     string
-	ccRefresh  string
-	ccLogLevel string
+	ccPort          string
+	ccURLs          string
+	ccRefresh       string
+	ccLogLevel      string
+	ccIgnoreDefault bool
 )
 
 func init() {
 	controlStartCmd.Flags().StringVarP(&ccPort, "port", "p", "8090", "Port to run the Control Center on")
+	controlStartCmd.Flags().BoolVarP(&ccIgnoreDefault, "ignore-default", "i", false, "Do not add the default localhost:8080 URL; start with no instances")
 	controlStartCmd.Flags().StringVarP(&ccURLs, "urls", "u", "http://localhost:8080", "Comma-separated list of Orkestra runtime URLs")
 	controlStartCmd.Flags().StringVar(&ccRefresh, "refresh", "10s", "Refresh interval for fetching Katalogs")
 	controlStartCmd.Flags().StringVar(&ccLogLevel, "log-level", "info", "Log level (debug, info, warn, error)")

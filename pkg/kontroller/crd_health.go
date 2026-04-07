@@ -229,6 +229,14 @@ func (h *CRDHealth) SetDegraded() {
 	h.degraded.Store(true)
 }
 
+func (h *CRDHealth) SignaledHealthy() bool {
+	return h.healthySignaled.Load()
+}
+
+func (h *CRDHealth) MarkHealthySignaled() {
+	h.healthySignaled.Store(true)
+}
+
 // SetOrkReady marks orkestra engine as ready
 func (h *OrkestraHealth) SetOrkReady() {
 	h.orkReady.Store(true)

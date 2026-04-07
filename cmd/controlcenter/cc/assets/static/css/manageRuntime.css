@@ -1,0 +1,89 @@
+/* manageRuntime.css – styles for the Manage Runtimes modal and runtime list */
+
+/* Form styles */
+.cc-form-group {
+    margin-bottom: 16px;
+}
+.cc-form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+}
+.cc-input {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+.cc-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+.cc-form-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* Runtime list items */
+.runtime-list-container {
+    max-height: 350px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-surface);
+}
+.runtime-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+}
+.runtime-item:hover {
+    background: var(--bg-hover);
+}
+.runtime-url {
+    font-family: monospace;
+    font-size: 13px;
+    word-break: break-all;
+    color: var(--text-primary);
+}
+.runtime-actions {
+    display: flex;
+    gap: 8px;
+}
+.runtime-status {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 12px;
+    background: var(--bg-muted);
+    margin-left: 12px;
+}
+.runtime-status.online {
+    background: #10b98120;
+    color: #10b981;
+}
+.runtime-status.offline {
+    background: #ef444420;
+    color: #ef4444;
+}
+
+/* Buttons */
+.cc-btn-danger {
+    background: var(--error);
+    color: white;
+}
+.cc-btn-danger:hover {
+    background: #b91c1c;
+}
+.cc-btn-sm {
+    padding: 4px 8px;
+    font-size: 12px;
+}

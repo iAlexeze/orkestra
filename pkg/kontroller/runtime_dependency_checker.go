@@ -114,8 +114,9 @@ func (k *DependencyKontroller) checkDependencyHealthForGVK(gvk string) {
 			state = types.DependencyConditionHealthy
 
 			// Signal healthyCh exactly once when dependency becomes healthy
-			if !depHealth.IsHealthy() {
+			if !depHealth.SignaledHealthy() {
 				close(k.healthyCh[depGVK])
+				depHealth.MarkHealthySignaled()
 				depHealth.SetStarted()
 			}
 
