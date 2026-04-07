@@ -40,7 +40,7 @@ What did we fix? → Write a test.
 ```bash
 tests/
 ├── unit/
-│   ├── kontroller/
+│   ├── kordinator/
 │   │   ├── crd_health_test.go
 │   │   ├── dependency_test.go
 │   │   └── activation_test.go
@@ -150,20 +150,20 @@ func AssertError(t *testing.T, err error, msg string) {
 ### 2.1 CRD Health Tests
 
 ```go
-// tests/unit/kontroller/crd_health_test.go
-package kontroller_test
+// tests/unit/kordinator/crd_health_test.go
+package kordinator_test
 
 import (
     "fmt"
     "testing"
     "time"
     
-    "github.com/ialexeze/orkestra/pkg/kontroller"
+    "github.com/ialexeze/orkestra/pkg/kordinator"
     "github.com/stretchr/testify/assert"
 )
 
 func TestCRDHealth_InitialState(t *testing.T) {
-    h := kontroller.NewCRDHealth("test")
+    h := kordinator.NewCRDHealth("test")
     
     assert.False(t, h.IsHealthy())
     assert.False(t, h.Started())
@@ -173,7 +173,7 @@ func TestCRDHealth_InitialState(t *testing.T) {
 }
 
 func TestCRDHealth_RecordSuccess(t *testing.T) {
-    h := kontroller.NewCRDHealth("test")
+    h := kordinator.NewCRDHealth("test")
     
     h.RecordSuccess()
     
@@ -184,7 +184,7 @@ func TestCRDHealth_RecordSuccess(t *testing.T) {
 }
 
 func TestCRDHealth_RecordFailure(t *testing.T) {
-    h := kontroller.NewCRDHealth("test")
+    h := kordinator.NewCRDHealth("test")
     
     h.RecordFailure(fmt.Errorf("something went wrong"), 3)
     
@@ -196,7 +196,7 @@ func TestCRDHealth_RecordFailure(t *testing.T) {
 }
 
 func TestCRDHealth_RecordFailureExceedsThreshold(t *testing.T) {
-    h := kontroller.NewCRDHealth("test")
+    h := kordinator.NewCRDHealth("test")
     
     // First failure — still healthy (threshold=3)
     h.RecordFailure(fmt.Errorf("error 1"), 3)
@@ -212,7 +212,7 @@ func TestCRDHealth_RecordFailureExceedsThreshold(t *testing.T) {
 }
 
 func TestCRDHealth_SuccessResetsConsecutiveFails(t *testing.T) {
-    h := kontroller.NewCRDHealth("test")
+    h := kordinator.NewCRDHealth("test")
     
     h.RecordFailure(fmt.Errorf("error"), 3)
     h.RecordFailure(fmt.Errorf("error"), 3)
@@ -224,7 +224,7 @@ func TestCRDHealth_SuccessResetsConsecutiveFails(t *testing.T) {
 }
 
 func TestCRDHealth_ErrorRate(t *testing.T) {
-    h := kontroller.NewCRDHealth("test")
+    h := kordinator.NewCRDHealth("test")
     
     h.RecordSuccess()  // 1 total, 0 failed
     assert.Equal(t, float64(0), h.ErrorRate())
@@ -240,8 +240,8 @@ func TestCRDHealth_ErrorRate(t *testing.T) {
 ### 2.2 Dependency Graph Tests
 
 ```go
-// tests/unit/kontroller/dependency_test.go
-package kontroller_test
+// tests/unit/kordinator/dependency_test.go
+package kordinator_test
 
 import (
     "testing"
@@ -496,7 +496,7 @@ import (
     "testing"
     "time"
     
-    "github.com/ialexeze/orkestra/pkg/kontroller"
+    "github.com/ialexeze/orkestra/pkg/kordinator"
     "github.com/ialexeze/orkestra/tests/helpers"
     "github.com/stretchr/testify/assert"
 )
@@ -506,17 +506,17 @@ func TestActivation_MissingCRDAppearsLater(t *testing.T) {
     fakeKube := helpers.NewFakeKubeclient()
     katalog := helpers.NewTestKatalogWithMissingCRD("missing-crd")
     
-    kontroller := kontroller.NewDependencyKontroller(fakeKube, katalog)
+    kordinator := kordinator.NewDependencyKordinator(fakeKube, katalog)
     
     // Start controller (CRD missing, should not start workers)
     ctx, cancel := context.WithCancel(context.Background())
     defer cancel()
     
-    go kontroller.RunOrDie(ctx)
+    go kordinator.RunOrDie(ctx)
     time.Sleep(2 * time.Second)
     
     // Verify workers not started
-    assert.False(t, kontroller.IsStarted("missing-crd"))
+    assert.False(t, kordinator.IsStarted("missing-crd"))
     
     // Simulate CRD appearing
     helpers.InstallCRD(fakeKube, "missing-crd")
@@ -525,7 +525,7 @@ func TestActivation_MissingCRDAppearsLater(t *testing.T) {
     time.Sleep(5 * time.Second)
     
     // Verify workers started
-    assert.True(t, kontroller.IsStarted("missing-crd"))
+    assert.True(t, kordinator.IsStarted("missing-crd"))
 }
 ```
 

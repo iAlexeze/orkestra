@@ -21,7 +21,7 @@ konstructOrkestra (internal/construct.go)
   └── factory closure            ← captures providerRegistry
         └── NewGenericReconciler(..., providerRegistry)
 
-DependencyKontroller
+DependencyKordinator
   └── startCRDWorkers
         └── entry.ReconcilerFactory()   ← calls the closure
               └── GenericReconciler
@@ -42,7 +42,7 @@ On CR deletion (finalizer):
 **Key insight:** The `ProviderRegistry` is captured in the factory closure in
 `konstructOrkestra`. It is declared before the factory loop so all CRD factories
 capture the same fully-initialised registry. The registry never passes through
-`DependencyKontroller` or `ReconcilerFactory` — the closure handles it.
+`DependencyKordinator` or `ReconcilerFactory` — the closure handles it.
 
 ---
 

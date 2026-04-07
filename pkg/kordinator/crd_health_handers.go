@@ -1,5 +1,5 @@
-// pkg/kontroller/crd_health_handlers.go
-package kontroller
+// pkg/kordinator/crd_health_handlers.go
+package kordinator
 
 import (
 	"fmt"

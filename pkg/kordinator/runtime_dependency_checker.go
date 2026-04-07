@@ -1,4 +1,4 @@
-package kontroller
+package kordinator
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 //
 // This checker is the *runtime* half of the dependency system.
 // The *startup* half is handled inside Kordinate() using startedCh and healthyCh.
-func (k *DependencyKontroller) dependencyHealthChecker(ctx context.Context) {
+func (k *DependencyKordinator) dependencyHealthChecker(ctx context.Context) {
 	ticker := time.NewTicker(RuntimeHealthCheckInterval) // periodic runtime health evaluation
 	defer ticker.Stop()
 
@@ -35,7 +35,7 @@ func (k *DependencyKontroller) dependencyHealthChecker(ctx context.Context) {
 // and updates their dependency health state.
 //
 // This is purely runtime observability. It does not block startup ordering.
-func (k *DependencyKontroller) checkAllDependencyHealth() {
+func (k *DependencyKordinator) checkAllDependencyHealth() {
 	k.mu.RLock()
 	activeCRDs := make([]string, 0, len(k.crdHealthMap))
 	for gvk := range k.crdHealthMap {
@@ -64,7 +64,7 @@ func (k *DependencyKontroller) checkAllDependencyHealth() {
 //	for closing healthyCh[depGVK], which unblocks dependents that require "healthy".
 //
 // This is the integration point between runtime health and startup gating.
-func (k *DependencyKontroller) checkDependencyHealthForGVK(gvk string) {
+func (k *DependencyKordinator) checkDependencyHealthForGVK(gvk string) {
 	entry, ok := k.katalog.Get(gvk)
 	if !ok {
 		return

@@ -984,18 +984,18 @@ What did we fix? → Write a test.
 <h2 id="unit-tests">Unit Tests</h2>
 <p>Unit tests test single functions in isolation, with no external dependencies.</p>
 <h3 id="example-testing-crdhealth">Example: Testing CRDHealth</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6272a4">// tests/unit/kontroller/crd_health_test.go</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6272a4">// tests/unit/kordinator/crd_health_test.go</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">package</span> kontroller_test
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">import</span> (
 </span></span><span style="display:flex;"><span>    <span style="color:#f1fa8c">&#34;testing&#34;</span>
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#f1fa8c">&#34;github.com/ialexeze/orkestra/pkg/kontroller&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f1fa8c">&#34;github.com/ialexeze/orkestra/pkg/kordinator&#34;</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#f1fa8c">&#34;github.com/stretchr/testify/assert&#34;</span>
 </span></span><span style="display:flex;"><span>)
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">func</span> <span style="color:#50fa7b">TestCRDHealth_RecordFailure</span>(t <span style="color:#ff79c6">*</span>testing.T) {
-</span></span><span style="display:flex;"><span>    h <span style="color:#ff79c6">:=</span> kontroller.<span style="color:#50fa7b">NewCRDHealth</span>(<span style="color:#f1fa8c">&#34;test&#34;</span>)
+</span></span><span style="display:flex;"><span>    h <span style="color:#ff79c6">:=</span> kordinator.<span style="color:#50fa7b">NewCRDHealth</span>(<span style="color:#f1fa8c">&#34;test&#34;</span>)
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>    h.<span style="color:#50fa7b">RecordFailure</span>(fmt.<span style="color:#50fa7b">Errorf</span>(<span style="color:#f1fa8c">&#34;error&#34;</span>), <span style="color:#bd93f9">3</span>)
 </span></span><span style="display:flex;"><span>

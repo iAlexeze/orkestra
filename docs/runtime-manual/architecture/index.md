@@ -17,7 +17,7 @@ Orkestra consists of four major subsystems:
 2. **Runtime Core**  
    Informers, workqueues, reconciler registry, template engine.
 
-3. **Dependency‑Aware Kontroller**  
+3. **Dependency‑Aware Kordinator**  
    Starts CRDs in topological order, handles activation/deactivation, manages worker pools.
 
 4. **Reconciler Layer**  
@@ -56,9 +56,9 @@ Informers feed events into per-CRD workqueue.
 
 ---
 
-## 4. Dependency‑Aware Kontroller
+## 4. Dependency‑Aware Kordinator
 
-The Kontroller:
+The Kordinator:
 
 - Computes startup order (topological sort)
 - Waits for dependencies using ready channels

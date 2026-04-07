@@ -176,7 +176,7 @@ Orkestra is composed of discrete komponents — each with a single responsibilit
 - EventRecorder
 - QueueRegistry
 - SharedInformerFactory
-- DependencyKontroller
+- DependencyKordinator
 - KonductorElection
 
 ### [CRD Runtime Health](./crd-runtime-health.md)

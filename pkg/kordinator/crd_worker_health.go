@@ -1,4 +1,4 @@
-package kontroller
+package kordinator
 
 import "github.com/ialexeze/orkestra/pkg/metrics"
 

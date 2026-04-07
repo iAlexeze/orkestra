@@ -1,44 +1,40 @@
 # Changelog
 
-## [Unreleased] — Control Center Redesign contd
+## [Unreleased] — CHANGELOG — Rename DependencyKontroller → DependencyKordinator
 
-### Added
+### **Changed**
+- Renamed package **`kontroller` → `kordinator`**.
+- Renamed struct **`DependencyKontroller` → `DependencyKordinator`**.
+- Updated constructor to **`NewDependencyKordinator`**.
+- Updated all imports, references, and type usages accordingly.
 
-#### Control Center
-- **Raw/Enriched config viewer** – Click any Katalog name to inspect its configuration. Toggle between "Your Config" (original YAML) and "Orkestra Enriched" (runtime-resolved values with defaults applied).
-- **Syntax-highlighted YAML display** – Colors for keys, strings, numbers, booleans, and null values for better readability.
-- **Copy to clipboard** – One-click copy of YAML configuration with visual success feedback (green flash).
-- **Server-Sent Events (SSE)** – Live page updates without full reloads. Dashboard stats refresh automatically when Katalog data changes.
-- **`/api/snapshot` endpoint** – JSON API for partial DOM updates, enabling efficient client-side refreshes.
-- **Clickable Katalog names** – Hover effect and inspect icon indicate interactive elements.
+### **Rationale**
+The component previously named *DependencyKontroller* no longer behaved like a traditional controller.  
+It evolved into a **coordination layer** responsible for orchestrating multiple subsystems:
 
-### Changed
+- CRD startup sequencing based on dependency graph  
+- Worker lifecycle coordination  
+- Health propagation (CRD → Orkestra → Katalog)  
+- Queue registry and informer registry wiring  
+- Safe reconcile orchestration  
+- Dependency gating via `startedCh` and `healthyCh`  
+- Ordered shutdown and draining  
+- Centralized access to kubeclient, events, CRD health map, and reconcilers  
 
-- **CRD ordering** – CRDs are now sorted alphabetically in Katalog panels, ensuring consistent display across page loads.
-- **CR instance ordering** – Custom resources are sorted by name in list views.
-- **Theme toggle position** – Restored to correct location in navbar (right side).
+Because it **coordinates** controllers rather than *being* one, the name “Kontroller” became misleading.
 
-### Fixed
+The new name **Kordinator** reflects its true role:
 
-- Random CRD order changes on page refresh – now consistently alphabetical.
-- Broken breadcrumb link (`Control Panel/a` → `Control Center`).
-- Theme toggle button appearing inline instead of right-aligned.
+> A system‑level orchestrator that brings together controllers, queues, informers, health, and dependency logic into a single coordination unit.
 
-### Improved
+### **Impact**
+- No functional behavior changed.
+- No API semantics changed.
+- Only naming and package paths updated for clarity.
+- Existing controllers, reconcilers, and workers continue to operate unchanged.
+- Improves architectural readability and contributor understanding.
 
-- Modal design for config inspection – responsive, scrollable, with clear footer legends.
-- Error handling for missing instances – stale data is cleared from UI.
-- User feedback for copy actions – visual confirmation on success.
-```
-
-## Labels
-
-- `enhancement`
-- `feature`
-- `control-center`
-- `observability`
-- `ui`
-
-## Milestone
-
-`v1.0.0`
+### **Migration Notes**
+- Update imports from `kontroller` → `kordinator`.
+- Replace references to `DependencyKontroller` with `DependencyKordinator`.
+- No other code changes required.

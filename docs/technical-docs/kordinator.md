@@ -1,6 +1,6 @@
-# Kontroller
+# Kordinator
 
-`pkg/kontroller` contains the components that sit between the informer factory and the reconcilers: the dependency-ordered worker startup system, the queue and kontroller registries, and the per-CRD health tracking.
+`pkg/kordinator` contains the components that sit between the informer factory and the reconcilers: the dependency-ordered worker startup system, the queue and Kordinator registries, and the per-CRD health tracking.
 
 ---
 
@@ -8,8 +8,8 @@
 
 | Type | File | Responsibility |
 |---|---|---|
-| `DependencyKontroller` | `dependency_kontroller.go` | Starts CRD workers in dependency order |
-| `KontrollerRegistry` | `kontroller_registry.go` | Stores (informer, factory) per GVK |
+| `DependencyKordinator` | `dependency_kordinator.go` | Starts CRD workers in dependency order |
+| `KordinatorRegistry` | `Kordinator_registry.go` | Stores (informer, factory) per GVK |
 | `QueueRegistry` | `queue_registry.go` | Creates and owns per-CRD workqueues |
 | `CRDHealth` | `health_tracker.go` | Tracks reconcile success/failure per CRD |
 | `BuildCRDHealthHandler` | `handlers.go` | `/katalog/{crd}/health` HTTP handler |
@@ -18,14 +18,14 @@
 
 ---
 
-## DependencyKontroller
+## DependencyKordinator
 
-`DependencyKontroller` is the last komponent started. Its `Start()` method is where workers actually begin processing reconcile events. Before it starts, informers run and caches warm, but no CRs are reconciled.
+`DependencyKordinator` is the last komponent started. Its `Start()` method is where workers actually begin processing reconcile events. Before it starts, informers run and caches warm, but no CRs are reconciled.
 
 ### Start sequence
 
 ```go
-func (k *DependencyKontroller) Start(ctx context.Context) error
+func (k *DependencyKordinator) Start(ctx context.Context) error
 ```
 
 1. Waits for `infFactory.WaitForCacheSync(ctx)` — all informers must complete their initial list before any worker starts
@@ -39,7 +39,7 @@ func (k *DependencyKontroller) Start(ctx context.Context) error
 ### runWorker loop
 
 ```go
-func (k *DependencyKontroller) runWorker(ctx context.Context, rec domain.Reconciler, wq workqueue.RateLimitingInterface, health *CRDHealth) {
+func (k *DependencyKordinator) runWorker(ctx context.Context, rec domain.Reconciler, wq workqueue.RateLimitingInterface, health *CRDHealth) {
     for {
         key, shutdown := wq.Get()
         if shutdown {
@@ -64,7 +64,7 @@ The worker calls `safeReconcile` (which wraps `rec.Reconcile` in a panic-catchin
 On context cancellation:
 
 ```go
-func (k *DependencyKontroller) Shutdown(ctx context.Context) {
+func (k *DependencyKordinator) Shutdown(ctx context.Context) {
     // Signal all queues to stop accepting new items
     k.queueRegistry.ShutDownAll()
     k.defaultWq.ShutDown()
@@ -77,9 +77,9 @@ func (k *DependencyKontroller) Shutdown(ctx context.Context) {
 
 ---
 
-## KontrollerRegistry
+## KordinatorRegistry
 
-`KontrollerRegistry` is a simple in-memory map from GVK string to a `RegistryEntry`:
+`KordinatorRegistry` is a simple in-memory map from GVK string to a `RegistryEntry`:
 
 ```go
 type RegistryEntry struct {
@@ -88,23 +88,23 @@ type RegistryEntry struct {
     Factory  func() domain.Reconciler  // called once per CRD in Start()
 }
 
-type KontrollerRegistry struct {
+type KordinatorRegistry struct {
     mu      sync.RWMutex
     entries map[string]*RegistryEntry
 }
 ```
 
 It is written once during `konstructOrkestra` and read many times:
-- `DependencyKontroller.Start()` reads it to start workers
+- `DependencyKordinator.Start()` reads it to start workers
 - `/katalog` route reads it to build the aggregate health response
 - `/katalog/{crd}` route reads the `Informer` for live resource count
 
 The map is never modified after `konstructOrkestra` returns — the `sync.RWMutex` exists for safe concurrent reads from the HTTP handlers.
 
 ```go
-func (r *KontrollerRegistry) Register(gvk string, crd orktypes.CRDEntry, inf cache.SharedIndexInformer, factory func() domain.Reconciler)
-func (r *KontrollerRegistry) Get(gvk string) (*RegistryEntry, bool)
-func (r *KontrollerRegistry) All() []*RegistryEntry
+func (r *KordinatorRegistry) Register(gvk string, crd orktypes.CRDEntry, inf cache.SharedIndexInformer, factory func() domain.Reconciler)
+func (r *KordinatorRegistry) Get(gvk string) (*RegistryEntry, bool)
+func (r *KordinatorRegistry) All() []*RegistryEntry
 ```
 
 ---
@@ -130,7 +130,7 @@ func (r *QueueRegistry) Register(gvk string, maxDepth int) workqueue.RateLimitin
 func (r *QueueRegistry) Get(gvk string) (workqueue.RateLimitingInterface, bool)
 
 // ShutDownAll calls ShutDown() on every registered queue.
-// Called during DependencyKontroller.Shutdown() to signal all workers to stop.
+// Called during DependencyKordinator.Shutdown() to signal all workers to stop.
 func (r *QueueRegistry) ShutDownAll()
 ```
 
@@ -257,7 +257,7 @@ Returns the full CRD detail as JSON. The response is assembled on every request 
 func BuildKatalogHandler(
     kat      *katalog.Katalog,
     kfg      *konfig.Konfig,
-    registry *KontrollerRegistry,
+    registry *KordinatorRegistry,
     healthMap map[string]*CRDHealth,
 ) http.HandlerFunc
 ```
@@ -280,7 +280,7 @@ func NewDependencyGraph(kat *Katalog) *DependencyGraph
 
 Built from the `dependsOn` fields of all enabled CRD entries. The topological sort uses Kahn's algorithm — iteratively removes nodes with no remaining dependencies and appends them to the order. A cycle is detected when the algorithm terminates with unprocessed nodes.
 
-The `DependencyKontroller` reads the `order` slice to start workers in the correct sequence. For each CRD name in `order`, it looks up the informer and factory from `KontrollerRegistry` and starts the workers.
+The `DependencyKordinator` reads the `order` slice to start workers in the correct sequence. For each CRD name in `order`, it looks up the informer and factory from `KordinatorRegistry` and starts the workers.
 
 The ready channel mechanism:
 

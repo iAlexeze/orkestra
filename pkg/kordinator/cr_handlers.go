@@ -1,4 +1,4 @@
-// pkg/kontroller/cr_handlers.go
+// pkg/kordinator/cr_handlers.go
 //
 // CR-level endpoints — list, detail, and events per CRD instance.
 //
@@ -21,13 +21,13 @@
 //
 // Registration — add to wherever BuildKatalogHandler is registered:
 //
-//   crHandler := kontroller.NewCRHandler(kube, reg, rcMap)
+//   crHandler := kordinator.NewCRHandler(kube, reg, rcMap)
 //   mux.Handle("/katalog/", crHandler.Route(existingKatalogMux))
 //
 // Or call BuildCRListHandler / BuildCRDetailHandler / BuildCREventsHandler
 // directly alongside the existing per-CRD handler registrations.
 
-package kontroller
+package kordinator
 
 import (
 	"context"

@@ -1,5 +1,5 @@
-// pkg/kontroller/degraded.go
-package kontroller
+// pkg/kordinator/degraded.go
+package kordinator
 
 func (k *Kontroller) IsDegraded(gvk string) bool {
 	wq, _ := k.queueRegistry.For(gvk)

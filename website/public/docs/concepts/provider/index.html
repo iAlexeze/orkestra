@@ -1009,7 +1009,7 @@ runProviders(ctx, obj, resolver, blocks, registry, kube)
     └── On finalizer: runProviderDelete(...)      — provider.Delete(ctx, req)
 </code></pre><p>The registry is built once in <code>loadProviders(ctx)</code> at startup and captured
 in each reconciler factory closure. It never passes through
-<code>DependencyKontroller</code> or <code>ReconcilerFactory</code>.</p>
+<code>DependencyKordinator</code> or <code>ReconcilerFactory</code>.</p>
 <hr>
 <h2 id="the-yaml-structure">The YAML structure</h2>
 <p>A provider block is a named map under <code>reconciler.providers</code>. The key is the

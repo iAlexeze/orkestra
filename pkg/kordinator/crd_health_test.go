@@ -1,19 +1,19 @@
-// pkg/kontroller/crd_health_test.go
-package kontroller_test
+// pkg/kordinator/crd_health_test.go
+package kordinator_test
 
 import (
 	"fmt"
 	"testing"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/kontroller"
+	"github.com/ialexeze/orkestra/pkg/kordinator"
 	"github.com/stretchr/testify/assert"
 )
 
 // ── Initial state ─────────────────────────────────────────────────────────────
 
 func TestCRDHealth_InitialState(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 
 	assert.False(t, h.IsHealthy())
 	assert.False(t, h.Started())
@@ -23,14 +23,14 @@ func TestCRDHealth_InitialState(t *testing.T) {
 }
 
 func TestCRDHealth_Name(t *testing.T) {
-	h := kontroller.NewCRDHealth("my-website")
+	h := kordinator.NewCRDHealth("my-website")
 	assert.Equal(t, "my-website", h.Name())
 }
 
 // ── RecordSuccess ─────────────────────────────────────────────────────────────
 
 func TestCRDHealth_RecordSuccess(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 
 	h.RecordSuccess()
 
@@ -43,7 +43,7 @@ func TestCRDHealth_RecordSuccess(t *testing.T) {
 // ── RecordFailure ─────────────────────────────────────────────────────────────
 
 func TestCRDHealth_RecordFailure(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 
 	h.RecordFailure(fmt.Errorf("something went wrong"), 3)
 
@@ -55,7 +55,7 @@ func TestCRDHealth_RecordFailure(t *testing.T) {
 }
 
 func TestCRDHealth_RecordFailureExceedsThreshold(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 
 	// CRDs start unhealthy — threshold only degrades an already-healthy CRD.
 
@@ -73,7 +73,7 @@ func TestCRDHealth_RecordFailureExceedsThreshold(t *testing.T) {
 }
 
 func TestCRDHealth_ThresholdDegradesPreviouslyHealthyCRD(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 
 	h.RecordSuccess()
 	assert.True(t, h.IsHealthy())
@@ -89,7 +89,7 @@ func TestCRDHealth_ThresholdDegradesPreviouslyHealthyCRD(t *testing.T) {
 }
 
 func TestCRDHealth_SuccessResetsConsecutiveFails(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 
 	h.RecordFailure(fmt.Errorf("error"), 3)
 	h.RecordFailure(fmt.Errorf("error"), 3)
@@ -103,7 +103,7 @@ func TestCRDHealth_SuccessResetsConsecutiveFails(t *testing.T) {
 // ── Error rate ────────────────────────────────────────────────────────────────
 
 func TestCRDHealth_ErrorRate(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 
 	h.RecordSuccess()
 	assert.Equal(t, float64(0), h.ErrorRate())
@@ -118,7 +118,7 @@ func TestCRDHealth_ErrorRate(t *testing.T) {
 // ── Started / SetStarted ──────────────────────────────────────────────────────
 
 func TestCRDHealth_SetStarted(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 	assert.False(t, h.Started())
 
 	h.SetStarted()
@@ -127,7 +127,7 @@ func TestCRDHealth_SetStarted(t *testing.T) {
 }
 
 func TestCRDHealth_SetStarted_IsIdempotent(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 
 	h.SetStarted()
 	h.SetStarted() // second call must not panic or change state
@@ -136,7 +136,7 @@ func TestCRDHealth_SetStarted_IsIdempotent(t *testing.T) {
 }
 
 func TestCRDHealth_SetNotStarted(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 	h.SetStarted()
 	assert.True(t, h.Started())
 
@@ -147,12 +147,12 @@ func TestCRDHealth_SetNotStarted(t *testing.T) {
 // ── StartedAt / Uptime ────────────────────────────────────────────────────────
 
 func TestCRDHealth_StartedAt_BeforeStart(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 	assert.Equal(t, "not started", h.StartedAt())
 }
 
 func TestCRDHealth_StartedAt_AfterStart(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 	before := time.Now()
 	h.SetStarted()
 
@@ -169,12 +169,12 @@ func TestCRDHealth_StartedAt_AfterStart(t *testing.T) {
 }
 
 func TestCRDHealth_Uptime_NotStarted(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 	assert.Equal(t, "not started", h.Uptime())
 }
 
 func TestCRDHealth_Uptime_AfterStart(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 	h.SetStarted()
 
 	uptime := h.Uptime()
@@ -184,18 +184,18 @@ func TestCRDHealth_Uptime_AfterStart(t *testing.T) {
 // ── LastReconcile ─────────────────────────────────────────────────────────────
 
 func TestCRDHealth_LastReconcile_NeverStarted(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 	assert.Equal(t, "not started", h.LastReconcile())
 }
 
 func TestCRDHealth_LastReconcile_StartedButNoReconcile(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 	h.SetStarted()
 	assert.Equal(t, "no reconciles yet", h.LastReconcile())
 }
 
 func TestCRDHealth_LastReconcile_AfterSuccess(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 	h.SetStarted()
 	h.RecordSuccess()
 
@@ -207,7 +207,7 @@ func TestCRDHealth_LastReconcile_AfterSuccess(t *testing.T) {
 // ── Workers ───────────────────────────────────────────────────────────────────
 
 func TestCRDHealth_WorkersActive(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 	assert.Equal(t, 0, h.GetActiveWorkers())
 
 	// h.SetActiveWorkers(3)
@@ -218,14 +218,14 @@ func TestCRDHealth_WorkersActive(t *testing.T) {
 
 func TestCRDHealth_QueueDepth_NilRegistry(t *testing.T) {
 	// NewCRDHealth has no queue registry — QueueDepth must return 0 gracefully.
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 	assert.Equal(t, 0, h.QueueDepth("any/v1, Kind=Foo"))
 }
 
 // ── CRD existence tracking ────────────────────────────────────────────────────
 
 func TestCRDHealth_SetCRDExists_True(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 	assert.False(t, h.CRDExists())
 
 	h.SetCRDExists(true)
@@ -233,14 +233,14 @@ func TestCRDHealth_SetCRDExists_True(t *testing.T) {
 }
 
 func TestCRDHealth_SetCRDExists_False(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 	h.SetCRDExists(true)
 	h.SetCRDExists(false)
 	assert.False(t, h.CRDExists())
 }
 
 func TestCRDHealth_LastCRDCheck_UpdatedOnSet(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 
 	before := time.Now()
 	h.SetCRDExists(true)
@@ -254,7 +254,7 @@ func TestCRDHealth_LastCRDCheck_UpdatedOnSet(t *testing.T) {
 // ── RecordStartupFailure ──────────────────────────────────────────────────────
 
 func TestCRDHealth_RecordStartupFailure_DoesNotIncrementTotalReconciles(t *testing.T) {
-	h := kontroller.NewCRDHealth("test")
+	h := kordinator.NewCRDHealth("test")
 
 	h.RecordStartupFailure(fmt.Errorf("startup error"), 3)
 

@@ -48,18 +48,18 @@ Unit tests test single functions in isolation, with no external dependencies.
 ### Example: Testing CRDHealth
 
 ```go
-// tests/unit/kontroller/crd_health_test.go
-package kontroller_test
+// tests/unit/kordinator/crd_health_test.go
+package kordinator_test
 
 import (
     "testing"
 
-    "github.com/ialexeze/orkestra/pkg/kontroller"
+    "github.com/ialexeze/orkestra/pkg/kordinator"
     "github.com/stretchr/testify/assert"
 )
 
 func TestCRDHealth_RecordFailure(t *testing.T) {
-    h := kontroller.NewCRDHealth("test")
+    h := kordinator.NewCRDHealth("test")
 
     h.RecordFailure(fmt.Errorf("error"), 3)
 

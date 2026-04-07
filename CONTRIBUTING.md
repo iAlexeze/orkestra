@@ -174,7 +174,7 @@ orkestra/
 ├── cmd/           # CLI entry points
 ├── pkg/           # Public packages
 │   ├── generate/  # Code generation
-│   ├── kontroller/# Core controller logic
+│   ├── kordinator/# Core controller cordination logic
 │   ├── kubeclient/# Kubernetes client
 │   ├── merger/    # Katalog merging
 │   └── types/     # Shared types

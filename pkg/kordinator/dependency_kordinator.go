@@ -1,4 +1,4 @@
-// pkg/kontroller/dependency_kontroller.go
+// pkg/kordinator/dependency_kordinator.go
 /*
 ╔═══════════════════════════════════════════════════════════════════════════════╗
 ║                    CRD Lifecycle Management Flow                               ║
@@ -167,7 +167,7 @@ KEY DESIGN DECISIONS
 
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 */
-package kontroller
+package kordinator
 
 import (
 	"context"
@@ -189,9 +189,9 @@ import (
 	"github.com/ialexeze/orkestra/pkg/queue"
 )
 
-// DependencyKontroller extends the base Kontroller with dependency‑aware startup.
+// DependencyKordinator extends the base Kontroller with dependency‑aware startup.
 // It ensures CRDs start in topological order and shut down in reverse order.
-type DependencyKontroller struct {
+type DependencyKordinator struct {
 	*Kontroller
 
 	depGraph       *katalog.DependencyGraph
@@ -212,10 +212,9 @@ type DependencyKontroller struct {
 	healthyCh map[string]chan struct{}
 }
 
-// NewDependencyKontroller constructs a dependency‑aware Kontroller.
-// It embeds the base Kontroller so all worker logic, queue handling,
-// and reconciler dispatching remain unchanged.
-func NewDependencyKontroller(
+// NewDependencyKordinator constructs a dependency‑aware kordinator.
+// It embeds the base Kontroller wll also handling dependencies in the right order
+func NewDependencyKordinator(
 	kube *kubeclient.Kubeclient,
 	factory *informer.Factory,
 	katalog *ResourceKatalog,
@@ -228,9 +227,9 @@ func NewDependencyKontroller(
 	defaultWorkers int,
 	depGraph *katalog.DependencyGraph,
 	drainTimeout time.Duration,
-) *DependencyKontroller {
+) *DependencyKordinator {
 
-	kont := &DependencyKontroller{
+	kord := &DependencyKordinator{
 		Kontroller: NewKontroller(
 			kube, factory, katalog,
 			events, hs, crdHealthMap, queueRegistry,
@@ -245,17 +244,17 @@ func NewDependencyKontroller(
 		healthyCh:      make(map[string]chan struct{}),
 	}
 
-	kont.anyOnline.Store(false)
-	return kont
+	kord.anyOnline.Store(false)
+	return kord
 }
 
 // Kordinate starts CRDs in dependency order and blocks until leadership is lost.
 // When leadership ends, it shuts down CRDs in reverse dependency order.
-func (k *DependencyKontroller) Kordinate(ctx context.Context) {
+func (k *DependencyKordinator) Kordinate(ctx context.Context) {
 	logger.Info().Str("component", k.Name()).Msg("starting")
 	k.startedAt = time.Now()
 
-	// Mark as ready immediately - the kontroller can serve requests
+	// Mark as ready immediately - the kordinator can serve requests
 	k.hs.SetReady()
 	k.orkHealth.SetOrkReady()
 
@@ -404,7 +403,7 @@ func (k *DependencyKontroller) Kordinate(ctx context.Context) {
 }
 
 // startCRDWorkers starts a worker pool for a specific CRD and is invoked in dependency order.
-func (k *DependencyKontroller) startCRDWorkers(ctx context.Context, gvk string, workers int) {
+func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, workers int) {
 	entry, ok := k.katalog.Get(gvk)
 	if !ok {
 		logger.Fatal().Str("gvk", gvk).Msg("no katalog entry found")
@@ -445,7 +444,7 @@ func (k *DependencyKontroller) startCRDWorkers(ctx context.Context, gvk string, 
 }
 
 // stopCRDWorkers cancels the CRD context and waits for all workers to drain.
-func (k *DependencyKontroller) stopCRDWorkers(gvk string) {
+func (k *DependencyKordinator) stopCRDWorkers(gvk string) {
 	k.mu.RLock()
 	cancel, okCancel := k.cancelFuncs[gvk]
 	wg, okWG := k.wgs[gvk]
@@ -497,23 +496,23 @@ func (k *DependencyKontroller) stopCRDWorkers(gvk string) {
 	}
 }
 
-// Name returns the name of the dependency kontroller
-func (k *DependencyKontroller) Name() string {
-	return "orkestra dependency kontroller"
+// Name returns the name of the dependency kordinator
+func (k *DependencyKordinator) Name() string {
+	return "orkestra dependency kordinator"
 }
 
 // NameToCRD returns the CRD for a given name
-func (k *DependencyKontroller) NameToCRD(name string) types.CRDEntry {
+func (k *DependencyKordinator) NameToCRD(name string) types.CRDEntry {
 	return k.depGraph.GetNode(name).CRD
 }
 
 // NameToGVK returns the GVK fr a giben name
-func (k *DependencyKontroller) NameToGVK(name string) schema.GroupVersionKind {
+func (k *DependencyKordinator) NameToGVK(name string) schema.GroupVersionKind {
 	return k.depGraph.GetNode(name).CRD.GroupVersionKind
 }
 
 // GVKToCRD returns the CRD entry for a given gvk
-func (k *DependencyKontroller) GVKToCRD(gvk schema.GroupVersionKind) types.CRDEntry {
+func (k *DependencyKordinator) GVKToCRD(gvk schema.GroupVersionKind) types.CRDEntry {
 	entry, ok := k.katalog.Get(gvk.String())
 	if !ok {
 		return types.CRDEntry{}
@@ -522,7 +521,7 @@ func (k *DependencyKontroller) GVKToCRD(gvk schema.GroupVersionKind) types.CRDEn
 }
 
 // NameToGVKMap returns a map of names to gvk string
-func (k *DependencyKontroller) NameToGVKMap() map[string]string {
+func (k *DependencyKordinator) NameToGVKMap() map[string]string {
 	nameToGVK := make(map[string]string)
 	for _, name := range k.depGraph.StartupOrder() {
 		node := k.depGraph.GetNode(name)

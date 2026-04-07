@@ -156,12 +156,6 @@ pkg/
     validation.go        runValidation() — reconcile-time validation
     mutation.go          runMutation() — reconcile-time mutation
 
-  kontroller/
-    informer_factory.go  InformerFactory, per-CRD informer creation
-    queue_registry.go    QueueRegistry, per-CRD queue creation
-    health_tracker.go    CRDHealth, per-CRD health state tracking
-    worker.go            runWorker(), worker pool management
-
   types/
     types.go             CRDEntry, APITypes, ReconcilerConfig, HookTemplates, etc.
     admission.go         ValidationRule, MutationRule, AdmissionWebhookConfig
@@ -181,6 +175,16 @@ pkg/
   kubeclient/           Kubeclient wrapper, FromContext
   logger/               zerolog wrapper
   utils/                LoadFile, LoadFileWithAuth, FileAuth
+
+  informer/
+  queue/
+  event/
+  merger/
+  metrics/
+  provider/
+  note/
+  kordinator/
+  orkestra/
 ```
 
 ---

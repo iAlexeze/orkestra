@@ -84,7 +84,7 @@ import (
 //
 // Reconciler entries — constructor functions for custom reconcilers.
 //   Called by addReconcilers() during Katalog validation to wire Constructor
-//   onto the CRD entry. DependencyKontroller calls Constructor() once at
+//   onto the CRD entry. DependencyKordinator calls Constructor() once at
 //   startCRDWorkers time to build the reconciler.
 func RegisterRuntimeObjects() {
 {{ range .Entries }}

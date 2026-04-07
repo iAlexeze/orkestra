@@ -972,7 +972,7 @@ The operator user sees one CR, one status, one set of conditions.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>registry <span style="color:#ff79c6">:=</span> orktypes.<span style="color:#50fa7b">NewProviderRegistry</span>()
 </span></span><span style="display:flex;"><span>registry.<span style="color:#50fa7b">Register</span>(awsprovider.<span style="color:#50fa7b">New</span>(sess))
 </span></span><span style="display:flex;"><span>registry.<span style="color:#50fa7b">Register</span>(mongoprovider.<span style="color:#50fa7b">New</span>(uri))
-</span></span></code></pre></div><p>Pass the registry to <code>NewDependencyKontroller</code>. It is threaded into every
+</span></span></code></pre></div><p>Pass the registry to <code>NewDependencyKordinator</code>. It is threaded into every
 <code>GenericReconciler</code> that runs template reconciliation.</p>
 <p>A provider name that is not registered is skipped with a warning — it does
 not fail the reconcile. This allows operators to load a Katalog that declares

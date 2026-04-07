@@ -7,7 +7,7 @@ import (
 
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/event"
-	"github.com/ialexeze/orkestra/pkg/kontroller"
+	"github.com/ialexeze/orkestra/pkg/kordinator"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
@@ -43,7 +43,7 @@ import (
 //  3. Add the field to orktypes.HookTemplates
 //     That is all — generic.go does not change.
 type GenericReconciler[T domain.Object] struct {
-	katalogRegistry  *kontroller.ResourceKatalog
+	katalogRegistry  *kordinator.ResourceKatalog
 	providerRegistry orktypes.ProviderRegistry
 	informer         cache.SharedIndexInformer
 	event            *event.Event
@@ -72,7 +72,7 @@ func NewGenericReconciler[T domain.Object](
 	kube *kubeclient.Kubeclient,
 	anyHooks domain.AnyReconcileHooks,
 	newObj func() T,
-	katalogRegistry *kontroller.ResourceKatalog,
+	katalogRegistry *kordinator.ResourceKatalog,
 	providerRegistry orktypes.ProviderRegistry,
 ) *GenericReconciler[T] {
 

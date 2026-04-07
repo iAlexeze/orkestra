@@ -171,7 +171,7 @@ const sidebars: SidebarsConfig = {
                 'technical-docs/katalog',
                 'technical-docs/merger',
                 'technical-docs/health-server',
-                'technical-docs/kontroller',
+                'technical-docs/kordinator',
                 'technical-docs/ork-generate',
                 'technical-docs/orkestra-registry',
                 'technical-docs/conversion-validation-mutation',

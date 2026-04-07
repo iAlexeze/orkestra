@@ -46,7 +46,7 @@
 //       │        Called by startCRDWorkers after orkestra.Start().
 //       │        Returns a *GenericReconciler[T] ready to process items.
 //       │
-//       ├──► DependencyKontroller     Starts CRD workers in topological order.
+//       ├──► DependencyKordinator     Starts CRD workers in topological order.
 //       │                             Waits for dependencies to meet their declared
 //       │                             condition (started | healthy) before starting
 //       │                             dependent workers.
@@ -108,7 +108,7 @@ import (
 	"github.com/ialexeze/orkestra/pkg/informer"
 	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/kontroller"
+	"github.com/ialexeze/orkestra/pkg/kordinator"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/merger"
@@ -121,13 +121,13 @@ import (
 // orkestraKfg is the assembled runtime — returned to main.go so it can call
 // orkestra.Start(ctx) and block until shutdown.
 type orkestraKfg struct {
-	konfig     *konfig.Konfig
-	katalog    *katalog.Katalog
-	komp       *[]domain.Komponent
-	event      *event.Event
-	kube       *kubeclient.Kubeclient
-	kontroller *kontroller.DependencyKontroller
-	orkestra   *ork.Orkestra
+	konfig   *konfig.Konfig
+	katalog  *katalog.Katalog
+	komp     *[]domain.Komponent
+	event    *event.Event
+	kube     *kubeclient.Kubeclient
+	kord     *kordinator.DependencyKordinator
+	orkestra *ork.Orkestra
 }
 
 // konstructOrkestra wires the entire Orkestra runtime.
@@ -228,13 +228,13 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// unavailable providers log a warning and the operator starts regardless.
 	providerRegistry := loadProviders(ctx)
 
-	// ── 4d. Kontroller registry + per-CRD wiring ──────────────────────────────
+	// ── 4d. Kordinator registry + per-CRD wiring ──────────────────────────────
 	// ktrlRegistry maps GVK → (CRDEntry, SharedIndexInformer, ReconcilerFactory).
 	// It also implements reconciler.KatalogRegistry via GetInformerByName,
 	// enabling cross-CRD observation with zero API server calls.
-	ktrlRegistry := kontroller.NewKontrollerRegistry()
+	ktrlRegistry := kordinator.NewKordinatorRegistry()
 
-	logger.Debug().Msg("wiring CRDs into kontroller registry...")
+	logger.Debug().Msg("wiring CRDs into kordinator registry...")
 
 	finalizers := kfg.Finalizers()
 	for _, crd := range kat.Enabled() {
@@ -339,20 +339,20 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			}
 		}
 
-		// Register informs the DependencyKontroller which informer and factory
+		// Register informs the DependencyKordinator which informer and factory
 		// belong to this CRD. Workers are not started yet — that happens in Start().
 		ktrlRegistry.Register(gvk, crd, inf, factory)
 		logger.Debug().Str("gvk", gvk).Msg("CRD registered")
 	}
 
 	// ── 5a. CRD health map ────────────────────────────────────────────────────
-	// One CRDHealth per CRD — shared between the DependencyKontroller
+	// One CRDHealth per CRD — shared between the DependencyKordinator
 	// (which updates it on each reconcile) and the HTTP health routes
 	// (which read it on each request). All three reference the same pointers.
-	crdHealthMap := make(map[string]*kontroller.CRDHealth)
+	crdHealthMap := make(map[string]*kordinator.CRDHealth)
 	for _, crd := range kat.Enabled() {
 		gvk := crd.GVK().String()
-		crdHealthMap[gvk] = kontroller.NewCRDHealth(crd.Name)
+		crdHealthMap[gvk] = kordinator.NewCRDHealth(crd.Name)
 	}
 
 	// ── 5b. HTTP routes ───────────────────────────────────────────────────────
@@ -386,14 +386,14 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		if crd.IsHealthEnabled() {
 			hs.Register(
 				"/katalog/"+crdName+"/health",
-				kontroller.BuildCRDHealthHandler(crd, kfg, inf, crdHealth),
+				kordinator.BuildCRDHealthHandler(crd, kfg, inf, crdHealth),
 			)
 		}
 
 		if crd.IsInfoEnabled() {
 			hs.Register(
 				"/katalog/"+crdName,
-				kontroller.BuildCRDInfoHandler(
+				kordinator.BuildCRDInfoHandler(
 					crd, kfg, inf, crdHealth,
 					hs.GetConversionStats(),
 					hs.GetAdmissionStats(),
@@ -401,22 +401,22 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			)
 			hs.Register(
 				"/katalog/"+crdName+"/cr",
-				kontroller.BuildCRListHandler(crd, inf),
+				kordinator.BuildCRListHandler(crd, inf),
 			)
 			hs.Register(
 				"/katalog/"+crdName+"/cr/",
-				kontroller.BuildCRDetailAndEventsHandler(crd, inf, kube),
+				kordinator.BuildCRDetailAndEventsHandler(crd, inf, kube),
 			)
 		}
 
 		// Register raw and enriched CRD definition endpoint
 		hs.Register(
 			"/katalog/"+crdName+"/raw",
-			kontroller.BuildCRDRawHandler(m, crd.Name),
+			kordinator.BuildCRDRawHandler(m, crd.Name),
 		)
 		hs.Register(
 			"/katalog/"+crdName+"/enriched",
-			kontroller.BuildCRDEnrichedHandler(kat, crd.Name),
+			kordinator.BuildCRDEnrichedHandler(kat, crd.Name),
 		)
 
 		logger.Debug().
@@ -427,12 +427,12 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			Msg("registered CRD routes")
 	}
 
-	orkHealth := kontroller.NewOrkestraHealth()
-	hs.Register("/katalog/raw", kontroller.BuildRawKatalogHandler(m))
-	hs.Register("/katalog/enriched", kontroller.BuildEnrichedKatalogHandler(kat))
-	hs.Register("/katalog", kontroller.BuildKatalogHandler(kat, kfg, ktrlRegistry, crdHealthMap, orkHealth))
+	orkHealth := kordinator.NewOrkestraHealth()
+	hs.Register("/katalog/raw", kordinator.BuildRawKatalogHandler(m))
+	hs.Register("/katalog/enriched", kordinator.BuildEnrichedKatalogHandler(kat))
+	hs.Register("/katalog", kordinator.BuildKatalogHandler(kat, kfg, ktrlRegistry, crdHealthMap, orkHealth))
 
-	// ── 6. Dependency kontroller ──────────────────────────────────────────────
+	// ── 6. Dependency kordinator ──────────────────────────────────────────────
 	// Starts CRD workers in topological order defined by the dependency graph.
 	// For each CRD, waits until all declared dependsOn CRDs meet their
 	// condition (started | healthy) before calling factory() and starting workers.
@@ -440,7 +440,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// Worker lifecycle:
 	//   Start() → wait for informer sync → call factory() per worker → run loop
 	//   Shutdown → drain queue → stop workers → remove from active set
-	ktrl := kontroller.NewDependencyKontroller(
+	kord := kordinator.NewDependencyKordinator(
 		kube,
 		infFactory,
 		ktrlRegistry,
@@ -469,7 +469,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		queueRegistry, // 4. per-CRD bounded queues
 		defaultWq,     // 5. default unbounded queue
 		infFactory,    // 6. informer factory — starts watchers, closes ready channel
-		ktrl,          // 7. dependency kontroller — starts workers in topo order
+		kord,          // 7. dependency kordinator — starts workers in topo order
 	}
 
 	// ── 8. Orkestra ───────────────────────────────────────────────────────────
@@ -483,12 +483,12 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	o.Register(komponents)
 
 	return &orkestraKfg{
-		konfig:     kfg,
-		katalog:    kat,
-		komp:       &komponents,
-		event:      ev,
-		kube:       kube,
-		kontroller: ktrl,
-		orkestra:   o,
+		konfig:   kfg,
+		katalog:  kat,
+		komp:     &komponents,
+		event:    ev,
+		kube:     kube,
+		kord:     kord,
+		orkestra: o,
 	}
 }

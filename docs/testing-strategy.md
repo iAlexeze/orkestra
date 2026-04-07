@@ -72,7 +72,7 @@ that cross package boundaries live in `tests/unit/`.
 | `pkg/types` | `types_test/restricted_test.go` | Restricted namespace matching and wildcard patterns |
 | `pkg/metrics` | `metrics_test.go` | Every public helper function: smoke test (no panic, no double-registration) |
 | `tests/unit/health` | `conversion_test.go` | External API: `ProcessConversionReviewForTest`, `ExportedApplyConversion` |
-| `tests/unit/kontroller` | `crd_health_test.go` | `CRDHealth`: initial state, `RecordSuccess/Failure`, threshold degradation, error rate, consecutive fail reset |
+| `tests/unit/kordinator` | `crd_health_test.go` | `CRDHealth`: initial state, `RecordSuccess/Failure`, threshold degradation, error rate, consecutive fail reset |
 | `tests/unit/queue` | `workqueue_test.go` | `Workqueue` and `QueueRegistry`: lifecycle (Start/Shutdown/Started), depth, registration, retrieval |
 | `tests/unit/reconciler` | `conditions_test.go` | Condition evaluation: all operators, nested field traversal, multi-condition AND logic |
 
@@ -164,7 +164,7 @@ The following are tested at integration or E2E level only:
 | `pkg/health` stats | ≥ 90% | Ring buffer and percentile code is safety-critical |
 | `pkg/types` admission | ≥ 95% | Public contract types; every method tested |
 | `pkg/metrics` helpers | ≥ 80% | Smoke tests confirm wiring; value accuracy is E2E |
-| `tests/unit/kontroller` | ≥ 80% | CRDHealth is core state machine |
+| `tests/unit/kordinator` | ≥ 80% | CRDHealth is core state machine |
 | `tests/unit/reconciler` | ≥ 75% | Condition evaluation is critical path |
 
 Run `make test-coverage-text` to see the current per-function summary.
@@ -232,7 +232,7 @@ E2E tests are run manually before releases.
 
 ### For a new CRD health state
 
-1. Update `TestCRDHealth_InitialState` in `tests/unit/kontroller/crd_health_test.go`
+1. Update `TestCRDHealth_InitialState` in `tests/unit/kordinator/crd_health_test.go`
 2. Add a test for the new transition path
 
 ### For a new admission rule type (beyond validation/mutation)

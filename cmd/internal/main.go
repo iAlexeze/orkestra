@@ -25,7 +25,7 @@ func Konduct(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	ko := konductor.NewKonductorElection(
 		startup.kube,
 		startup.event,
-		func(ctx context.Context) { startup.kontroller.Kordinate(ctx) }, // kontroller kordination
+		func(ctx context.Context) { startup.kord.Kordinate(ctx) }, // kordinator kordination
 		func(konductor string) {
 			// Banner prints here — konductor is the actual winner
 			printBanner(startup, konductor)

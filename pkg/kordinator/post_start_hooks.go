@@ -1,4 +1,4 @@
-package kontroller
+package kordinator
 
 import (
 	"context"
@@ -27,7 +27,7 @@ import (
 //
 //	if a CRD is deleted after startup, the informer continues running.
 //	But workers are drained through deactivateCRD.
-func (k *DependencyKontroller) retryMissingCRDs(ctx context.Context) {
+func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 	ticker := time.NewTicker(PostStartRetryInterval)
 	defer ticker.Stop()
 
@@ -179,7 +179,7 @@ func (k *DependencyKontroller) retryMissingCRDs(ctx context.Context) {
 // Parameters:
 //   - ctx: context for cancellation propagation
 //   - entry: the informer entry from the missing map (contains the pre-created informer)
-func (k *DependencyKontroller) activateCRD(ctx context.Context, entry *informer.InformerEntry) {
+func (k *DependencyKordinator) activateCRD(ctx context.Context, entry *informer.InformerEntry) {
 	gvkStr := entry.GVK.String()
 	name := entry.Name
 
@@ -258,7 +258,7 @@ func (k *DependencyKontroller) activateCRD(ctx context.Context, entry *informer.
 }
 
 // deactivateCRD — drain without permanent shutdown
-func (k *DependencyKontroller) deactivateCRD(gvk string) {
+func (k *DependencyKordinator) deactivateCRD(gvk string) {
 	k.mu.RLock()
 	cancel, okCancel := k.cancelFuncs[gvk]
 	wg, okWG := k.wgs[gvk]
@@ -301,7 +301,7 @@ func (k *DependencyKontroller) deactivateCRD(gvk string) {
 
 // crdExists checks if a CRD is present in the cluster by querying the API server.
 // Returns (true, nil) if the CRD exists, (false, nil) if not, (false, error) on failure.
-func (k *DependencyKontroller) crdExists(gvk *schema.GroupVersionKind) (bool, error) {
+func (k *DependencyKordinator) crdExists(gvk *schema.GroupVersionKind) (bool, error) {
 	return utils.WaitForCRD(
 		k.kube.RestConfig(),
 		gvk.Group,

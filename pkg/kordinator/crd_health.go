@@ -1,5 +1,5 @@
-// pkg/kontroller/crd_health.go
-package kontroller
+// pkg/kordinator/crd_health.go
+package kordinator
 
 import (
 	"sync"

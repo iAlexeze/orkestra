@@ -6,6 +6,7 @@ import (
 
 	"github.com/ialexeze/orkestra/pkg/logger"
 	awsprovider "github.com/ialexeze/orkestra/pkg/provider/aws"
+
 	// mongoprovider "github.com/ialexeze/orkestra/pkg/provider/mongo"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
@@ -14,8 +15,8 @@ import (
 // Returns a NoOpProviderRegistry on any failure — the operator still starts,
 // but provider blocks in the Katalog will be skipped with a warning.
 //
-// Call in konstructOrkestra before building the DependencyKontroller,
-// then pass the registry to NewDependencyKontroller.
+// Call in konstructOrkestra before building the DependencyKordinator,
+// then pass the registry to NewDependencyKordinator.
 func loadProviders(ctx context.Context) orktypes.ProviderRegistry {
 	registry := orktypes.NewProviderRegistry()
 
