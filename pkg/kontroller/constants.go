@@ -17,4 +17,7 @@ const (
 	// Draining
 	drainSentinel = "__drain_sentinel__"
 	drainTimeout  = 10 * time.Second
+
+	// Healthcheck
+	RuntimeHealthCheckInterval = 5 * time.Second
 )

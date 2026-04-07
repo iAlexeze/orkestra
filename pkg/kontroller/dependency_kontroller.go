@@ -13,8 +13,8 @@ SCENARIO 1: CRD MISSING AT STARTUP
 
 Startup:
   - CRD A is missing from the cluster
-  - RunOrDie loop processes A → readyCh["A"] remains open
-  - RunOrDie continues (does NOT block) because missing CRDs are skipped
+  - Kordinate loop processes A → startedCh["A"] remains open
+  - Kordinate continues (does NOT block) because missing CRDs are skipped
   - Retry loop starts in background
 
 Retry loop (every PostStartRetryInterval):
@@ -32,7 +32,7 @@ Later:
   - activateCRD(A) is called:
     - starts informer (entry.Informer.Run)
     - starts workers
-    - closes readyCh["A"] ← UNBLOCKS dependents in RunOrDie
+    - closes startedCh["A"] ← UNBLOCKS dependents in Kordinate
   - Phase 3: allCRDsPresent() may still be false if other CRDs missing
 
 Result: CRD A becomes operational without restarting Orkestra.
@@ -56,7 +56,7 @@ User deletes CRD A:
         - removes from started map
         - marks as missing in informerFactory
         - health.SetStarted(false)
-        - DOES NOT close readyCh[A]
+        - DOES NOT close startedCh[A]
   - Phase 3: allReady becomes false
 
 Result: CRD A becomes degraded, workers stop, but dependents continue (degraded).
@@ -73,8 +73,8 @@ After deactivation:
     - utils.WaitForCRD() → true
     - activateCRD(A) is called (same as scenario 1)
   - Workers restart, informer starts
-  - readyCh[A] is closed again (it was never closed during deactivation,
-    but we create a new channel? No — readyCh persists. Actually we don't close it
+  - startedCh[A] is closed again (it was never closed during deactivation,
+    but we create a new channel? No — startedCh persists. Actually we don't close it
     during deactivation, so it remains open. We need to be careful: during activation,
     we should close it regardless of whether it was closed before.)
 
@@ -99,9 +99,9 @@ Initial state:
   - B: present
   - C: present
 
-RunOrDie loop:
-  - A → missing → continue (readyCh["A"] open)
-  - B → waits on readyCh["A"] → BLOCKS here (main goroutine blocked)
+Kordinate loop:
+  - A → missing → continue (startedCh["A"] open)
+  - B → waits on startedCh["A"] → BLOCKS here (main goroutine blocked)
   - C → never reached (blocked at B)
 
 Retry loop:
@@ -109,11 +109,11 @@ Retry loop:
   - utils.WaitForCRD(A) → true
   - activateCRD(A):
     - starts workers
-    - closes readyCh["A"] ← UNBLOCKS RunOrDie loop
+    - closes startedCh["A"] ← UNBLOCKS Kordinate loop
 
-RunOrDie loop continues:
-  - B → readyCh["A"] closed → starts workers → closes readyCh["B"]
-  - C → readyCh["B"] closed → starts workers → closes readyCh["C"]
+Kordinate loop continues:
+  - B → startedCh["A"] closed → starts workers → closes startedCh["B"]
+  - C → startedCh["B"] closed → starts workers → closes startedCh["C"]
 
 Result: Full dependency chain resolves dynamically as CRDs appear.
 
@@ -130,7 +130,7 @@ User deletes CRD C:
   - deactivateCRD(C):
     - stops workers
     - marks missing
-    - DOES NOT close readyCh[C] (it's already closed from startup)
+    - DOES NOT close startedCh[C] (it's already closed from startup)
 
 Result:
   - C is degraded, workers stopped
@@ -140,14 +140,14 @@ Result:
 Later, C is recreated:
   - activateCRD(C):
     - starts workers
-    - attempts to close readyCh[C] (already closed, safe)
+    - attempts to close startedCh[C] (already closed, safe)
   - D's health becomes healthy again automatically
 
 ─────────────────────────────────────────────────────────────────────────────────
 KEY DESIGN DECISIONS
 ─────────────────────────────────────────────────────────────────────────────────
 
-1. readyCh is NEVER closed during deactivation.
+1. startedCh is NEVER closed during deactivation.
    Reason: Dependents should continue running (degraded) rather than block.
    If we closed the channel, dependents would think the dependency is ready
    when it's actually missing.
@@ -155,10 +155,10 @@ KEY DESIGN DECISIONS
 2. retry loop runs FOREVER, not just at startup.
    Reason: CRDs can be deleted at any time. We need continuous monitoring.
 
-3. activateCRD closes readyCh safely using select/default.
-   Reason: readyCh may already be closed from initial startup or previous activation.
+3. activateCRD closes startedCh safely using select/default.
+   Reason: startedCh may already be closed from initial startup or previous activation.
 
-4. deactivateCRD does NOT remove from readyCh map.
+4. deactivateCRD does NOT remove from startedCh map.
    Reason: The channel is still needed for future activations.
    The channel is never closed, so it remains in the map.
 
@@ -179,6 +179,8 @@ import (
 
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/event"
+	"github.com/ialexeze/orkestra/pkg/types"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/ialexeze/orkestra/pkg/informer"
 	"github.com/ialexeze/orkestra/pkg/katalog"
@@ -203,8 +205,11 @@ type DependencyKontroller struct {
 	allOnline atomic.Bool
 	orkHealth *OrkestraHealth
 
-	// readyCh[gvk] is closed when a CRD has fully started its workers.
-	readyCh map[string]chan struct{}
+	// startedCh[gvk] is closed when a CRD has fully started its workers.
+	startedCh map[string]chan struct{}
+
+	// healthyCh[gvk] is closed after the CRD handles first reconciliation.
+	healthyCh map[string]chan struct{}
 }
 
 // NewDependencyKontroller constructs a dependency‑aware Kontroller.
@@ -236,16 +241,17 @@ func NewDependencyKontroller(
 		defaultWorkers: defaultWorkers,
 		queueReg:       queueRegistry,
 		drainTimeout:   drainTimeout,
-		readyCh:        make(map[string]chan struct{}),
+		startedCh:      make(map[string]chan struct{}),
+		healthyCh:      make(map[string]chan struct{}),
 	}
 
 	kont.anyOnline.Store(false)
 	return kont
 }
 
-// RunOrDie starts CRDs in dependency order and blocks until leadership is lost.
+// Kordinate starts CRDs in dependency order and blocks until leadership is lost.
 // When leadership ends, it shuts down CRDs in reverse dependency order.
-func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
+func (k *DependencyKontroller) Kordinate(ctx context.Context) {
 	logger.Info().Str("component", k.Name()).Msg("starting")
 	k.startedAt = time.Now()
 
@@ -273,14 +279,15 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 		nameToGVK[name] = node.CRD.GroupVersionKind.String()
 	}
 
-	// Create ready channels for all CRDs
+	// Create started + healthy channels for all CRDs
 	for _, name := range startupOrder {
 		node := k.depGraph.GetNode(name)
 		if node == nil {
 			continue
 		}
 		gvk := node.CRD.GroupVersionKind.String()
-		k.readyCh[gvk] = make(chan struct{})
+		k.startedCh[gvk] = make(chan struct{})
+		k.healthyCh[gvk] = make(chan struct{})
 	}
 
 	// START RETRY LOOP ONCE, BEFORE ANY BLOCKING
@@ -308,8 +315,8 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 			logger.Info().Str("crd", name).Msg("starting CRD")
 		}
 
-		// Wait for dependencies
-		for depName := range crd.DependsOn {
+		// Wait for dependencies using correct condition
+		for depName, depCond := range crd.DependsOn {
 			depGVK, ok := nameToGVK[depName]
 			if !ok {
 				logger.Error().Str("crd", name).Str("dependency", depName).Msg("dependency not found in dependency graph")
@@ -317,18 +324,29 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 			}
 
 			logger.Debug().Str("crd", name).Str("dependency", depName).Str("gvk", depGVK).Msg("waiting for dependency")
-			select {
-			case <-k.readyCh[depGVK]:
-				logger.Debug().Str("crd", name).Str("dependency", depName).Msg("dependency ready")
-			case <-ctx.Done():
-				return
+
+			switch strings.ToLower(depCond.Condition) {
+			case string(types.DependencyConditionHealthy):
+				select {
+				case <-k.healthyCh[depGVK]:
+					logger.Debug().Str("crd", name).Str("dependency", depName).Msg("dependency healthy")
+				case <-ctx.Done():
+					return
+				}
+			default: // started
+				select {
+				case <-k.startedCh[depGVK]:
+					logger.Debug().Str("crd", name).Str("dependency", depName).Msg("dependency started")
+				case <-ctx.Done():
+					return
+				}
 			}
 		}
 
 		// Check if CRD exists
 		if k.informerFactory.IsMissing(gvk) {
 			logger.Debug().Str("crd", name).Str("gvk", gvk).Msg("CRD missing — workers not started, waiting for retry")
-			// DO NOT close readyCh — dependents will block until this CRD appears
+			// DO NOT close startedCh or healthyCh — dependents must block
 			continue
 		}
 
@@ -340,9 +358,12 @@ func (k *DependencyKontroller) RunOrDie(ctx context.Context) {
 		// Update health
 		k.crdHealthMap[gvk].queueReg = k.queueReg
 
-		// Signal dependents
-		close(k.readyCh[gvk])
-		logger.Info().Str("crd", name).Str("gvk", gvk).Int("workers", workers).Msg("workers started and ready")
+		// Signal dependents: STARTED ONLY
+		close(k.startedCh[gvk])
+		logger.Info().Str("crd", name).Str("gvk", gvk).Int("workers", workers).Msg("workers started")
+
+		// DO NOT close healthyCh here.
+		// healthyCh will be closed by the health checker when the CRD becomes healthy.
 
 		k.anyOnline.Store(true)
 		onlineCRDs++
@@ -479,4 +500,35 @@ func (k *DependencyKontroller) stopCRDWorkers(gvk string) {
 // Name returns the name of the dependency kontroller
 func (k *DependencyKontroller) Name() string {
 	return "orkestra dependency kontroller"
+}
+
+// NameToCRD returns the CRD for a given name
+func (k *DependencyKontroller) NameToCRD(name string) types.CRDEntry {
+	return k.depGraph.GetNode(name).CRD
+}
+
+// NameToGVK returns the GVK fr a giben name
+func (k *DependencyKontroller) NameToGVK(name string) schema.GroupVersionKind {
+	return k.depGraph.GetNode(name).CRD.GroupVersionKind
+}
+
+// GVKToCRD returns the CRD entry for a given gvk
+func (k *DependencyKontroller) GVKToCRD(gvk schema.GroupVersionKind) types.CRDEntry {
+	entry, ok := k.katalog.Get(gvk.String())
+	if !ok {
+		return types.CRDEntry{}
+	}
+	return entry.CRD
+}
+
+// NameToGVKMap returns a map of names to gvk string
+func (k *DependencyKontroller) NameToGVKMap() map[string]string {
+	nameToGVK := make(map[string]string)
+	for _, name := range k.depGraph.StartupOrder() {
+		node := k.depGraph.GetNode(name)
+		if node != nil {
+			nameToGVK[name] = node.CRD.GroupVersionKind.String()
+		}
+	}
+	return nameToGVK
 }

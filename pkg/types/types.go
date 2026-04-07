@@ -59,10 +59,20 @@ var ReconcilerRegistry = map[schema.GroupVersionKind]NewReconcilerFunc{}
 //	   mode: dynamic   		# force dynamic even if location is set
 //	   mode: typed          # force typed even if location is empty
 type CRDMode string
+type DependencyCondtion string
 
 const (
 	CRDModeTyped   CRDMode = "typed"
 	CRDModeDynamic CRDMode = "dynamic"
+
+	DependencyConditionStarted DependencyCondtion = "started"
+	DependencyConditionHealthy DependencyCondtion = "healthy"
+
+	// Future
+	DependencyCondtionPending   DependencyCondtion = "pending"
+	DependencyCondtionReady     DependencyCondtion = "ready"
+	DependencyConditionDegraded DependencyCondtion = "degraded"
+	DependencyConditionDeleted  DependencyCondtion = "deleted"
 )
 
 func (m CRDMode) String() string {
@@ -1201,7 +1211,7 @@ func (m *DependsOnMap) UnmarshalYAML(value *yaml.Node) error {
 				return fmt.Errorf("dependsOn[%s]: %w", key, err)
 			}
 			if cond.Condition == "" {
-				cond.Condition = "healthy"
+				cond.Condition = string(DependencyConditionStarted)
 			}
 			(*m)[key] = cond
 		}
@@ -1219,6 +1229,18 @@ func (m DependsOnMap) Names() []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// ConditionHealthy returns true if the dependency condition is healthy
+func (m DependsOnMap) ConditionHealthy(name string) bool {
+	cond, ok := m[name]
+	return ok && cond.Condition == string(DependencyConditionHealthy)
+}
+
+// ConditionStarted returns true if the dependency condition is started
+func (m DependsOnMap) ConditionStarted(name string) bool {
+	cond, ok := m[name]
+	return ok && cond.Condition == string(DependencyConditionStarted)
 }
 
 // ── CRDEntry ──────────────────────────────────────────────────────────────────

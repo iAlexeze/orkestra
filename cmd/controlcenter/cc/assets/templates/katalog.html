@@ -234,18 +234,35 @@
 
         <div class="cc-card crd-grid-item"
              data-name="{{ .Name }}"
-             data-status="{{ .State }}">
+             data-status="{{ if .HasUnhealthyDependencies }}pending{{ else }}{{ .State }}{{ end }}">
           <div class="cc-card-body">
             <div class="flex items-center justify-between mb-3">
               <h3 class="cc-card-title">{{ .Name }}</h3>
-              {{- if eq .State "healthy" }}
-              <span class="cc-badge cc-badge-healthy"><span class="cc-status-dot healthy"></span>Healthy</span>
-              {{- else if eq .State "started" }}
-              <span class="cc-badge cc-badge-started"><span class="cc-status-dot started"></span>Started</span>
+              {{- if .HasUnhealthyDependencies }}
+              <span class="cc-badge cc-badge-pending" data-tooltip="Unhealthy dependencies">
+                <span class="cc-status-dot pending"></span>
+                Dependency Issue
+              </span>
+
+              {{- else if eq .State "healthy" }}
+              <span class="cc-badge cc-badge-healthy" data-tooltip="CRD Healthy">
+                <span class="cc-status-dot healthy"></span>Healthy
+              </span>
+
               {{- else if eq .State "pending" }}
-              <span class="cc-badge cc-badge-pending"><span class="cc-status-dot pending"></span>Pending</span>
+              <span class="cc-badge cc-badge-pending" data-tooltip="CRD Pending">
+                <span class="cc-status-dot pending"></span>Pending
+              </span>
+
+              {{- else if eq .State "started" }}
+              <span class="cc-badge cc-badge-started" data-tooltip="CRD Started">
+                <span class="cc-status-dot started"></span>Started
+              </span>
+
               {{- else }}
-              <span class="cc-badge cc-badge-degraded"><span class="cc-status-dot degraded"></span>Degraded</span>
+              <span class="cc-badge cc-badge-degraded" data-tooltip="CRD Degraded">
+                <span class="cc-status-dot degraded"></span>Degraded
+              </span>
               {{- end }}
             </div>
 

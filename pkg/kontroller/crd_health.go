@@ -6,8 +6,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	//	"github.com/ialexeze/orkestra/pkg/reconciler"
-
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/queue"
 )
@@ -49,6 +47,7 @@ type CRDHealth struct {
 	started          atomic.Bool
 	pending          atomic.Bool
 	healthy          atomic.Bool
+	degraded         atomic.Bool
 	totalReconciles  atomic.Int64
 	failedReconciles atomic.Int64
 	consecutiveFails atomic.Int64
@@ -63,7 +62,6 @@ type CRDHealth struct {
 	crdCheckMu   sync.RWMutex
 
 	// track workers
-	activeWorkers     atomic.Int32
 	totalWorkers      atomic.Int32
 	idleWorkers       atomic.Int32
 	processingWorkers atomic.Int32
@@ -76,14 +74,16 @@ type CRDHealth struct {
 	dependencies     map[string]DependencyStatus
 	dependenciesMu   sync.RWMutex
 	hasUnhealthyDeps atomic.Bool // Overall dependency health status
+	healthySignaled  atomic.Bool
 }
 
 type DependencyStatus struct {
-	Name      string `json:"name"`
-	State     string `json:"state"`     // "healthy", "degraded", "missing", "started"
-	Condition string `json:"condition"` // "started", "healthy", "ready"
-	Satisfied bool   `json:"satisfied"`
-	LastCheck string `json:"lastCheck,omitempty"`
+	Name                string `json:"name"`
+	State               string `json:"state"`               // "healthy", "degraded", "missing", "started"
+	Condition           string `json:"condition"`           // "started", "healthy", "ready"
+	AcceptableCondition string `json:"acceptableCondition"` // "started", "healthy", "ready"
+	Satisfied           bool   `json:"satisfied"`
+	LastCheck           string `json:"lastCheck,omitempty"`
 }
 
 type OrkestraHealth struct {
@@ -105,6 +105,8 @@ func NewOrkestraHealth() *OrkestraHealth {
 func NewCRDHealth(name string) *CRDHealth {
 	h := &CRDHealth{name: name}
 	h.healthy.Store(false)
+	h.pending.Store(true)
+	h.degraded.Store(false)
 	return h
 }
 
@@ -116,6 +118,7 @@ func (h *CRDHealth) RecordSuccess() {
 	h.lastReconcile.Store(time.Now())
 	h.healthy.Store(true)
 	h.pending.Store(false)
+	h.degraded.Store(false)
 }
 
 // RecordFailure marks a failed reconcile event.
@@ -132,6 +135,7 @@ func (h *CRDHealth) RecordFailure(err error, degradeThreshold int) {
 	if h.consecutiveFails.Load() >= int64(degradeThreshold) {
 		h.healthy.Store(false)
 		h.pending.Store(false)
+		h.degraded.Store(true)
 	}
 }
 
@@ -215,6 +219,14 @@ func (h *CRDHealth) SetStarted() {
 	h.startTime.CompareAndSwap(nil, time.Now())
 	h.started.Store(true)
 	h.pending.Store(true)
+}
+
+// SetDegraded marks the reconciler as degraded
+// This is used when a CRD goes missing at runtime
+func (h *CRDHealth) SetDegraded() {
+	h.healthy.Store(false)
+	h.pending.Store(false)
+	h.degraded.Store(true)
 }
 
 // SetOrkReady marks orkestra engine as ready
@@ -360,6 +372,7 @@ func (h *CRDHealth) SetDependencyHealth(depName string, status DependencyStatus)
 }
 
 // recalculateOverallDependencyHealth checks all dependencies and updates the atomic bool
+// It uses the long-running updates from dependencyHealthChecker() goroutine
 func (h *CRDHealth) recalculateOverallDependencyHealth() {
 	anyUnhealthy := false
 	for _, dep := range h.dependencies {
