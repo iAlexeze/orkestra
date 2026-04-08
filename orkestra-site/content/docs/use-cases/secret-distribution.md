@@ -1,6 +1,6 @@
 ---
 title: "Secret Distribution"
-weight: 180
+weight: 183
 ---
 
 # Secret Distribution Across Namespaces

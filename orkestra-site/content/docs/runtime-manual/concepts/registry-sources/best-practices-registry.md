@@ -1,6 +1,6 @@
 ---
 title: "Best Practices Registry"
-weight: 131
+weight: 134
 ---
 
 # Registry Best Practices

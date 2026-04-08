@@ -1,6 +1,6 @@
 ---
 title: "Writing Custom Reconcilers"
-weight: 41
+weight: 44
 ---
 
 # Writing Custom Reconcilers

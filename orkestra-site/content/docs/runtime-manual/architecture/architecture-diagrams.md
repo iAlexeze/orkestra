@@ -1,6 +1,6 @@
 ---
 title: "Architecture Diagrams"
-weight: 102
+weight: 105
 ---
 
 # Orkestra Architecture Diagrams 

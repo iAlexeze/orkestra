@@ -1,6 +1,6 @@
 ---
 title: "Dependency Ordering"
-weight: 169
+weight: 172
 ---
 
 # Multi‑CRD Dependency Ordering

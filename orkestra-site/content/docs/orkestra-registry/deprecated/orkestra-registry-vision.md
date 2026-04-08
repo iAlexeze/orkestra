@@ -1,6 +1,6 @@
 ---
 title: "Orkestra Registry Vision"
-weight: 47
+weight: 50
 ---
 
 # **OrkestraRegistry Vision**  

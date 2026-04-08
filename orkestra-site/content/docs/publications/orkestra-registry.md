@@ -1,6 +1,6 @@
 ---
 title: "Orkestra Registry"
-weight: 68
+weight: 71
 ---
 
 # The Missing Package Manager for Kubernetes Operators

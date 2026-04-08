@@ -1,6 +1,6 @@
 ---
 title: "When Conditions Paper"
-weight: 74
+weight: 77
 ---
 
 # Conditional Provisioning: When Conditions and the Two Enforcement Boundaries

@@ -1,6 +1,6 @@
 ---
 title: "CONTRIBUTING"
-weight: 151
+weight: 154
 ---
 
 # Contributing to Orkestra

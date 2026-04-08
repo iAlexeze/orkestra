@@ -1,6 +1,6 @@
 ---
 title: "Deprecated Cli"
-weight: 75
+weight: 78
 ---
 
 # Orkestra CLI Reference

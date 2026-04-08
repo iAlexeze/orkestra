@@ -1,6 +1,6 @@
 ---
 title: "Katalog Schema"
-weight: 92
+weight: 95
 ---
 
 # Katalog Schema

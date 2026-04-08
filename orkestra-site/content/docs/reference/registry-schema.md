@@ -1,6 +1,6 @@
 ---
 title: "Registry Schema"
-weight: 97
+weight: 100
 ---
 
 # Registry Source Schema

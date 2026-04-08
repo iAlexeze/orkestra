@@ -1,6 +1,6 @@
 ---
 title: "Typed Crds"
-weight: 144
+weight: 147
 ---
 
 # **Typed CRDs**

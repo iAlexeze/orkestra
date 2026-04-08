@@ -1,6 +1,6 @@
 ---
 title: "Inspect Live Crd"
-weight: 82
+weight: 85
 ---
 
 # Orkestra Inspect Commands

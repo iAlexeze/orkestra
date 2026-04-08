@@ -1,6 +1,6 @@
 ---
 title: "Registry"
-weight: 129
+weight: 132
 ---
 
 # Registry

@@ -1,6 +1,6 @@
 ---
 title: "Why Not Crds"
-weight: 19
+weight: 22
 ---
 
 # Why Katalog and Komposer Are Not CRDs

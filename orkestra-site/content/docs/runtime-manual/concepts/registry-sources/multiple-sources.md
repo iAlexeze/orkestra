@@ -1,6 +1,6 @@
 ---
 title: "Multiple Sources"
-weight: 134
+weight: 137
 ---
 
 # Composing multiple registry sources

@@ -1,6 +1,6 @@
 ---
 title: "UseKomposer"
-weight: 139
+weight: 142
 ---
 
 # The `useKomposer` field

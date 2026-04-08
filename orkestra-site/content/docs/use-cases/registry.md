@@ -1,6 +1,6 @@
 ---
 title: "Registry"
-weight: 179
+weight: 182
 ---
 
 # Registry‑Powered Operators

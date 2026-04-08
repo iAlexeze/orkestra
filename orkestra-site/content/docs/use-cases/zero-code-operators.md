@@ -1,6 +1,6 @@
 ---
 title: "Zero Code Operators"
-weight: 181
+weight: 184
 ---
 
 # Zero‑Code Operators

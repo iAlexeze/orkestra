@@ -1,6 +1,6 @@
 ---
 title: "Hooks"
-weight: 173
+weight: 176
 ---
 
 # Go Hooks

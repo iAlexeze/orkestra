@@ -1,6 +1,6 @@
 ---
 title: "Choosing Katalog Vs Komposer"
-weight: 32
+weight: 35
 ---
 
 # Choosing Between Katalog and Komposer

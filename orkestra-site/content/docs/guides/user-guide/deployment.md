@@ -1,6 +1,6 @@
 ---
 title: "Deployment"
-weight: 33
+weight: 36
 ---
 
 # Deploying Orkestra

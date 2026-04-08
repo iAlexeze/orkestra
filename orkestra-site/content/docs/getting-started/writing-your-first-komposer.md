@@ -1,6 +1,6 @@
 ---
 title: "Writing Your First Komposer"
-weight: 23
+weight: 26
 ---
 
 # Writing Your First Komposer

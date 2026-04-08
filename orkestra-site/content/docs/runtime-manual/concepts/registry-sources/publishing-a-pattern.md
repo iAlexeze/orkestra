@@ -1,6 +1,6 @@
 ---
 title: "Publishing A Pattern"
-weight: 137
+weight: 140
 ---
 
 # Publishing a Pattern

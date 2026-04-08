@@ -1,6 +1,6 @@
 ---
 title: "Certificate With Cert Manager"
-weight: 30
+weight: 33
 ---
 
 # Generate TLS Certificates with CertManager

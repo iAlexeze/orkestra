@@ -1,6 +1,6 @@
 ---
 title: "Katalog Schema Status"
-weight: 93
+weight: 96
 ---
 
 # Katalog Schema — Status Block

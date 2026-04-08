@@ -1,6 +1,6 @@
 ---
 title: "Design Philosophy"
-weight: 105
+weight: 108
 ---
 
 # Orkestra Design Philosophy

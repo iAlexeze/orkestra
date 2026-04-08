@@ -1,6 +1,6 @@
 ---
 title: "Operator Authoring Vs Infrastructure Controlplane"
-weight: 65
+weight: 68
 ---
 
 # Operator Authoring vs Infrastructure Control Plane

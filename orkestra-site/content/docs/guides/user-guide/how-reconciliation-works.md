@@ -1,6 +1,6 @@
 ---
 title: "How Reconciliation Works"
-weight: 36
+weight: 39
 ---
 
 # How Reconciliation Works

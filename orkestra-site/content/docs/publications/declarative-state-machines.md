@@ -1,6 +1,6 @@
 ---
 title: "Declarative State Machines"
-weight: 55
+weight: 58
 ---
 
 # Declarative State Machines in Kubernetes Operators

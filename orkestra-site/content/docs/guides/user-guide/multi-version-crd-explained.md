@@ -1,6 +1,6 @@
 ---
 title: "Multi Version Crd Explained"
-weight: 39
+weight: 42
 ---
 
 # Multi‑Version CRDs Explained

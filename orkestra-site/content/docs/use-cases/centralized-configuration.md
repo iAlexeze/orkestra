@@ -1,6 +1,6 @@
 ---
 title: "Centralized Configuration"
-weight: 166
+weight: 169
 ---
 
 # Centralised Operator Configuration (GitOps)

@@ -1,6 +1,6 @@
 ---
 title: "Pattern Structure"
-weight: 136
+weight: 139
 ---
 
 # The Pattern Structure

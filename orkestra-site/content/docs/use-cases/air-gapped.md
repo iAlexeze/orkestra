@@ -1,6 +1,6 @@
 ---
 title: "Air Gapped"
-weight: 165
+weight: 168
 ---
 
 # Air‑Gapped Environments

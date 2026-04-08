@@ -1,6 +1,6 @@
 ---
 title: "How It Works"
-weight: 48
+weight: 51
 ---
 
 # How OrkestraRegistry Works

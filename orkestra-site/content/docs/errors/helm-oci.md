@@ -1,6 +1,6 @@
 ---
 title: "Helm Oci"
-weight: 10
+weight: 13
 ---
 
 ```yaml

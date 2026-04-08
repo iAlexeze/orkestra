@@ -1,6 +1,6 @@
 ---
 title: "Universal Observer Whitepaper"
-weight: 72
+weight: 75
 ---
 
 # Orkestra: The Universal Observer That Belongs in Kubernetes Core

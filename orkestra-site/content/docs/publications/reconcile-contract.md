@@ -1,6 +1,6 @@
 ---
 title: "Reconcile Contract"
-weight: 70
+weight: 73
 ---
 
 # The Reconcile Contract

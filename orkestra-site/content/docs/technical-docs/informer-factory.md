@@ -1,6 +1,6 @@
 ---
 title: "Informer Factory"
-weight: 157
+weight: 160
 ---
 
 # Informer Factory and Queue Registry

@@ -1,6 +1,6 @@
 ---
 title: "Kat Source Of Truth"
-weight: 38
+weight: 41
 ---
 
 # The Katalog as Single Source of Truth

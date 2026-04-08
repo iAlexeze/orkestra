@@ -1,6 +1,6 @@
 ---
 title: "Operator Patterns"
-weight: 125
+weight: 128
 ---
 
 # Operator Patterns

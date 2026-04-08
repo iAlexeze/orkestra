@@ -1,6 +1,6 @@
 ---
 title: "Declarative Operators Whitepaper"
-weight: 54
+weight: 57
 ---
 
 # Declarative Operators: A New Model for Kubernetes Extensibility

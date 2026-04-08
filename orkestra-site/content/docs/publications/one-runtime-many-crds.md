@@ -1,6 +1,6 @@
 ---
 title: "One Runtime Many Crds"
-weight: 64
+weight: 67
 ---
 
 # One Runtime, Many CRDs: Fulfilling the Operator Pattern

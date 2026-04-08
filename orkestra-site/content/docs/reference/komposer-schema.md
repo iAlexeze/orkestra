@@ -1,6 +1,6 @@
 ---
 title: "Komposer Schema"
-weight: 94
+weight: 97
 ---
 
 # Komposer Schema

@@ -1,8 +1,3 @@
----
-title: "Index"
-weight: 12
----
-
 # Orkestra Control Center
 
 The Orkestra Control Center provides a unified observability layer for one or more Orkestra runtimes. It gives platform teams and developers a complete view of Katalogs, CRDs, worker pools, queue pressure, dependency health, enriched configuration, and runtime status.

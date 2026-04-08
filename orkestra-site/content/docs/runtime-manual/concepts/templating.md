@@ -1,6 +1,6 @@
 ---
 title: "Templating"
-weight: 143
+weight: 146
 ---
 
 # Templating in Orkestra

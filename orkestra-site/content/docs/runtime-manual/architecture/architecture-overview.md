@@ -1,6 +1,6 @@
 ---
 title: "Architecture Overview"
-weight: 103
+weight: 106
 ---
 
 # Orkestra Full Architecture Overview

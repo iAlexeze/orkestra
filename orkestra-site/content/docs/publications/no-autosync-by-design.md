@@ -1,6 +1,6 @@
 ---
 title: "No Autosync By Design"
-weight: 62
+weight: 65
 ---
 
 # Orkestra Does Not Auto-Sync — And That’s the Point

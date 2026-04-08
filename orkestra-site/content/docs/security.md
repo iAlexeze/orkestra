@@ -1,6 +1,6 @@
 ---
 title: "Security"
-weight: 148
+weight: 151
 ---
 
 Here’s a **clean, tightened rewrite** of your Security doc that incorporates the new RBAC model and elevates it from “feature” → **core philosophy**.

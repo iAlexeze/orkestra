@@ -1,6 +1,6 @@
 ---
 title: "Orkestra And Gitops"
-weight: 67
+weight: 70
 ---
 
 # Orkestra and GitOps: The Complete Integration Story

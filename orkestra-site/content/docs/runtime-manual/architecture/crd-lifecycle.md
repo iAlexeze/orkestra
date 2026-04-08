@@ -1,6 +1,6 @@
 ---
 title: "Crd Lifecycle"
-weight: 104
+weight: 107
 ---
 
 # CRD Lifecycle in Orkestra

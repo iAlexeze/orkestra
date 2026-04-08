@@ -1,6 +1,6 @@
 ---
 title: "README"
-weight: 11
+weight: 14
 ---
 
 # Case Study: Managing a Multi-Version Website CRD with Incompatible Schemas

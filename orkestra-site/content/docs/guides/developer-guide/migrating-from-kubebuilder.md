@@ -1,6 +1,6 @@
 ---
 title: "Migrating From Kubebuilder"
-weight: 26
+weight: 29
 ---
 
 # Migrating from Kubebuilder

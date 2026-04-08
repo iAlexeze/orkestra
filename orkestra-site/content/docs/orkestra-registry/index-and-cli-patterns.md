@@ -1,6 +1,6 @@
 ---
 title: "Index And Cli Patterns"
-weight: 49
+weight: 52
 ---
 
 # Orkestra Registry Index Format

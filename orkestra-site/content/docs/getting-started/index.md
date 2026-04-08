@@ -1,6 +1,6 @@
 ---
 title: "Index"
-weight: 21
+weight: 24
 ---
 
 # Getting Started
