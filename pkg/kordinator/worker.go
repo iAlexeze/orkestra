@@ -33,7 +33,7 @@ func (k *Kontroller) runWorkerForGVK(ctx context.Context, gvk string, workerID s
 			// (already idle from previous iteration or initialization)
 
 			// Wait for an item
-			item, shutdown := wq.GetWithContext(ctx)
+			item, shutdown := wq.Queue.Get()
 			if shutdown {
 				logger.Debug().Str("worker_id", workerID).Str("gvk", gvk).Msg("worker stopping (queue shutdown)")
 				return
@@ -79,7 +79,8 @@ func (k *Kontroller) processItemForGVK(ctx context.Context, gvk string, item que
 
 	// Added to help shutdown workers and preserve the queue on missing crds
 	// After dequeuing, they check ctx.Done() at the top of the loop and exit.
-	// cThe queue is intact for reactivation. No ShutDown() called.
+	// The queue is intact for reactivation. No ShutDown() called.
+	// TODO: Currently does not shutdown the workers
 	if item.Key == drainSentinel {
 		wq.Queue.Forget(item)
 		return

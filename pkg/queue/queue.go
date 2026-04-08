@@ -71,8 +71,36 @@ func (q *Workqueue) Shutdown(ctx context.Context) {
 
 // GetWithContext returns an item from the work queue.
 // Context (e.g., timeout, cancellation).
+// Future use
 func (q *Workqueue) GetWithContext(ctx context.Context) (QueueItem, bool) {
-	return q.Queue.Get()
+	// Channel to receive the result of the blocking Get() call
+	type result struct {
+		item     QueueItem
+		shutdown bool
+	}
+	resultCh := make(chan result, 1)
+
+	// Run the blocking Get() in a goroutine
+	go func() {
+		item, shutdown := q.Queue.Get()
+		resultCh <- result{item, shutdown}
+	}()
+
+	// Wait for either context cancellation or a result
+	select {
+	case <-ctx.Done():
+		// Context cancelled. The Get() goroutine is still running and will
+		// eventually send to resultCh, but we're no longer listening.
+		// We must drain that result to prevent a goroutine leak.
+		go func() {
+			<-resultCh
+			// Optionally re-queue the item if we want to preserve it,
+			// but since we're deactivating, we can just discard.
+		}()
+		return QueueItem{}, true // shutdown == true signals exit
+	case res := <-resultCh:
+		return res.item, res.shutdown
+	}
 }
 
 // Name returns the name of the default workqueue
