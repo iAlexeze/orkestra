@@ -21,7 +21,7 @@ spec:
       serviceAccountName: orkestra
       containers:
         - name: orkestra
-          image: ghcr.io/orkspace/orkestra:rc.0.0.1
+          image: ghcr.io/orkspace/orkestra:stable
           imagePullPolicy: Always
           args:
             - run
@@ -140,7 +140,7 @@ spec:
       serviceAccountName: orkestra-cc
       containers:
         - name: control-center
-          image: ialexeze/ork:controlcenter.0.1-with-data
+          image: ialexeze/ork:cc.0.1-with-data
           imagePullPolicy: Always
           args:
             - -u

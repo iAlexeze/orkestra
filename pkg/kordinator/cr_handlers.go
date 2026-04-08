@@ -50,7 +50,7 @@ import (
 
 const (
 	listOptionsLimit = 1
-	fetchTimeout = 3 * time.Second
+	fetchTimeout     = 3 * time.Second
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

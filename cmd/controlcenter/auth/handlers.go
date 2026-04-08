@@ -11,6 +11,7 @@ import (
 var (
 	loginTpl = template.Must(template.ParseFS(cc.Assets, "assets/templates/login.html"))
 
+	ork           = "orkestra"
 	username      = os.Getenv("ADMIN_USERNAME")
 	password      = os.Getenv("ADMIN_PASSWORD")
 	sessionSecret = []byte(os.Getenv("SESSION_SECRET"))
@@ -19,10 +20,10 @@ var (
 
 func applyDefaults() {
 	if username == "" {
-		username = "admin"
+		username = ork
 	}
 	if password == "" {
-		password = "admin"
+		password = ork
 	}
 	if sessionSecret == nil {
 		sessionSecret = []byte("dev-secret")

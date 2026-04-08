@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/metrics"
 	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
@@ -60,6 +61,7 @@ const (
 // Returns an error only when continueOnError is false and a call fails.
 func runExternal(
 	ctx context.Context,
+	gvk string,
 	resolver *orktmpl.Resolver,
 	calls []orktypes.ExternalCallSpec,
 ) (*orktmpl.Resolver, error) {
@@ -101,6 +103,7 @@ func runExternal(
 			return resolver, fmt.Errorf("external[%d].token: %w", i, err)
 		}
 
+		// Execute the call
 		result := executeHTTPCall(ctx, call, resolvedURL, resolvedBody, resolvedToken)
 
 		results[call.Name] = map[string]interface{}{
@@ -109,6 +112,8 @@ func runExternal(
 			"error":  result.Error,
 			"called": "true",
 		}
+
+		metrics.RecordExternalCall(gvk, call.Name, resolvedURL, result.DurationSeconds, result.Error, result.StatusCode)
 
 		if result.Error != "" {
 			log.Warn().
@@ -182,6 +187,8 @@ func executeHTTPCall(
 		req.Header.Set(k, v)
 	}
 
+	start := time.Now()
+
 	client := &http.Client{Timeout: timeout}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -202,6 +209,8 @@ func executeHTTPCall(
 		}
 	}
 
+	durationSeconds := time.Since(start).Seconds()
+
 	statusCode := fmt.Sprintf("%d", resp.StatusCode)
 	callErr := ""
 
@@ -214,10 +223,12 @@ func executeHTTPCall(
 	}
 
 	return orktypes.ExternalCallResult{
-		Status: statusCode,
-		Body:   string(rawBody),
-		Error:  callErr,
-		Called: "true",
+		Status:          statusCode,
+		StatusCode:      resp.StatusCode,
+		Body:            string(rawBody),
+		Error:           callErr,
+		Called:          "true",
+		DurationSeconds: durationSeconds,
 	}
 }
 

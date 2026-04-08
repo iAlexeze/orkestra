@@ -248,6 +248,7 @@ type CRDDetail struct {
 	RBACCount                int                         `json:"rbacCount,omitempty"`
 }
 
+// TODO: Future
 type SimpleSystemMetrics struct {
 	Goroutines int     `json:"goroutines"`
 	Threads    int     `json:"threads"`

@@ -63,6 +63,7 @@ type CRDInfo struct {
 	Operator         string
 	Validation       *orktypes.ValidationConfig
 	Mutation         *orktypes.MutationConfig
+	IsBuiltIn        bool
 }
 
 func NewGenericReconciler[T domain.Object](

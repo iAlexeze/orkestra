@@ -180,7 +180,7 @@ func (h *CRDHealth) LastReconcile() string {
 		return "not started"
 	}
 
-	return t.Round(time.Second).String()
+	return t.UTC().Format(time.RFC3339)
 }
 
 // IsHealthy reports whether the reconciler is currently considered healthy.
@@ -210,7 +210,7 @@ func (h *CRDHealth) StartedAt() string {
 	if t.IsZero() {
 		return "starting"
 	}
-	return t.Round(time.Second).String()
+	return t.UTC().Format(time.RFC3339)
 }
 
 // SetStarted marks the reconciler as started and records the start time.
@@ -277,6 +277,10 @@ func (h *CRDHealth) SetMissingAtRuntime() {
 	h.pending.Store(false)
 	h.consecutiveFails.Add(1)
 	h.lastError.Store("CRD missing at runtime")
+}
+
+func (h *CRDHealth) IsMissing() bool {
+	return h.crdExists.Load()
 }
 
 // Name returns the CRD name associated with this health tracker.

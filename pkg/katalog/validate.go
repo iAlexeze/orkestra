@@ -258,6 +258,25 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 			crd.Workers = kfg.Cluster().DefaultWorkers
 		}
 
+		// Handle Queues
+		if crd.Queue.DegradeThreshold == 0 {
+			crd.Queue.DegradeThreshold = kfg.Katalog().DefaultDegradeThreshold
+
+		}
+		if crd.Queue.MaxQueueDepth == 0 {
+			crd.Queue.MaxQueueDepth = kfg.Katalog().DefaultMaxQueueDepth
+		}
+
+		// Handle Builtins
+		if crd.IsBuiltInType() {
+			// Disable status writes for built-ins
+			disabled := false
+			crd.ReconcilerConfig.Status = &orktypes.StatusConfig{
+				Conditions: &disabled,
+			}
+
+		}
+
 		k.enabledCRDs[name] = crd
 	}
 	return nil

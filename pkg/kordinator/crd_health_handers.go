@@ -35,6 +35,7 @@ type CRDHealthResponse struct {
 	LastReconcile            string                      `json:"lastReconcile"`
 	HasUnhealthyDependencies bool                        `json:"hasUnhealthyDependencies"`
 	Dependencies             map[string]DependencyStatus `json:"dependencies,omitempty"`
+	Missing                  bool                        `json:"missing,omitempty"`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,7 +85,7 @@ func BuildCRDHealthHandler(
 			state = "healthy"
 		default:
 			httpStatus = http.StatusOK
-			state = "started"
+			state = "pending"
 		}
 
 		v := resolveCRDDisplayValues(crd, kfg, inf)
@@ -106,6 +107,7 @@ func BuildCRDHealthHandler(
 			LastReconcile:            h.LastReconcile(),
 			Dependencies:             h.GetDependencyStatuses(),
 			HasUnhealthyDependencies: h.HasUnhealthyDependencies(),
+			Missing:                  h.IsMissing(),
 		}
 
 		utils.WriteJSON(w, httpStatus, response)
@@ -410,31 +412,28 @@ func BuildKatalogHandler(
 
 			v := resolveCRDDisplayValues(crd, kfg, inf)
 
-			isHealthy := h.IsHealthy()
 			isStarted := h.Started()
 			isPending := h.Pending()
+			isHealthy := h.IsHealthy()
+
 			var state string
 
-			if isHealthy {
-				statusCounts.Healthy++
-				state = "healthy"
-			} else if isStarted {
-				statusCounts.Started++
-				if h.ConsecutiveFails() > 0 {
-					state = "degraded"
-				} else {
-					state = "started"
-				}
-			} else if isPending {
+			switch {
+			case !isStarted && !isPending:
+				state = "not started"
 				statusCounts.Pending++
-				if h.ConsecutiveFails() > 0 {
-					state = "degraded"
-				} else if h.LastReconcile() == "no reconciles yet" {
-					state = "pending"
-				}
-			} else {
-				statusCounts.Degraded++
+			case isPending:
+				state = "pending"
+				statusCounts.Pending++
+			case isStarted && !isHealthy:
 				state = "degraded"
+				statusCounts.Degraded++
+			case isHealthy:
+				state = "healthy"
+				statusCounts.Healthy++
+			default:
+				state = "pending"
+				statusCounts.Pending++
 			}
 
 			crds = append(crds, CRDSummaryResponse{
