@@ -55,10 +55,10 @@ func (c *CRDEntry) IsDynamic() bool {
 
 // HasTemplates reports whether this CRD declares any declarative hook templates.
 // Used by `ork generate` to determine whether to emit generated runtime hooks.
-// func (c *CRDEntry) HasTemplates() bool {
-// 	rc := c.ReconcilerConfig
-// 	return rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil
-// }
+func (c *CRDEntry) HasTemplates() bool {
+	rc := c.ReconcilerConfig
+	return rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil
+}
 
 // GVK returns the fully resolved GroupVersionKind for this CRD. Used for logging,
 // routing, and dynamic client operations.

@@ -187,36 +187,100 @@
               <span style="font-size:11px;color:var(--text-muted)">Click to expand</span>
             </div>
           </summary>
+
           <div style="margin-top:8px;display:flex;flex-direction:column;gap:8px">
             {{ range $kind, $child := .CR.Children }}
-            <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
-              <div class="flex items-center gap-2 mb-2">
-                <span class="cc-badge" style="background:var(--bg-elevated);border-color:var(--border);color:var(--text-muted);text-transform:uppercase">{{ $kind }}</span>
+            <div class="cc-card" style="padding:14px">
+
+              <!-- Header -->
+              <div class="flex items-center gap-2 mb-3">
+                <span class="cc-badge" style="text-transform:uppercase">{{ $kind }}</span>
                 <span class="font-mono" style="font-weight:500">{{ $child.Name }}</span>
-                {{ if $child.Namespace }}<span class="font-mono text-muted text-xs">{{ $child.Namespace }}</span>{{ end }}
+                {{ if $child.Namespace }}
+                  <span class="text-xs text-muted font-mono">({{ $child.Namespace }})</span>
+                {{ end }}
+
                 {{ if $child.Ready }}
-                <span class="cc-badge cc-badge-healthy" style="margin-left:auto"><span class="cc-status-dot healthy"></span>Ready</span>
+                  <span class="cc-badge cc-badge-healthy" style="margin-left:auto">
+                    <span class="cc-status-dot healthy"></span>Ready
+                  </span>
                 {{ else }}
-                <span class="cc-badge cc-badge-pending" style="margin-left:auto"><span class="cc-status-dot pending anim-pulse"></span>Not ready</span>
+                  <span class="cc-badge cc-badge-pending" style="margin-left:auto">
+                    <span class="cc-status-dot pending anim-pulse"></span>Not Ready
+                  </span>
                 {{ end }}
               </div>
-              {{ if $child.Status }}
-              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:11px">
-                {{ range $k, $v := $child.Status }}
-                {{ if ne $v nil }}
-                <div style="display:flex;justify-content:space-between">
-                  <span class="text-muted">{{ $k }}:</span>
-                  <span class="font-mono" style="font-weight:500">{{ $v }}</span>
+
+              <!-- Summary -->
+              {{ with $child.Status }}
+              <div class="cc-grid-2" style="margin-bottom:10px">
+
+                {{ if .replicas }}
+                <div class="cc-mini-stat">
+                  <span class="text-muted text-xs">Replicas</span>
+                  <span class="font-mono">{{ .replicas }}</span>
                 </div>
                 {{ end }}
+
+                {{ if .readyReplicas }}
+                <div class="cc-mini-stat">
+                  <span class="text-muted text-xs">Ready</span>
+                  <span class="font-mono">{{ .readyReplicas }}</span>
+                </div>
+                {{ end }}
+
+                {{ if .availableReplicas }}
+                <div class="cc-mini-stat">
+                  <span class="text-muted text-xs">Available</span>
+                  <span class="font-mono">{{ .availableReplicas }}</span>
+                </div>
+                {{ end }}
+
+                {{ if .phase }}
+                <div class="cc-mini-stat">
+                  <span class="text-muted text-xs">Phase</span>
+                  <span class="font-mono">{{ .phase }}</span>
+                </div>
+                {{ end }}
+
+              </div>
+              {{ end }}
+
+              <!-- Conditions -->
+              {{ if and $child.Status (index $child.Status "conditions") }}
+              <div style="margin-top:8px">
+                <div class="text-xs text-muted mb-2">Conditions</div>
+
+                {{ range (index $child.Status "conditions") }}
+                <div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+                  <div>
+                    <div class="font-mono text-xs" style="font-weight:500">{{ .type }}</div>
+                    <div class="text-xs text-muted">{{ .reason }}</div>
+                  </div>
+
+                  <div style="text-align:right">
+                    {{ if eq .status "True" }}
+                      <span class="cc-badge cc-badge-healthy">True</span>
+                    {{ else }}
+                      <span class="cc-badge cc-badge-degraded">False</span>
+                    {{ end }}
+                  </div>
+                </div>
                 {{ end }}
               </div>
-              {{ else }}
-              <div class="text-muted text-xs">No status available</div>
               {{ end }}
+
+              <!-- Raw fallback -->
+              <!-- <details style="margin-top:10px">
+                <summary class="text-xs text-muted cursor-pointer">Raw status</summary>
+                <pre style="margin-top:8px;font-size:11px;background:var(--bg-surface);padding:10px;border-radius:6px;overflow:auto">
+                </pre>
+              </details> -->
+
             </div>
             {{ end }}
           </div>
+
         </details>
       </div>
       {{ end }}
