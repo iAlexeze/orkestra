@@ -17,7 +17,7 @@ import (
 // renderTemplate parses and executes a named template from the embedded FS.
 // Writes directly to w. On error, renders a 500 page.
 func (cc *ControlCenter) renderTemplate(w http.ResponseWriter, name string, data interface{}) {
-	tmpl, err := template.New(name).Funcs(templateFuncs).ParseFS(assets, assetsDir+"/"+name)
+	tmpl, err := template.New(name).Funcs(templateFuncs).ParseFS(Assets, TemplateDir+"/"+name)
 	if err != nil {
 		log.Printf("ERROR: parse %s: %v", name, err)
 		cc.renderError(w, nil, fmt.Sprintf("Template error: %v", err))

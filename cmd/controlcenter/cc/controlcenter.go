@@ -16,9 +16,9 @@ import (
 )
 
 //go:embed assets/templates/*.html assets/static/* assets/static/css/* assets/static/js/*
-var assets embed.FS
+var Assets embed.FS
 
-const assetsDir = "assets/templates"
+const TemplateDir = "assets/templates"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Config
@@ -743,7 +743,7 @@ func normalizeURL(raw string) string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func (cc *ControlCenter) serveAsset(w http.ResponseWriter, r *http.Request, filePath string) {
-	data, err := assets.ReadFile("assets/" + filePath)
+	data, err := Assets.ReadFile("assets/" + filePath)
 	if err != nil {
 		cc.handleNotFound(w, r)
 		return
@@ -774,14 +774,14 @@ func (cc *ControlCenter) handleDebugFile(w http.ResponseWriter, r *http.Request)
 		filePath = "assets/static/logo.png"
 	}
 	fmt.Fprintf(w, "Reading: %s\n\n", filePath)
-	data, err := assets.ReadFile(filePath)
+	data, err := Assets.ReadFile(filePath)
 	if err != nil {
 		fmt.Fprintf(w, "ERROR: %v\n", err)
 		return
 	}
 	fmt.Fprintf(w, "OK: %d bytes\n", len(data))
 
-	entries, _ := assets.ReadDir("assets/static")
+	entries, _ := Assets.ReadDir("assets/static")
 	fmt.Fprintf(w, "\nassets/static/:\n")
 	for _, e := range entries {
 		fmt.Fprintf(w, "  %s\n", e.Name())
