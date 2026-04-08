@@ -40,6 +40,7 @@ type Instance struct {
 	Healthy   bool
 	LastError string
 	LastCheck time.Time
+	Status    string // "online", "starting" or "degraded"
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -107,35 +108,39 @@ func (cc *ControlCenter) backgroundFetchLoop() {
 func (cc *ControlCenter) fetchAllKatalogs() {
 	cc.mu.Lock()
 	anyOK := false
+
 	for _, inst := range cc.instances {
-		err := inst.Client.CheckHealth()
 		inst.LastCheck = time.Now()
 
-		if err != nil {
-			inst.Healthy = false
-			inst.LastError = err.Error()
-			log.Printf("WARN: fetch from %s: %v", inst.URL, err)
-			// Clear stale data — if the API is unreachable the katalog must
-			// disappear from the UI rather than show outdated information.
-			inst.Katalog = nil
-			continue
-		}
-
-		inst.Healthy = true
-		inst.LastError = ""
-
-		// only fetch katalog if healthy
 		kat, err := inst.Client.FetchKatalog()
 		if err != nil {
 			inst.Katalog = nil
+			inst.Status = "offline"
+			inst.Healthy = false
+			inst.LastError = err.Error()
+
+			log.Printf("WARN: fetch katalog from %s: %v", inst.URL, err)
 			continue
 		}
 
 		inst.Katalog = kat
-		inst.Katalog = kat
 		anyOK = true
-		log.Printf("INFO: fetched katalog %q from %s (%d CRDs)", kat.Name, inst.URL, len(kat.CRDs))
+
+		// Runtime health = OrkReady ONLY
+		if kat.OrkReady {
+			inst.Status = "online"
+			inst.Healthy = true
+			inst.LastError = ""
+		} else {
+			inst.Status = "starting"
+			inst.Healthy = false
+			inst.LastError = ""
+		}
+
+		log.Printf("INFO: fetched katalog %q from %s (%d CRDs)",
+			kat.Name, inst.URL, len(kat.CRDs))
 	}
+
 	cc.ready.Store(anyOK)
 	cc.mu.Unlock()
 	cc.notifySubscribers()

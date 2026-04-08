@@ -1,5 +1,5 @@
 /* ============================================================
-   Orkestra Control Center – dashboard.js
+   Orkestra Control Center – controlcenter.js
    SSE live reload, theme toggle, mobile sidebar, filter/pagination
    ============================================================ */
 

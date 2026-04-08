@@ -344,3 +344,123 @@
 .cc-btn-danger { background: var(--error, #ef4444); color: #fff; }
 .cc-btn-danger:hover { background: #b91c1c; }
 .cc-btn-sm { padding: 4px 8px; font-size: 12px; }
+
+
+/* ─────────────────────────────────────────────────────────────
+   Mobile responsiveness + UX polish
+   Drop-in
+   ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  /* Hide navbar runtimes button (use sidebar instead) */
+  #manageRuntimesBtn {
+    display: none !important;
+  }
+
+  /* Drawer becomes full-screen modal */
+  .rt-drawer {
+    justify-content: stretch;
+  }
+
+  .rt-drawer-panel {
+    width: 100%;
+    max-width: 100%;
+    border-left: none;
+    border-radius: 0;
+    transform: translateY(100%);
+  }
+
+  .rt-drawer.open .rt-drawer-panel {
+    transform: translateY(0);
+  }
+
+  /* Stack add form */
+  .rt-add-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .rt-add-submit {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Stack inline edit */
+  .rt-inline-edit {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rt-inline-save,
+  .rt-inline-cancel {
+    width: 100%;
+  }
+
+  /* Runtime items spacing */
+  .rt-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .rt-item-actions {
+    justify-content: flex-end;
+  }
+
+  .rt-item-url {
+    white-space: normal;
+    word-break: break-all;
+  }
+
+  /* Bigger tap targets */
+  .rt-action-btn,
+  .rt-close-btn {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Make "Runtimes" button feel alive
+   ───────────────────────────────────────────────────────────── */
+
+#manageRuntimesBtn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+/* subtle lift */
+#manageRuntimesBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* press feedback */
+#manageRuntimesBtn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+/* soft pulse indicator (alive feeling) */
+#manageRuntimesBtn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.25), transparent 70%);
+  animation: rt-pulse 2.5s infinite;
+}
+
+@keyframes rt-pulse {
+  0%   { opacity: 0; transform: scale(0.95); }
+  50%  { opacity: 0.25; }
+  100% { opacity: 0; transform: scale(1.05); }
+}
+
+/* smoother drawer animation */
+.rt-drawer-panel {
+  will-change: transform;
+}

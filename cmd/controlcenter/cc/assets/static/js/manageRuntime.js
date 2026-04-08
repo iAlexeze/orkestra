@@ -119,7 +119,7 @@
         statusClass = 'rt-status-online';
         dotClass = 'online';
       } else if (inst.lastError) {
-        // Optional: trim noisy Go errors
+        // Optionally trim noisy Go errors
         if (inst.lastError.includes('connection refused')) {
           statusText = 'offline';
         } else if (inst.lastError.includes('timeout')) {
@@ -171,17 +171,49 @@
   }
 
   /* ── Add runtime ───────────────────────────────────────────── */
+  // function normalizeUrl(val) {
+  //   val = val.trim();
+  //   if (val && !val.startsWith('http://') && !val.startsWith('https://')) {
+  //     val = 'http://' + val;
+  //   }
+  //   return val;
+  // }
+
   function normalizeUrl(val) {
-    val = val.trim();
-    if (val && !val.startsWith('http://') && !val.startsWith('https://')) {
+    val = String(val || '').trim();
+    if (!val) return '';
+
+    if (!/^https?:\/\//i.test(val)) {
       val = 'http://' + val;
     }
-    return val;
+
+    try {
+      var url = new URL(val);
+
+      // Must have hostname
+      if (!url.hostname) return '';
+
+      // Reject invalid hostname characters
+      if (!/^[a-zA-Z0-9.-]+$/.test(url.hostname)) return '';
+
+      // Reject hostnames starting/ending with hyphens or dots
+      if (/^[-.]/.test(url.hostname) || /[-.]$/.test(url.hostname)) return '';
+
+      // Reject consecutive dots
+      if (/\.\./.test(url.hostname)) return '';
+
+      return url.toString().replace(/\/$/, '');
+    } catch (e) {
+      return '';
+    }
   }
 
   function addRuntime() {
     var url = normalizeUrl(addInput ? addInput.value : '');
-    if (!url) { showMsg(addMsg, 'Enter a URL first.', 'error'); return; }
+    if (!url) {
+      showMsg(addMsg, 'Enter a valid URL (e.g. http://localhost:8080)', 'error');
+      return;
+    }
 
     hideMsg(addMsg);
     setLoading(addBtn, true);
