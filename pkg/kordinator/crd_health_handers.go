@@ -35,6 +35,7 @@ type CRDHealthResponse struct {
 	LastReconcile            string                      `json:"lastReconcile"`
 	HasUnhealthyDependencies bool                        `json:"hasUnhealthyDependencies"`
 	Dependencies             map[string]DependencyStatus `json:"dependencies,omitempty"`
+	Missing                  bool                        `json:"missing,omitempty"`
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,7 +85,7 @@ func BuildCRDHealthHandler(
 			state = "healthy"
 		default:
 			httpStatus = http.StatusOK
-			state = "started"
+			state = "pending"
 		}
 
 		v := resolveCRDDisplayValues(crd, kfg, inf)
@@ -106,6 +107,7 @@ func BuildCRDHealthHandler(
 			LastReconcile:            h.LastReconcile(),
 			Dependencies:             h.GetDependencyStatuses(),
 			HasUnhealthyDependencies: h.HasUnhealthyDependencies(),
+			Missing:                  h.IsMissing(),
 		}
 
 		utils.WriteJSON(w, httpStatus, response)

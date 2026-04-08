@@ -279,6 +279,10 @@ func (h *CRDHealth) SetMissingAtRuntime() {
 	h.lastError.Store("CRD missing at runtime")
 }
 
+func (h *CRDHealth) IsMissing() bool {
+	return h.crdExists.Load()
+}
+
 // Name returns the CRD name associated with this health tracker.
 func (h *CRDHealth) Name() string {
 	return h.name

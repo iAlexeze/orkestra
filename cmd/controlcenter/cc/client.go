@@ -224,9 +224,12 @@ func getState(h *CRDHealth) string {
 	if h.Healthy {
 		return "healthy"
 	}
-	if h.Pending && h.LastReconcile == "no reconciles yet" {
+	if h.Pending {
 		return "pending"
 	}
+	// if h.Pending && h.LastReconcile == "no reconciles yet" {
+	// 	return "pending"
+	// }
 	if h.Started && h.ConsecutiveFails == 0 {
 		return "started"
 	}
