@@ -26,7 +26,7 @@ spec:
       serviceAccountName: orkestra-cc
       containers:
         - name: control-center
-          image: ghcr.io/orkspace/orkestra-cc:runtimeManager
+          image: ghcr.io/orkspace/orkestra-cc:stable
           imagePullPolicy: Always
           args:
             - -u
