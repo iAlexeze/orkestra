@@ -48,6 +48,11 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+const (
+	listOptionsLimit = 1
+	fetchTimeout = 3 * time.Second
+)
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GVRs for all resource types Orkestra manages as children.
 // Defined here (not imported from reconciler) to avoid import cycles.
@@ -134,10 +139,13 @@ type CRDetailResponse struct {
 	// Children holds the child resources created by Orkestra for this CR.
 	// Keyed by lowercase kind (e.g. "deployment", "job", "cronjob").
 	// Populated on demand from the API server — may be empty on first reconcile.
-	Children map[string]ChildSummary `json:"children,omitempty"`
+	Children map[string]ChildSummary `json:"children"`
 
 	// EventsEndpoint is the URL to fetch recent events for this CR.
 	EventsEndpoint string `json:"eventsEndpoint"`
+
+	// Debug to know if it has templates
+	HasTemplateBlocks bool `json:"hasTemplateBlocks"`
 }
 
 // CREvent is one Kubernetes event involving this CR or its children.
@@ -274,7 +282,7 @@ func BuildCRDetailHandler(
 
 		// Read child resources from the API server.
 		// This is the same set of children ReadChildren uses in the reconciler.
-		children := readChildrenForEndpoint(r.Context(), kube, u, rc)
+		children := readChildrenForEndpoint(r.Context(), kube, u)
 
 		// Build the events endpoint URL for this CR
 		eventsPath := buildEventsPath(crd, namespace, name)
@@ -415,6 +423,7 @@ func buildCRDetail(u *unstructured.Unstructured, children map[string]ChildSummar
 		Status:            status,
 		Children:          children,
 		EventsEndpoint:    eventsEndpoint,
+		// HasTemplateBlocks: hasTemplateBlocks(rc),
 	}
 }
 
@@ -434,7 +443,7 @@ func readChildrenForEndpoint(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
 	owner *unstructured.Unstructured,
-	rc orktypes.ReconcilerConfig,
+	// rc orktypes.ReconcilerConfig,
 ) map[string]ChildSummary {
 	if kube == nil {
 		return map[string]ChildSummary{}
@@ -442,13 +451,14 @@ func readChildrenForEndpoint(
 
 	// Fast path: if no template blocks are declared, this CRD creates no
 	// labelled children. Skip all API calls entirely.
-	if !hasTemplateBlocks(rc) {
-		return map[string]ChildSummary{}
-	}
+	// TODO: Not working currently
+	// if !hasTemplateBlocks(rc) {
+	// 	return map[string]ChildSummary{}
+	// }
 
 	// Hard deadline — children are supplementary. Never let a slow API server
 	// block the CR detail page for more than 3 seconds.
-	fetchCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	fetchCtx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
 
 	ns := owner.GetNamespace()
@@ -506,7 +516,7 @@ func fetchOneChildKind(
 
 	opts := metav1.ListOptions{
 		LabelSelector:   labelSelector,
-		Limit:           1,
+		Limit:           listOptionsLimit,
 		ResourceVersion: "0", // serve from API server watch cache, not etcd
 		// ResourceVersion "0" means "any cached version is acceptable" — the API
 		// server satisfies this from its in-memory watch cache rather than querying
@@ -579,7 +589,7 @@ func fetchCREvents(
 	namespace, name, kind string,
 ) ([]CREvent, error) {
 	// Hard deadline — events should never block the page render
-	evCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	evCtx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
 
 	if namespace == "" {

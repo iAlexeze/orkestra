@@ -42,7 +42,7 @@
                </svg>
                Metrics
             </a>
-            <a href="#" id="manageRuntimesBtn" class="cc-nav-item">
+            <a href="#" id="sidebarRuntimesBtn" class="cc-nav-item">
                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                   <circle cx="12" cy="12" r="4"/>
@@ -77,7 +77,10 @@
             </button>
             <span class="cc-navbar-title">Multi-Runtime Viewer</span>
             <div class="cc-navbar-right">
-               <button id="addRuntimeBtn" class="cc-btn cc-btn-outline" style="margin-right: 8px;">+ Add Runtime</button>
+               <button id="manageRuntimesBtn" class="cc-btn cc-btn-outline" style="margin-right: 8px;" aria-label="Manage Runtimes">
+                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="4"/></svg>
+                 Runtimes
+               </button>
                <button class="cc-theme-toggle" id="cc-theme-toggle" title="Toggle theme">☀️</button>
             </div>
          </div>
@@ -179,61 +182,49 @@
             {{ end }}
          </div>
       </main>
-      <div id="runtimeModal" class="cc-modal" style="display: none;">
-         <div class="cc-modal-content" style="width: 450px;">
-            <div class="cc-modal-header">
-               <h3 id="runtimeModalTitle">Add Orkestra Runtime</h3>
-               <button class="cc-modal-close" id="closeRuntimeModalBtn">&times;</button>
+      <!-- ── Runtime Management Drawer ────────────────────────── -->
+      <div id="runtimeDrawer" class="rt-drawer" role="dialog" aria-modal="true" aria-label="Manage Runtimes" hidden>
+        <div class="rt-drawer-backdrop" id="rtBackdrop"></div>
+        <div class="rt-drawer-panel">
+          <div class="rt-drawer-header">
+            <div class="rt-drawer-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                <circle cx="12" cy="12" r="4"/>
+              </svg>
+              Manage Runtimes
             </div>
-            <div class="cc-modal-body">
-               <div class="cc-form-group">
-                  <label for="runtimeUrlInput">Runtime URL</label>
-                  <input type="text" id="runtimeUrlInput" class="cc-input" placeholder="http://my-orkestra.example.com:8080">
-                  <div class="cc-form-hint">Example: <code>http://localhost:8080</code> or <code>https://orkestra.prod:8080</code></div>
-                  <div id="runtimeModalError" class="cc-error-mt" style="display: none;"></div>
-               </div>
+            <button class="rt-close-btn" id="rtCloseBtn" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <!-- Add form (always visible at top) -->
+          <div class="rt-add-section">
+            <div class="rt-add-label">Add a new runtime</div>
+            <div class="rt-add-row">
+              <input type="text" id="rtAddInput" class="rt-input" placeholder="http://localhost:8080" autocomplete="off" spellcheck="false">
+              <button id="rtAddBtn" class="cc-btn cc-btn-primary rt-add-submit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add
+              </button>
             </div>
-            <div class="cc-modal-footer">
-               <button id="cancelRuntimeBtn" class="cc-btn cc-btn-secondary">Cancel</button>
-               <button id="saveRuntimeBtn" class="cc-btn cc-btn-primary">Save</button>
+            <div class="rt-add-hint">e.g. <code>http://localhost:8080</code> or <code>https://orkestra.prod:9090</code></div>
+            <div id="rtAddMsg" class="rt-msg" hidden></div>
+          </div>
+
+          <!-- Runtime list -->
+          <div class="rt-list-header">
+            <span class="rt-list-label">Connected runtimes</span>
+            <span id="rtCount" class="rt-count"></span>
+          </div>
+          <div id="rtList" class="rt-list">
+            <div class="rt-list-loading">
+              <svg class="rt-spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              Loading…
             </div>
-         </div>
-      </div>
-      <div id="manageRuntimesModal" class="cc-modal" style="display: none;">
-         <div class="cc-modal-content" style="width: 650px;">
-            <div class="cc-modal-header">
-               <h3>Manage Orkestra Runtimes</h3>
-               <button class="cc-modal-close" id="closeManageModalBtn">&times;</button>
-            </div>
-            <div class="cc-modal-body">
-               <div id="runtimeListContainer" class="runtime-list-container">
-                  <!-- Runtimes will be rendered here -->
-               </div>
-               <div style="margin-top: 16px;">
-                  <button id="openAddFromManageBtn" class="cc-btn cc-btn-primary" style="width:100%">+ Add New Runtime</button>
-               </div>
-               <div id="manageError" class="cc-error-mt" style="display: none;"></div>
-            </div>
-            <div class="cc-modal-footer">
-               <button id="closeManageFooterBtn" class="cc-btn cc-btn-secondary">Close</button>
-            </div>
-         </div>
-      </div>
-      <div id="deleteConfirmModal" class="cc-modal" style="display: none;">
-         <div class="cc-modal-content" style="width: 400px;">
-            <div class="cc-modal-header">
-               <h3>Confirm Delete</h3>
-               <button class="cc-modal-close" id="closeDeleteModalBtn">&times;</button>
-            </div>
-            <div class="cc-modal-body">
-               <p>Are you sure you want to remove the runtime <strong id="deleteRuntimeUrl"></strong>?</p>
-               <p class="text-muted" style="font-size: 13px;">This will remove all associated Katalogs from the dashboard.</p>
-            </div>
-            <div class="cc-modal-footer">
-               <button id="cancelDeleteBtn" class="cc-btn cc-btn-secondary">Cancel</button>
-               <button id="confirmDeleteBtn" class="cc-btn cc-btn-danger">Delete</button>
-            </div>
-         </div>
+          </div>
+        </div>
       </div>
       <!-- Script to manage runtimes -->
       <script src="/controlcenter/assets/static/js/controlcenter.js"></script>

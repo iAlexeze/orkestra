@@ -360,9 +360,9 @@ The Control Center exposes its own health endpoints for orchestration:
 
 | Endpoint | Purpose | Response |
 |----------|---------|----------|
-| `/controlcenter/health` | Liveness probe | `{"status":"healthy"}` |
-| `/controlcenter/ready` | Readiness probe | `{"status":"ready"}` when at least one backend is healthy |
-| `/controlcenter/version` | Version info | `{"version":"1.0.0",...}` |
+| `/health` | Liveness probe | `{"status":"healthy"}` |
+| `/ready` | Readiness probe | `{"status":"ready"}` when at least one backend is healthy |
+| `/version` | Version info | `{"version":"1.0.0",...}` |
 
 These are used by Kubernetes for liveness and readiness probes when deployed via Helm.
 

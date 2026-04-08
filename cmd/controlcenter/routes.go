@@ -3,27 +3,27 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
+	"github.com/orkspace/orkestra-cc/auth"
 	"github.com/orkspace/orkestra-cc/cc"
 )
 
-// setupRoutes configures all HTTP routes for the control center
+// setupRoutes configures all HTTP routes for the Orkestra Control Center.
 func setupRoutes(cc *controlcenter.ControlCenter, version, commit, buildDate string) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	// Health check endpoint - always returns OK for the control center itself
-	mux.HandleFunc("/controlcenter/health", func(w http.ResponseWriter, r *http.Request) {
+	/* -----------------------------------------------------------
+	   Public system endpoints (no auth)
+	   ----------------------------------------------------------- */
+
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, `{"status":"healthy","service":"orkestra-control-center","version":"%s"}`, version)
 	})
 
-	// Readiness check endpoint - checks if at least one backend is healthy
-	mux.HandleFunc("/controlcenter/ready", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if cc.IsReady() {
-			w.WriteHeader(http.StatusOK)
 			fmt.Fprintf(w, `{"status":"ready","service":"orkestra-control-center"}`)
 		} else {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -31,32 +31,33 @@ func setupRoutes(cc *controlcenter.ControlCenter, version, commit, buildDate str
 		}
 	})
 
-	// Version endpoint
-	mux.HandleFunc("/controlcenter/version", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, `{"version":"%s","commit":"%s","buildDate":"%s"}`, version, commit, buildDate)
 	})
 
-	// 404 handler
-	mux.HandleFunc("/controlcenter/404", handleNotFound)
+	mux.HandleFunc("/404", handleNotFound)
 
-	// Control center handler for all other routes under /controlcenter
-	mux.Handle("/controlcenter/", http.StripPrefix("/controlcenter", cc))
+	/* -----------------------------------------------------------
+	   Authentication UI (public)
+	   ----------------------------------------------------------- */
 
-	// Root redirect
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Skip if it's a controlcenter path (already handled above)
-		if strings.HasPrefix(r.URL.Path, "/controlcenter") {
-			return
-		}
-		// Handle favicon.ico gracefully
-		if r.URL.Path == "/favicon.ico" {
-			http.NotFound(w, r)
-			return
-		}
-		http.Redirect(w, r, "/controlcenter", http.StatusMovedPermanently)
-	})
+	// Login page (GET)
+	mux.HandleFunc("/", auth.LoginPage)
+
+	// Login form submit (POST)
+	mux.HandleFunc("/login", auth.LoginPost)
+
+	// Logout clears session cookie
+	mux.HandleFunc("/logout", auth.Logout)
+
+	/* -----------------------------------------------------------
+	   Protected Control Center routes
+	   ----------------------------------------------------------- */
+
+	protected := http.StripPrefix("/controlcenter", cc)
+	protected = auth.SessionAuth(protected)
+	mux.Handle("/controlcenter/", protected)
 
 	return mux
 }

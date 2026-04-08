@@ -183,6 +183,24 @@ func (c *Client) FetchCREvents(instanceURL, crdName, namespace, name string) (*C
 // Internal helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Health Checker
+func (c *Client) CheckHealth() error {
+	url := strings.TrimSuffix(c.baseURL, "/") + "/health"
+
+	client := http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
 // getJSON is a generic GET → JSON decode helper.
 func getJSON[T any](c *Client, path string) (*T, error) {
 	resp, err := c.httpClient.Get(c.baseURL + path)

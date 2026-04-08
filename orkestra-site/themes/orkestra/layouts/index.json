@@ -1,0 +1,13 @@
+{{- $pages := where .Site.RegularPages "Type" "ne" "json" -}}
+[
+{{- range $i, $p := $pages -}}
+  {{- if $i }},{{ end -}}
+  {
+    "uri": {{ $p.RelPermalink | jsonify }},
+    "title": {{ $p.Title | jsonify }},
+    "description": {{ $p.Description | jsonify }},
+    "tags": {{ $p.Params.tags | jsonify }},
+    "content": {{ $p.Plain | truncate 400 "" | jsonify }}
+  }
+{{- end -}}
+]

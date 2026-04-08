@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=9292&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Architecture — Orkestra">
 <meta property="og:description" content="How Orkestra works under the hood — from the reconciler to the control plane.">
-<meta property="og:url" content="http://localhost:9292/docs/architecture/">
+<meta property="og:url" content="http://localhost:8191/docs/architecture/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -956,7 +956,7 @@ Merges multiple Katalog sources and produces a validated runtime Katalog.</p>
 Informers, workqueues, reconciler registry, template engine.</p>
 </li>
 <li>
-<p><strong>Dependency‑Aware Kontroller</strong><br>
+<p><strong>Dependency‑Aware Kordinator</strong><br>
 Starts CRDs in topological order, handles activation/deactivation, manages worker pools.</p>
 </li>
 <li>
@@ -1034,11 +1034,11 @@ subgraph TemplateEngine["Template Engine"]
 end
 
 %% ============================
-%% WORKERS + KONTROLLER
+%% WORKERS + Kordinator
 %% ============================
-subgraph Kontroller["Dependency‑Aware Kontroller"]
+subgraph Kordinator["Dependency‑Aware Kordinator"]
     direction LR
-    C["Dependency Kontroller"]
+    C["Dependency Kordinator"]
     subgraph Pools["Worker Pools"]
         W1["Workers: CRD A (3)"]
         W2["Workers: CRD B (2)"]
@@ -1159,8 +1159,8 @@ style TemplateEngine stroke:#333,stroke-width:2px,color:#FFFFFF
 </ul>
 <p>Informers feed events into per-CRD workqueue.</p>
 <hr>
-<h2 id="4-dependencyaware-kontroller"><strong>4. Dependency‑Aware Kontroller</strong></h2>
-<p>The Kontroller:</p>
+<h2 id="4-dependencyaware-kordinator"><strong>4. Dependency‑Aware Kordinator</strong></h2>
+<p>The Kordinator:</p>
 <ul>
 <li>Computes startup order (topological sort)</li>
 <li>Waits for dependencies using ready channels</li>
@@ -1293,7 +1293,7 @@ style TemplateEngine stroke:#333,stroke-width:2px,color:#FFFFFF
     <li><a href="#1-highlevel-overview"><strong>1. High‑Level Overview</strong></a></li>
     <li><a href="#2-preruntime-komposer--katalog-loader"><strong>2. Pre‑Runtime: Komposer + Katalog Loader</strong></a></li>
     <li><a href="#3-informer-factory"><strong>3. Informer Factory</strong></a></li>
-    <li><a href="#4-dependencyaware-kontroller"><strong>4. Dependency‑Aware Kontroller</strong></a></li>
+    <li><a href="#4-dependencyaware-kordinator"><strong>4. Dependency‑Aware Kordinator</strong></a></li>
     <li><a href="#5-reconciler-registry">5. <strong>Reconciler Registry</strong></a></li>
     <li><a href="#6-template-engine">6. <strong>Template Engine</strong></a></li>
   </ul>

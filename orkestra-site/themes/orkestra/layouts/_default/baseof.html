@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="{{ .Site.LanguageCode }}" data-theme="dark">
+<head>
+  {{ partial "head.html" . }}
+</head>
+<body class="{{ if .IsHome }}is-home{{ end }}{{ if .IsSection }} is-section{{ end }}">
+
+  {{ partial "navbar.html" . }}
+
+  <main id="main">
+    {{ block "main" . }}{{ end }}
+  </main>
+
+  {{ partial "footer.html" . }}
+
+  <!-- Mermaid -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+  {{ $js := resources.Get "js/main.js" | minify }}
+  <script src="{{ $js.RelPermalink }}" defer></script>
+
+  <!-- Search index -->
+  <script src="https://cdn.jsdelivr.net/npm/flexsearch@0.7.43/dist/flexsearch.bundle.js"></script>
+</body>
+</html>
