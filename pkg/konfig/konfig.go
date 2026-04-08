@@ -60,7 +60,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			RetryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),
 		},
 		katalog: katalogKonfig{
-			DefaultMaxQueueDepth:    GetIntEnv("MAX_QUEUE_DEPTH", 2000),
+			DefaultMaxQueueDepth:    GetIntEnv("MAX_QUEUE_DEPTH", 100),
 			DefaultDegradeThreshold: GetIntEnv("DEGRADE_THRESHOLD", 5),
 			Paths:                   GetStrSliceEnv("KATALOG_PATH", []string{}),
 		},

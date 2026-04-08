@@ -80,7 +80,7 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		ErrorRate:                health.ErrorRate,
 		Conversion:               info.Conversion,
 		Admission:                info.Admission,
-		State:                    getState(health),
+		State:                    health.State,
 		StartedAt:                health.StartedAt,
 		Uptime:                   health.Uptime,
 		ConsecutiveFails:         health.ConsecutiveFails,
@@ -218,22 +218,6 @@ func getJSON[T any](c *Client, path string) (*T, error) {
 		return nil, fmt.Errorf("decoding response from %s: %w", path, err)
 	}
 	return &v, nil
-}
-
-func getState(h *CRDHealth) string {
-	if h.Healthy {
-		return "healthy"
-	}
-	if h.Pending {
-		return "pending"
-	}
-	// if h.Pending && h.LastReconcile == "no reconciles yet" {
-	// 	return "pending"
-	// }
-	if h.Started && h.ConsecutiveFails == 0 {
-		return "started"
-	}
-	return "degraded"
 }
 
 func humanDuration(rfc3339 string) string {

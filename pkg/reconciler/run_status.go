@@ -85,6 +85,8 @@ func runStatusPatch[T domain.Object](
 	if !ok {
 		// Typed objects — currently no status patching for typed CRDs.
 		// Use Go hooks for typed status management.
+
+		// We have solved this resolver.ObjectToMap()
 		return nil
 	}
 
@@ -93,6 +95,11 @@ func runStatusPatch[T domain.Object](
 	// ── Layer 1: Ready condition ───────────────────────────────────────────
 	// Always written — on success and failure — so operators can monitor
 	// the Ready condition without knowing anything else about the CRD.
+	// Except for builtin -> default has been applied in
+	if r.crd.IsBuiltIn {
+		return nil
+	}
+
 	cond := buildReadyCondition(reconcileErr, obj.GetGeneration())
 	patch["conditions"] = []interface{}{cond}
 	patch["observedGeneration"] = obj.GetGeneration()

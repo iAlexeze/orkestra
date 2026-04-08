@@ -47,7 +47,7 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj dom
 
 	// Step 3: external HTTP calls
 	if t := r.rc.OnReconcile; t != nil && len(t.External) > 0 {
-		resolver, err = runExternal(ctx, resolver, t.External)
+		resolver, err = runExternal(ctx, r.crd.GVK, resolver, t.External)
 		if err != nil {
 			return fmt.Errorf("external calls: %w", err)
 		}

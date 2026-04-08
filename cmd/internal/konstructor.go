@@ -281,6 +281,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		finalizers = append(finalizers, crd.ReconcilerConfig.Finalizers...)
 
 		crdInfo := reconciler.CRDInfo{
+			IsBuiltIn:        crd.IsBuiltInType(),
 			Kind:             crd.APITypes.Kind,
 			GVK:              gvk,
 			GVR:              gvr,

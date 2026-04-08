@@ -34,15 +34,15 @@ func generateRBACInfo(crd orktypes.CRDEntry, v crdDisplayValues) RBACInfo {
 			Verbs:       []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 			Description: fmt.Sprintf("Manage %s custom resources", crd.Name),
 		})
-	}
 
-	// 2. Status subresource if needed
-	rules = append(rules, RBACRule{
-		APIGroups:   []string{crd.APITypes.Group},
-		Resources:   []string{crd.APITypes.Plural + "/status"},
-		Verbs:       []string{"get", "update", "patch"},
-		Description: fmt.Sprintf("Update status of %s resources", crd.Name),
-	})
+		// 2. Status subresource if needed
+		rules = append(rules, RBACRule{
+			APIGroups:   []string{crd.APITypes.Group},
+			Resources:   []string{crd.APITypes.Plural + "/status"},
+			Verbs:       []string{"get", "update", "patch"},
+			Description: fmt.Sprintf("Update status of %s resources", crd.Name),
+		})
+	}
 
 	// 3. Resources from declarative templates
 	if crd.ReconcilerConfig.OnCreate != nil {

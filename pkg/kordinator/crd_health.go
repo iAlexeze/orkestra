@@ -180,7 +180,7 @@ func (h *CRDHealth) LastReconcile() string {
 		return "not started"
 	}
 
-	return t.Round(time.Second).String()
+	return t.UTC().Format(time.RFC3339)
 }
 
 // IsHealthy reports whether the reconciler is currently considered healthy.
@@ -210,7 +210,7 @@ func (h *CRDHealth) StartedAt() string {
 	if t.IsZero() {
 		return "starting"
 	}
-	return t.Round(time.Second).String()
+	return t.UTC().Format(time.RFC3339)
 }
 
 // SetStarted marks the reconciler as started and records the start time.

@@ -133,8 +133,9 @@ type APITypes struct {
 // ── Queue ─────────────────────────────────────────────────────────────────────
 
 type Queue struct {
-	// Default: true — uses the shared default workqueue instead of a per-CRD queue.
+	// true: — uses the shared default workqueue instead of a per-CRD queue.
 	// Suitable for low-volume CRDs where queue isolation is not required.
+
 	// Default: false — each CRD gets its own isolated workqueue.
 	Default *bool `yaml:"default" json:"default,omitempty"`
 
