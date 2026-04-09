@@ -265,7 +265,6 @@ func (k *DependencyKordinator) Kordinate(ctx context.Context) {
 	k.startedAt = time.Now()
 
 	// Mark as ready immediately - the kordinator can serve requests
-	k.hs.SetReady()
 	k.orkHealth.SetOrkReady()
 
 	// Track allOnline
@@ -368,6 +367,7 @@ func (k *DependencyKordinator) Kordinate(ctx context.Context) {
 	<-ctx.Done()
 	logger.Info().Msg("leadership lost — beginning dependency-aware shutdown")
 	k.hs.Unhealthy()
+	k.orkHealth.SetOrkDegraded()
 
 	// Shut down CRDs in reverse dependency order
 	shutdownOrder := k.depGraph.ShutdownOrder()

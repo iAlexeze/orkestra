@@ -118,6 +118,15 @@ spec:
             - name: health
               containerPort: {{ .Values.runtime.server.port }}
               protocol: TCP
+          
+          startupProbe:
+            httpGet:
+              path: /startup
+              port: http
+            initialDelaySeconds: {{ .Values.runtime.startupProbe.initialDelaySeconds | default 10 }}
+            periodSeconds: {{ .Values.runtime.startupProbe.periodSeconds | default 10 }}
+            failureThreshold: {{ .Values.runtime.startupProbe.failureThreshold | default 3 }}
+            timeoutSeconds: {{ .Values.runtime.startupProbe.timeoutSeconds | default 1 }}
 
           livenessProbe:
             httpGet:

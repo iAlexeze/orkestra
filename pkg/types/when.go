@@ -2,15 +2,15 @@
 //
 // EvaluateWhen — extended condition evaluation with OR logic.
 //
-// The existing when: field ([]Condition) uses AND semantics unchanged.
+// The when: field ([]Condition) uses AND semantics.
 // anyOf: is a new parallel field on template sources with OR semantics.
 //
-//	# AND only — existing, unchanged
+//	# AND only
 //	when:
 //	  - field: status.phase
 //	    equals: "Ready"
 //
-//	# OR — new
+//	# OR
 //	anyOf:
 //	  - field: status.phase
 //	    equals: "Failed"
@@ -114,15 +114,22 @@ func EvaluateOneCond(data map[string]interface{}, cond Condition) bool {
 // Returns "" when any segment is missing — the notExists case.
 // Exported for use by the template package and status field resolver.
 func NavigateDotPath(m map[string]interface{}, path string) string {
+	// Empty path check
 	if path == "" {
 		return ""
 	}
+
+	// Start at the root with 'current' as cursor
 	var current interface{} = m
+
+	// Split the path into parts(slice)
 	for _, part := range typesSplitDot(path) {
+		// Ensure current is a map
 		typed, ok := current.(map[string]interface{})
 		if !ok {
 			return ""
 		}
+		// Follow the path
 		current, ok = typed[part]
 		if !ok {
 			return ""

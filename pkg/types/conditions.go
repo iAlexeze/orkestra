@@ -132,6 +132,6 @@ const (
 	//
 	// Not valid in when: blocks on template sources — uniqueness requires
 	// informer access which is not available during template evaluation.
-	// In when: context it is treated as always-true (see EvaluateOneCond).
+	// In when: context it is treated as always-true (see pkg/types/when/EvaluateOneCond).
 	ConditionUnique ConditionOperator = "unique"
 )

@@ -242,6 +242,11 @@ func (h *OrkestraHealth) SetOrkReady() {
 	h.orkReady.Store(true)
 }
 
+// SetOrkDegraded marks orkestra engine as degraded
+func (h *OrkestraHealth) SetOrkDegraded() {
+	h.orkReady.Store(false)
+}
+
 // IsOrkReady is used to track ready state of orkestra
 func (h *OrkestraHealth) IsOrkReady() bool {
 	return h.orkReady.Load()
