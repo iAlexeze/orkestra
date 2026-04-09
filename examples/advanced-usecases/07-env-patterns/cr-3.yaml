@@ -1,0 +1,12 @@
+# CR #3 — envFrom (ConfigMapRef + SecretRef)
+apiVersion: apps.example.io/v1alpha1
+kind: WebApp
+metadata:
+  name: webapp-envfrom
+spec:
+  image: myorg/webapp:2.0.0
+  replicas: 1
+  region: ap-south-1
+  envFrom:
+    configMapRef: webapp-settings
+    secretRef: webapp-secrets

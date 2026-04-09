@@ -7,11 +7,13 @@ import (
 
 func conditionalNotes() template.FuncMap {
 	return template.FuncMap{
-		"ternary":  noteTernary,
-		"coalesce": noteCoalesce,
-		"default":  noteDefault,
-		"empty":    noteEmpty,
-		"notEmpty": noteNotEmpty,
+		"ternary":     noteTernary,
+		"boolTernary": noteBoolTernary,
+		"boolDefault": noteBoolDefault,
+		"coalesce":    noteCoalesce,
+		"default":     noteDefault,
+		"empty":       noteEmpty,
+		"notEmpty":    noteNotEmpty,
 	}
 }
 
@@ -88,6 +90,45 @@ func noteNotEmpty(v interface{}) bool {
 	return !noteEmpty(v)
 }
 
+// func noteIsTruthy(v interface{}) bool {
+// 	return !noteEmpty(v)
+// }
+
 func noteIsTruthy(v interface{}) bool {
-	return !noteEmpty(v)
+	switch val := v.(type) {
+	case bool:
+		return val
+	case string:
+		return val != ""
+	case int, int64, float64:
+		return val != 0
+	case []interface{}:
+		return len(val) > 0
+	case map[string]interface{}:
+		return len(val) > 0
+	case nil:
+		return false
+	default:
+		// fallback: treat any non-nil value as truthy
+		return true
+	}
+}
+
+// Boolean fields (like .spec.suspend) should not go through truthiness rules
+//
+// value: "{{ boolTernary .spec.suspend \"Suspended\" \"Active\" }}"
+func noteBoolTernary(cond bool, trueVal, falseVal interface{}) interface{} {
+	if cond {
+		return trueVal
+	}
+	return falseVal
+}
+
+// Safe boolean default
+// {{ boolTernary (boolDefault .spec.suspend false) "Suspended" "Active" }}
+func noteBoolDefault(v interface{}, def bool) bool {
+	if b, ok := v.(bool); ok {
+		return b
+	}
+	return def
 }

@@ -281,6 +281,73 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 		d.Spec.Template.Spec.Containers[0].Resources = buildResourceRequirements(spec.Resources)
 	}
 
+	// Env
+	if len(spec.Env) > 0 {
+		d.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{}
+		for k, src := range spec.Env {
+			ev := corev1.EnvVar{Name: k}
+
+			switch {
+			case src.SecretKeyRef != nil:
+				ev.ValueFrom = &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: src.SecretKeyRef.Name,
+						},
+						Key: src.SecretKeyRef.Key,
+					},
+				}
+
+			case src.ConfigMapKeyRef != nil:
+				ev.ValueFrom = &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: src.ConfigMapKeyRef.Name,
+						},
+						Key: src.ConfigMapKeyRef.Key,
+					},
+				}
+
+			default:
+				ev.Value = src.Value
+			}
+
+			d.Spec.Template.Spec.Containers[0].Env = append(
+				d.Spec.Template.Spec.Containers[0].Env, ev)
+		}
+	}
+
+	// EnvFrom
+	if len(spec.EnvFrom) > 0 {
+		d.Spec.Template.Spec.Containers[0].EnvFrom = []corev1.EnvFromSource{}
+		for _, src := range spec.EnvFrom {
+			if src.ConfigMapRef != "" {
+				d.Spec.Template.Spec.Containers[0].EnvFrom = append(
+					d.Spec.Template.Spec.Containers[0].EnvFrom,
+					corev1.EnvFromSource{
+						ConfigMapRef: &corev1.ConfigMapEnvSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: src.ConfigMapRef,
+							},
+						},
+					},
+				)
+			}
+			if src.SecretRef != "" {
+				d.Spec.Template.Spec.Containers[0].EnvFrom = append(
+					d.Spec.Template.Spec.Containers[0].EnvFrom,
+					corev1.EnvFromSource{
+						SecretRef: &corev1.SecretEnvSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: src.SecretRef,
+							},
+						},
+					},
+				)
+			}
+		}
+	}
+
 	return d
 }
 

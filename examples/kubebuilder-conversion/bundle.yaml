@@ -220,7 +220,7 @@ data:
             status:
               fields:
                 - path: phase
-                  value: "{{ ternary .spec.suspend \"Suspended\" \"Active\" }}"
+                  value: "{{ boolTernary  .spec.suspend \"Suspended\" \"Active\" }}"
 
                 # Reconstruct the human-readable cron expression for display
                 # This is what kubectl get cj shows in the Schedule column
@@ -300,7 +300,7 @@ data:
             status:
               fields:
                 - path: phase
-                  value: "{{ ternary .spec.suspend \"Suspended\" \"Active\" }}"
+                  value: "{{ boolTernary  .spec.suspend \"Suspended\" \"Active\" }}"
                 - path: scheduleExpression
                   value: "{{ .spec.schedule }}"
                 - path: image

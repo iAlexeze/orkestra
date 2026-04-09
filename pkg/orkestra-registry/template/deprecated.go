@@ -7,7 +7,6 @@ import (
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
-// 
 // Deprecated. Now handled from pkg/types/when to avoid repetition
 func evaluateOneCondition(data map[string]interface{}, cond orktypes.Condition) bool {
 	fieldVal := resolveNestedField(data, cond.Field)
@@ -108,7 +107,6 @@ func resolveConditionOp(c orktypes.Condition) (orktypes.ConditionOperator, strin
 	}
 	return orktypes.ConditionExists, ""
 }
-
 
 func parseNumeric(s string) (float64, error) {
 	var f float64

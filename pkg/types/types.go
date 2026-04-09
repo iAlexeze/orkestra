@@ -170,6 +170,34 @@ type ResourceRequirements struct {
 	Limits   map[string]string `yaml:"limits" json:"limits,omitempty" validate:"omitempty"`
 }
 
+// EnvVarSource represents a single environment variable value source.
+// Only one of Value, SecretKeyRef, or ConfigMapKeyRef should be set.
+// Values are static strings — template expressions are not supported.
+type EnvVarSource struct {
+	Value           string           `yaml:"value,omitempty" json:"value,omitempty"`
+	SecretKeyRef    *SecretKeyRef    `yaml:"secretKeyRef,omitempty" json:"secretKeyRef,omitempty"`
+	ConfigMapKeyRef *ConfigMapKeyRef `yaml:"configMapKeyRef,omitempty" json:"configMapKeyRef,omitempty"`
+}
+
+type EnvFromSource struct {
+	ConfigMapRef string `yaml:"configMapRef,omitempty" json:"configMapRef,omitempty"`
+	SecretRef    string `yaml:"secretRef,omitempty" json:"secretRef,omitempty"`
+}
+
+// SecretKeyRef selects a key from a Kubernetes Secret.
+// Both Name and Key are required.
+type SecretKeyRef struct {
+	Name string `yaml:"name" json:"name"`
+	Key  string `yaml:"key" json:"key"`
+}
+
+// ConfigMapKeyRef selects a key from a Kubernetes ConfigMap.
+// Both Name and Key are required.
+type ConfigMapKeyRef struct {
+	Name string `yaml:"name" json:"name"`
+	Key  string `yaml:"key" json:"key"`
+}
+
 // ── Hook template source types — flat format ────────────────────────
 //
 // All template source types use a single flat field layout.
@@ -286,6 +314,19 @@ type DeploymentTemplateSource struct {
 	// Values are static Kubernetes quantity strings.
 	// Template expressions are not supported in resource quantities.
 	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
+
+	// Env — environment variables for the primary container.
+	// Keys are env var names. Values support template expressions.
+	// Example:
+	//   env:
+	//     REGION: "{{ .item }}"
+	//     DB_HOST: "{{ .cross.db.status.endpoint }}"
+	//
+	// If omitted, no environment variables are added.
+	// Env map[string]string `yaml:"env" json:"env,omitempty" validate:"omitempty"`
+	Env map[string]EnvVarSource `yaml:"env" json:"env,omitempty"`
+
+	EnvFrom []EnvFromSource `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
 
 	// Reconcile: true — also apply this declaration as drift correction on every
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
