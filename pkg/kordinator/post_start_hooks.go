@@ -189,7 +189,7 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 			if len(k.informerFactory.Missing()) == 0 && k.allCRDsStarted() {
 				k.allOnline.Store(true)
 				k.orkHealth.SetKatalogReady()
-				logger.Info().Msg("retry loop: all CRDs active")
+				logger.Debug().Msg("retry loop: all CRDs active")
 			}
 
 			// Exponential backoff only when CRDs are still missing

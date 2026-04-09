@@ -9,6 +9,27 @@ import (
 	"github.com/ialexeze/orkestra/pkg/utils"
 )
 
+// startupHandler — GET /startup
+// Returns 200 once the controller has fully started, 503 while still booting.
+// Standard Kubernetes startup probe endpoint.
+// Prevents liveness/readiness from running until the process is initialized.
+func (h *HealthServer) startupHandler(w http.ResponseWriter, r *http.Request) {
+    if !h.StartupComplete() {
+        utils.WriteJSON(w, http.StatusServiceUnavailable, map[string]interface{}{
+            "status":  "starting",
+            "service": h.client,
+        })
+        return
+    }
+
+    utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+        "status":  "started",
+        "service": h.client,
+        "uptime":  h.Uptime(),
+        "started": h.startTime.Format(time.RFC3339),
+    })
+}
+
 // healthHandler — GET /health
 // Returns 200 when the controller is healthy, 500 when not.
 // Standard Kubernetes liveness probe endpoint.

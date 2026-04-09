@@ -30,9 +30,10 @@ type HealthServer struct {
 	hookMux *http.ServeMux
 
 	// startup probes
-	started atomic.Bool
+	started atomic.Bool		// for orkestra internal startup probes
 	healthy atomic.Bool
 	ready   atomic.Bool
+	startup atomic.Bool		// for kubernetes startup probes
 
 	httpPort  string
 	httpsPort string
@@ -160,9 +161,11 @@ func (h *HealthServer) Start(ctx context.Context) error {
 
 	// health + ready + metrics on HTTP
 	if strings.ToLower(h.logLevel) == "debug" {
+		h.mux.Handle("/startup", h.logRoutesMiddleware(http.HandlerFunc(h.startupHandler)))
 		h.mux.Handle("/health", h.logRoutesMiddleware(http.HandlerFunc(h.healthHandler)))
 		h.mux.Handle("/ready", h.logRoutesMiddleware(http.HandlerFunc(h.readyHandler)))
 	} else {
+		h.mux.HandleFunc("/startup", h.startupHandler)
 		h.mux.HandleFunc("/health", h.healthHandler)
 		h.mux.HandleFunc("/ready", h.readyHandler)
 	}
@@ -176,6 +179,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 	h.started.Store(true)
 	h.healthy.Store(true)
 
+	// HTTP server
 	go func() {
 		logger.Info().Str("port", h.httpPort).Msg("health server listening")
 		if err := h.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -276,6 +280,14 @@ func (h *HealthServer) Start(ctx context.Context) error {
 		}
 	}
 
+	// At this point:
+    // - HTTP server goroutine is running (or starting)
+    // - HTTPS server goroutine is running if needed
+    // - health/ready flags are true
+    // We now declare startup complete.
+    h.SetStartupComplete()
+
+	h.ready.Store(true)
 	return nil
 }
 
@@ -315,6 +327,14 @@ func (h *HealthServer) Shutdown(ctx context.Context) {
 
 func (h *HealthServer) Name() string {
 	return h.name
+}
+
+func (h *HealthServer) StartupComplete() bool {
+    return h.startup.Load()
+}
+
+func (h *HealthServer) SetStartupComplete() {
+    h.startup.Store(true)
 }
 
 func (h *HealthServer) SetReady() {

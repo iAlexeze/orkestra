@@ -21,7 +21,7 @@ spec:
       serviceAccountName: orkestra
       containers:
         - name: orkestra
-          image: ghcr.io/orkspace/orkestra:stable
+          image: ghcr.io/orkspace/orkestra:startup
           imagePullPolicy: Always
           args:
             - run
@@ -58,6 +58,12 @@ spec:
             - name: webhook
               containerPort: 8443
               protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /startup
+              port: health
+            failureThreshold: 30
+            periodSeconds: 2
           livenessProbe:
             httpGet:
               path: /health
@@ -123,18 +129,18 @@ metadata:
   name: orkestra-cc
   namespace: orkestra-system
   labels:
-    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/name: orkestra-cc
     app.kubernetes.io/component: control-center
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: orkestra
+      app.kubernetes.io/name: orkestra-cc
       app.kubernetes.io/component: control-center
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: orkestra
+        app.kubernetes.io/name: orkestra-cc
         app.kubernetes.io/component: control-center
     spec:
       serviceAccountName: orkestra-cc
@@ -199,7 +205,7 @@ metadata:
   name: orkestra-cc
   namespace: orkestra-system
   labels:
-    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/name: orkestra-cc
     app.kubernetes.io/component: control-center
 spec:
   selector:

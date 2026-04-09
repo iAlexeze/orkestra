@@ -1,34 +1,55 @@
 # Changelog
 
-## [Unreleased] 
-
-### Fixed
-- **Dependency Kordinator blocking on `healthy` condition**  
-  The main startup loop no longer blocks when a CRD requires a dependency to be `healthy`. CRDs that are not immediately ready are deferred and activated later by the background retry loop, eliminating starvation of alphabetically later CRDs in the same topological tier.
-
-- **UI timestamp display**  
-  `StartedAgo` and `LastReconcileAgo` now correctly display relative times. Backend timestamps were changed from a custom format to RFC3339, ensuring reliable parsing in the frontend.
+## [Unreleased] — The Day Orkestra Grew Up*
 
 ### Added
-- **External API call metrics**  
-  - `orkestra_external_calls_total` – counts calls by CRD, name, URL, and result (success/error).  
-  - `orkestra_external_call_duration_seconds` – histogram of external call latency.  
-  - `orkestra_external_call_errors_total` – counts errors by error type.  
-  These metrics provide deep visibility into operator dependencies on external services.
+- Introduced a **/startup probe** to cleanly separate:
+  - process initialization  
+  - readiness for traffic  
+  - long‑term health  
+- Added `startup` atomic flag to `HealthServer` with `StartupComplete()` and `SetStartupComplete()` helpers.
+- Added `/startup` HTTP route with JSON responses matching `/health` and `/ready`.
+- Added consistent logging and middleware support for `/startup`.
 
 ### Changed
-- **Timestamp formatting for health endpoints**  
-  `StartedAt()` and `LastReconcileAt()` now return UTC timestamps in RFC3339 format (`2026-04-08T21:46:11Z`) for consistent machine parsing.
+- **Readiness is no longer tied to the Kordinator or leadership state.**  
+  Orkestra now becomes Ready as soon as:
+  - health server is listening  
+  - webhook server (if enabled) is listening  
+  - TLS certs are loaded  
+- Leadership election now runs **after** Orkestra is Ready, via a post‑start hook.
+- Followers are now **always Ready**, ensuring:
+  - stable webhook endpoints  
+  - multi‑Pod availability  
+  - smooth leadership transitions  
+- Kordinator health is now reflected only in `/health` and internal Orkestra health, not readiness.
+
+### Fixed
+- Resolved a long‑standing circular dependency:
+  - Pod not Ready → no endpoints  
+  - no endpoints → webhook unreachable  
+  - webhook unreachable → informers fail  
+  - informers fail → workers never start  
+  - workers never start → Pod never becomes Ready  
+- Fixed scenario where only the leader Pod ever reached Ready state.
+- Fixed conversion webhook failures caused by missing endpoints during startup.
+- Fixed premature finalizer removal during leadership transitions (the “Missing Finalizer” bug).
 
 ### Improved
-- **Health state consistency**  
-  CRD health now correctly reflects `degraded` state when dependencies are unhealthy or missing. Dependents continue running in a degraded mode rather than blocking.
+- Orkestra’s lifecycle is now fully aligned with Kubernetes best practices:
+  - `/startup` gates initialization  
+  - `/ready` controls traffic routing  
+  - `/health` reflects internal orchestration state  
+- Leadership is now treated as a **role**, not a readiness condition.
+- Kordinator startup is now deterministic and no longer blocked by readiness.
+- Dependency graph orchestration is more stable during Pod churn and restarts.
 
-- **Retry loop enhancements**  
-  Phase 3 added to periodically evaluate deferred CRDs (skipped at startup due to unsatisfied dependencies). Activation occurs immediately once conditions are met.
+### Notes
+This release represents a major conceptual refinement:
 
-### Tested
-- **End‑to‑end validation**  
-  Verified startup order with mixed `started` and `healthy` dependencies, runtime CRD deletion/recreation, and external API call metric emission. All scenarios behave as expected.
+> **Orkestra is the runtime.  
+> The Konductor is the elected leader.  
+> The Kordinator is the orchestrator.  
+> Kubernetes only sees Orkestra.**
 
----
+This separation of concerns dramatically improves reliability, startup behavior, and multi‑Pod orchestration.
