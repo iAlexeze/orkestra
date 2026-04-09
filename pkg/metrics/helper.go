@@ -56,20 +56,3 @@ func RecordMutationTotal(crd string) {
 func RecordMutationFieldDetail(crd, field, mutationType string) {
 	mutationAppliedDetail.WithLabelValues(crd, field, mutationType).Inc()
 }
-
-// RecordExternalCall is a convenience helper for recording metrics after an external call.
-func RecordExternalCall(crd, name, url string, durationSeconds float64, err string, statusCode int) {
-	if err != "" {
-		externalCallsTotal.WithLabelValues(crd, name, url, "error").Inc()
-		errorType := "unknown"
-		if statusCode > 0 {
-			errorType = "http_" + string(rune(statusCode))
-		} else {
-			errorType = "network"
-		}
-		externalCallErrors.WithLabelValues(crd, name, url, errorType).Inc()
-	} else {
-		externalCallsTotal.WithLabelValues(crd, name, url, "success").Inc()
-	}
-	externalCallDuration.WithLabelValues(crd, name, url).Observe(durationSeconds)
-}

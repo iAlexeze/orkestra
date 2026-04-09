@@ -44,6 +44,22 @@ func NewResolver(ctx context.Context, obj domain.Object) (*Resolver, error) {
 		return nil, fmt.Errorf("template.NewResolver: %w", err)
 	}
 
+	// Basic defaults -> workaround for now until full implementation
+	data["git"] = map[string]interface{}{
+		"called":  "false",
+		"commit":  "",
+		"changed": "false",
+		"path":    "",
+		"error":   "",
+	}
+
+	data["docker"] = map[string]interface{}{
+		"called":         "false",
+		"image":          "",
+		"buildSucceeded": "false",
+		"error":          "",
+	}
+
 	return &Resolver{
 		data:           data,
 		ownerName:      obj.GetName(),

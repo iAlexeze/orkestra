@@ -363,6 +363,11 @@ type DeploymentTemplateSource struct {
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// WorkingDirectory sets the container's working directory (container.WorkingDir).
+	// Useful for Git-backed pipelines where build/test commands must run inside
+	// a checked-out repository path.
+	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -612,6 +617,11 @@ type JobTemplateSource struct {
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// WorkingDirectory sets the container's working directory (container.WorkingDir).
+	// Useful for Git-backed pipelines where build/test commands must run inside
+	// a checked-out repository path.
+	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
 }
 
 // ── CronJob ───────────────────────────────────────────────────────────────────
@@ -697,6 +707,11 @@ type CronJobTemplateSource struct {
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// WorkingDirectory sets the container's working directory (container.WorkingDir).
+	// Useful for Git-backed pipelines where build/test commands must run inside
+	// a checked-out repository path.
+	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
 }
 
 // ── ConfigMap ─────────────────────────────────────────────────────────────────
@@ -1027,6 +1042,26 @@ type HookTemplates struct {
 	// External declares HTTP calls to make before resource creation.
 	// Results available as .external.<n>.status, .body, .error
 	External []ExternalCallSpec `yaml:"external,omitempty" json:"external,omitempty"`
+
+	// Git declares optional Git-backed reconcile behaviour for this CRD.
+	//
+	// When configured, Orkestra:
+	//   - Maintains a local working copy of the repository.
+	//   - Periodically checks the target branch for new commits.
+	//   - Enqueues reconciles for all CRs of this type when the branch tip changes.
+	//
+	// This enables declarative, in-cluster CI/CD pipelines where Git acts
+	// as the source of pipeline logic and the CRs provide parameters.
+	//
+	// When omitted, reconcile behaviour is unchanged and no Git traffic
+	// is generated for this CRD.
+	Git *GitHookSpec `yaml:"git,omitempty" json:"git,omitempty"`
+
+	// Docker declares optional Docker-backed reconcile behaviour for this CRD.
+	//
+	// When configured
+	//	- Builds and optionally pushes a docker image
+	Docker *DockerHookSpec `yaml:"docker,omitempty" json:"docker,omitempty"`
 
 	// TODO: find a better location for it
 	// Ordered controls whether deletion happens sequentially with verification.

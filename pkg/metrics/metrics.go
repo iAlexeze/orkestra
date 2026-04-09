@@ -417,30 +417,3 @@ var mutationAppliedDetail = promauto.NewCounterVec(
 	},
 	[]string{"crd", "field", "type"},
 )
-
-var (
-	externalCallsTotal = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "orkestra_external_calls_total",
-			Help: "Total number of external API calls made by the reconciler.",
-		},
-		[]string{"crd", "name", "url", "result"}, // result: "success", "error"
-	)
-
-	externalCallDuration = promauto.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "orkestra_external_call_duration_seconds",
-			Help:    "Duration of external API calls.",
-			Buckets: prometheus.DefBuckets,
-		},
-		[]string{"crd", "name", "url"},
-	)
-
-	externalCallErrors = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "orkestra_external_call_errors_total",
-			Help: "Total number of external API call errors, labelled by error type.",
-		},
-		[]string{"crd", "name", "url", "error_type"},
-	)
-)

@@ -1,0 +1,15 @@
+apiVersion: cicd.orkestra.io/v1alpha1
+kind: Pipeline
+metadata:
+  name: webapp-node
+spec:
+  git:
+    repo: "https://github.com/iAlexeze/ork-playground.git"
+    branch: "main"
+  language: "node"
+  build:
+    dockerfile: "Dockerfile.node"
+  deploy:
+    enabled: false
+  region: "ap-south-1"
+  imageRegistry: "ialexeze/webapp-node"

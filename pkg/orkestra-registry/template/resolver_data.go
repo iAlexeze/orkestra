@@ -169,6 +169,81 @@ func (r *Resolver) WithCross(data map[string]interface{}) *Resolver {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// WithGit — Git hook result injection
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// WithGit returns a new Resolver with Git hook results injected under
+// the "git" key. Used after runGit completes.
+//
+// The Git block is a generic bag of fields produced by the Git hook.
+// Typical fields:
+//
+//	.git.commit    — current HEAD commit hash
+//	.git.changed   — "true" if commit changed since last reconcile
+//	.git.path      — local working directory path
+//	.git.error     — error message if the Git operation failed
+//	.git.called    — "true" if the Git hook ran at least once
+//
+// Katalogs can gate behavior on these fields:
+//
+//	when:
+//	  - field: git.changed
+//	    equals: "true"
+//
+//	status:
+//	  - path: lastCommit
+//	    value: "{{ .git.commit }}"
+func (r *Resolver) WithGit(data map[string]interface{}) *Resolver {
+	if len(data) == 0 {
+		return r
+	}
+	newData := r.shallowCopy()
+	newData["git"] = data
+	return &Resolver{
+		data:           newData,
+		ownerName:      r.ownerName,
+		ownerNamespace: r.ownerNamespace,
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WithDocker — Docker hook result injection
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// WithDocker returns a new Resolver with Docker hook results injected under
+// the "docker" key. Used after runDocker completes.
+//
+// The Docker block is a generic bag of fields produced by the Docker hook.
+// Typical fields:
+//
+//	.docker.image           — fully qualified image reference (registry/repo:tag)
+//	.docker.buildSucceeded  — "true" if build completed successfully
+//	.docker.error           — error message if build/push failed
+//	.docker.called          — "true" if the Docker hook ran at least once
+//
+// Katalogs can gate behavior and status on these fields:
+//
+//	when:
+//	  - field: docker.buildSucceeded
+//	    equals: "true"
+//
+//	status:
+//	  - path: image
+//	    value: "{{ .docker.image }}"
+func (r *Resolver) WithDocker(data map[string]interface{}) *Resolver {
+	if len(data) == 0 {
+		return r
+	}
+	newData := r.shallowCopy()
+	newData["docker"] = data
+	return &Resolver{
+		data:           newData,
+		ownerName:      r.ownerName,
+		ownerNamespace: r.ownerNamespace,
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // shallowCopy — internal helper
 // ─────────────────────────────────────────────────────────────────────────────
 
