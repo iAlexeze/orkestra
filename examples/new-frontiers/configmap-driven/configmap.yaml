@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payments-service
+  namespace: default
+  labels:
+    orkestra.io/katalog: configmap-manager
+data:
+  image: "nginx:latest"
+  replicas: "2"
+  username: "payments-user"
