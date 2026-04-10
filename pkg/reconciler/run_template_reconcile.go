@@ -37,7 +37,7 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj dom
 
 	// Step 2: cross-CRD observation
 	// Reads from sibling CRD informer caches via r.katalogRegistry — zero API calls.
-	// Must run first so external calls and resources can reference .cross.*
+	// Must run first so git, external calls, and resources can reference .cross.*
 	if len(r.rc.Cross) > 0 {
 		crossData := r.readCross(ctx, obj, r.rc.Cross, resolver)
 		if len(crossData) > 0 {
@@ -45,29 +45,67 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj dom
 		}
 	}
 
-	// Step 3: external HTTP calls
+	// Step 3: Git hook
+	// Runs before external calls so URLs, tokens, and payloads can reference .git.commit,
+	// .git.changed, and .git.path. Git is a declarative precondition for pipelines.
+	if t := r.rc.OnReconcile; t != nil && t.Git != nil {
+		resolver, err = runGit(ctx, r.crd.GVK, resolver, t.Git)
+		if err != nil {
+			return fmt.Errorf("git hook: %w", err)
+		}
+	}
+	if t := r.rc.OnCreate; t != nil && t.Git != nil {
+		resolver, err = runGit(ctx, r.crd.GVK, resolver, t.Git)
+		if err != nil {
+			return fmt.Errorf("git hook: %w", err)
+		}
+	}
+
+	// Step 4: external HTTP calls
+	// Runs after Git so external URLs can embed commit hashes or paths.
 	if t := r.rc.OnReconcile; t != nil && len(t.External) > 0 {
 		resolver, err = runExternal(ctx, r.crd.GVK, resolver, t.External)
 		if err != nil {
 			return fmt.Errorf("external calls: %w", err)
 		}
 	}
+	if t := r.rc.OnCreate; t != nil && len(t.External) > 0 {
+		resolver, err = runExternal(ctx, r.crd.GVK, resolver, t.External)
+		if err != nil {
+			return fmt.Errorf("external calls: %w", err)
+		}
+	}
 
-	// Steps 4+5: onCreate resource groups (update=false)
+	// Step 5: Docker hook
+	// Runs after external so build/push can use tokens or metadata from external calls.
+	if t := r.rc.OnReconcile; t != nil && t.Docker != nil {
+		resolver, err = runDocker(ctx, r.crd.GVK, resolver, t.Docker)
+		if err != nil {
+			return fmt.Errorf("docker hook: %w", err)
+		}
+	}
+	if t := r.rc.OnCreate; t != nil && t.Docker != nil {
+		resolver, err = runDocker(ctx, r.crd.GVK, resolver, t.Docker)
+		if err != nil {
+			return fmt.Errorf("docker hook: %w", err)
+		}
+	}
+
+	// Step 6: onCreate resource groups (update=false)
 	if t := r.rc.OnCreate; t != nil {
 		if err := r.runResourceGroup(ctx, kube, resolver, obj, t, false); err != nil {
 			return err
 		}
 	}
 
-	// Step 6: onReconcile resource groups (update=true)
+	// Step 7: onReconcile resource groups (update=true)
 	if t := r.rc.OnReconcile; t != nil {
 		if err := r.runResourceGroup(ctx, kube, resolver, obj, t, true); err != nil {
 			return err
 		}
 	}
 
-	// Step 7: provider dispatch
+	// Step 8: provider dispatch
 	if len(r.rc.ProviderBlocks) > 0 && r.providerRegistry != nil && r.providerRegistry.Len() > 0 {
 		kubeReader := &kubeReaderAdapter{kube: kube}
 		if err := runProviders(ctx, obj, resolver, r.rc.ProviderBlocks, r.providerRegistry, kubeReader); err != nil {
@@ -88,14 +126,7 @@ func (r *GenericReconciler[T]) runResourceGroup(
 	t *orktypes.HookTemplates,
 	update bool,
 ) error {
-	if err := runDeployments(ctx, kube, resolver, obj,
-		expandForEachDeployments(resolver, t.Deployments), update); err != nil {
-		return err
-	}
-	if err := runServices(ctx, kube, resolver, obj,
-		expandForEachServices(resolver, t.Services), update); err != nil {
-		return err
-	}
+	// Re-ordered because deployments could depend on secrets and configmaps
 	if err := runSecrets(ctx, kube, resolver, obj,
 		expandForEachSecrets(resolver, t.Secrets), update); err != nil {
 		return err
@@ -106,6 +137,14 @@ func (r *GenericReconciler[T]) runResourceGroup(
 	}
 	if err := runServiceAccounts(ctx, kube, resolver, obj,
 		expandForEachServiceAccounts(resolver, t.ServiceAccounts), update); err != nil {
+		return err
+	}
+	if err := runDeployments(ctx, kube, resolver, obj,
+		expandForEachDeployments(resolver, t.Deployments), update); err != nil {
+		return err
+	}
+	if err := runServices(ctx, kube, resolver, obj,
+		expandForEachServices(resolver, t.Services), update); err != nil {
 		return err
 	}
 	if err := runJobs(ctx, kube, resolver, obj,

@@ -1,0 +1,82 @@
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: configmap-manager
+  description: |
+    Demonstration of Orkestra's data-driven operator model.
+    This Katalog attaches behavior to ConfigMaps and derives:
+      - a Secret
+      - a Deployment
+      - a Service
+spec:
+  crds:
+    configmap-manager:
+      apiTypes:
+        kind: ConfigMap
+      labels:
+        - key: orkestra.io/katalog
+          value: configmap-manager
+
+      restrictedNamespaces:
+        - "default"
+        - "demo"
+
+      reconciler:
+        default: true
+
+        onCreate:
+
+          # 1. Secret derived from ConfigMap data
+          secrets:
+            - name: "{{ .metadata.name }}-credentials"
+              once: true
+              rotateAfter: 30d
+              type: Opaque
+              data:
+                username: "{{ .data.username }}"
+                password: "{{ randomAlphanumeric 32 }}"
+
+          # 2. Deployment consuming the Secret
+          deployments:
+            - name: "{{ .metadata.name }}"
+              image: "{{ .data.image }}"
+              replicas: "{{ getIntOr .data.replicas 1 }}"
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}"
+              port: 8080
+              reconcile: true
+
+              # env is a map[string]EnvVarSource
+              env:
+                USERNAME:
+                  secretKeyRef:
+                    name: "{{ .metadata.name }}-credentials"
+                    key: username
+                PASSWORD:
+                  secretKeyRef:
+                    name: "{{ .metadata.name }}-credentials"
+                    key: password
+
+              # envFrom is a list of EnvFromSource (secretRef / configMapRef)
+              # This imports ALL keys from the Secret into the container.
+              envFrom:
+                - secretRef: "{{ .metadata.name }}-credentials"
+
+          # 3. Service exposing the Deployment
+          services:
+            - name: "{{ .metadata.name }}"
+              port: 80
+              targetPort: 8080
+              reconcile: true
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}"
+
+        status:
+          fields:
+            - path: annotations.orkestra.io/phase
+              value: "Ready"
+              when:
+                - field: children.deployment.status.readyReplicas
+                  operator: exists

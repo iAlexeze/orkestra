@@ -231,6 +231,38 @@ Inside `GenericReconciler.Reconcile(ctx, key)`:
          │       OR fetchCrossViaHTTP (cross-binary/cluster fallback)
          │     resolver = resolver.WithCross(crossData)
          │     .cross.database.status.phase now available in all expressions
+         ├── Step 3: runGit(rc.OnReconcile.Git, resolver)
+         │     If a git: block is declared in the Katalog:
+         │       - resolve repo, branch, and path templates
+         │       - clone or fetch the repository into the working directory
+         │       - compute the current commit hash
+         │       - detect whether the commit changed since the last reconcile
+         │       - record metrics (orkestra_git_operations_total, duration, errors)
+         │       resolver = resolver.WithGit({
+         │         commit: "<hash>",
+         │         changed: "true|false",
+         │         path: "<workingDir>",
+         │         error: "<msg>",
+         │         called: "true",
+         │       })
+         │     .git.commit, .git.changed, .git.path, .git.error now available
+         │     All subsequent template expressions and when: conditions can use:
+         │       {{ .git.commit }}, {{ .git.changed }}, {{ .git.path }}
+         ├── Step 4: runDocker(rc.OnReconcile.Docker, resolver)
+         │     If a docker: block is declared in the Katalog:
+         │       - resolve image, workingDirectory, and dockerfile templates
+         │       - perform docker build
+         │       - perform docker push (if push: true)
+         │       - record metrics (orkestra_docker_operations_total, duration, errors)
+         │       resolver = resolver.WithDocker({
+         │         image: "<registry/repo:tag>",
+         │         buildSucceeded: "true|false",
+         │         error: "<msg>",
+         │         called: "true",
+         │       })
+         │     .docker.image, .docker.buildSucceeded, .docker.error now available
+         │     All subsequent template expressions and when: conditions can use:
+         │       {{ .docker.image }}, {{ .docker.buildSucceeded }}
          │
          ├── Step 3: runExternal(rc.OnReconcile.External, resolver)
          │     for each external: call (sequential):

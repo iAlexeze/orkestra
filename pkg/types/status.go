@@ -68,6 +68,8 @@ type StatusFieldSpec struct {
 	// map available to template expressions. This means .status.phase,
 	// .spec.image, .children.job.status.succeeded are all accessible.
 	When []Condition `yaml:"when,omitempty"`
+
+	AnyOf []Condition `yaml:"anyOf,omitempty"`
 }
 
 // MORE NOTES ON StatusFieldSpec

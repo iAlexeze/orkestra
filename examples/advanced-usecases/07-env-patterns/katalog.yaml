@@ -1,0 +1,75 @@
+# Katalog using all env capabilities
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: webapp-env-patterns
+  author: orkspace
+  version: 0.1.0
+  description: >
+    One Katalog that uses your new env, secretKeyRef, configMapKeyRef, and envFrom capabilities
+spec:
+  crds:
+    webapp:
+      apiTypes:
+        group: apps.example.io
+        version: v1alpha1
+        kind: WebApp
+        plural: webapps
+      workers: 2
+      resync: 20s
+
+      validation:
+        rules:
+          - field: spec.image
+            operator: exists
+            action: deny
+
+      reconciler:
+        default: true
+
+        onReconcile:
+          deployments:
+            - name: "{{ .metadata.name }}"
+              image: "{{ .spec.image }}"
+              replicas: "{{ getIntOr .spec.replicas 2 }}"
+              env:
+                REGION:
+                  value: "{{ .spec.region }}"
+                APP_ENV:
+                  value: "{{ getStringOr (mapGet .spec.env \"APP_ENV\") \"prod\" }}"
+                DB_USER:
+                  secretKeyRef:
+                    name: "{{ .spec.database.secretName }}"
+                    key: "{{ .spec.database.userKey }}"
+                DB_PASSWORD:
+                  secretKeyRef:
+                    name: "{{ .spec.database.secretName }}"
+                    key: "{{ .spec.database.passwordKey }}"
+                FEATURE_FLAGS:
+                  configMapKeyRef:
+                    name: "{{ .spec.config.configMapName }}"
+                    key: "{{ .spec.config.flagsKey }}"
+              envFrom:
+                - configMapRef: "{{ .spec.envFrom.configMapRef }}"
+                - secretRef: "{{ .spec.envFrom.secretRef }}"
+
+        status:
+          fields:
+            - path: phase
+              value: "Pending"
+              when:
+                - field: children.deployment.status.readyReplicas
+                  operator: notExists
+            - path: phase
+              value: "Ready"
+              when:
+                - field: children.deployment.status.readyReplicas
+                  greaterThan: 0
+            - path: image
+              value: "{{ containerImage .children.deployment 0 }}"
+            - path: region
+              value: "{{ containerEnv .children.deployment 0 \"REGION\" }}"
+            - path: dbUser
+              value: "{{ containerEnv .children.deployment 0 \"DB_USER\" }}"
+            - path: flagsLoaded
+              value: "{{ containerEnv .children.deployment 0 \"FEATURE_FLAGS\" }}"

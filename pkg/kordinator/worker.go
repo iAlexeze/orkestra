@@ -120,7 +120,7 @@ func (k *Kontroller) processItemForGVK(ctx context.Context, gvk string, item que
 	if err := k.safeReconcile(rec, k.crdHealthMap[gvk], ctx, item.Key, gvk); err != nil {
 		logger.Error().Err(err).Str("gvk", gvk).Str("key", item.Key).Msg("reconcile failed")
 		wq.Queue.AddRateLimited(item)
-		k.failed[gvk]++
+		k.failedReconcile(gvk)
 		return
 	}
 
@@ -222,6 +222,7 @@ func (k *Kontroller) safeReconcile(
 	}
 
 	health.RecordSuccess()
+	k.successReconcile(gvk)
 	metrics.RecordReconcile(gvk, "success")
 	return nil
 }

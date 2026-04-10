@@ -44,6 +44,22 @@ func NewResolver(ctx context.Context, obj domain.Object) (*Resolver, error) {
 		return nil, fmt.Errorf("template.NewResolver: %w", err)
 	}
 
+	// Basic defaults -> workaround for now until full implementation
+	data["git"] = map[string]interface{}{
+		"called":  "false",
+		"commit":  "",
+		"changed": "false",
+		"path":    "",
+		"error":   "",
+	}
+
+	data["docker"] = map[string]interface{}{
+		"called":         "false",
+		"image":          "",
+		"buildSucceeded": "false",
+		"error":          "",
+	}
+
 	return &Resolver{
 		data:           data,
 		ownerName:      obj.GetName(),
@@ -192,6 +208,59 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 	}
 	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
 		return resolved, fmt.Errorf("deployment.annotations: %w", err)
+	}
+
+	// Env resolution
+	if len(src.Env) > 0 {
+		resolved.Env = make(map[string]orktypes.EnvVarSource, len(src.Env))
+		for k, v := range src.Env {
+			ev := orktypes.EnvVarSource{}
+			if v.Value != "" {
+				if ev.Value, err = r.Resolve(v.Value); err != nil {
+					return resolved, fmt.Errorf("deployment.env[%s].value: %w", k, err)
+				}
+			}
+			if v.SecretKeyRef != nil {
+				name, err := r.Resolve(v.SecretKeyRef.Name)
+				if err != nil {
+					return resolved, fmt.Errorf("deployment.env[%s].secretKeyRef.name: %w", k, err)
+				}
+				ev.SecretKeyRef = &orktypes.SecretKeyRef{
+					Name: name,
+					Key:  v.SecretKeyRef.Key, // Key is usually static
+				}
+			}
+			if v.ConfigMapKeyRef != nil {
+				name, err := r.Resolve(v.ConfigMapKeyRef.Name)
+				if err != nil {
+					return resolved, fmt.Errorf("deployment.env[%s].configMapKeyRef.name: %w", k, err)
+				}
+				ev.ConfigMapKeyRef = &orktypes.ConfigMapKeyRef{
+					Name: name,
+					Key:  v.ConfigMapKeyRef.Key,
+				}
+			}
+			resolved.Env[k] = ev
+		}
+	}
+
+	// EnvFrom resolution
+	if len(src.EnvFrom) > 0 {
+		resolved.EnvFrom = make([]orktypes.EnvFromSource, len(src.EnvFrom))
+		for i, ef := range src.EnvFrom {
+			var resolvedEF orktypes.EnvFromSource
+			if ef.ConfigMapRef != "" {
+				if resolvedEF.ConfigMapRef, err = r.Resolve(ef.ConfigMapRef); err != nil {
+					return resolved, fmt.Errorf("deployment.envFrom[%d].configMapRef: %w", i, err)
+				}
+			}
+			if ef.SecretRef != "" {
+				if resolvedEF.SecretRef, err = r.Resolve(ef.SecretRef); err != nil {
+					return resolved, fmt.Errorf("deployment.envFrom[%d].secretRef: %w", i, err)
+				}
+			}
+			resolved.EnvFrom[i] = resolvedEF
+		}
 	}
 
 	return resolved, nil

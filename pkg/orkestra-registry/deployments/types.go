@@ -29,6 +29,10 @@ type ResolvedDeploymentSpec struct {
 	// Annotations — applied to the Deployment.
 	Annotations map[string]string
 
+	// Env — environment variables.
+	Env     map[string]orktypes.EnvVarSource
+	EnvFrom []orktypes.EnvFromSource
+
 	// Resources — CPU and memory requests/limits. nil means no limits set.
 	Resources *orktypes.ResourceRequirements
 }

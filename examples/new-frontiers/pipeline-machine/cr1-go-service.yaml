@@ -1,0 +1,16 @@
+apiVersion: cicd.orkestra.io/v1alpha1
+kind: Pipeline
+metadata:
+  name: webapp-go
+spec:
+  git:
+    repo: "https://github.com/iAlexeze/ork-playground.git"
+    branch: "main"
+    path: "go-service"
+  language: "go"
+  build:
+    dockerfile: "Dockerfile"
+  deploy:
+    enabled: true
+  region: "eu-west-1"
+  imageRegistry: "ialexeze/webapp-go"

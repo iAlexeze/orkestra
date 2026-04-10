@@ -30,10 +30,10 @@ type HealthServer struct {
 	hookMux *http.ServeMux
 
 	// startup probes
-	started atomic.Bool		// for orkestra internal startup probes
+	started atomic.Bool // for orkestra internal startup probes
 	healthy atomic.Bool
 	ready   atomic.Bool
-	startup atomic.Bool		// for kubernetes startup probes
+	startup atomic.Bool // for kubernetes startup probes
 
 	httpPort  string
 	httpsPort string
@@ -281,11 +281,11 @@ func (h *HealthServer) Start(ctx context.Context) error {
 	}
 
 	// At this point:
-    // - HTTP server goroutine is running (or starting)
-    // - HTTPS server goroutine is running if needed
-    // - health/ready flags are true
-    // We now declare startup complete.
-    h.SetStartupComplete()
+	// - HTTP server goroutine is running (or starting)
+	// - HTTPS server goroutine is running if needed
+	// - health/ready flags are true
+	// We now declare startup complete.
+	h.SetStartupComplete()
 
 	h.ready.Store(true)
 	return nil
@@ -330,11 +330,11 @@ func (h *HealthServer) Name() string {
 }
 
 func (h *HealthServer) StartupComplete() bool {
-    return h.startup.Load()
+	return h.startup.Load()
 }
 
 func (h *HealthServer) SetStartupComplete() {
-    h.startup.Store(true)
+	h.startup.Store(true)
 }
 
 func (h *HealthServer) SetReady() {

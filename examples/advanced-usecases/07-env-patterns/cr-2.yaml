@@ -1,0 +1,16 @@
+# CR #2 — SecretKeyRef + ConfigMapKeyRef
+apiVersion: apps.example.io/v1alpha1
+kind: WebApp
+metadata:
+  name: webapp-secrets-config
+spec:
+  image: myorg/webapp:1.0.0
+  replicas: 3
+  region: eu-west-1
+  database:
+    secretName: webapp-db-creds
+    userKey: username
+    passwordKey: password
+  config:
+    configMapName: webapp-flags
+    flagsKey: flags.json

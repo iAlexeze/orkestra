@@ -158,3 +158,19 @@ func (k *Kontroller) errorRate(gvk string) float64 {
 
 	return float64(k.failed[gvk] / k.total[gvk])
 }
+
+// Handle failure writes for concurrency
+func (k *Kontroller) failedReconcile(gvk string) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	k.failed[gvk]++
+}
+
+// Handle success writes for concurrency
+func (k *Kontroller) successReconcile(gvk string) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	k.total[gvk]++
+}

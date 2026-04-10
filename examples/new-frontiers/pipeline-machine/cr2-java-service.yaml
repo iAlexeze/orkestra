@@ -1,0 +1,16 @@
+apiVersion: cicd.orkestra.io/v1alpha1
+kind: Pipeline
+metadata:
+  name: webapp-java
+spec:
+  git:
+    repo: "https://github.com/iAlexeze/ork-playground.git"
+    branch: "main"
+    path: "java-service"
+  language: "java"
+  build:
+    dockerfile: "Dockerfile.java"
+  deploy:
+    enabled: true
+  region: "us-east-1"
+  imageRegistry: "ialexeze/webapp-java"

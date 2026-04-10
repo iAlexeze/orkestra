@@ -1,7 +1,6 @@
 package template
 
 import (
-
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
@@ -16,4 +15,3 @@ func evaluateConditions(data map[string]interface{}, conditions []orktypes.Condi
 	}
 	return true
 }
-
