@@ -126,14 +126,7 @@ func (r *GenericReconciler[T]) runResourceGroup(
 	t *orktypes.HookTemplates,
 	update bool,
 ) error {
-	if err := runDeployments(ctx, kube, resolver, obj,
-		expandForEachDeployments(resolver, t.Deployments), update); err != nil {
-		return err
-	}
-	if err := runServices(ctx, kube, resolver, obj,
-		expandForEachServices(resolver, t.Services), update); err != nil {
-		return err
-	}
+	// Re-ordered because deployments could depend on secrets and configmaps
 	if err := runSecrets(ctx, kube, resolver, obj,
 		expandForEachSecrets(resolver, t.Secrets), update); err != nil {
 		return err
@@ -144,6 +137,14 @@ func (r *GenericReconciler[T]) runResourceGroup(
 	}
 	if err := runServiceAccounts(ctx, kube, resolver, obj,
 		expandForEachServiceAccounts(resolver, t.ServiceAccounts), update); err != nil {
+		return err
+	}
+	if err := runDeployments(ctx, kube, resolver, obj,
+		expandForEachDeployments(resolver, t.Deployments), update); err != nil {
+		return err
+	}
+	if err := runServices(ctx, kube, resolver, obj,
+		expandForEachServices(resolver, t.Services), update); err != nil {
 		return err
 	}
 	if err := runJobs(ctx, kube, resolver, obj,

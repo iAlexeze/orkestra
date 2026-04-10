@@ -183,6 +183,8 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 		Resources:   src.Resources,
 		Labels:      make(map[string]string),
 		Annotations: make(map[string]string),
+		Env:         make(map[string]orktypes.EnvVarSource),
+		EnvFrom:     src.EnvFrom,
 	}
 
 	// Default name
@@ -217,6 +219,11 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 		spec.Annotations[a.Key] = a.Value
 	}
 
+	// Copy Env map
+	for k, v := range src.Env {
+		spec.Env[k] = v
+	}
+
 	// Orkestra system labels — always added
 	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
 	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
@@ -227,6 +234,12 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace string) *appsv1.Deployment {
+	// Debug line
+	logger.Info().
+		Interface("env", spec.Env).
+		Interface("envFrom", spec.EnvFrom).
+		Msg("deployment.buildDeployment")
+
 	replicas := spec.Replicas
 
 	d := &appsv1.Deployment{
@@ -358,6 +371,12 @@ func validateSpec(spec ResolvedDeploymentSpec) error {
 	}
 	if spec.Image == "" {
 		missing = append(missing, "image")
+	}
+	if spec.Env == nil {
+		spec.Env = map[string]orktypes.EnvVarSource{}
+	}
+	if spec.EnvFrom == nil {
+		spec.EnvFrom = []orktypes.EnvFromSource{}
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("missing required fields: %v", missing)
