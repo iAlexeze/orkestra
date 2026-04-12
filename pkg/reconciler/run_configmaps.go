@@ -39,15 +39,21 @@ func runConfigMaps(
 		// 1. Evaluate conditions BEFORE resolving templates
 		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf)
 
+		// Early name/ns resolution — needed for guard check and DeleteIfOwned cleanup.
+		// ResolveConfigMapTemplate resolves these again internally — intentional, cheap.
+		name, _ := resolver.Resolve(src.Name)
+		ns, _ := resolver.Resolve(src.Namespace)
+		if ns == "" {
+			ns = owner.GetNamespace()
+		}
+
+		// ── Namespace guard ───────────────────────────────────────────────────
+		if guard != nil && !guard(ctx, owner, ns) {
+			continue // skipped — CheckNamespace already logged the reason
+		}
+
 		if !conditionPassed {
-			if update || src.Reconcile { // ← src.Reconcile here too to show that this resource is continuously managed
-				// If conditions change, it should also affect it
-				// Condition no longer passes — delete if owned by this CR
-				name, _ := resolver.Resolve(src.Name)
-				ns, _ := resolver.Resolve(src.Namespace)
-				if ns == "" {
-					ns = owner.GetNamespace()
-				}
+			if update || src.Reconcile {
 				if err := orkcm.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
 					return fmt.Errorf("configMaps[%d]: conditional cleanup: %w", i, err)
 				}
@@ -69,32 +75,28 @@ func runConfigMaps(
 		// 3. Build registry spec and apply
 		spec := orkcm.Resolve(resolved, resolver.OwnerName())
 
-		// toNamespaces — copy to multiple namespaces at once
+		// toNamespaces — distribute to multiple namespaces, guarded per target
 		if len(resolved.ToNamespaces) > 0 {
 			namespaces, err := resolver.ResolveStringSlice(resolved.ToNamespaces)
 			if err != nil {
 				return fmt.Errorf("configmaps[%d].toNamespaces: %w", i, err)
 			}
 
-			if update {
-				for _, ns := range namespaces {
-					nsSpec := spec
-					nsSpec.Namespace = ns
+			shouldSync := update || src.Reconcile
+			for _, targetNs := range namespaces {
+				// Guard per target namespace — skip restricted, continue to allowed
+				if guard != nil && !guard(ctx, owner, targetNs) {
+					continue
+				}
+				nsSpec := spec
+				nsSpec.Namespace = targetNs
+				if shouldSync {
 					if err := orkcm.Update(ctx, kube, owner, nsSpec); err != nil {
-						return fmt.Errorf("configmaps[%d].update namespace=%s: %w", i, ns, err)
+						return fmt.Errorf("configmaps[%d].update namespace=%s: %w", i, targetNs, err)
 					}
-				}
-			} else {
-				if err := orkcm.CopyToNamespaces(ctx, kube, owner, spec, namespaces); err != nil {
-					return fmt.Errorf("configmaps[%d].copyToNamespaces: %w", i, err)
-				}
-				if src.Reconcile {
-					for _, ns := range namespaces {
-						nsSpec := spec
-						nsSpec.Namespace = ns
-						if err := orkcm.Update(ctx, kube, owner, nsSpec); err != nil {
-							return fmt.Errorf("configmaps[%d].reconcile namespace=%s: %w", i, ns, err)
-						}
+				} else {
+					if err := orkcm.Create(ctx, kube, owner, nsSpec); err != nil {
+						return fmt.Errorf("configmaps[%d].create namespace=%s: %w", i, targetNs, err)
 					}
 				}
 			}

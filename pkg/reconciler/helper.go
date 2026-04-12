@@ -73,7 +73,7 @@ func (r *GenericReconciler[T]) ensureFinalizers(ctx context.Context, obj T) erro
 
 	needsUpdate := false
 	for _, f := range r.crd.ReconcilerConfig.Finalizers {
-		if !ContainsFinalizer(obj, f) {
+		if !ContainsFinalizer(obj, f) && r.crd.RemoveFinalizers { // Added for testing -> could be useful in future
 			needsUpdate = true
 			break
 		}

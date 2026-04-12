@@ -34,14 +34,20 @@ func runServiceAccounts(
 		// 1. Evaluate conditions BEFORE resolving templates
 		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf)
 
+		// Early name/ns resolution — needed for guard check and DeleteIfOwned cleanup.
+		name, _ := resolver.Resolve(src.Name)
+		ns, _ := resolver.Resolve(src.Namespace)
+		if ns == "" {
+			ns = owner.GetNamespace()
+		}
+
+		// ── Namespace guard ───────────────────────────────────────────────────
+		if guard != nil && !guard(ctx, owner, ns) {
+			continue // skipped — CheckNamespace already logged the reason
+		}
+
 		if !conditionPassed {
-			if update || src.Reconcile { // ← src.Reconcile here too to show that this resource is continuously managed
-				// Condition no longer passes — delete if owned by this CR
-				name, _ := resolver.Resolve(src.Name)
-				ns, _ := resolver.Resolve(src.Namespace)
-				if ns == "" {
-					ns = owner.GetNamespace()
-				}
+			if update || src.Reconcile {
 				if err := orksa.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
 					return fmt.Errorf("serviceAccounts[%d]: conditional cleanup: %w", i, err)
 				}

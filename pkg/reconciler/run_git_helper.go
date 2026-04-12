@@ -9,8 +9,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	// "github.com/ialexeze/orkestra/pkg/logger"
+
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+const annotationLastCommit = "orkestra.konductor.io/last-commit"
 
 type GitOperationResult struct {
 	Operation string // "clone" | "fetch"
@@ -26,12 +31,13 @@ type GitOperationResult struct {
 //   - If the working directory does not exist → clone
 //   - If it exists → fetch + fast-forward
 //   - Reads HEAD commit hash
-//   - Detects whether commit changed since last reconcile
+//   - Detects whether commit changed by comparing to lastCommit
+//
+// lastCommit is the commit hash from the CR annotation set on the previous
+// reconcile. Empty string means first run — changed is always "true".
 //
 // No panics. Always returns a result struct.
-func executeGitOperation(ctx context.Context, repo, branch, path string) GitOperationResult {
-	// log := logger.FromContext(ctx)
-
+func executeGitOperation(ctx context.Context, repo, branch, path, lastCommit string) GitOperationResult {
 	// Ensure working directory exists
 	if err := os.MkdirAll(path, 0o755); err != nil {
 		return GitOperationResult{
@@ -92,18 +98,12 @@ func executeGitOperation(ctx context.Context, repo, branch, path string) GitOper
 
 	commit := strings.TrimSpace(string(commitBytes))
 
-	// Detect change by comparing to last commit file
-	lastFile := filepath.Join(path, ".orkestra_last_commit")
+	// Detect change using the annotation value from the previous reconcile.
+	// Empty lastCommit means first run — always changed.
 	changed := "true"
-
-	if prev, err := os.ReadFile(lastFile); err == nil {
-		if strings.TrimSpace(string(prev)) == commit {
-			changed = "false"
-		}
+	if lastCommit != "" && strings.TrimSpace(lastCommit) == commit {
+		changed = "false"
 	}
-
-	// Write new commit
-	_ = os.WriteFile(lastFile, []byte(commit), 0o644)
 
 	return GitOperationResult{
 		Operation: operation,
@@ -112,4 +112,19 @@ func executeGitOperation(ctx context.Context, repo, branch, path string) GitOper
 		Path:      path,
 		Error:     "",
 	}
+}
+
+// patchLastCommitAnnotation writes the new commit hash to the CR annotation so
+// the next reconcile can detect whether the repo has changed without reading a
+// file (which is lost on pod restart).
+func patchLastCommitAnnotation(
+	ctx context.Context,
+	kube *kubeclient.Kubeclient,
+	obj domain.Object,
+	gvr schema.GroupVersionResource,
+	commit string,
+) error {
+	return kube.PatchAnnotations(ctx, obj, gvr, map[string]string{
+		annotationLastCommit: commit,
+	})
 }

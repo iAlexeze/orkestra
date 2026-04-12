@@ -147,18 +147,28 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 	if obj.GetDeletionTimestamp() != nil {
 		logger.FromContext(ctx).Info().
 			Str("name", obj.GetName()).
-			Msgf("deletion handler called for %s", r.crd.GVK)
+			Msgf("deletion handler called for %s", r.crd.GVKString())
 
 		r.event.Eventf(obj, corev1.EventTypeNormal, "Deleting",
-			fmt.Sprintf("Deleting %s %s/%s", r.crd.GVK, obj.GetNamespace(), obj.GetName()))
+			fmt.Sprintf("Deleting %s %s/%s", r.crd.GVKString(), obj.GetNamespace(), obj.GetName()))
 
 		return r.handleDeletion(ctx, obj)
 	}
 
-	if err := r.ensureFinalizers(ctx, obj); err != nil {
-		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerError",
-			fmt.Sprintf("Failed to add finalizers: %v", err))
-		return err
+	if !r.crd.RemoveFinalizers {
+		if err := r.ensureFinalizers(ctx, obj); err != nil {
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerError",
+				fmt.Sprintf("Failed to add finalizers: %v", err))
+			return err
+		}
+	} else {
+		logger.FromContext(ctx).Debug().Msgf("removing finalizers for %s", obj.GetName())
+		if err := r.removeFinalizers(ctx, obj); err != nil {
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerRemovalError",
+				fmt.Sprintf("Failed to remove finalizers: %v", err))
+			return err
+		}
+		logger.FromContext(ctx).Debug().Msgf("finalizers removed for %s", obj.GetName())
 	}
 
 	// Ensure managed label and annotations — idempotent, like finalizer patching.
@@ -246,7 +256,7 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 		// No-op — finalizers, events, metrics still handled above.
 		logger.FromContext(ctx).Info().
 			Str("name", obj.GetName()).
-			Msgf("reconciled %s (no-op)", r.crd.GVK)
+			Msgf("reconciled %s (no-op)", r.crd.GVKString())
 		// Status still patched for no-op reconcilers
 	}
 
@@ -259,21 +269,21 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	if err != nil {
 		logger.FromContext(ctx).Error().Err(err).
 			Str("name", obj.GetName()).
-			Msgf("reconciliation failed for %s", r.crd.GVK)
+			Msgf("reconciliation failed for %s", r.crd.GVKString())
 
 		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"ReconcileError",
 			fmt.Sprintf("Failed to reconcile %s %s/%s: %v",
-				r.crd.GVK, obj.GetNamespace(), obj.GetName(), err))
+				r.crd.GVKString(), obj.GetNamespace(), obj.GetName(), err))
 		return err
 	}
 
 	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.APITypes.Kind+"Reconciled",
 		fmt.Sprintf("Successfully reconciled %s %s/%s",
-			r.crd.GVK, obj.GetNamespace(), obj.GetName()))
+			r.crd.GVKString(), obj.GetNamespace(), obj.GetName()))
 
 	logger.FromContext(ctx).Info().
 		Str("name", obj.GetName()).
-		Msgf("reconciled %s", r.crd.GVK)
+		Msgf("reconciled %s", r.crd.GVKString())
 
 	return nil
 }
@@ -282,19 +292,19 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 // restricted and allowed namespace checks for this CRD.
 // Called inside runResourceGroup before dispatching to each resource type.
 func (r *GenericReconciler[T]) namespaceAllowed(
-    ctx context.Context,
-    obj domain.Object,
-    targetNamespace string,
+	ctx context.Context,
+	obj domain.Object,
+	targetNamespace string,
 ) bool {
-    result := CheckNamespace(
-        ctx,
-        obj,
-        targetNamespace,
-        r.crd.RestrictedNamespaces,
-        r.crd.AllowedNamespaces,
-        r.crd.APITypes.Kind,
-    )
-    return result.Allowed
+	result := CheckNamespace(
+		ctx,
+		obj,
+		targetNamespace,
+		r.crd.RestrictedNamespaces,
+		r.crd.AllowedNamespaces,
+		r.crd.APITypes.Kind,
+	)
+	return result.Allowed
 }
 
 // handleDeletion runs cleanup then removes our finalizers.
@@ -325,7 +335,7 @@ func (r *GenericReconciler[T]) handleDeletion(ctx context.Context, obj T) error 
 
 	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.APITypes.Kind+"Deleted",
 		fmt.Sprintf("Successfully deleted %s %s/%s",
-			r.crd.GVK, obj.GetNamespace(), obj.GetName()))
+			r.crd.GVKString(), obj.GetNamespace(), obj.GetName()))
 
 	return nil
 }

@@ -49,13 +49,13 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj dom
 	// Runs before external calls so URLs, tokens, and payloads can reference .git.commit,
 	// .git.changed, and .git.path. Git is a declarative precondition for pipelines.
 	if t := r.rc.OnReconcile; t != nil && t.Git != nil {
-		resolver, err = runGit(ctx, r.crd.GVKString(), resolver, t.Git)
+		resolver, err = runGit(ctx, r.crd.GVKString(), resolver, kube, obj, r.crd.GVR(), t.Git)
 		if err != nil {
 			return fmt.Errorf("git hook: %w", err)
 		}
 	}
 	if t := r.rc.OnCreate; t != nil && t.Git != nil {
-		resolver, err = runGit(ctx, r.crd.GVKString(), resolver, t.Git)
+		resolver, err = runGit(ctx, r.crd.GVKString(), resolver, kube, obj, r.crd.GVR(), t.Git)
 		if err != nil {
 			return fmt.Errorf("git hook: %w", err)
 		}
@@ -127,8 +127,8 @@ func (r *GenericReconciler[T]) runResourceGroup(
 	update bool,
 ) error {
 	// Guard closure — captures r for access to CRD config.
-    // nil-safe: if CRD has no restrictions, guard is a no-op.
-    guard := r.namespaceGuardFunc(ctx, obj)
+	// nil-safe: if CRD has no restrictions, guard is a no-op.
+	guard := r.namespaceGuardFunc(ctx, obj)
 
 	if err := runSecrets(ctx, kube, resolver, obj,
 		expandForEachSecrets(resolver, t.Secrets), update, guard); err != nil {
@@ -151,7 +151,7 @@ func (r *GenericReconciler[T]) runResourceGroup(
 		return err
 	}
 	if err := runJobs(ctx, kube, resolver, obj,
-		expandForEachJobs(resolver, t.Jobs)); err != nil {
+		expandForEachJobs(resolver, t.Jobs), guard); err != nil {
 		return err
 	}
 	if err := runCronJobs(ctx, kube, resolver, obj,
@@ -173,12 +173,14 @@ func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, obj doma
 		return fmt.Errorf("building resolver: %w", err)
 	}
 
+	guard := r.namespaceGuardFunc(ctx, obj)
+
 	if t := r.rc.OnDelete; t != nil {
 		if t.Ordered {
-			return r.runOrderedDelete(ctx, kube, resolver, obj, t)
+			return r.runOrderedDelete(ctx, kube, resolver, obj, t, guard)
 		}
 		if err := runJobs(ctx, kube, resolver, obj,
-			expandForEachJobs(resolver, t.Jobs)); err != nil {
+			expandForEachJobs(resolver, t.Jobs), guard); err != nil {
 			return err
 		}
 	}
@@ -200,13 +202,14 @@ func (r *GenericReconciler[T]) runOrderedDelete(
 	resolver *orktmpl.Resolver,
 	obj domain.Object,
 	t *orktypes.HookTemplates,
+	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
 	log := logger.FromContext(ctx)
 	log.Info().Str("name", obj.GetName()).Msg("ordered delete: starting sequential cleanup")
 
 	if len(t.Jobs) > 0 {
 		jobs := expandForEachJobs(resolver, t.Jobs)
-		if err := runJobs(ctx, kube, resolver, obj, jobs); err != nil {
+		if err := runJobs(ctx, kube, resolver, obj, jobs, guard); err != nil {
 			return fmt.Errorf("ordered delete: cleanup jobs: %w", err)
 		}
 	}

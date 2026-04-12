@@ -1479,6 +1479,9 @@ type CRDEntry struct {
 	// Set validation: false or mutation: false to opt a specific CRD out of
 	// admission-time interception while keeping its reconcile-time enforcement.
 	Webhooks AdmissionWebhookConfig `yaml:"webhooks,omitempty" json:"webhooks,omitempty"`
+
+	// RemoveFinalizers -> testing
+	RemoveFinalizers bool `yaml:"removeFinalizers,omitempty" json:"removeFinalizers,omitempty"`
 }
 
 type ConversionVersionSpec struct {

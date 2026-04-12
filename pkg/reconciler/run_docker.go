@@ -77,22 +77,27 @@ func runDocker(
 	if err != nil {
 		return resolver, fmt.Errorf("docker.dockerfile: %w", err)
 	}
-
 	if dockerfile == "" {
 		dockerfile = "Dockerfile"
+	}
+
+	builder, err := resolver.Resolve(spec.Builder)
+	if err != nil {
+		return resolver, fmt.Errorf("docker.builder: %w", err)
 	}
 
 	log.Debug().
 		Str("image", image).
 		Str("workingDirectory", wd).
 		Str("dockerfile", dockerfile).
+		Str("builder", builder).
 		Msg("docker: starting build")
 
 	// ───────────────────────────────────────────────────────────────
-	// 2. Execute docker build
+	// 2. Execute build
 	// ───────────────────────────────────────────────────────────────
 	start := time.Now()
-	buildResult := executeDockerBuild(ctx, wd, dockerfile, image)
+	buildResult := executeDockerBuild(ctx, wd, dockerfile, image, builder)
 	buildDuration := time.Since(start).Seconds()
 
 	metrics.RecordDockerOperation(gvk, image, "build", buildResult.Error, buildDuration)
@@ -103,6 +108,10 @@ func runDocker(
 			Str("workingDirectory", wd).
 			Str("error", buildResult.Error).
 			Msg("docker: build failed")
+
+		if !spec.ContinueOnError {
+			return resolver, fmt.Errorf("docker: %s", buildResult.Error)
+		}
 	} else {
 		log.Debug().
 			Str("image", image).
@@ -111,7 +120,7 @@ func runDocker(
 	}
 
 	// ───────────────────────────────────────────────────────────────
-	// 3. Optionally push
+	// 3. Optionally push (kaniko pushes during build — skip for it)
 	// ───────────────────────────────────────────────────────────────
 	if spec.Push && buildResult.Error == "" {
 		log.Debug().
@@ -119,7 +128,7 @@ func runDocker(
 			Msg("docker: pushing image")
 
 		startPush := time.Now()
-		pushResult := executeDockerPush(ctx, image)
+		pushResult := executeDockerPush(ctx, image, builder)
 		pushDuration := time.Since(startPush).Seconds()
 
 		metrics.RecordDockerOperation(gvk, image, "push", pushResult.Error, pushDuration)
@@ -130,6 +139,10 @@ func runDocker(
 				Str("error", pushResult.Error).
 				Msg("docker: push failed")
 			buildResult.Error = pushResult.Error
+
+			if !spec.ContinueOnError {
+				return resolver, fmt.Errorf("docker push: %s", pushResult.Error)
+			}
 		} else {
 			log.Debug().
 				Str("image", image).

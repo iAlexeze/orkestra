@@ -44,6 +44,13 @@ type GitHookSpec struct {
 	//   • Useful for one-time initialization.
 	Reconcile bool `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
 
+	// ContinueOnError controls behaviour when the Git operation fails.
+	//
+	// false (default) — Git failure returns an error and halts reconciliation.
+	// true            — Git failure injects .git.error but reconciliation continues.
+	//                   Subsequent when: conditions on git.changed will not fire.
+	ContinueOnError bool `yaml:"continueOnError,omitempty" json:"continueOnError,omitempty"`
+
 	// When is an optional list of conditions that must all pass before
 	// this field is written. If absent or empty, the field is always written.
 	//

@@ -35,10 +35,26 @@ func runJobs(
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.JobTemplateSource,
+	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
 	for i, src := range srcs {
 		// 1. Evaluate conditions BEFORE resolving templates
 		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf)
+
+		// Early name/ns resolution — needed for guard check.
+		// Jobs are terminal (no DeleteIfOwned on condition fail), but guard
+		// still prevents creating jobs in restricted namespaces.
+		name, _ := resolver.Resolve(src.Name)
+		_ = name // resolved for guard; ResolveJobTemplate re-resolves internally
+		ns, _ := resolver.Resolve(src.Namespace)
+		if ns == "" {
+			ns = owner.GetNamespace()
+		}
+
+		// ── Namespace guard ───────────────────────────────────────────────────
+		if guard != nil && !guard(ctx, owner, ns) {
+			continue // skipped — CheckNamespace already logged the reason
+		}
 
 		if !conditionPassed {
 			logger.FromContext(ctx).Debug().

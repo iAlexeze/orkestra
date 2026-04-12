@@ -60,17 +60,21 @@ var skipStatusSubresourceGVKs = []string{
 
 	// events.k8s.io
 	"events.k8s.io/v1/Event",
+
+	// Jobs
+	"batch/v1/Job",
+	"batch/v1/CronJob",
 }
 
 // Export methods
 // -----------------------------------------------------------------------------
 
-// SkipObservedGeneration returns a list of resources by GVK to be skipped during generation checks.
-func (k *Katalog) SkipObservedGeneration() []string {
-	return skipObservedGenerationGVKs
-}
+// // SkipObservedGeneration returns a list of resources by GVK to be skipped during generation checks.
+// func (k *Katalog) SkipObservedGeneration() []string {
+// 	return skipObservedGenerationGVKs
+// }
 
-// skipStatusSubresourceGVKs returns a list of resources by GVK to be skipped during status patching.
-func (k *Katalog) skipStatusSubresourceGVKs() []string {
-	return skipStatusSubresourceGVKs
-}
+// // skipStatusSubresourceGVKs returns a list of resources by GVK to be skipped during status patching.
+// func (k *Katalog) SkipStatusSubresourceGVKs() []string {
+// 	return skipStatusSubresourceGVKs
+// }
