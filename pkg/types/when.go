@@ -28,7 +28,11 @@
 //	    equals: "Succeeded"
 package types
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/ialexeze/orkestra/pkg/note"
+)
 
 // EvaluateWhen evaluates when: (allOf, AND) and anyOf: (OR) conditions.
 // data is resolver.Data() — full CR map including children, external, cross.
@@ -106,8 +110,43 @@ func EvaluateOneCond(data map[string]interface{}, cond Condition) bool {
 		// Unique operator is only meaningful in validation context
 		// (needs informer access). In when: blocks it always passes.
 		return true
+	case ConditionTypeOf:
+		raw := NavigateRawPath(data, cond.Field) // returns interface{}, not string
+		return note.TypeOf(raw) == expected
 	}
 	return false
+}
+
+// NavigateRawPath walks a dot-notation path through a nested map.
+// Returns interface{} when any segment is missing — the notExists case.
+// Exported for use by the template package and status field resolver.
+func NavigateRawPath(m map[string]interface{}, path string) interface{} {
+	// Empty path check
+	if path == "" {
+		return nil
+	}
+
+	// Start at the root with 'current' as cursor
+	var current interface{} = m
+
+	// Split the path into parts(slice)
+	for _, part := range typesSplitDot(path) {
+		// Ensure current is a map
+		typed, ok := current.(map[string]interface{})
+		if !ok {
+			return nil
+		}
+		// Follow the path
+		current, ok = typed[part]
+		if !ok {
+			return nil
+		}
+	}
+	if current == nil {
+		return nil
+	}
+
+	return current
 }
 
 // NavigateDotPath walks a dot-notation path through a nested map.

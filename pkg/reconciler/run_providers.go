@@ -79,7 +79,7 @@ func runProviders(
 
 		// Evaluate when: conditions — drop declarations that do not pass.
 		// resolver.Data() includes .spec.*, .status.*, .children.*
-		active := filterProviderDeclarations(obj, resolved)
+		active := filterProviderDeclarations(resolver.Data(), resolved)
 		if len(active) == 0 {
 			log.Debug().
 				Str("provider", block.Name).
@@ -184,7 +184,8 @@ func runProviderDelete(
 type resolvedDeclaration struct {
 	Kind       string
 	Fields     map[string]string
-	Conditions []orktypes.Condition
+	Conditions []orktypes.Condition // when: AND conditions
+	AnyOf      []orktypes.Condition // anyOf: OR conditions
 }
 
 // resolveProviderBlock resolves template expressions in all field values.
@@ -199,6 +200,7 @@ func resolveProviderBlock(
 			Kind:       raw.Kind,
 			Fields:     make(map[string]string, len(raw.Fields)),
 			Conditions: raw.Conditions,
+			AnyOf:      raw.AnyOf,
 		}
 		for key, tmplVal := range raw.Fields {
 			val, err := resolver.Resolve(tmplVal)
@@ -213,15 +215,17 @@ func resolveProviderBlock(
 	return result, nil
 }
 
-// filterProviderDeclarations removes declarations whose when: conditions fail.
-// Uses EvaluateConditions from resolver_conditions.go (same package).
+// filterProviderDeclarations removes declarations whose conditions fail.
+// Uses EvaluateWhen — handles when: (AND), anyOf: (OR), and all operators
+// including typeOf. Takes resolver data (not domain.Object) so that
+// template-resolved .spec.*, .status.*, .cross.* fields are visible.
 func filterProviderDeclarations(
-	obj domain.Object,
+	data map[string]interface{},
 	declarations []resolvedDeclaration,
 ) []orktypes.ProviderDeclaration {
 	result := make([]orktypes.ProviderDeclaration, 0, len(declarations))
 	for _, decl := range declarations {
-		if len(decl.Conditions) > 0 && !evaluateConditions(obj, decl.Conditions) {
+		if !orktypes.EvaluateWhen(data, decl.Conditions, decl.AnyOf) {
 			continue
 		}
 		result = append(result, orktypes.ProviderDeclaration{

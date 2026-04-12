@@ -69,17 +69,17 @@ func ParseProviderBlocks(raw map[string][]map[string]interface{}) ([]ProviderBlo
 // parseOneDeclaration parses one map entry from a provider block list.
 //
 // Each entry is a single-key map where the key is the resource kind
-// and the value is the fields map plus an optional "when" key.
+// and the value is the fields map plus optional "when" / "anyOf" keys.
 //
-//	{"s3": {"bucket": "my-bucket", "region": "us-east-1", "when": [...]}}
+//	{"s3": {"bucket": "my-bucket", "region": "us-east-1", "when": [...], "anyOf": [...]}}
 func parseOneDeclaration(raw map[string]interface{}) (RawProviderDeclaration, error) {
-	// The declaration must have exactly one "kind" key
-	// The "when" key is special — it holds conditions, not fields
+	// The declaration must have exactly one "kind" key.
+	// "when" and "anyOf" are special — they hold conditions, not fields.
 	var kind string
 	var fieldsRaw map[string]interface{}
 
 	for k, v := range raw {
-		if k == "when" {
+		if k == "when" || k == "anyOf" {
 			continue
 		}
 		if kind != "" {
@@ -100,13 +100,22 @@ func parseOneDeclaration(raw map[string]interface{}) (RawProviderDeclaration, er
 		Fields: flattenFields(fieldsRaw, ""),
 	}
 
-	// Parse when: conditions
+	// Parse when: conditions (AND)
 	if whenRaw, ok := raw["when"]; ok {
 		conditions, err := parseConditions(whenRaw)
 		if err != nil {
 			return decl, fmt.Errorf("parsing when: conditions: %w", err)
 		}
 		decl.Conditions = conditions
+	}
+
+	// Parse anyOf: conditions (OR)
+	if anyOfRaw, ok := raw["anyOf"]; ok {
+		conditions, err := parseConditions(anyOfRaw)
+		if err != nil {
+			return decl, fmt.Errorf("parsing anyOf: conditions: %w", err)
+		}
+		decl.AnyOf = conditions
 	}
 
 	return decl, nil

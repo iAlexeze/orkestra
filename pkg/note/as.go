@@ -9,8 +9,8 @@ import (
 
 func asNotes() template.FuncMap {
 	return template.FuncMap{
-		"asList":  asList,
-		"asMap":   asMap,
+		"asList":   asList,
+		"asMap":    asMap,
 		"asString": asString,
 	}
 }
@@ -22,31 +22,31 @@ func asNotes() template.FuncMap {
 //   - JSON array (string)
 //   - anything else → empty list
 func asList(input any) []any {
-    switch v := input.(type) {
+	switch v := input.(type) {
 
-    case []any:
-        return v
+	case []any:
+		return v
 
-    case string:
-        // Try YAML
-        var y any
-        if err := yaml.Unmarshal([]byte(v), &y); err == nil {
-            if list, ok := y.([]any); ok {
-                return list
-            }
-        }
+	case string:
+		// Try YAML
+		var y any
+		if err := yaml.Unmarshal([]byte(v), &y); err == nil {
+			if list, ok := y.([]any); ok {
+				return list
+			}
+		}
 
-        // Try JSON
-        var j []any
-        if err := json.Unmarshal([]byte(v), &j); err == nil {
-            return j
-        }
+		// Try JSON
+		var j []any
+		if err := json.Unmarshal([]byte(v), &j); err == nil {
+			return j
+		}
 
-        return []any{}
+		return []any{}
 
-    default:
-        return []any{}
-    }
+	default:
+		return []any{}
+	}
 }
 
 // asMap converts any input into a map[string]any.
@@ -56,31 +56,31 @@ func asList(input any) []any {
 //   - JSON object (string)
 //   - anything else → empty map
 func asMap(input any) map[string]any {
-    switch v := input.(type) {
+	switch v := input.(type) {
 
-    case map[string]any:
-        return v
+	case map[string]any:
+		return v
 
-    case string:
-        // Try YAML
-        var y any
-        if err := yaml.Unmarshal([]byte(v), &y); err == nil {
-            if m, ok := y.(map[string]any); ok {
-                return m
-            }
-        }
+	case string:
+		// Try YAML
+		var y any
+		if err := yaml.Unmarshal([]byte(v), &y); err == nil {
+			if m, ok := y.(map[string]any); ok {
+				return m
+			}
+		}
 
-        // Try JSON
-        var j map[string]any
-        if err := json.Unmarshal([]byte(v), &j); err == nil {
-            return j
-        }
+		// Try JSON
+		var j map[string]any
+		if err := json.Unmarshal([]byte(v), &j); err == nil {
+			return j
+		}
 
-        return map[string]any{}
+		return map[string]any{}
 
-    default:
-        return map[string]any{}
-    }
+	default:
+		return map[string]any{}
+	}
 }
 
 // asString converts any input into a string.
@@ -90,20 +90,20 @@ func asMap(input any) map[string]any {
 //   - JSON scalar (string)
 //   - anything else → ""
 func asString(input any) string {
-    switch v := input.(type) {
+	switch v := input.(type) {
 
-    case string:
-        return v
+	case string:
+		return v
 
-    case []byte:
-        return string(v)
+	case []byte:
+		return string(v)
 
-    default:
-        // Try JSON encode → string
-        b, err := json.Marshal(v)
-        if err == nil {
-            return string(b)
-        }
-        return ""
-    }
+	default:
+		// Try JSON encode → string
+		b, err := json.Marshal(v)
+		if err == nil {
+			return string(b)
+		}
+		return ""
+	}
 }
