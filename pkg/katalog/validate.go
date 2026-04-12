@@ -365,34 +365,29 @@ func (k *Katalog) addHooks() error {
 	return nil
 }
 
-// ---------------------------------------------------------------------------------
-// Validate status management
+// validateStatus sets IgnoreStatusPatch and IgnoreObservedGeneration on each
+// enabled CRD entry based on the built-in resource registry.
+//
+// Called once during Katalog loading — flags are set once, checked cheaply
+// in the hot reconcile path.
 func (k *Katalog) validateStatus() {
-	// Check the built‑in list
 	for name, crd := range k.enabledCRDs {
-		// No /status endpoint
-		for _, gvk := range skipStatusSubresourceGVKs {
-			if gvk == crd.GroupVersionKind.String() {
-				crd.IgnoreStatusPatch = true
-			}
+		// Look up by Kind directly — avoids GVK string format mismatch.
+		// BuiltInMeta returns zero value for unknown kinds (safe).
+		meta := BuiltInMeta(crd.APITypes.Kind)
+
+		if meta.SkipStatusSubresource {
+			// ConfigMap, Secret, ServiceAccount, Role, ClusterRole, etc.
+			// These have no /status subresource — PATCH would return 404.
+			crd.IgnoreStatusPatch = true
 		}
 
-		// There is status endpoint but no observedGeneration
-		for _, gvk := range skipObservedGenerationGVKs {
-			if gvk == crd.GroupVersionKind.String() {
-				crd.IgnoreObservedGeneration = true
-			}
-		}
-
-		// Needed for the control center to interpret readiness properly
-		// No ready status
-		for _, gvk := range statuslessGVKs {
-			if gvk == crd.GroupVersionKind.String() {
-				crd.IsStatusless = true
-			}
+		if meta.SkipObservedGeneration {
+			// Namespace, Node, Service, Pod, PVC, etc.
+			// These have status but no observedGeneration field.
+			crd.IgnoreObservedGeneration = true
 		}
 
 		k.enabledCRDs[name] = crd
-
 	}
 }

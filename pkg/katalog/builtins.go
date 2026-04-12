@@ -4,476 +4,419 @@ package katalog
 import "strings"
 
 // BuiltInKind holds the fully-qualified API metadata for a Kubernetes
-// built-in resource kind. This information is stable — it does not change
-// between Kubernetes minor versions for GA resources.
+// built-in resource kind, plus Orkestra-specific readiness metadata.
 //
-// When a Katalog entry declares only apiTypes.kind and it matches a built-in,
-// Orkestra enriches the entry with the correct group, version, plural, and
-// scope automatically. The user writes:
-//
-//	apiTypes:
-//	  kind: Pod
-//
-// Orkestra resolves it to group:"", version:"v1", plural:"pods", namespaced:true.
+// Lookup is always by Kind (case-insensitive) via LookupBuiltIn / BuiltInMeta.
 type BuiltInKind struct {
-	// Group — API group. Empty string for core group resources (Pod, Service, etc.)
-	Group string
-
-	// Version — preferred stable version for this resource.
-	Version string
-
-	// Plural — plural resource name used in API paths.
-	Plural string
-
-	// Namespaced — true when this resource is namespace-scoped.
-	Namespaced bool
-
-	// APIPath — always "/apis" except for core group which uses "/api"
-	APIPath string
+	// Kubernetes API metadata
+	Group      string // API group; empty for core
+	Version    string // API version
+	Plural     string // plural resource name
+	Namespaced bool   // true if namespaced
+	APIPath    string // "/api" for core, "/apis" otherwise
 
 	// Orkestra readiness metadata
-    Statusless             bool // No meaningful status; ready on creation
-    SkipStatusSubresource  bool // No /status subresource; do not PATCH status
-    SkipObservedGeneration bool // Has status but no observedGeneration
-    IsChild                bool // Orkestra may create this as a child resource
+	Statusless             bool // No meaningful status; treat as ready on existence
+	SkipStatusSubresource  bool // No /status subresource; never PATCH status
+	SkipObservedGeneration bool // Has status but no observedGeneration; skip generation-based checks
+	IsChild                bool // Orkestra may create this as a child resource
 }
 
 // builtInRegistry is the canonical map of Kubernetes built-in resource kinds
-// to their fully-qualified API metadata.
+// to their fully-qualified API metadata and Orkestra readiness hints.
 //
-// Only GA (stable) versions are included. Alpha and beta versions are not
-// registered here — they are not stable across Kubernetes versions and
-// users who need them should declare the full apiTypes block.
-//
-// Lookup is case-insensitive — "pod", "Pod", and "POD" all resolve correctly.
-
-// builtInRegistry is the canonical map of Kubernetes built-in resource kinds
-// to their fully-qualified API metadata and readiness semantics.
+// Keys are lowercase Kind names (e.g. "pod", "deployment").
 var builtInRegistry = map[string]BuiltInKind{
-
-    // ────────────────────────────────
-    // Core v1
-    // ────────────────────────────────
-
-    "pod": {
-        Group:      "",
-        Version:    "v1",
-        Plural:     "pods",
-        Namespaced: true,
-        APIPath:    "/api",
-
-        Statusless:             false,
-        SkipStatusSubresource:  false,
-        SkipObservedGeneration: true,  // no observedGeneration
-        IsChild:                true,
-    },
-
-    "service": {
-        Group:      "",
-        Version:    "v1",
-        Plural:     "services",
-        Namespaced: true,
-        APIPath:    "/api",
-
-        Statusless:             true,  // no Ready condition
-        SkipStatusSubresource:  false,
-        SkipObservedGeneration: true,
-        IsChild:                true,
-    },
-
-    "configmap": {
-        Group:      "",
-        Version:    "v1",
-        Plural:     "configmaps",
-        Namespaced: true,
-        APIPath:    "/api",
-
-        Statusless:             true,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                true,
-    },
-
-    "secret": {
-        Group:      "",
-        Version:    "v1",
-        Plural:     "secrets",
-        Namespaced: true,
-        APIPath:    "/api",
-
-        Statusless:             true,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                true,
-    },
-
-    "serviceaccount": {
-        Group:      "",
-        Version:    "v1",
-        Plural:     "serviceaccounts",
-        Namespaced: true,
-        APIPath:    "/api",
-
-        Statusless:             true,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                true,
-    },
-
-    "namespace": {
-        Group:      "",
-        Version:    "v1",
-        Plural:     "namespaces",
-        Namespaced: false,
-        APIPath:    "/api",
-
-        Statusless:             false,
-        SkipStatusSubresource:  false,
-        SkipObservedGeneration: true,
-        IsChild:                false,
-    },
-
-    "event": {
-        Group:      "",
-        Version:    "v1",
-        Plural:     "events",
-        Namespaced: true,
-        APIPath:    "/api",
-
-        Statusless:             true,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                false,
-    },
-
-    "podtemplate": {
-        Group:      "",
-        Version:    "v1",
-        Plural:     "podtemplates",
-        Namespaced: true,
-        APIPath:    "/api",
-
-        Statusless:             true,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                false,
-    },
-
-    "componentstatus": {
-        Group:      "",
-        Version:    "v1",
-        Plural:     "componentstatuses",
-        Namespaced: false,
-        APIPath:    "/api",
-
-        Statusless:             true,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                false,
-    },
-
-    "resourcequota": {
-        Group:      "",
-        Version:    "v1",
-        Plural:     "resourcequotas",
-        Namespaced: true,
-        APIPath:    "/api",
-
-        Statusless:             false,
-        SkipStatusSubresource:  false,
-        SkipObservedGeneration: true,
-        IsChild:                false,
-    },
-
-    "limitrange": {
-        Group:      "",
-        Version:    "v1",
-        Plural:     "limitranges",
-        Namespaced: true,
-        APIPath:    "/api",
-
-        Statusless:             false,
-        SkipStatusSubresource:  false,
-        SkipObservedGeneration: true,
-        IsChild:                false,
-    },
-
-    "persistentvolume": {
-        Group:      "",
-        Version:    "v1",
-        Plural:     "persistentvolumes",
-        Namespaced: false,
-        APIPath:    "/api",
-
-        Statusless:             false,
-        SkipStatusSubresource:  false,
-        SkipObservedGeneration: true,
-        IsChild:                false,
-    },
-
-    "persistentvolumeclaim": {
-        Group:      "",
-        Version:    "v1",
-        Plural:     "persistentvolumeclaims",
-        Namespaced: true,
-        APIPath:    "/api",
-
-        Statusless:             false,
-        SkipStatusSubresource:  false,
-        SkipObservedGeneration: true,
-        IsChild:                false,
-    },
-
-    // ────────────────────────────────
-    // apps/v1
-    // ────────────────────────────────
-
-    "deployment": {
-        Group:      "apps",
-        Version:    "v1",
-        Plural:     "deployments",
-        Namespaced: true,
-        APIPath:    "/apis",
-
-        Statusless:             false,
-        SkipStatusSubresource:  false,
-        SkipObservedGeneration: false,
-        IsChild:                true,
-    },
-
-    "statefulset": {
-        Group:      "apps",
-        Version:    "v1",
-        Plural:     "statefulsets",
-        Namespaced: true,
-        APIPath:    "/apis",
-
-        Statusless:             false,
-        SkipStatusSubresource:  false,
-        SkipObservedGeneration: false,
-        IsChild:                false,
-    },
-
-    "daemonset": {
-        Group:      "apps",
-        Version:    "v1",
-        Plural:     "daemonsets",
-        Namespaced: true,
-        APIPath:    "/apis",
-
-        Statusless:             false,
-        SkipStatusSubresource:  false,
-        SkipObservedGeneration: false,
-        IsChild:                false,
-    },
-
-    "replicaset": {
-        Group:      "apps",
-        Version:    "v1",
-        Plural:     "replicasets",
-        Namespaced: true,
-        APIPath:    "/apis",
-
-        Statusless:             false,
-        SkipStatusSubresource:  false,
-        SkipObservedGeneration: false,
-        IsChild:                false,
-    },
-
-    // ────────────────────────────────
-    // batch/v1
-    // ────────────────────────────────
-
-    "job": {
-        Group:      "batch",
-        Version:    "v1",
-        Plural:     "jobs",
-        Namespaced: true,
-        APIPath:    "/apis",
-
-        Statusless:             false,
-        SkipStatusSubresource:  true,  // no /status
-        SkipObservedGeneration: false,
-        IsChild:                true,
-    },
-
-    "cronjob": {
-        Group:      "batch",
-        Version:    "v1",
-        Plural:     "cronjobs",
-        Namespaced: true,
-        APIPath:    "/apis",
-
-        Statusless:             false,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                true,
-    },
-
-    // ────────────────────────────────
-    // networking.k8s.io/v1
-    // ────────────────────────────────
-
-    "networkpolicy": {
-        Group:      "networking.k8s.io",
-        Version:    "v1",
-        Plural:     "networkpolicies",
-        Namespaced: true,
-        APIPath:    "/apis",
-
-        Statusless:             true,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                false,
-    },
-
-    // ────────────────────────────────
-    // rbac.authorization.k8s.io/v1
-    // ────────────────────────────────
-
-    "role": {
-        Group:      "rbac.authorization.k8s.io",
-        Version:    "v1",
-        Plural:     "roles",
-        Namespaced: true,
-        APIPath:    "/apis",
-
-        Statusless:             true,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                false,
-    },
-
-    "rolebinding": {
-        Group:      "rbac.authorization.k8s.io",
-        Version:    "v1",
-        Plural:     "rolebindings",
-        Namespaced: true,
-        APIPath:    "/apis",
-
-        Statusless:             true,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                false,
-    },
-
-    "clusterrole": {
-        Group:      "rbac.authorization.k8s.io",
-        Version:    "v1",
-        Plural:     "clusterroles",
-        Namespaced: false,
-        APIPath:    "/apis",
-
-        Statusless:             true,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                false,
-    },
-
-    "clusterrolebinding": {
-        Group:      "rbac.authorization.k8s.io",
-        Version:    "v1",
-        Plural:     "clusterrolebindings",
-        Namespaced: false,
-        APIPath:    "/apis",
-
-        Statusless:             true,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                false,
-    },
-
-    // ────────────────────────────────
-    // admissionregistration.k8s.io/v1
-    // ────────────────────────────────
-
-    "mutatingwebhookconfiguration": {
-        Group:      "admissionregistration.k8s.io",
-        Version:    "v1",
-        Plural:     "mutatingwebhookconfigurations",
-        Namespaced: false,
-        APIPath:    "/apis",
-
-        Statusless:             true,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                false,
-    },
-
-    "validatingwebhookconfiguration": {
-        Group:      "admissionregistration.k8s.io",
-        Version:    "v1",
-        Plural:     "validatingwebhookconfigurations",
-        Namespaced: false,
-        APIPath:    "/apis",
-
-        Statusless:             true,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                false,
-    },
-
-    // ────────────────────────────────
-    // scheduling.k8s.io/v1
-    // ────────────────────────────────
-
-    "priorityclass": {
-        Group:      "scheduling.k8s.io",
-        Version:    "v1",
-        Plural:     "priorityclasses",
-        Namespaced: false,
-        APIPath:    "/apis",
-
-        Statusless:             true,
-        SkipStatusSubresource:  true,
-        SkipObservedGeneration: false,
-        IsChild:                false,
-    },
-
-    // ────────────────────────────────
-    // apiextensions.k8s.io/v1
-    // ────────────────────────────────
-
-    "customresourcedefinition": {
-        Group:      "apiextensions.k8s.io",
-        Version:    "v1",
-        Plural:     "customresourcedefinitions",
-        Namespaced: false,
-        APIPath:    "/apis",
-
-        Statusless:             false,
-        SkipStatusSubresource:  false,
-        SkipObservedGeneration: true,
-        IsChild:                false,
-    },
-}
-
-// BuiltInMeta returns metadata for a built-in kind.
-func BuiltInMeta(kind string) BuiltInKind {
-    key := strings.ToLower(strings.TrimSpace(kind))
-    return builtInRegistry[key]
+	// ── Core group (group: "", apiVersion: v1) ────────────────────────────────
+	"pod": {
+		Group:      "",
+		Version:    "v1",
+		Plural:     "pods",
+		Namespaced: true,
+		APIPath:    "/api",
+		// Orkestra
+		SkipObservedGeneration: true, // v1/Pod
+	},
+	"service": {
+		Group:      "",
+		Version:    "v1",
+		Plural:     "services",
+		Namespaced: true,
+		APIPath:    "/api",
+		// Orkestra
+		SkipObservedGeneration: true, // v1/Service
+		IsChild:                true,
+	},
+	"configmap": {
+		Group:      "",
+		Version:    "v1",
+		Plural:     "configmaps",
+		Namespaced: true,
+		APIPath:    "/api",
+		// Orkestra
+		Statusless:            true, // v1/ConfigMap
+		SkipStatusSubresource: true,
+		IsChild:               true,
+	},
+	"secret": {
+		Group:      "",
+		Version:    "v1",
+		Plural:     "secrets",
+		Namespaced: true,
+		APIPath:    "/api",
+		// Orkestra
+		Statusless:            true, // v1/Secret
+		SkipStatusSubresource: true,
+		IsChild:               true,
+	},
+	"namespace": {
+		Group:      "",
+		Version:    "v1",
+		Plural:     "namespaces",
+		Namespaced: false,
+		APIPath:    "/api",
+		// Orkestra
+		SkipObservedGeneration: true, // v1/Namespace
+	},
+	"serviceaccount": {
+		Group:      "",
+		Version:    "v1",
+		Plural:     "serviceaccounts",
+		Namespaced: true,
+		APIPath:    "/api",
+		// Orkestra
+		Statusless:            true, // v1/ServiceAccount
+		SkipStatusSubresource: true,
+		IsChild:               true,
+	},
+	"persistentvolumeclaim": {
+		Group:      "",
+		Version:    "v1",
+		Plural:     "persistentvolumeclaims",
+		Namespaced: true,
+		APIPath:    "/api",
+		// Orkestra
+		SkipObservedGeneration: true, // v1/PersistentVolumeClaim
+	},
+	"persistentvolume": {
+		Group:      "",
+		Version:    "v1",
+		Plural:     "persistentvolumes",
+		Namespaced: false,
+		APIPath:    "/api",
+		// Orkestra
+		SkipObservedGeneration: true, // v1/PersistentVolume
+	},
+	"event": {
+		Group:      "",
+		Version:    "v1",
+		Plural:     "events",
+		Namespaced: true,
+		APIPath:    "/api",
+		// Orkestra
+		Statusless:            true, // v1/Event
+		SkipStatusSubresource: true,
+	},
+	"node": {
+		Group:      "",
+		Version:    "v1",
+		Plural:     "nodes",
+		Namespaced: false,
+		APIPath:    "/api",
+		// Orkestra
+		SkipObservedGeneration: true, // v1/Node
+	},
+	"resourcequota": {
+		Group:      "",
+		Version:    "v1",
+		Plural:     "resourcequotas",
+		Namespaced: true,
+		APIPath:    "/api",
+		// Orkestra
+		SkipObservedGeneration: true, // v1/ResourceQuota
+	},
+	"limitrange": {
+		Group:      "",
+		Version:    "v1",
+		Plural:     "limitranges",
+		Namespaced: true,
+		APIPath:    "/api",
+		// Orkestra
+		SkipObservedGeneration: true, // v1/LimitRange
+	},
+	"componentstatus": {
+		Group:      "",
+		Version:    "v1",
+		Plural:     "componentstatuses",
+		Namespaced: false,
+		APIPath:    "/api",
+		// Orkestra
+		SkipStatusSubresource: true, // v1/ComponentStatus
+	},
+	"podtemplate": {
+		Group:      "",
+		Version:    "v1",
+		Plural:     "podtemplates",
+		Namespaced: true,
+		APIPath:    "/api",
+		// Orkestra
+		Statusless:            true, // v1/PodTemplate
+		SkipStatusSubresource: true,
+	},
+
+	// ── apps/v1 ───────────────────────────────────────────────────────────────
+	"deployment": {
+		Group:      "apps",
+		Version:    "v1",
+		Plural:     "deployments",
+		Namespaced: true,
+		APIPath:    "/apis",
+		// Orkestra
+		IsChild: true,
+	},
+	"statefulset": {
+		Group:      "apps",
+		Version:    "v1",
+		Plural:     "statefulsets",
+		Namespaced: true,
+		APIPath:    "/apis",
+	},
+	"daemonset": {
+		Group:      "apps",
+		Version:    "v1",
+		Plural:     "daemonsets",
+		Namespaced: true,
+		APIPath:    "/apis",
+	},
+	"replicaset": {
+		Group:      "apps",
+		Version:    "v1",
+		Plural:     "replicasets",
+		Namespaced: true,
+		APIPath:    "/apis",
+	},
+
+	// ── batch/v1 ──────────────────────────────────────────────────────────────
+	"job": {
+		Group:      "batch",
+		Version:    "v1",
+		Plural:     "jobs",
+		Namespaced: true,
+		APIPath:    "/apis",
+		// Orkestra
+		SkipStatusSubresource: true, // batch/v1/Job
+		IsChild:               true,
+	},
+
+	"cronjob": {
+		Group:      "batch",
+		Version:    "v1",
+		Plural:     "cronjobs",
+		Namespaced: true,
+		APIPath:    "/apis",
+		// Orkestra
+		SkipStatusSubresource: true, // batch/v1/CronJob
+		IsChild:               true,
+	},
+
+	// ── networking.k8s.io/v1 ─────────────────────────────────────────────────
+	"ingress": {
+		Group:      "networking.k8s.io",
+		Version:    "v1",
+		Plural:     "ingresses",
+		Namespaced: true,
+		APIPath:    "/apis",
+	},
+	"networkpolicy": {
+		Group:      "networking.k8s.io",
+		Version:    "v1",
+		Plural:     "networkpolicies",
+		Namespaced: true,
+		APIPath:    "/apis",
+		// Orkestra
+		Statusless:            true, // networking.k8s.io/v1/NetworkPolicy
+		SkipStatusSubresource: true,
+	},
+	"ingressclass": {
+		Group:      "networking.k8s.io",
+		Version:    "v1",
+		Plural:     "ingressclasses",
+		Namespaced: false,
+		APIPath:    "/apis",
+	},
+
+	// ── autoscaling/v2 ────────────────────────────────────────────────────────
+	"horizontalpodautoscaler": {
+		Group:      "autoscaling",
+		Version:    "v2",
+		Plural:     "horizontalpodautoscalers",
+		Namespaced: true,
+		APIPath:    "/apis",
+	},
+
+	// ── rbac.authorization.k8s.io/v1 ─────────────────────────────────────────
+	"clusterrole": {
+		Group:      "rbac.authorization.k8s.io",
+		Version:    "v1",
+		Plural:     "clusterroles",
+		Namespaced: false,
+		APIPath:    "/apis",
+		// Orkestra
+		Statusless:            true, // rbac.authorization.k8s.io/v1/ClusterRole
+		SkipStatusSubresource: true,
+	},
+	"clusterrolebinding": {
+		Group:      "rbac.authorization.k8s.io",
+		Version:    "v1",
+		Plural:     "clusterrolebindings",
+		Namespaced: false,
+		APIPath:    "/apis",
+		// Orkestra
+		Statusless:            true, // rbac.authorization.k8s.io/v1/ClusterRoleBinding
+		SkipStatusSubresource: true,
+	},
+	"role": {
+		Group:      "rbac.authorization.k8s.io",
+		Version:    "v1",
+		Plural:     "roles",
+		Namespaced: true,
+		APIPath:    "/apis",
+		// Orkestra
+		Statusless:            true, // rbac.authorization.k8s.io/v1/Role
+		SkipStatusSubresource: true,
+	},
+
+	"rolebinding": {
+		Group:      "rbac.authorization.k8s.io",
+		Version:    "v1",
+		Plural:     "rolebindings",
+		Namespaced: true,
+		APIPath:    "/apis",
+		// Orkestra
+		Statusless:            true, // rbac.authorization.k8s.io/v1/RoleBinding
+		SkipStatusSubresource: true,
+	},
+
+	// ── storage.k8s.io/v1 ─────────────────────────────────────────────────────
+	"storageclass": {
+		Group:      "storage.k8s.io",
+		Version:    "v1",
+		Plural:     "storageclasses",
+		Namespaced: false,
+		APIPath:    "/apis",
+	},
+	"volumeattachment": {
+		Group:      "storage.k8s.io",
+		Version:    "v1",
+		Plural:     "volumeattachments",
+		Namespaced: false,
+		APIPath:    "/apis",
+		// Orkestra
+		SkipObservedGeneration: true, // storage.k8s.io/v1/VolumeAttachment
+	},
+
+	// ── policy/v1 ─────────────────────────────────────────────────────────────
+	"poddisruptionbudget": {
+		Group:      "policy",
+		Version:    "v1",
+		Plural:     "poddisruptionbudgets",
+		Namespaced: true,
+		APIPath:    "/apis",
+		// Orkestra
+		SkipObservedGeneration: true, // policy/v1/PodDisruptionBudget
+	},
+
+	// ── apiextensions.k8s.io/v1 ──────────────────────────────────────────────
+	"customresourcedefinition": {
+		Group:      "apiextensions.k8s.io",
+		Version:    "v1",
+		Plural:     "customresourcedefinitions",
+		Namespaced: false,
+		APIPath:    "/apis",
+		// Orkestra
+		SkipObservedGeneration: true, // apiextensions.k8s.io/v1/CustomResourceDefinition
+	},
+
+	// ── apiregistration.k8s.io/v1 ────────────────────────────────────────────
+	"apiservice": {
+		Group:      "apiregistration.k8s.io",
+		Version:    "v1",
+		Plural:     "apiservices",
+		Namespaced: false,
+		APIPath:    "/apis",
+		// Orkestra
+		SkipObservedGeneration: true, // apiregistration.k8s.io/v1/APIService
+	},
+
+	// ── admissionregistration.k8s.io/v1 ──────────────────────────────────────
+	"mutatingwebhookconfiguration": {
+		Group:      "admissionregistration.k8s.io",
+		Version:    "v1",
+		Plural:     "mutatingwebhookconfigurations",
+		Namespaced: false,
+		APIPath:    "/apis",
+		// Orkestra
+		Statusless:            true, // admissionregistration.k8s.io/v1/MutatingWebhookConfiguration
+		SkipStatusSubresource: true,
+	},
+
+	"validatingwebhookconfiguration": {
+		Group:      "admissionregistration.k8s.io",
+		Version:    "v1",
+		Plural:     "validatingwebhookconfigurations",
+		Namespaced: false,
+		APIPath:    "/apis",
+		// Orkestra
+		Statusless:            true, // admissionregistration.k8s.io/v1/ValidatingWebhookConfiguration
+		SkipStatusSubresource: true,
+	},
+
+	// ── scheduling.k8s.io/v1 ─────────────────────────────────────────────────
+	"priorityclass": {
+		Group:      "scheduling.k8s.io",
+		Version:    "v1",
+		Plural:     "priorityclasses",
+		Namespaced: false,
+		APIPath:    "/apis",
+		// Orkestra
+		Statusless:            true, // scheduling.k8s.io/v1/PriorityClass
+		SkipStatusSubresource: true,
+	},
+
+	// ── events.k8s.io/v1 ─────────────────────────────────────────────────────
+	"event_events": { // internal key to avoid clashing with core/v1 Event
+		Group:      "events.k8s.io",
+		Version:    "v1",
+		Plural:     "events",
+		Namespaced: true,
+		APIPath:    "/apis",
+		// Orkestra
+		Statusless:            true, // events.k8s.io/v1/Event
+		SkipStatusSubresource: true,
+	},
+
+	// ── discovery.k8s.io/v1 ──────────────────────────────────────────────────
+	"endpointslice": {
+		Group:      "discovery.k8s.io",
+		Version:    "v1",
+		Plural:     "endpointslices",
+		Namespaced: true,
+		APIPath:    "/apis",
+		// Orkestra
+		SkipObservedGeneration: true, // discovery.k8s.io/v1/EndpointSlice
+	},
 }
 
 // EnrichmentResult holds the result of a built-in lookup.
 type EnrichmentResult struct {
-	// Found — true when the kind matched a built-in
-	Found bool
-
-	// Kind — the canonical Kind name (correct casing from the registry)
-	Kind string
-
-	// BuiltIn — the resolved API metadata
-	BuiltIn BuiltInKind
-
-	// DisplayGroup — human-readable group string for logs and output.
-	// Shows "core" for the core group (empty string) to avoid confusion.
+	Found        bool
+	Kind         string
+	BuiltIn      BuiltInKind
 	DisplayGroup string
 }
 
 // LookupBuiltIn looks up a Kind in the built-in registry.
-// Lookup is case-insensitive — "Pod", "pod", and "POD" all resolve.
-//
-// Returns an EnrichmentResult. Check result.Found before using the values.
+// Case-insensitive. Returns EnrichmentResult; check .Found before use.
 func LookupBuiltIn(kind string) EnrichmentResult {
 	key := strings.ToLower(strings.TrimSpace(kind))
 	if key == "" {
@@ -490,7 +433,6 @@ func LookupBuiltIn(kind string) EnrichmentResult {
 		displayGroup = "core"
 	}
 
-	// Canonical Kind name — first letter uppercase, rest as registered
 	canonicalKind := canonicalKindName(key)
 
 	return EnrichmentResult{
@@ -501,6 +443,16 @@ func LookupBuiltIn(kind string) EnrichmentResult {
 	}
 }
 
+// BuiltInMeta returns metadata for a built-in kind.
+// Zero value is returned when the kind is unknown.
+func BuiltInMeta(kind string) BuiltInKind {
+	res := LookupBuiltIn(kind)
+	if !res.Found {
+		return BuiltInKind{}
+	}
+	return res.BuiltIn
+}
+
 // IsBuiltIn reports whether a kind string refers to a known Kubernetes built-in.
 // Case-insensitive. Does not require the fully-qualified group/version.
 func IsBuiltIn(kind string) bool {
@@ -508,15 +460,16 @@ func IsBuiltIn(kind string) bool {
 }
 
 // AllBuiltInKinds returns the canonical Kind names of all registered built-ins.
-// Sorted alphabetically. Used by `ork validate` to suggest alternatives.
+// Sorted alphabetically (simple O(n^2) sort to avoid extra imports).
 func AllBuiltInKinds() []string {
 	kinds := make([]string, 0, len(builtInRegistry))
 	for k := range builtInRegistry {
-		if !strings.Contains(k, "_") { // skip internal aliases
-			kinds = append(kinds, canonicalKindName(k))
+		if strings.Contains(k, "_") {
+			// skip internal alias keys like "event_events"
+			continue
 		}
+		kinds = append(kinds, canonicalKindName(k))
 	}
-	// sort manually without importing sort — keep package lean
 	for i := 0; i < len(kinds); i++ {
 		for j := i + 1; j < len(kinds); j++ {
 			if kinds[i] > kinds[j] {
@@ -527,50 +480,105 @@ func AllBuiltInKinds() []string {
 	return kinds
 }
 
-// canonicalKindName returns the conventional PascalCase Kind name from a
-// lowercase registry key. e.g. "horizontalpodautoscaler" → "HorizontalPodAutoscaler"
-//
-// These mappings are hardcoded because the convention is not programmatically
-// derivable — "horizontalpodautoscaler" → "HorizontalPodAutoscaler" requires
-// knowing where the word boundaries are.
-var canonicalKindNames = map[string]string{
-	"pod":                      "Pod",
-	"service":                  "Service",
-	"configmap":                "ConfigMap",
-	"secret":                   "Secret",
-	"namespace":                "Namespace",
-	"serviceaccount":           "ServiceAccount",
-	"persistentvolumeclaim":    "PersistentVolumeClaim",
-	"persistentvolume":         "PersistentVolume",
-	"endpointSlice":            "EndpointSlice",
-	"event":                    "Event",
-	"node":                     "Node",
-	"resourcequota":            "ResourceQuota",
-	"limitrange":               "LimitRange",
-	"deployment":               "Deployment",
-	"statefulset":              "StatefulSet",
-	"daemonset":                "DaemonSet",
-	"replicaset":               "ReplicaSet",
-	"job":                      "Job",
-	"cronjob":                  "CronJob",
-	"ingress":                  "Ingress",
-	"networkpolicy":            "NetworkPolicy",
-	"ingressclass":             "IngressClass",
-	"horizontalpodautoscaler":  "HorizontalPodAutoscaler",
-	"clusterrole":              "ClusterRole",
-	"clusterrolebinding":       "ClusterRoleBinding",
-	"role":                     "Role",
-	"rolebinding":              "RoleBinding",
-	"storageclass":             "StorageClass",
-	"poddisruptionbudget":      "PodDisruptionBudget",
-	"customresourcedefinition": "CustomResourceDefinition",
+// SkipObservedGenerationGVKs returns the GVKs that should skip generation-based readiness checks.
+func SkipObservedGenerationGVKs() []string {
+	var out []string
+	for key, b := range builtInRegistry {
+		if !b.SkipObservedGeneration {
+			continue
+		}
+		kind := canonicalKindName(key)
+		if b.Group == "" {
+			out = append(out, b.Version+"/"+kind)
+		} else {
+			out = append(out, b.Group+"/"+b.Version+"/"+kind)
+		}
+	}
+	return out
 }
 
+// SkipStatusSubresourceGVKs returns the GVKs that do not have a /status subresource.
+func SkipStatusSubresourceGVKs() []string {
+	var out []string
+	for key, b := range builtInRegistry {
+		if !b.SkipStatusSubresource {
+			continue
+		}
+		kind := canonicalKindName(key)
+		if b.Group == "" {
+			out = append(out, b.Version+"/"+kind)
+		} else {
+			out = append(out, b.Group+"/"+b.Version+"/"+kind)
+		}
+	}
+	return out
+}
+
+// StatuslessGVKs returns the GVKs that should be treated as "ready on existence".
+func StatuslessGVKs() []string {
+	var out []string
+	for key, b := range builtInRegistry {
+		if !b.Statusless {
+			continue
+		}
+		kind := canonicalKindName(key)
+		if b.Group == "" {
+			out = append(out, b.Version+"/"+kind)
+		} else {
+			out = append(out, b.Group+"/"+b.Version+"/"+kind)
+		}
+	}
+	return out
+}
+
+// canonicalKindNames maps lowercase registry keys to canonical Kind names.
+var canonicalKindNames = map[string]string{
+	"pod":                            "Pod",
+	"service":                        "Service",
+	"configmap":                      "ConfigMap",
+	"secret":                         "Secret",
+	"namespace":                      "Namespace",
+	"serviceaccount":                 "ServiceAccount",
+	"persistentvolumeclaim":          "PersistentVolumeClaim",
+	"persistentvolume":               "PersistentVolume",
+	"endpointslice":                  "EndpointSlice",
+	"event":                          "Event",
+	"node":                           "Node",
+	"resourcequota":                  "ResourceQuota",
+	"limitrange":                     "LimitRange",
+	"componentstatus":                "ComponentStatus",
+	"podtemplate":                    "PodTemplate",
+	"deployment":                     "Deployment",
+	"statefulset":                    "StatefulSet",
+	"daemonset":                      "DaemonSet",
+	"replicaset":                     "ReplicaSet",
+	"job":                            "Job",
+	"cronjob":                        "CronJob",
+	"ingress":                        "Ingress",
+	"networkpolicy":                  "NetworkPolicy",
+	"ingressclass":                   "IngressClass",
+	"horizontalpodautoscaler":        "HorizontalPodAutoscaler",
+	"clusterrole":                    "ClusterRole",
+	"clusterrolebinding":             "ClusterRoleBinding",
+	"role":                           "Role",
+	"rolebinding":                    "RoleBinding",
+	"storageclass":                   "StorageClass",
+	"volumeattachment":               "VolumeAttachment",
+	"poddisruptionbudget":            "PodDisruptionBudget",
+	"customresourcedefinition":       "CustomResourceDefinition",
+	"apiservice":                     "APIService",
+	"mutatingwebhookconfiguration":   "MutatingWebhookConfiguration",
+	"validatingwebhookconfiguration": "ValidatingWebhookConfiguration",
+	"priorityclass":                  "PriorityClass",
+	"event_events":                   "Event", // events.k8s.io/v1/Event
+}
+
+// canonicalKindName returns the conventional PascalCase Kind name from a
+// lowercase registry key. Falls back to capitalising the first letter.
 func canonicalKindName(key string) string {
 	if name, ok := canonicalKindNames[key]; ok {
 		return name
 	}
-	// Fallback: capitalise first letter only
 	if len(key) == 0 {
 		return key
 	}

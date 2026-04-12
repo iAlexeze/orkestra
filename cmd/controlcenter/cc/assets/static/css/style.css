@@ -1289,6 +1289,12 @@ details > summary::-webkit-details-marker { display: none; }
 }
 .cc-details-summary:hover { background: var(--bg-hover); color: var(--text-primary); }
 
+/* ── Child group collapsible ───────────────────────────────── */
+.cc-child-group > summary { list-style: none; }
+.cc-child-group > summary::-webkit-details-marker { display: none; }
+.cc-child-group .cc-chevron { transition: transform 0.15s ease; flex-shrink: 0; }
+.cc-child-group[open] .cc-chevron { transform: rotate(180deg); }
+
 /* ── Animations ────────────────────────────────────────────── */
 @keyframes spin {
   to { transform: rotate(360deg); }

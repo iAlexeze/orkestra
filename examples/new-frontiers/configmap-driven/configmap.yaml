@@ -7,6 +7,6 @@ metadata:
     orkestra.io/katalog: configmap-manager
 data:
   image: "nginx:latest"
-  replicas: "2"
+  replicas: "3"
   username: "payments-user"
   region: "us-east-1"

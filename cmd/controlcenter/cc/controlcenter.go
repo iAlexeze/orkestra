@@ -645,6 +645,7 @@ func (cc *ControlCenter) handleCRDetail(w http.ResponseWriter, r *http.Request, 
 		Events:      events,
 		EventTotal:  eventTotal,
 		Phase:       phase,
+		ChildGroups: normalizeChildGroups(detail.Children),
 		BackURL:     fmt.Sprintf("/controlcenter/katalog/%s/crd/%s", katalogName, crdName),
 	})
 }
