@@ -66,15 +66,37 @@ var skipStatusSubresourceGVKs = []string{
 	"batch/v1/CronJob",
 }
 
+var statuslessGVKs = []string{
+	"v1/ConfigMap",
+	"v1/Secret",
+	"v1/ServiceAccount",
+	"v1/Event",
+	"v1/PodTemplate",
+	"rbac.authorization.k8s.io/v1/Role",
+	"rbac.authorization.k8s.io/v1/RoleBinding",
+	"rbac.authorization.k8s.io/v1/ClusterRole",
+	"rbac.authorization.k8s.io/v1/ClusterRoleBinding",
+	"admissionregistration.k8s.io/v1/MutatingWebhookConfiguration",
+	"admissionregistration.k8s.io/v1/ValidatingWebhookConfiguration",
+	"networking.k8s.io/v1/NetworkPolicy",
+	"scheduling.k8s.io/v1/PriorityClass",
+	"events.k8s.io/v1/Event",
+}
+
 // Export methods
 // -----------------------------------------------------------------------------
 
-// // SkipObservedGeneration returns a list of resources by GVK to be skipped during generation checks.
-// func (k *Katalog) SkipObservedGeneration() []string {
+// SkipObservedGeneration returns a list of resources by GVK to be skipped during generation checks.
+// func SkipObservedGeneration() []string {
 // 	return skipObservedGenerationGVKs
 // }
 
 // // skipStatusSubresourceGVKs returns a list of resources by GVK to be skipped during status patching.
-// func (k *Katalog) SkipStatusSubresourceGVKs() []string {
+// func SkipStatusSubresourceGVKs() []string {
 // 	return skipStatusSubresourceGVKs
 // }
+
+// skipStatelessGVKs returns a list of resources by GVK to be interpreted as ready by the CR handlers
+func StatuslessGVKs() []string {
+	return statuslessGVKs
+}

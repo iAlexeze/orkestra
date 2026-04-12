@@ -30,6 +30,12 @@ type BuiltInKind struct {
 
 	// APIPath — always "/apis" except for core group which uses "/api"
 	APIPath string
+
+	// Orkestra readiness metadata
+    Statusless             bool // No meaningful status; ready on creation
+    SkipStatusSubresource  bool // No /status subresource; do not PATCH status
+    SkipObservedGeneration bool // Has status but no observedGeneration
+    IsChild                bool // Orkestra may create this as a child resource
 }
 
 // builtInRegistry is the canonical map of Kubernetes built-in resource kinds
@@ -40,241 +46,412 @@ type BuiltInKind struct {
 // users who need them should declare the full apiTypes block.
 //
 // Lookup is case-insensitive — "pod", "Pod", and "POD" all resolve correctly.
+
+// builtInRegistry is the canonical map of Kubernetes built-in resource kinds
+// to their fully-qualified API metadata and readiness semantics.
 var builtInRegistry = map[string]BuiltInKind{
-	// ── Core group (group: "", apiVersion: v1) ────────────────────────────────
-	"pod": {
-		Group:      "",
-		Version:    "v1",
-		Plural:     "pods",
-		Namespaced: true,
-		APIPath:    "/api",
-	},
-	"service": {
-		Group:      "",
-		Version:    "v1",
-		Plural:     "services",
-		Namespaced: true,
-		APIPath:    "/api",
-	},
-	"configmap": {
-		Group:      "",
-		Version:    "v1",
-		Plural:     "configmaps",
-		Namespaced: true,
-		APIPath:    "/api",
-	},
-	"secret": {
-		Group:      "",
-		Version:    "v1",
-		Plural:     "secrets",
-		Namespaced: true,
-		APIPath:    "/api",
-	},
-	"namespace": {
-		Group:      "",
-		Version:    "v1",
-		Plural:     "namespaces",
-		Namespaced: false,
-		APIPath:    "/api",
-	},
-	"serviceaccount": {
-		Group:      "",
-		Version:    "v1",
-		Plural:     "serviceaccounts",
-		Namespaced: true,
-		APIPath:    "/api",
-	},
-	"persistentvolumeclaim": {
-		Group:      "",
-		Version:    "v1",
-		Plural:     "persistentvolumeclaims",
-		Namespaced: true,
-		APIPath:    "/api",
-	},
-	"persistentvolume": {
-		Group:      "",
-		Version:    "v1",
-		Plural:     "persistentvolumes",
-		Namespaced: false,
-		APIPath:    "/api",
-	},
-	"endpointslice": {
-		Group:      "discovery.k8s.io",
-		Version:    "v1",
-		Plural:     "endpointslices",
-		Namespaced: true,
-		APIPath:    "/apis",
-	},
-	"event": {
-		Group:      "",
-		Version:    "v1",
-		Plural:     "events",
-		Namespaced: true,
-		APIPath:    "/api",
-	},
-	"node": {
-		Group:      "",
-		Version:    "v1",
-		Plural:     "nodes",
-		Namespaced: false,
-		APIPath:    "/api",
-	},
-	"resourcequota": {
-		Group:      "",
-		Version:    "v1",
-		Plural:     "resourcequotas",
-		Namespaced: true,
-		APIPath:    "/api",
-	},
-	"limitrange": {
-		Group:      "",
-		Version:    "v1",
-		Plural:     "limitranges",
-		Namespaced: true,
-		APIPath:    "/api",
-	},
 
-	// ── apps/v1 ───────────────────────────────────────────────────────────────
-	"deployment": {
-		Group:      "apps",
-		Version:    "v1",
-		Plural:     "deployments",
-		Namespaced: true,
-		APIPath:    "/apis",
-	},
-	"statefulset": {
-		Group:      "apps",
-		Version:    "v1",
-		Plural:     "statefulsets",
-		Namespaced: true,
-		APIPath:    "/apis",
-	},
-	"daemonset": {
-		Group:      "apps",
-		Version:    "v1",
-		Plural:     "daemonsets",
-		Namespaced: true,
-		APIPath:    "/apis",
-	},
-	"replicaset": {
-		Group:      "apps",
-		Version:    "v1",
-		Plural:     "replicasets",
-		Namespaced: true,
-		APIPath:    "/apis",
-	},
+    // ────────────────────────────────
+    // Core v1
+    // ────────────────────────────────
 
-	// ── batch/v1 ──────────────────────────────────────────────────────────────
-	"job": {
-		Group:      "batch",
-		Version:    "v1",
-		Plural:     "jobs",
-		Namespaced: true,
-		APIPath:    "/apis",
-	},
-	"cronjob": {
-		Group:      "batch",
-		Version:    "v1",
-		Plural:     "cronjobs",
-		Namespaced: true,
-		APIPath:    "/apis",
-	},
+    "pod": {
+        Group:      "",
+        Version:    "v1",
+        Plural:     "pods",
+        Namespaced: true,
+        APIPath:    "/api",
 
-	// ── networking.k8s.io/v1 ─────────────────────────────────────────────────
-	"ingress": {
-		Group:      "networking.k8s.io",
-		Version:    "v1",
-		Plural:     "ingresses",
-		Namespaced: true,
-		APIPath:    "/apis",
-	},
-	"networkpolicy": {
-		Group:      "networking.k8s.io",
-		Version:    "v1",
-		Plural:     "networkpolicies",
-		Namespaced: true,
-		APIPath:    "/apis",
-	},
-	"ingressclass": {
-		Group:      "networking.k8s.io",
-		Version:    "v1",
-		Plural:     "ingressclasses",
-		Namespaced: false,
-		APIPath:    "/apis",
-	},
+        Statusless:             false,
+        SkipStatusSubresource:  false,
+        SkipObservedGeneration: true,  // no observedGeneration
+        IsChild:                true,
+    },
 
-	// ── autoscaling/v2 ────────────────────────────────────────────────────────
-	"horizontalpodautoscaler": {
-		Group:      "autoscaling",
-		Version:    "v2",
-		Plural:     "horizontalpodautoscalers",
-		Namespaced: true,
-		APIPath:    "/apis",
-	},
+    "service": {
+        Group:      "",
+        Version:    "v1",
+        Plural:     "services",
+        Namespaced: true,
+        APIPath:    "/api",
 
-	// ── rbac.authorization.k8s.io/v1 ─────────────────────────────────────────
-	"clusterrole": {
-		Group:      "rbac.authorization.k8s.io",
-		Version:    "v1",
-		Plural:     "clusterroles",
-		Namespaced: false,
-		APIPath:    "/apis",
-	},
-	"clusterrolebinding": {
-		Group:      "rbac.authorization.k8s.io",
-		Version:    "v1",
-		Plural:     "clusterrolebindings",
-		Namespaced: false,
-		APIPath:    "/apis",
-	},
-	"role": {
-		Group:      "rbac.authorization.k8s.io",
-		Version:    "v1",
-		Plural:     "roles",
-		Namespaced: true,
-		APIPath:    "/apis",
-	},
-	"rolebinding": {
-		Group:      "rbac.authorization.k8s.io",
-		Version:    "v1",
-		Plural:     "rolebindings",
-		Namespaced: true,
-		APIPath:    "/apis",
-	},
+        Statusless:             true,  // no Ready condition
+        SkipStatusSubresource:  false,
+        SkipObservedGeneration: true,
+        IsChild:                true,
+    },
 
-	// ── storage.k8s.io/v1 ─────────────────────────────────────────────────────
-	"storageclass": {
-		Group:      "storage.k8s.io",
-		Version:    "v1",
-		Plural:     "storageclasses",
-		Namespaced: false,
-		APIPath:    "/apis",
-	},
-	"persistentvolume_storage": { // aliased — PV is in core, but StorageClass is here
-		Group:      "storage.k8s.io",
-		Version:    "v1",
-		Plural:     "volumeattachments",
-		Namespaced: false,
-		APIPath:    "/apis",
-	},
+    "configmap": {
+        Group:      "",
+        Version:    "v1",
+        Plural:     "configmaps",
+        Namespaced: true,
+        APIPath:    "/api",
 
-	// ── policy/v1 ─────────────────────────────────────────────────────────────
-	"poddisruptionbudget": {
-		Group:      "policy",
-		Version:    "v1",
-		Plural:     "poddisruptionbudgets",
-		Namespaced: true,
-		APIPath:    "/apis",
-	},
+        Statusless:             true,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                true,
+    },
 
-	// ── apiextensions.k8s.io/v1 ──────────────────────────────────────────────
-	"customresourcedefinition": {
-		Group:      "apiextensions.k8s.io",
-		Version:    "v1",
-		Plural:     "customresourcedefinitions",
-		Namespaced: false,
-		APIPath:    "/apis",
-	},
+    "secret": {
+        Group:      "",
+        Version:    "v1",
+        Plural:     "secrets",
+        Namespaced: true,
+        APIPath:    "/api",
+
+        Statusless:             true,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                true,
+    },
+
+    "serviceaccount": {
+        Group:      "",
+        Version:    "v1",
+        Plural:     "serviceaccounts",
+        Namespaced: true,
+        APIPath:    "/api",
+
+        Statusless:             true,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                true,
+    },
+
+    "namespace": {
+        Group:      "",
+        Version:    "v1",
+        Plural:     "namespaces",
+        Namespaced: false,
+        APIPath:    "/api",
+
+        Statusless:             false,
+        SkipStatusSubresource:  false,
+        SkipObservedGeneration: true,
+        IsChild:                false,
+    },
+
+    "event": {
+        Group:      "",
+        Version:    "v1",
+        Plural:     "events",
+        Namespaced: true,
+        APIPath:    "/api",
+
+        Statusless:             true,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                false,
+    },
+
+    "podtemplate": {
+        Group:      "",
+        Version:    "v1",
+        Plural:     "podtemplates",
+        Namespaced: true,
+        APIPath:    "/api",
+
+        Statusless:             true,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                false,
+    },
+
+    "componentstatus": {
+        Group:      "",
+        Version:    "v1",
+        Plural:     "componentstatuses",
+        Namespaced: false,
+        APIPath:    "/api",
+
+        Statusless:             true,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                false,
+    },
+
+    "resourcequota": {
+        Group:      "",
+        Version:    "v1",
+        Plural:     "resourcequotas",
+        Namespaced: true,
+        APIPath:    "/api",
+
+        Statusless:             false,
+        SkipStatusSubresource:  false,
+        SkipObservedGeneration: true,
+        IsChild:                false,
+    },
+
+    "limitrange": {
+        Group:      "",
+        Version:    "v1",
+        Plural:     "limitranges",
+        Namespaced: true,
+        APIPath:    "/api",
+
+        Statusless:             false,
+        SkipStatusSubresource:  false,
+        SkipObservedGeneration: true,
+        IsChild:                false,
+    },
+
+    "persistentvolume": {
+        Group:      "",
+        Version:    "v1",
+        Plural:     "persistentvolumes",
+        Namespaced: false,
+        APIPath:    "/api",
+
+        Statusless:             false,
+        SkipStatusSubresource:  false,
+        SkipObservedGeneration: true,
+        IsChild:                false,
+    },
+
+    "persistentvolumeclaim": {
+        Group:      "",
+        Version:    "v1",
+        Plural:     "persistentvolumeclaims",
+        Namespaced: true,
+        APIPath:    "/api",
+
+        Statusless:             false,
+        SkipStatusSubresource:  false,
+        SkipObservedGeneration: true,
+        IsChild:                false,
+    },
+
+    // ────────────────────────────────
+    // apps/v1
+    // ────────────────────────────────
+
+    "deployment": {
+        Group:      "apps",
+        Version:    "v1",
+        Plural:     "deployments",
+        Namespaced: true,
+        APIPath:    "/apis",
+
+        Statusless:             false,
+        SkipStatusSubresource:  false,
+        SkipObservedGeneration: false,
+        IsChild:                true,
+    },
+
+    "statefulset": {
+        Group:      "apps",
+        Version:    "v1",
+        Plural:     "statefulsets",
+        Namespaced: true,
+        APIPath:    "/apis",
+
+        Statusless:             false,
+        SkipStatusSubresource:  false,
+        SkipObservedGeneration: false,
+        IsChild:                false,
+    },
+
+    "daemonset": {
+        Group:      "apps",
+        Version:    "v1",
+        Plural:     "daemonsets",
+        Namespaced: true,
+        APIPath:    "/apis",
+
+        Statusless:             false,
+        SkipStatusSubresource:  false,
+        SkipObservedGeneration: false,
+        IsChild:                false,
+    },
+
+    "replicaset": {
+        Group:      "apps",
+        Version:    "v1",
+        Plural:     "replicasets",
+        Namespaced: true,
+        APIPath:    "/apis",
+
+        Statusless:             false,
+        SkipStatusSubresource:  false,
+        SkipObservedGeneration: false,
+        IsChild:                false,
+    },
+
+    // ────────────────────────────────
+    // batch/v1
+    // ────────────────────────────────
+
+    "job": {
+        Group:      "batch",
+        Version:    "v1",
+        Plural:     "jobs",
+        Namespaced: true,
+        APIPath:    "/apis",
+
+        Statusless:             false,
+        SkipStatusSubresource:  true,  // no /status
+        SkipObservedGeneration: false,
+        IsChild:                true,
+    },
+
+    "cronjob": {
+        Group:      "batch",
+        Version:    "v1",
+        Plural:     "cronjobs",
+        Namespaced: true,
+        APIPath:    "/apis",
+
+        Statusless:             false,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                true,
+    },
+
+    // ────────────────────────────────
+    // networking.k8s.io/v1
+    // ────────────────────────────────
+
+    "networkpolicy": {
+        Group:      "networking.k8s.io",
+        Version:    "v1",
+        Plural:     "networkpolicies",
+        Namespaced: true,
+        APIPath:    "/apis",
+
+        Statusless:             true,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                false,
+    },
+
+    // ────────────────────────────────
+    // rbac.authorization.k8s.io/v1
+    // ────────────────────────────────
+
+    "role": {
+        Group:      "rbac.authorization.k8s.io",
+        Version:    "v1",
+        Plural:     "roles",
+        Namespaced: true,
+        APIPath:    "/apis",
+
+        Statusless:             true,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                false,
+    },
+
+    "rolebinding": {
+        Group:      "rbac.authorization.k8s.io",
+        Version:    "v1",
+        Plural:     "rolebindings",
+        Namespaced: true,
+        APIPath:    "/apis",
+
+        Statusless:             true,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                false,
+    },
+
+    "clusterrole": {
+        Group:      "rbac.authorization.k8s.io",
+        Version:    "v1",
+        Plural:     "clusterroles",
+        Namespaced: false,
+        APIPath:    "/apis",
+
+        Statusless:             true,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                false,
+    },
+
+    "clusterrolebinding": {
+        Group:      "rbac.authorization.k8s.io",
+        Version:    "v1",
+        Plural:     "clusterrolebindings",
+        Namespaced: false,
+        APIPath:    "/apis",
+
+        Statusless:             true,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                false,
+    },
+
+    // ────────────────────────────────
+    // admissionregistration.k8s.io/v1
+    // ────────────────────────────────
+
+    "mutatingwebhookconfiguration": {
+        Group:      "admissionregistration.k8s.io",
+        Version:    "v1",
+        Plural:     "mutatingwebhookconfigurations",
+        Namespaced: false,
+        APIPath:    "/apis",
+
+        Statusless:             true,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                false,
+    },
+
+    "validatingwebhookconfiguration": {
+        Group:      "admissionregistration.k8s.io",
+        Version:    "v1",
+        Plural:     "validatingwebhookconfigurations",
+        Namespaced: false,
+        APIPath:    "/apis",
+
+        Statusless:             true,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                false,
+    },
+
+    // ────────────────────────────────
+    // scheduling.k8s.io/v1
+    // ────────────────────────────────
+
+    "priorityclass": {
+        Group:      "scheduling.k8s.io",
+        Version:    "v1",
+        Plural:     "priorityclasses",
+        Namespaced: false,
+        APIPath:    "/apis",
+
+        Statusless:             true,
+        SkipStatusSubresource:  true,
+        SkipObservedGeneration: false,
+        IsChild:                false,
+    },
+
+    // ────────────────────────────────
+    // apiextensions.k8s.io/v1
+    // ────────────────────────────────
+
+    "customresourcedefinition": {
+        Group:      "apiextensions.k8s.io",
+        Version:    "v1",
+        Plural:     "customresourcedefinitions",
+        Namespaced: false,
+        APIPath:    "/apis",
+
+        Statusless:             false,
+        SkipStatusSubresource:  false,
+        SkipObservedGeneration: true,
+        IsChild:                false,
+    },
+}
+
+// BuiltInMeta returns metadata for a built-in kind.
+func BuiltInMeta(kind string) BuiltInKind {
+    key := strings.ToLower(strings.TrimSpace(kind))
+    return builtInRegistry[key]
 }
 
 // EnrichmentResult holds the result of a built-in lookup.

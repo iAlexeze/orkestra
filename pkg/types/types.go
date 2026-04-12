@@ -1499,6 +1499,10 @@ type CRDEntry struct {
 	// IgnoreObservedGeneration reports whether or not to ignore the observedGeneration field for this CRD.
 	IgnoreObservedGeneration bool `yaml:"ignoreObservedGeneration,omitempty" json:"ignoreObservedGeneration,omitempty"`
 
+	// IsStatusless reports whether this CRD has no meaningful readiness semantics.
+	// These resources become "Ready" immediately upon creation.
+	IsStatusless bool `yaml:"-" json:"IsStatusless,omitempty"`
+
 	// BuiltInGroup is the display name of the API group for built-in resources.
 	// "core" for resources in the core group (empty string group).
 	// Only set when IsBuiltIn is true.

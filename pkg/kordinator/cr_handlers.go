@@ -37,6 +37,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"github.com/ialexeze/orkestra/pkg/utils"
@@ -49,7 +50,7 @@ import (
 )
 
 const (
-	listOptionsLimit = 1
+	listOptionsLimit = 5		// Since some CRs might create multiple children resources
 	fetchTimeout     = 3 * time.Second
 )
 
@@ -82,6 +83,19 @@ var knownChildGVRs = []struct {
 	{crCronJobGVR, "cronjob"},
 	{crServiceAccountGVR, "serviceaccount"},
 }
+
+func isStatuslessGVR(gvr schema.GroupVersionResource) bool {
+    gvk := fmt.Sprintf("%s/%s", gvr.Group, gvr.Version) + "/" + strings.Title(gvr.Resource[:len(gvr.Resource)-1])
+    // Example: "v1/ConfigMap"
+
+    for _, s := range katalog.StatuslessGVKs() {
+        if s == gvk {
+            return true
+        }
+    }
+    return false
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Response types
@@ -197,7 +211,7 @@ func BuildCRListHandler(
 			if !ok {
 				continue
 			}
-			items = append(items, summariseCR(u))
+			items = append(items, summariseCR(u, crd.IsStatuslessType()))
 		}
 
 		sort.Slice(items, func(i, j int) bool {
@@ -287,7 +301,7 @@ func BuildCRDetailHandler(
 		// Build the events endpoint URL for this CR
 		eventsPath := buildEventsPath(crd, namespace, name)
 
-		utils.WriteJSON(w, http.StatusOK, buildCRDetail(u, children, eventsPath))
+		utils.WriteJSON(w, http.StatusOK, buildCRDetail(u, children, eventsPath, crd.IsStatuslessType()))
 	}
 }
 
@@ -379,9 +393,9 @@ func BuildCREventsHandler(
 // ─────────────────────────────────────────────────────────────────────────────
 
 // summariseCR extracts the summary fields from one CR object.
-func summariseCR(u *unstructured.Unstructured) CRSummary {
+func summariseCR(u *unstructured.Unstructured, statusless bool) CRSummary {
 	phase, _, _ := unstructured.NestedString(u.Object, "status", "phase")
-	ready, readyReason := extractReadyCondition(u)
+	ready, readyReason := extractReadyCondition(u, statusless)
 	age := formatAge(u.GetCreationTimestamp().Time)
 
 	return CRSummary{
@@ -396,8 +410,8 @@ func summariseCR(u *unstructured.Unstructured) CRSummary {
 }
 
 // buildCRDetail assembles the full detail response for one CR.
-func buildCRDetail(u *unstructured.Unstructured, children map[string]ChildSummary, eventsEndpoint string) CRDetailResponse {
-	ready, readyReason, readyMsg := extractReadyConditionFull(u)
+func buildCRDetail(u *unstructured.Unstructured, children map[string]ChildSummary, eventsEndpoint string, statusless bool) CRDetailResponse {
+	ready, readyReason, readyMsg := extractReadyConditionFull(u, statusless)
 
 	status, _ := u.Object["status"].(map[string]interface{})
 
@@ -550,7 +564,7 @@ func fetchOneChildKind(
 		Namespace: obj.GetNamespace(),
 		Kind:      kind,
 		Status:    status,
-		Ready:     isChildReady(obj.Object),
+		Ready:     isChildReady(obj.Object, crd.IsStatuslessType()),
 	}
 }
 
@@ -655,13 +669,23 @@ func summariseEvent(ev corev1.Event) CREvent {
 
 // extractReadyCondition reads the Ready condition from status.conditions.
 // Returns (ready bool, reason string).
-func extractReadyCondition(u *unstructured.Unstructured) (bool, string) {
-	ready, reason, _ := extractReadyConditionFull(u)
+func extractReadyCondition(u *unstructured.Unstructured, statusless bool) (bool, string) {
+	ready, reason, _ := extractReadyConditionFull(u, statusless)
 	return ready, reason
 }
 
 // extractReadyConditionFull reads Ready condition with message.
-func extractReadyConditionFull(u *unstructured.Unstructured) (bool, string, string) {
+func extractReadyConditionFull(
+	u *unstructured.Unstructured,
+	statusless bool,
+) (bool, string, string) {
+
+	if statusless {
+		// CRD does not use status or Ready conditions.
+		// Treat existence as readiness.
+		return true, "Statusless", ""
+	}
+
 	conditions, _, _ := unstructured.NestedSlice(u.Object, "status", "conditions")
 	for _, c := range conditions {
 		cond, ok := c.(map[string]interface{})
@@ -678,6 +702,7 @@ func extractReadyConditionFull(u *unstructured.Unstructured) (bool, string, stri
 			return ready, reason, message
 		}
 	}
+
 	return false, "", ""
 }
 
@@ -685,7 +710,11 @@ func extractReadyConditionFull(u *unstructured.Unstructured) (bool, string, stri
 // For Jobs: ready when succeeded > 0.
 // For Deployments: ready when readyReplicas == replicas.
 // For everything else: ready when no failed conditions exist.
-func isChildReady(obj map[string]interface{}) bool {
+func isChildReady(obj map[string]interface{}, statusless bool) bool {
+	if statusless {
+		return true
+	}
+
 	status, _ := obj["status"].(map[string]interface{})
 	if status == nil {
 		return false

@@ -31,15 +31,28 @@ spec:
               data:
                 username: "{{ .data.username }}"
                 password: "{{ randomAlphanumeric 32 }}"
+          
+          # 2. Create a new configmap
+          configMaps:
+            - name: "{{ .metadata.name }}-new"      # If you want to modify the parent configMap use: "{{ .metadata.name }}"
+              data:
+                region: "{{ .data.region }}"
+                image: "{{ .data.image }}"
+                replicas: "{{ .data.replicas }}"
+              reconcile: true
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}-new"   # Different label from the parent
 
-          # 2. Deployment consuming the Secret
+          # 3. Deployment consuming the Secret and ConfigMap
           deployments:
-            - name: "{{ .metadata.name }}"
+            # ---- With Secret ----
+            - name: "{{ .metadata.name }}-with-secret"
               image: "{{ .data.image }}"
               replicas: "{{ getIntOr .data.replicas 1 }}"
               labels:
                 - key: app
-                  value: "{{ .metadata.name }}"
+                  value: "{{ .metadata.name }}-with-secret"
               port: 8080
               reconcile: true
 
@@ -59,15 +72,42 @@ spec:
               envFrom:
                 - secretRef: "{{ .metadata.name }}-credentials"
 
-          # 3. Service exposing the Deployment
+          # 4. Deployment consuming the configmap
+           # ---- With ConfigMap ----
+            - name: "{{ .metadata.name }}-with-configmap"
+              image: "{{ .data.image }}"
+              replicas: "{{ getIntOr .data.replicas 3 }}"
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}-with-configmap"
+              port: 80
+              reconcile: true
+              env:
+                REGION:
+                  configMapKeyRef:
+                    name: "{{ .metadata.name }}-new"
+                    key: region
+              envFrom:
+                - configMapRef: "{{ .metadata.name }}-new"
+
+          # 4. Service exposing the Deployments
           services:
-            - name: "{{ .metadata.name }}"
+            # ---- With Secret ----
+            - name: "{{ .metadata.name }}-with-secret"
               port: 80
               targetPort: 8080
               reconcile: true
               labels:
                 - key: app
-                  value: "{{ .metadata.name }}"
+                  value: "{{ .metadata.name }}-with-secret"
+            
+            - name: "{{ .metadata.name }}-with-configmap"
+              port: 80
+              targetPort: 8081
+              reconcile: true
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}-with-configmap"
 
         status:
           fields:

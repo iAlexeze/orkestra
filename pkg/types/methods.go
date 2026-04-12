@@ -24,6 +24,12 @@ func (c *CRDEntry) SkipObservedGeneration() bool {
 	return c.IgnoreObservedGeneration
 }
 
+// IsStatusless reports whether this CRD has no meaningful readiness semantics.
+// These resources become "Ready" immediately upon creation.
+func (c *CRDEntry) IsStatuslessType() bool {
+	return c.IsStatusless
+}
+
 // GetRuntimeObjects returns the object and list constructors appropriate for the
 // current mode (dynamic or typed). Used by the reconciler to instantiate new
 // runtime objects for watches, lists, and reconciliation.

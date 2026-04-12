@@ -9,3 +9,4 @@ data:
   image: "nginx:latest"
   replicas: "2"
   username: "payments-user"
+  region: "us-east-1"

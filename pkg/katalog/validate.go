@@ -370,16 +370,28 @@ func (k *Katalog) addHooks() error {
 func (k *Katalog) validateStatus() {
 	// Check the built‑in list
 	for name, crd := range k.enabledCRDs {
+		// No /status endpoint
 		for _, gvk := range skipStatusSubresourceGVKs {
 			if gvk == crd.GroupVersionKind.String() {
 				crd.IgnoreStatusPatch = true
 			}
 		}
+
+		// There is status endpoint but no observedGeneration
 		for _, gvk := range skipObservedGenerationGVKs {
 			if gvk == crd.GroupVersionKind.String() {
 				crd.IgnoreObservedGeneration = true
 			}
 		}
+
+		// Needed for the control center to interpret readiness properly
+		// No ready status
+		for _, gvk := range statuslessGVKs {
+			if gvk == crd.GroupVersionKind.String() {
+				crd.IsStatusless = true
+			}
+		}
+
 		k.enabledCRDs[name] = crd
 
 	}
