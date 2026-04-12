@@ -26,9 +26,11 @@ type GenericClient interface {
 }
 
 type Options struct {
-	Name   string
-	Resync time.Duration
-	Wq     *queue.Workqueue
+	Name          string
+	Resync        time.Duration
+	Wq            *queue.Workqueue
+	LabelSelector string
+	FieldSelector string
 }
 
 // InformerEntry holds an informer and its metadata — avoids storing
@@ -39,6 +41,7 @@ type InformerEntry struct {
 	Resync   time.Duration
 	Missing  bool
 	GVK      *schema.GroupVersionKind
+
 	// Store the context and cancel function
 	Ctx             context.Context    // stored context
 	Cancel          context.CancelFunc // stored cancel function

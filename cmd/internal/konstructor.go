@@ -115,6 +115,7 @@ import (
 	ork "github.com/ialexeze/orkestra/pkg/orkestra"
 	"github.com/ialexeze/orkestra/pkg/queue"
 	"github.com/ialexeze/orkestra/pkg/reconciler"
+	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -246,9 +247,15 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 
 		wq := queueRegistry.Register(gvk, crd.SetMaxQueueDepth(kfg.Katalog().DefaultMaxQueueDepth))
 
+		// compute selectors
+		labelSelector := orktypes.SelectorMap(crd.LabelSelector).String()
+		fieldSelector := orktypes.SelectorMap(crd.FieldSelector).String()
+
 		opts := informer.Options{
-			Name:   crd.APITypes.Kind,
-			Resync: crd.Resync,
+			Name:          crd.APITypes.Kind,
+			Resync:        crd.Resync,
+			LabelSelector: labelSelector,
+			FieldSelector: fieldSelector,
 		}
 		if crd.DefaultQueue() {
 			opts.Wq = nil // use the shared default queue
@@ -271,6 +278,9 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 				Plural:       crd.APITypes.Plural,
 				Namespace:    crd.Namespace,
 				Namespaced:   crd.IsNamespaced(),
+			}, kubeclient.ListOptions{
+				LabelSelector: labelSelector,
+				FieldSelector: fieldSelector,
 			})
 			inf = infFactory.ForListerWatcher(lw, object, ctx, opts)
 		} else {

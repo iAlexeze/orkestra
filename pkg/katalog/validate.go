@@ -207,13 +207,11 @@ func (k *Katalog) setGroupVersionKind() error {
 func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 	for name, crd := range k.enabledCRDs {
 		// Add katalog Name
-		crd.KatalogName = k.metadata.Name
-
-		// Add labels
-		crd.Labels = append(crd.Labels, orktypes.ResourceLabel{
-			Key:   konfig.LabelManaged,
-			Value: konfig.LabelManagedValue,
-		})
+		if k.metadata.Name != "" {
+			crd.KatalogName = k.metadata.Name
+		} else {
+			crd.KatalogName = kfg.Cluster().Name
+		}
 
 		// Name is already set from map key — normalise it
 		crd.Name = strings.ReplaceAll(crd.Name, " ", "")

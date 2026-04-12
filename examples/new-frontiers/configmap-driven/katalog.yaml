@@ -13,14 +13,10 @@ spec:
     configmap-manager:
       apiTypes:
         kind: ConfigMap
-      labels:
-        - key: orkestra.io/katalog
-          value: configmap-manager
-
-      restrictedNamespaces:
-        - "default"
-        - "demo"
-
+      labelSelector:
+        orkestra.io/katalog: configmap-manager
+      allowedNamespaces:
+        - default
       reconciler:
         default: true
 
