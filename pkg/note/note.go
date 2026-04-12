@@ -68,6 +68,7 @@ func buildNotes() template.FuncMap {
 	register(m, listMapNotes())
 	register(m, safeAccessNotes())
 	register(m, containerNotes())
+	register(m, asNotes())
 	return m
 }
 
