@@ -49,13 +49,13 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj dom
 	// Runs before external calls so URLs, tokens, and payloads can reference .git.commit,
 	// .git.changed, and .git.path. Git is a declarative precondition for pipelines.
 	if t := r.rc.OnReconcile; t != nil && t.Git != nil {
-		resolver, err = runGit(ctx, r.crd.GVK, resolver, t.Git)
+		resolver, err = runGit(ctx, r.crd.GVKString(), resolver, t.Git)
 		if err != nil {
 			return fmt.Errorf("git hook: %w", err)
 		}
 	}
 	if t := r.rc.OnCreate; t != nil && t.Git != nil {
-		resolver, err = runGit(ctx, r.crd.GVK, resolver, t.Git)
+		resolver, err = runGit(ctx, r.crd.GVKString(), resolver, t.Git)
 		if err != nil {
 			return fmt.Errorf("git hook: %w", err)
 		}
@@ -64,13 +64,13 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj dom
 	// Step 4: external HTTP calls
 	// Runs after Git so external URLs can embed commit hashes or paths.
 	if t := r.rc.OnReconcile; t != nil && len(t.External) > 0 {
-		resolver, err = runExternal(ctx, r.crd.GVK, resolver, t.External)
+		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, t.External)
 		if err != nil {
 			return fmt.Errorf("external calls: %w", err)
 		}
 	}
 	if t := r.rc.OnCreate; t != nil && len(t.External) > 0 {
-		resolver, err = runExternal(ctx, r.crd.GVK, resolver, t.External)
+		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, t.External)
 		if err != nil {
 			return fmt.Errorf("external calls: %w", err)
 		}
@@ -79,13 +79,13 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj dom
 	// Step 5: Docker hook
 	// Runs after external so build/push can use tokens or metadata from external calls.
 	if t := r.rc.OnReconcile; t != nil && t.Docker != nil {
-		resolver, err = runDocker(ctx, r.crd.GVK, resolver, t.Docker)
+		resolver, err = runDocker(ctx, r.crd.GVKString(), resolver, t.Docker)
 		if err != nil {
 			return fmt.Errorf("docker hook: %w", err)
 		}
 	}
 	if t := r.rc.OnCreate; t != nil && t.Docker != nil {
-		resolver, err = runDocker(ctx, r.crd.GVK, resolver, t.Docker)
+		resolver, err = runDocker(ctx, r.crd.GVKString(), resolver, t.Docker)
 		if err != nil {
 			return fmt.Errorf("docker hook: %w", err)
 		}
@@ -126,25 +126,28 @@ func (r *GenericReconciler[T]) runResourceGroup(
 	t *orktypes.HookTemplates,
 	update bool,
 ) error {
-	// Re-ordered because deployments could depend on secrets and configmaps
+	// Guard closure — captures r for access to CRD config.
+    // nil-safe: if CRD has no restrictions, guard is a no-op.
+    guard := r.namespaceGuardFunc(ctx, obj)
+
 	if err := runSecrets(ctx, kube, resolver, obj,
-		expandForEachSecrets(resolver, t.Secrets), update); err != nil {
+		expandForEachSecrets(resolver, t.Secrets), update, guard); err != nil {
 		return err
 	}
 	if err := runConfigMaps(ctx, kube, resolver, obj,
-		expandForEachConfigMaps(resolver, t.ConfigMaps), update); err != nil {
+		expandForEachConfigMaps(resolver, t.ConfigMaps), update, guard); err != nil {
 		return err
 	}
 	if err := runServiceAccounts(ctx, kube, resolver, obj,
-		expandForEachServiceAccounts(resolver, t.ServiceAccounts), update); err != nil {
+		expandForEachServiceAccounts(resolver, t.ServiceAccounts), update, guard); err != nil {
 		return err
 	}
 	if err := runDeployments(ctx, kube, resolver, obj,
-		expandForEachDeployments(resolver, t.Deployments), update); err != nil {
+		expandForEachDeployments(resolver, t.Deployments), update, guard); err != nil {
 		return err
 	}
 	if err := runServices(ctx, kube, resolver, obj,
-		expandForEachServices(resolver, t.Services), update); err != nil {
+		expandForEachServices(resolver, t.Services), update, guard); err != nil {
 		return err
 	}
 	if err := runJobs(ctx, kube, resolver, obj,
@@ -152,7 +155,7 @@ func (r *GenericReconciler[T]) runResourceGroup(
 		return err
 	}
 	if err := runCronJobs(ctx, kube, resolver, obj,
-		expandForEachCronJobs(resolver, t.CronJobs), update); err != nil {
+		expandForEachCronJobs(resolver, t.CronJobs), update, guard); err != nil {
 		return err
 	}
 	return nil

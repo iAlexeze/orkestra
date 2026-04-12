@@ -37,6 +37,7 @@ func runSecrets(
 	owner domain.Object,
 	srcs []orktypes.SecretTemplateSource,
 	update bool,
+	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
 	for i, src := range srcs {
 		// ── Step 1: condition evaluation ────────────────────────────────────────

@@ -17,7 +17,7 @@ func (r *GenericReconciler[T]) applyReconcileTimeValidation(ctx context.Context,
 		return nil
 	}
 
-	result := runValidation(obj, r.crd.Validation, r.crd.Kind)
+	result := runValidation(obj, r.crd.Validation, r.crd.APITypes.Kind)
 	if result.Passed {
 		return nil
 	}
@@ -56,7 +56,7 @@ func (r *GenericReconciler[T]) applyReconcileTimeMutation(ctx context.Context, o
 		return nil
 	}
 
-	_, err := runMutation(ctx, r.kube, obj, r.crd.Mutation, r.crd.GVR, r.crd.Kind)
+	_, err := runMutation(ctx, r.kube, obj, r.crd.Mutation, r.crd.GVR(), r.crd.APITypes.Kind)
 	return err
 }
 

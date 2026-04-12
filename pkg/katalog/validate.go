@@ -206,6 +206,9 @@ func (k *Katalog) setGroupVersionKind() error {
 // Set SetDefaults
 func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 	for name, crd := range k.enabledCRDs {
+		// Add katalog Name
+		crd.KatalogName = k.metadata.Name
+
 		// Add labels
 		crd.Labels = append(crd.Labels, orktypes.ResourceLabel{
 			Key:   konfig.LabelManaged,
@@ -256,25 +259,6 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		// Handle Workers
 		if crd.Workers == 0 {
 			crd.Workers = kfg.Cluster().DefaultWorkers
-		}
-
-		// Handle Queues
-		if crd.Queue.DegradeThreshold == 0 {
-			crd.Queue.DegradeThreshold = kfg.Katalog().DefaultDegradeThreshold
-
-		}
-		if crd.Queue.MaxQueueDepth == 0 {
-			crd.Queue.MaxQueueDepth = kfg.Katalog().DefaultMaxQueueDepth
-		}
-
-		// Handle Builtins
-		if crd.IsBuiltInType() {
-			// Disable status writes for built-ins
-			disabled := false
-			crd.ReconcilerConfig.Status = &orktypes.StatusConfig{
-				Conditions: &disabled,
-			}
-
 		}
 
 		k.enabledCRDs[name] = crd
@@ -381,4 +365,24 @@ func (k *Katalog) addHooks() error {
 		// not found — fine, GenericReconciler runs without hooks
 	}
 	return nil
+}
+
+// ---------------------------------------------------------------------------------
+// Validate status management
+func (k *Katalog) validateStatus() {
+	// Check the built‑in list
+	for name, crd := range k.enabledCRDs {
+		for _, gvk := range skipStatusSubresourceGVKs {
+			if gvk == crd.GroupVersionKind.String() {
+				crd.IgnoreStatusPatch = true
+			}
+		}
+		for _, gvk := range skipObservedGenerationGVKs {
+			if gvk == crd.GroupVersionKind.String() {
+				crd.IgnoreObservedGeneration = true
+			}
+		}
+		k.enabledCRDs[name] = crd
+
+	}
 }

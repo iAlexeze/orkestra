@@ -240,7 +240,6 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	for _, crd := range kat.Enabled() {
 		crd := crd
 		gvk := crd.GVK().String()
-		gvr := crd.GroupVersionResource
 		crd.Workers = crd.SetWorkers(kfg.Cluster().DefaultWorkers)
 
 		object, _ := crd.GetRuntimeObjects()
@@ -280,17 +279,6 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 
 		finalizers = append(finalizers, crd.ReconcilerConfig.Finalizers...)
 
-		crdInfo := reconciler.CRDInfo{
-			IsBuiltIn:        crd.IsBuiltInType(),
-			Kind:             crd.APITypes.Kind,
-			GVK:              gvk,
-			GVR:              gvr,
-			Operator:         kat.Meta().Name,
-			Finalizers:       finalizers,
-			ReconcilerConfig: crd.ReconcilerConfig,
-			Validation:       crd.Validation,
-			Mutation:         crd.Mutation,
-		}
 		infCopy := inf
 
 		// Build the reconciler factory.
@@ -314,7 +302,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 
 			factory = func() domain.Reconciler {
 				return reconciler.NewGenericReconciler(
-					crdInfo,
+					crd,
 					infCopy,
 					ev,
 					kube,

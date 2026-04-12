@@ -24,73 +24,80 @@ func guardObj(namespace, name string) *unstructured.Unstructured {
 	}
 }
 
-// ── Empty restricted list ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Empty restricted + empty allowed → allow all
+// ─────────────────────────────────────────────────────────────────────────────
 
-func TestCheckNamespace_EmptyRestricted_Allowed(t *testing.T) {
+func TestCheckNamespace_NoRestrictions_AllAllowed(t *testing.T) {
 	obj := guardObj("default", "my-site")
-	result := reconciler.CheckNamespace(context.Background(), obj, "default", nil, "Website")
+
+	result := reconciler.CheckNamespace(
+		context.Background(), obj, "default",
+		nil, // restricted
+		nil, // allowed
+		"Website",
+	)
 
 	if !result.Allowed {
-		t.Error("empty restricted list should allow any namespace")
-	}
-	if result.Namespace != "default" {
-		t.Errorf("namespace: expected default, got %q", result.Namespace)
+		t.Error("empty restricted + empty allowed should allow all namespaces")
 	}
 }
 
-// ── Exact match — blocked ─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// RestrictedNamespaces — deny-list always wins
+// ─────────────────────────────────────────────────────────────────────────────
 
-func TestCheckNamespace_ExactMatch_Blocked(t *testing.T) {
+func TestCheckNamespace_ExactMatch_Restricted(t *testing.T) {
 	obj := guardObj("default", "my-site")
 	restricted := orktypes.RestrictedNamespaces{"kube-system", "cert-manager"}
 
-	result := reconciler.CheckNamespace(context.Background(), obj, "kube-system", restricted, "Website")
+	result := reconciler.CheckNamespace(
+		context.Background(), obj, "kube-system",
+		restricted,
+		nil, // allowed
+		"Website",
+	)
 
 	if result.Allowed {
 		t.Error("kube-system is restricted — should be blocked")
 	}
-	if result.Namespace != "kube-system" {
-		t.Errorf("namespace: expected kube-system, got %q", result.Namespace)
+	if result.Reason != "restricted" {
+		t.Errorf("expected reason 'restricted', got %q", result.Reason)
 	}
 	if result.Pattern == "" {
-		t.Error("matched pattern should be set when blocked")
+		t.Error("matched pattern should be set when restricted")
 	}
 }
 
-// ── Wildcard — blocked ────────────────────────────────────────────────────────
-
-func TestCheckNamespace_WildcardPrefix_Blocked(t *testing.T) {
+func TestCheckNamespace_WildcardPrefix_Restricted(t *testing.T) {
 	obj := guardObj("default", "my-site")
 	restricted := orktypes.RestrictedNamespaces{"kube-*"}
 
-	result := reconciler.CheckNamespace(context.Background(), obj, "kube-public", restricted, "Website")
+	result := reconciler.CheckNamespace(
+		context.Background(), obj, "kube-public",
+		restricted,
+		nil,
+		"Website",
+	)
 
 	if result.Allowed {
-		t.Error("kube-public should be blocked by kube-* wildcard")
+		t.Error("kube-public should be blocked by kube-*")
 	}
 	if result.Pattern != "kube-*" {
-		t.Errorf("pattern: expected kube-*, got %q", result.Pattern)
+		t.Errorf("expected pattern kube-*, got %q", result.Pattern)
 	}
 }
-
-func TestCheckNamespace_WildcardPrefix_DoesNotMatchOther(t *testing.T) {
-	obj := guardObj("default", "my-site")
-	restricted := orktypes.RestrictedNamespaces{"kube-*"}
-
-	result := reconciler.CheckNamespace(context.Background(), obj, "production", restricted, "Website")
-
-	if !result.Allowed {
-		t.Error("production should not be blocked by kube-* wildcard")
-	}
-}
-
-// ── Not in restricted list ─────────────────────────────────────────────────────
 
 func TestCheckNamespace_NotRestricted_Allowed(t *testing.T) {
 	obj := guardObj("default", "my-site")
-	restricted := orktypes.RestrictedNamespaces{"kube-system", "cert-manager", "monitoring"}
+	restricted := orktypes.RestrictedNamespaces{"kube-system", "cert-manager"}
 
-	result := reconciler.CheckNamespace(context.Background(), obj, "production", restricted, "Website")
+	result := reconciler.CheckNamespace(
+		context.Background(), obj, "production",
+		restricted,
+		nil,
+		"Website",
+	)
 
 	if !result.Allowed {
 		t.Error("production is not restricted — should be allowed")
@@ -100,38 +107,114 @@ func TestCheckNamespace_NotRestricted_Allowed(t *testing.T) {
 	}
 }
 
-// ── Multiple patterns ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// AllowedNamespaces — allow-list (empty = allow all)
+// ─────────────────────────────────────────────────────────────────────────────
 
-func TestCheckNamespace_MultiplePatterns_MatchesFirst(t *testing.T) {
+func TestCheckNamespace_AllowedList_AllowsMatch(t *testing.T) {
 	obj := guardObj("default", "my-site")
-	restricted := orktypes.RestrictedNamespaces{"kube-*", "*-system", "cert-manager"}
+	allowed := orktypes.AllowedNamespaces{"team-*", "apps"}
 
-	// kube-system matches both kube-* and *-system
-	result := reconciler.CheckNamespace(context.Background(), obj, "kube-system", restricted, "Website")
+	result := reconciler.CheckNamespace(
+		context.Background(), obj, "team-alpha",
+		nil, // restricted
+		allowed,
+		"Website",
+	)
 
-	if result.Allowed {
-		t.Error("kube-system should be blocked")
-	}
-	// Pattern returned is the first match
-	if result.Pattern == "" {
-		t.Error("matched pattern should be set")
+	if !result.Allowed {
+		t.Error("team-alpha matches team-* — should be allowed")
 	}
 }
 
-// ── EventMessage ──────────────────────────────────────────────────────────────
+func TestCheckNamespace_AllowedList_BlocksNonMatch(t *testing.T) {
+	obj := guardObj("default", "my-site")
+	allowed := orktypes.AllowedNamespaces{"team-*", "apps"}
 
-func TestNamespaceGuardResult_EventMessage(t *testing.T) {
+	result := reconciler.CheckNamespace(
+		context.Background(), obj, "default",
+		nil, // restricted
+		allowed,
+		"Website",
+	)
+
+	if result.Allowed {
+		t.Error("default is not in allowed list — should be blocked")
+	}
+	if result.Reason != "not-allowed" {
+		t.Errorf("expected reason 'not-allowed', got %q", result.Reason)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Precedence: restricted ALWAYS wins over allowed
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestCheckNamespace_RestrictedOverridesAllowed(t *testing.T) {
+	obj := guardObj("default", "my-site")
+
+	restricted := orktypes.RestrictedNamespaces{"prod-*"}
+	allowed := orktypes.AllowedNamespaces{"prod-team", "prod-alpha"}
+
+	result := reconciler.CheckNamespace(
+		context.Background(), obj, "prod-team",
+		restricted,
+		allowed,
+		"Website",
+	)
+
+	if result.Allowed {
+		t.Error("restricted must override allowed — should be blocked")
+	}
+	if result.Reason != "restricted" {
+		t.Errorf("expected reason 'restricted', got %q", result.Reason)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EventMessage
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestNamespaceGuardResult_EventMessage_Restricted(t *testing.T) {
 	obj := guardObj("default", "my-site")
 	restricted := orktypes.RestrictedNamespaces{"kube-system"}
 
-	result := reconciler.CheckNamespace(context.Background(), obj, "kube-system", restricted, "Website")
+	result := reconciler.CheckNamespace(
+		context.Background(), obj, "kube-system",
+		restricted,
+		nil,
+		"Website",
+	)
 
 	msg := result.EventMessage("Deployment", "my-app")
 	if msg == "" {
 		t.Error("EventMessage should return a non-empty string")
 	}
-	// Message should mention the resource kind and name
-	if len(msg) < 10 {
-		t.Errorf("EventMessage seems too short: %q", msg)
+	if result.Reason != "restricted" {
+		t.Errorf("expected restricted reason, got %q", result.Reason)
+	}
+}
+
+func TestNamespaceGuardResult_EventMessage_NotAllowed(t *testing.T) {
+	obj := guardObj("default", "my-site")
+	allowed := orktypes.AllowedNamespaces{"team-*"}
+
+	result := reconciler.CheckNamespace(
+		context.Background(), obj, "default",
+		nil, // restricted
+		allowed,
+		"Website",
+	)
+
+	if result.Allowed {
+		t.Error("default is not allowed — should be blocked")
+	}
+
+	msg := result.EventMessage("Service", "backend")
+	if msg == "" {
+		t.Error("EventMessage should return a non-empty string")
+	}
+	if result.Reason != "not-allowed" {
+		t.Errorf("expected not-allowed reason, got %q", result.Reason)
 	}
 }

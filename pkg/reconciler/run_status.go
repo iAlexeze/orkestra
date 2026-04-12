@@ -95,14 +95,18 @@ func runStatusPatch[T domain.Object](
 	// ── Layer 1: Ready condition ───────────────────────────────────────────
 	// Always written — on success and failure — so operators can monitor
 	// the Ready condition without knowing anything else about the CRD.
-	// Except for builtin -> default has been applied in
-	if r.crd.IsBuiltIn {
+	// Except for some builtins or explicitly required
+	if r.crd.SkipStatusSubresource() {
 		return nil
 	}
 
 	cond := buildReadyCondition(reconcileErr, obj.GetGeneration())
 	patch["conditions"] = []interface{}{cond}
-	patch["observedGeneration"] = obj.GetGeneration()
+
+	// Only patch if necessary
+	if !r.crd.SkipObservedGeneration() {
+		patch["observedGeneration"] = obj.GetGeneration()
+	}
 
 	// ── Layer 2: Declared status fields (conditional) ─────────────────────
 	// Only written on successful reconcile. Errors in field resolution are
@@ -119,7 +123,7 @@ func runStatusPatch[T domain.Object](
 		}
 	}
 
-	return r.kube.PatchStatus(ctx, u, r.crd.GVR, patch)
+	return r.kube.PatchStatus(ctx, u, r.crd.GVR(), patch)
 }
 
 // buildReadyCondition constructs the standard Kubernetes Ready condition map.

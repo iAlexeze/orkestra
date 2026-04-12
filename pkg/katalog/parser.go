@@ -108,5 +108,11 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	if err := k.validateReconcilerMode(); err != nil {
 		return nil, err
 	}
+
+	// -------------------------------------------------------------------------
+	// 7. Validate Status
+	// -------------------------------------------------------------------------
+	k.validateStatus()
+
 	return k, nil
 }

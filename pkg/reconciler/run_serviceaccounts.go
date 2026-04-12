@@ -28,6 +28,7 @@ func runServiceAccounts(
 	owner domain.Object,
 	srcs []orktypes.ServiceAccountTemplateSource,
 	update bool,
+	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
 	for i, src := range srcs {
 		// 1. Evaluate conditions BEFORE resolving templates

@@ -28,6 +28,7 @@ func runDeployments(
 	owner domain.Object,
 	srcs []orktypes.DeploymentTemplateSource,
 	update bool,
+	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
 	for i, src := range srcs {
 

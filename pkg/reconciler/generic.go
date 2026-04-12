@@ -51,7 +51,8 @@ type GenericReconciler[T domain.Object] struct {
 	hooks            domain.ReconcileHooks[T]
 	rc               orktypes.ReconcilerConfig
 	newObj           func() T
-	crd              CRDInfo
+	// crd              CRDInfo
+	crd orktypes.CRDEntry
 }
 
 type CRDInfo struct {
@@ -67,7 +68,7 @@ type CRDInfo struct {
 }
 
 func NewGenericReconciler[T domain.Object](
-	crd CRDInfo,
+	crd orktypes.CRDEntry,
 	informer cache.SharedIndexInformer,
 	ev *event.Event,
 	kube *kubeclient.Kubeclient,
@@ -115,7 +116,7 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 	}
 
 	ctx = logger.WithRequestID(ctx)
-	ctx = logger.WithCRD(ctx, r.crd.GVK)
+	ctx = logger.WithCRD(ctx, r.crd.GVKString())
 	ctx = logger.WithResource(ctx, key)
 
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
@@ -155,7 +156,7 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 	}
 
 	if err := r.ensureFinalizers(ctx, obj); err != nil {
-		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"FinalizerError",
+		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerError",
 			fmt.Sprintf("Failed to add finalizers: %v", err))
 		return err
 	}
@@ -166,7 +167,7 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 		return err
 	}
 
-	if err := r.ensureManagedAnnotations(ctx, obj, r.crd.Operator); err != nil {
+	if err := r.ensureManagedAnnotations(ctx, obj, r.crd.KatalogName); err != nil {
 		return err
 	}
 
@@ -202,13 +203,13 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	}
 
 	if validationEnabled {
-		valResult := runValidation(obj, r.crd.Validation, r.crd.Kind)
+		valResult := runValidation(obj, r.crd.Validation, r.crd.APITypes.Kind)
 
 		// Warn violations: log and emit events but do NOT halt
 		for _, w := range valResult.Warnings {
 			logger.FromContext(ctx).Warn().
 				Str("name", obj.GetName()).
-				Str("crd", r.crd.GVK).
+				Str("crd", r.crd.GVKString()).
 				Str("resource", obj.GetNamespace()+"/"+obj.GetName()).
 				Str("field", w.Field).
 				Str("message", w.Message).
@@ -260,13 +261,13 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 			Str("name", obj.GetName()).
 			Msgf("reconciliation failed for %s", r.crd.GVK)
 
-		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"ReconcileError",
+		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"ReconcileError",
 			fmt.Sprintf("Failed to reconcile %s %s/%s: %v",
 				r.crd.GVK, obj.GetNamespace(), obj.GetName(), err))
 		return err
 	}
 
-	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.Kind+"Reconciled",
+	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.APITypes.Kind+"Reconciled",
 		fmt.Sprintf("Successfully reconciled %s %s/%s",
 			r.crd.GVK, obj.GetNamespace(), obj.GetName()))
 
@@ -277,6 +278,25 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	return nil
 }
 
+// namespaceAllowed returns true when the target namespace passes both the
+// restricted and allowed namespace checks for this CRD.
+// Called inside runResourceGroup before dispatching to each resource type.
+func (r *GenericReconciler[T]) namespaceAllowed(
+    ctx context.Context,
+    obj domain.Object,
+    targetNamespace string,
+) bool {
+    result := CheckNamespace(
+        ctx,
+        obj,
+        targetNamespace,
+        r.crd.RestrictedNamespaces,
+        r.crd.AllowedNamespaces,
+        r.crd.APITypes.Kind,
+    )
+    return result.Allowed
+}
+
 // handleDeletion runs cleanup then removes our finalizers.
 // Finalizers are never removed on error — object stays protected until
 // cleanup succeeds.
@@ -284,26 +304,26 @@ func (r *GenericReconciler[T]) handleDeletion(ctx context.Context, obj T) error 
 	switch {
 	case r.hooks.OnDelete != nil:
 		if err := r.hooks.OnDelete(ctx, obj); err != nil {
-			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"DeleteError",
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"DeleteError",
 				fmt.Sprintf("Deletion hook failed: %v", err))
 			return fmt.Errorf("deletion hook: %w", err)
 		}
 
 	case r.rc.OnDelete != nil:
 		if err := r.runTemplateOnDelete(ctx, obj); err != nil {
-			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"DeleteError",
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"DeleteError",
 				fmt.Sprintf("Template deletion failed: %v", err))
 			return fmt.Errorf("template deletion: %w", err)
 		}
 	}
 
 	if err := r.removeFinalizers(ctx, obj); err != nil {
-		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"FinalizerRemovalError",
+		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerRemovalError",
 			fmt.Sprintf("Failed to remove finalizers: %v", err))
 		return err
 	}
 
-	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.Kind+"Deleted",
+	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.APITypes.Kind+"Deleted",
 		fmt.Sprintf("Successfully deleted %s %s/%s",
 			r.crd.GVK, obj.GetNamespace(), obj.GetName()))
 

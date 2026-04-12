@@ -1336,6 +1336,9 @@ type CRDEntry struct {
 	// Injected from the map key during loading — never set from YAML.
 	Name string `yaml:"-" json:"name" validate:"required,hostname_rfc1123"`
 
+	// KatalogName — unique identifier for the the katalog in the runtime
+	KatalogName string `yaml:"-" json:"katalogName,omitempty"`
+
 	// Enabled — include this CRD in the runtime. false = skipped entirely.
 	// WARNING: only set to false after stripping Orkestra finalizers from all
 	// live CRs — disabled CRDs with live finalizers will cause stuck objects.
@@ -1426,6 +1429,12 @@ type CRDEntry struct {
 	// and informational logging only — does not affect runtime behavior.
 	IsBuiltIn bool `yaml:"-" json:"-"` // never serialized — runtime state only
 
+	// IgnoreStatusPatch reports whether or not to patch the status of this CRD
+	IgnoreStatusPatch bool `yaml:"ignoreStatusPatch,omitempty" json:"ignoreStatusPatch,omitempty"`
+
+	// IgnoreObservedGeneration reports whether or not to ignore the observedGeneration field for this CRD.
+	IgnoreObservedGeneration bool `yaml:"ignoreObservedGeneration,omitempty" json:"ignoreObservedGeneration,omitempty"`
+
 	// BuiltInGroup is the display name of the API group for built-in resources.
 	// "core" for resources in the core group (empty string group).
 	// Only set when IsBuiltIn is true.
@@ -1450,6 +1459,9 @@ type CRDEntry struct {
 
 	// Restricted Namespaces
 	RestrictedNamespaces RestrictedNamespaces `yaml:"restrictedNamespaces,omitempty" json:"restrictedNamespaces,omitempty"`
+
+	// Allowed Namespaces
+	AllowedNamespaces AllowedNamespaces `yaml:"allowedNamespaces,omitempty" json:"allowedNamespaces,omitempty"`
 
 	// Conversion is useful for handling multi-version crd
 	Conversion *CRDConversion `yaml:"conversion,omitempty" json:"conversion,omitempty"`
