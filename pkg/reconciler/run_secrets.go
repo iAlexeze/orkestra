@@ -39,6 +39,22 @@ func runSecrets(
 	update bool,
 	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
+	activeNames := make(map[string]bool, len(srcs))
+	for _, s := range srcs {
+		if !orktypes.EvaluateWhen(resolver.Data(), s.Conditions, s.AnyOf) {
+			continue
+		}
+		n, _ := resolver.Resolve(s.Name)
+		if n == "" && s.TLS != nil {
+			n = "orkestra-tls"
+		}
+		nsp, _ := resolver.Resolve(s.Namespace)
+		if nsp == "" {
+			nsp = owner.GetNamespace()
+		}
+		activeNames[nsp+"/"+n] = true
+	}
+
 	for i, src := range srcs {
 		// ── Step 1: condition evaluation ────────────────────────────────────────
 		// EvaluateWhen checks both when: (AND) and anyOf: (OR).
@@ -67,8 +83,10 @@ func runSecrets(
 
 		if !conditionPassed {
 			if update || src.Reconcile {
-				if err := orksecrets.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
-					return fmt.Errorf("secrets[%d]: conditional cleanup: %w", i, err)
+				if !activeNames[ns+"/"+name] {
+					if err := orksecrets.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
+						return fmt.Errorf("secrets[%d]: conditional cleanup: %w", i, err)
+					}
 				}
 			}
 			logger.FromContext(ctx).Debug().

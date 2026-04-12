@@ -30,6 +30,19 @@ func runServiceAccounts(
 	update bool,
 	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
+	activeNames := make(map[string]bool, len(srcs))
+	for _, s := range srcs {
+		if !orktypes.EvaluateWhen(resolver.Data(), s.Conditions, s.AnyOf) {
+			continue
+		}
+		n, _ := resolver.Resolve(s.Name)
+		nsp, _ := resolver.Resolve(s.Namespace)
+		if nsp == "" {
+			nsp = owner.GetNamespace()
+		}
+		activeNames[nsp+"/"+n] = true
+	}
+
 	for i, src := range srcs {
 		// 1. Evaluate conditions BEFORE resolving templates
 		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf)
@@ -48,8 +61,10 @@ func runServiceAccounts(
 
 		if !conditionPassed {
 			if update || src.Reconcile {
-				if err := orksa.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
-					return fmt.Errorf("serviceAccounts[%d]: conditional cleanup: %w", i, err)
+				if !activeNames[ns+"/"+name] {
+					if err := orksa.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
+						return fmt.Errorf("serviceAccounts[%d]: conditional cleanup: %w", i, err)
+					}
 				}
 			}
 			logger.FromContext(ctx).Debug().

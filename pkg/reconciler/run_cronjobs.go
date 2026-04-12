@@ -38,6 +38,23 @@ func runCronJobs(
 	update bool,
 	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
+	// Pre-pass: collect (ns/name) pairs that have at least one passing condition.
+	// A failing-condition path must not delete a resource that a passing-condition
+	// path in the same block will create — e.g. two paths with mutually exclusive
+	// typeOf conditions both targeting {{ .metadata.name }}.
+	activeNames := make(map[string]bool, len(srcs))
+	for _, s := range srcs {
+		if !orktypes.EvaluateWhen(resolver.Data(), s.Conditions, s.AnyOf) {
+			continue
+		}
+		n, _ := resolver.Resolve(s.Name)
+		nsp, _ := resolver.Resolve(s.Namespace)
+		if nsp == "" {
+			nsp = owner.GetNamespace()
+		}
+		activeNames[nsp+"/"+n] = true
+	}
+
 	for i, src := range srcs {
 		// 1. Evaluate conditions BEFORE resolving templates
 		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf)
@@ -56,8 +73,12 @@ func runCronJobs(
 
 		if !conditionPassed {
 			if update || src.Reconcile {
-				if err := orkcron.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
-					return fmt.Errorf("cronJobs[%d]: conditional cleanup: %w", i, err)
+				// Skip deletion when another declaration with a passing condition
+				// targets the same resource — that path owns the resource.
+				if !activeNames[ns+"/"+name] {
+					if err := orkcron.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
+						return fmt.Errorf("cronJobs[%d]: conditional cleanup: %w", i, err)
+					}
 				}
 			}
 			logger.FromContext(ctx).Debug().
