@@ -539,4 +539,4 @@ This is observability by default, not by effort.
 ---
 
 *Orkestra Control Center — Part of the Orkestra Project*
-*MIT Licensed*
+*Apache licensed*

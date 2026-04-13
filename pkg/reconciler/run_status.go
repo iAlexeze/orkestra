@@ -67,6 +67,12 @@ func (r *GenericReconciler[T]) patchStatusWithChildren(
 }
 
 // runStatusPatch writes Layer 1 (Ready condition) and Layer 2 (declared fields).
+//
+// Works for both unstructured and typed CRDs. Previously, typed objects hit an
+// early return here because PatchStatus was assumed to require *unstructured.Unstructured.
+// PatchStatus only needs domain.Object (for GetName/GetNamespace), so obj is passed
+// directly — objectToMap in the template package already handles the JSON round-trip
+// for typed spec access, so there is no longer any structural gap between the two modes.
 func runStatusPatch[T domain.Object](
 	ctx context.Context,
 	r *GenericReconciler[T],
@@ -74,17 +80,6 @@ func runStatusPatch[T domain.Object](
 	resolver *orktmpl.Resolver,
 	reconcileErr error,
 ) error {
-	u, ok := toUnstructured(obj)
-	if !ok {
-		// Typed objects — currently no status patching for typed CRDs.
-		// Use Go hooks for typed status management.
-
-		// We have solved this resolver.ObjectToMap()
-		return nil
-	}
-
-	patch := map[string]interface{}{}
-
 	// ── Layer 1: Ready condition ───────────────────────────────────────────
 	// Always written — on success and failure — so operators can monitor
 	// the Ready condition without knowing anything else about the CRD.
@@ -92,6 +87,8 @@ func runStatusPatch[T domain.Object](
 	if r.crd.SkipStatusSubresource() {
 		return nil
 	}
+
+	patch := map[string]interface{}{}
 
 	cond := buildReadyCondition(reconcileErr, obj.GetGeneration())
 	patch["conditions"] = []interface{}{cond}
@@ -116,7 +113,7 @@ func runStatusPatch[T domain.Object](
 		}
 	}
 
-	return r.kube.PatchStatus(ctx, u, r.crd.GVR(), patch)
+	return r.kube.PatchStatus(ctx, obj, r.crd.GVR(), patch)
 }
 
 // buildReadyCondition constructs the standard Kubernetes Ready condition map.

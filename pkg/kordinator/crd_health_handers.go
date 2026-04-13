@@ -156,6 +156,7 @@ type CRDInfoResponse struct {
 	ErrorRate           float64                  `json:"errorRate"`
 	Conversion          *ConversionStatsResponse `json:"conversion,omitempty"`
 	Admission           *AdmissionStatsResponse  `json:"admission,omitempty"`
+	Protection          *ProtectionStatsResponse `json:"protection,omitempty"`
 	RBAC                RBACInfo                 `json:"rbac,omitempty"`
 }
 
@@ -212,6 +213,13 @@ type AdmissionStatsResponse struct {
 	MutMaxLatencyMs   float64 `json:"mutMaxLatencyMs"`
 }
 
+// ProtectionStatsResponse exposes deletion protection status for the CRD detail view.
+// Total/Blocked are cumulative counts since operator startup.
+type ProtectionStatsResponse struct {
+	Enabled bool  `json:"enabled"`
+	Blocked int64 `json:"blocked"` // DELETE requests blocked for this katalog
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CRD Info Handler
 // Returns static + dynamic metadata about a CRD:
@@ -235,6 +243,7 @@ func BuildCRDInfoHandler(
 	h *CRDHealth,
 	stats *health.ConversionStats,
 	admStats *health.AdmissionStats,
+	isProtected bool,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := resolveCRDDisplayValues(crd, kfg, inf)
@@ -304,6 +313,11 @@ func BuildCRDInfoHandler(
 			}
 		}
 
+		response.Protection = &ProtectionStatsResponse{
+			Enabled: isProtected,
+			Blocked: 0, // tracked via Prometheus: orkestra_deletion_protection_blocked_total
+		}
+
 		utils.WriteJSON(w, http.StatusOK, response)
 	}
 }
@@ -313,20 +327,20 @@ func BuildCRDInfoHandler(
 // ─────────────────────────────────────────────────────────────────────────────
 
 type KatalogResponse struct {
-	CRDs           []CRDSummaryResponse `json:"crds"`
-	Total          int                  `json:"total"`
-	TotalEnabled   int                  `json:"totalEnabled"`
-	OrkReady       bool                 `json:"OrkReady"`
-	DeletionProtection bool 			`json:"deletionProtection"`
-	Healthy        bool                 `json:"healthy"`
-	Status         int                  `json:"status"`
-	DegradedReason string               `json:"degradedReason,omitempty"`
-	StatusCounts   StatusCounts         `json:"statusCounts"`
-	Name           string               `json:"name,omitempty"`
-	Version        string               `json:"version,omitempty"`
-	Author         string               `json:"author,omitempty"`
-	Description    string               `json:"description,omitempty"`
-	License        string               `json:"license,omitempty"`
+	CRDs               []CRDSummaryResponse `json:"crds"`
+	Total              int                  `json:"total"`
+	TotalEnabled       int                  `json:"totalEnabled"`
+	OrkReady           bool                 `json:"OrkReady"`
+	DeletionProtection bool                 `json:"deletionProtection"`
+	Healthy            bool                 `json:"healthy"`
+	Status             int                  `json:"status"`
+	DegradedReason     string               `json:"degradedReason,omitempty"`
+	StatusCounts       StatusCounts         `json:"statusCounts"`
+	Name               string               `json:"name,omitempty"`
+	Version            string               `json:"version,omitempty"`
+	Author             string               `json:"author,omitempty"`
+	Description        string               `json:"description,omitempty"`
+	License            string               `json:"license,omitempty"`
 }
 
 type CRDSummaryResponse struct {
@@ -358,6 +372,7 @@ type CRDSummaryResponse struct {
 	ErrorRate                float64           `json:"errorRate"`
 	Endpoints                EndpointInfo      `json:"endpoints"`
 	RBACCount                int               `json:"rbacCount,omitempty"`
+	DeletionProtection       bool              `json:"deletionProtection"`
 }
 
 type ReconcilerSummary struct {
@@ -400,6 +415,7 @@ func BuildKatalogHandler(
 	return func(w http.ResponseWriter, r *http.Request) {
 		crds := make([]CRDSummaryResponse, 0)
 		statusCounts := StatusCounts{}
+		protectedCRDs := kat.ProtectedCRDNames()
 
 		for _, crd := range kat.Enabled() {
 			gvk := crd.GVK().String()
@@ -458,6 +474,7 @@ func BuildKatalogHandler(
 				MaxQueueDepthSource:      v.maxQueueDepthSource,
 				RBACCount:                generateRBACInfo(crd, v).TotalRules,
 				ResourceCount:            v.resourceCount,
+				DeletionProtection:       protectedCRDs != nil,
 				Reconciler: ReconcilerSummary{
 					Type:           "generic",
 					HasTemplates:   crd.ReconcilerConfig.OnCreate != nil,
@@ -502,20 +519,20 @@ func BuildKatalogHandler(
 		}
 
 		utils.WriteJSON(w, status, KatalogResponse{
-			CRDs:           crds,
-			Total:          len(kat.All()),
-			TotalEnabled:   len(kat.Enabled()),
-			OrkReady:       o.IsOrkReady(),
+			CRDs:               crds,
+			Total:              len(kat.All()),
+			TotalEnabled:       len(kat.Enabled()),
+			OrkReady:           o.IsOrkReady(),
 			DeletionProtection: deletionProtection,
-			Healthy:        o.IsKatalogReady(),
-			Status:         status,
-			DegradedReason: degradedReason,
-			StatusCounts:   statusCounts,
-			Name:           kat.Meta().Name,
-			Version:        kat.Meta().Version,
-			Author:         kat.Meta().Author,
-			License:        kat.Meta().License,
-			Description:    kat.Meta().Description,
+			Healthy:            o.IsKatalogReady(),
+			Status:             status,
+			DegradedReason:     degradedReason,
+			StatusCounts:       statusCounts,
+			Name:               kat.Meta().Name,
+			Version:            kat.Meta().Version,
+			Author:             kat.Meta().Author,
+			License:            kat.Meta().License,
+			Description:        kat.Meta().Description,
 		})
 	}
 }

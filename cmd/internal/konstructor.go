@@ -396,6 +396,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	//	 /katalog/raw				 		→ the user's katalog config
 	//	 /katalog/enriched				 	→ the runtime katalog config
 	//   /katalog                    		→ all CRDs, dependency graph, health summary
+	protectedCRDs := kat.ProtectedCRDNames()
 	for _, crd := range kat.Enabled() {
 		gvk := crd.GVK().String()
 		crdHealth := crdHealthMap[gvk]
@@ -407,6 +408,9 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		if !crd.IsEnabledAllEndpoints() {
 			continue
 		}
+
+		crdKey := crd.APITypes.Plural + "." + crd.APITypes.Group
+		_, isProtected := protectedCRDs[crdKey]
 
 		if crd.IsHealthEnabled() {
 			hs.Register(
@@ -422,6 +426,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 					crd, kfg, inf, crdHealth,
 					hs.GetConversionStats(),
 					hs.GetAdmissionStats(),
+					isProtected,
 				),
 			)
 			hs.Register(

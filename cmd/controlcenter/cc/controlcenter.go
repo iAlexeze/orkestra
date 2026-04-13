@@ -546,6 +546,7 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 	cc.renderTemplate(w, "katalog.html", KatalogData{
 		CRDs:               sortedCRDs,
 		OrkReady:           kat.OrkReady,
+		DeletionProtection: kat.DeletionProtection,
 		TotalCRDs:          len(kat.CRDs),
 		TotalWorkers:       sumWorkers(kat.CRDs),
 		TotalResources:     sumResources(kat.CRDs),
