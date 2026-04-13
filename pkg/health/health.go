@@ -68,7 +68,8 @@ type HealthServer struct {
 	// that the /deletion-protection handler will block from deletion.
 	// Populated at startup when security.deletionProtection.enabled: true.
 	// nil when deletion protection is disabled.
-	protectedCRDNames map[string]struct{}
+	protectedCRDNames  map[string]struct{}
+	deletionProtection atomic.Bool
 }
 
 type WebhookConfgurationOptions struct {
@@ -127,6 +128,7 @@ func NewHealthServer(kubeclient kubernetes.Interface, katalog *katalog.Katalog, 
 	hs.ready.Store(false)
 	hs.started.Store(false)
 	hs.healthy.Store(false)
+	hs.deletionProtection.Store(false)
 	return hs
 }
 
@@ -209,15 +211,19 @@ func (h *HealthServer) Start(ctx context.Context) error {
 	admissionRuleExists := false
 	startHttpsServer := false
 
+	if h.katalog.IsDeletionProtectionEnabled() && h.katalog.DeletionProtectionGVRs() != nil {
+		h.deletionProtection.Store(true)
+	}
+
 	logger.Debug().
-		Bool("deletionProtection", h.katalog.IsDeletionProtectionEnabled()).
+		Bool("deletionProtection", h.deletionProtection.Load()).
 		Bool("conversion", h.hookKfg.ConvEnabled).
 		Bool("webhooks", h.hookKfg.WebhooksEnabled).
 		Msg("health server")
 
-	if h.hookKfg.ConvEnabled || h.hookKfg.WebhooksEnabled || h.katalog.IsDeletionProtectionEnabled() {
+	if h.hookKfg.ConvEnabled || h.hookKfg.WebhooksEnabled || h.deletionProtection.Load() {
 		// Register /deletion-protection if enabled in the Katalog
-		if h.katalog.IsDeletionProtectionEnabled() {
+		if h.deletionProtection.Load() {
 			h.hookMux.HandleFunc("/deletion-protection", h.deletionProtectionHandler)
 			startHttpsServer = true
 
@@ -315,12 +321,18 @@ func (h *HealthServer) Start(ctx context.Context) error {
 		}
 
 		// Register deletion protection webhook if enabled
-		if h.katalog.IsDeletionProtectionEnabled() && h.kubeClient != nil {
+		if h.deletionProtection.Load() && h.kubeClient != nil {
 			go func() {
 				wctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 
 				dpGVRs := h.katalog.DeletionProtectionGVRs()
+				if len(dpGVRs) == 0 {
+					// Not in cluster — webhook not registered, protection is local-only
+					logger.Info().Msg("deletion protection: running outside cluster — webhook not registered (ork run mode)")
+					return // or continue — skip the registration block
+				}
+
 				caBundle, err := readCABundle(h.hookReg.TLSCertFile)
 				if err != nil {
 					logger.Error().Err(err).Msg("deletion protection webhook: cannot read CA bundle")
@@ -333,7 +345,9 @@ func (h *HealthServer) Start(ctx context.Context) error {
 				} else {
 					logger.Info().
 						Str("config", deletionProtectionWebhookConfigName).
-						Int("crds", len(dpGVRs)).
+						Int("rules", len(dpGVRs)).
+						Int("protected", len(h.katalog.ProtectedCRDNames())).
+						Bool("inCluster", true).
 						Msg("deletion protection webhook registered")
 				}
 			}()

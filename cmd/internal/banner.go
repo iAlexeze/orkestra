@@ -44,7 +44,7 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 		if kfg.katalog.HasValidationRules() {
 			fmt.Printf("- Validation:  %s/validate%s\n", utils.ColorGreen, utils.ColorReset)
 		}
-		if kfg.katalog.IsDeletionProtectionEnabled() {
+		if kfg.katalog.IsDeletionProtectionEnabled() && kfg.katalog.DeletionProtectionGVRs() != nil {
 			fmt.Printf("- Deletion Protection:  %s/deletion-protection%s\n", utils.ColorGreen, utils.ColorReset)
 		}
 

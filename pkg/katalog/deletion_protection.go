@@ -1,38 +1,41 @@
 // pkg/katalog/deletion_protection.go
 //
-// Deletion protection — computes the webhook rules from the Katalog.
+// Deletion protection — webhook rules and protected CRD name resolution.
 //
-// The deletion protection webhook intercepts DELETE operations on:
-//  1. All CRDs managed by this operator (apiextensions.k8s.io/v1)
-//  2. The Orkestra deployment itself (apps/v1 — selected by label)
+// Architecture: two-level filtering.
 //
-// DeletionProtectionGVRs returns the GVREntry slice that
-// registerDeletionProtectionWebhook passes to buildDeletionProtectionRules.
+//	Level 1 — Webhook rules (DeletionProtectionGVRs):
+//	  Intercepts ALL DELETE on customresourcedefinitions and Orkestra deployments.
+//	  Must be broad — Kubernetes webhook rules filter by GVR, not by object name.
+//
+//	Level 2 — Handler (isProtectedCRD):
+//	  Narrows to only the CRDs managed by THIS Katalog.
+//	  "websites.demo.orkestra.io" from a different operator → allowed.
+//	  "cronjobs.demo.orkestra.io" from this Katalog → denied.
+//
+// When to register the webhook:
+//
+//	Requires a reachable Kubernetes Service. With ork run the operator runs
+//	locally — there is no Service. failurePolicy: Fail would block ALL CRD
+//	deletions when unreachable. Only register when running inside the cluster.
 package katalog
 
-// DeletionProtectionGVRs returns the webhook rules for deletion protection.
-//
-// Always includes:
-//
-//   - apiextensions.k8s.io/v1 customresourcedefinitions (DELETE)
-//     Filtered by object name — only the CRDs this operator manages.
-//     The handler checks the name at request time; the rule is broad.
-//
-//   - apps/v1 deployments (DELETE)
-//     Filtered by label selector in the webhook config — only the Orkestra deployment.
-//
-// The returned entries are passed to buildDeletionProtectionRules which
-// converts them to admissionv1.RuleWithOperations.
+import "os"
+
+// DeletionProtectionGVRs returns the webhook intercept rules.
+// Returns nil when running outside the cluster (ork run) — in that case
+// the webhook cannot be reached and must not be registered.
 func (k *Katalog) DeletionProtectionGVRs() []GVREntry {
 	if !k.IsDeletionProtectionEnabled() {
+		return nil
+	}
+	if !isRunningInCluster() {
 		return nil
 	}
 
 	return []GVREntry{
 		{
-			// Protect all CRDs managed by this operator.
-			// The /deletion-protection handler checks the CRD name at request time
-			// against the set of CRDs in the Katalog — unrecognised CRDs are allowed.
+			// Broad rule — handler filters to managed CRDs via ProtectedCRDNames()
 			Key:        "apiextensions.k8s.io/v1/customresourcedefinitions",
 			Group:      "apiextensions.k8s.io",
 			Version:    "v1",
@@ -51,9 +54,10 @@ func (k *Katalog) DeletionProtectionGVRs() []GVREntry {
 	}
 }
 
-// ProtectedCRDNames returns the set of CRD full names (e.g. "pipelines.platform.io")
-// that should be blocked from deletion.
-// Used by the /deletion-protection handler to decide whether to deny a request.
+// ProtectedCRDNames returns the set of CRD full names managed by this Katalog.
+// e.g. {"cronjobs.demo.orkestra.io": {}}
+// Used by the /deletion-protection handler for name-based filtering.
+// A CRD not in this set is allowed through even though the webhook intercepted it.
 func (k *Katalog) ProtectedCRDNames() map[string]struct{} {
 	if !k.IsDeletionProtectionEnabled() {
 		return nil
@@ -66,12 +70,16 @@ func (k *Katalog) ProtectedCRDNames() map[string]struct{} {
 			// they cannot be deleted via the CRD API and need no protection here.
 			continue
 		}
-		// Full CRD name: "pipelines.platform.io"
-		plural := crd.APITypes.Plural
-		group := crd.APITypes.Group
-		if plural != "" && group != "" {
-			names[plural+"."+group] = struct{}{}
+		if crd.APITypes.Plural != "" && crd.APITypes.Group != "" {
+			names[crd.APITypes.Plural+"."+crd.APITypes.Group] = struct{}{}
 		}
 	}
 	return names
+}
+
+// isRunningInCluster returns true when running inside a Kubernetes pod.
+// The service account token is always present inside a pod.
+func isRunningInCluster() bool {
+	_, err := os.Stat("/var/run/secrets/kubernetes.io/serviceaccount/token")
+	return err == nil
 }

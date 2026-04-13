@@ -317,6 +317,7 @@ type KatalogResponse struct {
 	Total          int                  `json:"total"`
 	TotalEnabled   int                  `json:"totalEnabled"`
 	OrkReady       bool                 `json:"OrkReady"`
+	DeletionProtection bool 			`json:"deletionProtection"`
 	Healthy        bool                 `json:"healthy"`
 	Status         int                  `json:"status"`
 	DegradedReason string               `json:"degradedReason,omitempty"`
@@ -495,11 +496,17 @@ func BuildKatalogHandler(
 			degradedReason = strings.Join(parts, ", ")
 		}
 
+		deletionProtection := false
+		if kat.IsDeletionProtectionEnabled() && kat.DeletionProtectionGVRs() != nil {
+			deletionProtection = true
+		}
+
 		utils.WriteJSON(w, status, KatalogResponse{
 			CRDs:           crds,
 			Total:          len(kat.All()),
 			TotalEnabled:   len(kat.Enabled()),
 			OrkReady:       o.IsOrkReady(),
+			DeletionProtection: deletionProtection,
 			Healthy:        o.IsKatalogReady(),
 			Status:         status,
 			DegradedReason: degradedReason,

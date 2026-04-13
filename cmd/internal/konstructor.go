@@ -179,21 +179,24 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		logger.Fatal().Err(err).Msg("failed to start kubeclient")
 	}
 
-	tlsCert, tlsKey, err := ensureSecurity(ctx, kfg, kat, kube)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("security setup failed")
-	}
+	var tlsCert, tlsKey string
+	if kat.DeletionProtectionGVRs() != nil {
+		tlsCert, tlsKey, err = ensureSecurity(ctx, kfg, kat, kube)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("security setup failed")
+		}
 
-	// If certs were generated, make them available to the HealthServer
-	// by setting them in kfg:
-	if tlsCert != "" {
-		logger.Debug().
-			Str("cert_file", tlsCert).
-			Str("cert_key", tlsKey).
-			Msg("passing cert to webhook")
-		kfg.WebhookConfig().TLSCert = tlsCert
-		kfg.WebhookConfig().TLSKey = tlsKey
-		kfg.WebhookRegistration().TLSCert = tlsCert
+		// If certs were generated, make them available to the HealthServer
+		// by setting them in kfg:
+		if tlsCert != "" {
+			logger.Debug().
+				Str("cert_file", tlsCert).
+				Str("cert_key", tlsKey).
+				Msg("passing cert to webhook")
+			kfg.WebhookConfig().TLSCert = tlsCert
+			kfg.WebhookConfig().TLSKey = tlsKey
+			kfg.WebhookRegistration().TLSCert = tlsCert
+		}
 	}
 
 	// HealthServer — HTTP mux created now, routes registered below, Start()
