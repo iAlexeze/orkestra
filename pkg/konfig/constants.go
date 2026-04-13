@@ -4,6 +4,7 @@ const (
 	// Ork
 	Orkestra = "OrKestra"
 	Ork      = "ork"
+	OrkOperator = "orkestra-operator"
 
 	// Environment
 	DevShort     = "dev"

@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -29,7 +30,8 @@ import (
 )
 
 const (
-	rbacFieldManager = "orkestra"
+	rbacFieldManager = konfig.Orkestra
+	defaultOperator = konfig.OrkOperator
 )
 
 // RBACBundle is the generated RBAC for one operator instance.
@@ -44,7 +46,7 @@ type RBACBundle struct {
 func (k *Katalog) BuildRBACBundle(namespace, serviceAccountName string) *RBACBundle {
 	name := k.metadata.Name + "-operator"
 	if name == "-operator" {
-		name = "orkestra-operator"
+		name = defaultOperator
 	}
 
 	rules := k.GenerateRBACRules()

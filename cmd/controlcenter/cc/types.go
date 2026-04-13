@@ -193,7 +193,9 @@ type ConversionStats struct {
 // ProtectionStats contains deletion protection status
 type ProtectionStats struct {
 	Enabled bool `json:"enabled"`
+	Total   int  `json:"total"`
 	Blocked int  `json:"blocked"`
+	Allowed int  `json:"allowed"`
 }
 
 // AdmissionStats contains admission webhook metrics

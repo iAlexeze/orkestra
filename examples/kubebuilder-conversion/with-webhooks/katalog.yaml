@@ -8,6 +8,12 @@ metadata:
     declared entirely in YAML using cron notes. No Go. No hooks.
     No separate conversion webhook. One process. One Katalog.
 
+security:
+  deletionProtection:
+    enabled: true
+  rbac:
+    enabled: false
+
 spec:
   crds:
     # ── v2 ─────────────────────────────────────────────────────────────────

@@ -52,7 +52,9 @@ readinessProbe:
 All three endpoints return JSON:
 
 ```json
-{ "status": "healthy", "service": "my-operator", "uptime": "2h3m", "started": "2025-01-01T10:00:00Z" }
+{ 
+  "status": "healthy", 
+  "service": "my-operator", "uptime": "2h3m", "started": "2025-01-01T10:00:00Z" }
 ```
 
 The `uptime` field is the duration since `Start()` was called, rounded to the nearest second.

@@ -426,6 +426,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 					crd, kfg, inf, crdHealth,
 					hs.GetConversionStats(),
 					hs.GetAdmissionStats(),
+					hs.GetProtectionStats(),
 					isProtected,
 				),
 			)

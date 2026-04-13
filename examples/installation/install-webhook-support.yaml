@@ -21,7 +21,7 @@ spec:
       serviceAccountName: orkestra
       containers:
         - name: orkestra
-          image: ghcr.io/orkspace/orkestra:notes
+          image: ghcr.io/orkspace/orkestra:secure
           imagePullPolicy: Always
           args:
             - run

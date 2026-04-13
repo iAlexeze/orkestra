@@ -53,6 +53,9 @@ type HealthServer struct {
 	// admission stats (validation + mutation)
 	admissionStats *AdmissionStats
 
+	// protection stats (deletion protection blocked/allowed counts)
+	protectionStats *ProtectionStats
+
 	// Admission (Validation and Mutation)
 	admissionRegistry katalog.AdmissionRegistry
 
@@ -118,6 +121,7 @@ func NewHealthServer(kubeclient kubernetes.Interface, katalog *katalog.Katalog, 
 		admissionRegistry:  katalog.AdmissionRegistry(),
 		conversionStats:    NewConversionStats(hookKfg.ConversionWindow),
 		admissionStats:     NewAdmissionStats(hookKfg.ConversionWindow),
+		protectionStats:    NewProtectionStats(),
 	}
 
 	// Populate protected CRD names from Katalog — used by /deletion-protection handler
@@ -467,4 +471,9 @@ func (h *HealthServer) GetConversionStats() *ConversionStats {
 // GetAdmissionStats returns the admission statistics for use in handlers.
 func (h *HealthServer) GetAdmissionStats() *AdmissionStats {
 	return h.admissionStats
+}
+
+// GetProtectionStats returns the deletion protection statistics for use in handlers.
+func (h *HealthServer) GetProtectionStats() *ProtectionStats {
+	return h.protectionStats
 }

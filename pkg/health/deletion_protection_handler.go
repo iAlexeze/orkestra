@@ -71,6 +71,7 @@ func (h *HealthServer) deletionProtectionHandler(w http.ResponseWriter, r *http.
 				Msg("deletion-protection: blocking CRD deletion")
 
 			metrics.RecordDeletionProtectionBlocked(req.Name)
+			h.protectionStats.RecordBlocked()
 			_ = time.Since(start)
 
 			h.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
@@ -78,9 +79,9 @@ func (h *HealthServer) deletionProtectionHandler(w http.ResponseWriter, r *http.
 				Allowed: false,
 				Status: &AdmissionStatus{
 					Message: fmt.Sprintf(
-						"[orkestra] CRD %q is protected from deletion.\n"+
+						"\n\n[orkestra] CRD %q is protected from deletion.\n\n"+
 							"To delete it: set security.deletionProtection.enabled: false "+
-							"in the Katalog, redeploy Orkestra, then delete the CRD.",
+							"in the Katalog, redeploy Orkestra, then delete the CRD.\n",
 						req.Name,
 					),
 					Code: 403,
@@ -89,42 +90,37 @@ func (h *HealthServer) deletionProtectionHandler(w http.ResponseWriter, r *http.
 			return
 		}
 		// CRD not managed by us — allow
+		h.protectionStats.RecordAllowed()
 		h.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
 			UID: req.UID, Allowed: true,
 		})
 		return
 	}
 
-	// Check: is this the Orkestra deployment?
-	// The webhook ObjectSelector already narrows to the Orkestra deployment,
-	// but double-check here for clarity.
-	isDeployment := req.Resource.Group == "apps" &&
-		req.Resource.Resource == "deployments"
+	// Non-CRD Orkestra resource (deployment, service, ingress).
+	// The webhook ObjectSelector already filtered this to resources carrying
+	// the Orkestra labels — if we got here, it is ours and we always block.
+	logger.Info().
+		Str("resource", req.Resource.Resource).
+		Str("name", req.Name).
+		Str("namespace", req.Namespace).
+		Str("uid", req.UID).
+		Msg("deletion-protection: blocking Orkestra resource deletion")
 
-	if isDeployment {
-		logger.Info().
-			Str("deployment", req.Name).
-			Str("namespace", req.Namespace).
-			Str("uid", req.UID).
-			Msg("deletion-protection: blocking Orkestra deployment deletion")
+	metrics.RecordDeletionProtectionBlocked("orkestra-" + req.Resource.Resource)
+	h.protectionStats.RecordBlocked()
 
-		metrics.RecordDeletionProtectionBlocked("orkestra-deployment")
-
-		h.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
-			UID:     req.UID,
-			Allowed: false,
-			Status: &AdmissionStatus{
-				Message: "[orkestra] The Orkestra operator deployment is protected from deletion. " +
-					"Set security.deletionProtection.enabled: false in the Katalog first.",
-				Code: 403,
-			},
-		})
-		return
-	}
-
-	// Anything else — allow
 	h.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
-		UID: req.UID, Allowed: true,
+		UID:     req.UID,
+		Allowed: false,
+		Status: &AdmissionStatus{
+			Message: fmt.Sprintf(
+				"[orkestra] The Orkestra %s %q is protected from deletion. "+
+					"Set security.deletionProtection.enabled: false in the Katalog first.",
+				req.Resource.Resource, req.Name,
+			),
+			Code: 403,
+		},
 	})
 }
 

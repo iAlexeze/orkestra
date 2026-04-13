@@ -214,10 +214,12 @@ type AdmissionStatsResponse struct {
 }
 
 // ProtectionStatsResponse exposes deletion protection status for the CRD detail view.
-// Total/Blocked are cumulative counts since operator startup.
+// All counts are cumulative since operator startup.
 type ProtectionStatsResponse struct {
 	Enabled bool  `json:"enabled"`
-	Blocked int64 `json:"blocked"` // DELETE requests blocked for this katalog
+	Total   int64 `json:"total"`   // total DELETE admission reviews received
+	Blocked int64 `json:"blocked"` // DELETE requests denied
+	Allowed int64 `json:"allowed"` // DELETE requests allowed through
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -243,6 +245,7 @@ func BuildCRDInfoHandler(
 	h *CRDHealth,
 	stats *health.ConversionStats,
 	admStats *health.AdmissionStats,
+	protStats *health.ProtectionStats,
 	isProtected bool,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -313,9 +316,16 @@ func BuildCRDInfoHandler(
 			}
 		}
 
-		response.Protection = &ProtectionStatsResponse{
-			Enabled: isProtected,
-			Blocked: 0, // tracked via Prometheus: orkestra_deletion_protection_blocked_total
+		if protStats != nil {
+			snap := protStats.GetStats()
+			response.Protection = &ProtectionStatsResponse{
+				Enabled: isProtected,
+				Total:   snap.TotalRequests,
+				Blocked: snap.Blocked,
+				Allowed: snap.Allowed,
+			}
+		} else {
+			response.Protection = &ProtectionStatsResponse{Enabled: isProtected}
 		}
 
 		utils.WriteJSON(w, http.StatusOK, response)
@@ -474,7 +484,7 @@ func BuildKatalogHandler(
 				MaxQueueDepthSource:      v.maxQueueDepthSource,
 				RBACCount:                generateRBACInfo(crd, v).TotalRules,
 				ResourceCount:            v.resourceCount,
-				DeletionProtection:       protectedCRDs != nil,
+				DeletionProtection:       isCRDProtected(protectedCRDs, crd.APITypes.Plural, crd.APITypes.Group),
 				Reconciler: ReconcilerSummary{
 					Type:           "generic",
 					HasTemplates:   crd.ReconcilerConfig.OnCreate != nil,
@@ -535,6 +545,18 @@ func BuildKatalogHandler(
 			Description:        kat.Meta().Description,
 		})
 	}
+}
+
+// isCRDProtected returns true when the CRD identified by (plural, group) is
+// present in the protected names set built from the Katalog at startup.
+// Returns false when the set is nil (deletion protection not enabled) or when
+// the CRD is not managed by this operator.
+func isCRDProtected(protected map[string]struct{}, plural, group string) bool {
+	if protected == nil {
+		return false
+	}
+	_, ok := protected[plural+"."+group]
+	return ok
 }
 
 // Helper function to convert to struct-based reconciler info
