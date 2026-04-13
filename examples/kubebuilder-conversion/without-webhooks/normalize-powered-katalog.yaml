@@ -8,6 +8,12 @@ metadata:
     string before any reconcile logic runs. No typeOf branching needed anywhere.
     No webhooks. No multi-version CRD. Run with: ork run -k katalog-no-webhook.yaml
 
+security:
+  deletionProtection:
+    enabled: true
+  rbac:
+    enabled: true
+
 spec:
   crds:
     cronjob:

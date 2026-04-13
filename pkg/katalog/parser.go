@@ -17,6 +17,7 @@ import (
 // -----------------------------------------------------------------------------
 func (k *Katalog) KomposeKatalogFromYaml(m *merger.Merger, paths ...string) (map[string]orktypes.CRDEntry, error) {
 	k.Spec = m.ToSpec()
+	k.Security = m.ToSecurity()
 	k.enabledCRDs = m.Enabled()           // Enabled CRDs for all operations
 	k.metadata = m.APIMetadata().Metadata // Metadata for CLI and health endpoints
 	k.APIVersion = m.APIMetadata().APIVersion

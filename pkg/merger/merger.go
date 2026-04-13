@@ -29,6 +29,9 @@ type Merger struct {
 	// result holds the merged CRD entries after Merge() completes — keyed by CRD name
 	result map[string]orktypes.CRDEntry
 
+	// security holds the security configuration of the final katalog
+	security orktypes.KatalogSecurity
+
 	// merged tracks whether Merge() has been called
 	merged bool
 
@@ -271,6 +274,13 @@ func (m *Merger) EnabledCount() int {
 func (m *Merger) ToSpec() orktypes.KatalogSpec {
 	m.mustBeMerged()
 	return orktypes.KatalogSpec{CRDs: m.result}
+}
+
+// ToSecurity returns the security config of the merged result as a KatalogSecurity
+// Used by NewKatalog consume the merged result.
+func (m *Merger) ToSecurity() orktypes.KatalogSecurity {
+	m.mustBeMerged()
+	return m.security
 }
 
 // APIMetadata returns the merged result as a KatalogMeta with apiversion and kind.

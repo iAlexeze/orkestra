@@ -19,14 +19,14 @@ var (
 // Structs
 // -----------------------------------------------------------------------------
 type Katalog struct {
-	APIVersion string               `yaml:"apiVersion"`
-	Kind       string               `yaml:"kind"`
-	metadata   orktypes.KatalogMeta `yaml:"-" json:"-"`
+	APIVersion       string                   `yaml:"apiVersion"`
+	Kind             string                   `yaml:"kind"`
+	Spec             orktypes.KatalogSpec     `yaml:"spec"`
+	Security         orktypes.KatalogSecurity `yaml:"security"`
+	KomposerMetadata orktypes.KatalogMeta     `yaml:"metadata"`
 
-	KomposerMetadata orktypes.KatalogMeta `yaml:"metadata"`
-
-	Spec orktypes.KatalogSpec `yaml:"spec"`
 	// Internal — enabledCRDs is enriched and validated; Spec.CRDs holds all (including disabled)
+	metadata           orktypes.KatalogMeta         `yaml:"-" json:"-"`
 	enabledCRDs        map[string]orktypes.CRDEntry `yaml:"-" json:"-"`
 	conversionRegistry *InMemoryConversionRegistry
 	admissionRegistry  *InMemoryAdmissionRegistry
@@ -35,6 +35,7 @@ type Katalog struct {
 	konfig *konfig.Konfig
 }
 
+// EnabledCRDs returns a map of enabled CRDs.
 func (k *Katalog) EnabledCRDs() map[string]orktypes.CRDEntry {
 	return k.enabledCRDs
 }
