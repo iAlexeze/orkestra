@@ -183,3 +183,7 @@ return fmt.Errorf("widgets[%d]: conditional cleanup: %w", i, err)
 ```
 
 The `[%d]` index tells operators exactly which declaration in the YAML failed.
+
+---
+
+**Next →** [03 — The Registry Layer](03-registry-layer.md)

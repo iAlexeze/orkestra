@@ -3,8 +3,8 @@ kind: Katalog
 metadata:
   name: cronjob-operator
   description: >
-    Single-version CronJob operator. Accepts both cron string and structured
-    schedule formats. Detected at reconcile time via typeOf — no conversion
+    Single-version CronJob operator. Accepts both cron strings and structured
+    schedule maps. Format detected via typeString/typeMap — no conversion
     webhook, no TLS, no multi-version CRD complexity.
     Run with: ork run -k katalog-no-webhook.yaml
 
@@ -51,31 +51,46 @@ spec:
           fields:
             # Phase: Active or Suspended
             - path: phase
-              value: "{{ ternary .spec.suspend \"Suspended\" \"Active\" }}"
+              value: "{{ boolTernary .spec.suspend \"Suspended\" \"Active\" }}"
 
-            # typeOf surfaces which format the user wrote — useful in the UI
-            # and for debugging when a schedule is not parsed as expected.
+            # "string" or "map"
             - path: scheduleFormat
               value: "{{ typeOf .spec.schedule }}"
 
-            # The canonical cron expression — always a plain string in status
-            # regardless of which format the user provided. This is what
-            # gets shown in kubectl get cj and the Control Center.
+            # Canonical cron expression (string always)
             - path: scheduleExpression
-              value: "{{ if eq (typeOf .spec.schedule) \"map\" }}{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}{{ else }}{{ .spec.schedule }}{{ end }}"
+              value: >
+                {{ if typeMap .spec.schedule }}
+                  {{ cronFromMap .spec.schedule }}
+                {{ else }}
+                  {{ cronNormalize .spec.schedule }}
+                {{ end }}
 
-            # For structured schedules: how many of the 5 fields are defined.
-            # A partial structured schedule (missing dayOfWeek etc.) surfaces here.
-            # For string schedules: 1 (the whole string is one value).
+            # Structured schedules: number of fields defined
+            # String schedules: 1
             - path: scheduleFieldsDefined
-              value: "{{ if eq (typeOf .spec.schedule) \"map\" }}{{ len .spec.schedule }}{{ else }}1{{ end }}"
+              value: >
+                {{ if typeMap .spec.schedule }}
+                  {{ len .spec.schedule }}
+                {{ else }}
+                  1
+                {{ end }}"
+
+            # Human-readable description
+            - path: scheduleDescription
+              value: >
+                {{ if typeMap .spec.schedule }}
+                  {{ cronDescribe (cronFromMap .spec.schedule) }}
+                {{ else }}
+                  {{ cronDescribe .spec.schedule }}
+                {{ end }}
 
             - path: image
               value: "{{ .spec.image }}"
             - path: concurrencyPolicy
               value: "{{ .spec.concurrencyPolicy }}"
 
-            # Propagated from the child Kubernetes CronJob
+            # Propagated from child CronJob
             - path: lastScheduleTime
               value: "{{ .children.cronjob.status.lastScheduleTime }}"
             - path: nextScheduleTime
@@ -83,41 +98,47 @@ spec:
 
         onCreate:
           cronJobs:
-            # ── Path A: cron string ──────────────────────────────────────────
-            # User wrote: schedule: "*/5 * * * *"
-            # typeOf returns "string" — use the value directly.
-            # cronExpr is NOT needed here — Kubernetes expects a plain string
-            # and that is exactly what we have.
-            - name: "{{ .metadata.name }}"
-              image: "{{ .spec.image }}"
-              schedule: "{{ .spec.schedule }}"
-              suspend: "{{ .spec.suspend }}"
-              successfulJobsHistoryLimit: "{{ .spec.successfulJobsHistoryLimit }}"
-              failedJobsHistoryLimit: "{{ .spec.failedJobsHistoryLimit }}"
-              concurrencyPolicy: "{{ .spec.concurrencyPolicy }}"
-              reconcile: true
-              when:
-                - field: spec.schedule
-                  operator: typeOf
-                  value: string
 
-            # ── Path B: structured object ────────────────────────────────────
-            # User wrote:
-            #   schedule:
-            #     minute: "*/5"
-            #     hour: "*"
-            #     ...
-            # typeOf returns "map" — reconstruct the cron string with cronExpr.
-            # The created Kubernetes CronJob is identical to Path A's output.
+            # ────────────────────────────────────────────────────────────────
+            # Path A — schedule is a plain string
+            # ────────────────────────────────────────────────────────────────
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
-              schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+              schedule: "{{ cronNormalize .spec.schedule }}"
               suspend: "{{ .spec.suspend }}"
               successfulJobsHistoryLimit: "{{ .spec.successfulJobsHistoryLimit }}"
               failedJobsHistoryLimit: "{{ .spec.failedJobsHistoryLimit }}"
               concurrencyPolicy: "{{ .spec.concurrencyPolicy }}"
-              reconcile: true
               when:
                 - field: spec.schedule
-                  operator: typeOf
-                  value: map
+                  operator: typeString
+
+            # ────────────────────────────────────────────────────────────────
+            # Path B — schedule is a structured map
+            # ────────────────────────────────────────────────────────────────
+            - name: "{{ .metadata.name }}"
+              image: "{{ .spec.image }}"
+              schedule: "{{ cronFromMap .spec.schedule }}"
+              suspend: "{{ .spec.suspend }}"
+              successfulJobsHistoryLimit: "{{ .spec.successfulJobsHistoryLimit }}"
+              failedJobsHistoryLimit: "{{ .spec.failedJobsHistoryLimit }}"
+              concurrencyPolicy: "{{ .spec.concurrencyPolicy }}"
+              when:
+                - field: spec.schedule
+                  operator: typeMap
+        
+        onReconcile:  # This is defined to avoid the error on the UI during reconcile when orkestra still reads from the original CR
+          cronJobs:
+            - name: "{{ .metadata.name }}"
+              schedule: >
+                {{ if typeMap .spec.schedule }}
+                  {{ cronFromMap .spec.schedule }}
+                {{ else }}
+                  {{ cronNormalize .spec.schedule }}
+                {{ end }}
+              image: "{{ .spec.image }}"
+              suspend: "{{ .spec.suspend }}"
+              successfulJobsHistoryLimit: "{{ .spec.successfulJobsHistoryLimit }}"
+              failedJobsHistoryLimit: "{{ .spec.failedJobsHistoryLimit }}"
+              concurrencyPolicy: "{{ .spec.concurrencyPolicy }}"
+

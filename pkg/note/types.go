@@ -19,6 +19,17 @@ func typeNotes() template.FuncMap {
 		// len v — returns element count or string length
 		// Overrides the built-in template len with one that handles maps
 		"len": OrkLen,
+
+		// Shorthand type checks
+		"typeMap":     typeMap,
+		"typeList":    typeList,
+		"typeString":  typeString,
+		"typeNumber":  typeNumber,
+		"typeBool":    typeBool,
+		"typeNull":    typeNull,
+		"isEmpty":     isEmpty,
+		"isScalar":    isScalar,
+		"isComposite": isComposite,
 	}
 }
 
@@ -162,4 +173,63 @@ func OrkLen(v interface{}) int {
 	default:
 		return 0
 	}
+}
+
+func isEmpty(v interface{}) bool {
+	if v == nil {
+		return true
+	}
+	switch t := v.(type) {
+	case string:
+		return t == ""
+	case []interface{}:
+		return len(t) == 0
+	case map[string]interface{}:
+		return len(t) == 0
+	default:
+		return false
+	}
+}
+
+func isScalar(v interface{}) bool {
+	switch TypeOf(v) {
+	case "string", "number", "bool":
+		return true
+	default:
+		return false
+	}
+}
+
+func isComposite(v interface{}) bool {
+	switch TypeOf(v) {
+	case "map", "slice":
+		return true
+	default:
+		return false
+	}
+}
+
+// Shothand helpers
+func typeMap(v interface{}) bool {
+	return TypeOf(v) == "map"
+}
+
+func typeList(v interface{}) bool {
+	return TypeOf(v) == "slice"
+}
+
+func typeString(v interface{}) bool {
+	return TypeOf(v) == "string"
+}
+
+func typeNumber(v interface{}) bool {
+	return TypeOf(v) == "number"
+}
+
+func typeBool(v interface{}) bool {
+	return TypeOf(v) == "bool"
+}
+
+func typeNull(v interface{}) bool {
+	return TypeOf(v) == "null"
 }

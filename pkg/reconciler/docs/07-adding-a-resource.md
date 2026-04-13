@@ -530,3 +530,7 @@ A clean build is the acceptance criterion. No new tests are required for the run
 **Not nil-checking the guard.** `guard` is nil when the CRD has no namespace restrictions. A nil dereference panics.
 
 **Not adding the system labels in `Resolve`.** Without `LabelOrkestraOwner`, `DeleteIfOwned` will never match and stale resources will accumulate.
+
+---
+
+**↑ Back to** [README](README.md)

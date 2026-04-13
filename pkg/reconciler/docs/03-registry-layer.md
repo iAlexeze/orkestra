@@ -148,3 +148,7 @@ pkg/reconciler        ← imports both
 ```
 
 Never put source struct types in the registry package.
+
+---
+
+**Next →** [04 — Conditions and the activeNames Guard](04-conditions.md)

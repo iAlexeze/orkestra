@@ -1548,6 +1548,9 @@ type CRDEntry struct {
 	// admission-time interception while keeping its reconcile-time enforcement.
 	Webhooks AdmissionWebhookConfig `yaml:"webhooks,omitempty" json:"webhooks,omitempty"`
 
+	// Normalize Spec fields before rendering
+	Normalize *NormalizeConfig `yaml:"normalize,omitempty"`
+
 	// RemoveFinalizers -> testing
 	RemoveFinalizers bool `yaml:"removeFinalizers,omitempty" json:"removeFinalizers,omitempty"`
 }

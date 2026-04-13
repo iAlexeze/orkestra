@@ -110,3 +110,7 @@ type IngressTemplateSource struct {
     ForEach *ForEachSpec `yaml:"forEach,omitempty"`
 }
 ```
+
+---
+
+**Next →** [06 — normalize: Spec Normalization](06-normalize.md)

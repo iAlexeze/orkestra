@@ -128,3 +128,7 @@ The `onDelete` block supports `jobs:` (fire-and-forget cleanup) and provider tea
 ## Status patching
 
 After reconcile (success or failure), `patchStatusWithChildren` is called unconditionally. It reads owned child resources from the informer cache and writes a `Ready` condition. This is automatic — runners do not need to touch status.
+
+---
+
+**Next →** [02 — The run_*.go Function Contract](02-run-pattern.md)

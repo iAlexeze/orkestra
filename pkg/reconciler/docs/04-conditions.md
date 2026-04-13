@@ -162,3 +162,7 @@ type IngressTemplateSource struct {
 ```
 
 The `Conditions` field maps to `when:` and the `AnyOf` field maps to `anyOf:`. Both are optional — empty slices always pass.
+
+---
+
+**Next →** [05 — forEach Expansion](05-foreach.md)

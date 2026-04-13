@@ -12,7 +12,6 @@ import (
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -51,20 +50,7 @@ type GenericReconciler[T domain.Object] struct {
 	hooks            domain.ReconcileHooks[T]
 	rc               orktypes.ReconcilerConfig
 	newObj           func() T
-	// crd              CRDInfo
-	crd orktypes.CRDEntry
-}
-
-type CRDInfo struct {
-	Kind             string
-	GVK              string
-	GVR              schema.GroupVersionResource
-	Finalizers       []string
-	ReconcilerConfig orktypes.ReconcilerConfig
-	Operator         string
-	Validation       *orktypes.ValidationConfig
-	Mutation         *orktypes.MutationConfig
-	IsBuiltIn        bool
+	crd              orktypes.CRDEntry
 }
 
 func NewGenericReconciler[T domain.Object](
@@ -189,6 +175,12 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 // Priority: Go hooks → declarative templates → no-op.
 func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	var err error
+
+	// Normalize before mutation/validation/template rendering ─────────────
+	obj, err = r.applyNormalize(ctx, obj)
+	if err != nil {
+		return err
+	}
 
 	// ── Reconcile-time mutation and validation ────────────────────────────────
 	// Ordering respects MutationConfig.MutateFirst:

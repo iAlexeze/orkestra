@@ -135,7 +135,25 @@ const (
 	// In when: context it is treated as always-true (see pkg/types/when/EvaluateOneCond).
 	ConditionUnique ConditionOperator = "unique"
 
-	// ConditionTypeOf —
+	// ConditionTypeOf — check field type
 	//
 	ConditionTypeOf ConditionOperator = "typeOf"
+
+	// ConditionTypeMap — field value is a map (YAML object)
+	ConditionTypeMap ConditionOperator = "typeMap"
+
+	// ConditionTypeList — field value is a slice (YAML array)
+	ConditionTypeList ConditionOperator = "typeList"
+
+	// ConditionTypeString — field value is a string
+	ConditionTypeString ConditionOperator = "typeString"
+
+	// ConditionTypeNumber — field value is a number (int/float)
+	ConditionTypeNumber ConditionOperator = "typeNumber"
+
+	// ConditionTypeBool — field value is a boolean
+	ConditionTypeBool ConditionOperator = "typeBool"
+
+	// ConditionTypeNull — field value is null or missing
+	ConditionTypeNull ConditionOperator = "typeNull"
 )

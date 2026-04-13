@@ -113,6 +113,30 @@ func EvaluateOneCond(data map[string]interface{}, cond Condition) bool {
 	case ConditionTypeOf:
 		raw := NavigateRawPath(data, cond.Field) // returns interface{}, not string
 		return note.TypeOf(raw) == expected
+	case ConditionTypeMap:
+		raw := NavigateRawPath(data, cond.Field)
+		return note.TypeOf(raw) == "map"
+
+	case ConditionTypeList:
+		raw := NavigateRawPath(data, cond.Field)
+		return note.TypeOf(raw) == "slice"
+
+	case ConditionTypeString:
+		raw := NavigateRawPath(data, cond.Field)
+		return note.TypeOf(raw) == "string"
+
+	case ConditionTypeNumber:
+		raw := NavigateRawPath(data, cond.Field)
+		return note.TypeOf(raw) == "number"
+
+	case ConditionTypeBool:
+		raw := NavigateRawPath(data, cond.Field)
+		return note.TypeOf(raw) == "bool"
+
+	case ConditionTypeNull:
+		raw := NavigateRawPath(data, cond.Field)
+		return note.TypeOf(raw) == "null"
+
 	}
 	return false
 }
