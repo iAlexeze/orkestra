@@ -11,6 +11,7 @@ type KatalogFile struct {
 	Anchors    map[string]any  `yaml:"anchors,omitempty"`
 	Sources    *KatalogSources `yaml:"sources,omitempty"`
 	Spec       KatalogSpec     `yaml:"spec"`
+	Security   KatalogSecurity `yaml:"security"`
 }
 
 // KatalogMeta holds identifying metadata for the Katalog.
@@ -119,6 +120,7 @@ type KatalogForUI struct {
 	Kind       string           `json:"kind"`       // Always "Katalog" at runtime
 	Metadata   KatalogMeta      `json:"metadata"`   // Katalog metadata (name, description, etc.)
 	Spec       KatalogSpecForUI `json:"spec"`       // CRD definitions
+	Security   KatalogSecurity  `json:"security"`   // Security settings
 }
 
 // KatalogSpecForUI contains the CRD definitions for UI display.

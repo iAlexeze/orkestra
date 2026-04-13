@@ -38,8 +38,9 @@ import (
 // Platform operators who want hard enforcement can change this to Fail.
 
 const (
-	validatingWebhookConfigName = "orkestra-validation"
-	mutatingWebhookConfigName   = "orkestra-mutation"
+	validatingWebhookConfigName         = "orkestra-validation"
+	mutatingWebhookConfigName           = "orkestra-mutation"
+	deletionProtectionWebhookConfigName = "orkestra-delete-protection"
 
 	// Webhook Cleanup setup
 	// MaxAttempts — number of retries for cleanup operations.
@@ -283,9 +284,83 @@ func registerMutatingWebhook(
 	return applyMutatingWebhookConfig(ctx, client, config)
 }
 
+// registerDeletionProtectionWebhook creates or updates the ValidatingWebhookConfiguration for deletion protection.
+func registerDeletionProtectionWebhook(
+	ctx context.Context,
+	client kubernetes.Interface,
+	gvrs []katalog.GVREntry,
+	caBundle []byte,
+	opts WebhookRegistrationOptions,
+) error {
+	sideEffects := admissionv1.SideEffectClassNone
+	path := "/deletion-protection"
+	port := opts.Port
+
+	config := &admissionv1.ValidatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: deletionProtectionWebhookConfigName,
+			Labels: map[string]string{
+				konfig.LabelManaged: konfig.LabelManagedValue,
+			},
+		},
+		Webhooks: []admissionv1.ValidatingWebhook{
+			{
+				// One webhook per CRD in the registry of the protected katalog.
+				// The webhook name must be a fully-qualified domain name.
+				Name: "validate.orkestra.konductor.io",
+				ClientConfig: admissionv1.WebhookClientConfig{
+					Service: &admissionv1.ServiceReference{
+						Name:      opts.ServiceName,
+						Namespace: opts.ServiceNamespace,
+						Path:      &path,
+						Port:      &port,
+					},
+					CABundle: caBundle,
+				},
+				// Build admission rules from the registered GVRs
+				NamespaceSelector: &metav1.LabelSelector{}, // all namespaces,
+				Rules:             buildDeletionProtectionRules(gvrs),
+				// FailurePolicy: if Orkestra is unreachable, use the configured policy
+				FailurePolicy: failurePolicyPtr(admissionv1.Fail), // Fail = deny if webhook unreachable
+				// Match policy: apply to the exact GVR, not equivalent resources
+				MatchPolicy: matchPolicyPtr(admissionv1.Exact),
+				// AdmissionReviewVersions: which versions we support
+				AdmissionReviewVersions: []string{"v1"},
+				// SideEffects: validation has no side effects
+				SideEffects: &sideEffects,
+				// TimeoutSeconds: 5 seconds is the Kubernetes default — sufficient
+				// for in-memory rule evaluation
+				TimeoutSeconds: int32Ptr(5),
+			},
+		},
+	}
+
+	return applyWebhookConfig(ctx, client, config)
+}
+
 // buildAdmissionRules converts GVREntry slices to Kubernetes RuleWithOperations.
 // Each GVREntry becomes one rule covering the specific group/version/resource.
 func buildAdmissionRules(gvrs []katalog.GVREntry) []admissionv1.RuleWithOperations {
+	rules := make([]admissionv1.RuleWithOperations, 0, len(gvrs))
+	for _, gvr := range gvrs {
+		ops := make([]admissionv1.OperationType, 0, len(gvr.Operations))
+		for _, op := range gvr.Operations {
+			ops = append(ops, admissionv1.OperationType(op))
+		}
+		rules = append(rules, admissionv1.RuleWithOperations{
+			Operations: ops,
+			Rule: admissionv1.Rule{
+				APIGroups:   []string{gvr.Group},
+				APIVersions: []string{gvr.Version},
+				Resources:   []string{gvr.Resource},
+			},
+		})
+	}
+	return rules
+}
+
+// buildDeletionProtectionRules mirrors buildAdmissionRules but for deletion protection.
+func buildDeletionProtectionRules(gvrs []katalog.GVREntry) []admissionv1.RuleWithOperations {
 	rules := make([]admissionv1.RuleWithOperations, 0, len(gvrs))
 	for _, gvr := range gvrs {
 		ops := make([]admissionv1.OperationType, 0, len(gvr.Operations))
@@ -387,9 +462,10 @@ func readCABundle(certFile string) ([]byte, error) {
 
 // ── Pointer helpers ───────────────────────────────────────────────────────
 
-func int32Ptr(i int32) *int32                                                   { return &i }
-func int64Ptr(i int64) *int64                                                   { return &i }
-func matchPolicyPtr(p admissionv1.MatchPolicyType) *admissionv1.MatchPolicyType { return &p }
+func int32Ptr(i int32) *int32                                                         { return &i }
+func int64Ptr(i int64) *int64                                                         { return &i }
+func matchPolicyPtr(p admissionv1.MatchPolicyType) *admissionv1.MatchPolicyType       { return &p }
+func failurePolicyPtr(p admissionv1.FailurePolicyType) *admissionv1.FailurePolicyType { return &p }
 func reinvocationPolicyPtr(p admissionv1.ReinvocationPolicyType) *admissionv1.ReinvocationPolicyType {
 	return &p
 }

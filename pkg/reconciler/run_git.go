@@ -11,20 +11,20 @@
 // Call sequence in runTemplateReconcile:
 //
 //  1. resolver = NewResolver(ctx, obj)
-//  2. resolver = resolver.WithCross(ReadCross(...))     ← cross-CRD first
-//  3. resolver, err = runGit(ctx, gvk, resolver, ...)   ← Git second
-//  4. resolver, err = runExternal(ctx, ...)             ← HTTP third
-//  5. resolver, err = runDocker(ctx, ...)               ← Docker fourth
+//  2. resolver = resolver.WithCross(ReadCross(...))      ← cross-CRD first
+//  3. resolver, err = runGit(ctx, gvk, resolver, ...)    ← Git second
+//  4. resolver, err = runExternal(ctx, ...)              ← HTTP third
+//  5. resolver, err = runDocker(ctx, ...)                ← Docker fourth
 //  6. runDeployments, runServices, ... etc.
 //
 // Results in template context:
 //
-//		.git.commit     → HEAD commit hash
-//		.git.changed    → "true" if commit changed since last reconcile
-//		.git.path       → working directory path
-//		.git.error      → error message if operation failed
-//		.git.called     → "true" if Git hook executed
-//	 .git.succeeded	→ "true" if Git operation succeded
+//	.git.commit     → HEAD commit hash
+//	.git.changed    → "true" if commit changed since last reconcile
+//	.git.path       → working directory path
+//	.git.error      → error message if operation failed
+//	.git.called     → "true" if Git hook executed
+//	.git.succeeded  → "true" if Git operation succeeded
 //
 // When: conditions can gate on these:
 //
@@ -32,7 +32,11 @@
 //	  - field: git.changed
 //	    equals: "true"
 //
-// The Git hook never panics. It always returns a result map.
+// Change detection is annotation-based — the last-seen commit is stored in:
+//
+//	orkestra.konductor.io/last-commit
+//
+// This annotation survives pod restarts, preventing spurious rebuilds.
 package reconciler
 
 import (
@@ -40,22 +44,32 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/metrics"
 	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // runGit executes the declared Git hook and returns a new resolver with
 // .git.* injected.
 //
+// kube and gvr are used to patch the orkestra.konductor.io/last-commit
+// annotation on the CR after each successful operation — this is how
+// change detection survives pod restarts without writing to disk.
+//
 // Returns the enriched resolver. The original resolver is unchanged.
-// Returns an error only if the Git operation fails and continueOnError=false
-// (future extension — currently Git always continues).
+// If spec.ContinueOnError is false (default) and the Git operation fails,
+// an error is returned and reconciliation stops.
 func runGit(
 	ctx context.Context,
 	gvk string,
 	resolver *orktmpl.Resolver,
+	kube *kubeclient.Kubeclient,
+	obj domain.Object,
+	gvr schema.GroupVersionResource,
 	spec *orktypes.GitHookSpec,
 ) (*orktmpl.Resolver, error) {
 	if spec == nil {
@@ -73,20 +87,34 @@ func runGit(
 	if err != nil {
 		return resolver, fmt.Errorf("git.branch: %w", err)
 	}
+	if branch == "" {
+		branch = "main"
+	}
 	path, err := resolver.Resolve(spec.Path)
 	if err != nil {
 		return resolver, fmt.Errorf("git.path: %w", err)
+	}
+	if path == "" {
+		path = "/workspace/" + obj.GetName()
+	}
+
+	// Read last commit from the CR annotation — survives pod restarts.
+	// On first run this is empty, so changed will always be "true".
+	lastCommit := ""
+	if ann := obj.GetAnnotations(); ann != nil {
+		lastCommit = ann[annotationLastCommit]
 	}
 
 	log.Debug().
 		Str("repo", repo).
 		Str("branch", branch).
 		Str("path", path).
+		Str("lastCommit", lastCommit).
 		Msg("git: starting operation")
 
-		// Execute the Git operation
+	// Execute the Git operation
 	start := time.Now()
-	result := executeGitOperation(ctx, repo, branch, path)
+	result := executeGitOperation(ctx, repo, branch, path, lastCommit)
 	duration := time.Since(start).Seconds()
 
 	// Record metrics
@@ -99,16 +127,19 @@ func runGit(
 	)
 
 	withError := "false"
-	// Log success/failure
 	if result.Error != "" {
 		withError = "true"
-
 		log.Warn().
 			Str("repo", repo).
 			Str("branch", branch).
 			Str("path", path).
 			Str("error", result.Error).
 			Msg("git: operation failed")
+
+		// Halt reconciliation unless explicitly told to continue
+		if !spec.ContinueOnError {
+			return resolver, fmt.Errorf("git: %s", result.Error)
+		}
 	} else {
 		log.Debug().
 			Str("repo", repo).
@@ -117,6 +148,24 @@ func runGit(
 			Str("commit", result.Commit).
 			Str("changed", result.Changed).
 			Msg("git: operation succeeded")
+
+		// Patch annotation only when we have a new commit — avoids a write
+		// on every reconcile when nothing has changed.
+		if result.Commit != "" && result.Commit != lastCommit {
+			if patchErr := patchLastCommitAnnotation(ctx, kube, obj, gvr, result.Commit); patchErr != nil {
+				// Non-fatal: the annotation patch failing doesn't mean the Git
+				// operation failed. Log the warning but don't halt reconciliation.
+				log.Warn().
+					Str("commit", result.Commit).
+					Err(patchErr).
+					Msg("git: failed to persist last-commit annotation")
+			}
+		}
+	}
+
+	succeeded := "false"
+	if result.Error == "" {
+		succeeded = "true"
 	}
 
 	// Inject into resolver
@@ -127,6 +176,7 @@ func runGit(
 		"error":     result.Error,
 		"called":    "true",
 		"withError": withError,
+		"succeeded": succeeded,
 	}
 
 	resolver = resolver.WithGit(gitMap)

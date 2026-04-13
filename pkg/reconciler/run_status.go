@@ -29,7 +29,7 @@ package reconciler
 
 import (
 	"context"
-	"fmt"
+	//	"fmt"
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
@@ -45,16 +45,9 @@ import (
 func (r *GenericReconciler[T]) patchStatusWithChildren(
 	ctx context.Context,
 	obj T,
+	resolver *orktmpl.Resolver,
 	reconcileErr error,
 ) {
-	resolver, err := orktmpl.NewResolver(ctx, obj)
-	if err != nil {
-		logger.FromContext(ctx).Warn().Err(err).
-			Str("name", obj.GetName()).
-			Msg("status: could not build resolver — skipping status patch")
-		return
-	}
-
 	// ── Layer 3: extend resolver with child resource state ─────────────────
 	// WithChildren returns a new Resolver — the original is not modified.
 	// The new resolver's data map includes a "children" key so that
@@ -74,6 +67,12 @@ func (r *GenericReconciler[T]) patchStatusWithChildren(
 }
 
 // runStatusPatch writes Layer 1 (Ready condition) and Layer 2 (declared fields).
+//
+// Works for both unstructured and typed CRDs. Previously, typed objects hit an
+// early return here because PatchStatus was assumed to require *unstructured.Unstructured.
+// PatchStatus only needs domain.Object (for GetName/GetNamespace), so obj is passed
+// directly — objectToMap in the template package already handles the JSON round-trip
+// for typed spec access, so there is no longer any structural gap between the two modes.
 func runStatusPatch[T domain.Object](
 	ctx context.Context,
 	r *GenericReconciler[T],
@@ -81,28 +80,23 @@ func runStatusPatch[T domain.Object](
 	resolver *orktmpl.Resolver,
 	reconcileErr error,
 ) error {
-	u, ok := toUnstructured(obj)
-	if !ok {
-		// Typed objects — currently no status patching for typed CRDs.
-		// Use Go hooks for typed status management.
-
-		// We have solved this resolver.ObjectToMap()
+	// ── Layer 1: Ready condition ───────────────────────────────────────────
+	// Always written — on success and failure — so operators can monitor
+	// the Ready condition without knowing anything else about the CRD.
+	// Except for some builtins or explicitly required
+	if r.crd.SkipStatusSubresource() {
 		return nil
 	}
 
 	patch := map[string]interface{}{}
 
-	// ── Layer 1: Ready condition ───────────────────────────────────────────
-	// Always written — on success and failure — so operators can monitor
-	// the Ready condition without knowing anything else about the CRD.
-	// Except for builtin -> default has been applied in
-	if r.crd.IsBuiltIn {
-		return nil
-	}
-
 	cond := buildReadyCondition(reconcileErr, obj.GetGeneration())
 	patch["conditions"] = []interface{}{cond}
-	patch["observedGeneration"] = obj.GetGeneration()
+
+	// Only patch if necessary
+	if !r.crd.SkipObservedGeneration() {
+		patch["observedGeneration"] = obj.GetGeneration()
+	}
 
 	// ── Layer 2: Declared status fields (conditional) ─────────────────────
 	// Only written on successful reconcile. Errors in field resolution are
@@ -119,7 +113,7 @@ func runStatusPatch[T domain.Object](
 		}
 	}
 
-	return r.kube.PatchStatus(ctx, u, r.crd.GVR, patch)
+	return r.kube.PatchStatus(ctx, obj, r.crd.GVR(), patch)
 }
 
 // buildReadyCondition constructs the standard Kubernetes Ready condition map.
@@ -162,8 +156,8 @@ func buildReadyCondition(reconcileErr error, generation int64) map[string]interf
 // parseNumeric parses a string as float64 for numeric comparisons.
 // Used by the gt and lt operators on child status fields like
 // .children.job.status.succeeded which arrive as "1", "0", etc.
-func parseNumeric(s string) (float64, error) {
-	var f float64
-	_, err := fmt.Sscanf(s, "%f", &f)
-	return f, err
-}
+// func parseNumeric(s string) (float64, error) {
+// 	var f float64
+// 	_, err := fmt.Sscanf(s, "%f", &f)
+// 	return f, err
+// }

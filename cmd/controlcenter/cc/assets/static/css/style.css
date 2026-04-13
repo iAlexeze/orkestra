@@ -1289,6 +1289,12 @@ details > summary::-webkit-details-marker { display: none; }
 }
 .cc-details-summary:hover { background: var(--bg-hover); color: var(--text-primary); }
 
+/* ── Child group collapsible ───────────────────────────────── */
+.cc-child-group > summary { list-style: none; }
+.cc-child-group > summary::-webkit-details-marker { display: none; }
+.cc-child-group .cc-chevron { transition: transform 0.15s ease; flex-shrink: 0; }
+.cc-child-group[open] .cc-chevron { transform: rotate(180deg); }
+
 /* ── Animations ────────────────────────────────────────────── */
 @keyframes spin {
   to { transform: rotate(360deg); }
@@ -1364,12 +1370,14 @@ details > summary::-webkit-details-marker { display: none; }
 .cc-kv-row:last-child { border-bottom: none; }
 
 .cc-kv-key {
-  width: 160px;
-  min-width: 160px;
+  width: 220px;
+  min-width: 220px;
   font-family: monospace;
   font-size: 12px;
   color: var(--text-muted);
   margin-right: 16px;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .cc-kv-val {

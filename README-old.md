@@ -270,4 +270,4 @@ Orkestra still provides the informer, queue, workers, finalizers, events, metric
 
 ---
 
-[MIT License](LICENSE)
+[Apache license](LICENSE)

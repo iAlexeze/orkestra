@@ -10,9 +10,9 @@ import (
 	"github.com/ialexeze/orkestra/pkg/kordinator"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
+	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -51,23 +51,11 @@ type GenericReconciler[T domain.Object] struct {
 	hooks            domain.ReconcileHooks[T]
 	rc               orktypes.ReconcilerConfig
 	newObj           func() T
-	crd              CRDInfo
-}
-
-type CRDInfo struct {
-	Kind             string
-	GVK              string
-	GVR              schema.GroupVersionResource
-	Finalizers       []string
-	ReconcilerConfig orktypes.ReconcilerConfig
-	Operator         string
-	Validation       *orktypes.ValidationConfig
-	Mutation         *orktypes.MutationConfig
-	IsBuiltIn        bool
+	crd              orktypes.CRDEntry
 }
 
 func NewGenericReconciler[T domain.Object](
-	crd CRDInfo,
+	crd orktypes.CRDEntry,
 	informer cache.SharedIndexInformer,
 	ev *event.Event,
 	kube *kubeclient.Kubeclient,
@@ -115,7 +103,7 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 	}
 
 	ctx = logger.WithRequestID(ctx)
-	ctx = logger.WithCRD(ctx, r.crd.GVK)
+	ctx = logger.WithCRD(ctx, r.crd.GVKString())
 	ctx = logger.WithResource(ctx, key)
 
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
@@ -141,23 +129,40 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 	if !ok {
 		return fmt.Errorf("type assertion failed: expected %T, got %T", r.newObj(), raw)
 	}
-	obj = obj.DeepCopyObject().(T)
+	rawObj := obj.DeepCopyObject().(T)
+
+	// Normalize before mutation/validation/template rendering ─────────────
+	// Normalize + base resolver
+	obj, resolver, err := r.applyNormalize(ctx, rawObj)
+	if err != nil {
+		return err
+	}
 
 	if obj.GetDeletionTimestamp() != nil {
 		logger.FromContext(ctx).Info().
 			Str("name", obj.GetName()).
-			Msgf("deletion handler called for %s", r.crd.GVK)
+			Msgf("deletion handler called for %s", r.crd.GVKString())
 
 		r.event.Eventf(obj, corev1.EventTypeNormal, "Deleting",
-			fmt.Sprintf("Deleting %s %s/%s", r.crd.GVK, obj.GetNamespace(), obj.GetName()))
+			fmt.Sprintf("Deleting %s %s/%s", r.crd.GVKString(), obj.GetNamespace(), obj.GetName()))
 
-		return r.handleDeletion(ctx, obj)
+		return r.handleDeletion(ctx, resolver, obj)
 	}
 
-	if err := r.ensureFinalizers(ctx, obj); err != nil {
-		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"FinalizerError",
-			fmt.Sprintf("Failed to add finalizers: %v", err))
-		return err
+	if !r.crd.RemoveFinalizers {
+		if err := r.ensureFinalizers(ctx, obj); err != nil {
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerError",
+				fmt.Sprintf("Failed to add finalizers: %v", err))
+			return err
+		}
+	} else {
+		logger.FromContext(ctx).Debug().Msgf("removing finalizers for %s", obj.GetName())
+		if err := r.removeFinalizers(ctx, obj); err != nil {
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerRemovalError",
+				fmt.Sprintf("Failed to remove finalizers: %v", err))
+			return err
+		}
+		logger.FromContext(ctx).Debug().Msgf("finalizers removed for %s", obj.GetName())
 	}
 
 	// Ensure managed label and annotations — idempotent, like finalizer patching.
@@ -166,17 +171,17 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 		return err
 	}
 
-	if err := r.ensureManagedAnnotations(ctx, obj, r.crd.Operator); err != nil {
+	if err := r.ensureManagedAnnotations(ctx, obj, r.crd.KatalogName); err != nil {
 		return err
 	}
 
 	// ── Step 5: Reconcile implementation ──────────────────────────────────────
-	return r.reconcileImpl(ctx, obj)
+	return r.reconcileImpl(ctx, resolver, obj)
 }
 
 // reconcileImpl dispatches to the correct reconcile implementation.
 // Priority: Go hooks → declarative templates → no-op.
-func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
+func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, resolver *orktmpl.Resolver, obj T) error {
 	var err error
 
 	// ── Reconcile-time mutation and validation ────────────────────────────────
@@ -187,28 +192,23 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	// Mutation failures are non-fatal: logged, reconcile continues.
 	// Validation deny failures halt reconcile and return an error.
 
-	// reconcileImpl — replace the validation call block with this:
-
 	// ── Reconcile-time mutation and validation ────────────────────────────────
-	mutationEnabled := r.crd.Mutation != nil && len(r.crd.Mutation.Rules) > 0
-	validationEnabled := r.crd.Validation != nil && len(r.crd.Validation.Rules) > 0
-
-	if mutationEnabled && r.crd.Mutation.MutateFirst {
-		if mutErr := r.applyReconcileTimeMutation(ctx, obj); mutErr != nil {
+	if r.crd.HasMutationRules() && r.crd.Mutation.MutateFirst {
+		if mutErr := r.applyReconcileTimeMutation(ctx, resolver, obj); mutErr != nil {
 			logger.FromContext(ctx).Warn().Err(mutErr).
 				Str("name", obj.GetName()).
 				Msg("reconcile mutation failed — continuing")
 		}
 	}
 
-	if validationEnabled {
-		valResult := runValidation(obj, r.crd.Validation, r.crd.Kind)
+	if r.crd.HasValidationRules() {
+		valResult := runValidation(obj, r.crd.Validation, r.crd.APITypes.Kind)
 
 		// Warn violations: log and emit events but do NOT halt
 		for _, w := range valResult.Warnings {
 			logger.FromContext(ctx).Warn().
 				Str("name", obj.GetName()).
-				Str("crd", r.crd.GVK).
+				Str("crd", r.crd.GVKString()).
 				Str("resource", obj.GetNamespace()+"/"+obj.GetName()).
 				Str("field", w.Field).
 				Str("message", w.Message).
@@ -223,8 +223,8 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 		}
 	}
 
-	if mutationEnabled && !r.crd.Mutation.MutateFirst {
-		if mutErr := r.applyReconcileTimeMutation(ctx, obj); mutErr != nil {
+	if r.crd.HasMutationRules() && !r.crd.Mutation.MutateFirst {
+		if mutErr := r.applyReconcileTimeMutation(ctx, resolver, obj); mutErr != nil {
 			logger.FromContext(ctx).Warn().Err(mutErr).
 				Str("name", obj.GetName()).
 				Msg("reconcile mutation failed — continuing")
@@ -239,13 +239,13 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	case r.rc.OnCreate != nil || r.rc.OnReconcile != nil:
 		// Declarative templates — interpreted at runtime.
 		// Requires: nothing. ork generate runtime NOT needed.
-		err = r.runTemplateReconcile(ctx, obj)
+		err = r.runTemplateReconcile(ctx, resolver, obj)
 
 	default:
 		// No-op — finalizers, events, metrics still handled above.
 		logger.FromContext(ctx).Info().
 			Str("name", obj.GetName()).
-			Msgf("reconciled %s (no-op)", r.crd.GVK)
+			Msgf("reconciled %s (no-op)", r.crd.GVKString())
 		// Status still patched for no-op reconcilers
 	}
 
@@ -253,59 +253,78 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	// Called with the outcome so Ready condition reflects reality.
 	// Must run before the error return so Ready=False is written on failure.
 	// r.updatedPatchStatus(ctx, obj, err)
-	r.patchStatusWithChildren(ctx, obj, err) // Layer 3: read children only on success — no point reading
+	r.patchStatusWithChildren(ctx, obj, resolver, err) // Layer 3: read children only on success — no point reading
 
 	if err != nil {
 		logger.FromContext(ctx).Error().Err(err).
 			Str("name", obj.GetName()).
-			Msgf("reconciliation failed for %s", r.crd.GVK)
+			Msgf("reconciliation failed for %s", r.crd.GVKString())
 
-		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"ReconcileError",
+		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"ReconcileError",
 			fmt.Sprintf("Failed to reconcile %s %s/%s: %v",
-				r.crd.GVK, obj.GetNamespace(), obj.GetName(), err))
+				r.crd.GVKString(), obj.GetNamespace(), obj.GetName(), err))
 		return err
 	}
 
-	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.Kind+"Reconciled",
+	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.APITypes.Kind+"Reconciled",
 		fmt.Sprintf("Successfully reconciled %s %s/%s",
-			r.crd.GVK, obj.GetNamespace(), obj.GetName()))
+			r.crd.GVKString(), obj.GetNamespace(), obj.GetName()))
 
 	logger.FromContext(ctx).Info().
 		Str("name", obj.GetName()).
-		Msgf("reconciled %s", r.crd.GVK)
+		Msgf("reconciled %s", r.crd.GVKString())
 
 	return nil
+}
+
+// namespaceAllowed returns true when the target namespace passes both the
+// restricted and allowed namespace checks for this CRD.
+// Called inside runResourceGroup before dispatching to each resource type.
+func (r *GenericReconciler[T]) namespaceAllowed(
+	ctx context.Context,
+	obj domain.Object,
+	targetNamespace string,
+) bool {
+	result := CheckNamespace(
+		ctx,
+		obj,
+		targetNamespace,
+		r.crd.RestrictedNamespaces,
+		r.crd.AllowedNamespaces,
+		r.crd.APITypes.Kind,
+	)
+	return result.Allowed
 }
 
 // handleDeletion runs cleanup then removes our finalizers.
 // Finalizers are never removed on error — object stays protected until
 // cleanup succeeds.
-func (r *GenericReconciler[T]) handleDeletion(ctx context.Context, obj T) error {
+func (r *GenericReconciler[T]) handleDeletion(ctx context.Context, resolver *orktmpl.Resolver, obj T) error {
 	switch {
 	case r.hooks.OnDelete != nil:
 		if err := r.hooks.OnDelete(ctx, obj); err != nil {
-			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"DeleteError",
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"DeleteError",
 				fmt.Sprintf("Deletion hook failed: %v", err))
 			return fmt.Errorf("deletion hook: %w", err)
 		}
 
 	case r.rc.OnDelete != nil:
-		if err := r.runTemplateOnDelete(ctx, obj); err != nil {
-			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"DeleteError",
+		if err := r.runTemplateOnDelete(ctx, resolver, obj); err != nil {
+			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"DeleteError",
 				fmt.Sprintf("Template deletion failed: %v", err))
 			return fmt.Errorf("template deletion: %w", err)
 		}
 	}
 
 	if err := r.removeFinalizers(ctx, obj); err != nil {
-		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.Kind+"FinalizerRemovalError",
+		r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerRemovalError",
 			fmt.Sprintf("Failed to remove finalizers: %v", err))
 		return err
 	}
 
-	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.Kind+"Deleted",
+	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.APITypes.Kind+"Deleted",
 		fmt.Sprintf("Successfully deleted %s %s/%s",
-			r.crd.GVK, obj.GetNamespace(), obj.GetName()))
+			r.crd.GVKString(), obj.GetNamespace(), obj.GetName()))
 
 	return nil
 }

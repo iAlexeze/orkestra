@@ -68,21 +68,6 @@ var (
 	crServiceAccountGVR = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "serviceaccounts"}
 )
 
-// knownChildGVRs is the ordered list of resource types Orkestra may create
-// as children. For each, the lowercase kind key used in the children map.
-var knownChildGVRs = []struct {
-	GVR schema.GroupVersionResource
-	Key string // lowercase kind — matches .children.<key> in templates
-}{
-	{crDeploymentGVR, "deployment"},
-	{crServiceGVR, "service"},
-	{crConfigMapGVR, "configmap"},
-	{crSecretGVR, "secret"},
-	{crJobGVR, "job"},
-	{crCronJobGVR, "cronjob"},
-	{crServiceAccountGVR, "serviceaccount"},
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Response types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,8 +123,9 @@ type CRDetailResponse struct {
 
 	// Children holds the child resources created by Orkestra for this CR.
 	// Keyed by lowercase kind (e.g. "deployment", "job", "cronjob").
+	// Value is a single ChildSummary when one child exists, []ChildSummary when multiple.
 	// Populated on demand from the API server — may be empty on first reconcile.
-	Children map[string]ChildSummary `json:"children"`
+	Children map[string]interface{} `json:"children"`
 
 	// EventsEndpoint is the URL to fetch recent events for this CR.
 	EventsEndpoint string `json:"eventsEndpoint"`
@@ -197,7 +183,7 @@ func BuildCRListHandler(
 			if !ok {
 				continue
 			}
-			items = append(items, summariseCR(u))
+			items = append(items, summariseCR(u, crd.APITypes.Kind))
 		}
 
 		sort.Slice(items, func(i, j int) bool {
@@ -287,7 +273,7 @@ func BuildCRDetailHandler(
 		// Build the events endpoint URL for this CR
 		eventsPath := buildEventsPath(crd, namespace, name)
 
-		utils.WriteJSON(w, http.StatusOK, buildCRDetail(u, children, eventsPath))
+		utils.WriteJSON(w, http.StatusOK, buildCRDetail(u, children, eventsPath, crd.APITypes.Kind))
 	}
 }
 
@@ -379,9 +365,9 @@ func BuildCREventsHandler(
 // ─────────────────────────────────────────────────────────────────────────────
 
 // summariseCR extracts the summary fields from one CR object.
-func summariseCR(u *unstructured.Unstructured) CRSummary {
+func summariseCR(u *unstructured.Unstructured, parentKind string) CRSummary {
 	phase, _, _ := unstructured.NestedString(u.Object, "status", "phase")
-	ready, readyReason := extractReadyCondition(u)
+	ready, readyReason, _ := extractParentReady(u, parentKind)
 	age := formatAge(u.GetCreationTimestamp().Time)
 
 	return CRSummary{
@@ -396,8 +382,8 @@ func summariseCR(u *unstructured.Unstructured) CRSummary {
 }
 
 // buildCRDetail assembles the full detail response for one CR.
-func buildCRDetail(u *unstructured.Unstructured, children map[string]ChildSummary, eventsEndpoint string) CRDetailResponse {
-	ready, readyReason, readyMsg := extractReadyConditionFull(u)
+func buildCRDetail(u *unstructured.Unstructured, children map[string]interface{}, eventsEndpoint string, parentKind string) CRDetailResponse {
+	ready, readyReason, readyMsg := extractParentReady(u, parentKind)
 
 	status, _ := u.Object["status"].(map[string]interface{})
 
@@ -425,158 +411,6 @@ func buildCRDetail(u *unstructured.Unstructured, children map[string]ChildSummar
 		EventsEndpoint:    eventsEndpoint,
 		// HasTemplateBlocks: hasTemplateBlocks(rc),
 	}
-}
-
-// readChildrenForEndpoint reads child resources from the API server.
-//
-// Performance contract:
-//   - All GVR queries run in parallel — total latency = slowest single query,
-//     not sum of all queries.
-//   - A hard 3-second deadline is applied regardless of the request context.
-//     Children are best-effort; a slow API server does not block the CR detail page.
-//   - When the ReconcilerConfig has no template blocks declared (e.g. a typed
-//     CRD using only hooks/constructor), the function returns immediately with
-//     an empty map — no API calls made.
-//
-// Returns a map keyed by lowercase kind — same convention as .children.* in templates.
-func readChildrenForEndpoint(
-	ctx context.Context,
-	kube *kubeclient.Kubeclient,
-	owner *unstructured.Unstructured,
-	// rc orktypes.ReconcilerConfig,
-) map[string]ChildSummary {
-	if kube == nil {
-		return map[string]ChildSummary{}
-	}
-
-	// Fast path: if no template blocks are declared, this CRD creates no
-	// labelled children. Skip all API calls entirely.
-	// TODO: Not working currently
-	// if !hasTemplateBlocks(rc) {
-	// 	return map[string]ChildSummary{}
-	// }
-
-	// Hard deadline — children are supplementary. Never let a slow API server
-	// block the CR detail page for more than 3 seconds.
-	fetchCtx, cancel := context.WithTimeout(ctx, fetchTimeout)
-	defer cancel()
-
-	ns := owner.GetNamespace()
-	labelSelector := fmt.Sprintf("orkestra-owner=%s", owner.GetName())
-
-	type result struct {
-		key  string
-		item *ChildSummary
-	}
-
-	ch := make(chan result, len(knownChildGVRs))
-
-	// Fan out — all GVR queries in parallel
-	for _, entry := range knownChildGVRs {
-		entry := entry // capture
-		go func() {
-			item := fetchOneChildKind(fetchCtx, kube, ns, labelSelector, entry)
-			ch <- result{key: entry.Key, item: item}
-		}()
-	}
-
-	// Collect — respect the deadline
-	children := make(map[string]ChildSummary, len(knownChildGVRs))
-	for range knownChildGVRs {
-		select {
-		case r := <-ch:
-			if r.item != nil {
-				children[r.key] = *r.item
-			}
-		case <-fetchCtx.Done():
-			// Deadline exceeded — return whatever arrived so far.
-			// The caller renders partial children rather than timing out.
-			return children
-		}
-	}
-
-	return children
-}
-
-// fetchOneChildKind lists the first resource of one GVR owned by the CR.
-// Returns nil when no resource exists or on any error.
-func fetchOneChildKind(
-	ctx context.Context,
-	kube *kubeclient.Kubeclient,
-	ns, labelSelector string,
-	entry struct {
-		GVR schema.GroupVersionResource
-		Key string
-	},
-) *ChildSummary {
-	resource := kube.DynamicClient().Resource(entry.GVR)
-
-	var list *unstructured.UnstructuredList
-	var err error
-
-	opts := metav1.ListOptions{
-		LabelSelector:   labelSelector,
-		Limit:           listOptionsLimit,
-		ResourceVersion: "0", // serve from API server watch cache, not etcd
-		// ResourceVersion "0" means "any cached version is acceptable" — the API
-		// server satisfies this from its in-memory watch cache rather than querying
-		// etcd. This is the same optimization kubectl uses. Without it, every List
-		// call is an etcd round-trip and can take 2-5 seconds under load.
-	}
-
-	if ns != "" {
-		list, err = resource.Namespace(ns).List(ctx, opts)
-	} else {
-		list, err = resource.List(ctx, opts)
-	}
-
-	if err != nil || len(list.Items) == 0 {
-		return nil
-	}
-
-	obj := list.Items[0]
-	status, _ := obj.Object["status"].(map[string]interface{})
-	if status == nil {
-		status = map[string]interface{}{}
-	}
-
-	kind := obj.GetKind()
-	if kind == "" {
-		kind = strings.ToUpper(entry.Key[:1]) + entry.Key[1:]
-	}
-
-	return &ChildSummary{
-		Name:      obj.GetName(),
-		Namespace: obj.GetNamespace(),
-		Kind:      kind,
-		Status:    status,
-		Ready:     isChildReady(obj.Object),
-	}
-}
-
-// hasTemplateBlocks returns true if the ReconcilerConfig has any declarative
-// template blocks that would cause Orkestra to create labelled child resources.
-// Used to skip the children fetch for CRDs that use hooks/constructor only.
-func hasTemplateBlocks(rc orktypes.ReconcilerConfig) bool {
-	if rc.OnCreate != nil {
-		t := rc.OnCreate
-		if len(t.Deployments) > 0 || len(t.Services) > 0 ||
-			len(t.Jobs) > 0 || len(t.CronJobs) > 0 ||
-			len(t.ConfigMaps) > 0 || len(t.Secrets) > 0 ||
-			len(t.ServiceAccounts) > 0 || len(t.Pods) > 0 {
-			return true
-		}
-	}
-	if rc.OnReconcile != nil {
-		t := rc.OnReconcile
-		if len(t.Deployments) > 0 || len(t.Services) > 0 ||
-			len(t.Jobs) > 0 || len(t.CronJobs) > 0 ||
-			len(t.ConfigMaps) > 0 || len(t.Secrets) > 0 ||
-			len(t.ServiceAccounts) > 0 || len(t.Pods) > 0 {
-			return true
-		}
-	}
-	return false
 }
 
 // fetchCREvents lists Kubernetes events for a specific CR by name.
@@ -651,68 +485,6 @@ func summariseEvent(ev corev1.Event) CREvent {
 		LastSeen:  lastSeen,
 		Age:       formatAge(ev.LastTimestamp.Time),
 	}
-}
-
-// extractReadyCondition reads the Ready condition from status.conditions.
-// Returns (ready bool, reason string).
-func extractReadyCondition(u *unstructured.Unstructured) (bool, string) {
-	ready, reason, _ := extractReadyConditionFull(u)
-	return ready, reason
-}
-
-// extractReadyConditionFull reads Ready condition with message.
-func extractReadyConditionFull(u *unstructured.Unstructured) (bool, string, string) {
-	conditions, _, _ := unstructured.NestedSlice(u.Object, "status", "conditions")
-	for _, c := range conditions {
-		cond, ok := c.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		if cond["type"] == "Ready" {
-			ready := cond["status"] == "True"
-			reason := fmt.Sprint(cond["reason"])
-			message := fmt.Sprint(cond["message"])
-			if message == "<nil>" {
-				message = ""
-			}
-			return ready, reason, message
-		}
-	}
-	return false, "", ""
-}
-
-// isChildReady determines readiness from a child resource's status.
-// For Jobs: ready when succeeded > 0.
-// For Deployments: ready when readyReplicas == replicas.
-// For everything else: ready when no failed conditions exist.
-func isChildReady(obj map[string]interface{}) bool {
-	status, _ := obj["status"].(map[string]interface{})
-	if status == nil {
-		return false
-	}
-
-	// Job: succeeded count > 0
-	if succeeded, ok := status["succeeded"]; ok {
-		s, _ := succeeded.(int64)
-		return s > 0
-	}
-
-	// Deployment: readyReplicas matches replicas
-	if readyReplicas, ok := status["readyReplicas"]; ok {
-		spec, _ := obj["spec"].(map[string]interface{})
-		if spec != nil {
-			desired, _ := spec["replicas"].(int64)
-			ready, _ := readyReplicas.(int64)
-			return desired > 0 && ready == desired
-		}
-	}
-
-	// CronJob: has a lastScheduleTime
-	if _, ok := status["lastScheduleTime"]; ok {
-		return true
-	}
-
-	return true // default optimistic for other resource types
 }
 
 // buildEventsPath constructs the events endpoint URL for a CR.

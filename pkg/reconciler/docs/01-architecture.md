@@ -1,0 +1,134 @@
+# 01 — Reconciler Architecture
+
+## The big picture
+
+Every CR (Custom Resource) that Orkestra manages goes through one shared reconcile pipeline. The pipeline is implemented in `generic.go` and `run_template_reconcile.go`. Resource-specific logic lives in isolated `run_*.go` files.
+
+```
+Kubernetes event (Add/Update/Delete)
+         │
+         ▼
+GenericReconciler.Reconcile()          generic.go
+   │
+   ├── Context enrichment (logger, requestID, CRD name)
+   ├── Cache lookup — informer store, no API call
+   ├── Deletion routing → handleDeletion()
+   ├── Finalizer / managed-label / annotation patching
+   │
+   └── reconcileImpl()
+          │
+          ├── Reconcile-time mutation (if mutation rules declared)
+          ├── Reconcile-time validation (if validation rules declared)
+          │
+          └── dispatch:
+               ├── Go hook (hooks.OnReconcile)        — user-provided, typed
+               ├── Declarative templates              — runTemplateReconcile()
+               └── No-op                              — finalizers + events only
+```
+
+## runTemplateReconcile — execution order
+
+`run_template_reconcile.go` is the declarative path. It builds a resolver, enriches it with external data, then dispatches to resource-type runners.
+
+```
+Step 1   NewResolver(obj)
+            .spec.*, .status.*, .metadata.*
+            .children.* (owned child resources)
+
+Step 2   readCross(r.rc.Cross)
+            .cross.<kind>.spec.*, .status.*
+            Read from sibling informer caches — zero API calls.
+            Falls back to HTTP endpoint for cross-binary CRDs.
+
+Step 3   runGit()
+            .git.commit, .git.changed, .git.path
+            Only if git: is declared.
+
+Step 4   runExternal()
+            .external.<n>.status, .body
+            HTTP calls to external services.
+            Only if external: is declared.
+
+Step 5   runDocker()
+            Docker build/push.
+            Only if docker: is declared.
+
+Step 6   runResourceGroup(onCreate, update=false)
+            All resource types in the onCreate: block.
+
+Step 7   runResourceGroup(onReconcile, update=true)
+            All resource types in the onReconcile: block.
+
+Step 8   runProviders()
+            aws:, mongodb:, ... — external infrastructure providers.
+```
+
+Each step can reference data produced by all earlier steps. The resolver is passed by value between steps — it is immutable.
+
+## runResourceGroup — per-type dispatch
+
+`runResourceGroup` calls each resource runner with the same signature:
+
+```
+expandForEach*(resolver, t.<Resource>)   →   []TypedTemplateSource
+runXxx(ctx, kube, resolver, owner, srcs, update, guard)
+```
+
+The `expandForEach*` call happens **before** the runner is invoked. Every runner receives an already-expanded slice and does not need to know about `forEach`.
+
+```
+runResourceGroup()
+   │
+   ├── expandForEachSecrets        → runSecrets
+   ├── expandForEachConfigMaps     → runConfigMaps
+   ├── expandForEachServiceAccounts → runServiceAccounts
+   ├── expandForEachDeployments    → runDeployments
+   ├── expandForEachServices       → runServices
+   ├── expandForEachJobs           → runJobs
+   └── expandForEachCronJobs       → runCronJobs
+```
+
+## The update flag
+
+The same runner handles both `onCreate` and `onReconcile`. The `update` flag distinguishes them:
+
+| `update` | Called from | Semantics |
+|----------|-------------|-----------|
+| `false`  | `onCreate`  | Idempotent create — skip if exists |
+| `true`   | `onReconcile` | Drift correction — patch if changed |
+
+A source with `reconcile: true` under `onCreate` means "create it and keep it in sync without a separate `onReconcile` declaration". The runner handles this by calling `Update` after a successful `Create` when `src.Reconcile` is true.
+
+## The namespace guard
+
+Before any API call the runner checks whether the target namespace is allowed. The guard is a closure created in `runResourceGroup`:
+
+```go
+guard := r.namespaceGuardFunc(ctx, obj)
+```
+
+Inside each runner, call it early — after namespace resolution, before any API call:
+
+```go
+if guard != nil && !guard(ctx, owner, ns) {
+    continue // CheckNamespace already logged the reason
+}
+```
+
+The guard is nil when the CRD has no `restrictedNamespaces` / `allowedNamespaces` config. Always do a nil check.
+
+## Deletion path
+
+On CR deletion, `handleDeletion` runs. It dispatches to:
+- `hooks.OnDelete` — Go hook, if registered.
+- `runTemplateOnDelete` — interprets the `onDelete:` block.
+
+The `onDelete` block supports `jobs:` (fire-and-forget cleanup) and provider teardown. It does **not** re-run deployments, services, or other reconcilable resources — owner references handle cascade deletion of those.
+
+## Status patching
+
+After reconcile (success or failure), `patchStatusWithChildren` is called unconditionally. It reads owned child resources from the informer cache and writes a `Ready` condition. This is automatic — runners do not need to touch status.
+
+---
+
+**Next →** [02 — The run_*.go Function Contract](02-run-pattern.md)

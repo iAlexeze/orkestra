@@ -273,7 +273,7 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## License
 
-MIT License – see [LICENSE](LICENSE) file for details.
+Apache license – see [LICENSE](LICENSE) file for details.
 
 ## Related Projects
 

@@ -4,6 +4,7 @@ package types
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
@@ -159,6 +160,42 @@ type Queue struct {
 type ResourceLabel struct {
 	Key   string `yaml:"key" json:"key" validate:"required"`
 	Value string `yaml:"value" json:"value" validate:"required"`
+}
+
+func (l ResourceLabel) String() string {
+	return fmt.Sprintf("%s=%s", l.Key, l.Value)
+}
+
+type ResourceSelector []ResourceLabel
+
+// Stringifier
+func (s ResourceSelector) String() string {
+	if len(s) == 0 {
+		return ""
+	}
+
+	parts := make([]string, 0, len(s))
+	for _, lbl := range s {
+		parts = append(parts, lbl.String())
+	}
+
+	return strings.Join(parts, ",")
+}
+
+// Selector map
+type SelectorMap map[string]string
+
+// Stringifier
+func (m SelectorMap) String() string {
+	if len(m) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(m))
+	for k, v := range m {
+		parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, ",")
 }
 
 // ResourceRequirements mirrors Kubernetes resource requests and limits.
@@ -1336,6 +1373,9 @@ type CRDEntry struct {
 	// Injected from the map key during loading — never set from YAML.
 	Name string `yaml:"-" json:"name" validate:"required,hostname_rfc1123"`
 
+	// KatalogName — unique identifier for the the katalog in the runtime
+	KatalogName string `yaml:"-" json:"katalogName,omitempty"`
+
 	// Enabled — include this CRD in the runtime. false = skipped entirely.
 	// WARNING: only set to false after stripping Orkestra finalizers from all
 	// live CRs — disabled CRDs with live finalizers will cause stuck objects.
@@ -1419,12 +1459,49 @@ type CRDEntry struct {
 	// ── Reconciler + Queue ────────────────────────────────────────────────────
 	ReconcilerConfig ReconcilerConfig `yaml:"reconciler,omitempty" json:"reconciler,omitempty"`
 	Queue            Queue            `yaml:"queue,omitempty" json:"queue,omitempty"`
-	Labels           []ResourceLabel  `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+
+	// Labels           []ResourceLabel  `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
+	// LabelSelector filters which resources this CRD entry reconciles.
+	// Only resources whose labels match ALL declared key-value pairs are watched.
+	// Required for built-in types (ConfigMap, Pod, etc.) — without a selector,
+	// Orkestra would reconcile every instance in the cluster.
+	// For custom CRDs this is optional — can narrow scope within a CRD.
+	LabelSelector SelectorMap `yaml:"labelSelector,omitempty"`
+
+	// FieldSelector filters which resources this CRD entry reconciles.
+	// Only resources whose *fields* match ALL declared key-value expressions
+	// are listed or watched. Field selectors operate on the server side and
+	// support exact-match comparisons on well-known metadata paths
+	// (e.g. "metadata.name", "metadata.namespace").
+	//
+	// Unlike label selectors, field selectors cannot match arbitrary user-defined
+	// keys — only fields exposed by the Kubernetes API server. They are evaluated
+	// before any client-side filtering, reducing load on the informer pipeline.
+	//
+	// Common use cases:
+	//   - Restricting reconciliation to a specific namespace:
+	//       {key: "metadata.namespace", value: "default"}
+	//   - Targeting a single object by name:
+	//       {key: "metadata.name", value: "my-config"}
+	//
+	// Field selectors are optional for all types. When omitted, Orkestra will
+	// watch all objects permitted by LabelSelector and namespace restrictions.
+	FieldSelector SelectorMap `yaml:"fieldSelector,omitempty"`
 
 	// IsBuiltIn is set to true when this CRD entry was enriched from the
 	// built-in Kubernetes resource registry. Used for ork validate output
 	// and informational logging only — does not affect runtime behavior.
 	IsBuiltIn bool `yaml:"-" json:"-"` // never serialized — runtime state only
+
+	// IgnoreStatusPatch reports whether or not to patch the status of this CRD
+	IgnoreStatusPatch bool `yaml:"ignoreStatusPatch,omitempty" json:"ignoreStatusPatch,omitempty"`
+
+	// IgnoreObservedGeneration reports whether or not to ignore the observedGeneration field for this CRD.
+	IgnoreObservedGeneration bool `yaml:"ignoreObservedGeneration,omitempty" json:"ignoreObservedGeneration,omitempty"`
+
+	// IsStatusless reports whether this CRD has no meaningful readiness semantics.
+	// These resources become "Ready" immediately upon creation.
+	IsStatusless bool `yaml:"-" json:"IsStatusless,omitempty"`
 
 	// BuiltInGroup is the display name of the API group for built-in resources.
 	// "core" for resources in the core group (empty string group).
@@ -1451,6 +1528,9 @@ type CRDEntry struct {
 	// Restricted Namespaces
 	RestrictedNamespaces RestrictedNamespaces `yaml:"restrictedNamespaces,omitempty" json:"restrictedNamespaces,omitempty"`
 
+	// Allowed Namespaces
+	AllowedNamespaces AllowedNamespaces `yaml:"allowedNamespaces,omitempty" json:"allowedNamespaces,omitempty"`
+
 	// Conversion is useful for handling multi-version crd
 	Conversion *CRDConversion `yaml:"conversion,omitempty" json:"conversion,omitempty"`
 
@@ -1467,6 +1547,12 @@ type CRDEntry struct {
 	// Set validation: false or mutation: false to opt a specific CRD out of
 	// admission-time interception while keeping its reconcile-time enforcement.
 	Webhooks AdmissionWebhookConfig `yaml:"webhooks,omitempty" json:"webhooks,omitempty"`
+
+	// Normalize Spec fields before rendering
+	Normalize *NormalizeConfig `yaml:"normalize,omitempty"`
+
+	// RemoveFinalizers -> testing
+	RemoveFinalizers bool `yaml:"removeFinalizers,omitempty" json:"removeFinalizers,omitempty"`
 }
 
 type ConversionVersionSpec struct {

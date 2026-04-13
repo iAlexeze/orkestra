@@ -36,13 +36,16 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 
 	fmt.Println()
 	// ENABLE_ADMISSION_WEBHOOK=true
-	if kfg.katalog.HasMutationRules() || kfg.katalog.HasValidationRules() {
+	if kfg.katalog.HasMutationRules() || kfg.katalog.HasValidationRules() || kfg.katalog.IsDeletionProtectionEnabled() {
 		fmt.Println("Webhook Endpoints:")
 		if kfg.katalog.HasMutationRules() {
 			fmt.Printf("- Muatation:  %s/mutate%s\n", utils.ColorGreen, utils.ColorReset)
 		}
 		if kfg.katalog.HasValidationRules() {
 			fmt.Printf("- Validation:  %s/validate%s\n", utils.ColorGreen, utils.ColorReset)
+		}
+		if kfg.katalog.IsDeletionProtectionEnabled() && kfg.katalog.DeletionProtectionGVRs() != nil {
+			fmt.Printf("- Deletion Protection:  %s/deletion-protection%s\n", utils.ColorGreen, utils.ColorReset)
 		}
 
 		// Registration configuration

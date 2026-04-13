@@ -54,6 +54,7 @@ func runMutation(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
 	obj domain.Object,
+	resolver *orktmpl.Resolver,
 	cfg *orktypes.MutationConfig,
 	gvr schema.GroupVersionResource,
 	crdName string,
@@ -72,10 +73,7 @@ func runMutation(
 		return result, nil
 	}
 
-	resolver, err := orktmpl.NewResolver(ctx, obj)
-	if err != nil {
-		return nil, fmt.Errorf("mutation: building resolver: %w", err)
-	}
+	var err error
 
 	// patch accumulates all field changes.
 	// Keys are the top-level field names (e.g. "spec").

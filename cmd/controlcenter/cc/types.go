@@ -29,6 +29,7 @@ type KatalogData struct {
 	CRDs               []CRDSummary
 	TotalCRDs          int
 	OrkReady           bool
+	DeletionProtection bool
 	TotalWorkers       int
 	TotalResources     int
 	HealthyCount       int
@@ -79,19 +80,20 @@ type RBACRule struct {
 
 // KatalogResponse is the response from the /katalog endpoint
 type KatalogResponse struct {
-	Total          int          `json:"total"`
-	TotalEnabled   int          `json:"totalEnabled"`
-	Healthy        bool         `json:"healthy"`
-	Status         int          `json:"status"`
-	OrkReady       bool         `json:"OrkReady"`
-	CRDs           []CRDSummary `json:"crds"`
-	Name           string       `json:"name,omitempty"`
-	Version        string       `json:"version,omitempty"`
-	Author         string       `json:"author,omitempty"`
-	Description    string       `json:"description,omitempty"`
-	DegradedReason string       `json:"degradedReason,omitempty"`
-	StatusCounts   StatusCounts `json:"statusCounts"`
-	License        string       `json:"license,omitempty"`
+	Total              int          `json:"total"`
+	TotalEnabled       int          `json:"totalEnabled"`
+	Healthy            bool         `json:"healthy"`
+	Status             int          `json:"status"`
+	OrkReady           bool         `json:"OrkReady"`
+	DeletionProtection bool         `json:"deletionProtection"`
+	CRDs               []CRDSummary `json:"crds"`
+	Name               string       `json:"name,omitempty"`
+	Version            string       `json:"version,omitempty"`
+	Author             string       `json:"author,omitempty"`
+	Description        string       `json:"description,omitempty"`
+	DegradedReason     string       `json:"degradedReason,omitempty"`
+	StatusCounts       StatusCounts `json:"statusCounts"`
+	License            string       `json:"license,omitempty"`
 }
 
 // CRDSummary is a summary of a CRD
@@ -112,6 +114,7 @@ type CRDSummary struct {
 	Uptime                   string   `json:"uptime"`
 	RBACCount                int      `json:"rbacCount,omitempty"`
 	HasUnhealthyDependencies bool     `json:"hasUnhealthyDependencies"`
+	DeletionProtection       bool     `json:"deletionProtection"`
 }
 
 // CRDHealth is the response from the /katalog/{crd}/health endpoint
@@ -172,6 +175,7 @@ type CRDInfo struct {
 	ErrorRate                float64                `json:"errorRate"`
 	Conversion               *ConversionStats       `json:"conversion"`
 	Admission                *AdmissionStats        `json:"admission"`
+	Protection               *ProtectionStats       `json:"protection,omitempty"`
 	RBAC                     RBACInfo               `json:"rbac,omitempty"`
 	HasUnhealthyDependencies bool                   `json:"hasUnhealthyDependencies"`
 }
@@ -184,6 +188,12 @@ type ConversionStats struct {
 	Failures     int     `json:"failures"`
 	AvgLatencyMs float64 `json:"avgLatencyMs"`
 	P95LatencyMs float64 `json:"p95LatencyMs"`
+}
+
+// ProtectionStats contains deletion protection status
+type ProtectionStats struct {
+	Enabled bool `json:"enabled"`
+	Blocked int  `json:"blocked"`
 }
 
 // AdmissionStats contains admission webhook metrics
@@ -244,6 +254,7 @@ type CRDDetail struct {
 	ErrorRate                float64                     `json:"errorRate"`
 	Conversion               *ConversionStats            `json:"conversion"`
 	Admission                *AdmissionStats             `json:"admission"`
+	Protection               *ProtectionStats            `json:"protection,omitempty"`
 	RBAC                     RBACInfo                    `json:"rbac,omitempty"`
 	RBACCount                int                         `json:"rbacCount,omitempty"`
 }

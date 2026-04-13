@@ -12,6 +12,24 @@ func (c *CRDEntry) IsBuiltInType() bool {
 	return c.IsBuiltIn
 }
 
+// SkipStatusSubresource reports whether this CRD belongs to a list to be ignored during status patches.
+// This is applied mainly to builtins or if specifically required by the crd through crd.IgnoreStatusPatch
+func (c *CRDEntry) SkipStatusSubresource() bool {
+	return c.IgnoreStatusPatch
+}
+
+// SkipObservedGeneration reports whether this CRD belongs to a list to be ignored during status patches.
+// This is applied mainly to builtins or if specifically required by the crd through crd.IgnoreStatusPatch
+func (c *CRDEntry) SkipObservedGeneration() bool {
+	return c.IgnoreObservedGeneration
+}
+
+// IsStatusless reports whether this CRD has no meaningful readiness semantics.
+// These resources become "Ready" immediately upon creation.
+func (c *CRDEntry) IsStatuslessType() bool {
+	return c.IsStatusless
+}
+
 // GetRuntimeObjects returns the object and list constructors appropriate for the
 // current mode (dynamic or typed). Used by the reconciler to instantiate new
 // runtime objects for watches, lists, and reconciliation.
@@ -66,10 +84,20 @@ func (c *CRDEntry) GVK() schema.GroupVersionKind {
 	return c.GroupVersionKind
 }
 
+// GVKString returns the fully resolved GroupVersionKind for this CRD as a string.
+func (c *CRDEntry) GVKString() string {
+	return c.GroupVersionKind.String()
+}
+
 // GVR returns the fully resolved GroupVersionResource for this CRD. Used for
 // dynamic client list/watch operations.
 func (c *CRDEntry) GVR() schema.GroupVersionResource {
 	return c.GroupVersionResource
+}
+
+// GVRString returns the fully resolved GroupVersionResource for this CRD as a string.
+func (c *CRDEntry) GVRString() string {
+	return c.GroupVersionResource.String()
 }
 
 // IsEnabled reports whether this CRD is enabled. Defaults to true when omitted.
@@ -153,4 +181,19 @@ func (c *CRDEntry) GetDependencies() []string {
 // Even when ENABLE_ADMISSION_WEBHOOK=true
 func (c *CRDEntry) HasValidationOrMutationRules() bool {
 	return len(c.Validation.Rules) > 0 || len(c.Mutation.Rules) > 0
+}
+
+// Separate helpers for hasMutationRules and hasValidationRules
+func (c *CRDEntry) HasMutationRules() bool {
+	if c.Mutation == nil {
+		return false
+	}
+	return len(c.Mutation.Rules) > 0
+}
+
+func (c *CRDEntry) HasValidationRules() bool {
+	if c.Validation == nil {
+		return false
+	}
+	return len(c.Validation.Rules) > 0
 }

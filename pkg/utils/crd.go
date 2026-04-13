@@ -57,3 +57,12 @@ func BuildAnnotationPatch(key, value string) map[string]interface{} {
 		},
 	}
 }
+
+// Used to merge labels
+func Merge(target *string, incoming, sep string) {
+	if *target == "" {
+		*target = incoming
+	} else {
+		*target = *target + sep + incoming
+	}
+}

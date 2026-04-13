@@ -206,11 +206,12 @@ func (k *Katalog) setGroupVersionKind() error {
 // Set SetDefaults
 func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 	for name, crd := range k.enabledCRDs {
-		// Add labels
-		crd.Labels = append(crd.Labels, orktypes.ResourceLabel{
-			Key:   konfig.LabelManaged,
-			Value: konfig.LabelManagedValue,
-		})
+		// Add katalog Name
+		if k.metadata.Name != "" {
+			crd.KatalogName = k.metadata.Name
+		} else {
+			crd.KatalogName = kfg.Cluster().Name
+		}
 
 		// Name is already set from map key — normalise it
 		crd.Name = strings.ReplaceAll(crd.Name, " ", "")
@@ -256,25 +257,6 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		// Handle Workers
 		if crd.Workers == 0 {
 			crd.Workers = kfg.Cluster().DefaultWorkers
-		}
-
-		// Handle Queues
-		if crd.Queue.DegradeThreshold == 0 {
-			crd.Queue.DegradeThreshold = kfg.Katalog().DefaultDegradeThreshold
-
-		}
-		if crd.Queue.MaxQueueDepth == 0 {
-			crd.Queue.MaxQueueDepth = kfg.Katalog().DefaultMaxQueueDepth
-		}
-
-		// Handle Builtins
-		if crd.IsBuiltInType() {
-			// Disable status writes for built-ins
-			disabled := false
-			crd.ReconcilerConfig.Status = &orktypes.StatusConfig{
-				Conditions: &disabled,
-			}
-
 		}
 
 		k.enabledCRDs[name] = crd
@@ -381,4 +363,31 @@ func (k *Katalog) addHooks() error {
 		// not found — fine, GenericReconciler runs without hooks
 	}
 	return nil
+}
+
+// validateStatus sets IgnoreStatusPatch and IgnoreObservedGeneration on each
+// enabled CRD entry based on the built-in resource registry.
+//
+// Called once during Katalog loading — flags are set once, checked cheaply
+// in the hot reconcile path.
+func (k *Katalog) validateStatus() {
+	for name, crd := range k.enabledCRDs {
+		// Look up by Kind directly — avoids GVK string format mismatch.
+		// BuiltInMeta returns zero value for unknown kinds (safe).
+		meta := BuiltInMeta(crd.APITypes.Kind)
+
+		if meta.SkipStatusSubresource {
+			// ConfigMap, Secret, ServiceAccount, Role, ClusterRole, etc.
+			// These have no /status subresource — PATCH would return 404.
+			crd.IgnoreStatusPatch = true
+		}
+
+		if meta.SkipObservedGeneration {
+			// Namespace, Node, Service, Pod, PVC, etc.
+			// These have status but no observedGeneration field.
+			crd.IgnoreObservedGeneration = true
+		}
+
+		k.enabledCRDs[name] = crd
+	}
 }

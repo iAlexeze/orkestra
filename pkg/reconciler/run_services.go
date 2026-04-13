@@ -22,21 +22,44 @@ func runServices(
 	owner domain.Object,
 	srcs []orktypes.ServiceTemplateSource,
 	update bool,
+	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
+	activeNames := make(map[string]bool, len(srcs))
+	for _, s := range srcs {
+		if !orktypes.EvaluateWhen(resolver.Data(), s.Conditions, s.AnyOf) {
+			continue
+		}
+		n, _ := resolver.Resolve(s.Name)
+		nsp, _ := resolver.Resolve(s.Namespace)
+		if nsp == "" {
+			nsp = owner.GetNamespace()
+		}
+		activeNames[nsp+"/"+n] = true
+	}
+
 	for i, src := range srcs {
 		// 1. Evaluate conditions BEFORE resolving templates
 		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf)
 
+		name, _ := resolver.Resolve(src.Name)
+		ns, _ := resolver.Resolve(src.Namespace)
+		if ns == "" {
+			ns = owner.GetNamespace()
+		}
+
+		// ── Namespace guard ───────────────────────────────────────────────
+		// Called after namespace resolution so the actual target namespace
+		// is known. Before this point the namespace may be a template expression.
+		if guard != nil && !guard(ctx, owner, ns) {
+			continue // skipped — CheckNamespace already logged the reason
+		}
+
 		if !conditionPassed {
-			if update || src.Reconcile { // ← src.Reconcile here too to show that this resource is continuously managed
-				// Condition no longer passes — delete if owned by this CR
-				name, _ := resolver.Resolve(src.Name)
-				ns, _ := resolver.Resolve(src.Namespace)
-				if ns == "" {
-					ns = owner.GetNamespace()
-				}
-				if err := orksvc.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
-					return fmt.Errorf("services[%d]: conditional cleanup: %w", i, err)
+			if update || src.Reconcile {
+				if !activeNames[ns+"/"+name] {
+					if err := orksvc.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
+						return fmt.Errorf("services[%d]: conditional cleanup: %w", i, err)
+					}
 				}
 			}
 			logger.FromContext(ctx).Debug().

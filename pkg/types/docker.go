@@ -77,6 +77,17 @@ type DockerHookSpec struct {
 	//   • The image is built locally only.
 	Push bool `yaml:"push,omitempty" json:"push,omitempty"`
 
+	// Builder selects the OCI build tool to use.
+	//
+	// Supported values: "docker" (default), "kaniko", "buildah", "podman".
+	// When empty, Orkestra checks the OCI_BUILDER environment variable,
+	// then falls back to "docker".
+	//
+	// kaniko — builds without a Docker socket; works in any Kubernetes pod.
+	// buildah — rootless builds via buildah bud.
+	// podman  — local builds via podman build.
+	Builder string `yaml:"builder,omitempty" json:"builder,omitempty"`
+
 	// Reconcile controls whether this Docker hook runs on every reconcile.
 	//
 	// When true:
@@ -87,6 +98,12 @@ type DockerHookSpec struct {
 	//   • Docker build/push runs only during onCreate.
 	//   • Useful for one-time initialization images.
 	Reconcile bool `yaml:"reconcile,omitempty" json:"reconcile,omitempty"`
+
+	// ContinueOnError controls behaviour when the Docker build or push fails.
+	//
+	// false (default) — Docker failure returns an error and halts reconciliation.
+	// true            — Docker failure injects .docker.error but reconciliation continues.
+	ContinueOnError bool `yaml:"continueOnError,omitempty" json:"continueOnError,omitempty"`
 
 	// When is an optional list of conditions that must all pass before
 	// this field is written. If absent or empty, the field is always written.

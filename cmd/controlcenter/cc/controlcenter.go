@@ -546,6 +546,7 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 	cc.renderTemplate(w, "katalog.html", KatalogData{
 		CRDs:               sortedCRDs,
 		OrkReady:           kat.OrkReady,
+		DeletionProtection: kat.DeletionProtection,
 		TotalCRDs:          len(kat.CRDs),
 		TotalWorkers:       sumWorkers(kat.CRDs),
 		TotalResources:     sumResources(kat.CRDs),
@@ -645,6 +646,7 @@ func (cc *ControlCenter) handleCRDetail(w http.ResponseWriter, r *http.Request, 
 		Events:      events,
 		EventTotal:  eventTotal,
 		Phase:       phase,
+		ChildGroups: normalizeChildGroups(detail.Children),
 		BackURL:     fmt.Sprintf("/controlcenter/katalog/%s/crd/%s", katalogName, crdName),
 	})
 }

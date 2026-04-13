@@ -162,4 +162,4 @@ Your contributions make Orkestra better for everyone. Whether you're fixing a ty
 ---
 
 *Orkestra Control Center – Part of the Orkesta Project*
-*MIT Licensed*
+*Apache licensed*

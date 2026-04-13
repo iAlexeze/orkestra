@@ -133,8 +133,11 @@ type RawProviderDeclaration struct {
 	// resolver before the provider is called.
 	Fields map[string]string
 
-	// Conditions are the when: conditions from this declaration.
+	// Conditions are the when: conditions from this declaration (AND semantics).
 	// Evaluated by Orkestra before calling the provider — declarations
 	// whose conditions fail are removed from the list before dispatch.
 	Conditions []Condition `yaml:"when,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass.
+	AnyOf []Condition `yaml:"anyOf,omitempty"`
 }

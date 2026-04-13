@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ialexeze/orkestra/pkg/logger"
+	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
@@ -17,7 +18,7 @@ func (r *GenericReconciler[T]) applyReconcileTimeValidation(ctx context.Context,
 		return nil
 	}
 
-	result := runValidation(obj, r.crd.Validation, r.crd.Kind)
+	result := runValidation(obj, r.crd.Validation, r.crd.APITypes.Kind)
 	if result.Passed {
 		return nil
 	}
@@ -51,12 +52,12 @@ func (r *GenericReconciler[T]) applyReconcileTimeValidation(ctx context.Context,
 // applyReconcileTimeMutation applies mutation defaults to the CR and patches
 // the spec subresource when changes are needed.
 // Mutation failures are non-fatal — the caller logs and continues.
-func (r *GenericReconciler[T]) applyReconcileTimeMutation(ctx context.Context, obj T) error {
+func (r *GenericReconciler[T]) applyReconcileTimeMutation(ctx context.Context, resolver *orktmpl.Resolver, obj T) error {
 	if r.crd.Mutation == nil || len(r.crd.Mutation.Rules) == 0 {
 		return nil
 	}
 
-	_, err := runMutation(ctx, r.kube, obj, r.crd.Mutation, r.crd.GVR, r.crd.Kind)
+	_, err := runMutation(ctx, r.kube, obj, resolver, r.crd.Mutation, r.crd.GVR(), r.crd.APITypes.Kind)
 	return err
 }
 

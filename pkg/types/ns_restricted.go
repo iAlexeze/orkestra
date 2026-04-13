@@ -1,4 +1,4 @@
-// pkg/types/restricted.go
+// pkg/types/ns_restricted.go
 package types
 
 import "strings"
