@@ -2,13 +2,13 @@
 //
 // Execution order (each step can reference all previous steps):
 //
-//  1. NewResolver        → .spec.*, .status.*, .metadata.*
-//  2. r.readCross        → .cross.<kind>.status.* (informer cache, zero API calls)
-//  3. runExternal        → .external.<n>.status, .body (HTTP calls)
-//  4. forEach expand     → N sources from N-element list fields
-//  5. onCreate groups    → deployments, services, secrets, configmaps, ...
+//  1. Recieve NewResolver        → .spec.*, .status.*, .metadata.*
+//  2. r.readCross     			  → .cross.<kind>.status.* (informer cache, zero API calls)
+//  3. runExternal        	      → .external.<n>.status, .body (HTTP calls)
+//  4. forEach expand             → N sources from N-element list fields
+//  5. onCreate groups            → deployments, services, secrets, configmaps, ...
 //  6. onReconcile groups
-//  7. runProviders       → aws:, mongodb:, ... (external infra)
+//  7. runProviders               → aws:, mongodb:, ... (external infra)
 package reconciler
 
 import (
@@ -23,21 +23,20 @@ import (
 )
 
 // runTemplateReconcile interprets the Katalog's onCreate and onReconcile blocks.
-func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj domain.Object) error {
+func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, resolver *orktmpl.Resolver, obj domain.Object) error {
 	kube, ok := kubeclient.FromContext(ctx)
 	if !ok {
 		return fmt.Errorf("kubeclient not found in context")
 	}
 
-	// Step 1: base resolver
-	resolver, err := orktmpl.NewResolver(ctx, obj)
-	if err != nil {
-		return fmt.Errorf("building resolver: %w", err)
-	}
+	// Step 1: We now receive a base resolver (already normalized) from reconcileImpl.
+	// All subsequent steps (cross, git, external, docker, resources, providers)
+	// enrich this resolver in-place.
+	var err error
 
 	// Step 2: cross-CRD observation
 	// Reads from sibling CRD informer caches via r.katalogRegistry — zero API calls.
-	// Must run first so git, external calls, and resources can reference .cross.*
+	// Must run first so git, docker, external calls, and resources can reference .cross.*
 	if len(r.rc.Cross) > 0 {
 		crossData := r.readCross(ctx, obj, r.rc.Cross, resolver)
 		if len(crossData) > 0 {
@@ -162,15 +161,10 @@ func (r *GenericReconciler[T]) runResourceGroup(
 }
 
 // runTemplateOnDelete interprets the onDelete block.
-func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, obj domain.Object) error {
+func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, resolver *orktmpl.Resolver, obj domain.Object) error {
 	kube, ok := kubeclient.FromContext(ctx)
 	if !ok {
 		return fmt.Errorf("kubeclient not found in context")
-	}
-
-	resolver, err := orktmpl.NewResolver(ctx, obj)
-	if err != nil {
-		return fmt.Errorf("building resolver: %w", err)
 	}
 
 	guard := r.namespaceGuardFunc(ctx, obj)

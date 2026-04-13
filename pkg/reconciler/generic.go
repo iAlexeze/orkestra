@@ -10,6 +10,7 @@ import (
 	"github.com/ialexeze/orkestra/pkg/kordinator"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
+	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -128,7 +129,14 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 	if !ok {
 		return fmt.Errorf("type assertion failed: expected %T, got %T", r.newObj(), raw)
 	}
-	obj = obj.DeepCopyObject().(T)
+	rawObj := obj.DeepCopyObject().(T)
+
+	// Normalize before mutation/validation/template rendering ─────────────
+	// Normalize + base resolver
+	obj, resolver, err := r.applyNormalize(ctx, rawObj)
+	if err != nil {
+		return err
+	}
 
 	if obj.GetDeletionTimestamp() != nil {
 		logger.FromContext(ctx).Info().
@@ -138,7 +146,7 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 		r.event.Eventf(obj, corev1.EventTypeNormal, "Deleting",
 			fmt.Sprintf("Deleting %s %s/%s", r.crd.GVKString(), obj.GetNamespace(), obj.GetName()))
 
-		return r.handleDeletion(ctx, obj)
+		return r.handleDeletion(ctx, resolver, obj)
 	}
 
 	if !r.crd.RemoveFinalizers {
@@ -168,19 +176,13 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 	}
 
 	// ── Step 5: Reconcile implementation ──────────────────────────────────────
-	return r.reconcileImpl(ctx, obj)
+	return r.reconcileImpl(ctx, resolver, obj)
 }
 
 // reconcileImpl dispatches to the correct reconcile implementation.
 // Priority: Go hooks → declarative templates → no-op.
-func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
+func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, resolver *orktmpl.Resolver, obj T) error {
 	var err error
-
-	// Normalize before mutation/validation/template rendering ─────────────
-	obj, err = r.applyNormalize(ctx, obj)
-	if err != nil {
-		return err
-	}
 
 	// ── Reconcile-time mutation and validation ────────────────────────────────
 	// Ordering respects MutationConfig.MutateFirst:
@@ -190,21 +192,16 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	// Mutation failures are non-fatal: logged, reconcile continues.
 	// Validation deny failures halt reconcile and return an error.
 
-	// reconcileImpl — replace the validation call block with this:
-
 	// ── Reconcile-time mutation and validation ────────────────────────────────
-	mutationEnabled := r.crd.Mutation != nil && len(r.crd.Mutation.Rules) > 0
-	validationEnabled := r.crd.Validation != nil && len(r.crd.Validation.Rules) > 0
-
-	if mutationEnabled && r.crd.Mutation.MutateFirst {
-		if mutErr := r.applyReconcileTimeMutation(ctx, obj); mutErr != nil {
+	if r.crd.HasMutationRules() && r.crd.Mutation.MutateFirst {
+		if mutErr := r.applyReconcileTimeMutation(ctx, resolver, obj); mutErr != nil {
 			logger.FromContext(ctx).Warn().Err(mutErr).
 				Str("name", obj.GetName()).
 				Msg("reconcile mutation failed — continuing")
 		}
 	}
 
-	if validationEnabled {
+	if r.crd.HasValidationRules() {
 		valResult := runValidation(obj, r.crd.Validation, r.crd.APITypes.Kind)
 
 		// Warn violations: log and emit events but do NOT halt
@@ -226,8 +223,8 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 		}
 	}
 
-	if mutationEnabled && !r.crd.Mutation.MutateFirst {
-		if mutErr := r.applyReconcileTimeMutation(ctx, obj); mutErr != nil {
+	if r.crd.HasMutationRules() && !r.crd.Mutation.MutateFirst {
+		if mutErr := r.applyReconcileTimeMutation(ctx, resolver, obj); mutErr != nil {
 			logger.FromContext(ctx).Warn().Err(mutErr).
 				Str("name", obj.GetName()).
 				Msg("reconcile mutation failed — continuing")
@@ -242,7 +239,7 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	case r.rc.OnCreate != nil || r.rc.OnReconcile != nil:
 		// Declarative templates — interpreted at runtime.
 		// Requires: nothing. ork generate runtime NOT needed.
-		err = r.runTemplateReconcile(ctx, obj)
+		err = r.runTemplateReconcile(ctx, resolver, obj)
 
 	default:
 		// No-op — finalizers, events, metrics still handled above.
@@ -256,7 +253,7 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, obj T) error {
 	// Called with the outcome so Ready condition reflects reality.
 	// Must run before the error return so Ready=False is written on failure.
 	// r.updatedPatchStatus(ctx, obj, err)
-	r.patchStatusWithChildren(ctx, obj, err) // Layer 3: read children only on success — no point reading
+	r.patchStatusWithChildren(ctx, obj, resolver, err) // Layer 3: read children only on success — no point reading
 
 	if err != nil {
 		logger.FromContext(ctx).Error().Err(err).
@@ -302,7 +299,7 @@ func (r *GenericReconciler[T]) namespaceAllowed(
 // handleDeletion runs cleanup then removes our finalizers.
 // Finalizers are never removed on error — object stays protected until
 // cleanup succeeds.
-func (r *GenericReconciler[T]) handleDeletion(ctx context.Context, obj T) error {
+func (r *GenericReconciler[T]) handleDeletion(ctx context.Context, resolver *orktmpl.Resolver, obj T) error {
 	switch {
 	case r.hooks.OnDelete != nil:
 		if err := r.hooks.OnDelete(ctx, obj); err != nil {
@@ -312,7 +309,7 @@ func (r *GenericReconciler[T]) handleDeletion(ctx context.Context, obj T) error 
 		}
 
 	case r.rc.OnDelete != nil:
-		if err := r.runTemplateOnDelete(ctx, obj); err != nil {
+		if err := r.runTemplateOnDelete(ctx, resolver, obj); err != nil {
 			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"DeleteError",
 				fmt.Sprintf("Template deletion failed: %v", err))
 			return fmt.Errorf("template deletion: %w", err)

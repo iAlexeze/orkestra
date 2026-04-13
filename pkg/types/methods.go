@@ -182,3 +182,18 @@ func (c *CRDEntry) GetDependencies() []string {
 func (c *CRDEntry) HasValidationOrMutationRules() bool {
 	return len(c.Validation.Rules) > 0 || len(c.Mutation.Rules) > 0
 }
+
+// Separate helpers for hasMutationRules and hasValidationRules
+func (c *CRDEntry) HasMutationRules() bool {
+	if c.Mutation == nil {
+		return false
+	}
+	return len(c.Mutation.Rules) > 0
+}
+
+func (c *CRDEntry) HasValidationRules() bool {
+	if c.Validation == nil {
+		return false
+	}
+	return len(c.Validation.Rules) > 0
+}

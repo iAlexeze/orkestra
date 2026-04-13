@@ -50,36 +50,36 @@ import (
 //   - Path navigation fails (segment is not a map)
 //
 // The returned object is always a deep copy — safe to mutate.
-func (r *GenericReconciler[T]) applyNormalize(ctx context.Context, obj T) (T, error) {
+func (r *GenericReconciler[T]) applyNormalize(
+	ctx context.Context,
+	obj T,
+) (T, *orktmpl.Resolver, error) {
+	// No normalize block → just build a resolver and return
 	if r.crd.Normalize == nil || len(r.crd.Normalize.Spec) == 0 {
-		return obj, nil
+		baseResolver, err := orktmpl.NewResolver(ctx, obj)
+		if err != nil {
+			return obj, nil, fmt.Errorf("normalize: building base resolver: %w", err)
+		}
+		return obj, baseResolver, nil
 	}
 
 	log := logger.FromContext(ctx)
 
-	// Deep copy — never touch the informer cache object
 	cloned := obj.DeepCopyObject().(T)
 
-	// Build resolver against the raw (pre-normalize) spec.
-	// normalize templates see the original field values.
-	// This is intentional: normalize is a one-pass transformation.
-	// If you need field A to reference normalized field B, declare B first
-	// and use a single combined expression for A.
-	resolver, err := orktmpl.NewResolver(ctx, cloned)
+	// Resolver over pre-normalize spec (for template evaluation)
+	baseResolver, err := orktmpl.NewResolver(ctx, cloned)
 	if err != nil {
-		return obj, fmt.Errorf("normalize: building resolver: %w", err)
+		return obj, nil, fmt.Errorf("normalize: building resolver: %w", err)
 	}
 
-	// Get the unstructured map for field writes.
-	// UnstructuredContent() only exists on *unstructured.Unstructured (dynamic mode).
-	// Typed-mode CRDs do not support normalize — skip silently.
 	type unstructuredGetter interface {
 		UnstructuredContent() map[string]interface{}
 	}
 	ug, ok := any(cloned).(unstructuredGetter)
 	if !ok {
 		log.Debug().Msg("normalize: skipping — object is typed mode, normalize requires dynamic mode")
-		return cloned, nil
+		return cloned, baseResolver, nil
 	}
 	content := ug.UnstructuredContent()
 	if content == nil {
@@ -87,34 +87,31 @@ func (r *GenericReconciler[T]) applyNormalize(ctx context.Context, obj T) (T, er
 	}
 
 	for fieldPath, tpl := range r.crd.Normalize.Spec {
-		rendered, err := resolver.Resolve(tpl)
+		rendered, err := baseResolver.Resolve(tpl)
 		if err != nil {
-			return obj, fmt.Errorf("normalize spec.%s: %w", fieldPath, err)
+			return obj, nil, fmt.Errorf("normalize spec.%s: %w", fieldPath, err)
 		}
-
-		// Trim whitespace — multi-line YAML block scalars (>) leave leading/trailing whitespace
 		rendered = strings.TrimSpace(rendered)
-
-		// Parse the rendered string to an appropriate Go type.
-		// "3" → int64, "true" → bool, "*/5 * * * *" → string.
-		// This ensures the normalized spec is correctly typed for downstream
-		// comparison and rendering.
 		parsed := parseNormalizedValue(rendered)
-
-		// Write at the dot-notation path inside "spec".
-		// All normalize.spec paths are relative to spec — prepend "spec."
 		fullPath := "spec." + fieldPath
 		if err := setNestedNormalized(content, fullPath, parsed); err != nil {
-			return obj, fmt.Errorf("normalize spec.%s: setting field: %w", fieldPath, err)
+			return obj, nil, fmt.Errorf("normalize spec.%s: setting field: %w", fieldPath, err)
 		}
-
 		log.Debug().
 			Str("field", fieldPath).
 			Str("rendered", rendered).
 			Msg("normalize: field normalized")
 	}
 
-	return cloned, nil
+	normalized := cloned
+
+	// Resolver over the normalized spec
+	normalizedResolver, err := orktmpl.NewResolver(ctx, normalized)
+	if err != nil {
+		return obj, nil, fmt.Errorf("normalize: building normalized resolver: %w", err)
+	}
+
+	return normalized, normalizedResolver, nil
 }
 
 // parseNormalizedValue converts a rendered template string to the most

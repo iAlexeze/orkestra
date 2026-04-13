@@ -29,7 +29,7 @@ package reconciler
 
 import (
 	"context"
-	"fmt"
+//	"fmt"
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
@@ -45,16 +45,9 @@ import (
 func (r *GenericReconciler[T]) patchStatusWithChildren(
 	ctx context.Context,
 	obj T,
+	resolver *orktmpl.Resolver,
 	reconcileErr error,
 ) {
-	resolver, err := orktmpl.NewResolver(ctx, obj)
-	if err != nil {
-		logger.FromContext(ctx).Warn().Err(err).
-			Str("name", obj.GetName()).
-			Msg("status: could not build resolver — skipping status patch")
-		return
-	}
-
 	// ── Layer 3: extend resolver with child resource state ─────────────────
 	// WithChildren returns a new Resolver — the original is not modified.
 	// The new resolver's data map includes a "children" key so that
@@ -166,8 +159,8 @@ func buildReadyCondition(reconcileErr error, generation int64) map[string]interf
 // parseNumeric parses a string as float64 for numeric comparisons.
 // Used by the gt and lt operators on child status fields like
 // .children.job.status.succeeded which arrive as "1", "0", etc.
-func parseNumeric(s string) (float64, error) {
-	var f float64
-	_, err := fmt.Sscanf(s, "%f", &f)
-	return f, err
-}
+// func parseNumeric(s string) (float64, error) {
+// 	var f float64
+// 	_, err := fmt.Sscanf(s, "%f", &f)
+// 	return f, err
+// }

@@ -80,7 +80,7 @@ spec:
               successfulJobsHistoryLimit: "{{ .spec.successfulJobsHistoryLimit }}"
               failedJobsHistoryLimit: "{{ .spec.failedJobsHistoryLimit }}"
               concurrencyPolicy: "{{ .spec.concurrencyPolicy }}"
-              reconcile: true
+              # reconcile: true
 
         onReconcile:
           cronJobs:
@@ -91,4 +91,4 @@ spec:
               successfulJobsHistoryLimit: "{{ .spec.successfulJobsHistoryLimit }}"
               failedJobsHistoryLimit: "{{ .spec.failedJobsHistoryLimit }}"
               concurrencyPolicy: "{{ .spec.concurrencyPolicy }}"
-              reconcile: true
+              # reconcile: true
