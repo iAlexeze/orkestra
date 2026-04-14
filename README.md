@@ -42,7 +42,7 @@ spec:
         version: v1alpha1
         kind: Website
         plural: websites
-      operatorBox:
+      operatorBox:               # isolated environment for this operator in the runtime
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}"
@@ -275,6 +275,65 @@ spec:
 ```
 
 One command starts the entire platform.
+
+---
+
+## Providers
+
+Declare infrastructure dependencies at the Katalog level. Orkestra registers only the providers listed here — per-CRD blocks for anything else are silently skipped.
+
+```yaml
+providers:
+  - name: aws
+    required: true
+    auth:
+      accessKeyId: "$AWS_ACCESS_KEY_ID"
+      secretAccessKey: "$AWS_SECRET_ACCESS_KEY"
+      region: "$AWS_REGION"
+  - name: mongodb
+    required: true
+    auth:
+      mongoUri: "$MONGODB_URL"
+```
+
+Then reference them inside any `operatorBox`:
+
+```yaml
+operatorBox:
+  providers:
+    aws:
+      - s3:
+          bucket: "{{ .metadata.name }}-assets"
+          region: "{{ .spec.region }}"
+    mongodb:
+      - database:
+          name: "{{ .metadata.name }}"
+      - user:
+          name: "{{ .spec.dbUser }}"
+          database: "{{ .metadata.name }}"
+```
+
+---
+
+## Security
+
+Deletion protection, admission webhooks, and conversion webhooks all share one certificate. One block. No separate TLS setup.
+
+```yaml
+security:
+  deletionProtection:
+    enabled: true          # protects your CRDs and Orkestra deployment from kubectl delete
+
+  webhooks:
+    admission:
+      enabled: true        # intercepts kubectl apply at the API server
+    failurePolicy: Fail
+
+  conversion:
+    enabled: true          # serves /convert for multi-version CRDs
+```
+
+With `deletionProtection` enabled, Orkestra registers a validating webhook that rejects `DELETE` requests to delete protected CRDs as well as Orkestra deployment, service or ingress. No separate webhook server. The same process that runs your operators handles it.
 
 ---
 
