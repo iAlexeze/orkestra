@@ -30,21 +30,42 @@ func Init(filenames ...string) (*Konfig, error) {
 			ShutdownTimeout:     GetDurEnvSeconds("SHUTDOWN_TIMEOUT", 30),
 			ShutdownGracePeriod: GetDurEnvSeconds("SHUTDOWN_GRACE_PERIOD", 60),
 		},
-		webhook: webhookConfig{
-			EnableWebhooks:   GetBoolEnv("ENABLE_ADMISSION_WEBHOOK", false),
-			EnableConversion: GetBoolEnv("ENABLE_CONVERSION", false),
-			TLSCert:          GetStrEnv("TLS_CERT", ""),
-			TLSKey:           GetStrEnv("TLS_KEY", ""),
-			ConversionWindow: GetIntEnv("CONVERSION_WINDOW", 100),
+		// ── Unified security configuration ───────────────────────────────────
+		// ENV vars populate SecurityConfig as defaults.
+		// Katalog YAML values are merged on top in KomposeKatalogFromYaml.
+		//
+		// ENV → SecurityConfig mapping:
+		//   ENABLE_DELETION_PROTECTION  → security.DeletionProtection.Enabled
+		//   DELETION_PROTECTION_POLICY  → security.DeletionProtection.FailurePolicy
+		//   ENABLE_ADMISSION_WEBHOOK    → security.Webhooks.Admission.Enabled
+		//   ENABLE_CONVERSION           → security.Conversion.Enabled
+		//   WEBHOOK_FAILURE_POLICY      → security.Webhooks.FailurePolicy
+		//   ORKESTRA_SERVICE_NAME       → security.Webhooks.ServiceName
+		//                               → security.DeletionProtection.ServiceName
+		//   RBAC_AUTO_APPLY             → security.RBAC.Enabled
+		//   RBAC_CLEANUP_ON_SHUTDOWN    → security.RBAC.CleanupOnShutdown
+		//   CONVERSION_WINDOW           → security.Conversion.ConversionWindow
+		//   TLS_CERT / TLS_KEY          → security.Webhooks.TLSCert / TLSKey (initial
+		//                                 values; overwritten by ensureSecurity() when
+		//                                 Orkestra generates its own certificates)
+		security: func() SecurityConfig {
+			svcName := GetStrEnv("ORKESTRA_SERVICE_NAME", "orkestra")
+			var s SecurityConfig
+			s.DeletionProtection.Enabled = GetBoolEnv("ENABLE_DELETION_PROTECTION", false)
+			s.DeletionProtection.FailurePolicy = GetStrEnv("DELETION_PROTECTION_POLICY", "Fail")
+			s.DeletionProtection.ServiceName = svcName
+			s.Webhooks.Admission.Enabled = GetBoolEnv("ENABLE_ADMISSION_WEBHOOK", false)
+			s.Conversion.Enabled = GetBoolEnv("ENABLE_CONVERSION", false)
+			s.Webhooks.FailurePolicy = GetStrEnv("WEBHOOK_FAILURE_POLICY", "Ignore")
+			s.Webhooks.ServiceName = svcName
+			s.Conversion.ConversionWindow = GetIntEnv("CONVERSION_WINDOW", 100)
+			s.Webhooks.TLSCert = GetStrEnv("TLS_CERT", "")
+			s.Webhooks.TLSKey = GetStrEnv("TLS_KEY", "")
+			s.RBAC.Enabled = GetBoolEnv("RBAC_AUTO_APPLY", false)
+			s.RBAC.CleanupOnShutdown = GetBoolEnv("RBAC_CLEANUP_ON_SHUTDOWN", false)
+			return s
+		}(),
 
-			// Registration
-			WebhookRegistration: webhookRegistration{
-				FailurePolicy:    GetStrEnv("FAILURE_POLICY", "Ignore"),
-				ServiceName:      GetStrEnv("ORKESTRA_SERVICE_NAME", "orkestra"),
-				ServiceNamespace: GetStrEnv("ORKESTRA_NAMESPACE", "default"),
-				TLSCert:          GetStrEnv("TLS_CERT", ""),
-			},
-		},
 		registry: registryConfig{
 			RegistryURL: GetStrEnv("ORK_REGISTRY", ""),
 		},

@@ -33,7 +33,7 @@ spec:
           - field: spec.port
             default: "8080"
 
-      reconciler:
+      operatorBox:
         default: true
         status:
           fields:

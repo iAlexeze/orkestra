@@ -1,10 +1,7 @@
 package konfig
 
 import (
-	"strings"
 	"time"
-
-	admissionv1 "k8s.io/api/admissionregistration/v1"
 )
 
 type Konfig struct {
@@ -13,8 +10,12 @@ type Konfig struct {
 	konductor    konductorElection
 	healthServer healthServer
 	katalog      katalogKonfig
-	webhook      webhookConfig
+	security     SecurityConfig
 	registry     registryConfig
+}
+
+func (k *Konfig) WebhookConfig() {
+	panic("unimplemented")
 }
 
 type orkKonfig struct {
@@ -47,36 +48,39 @@ type registryConfig struct {
 	RegistryURL string
 }
 
-type webhookConfig struct {
-	// Admission webhooks
-	EnableWebhooks bool
-
-	// Conversion webhooks
-	EnableConversion bool
-	ConversionWindow int
-
-	// Certificates
-	TLSCert string
-	TLSKey  string
-
-	// Port
-	Port    string
-	PortInt int32
-
-	// Registration
-	WebhookRegistration webhookRegistration
-}
-
-type webhookRegistration struct {
-	ServiceName      string
-	ServiceNamespace string
-	FailurePolicy    string
-
-	TLSCert string // Same as the one above
-
-	// FailurePolicy admissionv1.FailurePolicyType
-	// Used to return the appropriate admission policy type
-	FailurePolicyType admissionv1.FailurePolicyType
+// SecurityConfig is the unified security configuration populated from ENV vars
+// at Init() time. Katalog YAML values are merged on top via the Katalog
+// loader, so this represents the ENV-level defaults.
+//
+// Precedence: Katalog YAML > SecurityConfig (ENV) > hard default.
+type SecurityConfig struct {
+	DeletionProtection struct {
+		Enabled       bool
+		ServiceName   string
+		FailurePolicy string
+	}
+	Webhooks struct {
+		Admission struct {
+			Enabled bool
+		}
+		FailurePolicy string
+		ServiceName   string
+		// TLS paths — shared with deletion protection, admission, and conversion.
+		// Set by ensureSecurity() after cert generation/loading.
+		TLSCert string
+		TLSKey  string
+	}
+	// Conversion is separate from admission webhooks — conversion has its own
+	// /convert endpoint, window stats, and CRD patch logic.
+	Conversion struct {
+		Enabled bool
+		// ConversionWindow is the rolling window size for latency/throughput stats.
+		ConversionWindow int
+	}
+	RBAC struct {
+		Enabled           bool
+		CleanupOnShutdown bool
+	}
 }
 
 type katalogKonfig struct {
@@ -170,40 +174,35 @@ func (k *Konfig) Finalizers() []string {
 	return []string{FinalizerOrkestra}
 }
 
-// WebhookConfig returns true is enabled
-func (k *Konfig) WebhookConfig() *webhookConfig {
-	return &k.webhook
+// Security returns the unified security configuration.
+// This is the primary accessor for all security-related settings.
+func (k *Konfig) Security() *SecurityConfig {
+	return &k.security
 }
 
-// RegistryConfig returns true is enabled
+// RegistryConfig returns registry configuration.
 func (k *Konfig) RegistryConfig() *registryConfig {
 	return &k.registry
 }
 
-// ConversionEnabled returns true if mutation rules
+// ConversionEnabled reports whether the conversion webhook is enabled.
+// Reads from SecurityConfig (populated from ENV at Init).
 func (k *Konfig) ConversionEnabled() bool {
-	return k.webhook.EnableConversion
+	return k.security.Conversion.Enabled
 }
 
-// AdmissionEnabled returns true if admission rules
+// AdmissionEnabled reports whether admission webhooks are enabled.
+// Reads from SecurityConfig (populated from ENV at Init).
 func (k *Konfig) AdmissionEnabled() bool {
-	return k.webhook.EnableWebhooks
+	return k.security.Webhooks.Admission.Enabled
 }
 
-// WebhookRegistration
-func (k *Konfig) WebhookRegistration() *webhookRegistration {
-	// Convert failurePolicy input to failurePolicyType
-	switch strings.ToLower(k.webhook.WebhookRegistration.FailurePolicy) {
-	case "ignore":
-		k.webhook.WebhookRegistration.FailurePolicyType = admissionv1.Ignore
-	case "fail":
-		k.webhook.WebhookRegistration.FailurePolicyType = admissionv1.Fail
-	default:
-		k.webhook.WebhookRegistration.FailurePolicyType = admissionv1.Ignore
-	}
+// HTTPSPort returns the HTTPS port string (e.g. ":8443") used by the webhook server.
+func (k *Konfig) HTTPSPort() string {
+	return httpsPort
+}
 
-	// Assign ports and return
-	k.webhook.Port = httpsPort
-	k.webhook.PortInt = httpsPortInt32
-	return &k.webhook.WebhookRegistration
+// HTTPSPortInt32 returns the HTTPS port as int32 (8443) used in webhook client configs.
+func (k *Konfig) HTTPSPortInt32() int32 {
+	return httpsPortInt32
 }

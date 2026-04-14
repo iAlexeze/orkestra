@@ -149,7 +149,7 @@ type CRDInfoResponse struct {
 	MaxQueueDepthSource string                   `json:"maxQueueDepthSource"`
 	ResourceCount       int                      `json:"resourceCount"`
 	TotalReconciles     int64                    `json:"totalReconciles"`
-	Reconciler          ReconcilerInfo           `json:"reconciler"`
+	OperatorBox         OperatorBoxInfo          `json:"operatorBox"`
 	Healthy             bool                     `json:"healthy"`
 	Started             bool                     `json:"started"`
 	Pending             bool                     `json:"pending"`
@@ -160,7 +160,7 @@ type CRDInfoResponse struct {
 	RBAC                RBACInfo                 `json:"rbac,omitempty"`
 }
 
-type ReconcilerInfo struct {
+type OperatorBoxInfo struct {
 	Type        string                 `json:"type"`
 	Finalizers  FinalizersInfo         `json:"finalizers"`
 	Hooks       HooksInfo              `json:"hooks"`
@@ -214,10 +214,12 @@ type AdmissionStatsResponse struct {
 }
 
 // ProtectionStatsResponse exposes deletion protection status for the CRD detail view.
-// Total/Blocked are cumulative counts since operator startup.
+// All counts are cumulative since operator startup.
 type ProtectionStatsResponse struct {
 	Enabled bool  `json:"enabled"`
-	Blocked int64 `json:"blocked"` // DELETE requests blocked for this katalog
+	Total   int64 `json:"total"`   // total DELETE admission reviews received
+	Blocked int64 `json:"blocked"` // DELETE requests denied
+	Allowed int64 `json:"allowed"` // DELETE requests allowed through
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -243,6 +245,7 @@ func BuildCRDInfoHandler(
 	h *CRDHealth,
 	stats *health.ConversionStats,
 	admStats *health.AdmissionStats,
+	protStats *health.ProtectionStats,
 	isProtected bool,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -273,7 +276,7 @@ func BuildCRDInfoHandler(
 			MaxQueueDepthSource: v.maxQueueDepthSource,
 			ResourceCount:       v.resourceCount,
 			TotalReconciles:     h.TotalReconciles(),
-			Reconciler:          reconcilerInfoStruct(crd),
+			OperatorBox:         operatorBoxInfoStruct(crd),
 			Healthy:             h.IsHealthy(),
 			Started:             h.Started(),
 			Pending:             h.Pending(),
@@ -313,9 +316,16 @@ func BuildCRDInfoHandler(
 			}
 		}
 
-		response.Protection = &ProtectionStatsResponse{
-			Enabled: isProtected,
-			Blocked: 0, // tracked via Prometheus: orkestra_deletion_protection_blocked_total
+		if protStats != nil {
+			snap := protStats.GetStats()
+			response.Protection = &ProtectionStatsResponse{
+				Enabled: isProtected,
+				Total:   snap.TotalRequests,
+				Blocked: snap.Blocked,
+				Allowed: snap.Allowed,
+			}
+		} else {
+			response.Protection = &ProtectionStatsResponse{Enabled: isProtected}
 		}
 
 		utils.WriteJSON(w, http.StatusOK, response)
@@ -344,38 +354,38 @@ type KatalogResponse struct {
 }
 
 type CRDSummaryResponse struct {
-	Name                     string            `json:"name"`
-	Description              string            `json:"description"`
-	Mode                     string            `json:"mode"`
-	GVK                      string            `json:"gvk"`
-	GVR                      string            `json:"gvr"`
-	Namespaced               *bool             `json:"namespaced"`
-	Namespace                string            `json:"namespace"`
-	DependsOn                []string          `json:"dependsOn,omitempty"`
-	HasUnhealthyDependencies bool              `json:"hasUnhealthyDependencies"`
-	Workers                  int               `json:"workers"`
-	WorkersSource            string            `json:"workersSource"`
-	WorkersActive            int32             `json:"workersActive"`
-	Resync                   string            `json:"resync"`
-	ResyncSource             string            `json:"resyncSource"`
-	QueueDepth               int               `json:"queueDepth"`
-	MaxQueueDepth            int               `json:"maxQueueDepth"`
-	MaxQueueDepthSource      string            `json:"maxQueueDepthSource"`
-	ResourceCount            int               `json:"resourceCount"`
-	Reconciler               ReconcilerSummary `json:"reconciler"`
-	Healthy                  bool              `json:"healthy"`
-	State                    string            `json:"state"`
-	Started                  bool              `json:"started"`
-	Pending                  bool              `json:"pending"`
-	StartedAt                string            `json:"startedAt"`
-	Uptime                   string            `json:"uptime"`
-	ErrorRate                float64           `json:"errorRate"`
-	Endpoints                EndpointInfo      `json:"endpoints"`
-	RBACCount                int               `json:"rbacCount,omitempty"`
-	DeletionProtection       bool              `json:"deletionProtection"`
+	Name                     string             `json:"name"`
+	Description              string             `json:"description"`
+	Mode                     string             `json:"mode"`
+	GVK                      string             `json:"gvk"`
+	GVR                      string             `json:"gvr"`
+	Namespaced               *bool              `json:"namespaced"`
+	Namespace                string             `json:"namespace"`
+	DependsOn                []string           `json:"dependsOn,omitempty"`
+	HasUnhealthyDependencies bool               `json:"hasUnhealthyDependencies"`
+	Workers                  int                `json:"workers"`
+	WorkersSource            string             `json:"workersSource"`
+	WorkersActive            int32              `json:"workersActive"`
+	Resync                   string             `json:"resync"`
+	ResyncSource             string             `json:"resyncSource"`
+	QueueDepth               int                `json:"queueDepth"`
+	MaxQueueDepth            int                `json:"maxQueueDepth"`
+	MaxQueueDepthSource      string             `json:"maxQueueDepthSource"`
+	ResourceCount            int                `json:"resourceCount"`
+	OperatorBox              OperatorBoxSummary `json:"operatorBox"`
+	Healthy                  bool               `json:"healthy"`
+	State                    string             `json:"state"`
+	Started                  bool               `json:"started"`
+	Pending                  bool               `json:"pending"`
+	StartedAt                string             `json:"startedAt"`
+	Uptime                   string             `json:"uptime"`
+	ErrorRate                float64            `json:"errorRate"`
+	Endpoints                EndpointInfo       `json:"endpoints"`
+	RBACCount                int                `json:"rbacCount,omitempty"`
+	DeletionProtection       bool               `json:"deletionProtection"`
 }
 
-type ReconcilerSummary struct {
+type OperatorBoxSummary struct {
 	Type           string `json:"type"`
 	HasTemplates   bool   `json:"hasTemplates,omitempty"`
 	HasHooks       bool   `json:"hasHooks,omitempty"`
@@ -474,12 +484,12 @@ func BuildKatalogHandler(
 				MaxQueueDepthSource:      v.maxQueueDepthSource,
 				RBACCount:                generateRBACInfo(crd, v).TotalRules,
 				ResourceCount:            v.resourceCount,
-				DeletionProtection:       protectedCRDs != nil,
-				Reconciler: ReconcilerSummary{
+				DeletionProtection:       isCRDProtected(protectedCRDs, crd.APITypes.Plural, crd.APITypes.Group),
+				OperatorBox: OperatorBoxSummary{
 					Type:           "generic",
-					HasTemplates:   crd.ReconcilerConfig.OnCreate != nil,
-					HasHooks:       crd.ReconcilerConfig.Hooks != nil || crd.ReconcilerConfig.HookFactory != nil,
-					HasConstructor: crd.ReconcilerConfig.Constructor != nil,
+					HasTemplates:   crd.OperatorBox.OnCreate != nil,
+					HasHooks:       crd.OperatorBox.Hooks != nil || crd.OperatorBox.HookFactory != nil,
+					HasConstructor: crd.OperatorBox.Constructor != nil,
 				},
 				Healthy:   isHealthy,
 				Started:   isStarted,
@@ -537,9 +547,21 @@ func BuildKatalogHandler(
 	}
 }
 
+// isCRDProtected returns true when the CRD identified by (plural, group) is
+// present in the protected names set built from the Katalog at startup.
+// Returns false when the set is nil (deletion protection not enabled) or when
+// the CRD is not managed by this operator.
+func isCRDProtected(protected map[string]struct{}, plural, group string) bool {
+	if protected == nil {
+		return false
+	}
+	_, ok := protected[plural+"."+group]
+	return ok
+}
+
 // Helper function to convert to struct-based reconciler info
-func reconcilerInfoStruct(crd orktypes.CRDEntry) ReconcilerInfo {
-	rc := crd.ReconcilerConfig
+func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
+	rc := crd.OperatorBox
 
 	reconcilerType := "generic"
 	if !crd.DefaultReconcile() {
@@ -585,7 +607,7 @@ func reconcilerInfoStruct(crd orktypes.CRDEntry) ReconcilerInfo {
 		}
 	}
 
-	result := ReconcilerInfo{
+	result := OperatorBoxInfo{
 		Type:        reconcilerType,
 		Finalizers:  finalizersInfo,
 		Hooks:       hooksInfo,
@@ -623,7 +645,7 @@ func reconcilerInfoStruct(crd orktypes.CRDEntry) ReconcilerInfo {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
-	rc := crd.ReconcilerConfig
+	rc := crd.OperatorBox
 
 	// Determine reconciler type
 	reconcilerType := "generic"

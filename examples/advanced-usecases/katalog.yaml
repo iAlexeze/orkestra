@@ -36,7 +36,7 @@ spec:
           - field: spec.replicasPerRegion
             default: 1
 
-      reconciler:
+      operatorBox:
         default: true
         onReconcile:
           deployments:
@@ -89,7 +89,7 @@ spec:
             message: "spec.serviceUrl required for health check"
             action: deny
 
-      reconciler:
+      operatorBox:
         default: true
         onReconcile:
           external:
@@ -160,7 +160,7 @@ spec:
       workers: 2
       resync: 30s
 
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:
@@ -202,7 +202,7 @@ spec:
             operator: exists
             action: deny
 
-      reconciler:
+      operatorBox:
         default: true
         cross:
           - kind: managed-database
@@ -274,7 +274,7 @@ spec:
             operator: exists
             action: deny
 
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           secrets:
@@ -313,7 +313,7 @@ spec:
       workers: 2
       resync: 30s
 
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:
@@ -388,7 +388,7 @@ spec:
           - field: spec.notify
             default: "false"
 
-      reconciler:
+      operatorBox:
         default: true
         cross:
           - kind: managed-database

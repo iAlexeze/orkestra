@@ -5,20 +5,26 @@
 //
 // Handles:
 //
-//  1. TLS certificate generation — when deletionProtection is enabled and
-//     no explicit cert is configured. Uses the same GenerateTLSBundle from
-//     run_secrets_tls.go. Stores in the orkestra-tls Secret.
+//  1. TLS certificate generation — when deletion protection, admission webhooks,
+//     or conversion webhooks are enabled and no explicit cert is configured.
+//     Uses GenerateTLSBundle from run_secrets_tls.go. Stores in orkestra-tls Secret.
 //
 //  2. RBAC auto-apply — when security.rbac.enabled is true.
 //     Applies ClusterRole, ClusterRoleBinding, ServiceAccount at startup.
 //     Registers cleanup for shutdown when cleanupOnShutdown: true.
 //
-// Both operations are best-effort with fatal logging on failure — if RBAC
-// or TLS cannot be applied, the operator cannot function correctly.
+//  3. CRD conversion webhook patch — when a CRD declares conversion.updateCRD: true,
+//     Orkestra patches the CRD's spec.conversion.webhook.clientConfig.caBundle with
+//     the CA certificate from the generated (or configured) TLS bundle.
+//
+// All operations fatal-log on failure — if security cannot be applied, the
+// operator cannot function correctly.
 package internal
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -31,14 +37,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
 	// orkestraTLSSecretName is the default Secret name for Orkestra's TLS cert.
-	// Matches the default name in run_secrets_tls.go.
 	orkestraTLSSecretName = "orkestra-tls"
 
-	// Default cert validity — 1 year, rotated when deletionProtection is active.
+	// Default cert validity — 1 year.
 	defaultCertValidFor = "1y"
 )
 
@@ -48,13 +54,14 @@ const (
 // Order:
 //  1. RBAC — must succeed before the operator can interact with the cluster
 //  2. TLS  — must succeed before the HTTPS server starts (webhook endpoint)
+//  3. CRD patch — patches caBundle into CRDs that declare updateCRD: true
 func ensureSecurity(
 	ctx context.Context,
 	kfg *konfig.Konfig,
 	kat *katalog.Katalog,
 	kube *kubeclient.Kubeclient,
 ) (tlsCertFile, tlsKeyFile string, err error) {
-	namespace := kfg.Cluster().Namespace // "ORKESTRA_NAMESPACE"
+	namespace := kfg.Cluster().Namespace
 
 	// ── 1. RBAC auto-apply ────────────────────────────────────────────────────
 	if kat.IsRBACEnabled() {
@@ -74,69 +81,142 @@ func ensureSecurity(
 	}
 
 	// ── 2. TLS certificate management ────────────────────────────────────────
-	// When deletion protection is enabled, the HTTPS server needs TLS.
-	// If the user has not configured explicit cert paths (via env vars),
-	// Orkestra generates self-signed certs and stores them in orkestra-tls.
-	//
-	// If the user HAS configured TLS_CERT and TLS_KEY, those are used instead.
-	// This preserves compatibility with existing cert-manager integrations.
+	// TLS is required whenever deletion protection, admission webhooks, or
+	// conversion webhooks are enabled. If the user has provided TLS_CERT and
+	// TLS_KEY those are used as-is. Otherwise Orkestra generates self-signed
+	// certs and stores them in the orkestra-tls Secret.
+	needsTLS := kat.NeedsCertificates()
 
-	if kat.IsDeletionProtectionEnabled() {
-		configuredCert := kfg.WebhookConfig().TLSCert // "TLS_CERT"
-		configuredKey := kfg.WebhookConfig().TLSKey   // "TLS_KEY"
+	if !needsTLS {
+		return "", "", nil
+	}
 
-		if configuredCert != "" && configuredKey != "" {
-			// User provided certs — use them as-is
-			logger.Info().
-				Str("cert", configuredCert).
-				Msg("security: using provided TLS certificates for deletion protection webhook")
-			return configuredCert, configuredKey, nil
+	configuredCert := kfg.Security().Webhooks.TLSCert
+	configuredKey := kfg.Security().Webhooks.TLSKey
+
+	if configuredCert != "" && configuredKey != "" {
+		// User provided certs — use them as-is; no CRD patch (user manages caBundle)
+		logger.Info().
+			Str("cert", configuredCert).
+			Msg("security: using provided TLS certificates")
+		return configuredCert, configuredKey, nil
+	}
+
+	// No explicit cert configured — generate self-signed
+	logger.Info().Msg("security: generating TLS certificates")
+
+	serviceName := kat.DeletionProtectionServiceName()
+	svcNamespace := namespace
+
+	bundle, err := reconciler.GenerateTLSBundle(
+		serviceName+"."+svcNamespace+".svc",
+		[]string{
+			serviceName,
+			serviceName + "." + svcNamespace,
+			serviceName + "." + svcNamespace + ".svc",
+			serviceName + "." + svcNamespace + ".svc.cluster.local",
+		},
+		defaultCertValidFor,
+	)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("security: failed to generate TLS certificates")
+	}
+
+	certFile, keyFile, writeErr := writeTLSToFiles(bundle)
+	if writeErr != nil {
+		logger.Fatal().Err(writeErr).Msg("security: failed to write TLS certificates to files")
+	}
+
+	// Store in the orkestra-tls Secret for the webhook caBundle
+	if err := storeTLSSecret(ctx, kube, namespace, orkestraTLSSecretName, bundle); err != nil {
+		logger.Warn().Err(err).
+			Str("secret", orkestraTLSSecretName).
+			Msg("security: failed to store TLS secret — webhook caBundle may be unavailable")
+	}
+
+	logger.Info().
+		Str("cert", certFile).
+		Str("secret", orkestraTLSSecretName).
+		Msg("security: TLS certificates generated and stored")
+
+	// ── 3. CRD conversion webhook patch ──────────────────────────────────────
+	// For each enabled CRD that declares conversion.updateCRD: true, patch the
+	// CRD's spec.conversion.webhook.clientConfig.caBundle with the generated CA.
+	if err := patchConversionCRDs(ctx, kube, kat, bundle.CACertPEM, serviceName, svcNamespace); err != nil {
+		logger.Warn().Err(err).Msg("security: some CRD conversion patches failed")
+	}
+
+	return certFile, keyFile, nil
+}
+
+// patchConversionCRDs patches the caBundle into every enabled CRD that has
+// conversion.updateCRD: true. Each patch is best-effort; errors are collected
+// and returned as a combined error so all CRDs are attempted.
+func patchConversionCRDs(
+	ctx context.Context,
+	kube *kubeclient.Kubeclient,
+	kat *katalog.Katalog,
+	caCertPEM []byte,
+	serviceName, serviceNamespace string,
+) error {
+	caBundle := base64.StdEncoding.EncodeToString(caCertPEM)
+	port := int32(8443)
+	path := "/convert"
+
+	var errs []error
+	for _, crd := range kat.EnabledCRDs() {
+		if crd.Conversion == nil || !crd.Conversion.UpdateCRD {
+			continue
 		}
 
-		// No explicit cert configured — generate self-signed
-		logger.Info().Msg("security: generating TLS certificates for deletion protection webhook")
+		crdName := crd.APITypes.Plural + "." + crd.APITypes.Group
 
-		serviceName := kfg.WebhookRegistration().ServiceName // "ORKESTRA_SERVICE_NAME"
-		svcNamespace := namespace                            // "ORKESTRA_NAMESPACE"
-
-		bundle, err := reconciler.GenerateTLSBundle(
-			serviceName+"."+svcNamespace+".svc",
-			[]string{
-				serviceName,
-				serviceName + "." + svcNamespace,
-				serviceName + "." + svcNamespace + ".svc",
-				serviceName + "." + svcNamespace + ".svc.cluster.local",
+		// Strategic-merge patch for the conversion block
+		patch := map[string]interface{}{
+			"spec": map[string]interface{}{
+				"conversion": map[string]interface{}{
+					"strategy": "Webhook",
+					"webhook": map[string]interface{}{
+						"clientConfig": map[string]interface{}{
+							"caBundle": caBundle,
+							"service": map[string]interface{}{
+								"name":      serviceName,
+								"namespace": serviceNamespace,
+								"path":      path,
+								"port":      port,
+							},
+						},
+						"conversionReviewVersions": []string{"v1"},
+					},
+				},
 			},
-			defaultCertValidFor,
-		)
+		}
+
+		patchBytes, err := json.Marshal(patch)
 		if err != nil {
-			logger.Fatal().Err(err).Msg("security: failed to generate TLS certificates")
+			errs = append(errs, fmt.Errorf("marshalling patch for %s: %w", crdName, err))
+			continue
 		}
 
-		// Write to temp files so the HTTPS server can use them
-		// In a production deployment, these would be written to a Secret instead.
-		// The Secret path is the preferred approach — avoids ephemeral temp files.
-		certFile, keyFile, writeErr := writeTLSToFiles(bundle)
-		if writeErr != nil {
-			logger.Fatal().Err(writeErr).Msg("security: failed to write TLS certificates to files")
-		}
-
-		// Also store in the orkestra-tls Secret for the webhook caBundle
-		if err := storeTLSSecret(ctx, kube, namespace, orkestraTLSSecretName, bundle); err != nil {
-			logger.Warn().Err(err).
-				Str("secret", orkestraTLSSecretName).
-				Msg("security: failed to store TLS secret — webhook caBundle may be unavailable")
+		_, err = kube.ApiextensionsClient().
+			ApiextensionsV1().
+			CustomResourceDefinitions().
+			Patch(ctx, crdName, types.MergePatchType, patchBytes, metav1.PatchOptions{})
+		if err != nil {
+			errs = append(errs, fmt.Errorf("patching CRD %s: %w", crdName, err))
+			continue
 		}
 
 		logger.Info().
-			Str("cert", certFile).
-			Str("secret", orkestraTLSSecretName).
-			Msg("security: TLS certificates generated and stored")
-
-		return certFile, keyFile, nil
+			Str("crd", crdName).
+			Str("service", serviceName+"."+serviceNamespace+".svc").
+			Msg("security: CRD conversion webhook patched with caBundle")
 	}
 
-	return "", "", nil
+	if len(errs) > 0 {
+		return fmt.Errorf("crd patch errors: %v", errs)
+	}
+	return nil
 }
 
 // writeTLSToFiles writes the TLS bundle to temporary files.
@@ -169,16 +249,6 @@ func writeTLSToFiles(bundle *reconciler.TLSBundle) (certFile, keyFile string, er
 //	tls.crt — PEM-encoded signed certificate (server cert)
 //	tls.key — PEM-encoded private key
 //	ca.crt  — PEM-encoded CA certificate (used as caBundle in webhook config)
-//
-// Strategy: always overwrite on startup when certs were auto-generated.
-// Orkestra regenerates certs each time it starts without explicit TLS_CERT/TLS_KEY.
-// The HTTPS server, the webhook caBundle, and the Secret all receive the same
-// freshly-generated cert — they stay consistent.
-//
-// If the Secret cannot be created or updated, we log a warning and continue.
-// The HTTPS server will still work (it uses the temp files); the webhook
-// caBundle update may fail, but the handler will still run correctly until
-// the webhook config is reconciled on next startup.
 func storeTLSSecret(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
@@ -196,8 +266,6 @@ func storeTLSSecret(
 				"app.kubernetes.io/component":  "tls",
 			},
 			Annotations: map[string]string{
-				// Record when this cert was generated so future rotation
-				// logic (rotateAfter) can compare against it.
 				"orkestra.konductor.io/generated-at": time.Now().UTC().Format(time.RFC3339),
 			},
 		},
@@ -209,13 +277,11 @@ func storeTLSSecret(
 		},
 	}
 
-	// Try create first
 	_, err := client.Create(ctx, secret, metav1.CreateOptions{})
 	if err == nil {
 		return nil
 	}
 
-	// Already exists — update it
 	if !k8serrors.IsAlreadyExists(err) {
 		return fmt.Errorf("creating tls secret %s/%s: %w", namespace, secretName, err)
 	}
@@ -225,9 +291,7 @@ func storeTLSSecret(
 		return fmt.Errorf("getting existing tls secret %s/%s: %w", namespace, secretName, err)
 	}
 
-	// Preserve resource version for the update
 	secret.ResourceVersion = existing.ResourceVersion
-
 	_, err = client.Update(ctx, secret, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("updating tls secret %s/%s: %w", namespace, secretName, err)

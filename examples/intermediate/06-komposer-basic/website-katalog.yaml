@@ -16,7 +16,7 @@ spec:
         plural: websites
       workers: 2
       resync: 30s
-      reconciler:
+      operatorBox:
         default: true
         status:
           fields:

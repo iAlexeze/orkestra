@@ -17,7 +17,7 @@ crds:
     namespaced: false
     workers: 2
     resync: 1m
-    reconciler:
+    operatorBox:
       default: true
       mode: dynamic
     description: >-
@@ -30,7 +30,7 @@ crds:
     namespaced: true
     workers: 2
     resync: 30s
-    reconciler:
+    operatorBox:
       default: true
       mode: dynamic
     description: >-

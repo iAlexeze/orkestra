@@ -59,7 +59,7 @@ func ReadChildren(
 	kube *kubeclient.Kubeclient,
 	obj domain.Object,
 	resolver *orktmpl.Resolver,
-	rc orktypes.ReconcilerConfig,
+	rc orktypes.OperatorBoxConfig,
 ) map[string]interface{} {
 	children := map[string]interface{}{}
 
@@ -214,7 +214,7 @@ func firstValue(m map[string]interface{}) interface{} {
 // mergeTemplates merges onCreate and onReconcile templates into one set.
 // We read back resources declared in either block — both produce child resources.
 // Resources declared in both are deduplicated by name after resolution.
-func mergeTemplates(rc orktypes.ReconcilerConfig) orktypes.HookTemplates {
+func mergeTemplates(rc orktypes.OperatorBoxConfig) orktypes.HookTemplates {
 	t := orktypes.HookTemplates{}
 	if rc.OnCreate != nil {
 		t.Deployments = append(t.Deployments, rc.OnCreate.Deployments...)

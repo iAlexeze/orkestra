@@ -73,7 +73,7 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		MaxQueueDepth:            info.MaxQueueDepth,
 		ResourceCount:            info.ResourceCount,
 		TotalReconciles:          info.TotalReconciles,
-		Reconciler:               info.Reconciler,
+		OperatorBox:              info.OperatorBox,
 		Healthy:                  health.Healthy,
 		Started:                  health.Started,
 		Pending:                  health.Pending,

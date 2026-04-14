@@ -144,7 +144,7 @@ func RegisterTypedScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
 // When generation is NOT needed:
 //
 //	Dynamic template CRDs (only onCreate/onReconcile/onDelete declared)
-//	  GenericReconciler.runTemplateReconcile() reads the Katalog's ReconcilerConfig
+//	  GenericReconciler.runTemplateReconcile() reads the Katalog's OperatorBoxConfig
 //	  directly at runtime and calls the OrkestraRegistry functions itself.
 //	  No generated file. No ork generate runtime. Just ork run.
 func Runtime(m *merger.Merger, dryRun bool) error {
@@ -208,8 +208,8 @@ func Runtime(m *merger.Merger, dryRun bool) error {
 		// This is NOT needed for declarative template CRDs — those are handled
 		// at runtime by GenericReconciler.runTemplateReconcile() with no
 		// registration required.
-		if crd.DefaultReconcile() && crd.ReconcilerConfig.Hooks != nil {
-			h := crd.ReconcilerConfig.Hooks
+		if crd.DefaultReconcile() && crd.OperatorBox.Hooks != nil {
+			h := crd.OperatorBox.Hooks
 
 			if err := validateHookEntry(h, crd.Name); err != nil {
 				return err
@@ -239,7 +239,7 @@ func Runtime(m *merger.Merger, dryRun bool) error {
 		// We need to import their constructor and register it in ReconcilerRegistry
 		// so addReconcilers() can wire it at startup.
 		if !crd.DefaultReconcile() {
-			if crd.ReconcilerConfig.ConstructorDecl == nil {
+			if crd.OperatorBox.ConstructorDecl == nil {
 				return fmt.Errorf(
 					"CRD %q: reconciler.default is false but no constructor declared — "+
 						"add reconciler.constructor with location and function, "+
@@ -248,7 +248,7 @@ func Runtime(m *merger.Merger, dryRun bool) error {
 				)
 			}
 
-			c := crd.ReconcilerConfig.ConstructorDecl
+			c := crd.OperatorBox.ConstructorDecl
 
 			if err := validateConstructorEntry(c, crd.Name); err != nil {
 				return err

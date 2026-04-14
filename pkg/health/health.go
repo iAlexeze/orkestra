@@ -53,6 +53,9 @@ type HealthServer struct {
 	// admission stats (validation + mutation)
 	admissionStats *AdmissionStats
 
+	// protection stats (deletion protection blocked/allowed counts)
+	protectionStats *ProtectionStats
+
 	// Admission (Validation and Mutation)
 	admissionRegistry katalog.AdmissionRegistry
 
@@ -86,20 +89,26 @@ const (
 
 // NewHealthServer creates a new health server.
 func NewHealthServer(kubeclient kubernetes.Interface, katalog *katalog.Katalog, kfg *konfig.Konfig) *HealthServer {
+	// Resolve admission webhook failure policy: YAML > ENV > default "Ignore".
+	// katalog.WebhooksFailurePolicy() already applies this precedence.
+	admissionFailurePolicy := admissionv1FailurePolicyType(katalog.WebhooksFailurePolicy())
+
 	hookReg := WebhookRegistrationOptions{
-		FailurePolicy:    kfg.WebhookRegistration().FailurePolicyType,
-		Port:             kfg.WebhookConfig().PortInt,
-		ServiceName:      kfg.WebhookRegistration().ServiceName,
-		ServiceNamespace: kfg.WebhookRegistration().ServiceNamespace,
-		TLSCertFile:      kfg.WebhookRegistration().TLSCert,
+		FailurePolicy:    admissionFailurePolicy,
+		Port:             kfg.HTTPSPortInt32(),
+		ServiceName:      katalog.WebhooksServiceName(),
+		ServiceNamespace: kfg.Cluster().Namespace,
+		TLSCertFile:      kfg.Security().Webhooks.TLSCert,
 	}
 
+	// Resolve enable flags and TLS: YAML > ENV > false.
+	// katalog.IsAdmissionEnabled() and IsConversionEnabled() apply this precedence.
 	hookKfg := WebhookConfgurationOptions{
-		WebhooksEnabled:  kfg.WebhookConfig().EnableWebhooks,
-		ConvEnabled:      kfg.WebhookConfig().EnableConversion,
-		TLSCert:          kfg.WebhookConfig().TLSCert,
-		TLSKey:           kfg.WebhookConfig().TLSKey,
-		ConversionWindow: kfg.WebhookConfig().ConversionWindow,
+		WebhooksEnabled:  katalog.IsAdmissionEnabled(),
+		ConvEnabled:      katalog.IsConversionEnabled(),
+		TLSCert:          kfg.Security().Webhooks.TLSCert,
+		TLSKey:           kfg.Security().Webhooks.TLSKey,
+		ConversionWindow: katalog.ConversionWindow(),
 	}
 
 	hs := &HealthServer{
@@ -108,7 +117,7 @@ func NewHealthServer(kubeclient kubernetes.Interface, katalog *katalog.Katalog, 
 		katalog:            katalog,
 		client:             kfg.Ork().Name,
 		httpPort:           kfg.Health().Port,
-		httpsPort:          kfg.WebhookConfig().Port,
+		httpsPort:          kfg.HTTPSPort(),
 		hookKfg:            hookKfg,
 		mux:                http.NewServeMux(),
 		hookMux:            http.NewServeMux(),
@@ -118,6 +127,7 @@ func NewHealthServer(kubeclient kubernetes.Interface, katalog *katalog.Katalog, 
 		admissionRegistry:  katalog.AdmissionRegistry(),
 		conversionStats:    NewConversionStats(hookKfg.ConversionWindow),
 		admissionStats:     NewAdmissionStats(hookKfg.ConversionWindow),
+		protectionStats:    NewProtectionStats(),
 	}
 
 	// Populate protected CRD names from Katalog — used by /deletion-protection handler
@@ -467,4 +477,9 @@ func (h *HealthServer) GetConversionStats() *ConversionStats {
 // GetAdmissionStats returns the admission statistics for use in handlers.
 func (h *HealthServer) GetAdmissionStats() *AdmissionStats {
 	return h.admissionStats
+}
+
+// GetProtectionStats returns the deletion protection statistics for use in handlers.
+func (h *HealthServer) GetProtectionStats() *ProtectionStats {
+	return h.protectionStats
 }

@@ -18,7 +18,7 @@ spec:
         kind: Pipeline
         plural: pipelines
 
-      reconciler:
+      operatorBox:
         default: true
 
         # ── onReconcile: full pipeline ──────────────────────────────────────

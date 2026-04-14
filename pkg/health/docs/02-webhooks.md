@@ -43,17 +43,26 @@ Stats tracked per endpoint:
 
 ## Deletion protection webhook — `/deletion-protection`
 
-Intercepts DELETE requests for CRDs and the operator's own deployment.
+Intercepts DELETE requests for CRDs and Orkestra's own Kubernetes resources (deployment, service, ingress).
 
-Two-level filtering:
-1. **Webhook rule** — broad: intercepts all `customresourcedefinitions` and `deployments` DELETEs.
-2. **Handler** — narrow: only denies CRDs that appear in `ProtectedCRDNames()` (this Katalog's CRDs).
+Two webhook entries are registered in a single `ValidatingWebhookConfiguration`:
 
-A CRD from a different operator or namespace passes through even though the webhook intercepted it.
+**Entry 1 — CRD protection** (`protect.crds.orkestra.konductor.io`):
+- Rule: all DELETE on `customresourcedefinitions` (apiextensions.k8s.io/v1)
+- No ObjectSelector: the rule is broad; the handler narrows via `ProtectedCRDNames()`
+- A CRD from a different operator passes through even though the webhook intercepted it
 
-The webhook is only registered when running inside a cluster. With `ork run` (local mode), there is no reachable Service — the handler would be unreachable and `failurePolicy: Fail` would block all CRD deletions.
+**Entry 2 — Orkestra resource protection** (`protect.resources.orkestra.konductor.io`):
+- Rules: DELETE on `deployments`, `services`, `ingresses`
+- ObjectSelector: `app.kubernetes.io/name: orkestra` + `app.kubernetes.io/component: orkestra-internal`
+- Any resource in the cluster without these labels is never intercepted
+- If the webhook fires, the ObjectSelector already confirmed it is ours — handler always blocks
 
-→ See `deletion_protection_handler.go`, `pkg/katalog/deletion_protection.go`
+Stats tracked: `Total`, `Blocked`, `Allowed` (cumulative since startup, in-memory via `ProtectionStats`).
+
+The webhook is only registered when running inside a cluster. With `ork run` (local mode), there is no reachable Service — the handler would be unreachable and `failurePolicy: Fail` would block all protected-resource deletions.
+
+→ See `deletion_protection_handler.go`, `protection_stats.go`, `pkg/katalog/deletion_protection.go`
 
 ## Webhook registration
 

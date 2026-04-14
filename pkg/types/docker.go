@@ -9,7 +9,7 @@ package types
 //
 // Typical usage:
 //
-//	reconciler:
+//	operatorBox:
 //	  onReconcile:
 //	    git:
 //	      repo: "git@github.com:org/webapp.git"

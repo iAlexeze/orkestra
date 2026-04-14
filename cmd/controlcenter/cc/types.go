@@ -169,7 +169,7 @@ type CRDInfo struct {
 	MaxQueueDepthSource      string                 `json:"maxQueueDepthSource"`
 	ResourceCount            int                    `json:"resourceCount"`
 	TotalReconciles          int                    `json:"totalReconciles"`
-	Reconciler               map[string]interface{} `json:"reconciler"`
+	OperatorBox              map[string]interface{} `json:"operatorBox"`
 	Healthy                  bool                   `json:"healthy"`
 	Started                  bool                   `json:"started"`
 	ErrorRate                float64                `json:"errorRate"`
@@ -193,7 +193,9 @@ type ConversionStats struct {
 // ProtectionStats contains deletion protection status
 type ProtectionStats struct {
 	Enabled bool `json:"enabled"`
+	Total   int  `json:"total"`
 	Blocked int  `json:"blocked"`
+	Allowed int  `json:"allowed"`
 }
 
 // AdmissionStats contains admission webhook metrics
@@ -247,7 +249,7 @@ type CRDDetail struct {
 	MaxQueueDepthSource      string                      `json:"maxQueueDepthSource"`
 	ResourceCount            int                         `json:"resourceCount"`
 	TotalReconciles          int                         `json:"totalReconciles"`
-	Reconciler               map[string]interface{}      `json:"reconciler"`
+	OperatorBox              map[string]interface{}      `json:"operatorBox"`
 	Healthy                  bool                        `json:"healthy"`
 	Started                  bool                        `json:"started"`
 	Pending                  bool                        `json:"pending"`

@@ -23,7 +23,7 @@ spec:
         kind: {{ .kind }}
         plural: {{ .plural }}
 
-      reconciler:
+      operatorBox:
         default: {{ .reconciler.default | default true }}
 
       description: {{ .description | default "" | quote }}

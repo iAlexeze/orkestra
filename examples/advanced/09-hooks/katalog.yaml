@@ -25,7 +25,7 @@ spec:
       workers: 3
       resync: 30s
 
-      reconciler:
+      operatorBox:
         default: true   # GenericReconciler is still used — hooks are additive
 
         # Hooks run INSTEAD OF declarative templates when OnReconcile is defined.

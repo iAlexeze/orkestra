@@ -471,14 +471,14 @@
       </div>
       {{ end }}
 
-      <!-- Reconciler Configuration -->
+      <!-- OperatorBox Configuration -->
       <div class="cc-section">
-        <h2 class="cc-section-title">Reconciler Configuration</h2>
+        <h2 class="cc-section-title">OperatorBox Configuration</h2>
         <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px;margin-bottom:16px">
             <div>
-              <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">Reconciler Type</div>
-              <div style="font-weight:500">{{ .CRD.Reconciler.type }}</div>
+              <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">OperatorBox Type</div>
+              <div style="font-weight:500">{{ .CRD.OperatorBox.type }}</div>
             </div>
             <div>
               <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">Resync</div>
@@ -487,27 +487,27 @@
           </div>
           <div style="font-size:13px;margin-bottom:8px">
             <div style="color:var(--text-muted);font-size:11px;margin-bottom:6px">Finalizers</div>
-            {{ if .CRD.Reconciler.finalizers.values }}
-              {{ range .CRD.Reconciler.finalizers.values }}
+            {{ if .CRD.OperatorBox.finalizers.values }}
+              {{ range .CRD.OperatorBox.finalizers.values }}
               <span class="cc-code" style="margin-right:6px;margin-bottom:4px;display:inline-block">{{ . }}</span>
               {{ end }}
-              <span class="text-muted text-xs">({{ .CRD.Reconciler.finalizers.source }})</span>
+              <span class="text-muted text-xs">({{ .CRD.OperatorBox.finalizers.source }})</span>
             {{ else }}
               <span class="text-muted">No finalizers configured</span>
             {{ end }}
           </div>
-          {{ if .CRD.Reconciler.hooks.configured }}
+          {{ if .CRD.OperatorBox.hooks.configured }}
           <div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg-elevated);border-radius:var(--radius-sm);margin-top:8px;font-size:12px">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             <span>Go hooks configured</span>
-            <span class="text-muted">({{ .CRD.Reconciler.hooks.source }})</span>
+            <span class="text-muted">({{ .CRD.OperatorBox.hooks.source }})</span>
           </div>
           {{ end }}
-          {{ if .CRD.Reconciler.constructor.configured }}
+          {{ if .CRD.OperatorBox.constructor.configured }}
           <div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg-elevated);border-radius:var(--radius-sm);margin-top:8px;font-size:12px">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             <span>Custom reconciler configured</span>
-            <span class="text-muted">({{ .CRD.Reconciler.constructor.source }})</span>
+            <span class="text-muted">({{ .CRD.OperatorBox.constructor.source }})</span>
           </div>
           {{ end }}
         </div>

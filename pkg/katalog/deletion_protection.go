@@ -44,11 +44,29 @@ func (k *Katalog) DeletionProtectionGVRs() []GVREntry {
 		},
 		{
 			// Protect the Orkestra operator deployment.
-			// The webhook config uses an ObjectSelector to narrow to the specific deployment.
+			// ObjectSelector on the webhook config narrows to the Orkestra deployment only.
 			Key:        "apps/v1/deployments",
 			Group:      "apps",
 			Version:    "v1",
 			Resource:   "deployments",
+			Operations: []string{"DELETE"},
+		},
+		{
+			// Protect the Orkestra Service.
+			// Same ObjectSelector as the deployment entry.
+			Key:        "/v1/services",
+			Group:      "",
+			Version:    "v1",
+			Resource:   "services",
+			Operations: []string{"DELETE"},
+		},
+		{
+			// Protect the Orkestra Ingress.
+			// Same ObjectSelector as the deployment entry.
+			Key:        "networking.k8s.io/v1/ingresses",
+			Group:      "networking.k8s.io",
+			Version:    "v1",
+			Resource:   "ingresses",
 			Operations: []string{"DELETE"},
 		},
 	}

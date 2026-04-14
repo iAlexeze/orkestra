@@ -17,7 +17,7 @@ spec:
         orkestra.io/katalog: configmap-manager
       allowedNamespaces:
         - default
-      reconciler:
+      operatorBox:
         default: true
 
         onCreate:

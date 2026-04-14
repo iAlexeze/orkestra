@@ -206,7 +206,7 @@ func (g *CRDGenerator) inferSpecProperties() map[string]apiextv1.JSONSchemaProps
 
 // inferStatusProperties derives the status schema from status.fields declarations.
 func (g *CRDGenerator) inferStatusProperties() map[string]apiextv1.JSONSchemaProps {
-	if g.crd.ReconcilerConfig.Status == nil {
+	if g.crd.OperatorBox.Status == nil {
 		return nil
 	}
 
@@ -223,7 +223,7 @@ func (g *CRDGenerator) inferStatusProperties() map[string]apiextv1.JSONSchemaPro
 		"observedGeneration": {Type: "integer"},
 	}
 
-	for _, field := range g.crd.ReconcilerConfig.Status.Fields {
+	for _, field := range g.crd.OperatorBox.Status.Fields {
 		path := field.Path
 		if strings.Contains(path, ".") {
 			continue // nested — handled by x-kubernetes-preserve-unknown-fields
@@ -268,7 +268,7 @@ func (g *CRDGenerator) buildPrinterColumns() []apiextv1.CustomResourceColumnDefi
 		},
 	}
 
-	if g.crd.ReconcilerConfig.Status == nil {
+	if g.crd.OperatorBox.Status == nil {
 		return cols
 	}
 
@@ -276,7 +276,7 @@ func (g *CRDGenerator) buildPrinterColumns() []apiextv1.CustomResourceColumnDefi
 	var statusCols []apiextv1.CustomResourceColumnDefinition
 
 	// phase first
-	for _, field := range g.crd.ReconcilerConfig.Status.Fields {
+	for _, field := range g.crd.OperatorBox.Status.Fields {
 		if field.Path == "phase" && !seen["phase"] {
 			statusCols = append([]apiextv1.CustomResourceColumnDefinition{
 				{Name: "Phase", Type: "string", JSONPath: ".status.phase"},
@@ -287,7 +287,7 @@ func (g *CRDGenerator) buildPrinterColumns() []apiextv1.CustomResourceColumnDefi
 
 	// other simple fields (max 3 additional columns)
 	count := 0
-	for _, field := range g.crd.ReconcilerConfig.Status.Fields {
+	for _, field := range g.crd.OperatorBox.Status.Fields {
 		if strings.Contains(field.Path, ".") || seen[field.Path] || count >= 3 {
 			continue
 		}
@@ -308,7 +308,7 @@ func (g *CRDGenerator) buildPrinterColumns() []apiextv1.CustomResourceColumnDefi
 func (g *CRDGenerator) extractTemplateSpecFields() []string {
 	// Collect all raw template strings from the reconciler config
 	var templates []string
-	rc := g.crd.ReconcilerConfig
+	rc := g.crd.OperatorBox
 
 	collectFromTemplates := func(t *orktypes.HookTemplates) {
 		if t == nil {
