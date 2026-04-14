@@ -203,7 +203,11 @@ Status fields are resolved from the live CR and its children after every reconci
 
 ## Multi-version CRD conversion
 
-When your schema evolves, Orkestra handles the conversion. No separate webhook deployment. No additional TLS. The same process that runs your operators runs the `/convert` endpoint.
+When your schema evolves, Orkestra gives you two declarative options.
+
+**Option 1 — Kubernetes conversion webhook (built-in)**
+
+The same process that runs your operators serves the `/convert` endpoint. No separate webhook deployment. No additional TLS.
 
 ```yaml
 conversion:
@@ -221,6 +225,23 @@ conversion:
 ```
 
 **In production:** 11,279 conversions. 0 failures. 0.59 ms average latency.
+
+**Option 2 — Internal normalization (no webhook)**
+
+For simple or single-direction schema evolution, `normalize:` canonicalizes field values inside the OperatorBox pipeline — no webhook deployment, no TLS, no `admissionregistration` API call. Ideal when you want a single storage representation without wiring up the Kubernetes conversion machinery.
+
+```yaml
+normalize:
+  spec:
+    schedule: >
+      {{ if typeMap .spec.schedule }}
+        {{ cronFromMap .spec.schedule }}
+      {{ else }}
+        {{ .spec.schedule }}
+      {{ end }}
+```
+
+Runs before `onCreate`/`onReconcile`. The CR is patched with the normalized value before any resources are created.
 
 ---
 
@@ -249,6 +270,159 @@ operatorBox:
 ```
 
 The `Deployment` is not created until the database CR is Ready. When it is, the endpoint is injected automatically. No polling. No coordination code.
+
+---
+
+## State machine
+
+Declarative phase progressions without a single line of Go. `when:` conditions gate each step; the resync loop is the clock.
+
+```yaml
+operatorBox:
+  onCreate:
+    jobs:
+      # Step 1 — start build when no phase yet
+      - name: "{{ .metadata.name }}-build"
+        image: "{{ .spec.image }}"
+        when:
+          - field: status.phase
+            operator: notExists
+        reconcile: false     # Job is terminal — create once
+
+      # Step 2 — run tests after build succeeds
+      - name: "{{ .metadata.name }}-test"
+        image: "{{ .spec.image }}"
+        when:
+          - field: status.phase
+            equals: "Running/build"
+          - field: children.job.status.succeeded
+            greaterThan: "0"
+
+      # Step 3 — notify after tests pass
+      - name: "{{ .metadata.name }}-notify"
+        image: "{{ .spec.image }}"
+        when:
+          - field: status.phase
+            equals: "Running/test"
+          - field: children.job.status.succeeded
+            greaterThan: "0"
+
+  status:
+    fields:
+      - path: phase
+        value: "Running/build"
+        when:
+          - field: children.job.metadata.name
+            hasSuffix: "-build"
+      - path: phase
+        value: "Succeeded"
+        when:
+          - field: status.phase
+            equals: "Running/notify"
+          - field: children.job.status.succeeded
+            greaterThan: "0"
+```
+
+Each reconcile advances one step and writes one state. The queue fires again on the next resync. This is level-triggered reconciliation — idempotent by design.
+
+---
+
+## Environment variables
+
+Inject environment variables into Deployments from **literals**, **Secrets**, **ConfigMaps**, or **any mix of sources**.  
+All values are template expressions resolved against the **live CR** at reconcile time.
+
+Orkestra also lets you **create** the Secret/ConfigMap in the same `operatorBox` before consuming them — no extra manifests, no extra controllers.
+
+```yaml
+operatorBox:
+  onCreate:
+    # Secret derived from the CR
+    secrets:
+      - name: "{{ .metadata.name }}-creds"
+        once: true                   # Create once - prevents creation on every resync 
+        rotateAfter: 30d             # Automatic rotation (no manual rotation needed)
+        data:
+          username: "{{ .spec.username }}"
+          password: "{{ randomAlphanumeric 16 }}"     # Use orkestra note
+
+    # ConfigMap derived from the CR
+    configMaps:
+      - name: "{{ .metadata.name }}-cfg"
+        data:
+          region: "{{ .spec.region }}"
+          image: "{{ .spec.image }}"
+
+    # Deployment consuming both
+    deployments:
+      - name: "{{ .metadata.name }}"
+        image: "{{ .spec.image }}"
+        env:
+          USERNAME:
+            secretKeyRef:
+              name: "{{ .metadata.name }}-creds"
+              key: username
+          PASSWORD:
+            secretKeyRef:
+              name: "{{ .metadata.name }}-creds"
+              key: password
+          REGION:
+            configMapKeyRef:
+              name: "{{ .metadata.name }}-cfg"
+              key: region
+
+        # Or make all envs available to deployment
+        envFrom:
+          - configMapRef: "{{ .metadata.name }}-cfg"
+          - secretRef: "{{ .metadata.name }}-creds"
+```
+
+- All values are evaluated at reconcile time, so updates to the CR flow naturally into the Deployment.
+
+---
+
+## External gating
+
+Gate resource creation on an HTTP call. The response status, body, and error are available as `.external.<name>.*` in all `when:` conditions and template expressions.
+
+```yaml
+operatorBox:
+  onCreate:
+    external:
+      - name: healthCheck
+        url: "{{ .spec.serviceUrl }}/health"
+        method: GET
+        expectedStatus: 200
+        continueOnError: false
+        timeout: 5s
+
+      - name: featureFlags
+        url: "{{ .spec.serviceUrl }}/flags/{{ .metadata.name }}"
+        method: GET
+        continueOnError: true
+        timeout: 3s
+
+    deployments:
+      - name: "{{ .metadata.name }}"
+        image: "{{ .spec.image }}"
+        when:
+          - field: external.healthCheck.status
+            equals: "200"
+        reconcile: true
+
+    configMaps:
+      - name: "{{ .metadata.name }}-flags"
+        data:
+          flags: "{{ .external.featureFlags.body }}"
+        when:
+          - field: external.featureFlags.called
+            equals: "true"
+          - field: external.featureFlags.error
+            operator: notExists
+        reconcile: true
+```
+
+`continueOnError: false` blocks the entire reconcile if the call fails. `continueOnError: true` lets the rest of the pipeline proceed — the error is available in `.external.<name>.error`.
 
 ---
 
