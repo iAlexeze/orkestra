@@ -2,8 +2,8 @@ package konfig
 
 const (
 	// Ork
-	Orkestra = "OrKestra"
-	Ork      = "ork"
+	Orkestra    = "OrKestra"
+	Ork         = "ork"
 	OrkOperator = "orkestra-operator"
 
 	// Environment

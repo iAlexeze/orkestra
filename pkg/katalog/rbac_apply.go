@@ -31,7 +31,7 @@ import (
 
 const (
 	rbacFieldManager = konfig.Orkestra
-	defaultOperator = konfig.OrkOperator
+	defaultOperator  = konfig.OrkOperator
 )
 
 // RBACBundle is the generated RBAC for one operator instance.

@@ -193,9 +193,8 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 				Str("cert_file", tlsCert).
 				Str("cert_key", tlsKey).
 				Msg("passing cert to webhook")
-			kfg.WebhookConfig().TLSCert = tlsCert
-			kfg.WebhookConfig().TLSKey = tlsKey
-			kfg.WebhookRegistration().TLSCert = tlsCert
+			kfg.Security().Webhooks.TLSCert = tlsCert
+			kfg.Security().Webhooks.TLSKey = tlsKey
 		}
 	}
 

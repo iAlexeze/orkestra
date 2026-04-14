@@ -33,6 +33,14 @@ type CRDConversion struct {
 	//   - old → storage  (up-conversion)
 	//   - storage → old  (down-conversion)
 	Paths []ConversionPath `yaml:"paths"`
+
+	// UpdateCRD — when true, Orkestra patches the CRD's
+	// spec.conversion.webhook.clientConfig.caBundle with the CA bundle
+	// from the generated (or configured) TLS certificate at startup.
+	// Set this to true when you let Orkestra manage TLS; set it to false
+	// when you manage caBundle injection yourself (e.g. cert-manager).
+	// Default: false.
+	UpdateCRD bool `yaml:"updateCRD,omitempty"`
 }
 
 // ConversionPath declares one explicit conversion mapping.

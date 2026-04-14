@@ -49,9 +49,9 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 		}
 
 		// Registration configuration
-		fmt.Printf("- Service Name: %s%s%s\n", utils.ColorCyan, kfg.konfig.WebhookRegistration().ServiceName, utils.ColorReset)
-		fmt.Printf("- Service Namespace: %s%s%s\n", utils.ColorCyan, kfg.konfig.WebhookRegistration().ServiceNamespace, utils.ColorReset)
-		fmt.Printf("- Failure Policy: %s%s%s\n", utils.ColorCyan, kfg.konfig.WebhookRegistration().FailurePolicy, utils.ColorReset)
+		fmt.Printf("- Service Name: %s%s%s\n", utils.ColorCyan, kfg.katalog.WebhooksServiceName(), utils.ColorReset)
+		fmt.Printf("- Service Namespace: %s%s%s\n", utils.ColorCyan, kfg.konfig.Cluster().Namespace, utils.ColorReset)
+		fmt.Printf("- Failure Policy: %s%s%s\n", utils.ColorCyan, kfg.katalog.WebhooksFailurePolicy(), utils.ColorReset)
 
 		fmt.Println()
 	}

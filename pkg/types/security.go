@@ -2,46 +2,68 @@
 //
 // Security configuration at the Katalog level.
 //
-// YAML:
+// The unified security block covers three concerns:
+//
+//  1. Deletion protection — webhook that blocks deletion of managed CRDs and the operator itself.
+//  2. Admission webhooks  — ValidatingWebhookConfiguration and MutatingWebhookConfiguration.
+//  3. Conversion webhook  — CRD version conversion via /convert.
+//  4. RBAC auto-apply     — ClusterRole, ClusterRoleBinding, ServiceAccount at startup.
+//
+// YAML shape:
 //
 //	security:
 //	  deletionProtection:
-//	    enabled: true    # default: true when block is present
+//	    enabled: true            # default: true when block is present
+//	    serviceName: orkestra    # default: ORKESTRA_SERVICE_NAME env / "orkestra"
+//	    failurePolicy: Fail      # default: Fail
+//
+//	  webhooks:
+//	    admission:
+//	      enabled: true          # default: ENABLE_ADMISSION_WEBHOOK env / false
+//	    conversion:
+//	      enabled: true          # default: ENABLE_CONVERSION env / false
+//	    failurePolicy: Ignore    # default: WEBHOOKS_FAILURE_POLICY env / "Ignore"
+//	    serviceName: orkestra    # default: ORKESTRA_SERVICE_NAME env / "orkestra"
+//
 //	  rbac:
-//	    enabled: true    # default: true when block is present
-//	    cleanupOnShutdown: false
+//	    enabled: true            # default: true when block is present
+//	    cleanupOnShutdown: false # default: false
+//
+// Precedence: katalog YAML value > ENV value > hard default.
+// ENV values populate SecurityConfig during Init() and act as defaults.
+// Katalog values are merged on top in KomposeKatalogFromYaml.
 package types
 
-// KatalogSecurity holds the security configuration for a Katalog.
+// KatalogSecurity holds the full security configuration for a Katalog.
 type KatalogSecurity struct {
-	// DeletionProtection controls whether Orkestra registers a webhook
-	// that blocks deletion of its managed CRDs and its own deployment.
+	// DeletionProtection controls whether Orkestra registers a webhook that
+	// blocks deletion of its managed CRDs, deployment, service, and ingress.
 	//
 	// When enabled (default when block is present):
 	//   - Registers /deletion-protection endpoint on the HTTPS server
-	//   - Creates a ValidatingWebhookConfiguration with failurePolicy: Fail
-	//   - Intercepts DELETE on apiextensions.k8s.io/v1 customresourcedefinitions
-	//   - Intercepts DELETE on apps/v1 deployments (Orkestra deployment only)
+	//   - Creates ValidatingWebhookConfiguration "orkestra-delete-protection"
+	//   - Entry 1: broad rule for CRDs; handler filters by ProtectedCRDNames()
+	//   - Entry 2: ObjectSelector-gated rule for deployment, service, ingress
 	//
 	// To decommission an operator with deletion protection:
 	//   1. Set enabled: false
-	//   2. Redeploy Orkestra (webhook is removed on startup)
-	//   3. Delete CRDs normally
+	//   2. Redeploy Orkestra (webhook removed on startup)
+	//   3. Delete resources normally
 	//
-	// nil pointer: deletion protection is disabled (not declared in YAML).
-	// *false: explicitly disabled.
-	// *true: enabled.
+	// nil pointer: not enabled (not declared in YAML).
 	DeletionProtection *DeletionProtectionConfig `yaml:"deletionProtection,omitempty"`
+
+	// Webhooks controls the admission and conversion webhook settings.
+	// These apply globally — there is no per-CRD webhook on/off switch.
+	// CRDs declare validation/mutation rules; the webhook is enabled or not globally.
+	//
+	// nil pointer: webhooks not configured; ENV vars drive behavior.
+	Webhooks *WebhooksConfig `yaml:"webhooks,omitempty"`
 
 	// RBAC controls whether Orkestra generates and applies RBAC resources
 	// (ClusterRole, ClusterRoleBinding, ServiceAccount) at startup.
 	//
-	// When enabled: applies least-privilege RBAC using server-side apply.
-	// Idempotent — safe to run on every startup.
-	//
-	// CleanupOnShutdown: false (default) — RBAC persists across restarts.
-	// CleanupOnShutdown: true — RBAC is deleted on graceful shutdown.
-	// Useful for test environments and ephemeral operators.
+	// nil pointer: RBAC not enabled.
 	RBAC *RBACConfig `yaml:"rbac,omitempty"`
 }
 
@@ -50,6 +72,56 @@ type DeletionProtectionConfig struct {
 	// Enabled controls whether deletion protection is active.
 	// Default: true when the deletionProtection block is declared.
 	Enabled *bool `yaml:"enabled,omitempty"`
+
+	// ServiceName is the Kubernetes Service fronting Orkestra's HTTPS server.
+	// The API server sends webhook requests to this Service.
+	// Default: ORKESTRA_SERVICE_NAME env / "orkestra".
+	ServiceName string `yaml:"serviceName,omitempty"`
+
+	// FailurePolicy controls what the API server does when Orkestra is unreachable.
+	// "Fail" — reject the DELETE (recommended for protection; this is the default).
+	// "Ignore" — allow the DELETE through when Orkestra cannot be reached.
+	// Default: "Fail".
+	FailurePolicy string `yaml:"failurePolicy,omitempty"`
+}
+
+// WebhooksConfig controls global admission and conversion webhook settings.
+type WebhooksConfig struct {
+	// Admission controls the ValidatingWebhookConfiguration and MutatingWebhookConfiguration.
+	Admission *AdmissionWebhookToggle `yaml:"admission,omitempty"`
+
+	// Conversion controls the /convert endpoint and the CRD conversion webhook.
+	Conversion *ConversionWebhookToggle `yaml:"conversion,omitempty"`
+
+	// FailurePolicy controls what the API server does when Orkestra is unreachable
+	// for admission calls. "Fail" or "Ignore".
+	// Default: WEBHOOKS_FAILURE_POLICY env / "Ignore".
+	FailurePolicy string `yaml:"failurePolicy,omitempty"`
+
+	// ServiceName is the Kubernetes Service fronting Orkestra's HTTPS server.
+	// Shared with deletion protection when both are enabled.
+	// Default: ORKESTRA_SERVICE_NAME env / "orkestra".
+	ServiceName string `yaml:"serviceName,omitempty"`
+}
+
+// AdmissionWebhookToggle controls whether admission webhooks are globally enabled.
+type AdmissionWebhookToggle struct {
+	// Enabled controls whether ValidatingWebhookConfiguration and
+	// MutatingWebhookConfiguration are registered at startup.
+	// Default: ENABLE_ADMISSION_WEBHOOK env / false.
+	Enabled *bool `yaml:"enabled,omitempty"`
+}
+
+// ConversionWebhookToggle controls whether the conversion webhook is globally enabled.
+type ConversionWebhookToggle struct {
+	// Enabled controls whether the /convert endpoint is registered and the
+	// CRD conversion webhook is active.
+	// Default: ENABLE_CONVERSION env / false.
+	Enabled *bool `yaml:"enabled,omitempty"`
+
+	// ConversionWindow is the rolling window size for latency/throughput stats.
+	// Default: CONVERSION_WINDOW env / 100.
+	ConversionWindow int `yaml:"conversionWindow,omitempty"`
 }
 
 // RBACConfig controls RBAC auto-apply behaviour.
@@ -63,16 +135,39 @@ type RBACConfig struct {
 	CleanupOnShutdown bool `yaml:"cleanupOnShutdown,omitempty"`
 }
 
+// ── Effective value helpers ───────────────────────────────────────────────────
+
 // IsDeletionProtectionEnabled returns the effective deletion protection setting.
-// Consistent with the method on Katalog — usable without a Katalog reference.
 func (s *KatalogSecurity) IsDeletionProtectionEnabled() bool {
 	if s == nil || s.DeletionProtection == nil {
-		return false // not declared = not enabled
+		return false
 	}
 	if s.DeletionProtection.Enabled == nil {
 		return true // declared but no explicit value = enabled
 	}
 	return *s.DeletionProtection.Enabled
+}
+
+// IsAdmissionEnabled returns true when admission webhooks are globally enabled.
+func (s *KatalogSecurity) IsAdmissionEnabled() bool {
+	if s == nil || s.Webhooks == nil || s.Webhooks.Admission == nil {
+		return false
+	}
+	if s.Webhooks.Admission.Enabled == nil {
+		return false // no default-on for webhooks — must be explicit
+	}
+	return *s.Webhooks.Admission.Enabled
+}
+
+// IsConversionEnabled returns true when the conversion webhook is globally enabled.
+func (s *KatalogSecurity) IsConversionEnabled() bool {
+	if s == nil || s.Webhooks == nil || s.Webhooks.Conversion == nil {
+		return false
+	}
+	if s.Webhooks.Conversion.Enabled == nil {
+		return false
+	}
+	return *s.Webhooks.Conversion.Enabled
 }
 
 // IsRBACEnabled returns the effective RBAC setting.
@@ -84,4 +179,43 @@ func (s *KatalogSecurity) IsRBACEnabled() bool {
 		return true
 	}
 	return *s.RBAC.Enabled
+}
+
+// DeletionProtectionServiceName returns the effective service name for deletion protection.
+// Falls back to the provided ENV default.
+func (s *KatalogSecurity) DeletionProtectionServiceName(envDefault string) string {
+	if s != nil && s.DeletionProtection != nil && s.DeletionProtection.ServiceName != "" {
+		return s.DeletionProtection.ServiceName
+	}
+	return envDefault
+}
+
+// DeletionProtectionFailurePolicy returns the effective failure policy string.
+// Falls back to "Fail" when not configured — protecting by default.
+func (s *KatalogSecurity) DeletionProtectionFailurePolicy() string {
+	if s != nil && s.DeletionProtection != nil && s.DeletionProtection.FailurePolicy != "" {
+		return s.DeletionProtection.FailurePolicy
+	}
+	return "Fail"
+}
+
+// WebhooksServiceName returns the effective service name for admission/conversion webhooks.
+// Falls back to the provided ENV default.
+func (s *KatalogSecurity) WebhooksServiceName(envDefault string) string {
+	if s != nil && s.Webhooks != nil && s.Webhooks.ServiceName != "" {
+		return s.Webhooks.ServiceName
+	}
+	return envDefault
+}
+
+// WebhooksFailurePolicy returns the effective failure policy for admission webhooks.
+// Falls back to "Ignore" — not blocking when Orkestra is unreachable.
+func (s *KatalogSecurity) WebhooksFailurePolicy(envDefault string) string {
+	if s != nil && s.Webhooks != nil && s.Webhooks.FailurePolicy != "" {
+		return s.Webhooks.FailurePolicy
+	}
+	if envDefault != "" {
+		return envDefault
+	}
+	return "Ignore"
 }

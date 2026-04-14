@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"strings"
+
 	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
@@ -71,7 +73,7 @@ type WebhookRegistrationOptions struct {
 	// FailurePolicy — what the API server does if Orkestra is unreachable.
 	// admissionv1.Ignore (default): allow the operation and continue.
 	// admissionv1.Fail: reject the operation if Orkestra cannot be reached.
-	// Configurable from FAILURE_POLICY environment variable.
+	// Configurable from WEBHOOK_FAILURE_POLICY environment variable.
 	FailurePolicy admissionv1.FailurePolicyType
 
 	// TLSCertFile — path to the TLS certificate file.
@@ -322,7 +324,7 @@ func registerDeletionProtectionWebhook(
 	// — any other resource in the cluster with these GVRs is not intercepted.
 	orkestraResourceSelector := &metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			"app.kubernetes.io/name":     "orkestra",
+			"app.kubernetes.io/name":      "orkestra",
 			"app.kubernetes.io/component": "orkestra-internal",
 		},
 	}
@@ -519,6 +521,17 @@ func matchPolicyPtr(p admissionv1.MatchPolicyType) *admissionv1.MatchPolicyType 
 func failurePolicyPtr(p admissionv1.FailurePolicyType) *admissionv1.FailurePolicyType { return &p }
 func reinvocationPolicyPtr(p admissionv1.ReinvocationPolicyType) *admissionv1.ReinvocationPolicyType {
 	return &p
+}
+
+// admissionv1FailurePolicyType converts a string failure policy ("Fail" or "Ignore")
+// to the typed admissionv1.FailurePolicyType. Unrecognised values default to Ignore.
+func admissionv1FailurePolicyType(policy string) admissionv1.FailurePolicyType {
+	switch strings.ToLower(policy) {
+	case "fail":
+		return admissionv1.Fail
+	default:
+		return admissionv1.Ignore
+	}
 }
 
 // admissionRegistryReader is the subset of AdmissionRegistry used by registration.
