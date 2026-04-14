@@ -1,202 +1,40 @@
-# Changelog — OperatorBox Rename, Security Refactor, Provider Credentials
+# Changelog
 
-## Breaking Changes
+## [Unreleased]
 
-### `reconciler:` → `operatorBox:` (Katalog YAML schema)
+### Added
 
-The per-CRD runtime block has been renamed from `reconciler:` to `operatorBox:` in all Katalog YAML files.
+#### Provider Stats (in-memory + Prometheus)
+- `pkg/health/provider_stats.go` — per-CRD in-memory provider stats (`ProviderStats`). Tracks total calls and error counts per provider name. Thread-safe via `sync.RWMutex`. Exposes `GetSnapshot()` returning `[]ProviderStatEntry` with `provider`, `total`, `errors`, and `errorRate` fields.
+- `pkg/metrics/provider.go` — Prometheus counters and histogram for provider calls: `orkestra_provider_reconcile_total{crd,provider,kind,result}`, `orkestra_provider_delete_total{crd,provider,kind,result}`, `orkestra_provider_reconcile_duration_seconds{crd,provider,kind}`.
 
-**Before:**
-```yaml
-spec:
-  crds:
-    - apiTypes:
-        kind: MyApp
-      reconciler:
-        workers: 3
-        hooks: ...
-```
+#### Provider Wiring
+- `pkg/reconciler/run_providers.go` — added `providerStatsRecorder` interface and `stats` parameter to `runProviders` and `runProviderDelete`. Records `RecordSuccess`/`RecordFailure`/`RecordDeleteSuccess`/`RecordDeleteFailure` after every provider call. Nil-safe — CRDs without provider blocks pass nil stats.
+- `pkg/reconciler/generic.go` — added `providerStats providerStatsRecorder` field to `GenericReconciler` and `NewGenericReconciler`.
+- `cmd/internal/konstructor.go` — creates `providerStatsMap` (map from GVK to `*health.ProviderStats`) before the factory loop; passes `provStats` to both `NewGenericReconciler` (write path) and `BuildCRDInfoHandler` (read path).
 
-**After:**
-```yaml
-spec:
-  crds:
-    - apiTypes:
-        kind: MyApp
-      operatorBox:
-        workers: 3
-        hooks: ...
-```
+#### HTTP and Control Center
+- `pkg/kordinator/crd_health_handers.go` — `BuildCRDInfoHandler` gains `provStats *health.ProviderStats` parameter. When CRD declares provider blocks, the response includes a `providers` array: one entry per block with `name`, `kinds`, `total`, `errors`, `errorRate`.
+- `BuildKatalogHandler` response includes `providerCount` per CRD summary row (omitted when zero).
+- `cmd/controlcenter/cc/types.go` — added `ProviderInfo` type; `CRDInfo`, `CRDDetail`, and `CRDSummary` extended with provider fields.
+- `cmd/controlcenter/cc/client.go` — `FetchCRDDetail` maps `info.Providers` to `detail.Providers`.
+- `cmd/controlcenter/cc/template_func.go` — added `mulFloat` helper for float64 multiplication in templates.
+- `cmd/controlcenter/cc/assets/templates/crd.html` — Providers section renders name, kinds, total calls, errors, and error rate.
+- `cmd/controlcenter/cc/assets/templates/katalog.html` — CRD cards show provider count when non-zero.
 
-**Affected Go types:**
-- `ReconcilerConfig` → `OperatorBoxConfig`
-- `CRDEntry.ReconcilerConfig` → `CRDEntry.OperatorBox`
-- `ReconcilerInfo` → `OperatorBoxInfo`
-- `ReconcilerSummary` → `OperatorBoxSummary`
-- JSON response field `"reconciler"` → `"operatorBox"` in health/catalog endpoints
-- Control Center UI: "Reconciler Configuration" → "OperatorBox Configuration"
+#### New Providers (5)
+- `pkg/provider/postgres/provider.go` — PostgreSQL provider (block name: `postgres`). Kinds: `database`, `role`, `extension`. Uses `github.com/jackc/pgx/v5`. Credentials via Secret key `PG_PASSWORD`. SQL injection prevention via `pgQuoteIdent`.
+- `pkg/provider/redis/provider.go` — Redis cache provider (block name: `cache`). Kinds: `acluser`, `config`. Uses `github.com/redis/go-redis/v9`. ACL user management via `ACL SETUSER`; config idempotency via `CONFIG GET` before `CONFIG SET`. Credentials via Secret key `REDIS_PASSWORD`.
+- `pkg/provider/mysql/provider.go` — MySQL provider (block name: `mysql`). Kinds: `database`, `user`. Uses `database/sql` + `github.com/go-sql-driver/mysql`. Idempotent via `CREATE DATABASE IF NOT EXISTS` and `CREATE USER` existence check. Credentials via Secret key `MYSQL_PASSWORD`.
+- `pkg/provider/google/provider.go` — Google Cloud provider (block name: `google`). Kinds: `gcs`, `pubsub`, `cloudsql`. Uses `cloud.google.com/go/storage`, `cloud.google.com/go/pubsub`, `google.golang.org/api/sqladmin/v1`. Supports ADC (Workload Identity on GKE), service account JSON inline or file.
+- `pkg/provider/azure/provider.go` — Azure provider (block name: `azure`). Kinds: `blob`, `servicebus`, `sqldatabase`. Uses `github.com/Azure/azure-sdk-for-go/sdk/azidentity` and ARM resource clients. Supports service principal credentials and DefaultAzureCredential (managed identity, CLI).
 
----
+#### Provider Registration
+- `cmd/internal/provider.go` — wired all 5 new providers (`postgres`, `cache`, `mysql`, `google`, `azure`) into `loadProviders`. Each follows the same required/optional error pattern as existing providers.
 
-### `security.webhooks.conversion` → `security.conversion` (Katalog YAML schema)
-
-Conversion webhooks are a separate Kubernetes concept from admission webhooks and are now declared at the top level of the `security:` block.
-
-**Before:**
-```yaml
-security:
-  webhooks:
-    conversion:
-      enabled: true
-      conversionWindow: 200
-```
-
-**After:**
-```yaml
-security:
-  conversion:
-    enabled: true
-    conversionWindow: 200
-```
-
----
-
-### `spec.providers[]` → top-level `providers:` (Katalog YAML schema)
-
-Provider requirements have been promoted from `spec.providers[]` to a top-level block alongside `spec:` and `security:`. Providers represent operational infrastructure dependencies — distinct state from the CRD definitions in `spec:`.
-
-**Before:**
-```yaml
-spec:
-  providers:
-    - name: aws
-      required: true
-      auth:
-        accessKeyId: "$AWS_ACCESS_KEY_ID"
-        secretAccessKey: "$AWS_SECRET_ACCESS_KEY"
-        region: "$AWS_REGION"
-  crds:
-    my-app: ...
-```
-
-**After:**
-```yaml
-providers:
-  - name: aws
-    required: true
-    auth:
-      accessKeyId: "$AWS_ACCESS_KEY_ID"
-      secretAccessKey: "$AWS_SECRET_ACCESS_KEY"
-      region: "$AWS_REGION"
-  - name: mongodb
-    required: true
-    auth:
-      mongoUri: "$MONGODB_URL"
-
-spec:
-  crds:
-    my-app: ...
-
-security:
-  ...
-```
-
-The full top-level Katalog document shape is now:
-
-```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
-kind: Katalog
-metadata:
-  name: my-operator
-
-providers:          # ← infrastructure dependencies (new top-level)
-  - name: aws
-    required: true
-    auth:
-      accessKeyId: "$AWS_ACCESS_KEY_ID"
-      ...
-
-spec:               # ← CRD definitions
-  crds:
-    my-app:
-      operatorBox: ...
-
-security:           # ← security settings
-  deletionProtection:
-    enabled: true
-```
-
----
-
-## New Features
-
-### Provider credentials in `providers[].auth`
-
-Top-level `providers[]` declarations accept an `auth:` map with `$ENV_VAR` expansion at startup:
-
-```yaml
-providers:
-  - name: aws
-    required: true
-    auth:
-      accessKeyId: "$AWS_ACCESS_KEY_ID"
-      secretAccessKey: "$AWS_SECRET_ACCESS_KEY"
-      region: "$AWS_REGION"
-  - name: mongodb
-    required: true
-    auth:
-      mongoUri: "$MONGODB_URL"
-```
-
-- Providers **not declared** at top level are never registered. Per-CRD `operatorBox.providers` blocks for unregistered providers are skipped with a warning log.
-- `required: true` causes a fatal startup error if the provider fails to initialise.
-- `required: false` logs a warning and the operator continues.
-- Both `auth.mongoUri` and `auth.uri` are accepted for MongoDB.
-
-### `crdEntry.conversion.updateCRD` — automatic caBundle patching
-
-When a CRD uses conversion webhooks, set `updateCRD: true` to have Orkestra patch the CRD's `spec.conversion.webhook.clientConfig.caBundle` automatically at startup:
-
-```yaml
-spec:
-  crds:
-    my-app:
-      conversion:
-        storageVersion: v1
-        updateCRD: true
-        paths: [...]
-```
-
-### Unified TLS certificate handling
-
-TLS certificates (required for deletion protection, admission webhooks, and conversion webhooks) are now stored in a single location (`SecurityConfig.Webhooks.TLSCert/TLSKey`) and shared across all three webhook types. The deprecated `webhookConfig` / `webhookRegistration` types have been removed.
-
-### Deletion protection enabled by default when block is declared
-
-When `security.deletionProtection:` is present in the Katalog YAML without an explicit `enabled:` field, deletion protection defaults to **enabled**. This prevents accidental omission from silently disabling protection.
-
-### `NeedsCertificates()` on Katalog
-
-A single method now determines whether TLS generation is required — it returns `true` when any of deletion protection, admission webhooks, or conversion is active.
-
----
-
-## Internal Changes
-
-- `pkg/types/katalog.go` — `Providers []KatalogProviderRequirement` removed from `KatalogSpec`; added as top-level field on `KatalogFile` and `KatalogForUI`.
-- `pkg/katalog/type.go` — `Providers []KatalogProviderRequirement` added as top-level field on `Katalog` runtime struct.
-- `pkg/merger/merger.go` — `providers` field added; `ToProviders()` method added.
-- `pkg/merger/file.go` — `m.providers = doc.Providers` set in both `loadKatalog` and `loadKomposer`.
-- `pkg/katalog/parser.go` — `k.Providers = m.ToProviders()` wired in `KomposeKatalogFromYaml`.
-- `pkg/types/provider_katalog.go` — Package-level comment updated; `KatalogProviderRequirement` doc updated.
-- `pkg/konfig/type.go` — Removed deprecated `webhookConfig`, `webhookRegistration` types and their accessor methods. TLS fields moved into `SecurityConfig.Webhooks`. Port constants exposed via `HTTPSPort()` / `HTTPSPortInt32()`.
-- `pkg/katalog/security.go` — Full rewrite using `envSecurityReader` adapter pattern for ENV → YAML precedence without import cycles.
-- `pkg/health/webhook_registration.go` — Added `admissionv1FailurePolicyType()` helper; removed dependency on `WebhookRegistration()`.
-- `pkg/kubeclient/kubeclient.go` — Added `ApiextensionsClient()` method backed by `apiextclientset.Interface` for CRD patching.
-- `pkg/provider/aws/provider.go` — Added `NewFromAuth()` constructor for credential injection from Katalog auth map.
-- `pkg/provider/mongo/provider.go` — Now registered via Katalog-level declaration; `NewFromURI()` called with resolved auth.
-- `cmd/internal/provider.go` — Rewritten to iterate `kat.Providers` (top-level) rather than `kat.Spec.Providers`.
-- `cmd/internal/konstruct_security.go` — `ensureSecurity()` extended to cover admission + conversion; `patchConversionCRDs()` added.
-- `docs/runtime-manual/concepts/provider.md` — Updated for `providers:` top-level, `operatorBox.providers` per-CRD.
-- `docs/publications/provider-library.md` — Updated pattern YAML to use top-level `providers:`.
-- All YAML katalog files — `reconciler:` → `operatorBox:` (53 occurrences).
+#### Documentation
+- `pkg/provider/README.md` — updated "Current providers" table with all 7 providers.
+- `docs/runtime-manual/concepts/provider.md` — updated current providers table; corrected package paths.
+- `docs/technical-docs/kordinator.md` — complete rewrite based on actual source. Removed stale type names (`KordinatorRegistry`, `QueueRegistry`). Reflects real types (`ResourceKatalog`, `CRDHealth` fields, `runWorkerForGVK`, `processItemForGVK`). Added self-healing scenarios, dependency condition semantics, and key design rules.
+- `docs/technical-docs/health-server.md`, `docs/technical-docs/generic-reconciler.md`, `docs/technical-docs/konstructor.md` — updated for provider stats wiring.
+- `docs/runtime-manual/concepts/health-subsystem.md`, `docs/runtime-manual/concepts/observability.md` — updated provider observability sections.

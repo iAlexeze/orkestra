@@ -148,6 +148,38 @@ The same Katalog you ran locally is what runs in production.
 
 ---
 
+## Orkestra Registry
+
+The registry is the package manager operators never had.
+
+Traditional operators are binaries. One per CRD. One deployment per operator. Ten operators, ten processes, gigabytes of memory, ten release cycles to maintain. The ecosystem grew this way because the pattern demanded it.
+
+Orkestra changes the unit of distribution. Operators are **Katalogs** — YAML **patterns** packaged as OCI artifacts. The runtime is already installed. The artifact tells it what to do.
+
+```yaml
+sources:
+  registry:
+    - url: ghcr.io/orkestra-sh/registry/postgres:v14
+      oci: true
+    - url: ghcr.io/orkestra-sh/registry/redis:v7
+      oci: true
+```
+
+That is two complete operators. No binaries. No deployments. One Orkestra process runs both.
+
+Operators are now **assembled** from the registry, **composed** with local overrides, **upgraded** by changing a version tag, and **shared** by pushing a Katalog to any OCI-compatible registry.
+
+```yaml
+spec:
+  crds:
+    postgres:
+      workers: 8   # production override — everything else from the registry
+```
+
+Full documentation: [Orkestra Registry](https://orkestra.readthedocs.io/en/latest/orkestra-registry/)
+
+---
+
 ## Validation and mutation
 
 Rules live in the Katalog. No separate webhook server. No TLS configuration.

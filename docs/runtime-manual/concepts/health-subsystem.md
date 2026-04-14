@@ -138,6 +138,8 @@ The health server also hosts all CRD‑specific endpoints:
 
 All routes must be registered **before** `Start()`.
 
+The `/katalog/{crd}` endpoint includes per-provider stats when providers are declared. The `providers` array contains one entry per declared provider block: `{name, kinds, total, errors, errorRate}`. The kinds list is static metadata from `ProviderBlocks`; totals and error rate come from the in-memory `ProviderStats` instance for that CRD.
+
 ## Related Documentation
 
 - [CRD Health](./crd-runtime-health.md)

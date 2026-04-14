@@ -84,9 +84,9 @@ The distinction matters for rolling deployments. Kubernetes will not route traff
 
 ## The Katalog API
 
-**`GET /katalog`** — returns a JSON array of all managed CRDs with their health state, reconcile statistics, and configuration. Used by `ork status`.
+**`GET /katalog`** — returns a JSON array of all managed CRDs with their health state, reconcile statistics, and configuration. Includes `providerCount` per CRD when providers are declared. Used by `ork status`.
 
-**`GET /katalog/{crd}`** — returns the full JSON detail for one CRD. Includes worker count, queue depth, error rate, reconcile totals, conversion stats, and admission stats. Used by `ork describe` and direct health monitoring.
+**`GET /katalog/{crd}`** — returns the full JSON detail for one CRD. Includes worker count, queue depth, error rate, reconcile totals, conversion stats, admission stats, and (when providers are declared) per-provider error rates. Used by `ork describe` and direct health monitoring.
 
 **`GET /katalog/{crd}/health`** — returns `200 OK` with `{"healthy":true}` or `503` with `{"healthy":false}`. Used by external health checks and `ork status`.
 
@@ -131,11 +131,13 @@ Key differences from conversion:
 
 ---
 
-## ConversionStats and AdmissionStats
+## ConversionStats, AdmissionStats, and ProviderStats
 
-Both are in-process rolling window trackers. They accumulate statistics in memory using ring buffers. `GetStats()` on each returns a snapshot that is embedded in the `/katalog/{crd}` JSON response.
+`ConversionStats` and `AdmissionStats` are in-process rolling window trackers. They accumulate statistics in memory using ring buffers. `GetStats()` on each returns a snapshot embedded in the `/katalog/{crd}` JSON response.
 
-These are not a replacement for Prometheus — they reset on restart. They serve the use case of "what is happening right now in this running instance" rather than "what has been happening over the past 30 days."
+`ProviderStats` tracks per-provider reconcile and delete call totals and errors since operator startup. `GetSnapshot()` returns one `ProviderStatEntry` per provider that has been called — each entry contains the provider name, total calls, error count, and error rate. Unlike conversion/admission stats, there is no rolling window — provider stats accumulate for the operator's lifetime.
+
+All three are not a replacement for Prometheus — they reset on restart. They serve the use case of "what is happening right now in this running instance" rather than "what has happened over the past 30 days."
 
 ---
 

@@ -64,21 +64,39 @@ GenericReconciler.reconcileImpl
                       ↓
 runTemplateReconcile (after Kubernetes resources)
                       ↓
-runProviders(ctx, obj, resolver, blocks, registry, kube)
+runProviders(ctx, obj, resolver, blocks, registry, kube, stats)
     │
     ├── For each block in ProviderBlocks:
     │     │
-    │     ├── registry.Get(block.Name)           — lookup by YAML key
-    │     ├── resolveProviderBlock(...)           — template expressions resolved
-    │     ├── filterProviderDeclarations(...)     — when: conditions evaluated
-    │     └── provider.Reconcile(ctx, req)        — provider code runs
+    │     ├── registry.Get(block.Name)             — lookup by YAML key
+    │     ├── resolveProviderBlock(...)             — template expressions resolved
+    │     ├── filterProviderDeclarations(...)       — when: conditions evaluated
+    │     ├── provider.Reconcile(ctx, req)          — provider code runs
+    │     └── stats.RecordSuccess/Failure(name)     — in-memory outcome (if wired)
     │
-    └── On finalizer: runProviderDelete(...)      — provider.Delete(ctx, req)
+    └── On finalizer: runProviderDelete(..., stats)
+         └── stats.RecordDeleteSuccess/Failure(name)
 ```
 
 The registry is built once in `loadProviders(ctx, kat)` at startup and captured
 in each reconciler factory closure. It never passes through
 `DependencyKordinator` or `ReconcilerFactory`.
+
+---
+
+## Provider stats
+
+Every provider call is recorded in a per-CRD `ProviderStats` instance. Orkestra creates one `ProviderStats` per CRD that declares provider blocks. The stats track:
+
+| Field | Description |
+|---|---|
+| `total` | All `provider.Reconcile` and `provider.Delete` calls since startup |
+| `errors` | Failed calls |
+| `errorRate` | `errors / total`, zero when no calls have been made |
+
+Stats are per-provider-name (block-level), not per-kind. They accumulate for the operator's lifetime and reset on restart. They are exposed in the `/katalog/{crd}` endpoint alongside the declared kinds from the static `ProviderBlocks` metadata.
+
+Prometheus metrics provide the full per-kind breakdown with labels `{crd, provider, kind, result}`.
 
 ---
 
@@ -171,7 +189,12 @@ accessKey := string(data["AWS_ACCESS_KEY_ID"])
 
 | Block name | Package | Kinds |
 |---|---|---|
-| `aws` | `pkg/providers/aws` | `s3`, `rds`, `route53` |
-| `mongodb` | `pkg/providers/mongodb` | `database`, `user`, `collection` |
+| `aws` | `pkg/provider/aws` | `s3`, `rds`, `route53` |
+| `mongodb` | `pkg/provider/mongo` | `database`, `user`, `collection` |
+| `postgres` | `pkg/provider/postgres` | `database`, `role`, `extension` |
+| `cache` | `pkg/provider/redis` | `acluser`, `config` |
+| `mysql` | `pkg/provider/mysql` | `database`, `user` |
+| `google` | `pkg/provider/google` | `gcs`, `pubsub`, `cloudsql` |
+| `azure` | `pkg/provider/azure` | `blob`, `servicebus`, `sqldatabase` |
 
-To add a new provider: see `docs/concepts/extending-providers.md`.
+To add a new provider: see `pkg/provider/README.md`.

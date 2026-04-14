@@ -157,6 +157,7 @@ type CRDInfoResponse struct {
 	Conversion          *ConversionStatsResponse `json:"conversion,omitempty"`
 	Admission           *AdmissionStatsResponse  `json:"admission,omitempty"`
 	Protection          *ProtectionStatsResponse `json:"protection,omitempty"`
+	Providers           []ProviderInfoResponse   `json:"providers,omitempty"`
 	RBAC                RBACInfo                 `json:"rbac,omitempty"`
 }
 
@@ -222,6 +223,16 @@ type ProtectionStatsResponse struct {
 	Allowed int64 `json:"allowed"` // DELETE requests allowed through
 }
 
+// ProviderInfoResponse exposes per-provider metadata and error rate for one CRD.
+// No auth, URLs, or credentials are exposed — metadata only.
+type ProviderInfoResponse struct {
+	Name      string   `json:"name"`
+	Kinds     []string `json:"kinds"`     // declared resource kinds (static, from Katalog)
+	Total     int64    `json:"total"`     // reconcile calls since startup
+	Errors    int64    `json:"errors"`    // failed reconcile calls since startup
+	ErrorRate float64  `json:"errorRate"` // errors / total, 0 when no calls yet
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CRD Info Handler
 // Returns static + dynamic metadata about a CRD:
@@ -247,6 +258,7 @@ func BuildCRDInfoHandler(
 	admStats *health.AdmissionStats,
 	protStats *health.ProtectionStats,
 	isProtected bool,
+	provStats *health.ProviderStats,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := resolveCRDDisplayValues(crd, kfg, inf)
@@ -328,6 +340,37 @@ func BuildCRDInfoHandler(
 			response.Protection = &ProtectionStatsResponse{Enabled: isProtected}
 		}
 
+		if crd.HasProviders() {
+			// Build a lookup of runtime stats by provider name.
+			statsByProvider := make(map[string]health.ProviderStatEntry)
+			if provStats != nil {
+				for _, e := range provStats.GetSnapshot() {
+					statsByProvider[e.Provider] = e
+				}
+			}
+
+			providers := make([]ProviderInfoResponse, 0, len(crd.OperatorBox.ProviderBlocks))
+			for _, block := range crd.OperatorBox.ProviderBlocks {
+				kinds := make([]string, 0, len(block.Declarations))
+				seen := make(map[string]struct{})
+				for _, decl := range block.Declarations {
+					if _, ok := seen[decl.Kind]; !ok {
+						seen[decl.Kind] = struct{}{}
+						kinds = append(kinds, decl.Kind)
+					}
+				}
+				e := statsByProvider[block.Name]
+				providers = append(providers, ProviderInfoResponse{
+					Name:      block.Name,
+					Kinds:     kinds,
+					Total:     e.Total,
+					Errors:    e.Errors,
+					ErrorRate: e.ErrorRate,
+				})
+			}
+			response.Providers = providers
+		}
+
 		utils.WriteJSON(w, http.StatusOK, response)
 	}
 }
@@ -383,6 +426,7 @@ type CRDSummaryResponse struct {
 	Endpoints                EndpointInfo       `json:"endpoints"`
 	RBACCount                int                `json:"rbacCount,omitempty"`
 	DeletionProtection       bool               `json:"deletionProtection"`
+	ProviderCount            int                `json:"providerCount,omitempty"`
 }
 
 type OperatorBoxSummary struct {
@@ -485,6 +529,7 @@ func BuildKatalogHandler(
 				RBACCount:                generateRBACInfo(crd, v).TotalRules,
 				ResourceCount:            v.resourceCount,
 				DeletionProtection:       isCRDProtected(protectedCRDs, crd.APITypes.Plural, crd.APITypes.Group),
+				ProviderCount:            len(crd.OperatorBox.ProviderBlocks),
 				OperatorBox: OperatorBoxSummary{
 					Type:           "generic",
 					HasTemplates:   crd.OperatorBox.OnCreate != nil,

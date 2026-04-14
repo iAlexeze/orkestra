@@ -254,6 +254,16 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// unavailable providers log a warning and the operator starts regardless.
 	providerRegistry := loadProviders(ctx, kat)
 
+	// One ProviderStats per CRD — shared between GenericReconciler (writes on each
+	// provider call) and BuildCRDInfoHandler (reads for the /katalog/{crd} response).
+	// Only created for CRDs that declare provider blocks — others get nil.
+	providerStatsMap := make(map[string]*health.ProviderStats)
+	for _, crd := range kat.Enabled() {
+		if crd.HasProviders() {
+			providerStatsMap[crd.GVK().String()] = health.NewProviderStats()
+		}
+	}
+
 	// ── 4d. Kordinator registry + per-CRD wiring ──────────────────────────────
 	// ktrlRegistry maps GVK → (CRDEntry, SharedIndexInformer, ReconcilerFactory).
 	// It also implements reconciler.KatalogRegistry via GetInformerByName,
@@ -335,6 +345,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 
 			logger.Debug().Str("gvk", gvk).Msg("wiring GenericReconciler factory")
 
+			pStats := providerStatsMap[gvk]
 			factory = func() domain.Reconciler {
 				return reconciler.NewGenericReconciler(
 					crd,
@@ -347,6 +358,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 					},
 					ktrlRegistry,     // cross-CRD informer lookup via GetInformerByName
 					providerRegistry, // aws:, mongodb:, etc. block dispatch
+					pStats,           // per-CRD provider error rate tracking
 				)
 			}
 		} else {
@@ -427,6 +439,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 					hs.GetAdmissionStats(),
 					hs.GetProtectionStats(),
 					isProtected,
+					providerStatsMap[gvk],
 				),
 			)
 			hs.Register(

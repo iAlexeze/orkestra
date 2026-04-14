@@ -314,6 +314,12 @@
                 <span class="cc-card-row-label">RBAC Rules</span>
                 <span class="cc-card-row-value">{{ .RBACCount }}</span>
               </div>
+              {{ if gt .ProviderCount 0 }}
+              <div class="cc-card-row">
+                <span class="cc-card-row-label">Providers</span>
+                <span class="cc-card-row-value">{{ .ProviderCount }}</span>
+              </div>
+              {{ end }}
               <div class="cc-card-row">
                 <span class="cc-card-row-label">Uptime</span>
                 <span class="cc-card-row-value font-mono text-sm">{{ .Uptime }}</span>

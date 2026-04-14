@@ -204,3 +204,8 @@ func (c *CRDEntry) HasValidationRules() bool {
 	}
 	return len(c.Validation.Rules) > 0
 }
+
+// HasProviders reports whether this CRD declares any provider blocks.
+func (c *CRDEntry) HasProviders() bool {
+	return len(c.OperatorBox.ProviderBlocks) > 0
+}

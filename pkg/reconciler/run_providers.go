@@ -38,9 +38,19 @@ import (
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
+// providerStatsRecorder is a minimal interface for recording provider call outcomes.
+// *health.ProviderStats satisfies this interface; pass nil to skip recording.
+type providerStatsRecorder interface {
+	RecordSuccess(provider string)
+	RecordFailure(provider string)
+	RecordDeleteSuccess(provider string)
+	RecordDeleteFailure(provider string)
+}
+
 // runProviders dispatches provider blocks to registered provider libraries.
 // Called after all Kubernetes resource reconciliation is complete.
 // Blocks are dispatched in declaration order.
+// stats may be nil — recording is skipped when no stats collector is wired.
 func runProviders(
 	ctx context.Context,
 	obj domain.Object,
@@ -48,6 +58,7 @@ func runProviders(
 	blocks []orktypes.ProviderBlock,
 	registry orktypes.ProviderRegistry,
 	kube orktypes.KubeReader,
+	stats providerStatsRecorder,
 ) error {
 	if len(blocks) == 0 {
 		return nil
@@ -105,7 +116,13 @@ func runProviders(
 			Msg("calling provider.Reconcile")
 
 		if err := provider.Reconcile(ctx, req); err != nil {
+			if stats != nil {
+				stats.RecordFailure(block.Name)
+			}
 			return fmt.Errorf("provider %q: %w", block.Name, err)
+		}
+		if stats != nil {
+			stats.RecordSuccess(block.Name)
 		}
 	}
 
@@ -116,6 +133,7 @@ func runProviders(
 // Called during finalizer execution. All declarations are passed to Delete
 // regardless of when: conditions — deletion is attempted for everything
 // that might have been created. All errors collected before returning.
+// stats may be nil — recording is skipped when no stats collector is wired.
 func runProviderDelete(
 	ctx context.Context,
 	obj domain.Object,
@@ -123,6 +141,7 @@ func runProviderDelete(
 	blocks []orktypes.ProviderBlock,
 	registry orktypes.ProviderRegistry,
 	kube orktypes.KubeReader,
+	stats providerStatsRecorder,
 ) error {
 	if len(blocks) == 0 || registry == nil {
 		return nil
@@ -167,6 +186,11 @@ func runProviderDelete(
 		if err := provider.Delete(ctx, req); err != nil {
 			// Collect — do not return. Try all providers before surfacing errors.
 			errs = append(errs, fmt.Sprintf("provider %q: %v", block.Name, err))
+			if stats != nil {
+				stats.RecordDeleteFailure(block.Name)
+			}
+		} else if stats != nil {
+			stats.RecordDeleteSuccess(block.Name)
 		}
 	}
 
