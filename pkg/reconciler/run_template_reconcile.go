@@ -107,7 +107,7 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, resolve
 	// Step 8: provider dispatch
 	if len(r.rc.ProviderBlocks) > 0 && r.providerRegistry != nil && r.providerRegistry.Len() > 0 {
 		kubeReader := &kubeReaderAdapter{kube: kube}
-		if err := runProviders(ctx, obj, resolver, r.rc.ProviderBlocks, r.providerRegistry, kubeReader); err != nil {
+		if err := runProviders(ctx, obj, resolver, r.rc.ProviderBlocks, r.providerRegistry, kubeReader, r.providerStats); err != nil {
 			return fmt.Errorf("providers: %w", err)
 		}
 	}
@@ -181,7 +181,7 @@ func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, resolver
 
 	if len(r.rc.ProviderBlocks) > 0 && r.providerRegistry != nil {
 		kubeReader := &kubeReaderAdapter{kube: kube}
-		if err := runProviderDelete(ctx, obj, resolver, r.rc.ProviderBlocks, r.providerRegistry, kubeReader); err != nil {
+		if err := runProviderDelete(ctx, obj, resolver, r.rc.ProviderBlocks, r.providerRegistry, kubeReader, r.providerStats); err != nil {
 			return fmt.Errorf("provider cleanup: %w", err)
 		}
 	}

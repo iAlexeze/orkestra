@@ -6,7 +6,12 @@ import (
 	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	awsprovider "github.com/ialexeze/orkestra/pkg/provider/aws"
+	azureprovider "github.com/ialexeze/orkestra/pkg/provider/azure"
+	googleprovider "github.com/ialexeze/orkestra/pkg/provider/google"
 	mongoprovider "github.com/ialexeze/orkestra/pkg/provider/mongo"
+	mysqlprovider "github.com/ialexeze/orkestra/pkg/provider/mysql"
+	pgsprovider "github.com/ialexeze/orkestra/pkg/provider/postgres"
+	redisprovider "github.com/ialexeze/orkestra/pkg/provider/redis"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 )
 
@@ -51,7 +56,39 @@ func loadProviders(ctx context.Context, kat *katalog.Katalog) orktypes.ProviderR
 			registry.Register(p)
 			logger.Info().Str("provider", "aws").Msg("AWS provider registered")
 
-		// ── MongoDB ────────────────────────────────────────────────────────────
+		// ── Google Cloud ───────────────────────────────────────────────────────
+		case "google":
+			p, err := googleprovider.NewFromAuth(ctx, auth)
+			if err != nil {
+				if req.Required {
+					logger.Fatal().Err(err).
+						Str("provider", "google").
+						Msg("required Google Cloud provider failed to initialise — cannot start")
+				}
+				logger.Warn().Err(err).
+					Msg("Google Cloud provider not registered — google: blocks in Katalog will be skipped")
+				continue
+			}
+			registry.Register(p)
+			logger.Info().Str("provider", "google").Msg("Google Cloud provider registered")
+
+		// ── Azure ──────────────────────────────────────────────────────────────
+		case "azure":
+			p, err := azureprovider.NewFromAuth(ctx, auth)
+			if err != nil {
+				if req.Required {
+					logger.Fatal().Err(err).
+						Str("provider", "azure").
+						Msg("required Azure provider failed to initialise — cannot start")
+				}
+				logger.Warn().Err(err).
+					Msg("Azure provider not registered — azure: blocks in Katalog will be skipped")
+				continue
+			}
+			registry.Register(p)
+			logger.Info().Str("provider", "azure").Msg("Azure provider registered")
+
+			// ── MongoDB ────────────────────────────────────────────────────────────
 		case "mongodb":
 			mongoURI := auth["mongoUri"]
 			if mongoURI == "" {
@@ -80,6 +117,54 @@ func loadProviders(ctx context.Context, kat *katalog.Katalog) orktypes.ProviderR
 			}
 			registry.Register(p)
 			logger.Info().Str("provider", "mongodb").Msg("MongoDB provider registered")
+
+		// ── PostgreSQL ─────────────────────────────────────────────────────────
+		case "postgres":
+			p, err := pgsprovider.NewFromAuth(ctx, auth)
+			if err != nil {
+				if req.Required {
+					logger.Fatal().Err(err).
+						Str("provider", "postgres").
+						Msg("required PostgreSQL provider failed to initialise — cannot start")
+				}
+				logger.Warn().Err(err).
+					Msg("PostgreSQL provider not registered — postgres: blocks in Katalog will be skipped")
+				continue
+			}
+			registry.Register(p)
+			logger.Info().Str("provider", "postgres").Msg("PostgreSQL provider registered")
+
+		// ── Redis (cache) ──────────────────────────────────────────────────────
+		case "cache":
+			p, err := redisprovider.NewFromAuth(ctx, auth)
+			if err != nil {
+				if req.Required {
+					logger.Fatal().Err(err).
+						Str("provider", "cache").
+						Msg("required Redis cache provider failed to initialise — cannot start")
+				}
+				logger.Warn().Err(err).
+					Msg("Redis cache provider not registered — cache: blocks in Katalog will be skipped")
+				continue
+			}
+			registry.Register(p)
+			logger.Info().Str("provider", "cache").Msg("Redis cache provider registered")
+
+		// ── MySQL ──────────────────────────────────────────────────────────────
+		case "mysql":
+			p, err := mysqlprovider.NewFromAuth(ctx, auth)
+			if err != nil {
+				if req.Required {
+					logger.Fatal().Err(err).
+						Str("provider", "mysql").
+						Msg("required MySQL provider failed to initialise — cannot start")
+				}
+				logger.Warn().Err(err).
+					Msg("MySQL provider not registered — mysql: blocks in Katalog will be skipped")
+				continue
+			}
+			registry.Register(p)
+			logger.Info().Str("provider", "mysql").Msg("MySQL provider registered")
 
 		default:
 			logger.Warn().

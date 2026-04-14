@@ -18,6 +18,9 @@ var templateFuncs = template.FuncMap{
 	"mul": func(a, b int) int {
 		return a * b
 	},
+	"mulFloat": func(a, b float64) float64 {
+		return a * b
+	},
 	"div": func(a, b int) int {
 		if b == 0 {
 			return 0

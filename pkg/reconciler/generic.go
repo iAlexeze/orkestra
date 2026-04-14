@@ -45,6 +45,7 @@ import (
 type GenericReconciler[T domain.Object] struct {
 	katalogRegistry  *kordinator.ResourceKatalog
 	providerRegistry orktypes.ProviderRegistry
+	providerStats    providerStatsRecorder
 	informer         cache.SharedIndexInformer
 	event            *event.Event
 	kube             *kubeclient.Kubeclient
@@ -63,6 +64,7 @@ func NewGenericReconciler[T domain.Object](
 	newObj func() T,
 	katalogRegistry *kordinator.ResourceKatalog,
 	providerRegistry orktypes.ProviderRegistry,
+	providerStats providerStatsRecorder,
 ) *GenericReconciler[T] {
 
 	var hooks domain.ReconcileHooks[T]
@@ -80,6 +82,7 @@ func NewGenericReconciler[T domain.Object](
 	return &GenericReconciler[T]{
 		katalogRegistry:  katalogRegistry,
 		providerRegistry: providerRegistry,
+		providerStats:    providerStats,
 		crd:              crd,
 		rc:               crd.OperatorBox,
 		informer:         informer,

@@ -3,6 +3,7 @@
 
   <h1>Orkestra</h1>
   <p><strong>A runtime for Kubernetes operators.</strong></p>
+  <h3><em>Declare. Run.</em></h3>
 
   <p>
     <a href="https://goreportcard.com/report/github.com/orkestra-sh/orkestra"><img src="https://goreportcard.com/badge/github.com/ialexeze/orkestra" alt="Go Report Card" /></a>
@@ -30,6 +31,7 @@ Traditionally, that means Go. Informers, workqueues, reconcile loops, code gener
 Orkestra removes that entirely.
 
 ```yaml
+# Declare
 apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
@@ -57,6 +59,7 @@ spec:
 ```
 
 ```bash
+# Run
 ork run -k katalog.yaml
 kubectl apply -f website.yaml
 ```
@@ -113,10 +116,10 @@ ork run --katalog examples/website/website-katalog.yaml
 # Apply a CR
 kubectl apply -f examples/website/website-cr.yaml
 
-# Watch live on Control Center
-ork control start
+# Watch live on Control Center → localhost:8090
+## → (in another terminal)
 
-# → localhost:8090
+ork control start
 ```
 
 For production, deploy with Helm:
@@ -129,6 +132,51 @@ helm install orkestra orkestra/orkestra \
 ```
 
 The same Katalog you ran locally is what runs in production.
+
+---
+
+## By the numbers
+
+| | Traditional | Orkestra |
+|---|---|---|
+| First operator | Days to weeks | Under 1 hour |
+| Lines of Go | 400+ per operator | 0 |
+| Memory (15 operators) | 750 MB – 3 GB | ~47 MB |
+| Conversion webhook | Separate deployment | Built-in |
+| Admission webhook | Separate deployment | Built-in |
+| Deployments to manage | One per operator | One |
+
+---
+
+## Orkestra Registry
+
+The registry is the package manager operators never had.
+
+Traditional operators are binaries. One per CRD. One deployment per operator. Ten operators, ten processes, gigabytes of memory, ten release cycles to maintain. The ecosystem grew this way because the pattern demanded it.
+
+Orkestra changes the unit of distribution. Operators are **Katalogs** — YAML **patterns** packaged as OCI artifacts. The runtime is already installed. The artifact tells it what to do.
+
+```yaml
+sources:
+  registry:
+    - url: ghcr.io/orkestra-sh/registry/postgres:v14
+      oci: true
+    - url: ghcr.io/orkestra-sh/registry/redis:v7
+      oci: true
+```
+
+That is two complete operators. No binaries. No deployments. One Orkestra process runs both.
+
+Operators are now **assembled** from the registry, **composed** with local overrides, **upgraded** by changing a version tag, and **shared** by pushing a Katalog to any OCI-compatible registry.
+
+```yaml
+spec:
+  crds:
+    postgres:
+      workers: 8   # production override — everything else from the registry
+```
+
+Full documentation: [Orkestra Registry](https://orkestra.readthedocs.io/en/latest/orkestra-registry/)
 
 ---
 
@@ -491,12 +539,16 @@ operatorBox:
 
 ## Security
 
-Deletion protection, admission webhooks, and conversion webhooks all share one certificate. One block. No separate TLS setup.
+Deletion protection, RBAC, admission webhooks, and conversion webhooks all share one certificate. One block. No separate TLS setup.
 
 ```yaml
 security:
   deletionProtection:
-    enabled: true          # protects your CRDs and Orkestra deployment from kubectl delete
+    enabled: true             # protects your CRDs and Orkestra deployment from kubectl delete
+  
+  rbac:
+    enabled: true             # Orkestra generates and applies the minimum permissions required to run your operators
+    cleanupOnShutdown: true   # Tells orkestra to cleanup rbac on shutdown
 
   webhooks:
     admission:
@@ -520,19 +572,6 @@ With `deletionProtection` enabled, Orkestra registers a validating webhook that 
 | Reconcile error rate | **0.0%** |
 | Conversion failures | **0** |
 | Memory (15 CRDs) | ~47 MB |
-
----
-
-## By the numbers
-
-| | Traditional | Orkestra |
-|---|---|---|
-| First operator | Days to weeks | Under 1 hour |
-| Lines of Go | 400+ per operator | 0 |
-| Memory (15 operators) | 750 MB – 3 GB | ~47 MB |
-| Conversion webhook | Separate deployment | Built-in |
-| Admission webhook | Separate deployment | Built-in |
-| Deployments to manage | One per operator | One |
 
 ---
 
