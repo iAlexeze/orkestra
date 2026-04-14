@@ -62,17 +62,17 @@ func (r *GenericReconciler[T]) ensureManagedAnnotations(ctx context.Context, obj
 // ── Finalizer management ──────────────────────────────────────────────────────
 
 func (r *GenericReconciler[T]) ensureFinalizers(ctx context.Context, obj T) error {
-	if len(r.crd.ReconcilerConfig.Finalizers) == 0 {
+	if len(r.crd.OperatorBox.Finalizers) == 0 {
 		return nil
 	}
 
 	logger.Debug().
 		Str("name", obj.GetName()).
-		Any("crd finalizers", r.crd.ReconcilerConfig.Finalizers).
+		Any("crd finalizers", r.crd.OperatorBox.Finalizers).
 		Msgf("checking finalizers: %v", obj.GetFinalizers())
 
 	needsUpdate := false
-	for _, f := range r.crd.ReconcilerConfig.Finalizers {
+	for _, f := range r.crd.OperatorBox.Finalizers {
 		if !ContainsFinalizer(obj, f) && r.crd.RemoveFinalizers { // Added for testing -> could be useful in future
 			needsUpdate = true
 			break
@@ -83,7 +83,7 @@ func (r *GenericReconciler[T]) ensureFinalizers(ctx context.Context, obj T) erro
 	}
 
 	newFinalizers := obj.GetFinalizers()
-	for _, f := range r.crd.ReconcilerConfig.Finalizers {
+	for _, f := range r.crd.OperatorBox.Finalizers {
 		if !ContainsFinalizer(obj, f) {
 			newFinalizers = append(newFinalizers, f)
 		}
@@ -106,7 +106,7 @@ func (r *GenericReconciler[T]) removeFinalizers(ctx context.Context, obj T) erro
 
 	newFinalizers := make([]string, 0, len(obj.GetFinalizers()))
 	for _, f := range obj.GetFinalizers() {
-		if !slices.Contains(r.crd.ReconcilerConfig.Finalizers, f) {
+		if !slices.Contains(r.crd.OperatorBox.Finalizers, f) {
 			newFinalizers = append(newFinalizers, f)
 		}
 	}

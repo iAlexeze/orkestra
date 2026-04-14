@@ -38,13 +38,13 @@ func Init(filenames ...string) (*Konfig, error) {
 		//   ENABLE_DELETION_PROTECTION  → security.DeletionProtection.Enabled
 		//   DELETION_PROTECTION_POLICY  → security.DeletionProtection.FailurePolicy
 		//   ENABLE_ADMISSION_WEBHOOK    → security.Webhooks.Admission.Enabled
-		//   ENABLE_CONVERSION           → security.Webhooks.Conversion.Enabled
+		//   ENABLE_CONVERSION           → security.Conversion.Enabled
 		//   WEBHOOK_FAILURE_POLICY      → security.Webhooks.FailurePolicy
 		//   ORKESTRA_SERVICE_NAME       → security.Webhooks.ServiceName
 		//                               → security.DeletionProtection.ServiceName
 		//   RBAC_AUTO_APPLY             → security.RBAC.Enabled
 		//   RBAC_CLEANUP_ON_SHUTDOWN    → security.RBAC.CleanupOnShutdown
-		//   CONVERSION_WINDOW           → security.Webhooks.Conversion.ConversionWindow
+		//   CONVERSION_WINDOW           → security.Conversion.ConversionWindow
 		//   TLS_CERT / TLS_KEY          → security.Webhooks.TLSCert / TLSKey (initial
 		//                                 values; overwritten by ensureSecurity() when
 		//                                 Orkestra generates its own certificates)
@@ -55,10 +55,10 @@ func Init(filenames ...string) (*Konfig, error) {
 			s.DeletionProtection.FailurePolicy = GetStrEnv("DELETION_PROTECTION_POLICY", "Fail")
 			s.DeletionProtection.ServiceName = svcName
 			s.Webhooks.Admission.Enabled = GetBoolEnv("ENABLE_ADMISSION_WEBHOOK", false)
-			s.Webhooks.Conversion.Enabled = GetBoolEnv("ENABLE_CONVERSION", false)
+			s.Conversion.Enabled = GetBoolEnv("ENABLE_CONVERSION", false)
 			s.Webhooks.FailurePolicy = GetStrEnv("WEBHOOK_FAILURE_POLICY", "Ignore")
 			s.Webhooks.ServiceName = svcName
-			s.Webhooks.Conversion.ConversionWindow = GetIntEnv("CONVERSION_WINDOW", 100)
+			s.Conversion.ConversionWindow = GetIntEnv("CONVERSION_WINDOW", 100)
 			s.Webhooks.TLSCert = GetStrEnv("TLS_CERT", "")
 			s.Webhooks.TLSKey = GetStrEnv("TLS_KEY", "")
 			s.RBAC.Enabled = GetBoolEnv("RBAC_AUTO_APPLY", false)

@@ -63,17 +63,19 @@ type SecurityConfig struct {
 		Admission struct {
 			Enabled bool
 		}
-		Conversion struct {
-			Enabled bool
-			// ConversionWindow is the rolling window size for latency/throughput stats.
-			ConversionWindow int
-		}
 		FailurePolicy string
 		ServiceName   string
 		// TLS paths — shared with deletion protection, admission, and conversion.
 		// Set by ensureSecurity() after cert generation/loading.
 		TLSCert string
 		TLSKey  string
+	}
+	// Conversion is separate from admission webhooks — conversion has its own
+	// /convert endpoint, window stats, and CRD patch logic.
+	Conversion struct {
+		Enabled bool
+		// ConversionWindow is the rolling window size for latency/throughput stats.
+		ConversionWindow int
 	}
 	RBAC struct {
 		Enabled           bool
@@ -186,7 +188,7 @@ func (k *Konfig) RegistryConfig() *registryConfig {
 // ConversionEnabled reports whether the conversion webhook is enabled.
 // Reads from SecurityConfig (populated from ENV at Init).
 func (k *Konfig) ConversionEnabled() bool {
-	return k.security.Webhooks.Conversion.Enabled
+	return k.security.Conversion.Enabled
 }
 
 // AdmissionEnabled reports whether admission webhooks are enabled.

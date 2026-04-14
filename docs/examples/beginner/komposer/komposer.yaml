@@ -53,7 +53,7 @@ spec:
         version: v1alpha1
         kind: Database
         plural: databases
-      reconciler:
+      operatorBox:
         default: true
       description: >-
         Database CRD — overridden inline with production worker count.

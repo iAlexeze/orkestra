@@ -12,6 +12,23 @@ type KatalogFile struct {
 	Sources    *KatalogSources `yaml:"sources,omitempty"`
 	Spec       KatalogSpec     `yaml:"spec"`
 	Security   KatalogSecurity `yaml:"security"`
+
+	// Providers declares which external provider libraries this Katalog requires.
+	// Top-level alongside spec: and security: — providers represent a distinct
+	// operational concern (infrastructure dependencies) separate from CRD definitions.
+	//
+	//   providers:
+	//     - name: aws
+	//       required: true
+	//       auth:
+	//         accessKeyId: "$AWS_ACCESS_KEY_ID"
+	//         secretAccessKey: "$AWS_SECRET_ACCESS_KEY"
+	//         region: "$AWS_REGION"
+	//     - name: mongodb
+	//       required: true
+	//       auth:
+	//         mongoUri: "$MONGODB_URL"
+	Providers []KatalogProviderRequirement `yaml:"providers,omitempty"`
 }
 
 // KatalogMeta holds identifying metadata for the Katalog.
@@ -107,20 +124,18 @@ type KatalogSpec struct {
 	// CRDs — the CRD entries managed by this Orkestra instance.
 	// Map key is the CRD name; Name field is injected from the key during loading.
 	CRDs map[string]CRDEntry `yaml:"crds"`
-
-	// Providers  — future implementation for providers
-	Providers []KatalogProviderRequirement `yaml:"providers,omitempty"`
 }
 
 // KatalogForUI is a UI-friendly representation of the merged Katalog.
 // It contains only the fields needed for display in the Control Center,
 // excluding internal runtime fields.
 type KatalogForUI struct {
-	APIVersion string           `json:"apiVersion"` // Orkestra API version
-	Kind       string           `json:"kind"`       // Always "Katalog" at runtime
-	Metadata   KatalogMeta      `json:"metadata"`   // Katalog metadata (name, description, etc.)
-	Spec       KatalogSpecForUI `json:"spec"`       // CRD definitions
-	Security   KatalogSecurity  `json:"security"`   // Security settings
+	APIVersion string                       `json:"apiVersion"`          // Orkestra API version
+	Kind       string                       `json:"kind"`                // Always "Katalog" at runtime
+	Metadata   KatalogMeta                  `json:"metadata"`            // Katalog metadata (name, description, etc.)
+	Spec       KatalogSpecForUI             `json:"spec"`                // CRD definitions
+	Security   KatalogSecurity              `json:"security"`            // Security settings
+	Providers  []KatalogProviderRequirement `json:"providers,omitempty"` // Provider requirements
 }
 
 // KatalogSpecForUI contains the CRD definitions for UI display.

@@ -38,7 +38,7 @@ func RegisterCRRoutes(
 	crd orktypes.CRDEntry,
 	inf cache.SharedIndexInformer,
 	kube *kubeclient.Kubeclient,
-	rc orktypes.ReconcilerConfig,
+	rc orktypes.OperatorBoxConfig,
 ) {
 	name := strings.ToLower(crd.Name)
 	crBase := "/katalog/" + name + "/cr"
@@ -63,7 +63,7 @@ func crDetailRouter(
 	crd orktypes.CRDEntry,
 	inf cache.SharedIndexInformer,
 	kube *kubeclient.Kubeclient,
-	rc orktypes.ReconcilerConfig,
+	rc orktypes.OperatorBoxConfig,
 ) http.Handler {
 	detailHandler := BuildCRDetailHandler(crd, inf, kube, rc)
 	eventsHandler := BuildCREventsHandler(crd, kube)

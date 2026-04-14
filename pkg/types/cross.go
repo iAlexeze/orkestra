@@ -19,7 +19,7 @@
 //	          as: database              # available as .cross.database.*
 //
 //	    database:
-//	      reconciler: ...               # database CRD — already has an informer
+//	      operatorBox: ...               # database CRD — already has an informer
 //
 // After ReadCross runs, the Application reconciler has access to:
 //

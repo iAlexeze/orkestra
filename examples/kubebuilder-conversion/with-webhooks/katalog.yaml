@@ -110,7 +110,7 @@ spec:
             action: deny
 
       # ── Reconciler ─────────────────────────────────────────────────────────
-      reconciler:
+      operatorBox:
         default: true
 
         # Status — three layers
@@ -195,7 +195,7 @@ spec:
             message: "spec.schedule is required"
             action: deny
 
-      reconciler:
+      operatorBox:
         default: true
         status:
           fields:

@@ -37,7 +37,7 @@ spec:
             message: "spec.steps is required"
             action: deny
 
-      reconciler:
+      operatorBox:
         default: true
         # ── Phase-gated Jobs ─────────────────────────────────────────────
         # Each step is a separate Job.

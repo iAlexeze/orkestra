@@ -24,7 +24,7 @@ spec:
             operator: exists
             action: deny
 
-      reconciler:
+      operatorBox:
         default: true
 
         onReconcile:

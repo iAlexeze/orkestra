@@ -12,7 +12,7 @@ spec:
       apiTypes:
         kind: Namespace           # built-in — no group/version/plural needed
       workers: 1
-      reconciler:
+      operatorBox:
         default: true
       # Governance-only: no onCreate templates.
       # Validation rules declared here apply at reconcile time.

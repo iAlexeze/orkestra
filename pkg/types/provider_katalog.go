@@ -2,29 +2,37 @@
 //
 // Provider types for Katalog YAML parsing and runtime dispatch.
 //
-// Two layers:
+// # Layer 1 — Katalog-level manifest (KatalogProviderRequirement)
 //
-// Layer 1 — Catalog-level manifest (KatalogProviderRequirement)
+// Declared at the top level under providers[]. Lists which providers this Katalog uses
+// and supplies the credentials for each. Credentials support $ENV_VAR expansion.
+// Only providers registered here are active — per-CRD blocks for unregistered
+// providers are skipped with a warning.
 //
-//	Declared at the top of the Katalog under spec.providers.
-//	Lists which provider libraries this Katalog requires.
-//	Used by `ork validate` to warn when a required provider is not registered.
-//	Used by `ork provider install` to pull provider OCI artifacts.
+// providers: is a top-level sibling of spec: and security:, not nested under spec:,
+// because providers represent operational infrastructure dependencies — distinct state
+// from the CRD definitions in spec:.
 //
-//	spec:
-//	  providers:
-//	    - name: aws
-//	      required: true
-//	    - name: mongodb
-//	      required: false
+//	providers:
+//	  - name: aws
+//	    required: true
+//	    auth:
+//	      accessKeyId: "$AWS_ACCESS_KEY_ID"
+//	      secretAccessKey: "$AWS_SECRET_ACCESS_KEY"
+//	      region: "$AWS_REGION"
+//	  - name: mongodb
+//	    required: true
+//	    auth:
+//	      mongoUri: "$MONGODB_URL"
 //
-// Layer 2 — Per-CRD provider blocks (ProviderBlock, RawProviderDeclaration)
+// # Layer 2 — Per-CRD provider blocks (ProviderBlock, RawProviderDeclaration)
 //
-//	Declared under spec.crds[].reconciler.providers.
-//	Each named block is dispatched to the registered provider library.
-//	Template expressions are resolved before the provider is called.
+// Declared under spec.crds[].operatorBox.providers.
+// Each named block is dispatched to the registered provider library.
+// Template expressions are resolved before the provider is called.
+// A per-CRD auth block can override the katalog-level credentials for that CRD.
 //
-//	reconciler:
+//	operatorBox:
 //	  providers:
 //	    aws:
 //	      - s3:
@@ -40,19 +48,25 @@
 //	            secretName: "{{ .metadata.name }}-mongo-creds"
 package types
 
+import "os"
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Layer 1 — Catalog-level manifest
+// Layer 1 — Katalog-level manifest
 // ─────────────────────────────────────────────────────────────────────────────
 
 // KatalogProviderRequirement declares that this Katalog uses a named provider.
-// Declared at spec.providers[] in the Katalog YAML.
+// Declared at the top-level providers[] in the Katalog YAML.
 //
 // Purpose:
 //   - `ork validate` warns when a required provider is not registered at runtime
+//   - Supplies credentials (with $ENV_VAR expansion) to the provider at startup
 //   - `ork provider install` pulls the OCI artifact for this provider
 //   - Documentation: makes explicit what external systems this Katalog touches
+//
+// Only providers declared here are registered. Per-CRD provider blocks for
+// undeclared providers are silently skipped with a warning log.
 type KatalogProviderRequirement struct {
-	// Name is the YAML block key used under reconciler.providers.
+	// Name is the YAML block key used under operatorBox.providers.
 	// Must match the Name() return value of the registered Provider.
 	// e.g. "aws", "mongodb", "stripe"
 	Name string `yaml:"name"`
@@ -61,6 +75,20 @@ type KatalogProviderRequirement struct {
 	// true  → validation error if not registered (operator will not function correctly)
 	// false → validation warning only (provider blocks are skipped at runtime)
 	Required bool `yaml:"required"`
+
+	// Auth holds the provider credentials. Values support $ENV_VAR expansion —
+	// use "$MY_SECRET" and Orkestra will substitute os.Getenv("MY_SECRET") at startup.
+	//
+	// AWS example:
+	//   auth:
+	//     accessKeyId: "$AWS_ACCESS_KEY_ID"
+	//     secretAccessKey: "$AWS_SECRET_ACCESS_KEY"
+	//     region: "us-east-1"
+	//
+	// MongoDB example:
+	//   auth:
+	//     mongoUri: "$MONGODB_URL"
+	Auth map[string]string `yaml:"auth,omitempty"`
 
 	// Version is the expected provider library version.
 	// Used by `ork provider install` to pull the correct OCI artifact.
@@ -73,11 +101,29 @@ type KatalogProviderRequirement struct {
 	Library string `yaml:"library,omitempty"`
 }
 
+// ResolvedAuth returns a copy of Auth with all $ENV_VAR values substituted.
+// Values that do not start with "$" are returned unchanged.
+// Called at startup before credentials are passed to the provider constructor.
+func (r KatalogProviderRequirement) ResolvedAuth() map[string]string {
+	if len(r.Auth) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(r.Auth))
+	for k, v := range r.Auth {
+		if len(v) > 1 && v[0] == '$' {
+			out[k] = os.Getenv(v[1:])
+		} else {
+			out[k] = v
+		}
+	}
+	return out
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Layer 2 — Per-CRD provider blocks
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ProviderBlock is one named provider section from the reconciler.providers map.
+// ProviderBlock is one named provider section from the operatorBox.providers map.
 // The Name comes from the map key ("aws", "mongodb").
 // Declarations come from the list under that key.
 //

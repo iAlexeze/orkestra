@@ -169,7 +169,7 @@ type CRDInfo struct {
 	MaxQueueDepthSource      string                 `json:"maxQueueDepthSource"`
 	ResourceCount            int                    `json:"resourceCount"`
 	TotalReconciles          int                    `json:"totalReconciles"`
-	Reconciler               map[string]interface{} `json:"reconciler"`
+	OperatorBox              map[string]interface{} `json:"operatorBox"`
 	Healthy                  bool                   `json:"healthy"`
 	Started                  bool                   `json:"started"`
 	ErrorRate                float64                `json:"errorRate"`
@@ -249,7 +249,7 @@ type CRDDetail struct {
 	MaxQueueDepthSource      string                      `json:"maxQueueDepthSource"`
 	ResourceCount            int                         `json:"resourceCount"`
 	TotalReconciles          int                         `json:"totalReconciles"`
-	Reconciler               map[string]interface{}      `json:"reconciler"`
+	OperatorBox              map[string]interface{}      `json:"operatorBox"`
 	Healthy                  bool                        `json:"healthy"`
 	Started                  bool                        `json:"started"`
 	Pending                  bool                        `json:"pending"`

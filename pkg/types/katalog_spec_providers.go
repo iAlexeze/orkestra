@@ -1,6 +1,6 @@
 // pkg/types/katalog_spec_providers.go
 //
-// In ReconcilerConfig:
+// In OperatorBoxConfig:
 //   ProviderBlocks []ProviderBlock `yaml:"-" json:"-"` // parsed from providers: map
 //
 // And a new raw field for YAML parsing:

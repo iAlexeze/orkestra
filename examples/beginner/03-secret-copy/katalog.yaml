@@ -18,7 +18,7 @@ spec:
         kind: SecretDistribution
         plural: secretdistributions
 
-      reconciler:
+      operatorBox:
         default: true
 
         status:

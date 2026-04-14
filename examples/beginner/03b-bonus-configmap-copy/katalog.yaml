@@ -18,7 +18,7 @@ spec:
         kind: ConfigMapDistribution
         plural: configmapdistributions
 
-      reconciler:
+      operatorBox:
         default: true
 
         status:

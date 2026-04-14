@@ -49,7 +49,7 @@ type GenericReconciler[T domain.Object] struct {
 	event            *event.Event
 	kube             *kubeclient.Kubeclient
 	hooks            domain.ReconcileHooks[T]
-	rc               orktypes.ReconcilerConfig
+	rc               orktypes.OperatorBoxConfig
 	newObj           func() T
 	crd              orktypes.CRDEntry
 }
@@ -81,7 +81,7 @@ func NewGenericReconciler[T domain.Object](
 		katalogRegistry:  katalogRegistry,
 		providerRegistry: providerRegistry,
 		crd:              crd,
-		rc:               crd.ReconcilerConfig,
+		rc:               crd.OperatorBox,
 		informer:         informer,
 		event:            ev,
 		kube:             kube,

@@ -24,7 +24,7 @@ spec:
         kind: PlatformNamespace
         plural: platformnamespaces
 
-      reconciler:
+      operatorBox:
         default: true
 
         finalizers:

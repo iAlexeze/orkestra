@@ -18,7 +18,7 @@ package types
 //
 // Example:
 //
-//	reconciler:
+//	operatorBox:
 //	  status:
 //	    fields:
 //	      - path: phase

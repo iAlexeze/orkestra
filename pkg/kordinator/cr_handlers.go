@@ -210,14 +210,14 @@ func BuildCRListHandler(
 // CR is read from the informer cache — no API server call.
 // Children are read from the API server on demand.
 //
-// rcMap maps GVK → ReconcilerConfig so we know which resource types
+// rcMap maps GVK → OperatorBoxConfig so we know which resource types
 // to look for as children (from onCreate/onReconcile templates).
 // ─────────────────────────────────────────────────────────────────────────────
 func BuildCRDetailHandler(
 	crd orktypes.CRDEntry,
 	inf cache.SharedIndexInformer,
 	kube *kubeclient.Kubeclient,
-	rc orktypes.ReconcilerConfig,
+	rc orktypes.OperatorBoxConfig,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if inf == nil {
@@ -285,7 +285,7 @@ func BuildCRDetailAndEventsHandler(
 	inf cache.SharedIndexInformer,
 	kube *kubeclient.Kubeclient,
 ) http.HandlerFunc {
-	detail := BuildCRDetailHandler(crd, inf, kube, orktypes.ReconcilerConfig{})
+	detail := BuildCRDetailHandler(crd, inf, kube, orktypes.OperatorBoxConfig{})
 	events := BuildCREventsHandler(crd, kube)
 
 	return func(w http.ResponseWriter, r *http.Request) {

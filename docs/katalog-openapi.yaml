@@ -100,7 +100,7 @@ components:
         queueDepth: { type: integer }
         queueDepthSource: { type: string }
         resourceCount: { type: integer }
-        reconciler: { $ref: '#/components/schemas/ReconcilerInfo' }
+        operatorBox: { $ref: '#/components/schemas/OperatorBoxInfo' }
         healthy: { type: boolean }
         started: { type: boolean }
         startedAt: { type: string }

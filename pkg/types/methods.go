@@ -6,6 +6,13 @@ import (
 )
 
 // ── CRDEntry helpers ──────────────────────────────────────────────────────────
+
+// Config returns the OperatorBox configuration for this CRD.
+// Safe to call when OperatorBox is the zero value.
+func (e CRDEntry) Config() OperatorBoxConfig {
+	return e.OperatorBox
+}
+
 // IsBuiltInType reports whether this CRD represents a built‑in Kubernetes resource.
 // Built‑ins rely on enrichment to populate group, version, plural, and scope.
 func (c *CRDEntry) IsBuiltInType() bool {
@@ -74,7 +81,7 @@ func (c *CRDEntry) IsDynamic() bool {
 // HasTemplates reports whether this CRD declares any declarative hook templates.
 // Used by `ork generate` to determine whether to emit generated runtime hooks.
 func (c *CRDEntry) HasTemplates() bool {
-	rc := c.ReconcilerConfig
+	rc := c.OperatorBox
 	return rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil
 }
 
@@ -129,10 +136,10 @@ func (c *CRDEntry) IsNamespaced() bool {
 // DefaultReconcile reports whether this CRD uses the default reconciler behavior.
 // Defaults to true unless explicitly enabled.
 func (c *CRDEntry) DefaultReconcile() bool {
-	if c.ReconcilerConfig.Default == nil {
+	if c.OperatorBox.Default == nil {
 		return true
 	}
-	return *c.ReconcilerConfig.Default
+	return *c.OperatorBox.Default
 }
 
 // DefaultQueue reports whether this CRD uses the default queue configuration.

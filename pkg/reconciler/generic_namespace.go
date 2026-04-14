@@ -3,7 +3,7 @@
 // Namespace guard wiring for GenericReconciler.
 //
 // RestrictedNamespaces and AllowedNamespaces live on orktypes.CRDEntry
-// directly — not on ReconcilerConfig. GenericReconciler stores the full
+// directly — not on OperatorBoxConfig. GenericReconciler stores the full
 // CRDEntry as r.crd, so the guard reads r.crd.RestrictedNamespaces and
 // r.crd.AllowedNamespaces directly.
 //

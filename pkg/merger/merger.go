@@ -32,6 +32,9 @@ type Merger struct {
 	// security holds the security configuration of the final katalog
 	security orktypes.KatalogSecurity
 
+	// providers holds the top-level provider requirements of the final katalog
+	providers []orktypes.KatalogProviderRequirement
+
 	// merged tracks whether Merge() has been called
 	merged bool
 
@@ -169,15 +172,15 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 	}
 
 	// ── Finalizers — additive ─────────────────────────────────────────────
-	if len(override.ReconcilerConfig.Finalizers) > 0 {
+	if len(override.OperatorBox.Finalizers) > 0 {
 		seen := map[string]struct{}{}
-		for _, f := range result.ReconcilerConfig.Finalizers {
+		for _, f := range result.OperatorBox.Finalizers {
 			seen[f] = struct{}{}
 		}
-		for _, f := range override.ReconcilerConfig.Finalizers {
+		for _, f := range override.OperatorBox.Finalizers {
 			if _, ok := seen[f]; !ok {
-				result.ReconcilerConfig.Finalizers = append(
-					result.ReconcilerConfig.Finalizers, f)
+				result.OperatorBox.Finalizers = append(
+					result.OperatorBox.Finalizers, f)
 			}
 		}
 	}
@@ -186,25 +189,25 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 	// If the override declares onCreate, it replaces the base onCreate.
 	// If it doesn't declare it, the base onCreate is preserved.
 	// Same for onReconcile, onDelete, hooks, constructor, status.
-	rc := &result.ReconcilerConfig
+	rc := &result.OperatorBox
 
-	if override.ReconcilerConfig.OnCreate != nil {
-		rc.OnCreate = override.ReconcilerConfig.OnCreate
+	if override.OperatorBox.OnCreate != nil {
+		rc.OnCreate = override.OperatorBox.OnCreate
 	}
-	if override.ReconcilerConfig.OnReconcile != nil {
-		rc.OnReconcile = override.ReconcilerConfig.OnReconcile
+	if override.OperatorBox.OnReconcile != nil {
+		rc.OnReconcile = override.OperatorBox.OnReconcile
 	}
-	if override.ReconcilerConfig.OnDelete != nil {
-		rc.OnDelete = override.ReconcilerConfig.OnDelete
+	if override.OperatorBox.OnDelete != nil {
+		rc.OnDelete = override.OperatorBox.OnDelete
 	}
-	if override.ReconcilerConfig.HookFactory != nil {
-		rc.HookFactory = override.ReconcilerConfig.HookFactory
+	if override.OperatorBox.HookFactory != nil {
+		rc.HookFactory = override.OperatorBox.HookFactory
 	}
-	if override.ReconcilerConfig.Constructor != nil {
-		rc.Constructor = override.ReconcilerConfig.Constructor
+	if override.OperatorBox.Constructor != nil {
+		rc.Constructor = override.OperatorBox.Constructor
 	}
-	if override.ReconcilerConfig.Status != nil {
-		rc.Status = override.ReconcilerConfig.Status
+	if override.OperatorBox.Status != nil {
+		rc.Status = override.OperatorBox.Status
 	}
 
 	// ── Validation and mutation — override replaces if declared ───────────
@@ -281,6 +284,13 @@ func (m *Merger) ToSpec() orktypes.KatalogSpec {
 func (m *Merger) ToSecurity() orktypes.KatalogSecurity {
 	m.mustBeMerged()
 	return m.security
+}
+
+// ToProviders returns the top-level provider requirements of the merged result.
+// Used by KomposeKatalogFromYaml to populate Katalog.Providers.
+func (m *Merger) ToProviders() []orktypes.KatalogProviderRequirement {
+	m.mustBeMerged()
+	return m.providers
 }
 
 // APIMetadata returns the merged result as a KatalogMeta with apiversion and kind.

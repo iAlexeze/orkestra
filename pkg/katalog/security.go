@@ -64,7 +64,7 @@ func (r *envSecurityReader) ConversionEnabled() bool {
 	if r.k.konfig == nil {
 		return false
 	}
-	return r.k.konfig.Security().Webhooks.Conversion.Enabled
+	return r.k.konfig.Security().Conversion.Enabled
 }
 func (r *envSecurityReader) WebhooksSvcName() string {
 	if r.k.konfig == nil {
@@ -94,7 +94,7 @@ func (r *envSecurityReader) ConversionWindowVal() int {
 	if r.k.konfig == nil {
 		return 100
 	}
-	return r.k.konfig.Security().Webhooks.Conversion.ConversionWindow
+	return r.k.konfig.Security().Conversion.ConversionWindow
 }
 
 // ── Deletion protection ───────────────────────────────────────────────────────
@@ -150,10 +150,10 @@ func (k *Katalog) IsAdmissionEnabled() bool {
 //
 // Precedence:
 //
-//	YAML security.webhooks.conversion block present → use YAML value
-//	YAML block absent                               → fall back to ENABLE_CONVERSION env
+//	YAML security.conversion block present → use YAML value
+//	YAML block absent                      → fall back to ENABLE_CONVERSION env
 func (k *Katalog) IsConversionEnabled() bool {
-	if k.Security.Webhooks != nil && k.Security.Webhooks.Conversion != nil {
+	if k.Security.Conversion != nil {
 		return k.Security.IsConversionEnabled()
 	}
 	return k.securityEnvDefaults().ConversionEnabled()
@@ -207,13 +207,11 @@ func (k *Katalog) RBACCleanupOnShutdown() bool {
 //
 // Precedence:
 //
-//	YAML security.webhooks.conversion.conversionWindow > 0 → use YAML value
-//	YAML absent or zero                                    → fall back to CONVERSION_WINDOW env
+//	YAML security.conversion.conversionWindow > 0 → use YAML value
+//	YAML absent or zero                           → fall back to CONVERSION_WINDOW env
 func (k *Katalog) ConversionWindow() int {
-	if k.Security.Webhooks != nil &&
-		k.Security.Webhooks.Conversion != nil &&
-		k.Security.Webhooks.Conversion.ConversionWindow > 0 {
-		return k.Security.Webhooks.Conversion.ConversionWindow
+	if k.Security.Conversion != nil && k.Security.Conversion.ConversionWindow > 0 {
+		return k.Security.Conversion.ConversionWindow
 	}
 	return k.securityEnvDefaults().ConversionWindowVal()
 }

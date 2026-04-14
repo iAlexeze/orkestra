@@ -35,7 +35,7 @@ func toDTO(crd orktypes.CRDEntry) CRDEntryDTO {
 		Workers:    crd.Workers,
 		Resync:     crd.Resync.String(),
 		DependsOn:  crd.DependsOn.Names(),
-		Finalizers: crd.ReconcilerConfig.Finalizers,
+		Finalizers: crd.OperatorBox.Finalizers,
 		Mode:       crd.Mode,
 	}
 }
@@ -63,11 +63,11 @@ func printPrettyCRD(crd orktypes.CRDEntry) {
 	}
 
 	fmt.Println("  Reconciler:")
-	fmt.Printf("    Default: %v\n", crd.ReconcilerConfig.Default)
+	fmt.Printf("    Default: %v\n", crd.OperatorBox.Default)
 
-	if len(crd.ReconcilerConfig.Finalizers) > 0 {
+	if len(crd.OperatorBox.Finalizers) > 0 {
 		fmt.Println("    Finalizers:")
-		for _, f := range crd.ReconcilerConfig.Finalizers {
+		for _, f := range crd.OperatorBox.Finalizers {
 			fmt.Printf("      - %s\n", f)
 		}
 	}

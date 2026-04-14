@@ -107,6 +107,7 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 	}
 	m.apiMetadata = apiMetadata
 	m.security = doc.Security
+	m.providers = doc.Providers
 
 	return result, nil
 }
@@ -242,5 +243,6 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 
 	m.apiMetadata = apiMetadata
 	m.security = doc.Security
+	m.providers = doc.Providers
 	return allCRDs, nil
 }

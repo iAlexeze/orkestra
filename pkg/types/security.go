@@ -2,11 +2,11 @@
 //
 // Security configuration at the Katalog level.
 //
-// The unified security block covers three concerns:
+// The unified security block covers four concerns:
 //
 //  1. Deletion protection — webhook that blocks deletion of managed CRDs and the operator itself.
 //  2. Admission webhooks  — ValidatingWebhookConfiguration and MutatingWebhookConfiguration.
-//  3. Conversion webhook  — CRD version conversion via /convert.
+//  3. Conversion          — CRD version conversion via /convert (separate from webhooks).
 //  4. RBAC auto-apply     — ClusterRole, ClusterRoleBinding, ServiceAccount at startup.
 //
 // YAML shape:
@@ -20,10 +20,12 @@
 //	  webhooks:
 //	    admission:
 //	      enabled: true          # default: ENABLE_ADMISSION_WEBHOOK env / false
-//	    conversion:
-//	      enabled: true          # default: ENABLE_CONVERSION env / false
 //	    failurePolicy: Ignore    # default: WEBHOOKS_FAILURE_POLICY env / "Ignore"
 //	    serviceName: orkestra    # default: ORKESTRA_SERVICE_NAME env / "orkestra"
+//
+//	  conversion:
+//	    enabled: true            # default: ENABLE_CONVERSION env / false
+//	    conversionWindow: 100    # default: CONVERSION_WINDOW env / 100
 //
 //	  rbac:
 //	    enabled: true            # default: true when block is present
@@ -53,12 +55,19 @@ type KatalogSecurity struct {
 	// nil pointer: not enabled (not declared in YAML).
 	DeletionProtection *DeletionProtectionConfig `yaml:"deletionProtection,omitempty"`
 
-	// Webhooks controls the admission and conversion webhook settings.
-	// These apply globally — there is no per-CRD webhook on/off switch.
+	// Webhooks controls the admission webhook settings (ValidatingWebhookConfiguration,
+	// MutatingWebhookConfiguration). These apply globally — there is no per-CRD switch.
 	// CRDs declare validation/mutation rules; the webhook is enabled or not globally.
 	//
-	// nil pointer: webhooks not configured; ENV vars drive behavior.
+	// nil pointer: admission webhooks not configured; ENV vars drive behavior.
 	Webhooks *WebhooksConfig `yaml:"webhooks,omitempty"`
+
+	// Conversion controls the /convert endpoint and CRD version conversion.
+	// Separate from admission webhooks — conversion has its own endpoint and
+	// configuration (window size for stats, etc.).
+	//
+	// nil pointer: conversion not configured; ENV vars drive behavior.
+	Conversion *ConversionConfig `yaml:"conversion,omitempty"`
 
 	// RBAC controls whether Orkestra generates and applies RBAC resources
 	// (ClusterRole, ClusterRoleBinding, ServiceAccount) at startup.
@@ -85,13 +94,11 @@ type DeletionProtectionConfig struct {
 	FailurePolicy string `yaml:"failurePolicy,omitempty"`
 }
 
-// WebhooksConfig controls global admission and conversion webhook settings.
+// WebhooksConfig controls global admission webhook settings.
+// Conversion is declared separately under security.conversion.
 type WebhooksConfig struct {
 	// Admission controls the ValidatingWebhookConfiguration and MutatingWebhookConfiguration.
 	Admission *AdmissionWebhookToggle `yaml:"admission,omitempty"`
-
-	// Conversion controls the /convert endpoint and the CRD conversion webhook.
-	Conversion *ConversionWebhookToggle `yaml:"conversion,omitempty"`
 
 	// FailurePolicy controls what the API server does when Orkestra is unreachable
 	// for admission calls. "Fail" or "Ignore".
@@ -112,8 +119,8 @@ type AdmissionWebhookToggle struct {
 	Enabled *bool `yaml:"enabled,omitempty"`
 }
 
-// ConversionWebhookToggle controls whether the conversion webhook is globally enabled.
-type ConversionWebhookToggle struct {
+// ConversionConfig controls the /convert endpoint and CRD version conversion.
+type ConversionConfig struct {
 	// Enabled controls whether the /convert endpoint is registered and the
 	// CRD conversion webhook is active.
 	// Default: ENABLE_CONVERSION env / false.
@@ -161,13 +168,13 @@ func (s *KatalogSecurity) IsAdmissionEnabled() bool {
 
 // IsConversionEnabled returns true when the conversion webhook is globally enabled.
 func (s *KatalogSecurity) IsConversionEnabled() bool {
-	if s == nil || s.Webhooks == nil || s.Webhooks.Conversion == nil {
+	if s == nil || s.Conversion == nil {
 		return false
 	}
-	if s.Webhooks.Conversion.Enabled == nil {
+	if s.Conversion.Enabled == nil {
 		return false
 	}
-	return *s.Webhooks.Conversion.Enabled
+	return *s.Conversion.Enabled
 }
 
 // IsRBACEnabled returns the effective RBAC setting.
@@ -199,7 +206,7 @@ func (s *KatalogSecurity) DeletionProtectionFailurePolicy() string {
 	return "Fail"
 }
 
-// WebhooksServiceName returns the effective service name for admission/conversion webhooks.
+// WebhooksServiceName returns the effective service name for admission webhooks.
 // Falls back to the provided ENV default.
 func (s *KatalogSecurity) WebhooksServiceName(envDefault string) string {
 	if s != nil && s.Webhooks != nil && s.Webhooks.ServiceName != "" {

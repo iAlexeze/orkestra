@@ -1,144 +1,202 @@
-# **Orkestra Changelog — Canonical Spec, Deletion Protection & Control Center Enhancements**
+# Changelog — OperatorBox Rename, Security Refactor, Provider Credentials
 
-## **1. CRD Authoritative List & Getter Consolidation**
-- Introduced a unified, authoritative CRD registry with strongly‑typed getters.
-- Eliminated scattered CRD lookups across the codebase.
-- Centralized CRD metadata, schema, and reconciliation configuration under `CRDEntry`.
-- Ensured all reconcilers, health endpoints, and the Control Center derive their configuration from a single source of truth.
+## Breaking Changes
 
----
+### `reconciler:` → `operatorBox:` (Katalog YAML schema)
 
-## **2. Declarative Normalize Phase (Conversion Without Webhooks)**
-- Added `normalize:` block to `CRDEntry` to support **canonical spec transformation**.
-- Normalization now runs **before** mutation, validation, and template rendering.
-- Implemented a declarative, YAML‑driven alternative to Kubernetes conversion webhooks:
-  - No TLS
-  - No webhook deployments
-  - No certificate rotation
-  - No admission chain complexity
-- Normalization supports:
-  - Type‑safe field rewriting
-  - Multi‑field templating
-  - Lossless conversion of structured → string formats (e.g., CronJob schedules)
-- Ensured normalized objects propagate through the entire reconcile pipeline.
+The per-CRD runtime block has been renamed from `reconciler:` to `operatorBox:` in all Katalog YAML files.
 
----
-
-## **3. Bug Fix: Stale Error Surfacing in Status**
-- Identified and corrected a long‑standing issue where the first reconcile error persisted in `.status.conditions` even after successful reconciles.
-- Ensured the status writer now:
-  - Uses the **normalized resolver**
-  - Overwrites stale Ready conditions
-  - Reflects the **current** health of the resource, not historical failures
-- Result: status is now accurate, self‑healing, and aligned with the actual cluster state.
-
----
-
-## **4. Katalog Security Framework**
-Introduced `KatalogSecurity` to unify operator‑level security controls:
-
-### **4.1 Deletion Protection**
-- Added `deletionProtection:` block to katalog security configuration.
-- Supports:
-  - Validating webhook registration
-  - Protection of Orkestra CRDs
-  - Protection of Orkestra’s own deployment
-- Behavior:
-  - Enabled by default when block is present
-  - Explicit `enabled: false` disables protection
-- Added `DeletionProtectionConfig` with clear semantics:
-  - `nil` → not declared → disabled
-  - `enabled: true` → protection active
-  - `enabled: false` → explicitly disabled
-
-### **4.2 RBAC Auto‑Apply**
-- Added `rbac:` block with:
-  - `enabled`
-  - `cleanupOnShutdown`
-- Supports ephemeral operators and test environments.
-
----
-
-## **5. Deletion Protection Metrics & CRD Health Integration**
-- Added full metric suite for deletion protection:
-  - total
-  - success
-  - failure
-  - latency
-- Mirrored structure of validation/mutation metrics.
-- Integrated into CRD health endpoint under:
-
-```json
-{
-  "validation": { ... },
-  "mutation": { ... },
-  "protection": { ... }
-}
+**Before:**
+```yaml
+spec:
+  crds:
+    - apiTypes:
+        kind: MyApp
+      reconciler:
+        workers: 3
+        hooks: ...
 ```
 
-- Ensured Control Center consumes and displays these metrics.
+**After:**
+```yaml
+spec:
+  crds:
+    - apiTypes:
+        kind: MyApp
+      operatorBox:
+        workers: 3
+        hooks: ...
+```
+
+**Affected Go types:**
+- `ReconcilerConfig` → `OperatorBoxConfig`
+- `CRDEntry.ReconcilerConfig` → `CRDEntry.OperatorBox`
+- `ReconcilerInfo` → `OperatorBoxInfo`
+- `ReconcilerSummary` → `OperatorBoxSummary`
+- JSON response field `"reconciler"` → `"operatorBox"` in health/catalog endpoints
+- Control Center UI: "Reconciler Configuration" → "OperatorBox Configuration"
 
 ---
 
-## **6. Control Center Enhancements**
-### **6.1 Deletion Protection Indicators**
-- Added lock/unlock icons to katalog list and detail views.
-- Replaced redundant “operational” label.
-- Added tooltips:
-  - “Deletion protection enabled”
-  - “Deletion protection disabled”
+### `security.webhooks.conversion` → `security.conversion` (Katalog YAML schema)
 
-### **6.2 Deletion Protection Stats**
-- Added a new stats block in CRD detail view.
-- Matches layout and behavior of validation/mutation stats.
-- Added compact number formatting (e.g., `5k`, `12k`) with hover tooltips.
+Conversion webhooks are a separate Kubernetes concept from admission webhooks and are now declared at the top level of the `security:` block.
 
-### **6.3 YAML Viewer Improvements**
-- Removed legacy `<>` icon.
-- Added a clear **“View YAML”** button for:
-  - Katalogs
-  - CRDs
-- Uses the existing YAML modal viewer.
-- Improves discoverability and UX consistency.
+**Before:**
+```yaml
+security:
+  webhooks:
+    conversion:
+      enabled: true
+      conversionWindow: 200
+```
 
-### **6.4 Overflow & Layout Hardening**
-- Improved stat container wrapping.
-- Ensured large metric sets do not break layout.
-- Reused queueDepth tooltip and formatting logic.
+**After:**
+```yaml
+security:
+  conversion:
+    enabled: true
+    conversionWindow: 200
+```
 
 ---
 
-## **7. Documentation Updates**
-Updated documentation across:
+### `spec.providers[]` → top-level `providers:` (Katalog YAML schema)
 
-### **7.1 Notes / Developer Docs**
-- Added explanation of normalize pipeline.
-- Added examples of structured → canonical spec conversion.
-- Documented resolver lifecycle and status patching behavior.
+Provider requirements have been promoted from `spec.providers[]` to a top-level block alongside `spec:` and `security:`. Providers represent operational infrastructure dependencies — distinct state from the CRD definitions in `spec:`.
 
-### **7.2 Health / Metrics Docs**
-- Added deletion protection metrics.
-- Updated CRD health endpoint schema.
-- Added examples of new JSON output.
+**Before:**
+```yaml
+spec:
+  providers:
+    - name: aws
+      required: true
+      auth:
+        accessKeyId: "$AWS_ACCESS_KEY_ID"
+        secretAccessKey: "$AWS_SECRET_ACCESS_KEY"
+        region: "$AWS_REGION"
+  crds:
+    my-app: ...
+```
 
-### **7.3 Reconciler Docs**
-- Documented normalize → mutation → validation → reconcile order.
-- Added guidance for writing shape‑safe templates.
-- Added examples for multi‑version CRDs without webhooks.
+**After:**
+```yaml
+providers:
+  - name: aws
+    required: true
+    auth:
+      accessKeyId: "$AWS_ACCESS_KEY_ID"
+      secretAccessKey: "$AWS_SECRET_ACCESS_KEY"
+      region: "$AWS_REGION"
+  - name: mongodb
+    required: true
+    auth:
+      mongoUri: "$MONGODB_URL"
+
+spec:
+  crds:
+    my-app: ...
+
+security:
+  ...
+```
+
+The full top-level Katalog document shape is now:
+
+```yaml
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: my-operator
+
+providers:          # ← infrastructure dependencies (new top-level)
+  - name: aws
+    required: true
+    auth:
+      accessKeyId: "$AWS_ACCESS_KEY_ID"
+      ...
+
+spec:               # ← CRD definitions
+  crds:
+    my-app:
+      operatorBox: ...
+
+security:           # ← security settings
+  deletionProtection:
+    enabled: true
+```
 
 ---
 
-## **Apache 2.0 License**
-- Added Apache 2.0 license to the project, formalizing open-source distribution and usage terms.
+## New Features
 
+### Provider credentials in `providers[].auth`
 
-# **Summary**
-This release introduces:
+Top-level `providers[]` declarations accept an `auth:` map with `$ENV_VAR` expansion at startup:
 
-- A fully declarative, webhook‑free canonicalization pipeline  
-- A unified security model with deletion protection  
-- Accurate, self‑healing status reporting  
-- Richer CRD health metrics  
-- A significantly improved Control Center UI  
-- Cleaner, more discoverable YAML viewing  
-- Stronger documentation and developer ergonomics  
+```yaml
+providers:
+  - name: aws
+    required: true
+    auth:
+      accessKeyId: "$AWS_ACCESS_KEY_ID"
+      secretAccessKey: "$AWS_SECRET_ACCESS_KEY"
+      region: "$AWS_REGION"
+  - name: mongodb
+    required: true
+    auth:
+      mongoUri: "$MONGODB_URL"
+```
+
+- Providers **not declared** at top level are never registered. Per-CRD `operatorBox.providers` blocks for unregistered providers are skipped with a warning log.
+- `required: true` causes a fatal startup error if the provider fails to initialise.
+- `required: false` logs a warning and the operator continues.
+- Both `auth.mongoUri` and `auth.uri` are accepted for MongoDB.
+
+### `crdEntry.conversion.updateCRD` — automatic caBundle patching
+
+When a CRD uses conversion webhooks, set `updateCRD: true` to have Orkestra patch the CRD's `spec.conversion.webhook.clientConfig.caBundle` automatically at startup:
+
+```yaml
+spec:
+  crds:
+    my-app:
+      conversion:
+        storageVersion: v1
+        updateCRD: true
+        paths: [...]
+```
+
+### Unified TLS certificate handling
+
+TLS certificates (required for deletion protection, admission webhooks, and conversion webhooks) are now stored in a single location (`SecurityConfig.Webhooks.TLSCert/TLSKey`) and shared across all three webhook types. The deprecated `webhookConfig` / `webhookRegistration` types have been removed.
+
+### Deletion protection enabled by default when block is declared
+
+When `security.deletionProtection:` is present in the Katalog YAML without an explicit `enabled:` field, deletion protection defaults to **enabled**. This prevents accidental omission from silently disabling protection.
+
+### `NeedsCertificates()` on Katalog
+
+A single method now determines whether TLS generation is required — it returns `true` when any of deletion protection, admission webhooks, or conversion is active.
+
+---
+
+## Internal Changes
+
+- `pkg/types/katalog.go` — `Providers []KatalogProviderRequirement` removed from `KatalogSpec`; added as top-level field on `KatalogFile` and `KatalogForUI`.
+- `pkg/katalog/type.go` — `Providers []KatalogProviderRequirement` added as top-level field on `Katalog` runtime struct.
+- `pkg/merger/merger.go` — `providers` field added; `ToProviders()` method added.
+- `pkg/merger/file.go` — `m.providers = doc.Providers` set in both `loadKatalog` and `loadKomposer`.
+- `pkg/katalog/parser.go` — `k.Providers = m.ToProviders()` wired in `KomposeKatalogFromYaml`.
+- `pkg/types/provider_katalog.go` — Package-level comment updated; `KatalogProviderRequirement` doc updated.
+- `pkg/konfig/type.go` — Removed deprecated `webhookConfig`, `webhookRegistration` types and their accessor methods. TLS fields moved into `SecurityConfig.Webhooks`. Port constants exposed via `HTTPSPort()` / `HTTPSPortInt32()`.
+- `pkg/katalog/security.go` — Full rewrite using `envSecurityReader` adapter pattern for ENV → YAML precedence without import cycles.
+- `pkg/health/webhook_registration.go` — Added `admissionv1FailurePolicyType()` helper; removed dependency on `WebhookRegistration()`.
+- `pkg/kubeclient/kubeclient.go` — Added `ApiextensionsClient()` method backed by `apiextclientset.Interface` for CRD patching.
+- `pkg/provider/aws/provider.go` — Added `NewFromAuth()` constructor for credential injection from Katalog auth map.
+- `pkg/provider/mongo/provider.go` — Now registered via Katalog-level declaration; `NewFromURI()` called with resolved auth.
+- `cmd/internal/provider.go` — Rewritten to iterate `kat.Providers` (top-level) rather than `kat.Spec.Providers`.
+- `cmd/internal/konstruct_security.go` — `ensureSecurity()` extended to cover admission + conversion; `patchConversionCRDs()` added.
+- `docs/runtime-manual/concepts/provider.md` — Updated for `providers:` top-level, `operatorBox.providers` per-CRD.
+- `docs/publications/provider-library.md` — Updated pattern YAML to use top-level `providers:`.
+- All YAML katalog files — `reconciler:` → `operatorBox:` (53 occurrences).

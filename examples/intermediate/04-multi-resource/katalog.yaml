@@ -20,7 +20,7 @@ spec:
       workers: 3
       resync: 15s
 
-      reconciler:
+      operatorBox:
         default: true
 
         # ── Status ───────────────────────────────────────────────────────

@@ -252,7 +252,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// Must be built BEFORE the factory loop so all reconciler closures capture
 	// the same fully-initialised registry. loadProviders is non-fatal —
 	// unavailable providers log a warning and the operator starts regardless.
-	providerRegistry := loadProviders(ctx)
+	providerRegistry := loadProviders(ctx, kat)
 
 	// ── 4d. Kordinator registry + per-CRD wiring ──────────────────────────────
 	// ktrlRegistry maps GVK → (CRDEntry, SharedIndexInformer, ReconcilerFactory).
@@ -312,7 +312,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			inf = infFactory.For(object, ctx, opts)
 		}
 
-		finalizers = append(finalizers, crd.ReconcilerConfig.Finalizers...)
+		finalizers = append(finalizers, crd.OperatorBox.Finalizers...)
 
 		infCopy := inf
 
@@ -329,8 +329,8 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			objCopy := object
 
 			var anyHooks domain.AnyReconcileHooks
-			if crd.ReconcilerConfig.HookFactory != nil {
-				anyHooks = crd.ReconcilerConfig.HookFactory()
+			if crd.OperatorBox.HookFactory != nil {
+				anyHooks = crd.OperatorBox.HookFactory()
 			}
 
 			logger.Debug().Str("gvk", gvk).Msg("wiring GenericReconciler factory")
@@ -350,7 +350,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 				)
 			}
 		} else {
-			if crd.ReconcilerConfig.Constructor == nil {
+			if crd.OperatorBox.Constructor == nil {
 				logger.Fatal().
 					Str("gvk", gvk).
 					Msg("reconciler.default is false but no Constructor provided")
@@ -359,7 +359,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			logger.Debug().Str("gvk", gvk).Msg("wiring custom reconciler factory")
 
 			factory = func() domain.Reconciler {
-				return crd.ReconcilerConfig.Constructor(kube, infCopy, ev)
+				return crd.OperatorBox.Constructor(kube, infCopy, ev)
 			}
 		}
 

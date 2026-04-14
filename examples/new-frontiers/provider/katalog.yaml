@@ -42,7 +42,7 @@ spec:
           - field: spec.enableStorage
             default: "true"
 
-      reconciler:
+      operatorBox:
         default: true
 
         # ── Kubernetes resources ────────────────────────────────────────────

@@ -7,22 +7,29 @@ MongoDB, Stripe, Vault, or any API a Kubernetes operator needs to call.
 
 ## The two layers
 
-**Layer 1 — Catalog-level manifest** (`spec.providers`)
+**Layer 1 — Katalog-level manifest** (`providers`)
 
-Declares which provider libraries this Katalog requires. Used by `ork validate`
+Declares which provider libraries this Katalog requires. Top-level alongside
+`spec:` and `security:` — providers represent operational infrastructure
+dependencies, distinct state from CRD definitions. Used by `ork validate`
 to warn when a required provider is not registered, and by `ork provider install`
 to pull OCI artifacts.
 
 ```yaml
-spec:
-  providers:
-    - name: aws
-      required: true
-    - name: mongodb
-      required: false
+providers:
+  - name: aws
+    required: true
+    auth:
+      accessKeyId: "$AWS_ACCESS_KEY_ID"
+      secretAccessKey: "$AWS_SECRET_ACCESS_KEY"
+      region: "$AWS_REGION"
+  - name: mongodb
+    required: false
+    auth:
+      mongoUri: "$MONGODB_URL"
 ```
 
-**Layer 2 — Per-CRD declarations** (`spec.crds[].reconciler.providers`)
+**Layer 2 — Per-CRD declarations** (`spec.crds[].operatorBox.providers`)
 
 The actual resource declarations — what to create, update, or delete for each
 CR instance. These are dispatched to the registered provider library at
@@ -32,7 +39,7 @@ reconcile time.
 spec:
   crds:
     my-app:
-      reconciler:
+      operatorBox:
         providers:
           aws:
             - s3:
@@ -51,7 +58,7 @@ spec:
 ## How providers are dispatched
 
 ```
-Katalog parsed → ReconcilerConfig.ProviderBlocks populated
+Katalog parsed → OperatorBoxConfig.ProviderBlocks populated
                       ↓
 GenericReconciler.reconcileImpl
                       ↓
@@ -69,7 +76,7 @@ runProviders(ctx, obj, resolver, blocks, registry, kube)
     └── On finalizer: runProviderDelete(...)      — provider.Delete(ctx, req)
 ```
 
-The registry is built once in `loadProviders(ctx)` at startup and captured
+The registry is built once in `loadProviders(ctx, kat)` at startup and captured
 in each reconciler factory closure. It never passes through
 `DependencyKordinator` or `ReconcilerFactory`.
 
@@ -77,14 +84,14 @@ in each reconciler factory closure. It never passes through
 
 ## The YAML structure
 
-A provider block is a named map under `reconciler.providers`. The key is the
+A provider block is a named map under `operatorBox.providers`. The key is the
 provider's `Name()` return value. The value is a list of declarations.
 
 Each declaration is a single-key map where the key is the resource kind and
 the value is the field map. `when:` is a special key for conditions.
 
 ```yaml
-reconciler:
+operatorBox:
   providers:
     aws:                                     # block name → registry.Get("aws")
       - s3:                                  # declaration kind

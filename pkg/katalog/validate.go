@@ -245,8 +245,8 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		}
 
 		// Handle finalizers
-		if len(crd.ReconcilerConfig.Finalizers) == 0 {
-			crd.ReconcilerConfig.Finalizers = k.Spec.Finalizers
+		if len(crd.OperatorBox.Finalizers) == 0 {
+			crd.OperatorBox.Finalizers = k.Spec.Finalizers
 		}
 
 		// Handle Resync
@@ -315,7 +315,7 @@ func (k *Katalog) addRuntimeObjects() error {
 // Add reconcilers
 func (k *Katalog) addReconcilers() error {
 	for name, crd := range k.enabledCRDs {
-		rc := crd.ReconcilerConfig
+		rc := crd.OperatorBox
 
 		// Add providers block
 		if len(rc.ProviderBlocks) > 0 {
@@ -343,7 +343,7 @@ func (k *Katalog) addReconcilers() error {
 			rc.Constructor = constructorFn
 		}
 
-		crd.ReconcilerConfig = rc
+		crd.OperatorBox = rc
 		k.enabledCRDs[name] = crd
 	}
 	return nil
@@ -357,7 +357,7 @@ func (k *Katalog) addHooks() error {
 			continue
 		}
 		if hookFn, ok := orktypes.HookRegistry[crd.GroupVersionKind]; ok {
-			crd.ReconcilerConfig.HookFactory = hookFn
+			crd.OperatorBox.HookFactory = hookFn
 			k.enabledCRDs[name] = crd
 		}
 		// not found — fine, GenericReconciler runs without hooks

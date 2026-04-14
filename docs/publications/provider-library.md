@@ -456,14 +456,13 @@ kind: Pattern
 metadata:
   name: rds-backed-application
   version: 1.2.0
-spec:
-  providers:
-    - name: aws
-      library: oci://registry.orkestra.io/providers/aws:1.8.0
-      required: true
-    - name: database
-      library: oci://registry.orkestra.io/providers/database:2.1.0
-      required: false
+providers:
+  - name: aws
+    library: oci://registry.orkestra.io/providers/aws:1.8.0
+    required: true
+  - name: database
+    library: oci://registry.orkestra.io/providers/database:2.1.0
+    required: false
 ```
 
 The `ork` CLI handles provider installation:
