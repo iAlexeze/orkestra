@@ -1456,9 +1456,11 @@ type CRDEntry struct {
 	// Supports three YAML formats (list, key-value, full map) — see DependsOnMap.
 	DependsOn DependsOnMap `yaml:"dependsOn,omitempty" json:"dependsOn,omitempty"`
 
-	// ── Reconciler + Queue ────────────────────────────────────────────────────
+	// ── OperatorBox ────────────────────────────────────────────────────
 	OperatorBox OperatorBoxConfig `yaml:"operatorBox,omitempty" json:"operatorBox,omitempty"`
-	Queue       Queue             `yaml:"queue,omitempty" json:"queue,omitempty"`
+
+	// ── Queue ────────────────────────────────────────────────────
+	Queue Queue `yaml:"queue,omitempty" json:"queue,omitempty"`
 
 	// Labels           []ResourceLabel  `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 	// LabelSelector filters which resources this CRD entry reconciles.
