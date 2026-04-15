@@ -6,8 +6,8 @@
   <h3><em>Declare. Run.</em></h3>
 
   <p>
-    <a href="https://goreportcard.com/report/github.com/orkestra-sh/orkestra"><img src="https://goreportcard.com/badge/github.com/ialexeze/orkestra" alt="Go Report Card" /></a>
-    <a href="https://github.com/orkspace/orkestra/releases"><img src="https://img.shields.io/github/v/release/orkestra-sh/orkestra" alt="Release" /></a>
+    <a href="https://goreportcard.com/report/github.com/orkspace/orkestra"><img src="https://goreportcard.com/badge/github.com/orkspace/orkestra" alt="Go Report Card" /></a>
+    <a href="https://github.com/orkspace/orkestra/releases"><img src="https://img.shields.io/github/v/release/orkspace/orkestra" alt="Release" /></a>
     <img src="https://img.shields.io/badge/Go-1.22+-00ADD8.svg" alt="Go" />
     <img src="https://img.shields.io/badge/Kubernetes-1.28+-326CE5.svg" alt="Kubernetes" />
     <img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License" />
@@ -16,7 +16,7 @@
   <p>
     <a href="https://orkestra.readthedocs.io">Docs</a> ·
     <a href="https://orkestra.readthedocs.io/en/latest/getting-started">Quick Start</a> ·
-    <a href="https://github.com/orkestra-sh/orkestra/discussions">Discussions</a>
+    <a href="https://github.com/orkspace/orkestra/discussions">Discussions</a>
   </p>
 </div>
 
@@ -102,9 +102,9 @@ Fifteen CRDs. One process. ~47 MB.
 
 ```bash
 # Install
-brew install iAlexeze/tap/ork
+brew install orkspace/tap/ork
 # or
-curl -sSL https://raw.githubusercontent.com/orkestra-sh/orkestra/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
 
 # Initialize an operator
 ork init my-operator && cd my-operator
@@ -115,10 +115,12 @@ ork run --katalog examples/website/website-katalog.yaml
 
 # Apply a CR
 kubectl apply -f examples/website/website-cr.yaml
+```
 
-# Watch live on Control Center → localhost:8090
-## → (in another terminal)
+### Watch live on Control Center → localhost:8090
+In another terminal, run:
 
+```bash
 ork control start
 ```
 
@@ -159,9 +161,9 @@ Orkestra changes the unit of distribution. Operators are **Katalogs** — YAML *
 ```yaml
 sources:
   registry:
-    - url: ghcr.io/orkestra-sh/registry/postgres:v14
+    - url: ghcr.io/orkspace/registry/postgres:v14
       oci: true
-    - url: ghcr.io/orkestra-sh/registry/redis:v7
+    - url: ghcr.io/orkspace/registry/redis:v7
       oci: true
 ```
 
@@ -179,6 +181,31 @@ spec:
 Full documentation: [Orkestra Registry](https://orkestra.readthedocs.io/en/latest/orkestra-registry/)
 
 ---
+## Operator Autoscaler
+
+Every CRD in Orkestra runs inside an isolated **OperatorBox** with its own workers, queue, and metrics. The **Operator Autoscaler** lets you scale these dynamically — no Go code, no external controller.
+
+```yaml
+operatorBox:
+  autoscale:
+    interval: 30s   # how often to evaluate conditions
+    cooldown: 2m    # how long conditions must be false before reverting
+    conditions:
+      when:
+        - field: metrics.queueDepth
+          greaterThan: "300"
+    do:
+      workers: 12
+      queueDepth: 1000
+```
+
+When conditions are true, Orkestra applies the overrides immediately.  
+When they’re false — and the cooldown has elapsed — it restores the CRD’s baseline.
+
+Autoscaling is **declarative, safe, and fully reversible**.
+
+---
+
 
 ## Validation and mutation
 
@@ -589,7 +616,7 @@ With `deletionProtection` enabled, Orkestra registers a validating webhook that 
 
 ## Community
 
-[Issues](https://github.com/orkestra-sh/orkestra/issues) · [Discussions](https://github.com/orkestra-sh/orkestra/discussions) · [Contributing](./CONTRIBUTING.md)
+[Issues](https://github.com/orkspace/orkestra/issues) · [Discussions](https://github.com/orkspace/orkestra/discussions) · [Contributing](./CONTRIBUTING.md)
 
 ---
 
