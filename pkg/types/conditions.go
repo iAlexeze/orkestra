@@ -71,6 +71,29 @@ type Condition struct {
 	// Numeric shorthands
 	GreaterThan string `yaml:"greaterThan,omitempty"`
 	LessThan    string `yaml:"lessThan,omitempty"`
+
+	// Notify — optional notification targets to trigger when this condition
+	// transitions from false → true.
+	//
+	// Targets reference names declared under:
+	//   notification:
+	//     teams:
+	//       platform:
+	//         email: [...]
+	//       application:
+	//         email: [...]
+	//         slack: [...]
+	//
+	// Example:
+	//   when:
+	//     - field: status.phase
+	//       equals: Degraded
+	//       notify:
+	//         - platform
+	//         - application
+	//
+	// Notifications fire only on transition, not on every reconcile.
+	Notify []string `yaml:"notify,omitempty"`
 }
 
 // ConditionOperator defines how a condition's field is compared to its value.

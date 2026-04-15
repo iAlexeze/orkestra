@@ -218,6 +218,11 @@ func (c *CRDEntry) AutoscaleEnabled() bool {
 	return c.OperatorBox.Autoscale != nil
 }
 
+// NotificationEnabled reports whether this CRD declares the notification block
+func (c *CRDEntry) IsNotificationEnabled() bool {
+	return c.NotificationEnabled
+}
+
 // ValidateMetricField returns an error if the field is not a known autoscale metric.
 func (c *CRDEntry) ValidateMetricField(field string) error {
 	known := map[string]struct{}{

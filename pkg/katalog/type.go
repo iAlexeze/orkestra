@@ -23,6 +23,7 @@ type Katalog struct {
 	Kind             string                                `yaml:"kind"`
 	Spec             orktypes.KatalogSpec                  `yaml:"spec"`
 	Security         orktypes.KatalogSecurity              `yaml:"security"`
+	Notification     *orktypes.KatalogNotification         `yaml:"notification,omitempty"`
 	Providers        []orktypes.KatalogProviderRequirement `yaml:"providers,omitempty"`
 	KomposerMetadata orktypes.KatalogMeta                  `yaml:"metadata"`
 

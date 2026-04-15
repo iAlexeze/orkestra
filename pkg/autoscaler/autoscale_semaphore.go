@@ -1,4 +1,4 @@
-// pkg/reconciler/autoscale_semaphore.go
+// pkg/autoscaler/autoscale_semaphore.go
 //
 // ResizableSemaphore — a weighted semaphore whose capacity can be changed at runtime.
 //
@@ -15,7 +15,7 @@
 //   - Resize is O(1) — no goroutine creation or cancellation
 //   - In-flight reconciles complete cleanly after a scale-down
 //   - The semaphore is the single source of truth for concurrency
-package reconciler
+package autoscaler
 
 import (
 	"context"

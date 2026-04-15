@@ -1,4 +1,4 @@
-// pkg/reconciler/autoscaler.go
+// pkg/autoscaler/autoscaler.go
 //
 // Operatorbox autoscaler — evaluates conditions on a ticker and applies or
 // restores worker/queue/resync overrides.
@@ -10,7 +10,7 @@
 // The autoscaler has no persistent state. A restart always begins from the
 // declared CRD baseline. Overrides applied before a restart are lost — the
 // next evaluation tick will re-apply them if conditions are still met.
-package reconciler
+package autoscaler
 
 import (
 	"context"

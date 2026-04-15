@@ -8,10 +8,13 @@ import (
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/autoscaler"
 	"github.com/ialexeze/orkestra/pkg/event"
+	"github.com/ialexeze/orkestra/pkg/katalog"
 	"github.com/ialexeze/orkestra/pkg/kordinator"
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/notification"
 	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
 	orkqueue "github.com/ialexeze/orkestra/pkg/queue"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
@@ -56,17 +59,18 @@ type GenericReconciler[T domain.Object] struct {
 	rc               orktypes.OperatorBoxConfig
 	newObj           func() T
 	crd              orktypes.CRDEntry
+	kat              *katalog.Katalog
 
 	// workerSem gates concurrent reconcile execution. All worker goroutines run
 	// continuously; the semaphore controls how many may be in Reconcile simultaneously.
 	// Resized at runtime by the autoscaler when autoscale: is declared.
-	workerSem *ResizableSemaphore
+	workerSem *autoscaler.ResizableSemaphore
 
 	// autoMetrics holds live operatorbox runtime metrics for autoscale evaluation.
-	autoMetrics *AutoMetrics
+	autoMetrics *autoscaler.AutoMetrics
 
 	// autoscaler is non-nil when operatorBox.autoscale is declared.
-	autoscaler *Autoscaler
+	autoscaler *autoscaler.Autoscaler
 
 	// queue is the per-CRD workqueue, injected by startCRDWorkers after construction.
 	// Used by SetQueueDepthLimit and the resync goroutine.
@@ -76,6 +80,9 @@ type GenericReconciler[T domain.Object] struct {
 	// 0 means the resync goroutine is idle (informer handles baseline resync).
 	// Written by SetResyncInterval; read by the resync goroutine.
 	resyncNs atomic.Int64
+
+	// Notification
+	notifStack *notification.NotificationStack
 }
 
 func NewGenericReconciler[T domain.Object](
@@ -106,8 +113,8 @@ func NewGenericReconciler[T domain.Object](
 	if workers <= 0 {
 		workers = 1
 	}
-	sem := NewResizableSemaphore(workers)
-	autoMet := NewAutoMetrics(sem)
+	sem := autoscaler.NewResizableSemaphore(workers)
+	autoMet := autoscaler.NewAutoMetrics(sem)
 
 	r := &GenericReconciler[T]{
 		katalogRegistry:  katalogRegistry,
@@ -130,13 +137,22 @@ func NewGenericReconciler[T domain.Object](
 			QueueDepth: crd.Queue.MaxQueueDepth,
 			Resync:     crd.Resync,
 		}
-		r.autoscaler = NewAutoscaler(
+		r.autoscaler = autoscaler.NewAutoscaler(
 			crd.APITypes.Kind,
 			crd.OperatorBox.Autoscale,
 			baseline,
 			r,
 			autoMet,
 		)
+	}
+
+	// TODO
+	if crd.IsNotificationEnabled() {
+		r.notifStack = &notification.NotificationStack{
+			Katalog:      r.kat,
+			State:        notification.NewNotificationState(),
+			ResolverData: make(map[string]interface{}),
+		}
 	}
 
 	return r

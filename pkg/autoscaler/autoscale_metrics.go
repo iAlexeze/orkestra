@@ -1,4 +1,4 @@
-// pkg/reconciler/autoscale_metrics.go
+// pkg/autoscaler/autoscale_metrics.go
 //
 // AutoMetrics — live operatorbox metrics read directly from the runtime.
 //
@@ -7,7 +7,7 @@
 //
 // Metric fields are exposed under the "metrics.*" namespace in autoscale
 // conditions and resolve through AutoMetrics.Get(field).
-package reconciler
+package autoscaler
 
 import (
 	"math"

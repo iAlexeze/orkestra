@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/ialexeze/orkestra/domain"
+	"github.com/ialexeze/orkestra/pkg/autoscaler"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orkqueue "github.com/ialexeze/orkestra/pkg/queue"
 )
@@ -49,7 +50,7 @@ type QueueDepthReporter interface {
 	ReportQueueDepth(depth int64)
 }
 
-var _ AutoscaleTarget = (*GenericReconciler[domain.Object])(nil)
+var _ autoscaler.AutoscaleTarget = (*GenericReconciler[domain.Object])(nil)
 var _ AutoscalerRunner = (*GenericReconciler[domain.Object])(nil)
 var _ ResyncLoopStarter = (*GenericReconciler[domain.Object])(nil)
 var _ QueueInjector = (*GenericReconciler[domain.Object])(nil)

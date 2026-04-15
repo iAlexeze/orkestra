@@ -259,6 +259,11 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 			crd.Workers = kfg.Cluster().DefaultWorkers
 		}
 
+		// Handle Notifications
+		if k.IsEmailNotificationEnabled() || k.IsSlackNotificationEnabled() {
+			crd.NotificationEnabled = true
+		}
+
 		k.enabledCRDs[name] = crd
 	}
 	return nil

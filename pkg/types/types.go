@@ -1559,6 +1559,9 @@ type CRDEntry struct {
 	// Normalize Spec fields before rendering
 	Normalize *NormalizeConfig `yaml:"normalize,omitempty"`
 
+	// NotificationEnabled returns whether this CRD belongs to katalog with notification access
+	NotificationEnabled bool `yaml:"-" json:"-"`
+
 	// RemoveFinalizers -> testing
 	RemoveFinalizers bool `yaml:"removeFinalizers,omitempty" json:"removeFinalizers,omitempty"`
 }
