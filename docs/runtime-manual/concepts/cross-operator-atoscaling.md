@@ -163,7 +163,7 @@ This returns:
 - status  
 - labels  
 - found flag  
-- **metrics** (if the remote instance supports it)  
+- metrics  
 
 ### Why this is safe
 

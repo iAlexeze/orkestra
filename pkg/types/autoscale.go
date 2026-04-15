@@ -53,6 +53,11 @@ type AutoscaleSpec struct {
 	// Do declares the override values applied when conditions are met.
 	// Fields omitted in Do are not changed — only declared fields are overridden.
 	Do AutoscaleAction `yaml:"do"`
+
+	// A profile is:
+	// 	a named preset that expands into a complete autoscale configuration
+	// using computed heuristics tuned for a specific behavior pattern
+	Profile string `yaml:"profile,omitempty"`
 }
 
 // AutoscaleConditions holds the condition blocks for autoscale evaluation.

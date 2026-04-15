@@ -219,7 +219,7 @@ func (c *CRDEntry) AutoscaleEnabled() bool {
 }
 
 // ValidateMetricField returns an error if the field is not a known autoscale metric.
-func ValidateMetricField(field string) error {
+func (c *CRDEntry) ValidateMetricField(field string) error {
 	known := map[string]struct{}{
 		"metrics.workersBusyPercent":     {},
 		"metrics.workersIdlePercent":     {},
@@ -243,4 +243,14 @@ func ValidateMetricField(field string) error {
 	}
 
 	return nil
+}
+
+// HasAutoscaleProfile reports whether this crd defined autoscale profile
+func (c *CRDEntry) HasAutoscaleProfile() bool {
+	return c.OperatorBox.Autoscale != nil && c.OperatorBox.Autoscale.Profile != ""
+}
+
+// AutoScaleProfile returns the string value of the autoscale profile
+func (c *CRDEntry) AutoScaleProfile() string {
+	return c.OperatorBox.Autoscale.Profile
 }

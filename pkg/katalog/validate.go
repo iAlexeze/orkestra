@@ -394,7 +394,7 @@ func (k *Katalog) validateStatus() {
 
 // validateAutoscalerMetrics ensures only supported metrics.* fields are used.
 // This is a fail-fast mechanism to avoid runtime errors.
-func (k *Katalog) validateAutoscalerMetrics() {
+func (k *Katalog) validateAutoscalerMetrics() error {
 	for name, crd := range k.enabledCRDs {
 		if !crd.AutoscaleEnabled() {
 			continue
@@ -405,8 +405,9 @@ func (k *Katalog) validateAutoscalerMetrics() {
 		// Validate anyOf
 		for _, c := range conds.AnyOf {
 			if strings.HasPrefix(c.Field, "metrics.") {
-				if err := orktypes.ValidateMetricField(c.Field); err != nil {
+				if err := crd.ValidateMetricField(c.Field); err != nil {
 					k.handleValidationErrors(err)
+					return err
 				}
 			}
 		}
@@ -414,12 +415,14 @@ func (k *Katalog) validateAutoscalerMetrics() {
 		// Validate when
 		for _, c := range conds.When {
 			if strings.HasPrefix(c.Field, "metrics.") {
-				if err := orktypes.ValidateMetricField(c.Field); err != nil {
+				if err := crd.ValidateMetricField(c.Field); err != nil {
 					k.handleValidationErrors(err)
+					return err
 				}
 			}
 		}
 
 		k.enabledCRDs[name] = crd
 	}
+	return nil
 }
