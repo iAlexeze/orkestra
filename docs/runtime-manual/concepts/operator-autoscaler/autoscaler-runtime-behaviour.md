@@ -1,182 +1,154 @@
 # Autoscaler Runtime Behavior
-*How the Operator Autoscaler executes inside Orkestra.*
+*How the autoscaler behaves at runtime.*
 
-The Operator Autoscaler runs **inside Kordinator**, alongside the worker pool, queue manager, and health engine. It is a lightweight, per‑CRD controller that evaluates autoscale conditions on a fixed interval and applies overrides immediately when conditions are met.
+The autoscaler runs as part of every OperatorBox that declares an `autoscale:` block.  
+It evaluates conditions, applies overrides, restores baselines, and exposes live metrics — all in‑memory, without API calls or external controllers.
 
-The autoscaler is **authoritative** for three runtime parameters:
-
-- worker count  
-- queue depth  
-- resync interval  
-
-Kordinator trusts the autoscaler to manage these values throughout the operator lifecycle.
+Autoscaling is **safe**, **deterministic**, and **fully reversible**.
 
 ---
 
-## 1. Lifecycle
+## 1. Evaluation loop
 
-The autoscaler is activated when:
+The autoscaler runs on a fixed interval:
 
 ```yaml
-operatorBox:
-  autoscale: { ... }
+interval: 30s
 ```
 
-is present in the CRD’s Katalog entry.
+On every tick:
 
-At Katalog load time:
+1. Read local metrics (`metrics.*`)
+2. Read cross‑operator metrics (`cross.<alias>.metrics.*`)
+3. Evaluate `anyOf` (OR)
+4. Evaluate `when` (AND)
+5. Combine results  
+   ```
+   final = anyOf_passes AND when_passes
+   ```
 
-1. The CRD’s declared `workers`, `queueDepth`, and `resync` are captured as the **baseline**.
-2. A per‑CRD autoscaler goroutine is started.
-3. The autoscaler begins evaluating conditions every `interval:`.
-
-If autoscaling is not declared, the CRD runs with its baseline configuration for its entire lifetime.
+This evaluation is O(1) and entirely in‑memory.
 
 ---
 
-## 2. Autoscaler loop
+## 2. Applying overrides
 
-Each CRD with autoscaling enabled runs its own loop:
+If `final == true`, the autoscaler applies the `do:` overrides immediately:
 
-```
-every interval:
-    evaluate conditions
-    if conditions true:
-        apply overrides immediately
-    else if conditions false for entire cooldown:
-        restore baseline
-```
+- `workers:` → resizes the worker semaphore  
+- `queueDepth:` → updates the queue’s max depth  
+- `resync:` → adjusts the resync interval  
 
-This loop is independent of:
+Overrides take effect **without restarting** the operator or Orkestra.
 
-- the reconcile loop  
-- the worker pool  
-- the queue processor  
-- the health engine  
-
-Autoscaling does not block or interfere with normal reconciliation.
+Workers scale up instantly.  
+Workers scale down gracefully (no goroutines are killed).
 
 ---
 
-## 3. Applying overrides
+## 3. Restoring baseline
 
-When conditions evaluate to **true**, the autoscaler applies the `do:` block:
+If `final == false` for the entire `cooldown:` period:
 
 ```yaml
-do:
-  workers: 12
-  queueDepth: 1000
-  resync: 20s
+cooldown: 2m
 ```
 
-Overrides are applied **immediately** and **atomically**:
+…the autoscaler restores the CRD’s declared baseline:
 
-### Workers
-The worker pool uses a resizable semaphore.  
-Increasing workers raises the semaphore capacity.  
-Decreasing workers reduces capacity after in‑flight reconciles complete.
-
-No goroutines are killed.  
-No work is interrupted.
-
-### Queue depth
-The queue’s maximum depth is updated in place.  
-If the queue is already deeper than the new limit, no items are dropped — the limit only affects *new* enqueues.
-
-### Resync
-A dedicated resync goroutine re‑enqueues all objects at the override interval.  
-When the override ends, this goroutine idles and the baseline resync takes over.
-
----
-
-## 4. Restoring baseline
-
-When conditions are false for the entire `cooldown:` period, the autoscaler restores:
-
-- baseline workers  
+- baseline worker count  
 - baseline queue depth  
 - baseline resync interval  
 
-Restoration is also atomic and uses the same mechanisms as override application.
+Restoration is also immediate and safe.
 
-A restart of Orkestra always begins from the baseline, never from an override.
+If `cooldown:` is omitted, restoration happens on the next tick.
 
 ---
 
-## 5. Cooldown behavior
+## 4. Local metrics (`metrics.*`)
 
-Cooldown prevents oscillation when metrics fluctuate around a threshold.
+Each OperatorBox maintains its own live metrics:
 
-Example:
+- queue depth  
+- busy/idle worker percentage  
+- reconcile P95 duration  
+- error rate  
+- total reconciles  
 
+These are updated continuously by the worker pool and reconcile loop.
+
+All metrics are atomic and read without locking.
+
+---
+
+## 5. Cross‑operator metrics (`cross.<alias>.metrics.*`)
+
+When an operator declares:
+
+```yaml
+cross:
+  - kind: database
+    selector:
+      name: "{{ .metadata.name }}-db"
+    as: db
 ```
-queueDepth: 195 → 205 → 198 → 210 → 190
+
+…the autoscaler automatically receives:
+
+```yaml
+cross.db.metrics.queueDepth
+cross.db.metrics.workersBusyPercent
+cross.db.metrics.errorRatePercent
+cross.db.metrics.reconcileDurationP95Ms
 ```
 
-Without cooldown:
+Cross metrics come from:
 
-- autoscaler would apply and revert on alternating ticks
+1. **Informer cache** (same‑binary operators)  
+2. **HTTP fallback** (cross‑binary / cross‑cluster)  
+3. **Not‑found map** (if neither path is available)
 
-With cooldown:
-
-- override applies immediately when conditions become true  
-- override reverts only after conditions remain false for the entire cooldown window  
-
-Cooldown applies **only** to the revert direction.  
-Overrides are always immediate.
+If the referenced operator is not found, all cross‑metric conditions evaluate to **false**.
 
 ---
 
-## 6. Condition evaluation
+## 6. Interaction with the reconcile loop
 
-On each tick, the autoscaler evaluates:
+Autoscaling never interrupts reconciliation.
 
-- `anyOf:` (OR)  
-- `when:` (AND)  
-- metric conditions  
-- clock windows  
-- day‑of‑week rules  
-- cron expressions  
+- Scaling **up** increases concurrency immediately  
+- Scaling **down** waits for in‑flight reconciles to finish  
+- Queue depth changes do not drop items  
+- Resync interval changes take effect on the next cycle  
 
-All evaluations are:
-
-- in‑memory  
-- constant‑time  
-- independent of the API server  
-- independent of informers  
-
-This makes the autoscaler extremely fast and predictable.
+The reconcile loop remains fully deterministic.
 
 ---
 
-## 7. Interaction with Kordinator
+## 7. Interaction with drift correction
 
-Kordinator delegates three responsibilities to the autoscaler:
+Drift correction (`reconcile: true`) continues to run normally:
 
-| Responsibility | Owner |
-|---|---|
-| Decide when to scale | Autoscaler |
-| Apply scaling decisions | Kordinator |
-| Maintain baseline | Kordinator |
+- Overrides do not disable drift correction  
+- Drift correction respects the current worker count  
+- Resync overrides accelerate or slow down drift correction frequency  
 
-Kordinator does **not** second‑guess autoscaler decisions.  
-The autoscaler is the **source of truth** for runtime scaling.
+Autoscaling and drift correction are orthogonal.
 
 ---
 
-## 8. Metrics emitted by the autoscaler
+## 8. Logging
 
-The autoscaler exposes its own metrics:
+The autoscaler logs:
 
-| Metric | Description |
-|---|---|
-| `orkestra_autoscale_override_active{crd}` | 1 when override is active |
-| `orkestra_autoscale_overrides_total{crd}` | Count of override activations |
-| `orkestra_autoscale_restores_total{crd}` | Count of baseline restorations |
-| `orkestra_autoscale_workers_current{crd}` | Current worker count |
-| `orkestra_autoscale_queue_depth_current{crd}` | Current queue depth limit |
+- condition evaluations  
+- override applications  
+- baseline restorations  
+- cross‑operator metric reads  
+- informer vs HTTP path selection  
 
-These appear in `/metrics` and the Control Center.
+This makes autoscaling fully observable in production.
 
 ---
 
@@ -184,20 +156,26 @@ These appear in `/metrics` and the Control Center.
 
 The autoscaler guarantees:
 
-- No reconcile is ever interrupted  
-- No worker goroutine is ever killed  
-- No queue item is ever evicted  
-- No override persists after restart  
-- No invalid metric field is accepted  
-- No cron/time/dayOfWeek expression is applied without validation  
+- no goroutine leaks  
+- no dropped queue items  
+- no race conditions  
+- no flapping (thanks to `cooldown:`)  
+- no cross‑operator deadlocks  
+- no dependency cycles (cross metrics are read‑only)  
 
-Autoscaling is safe, reversible, and deterministic.
+Autoscaling is designed to be safe even under heavy load.
 
 ---
 
 ## 10. Summary
 
-The autoscaler is a **first‑class runtime controller** inside Orkestra.  
-It evaluates conditions declaratively, applies overrides instantly, and restores baseline safely.
+Autoscaling in Orkestra is:
 
-It transforms OperatorBoxes from static execution cells into **adaptive, self‑optimizing runtime units**.
+- **declarative** — expressed entirely in YAML  
+- **runtime‑native** — no external controllers  
+- **instant** — overrides apply immediately  
+- **reversible** — baseline restored automatically  
+- **cross‑operator aware** — operators can scale based on each other  
+- **zero‑API‑call** — all metrics are in‑memory  
+
+This makes Orkestra the first operator runtime capable of **self‑optimizing behavior across multiple operators**.

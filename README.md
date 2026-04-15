@@ -190,10 +190,19 @@ operatorBox:
   autoscale:
     interval: 30s   # how often to evaluate conditions
     cooldown: 2m    # how long conditions must be false before reverting
+
     conditions:
       when:
+        # Scale based on this operator's own metrics
         - field: metrics.queueDepth
           greaterThan: "300"
+
+        # Or scale based on another operator's metrics (Cross IPC)
+        - field: cross.db.metrics.queueDepth
+          greaterThan: "500"
+        - field: cross.db.metrics.workersBusyPercent
+          greaterThan: "70"
+
     do:
       workers: 12
       queueDepth: 1000

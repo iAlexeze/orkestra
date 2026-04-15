@@ -23,6 +23,9 @@ type AutoMetrics struct {
 	// reconcileTotal is the total number of reconciles since startup.
 	reconcileTotal atomic.Int64
 
+	// errorRatePercent is the percentage error in reconciles since startup
+	errorRatePercent atomic.Int64
+
 	// reconcileErrors is the total number of failed reconciles since startup.
 	reconcileErrors atomic.Int64
 
@@ -77,23 +80,16 @@ func (m *AutoMetrics) Get(field string) string {
 		return formatFloat(m.workerSem.BusyPercent())
 
 	case "metrics.workersIdlePercent":
-		return formatFloat(100.0 - m.workerSem.BusyPercent())
+		return formatFloat(m.workerSem.IdlePercent())
 
 	case "metrics.queueDepth":
 		return strconv.FormatInt(m.queueDepth.Load(), 10)
 
 	case "metrics.reconcileDurationP95Ms":
-		ns := m.p95.p95()
-		ms := float64(ns) / float64(time.Millisecond)
-		return formatFloat(ms)
+		return formatFloat(m.p95.p95Milliseconds())
 
 	case "metrics.errorRatePercent":
-		total := m.reconcileTotal.Load()
-		if total == 0 {
-			return "0"
-		}
-		rate := float64(m.reconcileErrors.Load()) / float64(total) * 100
-		return formatFloat(rate)
+		return formatFloat(m.ErrorRatePercent())
 
 	default:
 		return ""
@@ -146,6 +142,14 @@ func (r *rollingP95) p95() int64 {
 	return tmp[idx]
 }
 
+func (r *rollingP95) p95Milliseconds() float64 {
+	ns := r.p95()
+	if ns == 0 {
+		return 0
+	}
+	return float64(ns) / float64(time.Millisecond)
+}
+
 // sortInt64 is a simple insertion sort — adequate for n ≤ 256.
 func sortInt64(a []int64) {
 	for i := 1; i < len(a); i++ {
@@ -163,4 +167,24 @@ func sortInt64(a []int64) {
 // Used by the condition resolver to route metric lookups to AutoMetrics.Get.
 func IsMetricField(field string) bool {
 	return len(field) > 8 && field[:8] == "metrics."
+}
+
+func (m *AutoMetrics) AsMap() map[string]interface{} {
+	return map[string]interface{}{
+		"queueDepth":             m.queueDepth.Load(),
+		"workersBusyPercent":     m.workerSem.BusyPercent(),
+		"workersIdlePercent":     m.workerSem.IdlePercent(),
+		"reconcileDurationP95Ms": m.p95.p95Milliseconds(),
+		"errorRatePercent":       m.ErrorRatePercent(),
+	}
+}
+
+// ErrorRatePercent returns the curent error rate i percentage
+func (a *AutoMetrics) ErrorRatePercent() float64 {
+	total := a.reconcileTotal.Load()
+	if total == 0 {
+		return 0
+	}
+	rate := float64(a.reconcileErrors.Load()) / float64(total) * 100
+	return rate
 }

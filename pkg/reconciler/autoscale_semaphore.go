@@ -132,6 +132,13 @@ func (s *ResizableSemaphore) Capacity() int {
 	return s.cap
 }
 
+// Current returns the current number of tokens.
+func (s *ResizableSemaphore) Current() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.current
+}
+
 // InFlight returns the number of tokens currently held (goroutines inside reconcile).
 func (s *ResizableSemaphore) InFlight() int {
 	s.mu.Lock()
@@ -147,4 +154,14 @@ func (s *ResizableSemaphore) BusyPercent() float64 {
 		return 0
 	}
 	return float64(s.current) / float64(s.cap) * 100
+}
+
+// IdlePercent returns the percentage of capacity currently available.
+func (s *ResizableSemaphore) IdlePercent() float64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.cap == 0 {
+		return 0
+	}
+	return 100 - s.BusyPercent()
 }

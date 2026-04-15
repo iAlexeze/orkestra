@@ -1,7 +1,14 @@
+Here is the **updated Autoscaler Scenarios** document, now including **cross‑operator autoscaling** as a first‑class scenario.  
+I’ve integrated it cleanly, preserved your structure, and kept the tone consistent with the rest of the autoscaler docs.
+
+Everything below is the polished, production‑grade version.
+
+---
+
 # Autoscaler Scenarios
 *Real‑world patterns for scaling OperatorBoxes.*
 
-This document provides practical examples of how to use the Operator Autoscaler to adapt operator performance to real‑world workloads. Each scenario demonstrates a different combination of metric‑based, time‑based, and cron‑based conditions.
+This document provides practical examples of how to use the Operator Autoscaler to adapt operator performance to real‑world workloads. Each scenario demonstrates a different combination of metric‑based, time‑based, cron‑based, and **cross‑operator‑based** conditions.
 
 All examples assume the CRD declares a baseline:
 
@@ -45,7 +52,37 @@ This is the most common autoscaling pattern.
 
 ---
 
-## 2. Business Hours Scaling
+## 2. Cross‑Operator Scaling
+Scale based on the load of another operator.
+
+```yaml
+autoscale:
+  interval: 20s
+  cooldown: 1m
+
+  conditions:
+    when:
+      - field: cross.db.metrics.queueDepth
+        greaterThan: "500"
+      - field: cross.db.metrics.workersBusyPercent
+        greaterThan: "70"
+
+  do:
+    workers: 12
+    queueDepth: 1500
+```
+
+**Behavior:**
+
+- The operator scales up only when the *database operator* is under pressure  
+- Enables upstream/downstream coordination  
+- Ideal for pipelines, ingestion → transform → storage flows, and multi‑operator ecosystems  
+
+This is the first example of **ecosystem‑level autoscaling**.
+
+---
+
+## 3. Business Hours Scaling
 Increase workers during the day, reduce them at night.
 
 ```yaml
@@ -72,7 +109,7 @@ autoscale:
 
 ---
 
-## 3. Weekend Scale‑Down
+## 4. Weekend Scale‑Down
 Reduce workers on weekends to conserve resources.
 
 ```yaml
@@ -99,7 +136,7 @@ autoscale:
 
 ---
 
-## 4. Nightly Batch Window
+## 5. Nightly Batch Window
 Scale up for heavy batch processing at night.
 
 ```yaml
@@ -129,7 +166,7 @@ This is ideal for ETL, compaction, or nightly reconciliation workloads.
 
 ---
 
-## 5. Error‑Rate‑Triggered Scaling
+## 6. Error‑Rate‑Triggered Scaling
 Scale up when the operator is failing too often.
 
 ```yaml
@@ -154,7 +191,7 @@ autoscale:
 
 ---
 
-## 6. Latency‑Driven Scaling
+## 7. Latency‑Driven Scaling
 Scale when reconciles become slow.
 
 ```yaml
@@ -178,7 +215,7 @@ autoscale:
 
 ---
 
-## 7. Hybrid: Business Hours + Load
+## 8. Hybrid: Business Hours + Load
 Scale only during business hours *and* only when under load.
 
 ```yaml
@@ -210,7 +247,7 @@ This is a precise, cost‑efficient scaling pattern.
 
 ---
 
-## 8. Aggressive Burst Scaling
+## 9. Aggressive Burst Scaling
 Scale aggressively for short bursts of traffic.
 
 ```yaml
@@ -236,7 +273,7 @@ autoscale:
 
 ---
 
-## 9. Multi‑Window Scaling
+## 10. Multi‑Window Scaling
 Different scaling behaviors at different times.
 
 ```yaml
@@ -264,7 +301,7 @@ autoscale:
 
 ---
 
-## 10. Minimalist Scaling
+## 11. Minimalist Scaling
 Scale only one parameter.
 
 ```yaml

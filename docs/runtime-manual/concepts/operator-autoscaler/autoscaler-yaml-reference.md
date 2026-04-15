@@ -81,7 +81,10 @@ If both blocks are present, **both must pass**.
 
 A condition is one of:
 
-### 4.1 Metric condition
+---
+
+### 4.1 Metric condition (`metrics.*`)
+
 ```yaml
 field: metrics.queueDepth
 greaterThan: "500"
@@ -106,7 +109,29 @@ Unknown fields fail fast at Katalog load time.
 
 ---
 
-### 4.2 Clock condition
+### 4.2 Cross‑operator metric condition (`cross.<alias>.metrics.*`)
+
+Cross‑operator metrics allow an operator to scale based on the load or health of another operator.
+
+```yaml
+field: cross.db.metrics.queueDepth
+greaterThan: "500"
+```
+
+Supported fields mirror local metrics:
+
+- `cross.<alias>.metrics.queueDepth`
+- `cross.<alias>.metrics.workersBusyPercent`
+- `cross.<alias>.metrics.workersIdlePercent`
+- `cross.<alias>.metrics.reconcileDurationP95Ms`
+- `cross.<alias>.metrics.errorRatePercent`
+
+If the referenced operator is not found, the condition evaluates to **false**.
+
+---
+
+### 4.3 Clock condition
+
 ```yaml
 time:
   after: "08:00"
@@ -122,7 +147,8 @@ Both may be combined to form a bounded window.
 
 ---
 
-### 4.3 Day‑of‑week condition
+### 4.4 Day‑of‑week condition
+
 ```yaml
 dayOfWeek:
   in: ["Saturday", "Sunday"]
@@ -141,7 +167,8 @@ Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
 
 ---
 
-### 4.4 Cron condition
+### 4.5 Cron condition
+
 ```yaml
 cron: "0 23 * * *"
 duration: 3h
@@ -176,7 +203,9 @@ do:
 All fields are optional.  
 Only declared fields are overridden.
 
-### 5.1 `workers:`**
+---
+
+### 5.1 `workers:`
 Number of concurrent reconcile goroutines allowed.
 
 **Type:** int  
@@ -184,7 +213,7 @@ Number of concurrent reconcile goroutines allowed.
 **Example:** `12`
 
 Uses a resizable semaphore.  
-No goroutines are killed; scale‑down waits for in‑flight reconciles to finish.
+Scale‑down waits for in‑flight reconciles to finish.
 
 ---
 
@@ -195,8 +224,7 @@ Maximum number of items allowed in the queue.
 **Required:** no  
 **Example:** `1000`
 
-If the queue is already deeper than the new limit, no items are dropped.  
-The limit only affects *new* enqueues.
+If the queue is already deeper than the new limit, no items are dropped.
 
 ---
 
@@ -207,8 +235,7 @@ How often all CRs are re‑enqueued regardless of changes.
 **Required:** no  
 **Example:** `20s`
 
-Overrides activate a dedicated resync goroutine.  
-When reverted, the goroutine idles and the baseline resync takes over.
+Overrides activate a dedicated resync goroutine.
 
 ---
 
@@ -238,6 +265,7 @@ A restart of Orkestra always begins from the baseline.
 At Katalog load time, Orkestra validates:
 
 - metric field names  
+- cross‑operator metric field names  
 - comparison operators  
 - cron expressions  
 - time formats  
@@ -251,6 +279,7 @@ Invalid configurations fail fast with a clear error message.
 ## 8. Examples
 
 ### Traffic‑based scaling
+
 ```yaml
 autoscale:
   interval: 15s
@@ -266,7 +295,24 @@ autoscale:
     queueDepth: 2000
 ```
 
+### Cross‑operator scaling
+
+```yaml
+autoscale:
+  interval: 20s
+  cooldown: 1m
+  conditions:
+    when:
+      - field: cross.db.metrics.queueDepth
+        greaterThan: "500"
+      - field: cross.db.metrics.workersBusyPercent
+        greaterThan: "70"
+  do:
+    workers: 12
+```
+
 ### Business hours
+
 ```yaml
 autoscale:
   interval: 60s
@@ -282,6 +328,7 @@ autoscale:
 ```
 
 ### Nightly batch window
+
 ```yaml
 autoscale:
   interval: 60s
