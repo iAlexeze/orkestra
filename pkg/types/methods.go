@@ -220,27 +220,27 @@ func (c *CRDEntry) AutoscaleEnabled() bool {
 
 // ValidateMetricField returns an error if the field is not a known autoscale metric.
 func ValidateMetricField(field string) error {
-    known := map[string]struct{}{
-        "metrics.workersBusyPercent":     {},
-        "metrics.workersIdlePercent":     {},
-        "metrics.queueDepth":             {},
-        "metrics.reconcileDurationP95Ms": {},
-        "metrics.errorRatePercent":       {},
-    }
+	known := map[string]struct{}{
+		"metrics.workersBusyPercent":     {},
+		"metrics.workersIdlePercent":     {},
+		"metrics.queueDepth":             {},
+		"metrics.reconcileDurationP95Ms": {},
+		"metrics.errorRatePercent":       {},
+	}
 
-    if _, ok := known[field]; !ok {
-        return fmt.Errorf(
-            "unknown autoscale metric field %q — valid fields: %s",
-            field,
-            strings.Join([]string{
-                "metrics.workersBusyPercent",
-                "metrics.workersIdlePercent",
-                "metrics.queueDepth",
-                "metrics.reconcileDurationP95Ms",
-                "metrics.errorRatePercent",
-            }, ", "),
-        )
-    }
+	if _, ok := known[field]; !ok {
+		return fmt.Errorf(
+			"unknown autoscale metric field %q — valid fields: %s",
+			field,
+			strings.Join([]string{
+				"metrics.workersBusyPercent",
+				"metrics.workersIdlePercent",
+				"metrics.queueDepth",
+				"metrics.reconcileDurationP95Ms",
+				"metrics.errorRatePercent",
+			}, ", "),
+		)
+	}
 
-    return nil
+	return nil
 }

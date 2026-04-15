@@ -395,31 +395,31 @@ func (k *Katalog) validateStatus() {
 // validateAutoscalerMetrics ensures only supported metrics.* fields are used.
 // This is a fail-fast mechanism to avoid runtime errors.
 func (k *Katalog) validateAutoscalerMetrics() {
-    for name, crd := range k.enabledCRDs {
-        if !crd.AutoscaleEnabled() {
-            continue
-        }
+	for name, crd := range k.enabledCRDs {
+		if !crd.AutoscaleEnabled() {
+			continue
+		}
 
-        conds := crd.OperatorBox.Autoscale.Conditions
+		conds := crd.OperatorBox.Autoscale.Conditions
 
-        // Validate anyOf
-        for _, c := range conds.AnyOf {
-            if strings.HasPrefix(c.Field, "metrics.") {
-                if err := orktypes.ValidateMetricField(c.Field); err != nil {
-                    k.handleValidationErrors(err)
-                }
-            }
-        }
+		// Validate anyOf
+		for _, c := range conds.AnyOf {
+			if strings.HasPrefix(c.Field, "metrics.") {
+				if err := orktypes.ValidateMetricField(c.Field); err != nil {
+					k.handleValidationErrors(err)
+				}
+			}
+		}
 
-        // Validate when
-        for _, c := range conds.When {
-            if strings.HasPrefix(c.Field, "metrics.") {
-                if err := orktypes.ValidateMetricField(c.Field); err != nil {
-                    k.handleValidationErrors(err)
-                }
-            }
-        }
+		// Validate when
+		for _, c := range conds.When {
+			if strings.HasPrefix(c.Field, "metrics.") {
+				if err := orktypes.ValidateMetricField(c.Field); err != nil {
+					k.handleValidationErrors(err)
+				}
+			}
+		}
 
-        k.enabledCRDs[name] = crd
-    }
+		k.enabledCRDs[name] = crd
+	}
 }
