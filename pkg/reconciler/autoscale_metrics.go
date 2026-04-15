@@ -10,7 +10,6 @@
 package reconciler
 
 import (
-	"fmt"
 	"math"
 	"strconv"
 	"sync/atomic"
@@ -164,21 +163,4 @@ func sortInt64(a []int64) {
 // Used by the condition resolver to route metric lookups to AutoMetrics.Get.
 func IsMetricField(field string) bool {
 	return len(field) > 8 && field[:8] == "metrics."
-}
-
-// ValidateMetricField returns an error if the field is not a known metric.
-func ValidateMetricField(field string) error {
-	known := map[string]struct{}{
-		"metrics.workersBusyPercent":     {},
-		"metrics.workersIdlePercent":     {},
-		"metrics.queueDepth":             {},
-		"metrics.reconcileDurationP95Ms": {},
-		"metrics.errorRatePercent":       {},
-	}
-	if _, ok := known[field]; !ok {
-		return fmt.Errorf("unknown autoscale metric field %q — valid fields: "+
-			"metrics.workersBusyPercent, metrics.workersIdlePercent, "+
-			"metrics.queueDepth, metrics.reconcileDurationP95Ms, metrics.errorRatePercent", field)
-	}
-	return nil
 }

@@ -412,6 +412,25 @@ func (k *DependencyKordinator) dependenciesReady(crd types.CRDEntry, nameToGVK m
 }
 
 // startCRDWorkers starts a worker pool for a specific CRD and is invoked in dependency order.
+// autoscalerRunner is a local interface satisfied by GenericReconciler when
+// autoscale: is declared. Defined here (not imported from reconciler) to avoid
+// import cycles — reconciler already imports kordinator.
+type autoscalerRunner interface {
+	RunAutoscaler(ctx context.Context)
+}
+
+// queueInjector is a local interface for injecting the per-CRD workqueue into
+// the reconciler after construction. Avoids import cycles.
+type queueInjector interface {
+	SetQueue(wq *queue.Workqueue)
+}
+
+// resyncLoopStarter is a local interface for starting the adjustable resync
+// goroutine inside the reconciler. Avoids import cycles.
+type resyncLoopStarter interface {
+	StartResyncLoop(ctx context.Context)
+}
+
 func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, workers int) {
 	entry, ok := k.katalog.Get(gvk)
 	if !ok {
@@ -419,8 +438,38 @@ func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, 
 		return
 	}
 
+	// Compute the goroutine count: start max(baseline, override) goroutines so
+	// that the autoscaler can scale up without spawning new goroutines at runtime.
+	// The semaphore inside the reconciler gates effective concurrency to `workers`.
+	goroutines := workers
+	if ob := entry.CRD.OperatorBox.Autoscale; ob != nil {
+		if ob.Do.Workers != nil && *ob.Do.Workers > goroutines {
+			goroutines = *ob.Do.Workers
+		}
+	}
+
 	crdCtx, cancel := context.WithCancel(ctx)
 	rec := entry.ReconcilerFactory()
+
+	// Inject the per-CRD workqueue so SetQueueDepthLimit and the resync goroutine
+	// can reach the right queue without importing the reconciler package.
+	if wq, ok := k.queueReg.For(gvk); ok {
+		if qi, ok := rec.(queueInjector); ok {
+			qi.SetQueue(wq)
+		}
+	}
+
+	// Start autoscaler goroutine if the reconciler supports it.
+	if runner, ok := rec.(autoscalerRunner); ok {
+		go runner.RunAutoscaler(crdCtx)
+	}
+
+	// Start adjustable resync goroutine if autoscale is declared.
+	if entry.CRD.OperatorBox.Autoscale != nil {
+		if rl, ok := rec.(resyncLoopStarter); ok {
+			go rl.StartResyncLoop(crdCtx)
+		}
+	}
 
 	k.mu.Lock()
 	k.reconcilers[gvk] = rec
@@ -429,14 +478,14 @@ func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, 
 	k.wgs[gvk] = wg
 	k.crdHealthMap[gvk].SetStarted()
 
-	k.crdHealthMap[gvk].SetTotalWorkers(int32(workers))
+	k.crdHealthMap[gvk].SetTotalWorkers(int32(goroutines))
 	k.crdHealthMap[gvk].gvk = gvk // Set GVK for metrics
 	k.started[gvk] = true
 	k.total[gvk]++
 	k.mu.Unlock()
 
 	// Initialize all workers as idle (not processing)
-	for i := 0; i < workers; i++ {
+	for i := 0; i < goroutines; i++ {
 		wg.Add(1)
 		workerID := fmt.Sprintf("%s-worker-%d", gvk, i)
 		workerID = strings.ReplaceAll(workerID, ",", "")

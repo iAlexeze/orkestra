@@ -1224,6 +1224,12 @@ type OperatorBoxConfig struct {
 	// Cross declares cross-CRD observations.
 	// Read before any resource groups — results available as .cross.<as>.status.*
 	Cross []CrossCRDDeclaration `yaml:"cross,omitempty" json:"cross,omitempty"`
+
+	// Autoscale declares runtime autoscale behavior for this operatorbox.
+	// When declared, the autoscaler evaluates conditions on a ticker and applies
+	// or restores worker/queue/resync overrides automatically.
+	// nil → no autoscaling; CRD runs with its declared static worker count.
+	Autoscale *AutoscaleSpec `yaml:"autoscale,omitempty" json:"autoscale,omitempty"`
 }
 
 // HookDeclaration declares where a Go hook function lives.

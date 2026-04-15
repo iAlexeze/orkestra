@@ -85,6 +85,40 @@ for _, name := range startupOrder {
 }
 ```
 
+## What startCRDWorkers does
+
+`startCRDWorkers` is called with the baseline worker count. It sets up the full
+runtime for one CRD:
+
+```
+1. Compute goroutines = max(baseline.workers, do.workers)
+   — over-provision when autoscale: is declared so scale-up needs no new goroutines
+
+2. rec := entry.ReconcilerFactory()
+   — creates the reconciler (GenericReconciler or custom)
+
+3. Inject the per-CRD queue (QueueInjector interface)
+   — so SetQueueDepthLimit and the resync goroutine can reach the right queue
+
+4. go runner.RunAutoscaler(crdCtx)        [if autoscalerRunner interface satisfied]
+   — evaluation loop: conditions → apply/restore override
+
+5. go rl.StartResyncLoop(crdCtx)          [if autoscale: declared + resyncLoopStarter]
+   — re-enqueue goroutine: idles at 0 interval, fires at do.resync when active
+
+6. Start goroutines workers (over-provisioned count)
+   — each runs runWorkerForGVK until crdCtx is cancelled or queue shutdown
+
+```
+
+All three interface checks (`QueueInjector`, `autoscalerRunner`,
+`resyncLoopStarter`) are duck-typed against the reconciler using local interface
+definitions to avoid an import cycle — the `reconciler` package already imports
+`kordinator`.
+
+```go
+```
+
 The loop iterates the topological order exactly once. It skips any CRD whose dependencies are not yet satisfied — it does not block, sleep, or retry. The background retry loop (see [04 — Self-healing](04-self-healing.md)) handles activation of deferred CRDs.
 
 ## Why the loop must never block

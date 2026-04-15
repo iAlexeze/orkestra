@@ -12,6 +12,13 @@ import (
 	"github.com/ialexeze/orkestra/pkg/queue"
 )
 
+// queueDepthReporter is a local interface satisfied by GenericReconciler so the
+// worker loop can push live queue depth into AutoMetrics for autoscale evaluation.
+// Defined here (not imported from reconciler) to avoid import cycles.
+type queueDepthReporter interface {
+	ReportQueueDepth(depth int64)
+}
+
 // Worker that only processes items for a specific GVK
 func (k *Kontroller) runWorkerForGVK(ctx context.Context, gvk string, workerID string) {
 	wq, ok := k.queueRegistry.For(gvk)
@@ -54,6 +61,15 @@ func (k *Kontroller) runWorkerForGVK(ctx context.Context, gvk string, workerID s
 			// Update metrics (outside of processing state)
 			depth := float64(wq.Depth())
 			metrics.SetQueueDepth(gvk, depth)
+
+			// Push live depth into the reconciler's AutoMetrics so the autoscaler
+			// can read it without an API call. No-op for non-autoscaled CRDs.
+			k.mu.RLock()
+			rec := k.reconcilers[gvk]
+			k.mu.RUnlock()
+			if reporter, ok := rec.(queueDepthReporter); ok {
+				reporter.ReportQueueDepth(int64(wq.Depth()))
+			}
 
 			// Resource count — read from this CRD's informer cache
 			if entry, ok := k.katalog.Get(gvk); ok && entry.Informer != nil {

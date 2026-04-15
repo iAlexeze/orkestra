@@ -158,11 +158,21 @@ Cooldown applies only to the revert direction. Override application is immediate
 ```yaml
 do:
   workers: 12        # number of concurrent reconcile goroutines
-  queueDepth: 1000   # maximum queue depth before backpressure
+  queueDepth: 1000   # maximum items in-queue before new enqueues are dropped
   resync: 20s        # how often all CRs are re-enqueued regardless of changes
 ```
 
 All three fields are optional in `do:`. Declare only what needs to change.
+
+`queueDepth` is a backpressure ceiling. When the queue reaches this depth, new
+enqueues are dropped with a warning log. Items already in the queue are not
+evicted. The baseline `queueDepth` (from `queue.maxQueueDepth:`) is restored
+when conditions are no longer met.
+
+`resync` drives an independent re-enqueue goroutine that is active only while
+the override is applied. When the override is reverted, the goroutine idles and
+the informer's built-in resync period handles the baseline cadence. The
+workqueue deduplicates items so the two resync paths are safe to run concurrently.
 
 ---
 
@@ -237,7 +247,35 @@ autoscale:
 
 ---
 
-## Metrics
+## Metric conditions
+
+Metric conditions reference live operatorbox metrics via the `metrics.*` namespace.  
+These values come directly from the autoscaler’s in‑memory metrics — no API calls, no informers.
+
+```yaml
+when:
+  - field: metrics.workersBusyPercent
+    greaterThan: "80"
+  - field: metrics.queueDepth
+    greaterThan: "500"
+  - field: metrics.reconcileDurationP95Ms
+    greaterThan: "200"
+```
+
+### Supported metric fields
+
+| Field | Description |
+|---|---|
+| `metrics.workersBusyPercent` | Percentage of workers actively reconciling |
+| `metrics.workersIdlePercent` | Percentage of workers waiting for work |
+| `metrics.queueDepth` | Current number of items in the queue |
+| `metrics.reconcileDurationP95Ms` | P95 reconcile duration in milliseconds |
+| `metrics.errorRatePercent` | Percentage of reconciles that failed in the last window |
+
+---
+Any other `metrics.*` field results in a **fail‑fast validation error** at Katalog load time.
+
+## Prometheus Metrics
 
 The autoscaler emits its own metrics alongside the operatorbox metrics:
 
@@ -257,14 +295,21 @@ These are visible in the Control Center per operatorbox and scrapable via
 ## Implementation notes
 
 **Worker resizing** uses a resizable semaphore, not goroutine add/drain.
-All worker goroutines run continuously. The semaphore gates how many may enter
-the reconcile loop simultaneously. Increasing weight allows more through
-immediately. Decreasing weight causes excess goroutines to block after
-completing their current reconcile — in-flight work is never interrupted.
+All worker goroutines are started at `max(baseline.workers, do.workers)` at
+startup so scale-up never spawns new goroutines at runtime. The semaphore gates
+how many may enter `Reconcile` simultaneously. Increasing capacity allows more
+through immediately. Decreasing capacity causes goroutines to block after their
+current reconcile completes — in-flight work is never interrupted.
 
-**Queue depth** is enforced via a token counter on the queue wrapper. When the
-limit is reached, new items are dropped with a metric increment. The queue
-depth limit is a soft ceiling for backpressure, not a hard capacity.
+**Queue depth** is enforced atomically in `Workqueue.Enqueue`. When the queue
+length is at or beyond the limit, new items are dropped with a warning log and
+the GVK, key, and current depth are recorded. Items already in the queue are
+not evicted. The limit is 0 (unlimited) by default and only becomes non-zero
+when the autoscaler applies an override.
 
-**Resync interval** is updated on the informer's resync ticker. The change
-takes effect on the next tick after the override is applied.
+**Resync interval** drives an independent goroutine started alongside the
+autoscaler. While `do.resync` override is active, the goroutine reads all
+objects from the informer's local cache and re-enqueues them at the declared
+interval. When the override reverts to baseline, the goroutine idles (interval
+set to 0) and the informer's built-in resync period takes over. The workqueue
+deduplicates keys so concurrent resync sources are safe.

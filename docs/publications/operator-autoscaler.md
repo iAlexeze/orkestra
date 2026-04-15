@@ -158,22 +158,41 @@ conservative.
 
 ---
 
-## 5. Semaphore-based concurrency
+## 5. How each override is implemented
 
-The worker pool in Orkestra is not a fixed goroutine count. It is a weighted
-semaphore that gates how many goroutines may enter the reconcile loop
-simultaneously. All goroutines run continuously; the semaphore controls
-concurrent access.
+**Workers — resizable semaphore.**
+The worker pool is not a fixed goroutine count. It is a weighted semaphore that
+gates how many goroutines may enter `Reconcile` simultaneously. All goroutines
+run continuously; the semaphore controls concurrent access.
 
-This design makes runtime resizing trivial. Increasing the semaphore weight
-immediately allows more goroutines to proceed. Decreasing the weight causes
-excess goroutines to block at the semaphore boundary after completing their
-current reconcile cycle — there is no forced interruption of in-flight
-reconciles. The resize is both safe and instantaneous.
+Goroutines are over-provisioned at startup to `max(baseline.workers,
+do.workers)` so that scale-up never requires spawning new goroutines at runtime.
+Increasing the semaphore weight immediately allows more goroutines to proceed.
+Decreasing the weight causes excess goroutines to block after their current
+reconcile completes — in-flight work is never interrupted.
 
-The implementation is a custom resizable semaphore rather than
+The implementation is a custom `ResizableSemaphore` rather than
 `golang.org/x/sync/semaphore.Weighted`, which does not support weight
 modification after construction.
+
+**Queue depth — atomic limit in Enqueue.**
+The per-CRD `Workqueue` holds an atomic `int32` limit. Every call to `Enqueue`
+reads the limit and compares it to the current queue length. If the queue is at
+or beyond the limit, the item is dropped with a warning log (GVK, key, current
+depth, limit). Items already in the queue are not evicted — the limit applies
+only to incoming enqueues. The limit is 0 (unlimited) by default and is
+restored to 0 when the baseline is reinstated, restoring unlimited throughput.
+
+**Resync interval — independent re-enqueue goroutine.**
+Changing the informer's built-in resync period post-construction is not
+supported by the Kubernetes client-go API. Orkestra implements resync override
+as an independent goroutine that, while the override is active, reads all
+objects from the informer's local cache and re-enqueues them at the declared
+interval. The informer's own resync continues at its baseline rate in parallel;
+the workqueue deduplicates keys so concurrent enqueues are safe and the only
+effect is a higher reconcile frequency. When the override reverts, the goroutine
+idles (interval set to 0) and the informer's resync period is again the sole
+driver.
 
 ---
 

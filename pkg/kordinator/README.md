@@ -10,6 +10,7 @@ Everything upstream of kordinator — informers, queues, the provider registry, 
 - **Self-healing** — monitors the cluster continuously and activates CRDs that appear after startup, deactivates and re-activates CRDs that are deleted and recreated at runtime
 - **Health tracking** — maintains per-CRD health state with atomic counters (total reconciles, failures, consecutive failures, worker utilization) and a separate aggregate operator health signal
 - **Dependency gating** — enforces `condition: started` and `condition: healthy` dependency requirements before activating a dependent CRD, without ever blocking the startup sequence
+- **Autoscaler wiring** — when `autoscale:` is declared on an operatorbox, `startCRDWorkers` over-provisions goroutines to `max(baseline.workers, do.workers)`, injects the per-CRD queue into the reconciler, and launches the autoscaler and resync goroutines in dedicated goroutines tied to the CRD's context
 - **Runtime introspection** — serves the `/katalog`, `/katalog/{crd}`, and `/katalog/{crd}/health` endpoints that power `ork status` and the Control Center
 
 ## Where kordinator fits
@@ -27,10 +28,21 @@ From this point on, every reconcile event flows through:
 
 ```
 informer event
-  └── queue.Add(key)
+  └── queue.Add(key)             depth-limit enforced atomically
         └── runWorkerForGVK
               └── processItemForGVK
                     └── rec.Reconcile(ctx, req)
+                          └── workerSem.Acquire()     autoscale concurrency gate
+                                reconcileCore()
+                              workerSem.Release()
+```
+
+For CRDs with `autoscale:` declared, three additional goroutines run alongside
+the worker pool for the lifetime of the CRD's context:
+
+```
+autoscaler goroutine   — evaluates conditions, calls ResizeWorkers / SetQueueDepthLimit / SetResyncInterval
+resync goroutine       — re-enqueues all cached objects at do.resync when override is active
 ```
 
 ## Developer documentation

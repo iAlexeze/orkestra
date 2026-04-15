@@ -344,7 +344,10 @@ func (a *Autoscaler) applyOverride() {
 func (a *Autoscaler) restoreBaseline() {
 	a.target.ResizeWorkers(a.baseline.Workers)
 	a.target.SetQueueDepthLimit(a.baseline.QueueDepth)
-	a.target.SetResyncInterval(a.baseline.Resync)
+	// Pass 0 for resync: the informer's built-in resync handles the baseline
+	// cadence. 0 idles the autoscaler resync goroutine so it does not add a
+	// redundant second trigger on top of the informer's own period.
+	a.target.SetResyncInterval(0)
 
 	a.state.OverrideActive = false
 	metrics.RecordAutoscaleRestore(a.crdKind, a.baseline.Workers)

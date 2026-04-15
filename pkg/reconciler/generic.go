@@ -4,6 +4,8 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
+	"time"
 
 	"github.com/ialexeze/orkestra/domain"
 	"github.com/ialexeze/orkestra/pkg/event"
@@ -11,6 +13,7 @@ import (
 	"github.com/ialexeze/orkestra/pkg/kubeclient"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
+	orkqueue "github.com/ialexeze/orkestra/pkg/queue"
 	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -53,6 +56,26 @@ type GenericReconciler[T domain.Object] struct {
 	rc               orktypes.OperatorBoxConfig
 	newObj           func() T
 	crd              orktypes.CRDEntry
+
+	// workerSem gates concurrent reconcile execution. All worker goroutines run
+	// continuously; the semaphore controls how many may be in Reconcile simultaneously.
+	// Resized at runtime by the autoscaler when autoscale: is declared.
+	workerSem *ResizableSemaphore
+
+	// autoMetrics holds live operatorbox runtime metrics for autoscale evaluation.
+	autoMetrics *AutoMetrics
+
+	// autoscaler is non-nil when operatorBox.autoscale is declared.
+	autoscaler *Autoscaler
+
+	// queue is the per-CRD workqueue, injected by startCRDWorkers after construction.
+	// Used by SetQueueDepthLimit and the resync goroutine.
+	queue *orkqueue.Workqueue
+
+	// resyncNs holds the current resync interval in nanoseconds.
+	// 0 means the resync goroutine is idle (informer handles baseline resync).
+	// Written by SetResyncInterval; read by the resync goroutine.
+	resyncNs atomic.Int64
 }
 
 func NewGenericReconciler[T domain.Object](
@@ -79,7 +102,14 @@ func NewGenericReconciler[T domain.Object](
 		hooks = typed
 	}
 
-	return &GenericReconciler[T]{
+	workers := crd.Workers
+	if workers <= 0 {
+		workers = 1
+	}
+	sem := NewResizableSemaphore(workers)
+	autoMet := NewAutoMetrics(sem)
+
+	r := &GenericReconciler[T]{
 		katalogRegistry:  katalogRegistry,
 		providerRegistry: providerRegistry,
 		providerStats:    providerStats,
@@ -90,7 +120,26 @@ func NewGenericReconciler[T domain.Object](
 		kube:             kube,
 		hooks:            hooks,
 		newObj:           newObj,
+		workerSem:        sem,
+		autoMetrics:      autoMet,
 	}
+
+	if crd.AutoscaleEnabled() {
+		baseline := orktypes.AutoscaleBaseline{
+			Workers:    workers,
+			QueueDepth: crd.Queue.MaxQueueDepth,
+			Resync:     crd.Resync,
+		}
+		r.autoscaler = NewAutoscaler(
+			crd.APITypes.Kind,
+			crd.OperatorBox.Autoscale,
+			baseline,
+			r,
+			autoMet,
+		)
+	}
+
+	return r
 }
 
 var _ domain.Reconciler = (*GenericReconciler[domain.Object])(nil)
@@ -99,7 +148,21 @@ var _ domain.Reconciler = (*GenericReconciler[domain.Object])(nil)
 // Order:
 //  1. Conditional provisioning (when blocks) — handled by runTemplateReconcile
 //  2. Go hooks → Declarative templates → No-op (through reconcileImpl())
+//
+// The semaphore gates concurrent execution — when an autoscaler is active it
+// can reduce effective concurrency below the goroutine count without stopping goroutines.
 func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error {
+	if err := r.workerSem.Acquire(ctx); err != nil {
+		return err // context cancelled while waiting for a concurrency slot
+	}
+	start := time.Now()
+	err := r.reconcileCore(ctx, key)
+	r.workerSem.Release()
+	r.autoMetrics.RecordReconcile(time.Since(start), err != nil)
+	return err
+}
+
+func (r *GenericReconciler[T]) reconcileCore(ctx context.Context, key string) error {
 	ctx = kubeclient.WithKubeclient(ctx, r.kube)
 	if err := ctx.Err(); err != nil {
 		return err

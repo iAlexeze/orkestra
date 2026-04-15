@@ -77,6 +77,45 @@ spec:
 
 `ResourceKatalog.GetWorkers(gvk, defaultWorkers)` returns the configured count, or the operator-wide default if the CRD does not specify one.
 
+When `autoscale:` is declared, `startCRDWorkers` starts
+`max(baseline.workers, do.workers)` goroutines instead, so scale-up is instant
+— no new goroutines are spawned at runtime.
+
+## Semaphore-gated concurrency
+
+For all CRDs, `GenericReconciler.Reconcile` acquires a `ResizableSemaphore`
+before doing any work and releases it when done:
+
+```
+worker goroutine  →  dequeue  →  processItemForGVK  →  rec.Reconcile(ctx, key)
+                                                              │
+                                                     workerSem.Acquire()  ← blocks if at capacity
+                                                     reconcileCore()
+                                                     workerSem.Release()
+```
+
+For non-autoscaled CRDs the semaphore capacity equals the worker count so it is
+always uncontested. For autoscaled CRDs the autoscaler resizes the semaphore
+without touching the goroutines — goroutines blocked at `Acquire` wake up
+immediately on scale-up; excess goroutines finish their current reconcile and
+then block on the next `Acquire` during scale-down.
+
+## Queue depth reporting
+
+After each item, the worker loop type-asserts the reconciler against
+`queueDepthReporter` and calls `ReportQueueDepth`:
+
+```go
+if reporter, ok := rec.(queueDepthReporter); ok {
+    reporter.ReportQueueDepth(int64(wq.Depth()))
+}
+```
+
+This pushes live depth into `AutoMetrics` so `metrics.queueDepth` conditions
+in the autoscaler evaluate against the actual queue state rather than a stale
+snapshot. The interface is defined locally in `worker.go` to avoid importing
+the `reconciler` package.
+
 ## stopCRDWorkers
 
 `stopCRDWorkers` is called during both `deactivateCRD` (runtime) and the shutdown sequence. The order of operations matters:
