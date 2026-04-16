@@ -67,9 +67,9 @@ import (
     "context"
     "fmt"
 
-    "github.com/ialexeze/orkestra/domain"
-    orktypes "github.com/ialexeze/orkestra/pkg/types"
-    "github.com/ialexeze/orkestra/pkg/kubeclient"
+    "github.com/orkspace/orkestra/domain"
+    orktypes "github.com/orkspace/orkestra/pkg/types"
+    "github.com/orkspace/orkestra/pkg/kubeclient"
     apiv1 "github.com/myorg/api/database/v1alpha1"
     "k8s.io/apimachinery/pkg/runtime/schema"
 )

@@ -29,7 +29,7 @@ import (
 	"sort"
 	"strings"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

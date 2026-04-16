@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 var (

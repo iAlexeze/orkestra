@@ -3,12 +3,12 @@ package internal
 import (
 	"context"
 
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	"github.com/ialexeze/orkestra/pkg/konductor"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/merger"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/konductor"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 func Konduct(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {

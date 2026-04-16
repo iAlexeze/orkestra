@@ -398,4 +398,4 @@ The infrastructure is ready. The ecosystem follows the patterns.
 ---
 
 *Orkestra — Declarative Operators for Kubernetes*
-*March 2026 — https://github.com/iAlexeze/orkestra*
+*March 2026 — https://github.com/orkspace/orkestra*

@@ -22,8 +22,8 @@ package cli
 import (
 	"fmt"
 
-	"github.com/ialexeze/orkestra/pkg/inspect"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/inspect"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // printCRDValidationLine prints one CRD entry's validation result.

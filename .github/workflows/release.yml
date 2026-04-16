@@ -57,9 +57,9 @@ jobs:
           go build \
             -trimpath \
             -ldflags="-s -w \
-              -X github.com/ialexeze/orkestra/pkg/version.Version=${{ github.ref_name }} \
-              -X github.com/ialexeze/orkestra/pkg/version.Commit=${{ github.sha }} \
-              -X github.com/ialexeze/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              -X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }} \
+              -X github.com/orkspace/orkestra/pkg/version.Commit=${{ github.sha }} \
+              -X github.com/orkspace/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             -o dist/ork \
             ./cmd/orkestra/
           echo "✅ Runtime built: dist/ork"
@@ -74,9 +74,9 @@ jobs:
           go build \
             -trimpath \
             -ldflags="-s -w \
-              -X github.com/ialexeze/orkestra/pkg/version.Version=${{ github.ref_name }} \
-              -X github.com/ialexeze/orkestra/pkg/version.Commit=${{ github.sha }} \
-              -X github.com/ialexeze/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              -X github.com/orkspace/orkestra-cc/version.Version=${{ github.ref_name }} \
+              -X github.com/orkspace/orkestra-cc/version.Commit=${{ github.sha }} \
+              -X github.com/orkspace/orkestra-cc/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             -o ../../dist/orkcc .
           echo "✅ Control Center built: dist/orkcc"
 
@@ -226,6 +226,62 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**Platforms:** \`linux/amd64\`, \`linux/arm64\`" >> "$GITHUB_STEP_SUMMARY"
 
+  # ── Helm chart release ─────────────────────────────────────────────────────
+  helm:
+    name: Release Helm Chart
+    runs-on: ubuntu-latest
+    needs: [build, image]
+    if: ${{ !contains(github.ref_name, '-') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Update Chart metadata and values
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          
+          # Sync Chart.yaml version fields
+          yq eval ".version = \"${VERSION}\"" -i charts/orkestra/Chart.yaml
+          yq eval ".appVersion = \"${TAG}\""  -i charts/orkestra/Chart.yaml
+          
+          # Update image tags in values.yaml
+          yq eval ".runtime.image.tag = \"${TAG}\"" -i charts/orkestra/values.yaml
+          yq eval ".controlCenter.image.tag = \"${TAG}\"" -i charts/orkestra/values.yaml
+
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.7.0
+        env:
+          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          charts_dir: charts
+          skip_existing: true
+
+      - name: Write summary
+        run: |
+          echo "### ⎈ Helm chart published" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+          echo "helm repo add orkestra https://ialexeze.github.io/orkestra" >> "$GITHUB_STEP_SUMMARY"
+          echo "helm repo update" >> "$GITHUB_STEP_SUMMARY"
+          echo "helm install orkestra orkestra/orkestra --namespace orkestra-system --create-namespace" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
   # ── Sign + Checksums + GitHub Release ──────────────────────────────────────
   release:
     name: Sign and Release
@@ -362,62 +418,6 @@ jobs:
             dist/orkestra-public-key.asc
           fail_on_unmatched_files: true
 
-  # ── Helm chart release ─────────────────────────────────────────────────────
-  helm:
-    name: Release Helm Chart
-    runs-on: ubuntu-latest
-    needs: release
-    if: ${{ !contains(github.ref_name, '-') }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.2
-        with:
-          fetch-depth: 0
-
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Install Helm
-        uses: azure/setup-helm@v4
-
-      - name: Install yq
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
-
-      - name: Update Chart metadata and values
-        run: |
-          TAG="${{ github.ref_name }}"
-          VERSION="${TAG#v}"
-          
-          # Sync Chart.yaml version fields
-          yq eval ".version = \"${VERSION}\"" -i charts/orkestra/Chart.yaml
-          yq eval ".appVersion = \"${TAG}\""  -i charts/orkestra/Chart.yaml
-          
-          # Update image tags in values.yaml
-          yq eval ".runtime.image.tag = \"${TAG}\"" -i charts/orkestra/values.yaml
-          yq eval ".controlCenter.image.tag = \"${TAG}\"" -i charts/orkestra/values.yaml
-
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.7.0
-        env:
-          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          charts_dir: charts
-          skip_existing: true
-
-      - name: Write summary
-        run: |
-          echo "### ⎈ Helm chart published" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo '```bash' >> "$GITHUB_STEP_SUMMARY"
-          echo "helm repo add orkestra https://ialexeze.github.io/orkestra" >> "$GITHUB_STEP_SUMMARY"
-          echo "helm repo update" >> "$GITHUB_STEP_SUMMARY"
-          echo "helm install orkestra orkestra/orkestra --namespace orkestra-system --create-namespace" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-
   # ── Homebrew formulas update ───────────────────────────────────────────────
   homebrew:
     name: Update Homebrew Formulas
@@ -437,7 +437,7 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           curl -sSfL \
-            "https://github.com/ialexeze/orkestra/releases/download/${TAG}/checksums.txt" \
+            "https://github.com/orkspace/orkestra/releases/download/${TAG}/checksums.txt" \
             -o checksums.txt
 
       - name: Extract SHA256 values
@@ -466,29 +466,29 @@ jobs:
           VERSION="${TAG#v}"
           cat > homebrew-tap/Formula/ork.rb << 'EOF'
           class Ork < Formula
-            desc "The Kubernetes operator runtime that needs no programming language"
-            homepage "https://github.com/ialexeze/orkestra"
+            desc "Declarative Runtime for Kubernetes Operators"
+            homepage "https://github.com/orkspace/orkestra"
             version "${VERSION}"
             license "Apache 2.0"
 
             on_macos do
               on_arm   do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/ork_darwin_arm64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_darwin_arm64.tar.gz"
                 sha256 "${DARWIN_ARM64}"
               end
               on_intel do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/ork_darwin_amd64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_darwin_amd64.tar.gz"
                 sha256 "${DARWIN_AMD64}"
               end
             end
 
             on_linux do
               on_arm   do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/ork_linux_arm64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_linux_arm64.tar.gz"
                 sha256 "${LINUX_ARM64}"
               end
               on_intel do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/ork_linux_amd64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_linux_amd64.tar.gz"
                 sha256 "${LINUX_AMD64}"
               end
             end
@@ -523,28 +523,28 @@ jobs:
           cat > homebrew-tap/Formula/orkcc.rb << 'EOF'
           class OrkCc < Formula
             desc "Web-based Control Center for Orkestra - visualize and manage your operators"
-            homepage "https://github.com/ialexeze/orkestra"
+            homepage "https://github.com/orkspace/orkestra"
             version "${VERSION}"
             license "Apache 2.0"
 
             on_macos do
               on_arm   do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/orkcc_darwin_arm64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_darwin_arm64.tar.gz"
                 sha256 "${DARWIN_ARM64}"
               end
               on_intel do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/orkcc_darwin_amd64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_darwin_amd64.tar.gz"
                 sha256 "${DARWIN_AMD64}"
               end
             end
 
             on_linux do
               on_arm   do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/orkcc_linux_arm64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_linux_arm64.tar.gz"
                 sha256 "${LINUX_ARM64}"
               end
               on_intel do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/orkcc_linux_amd64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_linux_amd64.tar.gz"
                 sha256 "${LINUX_AMD64}"
               end
             end

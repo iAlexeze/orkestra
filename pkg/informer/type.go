@@ -6,8 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/queue"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/queue"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

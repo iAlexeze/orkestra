@@ -31,7 +31,7 @@ package types
 import (
 	"fmt"
 
-	"github.com/ialexeze/orkestra/pkg/note"
+	"github.com/orkspace/orkestra/pkg/note"
 )
 
 // EvaluateWhen evaluates when: (allOf, AND) and anyOf: (OR) conditions.

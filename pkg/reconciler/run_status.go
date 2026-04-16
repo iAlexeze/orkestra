@@ -32,9 +32,9 @@ import (
 	//	"fmt"
 	"time"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
 )
 
 // patchStatusWithChildren is the top-level status entry point called from

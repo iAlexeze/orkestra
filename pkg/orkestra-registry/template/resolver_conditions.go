@@ -1,7 +1,7 @@
 package template
 
 import (
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // evaluateConditions evaluates a when: block against the resolver's data map.

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ialexeze/orkestra/domain"
+	"github.com/orkspace/orkestra/domain"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -127,7 +127,7 @@ type APITypes struct {
 	// Required for typed mode. Used by ork generate for import statements
 	// and scheme registration in RegisterScheme().
 	// Not needed for dynamic mode — omit entirely.
-	// e.g. "github.com/ialexeze/orkestra/api/types/project/v1alpha1"
+	// e.g. "github.com/orkspace/orkestra/api/types/project/v1alpha1"
 	Location string `yaml:"location" json:"location,omitempty" validate:"omitempty"`
 }
 
@@ -1237,7 +1237,7 @@ type OperatorBoxConfig struct {
 // The declared function must match the signature: func() domain.AnyReconcileHooks
 type HookDeclaration struct {
 	// Location — fully qualified Go import path. Local or remote module.
-	// e.g. "github.com/myorg/hooks" or "github.com/ialexeze/orkestra/pkg/reconciler/hooks"
+	// e.g. "github.com/myorg/hooks" or "github.com/orkspace/orkestra/pkg/reconciler/hooks"
 	Location string `yaml:"location" json:"location" validate:"required"`
 
 	// Function — exported function name at Location that returns hooks.

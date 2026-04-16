@@ -159,8 +159,8 @@ github.com/hashicorp/golang-lru/v2 v2.0.5 h1:wW7h1TG88eUIJ2i69gaE3uNVtEPIagzhGvH
 github.com/hashicorp/golang-lru/v2 v2.0.5/go.mod h1:QeFd9opnmA6QUJc5vARoKUSoFhyfM2/ZepoAG6RGpeM=
 github.com/huandu/xstrings v1.5.0 h1:2ag3IFq9ZDANvthTwTiqSSZLjDc+BedvHPAp5tJy2TI=
 github.com/huandu/xstrings v1.5.0/go.mod h1:y5/lhBue+AyNmUVz9RLU9xbLR0o4KIIExikq4ovT0aE=
-github.com/ialexeze/orkestra v0.1.0 h1:ByXhGt/GdaCAexmaajwWwWNeRul3DeeXlBNA9PHfmj4=
-github.com/ialexeze/orkestra v0.1.0/go.mod h1:wkuVKW/Bs5MGG5LIr5FeAFXqTy8tG/WtKyv7FiwGDbk=
+github.com/orkspace/orkestra v0.1.0 h1:ByXhGt/GdaCAexmaajwWwWNeRul3DeeXlBNA9PHfmj4=
+github.com/orkspace/orkestra v0.1.0/go.mod h1:wkuVKW/Bs5MGG5LIr5FeAFXqTy8tG/WtKyv7FiwGDbk=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/jmoiron/sqlx v1.4.0 h1:1PLqN7S1UYp5t4SrVVnt4nUVNemrDAtxlulVe+Qgm3o=

@@ -5,12 +5,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orksa "github.com/ialexeze/orkestra/pkg/orkestra-registry/serviceaccounts"
-	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orksa "github.com/orkspace/orkestra/pkg/orkestra-registry/serviceaccounts"
+	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // runServiceAccounts resolves and applies ServiceAccount template declarations.

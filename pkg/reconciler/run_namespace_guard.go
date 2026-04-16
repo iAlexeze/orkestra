@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // NamespaceGuardResult holds the outcome of a namespace restriction check.

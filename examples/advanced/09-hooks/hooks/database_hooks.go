@@ -21,12 +21,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
-	orkcron "github.com/ialexeze/orkestra/pkg/orkestra-registry/cronjobs"
-	orkdeploy "github.com/ialexeze/orkestra/pkg/orkestra-registry/deployments"
-	orksvc "github.com/ialexeze/orkestra/pkg/orkestra-registry/services"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	orkcron "github.com/orkspace/orkestra/pkg/orkestra-registry/cronjobs"
+	orkdeploy "github.com/orkspace/orkestra/pkg/orkestra-registry/deployments"
+	orksvc "github.com/orkspace/orkestra/pkg/orkestra-registry/services"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	apiv1 "orkestra-hooks-demo/v1alpha1"
 )
 

@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // FileSource represents one file source entry.

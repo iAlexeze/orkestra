@@ -83,7 +83,7 @@ import (
     "fmt"
     "net/http"
 
-    "github.com/ialexeze/orkestra/domain"
+    "github.com/orkspace/orkestra/domain"
     websitev1 "github.com/myorg/apis/website/v1alpha1"
 )
 

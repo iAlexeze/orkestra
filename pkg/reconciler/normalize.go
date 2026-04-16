@@ -33,8 +33,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
 	"gopkg.in/yaml.v3"
 )
 

@@ -6,10 +6,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/metrics"
-	"github.com/ialexeze/orkestra/pkg/queue"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/metrics"
+	"github.com/orkspace/orkestra/pkg/queue"
 )
 
 // queueDepthReporter is a local interface satisfied by GenericReconciler so the

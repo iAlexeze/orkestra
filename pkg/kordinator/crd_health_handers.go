@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ialexeze/orkestra/pkg/health"
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/health"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"k8s.io/client-go/tools/cache"
 )
 

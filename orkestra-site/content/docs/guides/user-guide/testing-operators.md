@@ -55,7 +55,7 @@ package kordinator_test
 import (
     "testing"
 
-    "github.com/ialexeze/orkestra/pkg/kordinator"
+    "github.com/orkspace/orkestra/pkg/kordinator"
     "github.com/stretchr/testify/assert"
 )
 
@@ -94,8 +94,8 @@ import (
     "context"
     "testing"
 
-    "github.com/ialexeze/orkestra/pkg/reconciler"
-    "github.com/ialexeze/orkestra/tests/helpers"
+    "github.com/orkspace/orkestra/pkg/reconciler"
+    "github.com/orkspace/orkestra/tests/helpers"
     "github.com/stretchr/testify/assert"
 )
 

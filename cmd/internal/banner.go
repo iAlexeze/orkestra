@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/pkg/utils"
-	"github.com/ialexeze/orkestra/pkg/version"
+	"github.com/orkspace/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/version"
 )
 
 func printBanner(kfg *orkestraKfg, konductor string) {

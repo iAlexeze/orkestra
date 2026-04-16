@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

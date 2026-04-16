@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/merger"
 )
 
 const katalogYAML = `apiVersion: orkestra.konductor.io/v1Alpha

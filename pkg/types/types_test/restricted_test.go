@@ -4,7 +4,7 @@ package types_test
 import (
 	"testing"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 func TestRestrictedNamespaces_IsRestricted(t *testing.T) {

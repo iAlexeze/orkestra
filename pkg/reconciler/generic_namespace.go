@@ -18,7 +18,7 @@ package reconciler
 import (
 	"context"
 
-	"github.com/ialexeze/orkestra/domain"
+	"github.com/orkspace/orkestra/domain"
 )
 
 // namespaceGuardFunc returns a guard closure pre-bound to this CRD's

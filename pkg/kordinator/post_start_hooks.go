@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/informer"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/queue"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/informer"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/queue"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 

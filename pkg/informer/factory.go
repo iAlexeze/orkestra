@@ -4,7 +4,7 @@ package informer
 import (
 	"context"
 
-	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/logger"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"

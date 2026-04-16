@@ -183,16 +183,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/event"
-	"github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/event"
+	"github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/ialexeze/orkestra/pkg/informer"
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/queue"
+	"github.com/orkspace/orkestra/pkg/informer"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/queue"
 )
 
 // DependencyKordinator extends the base Kontroller with dependency‑aware startup.

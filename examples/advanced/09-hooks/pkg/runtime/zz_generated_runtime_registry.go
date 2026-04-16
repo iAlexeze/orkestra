@@ -10,8 +10,8 @@ package runtime
 import (
 	"fmt"
 
-	"github.com/ialexeze/orkestra/domain"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 

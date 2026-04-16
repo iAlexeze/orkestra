@@ -13,12 +13,13 @@ import (
 	"time"
 
 	cc "github.com/orkspace/orkestra-cc/cc"
+	v "github.com/orkspace/orkestra-cc/version"
 )
 
 var (
-	version   = "dev"
-	commit    = "none"
-	buildDate = "unknown"
+	version   = v.Version
+	commit    = v.Commit
+	buildDate = v.Date
 )
 
 func main() {

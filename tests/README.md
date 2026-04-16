@@ -107,7 +107,7 @@ package helpers
 import (
     "context"
     "k8s.io/client-go/kubernetes/fake"
-    "github.com/ialexeze/orkestra/pkg/kubeclient"
+    "github.com/orkspace/orkestra/pkg/kubeclient"
 )
 
 func NewFakeKubeclient() *kubeclient.Kubeclient {
@@ -158,7 +158,7 @@ import (
     "testing"
     "time"
     
-    "github.com/ialexeze/orkestra/pkg/kordinator"
+    "github.com/orkspace/orkestra/pkg/kordinator"
     "github.com/stretchr/testify/assert"
 )
 
@@ -246,8 +246,8 @@ package kordinator_test
 import (
     "testing"
     
-    "github.com/ialexeze/orkestra/pkg/katalog"
-    "github.com/ialexeze/orkestra/pkg/orktypes"
+    "github.com/orkspace/orkestra/pkg/katalog"
+    "github.com/orkspace/orkestra/pkg/orktypes"
     "github.com/stretchr/testify/assert"
 )
 
@@ -326,8 +326,8 @@ package katalog_test
 import (
     "testing"
     
-    "github.com/ialexeze/orkestra/pkg/katalog"
-    "github.com/ialexeze/orkestra/pkg/orktypes"
+    "github.com/orkspace/orkestra/pkg/katalog"
+    "github.com/orkspace/orkestra/pkg/orktypes"
     "github.com/stretchr/testify/assert"
 )
 
@@ -403,10 +403,10 @@ import (
     "context"
     "testing"
     
-    "github.com/ialexeze/orkestra/pkg/kubeclient"
-    "github.com/ialexeze/orkestra/pkg/reconciler"
-    "github.com/ialexeze/orkestra/pkg/orktypes"
-    "github.com/ialexeze/orkestra/tests/helpers"
+    "github.com/orkspace/orkestra/pkg/kubeclient"
+    "github.com/orkspace/orkestra/pkg/reconciler"
+    "github.com/orkspace/orkestra/pkg/orktypes"
+    "github.com/orkspace/orkestra/tests/helpers"
     "github.com/stretchr/testify/assert"
     corev1 "k8s.io/api/core/v1"
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -496,8 +496,8 @@ import (
     "testing"
     "time"
     
-    "github.com/ialexeze/orkestra/pkg/kordinator"
-    "github.com/ialexeze/orkestra/tests/helpers"
+    "github.com/orkspace/orkestra/pkg/kordinator"
+    "github.com/orkspace/orkestra/tests/helpers"
     "github.com/stretchr/testify/assert"
 )
 
@@ -538,7 +538,7 @@ package komposer_test
 import (
     "testing"
     
-    "github.com/ialexeze/orkestra/pkg/katalog"
+    "github.com/orkspace/orkestra/pkg/katalog"
     "github.com/stretchr/testify/assert"
 )
 

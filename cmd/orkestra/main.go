@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 
-	"github.com/ialexeze/orkestra/cmd/cli"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/cmd/cli"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 func main() {

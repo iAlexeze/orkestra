@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/inspect"
+	"github.com/orkspace/orkestra/pkg/inspect"
 	"github.com/spf13/cobra"
 )
 

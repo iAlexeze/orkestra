@@ -46,11 +46,11 @@ Every release is GPG-signed. To verify the binary before running it:
 
 ```bash
 # Import the Orkestra public key (one time)
-curl -sSL https://github.com/iAlexeze/orkestra/releases/download/v0.1.1/orkestra-public-key.asc | gpg --import
+curl -sSL https://github.com/orkspace/orkestra/releases/download/v0.1.1/orkestra-public-key.asc | gpg --import
 
 # Download the binary and its signature
-curl -sSLO https://github.com/iAlexeze/orkestra/releases/download/v0.1.1/ork_linux_amd64.tar.gz
-curl -sSLO https://github.com/iAlexeze/orkestra/releases/download/v0.1.1/ork_linux_amd64.tar.gz.asc
+curl -sSLO https://github.com/orkspace/orkestra/releases/download/v0.1.1/ork_linux_amd64.tar.gz
+curl -sSLO https://github.com/orkspace/orkestra/releases/download/v0.1.1/ork_linux_amd64.tar.gz.asc
 
 # Verify
 gpg --verify ork_linux_amd64.tar.gz.asc ork_linux_amd64.tar.gz

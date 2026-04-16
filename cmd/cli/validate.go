@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/pkg/inspect"
-	"github.com/ialexeze/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/inspect"
+	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/spf13/cobra"
 )
 

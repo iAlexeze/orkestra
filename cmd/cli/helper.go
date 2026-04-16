@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 type CRDEntryDTO struct {

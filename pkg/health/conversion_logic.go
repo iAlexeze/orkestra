@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // applyConversion converts obj from its current version to targetAPIVersion.

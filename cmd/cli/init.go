@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -164,7 +164,7 @@ func makeDirs(root string, dirs []string) error {
 func writeMain(root string) error {
 	content := `package main
 
-import "github.com/ialexeze/orkestra/cmd/cli"
+import "github.com/orkspace/orkestra/cmd/cli"
 
 func main() {
 	cli.Execute(nil, nil)
@@ -179,7 +179,7 @@ func writeGoMod(root, module string) error {
 go 1.22
 
 require (
-	github.com/ialexeze/orkestra latest
+	github.com/orkspace/orkestra latest
 )
 `, module)
 	return writeFile(root, "go.mod", content)

@@ -36,9 +36,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

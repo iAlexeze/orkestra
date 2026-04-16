@@ -163,7 +163,7 @@ func installControlCenterBinary() error {
 
 	// TODO: Add actual download logic
 	// Example:
-	// url := fmt.Sprintf("https://github.com/ialexeze/orkestra/releases/download/%s/orkcc_%s.tar.gz", version, platform)
+	// url := fmt.Sprintf("https://github.com/orkspace/orkestra/releases/download/%s/orkcc_%s.tar.gz", version, platform)
 	// Download, extract, and install to binDir
 
 	return fmt.Errorf("automatic installation not yet implemented. Please build manually: make orkcc")

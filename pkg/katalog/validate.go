@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

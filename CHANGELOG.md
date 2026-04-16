@@ -1,45 +1,22 @@
 # CHANGELOG
 
-## Added
-- **Webhook reconciliation metrics**  
-  Introduced Prometheus counters for:
-  - `webhook_reconciliations_total`
-  - `webhook_reconciliation_failures_total`  
-  Enables cluster‑level observability into admission + deletion‑protection webhook lifecycle.
+## Repository migrated from personal namespace to the official Orkspace organization.
+All module paths, imports, workflows, documentation links, container image references, and installation endpoints have been updated to reflect the new canonical home of the project. This change establishes Orkestra as an organization‑owned platform rather than a personal repository, and prepares the ecosystem for v1 stability, multi‑maintainer governance, and long‑term evolution.
 
-- **Webhook reconciliation stats (UI‑visible)**  
-  Added in‑memory `WebhookStats` module mirroring `ConversionStats`, `AdmissionStats`, and `ProtectionStats`.  
-  Exposed through the Control Center for real‑time visibility.
+**Key changes:**
 
-- **Recursive deletion protection for all Orkestra‑managed resources**  
-  Deletion protection now covers:
-  - CRDs managed by Orkestra  
-  - Orkestra Deployment, Service, Ingress  
-  - **ValidatingWebhookConfiguration (orkestra-validation)**  
-  - **MutatingWebhookConfiguration (orkestra-mutation)**  
-  - **Deletion‑protection webhook itself**  
-  This creates a self‑protecting, self‑healing admission control plane.
+- Updated Go module paths from `github.com/ialexeze/orkestra` to `github.com/orkspace/orkestra`.  
+- Updated Control Center module path to `github.com/orkspace/orkestra-cc`.  
+- Updated all internal imports across the codebase to use the new organization namespace.  
+- Updated ldflags targets for both Orkestra and the Control Center to match the new version packages.  
+- Updated GitHub Actions workflows to reference the new repository locations, image registries, and release endpoints.  
+- Updated installer script to download artifacts from `github.com/orkspace/orkestra`.  
+- Updated Helm chart repository, documentation links, and Homebrew tap references to the Orkspace organization.  
+- Updated container image names to `ghcr.io/orkspace/orkestra` and `ghcr.io/orkspace/orkestra-cc`.  
+- Removed all legacy references to the previous personal namespace.  
+- Performed a full repository‑wide refactor affecting over 2,500 lines to ensure consistency, correctness, and future maintainability.
 
-- **UI integration for webhook reconciliation stats**  
-  Wired `WebhookStats` into the CRD handler so the Control Center displays:
-  - Failed Reconciliation
-  - Successful Reconciliation
+**Impact:**
 
-## Changed
-- **Webhook controller now records both metrics and stats**  
-  Each reconciliation cycle increments:
-  - UI stats (`Reconciled`, `Failed`)
-  - Prometheus metrics (labeled `"validation"`, `"mutation"`, `"deletion-protection"`, `"controller"`)
-
-- **Admission webhook configurations now carry Orkestra ownership labels**  
-  Ensures they are included in deletion protection via `objectSelector`.
-
-## Security / Protection
-- **Two‑level protection model implemented**
-  1. **Admission protection**  
-     Validation + mutation webhooks enforce CRD‑level rules.
-  2. **Deletion protection**  
-     Dedicated validating webhook prevents deletion of Orkestra‑owned resources, including the admission webhooks themselves.
-
-  This forms a **recursive protection loop**:  
-  the system that protects the platform is itself protected by the platform.
+This is the largest structural change in the project to date.  
+It formalizes Orkestra’s identity under the Orkspace organization, aligns all tooling and distribution channels with the new namespace, and sets the foundation for the v1 release and ecosystem growth.

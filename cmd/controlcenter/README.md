@@ -72,7 +72,7 @@ curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | 
 ork version
 ```
 
-> 📖 See the full [Orkestra Installation Guide](https://github.com/iAlexeze/orkestra#installation) for details.
+> 📖 See the full [Orkestra Installation Guide](https://github.com/orkspace/orkestra#installation) for details.
 
 ### Starting the Control Center
 
@@ -249,7 +249,7 @@ curl http://localhost:8090/controlcenter/version
 ### Building from Source
 
 ```bash
-git clone https://github.com/iAlexeze/orkestra.git
+git clone https://github.com/orkspace/orkestra.git
 cd orkestra
 go build -o ork ./cmd/orkestra/
 
@@ -277,5 +277,5 @@ Apache license – see [LICENSE](LICENSE) file for details.
 
 ## Related Projects
 
-- [Orkestra Runtime](https://github.com/iAlexeze/orkestra) – The declarative operator runtime
-- [Orkestra Registry](https://github.com/iAlexeze/orkestra-registry) – OCI/Git-based pattern registry
+- [Orkestra Runtime](https://github.com/orkspace/orkestra) – The declarative operator runtime
+- [Orkestra Registry](https://github.com/orkspace/orkestra-registry) – OCI/Git-based pattern registry

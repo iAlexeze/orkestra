@@ -5,7 +5,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/queue"
+	"github.com/orkspace/orkestra/pkg/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

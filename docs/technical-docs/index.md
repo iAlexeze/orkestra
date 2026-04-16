@@ -92,7 +92,7 @@ These invariants hold across the entire codebase. Any change that violates them 
 ## Packages reference
 
 ```
-github.com/ialexeze/orkestra/
+github.com/orkspace/orkestra/
   cmd/                      CLI entry points
     ork/                    main binary
   domain/                   Core interfaces (Object, Komponent, ReconcileHooks)

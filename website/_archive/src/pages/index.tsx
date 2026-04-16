@@ -36,7 +36,7 @@ function HomepageHero(): React.JSX.Element {
           </Link>
           <Link
             className={styles.btnSecondary}
-            href="https://github.com/iAlexeze/orkestra">
+            href="https://github.com/orkspace/orkestra">
             GitHub
           </Link>
         </div>

@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 var testTemplate = template.Must(

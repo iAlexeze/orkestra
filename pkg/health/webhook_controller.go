@@ -5,8 +5,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/metrics"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/metrics"
 )
 
 // webhookController continuously reconciles all admission webhook configurations

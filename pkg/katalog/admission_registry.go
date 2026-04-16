@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // ── AdmissionRegistry interface ───────────────────────────────────────────

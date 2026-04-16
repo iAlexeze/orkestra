@@ -6,9 +6,9 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
 )
 

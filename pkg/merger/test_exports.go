@@ -1,6 +1,6 @@
 package merger
 
-import orktypes "github.com/ialexeze/orkestra/pkg/types"
+import orktypes "github.com/orkspace/orkestra/pkg/types"
 
 // Exported for tests
 func ExportedGitHubRawURL(repoURL, ref, filePath string) string {

@@ -5,8 +5,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/reconciler"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/reconciler"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 

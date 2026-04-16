@@ -44,7 +44,7 @@ Recommended:
 ### Clone and build
 
 ```bash
-git clone https://github.com/iAlexeze/orkestra
+git clone https://github.com/orkspace/orkestra
 cd orkestra
 go build ./...
 go test ./...

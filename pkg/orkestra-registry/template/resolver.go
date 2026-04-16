@@ -8,9 +8,9 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/note"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/note"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // Resolver evaluates Go text/template expressions against a live CR object.
