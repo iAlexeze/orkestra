@@ -79,9 +79,10 @@ func (h *HealthServer) deletionProtectionHandler(w http.ResponseWriter, r *http.
 				Allowed: false,
 				Status: &AdmissionStatus{
 					Message: fmt.Sprintf(
-						"\n\n[orkestra] CRD %q is protected from deletion.\n\n"+
-							"To delete it: set security.deletionProtection.enabled: false "+
-							"in the Katalog, redeploy Orkestra, then delete the CRD.\n",
+						"\n\n[orkestra Security] CRD %q is protected from deletion.\n\n"+
+							"To delete it:\n"+
+							"- Set security.deletionProtection.enabled: false in the Katalog\n"+
+							"- Redeploy Orkestra, then delete the CRD.\n\n",
 						req.Name,
 					),
 					Code: 403,
@@ -115,8 +116,10 @@ func (h *HealthServer) deletionProtectionHandler(w http.ResponseWriter, r *http.
 		Allowed: false,
 		Status: &AdmissionStatus{
 			Message: fmt.Sprintf(
-				"[orkestra] The Orkestra %s %q is protected from deletion. "+
-					"Set security.deletionProtection.enabled: false in the Katalog first.",
+				"\n\n[Orkestra Security] The Orkestra %s %q is protected from deletion.\n\n"+
+					"To disable:\n"+
+					"- Set security.deletionProtection.enabled: false in the Katalog first.\n"+
+					"- Redeploy Orkestra, then delete the resource.\n\n",
 				req.Resource.Resource, req.Name,
 			),
 			Code: 403,

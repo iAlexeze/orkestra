@@ -13,6 +13,8 @@ security:
     enabled: true
   rbac:
     enabled: false
+  conversion:
+    enabled: true
 
 spec:
   crds:
@@ -57,17 +59,13 @@ spec:
       #
       conversion:
         storageVersion: v2
+        updateCRD: true     # This will update the CRD with the correct CA Bundle
         paths:
           # v1 → v2: split the cron string into named fields
           - from: v1
             to: v2
             spec:
-              schedule:
-                minute:     "{{ cronMinute .spec.schedule }}"
-                hour:       "{{ cronHour   .spec.schedule }}"
-                dayOfMonth: "{{ cronDom    .spec.schedule }}"
-                month:      "{{ cronMonth  .spec.schedule }}"
-                dayOfWeek:  "{{ cronDow    .spec.schedule }}"
+              schedule: "{{ cronFromMap .spec.schedule }}"
               image:                      "{{ .spec.image }}"
               concurrencyPolicy:          "{{ default .spec.concurrencyPolicy \"Allow\" }}"
               startingDeadlineSeconds:    "{{ .spec.startingDeadlineSeconds }}"
@@ -79,7 +77,7 @@ spec:
           - from: v2
             to: v1
             spec:
-              schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+              schedule: "{{ cronNormalize .spec.schedule }}"
               image:                      "{{ .spec.image }}"
               concurrencyPolicy:          "{{ default .spec.concurrencyPolicy \"Allow\" }}"
               startingDeadlineSeconds:    "{{ .spec.startingDeadlineSeconds }}"
@@ -125,7 +123,7 @@ spec:
             # Reconstruct the human-readable cron expression for display
             # This is what kubectl get cj shows in the Schedule column
             - path: scheduleExpression
-              value: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+              value: "{{ cronNormalize .spec.schedule }}"
 
             - path: image
               value: "{{ .spec.image }}"
@@ -147,7 +145,7 @@ spec:
           cronJobs:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
-              schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+              schedule: "{{ cronNormalize .spec.schedule }}"
               reconcile: true
 
         # When the CR is suspended, the child CronJob is suspended too
@@ -156,7 +154,7 @@ spec:
           cronJobs:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
-              schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+              schedule: "{{ cronNormalize .spec.schedule }}"
               suspend: "{{ .spec.suspend }}"
               successfulJobsHistoryLimit: "{{ .spec.successfulJobsHistoryLimit }}"
               failedJobsHistoryLimit: "{{ .spec.failedJobsHistoryLimit }}"

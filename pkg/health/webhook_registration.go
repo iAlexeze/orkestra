@@ -35,6 +35,7 @@ import (
 // Configuration names:
 //   orkestra-validation   → ValidatingWebhookConfiguration
 //   orkestra-mutation     → MutatingWebhookConfiguration
+//   orkestra-delete-protection → ValidatingWebhookConfiguration
 //
 // Both are created with FailurePolicy: Ignore during initial rollout.
 // Platform operators who want hard enforcement can change this to Fail.

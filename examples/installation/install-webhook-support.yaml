@@ -8,20 +8,23 @@ metadata:
   namespace: orkestra-system
   labels:
     app.kubernetes.io/name: orkestra
+    app.kubernetes.io/component: orkestra-internal
 spec:
   replicas: 2
   selector:
     matchLabels:
       app.kubernetes.io/name: orkestra
+      app.kubernetes.io/component: orkestra-internal
   template:
     metadata:
       labels:
         app.kubernetes.io/name: orkestra
+        app.kubernetes.io/component: orkestra-internal
     spec:
       serviceAccountName: orkestra
       containers:
         - name: orkestra
-          image: ghcr.io/orkspace/orkestra:secure
+          image: ghcr.io/orkspace/orkestra:secure-test
           imagePullPolicy: Always
           args:
             - run
@@ -107,9 +110,11 @@ metadata:
   namespace: orkestra-system
   labels:
     app.kubernetes.io/name: orkestra
+    app.kubernetes.io/component: orkestra-internal
 spec:
   selector:
     app.kubernetes.io/name: orkestra
+    app.kubernetes.io/component: orkestra-internal
   ports:
     - name: health
       port: 8080

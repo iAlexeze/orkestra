@@ -92,6 +92,10 @@ type DeletionProtectionConfig struct {
 	// "Ignore" — allow the DELETE through when Orkestra cannot be reached.
 	// Default: "Fail".
 	FailurePolicy string `yaml:"failurePolicy,omitempty"`
+
+	// CleanupOnShutdown controls whether Deletion protection webhook is deleted on graceful shutdown.
+	// Default: false — Deletion protection webhook persists across restarts.
+	CleanupOnShutdown bool `yaml:"cleanupOnShutdown,omitempty"`
 }
 
 // WebhooksConfig controls global admission webhook settings.
@@ -109,6 +113,10 @@ type WebhooksConfig struct {
 	// Shared with deletion protection when both are enabled.
 	// Default: ORKESTRA_SERVICE_NAME env / "orkestra".
 	ServiceName string `yaml:"serviceName,omitempty"`
+
+	// CleanupOnShutdown controls whether Admission webhook is deleted on graceful shutdown.
+	// Default: false — Admission webhook persists across restarts.
+	CleanupOnShutdown bool `yaml:"cleanupOnShutdown,omitempty"`
 }
 
 // AdmissionWebhookToggle controls whether admission webhooks are globally enabled.

@@ -56,16 +56,18 @@ type registryConfig struct {
 // Precedence: Katalog YAML > SecurityConfig (ENV) > hard default.
 type SecurityConfig struct {
 	DeletionProtection struct {
-		Enabled       bool
-		ServiceName   string
-		FailurePolicy string
+		Enabled           bool
+		CleanupOnShutdown bool
+		ServiceName       string
+		FailurePolicy     string
 	}
 	Webhooks struct {
 		Admission struct {
 			Enabled bool
 		}
-		FailurePolicy string
-		ServiceName   string
+		CleanupOnShutdown bool
+		FailurePolicy     string
+		ServiceName       string
 		// TLS paths — shared with deletion protection, admission, and conversion.
 		// Set by ensureSecurity() after cert generation/loading.
 		TLSCert string

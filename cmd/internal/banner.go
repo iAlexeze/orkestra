@@ -45,20 +45,22 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 			fmt.Printf("- Validation:  %s/validate%s\n", utils.ColorGreen, utils.ColorReset)
 		}
 		if kfg.katalog.IsDeletionProtectionEnabled() && kfg.katalog.DeletionProtectionGVRs() != nil {
-			fmt.Printf("- Deletion Protection:  %s/deletion-protection%s\n", utils.ColorGreen, utils.ColorReset)
+			fmt.Printf("- Deletion Protection: %s/deletion-protection%s\n", utils.ColorGreen, utils.ColorReset)
+			fmt.Printf("- Deletion Protection Failure Policy: %s%s%s\n", utils.ColorCyan, kfg.katalog.DeletionProtectionFailurePolicy(), utils.ColorReset)
+		}
+
+		// ENABLE_CONVERSION=true
+		if kfg.katalog.HasConversionPaths() {
+			fmt.Printf("- Conversion: %s/convert%s\n", utils.ColorGreen, utils.ColorReset)
 		}
 
 		// Registration configuration
+		fmt.Println("Webhook Configuration:")
 		fmt.Printf("- Service Name: %s%s%s\n", utils.ColorCyan, kfg.katalog.WebhooksServiceName(), utils.ColorReset)
 		fmt.Printf("- Service Namespace: %s%s%s\n", utils.ColorCyan, kfg.konfig.Cluster().Namespace, utils.ColorReset)
-		fmt.Printf("- Failure Policy: %s%s%s\n", utils.ColorCyan, kfg.katalog.WebhooksFailurePolicy(), utils.ColorReset)
+		fmt.Printf("- General Failure Policy: %s%s%s\n", utils.ColorCyan, kfg.katalog.WebhooksFailurePolicy(), utils.ColorReset)
 
 		fmt.Println()
-	}
-
-	// ENABLE_CONVERSION=true
-	if kfg.katalog.HasConversionPaths() {
-		fmt.Printf("- Conversion: %s/convert%s\n", utils.ColorGreen, utils.ColorReset)
 	}
 
 	fmt.Println()

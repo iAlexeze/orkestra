@@ -117,6 +117,8 @@ subjects:
 apiVersion: v1
 data:
   katalog.yaml: |
+
+    # Runtime katalog
     apiVersion: orkestra.konductor.io/v1Alpha
     kind: Katalog
     metadata:
@@ -126,19 +128,17 @@ data:
         structured schedule object. Conversion is lossless and bidirectional,
         declared entirely in YAML using cron notes. No Go. No hooks.
         No separate conversion webhook. One process. One Katalog.
-  
+
     security:
       deletionProtection:
         enabled: true
       rbac:
         enabled: false
+      conversion:
+        enabled: true
 
     spec:
       crds:
-        # ── v2 ─────────────────────────────────────────────────────────────────
-        # The current, storage version. All objects live here.
-        # The API server calls /convert when a request comes in as v1.
-        # Orkestra handles the conversion in-process — zero extra infrastructure.
         cronjob-v2:
           apiTypes:
             group: demo.orkestra.io
@@ -148,45 +148,15 @@ data:
 
           workers: 5
           resync: 30s
-
-          # ── Lossless version conversion using cron notes ───────────────────────
-          #
-          # The core change between v1 and v2:
-          #   v1: schedule: "*/5 0 * * 1"        (one string, five fields joined)
-          #   v2: schedule:                        (named structured fields)
-          #         minute: "*/5"
-          #         hour: "0"
-          #         dayOfMonth: "*"
-          #         month: "*"
-          #         dayOfWeek: "1"
-          #
-          # cron notes split and reconstruct this without losing information:
-          #
-          #   cronMinute "*/5 0 * * 1"  →  "*/5"
-          #   cronHour   "*/5 0 * * 1"  →  "0"
-          #   cronDom    "*/5 0 * * 1"  →  "*"
-          #   cronMonth  "*/5 0 * * 1"  →  "*"
-          #   cronDow    "*/5 0 * * 1"  →  "1"
-          #
-          #   cronExpr "*/5" "0" "*" "*" "1"  →  "*/5 0 * * 1"
-          #
-          # Round-trip guarantee: v1 → v2 → v1 produces the canonical
-          # cron string — semantically identical to the original.
-          # @-macros are expanded: @hourly → "0 * * * *"
-          #
           conversion:
             storageVersion: v2
+            updateCRD: true     # This will update the CRD with the correct CA Bundle
             paths:
               # v1 → v2: split the cron string into named fields
               - from: v1
                 to: v2
                 spec:
-                  schedule:
-                    minute:     "{{ cronMinute .spec.schedule }}"
-                    hour:       "{{ cronHour   .spec.schedule }}"
-                    dayOfMonth: "{{ cronDom    .spec.schedule }}"
-                    month:      "{{ cronMonth  .spec.schedule }}"
-                    dayOfWeek:  "{{ cronDow    .spec.schedule }}"
+                  schedule: "{{ cronFromMap .spec.schedule }}"
                   image:                      "{{ .spec.image }}"
                   concurrencyPolicy:          "{{ default .spec.concurrencyPolicy \"Allow\" }}"
                   startingDeadlineSeconds:    "{{ .spec.startingDeadlineSeconds }}"
@@ -198,7 +168,7 @@ data:
               - from: v2
                 to: v1
                 spec:
-                  schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+                  schedule: "{{ cronNormalize .spec.schedule }}"
                   image:                      "{{ .spec.image }}"
                   concurrencyPolicy:          "{{ default .spec.concurrencyPolicy \"Allow\" }}"
                   startingDeadlineSeconds:    "{{ .spec.startingDeadlineSeconds }}"
@@ -239,12 +209,12 @@ data:
             status:
               fields:
                 - path: phase
-                  value: "{{ boolTernary  .spec.suspend \"Suspended\" \"Active\" }}"
+                  value: "{{ ternary .spec.suspend \"Suspended\" \"Active\" }}"
 
                 # Reconstruct the human-readable cron expression for display
                 # This is what kubectl get cj shows in the Schedule column
                 - path: scheduleExpression
-                  value: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+                  value: "{{ cronNormalize .spec.schedule }}"
 
                 - path: image
                   value: "{{ .spec.image }}"
@@ -266,7 +236,7 @@ data:
               cronJobs:
                 - name: "{{ .metadata.name }}"
                   image: "{{ .spec.image }}"
-                  schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+                  schedule: "{{ cronNormalize .spec.schedule }}"
                   reconcile: true
 
             # When the CR is suspended, the child CronJob is suspended too
@@ -275,7 +245,7 @@ data:
               cronJobs:
                 - name: "{{ .metadata.name }}"
                   image: "{{ .spec.image }}"
-                  schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+                  schedule: "{{ cronNormalize .spec.schedule }}"
                   suspend: "{{ .spec.suspend }}"
                   successfulJobsHistoryLimit: "{{ .spec.successfulJobsHistoryLimit }}"
                   failedJobsHistoryLimit: "{{ .spec.failedJobsHistoryLimit }}"
@@ -319,7 +289,7 @@ data:
             status:
               fields:
                 - path: phase
-                  value: "{{ boolTernary  .spec.suspend \"Suspended\" \"Active\" }}"
+                  value: "{{ ternary .spec.suspend \"Suspended\" \"Active\" }}"
                 - path: scheduleExpression
                   value: "{{ .spec.schedule }}"
                 - path: image
@@ -331,6 +301,7 @@ data:
                   image: "{{ .spec.image }}"
                   schedule: "{{ .spec.schedule }}"
                   reconcile: true
+
 kind: ConfigMap
 metadata:
   name: orkestra-katalog

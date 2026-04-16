@@ -16,6 +16,16 @@ import (
 	"time"
 )
 
+type runtimeMetrics string
+
+const (
+	metricsWorkersBusyPercent   runtimeMetrics = "metrics.workersBusyPercent"
+	metricsWorkersIdlePercent   runtimeMetrics = "metrics.workersIdlePercent"
+	metricsQueueDepth           runtimeMetrics = "metrics.queueDepth"
+	metricsReconcileDurationP95 runtimeMetrics = "metrics.reconcileDurationP95Ms"
+	metricsErrorRatePercent     runtimeMetrics = "metrics.errorRatePercent"
+)
+
 // AutoMetrics holds live operatorbox runtime metrics for autoscale evaluation.
 // All counters are atomic int64 values — safe for concurrent read/write from
 // worker goroutines and the autoscaler loop.
@@ -76,19 +86,19 @@ func (m *AutoMetrics) SetQueueDepth(depth int64) {
 // Returns "" for unknown fields — evaluates as notExists in condition checks.
 func (m *AutoMetrics) Get(field string) string {
 	switch field {
-	case "metrics.workersBusyPercent":
+	case string(metricsWorkersBusyPercent):
 		return formatFloat(m.workerSem.BusyPercent())
 
-	case "metrics.workersIdlePercent":
+	case string(metricsWorkersIdlePercent):
 		return formatFloat(m.workerSem.IdlePercent())
 
-	case "metrics.queueDepth":
+	case string(metricsQueueDepth):
 		return strconv.FormatInt(m.queueDepth.Load(), 10)
 
-	case "metrics.reconcileDurationP95Ms":
+	case string(metricsReconcileDurationP95):
 		return formatFloat(m.p95.p95Milliseconds())
 
-	case "metrics.errorRatePercent":
+	case string(metricsErrorRatePercent):
 		return formatFloat(m.ErrorRatePercent())
 
 	default:
@@ -180,11 +190,12 @@ func (m *AutoMetrics) AsMap() map[string]interface{} {
 }
 
 // ErrorRatePercent returns the curent error rate i percentage
-func (a *AutoMetrics) ErrorRatePercent() float64 {
-	total := a.reconcileTotal.Load()
+func (m *AutoMetrics) ErrorRatePercent() float64 {
+	total := m.reconcileTotal.Load()
 	if total == 0 {
 		return 0
 	}
-	rate := float64(a.reconcileErrors.Load()) / float64(total) * 100
+	rate := float64(m.reconcileErrors.Load()) / float64(total) * 100
+	m.errorRatePercent.Store(int64(rate))
 	return rate
 }
