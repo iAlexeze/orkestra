@@ -338,7 +338,7 @@ spec:
   finalizers:
     - finalizer.demo.orkestra.io/website
   crds:
-    - name: website
+    website
       enabled: true
       namespaced: true
       workers: 2

@@ -57,9 +57,9 @@ jobs:
           go build \
             -trimpath \
             -ldflags="-s -w \
-              -X github.com/iAlexeze/orkestra/pkg/version.Version=${{ github.ref_name }} \
-              -X github.com/iAlexeze/orkestra/pkg/version.Commit=${{ github.sha }} \
-              -X github.com/iAlexeze/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              -X github.com/ialexeze/orkestra/pkg/version.Version=${{ github.ref_name }} \
+              -X github.com/ialexeze/orkestra/pkg/version.Commit=${{ github.sha }} \
+              -X github.com/ialexeze/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             -o dist/ork \
             ./cmd/orkestra/
           echo "✅ Runtime built: dist/ork"
@@ -74,9 +74,9 @@ jobs:
           go build \
             -trimpath \
             -ldflags="-s -w \
-              -X github.com/iAlexeze/orkestra/pkg/version.Version=${{ github.ref_name }} \
-              -X github.com/iAlexeze/orkestra/pkg/version.Commit=${{ github.sha }} \
-              -X github.com/iAlexeze/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              -X github.com/ialexeze/orkestra/pkg/version.Version=${{ github.ref_name }} \
+              -X github.com/ialexeze/orkestra/pkg/version.Commit=${{ github.sha }} \
+              -X github.com/ialexeze/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             -o ../../dist/orkcc .
           echo "✅ Control Center built: dist/orkcc"
 
@@ -297,10 +297,10 @@ jobs:
 
           \`\`\`bash
           # macOS
-          brew tap iAlexeze/tap && brew install ork orkcc
+          brew tap ialexeze/tap && brew install ork orkcc
 
           # Linux
-          curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | bash
+          curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | bash
           \`\`\`
 
           #### Container Images
@@ -416,7 +416,7 @@ jobs:
       - name: Checkout tap
         uses: actions/checkout@v6.0.2
         with:
-          repository: iAlexeze/homebrew-tap
+          repository: ialexeze/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: homebrew-tap
 
@@ -424,7 +424,7 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           curl -sSfL \
-            "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/checksums.txt" \
+            "https://github.com/ialexeze/orkestra/releases/download/${TAG}/checksums.txt" \
             -o checksums.txt
 
       - name: Extract SHA256 values
@@ -454,28 +454,28 @@ jobs:
           cat > homebrew-tap/Formula/ork.rb << 'EOF'
           class Ork < Formula
             desc "The Kubernetes operator runtime that needs no programming language"
-            homepage "https://github.com/iAlexeze/orkestra"
+            homepage "https://github.com/ialexeze/orkestra"
             version "${VERSION}"
             license "Apache 2.0"
 
             on_macos do
               on_arm   do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/ork_darwin_arm64.tar.gz"
+                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/ork_darwin_arm64.tar.gz"
                 sha256 "${DARWIN_ARM64}"
               end
               on_intel do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/ork_darwin_amd64.tar.gz"
+                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/ork_darwin_amd64.tar.gz"
                 sha256 "${DARWIN_AMD64}"
               end
             end
 
             on_linux do
               on_arm   do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/ork_linux_arm64.tar.gz"
+                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/ork_linux_arm64.tar.gz"
                 sha256 "${LINUX_ARM64}"
               end
               on_intel do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/ork_linux_amd64.tar.gz"
+                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/ork_linux_amd64.tar.gz"
                 sha256 "${LINUX_AMD64}"
               end
             end
@@ -510,28 +510,28 @@ jobs:
           cat > homebrew-tap/Formula/orkcc.rb << 'EOF'
           class OrkCc < Formula
             desc "Web-based Control Center for Orkestra - visualize and manage your operators"
-            homepage "https://github.com/iAlexeze/orkestra"
+            homepage "https://github.com/ialexeze/orkestra"
             version "${VERSION}"
             license "Apache 2.0"
 
             on_macos do
               on_arm   do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/orkcc_darwin_arm64.tar.gz"
+                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/orkcc_darwin_arm64.tar.gz"
                 sha256 "${DARWIN_ARM64}"
               end
               on_intel do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/orkcc_darwin_amd64.tar.gz"
+                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/orkcc_darwin_amd64.tar.gz"
                 sha256 "${DARWIN_AMD64}"
               end
             end
 
             on_linux do
               on_arm   do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/orkcc_linux_arm64.tar.gz"
+                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/orkcc_linux_arm64.tar.gz"
                 sha256 "${LINUX_ARM64}"
               end
               on_intel do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/orkcc_linux_amd64.tar.gz"
+                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/orkcc_linux_amd64.tar.gz"
                 sha256 "${LINUX_AMD64}"
               end
             end
@@ -596,7 +596,7 @@ jobs:
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo '```bash' >> "$GITHUB_STEP_SUMMARY"
             echo "# Install CLI tools" >> "$GITHUB_STEP_SUMMARY"
-            echo "brew tap iAlexeze/tap && brew install ork orkcc" >> "$GITHUB_STEP_SUMMARY"
+            echo "brew tap ialexeze/tap && brew install ork" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo "# Deploy with Helm (Runtime + Control Center)" >> "$GITHUB_STEP_SUMMARY"
             echo "helm repo add orkestra https://ialexeze.github.io/orkestra" >> "$GITHUB_STEP_SUMMARY"
