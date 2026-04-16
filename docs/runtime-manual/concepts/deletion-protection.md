@@ -1,9 +1,3 @@
-Here is the **rewritten documentation** for deletion protection, using **only `#`, `##`, `###` headers**, and allowing **bold** inside paragraphs.  
-No `**` around headers.  
-Clean, publication‑grade, CNCF‑style.
-
----
-
 # Deletion Protection in Orkestra
 
 Deletion protection is Orkestra’s declarative safety mechanism that prevents accidental or unauthorized removal of critical control‑plane resources. When enabled, Orkestra installs a dedicated validating admission webhook that intercepts `DELETE` operations on Orkestra‑owned resources and blocks them before they reach the Kubernetes API server’s persistence layer.
@@ -47,11 +41,16 @@ Orkestra’s admission surface consists of:
 
 - ValidatingWebhookConfiguration (`orkestra-validation`)
 - MutatingWebhookConfiguration (`orkestra-mutation`)
-- ValidatingWebhookConfiguration (`orkestra-delete-protection`)
 
-These webhook configurations are also labeled as Orkestra‑owned. This means the deletion‑protection webhook protects the admission webhooks themselves, preventing the admission surface from being disabled by deletion.
+These webhook configurations are also labeled as Orkestra‑owned.  
+Deletion protection prevents these admission webhooks from being deleted, ensuring that Orkestra’s validation and mutation logic cannot be disabled by removing their webhook configurations.
 
-This creates a self‑reinforcing safety model: the system that protects the platform is itself protected by the platform.
+### The Deletion‑Protection Webhook Itself
+
+The deletion‑protection webhook is continuously reconciled by the Orkestra controller.  
+If it is removed, the controller immediately recreates it to match the desired state defined in the Katalog.
+
+Kubernetes does not invoke admission webhooks when deleting admission webhook configurations, so the deletion‑protection webhook cannot block deletion of itself. Instead, Orkestra guarantees its existence through **controller‑level reconciliation**, which is the strongest protection model Kubernetes allows.
 
 ---
 
@@ -91,21 +90,21 @@ Deletion protection forms the second layer of Orkestra’s safety model.
 Validation and mutation webhooks enforce CRD‑level rules and defaults.
 
 ### Level 2: Deletion Protection  
-A dedicated webhook prevents removal of Orkestra’s control‑plane resources, including the admission webhooks themselves.
+A dedicated webhook prevents removal of Orkestra’s control‑plane resources, including Orkestra’s admission webhooks.
 
-Together, these create a **self‑protecting, self‑healing admission control plane**.
+Together, these create a **self‑healing admission control plane** that cannot be disabled accidentally or silently bypassed.
 
 ---
 
-## Recursive Protection Loop
+## Protection and Reconciliation Model
 
-Below is the conceptual model of how Orkestra protects itself:
+Below is the conceptual model of how Orkestra maintains a resilient admission surface:
 
 ```text
                          ┌───────────────────────────────────────────┐
                          │              Katalog (Source of Truth)    │
                          │-------------------------------------------│
-                         │  security.webhook.enabled                 │
+                         │  security.webhook.admission.enabled       │
                          │  security.deletionProtection.enabled      │
                          └───────────────────────────────────────────┘
                                            │
@@ -151,15 +150,15 @@ Below is the conceptual model of how Orkestra protects itself:
                                            │
                                            ▼
          ┌──────────────────────────────────────────────────────────────────────────┐
-         │                          Recursive Protection                            │
+         │                          Protection Guarantees                           │
          │──────────────────────────────────────────────────────────────────────────│
-         │ 1. Deletion-protection webhook protects admission webhooks               │
-         │ 2. Admission webhooks protect CRDs                                       │
-         │ 3. Deletion-protection webhook protects itself (it has Orkestra labels)  │
-         │ 4. Webhook controller reconciles all of them continuously                │
+         │ 1. Admission webhooks cannot be deleted while protection is enabled      │
+         │ 2. CRDs and platform resources cannot be deleted                         │
+         │ 3. The deletion-protection webhook is continuously reconciled            │
+         │ 4. The admission surface cannot be disabled without changing the Katalog │
          │                                                                          │
          │ Result:                                                                  │
-         │   A self-protecting, self-healing, self-referential admission plane      │
-         │   that cannot be disabled accidentally or maliciously.                   │
+         │   A self-healing, tamper-resistant admission plane aligned with          │
+         │   Kubernetes controller best practices.                                  │
          └──────────────────────────────────────────────────────────────────────────┘
 ```

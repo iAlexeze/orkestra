@@ -48,6 +48,69 @@ path-help:
 	@echo "Add this to your ~/.bashrc or ~/.zshrc:"
 	@echo "export PATH=\$$PATH:$(OUTPUT_DIR)"
 
+# ── Docker Image Configuration ────────────────────────────────────────────────
+
+# Default image name if none is provided:
+# ghcr.io/orkspace/orkestra:<timestamp>
+ORK_IMAGE ?= ghcr.io/orkspace/orkestra:$(shell date +%Y%m%d%H%M%S)
+ORK_CC_IMAGE ?= ghcr.io/orkspace/orkestra-cc:$(shell date +%Y%m%d%H%M%S)
+
+# Target architectures
+ORK_AMD64_TARGET="ork-amd64"
+ORK_ARM64_TARGET="ork-arm64"
+ORK_CC_AMD64_TARGET="orkcc-amd64"
+ORK_CC_ARM64_TARGET="orkcc-arm64"
+
+
+
+# Path where the built binary lives
+BIN := $(OUTPUT_DIR)/ork
+
+# ── Linux Build Targets (for Docker) ──────────────────────────────────────────
+
+ork-linux:
+	@echo "Building Orkestra (Linux amd64)..."
+	@mkdir -p $(OUTPUT_DIR)
+	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $(OUTPUT_DIR)/ork ./cmd/orkestra
+	@echo "✅ Linux Orkestra binary built: $(OUTPUT_DIR)/ork"
+
+orkcc-linux:
+	@echo "Building Orkestra Control Center (Linux amd64)..."
+	@mkdir -p $(OUTPUT_DIR)
+	cd $(CONTROL_CENTER_DIR) && gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $(OUTPUT_DIR)/orkcc .
+	@echo "✅ Linux Control Center binary built: $(OUTPUT_DIR)/orkcc"
+
+# ── Docker Build ──────────────────────────────────────────────────────────────
+
+docker: ork-linux
+	@echo "Building Docker image: $(ORK_IMAGE)"
+	@cp $(OUTPUT_DIR)/ork ./$(ORK_AMD64_TARGET)
+	
+	docker build -t $(ORK_IMAGE) .
+	@rm -f ./$(ORK_AMD64_TARGET)
+	@echo "✔ Docker image built: $(ORK_IMAGE)"
+
+docker-cc: orkcc-linux
+	@echo "Building Docker image: $(ORK_CC_IMAGE)"
+	cd $(CONTROL_CENTER_DIR) && cp $(OUTPUT_DIR)/orkcc ./$(ORK_CC_AMD64_TARGET)
+	cd $(CONTROL_CENTER_DIR) && docker build -t $(ORK_CC_IMAGE) . && rm -rf ./$(ORK_CC_AMD64_TARGET)
+	@echo "✔ Docker image built: $(ORK_CC_IMAGE)"
+
+# ── Docker Push ───────────────────────────────────────────────────────────────
+
+docker-push:
+	@echo "Pushing Docker image: $(ORK_IMAGE)"
+	docker push $(ORK_IMAGE)
+	@echo "✔ Docker image pushed: $(ORK_IMAGE)"
+	@echo "Pushing Docker image: $(ORK_CC_IMAGE)"
+	docker push $(ORK_CC_IMAGE)
+	@echo "✔ Docker image pushed: $(ORK_CC_IMAGE)"
+
+# ── Docker Release (build + push) ─────────────────────────────────────────────
+
+docker-release: docker docker-cc docker-push
+	@echo "✔ Docker release complete: $(ORK_IMAGE)"
+
 # ── Primary targets ───────────────────────────────────────────────────────────
 
 # Default: vet + unit tests. Fast, no external dependencies.

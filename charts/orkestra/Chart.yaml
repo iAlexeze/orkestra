@@ -5,7 +5,7 @@ description: >-
   Deploy Orkestra and manage your CRDs declaratively with Katalog YAML files.
   Includes the Control Center for real-time observability of all managed CRDs.
 type: application
-version: 0.1.0
+version: 1.0.0
 appVersion: "v1.0.0"
 
 keywords:
