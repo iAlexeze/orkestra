@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/ialexeze/orkestra/pkg/katalog"
-	"github.com/ialexeze/orkestra/pkg/konfig"
 	"github.com/ialexeze/orkestra/pkg/logger"
 	"github.com/ialexeze/orkestra/pkg/utils"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
@@ -55,6 +54,20 @@ const (
 	// The duration in seconds before the webhook should be deleted.
 	gracePeriodSeconds = int64(30)
 )
+
+// orkestraResourceLabels defines the labels used to identify Orkestra-managed
+// resources for deletion protection.
+var orkestraResourceLabels = map[string]string{
+	"app.kubernetes.io/name":      "orkestra",
+	"app.kubernetes.io/component": "orkestra-internal",
+}
+
+// Label selector shared by all Orkestra-managed Kubernetes resources.
+// Narrows the webhook to only the operator's own deployment, service, ingress,
+// and admission webhook configurations (validation + mutation).
+var orkestraResourceSelector = &metav1.LabelSelector{
+	MatchLabels: orkestraResourceLabels,
+}
 
 // WebhookRegistrationOptions holds the configuration for webhook registration.
 type WebhookRegistrationOptions struct {
@@ -200,10 +213,8 @@ func registerValidatingWebhook(
 
 	config := &admissionv1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: validatingWebhookConfigName,
-			Labels: map[string]string{
-				konfig.LabelManaged: konfig.LabelManagedValue,
-			},
+			Name:   validatingWebhookConfigName,
+			Labels: orkestraResourceLabels, // Add orkestra labels for deletion protection
 		},
 		Webhooks: []admissionv1.ValidatingWebhook{
 			{
@@ -253,10 +264,8 @@ func registerMutatingWebhook(
 
 	config := &admissionv1.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: mutatingWebhookConfigName,
-			Labels: map[string]string{
-				konfig.LabelManaged: konfig.LabelManagedValue,
-			},
+			Name:   mutatingWebhookConfigName,
+			Labels: orkestraResourceLabels, // Add orkestra labels for deletion protection
 		},
 		Webhooks: []admissionv1.MutatingWebhook{
 			{
@@ -294,9 +303,20 @@ func registerMutatingWebhook(
 //  1. CRD protection — intercepts DELETE on customresourcedefinitions.
 //     No ObjectSelector: the handler narrows to managed CRDs via ProtectedCRDNames().
 //
-//  2. Deployment protection — intercepts DELETE on deployments.
-//     ObjectSelector narrows to the Orkestra deployment by label so that
-//     all other deployments in the cluster are not intercepted.
+//  2. Orkestra resource protection — intercepts DELETE on deployments, services, ingresses,
+//     and now Orkestra’s own admission webhooks (validating + mutating).
+//     ObjectSelector narrows to Orkestra-owned resources only, so the webhook never
+//     intercepts unrelated cluster resources.
+//
+//     This ensures:
+//     • The Orkestra operator cannot be deleted while deletion protection is enabled
+//     • The Orkestra Service and Ingress cannot be deleted
+//     • The ValidatingWebhookConfiguration and MutatingWebhookConfiguration used for
+//     admission (validation + mutation) cannot be deleted
+//
+//     Protecting the admission webhooks themselves closes the loop: deletion protection
+//     guarantees that the admission surface cannot be disabled by removing the webhook
+//     configuration. This makes the system self-protecting and fully declarative.
 func registerDeletionProtectionWebhook(
 	ctx context.Context,
 	client kubernetes.Interface,
@@ -310,24 +330,20 @@ func registerDeletionProtectionWebhook(
 
 	// Split GVRs into two groups:
 	//   crdGVRs      — customresourcedefinitions; no ObjectSelector, handler filters by name
-	//   orkestraGVRs — deployment, service, ingress; ObjectSelector narrows to Orkestra resources only
+	//   orkestraGVRs — deployment, service, ingress, validatingwebhookconfigurations,
+	//                   mutatingwebhookconfigurations; ObjectSelector narrows to Orkestra resources only
+	//
+	// The admission webhook GVRs (validating + mutating) are included here so that
+	// deletion protection also shields Orkestra’s own admission webhooks from deletion.
 	var crdGVRs, orkestraGVRs []katalog.GVREntry
 	for _, gvr := range gvrs {
 		if gvr.Resource == "customresourcedefinitions" {
 			crdGVRs = append(crdGVRs, gvr)
 		} else {
+			// Includes deployments, services, ingresses, validatingwebhookconfigurations,
+			// mutatingwebhookconfigurations — all protected via ObjectSelector.
 			orkestraGVRs = append(orkestraGVRs, gvr)
 		}
-	}
-
-	// Label selector shared by all Orkestra-managed Kubernetes resources.
-	// Narrows the webhook to only the operator's own deployment, service, and ingress
-	// — any other resource in the cluster with these GVRs is not intercepted.
-	orkestraResourceSelector := &metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			"app.kubernetes.io/name":      "orkestra",
-			"app.kubernetes.io/component": "orkestra-internal",
-		},
 	}
 
 	webhooks := make([]admissionv1.ValidatingWebhook, 0, 2)
@@ -354,8 +370,12 @@ func registerDeletionProtectionWebhook(
 		})
 	}
 
-	// Webhook 2: Orkestra resource deletions (deployment, service, ingress).
+	// Webhook 2: Orkestra resource deletions (deployment, service, ingress, validatingwebhookconfigurations,
+	// mutatingwebhookconfigurations).
+	//
 	// ObjectSelector ensures only resources carrying the Orkestra labels are intercepted.
+	// This includes the admission webhooks themselves, making them deletion-protected.
+	//
 	// Handler always blocks — if the webhook fired, the ObjectSelector already confirmed ownership.
 	if len(orkestraGVRs) > 0 {
 		webhooks = append(webhooks, admissionv1.ValidatingWebhook{
@@ -381,10 +401,8 @@ func registerDeletionProtectionWebhook(
 
 	config := &admissionv1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: deletionProtectionWebhookConfigName,
-			Labels: map[string]string{
-				konfig.LabelManaged: konfig.LabelManagedValue,
-			},
+			Name:   deletionProtectionWebhookConfigName,
+			Labels: orkestraResourceLabels, // Add orkestra labels for deletion protection
 		},
 		Webhooks: webhooks,
 	}

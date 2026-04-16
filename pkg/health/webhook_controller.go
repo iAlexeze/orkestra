@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/ialexeze/orkestra/pkg/metrics"
 )
 
 // webhookController continuously reconciles all admission webhook configurations
@@ -110,6 +111,14 @@ func (h *HealthServer) webhookController() error {
 				return
 			}
 
+			// UI stats heartbeat
+			if h.webhookStats != nil {
+				h.webhookStats.RecordReconciled()
+			}
+
+			// Prometheus metric: one reconciliation cycle
+			metrics.RecordWebhookReconciled("controller")
+
 			h.reconcileAdmissionWebhooks()
 			h.reconcileDeletionProtectionWebhook()
 
@@ -141,6 +150,20 @@ func (h *HealthServer) reconcileAdmissionWebhooks() {
 			defer cancel()
 			if err := UnregisterWebhooks(ctx, h.kubeClient, cleanupOpts); err != nil {
 				logger.Error().Err(err).Msg("webhook controller: admission webhook cleanup failed")
+
+				// UI stats
+				if h.webhookStats != nil {
+					h.webhookStats.RecordFailure()
+				}
+
+				// Prometheus metric
+				if cleanupOpts.validating {
+					metrics.RecordWebhookReconciliationFailure("validation")
+				}
+
+				if cleanupOpts.mutating {
+					metrics.RecordWebhookReconciliationFailure("mutation")
+				}
 			}
 		}
 		return
@@ -158,6 +181,20 @@ func (h *HealthServer) reconcileAdmissionWebhooks() {
 		if err := RegisterWebhooks(ctx, h.kubeClient, h.admissionRegistry, h.hookReg); err != nil {
 			logger.Error().Err(err).
 				Msg("webhook controller: admission webhook registration failed — admission interception may not work")
+
+			// UI stats
+			if h.webhookStats != nil {
+				h.webhookStats.RecordFailure()
+			}
+
+			// Prometheus metric
+			if kat.HasValidationRules() {
+				metrics.RecordWebhookReconciliationFailure("validation")
+			}
+
+			if kat.HasMutationRules() {
+				metrics.RecordWebhookReconciliationFailure("mutation")
+			}
 		}
 	}
 }
@@ -176,6 +213,14 @@ func (h *HealthServer) reconcileDeletionProtectionWebhook() {
 			if err := cleanupValidatingWebhook(ctx, h.kubeClient, deletionProtectionWebhookConfigName); err != nil {
 				// Best-effort: log and continue.
 				logger.Debug().Err(err).Msg("webhook controller: deletion protection webhook cleanup skipped or failed")
+
+				// UI stats
+				if h.webhookStats != nil {
+					h.webhookStats.RecordFailure()
+				}
+
+				// Prometheus metric
+				metrics.RecordWebhookReconciliationFailure("deletion-protection")
 			}
 		}
 		return
@@ -195,6 +240,14 @@ func (h *HealthServer) reconcileDeletionProtectionWebhook() {
 	caBundle, err := readCABundle(h.hookReg.TLSCertFile)
 	if err != nil {
 		logger.Error().Err(err).Msg("webhook controller: cannot read CA bundle for deletion protection")
+
+		// UI stats
+		if h.webhookStats != nil {
+			h.webhookStats.RecordFailure()
+		}
+
+		// Prometheus metric
+		metrics.RecordWebhookReconciliationFailure("deletion-protection")
 		return
 	}
 
@@ -204,5 +257,13 @@ func (h *HealthServer) reconcileDeletionProtectionWebhook() {
 	if err := registerDeletionProtectionWebhook(ctx, h.kubeClient, dpGVRs, caBundle, h.hookReg); err != nil {
 		logger.Error().Err(err).
 			Msg("webhook controller: deletion protection webhook registration failed — CRDs may not be protected")
+
+		// UI stats
+		if h.webhookStats != nil {
+			h.webhookStats.RecordFailure()
+		}
+
+		// Prometheus metric
+		metrics.RecordWebhookReconciliationFailure("deletion-protection")
 	}
 }
