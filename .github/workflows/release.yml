@@ -159,7 +159,20 @@ jobs:
             type=semver,pattern={{major}}
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
-      - name: Build Linux binaries for container images
+      - name: Cache compiled Linux binaries
+        id: cache-binaries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ork-amd64
+            ork-arm64
+            cmd/controlcenter/orkcc-amd64
+            cmd/controlcenter/orkcc-arm64
+          # Cache key based on go.sum and all Go source files
+          key: linux-binaries-${{ hashFiles('go.sum', '**/*.go', 'cmd/**/*.go') }}
+
+      - name: Build Linux binaries (if cache miss)
+        if: steps.cache-binaries.outputs.cache-hit != 'true'
         run: |
           GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ork-amd64 ./cmd/orkestra
           GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o ork-arm64 ./cmd/orkestra
