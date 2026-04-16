@@ -10,21 +10,32 @@ Kubernetes event (Add/Update/Delete)
          ▼
 GenericReconciler.Reconcile()          generic.go
    │
-   ├── Context enrichment (logger, requestID, CRD name)
-   ├── Cache lookup — informer store, no API call
-   ├── Deletion routing → handleDeletion()
-   ├── Finalizer / managed-label / annotation patching
+   ├── workerSem.Acquire()             concurrency gate (ResizableSemaphore)
+   │     blocks if autoscaler has reduced effective concurrency below goroutine count
    │
-   └── reconcileImpl()
+   └── reconcileCore()
           │
-          ├── Reconcile-time mutation (if mutation rules declared)
-          ├── Reconcile-time validation (if validation rules declared)
+          ├── Context enrichment (logger, requestID, CRD name)
+          ├── Cache lookup — informer store, no API call
+          ├── Deletion routing → handleDeletion()
+          ├── Finalizer / managed-label / annotation patching
           │
-          └── dispatch:
-               ├── Go hook (hooks.OnReconcile)        — user-provided, typed
-               ├── Declarative templates              — runTemplateReconcile()
-               └── No-op                              — finalizers + events only
+          └── reconcileImpl()
+                 │
+                 ├── Reconcile-time mutation (if mutation rules declared)
+                 ├── Reconcile-time validation (if validation rules declared)
+                 │
+                 └── dispatch:
+                      ├── Go hook (hooks.OnReconcile)        — user-provided, typed
+                      ├── Declarative templates              — runTemplateReconcile()
+                      └── No-op                              — finalizers + events only
+
+   workerSem.Release() + autoMetrics.RecordReconcile(duration, failed)
 ```
+
+The semaphore capacity starts at `baseline.workers`. When `autoscale:` is
+declared, the autoscaler resizes it at runtime without stopping goroutines.
+For non-autoscaled CRDs the semaphore is always uncontested.
 
 ## runTemplateReconcile — execution order
 

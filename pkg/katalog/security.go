@@ -21,10 +21,12 @@ func (k *Katalog) securityEnvDefaults() interface {
 	DeletionProtectionEnabled() bool
 	DeletionProtectionSvcName() string
 	DeletionProtectionPolicy() string
+	DeletionProtectionCleanup() bool
 	AdmissionEnabled() bool
 	ConversionEnabled() bool
 	WebhooksSvcName() string
 	WebhooksPolicy() string
+	WebhookCleanup() bool
 	RBACEnabled() bool
 	RBACCleanup() bool
 	ConversionWindowVal() int
@@ -90,6 +92,19 @@ func (r *envSecurityReader) RBACCleanup() bool {
 	}
 	return r.k.konfig.Security().RBAC.CleanupOnShutdown
 }
+func (r *envSecurityReader) WebhookCleanup() bool {
+	if r.k.konfig == nil {
+		return false
+	}
+	return r.k.konfig.Security().Webhooks.CleanupOnShutdown
+}
+func (r *envSecurityReader) DeletionProtectionCleanup() bool {
+	if r.k.konfig == nil {
+		return false
+	}
+	return r.k.konfig.Security().DeletionProtection.CleanupOnShutdown
+}
+
 func (r *envSecurityReader) ConversionWindowVal() int {
 	if r.k.konfig == nil {
 		return 100
@@ -171,6 +186,32 @@ func (k *Katalog) WebhooksServiceName() string {
 func (k *Katalog) WebhooksFailurePolicy() string {
 	env := k.securityEnvDefaults()
 	return k.Security.WebhooksFailurePolicy(env.WebhooksPolicy())
+}
+
+// WebhookCleanupOnShutdown reports whether Admission Webhook  should be deleted on shutdown.
+//
+// Precedence:
+//
+//	YAML security.webhooks.cleanupOnShutdown present → use YAML value
+//	YAML block absent                            → fall back to WEBHOOK_CLEANUP_ON_SHUTDOWN env
+func (k *Katalog) WebhookCleanupOnShutdown() bool {
+	if k.Security.Webhooks != nil {
+		return k.Security.Webhooks.CleanupOnShutdown
+	}
+	return k.securityEnvDefaults().RBACCleanup()
+}
+
+// DeletionProtectionCleanupOnShutdown reports whether Deletion Protection should be deleted on shutdown.
+//
+// Precedence:
+//
+//	YAML security.deletionProtection.cleanupOnShutdown present → use YAML value
+//	YAML block absent                                      → fall back to DELETION_PROTECTION_CLEANUP_ON_SHUTDOWN env
+func (k *Katalog) DeletionProtectionCleanupOnShutdown() bool {
+	if k.Security.DeletionProtection != nil {
+		return k.Security.DeletionProtection.CleanupOnShutdown
+	}
+	return k.securityEnvDefaults().DeletionProtectionCleanup()
 }
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────

@@ -259,6 +259,11 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 			crd.Workers = kfg.Cluster().DefaultWorkers
 		}
 
+		// Handle Notifications
+		if k.IsEmailNotificationEnabled() || k.IsSlackNotificationEnabled() {
+			crd.NotificationEnabled = true
+		}
+
 		k.enabledCRDs[name] = crd
 	}
 	return nil
@@ -390,4 +395,39 @@ func (k *Katalog) validateStatus() {
 
 		k.enabledCRDs[name] = crd
 	}
+}
+
+// validateAutoscalerMetrics ensures only supported metrics.* fields are used.
+// This is a fail-fast mechanism to avoid runtime errors.
+func (k *Katalog) validateAutoscalerMetrics() error {
+	for name, crd := range k.enabledCRDs {
+		if !crd.AutoscaleEnabled() {
+			continue
+		}
+
+		conds := crd.OperatorBox.Autoscale.Conditions
+
+		// Validate anyOf
+		for _, c := range conds.AnyOf {
+			if strings.HasPrefix(c.Field, "metrics.") {
+				if err := crd.ValidateMetricField(c.Field); err != nil {
+					k.handleValidationErrors(err)
+					return err
+				}
+			}
+		}
+
+		// Validate when
+		for _, c := range conds.When {
+			if strings.HasPrefix(c.Field, "metrics.") {
+				if err := crd.ValidateMetricField(c.Field); err != nil {
+					k.handleValidationErrors(err)
+					return err
+				}
+			}
+		}
+
+		k.enabledCRDs[name] = crd
+	}
+	return nil
 }

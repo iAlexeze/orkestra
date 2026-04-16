@@ -42,7 +42,7 @@ import (
 // evaluateConditions reports whether *all* conditions pass for the given CR.
 //
 // - nil or empty slice → unconditional (true)
-// - typed CRDs → always true (cannot evaluate dot‑notation paths)
+// - typed CRDs → always true (cannot evaluate dot‑notation paths) -> Solved
 // - unstructured CRDs → evaluate each condition using dot‑notation
 //
 // Any condition that fails causes the entire block to fail (AND semantics).
@@ -55,6 +55,7 @@ func evaluateConditions(obj domain.Object, conditions []orktypes.Condition) bool
 	u, ok := toUnstructured(obj)
 	if !ok {
 		// Typed CRDs cannot evaluate conditions — do not silently skip resources.
+		// TODO: resolver.ObjectToMAp solves this
 		logger.Warn().
 			Str("kind", obj.GetObjectKind().GroupVersionKind().Kind).
 			Str("name", obj.GetName()).

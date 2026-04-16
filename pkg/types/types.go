@@ -1224,6 +1224,12 @@ type OperatorBoxConfig struct {
 	// Cross declares cross-CRD observations.
 	// Read before any resource groups — results available as .cross.<as>.status.*
 	Cross []CrossCRDDeclaration `yaml:"cross,omitempty" json:"cross,omitempty"`
+
+	// Autoscale declares runtime autoscale behavior for this operatorbox.
+	// When declared, the autoscaler evaluates conditions on a ticker and applies
+	// or restores worker/queue/resync overrides automatically.
+	// nil → no autoscaling; CRD runs with its declared static worker count.
+	Autoscale *AutoscaleSpec `yaml:"autoscale,omitempty" json:"autoscale,omitempty"`
 }
 
 // HookDeclaration declares where a Go hook function lives.
@@ -1456,9 +1462,11 @@ type CRDEntry struct {
 	// Supports three YAML formats (list, key-value, full map) — see DependsOnMap.
 	DependsOn DependsOnMap `yaml:"dependsOn,omitempty" json:"dependsOn,omitempty"`
 
-	// ── Reconciler + Queue ────────────────────────────────────────────────────
+	// ── OperatorBox ────────────────────────────────────────────────────
 	OperatorBox OperatorBoxConfig `yaml:"operatorBox,omitempty" json:"operatorBox,omitempty"`
-	Queue       Queue             `yaml:"queue,omitempty" json:"queue,omitempty"`
+
+	// ── Queue ────────────────────────────────────────────────────
+	Queue Queue `yaml:"queue,omitempty" json:"queue,omitempty"`
 
 	// Labels           []ResourceLabel  `yaml:"labels,omitempty" json:"labels,omitempty" validate:"omitempty"`
 	// LabelSelector filters which resources this CRD entry reconciles.
@@ -1550,6 +1558,9 @@ type CRDEntry struct {
 
 	// Normalize Spec fields before rendering
 	Normalize *NormalizeConfig `yaml:"normalize,omitempty"`
+
+	// NotificationEnabled returns whether this CRD belongs to katalog with notification access
+	NotificationEnabled bool `yaml:"-" json:"-"`
 
 	// RemoveFinalizers -> testing
 	RemoveFinalizers bool `yaml:"removeFinalizers,omitempty" json:"removeFinalizers,omitempty"`

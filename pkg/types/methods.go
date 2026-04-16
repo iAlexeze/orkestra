@@ -1,6 +1,9 @@
 package types
 
 import (
+	"fmt"
+	"strings"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -208,4 +211,51 @@ func (c *CRDEntry) HasValidationRules() bool {
 // HasProviders reports whether this CRD declares any provider blocks.
 func (c *CRDEntry) HasProviders() bool {
 	return len(c.OperatorBox.ProviderBlocks) > 0
+}
+
+// AutoscaleEnabled reports whether this CRD declares the autoscale block
+func (c *CRDEntry) AutoscaleEnabled() bool {
+	return c.OperatorBox.Autoscale != nil
+}
+
+// NotificationEnabled reports whether this CRD declares the notification block
+func (c *CRDEntry) IsNotificationEnabled() bool {
+	return c.NotificationEnabled
+}
+
+// ValidateMetricField returns an error if the field is not a known autoscale metric.
+func (c *CRDEntry) ValidateMetricField(field string) error {
+	known := map[string]struct{}{
+		"metrics.workersBusyPercent":     {},
+		"metrics.workersIdlePercent":     {},
+		"metrics.queueDepth":             {},
+		"metrics.reconcileDurationP95Ms": {},
+		"metrics.errorRatePercent":       {},
+	}
+
+	if _, ok := known[field]; !ok {
+		return fmt.Errorf(
+			"unknown autoscale metric field %q — valid fields: %s",
+			field,
+			strings.Join([]string{
+				"metrics.workersBusyPercent",
+				"metrics.workersIdlePercent",
+				"metrics.queueDepth",
+				"metrics.reconcileDurationP95Ms",
+				"metrics.errorRatePercent",
+			}, ", "),
+		)
+	}
+
+	return nil
+}
+
+// HasAutoscaleProfile reports whether this crd defined autoscale profile
+func (c *CRDEntry) HasAutoscaleProfile() bool {
+	return c.OperatorBox.Autoscale != nil && c.OperatorBox.Autoscale.Profile != ""
+}
+
+// AutoScaleProfile returns the string value of the autoscale profile
+func (c *CRDEntry) AutoScaleProfile() string {
+	return c.OperatorBox.Autoscale.Profile
 }

@@ -251,6 +251,19 @@ func (r *GenericReconciler[T]) readCross(
 			if inf, ok := r.katalogRegistry.GetInformerByName(decl.Kind); ok {
 				data := ReadCrossFromInformer(inf.GetIndexer(), key)
 				result[as] = data
+
+				// Add runtime metrics stored at autoMetrics
+				if r.autoMetrics != nil {
+					metrics := r.autoMetrics.AsMap()
+					result[as].(map[string]interface{})["metrics"] = metrics
+
+					log.Debug().
+						Str("kind", decl.Kind).
+						Str("as", as).
+						Interface("metrics", metrics).
+						Msg("cross: attached runtime metrics")
+				}
+
 				log.Debug().
 					Str("kind", decl.Kind).
 					Str("as", as).

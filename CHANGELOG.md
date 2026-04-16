@@ -1,40 +1,44 @@
-# Changelog
+# CHANGELOG
 
-## [Unreleased]
+## Enhancements
 
-### Added
+### Optional deletion‑protection and webhook cleanup  
+Deletion protection and webhook cleanup are now fully optional and driven by explicit Katalog configuration.  
+This change introduces a more flexible shutdown model:
 
-#### Provider Stats (in-memory + Prometheus)
-- `pkg/health/provider_stats.go` — per-CRD in-memory provider stats (`ProviderStats`). Tracks total calls and error counts per provider name. Thread-safe via `sync.RWMutex`. Exposes `GetSnapshot()` returning `[]ProviderStatEntry` with `provider`, `total`, `errors`, and `errorRate` fields.
-- `pkg/metrics/provider.go` — Prometheus counters and histogram for provider calls: `orkestra_provider_reconcile_total{crd,provider,kind,result}`, `orkestra_provider_delete_total{crd,provider,kind,result}`, `orkestra_provider_reconcile_duration_seconds{crd,provider,kind}`.
+- Deletion protection can be enabled or disabled independently of admission webhooks  
+- Cleanup of validating/mutating/deletion‑protection webhooks is now controlled by the Katalog’s `deletionProtection.cleanupOnShutdown` flag  
+- When cleanup is disabled, Orkestra leaves all webhook configurations intact across restarts  
+- When cleanup is enabled, Orkestra removes only the webhook types that were declared in the Katalog
 
-#### Provider Wiring
-- `pkg/reconciler/run_providers.go` — added `providerStatsRecorder` interface and `stats` parameter to `runProviders` and `runProviderDelete`. Records `RecordSuccess`/`RecordFailure`/`RecordDeleteSuccess`/`RecordDeleteFailure` after every provider call. Nil-safe — CRDs without provider blocks pass nil stats.
-- `pkg/reconciler/generic.go` — added `providerStats providerStatsRecorder` field to `GenericReconciler` and `NewGenericReconciler`.
-- `cmd/internal/konstructor.go` — creates `providerStatsMap` (map from GVK to `*health.ProviderStats`) before the factory loop; passes `provStats` to both `NewGenericReconciler` (write path) and `BuildCRDInfoHandler` (read path).
+This ensures that operators can choose between **persistent** webhook configurations (production) and **ephemeral** cleanup (testing, CI, local development).
 
-#### HTTP and Control Center
-- `pkg/kordinator/crd_health_handers.go` — `BuildCRDInfoHandler` gains `provStats *health.ProviderStats` parameter. When CRD declares provider blocks, the response includes a `providers` array: one entry per block with `name`, `kinds`, `total`, `errors`, `errorRate`.
-- `BuildKatalogHandler` response includes `providerCount` per CRD summary row (omitted when zero).
-- `cmd/controlcenter/cc/types.go` — added `ProviderInfo` type; `CRDInfo`, `CRDDetail`, and `CRDSummary` extended with provider fields.
-- `cmd/controlcenter/cc/client.go` — `FetchCRDDetail` maps `info.Providers` to `detail.Providers`.
-- `cmd/controlcenter/cc/template_func.go` — added `mulFloat` helper for float64 multiplication in templates.
-- `cmd/controlcenter/cc/assets/templates/crd.html` — Providers section renders name, kinds, total calls, errors, and error rate.
-- `cmd/controlcenter/cc/assets/templates/katalog.html` — CRD cards show provider count when non-zero.
+### Continuous webhook reconciliation  
+A new background controller (`webhookController`) ensures that all declared webhooks remain available throughout the lifecycle of the Katalog.
 
-#### New Providers (5)
-- `pkg/provider/postgres/provider.go` — PostgreSQL provider (block name: `postgres`). Kinds: `database`, `role`, `extension`. Uses `github.com/jackc/pgx/v5`. Credentials via Secret key `PG_PASSWORD`. SQL injection prevention via `pgQuoteIdent`.
-- `pkg/provider/redis/provider.go` — Redis cache provider (block name: `cache`). Kinds: `acluser`, `config`. Uses `github.com/redis/go-redis/v9`. ACL user management via `ACL SETUSER`; config idempotency via `CONFIG GET` before `CONFIG SET`. Credentials via Secret key `REDIS_PASSWORD`.
-- `pkg/provider/mysql/provider.go` — MySQL provider (block name: `mysql`). Kinds: `database`, `user`. Uses `database/sql` + `github.com/go-sql-driver/mysql`. Idempotent via `CREATE DATABASE IF NOT EXISTS` and `CREATE USER` existence check. Credentials via Secret key `MYSQL_PASSWORD`.
-- `pkg/provider/google/provider.go` — Google Cloud provider (block name: `google`). Kinds: `gcs`, `pubsub`, `cloudsql`. Uses `cloud.google.com/go/storage`, `cloud.google.com/go/pubsub`, `google.golang.org/api/sqladmin/v1`. Supports ADC (Workload Identity on GKE), service account JSON inline or file.
-- `pkg/provider/azure/provider.go` — Azure provider (block name: `azure`). Kinds: `blob`, `servicebus`, `sqldatabase`. Uses `github.com/Azure/azure-sdk-for-go/sdk/azidentity` and ARM resource clients. Supports service principal credentials and DefaultAzureCredential (managed identity, CLI).
+This controller:
 
-#### Provider Registration
-- `cmd/internal/provider.go` — wired all 5 new providers (`postgres`, `cache`, `mysql`, `google`, `azure`) into `loadProviders`. Each follows the same required/optional error pattern as existing providers.
+- Periodically verifies that validating, mutating, and deletion‑protection webhooks exist  
+- Recreates missing webhook configurations  
+- Ensures TLS and failure‑policy settings remain aligned with the Katalog  
+- Operates independently of pod restarts, enabling long‑running consistency  
+- Makes webhook availability **declarative and self‑healing**
 
-#### Documentation
-- `pkg/provider/README.md` — updated "Current providers" table with all 7 providers.
-- `docs/runtime-manual/concepts/provider.md` — updated current providers table; corrected package paths.
-- `docs/technical-docs/kordinator.md` — complete rewrite based on actual source. Removed stale type names (`KordinatorRegistry`, `QueueRegistry`). Reflects real types (`ResourceKatalog`, `CRDHealth` fields, `runWorkerForGVK`, `processItemForGVK`). Added self-healing scenarios, dependency condition semantics, and key design rules.
-- `docs/technical-docs/health-server.md`, `docs/technical-docs/generic-reconciler.md`, `docs/technical-docs/konstructor.md` — updated for provider stats wiring.
-- `docs/runtime-manual/concepts/health-subsystem.md`, `docs/runtime-manual/concepts/observability.md` — updated provider observability sections.
+This moves Orkestra toward a controller‑grade model where webhook configuration is continuously enforced rather than only applied at startup.
+
+---
+
+## Documentation updates (health.go)
+
+The following architectural comments were added to `health.go`:
+
+- Top‑level documentation for `HealthServer` describing its role as the runtime surface for health, admission, conversion, and deletion protection  
+- Method‑level comments explaining lifecycle responsibilities (`Start`, `Shutdown`, `EnableWebhooks`, `EnableConversion`)  
+- Inline comments at key architectural pivot points:
+  - TLS validation for webhook servers  
+  - Conditional registration of conversion, validation, mutation, and deletion‑protection endpoints  
+  - Best‑effort webhook registration semantics  
+  - Optional cleanup logic during shutdown  
+  - Activation of the continuous webhook reconciliation loop  
+
+These comments clarify the declarative model, the runtime activation path, and the separation between configuration, registration, and reconciliation.

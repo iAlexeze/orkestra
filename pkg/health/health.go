@@ -16,24 +16,38 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// HealthServer is Orkestra’s runtime-facing health and admission surface.
+// It owns all HTTP/HTTPS endpoints (health, readiness, metrics, conversion,
+// validation, mutation, deletion protection) and acts as the lifecycle anchor
+// for webhook registration, reconciliation, and shutdown semantics.
+//
+// The HealthServer is intentionally minimal in responsibilities:
+//   - Serve health/readiness for Kubernetes
+//   - Expose admission and conversion endpoints when declared in the Katalog
+//   - Register and reconcile webhook configurations with the API server
+//   - Track runtime state (started, ready, healthy, startup-complete)
+//   - Maintain stats for conversion, admission, and deletion protection
+//
+// All admission behavior is declarative — the Katalog is the single source of truth.
+// The HealthServer simply reflects that declaration into runtime behavior.
 var _ domain.Komponent = (*HealthServer)(nil)
 
 type HealthServer struct {
 	name string
 
-	// HTTP server
+	// HTTP server for health, readiness, and metrics.
 	server *http.Server
 	mux    *http.ServeMux
 
-	// optional conversion HTTPS server
+	// Optional HTTPS server for conversion + admission webhooks.
 	hookSrv *http.Server
 	hookMux *http.ServeMux
 
-	// startup probes
-	started atomic.Bool // for orkestra internal startup probes
+	// Runtime state flags used by Kubernetes probes and internal readiness gates.
+	started atomic.Bool // internal startup indicator
 	healthy atomic.Bool
 	ready   atomic.Bool
-	startup atomic.Bool // for kubernetes startup probes
+	startup atomic.Bool // Kubernetes startupProbe indicator
 
 	httpPort  string
 	httpsPort string
@@ -41,58 +55,84 @@ type HealthServer struct {
 	logLevel  string
 	startTime time.Time
 
-	// webhook options
+	// Declarative webhook configuration resolved from Katalog + ENV.
 	hookKfg WebhookConfgurationOptions
 
-	// registry for conversion rules
+	// Registry of conversion rules declared in the Katalog.
 	conversionRegistry katalog.ConversionRegistry
 
-	// conversion stats
+	// Rolling conversion statistics for observability.
 	conversionStats *ConversionStats
 
-	// admission stats (validation + mutation)
+	// Rolling admission statistics (validation + mutation).
 	admissionStats *AdmissionStats
 
-	// protection stats (deletion protection blocked/allowed counts)
+	// Rolling deletion protection statistics.
 	protectionStats *ProtectionStats
 
-	// Admission (Validation and Mutation)
+	// Admission registry containing validation and mutation rules.
 	admissionRegistry katalog.AdmissionRegistry
 
+	// Options used when registering webhook configurations with the API server.
 	hookReg WebhookRegistrationOptions
-	// kubeClient is used for webhook configuration registration.
-	// Set via SetKubeClient after the HealthServer is constructed.
+
+	// Kubernetes client used to create/update/delete webhook configurations.
+	// Set via SetKubeClient after construction.
 	kubeClient kubernetes.Interface
 
-	// katalog for conditional endpoints
+	// Katalog drives all conditional behavior (conversion, admission, protection).
 	katalog *katalog.Katalog
 
-	// protectedCRDNames is the set of CRD full names (e.g. "pipelines.platform.io")
-	// that the /deletion-protection handler will block from deletion.
-	// Populated at startup when security.deletionProtection.enabled: true.
-	// nil when deletion protection is disabled.
+	// Set of CRD full names protected by deletion protection.
+	// Populated only when deletion protection is enabled.
 	protectedCRDNames  map[string]struct{}
 	deletionProtection atomic.Bool
+
+	// Full Konfig object for accessing cluster, security, and runtime settings.
+	konfig *konfig.Konfig
 }
 
+// WebhookConfgurationOptions captures the declarative enablement state for all
+// webhook-related capabilities (admission, conversion) as resolved from the
+// Katalog and environment. These options determine whether the HealthServer
+// exposes HTTPS endpoints and participates in webhook registration.
+//
+// This struct does *not* describe the webhook spec itself — only whether the
+// runtime should activate the corresponding admission surfaces.
 type WebhookConfgurationOptions struct {
-	WebhooksEnabled  bool
-	ConvEnabled      bool
-	TLSCert          string
-	TLSKey           string
-	ConversionWindow int
+	WebhooksEnabled  bool   // admission (validation + mutation) enabled
+	ConvEnabled      bool   // CRD conversion webhook enabled
+	TLSCert          string // certificate used by the HTTPS server
+	TLSKey           string // private key used by the HTTPS server
+	ConversionWindow int    // rolling window for conversion statistics
 }
 
+// httpsCtxTimeout defines the maximum duration allowed for webhook registration
+// calls to the Kubernetes API server. This prevents startup from hanging when
+// the API server is unreachable or slow.
 const (
 	httpsCtxTimeout = 30 * time.Second
 )
 
-// NewHealthServer creates a new health server.
+// NewHealthServer constructs the HealthServer and resolves all declarative
+// runtime behavior from the Katalog and Konfig. This method performs no I/O;
+// it simply materializes the runtime model that Start() will activate.
+//
+// Responsibilities:
+//   - Resolve webhook enablement and failure‑policy precedence (YAML > ENV > defaults)
+//   - Initialize all HTTP/HTTPS muxes and stats collectors
+//   - Capture conversion/admission registries from the Katalog
+//   - Precompute deletion‑protection CRD sets
+//   - Initialize all readiness/health/startup flags
+//
+// The HealthServer returned here is inert — Start() is responsible for
+// activating servers, endpoints, and webhook reconciliation.
 func NewHealthServer(kubeclient kubernetes.Interface, katalog *katalog.Katalog, kfg *konfig.Konfig) *HealthServer {
 	// Resolve admission webhook failure policy: YAML > ENV > default "Ignore".
 	// katalog.WebhooksFailurePolicy() already applies this precedence.
 	admissionFailurePolicy := admissionv1FailurePolicyType(katalog.WebhooksFailurePolicy())
 
+	// Static registration options used when creating webhook configurations.
 	hookReg := WebhookRegistrationOptions{
 		FailurePolicy:    admissionFailurePolicy,
 		Port:             kfg.HTTPSPortInt32(),
@@ -101,8 +141,7 @@ func NewHealthServer(kubeclient kubernetes.Interface, katalog *katalog.Katalog, 
 		TLSCertFile:      kfg.Security().Webhooks.TLSCert,
 	}
 
-	// Resolve enable flags and TLS: YAML > ENV > false.
-	// katalog.IsAdmissionEnabled() and IsConversionEnabled() apply this precedence.
+	// Declarative enablement flags and TLS settings resolved from Katalog + ENV.
 	hookKfg := WebhookConfgurationOptions{
 		WebhooksEnabled:  katalog.IsAdmissionEnabled(),
 		ConvEnabled:      katalog.IsConversionEnabled(),
@@ -111,10 +150,12 @@ func NewHealthServer(kubeclient kubernetes.Interface, katalog *katalog.Katalog, 
 		ConversionWindow: katalog.ConversionWindow(),
 	}
 
+	// Construct the HealthServer with all registries, muxes, and stats collectors.
 	hs := &HealthServer{
 		name:               "health server",
 		kubeClient:         kubeclient,
 		katalog:            katalog,
+		konfig:             kfg,
 		client:             kfg.Ork().Name,
 		httpPort:           kfg.Health().Port,
 		httpsPort:          kfg.HTTPSPort(),
@@ -130,28 +171,38 @@ func NewHealthServer(kubeclient kubernetes.Interface, katalog *katalog.Katalog, 
 		protectionStats:    NewProtectionStats(),
 	}
 
-	// Populate protected CRD names from Katalog — used by /deletion-protection handler
+	// Precompute protected CRD names for deletion‑protection enforcement.
 	if katalog.IsDeletionProtectionEnabled() {
 		hs.protectedCRDNames = katalog.ProtectedCRDNames()
 	}
 
+	// Initialize all runtime state flags.
 	hs.ready.Store(false)
 	hs.started.Store(false)
 	hs.healthy.Store(false)
 	hs.deletionProtection.Store(false)
+
 	return hs
 }
 
+// EnableConversion activates the CRD conversion webhook at runtime.
+// This is an imperative override used primarily in tests or operator-driven
+// reconfiguration. It does not register the webhook — Start() handles that.
+// It simply marks conversion as enabled and updates the TLS material.
 func (h *HealthServer) EnableConversion(certFile, keyFile string) {
 	h.hookKfg.ConvEnabled = true
-	h.hookKfg.TLSCert = certFile
-	h.hookKfg.TLSKey = keyFile
+	h.hookKfg.TLSCert = certFile // update certificate for HTTPS server
+	h.hookKfg.TLSKey = keyFile   // update private key for HTTPS server
 }
 
+// EnableWebhooks activates admission (validation + mutation) webhooks at runtime.
+// Like EnableConversion, this is an imperative override and does not perform
+// registration. Start() will reflect this enablement into actual webhook
+// configuration creation and endpoint exposure.
 func (h *HealthServer) EnableWebhooks(certFile, keyFile string) {
 	h.hookKfg.WebhooksEnabled = true
-	h.hookKfg.TLSCert = certFile
-	h.hookKfg.TLSKey = keyFile
+	h.hookKfg.TLSCert = certFile // update certificate for HTTPS server
+	h.hookKfg.TLSKey = keyFile   // update private key for HTTPS server
 }
 
 // Register adds a route to the health server mux.
@@ -161,9 +212,22 @@ func (hs *HealthServer) Register(path string, handler http.HandlerFunc) {
 	hs.mux.Handle(path, hs.logRoutesMiddleware(handler))
 }
 
+// Start activates the HealthServer’s full runtime surface. It launches the HTTP
+// and HTTPS servers, exposes all declared admission/conversion/protection
+// endpoints, performs best‑effort webhook registration, and begins continuous
+// reconciliation of webhook configurations.
+//
+// This is the transition from a declarative model (NewHealthServer) to an active
+// runtime. All behavior is driven by the Katalog: only capabilities explicitly
+// declared (conversion, validation, mutation, deletion protection) are exposed.
+// Startup is intentionally resilient — webhook registration failures never block
+// readiness or liveness. Once all endpoints are registered and servers launched,
+// Start() marks the runtime as startup‑complete.
 func (h *HealthServer) Start(ctx context.Context) error {
 	h.startTime = time.Now()
-	// Validate conversion options
+
+	// Validate TLS prerequisites for conversion and admission.
+	// These checks prevent the HTTPS server from starting without certificates.
 	if h.hookKfg.ConvEnabled {
 		if h.hookKfg.TLSCert == "" {
 			return fmt.Errorf("conversion server error: TLS_CERT is required for ENABLE_CONVERSION")
@@ -182,11 +246,13 @@ func (h *HealthServer) Start(ctx context.Context) error {
 		}
 	}
 
+	// Normalize HTTP port format.
 	if !strings.HasPrefix(h.httpPort, ":") {
 		h.httpPort = ":" + h.httpPort
 	}
 
-	// health + ready + metrics on HTTP
+	// Register health, readiness, and metrics endpoints.
+	// Debug mode wraps handlers with request logging.
 	if strings.ToLower(h.logLevel) == "debug" {
 		h.mux.Handle("/startup", h.logRoutesMiddleware(http.HandlerFunc(h.startupHandler)))
 		h.mux.Handle("/health", h.logRoutesMiddleware(http.HandlerFunc(h.healthHandler)))
@@ -198,6 +264,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 	}
 	h.mux.Handle("/metrics", promhttp.Handler())
 
+	// Construct the HTTP server (health + metrics).
 	h.server = &http.Server{
 		Addr:    h.httpPort,
 		Handler: h.mux,
@@ -206,7 +273,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 	h.started.Store(true)
 	h.healthy.Store(true)
 
-	// HTTP server
+	// Launch HTTP server asynchronously.
 	go func() {
 		logger.Info().Str("port", h.httpPort).Msg("health server listening")
 		if err := h.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -214,14 +281,13 @@ func (h *HealthServer) Start(ctx context.Context) error {
 		}
 	}()
 
-	// HTTPS server — started when conversion, webhooks, or both are enabled.
-	// All routes must be registered on hookMux BEFORE the server goroutine
-	// starts to avoid a data race on ServeMux.
+	// Determine whether HTTPS should be started based on declared capabilities.
 	kat := h.katalog
 	admissionRuleExists := false
 	startHttpsServer := false
 
-	if h.katalog.IsDeletionProtectionEnabled() && h.katalog.DeletionProtectionGVRs() != nil {
+	// Enable deletion protection if declared.
+	if kat.IsDeletionProtectionEnabled() && kat.DeletionProtectionGVRs() != nil {
 		h.deletionProtection.Store(true)
 	}
 
@@ -231,8 +297,10 @@ func (h *HealthServer) Start(ctx context.Context) error {
 		Bool("webhooks", h.hookKfg.WebhooksEnabled).
 		Msg("health server")
 
+	// Register HTTPS endpoints (conversion, admission, deletion protection).
 	if h.hookKfg.ConvEnabled || h.hookKfg.WebhooksEnabled || h.deletionProtection.Load() {
-		// Register /deletion-protection if enabled in the Katalog
+
+		// Deletion protection endpoint.
 		if h.deletionProtection.Load() {
 			h.hookMux.HandleFunc("/deletion-protection", h.deletionProtectionHandler)
 			startHttpsServer = true
@@ -243,7 +311,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 				Msg("deletion protection endpoint registered")
 		}
 
-		// Register /convert if conversion paths exist in the Katalog
+		// Conversion endpoint.
 		if kat.HasConversionPaths() {
 			h.hookMux.HandleFunc("/convert", h.conversionHandler)
 			startHttpsServer = true
@@ -254,7 +322,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 				Msg("conversion webhook endpoint registered")
 		}
 
-		// Register /validate if validation rules exist in the Katalog
+		// Validation endpoint.
 		if kat.HasValidationRules() {
 			h.hookMux.HandleFunc("/validate", h.validationHandler)
 			admissionRuleExists = true
@@ -266,7 +334,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 				Msg("validation endpoint registered")
 		}
 
-		// Register /mutate if mutation rules exist in the Katalog
+		// Mutation endpoint.
 		if kat.HasMutationRules() {
 			h.hookMux.HandleFunc("/mutate", h.mutationHandler)
 			admissionRuleExists = true
@@ -278,10 +346,12 @@ func (h *HealthServer) Start(ctx context.Context) error {
 				Msg("mutation endpoint registered")
 		}
 
+		// Normalize HTTPS port format.
 		if !strings.HasPrefix(h.httpPort, ":") {
 			h.httpsPort = ":" + h.httpsPort
 		}
 
+		// Launch HTTPS server if any endpoint was registered.
 		if startHttpsServer {
 			h.hookSrv = &http.Server{
 				Addr:    h.httpsPort,
@@ -300,11 +370,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 			}()
 		}
 
-		// Register ValidatingWebhookConfiguration and MutatingWebhookConfiguration
-		// with the API server. Best-effort — failures are logged but do not block
-		// startup. Re-trigger by restarting Orkestra.
-		//
-		// Provision only if an admission rule actually exists
+		// Best‑effort admission webhook registration.
 		if admissionRuleExists && h.kubeClient != nil && h.admissionRegistry != nil {
 			go func() {
 				wctx, cancel := context.WithTimeout(context.Background(), httpsCtxTimeout)
@@ -315,7 +381,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 				}
 			}()
 		} else {
-			// log reason
+			// Log why admission registration was skipped.
 			if !h.hookKfg.WebhooksEnabled {
 				logger.Debug().Msg("webhook not enabled")
 			}
@@ -330,17 +396,17 @@ func (h *HealthServer) Start(ctx context.Context) error {
 			}
 		}
 
-		// Register deletion protection webhook if enabled
+		// Deletion protection webhook registration.
 		if h.deletionProtection.Load() && h.kubeClient != nil {
 			go func() {
 				wctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
 
-				dpGVRs := h.katalog.DeletionProtectionGVRs()
+				dpGVRs := kat.DeletionProtectionGVRs()
 				if len(dpGVRs) == 0 {
 					// Not in cluster — webhook not registered, protection is local-only
 					logger.Info().Msg("deletion protection: running outside cluster — webhook not registered (ork run mode)")
-					return // or continue — skip the registration block
+					return
 				}
 
 				caBundle, err := readCABundle(h.hookReg.TLSCertFile)
@@ -364,51 +430,66 @@ func (h *HealthServer) Start(ctx context.Context) error {
 		}
 	}
 
-	// At this point:
-	// - HTTP server goroutine is running (or starting)
-	// - HTTPS server goroutine is running if needed
-	// - health/ready flags are true
-	// We now declare startup complete.
+	// Begin continuous reconciliation of webhook configurations.
+	_ = h.webhookController()
+
+	// Declare startup complete — startupProbe becomes satisfied.
 	h.SetStartupComplete()
 
 	h.ready.Store(true)
 	return nil
 }
 
+// Shutdown gracefully terminates all runtime servers and performs optional,
+// declarative cleanup of webhook configurations. This method embodies Orkestra’s
+// “runtime that leaves no trace” principle: cleanup is opt‑in and driven entirely
+// by the Katalog’s shutdown policy. If cleanupOnShutdown is disabled, the cluster
+// is left structurally unchanged.
+//
+// Responsibilities:
+//   - Transition the runtime out of ready/healthy state
+//   - Gracefully stop HTTP and HTTPS servers
+//   - Optionally unregister admission webhooks (validation + mutation)
+//   - Optionally remove the deletion‑protection webhook configuration
+//
+// Shutdown never blocks startup or reconciliation guarantees — it is best‑effort.
 func (h *HealthServer) Shutdown(ctx context.Context) {
-	// Report state
+	// Immediately mark the runtime as not ready and not healthy.
 	h.ready.Store(false)
 	h.healthy.Store(false)
 
-	// Shutdown HTTP server
+	// Shutdown HTTP server (health, ready, metrics).
 	if h.server != nil {
 		if err := h.server.Shutdown(ctx); err != nil {
 			logger.Error().Err(err).Msg("http server shutdown error")
 		}
 	}
 
-	// Shutdown HTTPS server
+	// Shutdown HTTPS server (conversion + admission + deletion protection).
 	if h.hookSrv != nil {
 		if err := h.hookSrv.Shutdown(ctx); err != nil {
 			logger.Error().Err(err).Msg("https conversion server shutdown error")
 		}
 
-		// Build cleanup options
+		// Build cleanup options based on declared Katalog shutdown policy.
 		cleanupOpts := WebhookCleanupOptions{}
-		if h.katalog.HasMutationRules() {
-			cleanupOpts.mutating = true
+		kat := h.katalog
+
+		// Admission cleanup is conditional and fully declarative.
+		if kat.HasMutationRules() {
+			cleanupOpts.mutating = kat.DeletionProtectionCleanupOnShutdown()
 		}
-		if h.katalog.HasValidationRules() {
-			cleanupOpts.validating = true
+		if kat.HasValidationRules() {
+			cleanupOpts.validating = kat.DeletionProtectionCleanupOnShutdown()
 		}
 
-		// Unregister Webhooks
+		// Best‑effort removal of admission webhook configurations.
 		if err := UnregisterWebhooks(ctx, h.kubeClient, cleanupOpts); err != nil {
 			logger.Error().Err(err).Msg("webhook cleanup error")
 		}
 
-		// Cleanup deletion protection webhook
-		if h.katalog.IsDeletionProtectionEnabled() && h.kubeClient != nil {
+		// Optional cleanup of deletion‑protection webhook configuration.
+		if kat.IsDeletionProtectionEnabled() && kat.DeletionProtectionCleanupOnShutdown() && h.kubeClient != nil {
 			if err := cleanupValidatingWebhook(ctx, h.kubeClient, deletionProtectionWebhookConfigName); err != nil {
 				logger.Error().Err(err).Msg("deletion protection webhook cleanup error")
 			} else {
@@ -420,48 +501,59 @@ func (h *HealthServer) Shutdown(ctx context.Context) {
 	}
 }
 
+// Name returns the configured runtime name.
 func (h *HealthServer) Name() string {
 	return h.name
 }
 
+// StartupComplete reports whether the startup sequence has finished.
 func (h *HealthServer) StartupComplete() bool {
 	return h.startup.Load()
 }
 
+// SetStartupComplete marks the startup sequence as finished.
 func (h *HealthServer) SetStartupComplete() {
 	h.startup.Store(true)
 }
 
+// SetReady marks the server as ready to serve traffic.
 func (h *HealthServer) SetReady() {
 	h.ready.Store(true)
 }
 
+// Degraded transitions the server out of ready state without marking it unhealthy.
 func (h *HealthServer) Degraded() {
 	if h.ready.Load() {
 		h.ready.Store(false)
 	}
 }
 
+// Unhealthy marks the server as unhealthy, signaling a fatal condition.
 func (h *HealthServer) Unhealthy() {
 	h.healthy.Store(false)
 }
 
+// Started reports whether the HTTP/HTTPS servers have begun serving.
 func (h *HealthServer) Started() bool {
 	return h.started.Load()
 }
 
+// SetStarted marks the server as having begun serving traffic.
 func (h *HealthServer) SetStarted() {
 	h.started.Store(true)
 }
 
+// Healthy reports whether the server is healthy.
 func (h *HealthServer) Healthy() bool {
 	return h.healthy.Load()
 }
 
+// Ready reports whether the server is ready for admission and health checks.
 func (h *HealthServer) Ready() bool {
 	return h.ready.Load()
 }
 
+// Uptime returns human-readable uptime since the server started.
 func (h *HealthServer) Uptime() string {
 	if h.startTime.IsZero() {
 		return "unknown"

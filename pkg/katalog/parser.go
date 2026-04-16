@@ -112,9 +112,23 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 7. Validate Status
+	// 8. Validate Status
 	// -------------------------------------------------------------------------
 	k.validateStatus()
+
+	// -------------------------------------------------------------------------
+	// 9. Validate Autoscale Profile
+	// -------------------------------------------------------------------------
+	if err := k.validateAutoscaleProfile(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 10. Validate Autoscale Metrics Type
+	// -------------------------------------------------------------------------
+	if err := k.validateAutoscalerMetrics(); err != nil {
+		return nil, err
+	}
 
 	return k, nil
 }

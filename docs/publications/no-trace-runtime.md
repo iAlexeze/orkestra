@@ -147,11 +147,13 @@ And the two are not entangled.
 
 ## The Moment It Stops
 
-When Orkestra shuts down, it does something most systems cannot:
+When Orkestra shuts down—with `cleanupOnShutdown=true`—it does something most systems cannot:
 
 > It removes every trace of its presence—without affecting the system it managed.
 
 * webhook configurations → deleted
+* RBAC configurations → deleted
+* lifecycle objects → removed
 * conversion endpoints → removed
 * admission hooks → gone
 * internal servers → stopped
@@ -251,7 +253,7 @@ And critically:
 
 Orkestra is built on a simple constraint:
 
-> The runtime must not become part of the system it operates.
+> The runtime must not become part of the system it operates—unless you explicitly ask it to leave its integration points behind.
 
 From that constraint, everything else follows:
 
