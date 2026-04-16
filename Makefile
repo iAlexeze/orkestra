@@ -93,8 +93,7 @@ docker: ork-linux
 docker-cc: orkcc-linux
 	@echo "Building Docker image: $(ORK_CC_IMAGE)"
 	cd $(CONTROL_CENTER_DIR) && cp $(OUTPUT_DIR)/orkcc ./$(ORK_CC_AMD64_TARGET)
-	cd $(CONTROL_CENTER_DIR) && docker build -t $(ORK_CC_IMAGE) .
-	@rm -f ./$(ORK_CC_AMD64_TARGET)
+	cd $(CONTROL_CENTER_DIR) && docker build -t $(ORK_CC_IMAGE) . && rm -rf ./$(ORK_CC_AMD64_TARGET)
 	@echo "✔ Docker image built: $(ORK_CC_IMAGE)"
 
 # ── Docker Push ───────────────────────────────────────────────────────────────

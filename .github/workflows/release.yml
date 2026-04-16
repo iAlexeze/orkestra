@@ -190,7 +190,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: cmd/controlcenter
-          file: Dockerfile
+          file: cmd/controlcenter/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta-cc.outputs.tags }}
