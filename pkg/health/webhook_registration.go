@@ -346,7 +346,7 @@ func registerDeletionProtectionWebhook(
 		}
 	}
 
-	webhooks := make([]admissionv1.ValidatingWebhook, 0, 2)
+	webhooks := make([]admissionv1.ValidatingWebhook, 0, 3)
 
 	// Webhook 1: CRD deletions — handler filters by ProtectedCRDNames()
 	if len(crdGVRs) > 0 {
@@ -398,6 +398,28 @@ func registerDeletionProtectionWebhook(
 			TimeoutSeconds:          int32Ptr(5),
 		})
 	}
+
+	//Webhook 3: Self-protection - block deletion of the deletion-protection webhook itself.
+	// This closes the bootstrap gap: the webhook must protect itself before it can be deleted.
+	webhooks = append(webhooks, admissionv1.ValidatingWebhook{
+		Name: "protect.self.orkestra.konductor.io",
+		ClientConfig: admissionv1.WebhookClientConfig{
+			Service: &admissionv1.ServiceReference{
+				Name:      opts.ServiceName,
+				Namespace: opts.ServiceNamespace,
+				Path:      &path,
+				Port:      &port,
+			},
+			CABundle: caBundle,
+		},
+		ObjectSelector:          orkestraResourceSelector,
+		Rules:                   buildDeletionProtectionRules([]katalog.GVREntry{{Group: "admissionregistration.k8s.io", Version: "v1", Resource: "validatingwebhookconfigurations"}}),
+		FailurePolicy:           failurePolicyPtr(admissionv1.Fail),
+		MatchPolicy:             matchPolicyPtr(admissionv1.Exact),
+		AdmissionReviewVersions: []string{"v1"},
+		SideEffects:             &sideEffects,
+		TimeoutSeconds:          int32Ptr(5),
+	})
 
 	config := &admissionv1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{

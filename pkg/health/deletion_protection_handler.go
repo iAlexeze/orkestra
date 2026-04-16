@@ -59,6 +59,36 @@ func (h *HealthServer) deletionProtectionHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
+	// Self-protection: block deletion of the deletion-protection webhook itself.
+	// This closes the bootstrap gap: the webhook must protect itself before it can be deleted.
+	if req.Kind.Kind == "ValidatingWebhookConfiguration" &&
+		req.Name == deletionProtectionWebhookConfigName {
+
+		logger.Info().
+			Str("webhook", req.Name).
+			Str("uid", req.UID).
+			Msg("deletion-protection: blocking deletion of the deletion-protection webhook")
+
+		metrics.RecordDeletionProtectionBlocked(deletionProtectionWebhookConfigName)
+		h.protectionStats.RecordBlocked()
+
+		h.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
+			UID:     req.UID,
+			Allowed: false,
+			Status: &AdmissionStatus{
+				Message: fmt.Sprintf(
+					"\n\n[Orkestra Security] The deletion-protection webhook \"%s\" is itself protected.\n\n"+
+
+						"To disable deletion protection entirely:\n"+
+						"- Set security.deletionProtection.enabled: false in the Katalog\n"+
+						"- Redeploy Orkestra, then delete the webhook.\n\n", deletionProtectionWebhookConfigName,
+				),
+				Code: 403,
+			},
+		})
+		return
+	}
+
 	// Check: is this a CRD we protect?
 	isCRD := req.Resource.Group == "apiextensions.k8s.io" &&
 		req.Resource.Resource == "customresourcedefinitions"
