@@ -25,7 +25,7 @@ kind create cluster --name orkestra-dev
 ### Using `go install` (recommended)
 
 ```bash
-go install github.com/iAlexeze/orkestra/cmd/ork@latest
+go install github.com/orkspace/orkestra/cmd/ork@latest
 ```
 
 Verify the installation:
@@ -42,33 +42,33 @@ Orkestra v1.0.0  (commit: abc1234, built: 2025-01-01)
 
 ### Download a binary release
 
-Pre-built binaries are available for Linux, macOS, and Windows on the [GitHub Releases](https://github.com/iAlexeze/orkestra/releases) page.
+Pre-built binaries are available for Linux, macOS, and Windows on the [GitHub Releases](https://github.com/orkspace/orkestra/releases) page.
 
 **Linux (amd64)**
 
 ```bash
-curl -sSL https://github.com/iAlexeze/orkestra/releases/latest/download/ork_linux_amd64 \
+curl -sSL https://github.com/orkspace/orkestra/releases/latest/download/ork_linux_amd64 \
   -o /usr/local/bin/ork && chmod +x /usr/local/bin/ork
 ```
 
 **macOS (arm64)**
 
 ```bash
-curl -sSL https://github.com/iAlexeze/orkestra/releases/latest/download/ork_darwin_arm64 \
+curl -sSL https://github.com/orkspace/orkestra/releases/latest/download/ork_darwin_arm64 \
   -o /usr/local/bin/ork && chmod +x /usr/local/bin/ork
 ```
 
 **macOS (amd64)**
 
 ```bash
-curl -sSL https://github.com/iAlexeze/orkestra/releases/latest/download/ork_darwin_amd64 \
+curl -sSL https://github.com/orkspace/orkestra/releases/latest/download/ork_darwin_amd64 \
   -o /usr/local/bin/ork && chmod +x /usr/local/bin/ork
 ```
 
 ### Build from source
 
 ```bash
-git clone https://github.com/iAlexeze/orkestra.git
+git clone https://github.com/orkspace/orkestra.git
 cd orkestra
 make build
 sudo mv bin/ork /usr/local/bin/ork
@@ -81,7 +81,7 @@ The Orkestra runtime runs in-cluster and handles CRD registration, reconciliatio
 ### Install via kubectl
 
 ```bash
-kubectl apply -f https://github.com/iAlexeze/orkestra/releases/latest/download/install.yaml
+kubectl apply -f https://github.com/orkspace/orkestra/releases/latest/download/install.yaml
 ```
 
 This creates the `orkestra-system` namespace and deploys:
@@ -127,7 +127,7 @@ Then open [http://localhost:8080](http://localhost:8080) in your browser.
 To remove Orkestra from your cluster:
 
 ```bash
-kubectl delete -f https://github.com/iAlexeze/orkestra/releases/latest/download/install.yaml
+kubectl delete -f https://github.com/orkspace/orkestra/releases/latest/download/install.yaml
 ```
 
 {{< callout type="warning" title="CRD cleanup" >}}
@@ -140,4 +140,4 @@ With Orkestra installed, you're ready to write your first operator:
 
 - [Quick Start](/docs/getting-started/quickstart/) — build a working operator in 5 minutes
 - [Katalog Basics](/docs/basics/) — understand the core manifest structure
-- [Examples](https://github.com/iAlexeze/orkestra/tree/main/examples) — real-world examples on GitHub
+- [Examples](https://github.com/orkspace/orkestra/tree/main/examples) — real-world examples on GitHub

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // NotificationState tracks last-send timestamps per condition+team.

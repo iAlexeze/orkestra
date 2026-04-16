@@ -62,7 +62,7 @@ package komposer_test
 import (
     "os"
     "testing"
-    "github.com/ialexeze/orkestra/pkg/merger"
+    "github.com/orkspace/orkestra/pkg/merger"
 )
 
 func TestMerger_LoadsKatalogFromFile(t *testing.T) {

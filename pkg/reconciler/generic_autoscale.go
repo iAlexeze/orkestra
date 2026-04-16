@@ -19,10 +19,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/autoscaler"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orkqueue "github.com/ialexeze/orkestra/pkg/queue"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/autoscaler"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orkqueue "github.com/orkspace/orkestra/pkg/queue"
 )
 
 // AutoscalerRunner is an optional interface implemented by reconcilers that

@@ -14,7 +14,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/merger"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/merger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // ── RegistrySource.ResolvedURL ────────────────────────────────────────────────

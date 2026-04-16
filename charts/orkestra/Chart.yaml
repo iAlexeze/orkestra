@@ -1,7 +1,7 @@
 apiVersion: v2
 name: orkestra
 description: >-
-  The Kubernetes operator runtime that needs no programming language.
+  Declarative Runtime for Kubernetes Operators.
   Deploy Orkestra and manage your CRDs declaratively with Katalog YAML files.
   Includes the Control Center for real-time observability of all managed CRDs.
 type: application

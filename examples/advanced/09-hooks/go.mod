@@ -3,7 +3,7 @@ module orkestra-hooks-demo
 go 1.26.1
 
 require (
-	github.com/ialexeze/orkestra v0.1.0
+	github.com/orkspace/orkestra v0.1.0
 	k8s.io/apimachinery v0.35.3
 )
 

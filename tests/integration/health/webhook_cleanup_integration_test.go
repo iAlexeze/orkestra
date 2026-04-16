@@ -6,9 +6,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/health"
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/health"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"

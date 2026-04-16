@@ -43,7 +43,7 @@ reconciler never constructs a Kubernetes object directly.
 !!! note
     This layer is stable and maintained as part of Orkestra core. It evolves
     when new resource types are added. If you need a resource type not yet
-    supported, see [Adding a Resource Type](https://github.com/ialexeze/orkestra/tree/main/pkg/orkestra-registry/CONTRIBUTING.md/#adding-a-new-resource-type).
+    supported, see [Adding a Resource Type](https://github.com/orkspace/orkestra/tree/main/pkg/orkestra-registry/CONTRIBUTING.md/#adding-a-new-resource-type).
 
 ---
 

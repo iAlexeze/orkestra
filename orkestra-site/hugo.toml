@@ -10,12 +10,12 @@ enableGitInfo = true
 [params]
   description     = "Zero-code Kubernetes Operator Runtime"
   tagline         = "Build production-grade Kubernetes operators without writing a line of code"
-  github          = "https://github.com/iAlexeze/orkestra"
+  github          = "https://github.com/orkspace/orkestra"
   twitter         = "https://twitter.com/orkestra"
   blog            = "https://blog.orkestra.sh"
   version         = "v0.1.0"
   docsVersion     = "latest"
-  editBase        = "https://github.com/iAlexeze/orkestra/edit/main/docs"
+  editBase        = "https://github.com/orkspace/orkestra/edit/main/docs"
   googleAnalytics = "G-5Z1VTPDL73"
   defaultMode     = "dark"
 
@@ -72,7 +72,7 @@ enableGitInfo = true
       external = true
   [[menu.main]]
     name       = "GitHub"
-    url        = "https://github.com/iAlexeze/orkestra"
+    url        = "https://github.com/orkspace/orkestra"
     weight     = 6
     [menu.main.params]
       icon = "github"

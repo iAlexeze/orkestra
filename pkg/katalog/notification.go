@@ -19,7 +19,7 @@
 
 package katalog
 
-import orktypes "github.com/ialexeze/orkestra/pkg/types"
+import orktypes "github.com/orkspace/orkestra/pkg/types"
 
 // notificationEnvDefaults returns the NotificationConfig from konfig,
 // or a zero-value reader when konfig is not wired (e.g. tests).

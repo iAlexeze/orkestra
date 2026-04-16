@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 func baseline(workers, queue int, resync time.Duration) orktypes.AutoscaleBaseline {

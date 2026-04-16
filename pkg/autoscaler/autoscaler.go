@@ -19,9 +19,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/metrics"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/metrics"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/robfig/cron/v3"
 )
 

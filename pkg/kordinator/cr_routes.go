@@ -26,8 +26,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/client-go/tools/cache"
 )
 

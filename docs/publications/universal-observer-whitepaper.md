@@ -581,4 +581,4 @@ https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resou
 ---
 
 *Orkestra — Declarative Operators for Kubernetes*
-*March 2026 — https://github.com/iAlexeze/orkestra*
+*March 2026 — https://github.com/orkspace/orkestra*

@@ -4,8 +4,8 @@ package cli
 import (
 	"fmt"
 
-	"github.com/ialexeze/orkestra/pkg/utils"
-	"github.com/ialexeze/orkestra/pkg/version"
+	"github.com/orkspace/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/version"
 	"github.com/spf13/cobra"
 )
 

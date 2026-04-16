@@ -62,8 +62,8 @@ import (
 	"fmt"
 	"strings"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
 	pgx "github.com/jackc/pgx/v5"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

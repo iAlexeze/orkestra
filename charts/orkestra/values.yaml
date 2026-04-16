@@ -209,7 +209,7 @@ registry:
 
 # ── RBAC ───────────────────────────────────────────────────────────────────────
 rbac:
-  create: true
+  create: true # RBAC_AUTO_APPLY -> equivalent to security.rbac.enable in katalog
 
 # Global HPA (if you want to scale both)
 hpa:

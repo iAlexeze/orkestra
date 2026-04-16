@@ -61,7 +61,7 @@ spec:
         mutation: true      # register /mutate for this CRD (default: true if rules exist)
 ```
 
-At startup, `RegisterAdmissionRulesFromEntry` in [pkg/katalog/admission_registry.go](https://github.com/iAlexeze/orkestra/blob/main/pkg/katalog/admission_registry.go) reads each CRD entry and loads its rules into the `InMemoryAdmissionRegistry`, keyed by the CRD's GVR string (`"group/version/resource"`). The conversion rules go into a separate `ConversionRegistry`.
+At startup, `RegisterAdmissionRulesFromEntry` in [pkg/katalog/admission_registry.go](https://github.com/orkspace/orkestra/blob/main/pkg/katalog/admission_registry.go) reads each CRD entry and loads its rules into the `InMemoryAdmissionRegistry`, keyed by the CRD's GVR string (`"group/version/resource"`). The conversion rules go into a separate `ConversionRegistry`.
 
 ---
 
@@ -77,7 +77,7 @@ Mutation sets default values on fields that are absent or empty, or overrides fi
 
 This runs synchronously when `kubectl apply` is called. Kubernetes sends a `POST /mutate` request carrying the full object in a `MutationAdmissionReview` JSON body.
 
-The flow in [pkg/health/admission_handlers.go](https://github.com/iAlexeze/orkestra/blob/main/pkg/health/admission_handlers.go):
+The flow in [pkg/health/admission_handlers.go](https://github.com/orkspace/orkestra/blob/main/pkg/health/admission_handlers.go):
 
 ```
 POST /mutate  (HealthServer.mutationHandler)
@@ -274,18 +274,18 @@ Mutation runs first so that defaults are already in place when validation evalua
 
 | What                          | File                                                              |
 |-------------------------------|-------------------------------------------------------------------|
-| Rule declarations (types)     | [pkg/types/admission.go](https://github.com/iAlexeze/orkestra/blob/main/pkg/types/admission.go)            |
-| Conversion types              | [pkg/types/conversion.go](https://github.com/iAlexeze/orkestra/blob/main/pkg/types/conversion.go)          |
-| Registry interface + impl     | [pkg/katalog/admission_registry.go](https://github.com/iAlexeze/orkestra/blob/main/pkg/katalog/admission_registry.go) |
-| Conversion registry           | [pkg/katalog/conversion_registry.go](https://github.com/iAlexeze/orkestra/blob/main/pkg/katalog/conversion_registry.go) |
-| Webhook HTTP handlers         | [pkg/health/admission_handlers.go](https://github.com/iAlexeze/orkestra/blob/main/pkg/health/admission_handlers.go) |
-| Rule evaluation (webhook)     | [pkg/health/admission_evaluation.go](https://github.com/iAlexeze/orkestra/blob/main/pkg/health/admission_evaluation.go) |
-| Conversion HTTP handler       | [pkg/health/conversion.go](https://github.com/iAlexeze/orkestra/blob/main/pkg/health/conversion.go)        |
-| Conversion logic              | [pkg/health/conversion_logic.go](https://github.com/iAlexeze/orkestra/blob/main/pkg/health/conversion_logic.go) |
-| Webhook server startup        | [pkg/health/health.go](https://github.com/iAlexeze/orkestra/blob/main/pkg/health/health.go)                |
-| runValidation (reconcile)     | [pkg/reconciler/run_validations.go](https://github.com/iAlexeze/orkestra/blob/main/pkg/reconciler/run_validations.go) |
-| runMutation (reconcile)       | [pkg/reconciler/run_mutations.go](https://github.com/iAlexeze/orkestra/blob/main/pkg/reconciler/run_mutations.go) |
-| Reconcile dispatcher          | [pkg/reconciler/generic.go](https://github.com/iAlexeze/orkestra/blob/main/pkg/reconciler/generic.go)      |
+| Rule declarations (types)     | [pkg/types/admission.go](https://github.com/orkspace/orkestra/blob/main/pkg/types/admission.go)            |
+| Conversion types              | [pkg/types/conversion.go](https://github.com/orkspace/orkestra/blob/main/pkg/types/conversion.go)          |
+| Registry interface + impl     | [pkg/katalog/admission_registry.go](https://github.com/orkspace/orkestra/blob/main/pkg/katalog/admission_registry.go) |
+| Conversion registry           | [pkg/katalog/conversion_registry.go](https://github.com/orkspace/orkestra/blob/main/pkg/katalog/conversion_registry.go) |
+| Webhook HTTP handlers         | [pkg/health/admission_handlers.go](https://github.com/orkspace/orkestra/blob/main/pkg/health/admission_handlers.go) |
+| Rule evaluation (webhook)     | [pkg/health/admission_evaluation.go](https://github.com/orkspace/orkestra/blob/main/pkg/health/admission_evaluation.go) |
+| Conversion HTTP handler       | [pkg/health/conversion.go](https://github.com/orkspace/orkestra/blob/main/pkg/health/conversion.go)        |
+| Conversion logic              | [pkg/health/conversion_logic.go](https://github.com/orkspace/orkestra/blob/main/pkg/health/conversion_logic.go) |
+| Webhook server startup        | [pkg/health/health.go](https://github.com/orkspace/orkestra/blob/main/pkg/health/health.go)                |
+| runValidation (reconcile)     | [pkg/reconciler/run_validations.go](https://github.com/orkspace/orkestra/blob/main/pkg/reconciler/run_validations.go) |
+| runMutation (reconcile)       | [pkg/reconciler/run_mutations.go](https://github.com/orkspace/orkestra/blob/main/pkg/reconciler/run_mutations.go) |
+| Reconcile dispatcher          | [pkg/reconciler/generic.go](https://github.com/orkspace/orkestra/blob/main/pkg/reconciler/generic.go)      |
 
 ---
 

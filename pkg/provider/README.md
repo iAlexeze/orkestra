@@ -114,7 +114,7 @@ import (
     "context"
     "fmt"
 
-    orktypes "github.com/ialexeze/orkestra/pkg/types"
+    orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 type Provider struct {

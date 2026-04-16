@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ialexeze/orkestra/pkg/inspect"
+	"github.com/orkspace/orkestra/pkg/inspect"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

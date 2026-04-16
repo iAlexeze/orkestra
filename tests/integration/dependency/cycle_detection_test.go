@@ -6,8 +6,8 @@ package dependency_test
 import (
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 func TestCycleDetection_TwoNodeCycle(t *testing.T) {

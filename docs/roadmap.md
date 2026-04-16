@@ -303,8 +303,8 @@ The highest-value contributions right now:
 | **Documentation** | Edge cases, gotchas, things that weren't obvious |
 | **Hooks** | Real-world hook implementations for complex operators |
 
-Open a [GitHub issue](https://github.com/iAlexeze/orkestra/issues) or
-[Discussion](https://github.com/iAlexeze/orkestra/discussions) for anything not
+Open a [GitHub issue](https://github.com/orkspace/orkestra/issues) or
+[Discussion](https://github.com/orkspace/orkestra/discussions) for anything not
 covered above. See [Contributing to Orkestra](./technical-docs/CONTRIBUTING.md) for the development setup
 and code standards.
 

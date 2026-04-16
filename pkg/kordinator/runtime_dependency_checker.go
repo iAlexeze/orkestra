@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/types"
 )
 
 // dependencyHealthChecker runs continuously during the lifetime of the controller.

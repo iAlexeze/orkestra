@@ -354,7 +354,7 @@ import (
     "context"
     "fmt"
 
-    orktypes "github.com/ialexeze/orkestra/pkg/types"
+    orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // Provider implements orktypes.Provider for the "myprovider" block.
@@ -433,7 +433,7 @@ Registration at startup:
 ```go
 import (
     "github.com/myorg/orkestra-provider-myprovider"
-    orktypes "github.com/ialexeze/orkestra/pkg/types"
+    orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 registry := orktypes.NewProviderRegistry()

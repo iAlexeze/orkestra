@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )

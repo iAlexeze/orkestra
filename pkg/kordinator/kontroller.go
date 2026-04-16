@@ -6,15 +6,15 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/ialexeze/orkestra/domain"
-	orkerror "github.com/ialexeze/orkestra/pkg/error"
-	"github.com/ialexeze/orkestra/pkg/event"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	orkerror "github.com/orkspace/orkestra/pkg/error"
+	"github.com/orkspace/orkestra/pkg/event"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 
-	"github.com/ialexeze/orkestra/pkg/informer"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/queue"
+	"github.com/orkspace/orkestra/pkg/informer"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/queue"
 )
 
 var _ domain.Komponent = (*Kontroller)(nil)

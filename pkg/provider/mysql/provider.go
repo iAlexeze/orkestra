@@ -61,7 +61,7 @@ import (
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql" // register mysql driver
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

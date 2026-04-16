@@ -5,7 +5,7 @@ import (
 	"text/template"
 	"time"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 var exampleTemplate = template.Must(

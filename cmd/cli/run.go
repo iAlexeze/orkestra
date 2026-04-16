@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/cmd/internal"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/cmd/internal"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/spf13/cobra"
 )
 

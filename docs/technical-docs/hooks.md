@@ -87,11 +87,11 @@ import (
     "context"
     "fmt"
 
-    "github.com/ialexeze/orkestra/domain"
-    orkdeploy "github.com/ialexeze/orkestra/pkg/orkestra-registry/deployments"
-    orksvc    "github.com/ialexeze/orkestra/pkg/orkestra-registry/services"
-    orktmpl   "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
-    "github.com/ialexeze/orkestra/pkg/kubeclient"
+    "github.com/orkspace/orkestra/domain"
+    orkdeploy "github.com/orkspace/orkestra/pkg/orkestra-registry/deployments"
+    orksvc    "github.com/orkspace/orkestra/pkg/orkestra-registry/services"
+    orktmpl   "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+    "github.com/orkspace/orkestra/pkg/kubeclient"
     apiv1 "github.com/myorg/api/website/v1alpha1"
 )
 
@@ -188,10 +188,10 @@ import (
     "context"
     "fmt"
 
-    "github.com/ialexeze/orkestra/domain"
-    orkdeploy "github.com/ialexeze/orkestra/pkg/orkestra-registry/deployments"
-    orktmpl   "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
-    "github.com/ialexeze/orkestra/pkg/kubeclient"
+    "github.com/orkspace/orkestra/domain"
+    orkdeploy "github.com/orkspace/orkestra/pkg/orkestra-registry/deployments"
+    orktmpl   "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+    "github.com/orkspace/orkestra/pkg/kubeclient"
     "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -240,11 +240,11 @@ The OrkestraRegistry provides production-ready Create, Update, and Delete functi
 
 ```go
 import (
-    orkdeploy "github.com/ialexeze/orkestra/pkg/orkestra-registry/deployments"
-    orksvc    "github.com/ialexeze/orkestra/pkg/orkestra-registry/services"
-    orksecret "github.com/ialexeze/orkestra/pkg/orkestra-registry/secrets"
-    orkcm     "github.com/ialexeze/orkestra/pkg/orkestra-registry/configmaps"
-    orkjobs   "github.com/ialexeze/orkestra/pkg/orkestra-registry/jobs"
+    orkdeploy "github.com/orkspace/orkestra/pkg/orkestra-registry/deployments"
+    orksvc    "github.com/orkspace/orkestra/pkg/orkestra-registry/services"
+    orksecret "github.com/orkspace/orkestra/pkg/orkestra-registry/secrets"
+    orkcm     "github.com/orkspace/orkestra/pkg/orkestra-registry/configmaps"
+    orkjobs   "github.com/orkspace/orkestra/pkg/orkestra-registry/jobs"
 )
 
 // Create: idempotent — safe to call on every reconcile

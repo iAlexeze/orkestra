@@ -1,4 +1,4 @@
-module github.com/ialexeze/orkestra
+module github.com/orkspace/orkestra
 
 go 1.25.0
 

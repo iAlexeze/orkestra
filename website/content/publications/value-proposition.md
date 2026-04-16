@@ -124,4 +124,4 @@ approaches faster. It removes the need for those approaches in the common case.
 ---
 
 *Orkestra — Declarative Operators for Kubernetes*
-*March 2026 — https://github.com/iAlexeze/orkestra*
+*March 2026 — https://github.com/orkspace/orkestra*

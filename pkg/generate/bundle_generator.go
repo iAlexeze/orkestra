@@ -3,7 +3,7 @@ package generate
 import (
 	"fmt"
 
-	"github.com/ialexeze/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/merger"
 )
 
 func Bundle(m *merger.Merger, namespace, outputFile string) error {

@@ -6,8 +6,8 @@ import (
 	"sort"
 	"sync"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // DependencyGraph represents the CRD dependency DAG for a Katalog.

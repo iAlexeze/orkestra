@@ -488,4 +488,4 @@ https://github.com/kubernetes/enhancements/tree/master/keps/sig-api-machinery/34
 ---
 
 *Orkestra — Declarative Operators for Kubernetes*
-*March 2026 — https://github.com/iAlexeze/orkestra*
+*March 2026 — https://github.com/orkspace/orkestra*

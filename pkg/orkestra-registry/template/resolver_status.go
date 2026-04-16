@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // ResolveStatusFields evaluates template expressions in declarative status field

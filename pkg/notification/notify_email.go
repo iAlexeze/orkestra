@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/smtp"
 
-	"github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/types"
 )
 
 func sendEmailNotification(

@@ -1,9 +1,3 @@
-Here’s a **clean, tightened rewrite** of your Security doc that incorporates the new RBAC model and elevates it from “feature” → **core philosophy**.
-
-I’ve kept your structure but sharpened the narrative and made the permission model feel intentional, not incidental.
-
----
-
 # Security
 
 Orkestra is designed for production from the start.

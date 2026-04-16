@@ -8,8 +8,8 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/merger"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/merger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // registryTemplate emits zz_generated_runtime_registry.go.
@@ -59,12 +59,12 @@ package runtime
 import (
 	"fmt"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	{{ if or .NeedsHookImports .NeedsRecImports }}"github.com/ialexeze/orkestra/domain"
-	{{ end }}{{ if .NeedsRecImports }}"github.com/ialexeze/orkestra/pkg/kubeclient"
-	"github.com/ialexeze/orkestra/pkg/event"
+	{{ if or .NeedsHookImports .NeedsRecImports }}"github.com/orkspace/orkestra/domain"
+	{{ end }}{{ if .NeedsRecImports }}"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/event"
 	"k8s.io/client-go/tools/cache"
 	{{ end }}
 {{ range .Imports }}	{{ .Alias }} "{{ .Location }}"

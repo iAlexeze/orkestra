@@ -102,7 +102,7 @@ annotations:
 Manages Deployment lifecycle. The most commonly used registry package.
 
 ```go
-import orkdeploy "github.com/ialexeze/orkestra/pkg/orkestra-registry/deployments"
+import orkdeploy "github.com/orkspace/orkestra/pkg/orkestra-registry/deployments"
 ```
 
 **Katalog declaration:**
@@ -162,7 +162,7 @@ Manages Service lifecycle. Selector is always `orkestra-owner: <cr-name>` —
 automatically routes to pods created by the Deployment registry for the same CR.
 
 ```go
-import orksvc "github.com/ialexeze/orkestra/pkg/orkestra-registry/services"
+import orksvc "github.com/orkspace/orkestra/pkg/orkestra-registry/services"
 ```
 
 **Katalog declaration:**
@@ -216,7 +216,7 @@ copy from an existing Secret, sync from a source on every reconcile, and
 distribute to multiple namespaces at once.
 
 ```go
-import orksecrets "github.com/ialexeze/orkestra/pkg/orkestra-registry/secrets"
+import orksecrets "github.com/orkspace/orkestra/pkg/orkestra-registry/secrets"
 ```
 
 **Pattern 1 — static data:**
@@ -295,7 +295,7 @@ Manages ConfigMap lifecycle. Supports the same distribution patterns as
 Secrets, plus a merge pattern for environment-specific configuration.
 
 ```go
-import orkcm "github.com/ialexeze/orkestra/pkg/orkestra-registry/configmaps"
+import orkcm "github.com/orkspace/orkestra/pkg/orkestra-registry/configmaps"
 ```
 
 **Pattern 1 — static data:**
@@ -380,7 +380,7 @@ fields that can drift after creation — the registry provides Create and
 Delete only. Create is always idempotent.
 
 ```go
-import orksa "github.com/ialexeze/orkestra/pkg/orkestra-registry/serviceaccounts"
+import orksa "github.com/orkspace/orkestra/pkg/orkestra-registry/serviceaccounts"
 ```
 
 **Katalog declaration:**
@@ -420,7 +420,7 @@ Most commonly used under `onDelete` for cleanup tasks that must complete
 before Orkestra removes finalizers from the CR.
 
 ```go
-import orkjobs "github.com/ialexeze/orkestra/pkg/orkestra-registry/jobs"
+import orkjobs "github.com/orkspace/orkestra/pkg/orkestra-registry/jobs"
 ```
 
 **Common use cases under `onDelete`:**
@@ -479,7 +479,7 @@ Manages CronJob lifecycle. Created under `onCreate` and drift-corrected under
 should exist for the lifetime of a CR.
 
 ```go
-import orkcron "github.com/ialexeze/orkestra/pkg/orkestra-registry/cronjobs"
+import orkcron "github.com/orkspace/orkestra/pkg/orkestra-registry/cronjobs"
 ```
 
 **Common use cases:**
@@ -534,7 +534,7 @@ Manages Pod lifecycle directly. Prefer Deployments for long-running workloads
 automatically. Use Pods only when you need direct, single-instance Pod control.
 
 ```go
-import orkpods "github.com/ialexeze/orkestra/pkg/orkestra-registry/pods"
+import orkpods "github.com/orkspace/orkestra/pkg/orkestra-registry/pods"
 ```
 
 **Katalog declaration:**
@@ -581,7 +581,7 @@ It is the bridge between a Katalog template declaration and the literal values
 that registry functions receive.
 
 ```go
-import orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
+import orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
 ```
 
 ### Creating a resolver
@@ -759,12 +759,12 @@ import (
     "context"
     "fmt"
 
-    "github.com/ialexeze/orkestra/domain"
-    orkdeploy "github.com/ialexeze/orkestra/pkg/orkestra-registry/deployments"
-    orksvc "github.com/ialexeze/orkestra/pkg/orkestra-registry/services"
-    orksecrets "github.com/ialexeze/orkestra/pkg/orkestra-registry/secrets"
-    orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
-    "github.com/ialexeze/orkestra/pkg/kubeclient"
+    "github.com/orkspace/orkestra/domain"
+    orkdeploy "github.com/orkspace/orkestra/pkg/orkestra-registry/deployments"
+    orksvc "github.com/orkspace/orkestra/pkg/orkestra-registry/services"
+    orksecrets "github.com/orkspace/orkestra/pkg/orkestra-registry/secrets"
+    orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+    "github.com/orkspace/orkestra/pkg/kubeclient"
     apiv1 "github.com/myorg/apis/website/v1alpha1"
 )
 

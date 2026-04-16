@@ -59,12 +59,12 @@ practice, especially in CI or shared environments.
 
 ```bash
 # Import the Orkestra public key (once)
-curl -sSL https://github.com/iAlexeze/orkestra/releases/download/v1.0.0/orkestra-public-key.asc \
+curl -sSL https://github.com/orkspace/orkestra/releases/download/v1.0.0/orkestra-public-key.asc \
   | gpg --import
 
 # Download binary and signature
-curl -sSLO https://github.com/iAlexeze/orkestra/releases/download/v1.0.0/ork_linux_amd64.tar.gz
-curl -sSLO https://github.com/iAlexeze/orkestra/releases/download/v1.0.0/ork_linux_amd64.tar.gz.asc
+curl -sSLO https://github.com/orkspace/orkestra/releases/download/v1.0.0/ork_linux_amd64.tar.gz
+curl -sSLO https://github.com/orkspace/orkestra/releases/download/v1.0.0/ork_linux_amd64.tar.gz.asc
 
 # Verify
 gpg --verify ork_linux_amd64.tar.gz.asc ork_linux_amd64.tar.gz

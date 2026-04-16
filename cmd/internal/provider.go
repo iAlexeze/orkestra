@@ -3,16 +3,16 @@ package internal
 import (
 	"context"
 
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	awsprovider "github.com/ialexeze/orkestra/pkg/provider/aws"
-	azureprovider "github.com/ialexeze/orkestra/pkg/provider/azure"
-	googleprovider "github.com/ialexeze/orkestra/pkg/provider/google"
-	mongoprovider "github.com/ialexeze/orkestra/pkg/provider/mongo"
-	mysqlprovider "github.com/ialexeze/orkestra/pkg/provider/mysql"
-	pgsprovider "github.com/ialexeze/orkestra/pkg/provider/postgres"
-	redisprovider "github.com/ialexeze/orkestra/pkg/provider/redis"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/logger"
+	awsprovider "github.com/orkspace/orkestra/pkg/provider/aws"
+	azureprovider "github.com/orkspace/orkestra/pkg/provider/azure"
+	googleprovider "github.com/orkspace/orkestra/pkg/provider/google"
+	mongoprovider "github.com/orkspace/orkestra/pkg/provider/mongo"
+	mysqlprovider "github.com/orkspace/orkestra/pkg/provider/mysql"
+	pgsprovider "github.com/orkspace/orkestra/pkg/provider/postgres"
+	redisprovider "github.com/orkspace/orkestra/pkg/provider/redis"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // loadProviders registers providers declared at the top-level providers[] block.

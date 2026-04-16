@@ -1,7 +1,7 @@
 // pkg/orkestra-registry/pods/types.go
 package pods
 
-import orktypes "github.com/ialexeze/orkestra/pkg/types"
+import orktypes "github.com/orkspace/orkestra/pkg/types"
 
 // ResolvedPodSpec is the fully resolved Pod specification.
 // Produced by merging PodFromCRD (dynamic) and PodFromKatalog (static).

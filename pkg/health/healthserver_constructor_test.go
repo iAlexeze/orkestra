@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
 )
 
 func TestNewHealthServer_ConstructorWiresAllFields(t *testing.T) {

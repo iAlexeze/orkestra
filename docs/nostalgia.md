@@ -14,7 +14,7 @@ For historical purposes, here's the original ASCII art that greeted users in v0.
 
 **CRDs in. Operators out.**
 
-**The Kubernetes operator runtime that needs no Programming Language.**
+**Declarative Runtime for Kubernetes Operators.**
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8.svg)](https://golang.org/)

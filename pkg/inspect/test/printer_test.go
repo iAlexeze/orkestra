@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/inspect"
+	"github.com/orkspace/orkestra/pkg/inspect"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

@@ -57,9 +57,9 @@ jobs:
           go build \
             -trimpath \
             -ldflags="-s -w \
-              -X github.com/ialexeze/orkestra/pkg/version.Version=${{ github.ref_name }} \
-              -X github.com/ialexeze/orkestra/pkg/version.Commit=${{ github.sha }} \
-              -X github.com/ialexeze/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              -X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }} \
+              -X github.com/orkspace/orkestra/pkg/version.Commit=${{ github.sha }} \
+              -X github.com/orkspace/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             -o dist/ork \
             ./cmd/orkestra/
           echo "✅ Runtime built: dist/ork"
@@ -74,9 +74,9 @@ jobs:
           go build \
             -trimpath \
             -ldflags="-s -w \
-              -X github.com/ialexeze/orkestra/pkg/version.Version=${{ github.ref_name }} \
-              -X github.com/ialexeze/orkestra/pkg/version.Commit=${{ github.sha }} \
-              -X github.com/ialexeze/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              -X github.com/orkspace/orkestra-cc/version.Version=${{ github.ref_name }} \
+              -X github.com/orkspace/orkestra-cc/version.Commit=${{ github.sha }} \
+              -X github.com/orkspace/orkestra-cc/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             -o ../../dist/orkcc .
           echo "✅ Control Center built: dist/orkcc"
 
@@ -437,7 +437,7 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           curl -sSfL \
-            "https://github.com/ialexeze/orkestra/releases/download/${TAG}/checksums.txt" \
+            "https://github.com/orkspace/orkestra/releases/download/${TAG}/checksums.txt" \
             -o checksums.txt
 
       - name: Extract SHA256 values
@@ -466,29 +466,29 @@ jobs:
           VERSION="${TAG#v}"
           cat > homebrew-tap/Formula/ork.rb << 'EOF'
           class Ork < Formula
-            desc "The Kubernetes operator runtime that needs no programming language"
-            homepage "https://github.com/ialexeze/orkestra"
+            desc "Declarative Runtime for Kubernetes Operators"
+            homepage "https://github.com/orkspace/orkestra"
             version "${VERSION}"
             license "Apache 2.0"
 
             on_macos do
               on_arm   do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/ork_darwin_arm64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_darwin_arm64.tar.gz"
                 sha256 "${DARWIN_ARM64}"
               end
               on_intel do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/ork_darwin_amd64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_darwin_amd64.tar.gz"
                 sha256 "${DARWIN_AMD64}"
               end
             end
 
             on_linux do
               on_arm   do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/ork_linux_arm64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_linux_arm64.tar.gz"
                 sha256 "${LINUX_ARM64}"
               end
               on_intel do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/ork_linux_amd64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_linux_amd64.tar.gz"
                 sha256 "${LINUX_AMD64}"
               end
             end
@@ -523,28 +523,28 @@ jobs:
           cat > homebrew-tap/Formula/orkcc.rb << 'EOF'
           class OrkCc < Formula
             desc "Web-based Control Center for Orkestra - visualize and manage your operators"
-            homepage "https://github.com/ialexeze/orkestra"
+            homepage "https://github.com/orkspace/orkestra"
             version "${VERSION}"
             license "Apache 2.0"
 
             on_macos do
               on_arm   do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/orkcc_darwin_arm64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_darwin_arm64.tar.gz"
                 sha256 "${DARWIN_ARM64}"
               end
               on_intel do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/orkcc_darwin_amd64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_darwin_amd64.tar.gz"
                 sha256 "${DARWIN_AMD64}"
               end
             end
 
             on_linux do
               on_arm   do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/orkcc_linux_arm64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_linux_arm64.tar.gz"
                 sha256 "${LINUX_ARM64}"
               end
               on_intel do
-                url    "https://github.com/ialexeze/orkestra/releases/download/${TAG}/orkcc_linux_amd64.tar.gz"
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_linux_amd64.tar.gz"
                 sha256 "${LINUX_AMD64}"
               end
             end
