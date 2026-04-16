@@ -71,13 +71,13 @@ BIN := $(OUTPUT_DIR)/ork
 ork-linux:
 	@echo "Building Orkestra (Linux amd64)..."
 	@mkdir -p $(OUTPUT_DIR)
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $(OUTPUT_DIR)/ork ./cmd/orkestra
+	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $(OUTPUT_DIR)/ork ./cmd/orkestra
 	@echo "✅ Linux Orkestra binary built: $(OUTPUT_DIR)/ork"
 
 orkcc-linux:
 	@echo "Building Orkestra Control Center (Linux amd64)..."
 	@mkdir -p $(OUTPUT_DIR)
-	cd $(CONTROL_CENTER_DIR) && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $(OUTPUT_DIR)/orkcc .
+	cd $(CONTROL_CENTER_DIR) && gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $(OUTPUT_DIR)/orkcc .
 	@echo "✅ Linux Control Center binary built: $(OUTPUT_DIR)/orkcc"
 
 # ── Docker Build ──────────────────────────────────────────────────────────────

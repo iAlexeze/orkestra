@@ -399,27 +399,43 @@ func registerDeletionProtectionWebhook(
 		})
 	}
 
-	//Webhook 3: Self-protection - block deletion of the deletion-protection webhook itself.
+	// Webhook 3: Self-protection - block deletion of the deletion-protection webhook itself.
 	// This closes the bootstrap gap: the webhook must protect itself before it can be deleted.
-	webhooks = append(webhooks, admissionv1.ValidatingWebhook{
-		Name: "protect.self.orkestra.konductor.io",
-		ClientConfig: admissionv1.WebhookClientConfig{
-			Service: &admissionv1.ServiceReference{
-				Name:      opts.ServiceName,
-				Namespace: opts.ServiceNamespace,
-				Path:      &path,
-				Port:      &port,
+	if true {
+		scopeCluster := admissionv1.ClusterScope
+
+		webhooks = append(webhooks, admissionv1.ValidatingWebhook{
+			Name: "protect.self.orkestra.konductor.io",
+			ClientConfig: admissionv1.WebhookClientConfig{
+				Service: &admissionv1.ServiceReference{
+					Name:      opts.ServiceName,
+					Namespace: opts.ServiceNamespace,
+					Path:      &path,
+					Port:      &port,
+				},
+				CABundle: caBundle,
 			},
-			CABundle: caBundle,
-		},
-		ObjectSelector:          orkestraResourceSelector,
-		Rules:                   buildDeletionProtectionRules([]katalog.GVREntry{{Group: "admissionregistration.k8s.io", Version: "v1", Resource: "validatingwebhookconfigurations"}}),
-		FailurePolicy:           failurePolicyPtr(admissionv1.Fail),
-		MatchPolicy:             matchPolicyPtr(admissionv1.Exact),
-		AdmissionReviewVersions: []string{"v1"},
-		SideEffects:             &sideEffects,
-		TimeoutSeconds:          int32Ptr(5),
-	})
+			ObjectSelector: orkestraResourceSelector,
+			Rules: []admissionv1.RuleWithOperations{
+				{
+					Operations: []admissionv1.OperationType{
+						admissionv1.Delete,
+					},
+					Rule: admissionv1.Rule{
+						APIGroups:   []string{"admissionregistration.k8s.io"},
+						APIVersions: []string{"v1"},
+						Resources:   []string{"validatingwebhookconfigurations"},
+						Scope:       &scopeCluster,
+					},
+				},
+			},
+			FailurePolicy:           failurePolicyPtr(admissionv1.Fail),
+			MatchPolicy:             matchPolicyPtr(admissionv1.Exact),
+			AdmissionReviewVersions: []string{"v1"},
+			SideEffects:             &sideEffects,
+			TimeoutSeconds:          int32Ptr(5),
+		})
+	}
 
 	config := &admissionv1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{

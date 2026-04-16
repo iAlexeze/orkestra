@@ -96,14 +96,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ork-linux-${{ matrix.arch }}
-          path: dist/ork
+          path: dist/raw/ork
           retention-days: 1
 
       - name: Upload raw control center binary
         uses: actions/upload-artifact@v4
         with:
           name: orkcc-linux-${{ matrix.arch }}
-          path: dist/orkcc
+          path: dist/raw/orkcc
           retention-days: 1
 
       - name: Upload runtime artifact
@@ -174,27 +174,30 @@ jobs:
             type=semver,pattern={{major}}
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
-      - name: Download raw Linux binaries
+      - name: Download raw Linux runtime binaries
         uses: actions/download-artifact@v4
         with:
-          path: docker-binaries
-          pattern: "ork-linux-*"
+          path: dist/raw/ork
           merge-multiple: true
 
       - name: Download raw Linux control center binaries
         uses: actions/download-artifact@v4
         with:
-          path: docker-binaries
-          pattern: "ork-linux-*"
+          path: dist/raw/orkcc
           merge-multiple: true
 
       - name: Prepare binaries for Docker build
         run: |
-          mv docker-binaries/ork-linux-amd64/ork ork-amd64
-          mv docker-binaries/ork-linux-arm64/ork ork-arm64
+          # List contents
+          ls dist/raw/
+          ls dist/raw/ork
+          ls dist/raw/orkcc
 
-          mv docker-binaries/orkcc-linux-amd64/orkcc ./cmd/controlcenter/orkcc-amd64
-          mv docker-binaries/orkcc-linux-arm64/orkcc ./cmd/controlcenter/orkcc-arm64
+          mv dist/raw/ork/ork-linux-amd64/ork ork-amd64
+          mv dist/ork/ork-linux-arm64/ork ork-arm64
+
+          mv dist/raw/orkcc/orkcc-linux-amd64/orkcc ./cmd/controlcenter/orkcc-amd64
+          mv dist/raw/orkcc/orkcc-linux-arm64/orkcc ./cmd/controlcenter/orkcc-arm64
 
       - name: Build and push runtime image
         id: push-runtime
