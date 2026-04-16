@@ -93,4 +93,4 @@ idx = floor(windowSize × percentile)
 
 For a 1000-request window, P95 reads position 950 in the sorted copy.
 
-→ Back to: [README.md](../README.md)
+→ Next: [04-deletion-prtection.md](04-deletion-prtection.md)

@@ -69,6 +69,25 @@ func (k *Katalog) DeletionProtectionGVRs() []GVREntry {
 			Resource:   "ingresses",
 			Operations: []string{"DELETE"},
 		},
+		{
+			// Protect the ValidatingWebhookConfiguration for Orkestra’s admission webhooks.
+			// This ensures admission interception cannot be disabled by deleting the webhook.
+			// ObjectSelector on the deletion-protection webhook config narrows to Orkestra-owned webhooks only.
+			Key:        "admissionregistration.k8s.io/v1/validatingwebhookconfigurations",
+			Group:      "admissionregistration.k8s.io",
+			Version:    "v1",
+			Resource:   "validatingwebhookconfigurations",
+			Operations: []string{"DELETE"},
+		},
+		{
+			// Protect the MutatingWebhookConfiguration for Orkestra’s admission webhooks.
+			// Same ObjectSelector as above — only Orkestra-owned webhooks are protected.
+			Key:        "admissionregistration.k8s.io/v1/mutatingwebhookconfigurations",
+			Group:      "admissionregistration.k8s.io",
+			Version:    "v1",
+			Resource:   "mutatingwebhookconfigurations",
+			Operations: []string{"DELETE"},
+		},
 	}
 }
 

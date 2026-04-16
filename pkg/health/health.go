@@ -70,6 +70,9 @@ type HealthServer struct {
 	// Rolling deletion protection statistics.
 	protectionStats *ProtectionStats
 
+	// Webhook controller reconcilliation stats for observability
+	webhookStats *WebhookStats
+
 	// Admission registry containing validation and mutation rules.
 	admissionRegistry katalog.AdmissionRegistry
 
@@ -574,4 +577,9 @@ func (h *HealthServer) GetAdmissionStats() *AdmissionStats {
 // GetProtectionStats returns the deletion protection statistics for use in handlers.
 func (h *HealthServer) GetProtectionStats() *ProtectionStats {
 	return h.protectionStats
+}
+
+// GetWebhookStats returns the webhook statistics for use in handlers.
+func (h *HealthServer) GetWebhookStats() *WebhookStats {
+	return h.webhookStats
 }

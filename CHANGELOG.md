@@ -1,44 +1,45 @@
 # CHANGELOG
 
-## Enhancements
+## Added
+- **Webhook reconciliation metrics**  
+  Introduced Prometheus counters for:
+  - `webhook_reconciliations_total`
+  - `webhook_reconciliation_failures_total`  
+  Enables cluster‑level observability into admission + deletion‑protection webhook lifecycle.
 
-### Optional deletion‑protection and webhook cleanup  
-Deletion protection and webhook cleanup are now fully optional and driven by explicit Katalog configuration.  
-This change introduces a more flexible shutdown model:
+- **Webhook reconciliation stats (UI‑visible)**  
+  Added in‑memory `WebhookStats` module mirroring `ConversionStats`, `AdmissionStats`, and `ProtectionStats`.  
+  Exposed through the Control Center for real‑time visibility.
 
-- Deletion protection can be enabled or disabled independently of admission webhooks  
-- Cleanup of validating/mutating/deletion‑protection webhooks is now controlled by the Katalog’s `deletionProtection.cleanupOnShutdown` flag  
-- When cleanup is disabled, Orkestra leaves all webhook configurations intact across restarts  
-- When cleanup is enabled, Orkestra removes only the webhook types that were declared in the Katalog
+- **Recursive deletion protection for all Orkestra‑managed resources**  
+  Deletion protection now covers:
+  - CRDs managed by Orkestra  
+  - Orkestra Deployment, Service, Ingress  
+  - **ValidatingWebhookConfiguration (orkestra-validation)**  
+  - **MutatingWebhookConfiguration (orkestra-mutation)**  
+  - **Deletion‑protection webhook itself**  
+  This creates a self‑protecting, self‑healing admission control plane.
 
-This ensures that operators can choose between **persistent** webhook configurations (production) and **ephemeral** cleanup (testing, CI, local development).
+- **UI integration for webhook reconciliation stats**  
+  Wired `WebhookStats` into the CRD handler so the Control Center displays:
+  - Failed Reconciliation
+  - Successful Reconciliation
 
-### Continuous webhook reconciliation  
-A new background controller (`webhookController`) ensures that all declared webhooks remain available throughout the lifecycle of the Katalog.
+## Changed
+- **Webhook controller now records both metrics and stats**  
+  Each reconciliation cycle increments:
+  - UI stats (`Reconciled`, `Failed`)
+  - Prometheus metrics (labeled `"validation"`, `"mutation"`, `"deletion-protection"`, `"controller"`)
 
-This controller:
+- **Admission webhook configurations now carry Orkestra ownership labels**  
+  Ensures they are included in deletion protection via `objectSelector`.
 
-- Periodically verifies that validating, mutating, and deletion‑protection webhooks exist  
-- Recreates missing webhook configurations  
-- Ensures TLS and failure‑policy settings remain aligned with the Katalog  
-- Operates independently of pod restarts, enabling long‑running consistency  
-- Makes webhook availability **declarative and self‑healing**
+## Security / Protection
+- **Two‑level protection model implemented**
+  1. **Admission protection**  
+     Validation + mutation webhooks enforce CRD‑level rules.
+  2. **Deletion protection**  
+     Dedicated validating webhook prevents deletion of Orkestra‑owned resources, including the admission webhooks themselves.
 
-This moves Orkestra toward a controller‑grade model where webhook configuration is continuously enforced rather than only applied at startup.
-
----
-
-## Documentation updates (health.go)
-
-The following architectural comments were added to `health.go`:
-
-- Top‑level documentation for `HealthServer` describing its role as the runtime surface for health, admission, conversion, and deletion protection  
-- Method‑level comments explaining lifecycle responsibilities (`Start`, `Shutdown`, `EnableWebhooks`, `EnableConversion`)  
-- Inline comments at key architectural pivot points:
-  - TLS validation for webhook servers  
-  - Conditional registration of conversion, validation, mutation, and deletion‑protection endpoints  
-  - Best‑effort webhook registration semantics  
-  - Optional cleanup logic during shutdown  
-  - Activation of the continuous webhook reconciliation loop  
-
-These comments clarify the declarative model, the runtime activation path, and the separation between configuration, registration, and reconciliation.
+  This forms a **recursive protection loop**:  
+  the system that protects the platform is itself protected by the platform.
