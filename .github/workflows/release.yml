@@ -92,6 +92,20 @@ jobs:
           tar -czf "dist/${ARCHIVE}" -C dist orkcc -C "${{ github.workspace }}" README.md LICENSE
           echo "✅ Archive: dist/${ARCHIVE}"
 
+      - name: Upload raw runtime binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ork-linux-${{ matrix.arch }}
+          path: dist/ork
+          retention-days: 1
+
+      - name: Upload raw control center binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: orkcc-linux-${{ matrix.arch }}
+          path: dist/orkcc
+          retention-days: 1
+
       - name: Upload runtime artifact
         uses: actions/upload-artifact@v4
         with:
@@ -158,6 +172,28 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+
+      - name: Download raw Linux binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: docker-binaries
+          pattern: "ork-linux-*"
+          merge-multiple: true
+
+      - name: Download raw Linux control center binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: docker-binaries
+          pattern: "ork-linux-*"
+          merge-multiple: true
+
+      - name: Prepare binaries for Docker build
+        run: |
+          mv docker-binaries/ork-linux-amd64 ork-amd64
+          mv docker-binaries/ork-linux-arm64 ork-arm64
+
+          mv docker-binaries/orkcc-linux-amd64 ./cmd/controlcenter/orkcc-amd64
+          mv docker-binaries/orkcc-linux-arm64 ./cmd/controlcenter/orkcc-arm64
 
       - name: Build and push runtime image
         id: push-runtime

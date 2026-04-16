@@ -105,7 +105,7 @@ Below is the conceptual model of how Orkestra protects itself:
                          ┌───────────────────────────────────────────┐
                          │              Katalog (Source of Truth)    │
                          │-------------------------------------------│
-                         │  security.webhook.enabled                 │
+                         │  security.webhook.admission.enabled                 │
                          │  security.deletionProtection.enabled      │
                          └───────────────────────────────────────────┘
                                            │

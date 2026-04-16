@@ -32,7 +32,7 @@ The result is a **self‑protecting, self‑healing admission control plane**: t
                          ┌───────────────────────────────────────────┐
                          │              Katalog (Source of Truth)    │
                          │-------------------------------------------│
-                         │  security.webhook.enabled                 │
+                         │  security.webhook.admission.enabled                 │
                          │  security.deletionProtection.enabled      │
                          └───────────────────────────────────────────┘
                                            │

@@ -136,6 +136,9 @@ data:
         enabled: false
       conversion:
         enabled: true
+      webhooks:
+        admission:
+          enabled: true
 
     spec:
       crds:
