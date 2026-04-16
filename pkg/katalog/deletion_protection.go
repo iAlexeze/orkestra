@@ -22,9 +22,21 @@ package katalog
 
 import "os"
 
-// DeletionProtectionGVRs returns the webhook intercept rules.
-// Returns nil when running outside the cluster (ork run) — in that case
-// the webhook cannot be reached and must not be registered.
+// DeletionProtectionGVRs returns the list of GVRs that the deletion‑protection
+// admission webhook should intercept.
+//
+// This includes:
+//   - CRDs managed by this Katalog (broad match; handler filters by name)
+//   - Orkestra’s own admission webhooks (validating + mutating)
+//   - Orkestra’s internal control‑plane resources (deployment, service,
+//     serviceaccount, configmap, RBAC objects, ingress, etc.)
+//
+// The internal resources are derived from the built‑ins registry via
+// OrkestraInternalGVRs(), ensuring the list is declarative and maintained
+// in a single place.
+//
+// When running outside the cluster (e.g. `ork run`), the webhook cannot be
+// reached, so no rules are returned.
 func (k *Katalog) DeletionProtectionGVRs() []GVREntry {
 	if !k.IsDeletionProtectionEnabled() {
 		return nil
@@ -33,62 +45,11 @@ func (k *Katalog) DeletionProtectionGVRs() []GVREntry {
 		return nil
 	}
 
-	return []GVREntry{
-		{
-			// Broad rule — handler filters to managed CRDs via ProtectedCRDNames()
-			Key:        "apiextensions.k8s.io/v1/customresourcedefinitions",
-			Group:      "apiextensions.k8s.io",
-			Version:    "v1",
-			Resource:   "customresourcedefinitions",
-			Operations: []string{"DELETE"},
-		},
-		{
-			// Protect the Orkestra operator deployment.
-			// ObjectSelector on the webhook config narrows to the Orkestra deployment only.
-			Key:        "apps/v1/deployments",
-			Group:      "apps",
-			Version:    "v1",
-			Resource:   "deployments",
-			Operations: []string{"DELETE"},
-		},
-		{
-			// Protect the Orkestra Service.
-			// Same ObjectSelector as the deployment entry.
-			Key:        "/v1/services",
-			Group:      "",
-			Version:    "v1",
-			Resource:   "services",
-			Operations: []string{"DELETE"},
-		},
-		{
-			// Protect the Orkestra Ingress.
-			// Same ObjectSelector as the deployment entry.
-			Key:        "networking.k8s.io/v1/ingresses",
-			Group:      "networking.k8s.io",
-			Version:    "v1",
-			Resource:   "ingresses",
-			Operations: []string{"DELETE"},
-		},
-		{
-			// Protect the ValidatingWebhookConfiguration for Orkestra’s admission webhooks.
-			// This ensures admission interception cannot be disabled by deleting the webhook.
-			// ObjectSelector on the deletion-protection webhook config narrows to Orkestra-owned webhooks only.
-			Key:        "admissionregistration.k8s.io/v1/validatingwebhookconfigurations",
-			Group:      "admissionregistration.k8s.io",
-			Version:    "v1",
-			Resource:   "validatingwebhookconfigurations",
-			Operations: []string{"DELETE"},
-		},
-		{
-			// Protect the MutatingWebhookConfiguration for Orkestra’s admission webhooks.
-			// Same ObjectSelector as above — only Orkestra-owned webhooks are protected.
-			Key:        "admissionregistration.k8s.io/v1/mutatingwebhookconfigurations",
-			Group:      "admissionregistration.k8s.io",
-			Version:    "v1",
-			Resource:   "mutatingwebhookconfigurations",
-			Operations: []string{"DELETE"},
-		},
-	}
+	// Protect all CRDs managed by this Katalog and
+	// Orkestra’s internal control‑plane resources.
+	// These are defined declaratively in the built‑ins registry via
+	// the OrkestraInternal flag.
+	return OrkestraInternalGVRs()
 }
 
 // ProtectedCRDNames returns the set of CRD full names managed by this Katalog.

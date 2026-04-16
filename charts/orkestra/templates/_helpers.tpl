@@ -48,6 +48,7 @@ MUST remain stable across upgrades (do not change).
 */}}
 {{- define "orkestra.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "orkestra.name" . }}
+app.kubernetes.io/component: orkestra-internal
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
@@ -86,7 +87,7 @@ Leader election namespace — defaults to release namespace.
 Returns where the leader election Lease should be stored.
 */}}
 {{- define "orkestra.leaderElectionNamespace" -}}
-{{- default .Release.Namespace .Values.runtime.leaderElection.namespace }}
+{{- default .Release.Namespace .Values.runtime.config.watchNamespace }}
 {{- end }}
 
 {{/*

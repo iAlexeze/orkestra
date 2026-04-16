@@ -2,6 +2,8 @@ package konfig
 
 import (
 	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Konfig struct {
@@ -242,4 +244,14 @@ func (k *Konfig) HTTPSPort() string {
 // HTTPSPortInt32 returns the HTTPS port as int32 (8443) used in webhook client configs.
 func (k *Konfig) HTTPSPortInt32() int32 {
 	return httpsPortInt32
+}
+
+// OrkestraResourceSelector returns the internal label selector for orkestra control plane resources
+func (k *Konfig) OrkestraResourceSelector() *metav1.LabelSelector {
+	return orkestraResourceSelector
+}
+
+// OrkestraResourceLabels returns the internal labels for orkestra control plane resources
+func (k *Konfig) OrkestraResourceLabels() map[string]string {
+	return orkestraResourceLabels
 }

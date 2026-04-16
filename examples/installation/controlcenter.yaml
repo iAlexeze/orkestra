@@ -11,7 +11,7 @@ metadata:
   labels:
     # Deletion protection labels 
     app.kubernetes.io/name: orkestra
-    app.kubernetes.io/component: orkestra-internal
+    aporkestra-internalp.kubernetes.io/component: 
     app.kubernetes.io/player: control-center
 spec:
   replicas: 2

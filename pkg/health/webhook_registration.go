@@ -55,20 +55,6 @@ const (
 	gracePeriodSeconds = int64(30)
 )
 
-// orkestraResourceLabels defines the labels used to identify Orkestra-managed
-// resources for deletion protection.
-var orkestraResourceLabels = map[string]string{
-	"app.kubernetes.io/name":      "orkestra",
-	"app.kubernetes.io/component": "orkestra-internal",
-}
-
-// Label selector shared by all Orkestra-managed Kubernetes resources.
-// Narrows the webhook to only the operator's own deployment, service, ingress,
-// and admission webhook configurations (validation + mutation).
-var orkestraResourceSelector = &metav1.LabelSelector{
-	MatchLabels: orkestraResourceLabels,
-}
-
 // WebhookRegistrationOptions holds the configuration for webhook registration.
 type WebhookRegistrationOptions struct {
 	// ServiceName — the name of the Kubernetes Service fronting Orkestra.
@@ -94,6 +80,15 @@ type WebhookRegistrationOptions struct {
 	// The certificate is read and used as the caBundle in the webhook config.
 	// Default: read from TLS_CERT environment variable.
 	TLSCertFile string
+
+	// OrkestraResourceLabels defines the labels used to identify Orkestra-managed
+	// resources for deletion protection.
+	OrkestraResourceLabels map[string]string
+
+	// Label selector shared by all Orkestra-managed Kubernetes resources.
+	// Narrows the webhook to only the operator's own deployment, service, ingress,
+	// and admission webhook configurations (validation + mutation).
+	OrkestraResourceSelector *metav1.LabelSelector
 }
 
 // RegisterWebhooks creates or updates the ValidatingWebhookConfiguration and
@@ -214,7 +209,7 @@ func registerValidatingWebhook(
 	config := &admissionv1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   validatingWebhookConfigName,
-			Labels: orkestraResourceLabels, // Add orkestra labels for deletion protection
+			Labels: opts.OrkestraResourceLabels, // Add orkestra labels for deletion protection
 		},
 		Webhooks: []admissionv1.ValidatingWebhook{
 			{
@@ -265,7 +260,7 @@ func registerMutatingWebhook(
 	config := &admissionv1.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   mutatingWebhookConfigName,
-			Labels: orkestraResourceLabels, // Add orkestra labels for deletion protection
+			Labels: opts.OrkestraResourceLabels, // Add orkestra labels for deletion protection
 		},
 		Webhooks: []admissionv1.MutatingWebhook{
 			{
@@ -346,7 +341,7 @@ func registerDeletionProtectionWebhook(
 		}
 	}
 
-	webhooks := make([]admissionv1.ValidatingWebhook, 0, 3)
+	webhooks := make([]admissionv1.ValidatingWebhook, 0, 2)
 
 	// Webhook 1: CRD deletions — handler filters by ProtectedCRDNames()
 	if len(crdGVRs) > 0 {
@@ -389,46 +384,8 @@ func registerDeletionProtectionWebhook(
 				},
 				CABundle: caBundle,
 			},
-			ObjectSelector:          orkestraResourceSelector,
+			ObjectSelector:          opts.OrkestraResourceSelector,
 			Rules:                   buildDeletionProtectionRules(orkestraGVRs),
-			FailurePolicy:           failurePolicyPtr(admissionv1.Fail),
-			MatchPolicy:             matchPolicyPtr(admissionv1.Exact),
-			AdmissionReviewVersions: []string{"v1"},
-			SideEffects:             &sideEffects,
-			TimeoutSeconds:          int32Ptr(5),
-		})
-	}
-
-	// Webhook 3: Self-protection - block deletion of the deletion-protection webhook itself.
-	// This closes the bootstrap gap: the webhook must protect itself before it can be deleted.
-	if true {
-		scopeCluster := admissionv1.ClusterScope
-
-		webhooks = append(webhooks, admissionv1.ValidatingWebhook{
-			Name: "protect.self.orkestra.konductor.io",
-			ClientConfig: admissionv1.WebhookClientConfig{
-				Service: &admissionv1.ServiceReference{
-					Name:      opts.ServiceName,
-					Namespace: opts.ServiceNamespace,
-					Path:      &path,
-					Port:      &port,
-				},
-				CABundle: caBundle,
-			},
-			ObjectSelector: orkestraResourceSelector,
-			Rules: []admissionv1.RuleWithOperations{
-				{
-					Operations: []admissionv1.OperationType{
-						admissionv1.Delete,
-					},
-					Rule: admissionv1.Rule{
-						APIGroups:   []string{"admissionregistration.k8s.io"},
-						APIVersions: []string{"v1"},
-						Resources:   []string{"validatingwebhookconfigurations"},
-						Scope:       &scopeCluster,
-					},
-				},
-			},
 			FailurePolicy:           failurePolicyPtr(admissionv1.Fail),
 			MatchPolicy:             matchPolicyPtr(admissionv1.Exact),
 			AdmissionReviewVersions: []string{"v1"},
@@ -440,7 +397,7 @@ func registerDeletionProtectionWebhook(
 	config := &admissionv1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   deletionProtectionWebhookConfigName,
-			Labels: orkestraResourceLabels, // Add orkestra labels for deletion protection
+			Labels: opts.OrkestraResourceLabels,
 		},
 		Webhooks: webhooks,
 	}

@@ -77,7 +77,7 @@ spec:
             {{- end }}
             {{- if .Values.rbac.create }}
             - name: RBAC_AUTO_APPLY
-              value: true
+              value: "true"
             {{- end}}
             {{- if .Values.runtime.leaderElection.enabled }}
             - name: LEADER_ELECTION
