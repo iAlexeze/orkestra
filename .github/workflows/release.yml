@@ -92,20 +92,6 @@ jobs:
           tar -czf "dist/${ARCHIVE}" -C dist orkcc -C "${{ github.workspace }}" README.md LICENSE
           echo "✅ Archive: dist/${ARCHIVE}"
 
-      - name: Upload raw runtime binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: ork-linux-${{ matrix.arch }}
-          path: dist/raw/ork
-          retention-days: 1
-
-      - name: Upload raw control center binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: orkcc-linux-${{ matrix.arch }}
-          path: dist/raw/orkcc
-          retention-days: 1
-
       - name: Upload runtime artifact
         uses: actions/upload-artifact@v4
         with:
@@ -124,7 +110,6 @@ jobs:
   image:
     name: Build and Push Image
     runs-on: ubuntu-latest
-    needs: build
 
     outputs:
       digest: ${{ steps.push.outputs.digest }}
@@ -174,30 +159,14 @@ jobs:
             type=semver,pattern={{major}}
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
-      - name: Download raw Linux runtime binaries
-        uses: actions/download-artifact@v4
-        with:
-          path: dist/raw/ork
-          merge-multiple: true
-
-      - name: Download raw Linux control center binaries
-        uses: actions/download-artifact@v4
-        with:
-          path: dist/raw/orkcc
-          merge-multiple: true
-
-      - name: Prepare binaries for Docker build
+      - name: Build Linux binaries for container images
         run: |
-          # List contents
-          ls dist/raw/
-          ls dist/raw/ork
-          ls dist/raw/orkcc
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ork-amd64 ./cmd/orkestra
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o ork-arm64 ./cmd/orkestra
 
-          mv dist/raw/ork/ork-linux-amd64/ork ork-amd64
-          mv dist/ork/ork-linux-arm64/ork ork-arm64
-
-          mv dist/raw/orkcc/orkcc-linux-amd64/orkcc ./cmd/controlcenter/orkcc-amd64
-          mv dist/raw/orkcc/orkcc-linux-arm64/orkcc ./cmd/controlcenter/orkcc-arm64
+          cd ./cmd/controlcenter
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o orkcc-amd64 .
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o orkcc-arm64 .
 
       - name: Build and push runtime image
         id: push-runtime
