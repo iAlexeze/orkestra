@@ -19,7 +19,7 @@ helm install orkestra orkestra/orkestra \
 ---
 
 > [!IMPORTANT]
-> ## Before you install: generate RBAC and Katalog
+> ## Before you install: generate RBAC and ConfigMap
 >
 > Orkestra separates the runtime from security configuration. This keeps your permissions explicit, minimal, and reviewable – no hidden RBAC inside the Helm chart.
 >
