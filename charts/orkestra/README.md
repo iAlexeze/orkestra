@@ -19,47 +19,34 @@ helm install orkestra orkestra/orkestra \
 ---
 
 > [!IMPORTANT]
-> **RBAC and ConfigMap are not created by the chart**
+> ## Before you install: generate RBAC and Katalog
 >
-> Orkestra follows a **security‑first** model:  
-> RBAC and ConfigMap **must be generated from your intent**, not shipped as static YAML.
+> Orkestra separates the runtime from security configuration. This keeps your permissions explicit, minimal, and reviewable – no hidden RBAC inside the Helm chart.
 >
-> **You MUST generate and apply RBAC (and optionally the Katalog ConfigMap) using the Ork CLI before installing this chart.**
+> Because of this design, the chart does **not** create:
+>
+> - `ServiceAccount`s
+> - `ClusterRole`s or `ClusterRoleBinding`s
+> - the Katalog `ConfigMap`
+> 
+> Instead, you generate those resources from your Katalog file using the Ork CLI. Then you apply them before (or together with) the Helm chart.
 
-This ensures:
-
-- least‑privilege RBAC  
-- zero surprises  
-- full GitOps compatibility  
-- transparent, reviewable manifests  
-
----
-
-### 1. Generate RBAC and ConfigMap (required)
+### How to generate the required resources
 
 From your Katalog file:
 
 ```bash
-# Minimal ServiceAccounts + RBAC only
+# Minimal RBAC only
 ork generate rbac --katalog my-katalog.yaml -o rbac.yaml
 
-# Or full bundle: ServiceAccounts + RBAC + Katalog ConfigMap
+# Full bundle: ServiceAccounts + RBAC + Katalog ConfigMap
 ork generate bundle --katalog my-katalog.yaml -o bundle.yaml
 
 # Override namespace if needed
 ork generate bundle --katalog my-katalog.yaml -n orkestra-system -o bundle.yaml
 ```
 
-This produces:
-
-- `ServiceAccount` for runtime  
-- `ServiceAccount` for control center  
-- `ClusterRole` + `ClusterRoleBinding` (derived from your Katalog)  
-- `ConfigMap` containing your Katalog (if using `bundle`)  
-
----
-
-### 2. Apply the generated manifests
+### Apply the generated manifests
 
 ```bash
 kubectl apply -f rbac.yaml
@@ -67,11 +54,9 @@ kubectl apply -f rbac.yaml
 kubectl apply -f bundle.yaml
 ```
 
-Everything is explicit and reviewable.
+Now everything is explicit, auditable, and ready for the Helm chart.
 
----
-
-### 3. Configure the Helm chart to use your generated resources
+### Then configure the Helm chart to use your resources
 
 In `values.yaml`:
 
@@ -79,14 +64,14 @@ In `values.yaml`:
 runtime:
   serviceAccount: orkestra
   katalog:
-    existingConfigMap: orkestra-katalog
+    existingConfigMap: orkestra-katalog   # if you used --bundle
     configMapKey: katalog.yaml
 
 controlCenter:
   serviceAccount: orkestra-cc
 ```
 
-Then install:
+Install the chart normally:
 
 ```bash
 helm install orkestra orkestra/orkestra \
@@ -95,8 +80,12 @@ helm install orkestra orkestra/orkestra \
   --values values.yaml
 ```
 
----
+> [!TIP]
+> **Why this workflow?**  
+> It guarantees least‑privilege RBAC, no surprises, and full GitOps compatibility. 
+> The generated YAML can be reviewed, versioned, and audited – exactly as infrastructure should be.
 
+---
 ### GitOps‑First Workflow (Recommended)
 
 In CI:
