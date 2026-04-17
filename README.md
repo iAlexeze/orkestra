@@ -1,6 +1,6 @@
 # Orkestra Helm Chart
 
-Deploy Orkestra — the declarative Kubernetes operator runtime — along with its Control Center for multi-instance observability.
+Deploy Orkestra — the declarative Kubernetes operator runtime — along with its Control Center for multi‑instance observability.
 
 ```bash
 helm repo add orkestra https://ialexeze.github.io/orkestra
@@ -33,6 +33,8 @@ The chart installs two separate components:
 ## Install
 
 ### Quick install with defaults
+
+This deploys a development‑grade setup with an inline starter Katalog and automatically created ServiceAccounts. For production, follow the Security‑First Installation below.
 
 ```bash
 helm repo add orkestra https://ialexeze.github.io/orkestra
@@ -70,14 +72,10 @@ kubectl apply -f rbac.yaml
 ```yaml
 # values.yaml
 runtime:
-  serviceAccount:
-    create: false           # Use the one from rbac.yaml
-    name: orkestra          # Must match the ServiceAccount name in rbac.yaml
+  serviceAccount: orkestra          # Must match the ServiceAccount name in rbac.yaml
 
 controlCenter:
-  serviceAccount:
-    create: false
-    name: orkestra-cc
+  serviceAccount: orkestra-cc       # Must match the ServiceAccount name in rbac.yaml
 ```
 
 ```bash
@@ -86,7 +84,7 @@ helm install orkestra orkestra/orkestra \
   --create-namespace \
   --values values.yaml
 ```
-
+> [!IMPORTANT]
 > **Why this matters**: Traditional operators are massively over‑permissioned. Orkestra generates RBAC from your **declared intent**, giving you least‑privilege security by default.
 
 ### Install runtime only (without Control Center)
@@ -195,8 +193,7 @@ helm uninstall orkestra --namespace orkestra-system
 ```
 
 Uninstalling removes the Orkestra Runtime and Control Center Deployments and all chart resources.
-CRs and CRDs that Orkestra was managing are **not** deleted — they
-remain in the cluster and must be cleaned up separately if desired.
+CRs and CRDs that Orkestra was managing are **not** deleted — they remain in the cluster and must be cleaned up separately if desired.
 
 ---
 
@@ -209,14 +206,16 @@ remain in the cluster and must be cleaned up separately if desired.
 | `runtime.enabled` | Deploy the Orkestra runtime | `true` |
 | `runtime.image.repository` | Runtime container image | `ghcr.io/orkspace/orkestra` |
 | `runtime.image.tag` | Image tag | Chart `appVersion` |
+| `runtime.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `runtime.replicaCount` | Number of replicas (leader election) | `2` |
 | `runtime.service.type` | Service type | `ClusterIP` |
 | `runtime.service.port` | Service port | `8080` |
+| `runtime.service.annotations` | Service annotations | `{}` |
 | `runtime.resources` | Resource limits and requests | See values.yaml |
-| `runtime.serviceAccount.create` | Create ServiceAccount (set `false` when using generated RBAC) | `true` |
-| `runtime.serviceAccount.name` | ServiceAccount name (must match generated RBAC) | `""` |
+| `runtime.serviceAccount` | ServiceAccount name (must match generated RBAC) | `"orkestra"` |
 | `runtime.server.readTimeout` | HTTP server read timeout (seconds) | `30` |
 | `runtime.server.writeTimeout` | HTTP server write timeout (seconds) | `60` |
+| `runtime.server.port` | HTTP server port | `8080` |
 | `runtime.config.logLevel` | Log level: debug, info, warn, error | `info` |
 | `runtime.config.defaultWorkers` | Default reconcile workers per CRD | `2` |
 | `runtime.config.defaultResync` | Default resync interval | `30s` |
@@ -224,14 +223,21 @@ remain in the cluster and must be cleaned up separately if desired.
 | `runtime.config.degradeThreshold` | Consecutive failures before degraded | `10` |
 | `runtime.config.environment` | Deployment environment | `development` |
 | `runtime.config.watchNamespace` | Restrict to single namespace (empty = all) | `""` |
+| `runtime.startupProbe` | Startup probe configuration | See values.yaml |
+| `runtime.livenessProbe` | Liveness probe configuration | See values.yaml |
+| `runtime.readinessProbe` | Readiness probe configuration | See values.yaml |
+| `runtime.podSecurityContext` | Pod security context | Non-root (1000) |
+| `runtime.securityContext` | Container security context | Non-root, read-only root |
 | `runtime.leaderElection.enabled` | Enable leader election for HA | `true` |
 | `runtime.leaderElection.leaseDuration` | Leader lease duration | `15s` |
 | `runtime.leaderElection.renewDeadline` | Renew deadline | `10s` |
 | `runtime.leaderElection.retryPeriod` | Retry period | `5s` |
-| `runtime.webhooks.enabled` | Enable admission/conversion webhooks | `false` |
+| `runtime.webhooks.enabled` | Master switch for webhooks | `false` |
 | `runtime.webhooks.admission` | Enable admission webhook | `false` |
 | `runtime.webhooks.conversion` | Enable conversion webhook | `false` |
 | `runtime.webhooks.existingSecret` | TLS secret name (required if enabled) | `""` |
+| `runtime.webhooks.certSecretKey` | Key in secret for certificate | `tls.crt` |
+| `runtime.webhooks.keySecretKey` | Key in secret for private key | `tls.key` |
 | `runtime.katalog.inline` | Inline Katalog YAML | Starter Katalog |
 | `runtime.katalog.existingConfigMap` | Use existing ConfigMap | `""` |
 | `runtime.katalog.configMapKey` | Key in ConfigMap | `katalog.yaml` |
@@ -244,18 +250,22 @@ remain in the cluster and must be cleaned up separately if desired.
 | `controlCenter.enabled` | Deploy the Control Center | `true` |
 | `controlCenter.image.repository` | Control Center image | `ghcr.io/orkspace/orkestra-cc` |
 | `controlCenter.image.tag` | Image tag | Chart `appVersion` |
+| `controlCenter.image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `controlCenter.replicaCount` | Number of replicas | `1` |
 | `controlCenter.resources` | Resource limits and requests | See values.yaml |
-| `controlCenter.serviceAccount.create` | Create ServiceAccount (set `false` when using generated RBAC) | `true` |
-| `controlCenter.serviceAccount.name` | ServiceAccount name (must match generated RBAC) | `""` |
-| `controlCenter.config.orkestraURLs` | List of runtime URLs to monitor | `[]` |
+| `controlCenter.serviceAccount` | ServiceAccount name (must match generated RBAC) | `"orkestra-cc"` |
+| `controlCenter.config.orkestraURLs` | List of runtime URLs to monitor | `[]` (must be set) |
 | `controlCenter.config.port` | Control Center port | `8090` |
 | `controlCenter.config.refreshInterval` | Katalog refresh interval | `10s` |
 | `controlCenter.config.logLevel` | Log level | `info` |
 | `controlCenter.service.type` | Service type | `ClusterIP` |
 | `controlCenter.service.port` | Service port | `8081` |
-| `controlCenter.ingress.enabled` | Enable Ingress | `true` |
-| `controlCenter.ingress.hosts` | Ingress hosts | See values.yaml |
+| `controlCenter.service.annotations` | Service annotations | `{}` |
+| `controlCenter.ingress.enabled` | Enable Ingress | `false` |
+| `controlCenter.ingress.className` | Ingress class name | `""` |
+| `controlCenter.ingress.annotations` | Ingress annotations | `{}` |
+| `controlCenter.ingress.hosts` | Ingress hosts | `[]` |
+| `controlCenter.ingress.tls` | TLS configuration | `[]` |
 | `controlCenter.securityContext` | Container security context | Non-root (1001) |
 | `controlCenter.podSecurityContext` | Pod security context | Non-root (1001) |
 | `controlCenter.livenessProbe` | Liveness probe configuration | See values.yaml |
@@ -282,7 +292,9 @@ remain in the cluster and must be cleaned up separately if desired.
 | `nodeSelector` | Node selector for all pods | `{}` |
 | `tolerations` | Tolerations for all pods | `[]` |
 | `affinity` | Affinity for all pods | `{}` |
+| `topologySpreadConstraints` | Topology spread constraints | `[]` |
 | `extraEnv` | Extra environment variables | `[]` |
+| `extraEnvFrom` | Extra environment variables from sources | `[]` |
 | `extraVolumes` | Extra volumes | `[]` |
 | `extraVolumeMounts` | Extra volume mounts | `[]` |
 | `podAnnotations` | Annotations for all pods | `{}` |
@@ -358,14 +370,12 @@ subjects:
 # Apply the generated RBAC
 kubectl apply -f rbac.yaml
 
-# Then deploy the Helm chart with service account creation disabled
+# Then deploy the Helm chart with the matching serviceAccount names
 helm install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --create-namespace \
-  --set runtime.serviceAccount.create=false \
-  --set runtime.serviceAccount.name=orkestra \
-  --set controlCenter.serviceAccount.create=false \
-  --set controlCenter.serviceAccount.name=orkestra-cc
+  --set runtime.serviceAccount=orkestra \
+  --set controlCenter.serviceAccount=orkestra-cc
 ```
 
 ### Why This Matters
@@ -378,9 +388,7 @@ helm install orkestra orkestra/orkestra \
 | Hard to audit | Visible in UI (RBAC tab) |
 | Security afterthought | Security‑first |
 
-The Control Center even shows you the RBAC permissions per CRD:
-
-![RBAC Permissions in UI](docs/images/rbac-permissions.png)
+The Control Center even shows you the RBAC permissions per CRD.
 
 ---
 
@@ -394,14 +402,14 @@ Out of the box, the chart applies:
 - `allowPrivilegeEscalation: false`
 - `capabilities.drop: [ALL]`
 - `seccompProfile: RuntimeDefault`
-- Pod anti-affinity spreads replicas across nodes
+- Pod anti‑affinity spreads replicas across nodes
 
 ### Control Center
 - `runAsNonRoot: true` with uid/gid 1001
 - `readOnlyRootFilesystem: true`
 - `allowPrivilegeEscalation: false`
 - `capabilities.drop: [ALL]`
-- No RBAC permissions (read-only access to Runtime API only)
+- No RBAC permissions (read‑only access to Runtime API only)
 
 ---
 
@@ -451,9 +459,7 @@ open http://localhost:8081/controlcenter
 # production-values.yaml
 runtime:
   replicaCount: 3
-  serviceAccount:
-    create: false
-    name: orkestra              # Matches generated RBAC
+  serviceAccount: orkestra
   resources:
     requests:
       cpu: 200m
@@ -476,9 +482,7 @@ runtime:
 controlCenter:
   enabled: true
   replicaCount: 2
-  serviceAccount:
-    create: false
-    name: orkestra-cc
+  serviceAccount: orkestra-cc
   config:
     orkestraURLs:
       - http://orkestra-runtime:8080
@@ -584,4 +588,7 @@ The generated RBAC always stays in sync with your Katalog.
 
 ## License
 
-[MIT](../../LICENSE)
+Same license as the orkestra project.
+```
+
+These files are now consistent, production‑ready, and free of the earlier contradictions. You can commit them to your repository for Artifact Hub.
