@@ -76,7 +76,7 @@ type SecurityConfig struct {
 		TLSKey  string
 
 		Controller struct {
-			Enabled bool
+			Enabled      bool
 			SyncInterval time.Duration
 		}
 	}

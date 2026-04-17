@@ -86,6 +86,11 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 		}
 		// Duplicate within the same file is impossible — map keys are unique.
 		crd.Name = name
+
+		// Merge spec-level restrictions into each CRD (additive).
+		crd.RestrictedNamespaces = doc.Spec.RestrictedNamespaces.Merge(crd.RestrictedNamespaces)
+		crd.AllowedNamespaces = doc.Spec.AllowedNamespaces.Merge(crd.AllowedNamespaces)
+
 		result[name] = crd
 
 		logger.Debug().
@@ -229,6 +234,15 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 
 		localSeen[name] = inlineKey
 	}
+	// Merge Komposer-level restrictions into every CRD (additive).
+	if len(doc.Spec.RestrictedNamespaces) > 0 || len(doc.Spec.AllowedNamespaces) > 0 {
+		for name, crd := range allCRDs {
+			crd.RestrictedNamespaces = doc.Spec.RestrictedNamespaces.Merge(crd.RestrictedNamespaces)
+			crd.AllowedNamespaces = doc.Spec.AllowedNamespaces.Merge(crd.AllowedNamespaces)
+			allCRDs[name] = crd
+		}
+	}
+
 	logger.Debug().
 		Str("path", path).
 		Int("crds", len(allCRDs)).

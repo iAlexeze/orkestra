@@ -113,6 +113,7 @@ func (r *envSecurityReader) WebhookControllerSyncInterval() time.Duration {
 	}
 	return r.k.konfig.Security().Webhooks.Controller.SyncInterval
 }
+
 //
 
 // ── Deletion protection ───────────────────────────────────────────────────────

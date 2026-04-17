@@ -171,6 +171,20 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 		}
 	}
 
+	// ── Allowed namespaces — additive ─────────────────────────────────────
+	// Allowances are additive: override adds to base, never removes
+	if len(override.AllowedNamespaces) > 0 {
+		seen := map[string]struct{}{}
+		for _, ns := range result.AllowedNamespaces {
+			seen[ns] = struct{}{}
+		}
+		for _, ns := range override.AllowedNamespaces {
+			if _, ok := seen[ns]; !ok {
+				result.AllowedNamespaces = append(result.AllowedNamespaces, ns)
+			}
+		}
+	}
+
 	// ── Finalizers — additive ─────────────────────────────────────────────
 	if len(override.OperatorBox.Finalizers) > 0 {
 		seen := map[string]struct{}{}
