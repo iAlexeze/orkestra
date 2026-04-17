@@ -30,7 +30,7 @@ These resources carry Orkestra ownership labels:
 
 ```yaml
 app.kubernetes.io/name: orkestra
-app.kubernetes.io/component: orkestra-internal
+app.kubernetes.io/tag: orkestra-internal
 ```
 
 The deletion‑protection webhook uses an `objectSelector` to match these labels, ensuring that only Orkestra‑owned resources are protected and that user workloads are never intercepted.
@@ -128,7 +128,7 @@ Below is the conceptual model of how Orkestra maintains a resilient admission su
          │                                                                          │
          │ All carry labels:                                                        │
          │   app.kubernetes.io/name=orkestra                                        │
-         │   app.kubernetes.io/component=orkestra-internal                          │
+         │   app.kubernetes.io/tag=orkestra-internal                                │
          └──────────────────────────────────────────────────────────────────────────┘
                                            │
                                            ▼

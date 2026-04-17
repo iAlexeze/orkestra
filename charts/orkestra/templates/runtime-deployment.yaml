@@ -14,18 +14,18 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
-    component: runtime
+    app.kubernetes.io/component: runtime
 spec:
   replicas: {{ .Values.runtime.replicaCount }}
   selector:
     matchLabels:
       {{- include "orkestra.selectorLabels" . | nindent 6 }}
-      component: runtime
+      app.kubernetes.io/component: runtime
   template:
     metadata:
       labels:
         {{- include "orkestra.selectorLabels" . | nindent 8 }}
-        component: runtime
+        app.kubernetes.io/component: runtime
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -38,7 +38,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "orkestra.runtimeServiceAccountName" . }}
+      serviceAccountName: {{ .Values.runtime.serviceAccount | default "orkestra" }}
       securityContext:
         {{- toYaml .Values.runtime.podSecurityContext | nindent 8 }}
 

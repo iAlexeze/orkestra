@@ -20,10 +20,8 @@ runtime:
       cpu: 500m
       memory: 512Mi
 
-  serviceAccount:
-    create: true
-    name: ""
-    annotations: {}
+  # Use 'ork generate rbac'
+  serviceAccount: "orkestra"
 
   # Health server (runtime only)
   server:
@@ -107,7 +105,8 @@ runtime:
         name: default-katalog
       spec:
         crds: []
-    existingConfigMap: ""
+    existingConfigMap: ""               # Enter the configmap name created with 'ork rbac generate'
+    # Default is 'orkestra-katalog'
     configMapKey: katalog.yaml
     mountPath: /etc/orkestra/katalog
 
@@ -130,10 +129,8 @@ controlCenter:
       memory: 256Mi
 
   # No RBAC needed - control center only reads from runtime API
-  serviceAccount:
-    create: true
-    name: ""
-    annotations: {}
+  # Use ork generate rbac
+  serviceAccount: "orkestra-cc"
 
   # Control center config
   config:
@@ -218,10 +215,12 @@ hpa:
     minReplicas: 2
     maxReplicas: 5
     targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
   controlCenter:
     minReplicas: 1
     maxReplicas: 3
     targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
 
 # ── Network Policy ─────────────────────────────────────────────────────────────
 networkPolicy:
@@ -239,9 +238,11 @@ pdb:
   runtime:
     enabled: true
     minAvailable: 1
+    # maxUnavailable: 5
   controlCenter:
     enabled: true
     minAvailable: 1
+    # maxUnavailable: 5
 
 # Scheduling (shared)
 nodeSelector: {}

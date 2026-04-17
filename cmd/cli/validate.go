@@ -19,7 +19,7 @@ var validateCmd = &cobra.Command{
 		}
 
 		var k katalog.Katalog
-		entries, err := k.KomposeKatalogFromYaml(m.m)
+		entries, err := k.KomposeKatalogFromYaml(kfg, m.m)
 		if err != nil {
 			return err
 		}

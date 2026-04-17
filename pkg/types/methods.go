@@ -259,3 +259,12 @@ func (c *CRDEntry) HasAutoscaleProfile() bool {
 func (c *CRDEntry) AutoScaleProfile() string {
 	return c.OperatorBox.Autoscale.Profile
 }
+
+// UpdateCRDCaBundle reports whether this CRD declares an updateCRD field
+// Used to update the crd when certificate is autogenerted by orkestra
+func (c *CRDEntry) UpdateCRDCaBundle() bool {
+	if c.Conversion == nil {
+		return false
+	}
+	return c.Conversion.UpdateCRD
+}

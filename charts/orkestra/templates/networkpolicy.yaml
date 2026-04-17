@@ -7,12 +7,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
-    component: runtime
+    app.kubernetes.io/component: runtime
 spec:
   podSelector:
     matchLabels:
       {{- include "orkestra.selectorLabels" . | nindent 6 }}
-      component: runtime
+      app.kubernetes.io/component: runtime
   policyTypes:
     - Ingress
     - Egress
@@ -39,12 +39,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
-    component: controlcenter
+    app.kubernetes.io/component: controlcenter
 spec:
   podSelector:
     matchLabels:
       {{- include "orkestra.selectorLabels" . | nindent 6 }}
-      component: controlcenter
+      app.kubernetes.io/component: controlcenter
   policyTypes:
     - Ingress
   ingress:

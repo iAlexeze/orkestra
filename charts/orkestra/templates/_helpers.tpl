@@ -47,8 +47,11 @@ Selector labels — used in Deployment selector and Service selector.
 MUST remain stable across upgrades (do not change).
 */}}
 {{- define "orkestra.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "orkestra.name" . }}
-app.kubernetes.io/component: orkestra-internal
+# Deletion Protection labels
+app.kubernetes.io/name: orkestra
+app.kubernetes.io/tag: orkestra-internal
+
+# Other labels
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
@@ -56,20 +59,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 ─────────────────────────────────────────────────────────────────────────────
 RUNTIME HELPER FUNCTIONS
 ─────────────────────────────────────────────────────────────────────────────
-*/}}
-
-{{/*
-Runtime ServiceAccount name.
-Returns the name of the ServiceAccount for the Orkestra runtime.
-*/}}
-{{- define "orkestra.runtimeServiceAccountName" -}}
-{{- if .Values.runtime.serviceAccount.name }}
-{{- .Values.runtime.serviceAccount.name }}
-{{- else }}
-{{- printf "%s-runtime" (include "orkestra.fullname" .) }}
-{{- end }}
-{{- end }}
-
 {{/*
 Runtime image — respects tag override, falls back to appVersion.
 Returns the full container image URL for the Orkestra runtime.
@@ -107,19 +96,6 @@ Returns the name of the ConfigMap containing the Katalog definition.
 CONTROL CENTER HELPER FUNCTIONS
 ─────────────────────────────────────────────────────────────────────────────
 */}}
-
-{{/*
-Control Center ServiceAccount name.
-Returns the name of the ServiceAccount for the Control Center.
-Note: Control Center typically needs minimal to no RBAC permissions.
-*/}}
-{{- define "orkestra.ccServiceAccountName" -}}
-{{- if .Values.controlCenter.serviceAccount.name }}
-{{- .Values.controlCenter.serviceAccount.name }}
-{{- else }}
-{{- printf "%s-cc" (include "orkestra.fullname" .) }}
-{{- end }}
-{{- end }}
 
 {{/*
 Control Center image — respects tag override, falls back to appVersion.

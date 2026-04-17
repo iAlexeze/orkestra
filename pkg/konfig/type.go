@@ -82,10 +82,6 @@ type SecurityConfig struct {
 		// ConversionWindow is the rolling window size for latency/throughput stats.
 		ConversionWindow int
 	}
-	RBAC struct {
-		Enabled           bool
-		CleanupOnShutdown bool
-	}
 }
 
 // NotificationConfig is the unified notification configuration populated from

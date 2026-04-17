@@ -143,14 +143,14 @@ func (r *InMemoryAdmissionRegistry) addMutationGVR(entry GVREntry) {
 
 // ── Registration from Katalog entries ─────────────────────────────────────
 
-// RegisterAdmissionRulesFromEntry populates the admission registry from one
+// registerAdmissionRulesFromEntry populates the admission registry from one
 // CRD entry. Called during KomposeKatalogFromYaml after all CRD entries
 // are loaded and enriched.
 //
 // Only CRDs with validation or mutation rules declared are registered.
 // CRDs with neither are not added to the registry — they will not appear
 // in the webhook configurations and no admission calls will be made for them.
-func (reg *InMemoryAdmissionRegistry) RegisterAdmissionRulesFromEntry(entry orktypes.CRDEntry) {
+func (reg *InMemoryAdmissionRegistry) registerAdmissionRulesFromEntry(entry orktypes.CRDEntry) {
 	if entry.APITypes.Plural == "" {
 		// Not fully enriched — cannot build a GVR key
 		return
@@ -160,9 +160,7 @@ func (reg *InMemoryAdmissionRegistry) RegisterAdmissionRulesFromEntry(entry orkt
 	ops := entry.Webhooks.EffectiveOperations()
 
 	// Register validation rules if declared and webhook is enabled
-	if entry.Validation != nil &&
-		len(entry.Validation.Rules) > 0 &&
-		entry.Webhooks.WebhookValidationEnabled() {
+	if entry.HasValidationRules() && entry.Webhooks.WebhookValidationEnabled() {
 
 		reg.RegisterValidationRules(gvrKey, entry.Validation)
 		reg.addValidationGVR(GVREntry{
@@ -175,9 +173,7 @@ func (reg *InMemoryAdmissionRegistry) RegisterAdmissionRulesFromEntry(entry orkt
 	}
 
 	// Register mutation rules if declared and webhook is enabled
-	if entry.Mutation != nil &&
-		len(entry.Mutation.Rules) > 0 &&
-		entry.Webhooks.WebhookMutationEnabled() {
+	if entry.HasMutationRules() && entry.Webhooks.WebhookMutationEnabled() {
 
 		reg.RegisterMutationRules(gvrKey, entry.Mutation)
 		reg.addMutationGVR(GVREntry{

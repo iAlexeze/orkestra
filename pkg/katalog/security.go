@@ -12,7 +12,6 @@
 //
 // Deletion protection is ENABLED BY DEFAULT when the security block
 // is present but deletionProtection is not declared.
-// RBAC is also enabled by default when the rbac block is present.
 package katalog
 
 // securityEnvDefaults returns the SecurityConfig from konfig, or a zero
@@ -27,8 +26,6 @@ func (k *Katalog) securityEnvDefaults() interface {
 	WebhooksSvcName() string
 	WebhooksPolicy() string
 	WebhookCleanup() bool
-	RBACEnabled() bool
-	RBACCleanup() bool
 	ConversionWindowVal() int
 } {
 	return &envSecurityReader{k: k}
@@ -80,18 +77,7 @@ func (r *envSecurityReader) WebhooksPolicy() string {
 	}
 	return r.k.konfig.Security().Webhooks.FailurePolicy
 }
-func (r *envSecurityReader) RBACEnabled() bool {
-	if r.k.konfig == nil {
-		return false
-	}
-	return r.k.konfig.Security().RBAC.Enabled
-}
-func (r *envSecurityReader) RBACCleanup() bool {
-	if r.k.konfig == nil {
-		return false
-	}
-	return r.k.konfig.Security().RBAC.CleanupOnShutdown
-}
+
 func (r *envSecurityReader) WebhookCleanup() bool {
 	if r.k.konfig == nil {
 		return false
@@ -188,19 +174,6 @@ func (k *Katalog) WebhooksFailurePolicy() string {
 	return k.Security.WebhooksFailurePolicy(env.WebhooksPolicy())
 }
 
-// WebhookCleanupOnShutdown reports whether Admission Webhook  should be deleted on shutdown.
-//
-// Precedence:
-//
-//	YAML security.webhooks.cleanupOnShutdown present → use YAML value
-//	YAML block absent                            → fall back to WEBHOOK_CLEANUP_ON_SHUTDOWN env
-func (k *Katalog) WebhookCleanupOnShutdown() bool {
-	if k.Security.Webhooks != nil {
-		return k.Security.Webhooks.CleanupOnShutdown
-	}
-	return k.securityEnvDefaults().RBACCleanup()
-}
-
 // DeletionProtectionCleanupOnShutdown reports whether Deletion Protection should be deleted on shutdown.
 //
 // Precedence:
@@ -212,34 +185,6 @@ func (k *Katalog) DeletionProtectionCleanupOnShutdown() bool {
 		return k.Security.DeletionProtection.CleanupOnShutdown
 	}
 	return k.securityEnvDefaults().DeletionProtectionCleanup()
-}
-
-// ── RBAC ──────────────────────────────────────────────────────────────────────
-
-// IsRBACEnabled reports whether RBAC auto-apply is active.
-//
-// Precedence:
-//
-//	YAML security.rbac block present → use YAML value (default-on when block declared)
-//	YAML block absent                → fall back to RBAC_AUTO_APPLY env
-func (k *Katalog) IsRBACEnabled() bool {
-	if k.Security.RBAC != nil {
-		return k.Security.IsRBACEnabled()
-	}
-	return k.securityEnvDefaults().RBACEnabled()
-}
-
-// RBACCleanupOnShutdown reports whether RBAC should be deleted on shutdown.
-//
-// Precedence:
-//
-//	YAML security.rbac.cleanupOnShutdown present → use YAML value
-//	YAML block absent                            → fall back to RBAC_CLEANUP_ON_SHUTDOWN env
-func (k *Katalog) RBACCleanupOnShutdown() bool {
-	if k.Security.RBAC != nil {
-		return k.Security.RBAC.CleanupOnShutdown
-	}
-	return k.securityEnvDefaults().RBACCleanup()
 }
 
 // ── Conversion stats window ───────────────────────────────────────────────────
@@ -262,9 +207,10 @@ func (k *Katalog) ConversionWindow() int {
 // NeedsCertificates reports whether Orkestra must generate TLS certificates.
 //
 // Certificates are required when deletion protection, admission webhooks,
-// or conversion webhooks are enabled — all three use the same TLS cert.
+// or conversion webhooks are enabled with valid usecases
+// configured in at least 1 CRD— all three use the same TLS cert.
 func (k *Katalog) NeedsCertificates() bool {
 	return k.IsDeletionProtectionEnabled() ||
-		k.IsAdmissionEnabled() ||
-		k.IsConversionEnabled()
+		k.HasValidationOrMutationRules() ||
+		k.HasConversionPaths()
 }

@@ -62,8 +62,8 @@ var (
 // orkestraResourceLabels defines the labels used to identify Orkestra-managed
 // resources for deletion protection.
 var orkestraResourceLabels = map[string]string{
-	"app.kubernetes.io/name":      "orkestra",
-	"app.kubernetes.io/component": "orkestra-internal",
+	"app.kubernetes.io/name": "orkestra",
+	"app.kubernetes.io/tag":  "orkestra-internal",
 }
 
 // Label selector shared by all Orkestra-managed Kubernetes resources.

@@ -1,22 +1,33 @@
-# CHANGELOG
+# Changelog
 
-## Repository migrated from personal namespace to the official Orkspace organization.
-All module paths, imports, workflows, documentation links, container image references, and installation endpoints have been updated to reflect the new canonical home of the project. This change establishes Orkestra as an organization‑owned platform rather than a personal repository, and prepares the ecosystem for v1 stability, multi‑maintainer governance, and long‑term evolution.
+## [Unreleased]
 
-**Key changes:**
+### Added
+- Declarative RBAC generator now supports all operator capabilities, including:
+  - Patching and updating CRDs
+  - Creating and managing admission and conversion webhooks
+  - Managing all resources declared in the Katalog (namespaced and cluster‑scoped)
+  - Supporting mixed‑scope and multi‑CRD operators
+- Bundle generator (`ork generate bundle`) now produces:
+  - ServiceAccounts (runtime and control center)
+  - ClusterRoles and ClusterRoleBindings derived from the Katalog
+  - Katalog ConfigMap
+  - Namespace‑aware manifests for GitOps workflows
 
-- Updated Go module paths from `github.com/ialexeze/orkestra` to `github.com/orkspace/orkestra`.  
-- Updated Control Center module path to `github.com/orkspace/orkestra-cc`.  
-- Updated all internal imports across the codebase to use the new organization namespace.  
-- Updated ldflags targets for both Orkestra and the Control Center to match the new version packages.  
-- Updated GitHub Actions workflows to reference the new repository locations, image registries, and release endpoints.  
-- Updated installer script to download artifacts from `github.com/orkspace/orkestra`.  
-- Updated Helm chart repository, documentation links, and Homebrew tap references to the Orkspace organization.  
-- Updated container image names to `ghcr.io/orkspace/orkestra` and `ghcr.io/orkspace/orkestra-cc`.  
-- Removed all legacy references to the previous personal namespace.  
-- Performed a full repository‑wide refactor affecting over 2,500 lines to ensure consistency, correctness, and future maintainability.
+### Changed
+- RBAC generation is now fully declarative and derived exclusively from the Katalog.
+- Helm chart has been refactored to remove all static RBAC, ServiceAccounts, and ConfigMaps.
+- Chart now deploys only runtime and control center workloads; all identity and permission artifacts must be generated via the Ork CLI.
+- Updated values and chart structure to reflect the new model (`runtime.serviceAccount`, `controlCenter.serviceAccount`, `runtime.katalog.existingConfigMap`, etc.).
+- README rewritten to document the new workflow, including:
+  - RBAC and bundle generation
+  - GitOps‑first installation model
+  - Removal of auto‑apply RBAC
+  - Explicit referencing of generated resources in Helm values
 
-**Impact:**
-
-This is the largest structural change in the project to date.  
-It formalizes Orkestra’s identity under the Orkspace organization, aligns all tooling and distribution channels with the new namespace, and sets the foundation for the v1 release and ecosystem growth.
+### Security
+- Eliminated all static RBAC from the chart to prevent over‑permissioning.
+- Removed runtime RBAC mutation paths; Orkestra no longer creates or modifies cluster‑level RBAC.
+- RBAC is now explicit, reviewable, and committed to Git before being applied.
+- Establishes a clear trust boundary: cluster administrators own RBAC; Orkestra only reconciles declared resources.
+- Ensures least‑privilege by construction through Katalog‑derived permissions.

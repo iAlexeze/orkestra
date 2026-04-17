@@ -50,10 +50,15 @@ path-help:
 
 # ── Docker Image Configuration ────────────────────────────────────────────────
 
-# Default image name if none is provided:
-# ghcr.io/orkspace/orkestra:<timestamp>
-ORK_IMAGE ?= ghcr.io/orkspace/orkestra:$(shell date +%Y%m%d%H%M%S)
-ORK_CC_IMAGE ?= ghcr.io/orkspace/orkestra-cc:$(shell date +%Y%m%d%H%M%S)
+# Default to short git commit, fallback to timestamp if git fails
+# Fail explicitly if not in a Git repo
+GIT_COMMIT := $(shell git rev-parse --short HEAD)
+ifeq ($(GIT_COMMIT),)
+  $(error "Not a Git repository. Set ORK_IMAGE and ORK_CC_IMAGE manually.")
+endif
+
+ORK_IMAGE ?= ghcr.io/orkspace/orkestra:$(GIT_COMMIT)
+ORK_CC_IMAGE ?= ghcr.io/orkspace/orkestra-cc:$(GIT_COMMIT)
 
 # Target architectures
 ORK_AMD64_TARGET="ork-amd64"

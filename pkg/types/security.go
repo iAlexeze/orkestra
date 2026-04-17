@@ -27,10 +27,6 @@
 //	    enabled: true            # default: ENABLE_CONVERSION env / false
 //	    conversionWindow: 100    # default: CONVERSION_WINDOW env / 100
 //
-//	  rbac:
-//	    enabled: true            # default: true when block is present
-//	    cleanupOnShutdown: false # default: false
-//
 // Precedence: katalog YAML value > ENV value > hard default.
 // ENV values populate SecurityConfig during Init() and act as defaults.
 // Katalog values are merged on top in KomposeKatalogFromYaml.
@@ -39,13 +35,13 @@ package types
 // KatalogSecurity holds the full security configuration for a Katalog.
 type KatalogSecurity struct {
 	// DeletionProtection controls whether Orkestra registers a webhook that
-	// blocks deletion of its managed CRDs, deployment, service, and ingress.
+	// blocks deletion of its managed CRDs, deployment, service, etc.
 	//
 	// When enabled (default when block is present):
 	//   - Registers /deletion-protection endpoint on the HTTPS server
 	//   - Creates ValidatingWebhookConfiguration "orkestra-delete-protection"
 	//   - Entry 1: broad rule for CRDs; handler filters by ProtectedCRDNames()
-	//   - Entry 2: ObjectSelector-gated rule for deployment, service, ingress
+	//   - Entry 2: ObjectSelector-gated rule for deployment, service, etc
 	//
 	// To decommission an operator with deletion protection:
 	//   1. Set enabled: false
@@ -68,12 +64,6 @@ type KatalogSecurity struct {
 	//
 	// nil pointer: conversion not configured; ENV vars drive behavior.
 	Conversion *ConversionConfig `yaml:"conversion,omitempty"`
-
-	// RBAC controls whether Orkestra generates and applies RBAC resources
-	// (ClusterRole, ClusterRoleBinding, ServiceAccount) at startup.
-	//
-	// nil pointer: RBAC not enabled.
-	RBAC *RBACConfig `yaml:"rbac,omitempty"`
 }
 
 // DeletionProtectionConfig controls deletion protection behaviour.
@@ -183,17 +173,6 @@ func (s *KatalogSecurity) IsConversionEnabled() bool {
 		return false
 	}
 	return *s.Conversion.Enabled
-}
-
-// IsRBACEnabled returns the effective RBAC setting.
-func (s *KatalogSecurity) IsRBACEnabled() bool {
-	if s == nil || s.RBAC == nil {
-		return false
-	}
-	if s.RBAC.Enabled == nil {
-		return true
-	}
-	return *s.RBAC.Enabled
 }
 
 // DeletionProtectionServiceName returns the effective service name for deletion protection.
