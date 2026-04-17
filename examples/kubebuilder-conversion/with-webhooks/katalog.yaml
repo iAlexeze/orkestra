@@ -11,8 +11,6 @@ metadata:
 security:
   deletionProtection:
     enabled: true
-  rbac:
-    enabled: false
   conversion:
     enabled: true
 

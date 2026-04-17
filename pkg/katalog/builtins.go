@@ -1,7 +1,10 @@
 // pkg/katalog/builtins.go
 package katalog
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // BuiltInKind holds the fully-qualified API metadata for a Kubernetes
 // built-in resource kind, plus Orkestra-specific readiness metadata.
@@ -20,6 +23,7 @@ type BuiltInKind struct {
 	SkipStatusSubresource  bool // No /status subresource; never PATCH status
 	SkipObservedGeneration bool // Has status but no observedGeneration; skip generation-based checks
 	IsChild                bool // Orkestra may create this as a child resource
+	OrkestraInternal       bool // To protect Orkestra’s own control‑plane resources when security.deletionProtection=true
 }
 
 // builtInRegistry is the canonical map of Kubernetes built-in resource kinds
@@ -46,6 +50,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		// Orkestra
 		SkipObservedGeneration: true, // v1/Service
 		IsChild:                true,
+		OrkestraInternal:       true,
 	},
 	"configmap": {
 		Group:      "",
@@ -57,6 +62,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Statusless:            true, // v1/ConfigMap
 		SkipStatusSubresource: true,
 		IsChild:               true,
+		OrkestraInternal:      true,
 	},
 	"secret": {
 		Group:      "",
@@ -77,6 +83,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		APIPath:    "/api",
 		// Orkestra
 		SkipObservedGeneration: true, // v1/Namespace
+		OrkestraInternal:       true,
 	},
 	"serviceaccount": {
 		Group:      "",
@@ -88,6 +95,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Statusless:            true, // v1/ServiceAccount
 		SkipStatusSubresource: true,
 		IsChild:               true,
+		OrkestraInternal:      true,
 	},
 	"persistentvolumeclaim": {
 		Group:      "",
@@ -172,7 +180,8 @@ var builtInRegistry = map[string]BuiltInKind{
 		Namespaced: true,
 		APIPath:    "/apis",
 		// Orkestra
-		IsChild: true,
+		IsChild:          true,
+		OrkestraInternal: true,
 	},
 	"statefulset": {
 		Group:      "apps",
@@ -221,11 +230,12 @@ var builtInRegistry = map[string]BuiltInKind{
 
 	// ── networking.k8s.io/v1 ─────────────────────────────────────────────────
 	"ingress": {
-		Group:      "networking.k8s.io",
-		Version:    "v1",
-		Plural:     "ingresses",
-		Namespaced: true,
-		APIPath:    "/apis",
+		Group:            "networking.k8s.io",
+		Version:          "v1",
+		Plural:           "ingresses",
+		Namespaced:       true,
+		APIPath:          "/apis",
+		OrkestraInternal: true,
 	},
 	"networkpolicy": {
 		Group:      "networking.k8s.io",
@@ -236,6 +246,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		// Orkestra
 		Statusless:            true, // networking.k8s.io/v1/NetworkPolicy
 		SkipStatusSubresource: true,
+		OrkestraInternal:      true,
 	},
 	"ingressclass": {
 		Group:      "networking.k8s.io",
@@ -247,11 +258,12 @@ var builtInRegistry = map[string]BuiltInKind{
 
 	// ── autoscaling/v2 ────────────────────────────────────────────────────────
 	"horizontalpodautoscaler": {
-		Group:      "autoscaling",
-		Version:    "v2",
-		Plural:     "horizontalpodautoscalers",
-		Namespaced: true,
-		APIPath:    "/apis",
+		Group:            "autoscaling",
+		Version:          "v2",
+		Plural:           "horizontalpodautoscalers",
+		Namespaced:       true,
+		APIPath:          "/apis",
+		OrkestraInternal: true,
 	},
 
 	// ── rbac.authorization.k8s.io/v1 ─────────────────────────────────────────
@@ -264,6 +276,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		// Orkestra
 		Statusless:            true, // rbac.authorization.k8s.io/v1/ClusterRole
 		SkipStatusSubresource: true,
+		OrkestraInternal:      true,
 	},
 	"clusterrolebinding": {
 		Group:      "rbac.authorization.k8s.io",
@@ -274,6 +287,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		// Orkestra
 		Statusless:            true, // rbac.authorization.k8s.io/v1/ClusterRoleBinding
 		SkipStatusSubresource: true,
+		OrkestraInternal:      true,
 	},
 	"role": {
 		Group:      "rbac.authorization.k8s.io",
@@ -284,6 +298,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		// Orkestra
 		Statusless:            true, // rbac.authorization.k8s.io/v1/Role
 		SkipStatusSubresource: true,
+		OrkestraInternal:      true,
 	},
 
 	"rolebinding": {
@@ -295,6 +310,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		// Orkestra
 		Statusless:            true, // rbac.authorization.k8s.io/v1/RoleBinding
 		SkipStatusSubresource: true,
+		OrkestraInternal:      true,
 	},
 
 	// ── storage.k8s.io/v1 ─────────────────────────────────────────────────────
@@ -324,6 +340,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		APIPath:    "/apis",
 		// Orkestra
 		SkipObservedGeneration: true, // policy/v1/PodDisruptionBudget
+		OrkestraInternal:       true,
 	},
 
 	// ── apiextensions.k8s.io/v1 ──────────────────────────────────────────────
@@ -335,6 +352,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		APIPath:    "/apis",
 		// Orkestra
 		SkipObservedGeneration: true, // apiextensions.k8s.io/v1/CustomResourceDefinition
+		OrkestraInternal:       true,
 	},
 
 	// ── apiregistration.k8s.io/v1 ────────────────────────────────────────────
@@ -358,6 +376,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		// Orkestra
 		Statusless:            true, // admissionregistration.k8s.io/v1/MutatingWebhookConfiguration
 		SkipStatusSubresource: true,
+		OrkestraInternal:      true,
 	},
 
 	"validatingwebhookconfiguration": {
@@ -369,6 +388,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		// Orkestra
 		Statusless:            true, // admissionregistration.k8s.io/v1/ValidatingWebhookConfiguration
 		SkipStatusSubresource: true,
+		OrkestraInternal:      true,
 	},
 
 	// ── scheduling.k8s.io/v1 ─────────────────────────────────────────────────
@@ -404,6 +424,18 @@ var builtInRegistry = map[string]BuiltInKind{
 		APIPath:    "/apis",
 		// Orkestra
 		SkipObservedGeneration: true, // discovery.k8s.io/v1/EndpointSlice
+	},
+
+	// ── coordination.k8s.io/v1 ──────────────────────────────────────────────────
+	"lease": {
+		Group:      "v1",
+		Version:    "coordination.k8s.io",
+		Plural:     "leases",
+		Namespaced: true,
+		APIPath:    "/apis",
+		// Orkestra
+		SkipObservedGeneration: true,
+		OrkestraInternal:       true,
 	},
 }
 
@@ -527,6 +559,37 @@ func StatuslessGVKs() []string {
 		} else {
 			out = append(out, b.Group+"/"+b.Version+"/"+kind)
 		}
+	}
+	return out
+}
+
+// OrkestraInternalGVRs returns the list of Kubernetes resources that belong to
+// Orkestra’s own control‑plane installation (runtime Deployment, Service,
+// ServiceAccount, RBAC objects, NetworkPolicy, PDB, etc.).
+//
+// These resources are marked in the built‑ins registry with
+// BuiltInKind.OrkestraInternal = true.
+//
+// The deletion‑protection webhook uses this list to prevent accidental deletion
+// of Orkestra’s control‑plane components. User‑created resources (including
+// operator‑managed children) are *not* protected, because they are not marked
+// as OrkestraInternal.
+//
+// This keeps the protection surface minimal, declarative, and fully aligned
+// with the built‑ins registry.
+func OrkestraInternalGVRs() []GVREntry {
+	var out []GVREntry
+	for _, b := range builtInRegistry {
+		if !b.OrkestraInternal {
+			continue
+		}
+		out = append(out, GVREntry{
+			Key:        fmt.Sprintf("%s/%s/%s", b.Group, b.Version, b.Plural),
+			Group:      b.Group,
+			Version:    b.Version,
+			Resource:   b.Plural,
+			Operations: []string{"DELETE"},
+		})
 	}
 	return out
 }

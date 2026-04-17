@@ -1,3 +1,4 @@
+# Runtime PodDisruptionBudget
 {{- if .Values.pdb.enabled }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -6,14 +7,37 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: runtime
 spec:
   selector:
     matchLabels:
       {{- include "orkestra.selectorLabels" . | nindent 6 }}
   {{- if .Values.pdb.minAvailable }}
-  minAvailable: {{ .Values.pdb.minAvailable }}
+  minAvailable: {{ .Values.pdb.runtime.minAvailable }}
   {{- end }}
   {{- if .Values.pdb.maxUnavailable }}
-  maxUnavailable: {{ .Values.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.pdb.runtime.maxUnavailable }}
+  {{- end }}
+{{- end }}
+
+# Control Center PodDisruptionBudget
+{{- if .Values.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "orkestra.fullname" . }}-cc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "orkestra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: controlcenter
+spec:
+  selector:
+    matchLabels:
+      {{- include "orkestra.selectorLabels" . | nindent 6 }}
+  {{- if .Values.pdb.minAvailable }}
+  minAvailable: {{ .Values.pdb.controlCenter.minAvailable }}
+  {{- end }}
+  {{- if .Values.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.pdb.controlCenter.maxUnavailable }}
   {{- end }}
 {{- end }}

@@ -137,11 +137,13 @@ func NewHealthServer(kubeclient kubernetes.Interface, katalog *katalog.Katalog, 
 
 	// Static registration options used when creating webhook configurations.
 	hookReg := WebhookRegistrationOptions{
-		FailurePolicy:    admissionFailurePolicy,
-		Port:             kfg.HTTPSPortInt32(),
-		ServiceName:      katalog.WebhooksServiceName(),
-		ServiceNamespace: kfg.Cluster().Namespace,
-		TLSCertFile:      kfg.Security().Webhooks.TLSCert,
+		FailurePolicy:            admissionFailurePolicy,
+		Port:                     kfg.HTTPSPortInt32(),
+		ServiceName:              katalog.WebhooksServiceName(),
+		ServiceNamespace:         kfg.Cluster().Namespace,
+		TLSCertFile:              kfg.Security().Webhooks.TLSCert,
+		OrkestraResourceLabels:   kfg.OrkestraResourceLabels(),
+		OrkestraResourceSelector: kfg.OrkestraResourceSelector(),
 	}
 
 	// Declarative enablement flags and TLS settings resolved from Katalog + ENV.

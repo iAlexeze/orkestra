@@ -72,7 +72,7 @@ conversionRegistry.RegisterConversionRulesFromEntry(entry)
   │  only for entries with conversion.paths declared
   │
   ▼
-admissionRegistry.RegisterAdmissionRulesFromEntry(entry)
+admissionRegistry.registerAdmissionRulesFromEntry(entry)
   │  populates InMemoryAdmissionRegistry
   │  only for entries with validation or mutation rules
   │
@@ -219,7 +219,7 @@ This builds a `ConversionRules` struct containing the storage version and all de
 For each CRD entry with `validation` or `mutation` rules declared:
 
 ```go
-reg.RegisterAdmissionRulesFromEntry(entry)
+reg.registerAdmissionRulesFromEntry(entry)
 ```
 
 Reads `entry.Validation.Rules` and `entry.Mutation.Rules` directly (they live on `CRDEntry`, not under `ReconcilerConfig`). Builds the GVR key from `entry.APITypes.Group`, `.Version`, `.Plural`. Skips entries where `apiTypes.plural` is empty (enrichment not complete — should not occur after `EnrichCRDEntry`).

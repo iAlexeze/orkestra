@@ -1,5 +1,9 @@
 package konfig
 
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
 const (
 	// Ork
 	Orkestra    = "OrKestra"
@@ -54,3 +58,17 @@ var (
 		"orkestra.konductor.io/v1Alpha",
 	}
 )
+
+// orkestraResourceLabels defines the labels used to identify Orkestra-managed
+// resources for deletion protection.
+var orkestraResourceLabels = map[string]string{
+	"app.kubernetes.io/name": "orkestra",
+	"app.kubernetes.io/tag":  "orkestra-internal",
+}
+
+// Label selector shared by all Orkestra-managed Kubernetes resources.
+// Narrows the webhook to only the operator's own deployment, service, ingress,
+// and admission webhook configurations (validation + mutation).
+var orkestraResourceSelector = &metav1.LabelSelector{
+	MatchLabels: orkestraResourceLabels,
+}

@@ -79,8 +79,11 @@ func initDynamic(name string) error {
 	fmt.Printf("  kubectl apply -f examples/website/website-crd.yaml\n")
 	fmt.Printf("  ork run --katalog examples/website/website-katalog.yaml\n")
 	fmt.Println()
-	fmt.Printf("Validate first:\n")
-	fmt.Printf("  ork validate --katalog examples/website/website-katalog.yaml\n")
+	fmt.Println("Apply the CR")
+	fmt.Printf("  kubectl apply -f examples/website/website-cr.yaml\n")
+	fmt.Println()
+	fmt.Println("View on Control Center - localhost:8090")
+	fmt.Printf("  ork control start\n")
 	fmt.Println()
 
 	return nil
@@ -132,8 +135,6 @@ func createDynamicFolders(root string) error {
 	// Dynamic projects have no pkg/ or cmd/ — just Katalog files
 	dirs := []string{
 		"examples/website",
-		// "examples/platform-namespace",
-		// "katalogs",
 	}
 	return makeDirs(root, dirs)
 }
@@ -142,8 +143,6 @@ func createTypedFolders(root string) error {
 	dirs := []string{
 		"cmd/orkestra",
 		"examples/website",
-		// "examples/platform-namespace",
-		// "katalogs",
 		"pkg/runtime", // for __generated_runtime_*.go
 		"pkg/hooks",   // user writes Go hooks here
 	}
@@ -226,6 +225,17 @@ An Orkestra operator. No Go required.
 `+"```"+`bash
 kubectl apply -f examples/website/website-crd.yaml
 ork run --katalog examples/website/website-katalog.yaml
+
+# Apply the CR
+kubectl apply -f examples/website/website-cr.yaml
+`+"```"+`
+
+## View on Control Center
+
+`+"```"+`bash
+ork control start
+
+# → localhost:8090
 `+"```"+`
 
 ## Validate
@@ -333,12 +343,12 @@ func printBanner() {
 const websiteKatalogContent = `apiVersion: orkestra.konductor.io/v1Alpha
 kind: Katalog
 metadata:
-  name: website-katalog
+  name: hello-website
 spec:
   finalizers:
     - finalizer.demo.orkestra.io/website
   crds:
-    website
+    website:
       enabled: true
       namespaced: true
       workers: 2
@@ -363,8 +373,6 @@ spec:
               labels:
                 - key: app
                   value: "{{ .metadata.name }}"
-                - key: managed-by
-                  value: orkestra
           services:
             - name: "{{ .metadata.name }}-svc"
               type: "{{ .spec.serviceType }}"

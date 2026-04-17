@@ -1,3 +1,4 @@
+# Runtime Horizontal Pod Autoscaler
 {{- if .Values.hpa.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -6,13 +7,14 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: runtime
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: {{ include "orkestra.fullname" . }}
-  minReplicas: {{ .Values.hpa.minReplicas }}
-  maxReplicas: {{ .Values.hpa.maxReplicas }}
+  minReplicas: {{ .Values.hpa.runtime.minReplicas }}
+  maxReplicas: {{ .Values.hpa.runtime.maxReplicas }}
   metrics:
     {{- if .Values.hpa.targetCPUUtilizationPercentage }}
     - type: Resource
@@ -20,7 +22,7 @@ spec:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: {{ .Values.hpa.targetCPUUtilizationPercentage }}
+          averageUtilization: {{ .Values.hpa.runtime.targetCPUUtilizationPercentage }}
     {{- end }}
     {{- if .Values.hpa.targetMemoryUtilizationPercentage }}
     - type: Resource
@@ -28,6 +30,42 @@ spec:
         name: memory
         target:
           type: Utilization
-          averageUtilization: {{ .Values.hpa.targetMemoryUtilizationPercentage }}
+          averageUtilization: {{ .Values.hpa.runtime.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}
+
+# Control Center Horizontal Pod Autoscaler
+{{- if and .Values.hpa.enabled .Values.controlCenter.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "orkestra.fullname" . }}-cc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "orkestra.labels" . | nindent 4 }}
+    app.kubernetes.io/component: controlcenter
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "orkestra.fullname" . }}
+  minReplicas: {{ .Values.hpa.controlCenter.minReplicas }}
+  maxReplicas: {{ .Values.hpa.controlCenter.maxReplicas }}
+  metrics:
+    {{- if .Values.hpa.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.controlCenter.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.hpa.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.controlCenter.targetMemoryUtilizationPercentage }}
     {{- end }}
 {{- end }}

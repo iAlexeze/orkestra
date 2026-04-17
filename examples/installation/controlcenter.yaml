@@ -11,21 +11,20 @@ metadata:
   labels:
     # Deletion protection labels 
     app.kubernetes.io/name: orkestra
-    app.kubernetes.io/component: orkestra-internal
-    app.kubernetes.io/player: control-center
+    app.kubernetes.io/component: control-center
 spec:
   replicas: 2
   selector:
     matchLabels:
       # Deletion protection labels 
       app.kubernetes.io/name: orkestra
-      app.kubernetes.io/component: orkestra-internal
+      app.kubernetes.io/tag: orkestra-internal
   template:
     metadata:
       labels:
         # Deletion protection labels 
         app.kubernetes.io/name: orkestra
-        app.kubernetes.io/component: orkestra-internal
+        app.kubernetes.io/tag: orkestra-internal
     spec:
       serviceAccountName: orkestra-cc
       containers:
@@ -91,13 +90,13 @@ metadata:
   labels:
     # Deletion protection labels 
     app.kubernetes.io/name: orkestra
-    app.kubernetes.io/component: orkestra-internal
-    app.kubernetes.io/player: control-center
+    app.kubernetes.io/tag: orkestra-internal
+    app.kubernetes.io/component: control-center
 spec:
   selector:
     # Deletion protection labels 
     app.kubernetes.io/name: orkestra
-    app.kubernetes.io/component: orkestra-internal
+    app.kubernetes.io/tag: orkestra-internal
   ports:
     - name: http
       port: 8090
@@ -116,8 +115,8 @@ metadata:
   labels:
     # Deletion protection labels 
     app.kubernetes.io/name: orkestra
-    app.kubernetes.io/component: orkestra-internal
-    app.kubernetes.io/player: control-center
+    app.kubernetes.io/tag: orkestra-internal
+    app.kubernetes.io/component: control-center
   annotations:
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
 spec:

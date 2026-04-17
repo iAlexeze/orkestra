@@ -18,7 +18,7 @@ Result:  "websites.other-operator.io" → allowed (not in ProtectedCRDNames)
 ```
 Rule:           DELETE on deployments, services, ingresses
 ObjectSelector: app.kubernetes.io/name: orkestra
-                app.kubernetes.io/component: orkestra-internal
+                app.kubernetes.io/tag: orkestra-internal
 Result:         Only resources with both labels reach the handler.
                 If the handler is called, it always blocks — the ObjectSelector
                 already confirmed the resource belongs to this operator.

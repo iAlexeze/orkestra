@@ -3,14 +3,15 @@ package generate
 import (
 	"fmt"
 
-	"github.com/orkspace/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	rbacv1 "k8s.io/api/rbac/v1"
 )
 
-func Bundle(m *merger.Merger, namespace, outputFile string) error {
+func Bundle(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace, outputFile string) error {
 	var bundle string
 
 	// 1. Generate RBAC
-	rbacOut, err := renderRBAC(m, namespace)
+	rbacOut, err := renderRBAC(kfg, rules, namespace)
 	if err != nil {
 		return fmt.Errorf("generate rbac: %w", err)
 	}

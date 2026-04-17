@@ -264,7 +264,17 @@ Example:
 
 		log.Println("generating rbac...")
 
-		if err := generate.RBAC(out.m, namespace, outputFile); err != nil {
+		var k katalog.Katalog
+		if _, err = k.KomposeKatalogFromYaml(kfg, out.m); err != nil {
+			return fmt.Errorf("build katalog: %w", err)
+		}
+		if _, err = k.ValidateConfig(kfg); err != nil {
+			return fmt.Errorf("validate katalog: %w", err)
+		}
+
+		rules := k.GenerateRBACRules()
+
+		if err := generate.RBAC(kfg, rules, namespace, outputFile); err != nil {
 			return fmt.Errorf("generate rbac: %w", err)
 		}
 
@@ -341,13 +351,22 @@ Examples:
 		if err != nil {
 			return err
 		}
-
 		namespace, _ := cmd.Flags().GetString("namespace")
 		outputFile, _ := cmd.Flags().GetString("output")
 
 		log.Println("generating bundle...")
 
-		rbacOut, err := generate.RenderRBACToString(out.m, namespace)
+		var k katalog.Katalog
+		if _, err = k.KomposeKatalogFromYaml(kfg, out.m); err != nil {
+			return fmt.Errorf("build katalog: %w", err)
+		}
+		if _, err = k.ValidateConfig(kfg); err != nil {
+			return fmt.Errorf("validate katalog: %w", err)
+		}
+
+		rules := k.GenerateRBACRules()
+
+		rbacOut, err := generate.RenderRBACToString(kfg, rules, namespace)
 		if err != nil {
 			return fmt.Errorf("generate rbac: %w", err)
 		}

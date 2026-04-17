@@ -5,8 +5,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/orkspace/orkestra/pkg/katalog"
-	"github.com/orkspace/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,8 +17,8 @@ const (
 	orkcc = "orkestra-cc"
 )
 
-func RBAC(m *merger.Merger, namespace, outputFile string) error {
-	out, err := renderRBAC(m, namespace)
+func RBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace, outputFile string) error {
+	out, err := renderRBAC(kfg, rules, namespace)
 	if err != nil {
 		return err
 	}
@@ -32,12 +31,7 @@ func RBAC(m *merger.Merger, namespace, outputFile string) error {
 	return nil
 }
 
-func renderRBAC(m *merger.Merger, namespace string) ([]byte, error) {
-	var kat katalog.Katalog
-	kat.Spec = m.ToSpec()
-
-	rules := kat.GenerateRBACRules()
-
+func renderRBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace string) ([]byte, error) {
 	// Build ServiceAccounts dynamically
 	var serviceAccounts []corev1.ServiceAccount
 	for _, name := range []string{ork, orkcc} {
@@ -49,6 +43,7 @@ func renderRBAC(m *merger.Merger, namespace string) ([]byte, error) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: namespace,
+				Labels:    kfg.OrkestraResourceLabels(),
 			},
 		}
 		serviceAccounts = append(serviceAccounts, sa)
@@ -61,7 +56,8 @@ func renderRBAC(m *merger.Merger, namespace string) ([]byte, error) {
 			Kind:       "ClusterRole",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: ork,
+			Name:   ork,
+			Labels: kfg.OrkestraResourceLabels(),
 		},
 		Rules: rules,
 	}
@@ -73,7 +69,8 @@ func renderRBAC(m *merger.Merger, namespace string) ([]byte, error) {
 			Kind:       "ClusterRoleBinding",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: ork,
+			Name:   ork,
+			Labels: kfg.OrkestraResourceLabels(),
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
@@ -112,8 +109,8 @@ func renderRBAC(m *merger.Merger, namespace string) ([]byte, error) {
 	return []byte(out), nil
 }
 
-func rBACToWriter(w io.Writer, m *merger.Merger, namespace string) error {
-	out, err := renderRBAC(m, namespace)
+func rBACToWriter(kfg *konfig.Konfig, w io.Writer, rules []rbacv1.PolicyRule, namespace string) error {
+	out, err := renderRBAC(kfg, rules, namespace)
 	if err != nil {
 		return err
 	}
@@ -122,7 +119,7 @@ func rBACToWriter(w io.Writer, m *merger.Merger, namespace string) error {
 	return err
 }
 
-func RenderRBACToString(m *merger.Merger, namespace string) (string, error) {
-	out, err := renderRBAC(m, namespace)
+func RenderRBACToString(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace string) (string, error) {
+	out, err := renderRBAC(kfg, rules, namespace)
 	return string(out), err
 }

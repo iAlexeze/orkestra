@@ -54,7 +54,7 @@ Two webhook entries are registered in a single `ValidatingWebhookConfiguration`:
 
 **Entry 2 — Orkestra resource protection** (`protect.resources.orkestra.konductor.io`):
 - Rules: DELETE on `deployments`, `services`, `ingresses`
-- ObjectSelector: `app.kubernetes.io/name: orkestra` + `app.kubernetes.io/component: orkestra-internal`
+- ObjectSelector: `app.kubernetes.io/name: orkestra` + `app.kubernetes.io/tag: orkestra-internal`
 - Any resource in the cluster without these labels is never intercepted
 - If the webhook fires, the ObjectSelector already confirmed it is ours — handler always blocks
 

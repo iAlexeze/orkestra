@@ -42,8 +42,6 @@ func Init(filenames ...string) (*Konfig, error) {
 		//   WEBHOOK_FAILURE_POLICY      → security.Webhooks.FailurePolicy
 		//   ORKESTRA_SERVICE_NAME       → security.Webhooks.ServiceName
 		//                               → security.DeletionProtection.ServiceName
-		//   RBAC_AUTO_APPLY             → security.RBAC.Enabled
-		//   RBAC_CLEANUP_ON_SHUTDOWN    → security.RBAC.CleanupOnShutdown
 		//   CONVERSION_WINDOW           → security.Conversion.ConversionWindow
 		//   TLS_CERT / TLS_KEY          → security.Webhooks.TLSCert / TLSKey (initial
 		//                                 values; overwritten by ensureSecurity() when
@@ -61,8 +59,6 @@ func Init(filenames ...string) (*Konfig, error) {
 			s.Conversion.ConversionWindow = GetIntEnv("CONVERSION_WINDOW", 100)
 			s.Webhooks.TLSCert = GetStrEnv("TLS_CERT", "")
 			s.Webhooks.TLSKey = GetStrEnv("TLS_KEY", "")
-			s.RBAC.Enabled = GetBoolEnv("RBAC_AUTO_APPLY", false)
-			s.RBAC.CleanupOnShutdown = GetBoolEnv("RBAC_CLEANUP_ON_SHUTDOWN", false)
 			return s
 		}(),
 

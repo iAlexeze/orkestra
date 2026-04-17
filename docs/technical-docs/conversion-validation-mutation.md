@@ -56,7 +56,7 @@ spec:
         mutation: true      # register /mutate for this CRD (default: true if rules exist)
 ```
 
-At startup, `RegisterAdmissionRulesFromEntry` in [pkg/katalog/admission_registry.go](https://github.com/orkspace/orkestra/blob/main/pkg/katalog/admission_registry.go) reads each CRD entry and loads its rules into the `InMemoryAdmissionRegistry`, keyed by the CRD's GVR string (`"group/version/resource"`). The conversion rules go into a separate `ConversionRegistry`.
+At startup, `registerAdmissionRulesFromEntry` in [pkg/katalog/admission_registry.go](https://github.com/orkspace/orkestra/blob/main/pkg/katalog/admission_registry.go) reads each CRD entry and loads its rules into the `InMemoryAdmissionRegistry`, keyed by the CRD's GVR string (`"group/version/resource"`). The conversion rules go into a separate `ConversionRegistry`.
 
 ---
 

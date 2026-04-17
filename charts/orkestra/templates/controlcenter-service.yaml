@@ -7,7 +7,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
-    component: controlcenter
+    app.kubernetes.io/component: controlcenter
   {{- with .Values.controlCenter.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -16,7 +16,7 @@ spec:
   type: {{ .Values.controlCenter.service.type }}
   selector:
     {{- include "orkestra.selectorLabels" . | nindent 4 }}
-    component: controlcenter
+    app.kubernetes.io/component: controlcenter
   ports:
     - name: http
       port: {{ .Values.controlCenter.service.port }}

@@ -152,7 +152,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// Loads and validates the YAML Katalog. After this point, kat.Enabled()
 	// returns only CRDs that passed schema validation and are not disabled.
 	// Invalid CRDs are logged and excluded — they do not block the operator.
-	kat := katalog.NewKatalog(m, kfg)
+	kat := katalog.NewKatalog(kfg, m)
 
 	if registryURL := kfg.RegistryConfig().RegistryURL; registryURL != "" {
 		m.SetRegistryURL(registryURL)

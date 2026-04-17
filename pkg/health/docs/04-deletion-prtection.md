@@ -57,7 +57,7 @@ The result is a **self‑healing admission control plane**: the webhooks that pr
          │                                                                          │
          │ All carry labels:                                                        │
          │   app.kubernetes.io/name=orkestra                                        │
-         │   app.kubernetes.io/component=orkestra-internal                          │
+         │   app.kubernetes.io/tag=orkestra-internal                                │
          └──────────────────────────────────────────────────────────────────────────┘
                                            │
                                            ▼
