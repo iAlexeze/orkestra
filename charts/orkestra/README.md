@@ -20,10 +20,10 @@ helm install orkestra orkestra/orkestra \
 
 > [!IMPORTANT]
 > **RBAC and ConfigMap are not created by the chart**
-
+>
 > Orkestra follows a **security‑first** model:  
 > RBAC and ConfigMap **must be generated from your intent**, not shipped as static YAML.
-
+>
 > **You MUST generate and apply RBAC (and optionally the Katalog ConfigMap) using the Ork CLI before installing this chart.**
 
 This ensures:
