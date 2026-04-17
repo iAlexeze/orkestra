@@ -75,10 +75,6 @@ spec:
             - name: NAMESPACE
               value: {{ .Values.runtime.config.watchNamespace | quote }}
             {{- end }}
-            {{- if .Values.rbac.create }}
-            - name: RBAC_AUTO_APPLY
-              value: "true"
-            {{- end}}
             {{- if .Values.runtime.leaderElection.enabled }}
             - name: LEADER_ELECTION
               value: "true"

@@ -1,14 +1,17 @@
 {{- if .Values.controlCenter.enabled }}
 
-{{- $orkestraURLs := .Values.controlCenter.config.orkestraURLs | default (list .Values.controlCenter.config.orkestraURL) }}
-{{- if not $orkestraURLs }}
-{{- $orkestraURLs = list (printf "http://%s-runtime:8080" (include "orkestra.fullname" .)) }}
+{{- $orkestraURLs := .Values.controlCenter.config.orkestraURLs }}
+{{- $urlString := "" }}
+
+{{- if or (not $orkestraURLs) (eq (len $orkestraURLs) 0) }}
+  {{- if .Values.controlCenter.config.orkestraURLs }}
+    {{- $orkestraURLs = list .Values.controlCenter.config.orkestraURLs }}
+  {{- else }}
+    {{- $orkestraURLs = list (printf "http://%s-runtime:8080" (include "orkestra.fullname" .)) }}
+  {{- end }}
 {{- end }}
 
-{{- $urlString := "" }}
-{{- range $i, $url := $orkestraURLs }}
-{{- if $i }}{{ $urlString = printf "%s,%s" $urlString $url }}{{ else }}{{ $urlString = $url }}{{ end }}
-{{- end }}
+{{- $urlString = join "," $orkestraURLs }}
 
 apiVersion: apps/v1
 kind: Deployment

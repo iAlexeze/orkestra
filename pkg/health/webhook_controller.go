@@ -101,7 +101,7 @@ func (h *HealthServer) webhookController() error {
 
 	// Reconcile loop: best-effort, periodic, leader-only by construction of HealthServer usage.
 	go func() {
-		ticker := time.NewTicker(highTimeout)
+		ticker := time.NewTicker(h.katalog.WebhookControllerSyncInterval())
 		defer ticker.Stop()
 
 		for {

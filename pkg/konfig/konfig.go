@@ -59,6 +59,8 @@ func Init(filenames ...string) (*Konfig, error) {
 			s.Conversion.ConversionWindow = GetIntEnv("CONVERSION_WINDOW", 100)
 			s.Webhooks.TLSCert = GetStrEnv("TLS_CERT", "")
 			s.Webhooks.TLSKey = GetStrEnv("TLS_KEY", "")
+			s.Webhooks.Controller.Enabled = GetBoolEnv("ENABLE_WEBHOOK_CONTROLLER", true)
+			s.Webhooks.Controller.SyncInterval = GetDurEnvSeconds("WEBHOOK_CONTROLLER_SYNC_INTERVAL", 30)
 			return s
 		}(),
 

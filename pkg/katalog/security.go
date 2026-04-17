@@ -14,6 +14,8 @@
 // is present but deletionProtection is not declared.
 package katalog
 
+import "time"
+
 // securityEnvDefaults returns the SecurityConfig from konfig, or a zero
 // value when konfig is not wired (e.g. NewEmptyKatalog in tests).
 func (k *Katalog) securityEnvDefaults() interface {
@@ -27,6 +29,8 @@ func (k *Katalog) securityEnvDefaults() interface {
 	WebhooksPolicy() string
 	WebhookCleanup() bool
 	ConversionWindowVal() int
+	WebhookControllerEnabled() bool
+	WebhookControllerSyncInterval() time.Duration
 } {
 	return &envSecurityReader{k: k}
 }
@@ -97,6 +101,19 @@ func (r *envSecurityReader) ConversionWindowVal() int {
 	}
 	return r.k.konfig.Security().Conversion.ConversionWindow
 }
+func (r *envSecurityReader) WebhookControllerEnabled() bool {
+	if r.k.konfig == nil {
+		return false
+	}
+	return r.k.konfig.Security().Webhooks.Controller.Enabled
+}
+func (r *envSecurityReader) WebhookControllerSyncInterval() time.Duration {
+	if r.k.konfig == nil {
+		return 30 * time.Second
+	}
+	return r.k.konfig.Security().Webhooks.Controller.SyncInterval
+}
+//
 
 // ── Deletion protection ───────────────────────────────────────────────────────
 
@@ -213,4 +230,14 @@ func (k *Katalog) NeedsCertificates() bool {
 	return k.IsDeletionProtectionEnabled() ||
 		k.HasValidationOrMutationRules() ||
 		k.HasConversionPaths()
+}
+
+// IsWebhookControllerEnabled reports whether the webhook controller is enabled.
+func (k *Katalog) IsWebhookControllerEnabled() bool {
+	return k.securityEnvDefaults().WebhookControllerEnabled()
+}
+
+// WebhookControllerSyncInterval returns the webhook controller sync interval.
+func (k *Katalog) WebhookControllerSyncInterval() time.Duration {
+	return k.securityEnvDefaults().WebhookControllerSyncInterval()
 }
