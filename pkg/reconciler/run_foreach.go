@@ -71,6 +71,40 @@ func expandForEachDeployments(
 			expanded.Image, _ = itemResolver.Resolve(src.Image)
 			expanded.Replicas, _ = itemResolver.Resolve(src.Replicas)
 			expanded.Namespace, _ = itemResolver.Resolve(src.Namespace)
+
+			// Resolve Env map values
+			if len(src.Env) > 0 {
+				expanded.Env = make(map[string]orktypes.EnvVarSource, len(src.Env))
+				for k, v := range src.Env {
+					resolvedVal, _ := itemResolver.Resolve(v.Value)
+					expanded.Env[k] = orktypes.EnvVarSource(orktypes.EnvVarSource{Value: resolvedVal})
+				}
+			}
+
+			// Resolve Labels
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := itemResolver.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
+						Key:   l.Key,
+						Value: resolvedVal,
+					})
+				}
+			}
+
+			// Resolve Annotations
+			if len(src.Annotations) > 0 {
+				expanded.Annotations = make([]orktypes.ResourceLabel, 0, len(src.Annotations))
+				for _, a := range src.Annotations {
+					resolvedVal, _ := itemResolver.Resolve(a.Value)
+					expanded.Annotations = append(expanded.Annotations, orktypes.ResourceLabel{
+						Key:   a.Key,
+						Value: resolvedVal,
+					})
+				}
+			}
+
 			result = append(result, expanded)
 		}
 	}
@@ -95,12 +129,25 @@ func expandForEachServices(
 			continue
 		}
 		for i, item := range resolveListField(resolver.Data(), src.ForEach.Field) {
-			r := resolver.WithItem(item, src.ForEach.As, i)
+			itemResolver := resolver.WithItem(item, src.ForEach.As, i)
 			expanded := src
 			expanded.ForEach = nil
-			expanded.Name, _ = r.Resolve(src.Name)
-			expanded.Namespace, _ = r.Resolve(src.Namespace)
-			expanded.Port, _ = r.Resolve(src.Port)
+			expanded.Name, _ = itemResolver.Resolve(src.Name)
+			expanded.Namespace, _ = itemResolver.Resolve(src.Namespace)
+			expanded.Port, _ = itemResolver.Resolve(src.Port)
+
+			// Resolve labels
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := itemResolver.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
+						Key:   l.Key,
+						Value: resolvedVal,
+					})
+				}
+			}
+
 			result = append(result, expanded)
 		}
 	}
@@ -125,11 +172,24 @@ func expandForEachSecrets(
 			continue
 		}
 		for i, item := range resolveListField(resolver.Data(), src.ForEach.Field) {
-			r := resolver.WithItem(item, src.ForEach.As, i)
+			itemResolver := resolver.WithItem(item, src.ForEach.As, i)
 			expanded := src
 			expanded.ForEach = nil
-			expanded.Name, _ = r.Resolve(src.Name)
-			expanded.Namespace, _ = r.Resolve(src.Namespace)
+			expanded.Name, _ = itemResolver.Resolve(src.Name)
+			expanded.Namespace, _ = itemResolver.Resolve(src.Namespace)
+
+			// Resolve labels
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := itemResolver.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
+						Key:   l.Key,
+						Value: resolvedVal,
+					})
+				}
+			}
+
 			result = append(result, expanded)
 		}
 	}
@@ -154,11 +214,24 @@ func expandForEachConfigMaps(
 			continue
 		}
 		for i, item := range resolveListField(resolver.Data(), src.ForEach.Field) {
-			r := resolver.WithItem(item, src.ForEach.As, i)
+			itemResolver := resolver.WithItem(item, src.ForEach.As, i)
 			expanded := src
 			expanded.ForEach = nil
-			expanded.Name, _ = r.Resolve(src.Name)
-			expanded.Namespace, _ = r.Resolve(src.Namespace)
+			expanded.Name, _ = itemResolver.Resolve(src.Name)
+			expanded.Namespace, _ = itemResolver.Resolve(src.Namespace)
+
+			// Resolve labels
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := itemResolver.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
+						Key:   l.Key,
+						Value: resolvedVal,
+					})
+				}
+			}
+
 			result = append(result, expanded)
 		}
 	}
@@ -183,12 +256,25 @@ func expandForEachJobs(
 			continue
 		}
 		for i, item := range resolveListField(resolver.Data(), src.ForEach.Field) {
-			r := resolver.WithItem(item, src.ForEach.As, i)
+			itemResolver := resolver.WithItem(item, src.ForEach.As, i)
 			expanded := src
 			expanded.ForEach = nil
-			expanded.Name, _ = r.Resolve(src.Name)
-			expanded.Image, _ = r.Resolve(src.Image)
-			expanded.Namespace, _ = r.Resolve(src.Namespace)
+			expanded.Name, _ = itemResolver.Resolve(src.Name)
+			expanded.Image, _ = itemResolver.Resolve(src.Image)
+			expanded.Namespace, _ = itemResolver.Resolve(src.Namespace)
+
+			// Resolve labels
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := itemResolver.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
+						Key:   l.Key,
+						Value: resolvedVal,
+					})
+				}
+			}
+
 			result = append(result, expanded)
 		}
 	}
@@ -213,12 +299,25 @@ func expandForEachCronJobs(
 			continue
 		}
 		for i, item := range resolveListField(resolver.Data(), src.ForEach.Field) {
-			r := resolver.WithItem(item, src.ForEach.As, i)
+			itemResolver := resolver.WithItem(item, src.ForEach.As, i)
 			expanded := src
 			expanded.ForEach = nil
-			expanded.Name, _ = r.Resolve(src.Name)
-			expanded.Schedule, _ = r.Resolve(src.Schedule)
-			expanded.Namespace, _ = r.Resolve(src.Namespace)
+			expanded.Name, _ = itemResolver.Resolve(src.Name)
+			expanded.Schedule, _ = itemResolver.Resolve(src.Schedule)
+			expanded.Namespace, _ = itemResolver.Resolve(src.Namespace)
+
+			// Resolve labels
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := itemResolver.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
+						Key:   l.Key,
+						Value: resolvedVal,
+					})
+				}
+			}
+
 			result = append(result, expanded)
 		}
 	}
@@ -243,11 +342,24 @@ func expandForEachServiceAccounts(
 			continue
 		}
 		for i, item := range resolveListField(resolver.Data(), src.ForEach.Field) {
-			r := resolver.WithItem(item, src.ForEach.As, i)
+			itemResolver := resolver.WithItem(item, src.ForEach.As, i)
 			expanded := src
 			expanded.ForEach = nil
-			expanded.Name, _ = r.Resolve(src.Name)
-			expanded.Namespace, _ = r.Resolve(src.Namespace)
+			expanded.Name, _ = itemResolver.Resolve(src.Name)
+			expanded.Namespace, _ = itemResolver.Resolve(src.Namespace)
+
+			// Resolve labels
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := itemResolver.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
+						Key:   l.Key,
+						Value: resolvedVal,
+					})
+				}
+			}
+
 			result = append(result, expanded)
 		}
 	}

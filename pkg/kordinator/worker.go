@@ -185,6 +185,12 @@ func (k *Kontroller) safeReconcile(
 				Str("panic", fmt.Sprint(r)).
 				Str("stack", string(buf[:n])).
 				Msg("reconciler panic recovered")
+
+			// Update CRD health state and metrics.
+			health.RecordFailure(err, k.degradeThreshold[gvk])
+			metrics.RecordReconcile(gvk, "error")
+
+			// TODO: track panic stats differently with recovery
 		}
 	}()
 

@@ -238,8 +238,8 @@ func NewDependencyKordinator(
 	kord := &DependencyKordinator{
 		Kontroller: NewKontroller(
 			kube, factory, katalog,
-			events, hs, crdHealthMap, queueRegistry,
-			defaultWorkqueue, defaultWorkers,
+			events, hs, crdHealthMap, orkHealth,
+			queueRegistry, defaultWorkqueue, defaultWorkers,
 		),
 		orkHealth:      orkHealth,
 		depGraph:       depGraph,

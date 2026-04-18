@@ -131,7 +131,7 @@ The panic does not crash the process. It does not affect other CRDs. The affecte
 }
 ```
 
-The full stack trace is logged. The CR name and CRD are logged. You can identify exactly which CR triggered the panic and which line of code caused it.
+The full stack trace is logged. The CR name and CRD are logged and visible in Control Center. You can identify exactly which CR triggered the panic and which line of code caused it.
 
 ### What happens to the CR
 
