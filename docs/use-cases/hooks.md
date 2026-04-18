@@ -8,7 +8,7 @@ Use hooks when you need:
 - Direct access to the Registry  
 
 ```yaml
-reconciler:
+operatorBox:
   default: true
   hooks:
     location: github.com/myorg/hooks

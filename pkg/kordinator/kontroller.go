@@ -31,6 +31,7 @@ type Kontroller struct {
 
 	hs           domain.Health
 	crdHealthMap map[string]*CRDHealth
+	orkHealth    *OrkestraHealth
 
 	defaultWorkers int
 	startedKtrl    atomic.Bool
@@ -54,6 +55,7 @@ func NewKontroller(
 	event *event.Event,
 	hs domain.Health,
 	crdHealthMap map[string]*CRDHealth,
+	orkHealth *OrkestraHealth,
 	queueRegistry *queue.QueueRegistry,
 	defaultWorkqueue *queue.Workqueue,
 	defaultWorkers int,

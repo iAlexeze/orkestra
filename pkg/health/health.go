@@ -435,8 +435,15 @@ func (h *HealthServer) Start(ctx context.Context) error {
 		}
 	}
 
-	// Begin continuous reconciliation of webhook configurations.
-	_ = h.webhookController()
+	// Begin continuous reconciliation of webhook configurations if enabled.
+	// Enabled by default but can be disabled by user
+	// Webhooks need HTTPS server, so should be started when https server is
+	// running
+	if startHttpsServer && kat.IsWebhookControllerEnabled() {
+		if err := h.webhookController(); err != nil {
+			logger.Error().Err(err).Msg("webhook controller failed to start")
+		}
+	}
 
 	// Declare startup complete — startupProbe becomes satisfied.
 	h.SetStartupComplete()

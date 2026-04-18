@@ -299,6 +299,10 @@ func (r *Resolver) ResolveServiceTemplate(src orktypes.ServiceTemplateSource) (o
 		return resolved, fmt.Errorf("service.labels: %w", err)
 	}
 
+	if resolved.Selector, err = r.ResolveSelectors(src.Selector); err != nil {
+		return resolved, fmt.Errorf("service.selector: %w", err)
+	}
+
 	return resolved, nil
 }
 

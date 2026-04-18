@@ -160,7 +160,7 @@ func deleteWebsite(ctx context.Context, obj *apiv1.Website) error {
     plural: websites
     location: github.com/myorg/api/website/v1alpha1  # required for typed hooks
 
-  reconciler:
+  operatorBox:
     default: true
     hooks:
       location: github.com/myorg/hooks

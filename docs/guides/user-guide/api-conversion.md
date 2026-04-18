@@ -65,8 +65,8 @@ Steps to generate the certificates can be found [here](./certificate-with-cert-m
 # Shared templates
 
 # Common reconciler template for both versions
-commonReconciler: &commonReconciler
-  reconciler:
+commonoperatorBox: &commonReconciler
+  operatorBox:
     default: true
     onCreate:
       - name: "{{ .metadata.name }}"

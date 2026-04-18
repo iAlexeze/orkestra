@@ -23,10 +23,12 @@ import (
 )
 
 // runTemplateReconcile interprets the Katalog's onCreate and onReconcile blocks.
-func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, resolver *orktmpl.Resolver, obj domain.Object) error {
+// Returns the enriched resolver so callers (reconcileImpl) can pass cross/external
+// data into patchStatusWithChildren for status field evaluation.
+func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, resolver *orktmpl.Resolver, obj domain.Object) (*orktmpl.Resolver, error) {
 	kube, ok := kubeclient.FromContext(ctx)
 	if !ok {
-		return fmt.Errorf("kubeclient not found in context")
+		return resolver, fmt.Errorf("kubeclient not found in context")
 	}
 
 	// Step 1: We now receive a base resolver (already normalized) from reconcileImpl.
@@ -37,8 +39,13 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, resolve
 	// Step 2: cross-CRD observation
 	// Reads from sibling CRD informer caches via r.katalogRegistry — zero API calls.
 	// Must run first so git, docker, external calls, and resources can reference .cross.*
-	if len(r.rc.Cross) > 0 {
-		crossData := r.readCross(ctx, obj, r.rc.Cross, resolver)
+	if len(r.operatorBox.Cross) > 0 {
+		crossData := r.readCross(ctx, obj, r.operatorBox.Cross, resolver)
+		logger.FromContext(ctx).Info().
+			Str("observer", obj.GetName()).
+			Int("cross_entries", len(crossData)).
+			Interface("cross_keys", crossDataKeys(crossData)).
+			Msg("cross: resolver enrichment")
 		if len(crossData) > 0 {
 			resolver = resolver.WithCross(crossData)
 		}
@@ -47,72 +54,72 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, resolve
 	// Step 3: Git hook
 	// Runs before external calls so URLs, tokens, and payloads can reference .git.commit,
 	// .git.changed, and .git.path. Git is a declarative precondition for pipelines.
-	if t := r.rc.OnReconcile; t != nil && t.Git != nil {
+	if t := r.operatorBox.OnReconcile; t != nil && t.Git != nil {
 		resolver, err = runGit(ctx, r.crd.GVKString(), resolver, kube, obj, r.crd.GVR(), t.Git)
 		if err != nil {
-			return fmt.Errorf("git hook: %w", err)
+			return resolver, fmt.Errorf("git hook: %w", err)
 		}
 	}
-	if t := r.rc.OnCreate; t != nil && t.Git != nil {
+	if t := r.operatorBox.OnCreate; t != nil && t.Git != nil {
 		resolver, err = runGit(ctx, r.crd.GVKString(), resolver, kube, obj, r.crd.GVR(), t.Git)
 		if err != nil {
-			return fmt.Errorf("git hook: %w", err)
+			return resolver, fmt.Errorf("git hook: %w", err)
 		}
 	}
 
 	// Step 4: external HTTP calls
 	// Runs after Git so external URLs can embed commit hashes or paths.
-	if t := r.rc.OnReconcile; t != nil && len(t.External) > 0 {
+	if t := r.operatorBox.OnReconcile; t != nil && len(t.External) > 0 {
 		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, t.External)
 		if err != nil {
-			return fmt.Errorf("external calls: %w", err)
+			return resolver, fmt.Errorf("external calls: %w", err)
 		}
 	}
-	if t := r.rc.OnCreate; t != nil && len(t.External) > 0 {
+	if t := r.operatorBox.OnCreate; t != nil && len(t.External) > 0 {
 		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, t.External)
 		if err != nil {
-			return fmt.Errorf("external calls: %w", err)
+			return resolver, fmt.Errorf("external calls: %w", err)
 		}
 	}
 
 	// Step 5: Docker hook
 	// Runs after external so build/push can use tokens or metadata from external calls.
-	if t := r.rc.OnReconcile; t != nil && t.Docker != nil {
+	if t := r.operatorBox.OnReconcile; t != nil && t.Docker != nil {
 		resolver, err = runDocker(ctx, r.crd.GVKString(), resolver, t.Docker)
 		if err != nil {
-			return fmt.Errorf("docker hook: %w", err)
+			return resolver, fmt.Errorf("docker hook: %w", err)
 		}
 	}
-	if t := r.rc.OnCreate; t != nil && t.Docker != nil {
+	if t := r.operatorBox.OnCreate; t != nil && t.Docker != nil {
 		resolver, err = runDocker(ctx, r.crd.GVKString(), resolver, t.Docker)
 		if err != nil {
-			return fmt.Errorf("docker hook: %w", err)
+			return resolver, fmt.Errorf("docker hook: %w", err)
 		}
 	}
 
 	// Step 6: onCreate resource groups (update=false)
-	if t := r.rc.OnCreate; t != nil {
+	if t := r.operatorBox.OnCreate; t != nil {
 		if err := r.runResourceGroup(ctx, kube, resolver, obj, t, false); err != nil {
-			return err
+			return resolver, err
 		}
 	}
 
 	// Step 7: onReconcile resource groups (update=true)
-	if t := r.rc.OnReconcile; t != nil {
+	if t := r.operatorBox.OnReconcile; t != nil {
 		if err := r.runResourceGroup(ctx, kube, resolver, obj, t, true); err != nil {
-			return err
+			return resolver, err
 		}
 	}
 
 	// Step 8: provider dispatch
-	if len(r.rc.ProviderBlocks) > 0 && r.providerRegistry != nil && r.providerRegistry.Len() > 0 {
+	if len(r.operatorBox.ProviderBlocks) > 0 && r.providerRegistry != nil && r.providerRegistry.Len() > 0 {
 		kubeReader := &kubeReaderAdapter{kube: kube}
-		if err := runProviders(ctx, obj, resolver, r.rc.ProviderBlocks, r.providerRegistry, kubeReader, r.providerStats); err != nil {
-			return fmt.Errorf("providers: %w", err)
+		if err := runProviders(ctx, obj, resolver, r.operatorBox.ProviderBlocks, r.providerRegistry, kubeReader, r.providerStats); err != nil {
+			return resolver, fmt.Errorf("providers: %w", err)
 		}
 	}
 
-	return nil
+	return resolver, nil
 }
 
 // runResourceGroup dispatches all resource types in one HookTemplates block.
@@ -169,7 +176,7 @@ func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, resolver
 
 	guard := r.namespaceGuardFunc(ctx, obj)
 
-	if t := r.rc.OnDelete; t != nil {
+	if t := r.operatorBox.OnDelete; t != nil {
 		if t.Ordered {
 			return r.runOrderedDelete(ctx, kube, resolver, obj, t, guard)
 		}
@@ -179,9 +186,9 @@ func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, resolver
 		}
 	}
 
-	if len(r.rc.ProviderBlocks) > 0 && r.providerRegistry != nil {
+	if len(r.operatorBox.ProviderBlocks) > 0 && r.providerRegistry != nil {
 		kubeReader := &kubeReaderAdapter{kube: kube}
-		if err := runProviderDelete(ctx, obj, resolver, r.rc.ProviderBlocks, r.providerRegistry, kubeReader, r.providerStats); err != nil {
+		if err := runProviderDelete(ctx, obj, resolver, r.operatorBox.ProviderBlocks, r.providerRegistry, kubeReader, r.providerStats); err != nil {
 			return fmt.Errorf("provider cleanup: %w", err)
 		}
 	}
@@ -211,6 +218,14 @@ func (r *GenericReconciler[T]) runOrderedDelete(
 	return nil
 }
 
+func crossDataKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 // readCross reads cross-CRD observations for all declared cross: entries.
 // Returns the map injected via resolver.WithCross().
 //
@@ -231,10 +246,12 @@ func (r *GenericReconciler[T]) readCross(
 	log := logger.FromContext(ctx)
 	result := make(map[string]interface{}, len(decls))
 
+	registryNil := r.katalogRegistry == nil
+
 	for _, decl := range decls {
 		as := decl.As
 		if as == "" {
-			as = decl.Kind
+			as = decl.Crd
 		}
 
 		name, _ := resolver.Resolve(decl.Selector.Name)
@@ -248,30 +265,23 @@ func (r *GenericReconciler[T]) readCross(
 		// katalogRegistry is threaded in from konstructOrkestra via NewGenericReconciler.
 		// GetInformerByName returns the live SharedIndexInformer for the target CRD.
 		if r.katalogRegistry != nil {
-			if inf, ok := r.katalogRegistry.GetInformerByName(decl.Kind); ok {
+			inf, found := r.katalogRegistry.GetInformerByName(decl.Crd)
+			if found {
 				data := ReadCrossFromInformer(inf.GetIndexer(), key)
 				result[as] = data
-
-				// Add runtime metrics stored at autoMetrics
-				if r.autoMetrics != nil {
-					metrics := r.autoMetrics.AsMap()
-					result[as].(map[string]interface{})["metrics"] = metrics
-
-					log.Debug().
-						Str("kind", decl.Kind).
-						Str("as", as).
-						Interface("metrics", metrics).
-						Msg("cross: attached runtime metrics")
-				}
-
 				log.Debug().
-					Str("kind", decl.Kind).
+					Str("crd", decl.Crd).
 					Str("as", as).
 					Str("key", key).
-					Bool("found", data["found"] == "true").
+					Bool("cr_found", data["found"] == "true").
 					Msg("cross: read from informer cache")
 				continue
 			}
+			log.Warn().
+				Str("crd", decl.Crd).
+				Str("as", as).
+				Bool("registry_nil", registryNil).
+				Msg("cross: crd not found in registry")
 		}
 
 		// Path 2: HTTP endpoint fallback.
@@ -283,12 +293,16 @@ func (r *GenericReconciler[T]) readCross(
 			if data != nil {
 				result[as] = data
 				log.Debug().
-					Str("kind", decl.Kind).
+					Str("crd", decl.Crd).
 					Str("as", as).
 					Str("endpoint", endpointURL).
 					Msg("cross: read via HTTP endpoint")
 				continue
 			}
+			log.Warn().
+				Str("crd", decl.Crd).
+				Str("endpoint", endpointURL).
+				Msg("cross: HTTP endpoint returned nil")
 		}
 
 		// Path 3: not found.
@@ -300,10 +314,10 @@ func (r *GenericReconciler[T]) readCross(
 			"spec":      map[string]interface{}{},
 		}
 		log.Debug().
-			Str("kind", decl.Kind).
+			Str("crd", decl.Crd).
 			Str("as", as).
 			Str("key", key).
-			Msg("cross: not found in registry or HTTP source")
+			Msg("cross: not found — empty result")
 	}
 
 	return result

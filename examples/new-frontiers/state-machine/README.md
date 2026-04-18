@@ -101,7 +101,7 @@ binary, pushing a Docker image, and rolling the deployment.
 The same pipeline, declared in a Katalog:
 
 ```yaml
-reconciler:
+operatorBox:
   default: true
 
   onReconcile:

@@ -2,7 +2,7 @@
 apiVersion: advanced.orkestra.io/v1alpha1
 kind: FullStackApp
 metadata:
-  name: my-full-stack
+  name: my-app        # To make it easy to reference my-app-db in 'cross'
   namespace: default
 spec:
   image: nginx:1.25
@@ -11,6 +11,6 @@ spec:
     - eu-west-1
     - ap-southeast-1
   replicasPerRegion: 1
-  serviceUrl: "https://controlcenter.orkestra.sh/controlcenter"   # replace with your service
+  serviceUrl: "https://waas.ondgo.dev"   # replace with your service
   environment: "production"
   notify: "true"

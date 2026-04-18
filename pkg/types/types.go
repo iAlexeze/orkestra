@@ -451,6 +451,10 @@ type ServiceTemplateSource struct {
 	// Labels — applied to Service metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty" validate:"omitempty"`
 
+	// Selector filters which pods this service will route traffic to
+	// Useful in forEach situations where the labels would likely be the same
+	Selector SelectorMap `yaml:"selector" json:"selector,omitempty" validate:"omitempty"`
+
 	// Reconcile: true — also apply this declaration as drift correction on every
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
 	// onReconcile. When false (default), only runs on onCreate (idempotent create).

@@ -4,7 +4,7 @@
 The Operator Autoscaler evaluates conditions using a dedicated metrics namespace:  
 `metrics.*`.
 
-These metrics are collected **inside the Orkestra runtime**, per CRD, inside each OperatorBox.  
+These metrics are collected **inside the Orkestra runtime**, per CRD, inside each operatorBox.  
 They are **in‑memory**, **O(1)** to read, and require **no API calls**, **no informers**, and **no Prometheus**.
 
 Metrics are updated continuously by:

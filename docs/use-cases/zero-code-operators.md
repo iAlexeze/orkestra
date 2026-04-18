@@ -12,7 +12,7 @@ spec:
         group: demo.orkestra.io
         version: v1alpha1
         kind: Website
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:

@@ -195,7 +195,7 @@ the reconcile loop — no webhook server, no policy engine deployment, no
 certificate management.
 
 ```yaml
-reconciler:
+operatorBox:
   validation:
     - field: spec.image
       prefix: "registry.myorg.io/"

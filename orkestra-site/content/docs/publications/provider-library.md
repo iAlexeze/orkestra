@@ -75,7 +75,7 @@ spec:
         kind: ApplicationStack
         plural: applicationstacks
 
-      reconciler:
+      operatorBox:
         default: true
 
         onCreate:

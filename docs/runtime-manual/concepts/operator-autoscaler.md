@@ -1,6 +1,6 @@
 # Operator Autoscaler
 
-The Orkestra Operator Autoscaler dynamically adjusts an operatorbox's worker
+The Orkestra Operator Autoscaler dynamically adjusts an operatorBox:'s worker
 count, queue depth, and resync interval based on runtime metrics, time windows,
 and cron expressions. It is declared inside the `operatorBox:` block and runs
 inside the same process as the operator.
@@ -68,7 +68,7 @@ declared, only that one is evaluated.
 
 ### Metric conditions
 
-Reference live operatorbox metrics via the `metrics.*` namespace. Evaluated
+Reference live operatorBox: metrics via the `metrics.*` namespace. Evaluated
 without any API server or informer involvement.
 
 ```yaml
@@ -249,7 +249,7 @@ autoscale:
 
 ## Metric conditions
 
-Metric conditions reference live operatorbox metrics via the `metrics.*` namespace.  
+Metric conditions reference live operatorBox: metrics via the `metrics.*` namespace.  
 These values come directly from the autoscaler’s in‑memory metrics — no API calls, no informers.
 
 ```yaml
@@ -277,7 +277,7 @@ Any other `metrics.*` field results in a **fail‑fast validation error** at Kat
 
 ## Prometheus Metrics
 
-The autoscaler emits its own metrics alongside the operatorbox metrics:
+The autoscaler emits its own metrics alongside the operatorBox: metrics:
 
 | Metric | Description |
 |---|---|
@@ -287,7 +287,7 @@ The autoscaler emits its own metrics alongside the operatorbox metrics:
 | `orkestra_autoscale_workers_current{crd}` | Current effective worker count |
 | `orkestra_autoscale_queue_depth_current{crd}` | Current effective queue depth limit |
 
-These are visible in the Control Center per operatorbox and scrapable via
+These are visible in the Control Center per operatorBox: and scrapable via
 `/metrics`.
 
 ---

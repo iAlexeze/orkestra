@@ -6,7 +6,7 @@ Everything below is the polished, production‑grade version.
 ---
 
 # Autoscaler Scenarios
-*Real‑world patterns for scaling OperatorBoxes.*
+*Real‑world patterns for scaling operatorBox:es.*
 
 This document provides practical examples of how to use the Operator Autoscaler to adapt operator performance to real‑world workloads. Each scenario demonstrates a different combination of metric‑based, time‑based, cron‑based, and **cross‑operator‑based** conditions.
 

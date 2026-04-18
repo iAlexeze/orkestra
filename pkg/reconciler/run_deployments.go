@@ -61,6 +61,13 @@ func runDeployments(
 			continue // skipped — CheckNamespace already logged the reason
 		}
 
+		logger.FromContext(ctx).Info().
+			Str("resource", "Deployment").
+			Str("name", name).
+			Int("index", i).
+			Bool("condition_passed", conditionPassed).
+			Msg("deployment: condition evaluation")
+
 		if !conditionPassed {
 			if update || src.Reconcile {
 				if !activeNames[ns+"/"+name] {
@@ -69,11 +76,6 @@ func runDeployments(
 					}
 				}
 			}
-			logger.FromContext(ctx).Debug().
-				Str("resource", "Deployment").
-				Int("index", i).
-				Msg("conditions not met — skipping resource")
-
 			continue
 		}
 

@@ -88,8 +88,15 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 					entry.Missing = true
 					runtimeMissing[gvkStr] = entry
 					k.informerFactory.SetMissingOnStartup(runtimeMissing)
+
+					// Health tracking
+					// 	CRD
 					k.crdHealthMap[gvkStr].SetMissingAtRuntime()
 					k.crdHealthMap[gvkStr].SetDegraded()
+
+					// 	Katalog
+					k.allOnline.Store(false)
+					k.orkHealth.allOnline.Store(false)
 					k.orkHealth.SetKatalogDegraded()
 
 					// Degrade dependents that require healthy condition
@@ -134,6 +141,7 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 						stillMissing[gvkStr] = entry
 						k.crdHealthMap[gvkStr].SetMissingAtRuntime()
 						k.crdHealthMap[gvkStr].SetDegraded()
+						k.orkHealth.allOnline.Store(false)
 						k.orkHealth.SetKatalogDegraded()
 						logger.Debug().Msgf("retry loop: %s still not available", gvkStr)
 					}
@@ -143,6 +151,7 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 				if len(stillMissing) > 0 {
 					logger.Info().Msgf("retry loop: %d CRD(s) still missing", len(stillMissing))
 					k.allOnline.Store(false)
+					k.orkHealth.allOnline.Store(false)
 					k.orkHealth.SetKatalogDegraded()
 				}
 			}
@@ -188,6 +197,7 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 			// ───────────────────────────────────────────────
 			if len(k.informerFactory.Missing()) == 0 && k.allCRDsStarted() {
 				k.allOnline.Store(true)
+				k.orkHealth.allOnline.Store(true)
 				k.orkHealth.SetKatalogReady()
 				logger.Debug().Msg("retry loop: all CRDs active")
 			}

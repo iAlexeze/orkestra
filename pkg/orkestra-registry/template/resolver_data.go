@@ -141,7 +141,7 @@ func (r *Resolver) WithExternal(results map[string]interface{}) *Resolver {
 // Each observed CR is keyed by the "as" name from the cross: declaration:
 //
 //	cross:
-//	  - kind: database
+//	  - crd: database
 //	    selector:
 //	      name: "{{ .metadata.name }}"
 //	    as: database

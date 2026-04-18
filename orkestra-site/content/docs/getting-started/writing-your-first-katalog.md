@@ -36,7 +36,7 @@ spec:
         version: v1alpha1
         kind: MyApp
         plural: myapps
-      reconciler:
+      operatorBox:
         default: true
 ```
 
@@ -66,7 +66,7 @@ spec:
         version: v1alpha1
         kind: MyApp
         plural: myapps
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:
@@ -228,7 +228,7 @@ spec:
         version: v1alpha1
         kind: WebApp
         plural: webapps
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           secrets:

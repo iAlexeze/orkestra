@@ -12,7 +12,7 @@
 //	  crds:
 //	    application:
 //	      cross:
-//	        - kind: database            # target CRD name (lowercase)
+//	        - crd: database             # target CRD name (lowercase, matches spec.crds key)
 //	          selector:
 //	            name: "{{ .metadata.name }}"       # find by name
 //	            namespace: "{{ .metadata.namespace }}"
@@ -40,18 +40,18 @@
 package types
 
 // CrossCRDDeclaration declares one cross-CRD observation.
-// Declared in the reconciler config under cross: for a CRD.
+// Declared in the operatorBox config under cross: for a CRD.
 type CrossCRDDeclaration struct {
-	// Kind is the target CRD name (lowercase, matches the map key in spec.crds).
-	//   kind: database
-	Kind string `yaml:"kind"`
+	// Crd is the target CRD name (lowercase, matches the map key in spec.crds).
+	//   crd: database
+	Crd string `yaml:"crd"`
 
 	// Selector identifies which CR instance to observe.
 	Selector CrossSelector `yaml:"selector"`
 
 	// As is the key under .cross.* where the result is accessible.
 	//   as: database → .cross.database.status.phase
-	// Default: same as Kind.
+	// Default: same as Crd.
 	As string `yaml:"as,omitempty"`
 
 	// Strategy controls what happens when multiple CRs match the selector.

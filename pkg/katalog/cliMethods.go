@@ -76,9 +76,9 @@ func (k *Katalog) Explain(name string) (string, error) {
 	fmt.Fprint(b, "List Type:    runtime.Object")
 	fmt.Fprint(b, "Object Type:  runtime.Object")
 	if crd.DefaultReconcile() {
-		fmt.Fprint(b, "Reconciler:   Default\n")
+		fmt.Fprint(b, "operatorBox:   Default\n")
 	} else {
-		fmt.Fprintf(b, "Reconciler:   %T\n", crd.OperatorBox.Constructor)
+		fmt.Fprintf(b, "operatorBox:   %T\n", crd.OperatorBox.Constructor)
 	}
 	fmt.Fprintf(b, "Informer:     LIST, WATCH\n")
 

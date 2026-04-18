@@ -6,7 +6,7 @@ metadata:
 
 # Anchors
 anchors:
-  commonReconciler: &commonReconciler
+  commonOperatorBox: &commonOperatorBox
     operatorBox:
       onCreate:
         - name: "{{ .metadata.name }}"
@@ -33,14 +33,14 @@ spec:
   crds:
     # v1alpha1 CRD
     website-v1alpha1:
-      <<: *commonReconciler
+      <<: *commonOperatorBox
       apiTypes:
         <<: *commonType
         version: *alpha
 
     # v1 CRD
     website-v1:
-      <<: *commonReconciler
+      <<: *commonOperatorBox
       apiTypes:
         <<: *commonType
         version: *storageVersion

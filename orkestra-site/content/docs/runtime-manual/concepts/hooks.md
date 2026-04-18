@@ -41,7 +41,7 @@ Hooks provide a focused way to add code without abandoning the declarative model
 Hooks are configured per‑CRD in the Katalog:
 
 ```yaml
-reconciler:
+operatorBox:
   hooks:
     location: github.com/myorg/my-operator/pkg/hooks
     function: ReconcileWebsite

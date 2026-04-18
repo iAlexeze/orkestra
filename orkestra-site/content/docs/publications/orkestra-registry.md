@@ -130,7 +130,7 @@ spec:
         plural: postgreses
       workers: 2
       resync: 1m
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:

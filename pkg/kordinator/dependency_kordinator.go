@@ -238,8 +238,8 @@ func NewDependencyKordinator(
 	kord := &DependencyKordinator{
 		Kontroller: NewKontroller(
 			kube, factory, katalog,
-			events, hs, crdHealthMap, queueRegistry,
-			defaultWorkqueue, defaultWorkers,
+			events, hs, crdHealthMap, orkHealth,
+			queueRegistry, defaultWorkqueue, defaultWorkers,
 		),
 		orkHealth:      orkHealth,
 		depGraph:       depGraph,
@@ -357,9 +357,11 @@ func (k *DependencyKordinator) Kordinate(ctx context.Context) {
 	// Compute final katalog health
 	if onlineCRDs == totalCRDs {
 		k.allOnline.Store(true)
+		k.orkHealth.allOnline.Store(true)
 		k.orkHealth.SetKatalogReady()
 	} else {
 		k.allOnline.Store(false)
+		k.orkHealth.allOnline.Store(false)
 		k.orkHealth.SetKatalogDegraded()
 	}
 

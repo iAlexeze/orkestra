@@ -1018,7 +1018,7 @@ CRDs with dependencies wait until their parents are active.</p>
 <ol>
 <li>Fetch the CR from the informer cache</li>
 <li>Convert it to the <strong>internal version</strong> (highest declared version)</li>
-<li>Run the reconciler:
+<li>Run the operatorBox:
 <ul>
 <li>Declarative templates (<code>onCreate</code>, <code>onReconcile</code>, <code>onDelete</code>)</li>
 <li>Go hooks (if declared)</li>

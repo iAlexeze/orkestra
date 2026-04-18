@@ -80,7 +80,7 @@ Typed CRDs unlock two advanced features:
 Hooks run before declarative templates:
 
 ```yaml
-reconciler:
+operatorBox:
   hooks:
     location: github.com/myorg/my-operator/pkg/hooks
     function: ReconcileWebsite
@@ -107,7 +107,7 @@ They can:
 Constructors replace the GenericReconciler entirely:
 
 ```yaml
-reconciler:
+operatorBox:
   default: false
   constructor:
     location: github.com/myorg/my-operator/pkg/runtime

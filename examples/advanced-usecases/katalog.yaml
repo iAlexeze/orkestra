@@ -37,7 +37,6 @@ spec:
             default: 1
 
       operatorBox:
-        default: true
         onReconcile:
           deployments:
             - name: "{{ .metadata.name }}-{{ .item }}"
@@ -55,9 +54,6 @@ spec:
                 - field: status.phase
                   operator: notExists
 
-            # NOTE: children.deployment captures one deployment (last in list).
-            # Until ReadChildren aggregates forEach-created resources, use exists.
-            # The aggregation fix is tracked — once merged, change to gt/value: "0"
             - path: phase
               value: "Ready"
               when:
@@ -90,7 +86,6 @@ spec:
             action: deny
 
       operatorBox:
-        default: true
         onReconcile:
           external:
             - name: healthCheck               # camelCase — valid Go identifier
@@ -165,10 +160,19 @@ spec:
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-postgres"
-              image: "postgres:15"
+              image: "postgres:17"
+              env:
+                POSTGRES_PASSWORD:
+                  value: "postrgres"
+                POSTGRES_USER:
+                  value: "postgres"
+                POSTGRES_DB:
+                  value: "postgres"
+
           services:
             - name: "{{ .metadata.name }}-postgres"
               port: "5432"
+              reconcile: true
 
         status:
           fields:
@@ -203,9 +207,8 @@ spec:
             action: deny
 
       operatorBox:
-        default: true
         cross:
-          - kind: managed-database
+          - crd: managed-database
             selector:
               name: "{{ .metadata.name }}-db"
               namespace: "{{ .metadata.namespace }}"
@@ -275,7 +278,6 @@ spec:
             action: deny
 
       operatorBox:
-        default: true
         onCreate:
           secrets:
             - name: "{{ .metadata.name }}-credentials"
@@ -287,6 +289,19 @@ spec:
           deployments:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
+              env:
+                PASSWORD:
+                    secretKeyRef:
+                      name: "{{ .metadata.name }}-credentials"
+                      key: password
+                API_KEY:
+                    secretKeyRef:
+                      name: "{{ .metadata.name }}-credentials"
+                      key: apiKey
+                JWT_SECRET:
+                    secretKeyRef:
+                      name: "{{ .metadata.name }}-credentials"
+                      key: jwtSecret
 
         status:
           fields:
@@ -314,7 +329,6 @@ spec:
       resync: 30s
 
       operatorBox:
-        default: true
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}"
@@ -338,6 +352,8 @@ spec:
                 - field: spec.notify
                   equals: "true"
               anyOf:
+                - field: status.phase
+                  equals: "Running"
                 - field: status.phase
                   equals: "Failed"
                 - field: status.phase
@@ -389,9 +405,8 @@ spec:
             default: "false"
 
       operatorBox:
-        default: true
         cross:
-          - kind: managed-database
+          - crd: managed-database
             selector:
               name: "{{ .metadata.name }}-db"
               namespace: "{{ .metadata.namespace }}"
@@ -400,9 +415,10 @@ spec:
         onCreate:
           secrets:
             # Generated once — credential stays stable across reconciles
+            # Automatically rotated using rotateAfter
             - name: "{{ .metadata.name }}-creds"
               once: true
-              rotateAfter: 30s
+              rotateAfter: 90d
               data:
                 password: "{{ randomAlphanumeric 32 }}"
 

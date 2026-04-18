@@ -75,6 +75,9 @@ type CRDHealth struct {
 	dependenciesMu   sync.RWMutex
 	hasUnhealthyDeps atomic.Bool // Overall dependency health status
 	healthySignaled  atomic.Bool
+
+	// Track katalog health through the orkHealth tracker
+	orkHealth *OrkestraHealth
 }
 
 type DependencyStatus struct {
@@ -87,15 +90,17 @@ type DependencyStatus struct {
 }
 
 type OrkestraHealth struct {
-	name     string
-	orkReady atomic.Bool
-	katReady atomic.Bool
+	name      string
+	orkReady  atomic.Bool
+	katReady  atomic.Bool
+	allOnline atomic.Bool // For this katalog
+	mu        sync.RWMutex
 }
 
 // NewOrkestraHEalth initializes a CRDHealth tracker for Orkestra
 func NewOrkestraHealth() *OrkestraHealth {
 	h := &OrkestraHealth{name: konfig.Ork}
-	h.orkReady.Store(false)
+	h.orkReady.Store(true)
 	h.katReady.Store(false)
 	return h
 }
@@ -107,6 +112,9 @@ func NewCRDHealth(name string) *CRDHealth {
 	h.healthy.Store(false)
 	h.pending.Store(true)
 	h.degraded.Store(false)
+
+	// Add katalog tracker
+	h.orkHealth = NewOrkestraHealth()
 	return h
 }
 
@@ -119,6 +127,11 @@ func (h *CRDHealth) RecordSuccess() {
 	h.healthy.Store(true)
 	h.pending.Store(false)
 	h.degraded.Store(false)
+
+	// If all online for this katalog
+	if h.orkHealth.allOnline.Load() {
+		h.orkHealth.katReady.Store(true)
+	}
 }
 
 // RecordFailure marks a failed reconcile event.
@@ -131,8 +144,15 @@ func (h *CRDHealth) RecordFailure(err error, degradeThreshold int) {
 	h.lastError.Store(err.Error())
 	h.lastReconcile.Store(time.Now())
 
-	// If too many failures in a row, mark the reconciler unhealthy.
+	// If too many failures in a row, mark the reconciler and katalog unhealthy.
 	if h.consecutiveFails.Load() >= int64(degradeThreshold) {
+		h.orkHealth.mu.Lock()
+		h.orkHealth.katReady.Store(false)
+		h.orkHealth.mu.Unlock()
+
+		h.crdCheckMu.Lock()
+		defer h.crdCheckMu.Unlock()
+
 		h.healthy.Store(false)
 		h.pending.Store(false)
 		h.degraded.Store(true)
@@ -154,6 +174,11 @@ func (h *CRDHealth) ErrorRate() float64 {
 		return 0
 	}
 	return float64(h.failedReconciles.Load()) / float64(total)
+}
+
+// ErrorRatePercent returns the error rate as a percentage.
+func (h *CRDHealth) ErrorRatePercent() float64 {
+	return h.ErrorRate() * 100
 }
 
 // LastReconcile returns a human‑readable timestamp of the last reconcile.

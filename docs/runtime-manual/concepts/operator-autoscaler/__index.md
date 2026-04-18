@@ -1,5 +1,5 @@
 # Operator Autoscaler
-*A runtime‑native autoscaler for OperatorBoxes.*
+*A runtime‑native autoscaler for operatorBox:es.*
 
 The Operator Autoscaler is a built‑in Orkestra subsystem that dynamically adjusts an operator’s **worker count**, **queue depth**, and **resync interval** based on **runtime metrics**, **time windows**, and **cron expressions**. It runs inside the same process as the operator and requires no external controllers, Deployments, or CRDs.
 
@@ -20,7 +20,7 @@ Operators are control loops, not Pods. Their performance depends on:
 - provider error rate  
 
 Orkestra already exposes these signals per CRD.  
-It already isolates each operator in its own OperatorBox.  
+It already isolates each operator in its own operatorBox.  
 It already manages worker pools and queues dynamically.
 
 Autoscaling is a natural extension of the runtime.
@@ -86,7 +86,7 @@ It requires no additional deployments, no webhooks, and no external systems.
 It is fully integrated with:
 
 - Kordinator  
-- OperatorBox  
+- operatorBox:  
 - the metrics subsystem  
 - the condition engine  
 - the Control Center (autoscaler UI coming soon)

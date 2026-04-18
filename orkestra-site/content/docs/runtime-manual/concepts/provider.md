@@ -37,7 +37,7 @@ reconcile time.
 spec:
   crds:
     my-app:
-      reconciler:
+      operatorBox:
         providers:
           aws:
             - s3:
@@ -89,7 +89,7 @@ Each declaration is a single-key map where the key is the resource kind and
 the value is the field map. `when:` is a special key for conditions.
 
 ```yaml
-reconciler:
+operatorBox:
   providers:
     aws:                                     # block name → registry.Get("aws")
       - s3:                                  # declaration kind

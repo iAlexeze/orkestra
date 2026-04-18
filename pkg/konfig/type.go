@@ -74,6 +74,11 @@ type SecurityConfig struct {
 		// Set by ensureSecurity() after cert generation/loading.
 		TLSCert string
 		TLSKey  string
+
+		Controller struct {
+			Enabled      bool
+			SyncInterval time.Duration
+		}
 	}
 	// Conversion is separate from admission webhooks — conversion has its own
 	// /convert endpoint, window stats, and CRD patch logic.

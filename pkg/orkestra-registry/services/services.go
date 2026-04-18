@@ -218,9 +218,7 @@ func buildService(owner domain.Object, spec ResolvedServiceSpec, namespace strin
 	}
 
 	// Selector matches pods created by deployments with the same owner
-	selector := map[string]string{
-		"orkestra-owner": owner.GetName(),
-	}
+	spec.Selector["orkestra-owner"] = owner.GetName()
 
 	// For unstructured owners the GVK may not be set on the object itself —
 	// use the unstructured helper to get it
@@ -254,7 +252,7 @@ func buildService(owner domain.Object, spec ResolvedServiceSpec, namespace strin
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     svcType,
-			Selector: selector,
+			Selector: spec.Selector,
 			Ports: []corev1.ServicePort{
 				{
 					Port:       spec.Port,

@@ -60,7 +60,7 @@ Mutation rules live under `reconciler.mutation` in the Katalog:
 
 ```yaml
 - name: website
-  reconciler:
+  operatorBox:
     mutation:
       - field: spec.replicas
         default: "2"          # set to 2 when not declared
@@ -141,7 +141,7 @@ validate first, then mutate valid objects. Set `mutateFirst: true` when a
 default value is needed to satisfy a validation rule:
 
 ```yaml
-reconciler:
+operatorBox:
   validation:
     - field: spec.replicas
       min: "1"

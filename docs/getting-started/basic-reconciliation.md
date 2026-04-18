@@ -107,7 +107,7 @@ spec:
         version: v1alpha1
         kind: MyApp
         plural: myapps
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:

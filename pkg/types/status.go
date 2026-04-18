@@ -12,7 +12,7 @@ package types
 // the same way every CR gets the managed label and finalizers.
 //
 // Layer 2 — declarative status fields.
-// Optional. Declared in the Katalog under reconciler.status.fields.
+// Optional. Declared in the Katalog under operatorBox.status.fields.
 // Resolved after reconcile templates complete, patched to /status.
 // Field values support the same Go template expressions as onCreate templates.
 //
@@ -33,9 +33,9 @@ package types
 // Paths are relative to status — "phase" becomes status.phase.
 // Dot-notation is supported for nested fields at any depth.
 //
-// Layer 3 — child resource status propagation — is designed but not yet
-// implemented. It will add a "children" context to the resolver, making
-// child resource status fields accessible in path expressions.
+// Layer 3 — child resource status propagation adds a "children"
+// context to the resolver, making child resource status fields
+// accessible in path expressions.
 
 // StatusFieldSpec declares one field to write into the CR's status.
 //

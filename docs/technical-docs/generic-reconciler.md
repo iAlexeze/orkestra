@@ -34,7 +34,7 @@ Finalizers are the mechanism Kubernetes uses to block CR deletion until cleanup 
 
 **On create:** The first reconcile adds all declared finalizers (Katalog-level + CRD-level) to the CR via a patch. The patch uses `Update` semantics — if it fails with a conflict, the workqueue retries.
 
-**On delete:** When `DeletionTimestamp` is set on the CR, the reconciler:
+**On delete:** When `DeletionTimestamp` is set on the CR, the operatorBox:
 1. Runs the `onDelete` template block (if declared) — this creates Jobs or other cleanup resources
 2. Waits for Jobs to complete (owner reference `blockOwnerDeletion: true` handles this)
 3. Removes finalizers one by one via patch

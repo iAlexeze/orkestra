@@ -158,7 +158,7 @@ spec:
         group: demo.orkestra.io
         version: v1
         kind: Website
-      reconciler:
+      operatorBox:
         onCreate:
           deployments:
             - image: "nginx"

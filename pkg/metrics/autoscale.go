@@ -9,7 +9,7 @@ import (
 // ─────────────────────────────────────────────────────────────────────────────
 // Autoscale metrics
 //
-// These expose the autoscaler's behavior per operatorbox.
+// These expose the autoscaler's behavior per operatorBox.
 // Scrapable via /metrics. Visible in the Control Center per CRD panel.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -69,7 +69,7 @@ func SetAutoscaleActive(crd string, active bool) {
 }
 
 // InitAutoscaleBaseline records the initial worker count at startup.
-// Called once per operatorbox when the autoscaler is started.
+// Called once per operatorBox: when the autoscaler is started.
 func InitAutoscaleBaseline(crd string, workers int) {
 	autoscaleWorkersGauge.WithLabelValues(crd).Set(float64(workers))
 	autoscaleOverrideActiveGauge.WithLabelValues(crd).Set(0)

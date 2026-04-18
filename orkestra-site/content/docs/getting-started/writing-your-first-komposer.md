@@ -195,7 +195,7 @@ spec:
   crds:
     webapp:
       workers: 4
-      reconciler:
+      operatorBox:
         default: true
 ```
 
@@ -238,7 +238,7 @@ spec:
   crds:
     webapp:
       workers: 6
-      reconciler:
+      operatorBox:
         default: true
 ```
 

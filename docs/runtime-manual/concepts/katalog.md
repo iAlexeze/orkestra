@@ -133,7 +133,7 @@ spec:
       # ── Reconciliation templates ─────────────────────────────────────
       # onCreate runs on every reconcile. Idempotent — skipped if exists.
       # reconcile: true also applies as drift correction.
-      reconciler:
+      operatorBox:
         default: true
         finalizers:
           - finalizer.demo.orkestra.io/website

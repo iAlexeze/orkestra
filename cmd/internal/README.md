@@ -39,10 +39,10 @@ spec:
           - field: spec.replicas
             default: 2
 
-      reconciler:
+      operatorBox:
         default: true   # use Orkestra's GenericReconciler, no Go required
         cross:
-          - kind: database
+          - crd: database
             selector:
               name: "{{ .metadata.name }}"
             as: db
@@ -397,7 +397,7 @@ controlcenter.handleCRDetail(w, r)
 When Application's reconciler runs and needs to know if its Database CR is Ready:
 
 ```
-Application reconciler: readCross(decls=[{kind: "database", as: "db"}], ...)
+Application operatorBox: readCross(decls=[{kind: "database", as: "db"}], ...)
     │
     ├── katalogRegistry.GetInformerByName("database")
     │         ← ktrlRegistry lookup by lowercase name

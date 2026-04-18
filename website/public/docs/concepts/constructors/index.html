@@ -996,7 +996,7 @@ Constructors give you the ability to plug in a custom reconciler while still ben
 </span></span></code></pre></div><p>to generate the runtime registry wiring.</p>
 <hr>
 <h2 id="constructor-function-shape">Constructor function shape</h2>
-<p>A constructor typically returns a controller‑runtime‑style reconciler:</p>
+<p>A constructor typically returns a controller‑runtime‑style operatorBox:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">func</span> <span style="color:#50fa7b">NewWebsiteReconciler</span>(mgr manager.Manager) (reconcile.Reconciler, <span style="color:#8be9fd">error</span>) {
 </span></span><span style="display:flex;"><span>    <span style="color:#6272a4">// set up clients, caches, dependencies</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">return</span> <span style="color:#ff79c6">&amp;</span>WebsiteReconciler{

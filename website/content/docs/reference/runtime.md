@@ -34,7 +34,7 @@ For each CR event:
 
 1. Fetch the CR  
 2. Convert to the internal version (highest available)  
-3. Run the reconciler:
+3. Run the operatorBox:
    - Templates  
    - Hooks  
    - Custom constructors  

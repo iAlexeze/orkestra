@@ -25,9 +25,9 @@ kubectl apply -f 06-full-stack/crd.yaml
 Follow the steps in [here](../kubebuilder-conversion/README.md#steps) to deploy Orkestra with webhook support for admission control.
 
 ```bash
-kubectl port-forward svc/orkestra -n orkestra-system 9090:9090 &  # port-forward to view control center
+kubectl port-forward svc/orkestra -n orkestra-system 9090:8090 &  # port-forward to view control center
 
-# Accessible here: http://localhost:9090
+# Accessible here: http://localhost:8090
 ```
 
 You will see the `advanced use case` Katalog
@@ -65,7 +65,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 spec:
   crds:
     multi-region-app:
-      reconciler:
+      operatorBox:
         default: true
         onReconcile:
           deployments:
@@ -117,7 +117,7 @@ func OnReconcile(ctx context.Context, obj *v1alpha1.GatedApp) error {
 spec:
   crds:
     gated-app:
-      reconciler:
+      operatorBox:
         default: true
         onReconcile:
           external:
@@ -179,7 +179,7 @@ func OnReconcile(ctx context.Context, obj *v1alpha1.Application) error {
 spec:
   crds:
     database:              # CRD 1 — no changes needed
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:
@@ -189,10 +189,10 @@ spec:
     application:           # CRD 2 — observes database
       dependsOn:
         database: healthy  # workers don't start until database CRD is healthy
-      reconciler:
+      operatorBox:
         default: true
         cross:
-          - kind: database
+          - crd: database
             selector:
               name: "{{ .metadata.name }}"   # look up same-named Database CR
             as: db
@@ -254,7 +254,7 @@ func OnReconcile(ctx context.Context, obj *v1alpha1.SecureApp) error {
 spec:
   crds:
     secure-app:
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           secrets:
@@ -277,6 +277,7 @@ kubectl apply -f 04-once-secret/cr.yaml
 3. Delete and re-apply the Secret manually — next reconcile recreates it with a NEW password
 4. Delete and re-apply the CR — new CR gets a new password
 5. Normal reconcile cycles: password never changes (once: guard skips generation)
+6. Other resources like Deployments can consume the Secret
 
 The `randomAlphanumeric` note is only evaluated when the Secret does not exist.
 Every subsequent reconcile reads `secretExists() → true` and skips the note entirely.
@@ -303,7 +304,7 @@ func shouldCreateResource(obj *v1alpha1.FlexApp) bool {
 spec:
   crds:
     flex-app:
-      reconciler:
+      operatorBox:
         default: true
         onReconcile:
           jobs:
@@ -317,7 +318,8 @@ spec:
                 - field: status.phase
                   equals: "Succeeded"
 
-            # Notification job — same conditions, but also requires notify: true
+            # Notification job — similar conditions, but also requires notify: true
+            # Starts when phase=Running serving as trigger
             - name: "{{ .metadata.name }}-notify"
               image: alpine:3.19
               command: ["/bin/sh", "-c", "echo notify"]
@@ -326,23 +328,53 @@ spec:
                   equals: "true"
               anyOf:                             # AND the above, OR these
                 - field: status.phase
+                  equals: "Running"
+                - field: status.phase
                   equals: "Failed"
                 - field: status.phase
                   equals: "Succeeded"
 ```
+### Apply, Trigger, Observe
 
-**Apply and trigger:**
+#### 1. Apply the CR
 ```bash
 kubectl apply -f 05-anyof/cr.yaml
-# Set phase to Succeeded to watch cleanup job appear
-kubectl patch flexapp my-app --type=merge --patch='{"status":{"phase":"Succeeded"}}'
+```
+The FlexApp remains in `Running` until its `status.phase` transitions to `Succeeded`.
+
+---
+
+#### 2. Trigger the notify Job  
+Edit the CR and enable notifications:
+
+```yaml
+spec:
+  notify: true
 ```
 
-**Watch it:**
-1. Control Center → flex-app → View Resources → click `my-app`
-2. Children section: no Job appears when phase is `Running`
-3. Change phase to `Succeeded` or `Failed` — cleanup Job appears
-4. If `spec.notify: "true"` is also set — notify Job appears too
+Once `spec.notify` becomes `true`, the **notify Job** appears because:
+
+- `when:` requires `spec.notify == "true"`  
+- `anyOf:` is satisfied by the current phase (`Running`, `Failed`, or `Succeeded`)
+
+---
+
+#### 3. Observe the cascade  
+As soon as the notify Job completes and reports `Succeeded`, its phase satisfies the cleanup job’s `anyOf:` block:
+
+- `Failed`  
+- `Succeeded`
+
+This causes the CR phase to transition to `Succeeded` and the **cleanup Job** to appear immediately afterward.
+
+---
+
+#### 4. Watch it
+1. Control Center → `flex-app` → select your CR  
+2. **Children** section:  
+   - Initially: no Jobs while phase = `Running` - just Deployment  
+   - After setting `spec.notify: true`: CR phase changes to `Succeeded` and the notify Job appears  
+   - After notify Job succeeds: cleanup Job appears
 
 ---
 
@@ -371,10 +403,10 @@ kubectl apply -f 06-full-stack/cr.yaml
 
 **Watch the full lifecycle in the Control Center:**
 
-1. **Open:** `http://localhost:9090/controlcenter`
+1. **Open:** `http://localhost:8090/controlcenter`
 2. **Select:** advanced-usecases → full-stack-app
 3. **Click View Resources** (top right) — shows all CR instances
-4. **Click** `my-full-stack` — opens the CR detail page
+4. **Click** `my-app` — opens the CR detail page
 5. **Status section:** shows `phase`, `regionsDeployed`, `databaseEndpoint`
 6. **Children section:** expand to see all 3 Deployments + Secret + ConfigMap
 7. **Events section:** shows the reconcile history — external call, cross observation, resource creation

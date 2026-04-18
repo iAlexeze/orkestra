@@ -1,7 +1,7 @@
 # Autoscaler Condition Engine
 *How Orkestra evaluates autoscale conditions.*
 
-The autoscaler condition engine determines **when** an OperatorBox should scale.  
+The autoscaler condition engine determines **when** an operatorBox: should scale.  
 It evaluates a combination of **metric conditions**, **cross‑operator metrics**, **clock windows**, **day‑of‑week rules**, and **cron expressions**, using the same declarative condition DSL used throughout Orkestra.
 
 Conditions are evaluated on every autoscaler tick (`interval:`).  
@@ -35,7 +35,7 @@ If only one block is present, only that block is evaluated.
 
 ## 1. Metric conditions (`metrics.*`)
 
-Metric conditions reference **live operatorBox metrics** for the current CRD.  
+Metric conditions reference **live operatorBox: metrics** for the current CRD.  
 These values come directly from the autoscaler’s in‑memory metrics — no API calls, no informers.
 
 ```yaml

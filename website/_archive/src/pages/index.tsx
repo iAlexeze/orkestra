@@ -85,7 +85,7 @@ crds:
       group: apps.myorg.io
       version: v1
       kind: Website
-    reconciler:
+    operatorBox:
       onCreate:
         deployments:
           - name: "{{ .metadata.name }}"

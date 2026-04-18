@@ -34,7 +34,7 @@ spec:
         kind: Website
         plural: websites
 
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:

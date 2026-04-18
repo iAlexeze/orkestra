@@ -54,12 +54,12 @@ forcing users to convert before submitting. In some cases, it leads to another A
 ## 2. The normalize block
 
 The `normalize:` block in Orkestra's Katalog runs as the first step of the
-operatorbox reconcile pipeline — before mutation, validation, and template
+operatorBox: reconcile pipeline — before mutation, validation, and template
 rendering. It transforms fields in the CR's spec into a canonical form using
 the same template `notes` available everywhere in the Katalog.
 
 ```yaml
-operatorbox:
+operatorBox:
   normalize:
     spec:
       schedule: >
@@ -84,7 +84,7 @@ user submitted. Normalization is purely an internal reconcile concern.
 
 ## 3. Pipeline position and semantics
 
-The normalize block occupies a specific position in the operatorbox reconcile
+The normalize block occupies a specific position in the operatorBox: reconcile
 pipeline:
 
 ```

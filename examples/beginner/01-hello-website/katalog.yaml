@@ -14,7 +14,7 @@ spec:
         version: v1alpha1
         kind: Website
         plural: websites
-      restrictedNamespaces:
+      allowedNamespaces:
         - default
 
       operatorBox:

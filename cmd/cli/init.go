@@ -358,7 +358,7 @@ spec:
         version: v1alpha1
         kind: Website
         plural: websites
-      operatorBox:
+      operatorBox::
         default: true
         finalizers:
           - finalizer.demo.orkestra.io/website

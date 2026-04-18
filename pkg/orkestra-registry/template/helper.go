@@ -24,6 +24,25 @@ func (r *Resolver) ResolveLabels(labels []orktypes.ResourceLabel) ([]orktypes.Re
 	return resolved, nil
 }
 
+// ResolveSelectors evaluates template expressions in selector maps
+// Keys are never template expressions — only values are resolved.
+//
+// Example:
+//
+//	name: {{ .metadata.name }}
+//	app: {{ .metadata.labels.app }}
+func (r *Resolver) ResolveSelectors(selectors map[string]string) (map[string]string, error) {
+	resolved := make(map[string]string, len(selectors))
+	for k, v := range selectors {
+		v, err := r.Resolve(v)
+		if err != nil {
+			return nil, fmt.Errorf("selector %q: %w", k, err)
+		}
+		resolved[k] = v
+	}
+	return resolved, nil
+}
+
 // ResolveStringSlice resolves template expressions in each element of a string slice.
 // Each element is resolved independently — one failing element does not affect others.
 // Used for toNamespaces where each namespace may be a template expression.

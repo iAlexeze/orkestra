@@ -96,7 +96,7 @@ opaque to anyone who cannot read Go.
 The same state machine, declared in a Katalog:
 
 ```yaml
-reconciler:
+operatorBox:
   default: true
 
   onReconcile:

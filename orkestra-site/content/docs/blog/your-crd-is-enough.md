@@ -184,7 +184,7 @@ The translation — "`spec.image` maps to `deployment.spec.containers[0].image`,
 mapping. **Mappings are data. Data can be declared.**
 
 ```yaml
-reconciler:
+operatorBox:
   default: true
   onCreate:
     deployments:

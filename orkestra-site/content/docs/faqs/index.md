@@ -95,7 +95,7 @@ spec:
         version: v1alpha1
         kind: Website
         plural: websites
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:
@@ -587,7 +587,7 @@ reverse engineering, no changes to the CRD definition needed.
     version: v1
     kind: Prometheus
     plural: prometheuses
-  reconciler:
+  operatorBox:
     default: true
     onCreate:
       # governance, companion resources, defaults

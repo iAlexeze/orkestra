@@ -3,6 +3,8 @@ unknown/
 _runtime_*/
 example-crds/
 ork
+ork-amd64
+orkcc-amd64
 orkcc
 orkestra
 orkestra-demo

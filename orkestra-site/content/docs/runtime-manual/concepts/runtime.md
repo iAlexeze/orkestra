@@ -81,7 +81,7 @@ For each event (create, update, delete, resync):
 
 1. Fetch the CR from the informer cache  
 2. Convert it to the **internal version** (highest declared version)  
-3. Run the reconciler:
+3. Run the operatorBox:
    - Declarative templates (`onCreate`, `onReconcile`, `onDelete`)
    - Go hooks (if declared)
    - Custom constructors (if declared)

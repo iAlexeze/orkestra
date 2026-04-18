@@ -23,7 +23,7 @@ crds:
       version: v1alpha1
       kind: Website
       plural: websites
-    reconciler:
+    operatorBox:
       default: true
       onCreate:
         deployments:
@@ -36,7 +36,7 @@ crds:
       version: v1
       kind: Website
       plural: websites
-    reconciler:
+    operatorBox:
       default: true
       onCreate:
         deployments:

@@ -113,7 +113,7 @@ spec:
         version: v1alpha1
         kind: Website
         plural: websites
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:
@@ -168,7 +168,7 @@ crds:
       group: demo.orkestra.io
       version: v1alpha1
       kind: Website
-    reconciler:
+    operatorBox:
       default: true
       onCreate:
         deployments: [...]
@@ -178,7 +178,7 @@ crds:
       group: demo.orkestra.io
       version: v1
       kind: Website
-    reconciler:
+    operatorBox:
       default: true
       onCreate:
         deployments: [...]

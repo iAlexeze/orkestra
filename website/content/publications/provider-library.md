@@ -54,7 +54,7 @@ patching, and event emission.
 spec:
   crds:
     - name: application-stack
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           # ── Kubernetes resources (Orkestra core) ────────────────────────

@@ -1,0 +1,13 @@
+# 01 — forEach: N deployments from a list
+apiVersion: advanced.orkestra.io/v1alpha1
+kind: MultiRegionApp
+metadata:
+  name: my-multi-region
+  namespace: default
+spec:
+  image: ghcr.io/orkspace/orkestra-demo:multi-region
+  replicasPerRegion: 1
+  regions:
+    - us-east-1
+    - eu-west-1
+    - ap-southeast-1
