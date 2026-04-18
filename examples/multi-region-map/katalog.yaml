@@ -5,10 +5,16 @@ metadata:
   author: orkspace
   version: 0.1.0
   description: >
-    This Katalog demonstrates Orkestra’s declarative forEach pattern by deploying 
-    the same application into multiple regions without writing any Go code. 
+    This Katalog demonstrates Orkestra’s declarative forEach pattern by deploying
+    the same application into multiple regions without writing any Go code.
     Instead of manually looping over spec.regions inside a reconcile function,
     the operatorBox automatically expands the Deployment template once per region.
+
+security:
+  deletionProtection:
+    enabled: true
+    cleanupOnShutdown: true
+
 spec:
   crds:
     website:
@@ -60,14 +66,30 @@ spec:
       operatorBox:
         default: true
         onReconcile:
+
+          # Deployments — one per region.
+          # spec.regions can be a list OR a map:
+          #
+          # List (uniform replicas):
+          #   spec.regions: [us-east-1, eu-west-1, ap-southeast-1]
+          #   → .item = region name, use .spec.replicasPerRegion for count
+          #
+          # Map (per-region config):
+          #   spec.regions:
+          #     us-east-1: {replicas: 3}
+          #     eu-west-1: {replicas: 1}
+          #   → .item = region name, .value.replicas = per-region replica count
           deployments:
             - name: "{{ .metadata.name }}-{{ .item }}"
               namespace: "{{ .metadata.namespace }}"
               image: "{{ .spec.image }}"
-              replicas: "{{ .spec.replicasPerRegion }}"
+              replicas: "{{ or .value.replicas .spec.defaultReplicas }}"
+              port: "{{ or .value.port .spec.defaultPort }}"
               env:
-                REGION: 
+                REGION:
                   value: "{{ .item }}"
+                PORT:
+                  value: "{{ or .value.port .spec.defaultPort }}"
               labels:
                 - key: app
                   value: "{{ .metadata.name }}-{{ .item }}"
@@ -75,16 +97,32 @@ spec:
                 field: spec.regions
                 as: item
 
+          # Services — one per region, selector wired to matching deployment pods.
           services:
             - name: "{{ .metadata.name }}-{{ .item }}-svc"
               namespace: "{{ .metadata.namespace }}"
-              targetPort: 5000
               type: ClusterIP
-              port: 5000
+              port: "{{ or .value.port .spec.defaultPort }}"                 # per-region service port
+              targetPort: "{{ or .value.port .spec.defaultPort }}"
               labels:
                 - key: app
                   value: "{{ .metadata.name }}-{{ .item }}"
+              selector:
+                app: "{{ .metadata.name }}-{{ .item }}"
               forEach:
                 field: spec.regions
                 as: item
 
+        status:
+          fields:
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: children.deployment.status.readyReplicas
+                  operator: exists

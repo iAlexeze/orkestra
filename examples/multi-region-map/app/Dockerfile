@@ -11,6 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV REGION="unknown"
+ENV PORT="8080"
+ENV LISTEN_PORT="8080"
 
 EXPOSE 8080
 

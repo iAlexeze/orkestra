@@ -53,7 +53,7 @@ type IngressTemplateSource struct {
 Required fields:
 - `Conditions` / `AnyOf` — conditions support, maps to `when:` / `anyOf:`.
 - `Reconcile` — the `reconcile: true` shorthand.
-- `ForEach` — forEach support.
+- `ForEach` — forEach support (list field: `.item` = element; map field: `.item` = key, `.value` = map value).
 - `Name`, `Namespace` — always present.
 
 Add resource-specific fields for whatever the Kubernetes resource needs (`Host`, `ServiceName`, etc.).
@@ -464,13 +464,13 @@ func expandForEachIngresses(
             result = append(result, src)
             continue
         }
-        for i, item := range resolveListField(resolver.Data(), src.ForEach.Field) {
-            r := resolver.WithItem(item, src.ForEach.As, i)
+        for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+            ir := itemResolver(resolver, fi, src.ForEach.As, i)
             expanded := src
             expanded.ForEach = nil
-            expanded.Name, _        = r.Resolve(src.Name)
-            expanded.Namespace, _   = r.Resolve(src.Namespace)
-            expanded.Host, _        = r.Resolve(src.Host)
+            expanded.Name, _        = ir.Resolve(src.Name)
+            expanded.Namespace, _   = ir.Resolve(src.Namespace)
+            expanded.Host, _        = ir.Resolve(src.Host)
             result = append(result, expanded)
         }
     }
