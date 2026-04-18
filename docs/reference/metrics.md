@@ -128,6 +128,52 @@ Use this to:
 
 ---
 
+## **5. Security Metrics**
+
+### `orkestra_deletion_protection_blocked_total`
+Counter. Incremented each time a DELETE request is blocked by the deletion protection webhook.
+
+Use this to:
+- detect accidental or unauthorized deletion attempts
+- alert on deletion policy violations
+
+Suggested alert:
+```yaml
+alert: OrkestradeletionViolation
+expr: increase(orkestra_deletion_protection_blocked_total[5m]) > 0
+```
+
+---
+
+### `orkestra_namespace_protection_blocked_total{resource}`
+Counter. Incremented each time a CREATE or UPDATE request is blocked by the namespace protection webhook.
+
+- `resource`: the CRD plural name (e.g. `pipelines`) that was blocked
+
+Use this to:
+- detect CRs being created in disallowed namespaces
+- alert on namespace policy violations
+
+Suggested alert:
+```yaml
+alert: OrkestraNamespaceViolation
+expr: increase(orkestra_namespace_protection_blocked_total[5m]) > 0
+```
+
+---
+
+### `orkestra_webhook_reconciled_total{source}`
+Counter. Incremented each time the webhook controller completes one reconciliation cycle.
+
+---
+
+### `orkestra_webhook_reconciliation_failure_total{webhook}`
+Counter. Incremented when a webhook registration or cleanup call fails during a reconciliation cycle.
+
+- `webhook`: `validation`, `mutation`, `deletion-protection`, or `namespace-protection`
+
+---
+
 # **Why These Metrics Matter**
 
 Orkestra’s metrics are designed to answer the questions platform teams actually ask:

@@ -96,10 +96,16 @@ Each resource type has a dedicated resolve method that resolves all its fields i
 ```go
 func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSource) (orktypes.DeploymentTemplateSource, error)
 func (r *Resolver) ResolveServiceTemplate(src orktypes.ServiceTemplateSource) (orktypes.ServiceTemplateSource, error)
+func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSource) (orktypes.StatefulSetTemplateSource, error)
+func (r *Resolver) ResolvePVCTemplate(src orktypes.PVCTemplateSource) (orktypes.PVCTemplateSource, error)
+func (r *Resolver) ResolvePVTemplate(src orktypes.PVTemplateSource) (orktypes.PVTemplateSource, error)
+func (r *Resolver) ResolveIngressTemplate(src orktypes.IngressTemplateSource) (orktypes.IngressTemplateSource, error)
+func (r *Resolver) ResolveHPATemplate(src orktypes.HPATemplateSource) (orktypes.HPATemplateSource, error)
+func (r *Resolver) ResolvePDBTemplate(src orktypes.PDBTemplateSource) (orktypes.PDBTemplateSource, error)
 // ... one per resource type
 ```
 
-If `src.Namespace` is empty after resolution, the method defaults it to `{{ .metadata.namespace }}`. You almost never need to declare namespace explicitly for namespaced CRDs.
+If `src.Namespace` is empty after resolution, the method defaults it to `{{ .metadata.namespace }}`. You almost never need to declare namespace explicitly for namespaced CRDs. PVs are cluster-scoped — their resolve method does not apply namespace defaulting.
 
 ---
 
@@ -244,6 +250,144 @@ Follow the same four-function contract. CronJobs support drift detection on sche
 
 ---
 
+### `statefulsets/`
+
+Manages StatefulSet lifecycle.
+
+```go
+type ResolvedStatefulSetSpec struct {
+    Name         string
+    Namespace    string
+    Image        string
+    Replicas     int32
+    Port         int32
+    ServiceName  string             // headless service name for DNS-based pod discovery
+    StorageClass string             // optional: triggers VolumeClaimTemplate generation
+    StorageSize  string             // optional: e.g. "10Gi"
+    MountPath    string             // mount path for the generated PVC
+    Labels       map[string]string
+    Annotations  map[string]string
+    Env          []corev1.EnvVar
+    EnvFrom      []corev1.EnvFromSource
+    Resources    *ResourceRequirements
+}
+```
+
+When `storageClass` and `storageSize` are both set, a `VolumeClaimTemplate` is automatically added to the StatefulSet. The PVC name is `data-<statefulset-name>` and is mounted at `mountPath` (default: `/data`).
+
+**Drift detection fields:** image and replicas.
+
+---
+
+### `pvcs/`
+
+Manages PersistentVolumeClaim lifecycle.
+
+```go
+type ResolvedPVCSpec struct {
+    Name         string
+    Namespace    string
+    StorageClass string
+    StorageSize  string   // e.g. "5Gi"
+    AccessModes  []string // defaults to ["ReadWriteOnce"]
+    Labels       map[string]string
+    Annotations  map[string]string
+}
+```
+
+PVC specs are largely immutable after creation. `Update` only patches labels and annotations — it does not modify storage class, size, or access modes. If you need to resize a PVC, delete the CR and recreate it with the new size.
+
+Owner references are set — when the CR is deleted, the PVC is garbage collected.
+
+---
+
+### `pvs/`
+
+Manages PersistentVolume lifecycle.
+
+```go
+type ResolvedPVSpec struct {
+    Name         string
+    StorageClass string
+    Capacity     string   // e.g. "50Gi"
+    AccessModes  []string // defaults to ["ReadWriteOnce"]
+    ReclaimPolicy string  // Retain (default), Recycle, Delete
+    HostPath     string   // optional: uses HostPath volume source when set
+    Labels       map[string]string
+    Annotations  map[string]string
+}
+```
+
+PVs are cluster-scoped — they have no namespace and no owner references (Kubernetes does not allow owner references from cluster-scoped to namespace-scoped objects). `DeleteIfOwned` uses the `orkestra-owner` label instead of owner references to identify PVs created by a given CR.
+
+---
+
+### `pdbs/`
+
+Manages PodDisruptionBudget lifecycle.
+
+```go
+type ResolvedPDBSpec struct {
+    Name           string
+    Namespace      string
+    MinAvailable   *intstr.IntOrString  // or
+    MaxUnavailable *intstr.IntOrString
+    Selector       map[string]string
+    Labels         map[string]string
+    Annotations    map[string]string
+}
+```
+
+PDB specs are immutable after creation. `Update` uses delete-and-recreate to apply any change to the selector or availability constraints.
+
+---
+
+### `hpas/`
+
+Manages HorizontalPodAutoscaler lifecycle.
+
+```go
+type ResolvedHPASpec struct {
+    Name                     string
+    Namespace                string
+    TargetName               string   // name of the Deployment or StatefulSet to scale
+    TargetKind               string   // "Deployment" (default) or "StatefulSet"
+    MinReplicas              *int32
+    MaxReplicas              int32
+    TargetCPUUtilization     *int32   // optional CPU utilization percentage
+    Labels                   map[string]string
+    Annotations              map[string]string
+}
+```
+
+**Drift detection fields:** `minReplicas`, `maxReplicas`, and CPU utilization target.
+
+---
+
+### `ingresses/`
+
+Manages Ingress lifecycle.
+
+```go
+type ResolvedIngressSpec struct {
+    Name        string
+    Namespace   string
+    Host        string
+    ServiceName string
+    ServicePort int32
+    Path        string            // default: "/"
+    PathType    string            // Prefix (default), Exact, ImplementationSpecific
+    TLSSecret   string            // optional: name of TLS secret
+    IngressClass string           // optional: ingressClassName
+    Labels      map[string]string
+    Annotations map[string]string
+}
+```
+
+**Drift detection fields:** host, serviceName, servicePort, and path.
+
+---
+
 ## How the reconciler calls the registry
 
 The `runTemplateReconcile` function in `pkg/reconciler/generic.go` is the bridge:
@@ -278,13 +422,36 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj T) 
             }
         }
     }
-    // Same pattern for services, secrets, configmaps, etc.
+    // Same pattern for all resource types:
+    // services, secrets, configmaps, jobs, cronjobs, pods, serviceaccounts,
+    // statefulsets, pvcs, pvs, ingresses, hpas, pdbs.
 }
 ```
 
 The `update` flag is `true` for `onReconcile` — drift correction always uses `Update`. It is `false` for `onCreate` unless `reconcile: true` is set on the template, in which case `Update` is also called from `onCreate`.
 
 ---
+
+## Supported resource types
+
+The following resource types are fully implemented and available in Katalog templates under `onCreate`, `onReconcile`, and `onDelete`:
+
+| YAML key | Package | Notes |
+|---|---|---|
+| `deployments` | `deployments/` | |
+| `services` | `services/` | selector fixed to `orkestra-owner` |
+| `secrets` | `secrets/` | supports copy-from-source and multi-namespace distribute |
+| `configMaps` | `configmaps/` | supports merge-from-source |
+| `jobs` | `jobs/` | `onDelete` jobs use `blockOwnerDeletion: true` |
+| `cronJobs` | `cronjobs/` | |
+| `pods` | `pods/` | image drift → delete-and-recreate |
+| `serviceAccounts` | `serviceaccounts/` | |
+| `statefulSets` | `statefulsets/` | auto VolumeClaimTemplate when storageClass+storageSize set |
+| `persistentVolumeClaims` | `pvcs/` | update patches labels only |
+| `persistentVolumes` | `pvs/` | cluster-scoped; no owner refs; `DeleteIfOwned` uses label |
+| `ingresses` | `ingresses/` | |
+| `horizontalPodAutoscalers` | `hpas/` | kind shorthand: `hpa` |
+| `podDisruptionBudgets` | `pdbs/` | update uses delete-and-recreate; kind shorthand: `pdb` |
 
 ## Adding a new resource type
 

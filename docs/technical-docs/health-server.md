@@ -12,6 +12,8 @@
 - `/convert` CRD version conversion webhook (when `ENABLE_CONVERSION=true`)
 - `/validate` admission validation webhook (when `ENABLE_ADMISSION_WEBHOOK=true`)
 - `/mutate` admission mutation webhook (when `ENABLE_ADMISSION_WEBHOOK=true`)
+- `/deletion-protection` admission webhook for guarding CRD and Orkestra resource deletion (when `security.deletionProtection.enabled: true`)
+- `/namespace-protection` admission webhook for enforcing per-CRD namespace allow/restrict rules (when `security.namespaceProtection.enabled: true`)
 
 ---
 
@@ -131,13 +133,61 @@ Key differences from conversion:
 
 ---
 
-## ConversionStats, AdmissionStats, and ProviderStats
+## Deletion protection handler
+
+```go
+func (h *HealthServer) deletionProtectionHandler(w http.ResponseWriter, r *http.Request)
+```
+
+Registered at `/deletion-protection` on the HTTPS mux when `security.deletionProtection.enabled: true`. Intercepts `DELETE` on:
+
+- `customresourcedefinitions` — blocks deletion of CRDs managed by this operator
+- Orkestra's own deployment, service, ingress, and admission webhook configurations — narrowed by `ObjectSelector`
+
+`failurePolicy: Fail` — if Orkestra is unreachable, the DELETE is blocked, not allowed through. Deletion attempts on protected resources return HTTP 403 with a human-readable message.
+
+Stats are recorded to `ProtectionStats` (exposed at `/katalog/{crd}`) and the `orkestra_deletion_protection_blocked_total` Prometheus counter.
+
+---
+
+## Namespace protection handler
+
+```go
+func (h *HealthServer) namespaceProtectionHandler(w http.ResponseWriter, r *http.Request)
+```
+
+Registered at `/namespace-protection` on the HTTPS mux when `security.namespaceProtection.enabled: true` **and** at least one CRD declares `allowedNamespaces` or `restrictedNamespaces`.
+
+Intercepts `CREATE` and `UPDATE` on those CRDs. For each request:
+
+1. Looks up the CRD's namespace rules from `h.namespaceRuleMap` (keyed `plural.group`)
+2. Evaluates `NamespaceRules.IsNamespaceAllowed(ns)`:
+   - If `allowedNamespaces` is set → namespace must be in the list
+   - If `restrictedNamespaces` is set → namespace must not be in the list
+   - If neither → allow
+3. Blocked requests return HTTP 403 with a message pointing to `allowedNamespaces`/`restrictedNamespaces`
+
+`failurePolicy: Fail` (configurable via `security.namespaceProtection.failurePolicy`) — if Orkestra is unreachable, CREATE/UPDATE is blocked. This ensures namespace rules remain enforced even during transient outages.
+
+Stats are recorded to `namespaceStats` (`*ProtectionStats`, same shape as deletion protection) and the `orkestra_namespace_protection_blocked_total` Prometheus counter. Both are exposed at `/katalog/{crd}` under `namespaceProtection`.
+
+The `namespaceRuleMap` is built once in `NewHealthServer` from `katalog.NamespaceProtectionRuleMap()` and is read-only at runtime — rule changes require an operator restart.
+
+### Webhook registration
+
+The namespace protection `ValidatingWebhookConfiguration` (`orkestra-namespace-protection`) is registered at startup (in a background goroutine) and continuously reconciled by the webhook controller. The controller uses `katalog.NamespaceProtectionGVRs()` to build the admission rules — only CRDs with declared namespace rules are included. No webhook is registered when running outside the cluster (`ork run` mode).
+
+---
+
+## ConversionStats, AdmissionStats, ProtectionStats, and ProviderStats
 
 `ConversionStats` and `AdmissionStats` are in-process rolling window trackers. They accumulate statistics in memory using ring buffers. `GetStats()` on each returns a snapshot embedded in the `/katalog/{crd}` JSON response.
 
+`ProtectionStats` (used for both deletion protection and namespace protection) is a simple atomic counter tracking total, blocked, and allowed requests since startup. Two separate instances are maintained — `h.protectionStats` for deletion protection and `h.namespaceStats` for namespace protection. Both are exposed in the `/katalog/{crd}` response under `protection` and `namespaceProtection` respectively.
+
 `ProviderStats` tracks per-provider reconcile and delete call totals and errors since operator startup. `GetSnapshot()` returns one `ProviderStatEntry` per provider that has been called — each entry contains the provider name, total calls, error count, and error rate. Unlike conversion/admission stats, there is no rolling window — provider stats accumulate for the operator's lifetime.
 
-All three are not a replacement for Prometheus — they reset on restart. They serve the use case of "what is happening right now in this running instance" rather than "what has happened over the past 30 days."
+All are not a replacement for Prometheus — they reset on restart. They serve the use case of "what is happening right now in this running instance" rather than "what has happened over the past 30 days."
 
 ---
 
