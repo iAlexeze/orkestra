@@ -10,6 +10,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
@@ -49,7 +50,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return fmt.Errorf("configmap.Create: %w", err)
 	}
 
-	namespace := resolveNamespace(owner, spec)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
 
 	_, err := kube.Clientset().CoreV1().ConfigMaps(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -92,7 +93,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return fmt.Errorf("configmap.Update: %w", err)
 	}
 
-	namespace := resolveNamespace(owner, spec)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
 
 	existing, err := kube.Clientset().CoreV1().ConfigMaps(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
@@ -137,7 +138,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 
 // Delete deletes the ConfigMap if it exists.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedConfigMapSpec) error {
-	namespace := resolveNamespace(owner, spec)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
 
 	err := kube.Clientset().CoreV1().ConfigMaps(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -342,14 +343,4 @@ func validateSpec(spec ResolvedConfigMapSpec) error {
 		return fmt.Errorf("name is required")
 	}
 	return nil
-}
-
-func resolveNamespace(owner domain.Object, spec ResolvedConfigMapSpec) string {
-	if spec.Namespace != "" {
-		return spec.Namespace
-	}
-	if owner.GetNamespace() != "" {
-		return owner.GetNamespace()
-	}
-	return "default"
 }

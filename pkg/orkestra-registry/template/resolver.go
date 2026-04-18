@@ -603,3 +603,278 @@ func (r *Resolver) ResolveServiceAccountTemplate(src orktypes.ServiceAccountTemp
 
 	return resolved, nil
 }
+
+// ResolveIngressTemplate resolves all template expressions in an IngressTemplateSource.
+func (r *Resolver) ResolveIngressTemplate(src orktypes.IngressTemplateSource) (orktypes.IngressTemplateSource, error) {
+	resolved := orktypes.IngressTemplateSource{
+		Version: src.Version,
+	}
+
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("ingress.name: %w", err)
+	}
+	if resolved.Host, err = r.Resolve(src.Host); err != nil {
+		return resolved, fmt.Errorf("ingress.host: %w", err)
+	}
+	if resolved.ServiceName, err = r.Resolve(src.ServiceName); err != nil {
+		return resolved, fmt.Errorf("ingress.serviceName: %w", err)
+	}
+	if resolved.ServicePort, err = r.Resolve(src.ServicePort); err != nil {
+		return resolved, fmt.Errorf("ingress.servicePort: %w", err)
+	}
+	if resolved.Path, err = r.Resolve(src.Path); err != nil {
+		return resolved, fmt.Errorf("ingress.path: %w", err)
+	}
+	if resolved.PathType, err = r.Resolve(src.PathType); err != nil {
+		return resolved, fmt.Errorf("ingress.pathType: %w", err)
+	}
+	if resolved.IngressClass, err = r.Resolve(src.IngressClass); err != nil {
+		return resolved, fmt.Errorf("ingress.ingressClass: %w", err)
+	}
+
+	ns := src.Namespace
+	if ns == "" {
+		ns = "{{ .metadata.namespace }}"
+	}
+	if resolved.Namespace, err = r.Resolve(ns); err != nil {
+		return resolved, fmt.Errorf("ingress.namespace: %w", err)
+	}
+
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("ingress.labels: %w", err)
+	}
+	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
+		return resolved, fmt.Errorf("ingress.annotations: %w", err)
+	}
+
+	if src.TLS != nil {
+		resolvedTLS := &orktypes.IngressTLSSpec{
+			Enabled:  src.TLS.Enabled,
+			ValidFor: src.TLS.ValidFor,
+		}
+		if resolvedTLS.SecretName, err = r.Resolve(src.TLS.SecretName); err != nil {
+			return resolved, fmt.Errorf("ingress.tls.secretName: %w", err)
+		}
+		for i, h := range src.TLS.Hosts {
+			rv, e := r.Resolve(h)
+			if e != nil {
+				return resolved, fmt.Errorf("ingress.tls.hosts[%d]: %w", i, e)
+			}
+			resolvedTLS.Hosts = append(resolvedTLS.Hosts, rv)
+		}
+		resolved.TLS = resolvedTLS
+	}
+
+	return resolved, nil
+}
+
+// ResolveHPATemplate resolves all template expressions in an HPATemplateSource.
+func (r *Resolver) ResolveHPATemplate(src orktypes.HPATemplateSource) (orktypes.HPATemplateSource, error) {
+	resolved := orktypes.HPATemplateSource{
+		Version: src.Version,
+	}
+
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("hpa.name: %w", err)
+	}
+	if resolved.DeploymentRef, err = r.Resolve(src.DeploymentRef); err != nil {
+		return resolved, fmt.Errorf("hpa.deploymentRef: %w", err)
+	}
+	if resolved.MinReplicas, err = r.Resolve(src.MinReplicas); err != nil {
+		return resolved, fmt.Errorf("hpa.minReplicas: %w", err)
+	}
+	if resolved.MaxReplicas, err = r.Resolve(src.MaxReplicas); err != nil {
+		return resolved, fmt.Errorf("hpa.maxReplicas: %w", err)
+	}
+	if resolved.TargetCPUUtilizationPercentage, err = r.Resolve(src.TargetCPUUtilizationPercentage); err != nil {
+		return resolved, fmt.Errorf("hpa.targetCPUUtilizationPercentage: %w", err)
+	}
+
+	ns := src.Namespace
+	if ns == "" {
+		ns = "{{ .metadata.namespace }}"
+	}
+	if resolved.Namespace, err = r.Resolve(ns); err != nil {
+		return resolved, fmt.Errorf("hpa.namespace: %w", err)
+	}
+
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("hpa.labels: %w", err)
+	}
+
+	return resolved, nil
+}
+
+// ResolvePDBTemplate resolves all template expressions in a PDBTemplateSource.
+func (r *Resolver) ResolvePDBTemplate(src orktypes.PDBTemplateSource) (orktypes.PDBTemplateSource, error) {
+	resolved := orktypes.PDBTemplateSource{
+		Version: src.Version,
+	}
+
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("pdb.name: %w", err)
+	}
+	if resolved.MinAvailable, err = r.Resolve(src.MinAvailable); err != nil {
+		return resolved, fmt.Errorf("pdb.minAvailable: %w", err)
+	}
+	if resolved.MaxUnavailable, err = r.Resolve(src.MaxUnavailable); err != nil {
+		return resolved, fmt.Errorf("pdb.maxUnavailable: %w", err)
+	}
+
+	ns := src.Namespace
+	if ns == "" {
+		ns = "{{ .metadata.namespace }}"
+	}
+	if resolved.Namespace, err = r.Resolve(ns); err != nil {
+		return resolved, fmt.Errorf("pdb.namespace: %w", err)
+	}
+
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("pdb.labels: %w", err)
+	}
+
+	if resolved.Selector, err = r.ResolveSelectors(src.Selector); err != nil {
+		return resolved, fmt.Errorf("pdb.selector: %w", err)
+	}
+
+	return resolved, nil
+}
+
+// ResolveStatefulSetTemplate resolves all template expressions in a StatefulSetTemplateSource.
+func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSource) (orktypes.StatefulSetTemplateSource, error) {
+	resolved := orktypes.StatefulSetTemplateSource{
+		Version:   src.Version,
+		Env:       src.Env,
+		EnvFrom:   src.EnvFrom,
+		Resources: src.Resources,
+	}
+
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("statefulset.name: %w", err)
+	}
+	if resolved.Image, err = r.Resolve(src.Image); err != nil {
+		return resolved, fmt.Errorf("statefulset.image: %w", err)
+	}
+	if resolved.Tag, err = r.Resolve(src.Tag); err != nil {
+		return resolved, fmt.Errorf("statefulset.tag: %w", err)
+	}
+	if resolved.Replicas, err = r.Resolve(src.Replicas); err != nil {
+		return resolved, fmt.Errorf("statefulset.replicas: %w", err)
+	}
+	if resolved.Port, err = r.Resolve(src.Port); err != nil {
+		return resolved, fmt.Errorf("statefulset.port: %w", err)
+	}
+	if resolved.ServiceName, err = r.Resolve(src.ServiceName); err != nil {
+		return resolved, fmt.Errorf("statefulset.serviceName: %w", err)
+	}
+	if resolved.StorageClass, err = r.Resolve(src.StorageClass); err != nil {
+		return resolved, fmt.Errorf("statefulset.storageClass: %w", err)
+	}
+	if resolved.StorageSize, err = r.Resolve(src.StorageSize); err != nil {
+		return resolved, fmt.Errorf("statefulset.storageSize: %w", err)
+	}
+	if resolved.MountPath, err = r.Resolve(src.MountPath); err != nil {
+		return resolved, fmt.Errorf("statefulset.mountPath: %w", err)
+	}
+
+	ns := src.Namespace
+	if ns == "" {
+		ns = "{{ .metadata.namespace }}"
+	}
+	if resolved.Namespace, err = r.Resolve(ns); err != nil {
+		return resolved, fmt.Errorf("statefulset.namespace: %w", err)
+	}
+
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("statefulset.labels: %w", err)
+	}
+	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
+		return resolved, fmt.Errorf("statefulset.annotations: %w", err)
+	}
+
+	return resolved, nil
+}
+
+// ResolvePVCTemplate resolves all template expressions in a PVCTemplateSource.
+func (r *Resolver) ResolvePVCTemplate(src orktypes.PVCTemplateSource) (orktypes.PVCTemplateSource, error) {
+	resolved := orktypes.PVCTemplateSource{
+		Version:     src.Version,
+		AccessModes: src.AccessModes,
+		VolumeMode:  src.VolumeMode,
+	}
+
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("pvc.name: %w", err)
+	}
+	if resolved.StorageClassName, err = r.Resolve(src.StorageClassName); err != nil {
+		return resolved, fmt.Errorf("pvc.storageClassName: %w", err)
+	}
+	if resolved.Storage, err = r.Resolve(src.Storage); err != nil {
+		return resolved, fmt.Errorf("pvc.storage: %w", err)
+	}
+	if resolved.VolumeName, err = r.Resolve(src.VolumeName); err != nil {
+		return resolved, fmt.Errorf("pvc.volumeName: %w", err)
+	}
+
+	ns := src.Namespace
+	if ns == "" {
+		ns = "{{ .metadata.namespace }}"
+	}
+	if resolved.Namespace, err = r.Resolve(ns); err != nil {
+		return resolved, fmt.Errorf("pvc.namespace: %w", err)
+	}
+
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("pvc.labels: %w", err)
+	}
+
+	return resolved, nil
+}
+
+// ResolvePVTemplate resolves all template expressions in a PVTemplateSource.
+func (r *Resolver) ResolvePVTemplate(src orktypes.PVTemplateSource) (orktypes.PVTemplateSource, error) {
+	resolved := orktypes.PVTemplateSource{
+		Version:     src.Version,
+		AccessModes: src.AccessModes,
+	}
+
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("pv.name: %w", err)
+	}
+	if resolved.StorageClassName, err = r.Resolve(src.StorageClassName); err != nil {
+		return resolved, fmt.Errorf("pv.storageClassName: %w", err)
+	}
+	if resolved.Capacity, err = r.Resolve(src.Capacity); err != nil {
+		return resolved, fmt.Errorf("pv.capacity: %w", err)
+	}
+	if resolved.ReclaimPolicy, err = r.Resolve(src.ReclaimPolicy); err != nil {
+		return resolved, fmt.Errorf("pv.reclaimPolicy: %w", err)
+	}
+	if resolved.HostPath, err = r.Resolve(src.HostPath); err != nil {
+		return resolved, fmt.Errorf("pv.hostPath: %w", err)
+	}
+	if resolved.CSIDriver, err = r.Resolve(src.CSIDriver); err != nil {
+		return resolved, fmt.Errorf("pv.csiDriver: %w", err)
+	}
+	if resolved.CSIVolumeHandle, err = r.Resolve(src.CSIVolumeHandle); err != nil {
+		return resolved, fmt.Errorf("pv.csiVolumeHandle: %w", err)
+	}
+
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("pv.labels: %w", err)
+	}
+
+	return resolved, nil
+}

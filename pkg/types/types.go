@@ -1040,6 +1040,299 @@ type ServiceAccountTemplateSource struct {
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
+// ── Ingress ───────────────────────────────────────────────────────────────────
+
+// IngressTemplateSource declares one Ingress to be managed by Orkestra.
+//
+// Example:
+//
+//	onReconcile:
+//	  ingresses:
+//	    - name: "{{ .metadata.name }}-ingress"
+//	      host: "{{ .spec.hostname }}"
+//	      serviceName: "{{ .metadata.name }}-svc"
+//	      servicePort: "{{ .spec.port }}"
+//	      path: /
+//	      pathType: Prefix
+//	      ingressClass: nginx
+//	      tls:
+//	        enabled: true
+//	        secretName: "{{ .metadata.name }}-tls"
+//	        hosts:
+//	          - "{{ .spec.hostname }}"
+type IngressTemplateSource struct {
+	Version string `yaml:"version" json:"version,omitempty"`
+
+	// Name — Ingress resource name. Default: "{{ .metadata.name }}-ingress"
+	Name string `yaml:"name" json:"name,omitempty"`
+
+	// Namespace — target namespace. Default: CR namespace.
+	Namespace string `yaml:"namespace" json:"namespace,omitempty"`
+
+	// Host — virtual host name for the Ingress rule.
+	Host string `yaml:"host" json:"host,omitempty"`
+
+	// ServiceName — backend Service name this Ingress routes to.
+	ServiceName string `yaml:"serviceName" json:"serviceName,omitempty"`
+
+	// ServicePort — backend Service port as a string. Supports template expressions.
+	ServicePort string `yaml:"servicePort" json:"servicePort,omitempty"`
+
+	// Path — HTTP path prefix. Default: "/"
+	Path string `yaml:"path" json:"path,omitempty"`
+
+	// PathType — Kubernetes IngressPathType: Prefix, Exact, ImplementationSpecific.
+	// Default: Prefix.
+	PathType string `yaml:"pathType" json:"pathType,omitempty"`
+
+	// IngressClass — Ingress class name (nginx, traefik, etc.). Optional.
+	IngressClass string `yaml:"ingressClass" json:"ingressClass,omitempty"`
+
+	// Labels applied to Ingress metadata. Values support template expressions.
+	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty"`
+
+	// Annotations applied to Ingress metadata. Values support template expressions.
+	Annotations []ResourceLabel `yaml:"annotations" json:"annotations,omitempty"`
+
+	// TLS — optional TLS configuration. When tls.enabled is true, Orkestra
+	// generates a self-signed TLS Secret before creating the Ingress.
+	TLS *IngressTLSSpec `yaml:"tls" json:"tls,omitempty"`
+
+	Reconcile  bool         `yaml:"reconcile" json:"reconcile,omitempty"`
+	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
+	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+}
+
+// IngressTLSSpec configures TLS for an Ingress resource.
+// When Enabled is true, Orkestra generates a kubernetes.io/tls Secret before
+// the Ingress is applied so the Ingress can reference it immediately.
+type IngressTLSSpec struct {
+	// Enabled — when true, create a TLS secret and populate ingress.spec.tls.
+	Enabled bool `yaml:"enabled" json:"enabled,omitempty"`
+
+	// SecretName — name of the TLS secret. Supports template expressions.
+	// Default: "{{ .metadata.name }}-tls"
+	SecretName string `yaml:"secretName" json:"secretName,omitempty"`
+
+	// Hosts — list of hostnames to include in the TLS certificate SANs.
+	// Each element supports template expressions.
+	Hosts []string `yaml:"hosts" json:"hosts,omitempty"`
+
+	// ValidFor — certificate validity duration (e.g. "1y", "90d"). Default: "1y".
+	ValidFor string `yaml:"validFor" json:"validFor,omitempty"`
+}
+
+// ── HorizontalPodAutoscaler ───────────────────────────────────────────────────
+
+// HPATemplateSource declares one HorizontalPodAutoscaler to be managed by Orkestra.
+//
+// Example:
+//
+//	onReconcile:
+//	  hpa:
+//	    - name: "{{ .metadata.name }}-hpa"
+//	      deploymentRef: "{{ .metadata.name }}"
+//	      minReplicas: "{{ .spec.minReplicas }}"
+//	      maxReplicas: "{{ .spec.maxReplicas }}"
+//	      targetCPUUtilizationPercentage: "80"
+//	      forEach:
+//	        field: spec.services
+//	        as: item
+type HPATemplateSource struct {
+	Version string `yaml:"version" json:"version,omitempty"`
+
+	// Name — HPA resource name. Default: "{{ .metadata.name }}-hpa"
+	Name string `yaml:"name" json:"name,omitempty"`
+
+	// Namespace — target namespace. Default: CR namespace.
+	Namespace string `yaml:"namespace" json:"namespace,omitempty"`
+
+	// DeploymentRef — name of the Deployment this HPA targets.
+	// Supports template expressions: "{{ .metadata.name }}"
+	DeploymentRef string `yaml:"deploymentRef" json:"deploymentRef,omitempty"`
+
+	// MinReplicas — minimum replica count as a string. Supports template expressions.
+	MinReplicas string `yaml:"minReplicas" json:"minReplicas,omitempty"`
+
+	// MaxReplicas — maximum replica count as a string. Supports template expressions.
+	MaxReplicas string `yaml:"maxReplicas" json:"maxReplicas,omitempty"`
+
+	// TargetCPUUtilizationPercentage — CPU utilization target (0-100). Supports templates.
+	TargetCPUUtilizationPercentage string `yaml:"targetCPUUtilizationPercentage" json:"targetCPUUtilizationPercentage,omitempty"`
+
+	// Labels applied to HPA metadata. Values support template expressions.
+	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty"`
+
+	Reconcile  bool         `yaml:"reconcile" json:"reconcile,omitempty"`
+	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
+	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+}
+
+// ── PodDisruptionBudget ───────────────────────────────────────────────────────
+
+// PDBTemplateSource declares one PodDisruptionBudget to be managed by Orkestra.
+//
+// Example:
+//
+//	onReconcile:
+//	  pdb:
+//	    - name: "{{ .metadata.name }}-pdb"
+//	      minAvailable: "1"
+//	      selector:
+//	        app: "{{ .metadata.name }}"
+//	      forEach:
+//	        field: spec.services
+//	        as: item
+type PDBTemplateSource struct {
+	Version string `yaml:"version" json:"version,omitempty"`
+
+	// Name — PDB resource name. Default: "{{ .metadata.name }}-pdb"
+	Name string `yaml:"name" json:"name,omitempty"`
+
+	// Namespace — target namespace. Default: CR namespace.
+	Namespace string `yaml:"namespace" json:"namespace,omitempty"`
+
+	// Selector — label selector identifying the pods this PDB protects.
+	// Keys are static; values support template expressions.
+	Selector SelectorMap `yaml:"selector" json:"selector,omitempty"`
+
+	// MinAvailable — minimum number of pods that must remain available.
+	// Accepts integer strings ("1") or percentage strings ("50%").
+	// Mutually exclusive with MaxUnavailable.
+	MinAvailable string `yaml:"minAvailable" json:"minAvailable,omitempty"`
+
+	// MaxUnavailable — maximum number of pods that may be unavailable.
+	// Accepts integer strings ("1") or percentage strings ("25%").
+	// Mutually exclusive with MinAvailable.
+	MaxUnavailable string `yaml:"maxUnavailable" json:"maxUnavailable,omitempty"`
+
+	// Labels applied to PDB metadata. Values support template expressions.
+	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty"`
+
+	Reconcile  bool         `yaml:"reconcile" json:"reconcile,omitempty"`
+	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
+	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+}
+
+// StatefulSetTemplateSource declares one StatefulSet to be managed by Orkestra.
+type StatefulSetTemplateSource struct {
+	Version string `yaml:"version" json:"version,omitempty"`
+
+	// Name — StatefulSet name. Default: "{{ .metadata.name }}".
+	Name string `yaml:"name" json:"name,omitempty"`
+
+	// Namespace — target namespace. Default: CR namespace.
+	Namespace string `yaml:"namespace" json:"namespace,omitempty"`
+
+	// Image — container image. Required.
+	Image string `yaml:"image" json:"image,omitempty" validate:"required"`
+
+	// Tag — image tag. Default: "latest".
+	Tag string `yaml:"tag" json:"tag,omitempty"`
+
+	// Replicas — number of pod replicas. Default: "1".
+	Replicas string `yaml:"replicas" json:"replicas,omitempty"`
+
+	// Port — container port. "0" or empty means no port exposed.
+	Port string `yaml:"port" json:"port,omitempty"`
+
+	// ServiceName — name of the headless Service governing the StatefulSet.
+	// Default: same as Name.
+	ServiceName string `yaml:"serviceName" json:"serviceName,omitempty"`
+
+	// StorageClass — storage class for auto-generated VolumeClaimTemplates.
+	StorageClass string `yaml:"storageClass" json:"storageClass,omitempty"`
+
+	// StorageSize — size of each volume claim (e.g. "10Gi"). Required when StorageClass is set.
+	StorageSize string `yaml:"storageSize" json:"storageSize,omitempty"`
+
+	// MountPath — mount path for the storage volume inside the container. Default: "/data".
+	MountPath string `yaml:"mountPath" json:"mountPath,omitempty"`
+
+	Labels      []ResourceLabel         `yaml:"labels" json:"labels,omitempty"`
+	Annotations []ResourceLabel         `yaml:"annotations" json:"annotations,omitempty"`
+	Env         map[string]EnvVarSource `yaml:"env" json:"env,omitempty"`
+	EnvFrom     []EnvFromSource         `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
+	Resources   *ResourceRequirements   `yaml:"resources" json:"resources,omitempty"`
+
+	Reconcile  bool         `yaml:"reconcile" json:"reconcile,omitempty"`
+	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
+	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+}
+
+// PVCTemplateSource declares one PersistentVolumeClaim to be managed by Orkestra.
+type PVCTemplateSource struct {
+	Version string `yaml:"version" json:"version,omitempty"`
+
+	// Name — PVC name. Required.
+	Name string `yaml:"name" json:"name,omitempty"`
+
+	// Namespace — target namespace. Default: CR namespace.
+	Namespace string `yaml:"namespace" json:"namespace,omitempty"`
+
+	// StorageClassName — storage class to use. Empty means cluster default.
+	StorageClassName string `yaml:"storageClassName" json:"storageClassName,omitempty"`
+
+	// AccessModes — access modes. Default: ["ReadWriteOnce"].
+	// Supports: ReadWriteOnce, ReadOnlyMany, ReadWriteMany, ReadWriteOncePod.
+	AccessModes []string `yaml:"accessModes" json:"accessModes,omitempty"`
+
+	// Storage — requested storage size (e.g. "10Gi"). Required.
+	Storage string `yaml:"storage" json:"storage,omitempty" validate:"required"`
+
+	// VolumeMode — Filesystem or Block. Default: Filesystem.
+	VolumeMode string `yaml:"volumeMode" json:"volumeMode,omitempty"`
+
+	// VolumeName — bind to a specific PV by name.
+	VolumeName string `yaml:"volumeName" json:"volumeName,omitempty"`
+
+	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty"`
+
+	Reconcile  bool         `yaml:"reconcile" json:"reconcile,omitempty"`
+	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
+	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+}
+
+// PVTemplateSource declares one PersistentVolume to be managed by Orkestra.
+// PersistentVolumes are cluster-scoped — Namespace is ignored.
+type PVTemplateSource struct {
+	Version string `yaml:"version" json:"version,omitempty"`
+
+	// Name — PV name. Required.
+	Name string `yaml:"name" json:"name,omitempty"`
+
+	// StorageClassName — storage class name.
+	StorageClassName string `yaml:"storageClassName" json:"storageClassName,omitempty"`
+
+	// Capacity — storage capacity (e.g. "10Gi"). Required.
+	Capacity string `yaml:"capacity" json:"capacity,omitempty" validate:"required"`
+
+	// AccessModes — access modes. Default: ["ReadWriteOnce"].
+	AccessModes []string `yaml:"accessModes" json:"accessModes,omitempty"`
+
+	// ReclaimPolicy — Retain, Delete, or Recycle. Default: Retain.
+	ReclaimPolicy string `yaml:"reclaimPolicy" json:"reclaimPolicy,omitempty"`
+
+	// HostPath — host path for HostPath volume type. Used for local/dev PVs.
+	HostPath string `yaml:"hostPath" json:"hostPath,omitempty"`
+
+	// CSI driver fields for cloud/CSI volumes.
+	CSIDriver       string `yaml:"csiDriver" json:"csiDriver,omitempty"`
+	CSIVolumeHandle string `yaml:"csiVolumeHandle" json:"csiVolumeHandle,omitempty"`
+
+	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty"`
+
+	Reconcile  bool         `yaml:"reconcile" json:"reconcile,omitempty"`
+	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
+	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+}
+
 // ── HookTemplates ─────────────────────────────────────────────────────────────
 // Declares the complete set of resources Orkestra manages at each lifecycle event.
 // All resource type slices are optional — omit any type you do not need.
@@ -1110,14 +1403,15 @@ type HookTemplates struct {
 	// false — delete all resources via owner references (default, parallel)
 	Ordered bool `yaml:"ordered,omitempty" json:"ordered,omitempty"`
 
+	StatefulSets           []StatefulSetTemplateSource `yaml:"statefulSets" json:"statefulSets,omitempty" validate:"omitempty"`
+	ReplicaSets            []PlaceholderSource         `yaml:"replicaSets" json:"replicaSets,omitempty" validate:"omitempty"`
+	DaemonSets             []PlaceholderSource         `yaml:"daemonSets" json:"daemonSets,omitempty" validate:"omitempty"`
+	Ingresses              []IngressTemplateSource     `yaml:"ingresses" json:"ingresses,omitempty" validate:"omitempty"`
+	NetworkPolicies        []PlaceholderSource         `yaml:"networkPolicies" json:"networkPolicies,omitempty" validate:"omitempty"`
+	PersistentVolumes      []PVTemplateSource          `yaml:"persistentVolumes" json:"persistentVolumes,omitempty" validate:"omitempty"`
+	PersistentVolumeClaims []PVCTemplateSource         `yaml:"persistentVolumeClaims" json:"persistentVolumeClaims,omitempty" validate:"omitempty"`
+
 	// TODO with placeholer
-	StatefulSets                []PlaceholderSource `yaml:"statefulSets" json:"statefulSets,omitempty" validate:"omitempty"`
-	ReplicaSets                 []PlaceholderSource `yaml:"replicaSets" json:"replicaSets,omitempty" validate:"omitempty"`
-	DaemonSets                  []PlaceholderSource `yaml:"daemonSets" json:"daemonSets,omitempty" validate:"omitempty"`
-	Ingresses                   []PlaceholderSource `yaml:"ingresses" json:"ingresses,omitempty" validate:"omitempty"`
-	NetworkPolicies             []PlaceholderSource `yaml:"networkPolicies" json:"networkPolicies,omitempty" validate:"omitempty"`
-	PersistentVolumes           []PlaceholderSource `yaml:"persistentVolumes" json:"persistentVolumes,omitempty" validate:"omitempty"`
-	PersistentVolumeClaims      []PlaceholderSource `yaml:"persistentVolumeClaims" json:"persistentVolumeClaims,omitempty" validate:"omitempty"`
 	Volumes                     []PlaceholderSource `yaml:"volumes" json:"volumes,omitempty" validate:"omitempty"`
 	VolumeMounts                []PlaceholderSource `yaml:"volumeMounts" json:"volumeMounts,omitempty" validate:"omitempty"`
 	Roles                       []PlaceholderSource `yaml:"roles" json:"roles,omitempty" validate:"omitempty"`
@@ -1125,14 +1419,14 @@ type HookTemplates struct {
 	ClusterRoles                []PlaceholderSource `yaml:"clusterRoles" json:"clusterRoles,omitempty" validate:"omitempty"`
 	ClusterRoleBindings         []PlaceholderSource `yaml:"clusterRoleBindings" json:"clusterRoleBindings,omitempty" validate:"omitempty"`
 	ServiceMonitors             []PlaceholderSource `yaml:"serviceMonitors" json:"serviceMonitors,omitempty" validate:"omitempty"`
-	PodDisruptionBudgets        []PlaceholderSource `yaml:"pdb" json:"pdb,omitempty" validate:"omitempty"`
+	PodDisruptionBudgets        []PDBTemplateSource `yaml:"pdb" json:"pdb,omitempty" validate:"omitempty"`
 	PodSecurityPolicies         []PlaceholderSource `yaml:"podSecurityPolicies" json:"podSecurityPolicies,omitempty" validate:"omitempty"`
 	PriorityClasses             []PlaceholderSource `yaml:"priorityClasses" json:"priorityClasses,omitempty" validate:"omitempty"`
 	LimitRanges                 []PlaceholderSource `yaml:"limitRanges" json:"limitRanges,omitempty" validate:"omitempty"`
 	ResourceQuotas              []PlaceholderSource `yaml:"resourceQuotas" json:"resourceQuotas,omitempty" validate:"omitempty"`
 	RuntimeClasses              []PlaceholderSource `yaml:"runtimeClasses" json:"runtimeClasses,omitempty" validate:"omitempty"`
 	PriorityLevelConfigurations []PlaceholderSource `yaml:"priorityLevelConfigurations" json:"priorityLevelConfigurations,omitempty" validate:"omitempty"`
-	HorizontalPodAutoscalers    []PlaceholderSource `yaml:"hpa" json:"hpa,omitempty" validate:"omitempty"`
+	HorizontalPodAutoscalers    []HPATemplateSource `yaml:"hpa" json:"hpa,omitempty" validate:"omitempty"`
 	PodTemplates                []PlaceholderSource `yaml:"podTemplates" json:"podTemplates,omitempty" validate:"omitempty"`
 
 	// Storage
@@ -1144,6 +1438,8 @@ type HookTemplates struct {
 	StorageVolumes   []PlaceholderSource `yaml:"storageVolumes" json:"storageVolumes,omitempty" validate:"omitempty"`
 }
 
+// Placeholder for resources yet to be added to orkestra internal registry
+// pkg/orkestra-registry
 type PlaceholderSource struct{}
 
 // ── OperatorBoxConfig ──────────────────────────────────────────────────────────

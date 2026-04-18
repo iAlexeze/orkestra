@@ -9,6 +9,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 	batchv1 "k8s.io/api/batch/v1"
@@ -55,7 +56,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return fmt.Errorf("job.Create: invalid spec: %w", err)
 	}
 
-	namespace := resolveNamespace(owner, spec)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
 
 	_, err := kube.Clientset().BatchV1().Jobs(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -87,7 +88,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 
 // Delete deletes the Job if it exists.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedJobSpec) error {
-	namespace := resolveNamespace(owner, spec)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
 
 	propagation := metav1.DeletePropagationForeground
 	err := kube.Clientset().BatchV1().Jobs(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{
@@ -206,14 +207,4 @@ func validateSpec(spec ResolvedJobSpec) error {
 		return fmt.Errorf("missing required fields: %v", missing)
 	}
 	return nil
-}
-
-func resolveNamespace(owner domain.Object, spec ResolvedJobSpec) string {
-	if spec.Namespace != "" {
-		return spec.Namespace
-	}
-	if owner.GetNamespace() != "" {
-		return owner.GetNamespace()
-	}
-	return "default"
 }

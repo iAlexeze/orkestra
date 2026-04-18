@@ -447,12 +447,42 @@ type EnrichmentResult struct {
 	DisplayGroup string
 }
 
+// kindShorthands maps common abbreviations to their canonical registry keys.
+// Applied before built-in lookup so users can write e.g. "hpa" or "pdb".
+var kindShorthands = map[string]string{
+	"dep":  "deployment",
+	"sts":  "statefulset",
+	"ds":   "daemonset",
+	"rs":   "replicaset",
+	"cj":   "cronjob",
+	"ing":  "ingress",
+	"np":   "networkpolicy",
+	"hpa": "horizontalpodautoscaler",
+	"pdb": "poddisruptionbudget",
+	"cm":  "configmap",
+	"sa":  "serviceaccount",
+	"pvc": "persistentvolumeclaim",
+	"pv":  "persistentvolume",
+	"ns":  "namespace",
+	"crd": "customresourcedefinition",
+	"rb":  "rolebinding",
+	"crb": "clusterrolebinding",
+	"cr":  "clusterrole",
+	"sc":  "storageclass",
+	"ep":  "endpointslice",
+}
+
 // LookupBuiltIn looks up a Kind in the built-in registry.
-// Case-insensitive. Returns EnrichmentResult; check .Found before use.
+// Case-insensitive. Expands common shorthands (e.g. "hpa" → "horizontalpodautoscaler").
+// Returns EnrichmentResult; check .Found before use.
 func LookupBuiltIn(kind string) EnrichmentResult {
 	key := strings.ToLower(strings.TrimSpace(kind))
 	if key == "" {
 		return EnrichmentResult{}
+	}
+
+	if expanded, ok := kindShorthands[key]; ok {
+		key = expanded
 	}
 
 	b, ok := builtInRegistry[key]

@@ -235,16 +235,6 @@ func Resolve(src orktypes.IngressTemplateSource, ownerName string) ResolvedIngre
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-func resolveNamespace(owner domain.Object, spec ResolvedIngressSpec) string {
-    if spec.Namespace != "" {
-        return spec.Namespace
-    }
-    if owner.GetNamespace() != "" {
-        return owner.GetNamespace()
-    }
-    return "default"
-}
-
 func buildIngress(owner domain.Object, spec ResolvedIngressSpec, ns string) *networkingv1.Ingress {
     pathType := networkingv1.PathTypePrefix
     path := spec.Path
