@@ -6,6 +6,38 @@ import (
 	"github.com/orkspace/orkestra/pkg/utils"
 )
 
+// NamespaceRuleEntry holds the raw allowed/restricted namespace lists for one CRD.
+// Returned by NamespaceProtectionRuleMap so callers can build their own lookup structures.
+type NamespaceRuleEntry struct {
+	Allowed    []string
+	Restricted []string
+}
+
+// NamespaceProtectionRuleMap returns the allowed/restricted namespace lists for every
+// CRD that declares namespace rules. Key format is "plural.group" — matching the
+// lookup key used by the /namespace-protection handler.
+//
+// Returns nil when namespace protection is disabled.
+func (k *Katalog) NamespaceProtectionRuleMap() map[string]NamespaceRuleEntry {
+	if !k.IsNamespaceProtectionEnabled() {
+		return nil
+	}
+
+	out := make(map[string]NamespaceRuleEntry)
+	for _, crd := range k.enabledCRDs {
+		if crd.IsBuiltIn || !crd.HasNamespaceRules() {
+			continue
+		}
+		key := crd.APITypes.Plural + "." + crd.APITypes.Group
+		out[key] = NamespaceRuleEntry{
+			Allowed:    []string(crd.AllowedNamespaces),
+			Restricted: []string(crd.RestrictedNamespaces),
+		}
+	}
+
+	return out
+}
+
 //
 // NamespaceProtectionGVRs returns the list of GVRs for CRDs that declare
 // allowedNamespaces or restrictedNamespaces. Only these CRDs are intercepted
