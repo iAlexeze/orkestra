@@ -94,6 +94,27 @@ func (r *Resolver) WithItem(value interface{}, as string, index int) *Resolver {
 	}
 }
 
+// WithItemAndValue is the map-forEach variant of WithItem.
+// Used when the forEach field resolves to a map[string]interface{} instead of a list.
+//
+//	.item  / .<as> → the map key (string)
+//	.value          → the map value (object or string) — access nested fields as .value.replicas
+//	.index          → 0-based iteration order (keys sorted alphabetically)
+func (r *Resolver) WithItemAndValue(key interface{}, value interface{}, as string, index int) *Resolver {
+	newData := r.shallowCopy()
+	newData["item"] = key
+	newData["value"] = value
+	newData["index"] = index
+	if as != "" && as != "item" {
+		newData[as] = key
+	}
+	return &Resolver{
+		data:           newData,
+		ownerName:      r.ownerName,
+		ownerNamespace: r.ownerNamespace,
+	}
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // WithExternal — HTTP call result injection
 // ─────────────────────────────────────────────────────────────────────────────

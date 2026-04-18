@@ -274,7 +274,9 @@ Inside `GenericReconciler.Reconcile(ctx, key)`:
          │     .external.registry-check.status now available
          │
          ├── Step 4: expandForEach* for each resource type
-         │     if forEach declared: resolve list field → N copies with .item
+         │     if forEach declared: resolve list or map field → N copies
+         │       list field: .item = element, no .value
+         │       map field:  .item = key, .value = map value (sorted keys)
          │     if no forEach: pass through unchanged (fast path)
          │
          ├── Step 5: runResourceGroup(OnCreate, update=false)
@@ -450,11 +452,16 @@ Every subsequent reconcile:
 
 ## forEach expansion — how N deployments appear
 
+`forEach` works on both **list fields** and **map fields**.
+
+### List field (uniform config)
+
 ```yaml
 Katalog declaration:
   deployments:
     - name: "{{ .metadata.name }}-{{ .item }}"
       image: "{{ .spec.image }}"
+      replicas: "{{ .spec.defaultReplicas }}"
       forEach:
         field: spec.regions
         as: item
@@ -465,21 +472,67 @@ CR spec.regions: ["us-east-1", "eu-west-1", "ap-southeast-1"]
 ```go
 expandForEachDeployments(resolver, srcs):
   src.ForEach != nil
-  items = resolveListField(resolver.Data(), "spec.regions")
-        = ["us-east-1", "eu-west-1", "ap-southeast-1"]
+  items = resolveForEachItems(resolver.Data(), "spec.regions")
+        = [{key:"us-east-1"}, {key:"eu-west-1"}, {key:"ap-southeast-1"}]
 
-  for i, item in items:
-    itemResolver = resolver.WithItem(item, "item", i)
-    expanded.Name = itemResolver.Resolve("{{ .metadata.name }}-{{ .item }}")
+  for i, fi in items:
+    ir = resolver.WithItem(fi.key, "item", i)   // fi.value == nil → list path
+    expanded.Name = ir.Resolve("{{ .metadata.name }}-{{ .item }}")
                   = "my-app-us-east-1"
     append to result
 ```
 
 runDeployments receives 3 DeploymentTemplateSources:
-```json
-  {Name: "my-app-us-east-1", Image: "nginx:latest"}
-  {Name: "my-app-eu-west-1", Image: "nginx:latest"}
-  {Name: "my-app-ap-southeast-1", Image: "nginx:latest"}
+```
+  {Name: "my-app-us-east-1", Image: "nginx:latest", Replicas: "1"}
+  {Name: "my-app-eu-west-1", Image: "nginx:latest", Replicas: "1"}
+  {Name: "my-app-ap-southeast-1", Image: "nginx:latest", Replicas: "1"}
 ```
 
-3 Deployments created. All owned by the CR. All labelled orkestra-owner=my-app.
+### Map field (per-item config)
+
+```yaml
+Katalog declaration:
+  deployments:
+    - name: "{{ .metadata.name }}-{{ .item }}"
+      image: "{{ .spec.image }}"
+      replicas: "{{ or .value.replicas .spec.defaultReplicas }}"
+      port: "{{ or .value.port .spec.defaultPort }}"
+      forEach:
+        field: spec.regions
+        as: item
+```
+
+CR spec.regions:
+  us-east-1: {replicas: 3, port: 8080}
+  eu-west-1:  {replicas: 1, port: 8081}
+
+```go
+expandForEachDeployments(resolver, srcs):
+  src.ForEach != nil
+  items = resolveForEachItems(resolver.Data(), "spec.regions")
+        = [
+            {key:"eu-west-1",  value:{replicas:1, port:8081}},  // sorted
+            {key:"us-east-1",  value:{replicas:3, port:8080}},
+          ]
+
+  for i, fi in items:
+    ir = resolver.WithItemAndValue(fi.key, fi.value, "item", i)
+    // .item = "eu-west-1", .value = {replicas:1, port:8081}
+    expanded.Name     = ir.Resolve("{{ .metadata.name }}-{{ .item }}")
+                      = "my-app-eu-west-1"
+    expanded.Replicas = ir.Resolve("{{ or .value.replicas .spec.defaultReplicas }}")
+                      = "1"
+    expanded.Port     = ir.Resolve("{{ or .value.port .spec.defaultPort }}")
+                      = "8081"
+    append to result
+```
+
+runDeployments receives 2 DeploymentTemplateSources:
+```
+  {Name: "my-app-eu-west-1", Replicas: "1", Port: "8081"}
+  {Name: "my-app-us-east-1", Replicas: "3", Port: "8080"}
+```
+
+Both Deployments owned by the CR, labelled orkestra-owner=my-app.
+Map keys iterate in sorted order — deterministic across reconciles.

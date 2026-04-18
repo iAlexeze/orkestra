@@ -37,6 +37,8 @@
 package reconciler
 
 import (
+	"sort"
+
 	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
@@ -61,23 +63,23 @@ func expandForEachDeployments(
 			result = append(result, src)
 			continue
 		}
-		items := resolveListField(resolver.Data(), src.ForEach.Field)
-		for i, item := range items {
-			itemResolver := resolver.WithItem(item, src.ForEach.As, i)
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
 			expanded := src
 			expanded.ForEach = nil // prevent re-expansion
 			// Resolve all template expressions with item in context
-			expanded.Name, _ = itemResolver.Resolve(src.Name)
-			expanded.Image, _ = itemResolver.Resolve(src.Image)
-			expanded.Replicas, _ = itemResolver.Resolve(src.Replicas)
-			expanded.Namespace, _ = itemResolver.Resolve(src.Namespace)
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Image, _ = ir.Resolve(src.Image)
+			expanded.Replicas, _ = ir.Resolve(src.Replicas)
+			expanded.Port, _ = ir.Resolve(src.Port)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
 
 			// Resolve Env map values
 			if len(src.Env) > 0 {
 				expanded.Env = make(map[string]orktypes.EnvVarSource, len(src.Env))
 				for k, v := range src.Env {
-					resolvedVal, _ := itemResolver.Resolve(v.Value)
-					expanded.Env[k] = orktypes.EnvVarSource(orktypes.EnvVarSource{Value: resolvedVal})
+					resolvedVal, _ := ir.Resolve(v.Value)
+					expanded.Env[k] = orktypes.EnvVarSource{Value: resolvedVal}
 				}
 			}
 
@@ -85,7 +87,7 @@ func expandForEachDeployments(
 			if len(src.Labels) > 0 {
 				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
 				for _, l := range src.Labels {
-					resolvedVal, _ := itemResolver.Resolve(l.Value)
+					resolvedVal, _ := ir.Resolve(l.Value)
 					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
 						Key:   l.Key,
 						Value: resolvedVal,
@@ -97,7 +99,7 @@ func expandForEachDeployments(
 			if len(src.Annotations) > 0 {
 				expanded.Annotations = make([]orktypes.ResourceLabel, 0, len(src.Annotations))
 				for _, a := range src.Annotations {
-					resolvedVal, _ := itemResolver.Resolve(a.Value)
+					resolvedVal, _ := ir.Resolve(a.Value)
 					expanded.Annotations = append(expanded.Annotations, orktypes.ResourceLabel{
 						Key:   a.Key,
 						Value: resolvedVal,
@@ -128,23 +130,32 @@ func expandForEachServices(
 			result = append(result, src)
 			continue
 		}
-		for i, item := range resolveListField(resolver.Data(), src.ForEach.Field) {
-			itemResolver := resolver.WithItem(item, src.ForEach.As, i)
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
 			expanded := src
 			expanded.ForEach = nil
-			expanded.Name, _ = itemResolver.Resolve(src.Name)
-			expanded.Namespace, _ = itemResolver.Resolve(src.Namespace)
-			expanded.Port, _ = itemResolver.Resolve(src.Port)
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
+			expanded.Port, _ = ir.Resolve(src.Port)
+			expanded.TargetPort, _ = ir.Resolve(src.TargetPort)
 
-			// Resolve labels
 			if len(src.Labels) > 0 {
 				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
 				for _, l := range src.Labels {
-					resolvedVal, _ := itemResolver.Resolve(l.Value)
+					resolvedVal, _ := ir.Resolve(l.Value)
 					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
 						Key:   l.Key,
 						Value: resolvedVal,
 					})
+				}
+			}
+
+			// Resolve selector values with per-item context so {{ .item }} works.
+			if len(src.Selector) > 0 {
+				expanded.Selector = make(orktypes.SelectorMap, len(src.Selector))
+				for k, v := range src.Selector {
+					resolvedVal, _ := ir.Resolve(v)
+					expanded.Selector[k] = resolvedVal
 				}
 			}
 
@@ -171,18 +182,17 @@ func expandForEachSecrets(
 			result = append(result, src)
 			continue
 		}
-		for i, item := range resolveListField(resolver.Data(), src.ForEach.Field) {
-			itemResolver := resolver.WithItem(item, src.ForEach.As, i)
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
 			expanded := src
 			expanded.ForEach = nil
-			expanded.Name, _ = itemResolver.Resolve(src.Name)
-			expanded.Namespace, _ = itemResolver.Resolve(src.Namespace)
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
 
-			// Resolve labels
 			if len(src.Labels) > 0 {
 				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
 				for _, l := range src.Labels {
-					resolvedVal, _ := itemResolver.Resolve(l.Value)
+					resolvedVal, _ := ir.Resolve(l.Value)
 					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
 						Key:   l.Key,
 						Value: resolvedVal,
@@ -213,18 +223,17 @@ func expandForEachConfigMaps(
 			result = append(result, src)
 			continue
 		}
-		for i, item := range resolveListField(resolver.Data(), src.ForEach.Field) {
-			itemResolver := resolver.WithItem(item, src.ForEach.As, i)
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
 			expanded := src
 			expanded.ForEach = nil
-			expanded.Name, _ = itemResolver.Resolve(src.Name)
-			expanded.Namespace, _ = itemResolver.Resolve(src.Namespace)
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
 
-			// Resolve labels
 			if len(src.Labels) > 0 {
 				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
 				for _, l := range src.Labels {
-					resolvedVal, _ := itemResolver.Resolve(l.Value)
+					resolvedVal, _ := ir.Resolve(l.Value)
 					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
 						Key:   l.Key,
 						Value: resolvedVal,
@@ -255,19 +264,18 @@ func expandForEachJobs(
 			result = append(result, src)
 			continue
 		}
-		for i, item := range resolveListField(resolver.Data(), src.ForEach.Field) {
-			itemResolver := resolver.WithItem(item, src.ForEach.As, i)
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
 			expanded := src
 			expanded.ForEach = nil
-			expanded.Name, _ = itemResolver.Resolve(src.Name)
-			expanded.Image, _ = itemResolver.Resolve(src.Image)
-			expanded.Namespace, _ = itemResolver.Resolve(src.Namespace)
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Image, _ = ir.Resolve(src.Image)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
 
-			// Resolve labels
 			if len(src.Labels) > 0 {
 				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
 				for _, l := range src.Labels {
-					resolvedVal, _ := itemResolver.Resolve(l.Value)
+					resolvedVal, _ := ir.Resolve(l.Value)
 					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
 						Key:   l.Key,
 						Value: resolvedVal,
@@ -298,19 +306,18 @@ func expandForEachCronJobs(
 			result = append(result, src)
 			continue
 		}
-		for i, item := range resolveListField(resolver.Data(), src.ForEach.Field) {
-			itemResolver := resolver.WithItem(item, src.ForEach.As, i)
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
 			expanded := src
 			expanded.ForEach = nil
-			expanded.Name, _ = itemResolver.Resolve(src.Name)
-			expanded.Schedule, _ = itemResolver.Resolve(src.Schedule)
-			expanded.Namespace, _ = itemResolver.Resolve(src.Namespace)
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Schedule, _ = ir.Resolve(src.Schedule)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
 
-			// Resolve labels
 			if len(src.Labels) > 0 {
 				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
 				for _, l := range src.Labels {
-					resolvedVal, _ := itemResolver.Resolve(l.Value)
+					resolvedVal, _ := ir.Resolve(l.Value)
 					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
 						Key:   l.Key,
 						Value: resolvedVal,
@@ -341,18 +348,17 @@ func expandForEachServiceAccounts(
 			result = append(result, src)
 			continue
 		}
-		for i, item := range resolveListField(resolver.Data(), src.ForEach.Field) {
-			itemResolver := resolver.WithItem(item, src.ForEach.As, i)
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
 			expanded := src
 			expanded.ForEach = nil
-			expanded.Name, _ = itemResolver.Resolve(src.Name)
-			expanded.Namespace, _ = itemResolver.Resolve(src.Namespace)
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
 
-			// Resolve labels
 			if len(src.Labels) > 0 {
 				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
 				for _, l := range src.Labels {
-					resolvedVal, _ := itemResolver.Resolve(l.Value)
+					resolvedVal, _ := ir.Resolve(l.Value)
 					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
 						Key:   l.Key,
 						Value: resolvedVal,
@@ -370,29 +376,83 @@ func expandForEachServiceAccounts(
 // Internal helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-// resolveListField navigates a dot-notation path and returns the list value.
-// Returns nil when the field is absent or not a list.
-func resolveListField(data map[string]interface{}, path string) []interface{} {
-	val := orktypes.NavigateDotPath(data, path)
-	_ = val // NavigateDotPath returns string — need raw value for lists
+// forEachItem is one iteration step produced by resolveForEachItems.
+// For list fields: key = element value, value = nil.
+// For map fields:  key = map key (string), value = map value (object or string).
+type forEachItem struct {
+	key   interface{}
+	value interface{}
+}
 
-	// Navigate the path to get the raw interface{} value
+// resolveForEachItems navigates a dot-notation path and returns iteration items.
+//
+// List field → one item per element; item.value is nil.
+//
+//	spec.regions: [us-east-1, eu-west-1]
+//	→ [{key:"us-east-1"}, {key:"eu-west-1"}]
+//
+// Map field → one item per key (sorted); item.value is the map value.
+//
+//	spec.regions: {us-east-1: {replicas: 3}, eu-west-1: {replicas: 1}}
+//	→ [{key:"eu-west-1", value:{replicas:1}}, {key:"us-east-1", value:{replicas:3}}]
+//
+// Template access for map items:
+//
+//	{{ .item }}            → map key  ("us-east-1")
+//	{{ .<as> }}            → same as .item
+//	{{ .value.replicas }}  → nested field in the map value
+func resolveForEachItems(data map[string]interface{}, path string) []forEachItem {
 	var current interface{} = data
 	for _, part := range splitFieldPath(path) {
 		m, ok := current.(map[string]interface{})
 		if !ok {
 			return nil
 		}
-		current, ok = m[part]
-		if !ok {
-			return nil
-		}
+		current = m[part]
 	}
 
 	if list, ok := current.([]interface{}); ok {
-		return list
+		items := make([]forEachItem, len(list))
+		for i, v := range list {
+			items[i] = forEachItem{key: v}
+		}
+		return items
 	}
+
+	if m, ok := current.(map[string]interface{}); ok {
+		keys := make([]string, 0, len(m))
+		for k := range m {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		items := make([]forEachItem, len(keys))
+		for i, k := range keys {
+			items[i] = forEachItem{key: k, value: m[k]}
+		}
+		return items
+	}
+
 	return nil
+}
+
+// itemResolver returns an item-scoped resolver for one forEach iteration step.
+// For list items (fi.value == nil) only .item is injected.
+// For map items (fi.value != nil) both .item and .value are injected.
+func itemResolver(base *orktmpl.Resolver, fi forEachItem, as string, index int) *orktmpl.Resolver {
+	if fi.value != nil {
+		return base.WithItemAndValue(fi.key, fi.value, as, index)
+	}
+	return base.WithItem(fi.key, as, index)
+}
+
+// resolveListField is kept for backward compatibility with any callers outside this file.
+func resolveListField(data map[string]interface{}, path string) []interface{} {
+	items := resolveForEachItems(data, path)
+	result := make([]interface{}, len(items))
+	for i, fi := range items {
+		result[i] = fi.key
+	}
+	return result
 }
 
 // splitFieldPath splits a dot-notation path into segments.

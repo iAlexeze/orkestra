@@ -85,7 +85,7 @@ expandForEach*(resolver, t.<Resource>)   →   []TypedTemplateSource
 runXxx(ctx, kube, resolver, owner, srcs, update, guard)
 ```
 
-The `expandForEach*` call happens **before** the runner is invoked. Every runner receives an already-expanded slice and does not need to know about `forEach`.
+The `expandForEach*` call happens **before** the runner is invoked. Every runner receives an already-expanded slice and does not need to know about `forEach`. The field can be a list (`.item` = element) or a map (`.item` = key, `.value` = map value).
 
 ```
 runResourceGroup()

@@ -1,0 +1,239 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/tag: orkestra-internal
+  name: orkestra
+  namespace: orkestra-system
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/tag: orkestra-internal
+  name: orkestra-cc
+  namespace: orkestra-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/tag: orkestra-internal
+  name: orkestra
+rules:
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - create
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - demo.orkestra.io
+  resources:
+  - websites
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - demo.orkestra.io
+  resources:
+  - websites/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - advanced.orkestra.io
+  resources:
+  - multiregionapps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - advanced.orkestra.io
+  resources:
+  - multiregionapps/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/name: orkestra
+    app.kubernetes.io/tag: orkestra-internal
+  name: orkestra
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: orkestra
+subjects:
+- kind: ServiceAccount
+  name: orkestra
+  namespace: orkestra-system
+
+---
+apiVersion: v1
+data:
+  katalog.yaml: |+
+    apiVersion: orkestra.konductor.io/v1Alpha
+    kind: Katalog
+    metadata:
+      name: multi-region-demo
+      author: orkspace
+      version: 0.1.0
+      description: >
+        This Katalog demonstrates Orkestra’s declarative forEach pattern by deploying
+        the same application into multiple regions without writing any Go code.
+        Instead of manually looping over spec.regions inside a reconcile function,
+        the operatorBox automatically expands the Deployment template once per region.
+    spec:
+      crds:
+        website:
+          apiTypes:
+            group: demo.orkestra.io
+            version: v1alpha1
+            kind: Website
+            plural: websites
+          allowedNamespaces:
+            - default
+
+          operatorBox:
+            status:
+              fields:
+                - path: phase
+                  value: "Running"
+                - path: observedReplicas
+                  value: "{{ .spec.replicas }}"
+                - path: endpoint
+                  value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+
+            onCreate:
+              secrets:
+                - name: "{{ .metadata.name }}"
+                  once: true
+                  rotateAfter: 90d
+                  data:
+                    apiKey: "{{ randomBase64 32 }}"
+              deployments:
+                - name: "{{ .metadata.name }}"
+                  image: "{{ .spec.image }}"
+                  replicas: "{{ .spec.replicas }}"
+                  port: "{{ .spec.port }}"
+                  reconcile: true
+                  env:
+                    API_KEY:
+                      secretKeyRef:
+                        name: "{{ .metadata.name }}"
+                        key: apiKey
+
+        multi-region-app:
+          apiTypes:
+            group: advanced.orkestra.io
+            version: v1alpha1
+            kind: MultiRegionApp
+            plural: multiregionapps
+          workers: 2
+          resync: 30s
+          operatorBox:
+            default: true
+            onReconcile:
+
+              # Deployments — one per region
+              deployments:
+                - name: "{{ .metadata.name }}-{{ .item }}"
+                  namespace: "{{ .metadata.namespace }}"
+                  image: "{{ .spec.image }}"
+                  replicas: "{{ .spec.replicasPerRegion }}"
+                  env:
+                    REGION:
+                      value: "{{ .item }}"
+                  labels:
+                    - key: app
+                      value: "{{ .metadata.name }}-{{ .item }}"
+                  forEach:
+                    field: spec.regions
+                    as: item
+
+              # Services — one per region
+              services:
+                - name: "{{ .metadata.name }}-{{ .item }}-svc"
+                  namespace: "{{ .metadata.namespace }}"
+                  type: ClusterIP
+                  port: 5000
+                  targetPort: 5000
+                  labels:
+                    - key: app
+                      value: "{{ .metadata.name }}-{{ .item }}"
+                  forEach:
+                    field: spec.regions
+                    as: item
+
+kind: ConfigMap
+metadata:
+  name: orkestra-katalog
+  namespace: orkestra-system

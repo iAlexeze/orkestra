@@ -94,7 +94,7 @@ informer cache → DeepCopy → normalize → mutation → validation
     → OnReconcile hook (Go) or runTemplateReconcile (declarative)
         → cross-CRD observation  (.cross.*)
         → external HTTP calls    (.external.*)
-        → forEach expansion
+        → forEach expansion      (list field: .item=element | map field: .item=key, .value=value)
         → onCreate resource groups
         → onReconcile resource groups
         → provider dispatch

@@ -1,33 +1,79 @@
-# Changelog
+# **Changelog**
 
-## [Unreleased]
+## **Added — forEach Map Capability**
+Orkestra now supports **map‑based iteration** in `forEach` blocks, allowing CR authors to express **per‑key configuration** instead of being limited to list iteration.
 
-### Added
-- Declarative RBAC generator now supports all operator capabilities, including:
-  - Patching and updating CRDs
-  - Creating and managing admission and conversion webhooks
-  - Managing all resources declared in the Katalog (namespaced and cluster‑scoped)
-  - Supporting mixed‑scope and multi‑CRD operators
-- Bundle generator (`ork generate bundle`) now produces:
-  - ServiceAccounts (runtime and control center)
-  - ClusterRoles and ClusterRoleBindings derived from the Katalog
-  - Katalog ConfigMap
-  - Namespace‑aware manifests for GitOps workflows
+`spec.regions` may now be either:
 
-### Changed
-- RBAC generation is now fully declarative and derived exclusively from the Katalog.
-- Helm chart has been refactored to remove all static RBAC, ServiceAccounts, and ConfigMaps.
-- Chart now deploys only runtime and control center workloads; all identity and permission artifacts must be generated via the Ork CLI.
-- Updated values and chart structure to reflect the new model (`runtime.serviceAccount`, `controlCenter.serviceAccount`, `runtime.katalog.existingConfigMap`, etc.).
-- README rewritten to document the new workflow, including:
-  - RBAC and bundle generation
-  - GitOps‑first installation model
-  - Removal of auto‑apply RBAC
-  - Explicit referencing of generated resources in Helm values
+### **1. A list (uniform configuration)**  
+```yaml
+spec:
+  regions:
+    - us-east-1
+    - eu-west-1
+    - ap-southeast-1
+```
 
-### Security
-- Eliminated all static RBAC from the chart to prevent over‑permissioning.
-- Removed runtime RBAC mutation paths; Orkestra no longer creates or modifies cluster‑level RBAC.
-- RBAC is now explicit, reviewable, and committed to Git before being applied.
-- Establishes a clear trust boundary: cluster administrators own RBAC; Orkestra only reconciles declared resources.
-- Ensures least‑privilege by construction through Katalog‑derived permissions.
+### **2. A map (per‑region configuration)**  
+```yaml
+spec:
+  regions:
+    us-east-1:
+      replicas: 3
+      port: 8080
+    eu-west-1:
+      replicas: 1
+```
+
+Inside the `forEach` block:
+
+- `.item` → region name  
+- `.value` → region‑specific config map  
+
+This enables patterns such as:
+
+```yaml
+replicas: "{{ or .value.replicas .spec.defaultReplicas }}"
+port:     "{{ default .value.port .spec.defaultPort }}"
+```
+
+This enhancement unlocks **per‑region overrides**, **heterogeneous fan‑out**, and **fine‑grained multi‑resource expansion** without writing Go code.
+
+---
+
+## **Improved — Service Generation in forEach Blocks**
+Fixed an issue where Services generated inside a `forEach` block did not correctly apply labels/selectors when iterating over multiple regions.
+
+### **Fixes include:**
+
+- Correct propagation of `.item` into `labels:` and `selector:`  
+- Ensuring Services select only the Pods for their corresponding region  
+- Eliminating cross‑region collisions in multi‑Deployment fan‑out  
+- Ensuring stable naming and deterministic reconciliation  
+
+Example of the corrected pattern:
+
+```yaml
+services:
+  - name: "{{ .metadata.name }}-{{ .item }}-svc"
+    selector:
+      app: "{{ .metadata.name }}-{{ .item }}"
+    forEach:
+      field: spec.regions
+      as: item
+```
+
+This ensures each Service is tightly bound to its region‑specific Deployment.
+
+---
+
+## **Enhanced — Multi‑Region Demo Katalog**
+The multi‑region demo now showcases:
+
+- **map‑aware forEach**  
+- **per‑region replicas and ports**  
+- **region‑scoped Deployments and Services**  
+- **cleaner label/selector wiring**  
+- **default fallbacks via `or` and `default` notes**  
+
+This makes the example a canonical reference for advanced declarative fan‑out patterns.

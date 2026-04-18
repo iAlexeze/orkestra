@@ -163,8 +163,9 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 // This function assembles the spec and applies defaults.
 func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServiceSpec {
 	spec := ResolvedServiceSpec{
-		Name:   src.Name,
-		Labels: make(map[string]string),
+		Name:     src.Name,
+		Labels:   make(map[string]string),
+		Selector: make(map[string]string),
 	}
 
 	if spec.Name == "" {
@@ -197,6 +198,10 @@ func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServi
 
 	for _, l := range src.Labels {
 		spec.Labels[l.Key] = l.Value
+	}
+
+	for k, v := range src.Selector {
+		spec.Selector[k] = v
 	}
 
 	// System labels
