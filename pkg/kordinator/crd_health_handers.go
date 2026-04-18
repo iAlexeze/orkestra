@@ -598,7 +598,7 @@ func BuildKatalogHandler(
 			TotalEnabled:       len(kat.Enabled()),
 			OrkReady:           o.IsOrkReady(),
 			DeletionProtection: deletionProtection,
-			Healthy:            o.IsKatalogReady(),
+			Healthy:            status == http.StatusOK, // workaround. TODO: standard from crd_health
 			Status:             status,
 			DegradedReason:     degradedReason,
 			StatusCounts:       statusCounts,
