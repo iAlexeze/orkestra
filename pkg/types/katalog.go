@@ -121,15 +121,6 @@ type KatalogSpec struct {
 	// unless overridden at the CRD level.
 	Finalizers []string `yaml:"finalizers,omitempty"`
 
-	// RestrictedNamespaces — deny-list applied to every CRD in this Katalog.
-	// Merged additively with per-CRD restrictedNamespaces — more specific levels
-	// add to, not replace, broader levels.
-	RestrictedNamespaces RestrictedNamespaces `yaml:"restrictedNamespaces,omitempty" json:"restrictedNamespaces,omitempty"`
-
-	// AllowedNamespaces — allow-list applied to every CRD in this Katalog.
-	// Merged additively with per-CRD allowedNamespaces.
-	AllowedNamespaces AllowedNamespaces `yaml:"allowedNamespaces,omitempty" json:"allowedNamespaces,omitempty"`
-
 	// CRDs — the CRD entries managed by this Orkestra instance.
 	// Map key is the CRD name; Name field is injected from the key during loading.
 	CRDs map[string]CRDEntry `yaml:"crds"`

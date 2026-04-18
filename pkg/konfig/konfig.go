@@ -61,6 +61,9 @@ func Init(filenames ...string) (*Konfig, error) {
 			s.Webhooks.TLSKey = GetStrEnv("TLS_KEY", "")
 			s.Webhooks.Controller.Enabled = GetBoolEnv("ENABLE_WEBHOOK_CONTROLLER", true)
 			s.Webhooks.Controller.SyncInterval = GetDurEnvSeconds("WEBHOOK_CONTROLLER_SYNC_INTERVAL", 30)
+			s.NamespaceProtection.Enabled = GetBoolEnv("ENABLE_NAMESPACE_PROTECTION", false)
+			s.NamespaceProtection.FailurePolicy = GetStrEnv("NAMESPACE_PROTECTION_FAILURE_POLICY", "Fail")
+			s.NamespaceProtection.ServiceName = svcName
 			return s
 		}(),
 

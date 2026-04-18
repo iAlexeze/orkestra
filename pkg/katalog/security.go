@@ -31,9 +31,16 @@ func (k *Katalog) securityEnvDefaults() interface {
 	ConversionWindowVal() int
 	WebhookControllerEnabled() bool
 	WebhookControllerSyncInterval() time.Duration
+	NamespaceProtectionEnabled() bool
+	NamespaceProtectionSvcName() string
+	NamespaceProtectionPolicy() string
 } {
 	return &envSecurityReader{k: k}
 }
+
+const (
+	ork = "orkestra"
+)
 
 // envSecurityReader adapts *konfig.SecurityConfig through a small interface
 // so that security.go does not import konfig directly.
@@ -47,7 +54,7 @@ func (r *envSecurityReader) DeletionProtectionEnabled() bool {
 }
 func (r *envSecurityReader) DeletionProtectionSvcName() string {
 	if r.k.konfig == nil {
-		return "orkestra"
+		return ork
 	}
 	return r.k.konfig.Security().DeletionProtection.ServiceName
 }
@@ -71,7 +78,7 @@ func (r *envSecurityReader) ConversionEnabled() bool {
 }
 func (r *envSecurityReader) WebhooksSvcName() string {
 	if r.k.konfig == nil {
-		return "orkestra"
+		return ork
 	}
 	return r.k.konfig.Security().Webhooks.ServiceName
 }
@@ -113,6 +120,24 @@ func (r *envSecurityReader) WebhookControllerSyncInterval() time.Duration {
 	}
 	return r.k.konfig.Security().Webhooks.Controller.SyncInterval
 }
+func (r *envSecurityReader) NamespaceProtectionEnabled() bool {
+	if r.k.konfig == nil {
+		return false
+	}
+	return r.k.konfig.Security().NamespaceProtection.Enabled
+}
+func (r *envSecurityReader) NamespaceProtectionPolicy() string {
+	if r.k.konfig == nil {
+		return "Fail"
+	}
+	return r.k.konfig.Security().NamespaceProtection.FailurePolicy
+}
+func (r *envSecurityReader) NamespaceProtectionSvcName() string {
+	if r.k.konfig == nil {
+		return ork
+	}
+	return r.k.konfig.Security().NamespaceProtection.ServiceName
+}
 
 //
 
@@ -146,6 +171,38 @@ func (k *Katalog) DeletionProtectionFailurePolicy() string {
 		return k.Security.DeletionProtection.FailurePolicy
 	}
 	return k.securityEnvDefaults().DeletionProtectionPolicy()
+}
+
+// ── Namespace protection ───────────────────────────────────────────────────────
+
+// IsNamespaceProtectionEnabled reports whether namespace protection is active.
+//
+// Precedence:
+//
+//   YAML security.namespaceProtection block present → use YAML value (default-on when block declared)
+//   YAML block absent                               → fall back to ENABLE_NAMESPACE_PROTECTION env
+func (k *Katalog) IsNamespaceProtectionEnabled() bool {
+    if k.Security.NamespaceProtection != nil {
+        // YAML declared the block — apply its enabled semantics.
+        return k.Security.IsNamespaceProtectionEnabled()
+    }
+    return k.securityEnvDefaults().NamespaceProtectionEnabled()
+}
+
+// NamespaceProtectionServiceName returns the effective service name for namespace protection.
+// YAML value takes precedence over ENV.
+func (k *Katalog) NamespaceProtectionServiceName() string {
+    env := k.securityEnvDefaults()
+    return k.Security.NamespaceProtectionServiceName(env.NamespaceProtectionSvcName())
+}
+
+// NamespaceProtectionFailurePolicy returns the effective failure policy string.
+// YAML value takes precedence over ENV.
+func (k *Katalog) NamespaceProtectionFailurePolicy() string {
+    if k.Security.NamespaceProtection != nil && k.Security.NamespaceProtection.FailurePolicy != "" {
+        return k.Security.NamespaceProtection.FailurePolicy
+    }
+    return k.securityEnvDefaults().NamespaceProtectionPolicy()
 }
 
 // ── Admission webhooks ────────────────────────────────────────────────────────

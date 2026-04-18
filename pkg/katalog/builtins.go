@@ -450,13 +450,13 @@ type EnrichmentResult struct {
 // kindShorthands maps common abbreviations to their canonical registry keys.
 // Applied before built-in lookup so users can write e.g. "hpa" or "pdb".
 var kindShorthands = map[string]string{
-	"dep":  "deployment",
-	"sts":  "statefulset",
-	"ds":   "daemonset",
-	"rs":   "replicaset",
-	"cj":   "cronjob",
-	"ing":  "ingress",
-	"np":   "networkpolicy",
+	"dep": "deployment",
+	"sts": "statefulset",
+	"ds":  "daemonset",
+	"rs":  "replicaset",
+	"cj":  "cronjob",
+	"ing": "ingress",
+	"np":  "networkpolicy",
 	"hpa": "horizontalpodautoscaler",
 	"pdb": "poddisruptionbudget",
 	"cm":  "configmap",

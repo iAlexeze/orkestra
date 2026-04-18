@@ -87,6 +87,23 @@ type SecurityConfig struct {
 		// ConversionWindow is the rolling window size for latency/throughput stats.
 		ConversionWindow int
 	}
+
+	// NamespaceProtection controls the optional validating webhook that prevents
+	// Orkestra-managed CRs from being created or updated in forbidden namespaces.
+	//
+	// This is an admission-time safeguard only. If disabled, namespace rules are
+	// not enforced at apply time. If enabled, the webhook blocks CRs whose target
+	// namespace violates the CRD’s declared allowedNamespaces or restrictedNamespaces.
+	//
+	// The webhook is managed by the WebhookController and will be recreated if
+	// deleted, ensuring continuous enforcement when enabled.
+	//
+	// Precedence: Katalog YAML > SecurityConfig (ENV) > hard default.
+	NamespaceProtection struct {
+		Enabled       bool
+		FailurePolicy string
+		ServiceName   string
+	}
 }
 
 // NotificationConfig is the unified notification configuration populated from
