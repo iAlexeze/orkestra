@@ -332,6 +332,158 @@ func expandForEachCronJobs(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Ingress expansion
+// ─────────────────────────────────────────────────────────────────────────────
+
+func expandForEachIngresses(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.IngressTemplateSource,
+) []orktypes.IngressTemplateSource {
+	if !anyHasForEach(len(srcs), func(i int) *orktypes.ForEachSpec { return srcs[i].ForEach }) {
+		return srcs
+	}
+	var result []orktypes.IngressTemplateSource
+	for _, src := range srcs {
+		if src.ForEach == nil {
+			result = append(result, src)
+			continue
+		}
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
+			expanded := src
+			expanded.ForEach = nil
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
+			expanded.Host, _ = ir.Resolve(src.Host)
+			expanded.ServiceName, _ = ir.Resolve(src.ServiceName)
+			expanded.ServicePort, _ = ir.Resolve(src.ServicePort)
+			expanded.Path, _ = ir.Resolve(src.Path)
+			expanded.IngressClass, _ = ir.Resolve(src.IngressClass)
+
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := ir.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{Key: l.Key, Value: resolvedVal})
+				}
+			}
+			if len(src.Annotations) > 0 {
+				expanded.Annotations = make([]orktypes.ResourceLabel, 0, len(src.Annotations))
+				for _, a := range src.Annotations {
+					resolvedVal, _ := ir.Resolve(a.Value)
+					expanded.Annotations = append(expanded.Annotations, orktypes.ResourceLabel{Key: a.Key, Value: resolvedVal})
+				}
+			}
+
+			if src.TLS != nil {
+				resolvedTLS := *src.TLS
+				resolvedTLS.SecretName, _ = ir.Resolve(src.TLS.SecretName)
+				if len(src.TLS.Hosts) > 0 {
+					resolvedTLS.Hosts = make([]string, 0, len(src.TLS.Hosts))
+					for _, h := range src.TLS.Hosts {
+						rv, _ := ir.Resolve(h)
+						resolvedTLS.Hosts = append(resolvedTLS.Hosts, rv)
+					}
+				}
+				expanded.TLS = &resolvedTLS
+			}
+
+			result = append(result, expanded)
+		}
+	}
+	return result
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HPA expansion
+// ─────────────────────────────────────────────────────────────────────────────
+
+func expandForEachHPAs(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.HPATemplateSource,
+) []orktypes.HPATemplateSource {
+	if !anyHasForEach(len(srcs), func(i int) *orktypes.ForEachSpec { return srcs[i].ForEach }) {
+		return srcs
+	}
+	var result []orktypes.HPATemplateSource
+	for _, src := range srcs {
+		if src.ForEach == nil {
+			result = append(result, src)
+			continue
+		}
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
+			expanded := src
+			expanded.ForEach = nil
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
+			expanded.DeploymentRef, _ = ir.Resolve(src.DeploymentRef)
+			expanded.MinReplicas, _ = ir.Resolve(src.MinReplicas)
+			expanded.MaxReplicas, _ = ir.Resolve(src.MaxReplicas)
+			expanded.TargetCPUUtilizationPercentage, _ = ir.Resolve(src.TargetCPUUtilizationPercentage)
+
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := ir.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{Key: l.Key, Value: resolvedVal})
+				}
+			}
+			result = append(result, expanded)
+		}
+	}
+	return result
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PDB expansion
+// ─────────────────────────────────────────────────────────────────────────────
+
+func expandForEachPDBs(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.PDBTemplateSource,
+) []orktypes.PDBTemplateSource {
+	if !anyHasForEach(len(srcs), func(i int) *orktypes.ForEachSpec { return srcs[i].ForEach }) {
+		return srcs
+	}
+	var result []orktypes.PDBTemplateSource
+	for _, src := range srcs {
+		if src.ForEach == nil {
+			result = append(result, src)
+			continue
+		}
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
+			expanded := src
+			expanded.ForEach = nil
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
+			expanded.MinAvailable, _ = ir.Resolve(src.MinAvailable)
+			expanded.MaxUnavailable, _ = ir.Resolve(src.MaxUnavailable)
+
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := ir.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{Key: l.Key, Value: resolvedVal})
+				}
+			}
+
+			if len(src.Selector) > 0 {
+				expanded.Selector = make(orktypes.SelectorMap, len(src.Selector))
+				for k, v := range src.Selector {
+					resolvedVal, _ := ir.Resolve(v)
+					expanded.Selector[k] = resolvedVal
+				}
+			}
+
+			result = append(result, expanded)
+		}
+	}
+	return result
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ServiceAccount expansion
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -363,6 +515,131 @@ func expandForEachServiceAccounts(
 						Key:   l.Key,
 						Value: resolvedVal,
 					})
+				}
+			}
+
+			result = append(result, expanded)
+		}
+	}
+	return result
+}
+
+func expandForEachStatefulSets(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.StatefulSetTemplateSource,
+) []orktypes.StatefulSetTemplateSource {
+	if !anyHasForEach(len(srcs), func(i int) *orktypes.ForEachSpec { return srcs[i].ForEach }) {
+		return srcs
+	}
+	var result []orktypes.StatefulSetTemplateSource
+	for _, src := range srcs {
+		if src.ForEach == nil {
+			result = append(result, src)
+			continue
+		}
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
+			expanded := src
+			expanded.ForEach = nil
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
+			expanded.Image, _ = ir.Resolve(src.Image)
+			expanded.Tag, _ = ir.Resolve(src.Tag)
+			expanded.Replicas, _ = ir.Resolve(src.Replicas)
+			expanded.Port, _ = ir.Resolve(src.Port)
+			expanded.ServiceName, _ = ir.Resolve(src.ServiceName)
+			expanded.StorageClass, _ = ir.Resolve(src.StorageClass)
+			expanded.StorageSize, _ = ir.Resolve(src.StorageSize)
+			expanded.MountPath, _ = ir.Resolve(src.MountPath)
+
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := ir.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{Key: l.Key, Value: resolvedVal})
+				}
+			}
+			if len(src.Annotations) > 0 {
+				expanded.Annotations = make([]orktypes.ResourceLabel, 0, len(src.Annotations))
+				for _, a := range src.Annotations {
+					resolvedVal, _ := ir.Resolve(a.Value)
+					expanded.Annotations = append(expanded.Annotations, orktypes.ResourceLabel{Key: a.Key, Value: resolvedVal})
+				}
+			}
+
+			result = append(result, expanded)
+		}
+	}
+	return result
+}
+
+func expandForEachPVCs(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.PVCTemplateSource,
+) []orktypes.PVCTemplateSource {
+	if !anyHasForEach(len(srcs), func(i int) *orktypes.ForEachSpec { return srcs[i].ForEach }) {
+		return srcs
+	}
+	var result []orktypes.PVCTemplateSource
+	for _, src := range srcs {
+		if src.ForEach == nil {
+			result = append(result, src)
+			continue
+		}
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
+			expanded := src
+			expanded.ForEach = nil
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
+			expanded.StorageClassName, _ = ir.Resolve(src.StorageClassName)
+			expanded.Storage, _ = ir.Resolve(src.Storage)
+			expanded.VolumeName, _ = ir.Resolve(src.VolumeName)
+
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := ir.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{Key: l.Key, Value: resolvedVal})
+				}
+			}
+
+			result = append(result, expanded)
+		}
+	}
+	return result
+}
+
+func expandForEachPVs(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.PVTemplateSource,
+) []orktypes.PVTemplateSource {
+	if !anyHasForEach(len(srcs), func(i int) *orktypes.ForEachSpec { return srcs[i].ForEach }) {
+		return srcs
+	}
+	var result []orktypes.PVTemplateSource
+	for _, src := range srcs {
+		if src.ForEach == nil {
+			result = append(result, src)
+			continue
+		}
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
+			expanded := src
+			expanded.ForEach = nil
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.StorageClassName, _ = ir.Resolve(src.StorageClassName)
+			expanded.Capacity, _ = ir.Resolve(src.Capacity)
+			expanded.ReclaimPolicy, _ = ir.Resolve(src.ReclaimPolicy)
+			expanded.HostPath, _ = ir.Resolve(src.HostPath)
+			expanded.CSIDriver, _ = ir.Resolve(src.CSIDriver)
+			expanded.CSIVolumeHandle, _ = ir.Resolve(src.CSIVolumeHandle)
+
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := ir.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{Key: l.Key, Value: resolvedVal})
 				}
 			}
 

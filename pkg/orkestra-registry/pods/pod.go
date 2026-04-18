@@ -9,11 +9,11 @@ import (
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,7 +25,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return fmt.Errorf("pod.Create: invalid spec: %w", err)
 	}
 
-	namespace := resolveNamespace(owner, spec)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
 
 	_, err := kube.Clientset().CoreV1().Pods(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -63,7 +63,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return fmt.Errorf("pod.Update: invalid spec: %w", err)
 	}
 
-	namespace := resolveNamespace(owner, spec)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
 
 	existing, err := kube.Clientset().CoreV1().Pods(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
@@ -102,7 +102,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // For most cases owner references handle cascade deletion automatically —
 // only use this when you need explicit cleanup control in onDelete.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPodSpec) error {
-	namespace := resolveNamespace(owner, spec)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
 
 	err := kube.Clientset().CoreV1().Pods(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -169,7 +169,7 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string) ResolvedPodSpec {
 	spec.Resources = src.Resources
 
 	if src.Port != "" {
-		spec.Port = parsePort(src.Port)
+		spec.Port = common.ParsePort(src.Port)
 	}
 
 	for _, l := range src.Labels {
@@ -223,7 +223,7 @@ func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *core
 	}
 
 	if spec.Resources != nil {
-		pod.Spec.Containers[0].Resources = buildResourceRequirements(spec.Resources)
+		pod.Spec.Containers[0].Resources = common.BuildResourceRequirements(spec.Resources)
 	}
 
 	return pod
@@ -241,35 +241,4 @@ func validateSpec(spec ResolvedPodSpec) error {
 		return fmt.Errorf("missing required fields: %v", missing)
 	}
 	return nil
-}
-
-// resolveNamespace — priority: spec.Namespace → owner namespace → "default"
-func resolveNamespace(owner domain.Object, spec ResolvedPodSpec) string {
-	if spec.Namespace != "" {
-		return spec.Namespace
-	}
-	if owner.GetNamespace() != "" {
-		return owner.GetNamespace()
-	}
-	return "default"
-}
-
-func buildResourceRequirements(r *orktypes.ResourceRequirements) corev1.ResourceRequirements {
-	req := corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{},
-		Limits:   corev1.ResourceList{},
-	}
-	for k, v := range r.Requests {
-		req.Requests[corev1.ResourceName(k)] = resource.MustParse(v)
-	}
-	for k, v := range r.Limits {
-		req.Limits[corev1.ResourceName(k)] = resource.MustParse(v)
-	}
-	return req
-}
-
-func parsePort(s string) int {
-	var p int
-	fmt.Sscanf(s, "%d", &p)
-	return p
 }

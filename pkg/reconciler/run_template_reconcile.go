@@ -164,6 +164,30 @@ func (r *GenericReconciler[T]) runResourceGroup(
 		expandForEachCronJobs(resolver, t.CronJobs), update, guard); err != nil {
 		return err
 	}
+	if err := runStatefulSets(ctx, kube, resolver, obj,
+		expandForEachStatefulSets(resolver, t.StatefulSets), update, guard); err != nil {
+		return err
+	}
+	if err := runPVs(ctx, kube, resolver, obj,
+		expandForEachPVs(resolver, t.PersistentVolumes), update); err != nil {
+		return err
+	}
+	if err := runPVCs(ctx, kube, resolver, obj,
+		expandForEachPVCs(resolver, t.PersistentVolumeClaims), update, guard); err != nil {
+		return err
+	}
+	if err := runIngresses(ctx, kube, resolver, obj,
+		expandForEachIngresses(resolver, t.Ingresses), update, guard); err != nil {
+		return err
+	}
+	if err := runHPAs(ctx, kube, resolver, obj,
+		expandForEachHPAs(resolver, t.HorizontalPodAutoscalers), update, guard); err != nil {
+		return err
+	}
+	if err := runPDBs(ctx, kube, resolver, obj,
+		expandForEachPDBs(resolver, t.PodDisruptionBudgets), update, guard); err != nil {
+		return err
+	}
 	return nil
 }
 
