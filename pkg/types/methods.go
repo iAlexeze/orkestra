@@ -271,5 +271,5 @@ func (c *CRDEntry) UpdateCRDCaBundle() bool {
 
 // HasNamespaceRules reports whether this CRD declares any namespace rules.
 func (c *CRDEntry) HasNamespaceRules() bool {
-    return len(c.AllowedNamespaces) > 0 || len(c.RestrictedNamespaces) > 0
+	return len(c.AllowedNamespaces) > 0 || len(c.RestrictedNamespaces) > 0
 }

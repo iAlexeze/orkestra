@@ -441,6 +441,8 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 					hs.GetWebhookStats(),
 					isProtected,
 					providerStatsMap[gvk],
+					hs.GetNamespaceStats(),
+					crd.HasNamespaceRules(),
 				),
 			)
 			hs.Register(

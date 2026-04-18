@@ -179,30 +179,30 @@ func (k *Katalog) DeletionProtectionFailurePolicy() string {
 //
 // Precedence:
 //
-//   YAML security.namespaceProtection block present → use YAML value (default-on when block declared)
-//   YAML block absent                               → fall back to ENABLE_NAMESPACE_PROTECTION env
+//	YAML security.namespaceProtection block present → use YAML value (default-on when block declared)
+//	YAML block absent                               → fall back to ENABLE_NAMESPACE_PROTECTION env
 func (k *Katalog) IsNamespaceProtectionEnabled() bool {
-    if k.Security.NamespaceProtection != nil {
-        // YAML declared the block — apply its enabled semantics.
-        return k.Security.IsNamespaceProtectionEnabled()
-    }
-    return k.securityEnvDefaults().NamespaceProtectionEnabled()
+	if k.Security.NamespaceProtection != nil {
+		// YAML declared the block — apply its enabled semantics.
+		return k.Security.IsNamespaceProtectionEnabled()
+	}
+	return k.securityEnvDefaults().NamespaceProtectionEnabled()
 }
 
 // NamespaceProtectionServiceName returns the effective service name for namespace protection.
 // YAML value takes precedence over ENV.
 func (k *Katalog) NamespaceProtectionServiceName() string {
-    env := k.securityEnvDefaults()
-    return k.Security.NamespaceProtectionServiceName(env.NamespaceProtectionSvcName())
+	env := k.securityEnvDefaults()
+	return k.Security.NamespaceProtectionServiceName(env.NamespaceProtectionSvcName())
 }
 
 // NamespaceProtectionFailurePolicy returns the effective failure policy string.
 // YAML value takes precedence over ENV.
 func (k *Katalog) NamespaceProtectionFailurePolicy() string {
-    if k.Security.NamespaceProtection != nil && k.Security.NamespaceProtection.FailurePolicy != "" {
-        return k.Security.NamespaceProtection.FailurePolicy
-    }
-    return k.securityEnvDefaults().NamespaceProtectionPolicy()
+	if k.Security.NamespaceProtection != nil && k.Security.NamespaceProtection.FailurePolicy != "" {
+		return k.Security.NamespaceProtection.FailurePolicy
+	}
+	return k.securityEnvDefaults().NamespaceProtectionPolicy()
 }
 
 // ── Admission webhooks ────────────────────────────────────────────────────────

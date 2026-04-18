@@ -65,19 +65,19 @@ type KatalogSecurity struct {
 	// nil pointer: conversion not configured; ENV vars drive behavior.
 	Conversion *ConversionConfig `yaml:"conversion,omitempty"`
 
-	    // NamespaceProtection controls the optional validating webhook that prevents
-    // Orkestra-managed CRs from being created or updated in forbidden namespaces.
-    //
-    // This is an admission-time safeguard only. When enabled:
-    //   - Registers /namespace-protection endpoint on the HTTPS server
-    //   - Creates ValidatingWebhookConfiguration "orkestra-namespace-protection"
-    //   - Enforces allowedNamespaces / restrictedNamespaces declared by each CRD
-    //
-    // If disabled or omitted, namespace rules are not enforced at apply time.
-    // Existing CRs in forbidden namespaces will still be reconciled normally.
-    //
-    // nil pointer: namespace protection not configured; ENV vars drive behavior.
-    NamespaceProtection *NamespaceProtectionConfig `yaml:"namespaceProtection,omitempty"`
+	// NamespaceProtection controls the optional validating webhook that prevents
+	// Orkestra-managed CRs from being created or updated in forbidden namespaces.
+	//
+	// This is an admission-time safeguard only. When enabled:
+	//   - Registers /namespace-protection endpoint on the HTTPS server
+	//   - Creates ValidatingWebhookConfiguration "orkestra-namespace-protection"
+	//   - Enforces allowedNamespaces / restrictedNamespaces declared by each CRD
+	//
+	// If disabled or omitted, namespace rules are not enforced at apply time.
+	// Existing CRs in forbidden namespaces will still be reconciled normally.
+	//
+	// nil pointer: namespace protection not configured; ENV vars drive behavior.
+	NamespaceProtection *NamespaceProtectionConfig `yaml:"namespaceProtection,omitempty"`
 }
 
 // DeletionProtectionConfig controls deletion protection behaviour.
@@ -104,20 +104,20 @@ type DeletionProtectionConfig struct {
 
 // NamespaceProtectionConfig controls namespace-protection webhook behaviour.
 type NamespaceProtectionConfig struct {
-    // Enabled controls whether namespace protection is active.
-    // Default: true when the namespaceProtection block is declared.
-    Enabled *bool `yaml:"enabled,omitempty"`
+	// Enabled controls whether namespace protection is active.
+	// Default: true when the namespaceProtection block is declared.
+	Enabled *bool `yaml:"enabled,omitempty"`
 
-    // ServiceName is the Kubernetes Service fronting Orkestra's HTTPS server.
-    // The API server sends webhook requests to this Service.
-    // Default: ORKESTRA_SERVICE_NAME env / "orkestra".
-    ServiceName string `yaml:"serviceName,omitempty"`
+	// ServiceName is the Kubernetes Service fronting Orkestra's HTTPS server.
+	// The API server sends webhook requests to this Service.
+	// Default: ORKESTRA_SERVICE_NAME env / "orkestra".
+	ServiceName string `yaml:"serviceName,omitempty"`
 
-    // FailurePolicy controls what the API server does when Orkestra is unreachable.
-    // "Fail"   — reject the CREATE/UPDATE (recommended; this is the default).
-    // "Ignore" — allow the request through when Orkestra cannot be reached.
-    // Default: "Fail".
-    FailurePolicy string `yaml:"failurePolicy,omitempty"`
+	// FailurePolicy controls what the API server does when Orkestra is unreachable.
+	// "Fail"   — reject the CREATE/UPDATE (recommended; this is the default).
+	// "Ignore" — allow the request through when Orkestra cannot be reached.
+	// Default: "Fail".
+	FailurePolicy string `yaml:"failurePolicy,omitempty"`
 
 	// RestrictedNamespaces — deny-list applied to every CRD in this Katalog.
 	// Merged additively with per-CRD restrictedNamespaces — more specific levels
@@ -236,31 +236,31 @@ func (s *KatalogSecurity) DeletionProtectionFailurePolicy() string {
 
 // IsNamespaceProtectionEnabled returns the effective namespace protection setting.
 func (s *KatalogSecurity) IsNamespaceProtectionEnabled() bool {
-    if s == nil || s.NamespaceProtection == nil {
-        return false
-    }
-    if s.NamespaceProtection.Enabled == nil {
-        return true // declared but no explicit value = enabled
-    }
-    return *s.NamespaceProtection.Enabled
+	if s == nil || s.NamespaceProtection == nil {
+		return false
+	}
+	if s.NamespaceProtection.Enabled == nil {
+		return true // declared but no explicit value = enabled
+	}
+	return *s.NamespaceProtection.Enabled
 }
 
 // NamespaceProtectionServiceName returns the effective service name for namespace protection.
 // Falls back to the provided ENV default.
 func (s *KatalogSecurity) NamespaceProtectionServiceName(envDefault string) string {
-    if s != nil && s.NamespaceProtection != nil && s.NamespaceProtection.ServiceName != "" {
-        return s.NamespaceProtection.ServiceName
-    }
-    return envDefault
+	if s != nil && s.NamespaceProtection != nil && s.NamespaceProtection.ServiceName != "" {
+		return s.NamespaceProtection.ServiceName
+	}
+	return envDefault
 }
 
 // NamespaceProtectionFailurePolicy returns the effective failure policy string.
 // Falls back to "Fail" when not configured — protecting by default.
 func (s *KatalogSecurity) NamespaceProtectionFailurePolicy() string {
-    if s != nil && s.NamespaceProtection != nil && s.NamespaceProtection.FailurePolicy != "" {
-        return s.NamespaceProtection.FailurePolicy
-    }
-    return "Fail"
+	if s != nil && s.NamespaceProtection != nil && s.NamespaceProtection.FailurePolicy != "" {
+		return s.NamespaceProtection.FailurePolicy
+	}
+	return "Fail"
 }
 
 // WebhooksServiceName returns the effective service name for admission webhooks.

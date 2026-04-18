@@ -237,8 +237,8 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 	// Merge Komposer-level restrictions into every CRD (additive).
 	if len(doc.Security.NamespaceProtection.RestrictedNamespaces) > 0 || len(doc.Security.NamespaceProtection.AllowedNamespaces) > 0 {
 		for name, crd := range allCRDs {
-		crd.RestrictedNamespaces = doc.Security.NamespaceProtection.RestrictedNamespaces.Merge(crd.RestrictedNamespaces)
-		crd.AllowedNamespaces = doc.Security.NamespaceProtection.AllowedNamespaces.Merge(crd.AllowedNamespaces)
+			crd.RestrictedNamespaces = doc.Security.NamespaceProtection.RestrictedNamespaces.Merge(crd.RestrictedNamespaces)
+			crd.AllowedNamespaces = doc.Security.NamespaceProtection.AllowedNamespaces.Merge(crd.AllowedNamespaces)
 			allCRDs[name] = crd
 		}
 	}

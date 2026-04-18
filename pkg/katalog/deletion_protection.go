@@ -64,8 +64,8 @@ func (k *Katalog) ProtectedCRDNames() map[string]struct{} {
 	}
 
 	if !utils.IsRunningInCluster() {
-        return nil
-    }
+		return nil
+	}
 
 	names := make(map[string]struct{}, len(k.enabledCRDs))
 	for _, crd := range k.enabledCRDs {

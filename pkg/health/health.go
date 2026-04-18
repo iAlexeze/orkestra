@@ -92,8 +92,8 @@ type HealthServer struct {
 	deletionProtection atomic.Bool
 
 	// Namespace protection — populated only when namespace protection is enabled.
-	namespaceRuleMap   map[string]*NamespaceRules
-	namespaceStats     *ProtectionStats
+	namespaceRuleMap    map[string]*NamespaceRules
+	namespaceStats      *ProtectionStats
 	namespaceProtection atomic.Bool
 
 	// Full Konfig object for accessing cluster, security, and runtime settings.
@@ -588,6 +588,17 @@ func (h *HealthServer) Shutdown(ctx context.Context) {
 					Msg("deletion protection webhook removed")
 			}
 		}
+
+		// Optional cleanup of namespace‑protection webhook configuration.
+		if kat.IsNamespaceProtectionEnabled() && h.kubeClient != nil {
+			if err := cleanupValidatingWebhook(ctx, h.kubeClient, namespaceProtectionWebhookConfigName); err != nil {
+				logger.Error().Err(err).Msg("namespace protection webhook cleanup error")
+			} else {
+				logger.Info().
+					Str("config", namespaceProtectionWebhookConfigName).
+					Msg("namespace protection webhook removed")
+			}
+		}
 	}
 }
 
@@ -659,6 +670,11 @@ func (h *HealthServer) GetConversionStats() *ConversionStats {
 // GetAdmissionStats returns the admission statistics for use in handlers.
 func (h *HealthServer) GetAdmissionStats() *AdmissionStats {
 	return h.admissionStats
+}
+
+// GetNamespaceStats returns the namespace protection statistics for use in handlers.
+func (h *HealthServer) GetNamespaceStats() *ProtectionStats {
+	return h.namespaceStats
 }
 
 // GetProtectionStats returns the deletion protection statistics for use in handlers.

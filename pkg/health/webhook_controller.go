@@ -93,8 +93,9 @@ func (h *HealthServer) webhookController() error {
 	hasAdmission := h.hookKfg.WebhooksEnabled && h.admissionRegistry != nil &&
 		(kat.HasValidationRules() || kat.HasMutationRules())
 	hasDeletionProtection := kat.IsDeletionProtectionEnabled() && kat.DeletionProtectionGVRs() != nil
+	hasNamespaceProtection := kat.IsNamespaceProtectionEnabled() && len(kat.NamespaceProtectionGVRs()) > 0
 
-	if !hasAdmission && !hasDeletionProtection {
+	if !hasAdmission && !hasDeletionProtection && !hasNamespaceProtection {
 		logger.Debug().Msg("webhook controller disabled: no admission or deletion protection declared")
 		return nil
 	}
@@ -121,6 +122,7 @@ func (h *HealthServer) webhookController() error {
 
 			h.reconcileAdmissionWebhooks()
 			h.reconcileDeletionProtectionWebhook()
+			h.reconcileNamespaceProtectionWebhook()
 
 			<-ticker.C
 		}
@@ -196,6 +198,61 @@ func (h *HealthServer) reconcileAdmissionWebhooks() {
 				metrics.RecordWebhookReconciliationFailure("mutation")
 			}
 		}
+	}
+}
+
+// reconcileNamespaceProtectionWebhook ensures the namespace protection webhook
+// matches the current Katalog state.
+func (h *HealthServer) reconcileNamespaceProtectionWebhook() {
+	kat := h.katalog
+
+	enabled := kat.IsNamespaceProtectionEnabled() && len(kat.NamespaceProtectionGVRs()) > 0
+	if !enabled {
+		if h.kubeClient != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), lowTimeout)
+			defer cancel()
+			if err := cleanupValidatingWebhook(ctx, h.kubeClient, namespaceProtectionWebhookConfigName); err != nil {
+				logger.Debug().Err(err).Msg("webhook controller: namespace protection webhook cleanup skipped or failed")
+				if h.webhookStats != nil {
+					h.webhookStats.RecordFailure()
+				}
+				metrics.RecordWebhookReconciliationFailure("namespace-protection")
+			}
+		}
+		return
+	}
+
+	if h.kubeClient == nil {
+		return
+	}
+
+	npGVRs := kat.NamespaceProtectionGVRs()
+	if len(npGVRs) == 0 {
+		return
+	}
+
+	caBundle, err := readCABundle(h.hookReg.TLSCertFile)
+	if err != nil {
+		logger.Error().Err(err).Msg("webhook controller: cannot read CA bundle for namespace protection")
+		if h.webhookStats != nil {
+			h.webhookStats.RecordFailure()
+		}
+		metrics.RecordWebhookReconciliationFailure("namespace-protection")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), highTimeout)
+	defer cancel()
+
+	svcName := kat.NamespaceProtectionServiceName()
+	failurePolicy := kat.NamespaceProtectionFailurePolicy()
+	if err := registerNamespaceProtectionWebhook(ctx, h.kubeClient, npGVRs, caBundle, h.hookReg, svcName, failurePolicy); err != nil {
+		logger.Error().Err(err).
+			Msg("webhook controller: namespace protection webhook registration failed — namespace rules will not be enforced")
+		if h.webhookStats != nil {
+			h.webhookStats.RecordFailure()
+		}
+		metrics.RecordWebhookReconciliationFailure("namespace-protection")
 	}
 }
 
