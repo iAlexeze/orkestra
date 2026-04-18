@@ -136,7 +136,7 @@ operatorBox:es.
 ```yaml
 operatorBox:
   cross:
-    - kind: managed-database
+    - crd: managed-database
       selector:
         name: "{{ .metadata.name }}-db"
       as: db

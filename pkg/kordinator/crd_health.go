@@ -156,6 +156,11 @@ func (h *CRDHealth) ErrorRate() float64 {
 	return float64(h.failedReconciles.Load()) / float64(total)
 }
 
+// ErrorRatePercent returns the error rate as a percentage.
+func (h *CRDHealth) ErrorRatePercent() float64 {
+	return h.ErrorRate() * 100
+}
+
 // LastReconcile returns a human‑readable timestamp of the last reconcile.
 // If the reconciler has started but not yet reconciled, it returns a placeholder.
 func (h *CRDHealth) LastReconcile() string {

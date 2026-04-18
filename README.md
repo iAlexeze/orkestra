@@ -337,7 +337,7 @@ Operators observe each other's state explicitly. No shared caches. No hidden cou
 operatorBox:
   default: true
   cross:
-    - kind: managed-database
+    - crd: managed-database
       selector:
         name: "{{ .metadata.name }}-db"
       as: db

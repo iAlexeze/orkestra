@@ -99,7 +99,7 @@ func BuildCRDHealthHandler(
 			StartedAt:                h.StartedAt(),
 			Uptime:                   h.Uptime(),
 			QueueDepth:               h.QueueDepth(crd.GVK().String()),
-			ErrorRate:                h.ErrorRate(),
+			ErrorRate:                h.ErrorRatePercent(),
 			ConsecutiveFails:         h.ConsecutiveFails(),
 			TotalReconciles:          h.TotalReconciles(),
 			ResourceCount:            v.resourceCount,
@@ -298,7 +298,7 @@ func BuildCRDInfoHandler(
 			Healthy:             h.IsHealthy(),
 			Started:             h.Started(),
 			Pending:             h.Pending(),
-			ErrorRate:           h.ErrorRate(),
+			ErrorRate:           h.ErrorRatePercent(),
 			RBAC:                rbacInfo,
 		}
 
@@ -560,7 +560,7 @@ func BuildKatalogHandler(
 				Pending:   isPending,
 				StartedAt: h.StartedAt(),
 				Uptime:    h.Uptime(),
-				ErrorRate: h.ErrorRate(),
+				ErrorRate: h.ErrorRatePercent(),
 				Endpoints: EndpointInfo{
 					Health: "/katalog/" + strings.ToLower(crd.Name) + "/health",
 					Info:   "/katalog/" + strings.ToLower(crd.Name),

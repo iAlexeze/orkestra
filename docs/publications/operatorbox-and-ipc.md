@@ -144,7 +144,7 @@ spec:
     database-backed-app:
       operatorBox:
         cross:
-          - kind: managed-database
+          - crd: managed-database
             selector:
               name: "{{ .metadata.name }}-db"
               namespace: "{{ .metadata.namespace }}"
@@ -159,7 +159,7 @@ spec:
 ```
 
 The `cross:` declaration is explicit and visible. It names the source CRD
-(`kind: managed-database`), the selector that identifies the specific CR
+(`crd: managed-database`), the selector that identifies the specific CR
 instance, and the name under which the result is available in the template
 context (`as: db`). Nothing about this communication is implicit. A reader of
 the Katalog can immediately see which external CRD this operatorBox: depends on

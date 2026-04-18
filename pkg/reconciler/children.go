@@ -59,18 +59,18 @@ func ReadChildren(
 	kube *kubeclient.Kubeclient,
 	obj domain.Object,
 	resolver *orktmpl.Resolver,
-	rc orktypes.OperatorBoxConfig,
+	operatorBox orktypes.OperatorBoxConfig,
 ) map[string]interface{} {
 	children := map[string]interface{}{}
 
 	// Collect all template sources across onCreate and onReconcile.
 	// We only read resources that are declared — not all resources in the namespace.
-	templates := mergeTemplates(rc)
+	templates := mergeTemplates(operatorBox)
 
 	// ── Deployments ───────────────────────────────────────────────────────
 	if len(templates.Deployments) > 0 {
-		m := readResourceGroup(ctx, kube, obj, resolver, deploymentGVR,
-			deploymentNames(resolver, templates.Deployments))
+		dNames := deploymentNames(resolver, templates.Deployments)
+		m := readResourceGroup(ctx, kube, obj, resolver, deploymentGVR, dNames)
 		children["deployments"] = m
 		children["deployment"] = firstValue(m) // singular shorthand
 	}
@@ -214,27 +214,27 @@ func firstValue(m map[string]interface{}) interface{} {
 // mergeTemplates merges onCreate and onReconcile templates into one set.
 // We read back resources declared in either block — both produce child resources.
 // Resources declared in both are deduplicated by name after resolution.
-func mergeTemplates(rc orktypes.OperatorBoxConfig) orktypes.HookTemplates {
+func mergeTemplates(operatorBox orktypes.OperatorBoxConfig) orktypes.HookTemplates {
 	t := orktypes.HookTemplates{}
-	if rc.OnCreate != nil {
-		t.Deployments = append(t.Deployments, rc.OnCreate.Deployments...)
-		t.Services = append(t.Services, rc.OnCreate.Services...)
-		t.Secrets = append(t.Secrets, rc.OnCreate.Secrets...)
-		t.ConfigMaps = append(t.ConfigMaps, rc.OnCreate.ConfigMaps...)
-		t.Jobs = append(t.Jobs, rc.OnCreate.Jobs...)
-		t.CronJobs = append(t.CronJobs, rc.OnCreate.CronJobs...)
-		t.Pods = append(t.Pods, rc.OnCreate.Pods...)
-		t.ServiceAccounts = append(t.ServiceAccounts, rc.OnCreate.ServiceAccounts...)
+	if operatorBox.OnCreate != nil {
+		t.Deployments = append(t.Deployments, operatorBox.OnCreate.Deployments...)
+		t.Services = append(t.Services, operatorBox.OnCreate.Services...)
+		t.Secrets = append(t.Secrets, operatorBox.OnCreate.Secrets...)
+		t.ConfigMaps = append(t.ConfigMaps, operatorBox.OnCreate.ConfigMaps...)
+		t.Jobs = append(t.Jobs, operatorBox.OnCreate.Jobs...)
+		t.CronJobs = append(t.CronJobs, operatorBox.OnCreate.CronJobs...)
+		t.Pods = append(t.Pods, operatorBox.OnCreate.Pods...)
+		t.ServiceAccounts = append(t.ServiceAccounts, operatorBox.OnCreate.ServiceAccounts...)
 	}
-	if rc.OnReconcile != nil {
-		t.Deployments = append(t.Deployments, rc.OnReconcile.Deployments...)
-		t.Services = append(t.Services, rc.OnReconcile.Services...)
-		t.Secrets = append(t.Secrets, rc.OnReconcile.Secrets...)
-		t.ConfigMaps = append(t.ConfigMaps, rc.OnReconcile.ConfigMaps...)
-		t.Jobs = append(t.Jobs, rc.OnReconcile.Jobs...)
-		t.CronJobs = append(t.CronJobs, rc.OnReconcile.CronJobs...)
-		t.Pods = append(t.Pods, rc.OnReconcile.Pods...)
-		t.ServiceAccounts = append(t.ServiceAccounts, rc.OnReconcile.ServiceAccounts...)
+	if operatorBox.OnReconcile != nil {
+		t.Deployments = append(t.Deployments, operatorBox.OnReconcile.Deployments...)
+		t.Services = append(t.Services, operatorBox.OnReconcile.Services...)
+		t.Secrets = append(t.Secrets, operatorBox.OnReconcile.Secrets...)
+		t.ConfigMaps = append(t.ConfigMaps, operatorBox.OnReconcile.ConfigMaps...)
+		t.Jobs = append(t.Jobs, operatorBox.OnReconcile.Jobs...)
+		t.CronJobs = append(t.CronJobs, operatorBox.OnReconcile.CronJobs...)
+		t.Pods = append(t.Pods, operatorBox.OnReconcile.Pods...)
+		t.ServiceAccounts = append(t.ServiceAccounts, operatorBox.OnReconcile.ServiceAccounts...)
 	}
 	return t
 }
@@ -256,8 +256,9 @@ func resolveName(resolver *orktmpl.Resolver, rawName, rawNamespace string) (reso
 }
 
 func deploymentNames(resolver *orktmpl.Resolver, srcs []orktypes.DeploymentTemplateSource) []resolvedChildName {
-	names := make([]resolvedChildName, 0, len(srcs))
-	for _, s := range srcs {
+	expanded := expandForEachDeployments(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
 		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
 			names = append(names, n)
 		}
@@ -266,8 +267,9 @@ func deploymentNames(resolver *orktmpl.Resolver, srcs []orktypes.DeploymentTempl
 }
 
 func serviceNames(resolver *orktmpl.Resolver, srcs []orktypes.ServiceTemplateSource) []resolvedChildName {
-	names := make([]resolvedChildName, 0, len(srcs))
-	for _, s := range srcs {
+	expanded := expandForEachServices(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
 		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
 			names = append(names, n)
 		}
@@ -276,8 +278,9 @@ func serviceNames(resolver *orktmpl.Resolver, srcs []orktypes.ServiceTemplateSou
 }
 
 func secretNames(resolver *orktmpl.Resolver, srcs []orktypes.SecretTemplateSource) []resolvedChildName {
-	names := make([]resolvedChildName, 0, len(srcs))
-	for _, s := range srcs {
+	expanded := expandForEachSecrets(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
 		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
 			names = append(names, n)
 		}
@@ -286,8 +289,9 @@ func secretNames(resolver *orktmpl.Resolver, srcs []orktypes.SecretTemplateSourc
 }
 
 func configMapNames(resolver *orktmpl.Resolver, srcs []orktypes.ConfigMapTemplateSource) []resolvedChildName {
-	names := make([]resolvedChildName, 0, len(srcs))
-	for _, s := range srcs {
+	expanded := expandForEachConfigMaps(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
 		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
 			names = append(names, n)
 		}
@@ -310,9 +314,9 @@ func configMapNames(resolver *orktmpl.Resolver, srcs []orktypes.ConfigMapTemplat
 // so status can reference any of them regardless of phase.
 // Conditions only gate creation in run_jobs.go.
 func jobNames(resolver *orktmpl.Resolver, srcs []orktypes.JobTemplateSource) []resolvedChildName {
+	expanded := expandForEachJobs(resolver, srcs)
 	var names []resolvedChildName
-	for _, src := range srcs {
-		// ← no condition check here
+	for _, src := range expanded {
 		name, err := resolver.Resolve(src.Name)
 		if err != nil || name == "" {
 			continue
@@ -324,8 +328,9 @@ func jobNames(resolver *orktmpl.Resolver, srcs []orktypes.JobTemplateSource) []r
 }
 
 func cronJobNames(resolver *orktmpl.Resolver, srcs []orktypes.CronJobTemplateSource) []resolvedChildName {
-	names := make([]resolvedChildName, 0, len(srcs))
-	for _, s := range srcs {
+	expanded := expandForEachCronJobs(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
 		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
 			names = append(names, n)
 		}
@@ -344,8 +349,9 @@ func podNames(resolver *orktmpl.Resolver, srcs []orktypes.PodTemplateSource) []r
 }
 
 func serviceAccountNames(resolver *orktmpl.Resolver, srcs []orktypes.ServiceAccountTemplateSource) []resolvedChildName {
-	names := make([]resolvedChildName, 0, len(srcs))
-	for _, s := range srcs {
+	expanded := expandForEachServiceAccounts(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
 		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
 			names = append(names, n)
 		}

@@ -53,8 +53,8 @@ func (r *GenericReconciler[T]) patchStatusWithChildren(
 	// The new resolver's data map includes a "children" key so that
 	// status field expressions can reference child status:
 	//   {{ .children.cronjob.status.lastScheduleTime }}
-	if reconcileErr == nil && (r.rc.OnCreate != nil || r.rc.OnReconcile != nil) {
-		children := ReadChildren(ctx, r.kube, obj, resolver, r.rc)
+	if reconcileErr == nil && (r.operatorBox.OnCreate != nil || r.operatorBox.OnReconcile != nil) {
+		children := ReadChildren(ctx, r.kube, obj, resolver, r.operatorBox)
 		resolver = resolver.WithChildren(children) // ← reassign — WithChildren returns new resolver
 	}
 
@@ -101,13 +101,24 @@ func runStatusPatch[T domain.Object](
 	// ── Layer 2: Declared status fields (conditional) ─────────────────────
 	// Only written on successful reconcile. Errors in field resolution are
 	// logged as warnings and do not fail the reconcile.
-	if r.rc.Status != nil && r.rc.Status.HasFields() && reconcileErr == nil {
-		resolved, err := resolver.ResolveStatusFields(r.rc.Status.Fields)
+	logger.FromContext(ctx).Info().
+		Str("name", obj.GetName()).
+		Bool("has_status_config", r.operatorBox.Status != nil && r.operatorBox.Status.HasFields()).
+		Bool("reconcile_error", reconcileErr != nil).
+		AnErr("reconcile_err", reconcileErr).
+		Msg("status: layer2 evaluation")
+
+	if r.operatorBox.Status != nil && r.operatorBox.Status.HasFields() && reconcileErr == nil {
+		resolved, err := resolver.ResolveStatusFields(r.operatorBox.Status.Fields)
 		if err != nil {
 			logger.FromContext(ctx).Warn().Err(err).
 				Str("name", obj.GetName()).
 				Msg("status: some fields failed to resolve")
 		}
+		logger.FromContext(ctx).Info().
+			Str("name", obj.GetName()).
+			Interface("resolved_fields", resolved).
+			Msg("status: layer2 resolved fields")
 		for k, v := range resolved {
 			patch[k] = v
 		}

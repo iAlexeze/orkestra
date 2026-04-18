@@ -42,7 +42,7 @@ spec:
       operatorBox:
         default: true   # use Orkestra's GenericReconciler, no Go required
         cross:
-          - kind: database
+          - crd: database
             selector:
               name: "{{ .metadata.name }}"
             as: db

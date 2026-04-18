@@ -280,7 +280,7 @@ spec:
 
 ## What you see in the Control Center
 
-Open `http://localhost:9090/controlcenter` after `ork run`.
+Open `http://localhost:8090/controlcenter` after `ork run`.
 
 The CR detail page shows:
 

@@ -46,7 +46,7 @@ When a CRD declares a `cross:` block:
 
 ```yaml
 cross:
-  - kind: Database
+  - crd: database
     selector:
       name: "{{ .metadata.name }}-db"
     as: db

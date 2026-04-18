@@ -88,7 +88,7 @@ When an operator declares:
 
 ```yaml
 cross:
-  - kind: database
+  - crd: database
     selector:
       name: "{{ .metadata.name }}-db"
     as: db

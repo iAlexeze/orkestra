@@ -56,7 +56,7 @@ type GenericReconciler[T domain.Object] struct {
 	event            *event.Event
 	kube             *kubeclient.Kubeclient
 	hooks            domain.ReconcileHooks[T]
-	rc               orktypes.OperatorBoxConfig
+	operatorBox      orktypes.OperatorBoxConfig
 	newObj           func() T
 	crd              orktypes.CRDEntry
 	kat              *katalog.Katalog
@@ -121,7 +121,7 @@ func NewGenericReconciler[T domain.Object](
 		providerRegistry: providerRegistry,
 		providerStats:    providerStats,
 		crd:              crd,
-		rc:               crd.OperatorBox,
+		operatorBox:      crd.OperatorBox,
 		informer:         informer,
 		event:            ev,
 		kube:             kube,
@@ -318,10 +318,11 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, resolver *orkt
 		// Requires: ork generate runtime to register in HookRegistry.
 		err = r.hooks.OnReconcile(ctx, obj)
 
-	case r.rc.OnCreate != nil || r.rc.OnReconcile != nil:
+	case r.operatorBox.OnCreate != nil || r.operatorBox.OnReconcile != nil:
 		// Declarative templates — interpreted at runtime.
 		// Requires: nothing. ork generate runtime NOT needed.
-		err = r.runTemplateReconcile(ctx, resolver, obj)
+		// The returned resolver carries cross/external/git data for status evaluation.
+		resolver, err = r.runTemplateReconcile(ctx, resolver, obj)
 
 	default:
 		// No-op — finalizers, events, metrics still handled above.
@@ -390,7 +391,7 @@ func (r *GenericReconciler[T]) handleDeletion(ctx context.Context, resolver *ork
 			return fmt.Errorf("deletion hook: %w", err)
 		}
 
-	case r.rc.OnDelete != nil:
+	case r.operatorBox.OnDelete != nil:
 		if err := r.runTemplateOnDelete(ctx, resolver, obj); err != nil {
 			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"DeleteError",
 				fmt.Sprintf("Template deletion failed: %v", err))

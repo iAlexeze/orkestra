@@ -33,8 +33,8 @@ package types
 // Paths are relative to status — "phase" becomes status.phase.
 // Dot-notation is supported for nested fields at any depth.
 //
-// Layer 3 — child resource status propagation adds a "children" 
-// context to the resolver, making child resource status fields 
+// Layer 3 — child resource status propagation adds a "children"
+// context to the resolver, making child resource status fields
 // accessible in path expressions.
 
 // StatusFieldSpec declares one field to write into the CR's status.
