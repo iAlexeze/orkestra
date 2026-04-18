@@ -40,7 +40,7 @@
 package types
 
 // CrossCRDDeclaration declares one cross-CRD observation.
-// Declared in the reconciler config under cross: for a CRD.
+// Declared in the operatorBox config under cross: for a CRD.
 type CrossCRDDeclaration struct {
 	// Kind is the target CRD name (lowercase, matches the map key in spec.crds).
 	//   kind: database

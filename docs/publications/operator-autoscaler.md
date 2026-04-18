@@ -1,4 +1,4 @@
-# Operator Autoscaling: Runtime-Native Concurrency Control for OperatorBoxes
+# Operator Autoscaling: Runtime-Native Concurrency Control for operatorBox:es
 
 *Orkestra Project — April 2026*
 
@@ -17,8 +17,8 @@ is insufficient for morning peak, and a worker count appropriate for morning
 peak wastes resources overnight.
 
 Orkestra resolves this through runtime-native autoscaling declared inside the
-operatorbox. Because each operatorbox owns its worker pool, its queue, and its
-metrics in isolation, scaling one operatorbox has no effect on any other. The
+operatorBox. Because each operatorBox: owns its worker pool, its queue, and its
+metrics in isolation, scaling one operatorBox: has no effect on any other. The
 declared CRD configuration is the permanent baseline. The autoscale block
 declares conditions under which temporary overrides apply. When conditions are
 no longer met, the baseline is restored automatically. No external autoscaler.
@@ -59,7 +59,7 @@ and API server load. During maintenance windows or compliance scan cycles,
 a shorter resync interval is appropriate. During off-hours, a longer interval
 reduces unnecessary load.
 
-All three parameters are declared in the operatorbox and all three are under
+All three parameters are declared in the operatorBox: and all three are under
 the autoscaler's control.
 
 ---
@@ -205,13 +205,13 @@ external autoscaling solutions:
 as code in a controller or as configuration in a separate resource. It can
 be reviewed, versioned, and audited alongside the operator behavior it modifies.
 
-**Runtime-native.** The autoscaler reads metrics directly from the operatorbox
+**Runtime-native.** The autoscaler reads metrics directly from the operatorBox:
 runtime. No Prometheus scraping. No metrics server. No external metric adapter.
 The metrics are always current, always accurate, and never require a separate
 data pipeline.
 
-**Isolated.** The autoscaler for one operatorbox has no knowledge of and no
-effect on any other operatorbox. A scaling event in the website operator does
+**Isolated.** The autoscaler for one operatorBox: has no knowledge of and no
+effect on any other operatorBox. A scaling event in the website operator does
 not affect the pipeline operator's workers or queue.
 
 **Reversible.** The CRD configuration is the permanent baseline. Overrides are
@@ -225,5 +225,5 @@ applies the result. The same conditions always produce the same result. The
 cooldown period is the only temporal dependency.
 
 **Minimal.** No external controller. No separate CRD. No Helm chart for the
-autoscaler itself. It is a feature of the operatorbox, declared inside it,
+autoscaler itself. It is a feature of the operatorBox:, declared inside it,
 running inside the same process as the operator it scales.

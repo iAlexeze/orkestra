@@ -54,7 +54,7 @@ spec:
           - field: spec.env
             default: {}
 
-      reconciler:
+      operatorBox:
         default: true
 
         onReconcile:

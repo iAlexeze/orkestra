@@ -58,7 +58,7 @@ spec:
 ## How providers are dispatched
 
 ```
-Katalog parsed → OperatorBoxConfig.ProviderBlocks populated
+Katalog parsed → operatorBox:Config.ProviderBlocks populated
                       ↓
 GenericReconciler.reconcileImpl
                       ↓

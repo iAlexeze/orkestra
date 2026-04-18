@@ -45,7 +45,7 @@ spec:
         kind: Website
         plural: websites
 
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:
@@ -211,7 +211,7 @@ func WebsiteHooks() domain.AnyReconcileHooks {
 Hooks are declared in the Katalog:
 
 ```yaml
-reconciler:
+operatorBox:
   default: true
   hooks:
     location: github.com/myorg/hooks

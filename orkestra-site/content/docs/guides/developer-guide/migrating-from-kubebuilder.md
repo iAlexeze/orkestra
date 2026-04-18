@@ -88,7 +88,7 @@ spec:
         kind: Website
         plural: websites
 
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:
@@ -317,7 +317,7 @@ conditional creation — that logic moves to a Go hook rather than to templates.
 The hook is registered in the Katalog:
 
 ```yaml
-reconciler:
+operatorBox:
   default: true
   hooks:
     location: github.com/myorg/website-hooks

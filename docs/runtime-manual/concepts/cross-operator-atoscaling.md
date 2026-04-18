@@ -21,7 +21,7 @@ AutoMetrics → GenericReconciler → readCross → Resolver → Autoscaler
 
 ## 1. Where Metrics Come From: `AutoMetrics`
 
-Every OperatorBox maintains its own `AutoMetrics` instance:
+Every operatorBox: maintains its own `AutoMetrics` instance:
 
 - updated continuously by the worker pool  
 - atomic, lock‑free  

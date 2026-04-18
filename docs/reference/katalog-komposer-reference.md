@@ -199,7 +199,7 @@ spec:
         version: v1alpha1
         kind: Website
         plural: websites
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:
@@ -249,7 +249,7 @@ spec:
         maxQueueDepth: 500
         degradeThreshold: 5
 
-      reconciler:
+      operatorBox:
         default: true
         finalizers:
           - finalizer.demo.orkestra.io/website

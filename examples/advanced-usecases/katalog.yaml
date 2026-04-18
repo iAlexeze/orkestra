@@ -37,7 +37,6 @@ spec:
             default: 1
 
       operatorBox:
-        default: true
         onReconcile:
           deployments:
             - name: "{{ .metadata.name }}-{{ .item }}"
@@ -90,7 +89,6 @@ spec:
             action: deny
 
       operatorBox:
-        default: true
         onReconcile:
           external:
             - name: healthCheck               # camelCase — valid Go identifier
@@ -169,6 +167,7 @@ spec:
           services:
             - name: "{{ .metadata.name }}-postgres"
               port: "5432"
+              reconcile: true
 
         status:
           fields:
@@ -203,11 +202,10 @@ spec:
             action: deny
 
       operatorBox:
-        default: true
         cross:
           - kind: managed-database
             selector:
-              name: "{{ .metadata.name }}-db"
+              name: "{{ .metadata.name }}"
               namespace: "{{ .metadata.namespace }}"
             as: db
 
@@ -275,7 +273,6 @@ spec:
             action: deny
 
       operatorBox:
-        default: true
         onCreate:
           secrets:
             - name: "{{ .metadata.name }}-credentials"
@@ -314,7 +311,6 @@ spec:
       resync: 30s
 
       operatorBox:
-        default: true
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}"
@@ -389,9 +385,8 @@ spec:
             default: "false"
 
       operatorBox:
-        default: true
         cross:
-          - kind: managed-database
+          - kind: manageddatabase
             selector:
               name: "{{ .metadata.name }}-db"
               namespace: "{{ .metadata.namespace }}"

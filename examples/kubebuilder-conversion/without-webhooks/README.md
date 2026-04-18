@@ -177,7 +177,7 @@ spec:
             message: "spec.schedule is required — either a cron string or a structured object"
             action: deny
 
-      reconciler:
+      operatorBox:
         default: true
 
         status:

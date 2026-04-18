@@ -16,7 +16,7 @@ spec:
         version: {{ $.Values.apiVersion }}
         kind: {{ $crd.kind }}
         plural: {{ $crd.plural }}
-      reconciler:
+      operatorBox:
         default: true
     {{- end }}
 ```

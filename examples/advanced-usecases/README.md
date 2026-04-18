@@ -65,7 +65,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 spec:
   crds:
     multi-region-app:
-      reconciler:
+      operatorBox:
         default: true
         onReconcile:
           deployments:
@@ -117,7 +117,7 @@ func OnReconcile(ctx context.Context, obj *v1alpha1.GatedApp) error {
 spec:
   crds:
     gated-app:
-      reconciler:
+      operatorBox:
         default: true
         onReconcile:
           external:
@@ -179,7 +179,7 @@ func OnReconcile(ctx context.Context, obj *v1alpha1.Application) error {
 spec:
   crds:
     database:              # CRD 1 — no changes needed
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:
@@ -189,7 +189,7 @@ spec:
     application:           # CRD 2 — observes database
       dependsOn:
         database: healthy  # workers don't start until database CRD is healthy
-      reconciler:
+      operatorBox:
         default: true
         cross:
           - kind: database
@@ -254,7 +254,7 @@ func OnReconcile(ctx context.Context, obj *v1alpha1.SecureApp) error {
 spec:
   crds:
     secure-app:
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           secrets:
@@ -303,7 +303,7 @@ func shouldCreateResource(obj *v1alpha1.FlexApp) bool {
 spec:
   crds:
     flex-app:
-      reconciler:
+      operatorBox:
         default: true
         onReconcile:
           jobs:

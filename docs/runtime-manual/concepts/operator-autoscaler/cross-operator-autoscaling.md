@@ -1,7 +1,7 @@
 # Cross‑Operator Autoscaling  
 *How operators scale based on each other’s load.*
 
-Cross‑Operator Autoscaling allows an OperatorBox to scale based on the **runtime metrics of another operator**.  
+Cross‑Operator Autoscaling allows an operatorBox: to scale based on the **runtime metrics of another operator**.  
 This enables upstream/downstream coordination, pipeline‑wide optimization, and ecosystem‑level behavior — all expressed declaratively in YAML.
 
 This feature is powered by Orkestra’s cross‑operator IPC layer, which exposes:
@@ -218,7 +218,7 @@ Cross‑operator autoscaling is designed to be safe:
 - No dropped queue items  
 - No goroutine leaks  
 
-Operators remain fully isolated inside their OperatorBoxes.
+Operators remain fully isolated inside their operatorBox:es.
 
 ---
 

@@ -31,7 +31,7 @@ spec:
         version: v1alpha1
         kind: Application
         plural: applications
-      reconciler:
+      operatorBox:
         default: true
 ```
 

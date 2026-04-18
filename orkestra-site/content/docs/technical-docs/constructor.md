@@ -169,7 +169,7 @@ func (r *databaseReconciler) handleReconcile(ctx context.Context, obj *apiv1.Dat
     plural: databases
     location: github.com/myorg/api/database/v1alpha1
 
-  reconciler:
+  operatorBox:
     default: false       # ← must be false when using constructor
     constructor:
       location: github.com/myorg/reconcilers

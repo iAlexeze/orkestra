@@ -28,7 +28,7 @@ certificate requestor, PVC provisioner.
 **Orkestra fit:** Perfect. This is the pattern declarative templates were designed for.
 
 ```yaml
-reconciler:
+operatorBox:
   default: true
   onCreate:
     deployments:

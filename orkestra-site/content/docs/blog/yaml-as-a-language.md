@@ -111,8 +111,8 @@ They are **operator primitives**.
 Now assemble them into behaviour:
 
 ```yaml
-commonReconciler: &commonReconciler
-  reconciler:
+commonoperatorBox: &commonReconciler
+  operatorBox:
     default: true
     onCreate:
       deployments:
@@ -130,8 +130,8 @@ Just composition.
 Now combine them into richer variants with validation:
 
 ```yaml
-prodReconciler: &prodReconciler
-  reconciler:
+prodoperatorBox: &prodReconciler
+  operatorBox:
     default: true
     onCreate:
       deployments:

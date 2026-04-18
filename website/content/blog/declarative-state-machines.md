@@ -16,7 +16,7 @@ In traditional operators, state transitions are encoded in the `Reconcile` funct
 spec:
   crds:
     database:
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:

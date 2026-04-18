@@ -111,7 +111,7 @@ spec:
         plural: postgreses
       workers: 2
       resync: 1m
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:
@@ -150,7 +150,7 @@ func PostgresHooks() domain.AnyReconcileHooks {
 Consumers reference the typed extension in their Katalog:
 
 ```yaml
-reconciler:
+operatorBox:
   default: true
   hooks:
     location: github.com/orkestra-sh/registry/typed-extensions/hooks/postgres-hooks

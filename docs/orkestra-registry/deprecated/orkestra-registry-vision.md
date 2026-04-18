@@ -127,7 +127,7 @@ sources:
 spec:
   crds:
     prometheus:
-      reconciler:
+      operatorBox:
         onDelete:
           job:
             - image: busybox

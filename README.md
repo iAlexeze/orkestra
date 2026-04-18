@@ -183,7 +183,7 @@ Full documentation: [Orkestra Registry](https://orkestra.readthedocs.io/en/lates
 ---
 ## Operator Autoscaler
 
-Every CRD in Orkestra runs inside an isolated **OperatorBox** with its own workers, queue, and metrics. The **Operator Autoscaler** lets you scale these dynamically — no Go code, no external controller.
+Every CRD in Orkestra runs inside an isolated **operatorBox:** with its own workers, queue, and metrics. The **Operator Autoscaler** lets you scale these dynamically — no Go code, no external controller.
 
 ```yaml
 operatorBox:
@@ -312,7 +312,7 @@ conversion:
 
 **Option 2 — Internal normalization (no webhook)**
 
-For simple or single-direction schema evolution, `normalize:` canonicalizes field values inside the OperatorBox pipeline — no webhook deployment, no TLS, no `admissionregistration` API call. Ideal when you want a single storage representation without wiring up the Kubernetes conversion machinery.
+For simple or single-direction schema evolution, `normalize:` canonicalizes field values inside the operatorBox: pipeline — no webhook deployment, no TLS, no `admissionregistration` API call. Ideal when you want a single storage representation without wiring up the Kubernetes conversion machinery.
 
 ```yaml
 normalize:
@@ -416,7 +416,7 @@ Each reconcile advances one step and writes one state. The queue fires again on 
 Inject environment variables into Deployments from **literals**, **Secrets**, **ConfigMaps**, or **any mix of sources**.  
 All values are template expressions resolved against the **live CR** at reconcile time.
 
-Orkestra also lets you **create** the Secret/ConfigMap in the same `operatorBox` before consuming them — no extra manifests, no extra controllers.
+Orkestra also lets you **create** the Secret/ConfigMap in the same `operatorBox:` before consuming them — no extra manifests, no extra controllers.
 
 ```yaml
 operatorBox:
@@ -554,7 +554,7 @@ providers:
       mongoUri: "$MONGODB_URL"
 ```
 
-Then reference them inside any `operatorBox`:
+Then reference them inside any `operatorBox:`:
 
 ```yaml
 operatorBox:
@@ -604,7 +604,7 @@ With `deletionProtection` enabled, Orkestra registers a validating webhook that 
 | | |
 |---|---|
 | Live resources under management | 13,220 |
-| Active operatorboxes | 3 Katalogs, 113 workers |
+| Active operatorBox:es | 3 Katalogs, 113 workers |
 | Reconcile error rate | **0.0%** |
 | Conversion failures | **0** |
 | Memory (15 CRDs) | ~47 MB |

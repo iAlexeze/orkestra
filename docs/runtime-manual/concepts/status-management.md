@@ -62,7 +62,7 @@ spec:
 To opt out of automatic conditions for a specific CRD:
 
 ```yaml
-reconciler:
+operatorBox:
   status:
     conditions: false
 ```
@@ -78,7 +78,7 @@ Declare status fields in the Katalog. Values support the same Go template
 expressions as `onCreate` templates — resolved against the live CR at reconcile time.
 
 ```yaml
-reconciler:
+operatorBox:
   status:
     fields:
       - path: phase
@@ -147,7 +147,7 @@ makes their status available in the template resolver under the `children` key.
 Status fields can then reference the live state of child resources.
 
 ```yaml
-reconciler:
+operatorBox:
   status:
     fields:
       # From the Deployment
@@ -244,7 +244,7 @@ Katalog with all three layers:
     kind: Website
     plural: websites
 
-  reconciler:
+  operatorBox:
     default: true
 
     status:
@@ -328,7 +328,7 @@ hook's status writes are preserved (the patch is merged, not replaced).
 To disable all automatic status management for a CRD:
 
 ```yaml
-reconciler:
+operatorBox:
   status:
     conditions: false
     fields: []

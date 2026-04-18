@@ -64,7 +64,7 @@ Validation rules live in the Katalog under `reconciler.validation`:
   apiTypes:
     kind: Website
     ...
-  reconciler:
+  operatorBox:
     validation:
       - field: spec.image
         prefix: "myorg/"

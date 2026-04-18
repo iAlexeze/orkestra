@@ -1,4 +1,4 @@
-# The OperatorBox Model: Isolated Runtime Cells and Declarative IPC
+# The operatorBox: Model: Isolated Runtime Cells and Declarative IPC
 
 *Orkestra Project — April 2026*
 
@@ -11,11 +11,11 @@ memory, global informers, and implicit cluster-wide caches. This model produces
 correct operators in isolation but fragile systems in composition. When twenty
 operators share a cluster, they share nothing explicitly and everything
 accidentally. Orkestra introduces a different execution model: the
-**operatorbox**, an isolated runtime cell that gives each CRD its own informer,
+**operatorBox:**, an isolated runtime cell that gives each CRD its own informer,
 queue, worker pool, health state, and reconciliation context. Operators do not
 share internal state. They communicate only through **Orkestra IPC** — explicit,
 declarative, read-only cross-operator observation. This paper defines the
-operatorbox model precisely, describes its properties, and demonstrates how
+operatorBox: model precisely, describes its properties, and demonstrates how
 declarative IPC enables safe multi-operator composition without sacrificing
 determinism.
 
@@ -51,10 +51,10 @@ resources, multiple teams — this assumption does not hold.
 
 ---
 
-## 2. The operatorbox
+## 2. The operatorBox:
 
-An operatorbox is Orkestra's fundamental execution unit. One CRD entry in the
-Katalog produces one operatorbox. The operatorbox owns exclusively:
+An operatorBox: is Orkestra's fundamental execution unit. One CRD entry in the
+Katalog produces one operatorBox. The operatorBox: owns exclusively:
 
 **Its own informer.** A `SharedIndexInformer` watching exactly the resources
 declared by this CRD entry. For a `Pipeline` CRD, the informer watches
@@ -64,9 +64,9 @@ other exists.
 
 **Its own event queue.** A bounded workqueue receiving events from its informer.
 Queue depth, rate limiting, and max queue size are configured per CRD. A
-`Pipeline` operatorbox with high throughput requirements can be configured
+`Pipeline` operatorBox: with high throughput requirements can be configured
 with a larger queue and more workers without affecting the `ManagedDatabase`
-operatorbox at all.
+operatorBox: at all.
 
 **Its own worker pool.** A fixed number of goroutines pulling from the queue
 and calling into the reconcile loop. Workers is a CRD-level configuration.
@@ -80,32 +80,32 @@ and the katalog registry reference for cross-CRD informer lookup.
 **Its own health state.** A `CRDHealth` instance tracking consecutive successes,
 consecutive failures, error rate, and degraded threshold. Health transitions
 for one CRD do not affect the health state of any other CRD. The Control Center
-shows health per operatorbox.
+shows health per operatorBox.
 
 **Its own metrics.** Reconcile duration, error rate, queue depth, worker
-utilization — all labeled by GVK, all scoped to this operatorbox.
+utilization — all labeled by GVK, all scoped to this operatorBox.
 
-**Its own lifecycle.** Operatorboxes start in topological dependency order.
+**Its own lifecycle.** operatorBox:es start in topological dependency order.
 If a `DatabaseBackedApp` CRD declares `dependsOn: managed-database: healthy`,
 its workers do not start until `managed-database` has reconciled at least one
 resource successfully. This is startup sequencing without coordination code.
 
 ---
 
-## 3. What operatorboxes do not share
+## 3. What operatorBox:es do not share
 
-The isolation properties are equally important to state precisely. Operatorboxes
+The isolation properties are equally important to state precisely. operatorBox:es
 do not share:
 
-**Informer caches.** Each operatorbox maintains its own in-memory cache of its
+**Informer caches.** Each operatorBox: maintains its own in-memory cache of its
 own resources. There is no global cache. There is no coordination required to
-read from the cache of another operatorbox — and no accidental reading of data
-from another operatorbox's cache.
+read from the cache of another operatorBox: — and no accidental reading of data
+from another operatorBox:'s cache.
 
-**Workqueues.** Queue pressure in one operatorbox does not affect processing
+**Workqueues.** Queue pressure in one operatorBox: does not affect processing
 latency in another. The 13,100 queued items observed in production during a
-high-load test in the `website` operatorbox did not affect the `pipeline`
-operatorbox's latency at all. This is a structural property, not an operational
+high-load test in the `website` operatorBox: did not affect the `pipeline`
+operatorBox:'s latency at all. This is a structural property, not an operational
 tuning outcome.
 
 **Reconciler state.** No reconciler holds references to another reconciler's
@@ -114,26 +114,26 @@ is parameterized by its own domain type and holds its own configuration.
 
 **Panic domains.** Each reconcile invocation is wrapped in `safeReconcile`, which
 recovers from panics and records them as reconcile failures. A panic in one
-operatorbox increments that operatorbox's failure counter and triggers a requeue.
-It does not crash the process. It does not affect any other operatorbox.
+operatorBox: increments that operatorBox:'s failure counter and triggers a requeue.
+It does not crash the process. It does not affect any other operatorBox.
 
-The isolation is within a single binary. Operatorboxes share an OS process and
+The isolation is within a single binary. operatorBox:es share an OS process and
 runtime memory allocator. The isolation is at the data structure level — informer
 caches, queues, reconcilers, and health state are not shared. This is comparable
 to goroutine isolation: stronger than a monolithic function, weaker than an OS
 process. For the correctness properties that matter for operator composition —
 queue independence, cache independence, health isolation, panic containment — the
-operatorbox model provides the necessary guarantees.
+operatorBox: model provides the necessary guarantees.
 
 ---
 
 ## 4. Orkestra IPC: explicit cross-operator communication
 
-Isolating operatorboxes creates a secondary problem: operators that depend on
+Isolating operatorBox:es creates a secondary problem: operators that depend on
 each other's state can no longer read it directly. A `DatabaseBackedApp`
-operatorbox needs to know whether the `ManagedDatabase` CR for its database is
+operatorBox: needs to know whether the `ManagedDatabase` CR for its database is
 Ready before creating its Deployment. In a shared-cache model, it calls
-`client.Get` against the shared cache. In the operatorbox model, there is no
+`client.Get` against the shared cache. In the operatorBox: model, there is no
 shared cache to call against.
 
 Orkestra solves this with explicit IPC: the `cross:` declaration.
@@ -162,12 +162,12 @@ The `cross:` declaration is explicit and visible. It names the source CRD
 (`kind: managed-database`), the selector that identifies the specific CR
 instance, and the name under which the result is available in the template
 context (`as: db`). Nothing about this communication is implicit. A reader of
-the Katalog can immediately see which external CRD this operatorbox depends on
+the Katalog can immediately see which external CRD this operatorBox: depends on
 and what field it uses to gate its behavior.
 
-The read is zero-API-calls for same-binary operatorboxes. The `cross:` mechanism
+The read is zero-API-calls for same-binary operatorBox:es. The `cross:` mechanism
 resolves through the `KatalogRegistry`, which holds a reference to every
-operatorbox's informer. Reading `managed-database`'s informer cache from the
+operatorBox:'s informer. Reading `managed-database`'s informer cache from the
 `database-backed-app` reconciler is an in-memory map lookup. The API server is
 not involved. This is what makes the model practical: cross-CRD observation is
 as cheap as same-CRD observation.
@@ -183,24 +183,24 @@ uses. The HTTP path is authenticated and cached.
 The cross-operator communication model has specific semantics that distinguish
 it from the informal coupling patterns in traditional operators.
 
-**Read-only.** An operatorbox can observe another operatorbox's resource state.
+**Read-only.** An operatorBox: can observe another operatorBox:'s resource state.
 It cannot modify it. This eliminates an entire class of multi-operator bugs where
 two operators attempt to reconcile the same resource field in opposite directions.
 
 **Declared at load time.** The `cross:` dependencies are declared in the Katalog
 and validated at startup. If a `cross:` declaration references a CRD kind not
 present in the Katalog, Orkestra logs a warning and returns an empty result —
-the dependent operatorbox is not blocked, it simply proceeds with
+the dependent operatorBox: is not blocked, it simply proceeds with
 `cross.db.found = "false"`.
 
 **Level-triggered.** Cross-CRD reads happen on every reconcile of the depending
 CRD. If the `managed-database` CR's status changes, the `database-backed-app`
-operatorbox observes the change on its next resync cycle — no push notification
+operatorBox: observes the change on its next resync cycle — no push notification
 is required. The reconcile loop is the notification mechanism.
 
-**Not a subscription.** An operatorbox does not subscribe to events from another
-operatorbox. It reads state at reconcile time. This means there is no event
-ordering dependency between operatorboxes. The `database-backed-app` operatorbox
+**Not a subscription.** An operatorBox: does not subscribe to events from another
+operatorBox. It reads state at reconcile time. This means there is no event
+ordering dependency between operatorBox:es. The `database-backed-app` operatorBox:
 will simply retry until the `managed-database` CR reaches the expected state.
 
 ---
@@ -215,14 +215,14 @@ database-backed-app:
     managed-database: healthy
 ```
 
-This declares that the `database-backed-app` operatorbox should not start
-processing until the `managed-database` operatorbox has reached `healthy` state
+This declares that the `database-backed-app` operatorBox: should not start
+processing until the `managed-database` operatorBox: has reached `healthy` state
 — at least one successful reconcile with zero consecutive failures. Orkestra
-resolves the full dependency graph at startup and starts operatorboxes in
+resolves the full dependency graph at startup and starts operatorBox:es in
 topological order, waiting at each node until its declared condition is met.
 
 The dependency graph is validated at Katalog load time. Cycles are detected
-and produce a fatal error with a clear message. This is the operatorbox model
+and produce a fatal error with a clear message. This is the operatorBox: model
 applied to time: just as cross: provides spatial isolation with explicit reads,
 dependsOn provides temporal isolation with explicit sequencing.
 
@@ -260,33 +260,33 @@ as a direct cache lookup.
 
 ## 8. Multi-operator composition
 
-The operatorbox model makes multi-operator composition predictable for the first
+The operatorBox: model makes multi-operator composition predictable for the first
 time. A platform team can define a Katalog with a dependency graph:
 
 ```
 network → namespace → database → application
 ```
 
-Each arrow is a `dependsOn` relationship. Each node is an operatorbox. The
-platform team can add a new operatorbox to the Katalog — declaring its
+Each arrow is a `dependsOn` relationship. Each node is an operatorBox. The
+platform team can add a new operatorBox: to the Katalog — declaring its
 dependencies and its IPC relationships — without modifying any existing
-operatorbox. The new operatorbox does not share memory with any existing
-operatorbox. It cannot accidentally read stale data from a different CRD's
-informer. It cannot cause another operatorbox to process events it didn't intend
+operatorBox. The new operatorBox: does not share memory with any existing
+operatorBox. It cannot accidentally read stale data from a different CRD's
+informer. It cannot cause another operatorBox: to process events it didn't intend
 to process.
 
-In production, Orkestra has operated thirteen operatorboxes simultaneously across
+In production, Orkestra has operated thirteen operatorBox:es simultaneously across
 three Katalogs, processing 24,060 reconciles with a 0.0% error rate. The
-operatorboxes managing different CRDs have different worker counts, different
+operatorBox:es managing different CRDs have different worker counts, different
 queue depths, and different health profiles. None of their operational
 characteristics affect each other. This is the correct baseline behavior for
-a system built on the operatorbox model.
+a system built on the operatorBox: model.
 
 ---
 
 ## 9. Implications
 
-The operatorbox model has implications beyond the correctness properties already
+The operatorBox: model has implications beyond the correctness properties already
 described.
 
 **Operator marketplaces become safe.** When operators are isolated by design,
@@ -294,17 +294,17 @@ installing a third-party operator from a registry does not create a risk that
 it will interfere with existing operators. The worst it can do is fail to
 reconcile its own resources.
 
-**Multi-team development becomes tractable.** Two teams can develop operatorboxes
+**Multi-team development becomes tractable.** Two teams can develop operatorBox:es
 independently, declare their IPC relationships explicitly, and deploy them to the
 same Katalog without coordination. The explicit `cross:` declarations serve as the
 interface contract between teams.
 
 **Observability becomes per-operator.** The Control Center shows one health panel
-per operatorbox. Degradation in one CRD is visible as degradation in exactly that
+per operatorBox. Degradation in one CRD is visible as degradation in exactly that
 CRD, not as degradation in "the operator." Root cause analysis narrows to a
-single operatorbox.
+single operatorBox.
 
-**Lifecycle becomes per-operator.** An operatorbox can be disabled without
+**Lifecycle becomes per-operator.** An operatorBox: can be disabled without
 affecting others. It can be restarted by reapplying its Katalog entry. Its
 workers can be scaled independently. These operations do not require rebuilding
 or redeploying the entire operator binary.
@@ -313,10 +313,10 @@ or redeploying the entire operator binary.
 
 ## 10. Conclusion
 
-The operatorbox model reconstitutes the operator pattern on a different
+The operatorBox: model reconstitutes the operator pattern on a different
 architectural foundation. Rather than multiple controllers sharing a runtime,
 each CRD gets an isolated runtime cell: its own informer, queue, workers,
-health state, and reconciler. Communication between operatorboxes is explicit,
+health state, and reconciler. Communication between operatorBox:es is explicit,
 declarative, read-only, and zero-cost for same-binary reads. Startup sequencing
 is declared through a validated dependency graph.
 

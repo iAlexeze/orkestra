@@ -12,7 +12,7 @@ Use a constructor when you need:
 - Migration of an existing controller  
 
 ```yaml
-reconciler:
+operatorBox:
   default: false
   constructor:
     location: github.com/myorg/reconcilers

@@ -32,7 +32,7 @@ However, some use cases require full control:
 Constructors are configured per‑CRD:
 
 ```yaml
-reconciler:
+operatorBox:
   default: false
   constructor:
     location: github.com/myorg/my-operator/pkg/runtime
@@ -57,7 +57,7 @@ to generate the runtime registry wiring.
 
 ## Constructor function shape
 
-A constructor typically returns a controller‑runtime‑style reconciler:
+A constructor typically returns a controller‑runtime‑style operatorBox:
 
 ```go
 func NewWebsiteReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {

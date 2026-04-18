@@ -266,7 +266,7 @@ crds:
       kind: Website
       plural: websites
       location: github.com/myorg/apis/website/v1alpha1
-    reconciler:
+    operatorBox:
       default: false
       constructor:
         location: github.com/myorg/my-operator/pkg/reconciler

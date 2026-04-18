@@ -5,7 +5,7 @@ Right now you scale:
 - queueDepth  
 - resync  
 
-But OperatorBox already has more knobs:
+But operatorBox: already has more knobs:
 
 - provider concurrency  
 - external call rate limits  
@@ -64,7 +64,7 @@ conditions:
       greaterThan: "500"
 ```
 
-This is only possible because OperatorBox already supports **cross‑operator IPC**.
+This is only possible because operatorBox: already supports **cross‑operator IPC**.
 
 Imagine a database operator scaling up when the application operator is overwhelmed.  
 Or a pipeline operator slowing down when a downstream operator is saturated.

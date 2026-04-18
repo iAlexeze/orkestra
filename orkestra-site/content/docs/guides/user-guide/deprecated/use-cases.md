@@ -30,7 +30,7 @@ spec:
         version: v1alpha1
         kind: Website
         plural: websites
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:
@@ -61,7 +61,7 @@ Every platform team at every company writes some version of this controller.
 Create a namespace, copy a pull secret, add a ConfigMap, create a ServiceAccount.
 
 ```yaml
-reconciler:
+operatorBox:
   default: true
   onCreate:
     configMaps:
@@ -192,7 +192,7 @@ spec:
         version: v1alpha1
         kind: Application
         plural: applications
-      reconciler:
+      operatorBox:
         default: true
 ```
 
@@ -220,7 +220,7 @@ spec:
         version: v1alpha1
         kind: {{ .kind }}
         plural: {{ .plural }}
-      reconciler:
+      operatorBox:
         default: true
     {{- end }}
 ```
@@ -360,7 +360,7 @@ the lifecycle, finalizers, events, and metrics, but you write the reconcile
 logic in Go with full type-safe access to the CR.
 
 ```yaml
-reconciler:
+operatorBox:
   default: true
   hooks:
     location: github.com/myorg/hooks
@@ -402,7 +402,7 @@ order, and surrounds it with the health API, metrics, and leader election.
 The reconcile implementation is entirely yours.
 
 ```yaml
-reconciler:
+operatorBox:
   default: false
   constructor:
     location: github.com/myorg/reconcilers

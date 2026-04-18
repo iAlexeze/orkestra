@@ -77,7 +77,7 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		Healthy:                  health.Healthy,
 		Started:                  health.Started,
 		Pending:                  health.Pending,
-		ErrorRate:                health.ErrorRate,
+		ErrorRate:                health.ErrorRate * 100,
 		Conversion:               info.Conversion,
 		Admission:                info.Admission,
 		Protection:               info.Protection,

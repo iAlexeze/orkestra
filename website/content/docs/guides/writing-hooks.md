@@ -133,7 +133,7 @@ crds:
       kind: Website
       plural: websites
       location: github.com/myorg/apis/website/v1alpha1
-    reconciler:
+    operatorBox:
       default: true
       hooks:
         location: github.com/myorg/my-operator/pkg/hooks

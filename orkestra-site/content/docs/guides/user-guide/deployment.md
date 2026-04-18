@@ -145,7 +145,7 @@ katalog:
             version: v1alpha1
             kind: Website
             plural: websites
-          reconciler:
+          operatorBox:
             onCreate:
               deployments:
                 - image: "{{ .spec.image }}"
@@ -278,7 +278,7 @@ spec:
         version: v1alpha1
         kind: Application
         plural: applications
-      reconciler:
+      operatorBox:
         default: true
 ```
 

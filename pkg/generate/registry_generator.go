@@ -144,7 +144,7 @@ func RegisterTypedScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
 // When generation is NOT needed:
 //
 //	Dynamic template CRDs (only onCreate/onReconcile/onDelete declared)
-//	  GenericReconciler.runTemplateReconcile() reads the Katalog's OperatorBoxConfig
+//	  GenericReconciler.runTemplateReconcile() reads the Katalog's operatorBox:Config
 //	  directly at runtime and calls the OrkestraRegistry functions itself.
 //	  No generated file. No ork generate runtime. Just ork run.
 func Runtime(m *merger.Merger, dryRun bool) error {

@@ -1,7 +1,7 @@
 # Cross‑Operator Autoscaling Scenarios  
 *Real‑world patterns for scaling based on other operators.*
 
-Cross‑Operator Autoscaling enables an OperatorBox to scale using **runtime metrics from another operator**.  
+Cross‑Operator Autoscaling enables an operatorBox: to scale using **runtime metrics from another operator**.  
 This unlocks pipeline‑wide coordination, upstream/downstream flow control, and distributed load‑aware behavior.
 
 Below are real‑life scenarios showing how teams use cross‑operator metrics to stabilize pipelines, prevent overload, and optimize throughput.

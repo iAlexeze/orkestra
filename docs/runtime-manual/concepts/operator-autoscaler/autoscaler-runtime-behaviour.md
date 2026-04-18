@@ -1,7 +1,7 @@
 # Autoscaler Runtime Behavior
 *How the autoscaler behaves at runtime.*
 
-The autoscaler runs as part of every OperatorBox that declares an `autoscale:` block.  
+The autoscaler runs as part of every operatorBox: that declares an `autoscale:` block.  
 It evaluates conditions, applies overrides, restores baselines, and exposes live metrics — all in‑memory, without API calls or external controllers.
 
 Autoscaling is **safe**, **deterministic**, and **fully reversible**.
@@ -68,7 +68,7 @@ If `cooldown:` is omitted, restoration happens on the next tick.
 
 ## 4. Local metrics (`metrics.*`)
 
-Each OperatorBox maintains its own live metrics:
+Each operatorBox: maintains its own live metrics:
 
 - queue depth  
 - busy/idle worker percentage  

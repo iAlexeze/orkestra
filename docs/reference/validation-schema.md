@@ -7,7 +7,7 @@ Complete schema reference for `reconciler.validation` in a Katalog CRD entry.
 ## `reconciler.validation`
 
 ```yaml
-reconciler:
+operatorBox:
   validation:
     rules:
       - field: string           # required
@@ -197,7 +197,7 @@ error: webhook registration: validating: failed to create ValidatingWebhookConfi
     validation: true
     operations: ["CREATE", "UPDATE"]
 
-  reconciler:
+  operatorBox:
     validation:
       # deny — blocks at admission and halts reconciliation
       - field: spec.image
