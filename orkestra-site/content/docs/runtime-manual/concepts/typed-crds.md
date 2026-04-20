@@ -60,7 +60,7 @@ apiTypes:
 The `location` field tells Orkestra where your Go types live.
 {{< /callout >}}
 
-During `ork generate runtime`, Orkestra:
+During `ork generate registry`, Orkestra:
 
 - registers your Go types  
 - adds them to the scheme  
@@ -146,10 +146,10 @@ apiTypes:
   location: github.com/myorg/my-operator/pkg/apis/website/v1alpha1
 ```
 
-4. Generate runtime wiring:
+4. Generate runtime registry:
 
 ```bash
-ork generate runtime --katalog katalogs/website.yaml
+ork generate registry --katalog katalogs/website.yaml
 ```
 
 5. Run the operator:

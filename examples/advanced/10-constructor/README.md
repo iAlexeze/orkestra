@@ -85,7 +85,7 @@ Failed ◄───────────────────────�
 ## Step 1 — Code generation
 
 ```bash
-ork generate runtime --katalog katalog.yaml --output ./cmd/
+ork generate registry --katalog katalog.yaml --output ./cmd/
 ```
 
 This registers `*apiv1.Pipeline` in the object registry and
@@ -248,7 +248,7 @@ The key changes:
 - `(ctrl.Result, error)` → `error` (requeue by returning an error)
 - Remove `ctrl.Manager` setup — Orkestra provides the informer and queue
 
-Register `NewPipelineReconciler` in the Katalog and run `ork generate runtime`.
+Register `NewPipelineReconciler` in the Katalog and run `ork generate registry`.
 Your existing reconcile logic stays intact.
 
 ---

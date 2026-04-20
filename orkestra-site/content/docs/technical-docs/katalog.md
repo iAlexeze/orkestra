@@ -55,7 +55,7 @@ addRuntimeObjects(entry)
   │  dynamic mode: sets DynamicModeObject and ListDynamicModeObject
   │                to factory functions returning *unstructured.Unstructured
   │  typed mode:   looks up ObjectRegistry[gvk] and ListRegistry[gvk]
-  │                set by ork generate runtime
+  │                set by ork generate registry
   │
   ▼
 addHooks(entry)
@@ -178,12 +178,12 @@ In typed mode, `DynamicModeObject` is looked up from `ObjectRegistry`:
 ```go
 factory, ok := orktypes.ObjectRegistry[gvk]
 if !ok {
-    return fmt.Errorf("no object factory for %s — run ork generate runtime", gvk)
+    return fmt.Errorf("no object factory for %s — run ork generate registry", gvk)
 }
 entry.DynamicModeObject = factory
 ```
 
-The `ObjectRegistry` is populated by `zz_generated_runtime_registry.go`, which `ork generate runtime` produces. If this file is missing or stale, typed mode CRDs fail to start with the above error.
+The `ObjectRegistry` is populated by `zz_generated_runtime_registry.go`, which `ork generate registry` produces. If this file is missing or stale, typed mode CRDs fail to start with the above error.
 
 ---
 

@@ -154,7 +154,7 @@ The patch is idempotent — if the label is already set, no API call is made.
 - Objects are decoded into concrete Go types by the REST client
 - Go hooks can do `obj.(*Website)` for type-safe field access
 - The Resolver falls back to metadata-only context for typed objects
-- `ork generate runtime` is required before `ork run`
+- `ork generate registry` is required before `ork run`
 
 The `GenericReconciler` itself does not distinguish — it calls the same functions. The distinction surfaces in the `Resolver` (unstructured gets full spec access) and in hook type assertions.
 

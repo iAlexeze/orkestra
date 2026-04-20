@@ -179,7 +179,7 @@ func (r *databaseReconciler) handleReconcile(ctx context.Context, obj *apiv1.Dat
 ### Generate the registry
 
 ```bash
-ork generate runtime --katalog katalog.yaml
+ork generate registry --katalog katalog.yaml
 ```
 
 Generates the `ReconcilerRegistry` entry for `NewDatabaseReconciler`.

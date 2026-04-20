@@ -53,8 +53,6 @@ func init() {
 		generateRuntimeCmd,
 		generateDocsCmd,
 		generateDashboardsCmd,
-		generateExamplesCmd,
-		generateTestsCmd,
 		generateAllCmd,
 	} {
 		cobra.MarkFlagRequired(cmd.Flags(), "katalog")

@@ -239,12 +239,12 @@ This pattern is ideal for multi‑environment deployments (dev/staging/prod).
 
 ---
 
-## Generate Runtime (Only When Needed)
+## Generate Runtime Registry (Only When Needed)
 
-If any CRD uses compiled Go types (`apiTypes.location` set), generate the runtime wiring:
+If any CRD uses compiled Go types (`apiTypes.location` set), generate the runtime registry:
 
 ```bash
-ork generate runtime --katalog komposer.yaml
+ork generate registry --katalog komposer.yaml
 ```
 
 {{< callout type="note" >}}

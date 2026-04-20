@@ -29,7 +29,7 @@ However, some use cases require full control:
 - using advanced caching or sharding strategies  
 
 {{< callout type="note" >}}
-Constructors give you the ability to plug in a custom reconciler while still benefiting from Orkestra’s Katalog, Komposer, and runtime wiring.
+Constructors give you the ability to plug in a custom reconciler while still benefiting from Orkestra’s Katalog, Komposer, and runtime registry.
 {{< /callout >}}
 
 ---
@@ -55,7 +55,7 @@ operatorBox:
 After declaring a constructor, run:
 
 ```bash
-ork generate runtime --katalog <path>
+ork generate registry --katalog <path>
 ```
 
 to generate the runtime registry wiring.

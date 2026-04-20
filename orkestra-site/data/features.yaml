@@ -1,6 +1,6 @@
 - icon: "⚡"
   title: "Zero-code operators"
-  description: "Write a Katalog YAML — Orkestra runs the full operator. No reconcile loops, no client-go, no controller-runtime wiring."
+  description: "Write a Katalog YAML — Orkestra runs the full operator. No reconcile loops, no client-go, no controller-runtime registry."
 
 - icon: "🔀"
   title: "One runtime, many CRDs"

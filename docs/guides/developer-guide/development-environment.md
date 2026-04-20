@@ -142,12 +142,12 @@ Orkestra does not automatically reload katalogs at runtime, but the CLI provides
 
 ---
 
-## Generating Runtime Wiring
+## Generating runtime registry
 
 Typed CRDs, Go hooks, and custom constructors require runtime generation:
 
 ```
-ork generate runtime --katalog katalog.yaml
+ork generate registry --katalog katalog.yaml
 go mod tidy
 ```
 
@@ -225,7 +225,7 @@ kubectl get events --sort-by=.lastTimestamp
 
 1. Create or modify katalogs  
 2. (Optional) Add typed CRDs or hooks  
-3. Run `ork generate runtime`  
+3. Run `ork generate registry`  
 4. Build the runtime  
 5. Start a local cluster  
 6. Run Orkestra locally  

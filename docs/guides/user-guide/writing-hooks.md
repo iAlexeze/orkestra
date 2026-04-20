@@ -137,10 +137,10 @@ crds:
         function: WebsiteHooks
 ```
 
-### Step 3: Generate Runtime Wiring
+### Step 3: Generate Runtime Registry
 
 ```bash
-ork generate runtime --katalog katalogs/website.yaml
+ork generate registry --katalog katalogs/website.yaml
 go mod tidy
 ```
 

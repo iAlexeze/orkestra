@@ -88,7 +88,7 @@ nav:
           - ork init: reference/cli/init.md
           - ork validate: reference/cli/validate.md
           - ork template: reference/cli/template.md
-          - ork generate runtime: reference/cli/generate-runtime.md
+          - ork generate registry: reference/cli/generate/registry.md
           - ork run: reference/cli/run.md
           - ork status: reference/cli/status.md
           - ork get: reference/cli/get.md

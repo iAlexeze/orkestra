@@ -48,7 +48,7 @@ operatorBox:
 When hooks are declared, you must run:
 
 ```bash
-ork generate runtime --katalog <path>
+ork generate registry --katalog <path>
 ```
 
 to generate the runtime registry wiring.
