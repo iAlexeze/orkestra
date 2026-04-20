@@ -14,6 +14,7 @@ import (
 type CRSummary struct {
 	Name        string `json:"name"`
 	Namespace   string `json:"namespace,omitempty"`
+	Namespaced  bool   `json:"namespaced"`
 	Phase       string `json:"phase,omitempty"`
 	Ready       bool   `json:"ready"`
 	ReadyReason string `json:"readyReason,omitempty"`

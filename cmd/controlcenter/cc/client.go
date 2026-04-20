@@ -3,6 +3,7 @@ package controlcenter
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -57,6 +58,8 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 			HasNamespaceRules: false,
 		}
 	}
+
+	log.Println("Namespaced: ", info.Namespaced)
 
 	detail := &CRDDetail{
 		Name:                     info.Name,

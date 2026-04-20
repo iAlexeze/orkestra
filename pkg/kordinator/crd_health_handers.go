@@ -132,7 +132,7 @@ type CRDInfoResponse struct {
 	Mode                   string                           `json:"mode"`
 	GVK                    string                           `json:"gvk"`
 	GVR                    string                           `json:"gvr"`
-	Namespaced             *bool                            `json:"namespaced"`
+	Namespaced             bool                             `json:"namespaced"`
 	Namespace              string                           `json:"namespace"`
 	DependsOn              []string                         `json:"dependsOn,omitempty"`
 	Workers                int                              `json:"workers"`
@@ -308,7 +308,7 @@ func BuildCRDInfoHandler(
 			Mode:                crd.Mode.String(),
 			GVK:                 crd.GVK().String(),
 			GVR:                 crd.GroupVersionResource.String(),
-			Namespaced:          crd.Namespaced,
+			Namespaced:          crd.IsNamespaced(),
 			Namespace:           crd.Namespace,
 			DependsOn:           crd.DependsOn.Names(),
 			Workers:             v.workers,
@@ -476,7 +476,7 @@ type CRDSummaryResponse struct {
 	Mode                     string             `json:"mode"`
 	GVK                      string             `json:"gvk"`
 	GVR                      string             `json:"gvr"`
-	Namespaced               *bool              `json:"namespaced"`
+	Namespaced               bool               `json:"namespaced"`
 	Namespace                string             `json:"namespace"`
 	DependsOn                []string           `json:"dependsOn,omitempty"`
 	HasUnhealthyDependencies bool               `json:"hasUnhealthyDependencies"`
@@ -589,7 +589,7 @@ func BuildKatalogHandler(
 				Mode:                     crd.Mode.String(),
 				GVK:                      gvk,
 				GVR:                      crd.GroupVersionResource.String(),
-				Namespaced:               crd.Namespaced,
+				Namespaced:               crd.IsNamespaced(),
 				Namespace:                crd.Namespace,
 				DependsOn:                crd.DependsOn.Names(),
 				Workers:                  v.workers,

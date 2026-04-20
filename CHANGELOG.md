@@ -1,29 +1,36 @@
-# Changelog
+# Changelog (Beginner Pack Flow Fixes)
 
-## [Unreleased]
+## Fixes & Improvements (Beginner Pack)
 
-### Added
-- **Windows support**: Native `ork.exe` and `orkcc.exe` binaries with `.zip` packages (in addition to `.tar.gz`)
-- **Winget publishing**: Automated manifest generation for Windows Package Manager
-- **Reusable workflows**: Split monolithic release pipeline into composable components:
-  - `build-matrix.yml` – cross‑platform binary builds
-  - `package-examples.yml` – example packs
-  - `build-push-images.yml` – container images (GHCR)
-  - `release-helm.yml` – Helm chart release
-  - `sign-and-release.yml` – GPG signing + GitHub Release
-  - `publish-homebrew.yml` – Homebrew formulas
-  - `publish-winget.yml` – Winget manifests
-  - `release-summary.yml` – final status summary
-- **Caching optimisation**: Per‑matrix binary caching to speed up rebuilds
-- **GPG signing for ZIP archives**: Windows `.zip` files are now signed alongside tarballs
+**Status patching not working**  
+- Added `status` subresource to all example CRDs in the beginner pack  
+- Ensures the runtime can patch `.status` fields without API server rejections  
+- Fixes reconcile loops that previously failed silently
 
-### Fixed
-- Corrected `go build` syntax (missing `-o` flag) in matrix build
-- Fixed typo in cache path (`dis/` → `dist/`)
-- Removed duplicate Windows assets in release `files:` section
-- Reusable summary workflow now accepts job results as inputs
+**Control Center namespace display**  
+- Cluster‑scoped resources were showing an empty namespace field  
+- Updated the CRD info handler to correctly identify cluster‑scoped CRDs  
+- Control Center now displays:  
+  ```
+  Namespace: cluster-scoped
+  ```
 
-### Changed
-- Helm chart publishing now only runs for stable releases (not pre‑releases)
-- Windows binaries are packaged as both `.tar.gz` and `.zip` for better user experience
-- Homebrew formulas update uses `ORK_PUBLISH_PAT` instead of `HOMEBREW_TAP_TOKEN`
+**SecretDistribution & ConfigMapDistribution examples**  
+- Updated beginner katalogs to use `namespaced: false`  
+- Aligns with the actual CRD definitions  
+- Fixes apply errors and ensures consistent behavior across packs
+
+**CRD Info Handler improvements**  
+- Enhanced the handler that feeds CRD metadata to the Control Center  
+- Now reports:  
+  - scope (Namespaced / Cluster)  
+  - group/version/kind  
+  - status subresource availability  
+  - schema presence  
+- Enables richer UI rendering and more accurate runtime insights
+
+---
+
+## Result
+
+The entire beginner pack flow now works **end‑to‑end**:

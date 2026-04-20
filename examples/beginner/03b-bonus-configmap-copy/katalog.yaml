@@ -17,6 +17,7 @@ spec:
         version: v1alpha1
         kind: ConfigMapDistribution
         plural: configmapdistributions
+      namespaced: false             # Default: (true)
 
       operatorBox:
         default: true
