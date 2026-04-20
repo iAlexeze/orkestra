@@ -100,6 +100,7 @@ Fifteen CRDs. One process. ~47 MB.
 ---
 ## Getting started
 
+```bash
 # Install (macOS)
 brew install orkspace/tap/ork orkspace/tap/orkcc
 
@@ -122,7 +123,9 @@ ork run --katalog examples/beginner/01-hello-website/katalog.yaml
 
 # Apply a CustomResource
 kubectl apply -f examples/beginner/01-hello-website/cr.yaml
+```
 
+---
 
 ### Watch live on Control Center
 In another terminal, run:
