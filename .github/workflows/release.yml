@@ -34,6 +34,10 @@ jobs:
             arch: arm64
             goarch: arm64
             goos: darwin
+          - os: windows
+            arch: amd64
+            goarch: amd64
+            goos: windows
 
     steps:
       - name: Checkout
@@ -54,9 +58,20 @@ jobs:
         with:
           path: |
             dist/ork
+            dist/ork.exe
             dist/orkcc
-          # Key includes OS, arch, and hashes of all go source files + go.sum
+            dist/orkcc.exe
           key: binaries-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('go.sum', '**/*.go', 'cmd/**/*.go') }}
+
+      - name: Set binary names
+        run: |
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            echo "RUNTIME=ork.exe" >> $GITHUB_ENV
+            echo "CONTROL=orkcc.exe" >> $GITHUB_ENV
+          else
+            echo "RUNTIME=ork" >> $GITHUB_ENV
+            echo "CONTROL=orkcc" >> $GITHUB_ENV
+          fi
 
       # ---------- BUILD (only on cache miss) ----------
       - name: Build runtime binary
@@ -65,6 +80,7 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
+          RUNTIME: ${{ env.RUNTIME }}
         run: |
           mkdir -p dist
           go build \
@@ -73,9 +89,9 @@ jobs:
               -X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }} \
               -X github.com/orkspace/orkestra/pkg/version.Commit=${{ github.sha }} \
               -X github.com/orkspace/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            -o dist/ork \
+            -o dist/${{ env.RUNTIME }} \
             ./cmd/orkestra/
-          echo "✅ Runtime built: dist/ork"
+          echo "✅ Runtime built: dist/${{ env.RUNTIME }}"
 
       - name: Build control center binary
         if: steps.cache-binaries.outputs.cache-hit != 'true'
@@ -83,6 +99,7 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
+          CONTROL: ${{ env.CONTROL }}
         working-directory: cmd/controlcenter
         run: |
           go build \
@@ -91,36 +108,66 @@ jobs:
               -X github.com/orkspace/orkestra-cc/version.Version=${{ github.ref_name }} \
               -X github.com/orkspace/orkestra-cc/version.Commit=${{ github.sha }} \
               -X github.com/orkspace/orkestra-cc/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            -o ../../dist/orkcc .
-          echo "✅ Control Center built: dist/orkcc"
+            -o ../../dist/${{ env.CONTROL }} .
+          echo "✅ Control Center built: dist/${{ env.CONTROL }}"
 
+      # ---------- PACKAGE (tar.gz for all, plus zip for Windows) ----------
       - name: Package runtime tarball
+        env:
+          RUNTIME: ${{ env.RUNTIME }}
         run: |
           ARCHIVE="ork_${{ matrix.os }}_${{ matrix.arch }}.tar.gz"
-          tar -czf "dist/${ARCHIVE}" -C dist ork -C "${{ github.workspace }}" README.md LICENSE
+          tar -czf "dist/${ARCHIVE}" -C dist "${{ env.RUNTIME }}" -C "${{ github.workspace }}" README.md LICENSE
           echo "✅ Archive: dist/${ARCHIVE}"
 
       - name: Package control center tarball
+        env:
+          CONTROL: ${{ env.CONTROL }}
         run: |
           ARCHIVE="orkcc_${{ matrix.os }}_${{ matrix.arch }}.tar.gz"
-          tar -czf "dist/${ARCHIVE}" -C dist orkcc -C "${{ github.workspace }}" README.md LICENSE
+          tar -czf "dist/${ARCHIVE}" -C dist "${{ env.CONTROL }}" -C "${{ github.workspace }}" README.md LICENSE
           echo "✅ Archive: dist/${ARCHIVE}"
-      
-      - name: Upload runtime artifact
+
+      - name: Package Windows ZIP (optional)
+        if: matrix.goos == 'windows'
+        env:
+          RUNTIME: ${{ env.RUNTIME }}
+          CONTROL: ${{ env.CONTROL }}
+        run: |
+          # Create zip with binary and license/readme
+          zip -j "dist/ork_${{ matrix.os }}_${{ matrix.arch }}.zip" "dist/${{ env.RUNTIME }}"
+          zip -j "dist/orkcc_${{ matrix.os }}_${{ matrix.arch }}.zip" "dist/${{ env.CONTROL }}"
+          # Add license and readme to each zip
+          zip -u "dist/ork_${{ matrix.os }}_${{ matrix.arch }}.zip" README.md LICENSE
+          zip -u "dist/orkcc_${{ matrix.os }}_${{ matrix.arch }}.zip" README.md LICENSE
+          echo "✅ ZIP packages created"
+
+      # ---------- UPLOAD ARTIFACTS ----------
+      - name: Upload runtime artifact (tar.gz)
         uses: actions/upload-artifact@v7
         with:
           name: ork_${{ matrix.os }}_${{ matrix.arch }}
           path: dist/ork_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
           retention-days: 1
 
-      - name: Upload control center artifact
+      - name: Upload control center artifact (tar.gz)
         uses: actions/upload-artifact@v7
         with:
           name: orkcc_${{ matrix.os }}_${{ matrix.arch }}
           path: dist/orkcc_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
           retention-days: 1
 
-  # ── Package examples for CLI ─────────────────────────────────────────
+      - name: Upload Windows ZIP artifacts
+        if: matrix.goos == 'windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ork_windows_amd64_zip
+          path: |
+            dist/ork_windows_amd64.zip
+            dist/orkcc_windows_amd64.zip
+          retention-days: 1
+
+  # ── Package examples ────────────────────────────────────────────────────────
   examples:
     name: Package Examples
     runs-on: ubuntu-latest
@@ -131,14 +178,11 @@ jobs:
       - name: Package example packs
         run: |
           mkdir -p dist/examples
-
           TAG="${{ github.ref_name }}"
-
-          tar -czf "dist/examples_beginner_${TAG}.tar.gz"     -C examples beginner
+          tar -czf "dist/examples_beginner_${TAG}.tar.gz" -C examples beginner
           tar -czf "dist/examples_intermediate_${TAG}.tar.gz" -C examples intermediate
-          tar -czf "dist/examples_advanced_${TAG}.tar.gz"     -C examples advanced
-          tar -czf "dist/examples_use-cases_${TAG}.tar.gz"    -C examples use-cases
-
+          tar -czf "dist/examples_advanced_${TAG}.tar.gz" -C examples advanced
+          tar -czf "dist/examples_use-cases_${TAG}.tar.gz" -C examples use-cases
           echo "📦 Example packs packaged"
 
       - name: Upload example packs
@@ -166,14 +210,10 @@ jobs:
           echo "tar -xzf examples_beginner_${TAG}.tar.gz" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
-  # ── Build and push container image ─────────────────────────────────────────
+  # ── Build and push container images ─────────────────────────────────────────
   image:
     name: Build and Push Image
     runs-on: ubuntu-latest
-
-    outputs:
-      digest: ${{ steps.push.outputs.digest }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.2
@@ -199,8 +239,7 @@ jobs:
         id: meta-runtime
         uses: docker/metadata-action@v5
         with:
-          images: |
-            ghcr.io/ialexeze/orkestra
+          images: ghcr.io/ialexeze/orkestra
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -211,8 +250,7 @@ jobs:
         id: meta-cc
         uses: docker/metadata-action@v5
         with:
-          images: |
-            ghcr.io/ialexeze/orkestra-cc
+          images: ghcr.io/ialexeze/orkestra-cc
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -228,7 +266,6 @@ jobs:
             ork-arm64
             cmd/controlcenter/orkcc-amd64
             cmd/controlcenter/orkcc-arm64
-          # Cache key based on go.sum and all Go source files
           key: linux-binaries-${{ hashFiles('go.sum', '**/*.go', 'cmd/**/*.go') }}
 
       - name: Build Linux binaries (if cache miss)
@@ -236,7 +273,6 @@ jobs:
         run: |
           GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ork-amd64 ./cmd/orkestra
           GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o ork-arm64 ./cmd/orkestra
-
           cd ./cmd/controlcenter
           GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o orkcc-amd64 .
           GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o orkcc-arm64 .
@@ -315,12 +351,8 @@ jobs:
         run: |
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
-          
-          # Sync Chart.yaml version fields
           yq eval ".version = \"${VERSION}\"" -i charts/orkestra/Chart.yaml
           yq eval ".appVersion = \"${TAG}\""  -i charts/orkestra/Chart.yaml
-          
-          # Update image tags in values.yaml
           yq eval ".runtime.image.tag = \"${TAG}\"" -i charts/orkestra/values.yaml
           yq eval ".controlCenter.image.tag = \"${TAG}\"" -i charts/orkestra/values.yaml
 
@@ -373,19 +405,20 @@ jobs:
           echo "${FINGERPRINT}:6:" | gpg --import-ownertrust
           echo "✅ GPG key imported: ${FINGERPRINT}"
 
-      - name: Sign tarballs
+      - name: Sign tarballs (and ZIPs if present)
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           cd dist
           for archive in ork_*.tar.gz orkcc_*.tar.gz; do
-            gpg --batch --yes \
-                --passphrase "${GPG_PASSPHRASE}" \
-                --pinentry-mode loopback \
-                --armor \
-                --detach-sign \
-                "${archive}"
+            gpg --batch --yes --passphrase "${GPG_PASSPHRASE}" --pinentry-mode loopback --armor --detach-sign "${archive}"
             echo "✅ Signed: ${archive}"
+          done
+          # Sign Windows ZIPs if they exist
+          for zip in ork_*.zip orkcc_*.zip; do
+            [ -f "$zip" ] || continue
+            gpg --batch --yes --passphrase "${GPG_PASSPHRASE}" --pinentry-mode loopback --armor --detach-sign "${zip}"
+            echo "✅ Signed: ${zip}"
           done
 
       - name: Export public key
@@ -396,28 +429,28 @@ jobs:
       - name: Generate checksums
         run: |
           cd dist
-          sha256sum ork_*.tar.gz orkcc_*.tar.gz > checksums.txt
+          sha256sum ork_*.tar.gz orkcc_*.tar.gz ork_*.zip orkcc_*.zip 2>/dev/null | grep -v "No such file" > checksums.txt
           echo "✅ Checksums generated"
 
       - name: Verify signatures
         run: |
           cd dist
           for archive in ork_*.tar.gz orkcc_*.tar.gz; do
-            gpg --verify "${archive}.asc" "${archive}" \
-              && echo "✅ Verified: ${archive}" \
-              || { echo "❌ Failed: ${archive}"; exit 1; }
+            gpg --verify "${archive}.asc" "${archive}" && echo "✅ Verified: ${archive}" || { echo "❌ Failed: ${archive}"; exit 1; }
+          done
+          for zip in ork_*.zip orkcc_*.zip; do
+            [ -f "$zip" ] || continue
+            gpg --verify "${zip}.asc" "${zip}" && echo "✅ Verified: ${zip}" || { echo "❌ Failed: ${zip}"; exit 1; }
           done
 
       - name: Extract changelog
         run: |
           TAG="${GITHUB_REF_NAME}"
           if grep -q "## \[${TAG}\]" CHANGELOG.md 2>/dev/null; then
-            awk "/## \[${TAG}\]/{found=1; next} /## \[v/{if(found) exit} found{print}" \
-              CHANGELOG.md > release_notes.txt
+            awk "/## \[${TAG}\]/{found=1; next} /## \[v/{if(found) exit} found{print}" CHANGELOG.md > release_notes.txt
           else
             echo "Release ${TAG}" > release_notes.txt
           fi
-
           cat >> release_notes.txt << EOF
 
           ### 📦 Installation
@@ -430,6 +463,9 @@ jobs:
 
           # Linux
           curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
+
+          # Windows (ZIP)
+          # Download ork_windows_amd64.zip and orkcc_windows_amd64.zip from release assets
           \`\`\`
 
           #### Container Images
@@ -466,6 +502,10 @@ jobs:
             dist/ork_darwin_amd64.tar.gz.asc
             dist/ork_darwin_arm64.tar.gz
             dist/ork_darwin_arm64.tar.gz.asc
+            dist/ork_windows_amd64.tar.gz
+            dist/ork_windows_amd64.tar.gz.asc
+            dist/ork_windows_amd64.zip
+            dist/ork_windows_amd64.zip.asc
             dist/orkcc_linux_amd64.tar.gz
             dist/orkcc_linux_amd64.tar.gz.asc
             dist/orkcc_linux_arm64.tar.gz
@@ -474,9 +514,12 @@ jobs:
             dist/orkcc_darwin_amd64.tar.gz.asc
             dist/orkcc_darwin_arm64.tar.gz
             dist/orkcc_darwin_arm64.tar.gz.asc
+            dist/orkcc_windows_amd64.tar.gz
+            dist/orkcc_windows_amd64.tar.gz.asc
+            dist/orkcc_windows_amd64.zip
+            dist/orkcc_windows_amd64.zip.asc
             dist/checksums.txt
             dist/orkestra-public-key.asc
-
             dist/examples_beginner_${{ github.ref_name }}.tar.gz
             dist/examples_intermediate_${{ github.ref_name }}.tar.gz
             dist/examples_advanced_${{ github.ref_name }}.tar.gz
@@ -489,32 +532,26 @@ jobs:
     runs-on: ubuntu-latest
     needs: release
     if: ${{ !contains(github.ref_name, '-') }}
-
     steps:
       - name: Checkout tap
         uses: actions/checkout@v6.0.2
         with:
           repository: ialexeze/homebrew-tap
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          token: ${{ secrets.ORK_PUBLISH_PAT }}
           path: homebrew-tap
 
       - name: Download checksums
         run: |
           TAG="${GITHUB_REF_NAME}"
-          curl -sSfL \
-            "https://github.com/ialexeze/orkestra/releases/download/${TAG}/checksums.txt" \
-            -o checksums.txt
+          curl -sSfL "https://github.com/ialexeze/orkestra/releases/download/${TAG}/checksums.txt" -o checksums.txt
 
       - name: Extract SHA256 values
         id: sha
         run: |
-          # Runtime
           echo "ORK_DARWIN_AMD64=$(grep 'ork_darwin_amd64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "ORK_DARWIN_ARM64=$(grep 'ork_darwin_arm64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "ORK_LINUX_AMD64=$(grep  'ork_linux_amd64'  checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "ORK_LINUX_ARM64=$(grep  'ork_linux_arm64'  checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          
-          # Control Center
           echo "CC_DARWIN_AMD64=$(grep 'orkcc_darwin_amd64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "CC_DARWIN_ARM64=$(grep 'orkcc_darwin_arm64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
           echo "CC_LINUX_AMD64=$(grep  'orkcc_linux_amd64'  checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
@@ -535,7 +572,6 @@ jobs:
             homepage "https://github.com/orkspace/orkestra"
             version "${VERSION}"
             license "Apache 2.0"
-
             on_macos do
               on_arm   do
                 url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_darwin_arm64.tar.gz"
@@ -546,7 +582,6 @@ jobs:
                 sha256 "${DARWIN_AMD64}"
               end
             end
-
             on_linux do
               on_arm   do
                 url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_linux_arm64.tar.gz"
@@ -557,18 +592,14 @@ jobs:
                 sha256 "${LINUX_AMD64}"
               end
             end
-
             def install
               bin.install "ork"
             end
-
             test do
               system "#{bin}/ork", "version"
             end
           end
           EOF
-          
-          # Replace variables
           sed -i "s/\${VERSION}/${VERSION}/g" homebrew-tap/Formula/ork.rb
           sed -i "s/\${TAG}/${TAG}/g" homebrew-tap/Formula/ork.rb
           sed -i "s/\${DARWIN_AMD64}/${DARWIN_AMD64}/g" homebrew-tap/Formula/ork.rb
@@ -591,7 +622,6 @@ jobs:
             homepage "https://github.com/orkspace/orkestra"
             version "${VERSION}"
             license "Apache 2.0"
-
             on_macos do
               on_arm   do
                 url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_darwin_arm64.tar.gz"
@@ -602,7 +632,6 @@ jobs:
                 sha256 "${DARWIN_AMD64}"
               end
             end
-
             on_linux do
               on_arm   do
                 url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_linux_arm64.tar.gz"
@@ -613,18 +642,14 @@ jobs:
                 sha256 "${LINUX_AMD64}"
               end
             end
-
             def install
               bin.install "orkcc"
             end
-
             test do
               system "#{bin}/orkcc", "--help"
             end
           end
           EOF
-          
-          # Replace variables
           sed -i "s/\${VERSION}/${VERSION}/g" homebrew-tap/Formula/orkcc.rb
           sed -i "s/\${TAG}/${TAG}/g" homebrew-tap/Formula/orkcc.rb
           sed -i "s/\${DARWIN_AMD64}/${DARWIN_AMD64}/g" homebrew-tap/Formula/orkcc.rb
@@ -641,25 +666,85 @@ jobs:
           git commit -m "ork and orkcc ${GITHUB_REF_NAME}"
           git push
 
+  # ── Winget manifests ──────────────────────
+  winget:
+    name: Publish Winget Manifests
+    runs-on: windows-latest
+    needs: release
+    if: ${{ !contains(github.ref_name, '-') }}
+    steps:
+      - name: Checkout winget-pkgs fork
+        uses: actions/checkout@v4
+        with:
+          repository: ialexeze/winget-pkgs
+          token: ${{ secrets.ORK_PUBLISH_PAT }}
+          path: winget
+
+      - name: Install wingetcreate
+        run: winget install --id Microsoft.WingetCreate --source winget --silent
+
+      - name: Generate Winget manifest for Orkestra CLI
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^v',''
+          $url = "https://github.com/ialexeze/orkestra/releases/download/$tag/ork_windows_amd64.zip"
+          $manifestPath = "winget/manifests/o/Orkspace/Orkestra/$version"
+          wingetcreate new `
+            --output $manifestPath `
+            --publisher "Orkspace" `
+            --publisher-url "https://orkestra.io" `
+            --license "Apache-2.0" `
+            --license-url "https://github.com/ialexeze/orkestra/blob/main/LICENSE" `
+            --description "Declarative Runtime for Kubernetes Operators" `
+            --homepage "https://github.com/ialexeze/orkestra" `
+            --version $version `
+            --installer-url $url `
+            --installer-type zip `
+            --product-code "Orkspace.Orkestra"
+
+      - name: Generate Winget manifest for Orkestra Control Center
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^v',''
+          $url = "https://github.com/ialexeze/orkestra/releases/download/$tag/orkcc_windows_amd64.zip"
+          $manifestPath = "winget/manifests/o/Orkspace/OrkestraControlCenter/$version"
+          wingetcreate new `
+            --output $manifestPath `
+            --publisher "Orkspace" `
+            --publisher-url "https://orkestra.io" `
+            --license "Apache-2.0" `
+            --license-url "https://github.com/ialexeze/orkestra/blob/main/LICENSE" `
+            --description "Web-based Control Center for Orkestra" `
+            --homepage "https://github.com/ialexeze/orkestra" `
+            --version $version `
+            --installer-url $url `
+            --installer-type zip `
+            --product-code "Orkspace.OrkestraControlCenter"
+
+      - name: Commit and push manifests
+        run: |
+          cd winget
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Add Winget manifests for Orkestra and Orkestra Control Center ${{ github.ref_name }}"
+          git push
+
   # ── Final summary ──────────────────────────────────────────────────────────
   summary:
     name: Release Summary
     runs-on: ubuntu-latest
-    needs: [build, image, release, helm, homebrew]
+    needs: [build, image, examples, release, helm, homebrew, winget]
     if: always()
-
     steps:
       - name: Write summary
         run: |
           TAG="${GITHUB_REF_NAME}"
-
           echo "## Release ${TAG}" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Component | Status |" >> "$GITHUB_STEP_SUMMARY"
           echo "|-----------|--------|" >> "$GITHUB_STEP_SUMMARY"
-
           icon() { [ "$1" = "success" ] && echo "✅" || ([ "$1" = "skipped" ] && echo "⏭️" || echo "❌"); }
-
           echo "| Runtime binaries | $(icon ${{ needs.build.result }}) ${{ needs.build.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Control Center binaries | $(icon ${{ needs.build.result }}) ${{ needs.build.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Example packs | $(icon ${{ needs.examples.result }}) ${{ needs.examples.result }} |" >> "$GITHUB_STEP_SUMMARY"
@@ -667,9 +752,8 @@ jobs:
           echo "| GPG signing + GitHub Release | $(icon ${{ needs.release.result }}) ${{ needs.release.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Helm chart | $(icon ${{ needs.helm.result }}) ${{ needs.helm.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Homebrew formulas | $(icon ${{ needs.homebrew.result }}) ${{ needs.homebrew.result }} |" >> "$GITHUB_STEP_SUMMARY"
-
+          echo "| Winget manifests | $(icon ${{ needs.winget.result }}) ${{ needs.winget.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-
           if [ "${{ needs.release.result }}" = "success" ] && [ "${{ needs.image.result }}" = "success" ]; then
             echo "### ✅ Release ${TAG} complete" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
