@@ -42,6 +42,18 @@ func init() {
 
 	upgradeCmd.Flags().Bool("runtime-only", false, "Upgrade only the ork runtime (skip orkcc)")
 	upgradeCmd.Flags().Bool("check", false, "Check if a newer Orkestra version is available")
+
+	// Shadow global flags so they don't appear under `ork upgrade`
+	upgradeCmd.Flags().Bool("debug", false, "")
+	upgradeCmd.Flags().String("kubeconfig", "", "")
+	upgradeCmd.Flags().StringSlice("katalog", nil, "")
+	upgradeCmd.Flags().Bool("verbose", false, "")
+
+	// Hide them from help output
+	upgradeCmd.Flags().MarkHidden("debug")
+	upgradeCmd.Flags().MarkHidden("kubeconfig")
+	upgradeCmd.Flags().MarkHidden("katalog")
+	upgradeCmd.Flags().MarkHidden("verbose")
 }
 
 //

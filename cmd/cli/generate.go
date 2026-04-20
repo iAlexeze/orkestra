@@ -435,4 +435,14 @@ func init() {
 		cmd.Flags().StringP("output", "o", "", "Write generated output to file")
 		cmd.Flags().StringP("namespace", "n", DefaultNamespace, "Namespace for the ServiceAccount")
 	}
+
+	// Shadow global flags so they don't appear under `ork generate`
+	generateCmd.Flags().Bool("debug", false, "")
+	generateCmd.Flags().String("kubeconfig", "", "")
+	generateCmd.Flags().Bool("verbose", false, "")
+
+	// Hide them from help output
+	generateCmd.Flags().MarkHidden("debug")
+	generateCmd.Flags().MarkHidden("kubeconfig")
+	generateCmd.Flags().MarkHidden("verbose")
 }

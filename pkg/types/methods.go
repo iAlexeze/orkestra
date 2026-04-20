@@ -146,12 +146,24 @@ func (c *CRDEntry) DefaultReconcile() bool {
 }
 
 // DefaultQueue reports whether this CRD uses the default queue configuration.
-// Defaults to true unless explicitly disabled.
+// Defaults to false when omitted.
 func (c *CRDEntry) DefaultQueue() bool {
 	if c.Queue.Default == nil {
 		return false
 	}
 	return *c.Queue.Default
+}
+
+// CustomHooksEnabled reports whether the reconcile behaviour uses custom hooks.
+// Defaults to false when omitted.
+func (c *CRDEntry) CustomHooksEnabled() bool {
+	return c.OperatorBox.Hooks == nil
+}
+
+// ConstructorEnabled reports whether the reconcile behaviour uses a constructor.
+// Defaults to false when omitted.
+func (c *CRDEntry) ConstructorEnabled() bool {
+	return c.OperatorBox.Constructor == nil
 }
 
 // IsHealthEnabled reports whether the /health endpoint is enabled for this CRD.

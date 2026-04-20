@@ -1,5 +1,5 @@
-// pkg/inspect/printer.go
-package inspect
+// pkg/utils/printer.go
+package utils
 
 import (
 	"fmt"
@@ -11,18 +11,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-)
-
-// Colours — used when output is a terminal.
-// Suppressed when stdout is piped or redirected.
-const (
-	colReset  = "\033[0m"
-	colBold   = "\033[1m"
-	colGreen  = "\033[32m"
-	colYellow = "\033[33m"
-	colRed    = "\033[31m"
-	colCyan   = "\033[36m"
-	colGray   = "\033[90m"
 )
 
 // TableWriter wraps tabwriter for consistent aligned output.
@@ -74,32 +62,32 @@ func PrintSection(title string) {
 
 // PrintSuccess prints a green checkmark line.
 func PrintSuccess(msg string) {
-	fmt.Printf("%s✓%s  %s\n", colGreen, colReset, msg)
+	fmt.Printf("%s✓%s  %s\n", ColorGreen, ColorReset, msg)
 }
 
 // PrintWarning prints a yellow warning line.
 func PrintWarning(msg string) {
-	fmt.Printf("%s⚠%s  %s\n", colYellow, colReset, msg)
+	fmt.Printf("%s⚠%s  %s\n", ColorYellow, ColorReset, msg)
 }
 
 // PrintError prints a red error line.
 func PrintError(msg string) {
-	fmt.Fprintf(os.Stderr, "%s✗%s  %s\n", colRed, colReset, msg)
+	fmt.Fprintf(os.Stderr, "%s✗%s  %s\n", ColorRed, ColorReset, msg)
 }
 
 // PrintInfo prints a dim informational line.
 func PrintInfo(msg string) {
-	fmt.Printf("%s%s%s\n", colGray, msg, colReset)
+	fmt.Printf("%s%s%s\n", ColorGray, msg, ColorReset)
 }
 
 // Bold wraps text in bold ANSI codes.
 func Bold(s string) string {
-	return colBold + s + colReset
+	return ColorBold + s + ColorReset
 }
 
 // Cyan wraps text in cyan ANSI codes.
 func Cyan(s string) string {
-	return colCyan + s + colReset
+	return ColorCyan + s + ColorReset
 }
 
 // HumanAge returns a human-readable age string from a Kubernetes timestamp.
@@ -137,13 +125,13 @@ func formatDuration(d time.Duration) string {
 func HealthIcon(status string) string {
 	switch strings.ToLower(status) {
 	case "ready", "running", "active", "true", "healthy":
-		return colGreen + "●" + colReset
+		return ColorGreen + "●" + ColorReset
 	case "pending", "progressing":
-		return colYellow + "●" + colReset
+		return ColorYellow + "●" + ColorReset
 	case "error", "failed", "false", "unhealthy", "degraded":
-		return colRed + "●" + colReset
+		return ColorRed + "●" + ColorReset
 	default:
-		return colGray + "●" + colReset
+		return ColorGray + "●" + ColorReset
 	}
 }
 

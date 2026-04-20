@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/orkspace/orkestra/pkg/inspect"
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ var validateCmd = &cobra.Command{
 		}
 
 		fmt.Println()
-		fmt.Println(inspect.Bold("Validating Katalog..."))
+		fmt.Println(utils.Bold("Validating Katalog..."))
 		fmt.Println()
 
 		builtIn := 0
@@ -62,4 +62,16 @@ var validateCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(validateCmd)
+
+	validateCmd.Flags().StringSliceP("katalog", "k", nil, "Path to katalog.yaml")
+
+	// Shadow global flags so they don't appear under `ork validate`
+	validateCmd.Flags().Bool("debug", false, "")
+	validateCmd.Flags().String("kubeconfig", "", "")
+	validateCmd.Flags().Bool("verbose", false, "")
+
+	// Hide them from help output
+	validateCmd.Flags().MarkHidden("debug")
+	validateCmd.Flags().MarkHidden("kubeconfig")
+	validateCmd.Flags().MarkHidden("verbose")
 }

@@ -31,6 +31,7 @@ RUNTIME_BINARY="ork"
 CONTROL_BINARY="orkcc"
 INSTALL_DIR="${ORK_INSTALL_DIR:-/usr/local/bin}"
 VERSION="${ORK_VERSION:-}"
+ORK_SKIP_COMPLETION="${ORK_SKIP_COMPLETION:-false}"
 
 # ── Colours ───────────────────────────────────────────────────────────────────
 
@@ -101,6 +102,47 @@ check_deps() {
         command -v "${cmd}" >/dev/null 2>&1 \
             || fatal "Required command not found: ${cmd}"
     done
+}
+
+# ── Install command completion ───────────────────────────────────────────────────
+install_completion() {
+    if [[ "${ORK_SKIP_COMPLETION}" == "true" ]]; then
+        info "Skipping shell completion installation (ORK_SKIP_COMPLETION=true)"
+        return
+    fi
+
+    # Detect shell
+    local shell_name
+    shell_name=$(basename "${SHELL:-}")
+
+    case "${shell_name}" in
+        bash)
+            local dir="${HOME}/.bash_completion.d"
+            mkdir -p "${dir}"
+            info "Installing bash completion to ${dir}/ork"
+            ork completion bash > "${dir}/ork"
+            ;;
+        zsh)
+            local dir="${HOME}/.oh-my-zsh/completions"
+            mkdir -p "${dir}"
+            info "Installing zsh completion to ${dir}/_ork"
+            ork completion zsh > "${dir}/_ork"
+            ;;
+        fish)
+            local dir="${HOME}/.config/fish/completions"
+            mkdir -p "${dir}"
+            info "Installing fish completion to ${dir}/ork.fish"
+            ork completion fish > "${dir}/ork.fish"
+            ;;
+        *)
+            warn "Unknown shell '${shell_name}'. Skipping completion installation."
+            return
+            ;;
+    esac
+
+    success "Shell completion installed for ${shell_name}"
+    echo
+    echo "Restart your shell or run 'source ~/.bashrc' / 'source ~/.zshrc' to activate."
 }
 
 # ── Generic installer (runtime + control center) ──────────────────────────────
@@ -193,9 +235,14 @@ main() {
     platform=$(detect_platform)
     version=$(resolve_version)
 
+    # Install runtime and control center
     install_component "${RUNTIME_BINARY}" "${platform}" "${version}"
     install_component "${CONTROL_BINARY}" "${platform}" "${version}" || true
 
+    # Install shell completion
+    install_completion
+
+    # Verify installation
     verify_install
 }
 
