@@ -146,15 +146,11 @@ func resolveVersion(requested string) (string, error) {
 	}
 
 	// Fetch latest release tag from GitHub API
-	resp, err := http.Get("https://api.github.com/repos/orkspace/orkestra/releases/latest")
+	resp, err := http.Get("https://api.github.com/repos/ialexeze/orkestra/releases/latest")
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch latest version: %w", err)
 	}
 	defer resp.Body.Close()
-
-	type ghRelease struct {
-		Tag string `json:"tag_name"`
-	}
 
 	var data struct {
 		TagName string `json:"tag_name"`

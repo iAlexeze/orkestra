@@ -56,8 +56,6 @@ func downloadExamplePack(root, pack, version string, refresh bool) error {
 		version, filename,
 	)
 
-	fmt.Println("    → Downloading pack...")
-
 	resp, err := http.Get(url)
 	if err != nil {
 		return fmt.Errorf("download failed: %w", err)
