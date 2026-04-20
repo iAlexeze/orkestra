@@ -122,4 +122,16 @@ func init() {
 	initCmd.Flags().BoolP("list-packs", "l", false, "List available example packs")
 	initCmd.Flags().Bool("clear-cache", false, "Clear cached example packs")
 	initCmd.Flags().Bool("refresh-cache", false, "Force re-download of example pack")
+
+	// Shadow global flags so they don't appear under `ork init`
+	initCmd.Flags().Bool("debug", false, "")
+	initCmd.Flags().String("kubeconfig", "", "")
+	initCmd.Flags().StringSlice("katalog", nil, "")
+	initCmd.Flags().Bool("verbose", false, "")
+
+	// Hide them from help output
+	initCmd.Flags().MarkHidden("debug")
+	initCmd.Flags().MarkHidden("kubeconfig")
+	initCmd.Flags().MarkHidden("katalog")
+	initCmd.Flags().MarkHidden("verbose")
 }

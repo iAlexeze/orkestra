@@ -22,15 +22,15 @@ package cli
 import (
 	"fmt"
 
-	"github.com/orkspace/orkestra/pkg/inspect"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // printCRDValidationLine prints one CRD entry's validation result.
 // Shows enrichment clearly when it occurred.
 func printCRDValidationLine(entry orktypes.CRDEntry) {
-	icon := inspect.HealthIcon("ready")
-	fmt.Printf("%s %s\n", icon, inspect.Bold(entry.Name))
+	icon := utils.HealthIcon("ready")
+	fmt.Printf("%s %s\n", icon, utils.Bold(entry.Name))
 
 	if entry.IsBuiltIn {
 		// Enriched from built-in — tell the user what was resolved
@@ -41,7 +41,7 @@ func printCRDValidationLine(entry orktypes.CRDEntry) {
 
 		fmt.Printf("    %s kind: %s %s built-in registry\n",
 			ColorGrey,
-			inspect.Bold(entry.APITypes.Kind),
+			utils.Bold(entry.APITypes.Kind),
 			"→ enriched from",
 		)
 		fmt.Printf("    group: %s / version: %s / plural: %s / scope: %s%s\n",
