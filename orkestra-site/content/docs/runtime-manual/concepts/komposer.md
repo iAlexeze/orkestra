@@ -454,11 +454,11 @@ ork template --katalog ./komposer.yaml --graph
 ork template --katalog ./komposer.yaml --json
 ```
 
-### `ork generate runtime`
+### `ork generate registry`
 
 ```bash
-ork generate runtime --katalog ./komposer.yaml
-ork generate runtime --katalog ./komposer.yaml --dry-run
+ork generate registry --katalog ./komposer.yaml
+ork generate registry --katalog ./komposer.yaml --dry-run
 ```
 
 ### `ork run`

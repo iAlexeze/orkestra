@@ -18,7 +18,7 @@ Select a command to view its full documentation.
 | [`ork init`](./init.md) | Scaffold a new operator project (dynamic or typed) |
 | [`ork validate`](./validate.md) | Validate and merge Katalogs or Komposers |
 | [`ork template`](./template.md) | Render the merged, post‑validation Katalog |
-| [`ork generate runtime`](./generate-runtime.md) | Generate runtime wiring for typed CRDs and hooks |
+| [`ork generate registry`](./generate-runtime.md) | Generate runtime registry for typed CRDs and hooks |
 | [`ork run`](./run.md) | Start the operator runtime |
 | [`ork status`](./status.md) | Show health and reconcile statistics |
 | [`ork get`](./get.md) | List CRs of a given CRD |

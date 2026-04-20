@@ -26,7 +26,7 @@ If you only want to use Orkestra (not modify it), refer to the User Guide instea
 How to [set up a local environment](./development-environment.md) for building and testing Orkestra, including required tools, recommended workflows, and how to run the runtime against a local Kubernetes cluster.
 
 ### Building Orkestra
-Instructions for building the Orkestra runtime and CLI from source, generating runtime wiring, and understanding the build layout.
+Instructions for building the Orkestra runtime and CLI from source, generating runtime registry, and understanding the build layout.
 
 ### Testing
 How to run unit tests, integration tests, and end‑to‑end tests. Includes guidance on writing new tests and structuring test suites.
@@ -71,7 +71,7 @@ A typical development workflow looks like this:
 1. Set up a local Kubernetes cluster (kind, k3d, microk8s).  
 2. Build the Orkestra runtime and CLI.  
 3. Create or modify katalogs, CRDs, or hooks.  
-4. Run `ork generate runtime` if using typed CRDs or hooks.  
+4. Run `ork generate registry` if using typed CRDs or hooks.  
 5. Start the runtime locally and connect it to your cluster.  
 6. Apply CRDs and CRs to test behavior.  
 7. Run unit, integration, and E2E tests.  

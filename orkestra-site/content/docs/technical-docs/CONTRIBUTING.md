@@ -94,7 +94,7 @@ make generate
 After modifying a Katalog with `apiTypes.location` set, regenerate the runtime registry:
 
 ```bash
-go run ./cmd/ork/main.go generate runtime --katalog katalog.yaml
+go run ./cmd/ork/main.go generate registry --katalog katalog.yaml
 ```
 
 ---
@@ -107,7 +107,7 @@ cmd/
     main.go
     run.go               ork run
     validate.go          ork validate
-    generate.go          ork generate runtime
+    generate.go          ork generate registry
     status.go            ork status
     describe.go          ork describe
     events.go            ork events

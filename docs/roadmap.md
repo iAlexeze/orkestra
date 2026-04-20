@@ -61,7 +61,7 @@ What exists in production today:
 - `ork status` — live view of all managed CRDs (queries `/katalog`)
 - `ork get` / `ork describe` / `ork events` / `ork top` — per-CRD inspection
 - `ork template` — preview the merged, validated configuration
-- `ork generate runtime` — code generation for typed-mode CRDs
+- `ork generate registry` — code generation for typed-mode CRDs
 - `ork version` — version information
 
 **Distribution**

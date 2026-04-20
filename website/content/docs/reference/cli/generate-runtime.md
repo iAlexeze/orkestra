@@ -1,13 +1,13 @@
 ---
-title: "ork generate runtime"
+title: "ork generate registry"
 weight: 50
-description: "Generate runtime wiring for typed CRDs, Go hooks, and custom constructors."
+description: "Generate runtime registry for typed CRDs, Go hooks, and custom constructors."
 ---
 
-Generate runtime wiring for typed CRDs, Go hooks, and custom constructors.
+Generate runtime registry for typed CRDs, Go hooks, and custom constructors.
 
 ```bash
-ork generate runtime --katalog <path>
+ork generate registry --katalog <path>
 ```
 
 ## Flags

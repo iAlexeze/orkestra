@@ -278,10 +278,10 @@ crds:
         function: NewWebsiteReconciler
 ```
 
-Then generate the runtime wiring:
+Then generate the runtime registry:
 
 ```bash
-ork generate runtime --katalog katalogs/website.yaml
+ork generate registry --katalog katalogs/website.yaml
 go mod tidy
 ```
 

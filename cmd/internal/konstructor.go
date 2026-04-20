@@ -1,6 +1,6 @@
 // cmd/internal/konstruct.go
 //
-// konstructOrkestra — the complete Orkestra runtime wiring.
+// konstructOrkestra — the complete Orkestra runtime registry.
 //
 // This file is the single place where all runtime komponents are assembled.
 // It is the equivalent of a dependency injection container — every komponent

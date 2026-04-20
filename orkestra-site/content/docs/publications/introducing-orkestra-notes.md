@@ -25,7 +25,7 @@ Field references are not enough. Operators frequently need to *transform* values
 
 Before notes, the answer was Go hooks. Writing a hook to apply a default, or to
 extract one field from a cron string, required the full hook machinery: a typed
-struct, `ork generate runtime`, a registered function, a binary build.
+struct, `ork generate registry`, a registered function, a binary build.
 
 The ceremony was disproportionate to the transformation.
 

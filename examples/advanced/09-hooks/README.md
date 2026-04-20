@@ -5,7 +5,7 @@ struct access, complex conditional logic, or calls to external APIs, hooks are
 the answer. Orkestra still provides everything else — you write only the logic
 that genuinely requires code.
 
-**What you learn:** `apiTypes.location`, typed mode, `ork generate runtime`,
+**What you learn:** `apiTypes.location`, typed mode, `ork generate registry`,
 typed hooks, OrkestraRegistry from Go, the difference between hooks and a
 full constructor.
 
@@ -61,7 +61,7 @@ registers the Go types at startup. Run this once, and again whenever you
 change `apiTypes` fields:
 
 ```bash
-ork generate runtime --katalog katalog.yaml
+ork generate registry --katalog katalog.yaml
 ```
 
 This produces `pkg/zz_generated_runtime_registry.go` in your working directory.:
@@ -97,7 +97,7 @@ If code generation was not run, this fails with:
 
 ```
 error: no object factory for demo.orkestra.io/v1alpha1, Kind=Database
-  — run: ork generate runtime --katalog katalog.yaml
+  — run: ork generate registry --katalog katalog.yaml
 ```
 
 ---
@@ -201,7 +201,7 @@ is garbage-collected when `my-db` is deleted.
 | Complex conditional logic | limited (when:) | ✓ |
 | External API calls | ✗ | ✓ |
 | Multi-resource with shared state | limited | ✓ |
-| `ork generate runtime` needed | ✗ | ✓ |
+| `ork generate registry` needed | ✗ | ✓ |
 
 Most operators use templates for the standard resources (Deployment, Service,
 ConfigMap) and hooks only for the parts that genuinely require Go.

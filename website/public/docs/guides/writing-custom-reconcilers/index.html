@@ -534,7 +534,7 @@
               
               <li>
                 <a href="/docs/cli/generate-runtime/" class="sidebar-link">
-                  ork generate runtime
+                  ork generate registry
                 </a>
               </li>
               
@@ -1234,8 +1234,8 @@
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">constructor</span>:
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">location</span>: github.com/myorg/my-operator/pkg/reconciler
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">function</span>: NewWebsiteReconciler
-</span></span></code></pre></div><p>Then generate the runtime wiring:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork generate runtime --katalog katalogs/website.yaml
+</span></span></code></pre></div><p>Then generate the runtime registry:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork generate registry --katalog katalogs/website.yaml
 </span></span><span style="display:flex;"><span>go mod tidy
 </span></span></code></pre></div><hr>
 <h2 id="next-steps">Next Steps</h2>

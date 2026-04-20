@@ -19,7 +19,7 @@ ork <command> [flags]
 | `ork init` | Scaffold a new operator project |
 | `ork validate` | Validate a Katalog or Komposer |
 | `ork template` | Preview the merged, validated Katalog |
-| `ork generate runtime` | Generate runtime wiring for typed CRDs and Go hooks |
+| `ork generate registry` | Generate runtime registry for typed CRDs and Go hooks |
 | `ork run` | Start the operator runtime |
 | `ork status` | Show health and stats of the running operator |
 | `ork get` | List all CRs of a CRD type |
@@ -327,12 +327,12 @@ cache       ← from Helm chart
 
 ---
 
-## `ork generate runtime`
+## `ork generate registry`
 
 Generate `zz_generated_runtime_registry.go` from the Katalog. Only needed when your operator uses typed CRDs, Go hooks, or custom constructors. Dynamic template operators do not need this step.
 
 ```bash
-ork generate runtime --katalog <path> [flags]
+ork generate registry --katalog <path> [flags]
 ```
 
 **Flags:**
@@ -355,16 +355,16 @@ ork generate runtime --katalog <path> [flags]
 
 ```bash
 # Generate from a single Katalog
-ork generate runtime --katalog ./katalog.yaml
+ork generate registry --katalog ./katalog.yaml
 
 # Preview without writing — use in CI to verify registry is up to date
-ork generate runtime --katalog ./katalog.yaml --dry-run
+ork generate registry --katalog ./katalog.yaml --dry-run
 
 # Generate from a Komposer
-ork generate runtime --katalog ./komposer.yaml
+ork generate registry --katalog ./komposer.yaml
 
 # Multiple sources
-ork generate runtime --katalog ./infra.yaml --katalog ./apps.yaml
+ork generate registry --katalog ./infra.yaml --katalog ./apps.yaml
 ```
 
 **What it generates:**
@@ -648,8 +648,8 @@ ork init my-operator --typed && cd my-operator
 # 3. Validate
 ork validate --katalog katalogs/my-katalog.yaml
 
-# 4. Generate runtime wiring
-ork generate runtime --katalog katalogs/my-katalog.yaml
+# 4. Generate runtime registry
+ork generate registry --katalog katalogs/my-katalog.yaml
 
 # 5. Install dependencies
 go mod tidy
@@ -681,7 +681,7 @@ ork run --katalog ./komposer.yaml
 ork validate --katalog ./katalog.yaml
 
 # Verify generated registry is up to date (for typed operators)
-ork generate runtime --katalog ./katalog.yaml --dry-run
+ork generate registry --katalog ./katalog.yaml --dry-run
 ```
 
 ---

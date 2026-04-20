@@ -198,7 +198,7 @@ func MyResourceHooks() domain.AnyReconcileHooks {
 ```
 
 :::note
-Go hooks require `apiTypes.location` and `ork generate runtime` command to register the hook.
+Go hooks require `apiTypes.location` and `ork generate registry` command to register the hook.
 :::
 ---
 
@@ -267,12 +267,12 @@ controller-gen object paths=./api/types/myresource/...
 
 ---
 
-## Step 4 — Generate Runtime Wiring (Typed + Hooks Only)
+## Step 4 — Generate Runtime Registry (Typed + Hooks Only)
 
 Dynamic CRDs skip this step.
 
 ```bash
-ork generate runtime --katalog katalog.yaml
+ork generate registry --katalog katalog.yaml
 go mod tidy
 ```
 

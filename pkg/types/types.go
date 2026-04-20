@@ -16,7 +16,7 @@ import (
 // ── Registries ────────────────────────────────────────────────────────────────
 // Package-level registries — one set per Orkestra instance.
 // Populated by RegisterRuntimeObjects() in zz_generated_runtime_registry.go,
-// which is produced by `ork generate runtime --katalog <path>`.
+// which is produced by `ork generate registry --katalog <path>`.
 // Keyed by schema.GroupVersionKind. Set during Katalog validation.
 //
 // User code never reads or writes these directly. Orkestra reads them during

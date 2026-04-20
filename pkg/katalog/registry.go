@@ -46,7 +46,7 @@ func NewKatalog(kfg *konfig.Konfig, m *merger.Merger) *Katalog {
 	for _, crd := range entries {
 		if len(orktypes.ObjectRegistry) == 0 && !crd.IsDynamic() {
 			utils.Exit(fmt.Errorf(
-				"ObjectRegistry is empty — run 'ork generate runtime --katalog %s' first",
+				"ObjectRegistry is empty — run 'ork generate registry --katalog %s' first",
 				paths[0],
 			))
 		}

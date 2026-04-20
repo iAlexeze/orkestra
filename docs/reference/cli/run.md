@@ -16,6 +16,8 @@ Endpoints exposed:
 /metrics
 /katalog
 /katalog/{crd}
+/katalog/{crd}/cr
+/katalog/{crd}/cr/<ns>/<name>
 /katalog/{crd}/health
 ```
 
@@ -25,4 +27,3 @@ Endpoints exposed:
 
 - [Runtime](../../runtime-manual/concepts/runtime.md)
 - [Metrics](../metrics.md)
-- [ork status](./status.md)

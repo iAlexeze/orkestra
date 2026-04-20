@@ -369,12 +369,12 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, resolver *orkt
 	switch {
 	case r.hooks.OnReconcile != nil:
 		// Go hooks — user-provided, full type-safe access.
-		// Requires: ork generate runtime to register in HookRegistry.
+		// Requires: ork generate registry to register in HookRegistry.
 		err = r.hooks.OnReconcile(ctx, obj)
 
 	case r.operatorBox.OnCreate != nil || r.operatorBox.OnReconcile != nil:
 		// Declarative templates — interpreted at runtime.
-		// Requires: nothing. ork generate runtime NOT needed.
+		// Requires: nothing. ork generate registry NOT needed.
 		// The returned resolver carries cross/external/git data for status evaluation.
 		resolver, err = r.runTemplateReconcile(ctx, resolver, obj)
 

@@ -226,12 +226,12 @@ sources:
 
 ---
 
-## Generate Runtime (Only When Needed)
+## Generate Runtime Registry (Only When Needed)
 
-If any CRD uses compiled Go types (`apiTypes.location` set), generate the runtime wiring:
+If any CRD uses compiled Go types (`apiTypes.location` set), generate the runtime registry:
 
 ```bash
-ork generate runtime --katalog komposer.yaml
+ork generate registry --katalog komposer.yaml
 ```
 
 !!! note

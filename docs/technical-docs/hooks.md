@@ -170,7 +170,7 @@ func deleteWebsite(ctx context.Context, obj *apiv1.Website) error {
 ### Step 4: Generate the runtime registry
 
 ```bash
-ork generate runtime --katalog katalog.yaml
+ork generate registry --katalog katalog.yaml
 ```
 
 This produces `zz_generated_runtime_registry.go` which registers your hook function in `HookRegistry` keyed by GVK. The runtime reads this registry at startup.
@@ -224,7 +224,7 @@ func WebsiteDynamicHooks() domain.AnyReconcileHooks {
 }
 ```
 
-Dynamic hooks do not need `apiTypes.location` in the Katalog. They also do not need `ork generate runtime` — register them directly in `BuildKatalogFromGo` or `konstructOrkestra`.
+Dynamic hooks do not need `apiTypes.location` in the Katalog. They also do not need `ork generate registry` — register them directly in `BuildKatalogFromGo` or `konstructOrkestra`.
 
 !!! note "When to use dynamic hooks"
     Dynamic hooks are the right choice when you have no generated API types
