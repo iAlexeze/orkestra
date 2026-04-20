@@ -83,7 +83,7 @@ var knownChildGVRs = func() []childGVREntry {
 func readChildrenForEndpoint(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
-	owner *unstructured.Unstructured,
+	owner map[string]interface{},
 ) map[string]interface{} {
 	if kube == nil {
 		return map[string]interface{}{}
@@ -92,8 +92,8 @@ func readChildrenForEndpoint(
 	fetchCtx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
 
-	ns := owner.GetNamespace()
-	labelSelector := fmt.Sprintf("orkestra-owner=%s", owner.GetName())
+	ns := metaField(owner, "namespace")
+	labelSelector := fmt.Sprintf("orkestra-owner=%s", metaField(owner, "name"))
 
 	type result struct {
 		key   string
@@ -190,13 +190,14 @@ func fetchChildKind(
 //     a. orkestra.io/phase annotation → use it (Orkestra writes here for statusless CRDs)
 //     b. No annotation → ready on existence
 //  2. Non-statusless: check status.conditions[type=Ready]
-func extractParentReady(u *unstructured.Unstructured, parentKind string) (ready bool, reason, message string) {
+func extractParentReady(objMap map[string]interface{}, parentKind string) (ready bool, reason, message string) {
 	m := katalog.BuiltInMeta(parentKind)
 	statusless := m.Statusless || m.SkipStatusSubresource
 
 	if statusless {
-		annotations := u.GetAnnotations()
-		if phase, ok := annotations["orkestra.io/phase"]; ok {
+		meta, _ := objMap["metadata"].(map[string]interface{})
+		annotations, _ := meta["annotations"].(map[string]interface{})
+		if phase, ok := annotations["orkestra.io/phase"].(string); ok {
 			switch phase {
 			case "Ready", "Succeeded":
 				return true, phase, ""
@@ -213,7 +214,9 @@ func extractParentReady(u *unstructured.Unstructured, parentKind string) (ready 
 	}
 
 	// Standard path: look for Ready condition in status
-	conditions, _, _ := unstructured.NestedSlice(u.Object, "status", "conditions")
+	status, _ := objMap["status"].(map[string]interface{})
+	conditionsRaw, _ := status["conditions"].([]interface{})
+	var conditions []interface{} = conditionsRaw
 	for _, c := range conditions {
 		cond, ok := c.(map[string]interface{})
 		if !ok {

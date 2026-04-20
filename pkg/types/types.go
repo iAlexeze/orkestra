@@ -1403,7 +1403,6 @@ type HookTemplates struct {
 	//	- Builds and optionally pushes a docker image
 	Docker *DockerHookSpec `yaml:"docker,omitempty" json:"docker,omitempty"`
 
-	// TODO: find a better location for it
 	// Ordered controls whether deletion happens sequentially with verification.
 	// true  — delete groups in order, verify each is gone before proceeding
 	// false — delete all resources via owner references (default, parallel)

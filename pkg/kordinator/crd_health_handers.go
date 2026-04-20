@@ -322,7 +322,7 @@ func BuildCRDInfoHandler(
 			ErrorRate:           h.ErrorRatePercent(),
 			RBAC:                rbacInfo,
 			AutoscalerWorkers:   h.GetWorkerInfo(),
-			Metrics:             h.GetAutoMetrics(),
+			// Metrics: h.GetAutoMetrics(),		// problematic: TODO
 		}
 
 		if crd.HasRollbackRules() {

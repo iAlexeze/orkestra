@@ -24,15 +24,16 @@ import (
 
 func kubernetesNotes() template.FuncMap {
 	return template.FuncMap{
-		"meta":         noteMeta,
-		"labels":       noteLabels,
-		"annotations":  noteAnnotations,
-		"spec":         noteSpec,
-		"status":       noteStatus,
-		"get":          noteGet,
-		"ownerKind":    noteOwnerKind,
-		"ownerName":    noteOwnerName,
-		"hasCondition": noteHasCondition,
+		"meta":           noteMeta,
+		"labels":         noteLabels,
+		"annotations":    noteAnnotations,
+		"spec":           noteSpec,
+		"status":         noteStatus,
+		"get":            noteGet,
+		"ownerKind":      noteOwnerKind,
+		"ownerName":      noteOwnerName,
+		"hasCondition":   noteHasCondition,
+		"resourceExists": noteExists,
 	}
 }
 
@@ -203,4 +204,18 @@ func noteHasCondition(obj interface{}, condType string) bool {
 		}
 	}
 	return false
+}
+
+// noteExists reports whether the given Kubernetes object exists in the
+// template context. It returns true when obj is a non-nil map[string]interface{}.
+//
+//	{{ resourceExists .children.deployment }}
+//	{{ resourceExists .children.secret }}
+//	{{ resourceExists (get .children "configmap" "my-app") }}
+func noteExists(obj interface{}) bool {
+	if obj == nil {
+		return false
+	}
+	_, ok := obj.(map[string]interface{})
+	return ok
 }

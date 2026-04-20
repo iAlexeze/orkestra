@@ -101,7 +101,7 @@ func runStatusPatch[T domain.Object](
 	// ── Layer 2: Declared status fields (conditional) ─────────────────────
 	// Only written on successful reconcile. Errors in field resolution are
 	// logged as warnings and do not fail the reconcile.
-	logger.FromContext(ctx).Info().
+	logger.FromContext(ctx).Debug().
 		Str("name", obj.GetName()).
 		Bool("has_status_config", r.operatorBox.Status != nil && r.operatorBox.Status.HasFields()).
 		Bool("reconcile_error", reconcileErr != nil).
@@ -115,7 +115,7 @@ func runStatusPatch[T domain.Object](
 				Str("name", obj.GetName()).
 				Msg("status: some fields failed to resolve")
 		}
-		logger.FromContext(ctx).Info().
+		logger.FromContext(ctx).Debug().
 			Str("name", obj.GetName()).
 			Interface("resolved_fields", resolved).
 			Msg("status: layer2 resolved fields")

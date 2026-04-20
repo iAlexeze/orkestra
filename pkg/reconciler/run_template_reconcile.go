@@ -41,7 +41,7 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, resolve
 	// Must run first so git, docker, external calls, and resources can reference .cross.*
 	if len(r.operatorBox.Cross) > 0 {
 		crossData := r.readCross(ctx, obj, r.operatorBox.Cross, resolver)
-		logger.FromContext(ctx).Info().
+		logger.FromContext(ctx).Debug().
 			Str("observer", obj.GetName()).
 			Int("cross_entries", len(crossData)).
 			Interface("cross_keys", crossDataKeys(crossData)).
@@ -214,28 +214,6 @@ func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, resolver
 		kubeReader := &kubeReaderAdapter{kube: kube}
 		if err := runProviderDelete(ctx, obj, resolver, r.operatorBox.ProviderBlocks, r.providerRegistry, kubeReader, r.providerStats); err != nil {
 			return fmt.Errorf("provider cleanup: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// runOrderedDelete deletes resource groups sequentially with verification.
-func (r *GenericReconciler[T]) runOrderedDelete(
-	ctx context.Context,
-	kube *kubeclient.Kubeclient,
-	resolver *orktmpl.Resolver,
-	obj domain.Object,
-	t *orktypes.HookTemplates,
-	guard func(ctx context.Context, obj domain.Object, ns string) bool,
-) error {
-	log := logger.FromContext(ctx)
-	log.Info().Str("name", obj.GetName()).Msg("ordered delete: starting sequential cleanup")
-
-	if len(t.Jobs) > 0 {
-		jobs := expandForEachJobs(resolver, t.Jobs)
-		if err := runJobs(ctx, kube, resolver, obj, jobs, guard); err != nil {
-			return fmt.Errorf("ordered delete: cleanup jobs: %w", err)
 		}
 	}
 

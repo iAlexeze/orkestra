@@ -462,8 +462,8 @@
       <div class="cc-section">
         <h2 class="cc-section-title">Deletion Protection</h2>
         <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
-          {{ if .CRD.Protection }}
-            {{ if .CRD.Protection.Enabled }}
+          {{ if .CRD.DeletionProtection }}
+            {{ if .CRD.DeletionProtection.Enabled }}
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
               <span class="cc-badge cc-badge-healthy" style="gap:5px">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
@@ -474,7 +474,7 @@
             <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
               <div>
                 <div style="color:var(--text-muted);font-size:11px">Blocked Deletions</div>
-                <div style="font-size:20px;font-weight:700;color:var(--color-degraded)" title="{{ .CRD.Protection.Blocked }}">{{ formatNumber .CRD.Protection.Blocked }}</div>
+                <div style="font-size:20px;font-weight:700;color:var(--color-degraded)" title="{{ .CRD.DeletionProtection.Blocked }}">{{ formatNumber .CRD.DeletionProtection.Blocked }}</div>
                 <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Since operator start</div>
               </div>
               <div>

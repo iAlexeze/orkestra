@@ -91,6 +91,20 @@ jobs:
           ARCHIVE="orkcc_${{ matrix.os }}_${{ matrix.arch }}.tar.gz"
           tar -czf "dist/${ARCHIVE}" -C dist orkcc -C "${{ github.workspace }}" README.md LICENSE
           echo "✅ Archive: dist/${ARCHIVE}"
+      
+      - name: Package example packs
+        run: |
+          mkdir -p dist/examples
+
+          TAG="${{ github.ref_name }}"
+
+          tar -czf "dist/examples_beginner_${TAG}.tar.gz"     -C examples beginner
+          tar -czf "dist/examples_intermediate_${TAG}.tar.gz" -C examples intermediate
+          tar -czf "dist/examples_advanced_${TAG}.tar.gz"     -C examples advanced
+          tar -czf "dist/examples_use-cases_${TAG}.tar.gz"    -C examples use-cases
+
+          echo "📦 Example packs packaged"
+
 
       - name: Upload runtime artifact
         uses: actions/upload-artifact@v4
@@ -416,6 +430,12 @@ jobs:
             dist/orkcc_darwin_arm64.tar.gz.asc
             dist/checksums.txt
             dist/orkestra-public-key.asc
+
+            # Examples
+            dist/examples_beginner_${{ github.ref_name }}.tar.gz
+            dist/examples_intermediate_${{ github.ref_name }}.tar.gz
+            dist/examples_advanced_${{ github.ref_name }}.tar.gz
+            dist/examples_use-cases_${{ github.ref_name }}.tar.gz
           fail_on_unmatched_files: true
 
   # ── Homebrew formulas update ───────────────────────────────────────────────

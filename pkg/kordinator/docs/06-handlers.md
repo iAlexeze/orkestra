@@ -55,7 +55,8 @@ func BuildCRDInfoHandler(
     h           *CRDHealth,
     convStats   *health.ConversionStats,
     admStats    *health.AdmissionStats,
-    protStats   *health.ProtectionStats,
+    protStats   *health.DeletionProtectionStats,
+    nsStats     *health.NamespaceProtectionStats,
     isProtected bool,
     provStats   *health.ProviderStats,
 ) http.HandlerFunc
@@ -125,7 +126,9 @@ When rollback is currently active (`active: true`), the Control Center renders a
 
 When `provStats` is nil (CRD has no provider blocks), the `providers` field is omitted entirely.
 
-**Protection section.** When `protStats` is nil, a zero `ProtectionStatsResponse` is returned with `enabled` set to `isProtected`. This avoids a nil check in every caller.
+**Deletion protection section.** Appears when `security.deletionProtection` is enabled. `protStats` carries admission counters (total, blocked, allowed) for DELETE reviews only. When `protStats` is nil a zero response is returned with `enabled` set to `isProtected` — avoids a nil check in every caller.
+
+**Namespace protection section.** Appears when `security.namespaceProtection` is declared (i.e., `crd.HasNamespaceRules()` is true), regardless of whether the webhook is active. Populated from `nsStats` (CREATE/UPDATE reviews). Includes `allowedNamespaces` and `restrictedNamespaces` from the Katalog schema — the declared rules, not live enforcement state. Distinct from deletion protection: different admission operations, different future evolution path.
 
 **Dependency section.** The `dependencies` map from `CRDHealth` is included verbatim — it is kept fresh by the `dependencyHealthChecker` goroutine (see [04 — Self-healing](04-self-healing.md)).
 
@@ -162,14 +165,69 @@ Each summary row includes `providerCount` (the number of declared provider block
 }
 ```
 
+## BuildCRListHandler
+
+```go
+func BuildCRListHandler(crd orktypes.CRDEntry, inf cache.SharedIndexInformer) http.HandlerFunc
+```
+
+Serves `GET /katalog/{crd}/cr`. Returns all CR instances for a CRD as a sorted list — no API server calls, reads from the informer cache. Each row contains: `name`, `namespace`, `phase`, `ready`, `readyReason`, `age`, `generation`.
+
+```json
+{
+  "crd": "website",
+  "gvk": "apps.example.io/v1, Kind=Website",
+  "total": 3,
+  "items": [
+    { "name": "acme-site", "namespace": "prod", "ready": true, "age": "2d", "generation": 5 }
+  ]
+}
+```
+
+## BuildCRDetailHandler
+
+```go
+func BuildCRDetailHandler(crd orktypes.CRDEntry, inf cache.SharedIndexInformer, kube *kubeclient.Kubeclient, rc orktypes.OperatorBoxConfig) http.HandlerFunc
+```
+
+Serves `GET /katalog/{crd}/cr/{name}` (cluster-scoped) and `GET /katalog/{crd}/cr/{namespace}/{name}` (namespaced). Reads the CR from the informer cache and fetches child resources from the API server on demand.
+
+The response includes:
+- Full `status` subresource
+- `ready` / `readyReason` / `readyMessage` from the Ready condition (or annotation-based for statusless CRDs)
+- `children` — one entry per child resource kind, value is a single `ChildSummary` object (one child) or `[]ChildSummary` (multiple)
+- `eventsEndpoint` — the URL to fetch Kubernetes events for this CR
+
+## BuildCRDetailAndEventsHandler
+
+Routes all sub-paths under `/katalog/{crd}/cr/`. Dispatches to the detail handler or the events handler based on whether the path ends with `/events`. Register at `/katalog/{crd}/cr/` (trailing slash required).
+
+## rawToMap pattern
+
+`cr_handlers.go` and `cr_children.go` read CRs from informer caches as `interface{}`. Rather than asserting `*unstructured.Unstructured` directly, both use `rawToMap`:
+
+```go
+objMap, err := rawToMap(raw)
+if err != nil {
+    continue // or error response
+}
+// navigate via objMap["metadata"], objMap["spec"], objMap["status"]
+```
+
+`rawToMap` has a fast path for `*unstructured.Unstructured` (returns `u.Object` directly) and a JSON round-trip fallback for any other type. This means the CR handlers work correctly whether the informer stores typed or unstructured objects — the same correctness guarantee as `objectToMap` in the template engine.
+
+Helper `metaField(objMap, field)` extracts string fields from `objMap["metadata"]` with a safe nil check.
+
 ## Route registration
 
-All three handlers are registered in `konstructOrkestra` before the health server starts:
+All handlers are registered in `konstructOrkestra` before the health server starts:
 
 ```go
 hs.Handle("/katalog", kordinator.BuildKatalogHandler(kat, kfg, resourceKatalog, crdHealthMap))
 hs.Handle("/katalog/"+crd.Name, kordinator.BuildCRDInfoHandler(...))
 hs.Handle("/katalog/"+crd.Name+"/health", kordinator.BuildCRDHealthHandler(...))
+hs.Handle("/katalog/"+crd.Name+"/cr", kordinator.BuildCRListHandler(crd, inf))
+hs.Handle("/katalog/"+crd.Name+"/cr/", kordinator.BuildCRDetailAndEventsHandler(crd, inf, kube, rc))
 ```
 
 Routes must be registered before `hs.Start()`. After the server is listening, no new routes can be added.

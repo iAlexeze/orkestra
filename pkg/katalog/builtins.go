@@ -4,6 +4,8 @@ package katalog
 import (
 	"fmt"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // BuiltInKind holds the fully-qualified API metadata for a Kubernetes
@@ -503,6 +505,22 @@ func LookupBuiltIn(kind string) EnrichmentResult {
 		BuiltIn:      b,
 		DisplayGroup: displayGroup,
 	}
+}
+
+// GVRForBuiltIn returns the GroupVersionResource for a built-in kind.
+// Returns the zero-value GVR and false when the kind is unknown.
+func GVRForBuiltIn(kind string) (schema.GroupVersionResource, bool) {
+	res := LookupBuiltIn(kind)
+	if !res.Found {
+		return schema.GroupVersionResource{}, false
+	}
+
+	b := res.BuiltIn
+	return schema.GroupVersionResource{
+		Group:    b.Group,
+		Version:  b.Version,
+		Resource: b.Plural,
+	}, true
 }
 
 // BuiltInMeta returns metadata for a built-in kind.

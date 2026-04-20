@@ -42,7 +42,6 @@ import (
 	"github.com/orkspace/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
@@ -179,11 +178,11 @@ func BuildCRListHandler(
 		items := make([]CRSummary, 0, len(objs))
 
 		for _, raw := range objs {
-			u, ok := raw.(*unstructured.Unstructured)
-			if !ok {
+			objMap, err := rawToMap(raw)
+			if err != nil {
 				continue
 			}
-			items = append(items, summariseCR(u, crd.APITypes.Kind))
+			items = append(items, summariseCR(objMap, crd.APITypes.Kind))
 		}
 
 		sort.Slice(items, func(i, j int) bool {
@@ -258,8 +257,8 @@ func BuildCRDetailHandler(
 			return
 		}
 
-		u, ok := raw.(*unstructured.Unstructured)
-		if !ok {
+		objMap, err := rawToMap(raw)
+		if err != nil {
 			utils.WriteJSON(w, http.StatusInternalServerError, map[string]string{
 				"error": "unexpected object type in cache",
 			})
@@ -268,12 +267,12 @@ func BuildCRDetailHandler(
 
 		// Read child resources from the API server.
 		// This is the same set of children ReadChildren uses in the reconciler.
-		children := readChildrenForEndpoint(r.Context(), kube, u)
+		children := readChildrenForEndpoint(r.Context(), kube, objMap)
 
 		// Build the events endpoint URL for this CR
 		eventsPath := buildEventsPath(crd, namespace, name)
 
-		utils.WriteJSON(w, http.StatusOK, buildCRDetail(u, children, eventsPath, crd.APITypes.Kind))
+		utils.WriteJSON(w, http.StatusOK, buildCRDetail(objMap, children, eventsPath, crd.APITypes.Kind))
 	}
 }
 
@@ -365,43 +364,73 @@ func BuildCREventsHandler(
 // ─────────────────────────────────────────────────────────────────────────────
 
 // summariseCR extracts the summary fields from one CR object.
-func summariseCR(u *unstructured.Unstructured, parentKind string) CRSummary {
-	phase, _, _ := unstructured.NestedString(u.Object, "status", "phase")
-	ready, readyReason, _ := extractParentReady(u, parentKind)
-	age := formatAge(u.GetCreationTimestamp().Time)
+func summariseCR(objMap map[string]interface{}, parentKind string) CRSummary {
+	status, _ := objMap["status"].(map[string]interface{})
+	phase, _ := status["phase"].(string)
+	ready, readyReason, _ := extractParentReady(objMap, parentKind)
+	ts := metaField(objMap, "creationTimestamp")
+	var age string
+	if t, err := time.Parse(time.RFC3339, ts); err == nil {
+		age = formatAge(t)
+	}
+	meta, _ := objMap["metadata"].(map[string]interface{})
+	var generation int64
+	if g, ok := meta["generation"].(float64); ok {
+		generation = int64(g)
+	}
 
 	return CRSummary{
-		Name:        u.GetName(),
-		Namespace:   u.GetNamespace(),
+		Name:        metaField(objMap, "name"),
+		Namespace:   metaField(objMap, "namespace"),
 		Phase:       phase,
 		Ready:       ready,
 		ReadyReason: readyReason,
 		Age:         age,
-		Generation:  u.GetGeneration(),
+		Generation:  generation,
 	}
 }
 
 // buildCRDetail assembles the full detail response for one CR.
-func buildCRDetail(u *unstructured.Unstructured, children map[string]interface{}, eventsEndpoint string, parentKind string) CRDetailResponse {
-	ready, readyReason, readyMsg := extractParentReady(u, parentKind)
+func buildCRDetail(objMap map[string]interface{}, children map[string]interface{}, eventsEndpoint string, parentKind string) CRDetailResponse {
+	ready, readyReason, readyMsg := extractParentReady(objMap, parentKind)
 
-	status, _ := u.Object["status"].(map[string]interface{})
+	status, _ := objMap["status"].(map[string]interface{})
+	meta, _ := objMap["metadata"].(map[string]interface{})
 
 	// Filter Orkestra system annotations from the public response
-	annotations := make(map[string]string)
-	for k, v := range u.GetAnnotations() {
+	rawAnnotations, _ := meta["annotations"].(map[string]interface{})
+	annotations := make(map[string]string, len(rawAnnotations))
+	for k, v := range rawAnnotations {
+		s, _ := v.(string)
 		if !strings.HasPrefix(k, "orkestra.konductor.io/") &&
 			k != "kubectl.kubernetes.io/last-applied-configuration" {
-			annotations[k] = v
+			annotations[k] = s
 		}
 	}
 
+	rawLabels, _ := meta["labels"].(map[string]interface{})
+	labels := make(map[string]string, len(rawLabels))
+	for k, v := range rawLabels {
+		labels[k], _ = v.(string)
+	}
+
+	ts := metaField(objMap, "creationTimestamp")
+	var creationTimestamp string
+	if t, err := time.Parse(time.RFC3339, ts); err == nil {
+		creationTimestamp = t.UTC().Format(time.RFC3339)
+	}
+
+	var generation int64
+	if g, ok := meta["generation"].(float64); ok {
+		generation = int64(g)
+	}
+
 	return CRDetailResponse{
-		Name:              u.GetName(),
-		Namespace:         u.GetNamespace(),
-		Generation:        u.GetGeneration(),
-		CreationTimestamp: u.GetCreationTimestamp().UTC().Format(time.RFC3339),
-		Labels:            u.GetLabels(),
+		Name:              metaField(objMap, "name"),
+		Namespace:         metaField(objMap, "namespace"),
+		Generation:        generation,
+		CreationTimestamp: creationTimestamp,
+		Labels:            labels,
 		Annotations:       annotations,
 		Ready:             ready,
 		ReadyReason:       readyReason,
@@ -411,6 +440,16 @@ func buildCRDetail(u *unstructured.Unstructured, children map[string]interface{}
 		EventsEndpoint:    eventsEndpoint,
 		// HasTemplateBlocks: hasTemplateBlocks(rc),
 	}
+}
+
+// rawToMap and metaField delegate to pkg/utils — single canonical implementation.
+
+func rawToMap(raw interface{}) (map[string]interface{}, error) {
+	return utils.RawToMap(raw)
+}
+
+func metaField(objMap map[string]interface{}, field string) string {
+	return utils.MetaField(objMap, field)
 }
 
 // fetchCREvents lists Kubernetes events for a specific CR by name.

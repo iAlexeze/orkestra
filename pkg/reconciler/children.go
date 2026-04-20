@@ -15,22 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// ── Child resource GVRs ───────────────────────────────────────────────────
-// These are the GVRs for every resource type the OrkestraRegistry creates.
-// Used to read back child resources after reconcile completes.
-// When you add a new resource, make it avaialble here to be read by orkestra
-
-var (
-	deploymentGVR     = schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}
-	serviceGVR        = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "services"}
-	secretGVR         = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "secrets"}
-	configMapGVR      = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
-	jobGVR            = schema.GroupVersionResource{Group: "batch", Version: "v1", Resource: "jobs"}
-	cronJobGVR        = schema.GroupVersionResource{Group: "batch", Version: "v1", Resource: "cronjobs"}
-	podGVR            = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
-	serviceAccountGVR = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "serviceaccounts"}
-)
-
+// ── Read children ────────────────────────────────────────────────────────
 // ReadChildren reads all child resources declared in the Katalog's onCreate
 // templates and returns a structured map for use in status field expressions.
 //

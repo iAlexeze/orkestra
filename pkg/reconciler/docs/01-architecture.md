@@ -103,13 +103,19 @@ The `expandForEach*` call happens **before** the runner is invoked. Every runner
 ```
 runResourceGroup()
    │
-   ├── expandForEachSecrets        → runSecrets
-   ├── expandForEachConfigMaps     → runConfigMaps
-   ├── expandForEachServiceAccounts → runServiceAccounts
-   ├── expandForEachDeployments    → runDeployments
-   ├── expandForEachServices       → runServices
-   ├── expandForEachJobs           → runJobs
-   └── expandForEachCronJobs       → runCronJobs
+   ├── expandForEachSecrets              → runSecrets
+   ├── expandForEachConfigMaps           → runConfigMaps
+   ├── expandForEachServiceAccounts      → runServiceAccounts
+   ├── expandForEachDeployments          → runDeployments
+   ├── expandForEachServices             → runServices
+   ├── expandForEachJobs                 → runJobs
+   ├── expandForEachCronJobs             → runCronJobs
+   ├── expandForEachStatefulSets         → runStatefulSets
+   ├── expandForEachPVs                  → runPVs
+   ├── expandForEachPVCs                 → runPVCs
+   ├── expandForEachIngresses            → runIngresses
+   ├── expandForEachHPAs                 → runHPAs
+   └── expandForEachPDBs                 → runPDBs
 ```
 
 ## The update flag
@@ -147,7 +153,23 @@ On CR deletion, `handleDeletion` runs. It dispatches to:
 - `hooks.OnDelete` — Go hook, if registered.
 - `runTemplateOnDelete` — interprets the `onDelete:` block.
 
-The `onDelete` block supports `jobs:` (fire-and-forget cleanup) and provider teardown. It does **not** re-run deployments, services, or other reconcilable resources — owner references handle cascade deletion of those.
+`runTemplateOnDelete` branches on `t.Ordered`:
+
+- **`ordered: false` (default)** — Kubernetes owner references handle cascade deletion automatically. Only `jobs:` (fire-and-forget cleanup) and provider teardown run explicitly.
+- **`ordered: true`** — Sequential deletion with completion gates. Implemented in `run_delete_ordered.go`:
+  - Stages are taken from `Groups []HookTemplates` when declared; otherwise the flat resource fields are treated as a single implicit group.
+  - Each stage: submit all deletes with `PropagationPolicy: Foreground`, then poll the API server until every resource returns 404.
+  - `Timeout *Duration` (default `5m`) caps each stage. Exceeding it returns an error that blocks finalizer removal.
+  - Polling uses `DynamicClient` (not the informer) so the answer is authoritative even before the watch stream catches up.
+
+## cross_util.go — rawToMap
+
+`cross_util.go` provides two package-level helpers used by the cross-CRD reading path:
+
+- **`rawToMap(raw interface{})`** — converts any informer cache object to `map[string]interface{}`. Fast path for `*unstructured.Unstructured` (returns `u.Object` directly, zero allocation); JSON round-trip for typed objects.
+- **`metaField(objMap, field)`** — safe nil-checked string extraction from `objMap["metadata"]`.
+
+These replaced the `raw.(*unstructured.Unstructured)` type assertions in `ReadCrossFromInformer` and `ReadCrossFromInformerByLabel`. The same `rawToMap` pattern is duplicated in the kordinator package (`cr_handlers.go`) to avoid a cross-package dependency.
 
 ## Status patching
 

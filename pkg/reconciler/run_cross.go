@@ -18,7 +18,6 @@ import (
 	"net/http"
 	"time"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -99,12 +98,12 @@ func ReadCrossFromInformer(
 		return notFoundCrossResult()
 	}
 
-	u, ok := raw.(*unstructured.Unstructured)
-	if !ok {
+	objMap, err := rawToMap(raw)
+	if err != nil {
 		return notFoundCrossResult()
 	}
 
-	return buildCrossResult(u)
+	return buildCrossResultFromMap(objMap)
 }
 
 // ReadCrossFromInformerByLabel reads the first CR from an informer cache whose
@@ -121,53 +120,46 @@ func ReadCrossFromInformerByLabel(
 	labelKey, labelValue string,
 ) map[string]interface{} {
 	for _, raw := range indexer.List() {
-		u, ok := raw.(*unstructured.Unstructured)
-		if !ok {
+		objMap, err := rawToMap(raw)
+		if err != nil {
 			continue
 		}
-		if u.GetLabels()[labelKey] == labelValue {
-			return buildCrossResult(u)
+		labels, _ := objMap["metadata"].(map[string]interface{})["labels"].(map[string]interface{})
+		if fmt.Sprint(labels[labelKey]) == labelValue {
+			return buildCrossResultFromMap(objMap)
 		}
 	}
 	return notFoundCrossResult()
 }
 
-// buildCrossResult extracts the fields relevant for cross-CRD observation.
+// buildCrossResultFromMap extracts the fields relevant for cross-CRD observation.
 // Includes: found, name, namespace, spec, status, labels, annotations.
 // Does NOT include managed fields — those are Kubernetes internal metadata
 // for server-side apply tracking and have no meaningful use in templates.
-func buildCrossResult(u *unstructured.Unstructured) map[string]interface{} {
+func buildCrossResultFromMap(objMap map[string]interface{}) map[string]interface{} {
 	result := make(map[string]interface{}, 6)
 	result["found"] = "true"
-	result["name"] = u.GetName()
-	result["namespace"] = u.GetNamespace()
+	result["name"] = metaField(objMap, "name")
+	result["namespace"] = metaField(objMap, "namespace")
 
-	if spec, ok := u.Object["spec"].(map[string]interface{}); ok && spec != nil {
+	if spec, ok := objMap["spec"].(map[string]interface{}); ok && spec != nil {
 		result["spec"] = spec
 	} else {
 		result["spec"] = map[string]interface{}{}
 	}
 
-	if status, ok := u.Object["status"].(map[string]interface{}); ok && status != nil {
+	if status, ok := objMap["status"].(map[string]interface{}); ok && status != nil {
 		result["status"] = status
 	} else {
 		result["status"] = map[string]interface{}{}
 	}
 
-	if labels := u.GetLabels(); len(labels) > 0 {
-		lm := make(map[string]interface{}, len(labels))
-		for k, v := range labels {
-			lm[k] = v
-		}
-		result["labels"] = lm
+	meta, _ := objMap["metadata"].(map[string]interface{})
+	if rawLabels, ok := meta["labels"].(map[string]interface{}); ok && len(rawLabels) > 0 {
+		result["labels"] = rawLabels
 	}
-
-	if annotations := u.GetAnnotations(); len(annotations) > 0 {
-		am := make(map[string]interface{}, len(annotations))
-		for k, v := range annotations {
-			am[k] = v
-		}
-		result["annotations"] = am
+	if rawAnnotations, ok := meta["annotations"].(map[string]interface{}); ok && len(rawAnnotations) > 0 {
+		result["annotations"] = rawAnnotations
 	}
 
 	return result

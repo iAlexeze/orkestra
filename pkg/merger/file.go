@@ -88,8 +88,15 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 		crd.Name = name
 
 		// Merge spec-level restrictions into each CRD (additive).
-		crd.RestrictedNamespaces = doc.Security.NamespaceProtection.RestrictedNamespaces.Merge(crd.RestrictedNamespaces)
-		crd.AllowedNamespaces = doc.Security.NamespaceProtection.AllowedNamespaces.Merge(crd.AllowedNamespaces)
+		protect := doc.Security.NamespaceProtection
+		if protect != nil {
+			if len(protect.RestrictedNamespaces) > 0 {
+				crd.RestrictedNamespaces = protect.RestrictedNamespaces.Merge(crd.RestrictedNamespaces)
+			}
+			if len(protect.AllowedNamespaces) > 0 {
+				crd.AllowedNamespaces = protect.AllowedNamespaces.Merge(crd.AllowedNamespaces)
+			}
+		}
 
 		result[name] = crd
 
@@ -235,11 +242,14 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 		localSeen[name] = inlineKey
 	}
 	// Merge Komposer-level restrictions into every CRD (additive).
-	if len(doc.Security.NamespaceProtection.RestrictedNamespaces) > 0 || len(doc.Security.NamespaceProtection.AllowedNamespaces) > 0 {
-		for name, crd := range allCRDs {
-			crd.RestrictedNamespaces = doc.Security.NamespaceProtection.RestrictedNamespaces.Merge(crd.RestrictedNamespaces)
-			crd.AllowedNamespaces = doc.Security.NamespaceProtection.AllowedNamespaces.Merge(crd.AllowedNamespaces)
-			allCRDs[name] = crd
+	protect := doc.Security.NamespaceProtection
+	if protect != nil {
+		if len(protect.RestrictedNamespaces) > 0 || len(protect.AllowedNamespaces) > 0 {
+			for name, crd := range allCRDs {
+				crd.RestrictedNamespaces = protect.RestrictedNamespaces.Merge(crd.RestrictedNamespaces)
+				crd.AllowedNamespaces = protect.AllowedNamespaces.Merge(crd.AllowedNamespaces)
+				allCRDs[name] = crd
+			}
 		}
 	}
 
