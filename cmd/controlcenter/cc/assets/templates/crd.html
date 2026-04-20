@@ -228,7 +228,7 @@
       </div>
 
       <!-- Autoscaler Info — only shown when autoscale is declared -->
-      {{ if .CRD.AutoscalerWorkers }}
+      {{ if .CRD.AutoscalerEnabled }}
       {{ $aw := .CRD.AutoscalerWorkers }}
       <div class="cc-section">
         <div class="cc-section-header">
@@ -499,7 +499,7 @@
       </div>
 
       <!-- Namespace Protection — only shown when namespace rules are declared -->
-      {{ if .CRD.NamespaceProtection }}
+      {{ if .CRD.NamespaceProtection.HasNamespaceRules }}
       {{ $np := .CRD.NamespaceProtection }}
       <div class="cc-section">
         <h2 class="cc-section-title">Namespace Protection</h2>

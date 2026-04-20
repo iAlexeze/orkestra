@@ -183,7 +183,7 @@ func NewHealthServer(kubeclient kubernetes.Interface, katalog *katalog.Katalog, 
 
 	// Precompute protected CRD names for deletion‑protection enforcement.
 	if katalog.IsDeletionProtectionEnabled() {
-		hs.protectedCRDNames = katalog.ProtectedCRDNames()
+		hs.protectedCRDNames = katalog.DeletionProtectedCRDNames()
 	}
 
 	// Precompute namespace rule map for namespace protection enforcement.
@@ -472,7 +472,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 					logger.Info().
 						Str("config", deletionProtectionWebhookConfigName).
 						Int("rules", len(dpGVRs)).
-						Int("protected", len(h.katalog.ProtectedCRDNames())).
+						Int("protected", len(h.katalog.DeletionProtectedCRDNames())).
 						Bool("inCluster", true).
 						Msg("deletion protection webhook registered")
 				}

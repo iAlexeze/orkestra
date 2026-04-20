@@ -204,6 +204,7 @@ type CRDInfo struct {
 	Providers                []ProviderInfo            `json:"providers,omitempty"`
 	RBAC                     RBACInfo                  `json:"rbac,omitempty"`
 	HasUnhealthyDependencies bool                      `json:"hasUnhealthyDependencies"`
+	AutoscalerEnabled        bool                      `json:"autoscalerEnabled"`
 	AutoscalerWorkers        *AutoscalerWorkersInfo    `json:"autoscalerWorkers,omitempty"`
 	Rollback                 *RollbackStatsInfo        `json:"rollback,omitempty"`
 }
@@ -229,6 +230,7 @@ type DeletionProtectionStats struct {
 // NamespaceProtectionStats contains namespace protection status and the declared namespace rules.
 type NamespaceProtectionStats struct {
 	Enabled              bool     `json:"enabled"`
+	HasNamespaceRules    bool     `json:"hasNamespaceRules"`
 	Total                int      `json:"total"`
 	Blocked              int      `json:"blocked"`
 	Allowed              int      `json:"allowed"`
@@ -309,6 +311,7 @@ type CRDDetail struct {
 	Providers                []ProviderInfo              `json:"providers,omitempty"`
 	RBAC                     RBACInfo                    `json:"rbac,omitempty"`
 	RBACCount                int                         `json:"rbacCount,omitempty"`
+	AutoscalerEnabled        bool                        `json:"autoscalerEnabled"`
 	AutoscalerWorkers        *AutoscalerWorkersInfo      `json:"autoscalerWorkers,omitempty"`
 	Rollback                 *RollbackStatsInfo          `json:"rollback,omitempty"`
 }

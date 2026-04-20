@@ -50,6 +50,14 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		return nil, fmt.Errorf("fetching info: %w", err)
 	}
 
+	nsProtection := info.NamespaceProtection
+	if nsProtection == nil {
+		nsProtection = &NamespaceProtectionStats{
+			Enabled:           false,
+			HasNamespaceRules: false,
+		}
+	}
+
 	detail := &CRDDetail{
 		Name:                     info.Name,
 		Description:              info.Description,
@@ -81,7 +89,7 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		Conversion:               info.Conversion,
 		Admission:                info.Admission,
 		DeletionProtection:       info.DeletionProtection,
-		NamespaceProtection:      info.NamespaceProtection,
+		NamespaceProtection:      nsProtection,
 		Providers:                info.Providers,
 		State:                    health.State,
 		StartedAt:                health.StartedAt,
@@ -91,6 +99,7 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		LastReconcile:            health.LastReconcile,
 		RBAC:                     info.RBAC,
 		RBACCount:                info.RBAC.TotalRules,
+		AutoscalerEnabled:        info.AutoscalerEnabled,
 		AutoscalerWorkers:        info.AutoscalerWorkers,
 		Rollback:                 info.Rollback,
 	}

@@ -52,13 +52,13 @@ func (k *Katalog) DeletionProtectionGVRs() []GVREntry {
 	return OrkestraInternalGVRs()
 }
 
-// ProtectedCRDNames returns the set of CRD full names managed by this Katalog.
+// DeletionProtectedCRDNames returns the set of CRD full names managed by this Katalog.
 // e.g. {"cronjobs.demo.orkestra.io": {}}
 // Used by the /deletion-protection handler for name-based filtering.
 // A CRD not in this set is allowed through even though the webhook intercepted it.
 // When running outside the cluster (e.g. `ork run`), the webhook cannot be
 // reached, so no protection is guaranteed.
-func (k *Katalog) ProtectedCRDNames() map[string]struct{} {
+func (k *Katalog) DeletionProtectedCRDNames() map[string]struct{} {
 	if !k.IsDeletionProtectionEnabled() {
 		return nil
 	}

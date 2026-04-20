@@ -160,6 +160,7 @@ type CRDInfoResponse struct {
 	WebhookControllerStats *WebhookControllerStats          `json:"webhookControllerStats,omitempty"`
 	Providers              []ProviderInfoResponse           `json:"providers,omitempty"`
 	RBAC                   RBACInfo                         `json:"rbac,omitempty"`
+	AutoscalerEnabled      bool                             `json:"autoscalerEnabled,omitempty"`
 	AutoscalerWorkers      *ork_autoscaler.WorkerInfo       `json:"autoscalerWorkers,omitempty"`
 	Rollback               *RollbackStats                   `json:"rollback,omitempty"`
 	// Metrics is the live AutoMetrics map for this operatorbox.
@@ -234,6 +235,7 @@ type DeletionProtectionStatsResponse struct {
 // NamespaceProtectionResponse exposes namespace protection status for the CRD detail view.
 type NamespaceProtectionResponse struct {
 	Enabled              bool     `json:"enabled"`
+	HasNamespaceRules    bool     `json:"hasNamespaceRules"`
 	Total                int64    `json:"total"`
 	Blocked              int64    `json:"blocked"`
 	Allowed              int64    `json:"allowed"`
@@ -293,6 +295,13 @@ func BuildCRDInfoHandler(
 		// Generate RBAC info for this CRD
 		rbacInfo := generateRBACInfo(crd, v)
 
+		autoMetrics := make(map[string]interface{})
+		if crd.AutoscaleEnabled() {
+			autoMetrics = h.GetAutoMetrics()
+		} else {
+			autoMetrics = nil
+		}
+
 		response := CRDInfoResponse{
 			Name:                crd.Name,
 			Description:         crd.Description,
@@ -321,8 +330,9 @@ func BuildCRDInfoHandler(
 			Pending:             h.Pending(),
 			ErrorRate:           h.ErrorRatePercent(),
 			RBAC:                rbacInfo,
+			AutoscalerEnabled:   crd.AutoscaleEnabled(),
 			AutoscalerWorkers:   h.GetWorkerInfo(),
-			// Metrics: h.GetAutoMetrics(),		// problematic: TODO
+			Metrics:             autoMetrics,
 		}
 
 		if crd.HasRollbackRules() {
@@ -381,6 +391,7 @@ func BuildCRDInfoHandler(
 		if crd.HasNamespaceRules() {
 			nsr := &NamespaceProtectionResponse{
 				Enabled:              isNamespaceProtected,
+				HasNamespaceRules:    crd.HasNamespaceRules(),
 				AllowedNamespaces:    []string(crd.AllAllowedNamespaces()),
 				RestrictedNamespaces: []string(crd.AllRestrictedNamespaces()),
 			}
@@ -532,7 +543,7 @@ func BuildKatalogHandler(
 	return func(w http.ResponseWriter, r *http.Request) {
 		crds := make([]CRDSummaryResponse, 0)
 		statusCounts := StatusCounts{}
-		protectedCRDs := kat.ProtectedCRDNames()
+		deletionProtectedCRDs := kat.DeletionProtectedCRDNames()
 
 		for _, crd := range kat.Enabled() {
 			gvk := crd.GVK().String()
@@ -591,7 +602,7 @@ func BuildKatalogHandler(
 				MaxQueueDepthSource:      v.maxQueueDepthSource,
 				RBACCount:                generateRBACInfo(crd, v).TotalRules,
 				ResourceCount:            v.resourceCount,
-				DeletionProtection:       isCRDProtected(protectedCRDs, crd.APITypes.Plural, crd.APITypes.Group),
+				DeletionProtection:       isCRDProtected(deletionProtectedCRDs, crd.APITypes.Plural, crd.APITypes.Group),
 				ProviderCount:            len(crd.OperatorBox.ProviderBlocks),
 				OperatorBox: OperatorBoxSummary{
 					Type:           "generic",

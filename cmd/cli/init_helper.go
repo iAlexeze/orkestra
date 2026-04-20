@@ -1,0 +1,241 @@
+package cli
+
+import (
+	"archive/tar"
+	"compress/gzip"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+
+	"github.com/orkspace/orkestra/pkg/utils"
+)
+
+//
+// ──────────────────────────────────────────────────────────────────────────────
+//  Download + Cache Example Packs
+// ──────────────────────────────────────────────────────────────────────────────
+//
+// Packs are downloaded from GitHub Releases as:
+//
+//   examples_<pack>_<version>.tar.gz
+//
+// They are cached locally under:
+//
+//   ~/.orkestra/packs/
+//
+// so repeated `ork init` calls are instant and work offline.
+//
+
+func downloadExamplePack(root, pack, version string, refresh bool) error {
+	// Resolve cache directory (~/.orkestra/packs)
+	cache, err := cacheDir()
+	if err != nil {
+		return err
+	}
+
+	filename := fmt.Sprintf("examples_%s_%s.tar.gz", pack, version)
+	cachedPath := filepath.Join(cache, filename)
+	projectPath := filepath.Join(root, filename)
+
+	// If refresh-cache is set → delete cached file
+	if refresh {
+		os.Remove(cachedPath)
+	}
+
+	// If cached and not refreshing → reuse
+	if _, err := os.Stat(cachedPath); err == nil {
+		fmt.Printf("    → Using cached pack: %s\n", cachedPath)
+		return copyFile(cachedPath, projectPath)
+	}
+
+	// Otherwise download
+	url := fmt.Sprintf(
+		"https://github.com/orkspace/orkestra/releases/download/%s/%s",
+		version, filename,
+	)
+
+	fmt.Printf("    → Downloading %s\n", url)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("download failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("download failed: HTTP %d", resp.StatusCode)
+	}
+
+	// Save to cache
+	out, err := os.Create(cachedPath)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, resp.Body); err != nil {
+		out.Close()
+		return err
+	}
+	out.Close()
+
+	// Copy to project folder
+	return copyFile(cachedPath, projectPath)
+}
+
+//
+// ──────────────────────────────────────────────────────────────────────────────
+//  Extract Example Pack
+// ──────────────────────────────────────────────────────────────────────────────
+//
+// Extracts the tar.gz pack into:
+//
+//   <project>/examples/<pack>/
+//
+
+func extractExamplePack(root, pack, version string) error {
+	tarball := filepath.Join(root, fmt.Sprintf("examples_%s_%s.tar.gz", pack, version))
+
+	f, err := os.Open(tarball)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// Decompress gzip
+	gzr, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+	defer gzr.Close()
+
+	// Read tar entries
+	tr := tar.NewReader(gzr)
+
+	targetDir := filepath.Join(root, "examples", pack)
+
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break // end of archive
+		}
+		if err != nil {
+			return err
+		}
+
+		path := filepath.Join(targetDir, header.Name)
+
+		switch header.Typeflag {
+
+		// Create directories
+		case tar.TypeDir:
+			if err := os.MkdirAll(path, 0755); err != nil {
+				return err
+			}
+
+		// Create files
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+				return err
+			}
+			out, err := os.Create(path)
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(out, tr); err != nil {
+				out.Close()
+				return err
+			}
+			out.Close()
+		}
+	}
+
+	return nil
+}
+
+//
+// ──────────────────────────────────────────────────────────────────────────────
+//  Helpers
+// ──────────────────────────────────────────────────────────────────────────────
+//
+
+// cacheDir returns ~/.orkestra/packs and ensures it exists.
+func cacheDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Join(home, ".orkestra", "packs")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", err
+	}
+	return dir, nil
+}
+
+func clearCache() error {
+	cache, err := cacheDir()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Clearing cache: %s\n", cache)
+
+	entries, err := os.ReadDir(cache)
+	if err != nil {
+		return err
+	}
+
+	for _, e := range entries {
+		os.Remove(filepath.Join(cache, e.Name()))
+	}
+
+	fmt.Println("Cache cleared.")
+	return nil
+}
+
+// copyFile copies a file from src → dst.
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	return err
+}
+
+//
+// ──────────────────────────────────────────────────────────────────────────────
+//  Init Step Runner (pretty output)
+// ──────────────────────────────────────────────────────────────────────────────
+//
+
+type initStep struct {
+	name string
+	fn   func() error
+}
+
+// runSteps prints each step and executes it with ✓/✗ feedback.
+func runSteps(steps []initStep) error {
+	for _, step := range steps {
+		fmt.Printf("  %-50s", step.name+"...")
+		if err := step.fn(); err != nil {
+			fmt.Printf("%s✗%s\n", utils.ColorRed, utils.ColorReset)
+			return fmt.Errorf("%s: %w", step.name, err)
+		}
+		fmt.Printf("%s✓%s\n", utils.ColorGreen, utils.ColorReset)
+	}
+	return nil
+}
+
+// printBanner prints the Orkestra CLI logo.
+func printBanner() {
+	fmt.Printf("\n%s%s%s\n\n", utils.ColorGreen, utils.OrkestraLogoCLI, utils.ColorReset)
+}
