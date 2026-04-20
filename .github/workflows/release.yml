@@ -107,17 +107,24 @@ jobs:
 
 
       - name: Upload runtime artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ork_${{ matrix.os }}_${{ matrix.arch }}
           path: dist/ork_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
           retention-days: 1
 
       - name: Upload control center artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: orkcc_${{ matrix.os }}_${{ matrix.arch }}
           path: dist/orkcc_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
+          retention-days: 1
+      
+      - name: Upload example packs
+        uses: actions/upload-artifact@v7
+        with:
+          name: examples
+          path: dist/examples_*.tar.gz
           retention-days: 1
 
   # ── Build and push container image ─────────────────────────────────────────
@@ -309,7 +316,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: dist/
           merge-multiple: true
