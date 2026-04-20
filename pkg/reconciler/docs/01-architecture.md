@@ -22,13 +22,26 @@ GenericReconciler.Reconcile()          generic.go
           │
           └── reconcileImpl()
                  │
-                 ├── Reconcile-time mutation (if mutation rules declared)
-                 ├── Reconcile-time validation (if validation rules declared)
+                 ├── Phase 1 — Rollback gate
+                 │     isRollbackActive() → true:
+                 │       runRollback()  — applies onRollback templates with .previous.*
+                 │       return         — normal reconcile is blocked until spec changes
                  │
-                 └── dispatch:
-                      ├── Go hook (hooks.OnReconcile)        — user-provided, typed
-                      ├── Declarative templates              — runTemplateReconcile()
-                      └── No-op                              — finalizers + events only
+                 ├── Phase 2 — Reconcile-time mutation (if mutation rules declared)
+                 ├── Phase 3 — Reconcile-time validation (if validation rules declared)
+                 │
+                 ├── Phase 4 — dispatch:
+                 │     ├── Go hook (hooks.OnReconcile)        — user-provided, typed
+                 │     ├── Declarative templates              — runTemplateReconcile()
+                 │     └── No-op                              — finalizers + events only
+                 │
+                 ├── Phase 5 — Rollback trigger check (on dispatch error)
+                 │     history.record(); shouldRollback() → true:
+                 │       markRollbackActive()  — writes RollbackGenerationAnnotation
+                 │
+                 └── Phase 6 — Spec snapshot (on dispatch success)
+                       snapshotSpec()  — writes PreviousSpecAnnotation (gzip+base64)
+                       clearFailureHistory()
 
    workerSem.Release() + autoMetrics.RecordReconcile(duration, failed)
 ```
@@ -139,6 +152,8 @@ The `onDelete` block supports `jobs:` (fire-and-forget cleanup) and provider tea
 ## Status patching
 
 After reconcile (success or failure), `patchStatusWithChildren` is called unconditionally. It reads owned child resources from the informer cache and writes a `Ready` condition. This is automatic — runners do not need to touch status.
+
+For a full explanation of the rollback subsystem — trigger evaluation, spec snapshotting, `onRollback` templates, and annotation lifecycle — see [08 — Rollback](08-rollback.md).
 
 ---
 

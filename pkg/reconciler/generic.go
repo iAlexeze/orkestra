@@ -4,6 +4,7 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -83,6 +84,21 @@ type GenericReconciler[T domain.Object] struct {
 
 	// Notification
 	notifStack *notification.NotificationStack
+
+	// rollbackHistory tracks per-CR failure timestamps for window-based rollback triggers.
+	// Key: "namespace/name". Guarded by rollbackMu.
+	rollbackHistory map[string]*rollbackFailureHistory
+	rollbackMu      sync.Mutex
+
+	// spawnWorker is injected by kordinator after construction. Called by ResizeWorkers
+	// when scaling up to start additional goroutines matching the new semaphore capacity.
+	// nil when autoscale is not declared or kordinator hasn't injected it yet.
+	spawnWorker func()
+
+	// rollbackNotifier is injected by kordinator after construction. Called when
+	// rollback is triggered or cleared so CRDHealth can track rollback stats.
+	rollbackTriggerFn func()
+	rollbackClearFn   func()
 }
 
 func NewGenericReconciler[T domain.Object](
@@ -129,6 +145,7 @@ func NewGenericReconciler[T domain.Object](
 		newObj:           newObj,
 		workerSem:        sem,
 		autoMetrics:      autoMet,
+		rollbackHistory:  make(map[string]*rollbackFailureHistory),
 	}
 
 	if crd.AutoscaleEnabled() {
@@ -263,8 +280,30 @@ func (r *GenericReconciler[T]) reconcileCore(ctx context.Context, key string) er
 
 // reconcileImpl dispatches to the correct reconcile implementation.
 // Priority: Go hooks → declarative templates → no-op.
+//
+// Rollback phase order:
+//  1. Rollback gate  — if rollback is active, re-apply previous spec and return
+//  2. Snapshot       — on success, capture current spec as rollback baseline
+//  3. Mutation/validation
+//  4. Reconcile dispatch
+//  5. Failure trigger check — record failure; trigger rollback if threshold met
+//  6. Status patch
 func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, resolver *orktmpl.Resolver, obj T) error {
 	var err error
+
+	// ── Phase 1: Rollback gate ────────────────────────────────────────────────
+	if isRollbackActive(obj) {
+		logger.FromContext(ctx).Info().
+			Str("name", obj.GetName()).
+			Msg("rollback: active — blocking normal reconcile")
+		if rbErr := r.runRollback(ctx, resolver, obj); rbErr != nil {
+			logger.FromContext(ctx).Error().Err(rbErr).
+				Str("name", obj.GetName()).
+				Msg("rollback: failed to re-apply previous state")
+		}
+		r.patchStatusWithChildren(ctx, obj, resolver, fmt.Errorf("rollback active"))
+		return nil // do not propagate — stays in rollback loop
+	}
 
 	// ── Reconcile-time mutation and validation ────────────────────────────────
 	// Ordering respects MutationConfig.MutateFirst:
@@ -330,6 +369,43 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, resolver *orkt
 			Str("name", obj.GetName()).
 			Msgf("reconciled %s (no-op)", r.crd.GVKString())
 		// Status still patched for no-op reconcilers
+	}
+
+	// ── Phase 5: Rollback trigger check ─────────────────────────────────────
+	if err != nil && r.crd.HasRollbackRules() {
+		key := obj.GetNamespace() + "/" + obj.GetName()
+		h := r.getFailureHistory(key)
+		trigger := r.crd.OperatorBox.Rollback.Trigger
+		h.record(trigger.EffectiveConsecutiveFailures())
+		if r.shouldRollback(len(h.times), h) {
+			logger.FromContext(ctx).Warn().
+				Str("name", obj.GetName()).
+				Msg("rollback: threshold reached — marking rollback active")
+			if markErr := r.markRollbackActive(ctx, obj); markErr != nil {
+				logger.FromContext(ctx).Error().Err(markErr).Msg("rollback: failed to mark active")
+			}
+		}
+	}
+
+	// ── Phase 6: Snapshot + rollback cleanup ─────────────────────────────────
+	if err == nil && !r.crd.HasRollbackRules() {
+		// If a prior rollback cycle resolved (user corrected spec, generation
+		// advanced), clear the stale RollbackGenerationAnnotation and notify
+		// CRDHealth. snapshotSpec re-writes PreviousSpecAnnotation immediately after.
+		annots := obj.GetAnnotations()
+		if annots[orktypes.RollbackGenerationAnnotation] != "" {
+			if clrErr := r.clearRollback(ctx, obj); clrErr != nil {
+				logger.FromContext(ctx).Warn().Err(clrErr).
+					Str("name", obj.GetName()).
+					Msg("rollback: failed to clear stale rollback annotation — continuing")
+			}
+		}
+		if snapErr := r.snapshotSpec(ctx, obj); snapErr != nil {
+			logger.FromContext(ctx).Warn().Err(snapErr).
+				Str("name", obj.GetName()).
+				Msg("rollback: failed to snapshot spec — continuing")
+		}
+		r.clearFailureHistory(obj.GetNamespace() + "/" + obj.GetName())
 	}
 
 	// Always patch status — best-effort, never fails reconcile.

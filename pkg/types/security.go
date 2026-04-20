@@ -127,6 +127,10 @@ type NamespaceProtectionConfig struct {
 	// AllowedNamespaces — allow-list applied to every CRD in this Katalog.
 	// Merged additively with per-CRD allowedNamespaces.
 	AllowedNamespaces AllowedNamespaces `yaml:"allowedNamespaces,omitempty" json:"allowedNamespaces,omitempty"`
+
+	// CleanupOnShutdown controls whether Namespace protection webhook is deleted on graceful shutdown.
+	// Default: false — Namespace protection webhook persists across restarts.
+	CleanupOnShutdown bool `yaml:"cleanupOnShutdown,omitempty"`
 }
 
 // WebhooksConfig controls global admission webhook settings.

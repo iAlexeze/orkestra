@@ -13,6 +13,7 @@
 //  3. resolver.WithItem(val, as)    — adds .item / .<as> for forEach loops
 //  4. resolver.WithExternal(map)    — adds .external.<name>.status / .body
 //  5. resolver.WithCross(map)       — adds .cross.<kind>.status.*
+//  6. resolver.WithPrevious(map)    — adds .previous.* (rollback path only)
 //
 // Each extension is a shallow copy of the previous resolver's data map
 // with one new top-level key added. The template engine sees the full
@@ -34,6 +35,7 @@ package template
 //	.external.*  — HTTP call results, after WithExternal is called
 //	.cross.*     — cross-CRD observations, after WithCross is called
 //	.item        — current forEach item, after WithItem is called
+//	.previous.*  — last successfully reconciled spec, after WithPrevious is called (rollback path only)
 //
 // The returned map is the live internal map — do not mutate it.
 // Used by:
@@ -257,6 +259,37 @@ func (r *Resolver) WithDocker(data map[string]interface{}) *Resolver {
 	}
 	newData := r.shallowCopy()
 	newData["docker"] = data
+	return &Resolver{
+		data:           newData,
+		ownerName:      r.ownerName,
+		ownerNamespace: r.ownerNamespace,
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WithPrevious — rollback context injection
+// ─────────────────────────────────────────────────────────────────────────────
+
+// WithPrevious returns a new Resolver with the previous spec injected under
+// the "previous" key. Used by runRollback when applying onRollback templates.
+//
+// The previous spec is the last successfully reconciled spec, captured in the
+// orkestra.konductor.io/previous-spec annotation before each spec change.
+//
+// Templates in onRollback: declarations can reference:
+//
+//	{{ .previous.spec.image }}        — previous image
+//	{{ .previous.spec.replicas }}     — previous replica count
+//	{{ .previous.metadata.name }}     — CR name (same across generations)
+//
+// The previous map is injected as-is from the decoded annotation — it mirrors
+// the CR's .spec.* structure exactly.
+func (r *Resolver) WithPrevious(previous map[string]interface{}) *Resolver {
+	if len(previous) == 0 {
+		return r
+	}
+	newData := r.shallowCopy()
+	newData["previous"] = previous
 	return &Resolver{
 		data:           newData,
 		ownerName:      r.ownerName,

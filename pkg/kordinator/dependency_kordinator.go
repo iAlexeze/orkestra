@@ -188,6 +188,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	ork_autoscaler "github.com/orkspace/orkestra/pkg/autoscaler"
 	"github.com/orkspace/orkestra/pkg/informer"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
@@ -433,6 +434,32 @@ type resyncLoopStarter interface {
 	StartResyncLoop(ctx context.Context)
 }
 
+// workerSpawner is a local interface for injecting the goroutine-spawn function
+// into the reconciler. When the autoscaler calls ResizeWorkers(n) with n > old,
+// the reconciler calls the injected function to start the additional goroutines.
+// Avoids import cycles (reconciler does not import kordinator).
+type workerSpawner interface {
+	SetSpawnWorker(fn func())
+}
+
+// autoMetricsExporter is a local interface for reading the live AutoMetrics from
+// a reconciler, so it can be registered in the cross-metrics registry at startup.
+type autoMetricsExporter interface {
+	GetAutoMetrics() *ork_autoscaler.AutoMetrics
+}
+
+// workerInfoProvider is a local interface for reading a live WorkerInfo snapshot
+// from a reconciler. Used to populate the /katalog/{crd} handler response.
+type workerInfoProvider interface {
+	WorkerInfo(configuredWorkers, configuredQueueDepth int) *ork_autoscaler.WorkerInfo
+}
+
+// rollbackNotifierSetter is a local interface for injecting CRDHealth rollback
+// callbacks into the reconciler. Called once after reconciler construction.
+type rollbackNotifierSetter interface {
+	SetRollbackNotifiers(onTrigger, onClear func())
+}
+
 func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, workers int) {
 	entry, ok := k.katalog.Get(gvk)
 	if !ok {
@@ -451,6 +478,7 @@ func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, 
 	}
 
 	crdCtx, cancel := context.WithCancel(ctx)
+	wg := &sync.WaitGroup{}
 	rec := entry.ReconcilerFactory()
 
 	// Inject the per-CRD workqueue so SetQueueDepthLimit and the resync goroutine
@@ -458,6 +486,63 @@ func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, 
 	if wq, ok := k.queueReg.For(gvk); ok {
 		if qi, ok := rec.(queueInjector); ok {
 			qi.SetQueue(wq)
+		}
+	}
+
+	// Register this operatorbox's AutoMetrics in the global cross-metrics registry
+	// so other operatorboxes can reference it via cross.<kind>.metrics.* in autoscale conditions.
+	if exporter, ok := rec.(autoMetricsExporter); ok {
+		if m := exporter.GetAutoMetrics(); m != nil {
+			// Register under the katalog CRD name (lowercase spec.crds key), matching
+			// how cross: declarations reference other CRDs: cross.<crd-name>.metrics.*
+			ork_autoscaler.GlobalCrossMetricsRegistry.Register(entry.CRD.Name, m)
+		}
+	}
+
+	// Inject the goroutine-spawn function into the reconciler. When the autoscaler
+	// scales UP (ResizeWorkers(n) with n > current), the reconciler calls this to
+	// start the additional goroutines. This keeps goroutine count == semaphore capacity.
+	workerCounter := atomic.Int64{}
+	spawnWorker := func() {
+		n := workerCounter.Add(1)
+		wg.Add(1)
+		workerID := fmt.Sprintf("%s-autoscale-worker-%d", gvk, n)
+		workerID = strings.ReplaceAll(workerID, ",", "")
+		workerID = strings.ReplaceAll(workerID, " ", "-")
+		k.crdHealthMap[gvk].workerStates.Store(workerID, WorkerStateIdle)
+		go func(id string) {
+			defer wg.Done()
+			k.runWorkerForGVK(crdCtx, gvk, id)
+		}(workerID)
+	}
+	if ws, ok := rec.(workerSpawner); ok {
+		ws.SetSpawnWorker(spawnWorker)
+	}
+
+	// Inject rollback notifiers so reconciler can update CRDHealth on rollback events.
+	if rns, ok := rec.(rollbackNotifierSetter); ok {
+		health := k.crdHealthMap[gvk]
+		rns.SetRollbackNotifiers(
+			health.RecordRollbackTriggered,
+			health.RecordRollbackCleared,
+		)
+	}
+
+	// Wire the WorkerInfo provider so the /katalog/{crd} handler can report
+	// live concurrency metrics without importing the reconciler package.
+	if wip, ok := rec.(workerInfoProvider); ok {
+		k.crdHealthMap[gvk].SetWorkerInfoFn(func() *ork_autoscaler.WorkerInfo {
+			info := wip.WorkerInfo(workers, entry.CRD.Queue.MaxQueueDepth)
+			return info
+		})
+	}
+
+	// Wire AutoMetrics as a map so the /katalog/{crd} response includes a "metrics"
+	// key. Cross-binary autoscale conditions use this endpoint as their source.endpoint
+	// HTTP fallback — same resolution path as readCross uses for cross-CRD observation.
+	if exporter, ok := rec.(autoMetricsExporter); ok {
+		if m := exporter.GetAutoMetrics(); m != nil {
+			k.crdHealthMap[gvk].SetAutoMetricsFn(m.AsMap)
 		}
 	}
 
@@ -476,26 +561,23 @@ func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, 
 	k.mu.Lock()
 	k.reconcilers[gvk] = rec
 	k.cancelFuncs[gvk] = cancel
-	wg := &sync.WaitGroup{}
 	k.wgs[gvk] = wg
 	k.crdHealthMap[gvk].SetStarted()
 
-	k.crdHealthMap[gvk].SetTotalWorkers(int32(goroutines))
-	k.crdHealthMap[gvk].gvk = gvk // Set GVK for metrics
+	// Start only the declared baseline goroutines. The autoscaler scales up by
+	// calling spawnWorker (injected above) rather than pre-allocating max goroutines.
+	k.crdHealthMap[gvk].SetTotalWorkers(int32(workers))
+	k.crdHealthMap[gvk].gvk = gvk
 	k.started[gvk] = true
 	k.total[gvk]++
 	k.mu.Unlock()
 
-	// Initialize all workers as idle (not processing)
-	for i := 0; i < goroutines; i++ {
+	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		workerID := fmt.Sprintf("%s-worker-%d", gvk, i)
 		workerID = strings.ReplaceAll(workerID, ",", "")
 		workerID = strings.ReplaceAll(workerID, " ", "-")
-
-		// Mark as idle initially (not processing)
 		k.crdHealthMap[gvk].workerStates.Store(workerID, WorkerStateIdle)
-
 		go func(id string) {
 			defer wg.Done()
 			k.runWorkerForGVK(crdCtx, gvk, id)

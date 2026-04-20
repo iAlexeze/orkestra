@@ -55,7 +55,7 @@ The webhook is only registered when the operator runs inside a Kubernetes cluste
 ```go
 func (k *Katalog) DeletionProtectionGVRs() []GVREntry {
     if !k.IsDeletionProtectionEnabled() { return nil }
-    if !isRunningInCluster() { return nil }   // ← skips local mode
+    if !utils.IsRunningInCluster() { return nil }   // ← skips local mode
     ...
 }
 ```

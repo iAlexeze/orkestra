@@ -90,8 +90,7 @@ func (h *HealthServer) webhookController() error {
 
 	// If neither admission nor deletion protection is relevant, skip entirely.
 	kat := h.katalog
-	hasAdmission := h.hookKfg.WebhooksEnabled && h.admissionRegistry != nil &&
-		(kat.HasValidationRules() || kat.HasMutationRules())
+	hasAdmission := (kat.HasValidationRules() || kat.HasMutationRules())
 	hasDeletionProtection := kat.IsDeletionProtectionEnabled() && kat.DeletionProtectionGVRs() != nil
 	hasNamespaceProtection := kat.IsNamespaceProtectionEnabled() && len(kat.NamespaceProtectionGVRs()) > 0
 

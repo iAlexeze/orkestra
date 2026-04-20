@@ -58,15 +58,61 @@ var _ QueueDepthReporter = (*GenericReconciler[domain.Object])(nil)
 
 // ── AutoscaleTarget ───────────────────────────────────────────────────────────
 
-// ResizeWorkers adjusts the semaphore capacity, changing how many goroutines
-// may be inside Reconcile simultaneously. In-flight reconciles are never
-// interrupted — they complete normally before the new limit takes effect.
+// ResizeWorkers adjusts the semaphore capacity and, when scaling up, starts
+// additional goroutines via the injected spawnWorker function so that goroutine
+// count stays equal to the effective concurrency limit.
 func (r *GenericReconciler[T]) ResizeWorkers(n int) {
+	old := r.workerSem.Capacity()
 	r.workerSem.Resize(n)
+	if n > old && r.spawnWorker != nil {
+		for i := old; i < n; i++ {
+			go r.spawnWorker()
+		}
+	}
 	logger.Info().
 		Str("crd", r.crd.GVKString()).
 		Int("workers", n).
 		Msg("autoscaler: worker pool resized")
+}
+
+// SetSpawnWorker injects the goroutine-spawn function from kordinator.
+// Called once after construction — before the autoscaler starts.
+func (r *GenericReconciler[T]) SetSpawnWorker(fn func()) {
+	r.spawnWorker = fn
+}
+
+// SetRollbackNotifiers injects CRDHealth callbacks for rollback tracking.
+// Called once by kordinator after constructing the reconciler.
+func (r *GenericReconciler[T]) SetRollbackNotifiers(onTrigger, onClear func()) {
+	r.rollbackTriggerFn = onTrigger
+	r.rollbackClearFn = onClear
+}
+
+// GetAutoMetrics returns the live AutoMetrics for this reconciler.
+// Called by kordinator to register it in the cross-metrics registry.
+func (r *GenericReconciler[T]) GetAutoMetrics() *autoscaler.AutoMetrics {
+	return r.autoMetrics
+}
+
+// WorkerInfo returns a live WorkerInfo snapshot for the /katalog/{crd} endpoint.
+// configuredWorkers and configuredQueueDepth come from the CRD entry at startup.
+func (r *GenericReconciler[T]) WorkerInfo(configuredWorkers, configuredQueueDepth int) *autoscaler.WorkerInfo {
+	maxWorkers := configuredWorkers
+	if r.autoscaler != nil {
+		if snap := r.autoscaler.Snapshot(); snap != nil && snap.EffectiveWorkers > maxWorkers {
+			maxWorkers = snap.EffectiveWorkers
+		}
+	}
+	info := autoscaler.BuildWorkerInfo(
+		r.workerSem,
+		r.autoMetrics,
+		configuredWorkers,
+		configuredQueueDepth,
+		maxWorkers,
+		r.autoscaler != nil,
+		r.autoscaler.Snapshot(),
+	)
+	return &info
 }
 
 // SetQueueDepthLimit updates the workqueue's depth limit. New enqueue calls

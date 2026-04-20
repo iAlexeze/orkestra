@@ -13,5 +13,6 @@ This directory explains how the `pkg/reconciler` package works and how to add ne
 | [05-foreach.md](05-foreach.md) | How `forEach:` expansion works and what it requires from a runner |
 | [06-normalize.md](06-normalize.md) | The `normalize:` phase — collapsing multiple input shapes before reconcile |
 | [07-adding-a-resource.md](07-adding-a-resource.md) | Step-by-step guide — using `run_ingress.go` as the worked example |
+| [08-rollback.md](08-rollback.md) | Declarative rollback — spec snapshotting, trigger evaluation, `onRollback` templates |
 
 Read them in order the first time. For a quick reference when writing a new runner, jump straight to [07-adding-a-resource.md](07-adding-a-resource.md) and use the checklist at the bottom.

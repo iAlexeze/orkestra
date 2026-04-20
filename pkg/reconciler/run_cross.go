@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/tools/cache"
 )
 
 const (
@@ -82,35 +83,61 @@ func fetchCrossViaHTTP(ctx context.Context, endpoint, token string) map[string]i
 	return result
 }
 
-// ReadCrossFromInformer reads cross-CRD data from an informer cache.
+// ReadCrossFromInformer reads one CR from an informer cache by namespace/name key.
 // Zero API server calls — pure in-memory map lookup.
 //
-// indexer is the GetIndexer() of a SharedIndexInformer for the target CRD.
 // key is "namespace/name" for namespaced CRDs or "name" for cluster-scoped.
 //
-// Returns a map with the same shape as fetchCrossViaHTTP — callers are
-// agnostic to which path was used.
+// Returns a consistent map shape regardless of whether the CR was found —
+// callers use .found == "true" to gate their logic.
 func ReadCrossFromInformer(
-	indexer interface {
-		GetByKey(key string) (interface{}, bool, error)
-	},
+	indexer cache.Indexer,
 	key string,
 ) map[string]interface{} {
 	raw, exists, err := indexer.GetByKey(key)
 	if err != nil || !exists {
-		return map[string]interface{}{
-			"found":  "false",
-			"status": map[string]interface{}{},
-			"spec":   map[string]interface{}{},
-		}
+		return notFoundCrossResult()
 	}
 
 	u, ok := raw.(*unstructured.Unstructured)
 	if !ok {
-		return map[string]interface{}{"found": "false"}
+		return notFoundCrossResult()
 	}
 
-	result := make(map[string]interface{}, 5)
+	return buildCrossResult(u)
+}
+
+// ReadCrossFromInformerByLabel reads the first CR from an informer cache whose
+// labels contain labelKey=labelValue.
+//
+// The original implementation incorrectly called GetByKey with the label key
+// string. This function correctly iterates indexer.List() and filters.
+//
+// Returns the first match. When multiple CRs share the label, the first
+// returned by List() is used — List() order is not guaranteed. If you need
+// a specific CR, use name-based lookup (ReadCrossFromInformer) instead.
+func ReadCrossFromInformerByLabel(
+	indexer cache.Indexer,
+	labelKey, labelValue string,
+) map[string]interface{} {
+	for _, raw := range indexer.List() {
+		u, ok := raw.(*unstructured.Unstructured)
+		if !ok {
+			continue
+		}
+		if u.GetLabels()[labelKey] == labelValue {
+			return buildCrossResult(u)
+		}
+	}
+	return notFoundCrossResult()
+}
+
+// buildCrossResult extracts the fields relevant for cross-CRD observation.
+// Includes: found, name, namespace, spec, status, labels, annotations.
+// Does NOT include managed fields — those are Kubernetes internal metadata
+// for server-side apply tracking and have no meaningful use in templates.
+func buildCrossResult(u *unstructured.Unstructured) map[string]interface{} {
+	result := make(map[string]interface{}, 6)
 	result["found"] = "true"
 	result["name"] = u.GetName()
 	result["namespace"] = u.GetNamespace()
@@ -128,14 +155,30 @@ func ReadCrossFromInformer(
 	}
 
 	if labels := u.GetLabels(); len(labels) > 0 {
-		labelsMap := make(map[string]interface{}, len(labels))
+		lm := make(map[string]interface{}, len(labels))
 		for k, v := range labels {
-			labelsMap[k] = v
+			lm[k] = v
 		}
-		result["labels"] = labelsMap
+		result["labels"] = lm
+	}
+
+	if annotations := u.GetAnnotations(); len(annotations) > 0 {
+		am := make(map[string]interface{}, len(annotations))
+		for k, v := range annotations {
+			am[k] = v
+		}
+		result["annotations"] = am
 	}
 
 	return result
+}
+
+func notFoundCrossResult() map[string]interface{} {
+	return map[string]interface{}{
+		"found":  "false",
+		"spec":   map[string]interface{}{},
+		"status": map[string]interface{}{},
+	}
 }
 
 // crossKey builds the informer cache key for a CR.

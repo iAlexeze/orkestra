@@ -83,13 +83,10 @@ func autoscaleIsProfileOnly(spec *orktypes.AutoscaleSpec) bool {
 	}
 
 	// Any manual field invalidates profile usage
-	if spec.Interval.Duration != 0 ||
-		spec.Cooldown.Duration != 0 ||
-		len(spec.Conditions.AnyOf) > 0 ||
-		len(spec.Conditions.When) > 0 ||
-		spec.Do.Workers != nil ||
-		spec.Do.QueueDepth != nil ||
-		spec.Do.Resync != nil {
+	if spec.HasCooldownDuration() || spec.HasIntervalDuration() ||
+		spec.HasWhenConditions() || spec.HasAnyOfConditions() ||
+		spec.HasDoWorkers() || spec.HasDoQueueDepth() ||
+		spec.HasDoResync() {
 		return false
 	}
 

@@ -80,7 +80,8 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		ErrorRate:                health.ErrorRate,
 		Conversion:               info.Conversion,
 		Admission:                info.Admission,
-		Protection:               info.Protection,
+		DeletionProtection:       info.DeletionProtection,
+		NamespaceProtection:      info.NamespaceProtection,
 		Providers:                info.Providers,
 		State:                    health.State,
 		StartedAt:                health.StartedAt,
@@ -90,6 +91,8 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		LastReconcile:            health.LastReconcile,
 		RBAC:                     info.RBAC,
 		RBACCount:                info.RBAC.TotalRules,
+		AutoscalerWorkers:        info.AutoscalerWorkers,
+		Rollback:                 info.Rollback,
 	}
 
 	detail.StartedAgo = humanDuration(health.StartedAt)

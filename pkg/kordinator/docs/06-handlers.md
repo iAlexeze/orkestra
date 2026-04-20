@@ -63,6 +63,49 @@ func BuildCRDInfoHandler(
 
 Serves `GET /katalog/{crd}`. Returns the full CRD detail. The response is assembled on every request from live atomic reads — no caching.
 
+**Autoscaler workers section.** When `autoscale:` is declared on the CRD, the response includes an `autoscalerWorkers` object. This is populated by calling the `workerInfoFn` closure set on `CRDHealth` during startup — it reads the live semaphore state and autoscaler snapshot on every request. When no autoscaler is configured the field is omitted entirely.
+
+```json
+"autoscalerWorkers": {
+  "configured": 4,
+  "effective": 8,
+  "inFlight": 3,
+  "idle": 5,
+  "max": 8,
+  "autoscalerEnabled": true,
+  "overrideActive": true,
+  "overrideWorkers": 8,
+  "queueDepth": 12,
+  "queueDepthConfigured": 100,
+  "queueDepthEffective": 200,
+  "busyPercent": 37.5
+}
+```
+
+**Rollback section.** When `crd.HasRollbackRules()` is true (the CRD declares `operatorBox.rollback:`), the response includes a `rollback` object populated from `CRDHealth.RollbackStats()`:
+
+```json
+"rollback": {
+  "totalRollbacks": 3,
+  "active": false,
+  "lastRollbackAt": "2026-04-18T14:22:01Z"
+}
+```
+
+When rollback is currently active (`active: true`), the Control Center renders an alert banner on the CRD detail page.
+
+**Metrics section.** When `autoscale:` is declared, the response also includes a `"metrics"` object with the live `AutoMetrics` values. This is the endpoint that cross-binary autoscale conditions hit via `source.endpoint` — the remote autoscaler reads `metrics.*` fields from this response using the same fallback path as `readCross` uses for CR spec/status observation.
+
+```json
+"metrics": {
+  "queueDepth": 342,
+  "workersBusyPercent": 73.5,
+  "workersIdlePercent": 26.5,
+  "reconcileDurationP95Ms": 47.0,
+  "errorRatePercent": 0.2
+}
+```
+
 **Provider section.** When the CRD declares provider blocks, the response includes a `providers` array. Each entry merges two sources:
 
 - Static metadata from `crd.OperatorBox.ProviderBlocks` — the declared provider name and the list of kinds from the Katalog YAML

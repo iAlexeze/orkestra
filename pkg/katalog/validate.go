@@ -261,7 +261,8 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 
 		// Handle Notifications
 		if k.IsEmailNotificationEnabled() || k.IsSlackNotificationEnabled() {
-			crd.NotificationEnabled = true
+			enabled := true
+			crd.NotificationEnabled = &enabled
 		}
 
 		k.enabledCRDs[name] = crd
@@ -431,3 +432,18 @@ func (k *Katalog) validateAutoscalerMetrics() error {
 	}
 	return nil
 }
+
+// validateNotifyTeams checks that teams declared under notify actually exist in this katalog context
+// func (k *Katalog) validateNotifyTeams() error {
+// 	for name, crd := range k.enabledCRDs {
+// 		if !crd.IsNotificationEnabled() {
+// 			continue	// no-op
+// 		}
+
+// 		if crd.OperatorBox != nil {
+// 			if crd.HasAnyHooks() {
+
+// 			}
+// 	}
+// 	return nil
+// }

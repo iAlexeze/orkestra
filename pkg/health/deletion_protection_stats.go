@@ -3,13 +3,13 @@ package health
 
 import "sync"
 
-// ProtectionStats tracks counters for the /deletion-protection webhook endpoint.
+// DeletionProtectionStats tracks counters for the /deletion-protection webhook endpoint.
 // Thread-safe for concurrent updates from the deletion protection handler.
 //
-// Follows the same pattern as ConversionStats and AdmissionStats.
+// Follows the same pattern as ConversionStats, AdmissionStats, and NamespaceProtectionStats.
 // No latency tracking — deletion protection decisions are fast in-memory
 // lookups and the blocking count is the meaningful signal.
-type ProtectionStats struct {
+type DeletionProtectionStats struct {
 	mu sync.RWMutex
 
 	TotalRequests int64 // total DELETE admission reviews received
@@ -17,13 +17,13 @@ type ProtectionStats struct {
 	Allowed       int64 // DELETE requests allowed through
 }
 
-// NewProtectionStats creates a new ProtectionStats instance.
-func NewProtectionStats() *ProtectionStats {
-	return &ProtectionStats{}
+// NewDeletionProtectionStats creates a new DeletionProtectionStats instance.
+func NewDeletionProtectionStats() *DeletionProtectionStats {
+	return &DeletionProtectionStats{}
 }
 
 // RecordBlocked records a DELETE that was denied by the webhook.
-func (s *ProtectionStats) RecordBlocked() {
+func (s *DeletionProtectionStats) RecordBlocked() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.TotalRequests++
@@ -31,27 +31,27 @@ func (s *ProtectionStats) RecordBlocked() {
 }
 
 // RecordAllowed records a DELETE that was allowed through the webhook.
-func (s *ProtectionStats) RecordAllowed() {
+func (s *DeletionProtectionStats) RecordAllowed() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.TotalRequests++
 	s.Allowed++
 }
 
-// GetStats returns a point-in-time snapshot of protection statistics.
-func (s *ProtectionStats) GetStats() ProtectionStatsSnapshot {
+// GetStats returns a point-in-time snapshot of deletion protection statistics.
+func (s *DeletionProtectionStats) GetStats() DeletionProtectionStatsSnapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return ProtectionStatsSnapshot{
+	return DeletionProtectionStatsSnapshot{
 		TotalRequests: s.TotalRequests,
 		Blocked:       s.Blocked,
 		Allowed:       s.Allowed,
 	}
 }
 
-// ProtectionStatsSnapshot is a read-only point-in-time snapshot.
+// DeletionProtectionStatsSnapshot is a read-only point-in-time snapshot.
 // Serialised into the /katalog/{crd} JSON response under the "protection" key.
-type ProtectionStatsSnapshot struct {
+type DeletionProtectionStatsSnapshot struct {
 	TotalRequests int64 `json:"total"`
 	Blocked       int64 `json:"blocked"`
 	Allowed       int64 `json:"allowed"`

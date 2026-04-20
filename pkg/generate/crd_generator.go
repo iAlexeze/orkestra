@@ -308,7 +308,7 @@ func (g *CRDGenerator) buildPrinterColumns() []apiextv1.CustomResourceColumnDefi
 func (g *CRDGenerator) extractTemplateSpecFields() []string {
 	// Collect all raw template strings from the reconciler config
 	var templates []string
-	rc := g.crd.OperatorBox
+	op := g.crd.OperatorBox
 
 	collectFromTemplates := func(t *orktypes.HookTemplates) {
 		if t == nil {
@@ -332,11 +332,11 @@ func (g *CRDGenerator) extractTemplateSpecFields() []string {
 		}
 	}
 
-	collectFromTemplates(rc.OnCreate)
-	collectFromTemplates(rc.OnReconcile)
+	collectFromTemplates(op.OnCreate)
+	collectFromTemplates(op.OnReconcile)
 
 	// Also collect from provider block fields
-	for _, block := range rc.ProviderBlocks {
+	for _, block := range op.ProviderBlocks {
 		for _, decl := range block.Declarations {
 			for _, v := range decl.Fields {
 				templates = append(templates, v)
@@ -345,8 +345,8 @@ func (g *CRDGenerator) extractTemplateSpecFields() []string {
 	}
 
 	// Also collect from status fields
-	if rc.Status != nil {
-		for _, f := range rc.Status.Fields {
+	if op.Status != nil {
+		for _, f := range op.Status.Fields {
 			templates = append(templates, f.Value)
 		}
 	}

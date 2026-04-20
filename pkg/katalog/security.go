@@ -34,6 +34,7 @@ func (k *Katalog) securityEnvDefaults() interface {
 	NamespaceProtectionEnabled() bool
 	NamespaceProtectionSvcName() string
 	NamespaceProtectionPolicy() string
+	NamespaceProtectionCleanup() bool
 } {
 	return &envSecurityReader{k: k}
 }
@@ -100,6 +101,12 @@ func (r *envSecurityReader) DeletionProtectionCleanup() bool {
 		return false
 	}
 	return r.k.konfig.Security().DeletionProtection.CleanupOnShutdown
+}
+func (r *envSecurityReader) NamespaceProtectionCleanup() bool {
+	if r.k.konfig == nil {
+		return false
+	}
+	return r.k.konfig.Security().NamespaceProtection.CleanupOnShutdown
 }
 
 func (r *envSecurityReader) ConversionWindowVal() int {
@@ -205,6 +212,19 @@ func (k *Katalog) NamespaceProtectionFailurePolicy() string {
 	return k.securityEnvDefaults().NamespaceProtectionPolicy()
 }
 
+// NamespaceProtectionCleanupOnShutdown reports whether Deletion Protection should be deleted on shutdown.
+//
+// Precedence:
+//
+//	YAML security.namespaceProtection.cleanupOnShutdown present → use YAML value
+//	YAML block absent                                      → fall back to NAMESPACE_PROTECTION_CLEANUP_ON_SHUTDOWN env
+func (k *Katalog) NamespaceProtectionCleanupOnShutdown() bool {
+	if k.Security.NamespaceProtection != nil {
+		return k.Security.NamespaceProtection.CleanupOnShutdown
+	}
+	return k.securityEnvDefaults().NamespaceProtectionCleanup()
+}
+
 // ── Admission webhooks ────────────────────────────────────────────────────────
 
 // IsAdmissionEnabled reports whether admission webhooks are globally enabled.
@@ -286,7 +306,8 @@ func (k *Katalog) ConversionWindow() int {
 // configured in at least 1 CRD— all three use the same TLS cert.
 func (k *Katalog) NeedsCertificates() bool {
 	return k.IsDeletionProtectionEnabled() ||
-		k.HasValidationOrMutationRules() ||
+		k.IsNamespaceProtectionEnabled() ||
+		k.HasValidationOrMutationRules() || // Valid admission rule
 		k.HasConversionPaths()
 }
 

@@ -63,6 +63,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			s.Webhooks.Controller.SyncInterval = GetDurEnvSeconds("WEBHOOK_CONTROLLER_SYNC_INTERVAL", 30)
 			s.NamespaceProtection.Enabled = GetBoolEnv("ENABLE_NAMESPACE_PROTECTION", false)
 			s.NamespaceProtection.FailurePolicy = GetStrEnv("NAMESPACE_PROTECTION_FAILURE_POLICY", "Fail")
+			s.NamespaceProtection.CleanupOnShutdown = GetBoolEnv("NAMESPACE_PROTECTION_CLEANUP_ON_SHUTDOWN", false)
 			s.NamespaceProtection.ServiceName = svcName
 			return s
 		}(),

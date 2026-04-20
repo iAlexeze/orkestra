@@ -77,9 +77,12 @@ spec:
 
 `ResourceKatalog.GetWorkers(gvk, defaultWorkers)` returns the configured count, or the operator-wide default if the CRD does not specify one.
 
-When `autoscale:` is declared, `startCRDWorkers` starts
-`max(baseline.workers, do.workers)` goroutines instead, so scale-up is instant
-— no new goroutines are spawned at runtime.
+When `autoscale:` is declared, `startCRDWorkers` still starts only
+`baseline.workers` goroutines. When the autoscaler calls `ResizeWorkers(n)` with
+`n > baseline`, `GenericReconciler.ResizeWorkers` calls the injected
+`spawnWorker` closure once per new slot, starting additional goroutines on
+demand. This keeps the initial goroutine count at the baseline rather than
+pre-allocating goroutines for a scale-up that may never occur.
 
 ## Semaphore-gated concurrency
 

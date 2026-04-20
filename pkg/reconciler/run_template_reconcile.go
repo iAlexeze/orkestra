@@ -3,7 +3,7 @@
 // Execution order (each step can reference all previous steps):
 //
 //  1. Recieve NewResolver        → .spec.*, .status.*, .metadata.*
-//  2. r.readCross     			  → .cross.<kind>.status.* (informer cache, zero API calls)
+//  2. r.readCross     			  → .cross.<crd>.status.* (informer cache, zero API calls)
 //  3. runExternal        	      → .external.<n>.status, .body (HTTP calls)
 //  4. forEach expand             → N sources from N-element list fields
 //  5. onCreate groups            → deployments, services, secrets, configmaps, ...
@@ -287,25 +287,41 @@ func (r *GenericReconciler[T]) readCross(
 
 		// Path 1: informer cache — zero API calls.
 		// katalogRegistry is threaded in from konstructOrkestra via NewGenericReconciler.
-		// GetInformerByName returns the live SharedIndexInformer for the target CRD.
-		if r.katalogRegistry != nil {
-			inf, found := r.katalogRegistry.GetInformerByName(decl.Crd)
-			if found {
-				data := ReadCrossFromInformer(inf.GetIndexer(), key)
-				result[as] = data
-				log.Debug().
+		// Path 1a: label-based informer lookup
+		if len(decl.LabelSelector) > 0 && r.katalogRegistry != nil {
+			for labelKey, labelValue := range decl.LabelSelector {
+				inf, found := r.katalogRegistry.GetInformerByLabelSelector(labelKey, labelValue)
+				if found {
+					data := ReadCrossFromInformerByLabel(inf.GetIndexer(), labelKey, labelValue)
+					result[as] = data
+					break
+				}
+				log.Warn().
+					Str("label_key", labelKey).
+					Str("label_val", labelValue).
 					Str("crd", decl.Crd).
 					Str("as", as).
-					Str("key", key).
-					Bool("cr_found", data["found"] == "true").
-					Msg("cross: read from informer cache")
+					Msg("cross: no CRD matched label selector in registry")
+			}
+		}
+		// Path 1b: name-based informer lookup (existing, unchanged)
+		if decl.Crd != "" && r.katalogRegistry != nil {
+			inf, found := r.katalogRegistry.GetInformerByName(decl.Crd)
+			if found {
+				name, _ := resolver.Resolve(decl.Selector.Name)
+				ns, _ := resolver.Resolve(decl.Selector.Namespace)
+				if ns == "" {
+					ns = obj.GetNamespace()
+				}
+				data := ReadCrossFromInformer(inf.GetIndexer(), crossKey(ns, name))
+				result[as] = data
 				continue
 			}
 			log.Warn().
 				Str("crd", decl.Crd).
 				Str("as", as).
 				Bool("registry_nil", registryNil).
-				Msg("cross: crd not found in registry")
+				Msg("cross: no CRD matched name in registry")
 		}
 
 		// Path 2: HTTP endpoint fallback.

@@ -100,9 +100,10 @@ type SecurityConfig struct {
 	//
 	// Precedence: Katalog YAML > SecurityConfig (ENV) > hard default.
 	NamespaceProtection struct {
-		Enabled       bool
-		FailurePolicy string
-		ServiceName   string
+		Enabled           bool
+		FailurePolicy     string
+		ServiceName       string
+		CleanupOnShutdown bool
 	}
 }
 
