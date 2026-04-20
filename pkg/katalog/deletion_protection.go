@@ -20,7 +20,7 @@
 //	deletions when unreachable. Only register when running inside the cluster.
 package katalog
 
-import "os"
+import "github.com/orkspace/orkestra/pkg/utils"
 
 // DeletionProtectionGVRs returns the list of GVRs that the deletion‑protection
 // admission webhook should intercept.
@@ -41,7 +41,7 @@ func (k *Katalog) DeletionProtectionGVRs() []GVREntry {
 	if !k.IsDeletionProtectionEnabled() {
 		return nil
 	}
-	if !isRunningInCluster() {
+	if !utils.IsRunningInCluster() {
 		return nil
 	}
 
@@ -52,12 +52,18 @@ func (k *Katalog) DeletionProtectionGVRs() []GVREntry {
 	return OrkestraInternalGVRs()
 }
 
-// ProtectedCRDNames returns the set of CRD full names managed by this Katalog.
+// DeletionProtectedCRDNames returns the set of CRD full names managed by this Katalog.
 // e.g. {"cronjobs.demo.orkestra.io": {}}
 // Used by the /deletion-protection handler for name-based filtering.
 // A CRD not in this set is allowed through even though the webhook intercepted it.
-func (k *Katalog) ProtectedCRDNames() map[string]struct{} {
+// When running outside the cluster (e.g. `ork run`), the webhook cannot be
+// reached, so no protection is guaranteed.
+func (k *Katalog) DeletionProtectedCRDNames() map[string]struct{} {
 	if !k.IsDeletionProtectionEnabled() {
+		return nil
+	}
+
+	if !utils.IsRunningInCluster() {
 		return nil
 	}
 
@@ -73,11 +79,4 @@ func (k *Katalog) ProtectedCRDNames() map[string]struct{} {
 		}
 	}
 	return names
-}
-
-// isRunningInCluster returns true when running inside a Kubernetes pod.
-// The service account token is always present inside a pod.
-func isRunningInCluster() bool {
-	_, err := os.Stat("/var/run/secrets/kubernetes.io/serviceaccount/token")
-	return err == nil
 }

@@ -3,7 +3,7 @@
 // Execution order (each step can reference all previous steps):
 //
 //  1. Recieve NewResolver        → .spec.*, .status.*, .metadata.*
-//  2. r.readCross     			  → .cross.<kind>.status.* (informer cache, zero API calls)
+//  2. r.readCross     			  → .cross.<crd>.status.* (informer cache, zero API calls)
 //  3. runExternal        	      → .external.<n>.status, .body (HTTP calls)
 //  4. forEach expand             → N sources from N-element list fields
 //  5. onCreate groups            → deployments, services, secrets, configmaps, ...
@@ -41,7 +41,7 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, resolve
 	// Must run first so git, docker, external calls, and resources can reference .cross.*
 	if len(r.operatorBox.Cross) > 0 {
 		crossData := r.readCross(ctx, obj, r.operatorBox.Cross, resolver)
-		logger.FromContext(ctx).Info().
+		logger.FromContext(ctx).Debug().
 			Str("observer", obj.GetName()).
 			Int("cross_entries", len(crossData)).
 			Interface("cross_keys", crossDataKeys(crossData)).
@@ -220,28 +220,6 @@ func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, resolver
 	return nil
 }
 
-// runOrderedDelete deletes resource groups sequentially with verification.
-func (r *GenericReconciler[T]) runOrderedDelete(
-	ctx context.Context,
-	kube *kubeclient.Kubeclient,
-	resolver *orktmpl.Resolver,
-	obj domain.Object,
-	t *orktypes.HookTemplates,
-	guard func(ctx context.Context, obj domain.Object, ns string) bool,
-) error {
-	log := logger.FromContext(ctx)
-	log.Info().Str("name", obj.GetName()).Msg("ordered delete: starting sequential cleanup")
-
-	if len(t.Jobs) > 0 {
-		jobs := expandForEachJobs(resolver, t.Jobs)
-		if err := runJobs(ctx, kube, resolver, obj, jobs, guard); err != nil {
-			return fmt.Errorf("ordered delete: cleanup jobs: %w", err)
-		}
-	}
-
-	return nil
-}
-
 func crossDataKeys(m map[string]interface{}) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
@@ -287,25 +265,41 @@ func (r *GenericReconciler[T]) readCross(
 
 		// Path 1: informer cache — zero API calls.
 		// katalogRegistry is threaded in from konstructOrkestra via NewGenericReconciler.
-		// GetInformerByName returns the live SharedIndexInformer for the target CRD.
-		if r.katalogRegistry != nil {
-			inf, found := r.katalogRegistry.GetInformerByName(decl.Crd)
-			if found {
-				data := ReadCrossFromInformer(inf.GetIndexer(), key)
-				result[as] = data
-				log.Debug().
+		// Path 1a: label-based informer lookup
+		if len(decl.LabelSelector) > 0 && r.katalogRegistry != nil {
+			for labelKey, labelValue := range decl.LabelSelector {
+				inf, found := r.katalogRegistry.GetInformerByLabelSelector(labelKey, labelValue)
+				if found {
+					data := ReadCrossFromInformerByLabel(inf.GetIndexer(), labelKey, labelValue)
+					result[as] = data
+					break
+				}
+				log.Warn().
+					Str("label_key", labelKey).
+					Str("label_val", labelValue).
 					Str("crd", decl.Crd).
 					Str("as", as).
-					Str("key", key).
-					Bool("cr_found", data["found"] == "true").
-					Msg("cross: read from informer cache")
+					Msg("cross: no CRD matched label selector in registry")
+			}
+		}
+		// Path 1b: name-based informer lookup (existing, unchanged)
+		if decl.Crd != "" && r.katalogRegistry != nil {
+			inf, found := r.katalogRegistry.GetInformerByName(decl.Crd)
+			if found {
+				name, _ := resolver.Resolve(decl.Selector.Name)
+				ns, _ := resolver.Resolve(decl.Selector.Namespace)
+				if ns == "" {
+					ns = obj.GetNamespace()
+				}
+				data := ReadCrossFromInformer(inf.GetIndexer(), crossKey(ns, name))
+				result[as] = data
 				continue
 			}
 			log.Warn().
 				Str("crd", decl.Crd).
 				Str("as", as).
 				Bool("registry_nil", registryNil).
-				Msg("cross: crd not found in registry")
+				Msg("cross: no CRD matched name in registry")
 		}
 
 		// Path 2: HTTP endpoint fallback.

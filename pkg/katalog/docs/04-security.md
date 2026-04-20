@@ -29,31 +29,14 @@ Decision:
 
 Also gates TLS certificate generation — `k.NeedsCertificates()` returns `true` when deletion protection is on and the user has not provided their own TLS cert.
 
-## RBAC
-
-```go
-k.IsRBACEnabled()          // bool — same decision table as above
-k.RBACCleanupOnShutdown()  // bool — default false; RBAC survives restarts
-```
-
-RBAC auto-apply generates and applies `ClusterRole` and `ClusterRoleBinding` resources based on the resources each CRD's reconciler touches. It is enabled by default when the `security` block is present.
-
-`RBACCleanupOnShutdown` is explicitly false by default: RBAC rules survive operator restarts so that CRs can still be read by other tools while the operator is down.
+`CleanupOnShutdown` is explicitly false by default: Deletion protection webhook survive operator restarts to maintain the security.
 
 ## Example
 
 ```yaml
 security:
-  # deletionProtection not declared → enabled by default
-  rbac:
-    enabled: false    # explicitly opt out of RBAC generation
-```
-
-```yaml
-security:
   deletionProtection:
     enabled: false   # explicitly disabled
-  rbac:
     cleanupOnShutdown: true
 ```
 

@@ -91,6 +91,20 @@ jobs:
           ARCHIVE="orkcc_${{ matrix.os }}_${{ matrix.arch }}.tar.gz"
           tar -czf "dist/${ARCHIVE}" -C dist orkcc -C "${{ github.workspace }}" README.md LICENSE
           echo "✅ Archive: dist/${ARCHIVE}"
+      
+      - name: Package example packs
+        run: |
+          mkdir -p dist/examples
+
+          TAG="${{ github.ref_name }}"
+
+          tar -czf "dist/examples_beginner_${TAG}.tar.gz"     -C examples beginner
+          tar -czf "dist/examples_intermediate_${TAG}.tar.gz" -C examples intermediate
+          tar -czf "dist/examples_advanced_${TAG}.tar.gz"     -C examples advanced
+          tar -czf "dist/examples_use-cases_${TAG}.tar.gz"    -C examples use-cases
+
+          echo "📦 Example packs packaged"
+
 
       - name: Upload runtime artifact
         uses: actions/upload-artifact@v4
@@ -366,27 +380,27 @@ jobs:
 
           \`\`\`bash
           # macOS
-          brew tap ialexeze/tap && brew install ork orkcc
+          brew tap orkspace/tap && brew install ork orkcc
 
           # Linux
-          curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | bash
+          curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
           \`\`\`
 
           #### Container Images
 
           \`\`\`bash
           # Runtime
-          docker pull ghcr.io/ialexeze/orkestra:${TAG}
+          docker pull ghcr.io/orkspace/orkestra:${TAG}
 
           # Control Center
-          docker pull ghcr.io/ialexeze/orkestra-cc:${TAG}
+          docker pull ghcr.io/orkspace/orkestra-cc:${TAG}
           \`\`\`
 
           #### Helm
 
           \`\`\`bash
-          helm repo add orkestra https://ialexeze.github.io/orkestra
-          helm install orkestra orkestra/orkestra -n orkestra-system --create-namespace
+          helm repo add orkestra https://orkspace.github.io/orkestra
+          helm install orkestra orkspace/orkestra -n orkestra-system --create-namespace
           \`\`\`
           EOF
 
@@ -416,6 +430,12 @@ jobs:
             dist/orkcc_darwin_arm64.tar.gz.asc
             dist/checksums.txt
             dist/orkestra-public-key.asc
+
+            # Examples
+            dist/examples_beginner_${{ github.ref_name }}.tar.gz
+            dist/examples_intermediate_${{ github.ref_name }}.tar.gz
+            dist/examples_advanced_${{ github.ref_name }}.tar.gz
+            dist/examples_use-cases_${{ github.ref_name }}.tar.gz
           fail_on_unmatched_files: true
 
   # ── Homebrew formulas update ───────────────────────────────────────────────
@@ -437,7 +457,7 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           curl -sSfL \
-            "https://github.com/orkspace/orkestra/releases/download/${TAG}/checksums.txt" \
+            "https://github.com/ialexeze/orkestra/releases/download/${TAG}/checksums.txt" \
             -o checksums.txt
 
       - name: Extract SHA256 values

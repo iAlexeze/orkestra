@@ -147,6 +147,7 @@ kubectl apply -f 02-external-gate/cr.yaml
 2. If the health endpoint returns 200: Deployment appears immediately
 3. If the health endpoint is down: Deployment does not appear, reconcile retries and you will see the reconcile error and message
 4. Click the resource → Events tab shows "external call health-check: 200"
+5. The feature flags check is expected to fail but is non-blocking because of `continueOnError: true`. It is logged
 
 Try bringing the health endpoint down and watch the Deployment disappear on
 the next reconcile cycle (within `resync` seconds).
@@ -350,6 +351,9 @@ Edit the CR and enable notifications:
 ```yaml
 spec:
   notify: true
+
+# Then re-apply
+kubectl apply -f 05-anyof/cr.yaml
 ```
 
 Once `spec.notify` becomes `true`, the **notify Job** appears because:

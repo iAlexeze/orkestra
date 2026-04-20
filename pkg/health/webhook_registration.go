@@ -40,9 +40,10 @@ import (
 // Platform operators who want hard enforcement can change this to Fail.
 
 const (
-	validatingWebhookConfigName         = "orkestra-validation"
-	mutatingWebhookConfigName           = "orkestra-mutation"
-	deletionProtectionWebhookConfigName = "orkestra-delete-protection"
+	validatingWebhookConfigName          = "orkestra-validation"
+	mutatingWebhookConfigName            = "orkestra-mutation"
+	deletionProtectionWebhookConfigName  = "orkestra-deletion-protection"
+	namespaceProtectionWebhookConfigName = "orkestra-namespace-protection"
 
 	// Webhook Cleanup setup
 	// MaxAttempts — number of retries for cleanup operations.
@@ -400,6 +401,54 @@ func registerDeletionProtectionWebhook(
 			Labels: opts.OrkestraResourceLabels,
 		},
 		Webhooks: webhooks,
+	}
+
+	return applyWebhookConfig(ctx, client, config)
+}
+
+// registerNamespaceProtectionWebhook creates or updates the ValidatingWebhookConfiguration
+// for namespace protection. Intercepts CREATE and UPDATE on CRDs that declare
+// allowedNamespaces or restrictedNamespaces. A single webhook entry covers all matching GVRs.
+// failurePolicy: Fail — if Orkestra is unreachable, the operation is blocked.
+func registerNamespaceProtectionWebhook(
+	ctx context.Context,
+	client kubernetes.Interface,
+	gvrs []katalog.GVREntry,
+	caBundle []byte,
+	opts WebhookRegistrationOptions,
+	svcName string,
+	failurePolicy string,
+) error {
+	sideEffects := admissionv1.SideEffectClassNone
+	path := "/namespace-protection"
+	port := opts.Port
+	fp := admissionv1FailurePolicyType(failurePolicy)
+
+	config := &admissionv1.ValidatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   namespaceProtectionWebhookConfigName,
+			Labels: opts.OrkestraResourceLabels,
+		},
+		Webhooks: []admissionv1.ValidatingWebhook{
+			{
+				Name: "namespace-protect.orkestra.konductor.io",
+				ClientConfig: admissionv1.WebhookClientConfig{
+					Service: &admissionv1.ServiceReference{
+						Name:      svcName,
+						Namespace: opts.ServiceNamespace,
+						Path:      &path,
+						Port:      &port,
+					},
+					CABundle: caBundle,
+				},
+				Rules:                   buildAdmissionRules(gvrs),
+				FailurePolicy:           &fp,
+				MatchPolicy:             matchPolicyPtr(admissionv1.Exact),
+				AdmissionReviewVersions: []string{"v1"},
+				SideEffects:             &sideEffects,
+				TimeoutSeconds:          int32Ptr(5),
+			},
+		},
 	}
 
 	return applyWebhookConfig(ctx, client, config)

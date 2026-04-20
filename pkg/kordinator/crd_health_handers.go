@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	ork_autoscaler "github.com/orkspace/orkestra/pkg/autoscaler"
 	"github.com/orkspace/orkestra/pkg/health"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
@@ -126,38 +127,47 @@ type WorkerStats struct {
 }
 
 type CRDInfoResponse struct {
-	Name                   string                   `json:"name"`
-	Description            string                   `json:"description"`
-	Mode                   string                   `json:"mode"`
-	GVK                    string                   `json:"gvk"`
-	GVR                    string                   `json:"gvr"`
-	Namespaced             *bool                    `json:"namespaced"`
-	Namespace              string                   `json:"namespace"`
-	DependsOn              []string                 `json:"dependsOn,omitempty"`
-	Workers                int                      `json:"workers"`
-	WorkersActive          int32                    `json:"workersActive"`
-	WorkersIdle            int32                    `json:"workersIdle"`
-	WorkersProcessing      int32                    `json:"workersProcessing"`
-	WorkerDetails          map[string]string        `json:"workerDetails,omitempty"`
-	WorkersSource          string                   `json:"workersSource"`
-	Resync                 string                   `json:"resync"`
-	ResyncSource           string                   `json:"resyncSource"`
-	QueueDepth             int                      `json:"queueDepth"`
-	MaxQueueDepth          int                      `json:"maxQueueDepth"`
-	MaxQueueDepthSource    string                   `json:"maxQueueDepthSource"`
-	ResourceCount          int                      `json:"resourceCount"`
-	TotalReconciles        int64                    `json:"totalReconciles"`
-	OperatorBox            OperatorBoxInfo          `json:"operatorBox"`
-	Healthy                bool                     `json:"healthy"`
-	Started                bool                     `json:"started"`
-	Pending                bool                     `json:"pending"`
-	ErrorRate              float64                  `json:"errorRate"`
-	Conversion             *ConversionStatsResponse `json:"conversion,omitempty"`
-	Admission              *AdmissionStatsResponse  `json:"admission,omitempty"`
-	Protection             *ProtectionStatsResponse `json:"protection,omitempty"`
-	WebhookControllerStats *WebhookControllerStats  `json:"webhookControllerStats,omitempty"`
-	Providers              []ProviderInfoResponse   `json:"providers,omitempty"`
-	RBAC                   RBACInfo                 `json:"rbac,omitempty"`
+	Name                   string                           `json:"name"`
+	Description            string                           `json:"description"`
+	Mode                   string                           `json:"mode"`
+	GVK                    string                           `json:"gvk"`
+	GVR                    string                           `json:"gvr"`
+	Namespaced             *bool                            `json:"namespaced"`
+	Namespace              string                           `json:"namespace"`
+	DependsOn              []string                         `json:"dependsOn,omitempty"`
+	Workers                int                              `json:"workers"`
+	WorkersActive          int32                            `json:"workersActive"`
+	WorkersIdle            int32                            `json:"workersIdle"`
+	WorkersProcessing      int32                            `json:"workersProcessing"`
+	WorkerDetails          map[string]string                `json:"workerDetails,omitempty"`
+	WorkersSource          string                           `json:"workersSource"`
+	Resync                 string                           `json:"resync"`
+	ResyncSource           string                           `json:"resyncSource"`
+	QueueDepth             int                              `json:"queueDepth"`
+	MaxQueueDepth          int                              `json:"maxQueueDepth"`
+	MaxQueueDepthSource    string                           `json:"maxQueueDepthSource"`
+	ResourceCount          int                              `json:"resourceCount"`
+	TotalReconciles        int64                            `json:"totalReconciles"`
+	OperatorBox            OperatorBoxInfo                  `json:"operatorBox"`
+	Healthy                bool                             `json:"healthy"`
+	Started                bool                             `json:"started"`
+	Pending                bool                             `json:"pending"`
+	ErrorRate              float64                          `json:"errorRate"`
+	Conversion             *ConversionStatsResponse         `json:"conversion,omitempty"`
+	Admission              *AdmissionStatsResponse          `json:"admission,omitempty"`
+	DeletionProtection     *DeletionProtectionStatsResponse `json:"deletionProtection,omitempty"`
+	NamespaceProtection    *NamespaceProtectionResponse     `json:"namespaceProtection,omitempty"`
+	WebhookControllerStats *WebhookControllerStats          `json:"webhookControllerStats,omitempty"`
+	Providers              []ProviderInfoResponse           `json:"providers,omitempty"`
+	RBAC                   RBACInfo                         `json:"rbac,omitempty"`
+	AutoscalerEnabled      bool                             `json:"autoscalerEnabled,omitempty"`
+	AutoscalerWorkers      *ork_autoscaler.WorkerInfo       `json:"autoscalerWorkers,omitempty"`
+	Rollback               *RollbackStats                   `json:"rollback,omitempty"`
+	// Metrics is the live AutoMetrics map for this operatorbox.
+	// Populated only when autoscale: is declared. Used by cross-binary autoscale
+	// conditions via the source.endpoint HTTP fallback — the remote autoscaler
+	// calls this endpoint and reads "metrics.*" fields from the response.
+	Metrics map[string]interface{} `json:"metrics,omitempty"`
 }
 
 type OperatorBoxInfo struct {
@@ -213,13 +223,24 @@ type AdmissionStatsResponse struct {
 	MutMaxLatencyMs   float64 `json:"mutMaxLatencyMs"`
 }
 
-// ProtectionStatsResponse exposes deletion protection status for the CRD detail view.
+// DeletionProtectionStatsResponse exposes deletion protection status for the CRD detail view.
 // All counts are cumulative since operator startup.
-type ProtectionStatsResponse struct {
+type DeletionProtectionStatsResponse struct {
 	Enabled bool  `json:"enabled"`
 	Total   int64 `json:"total"`   // total DELETE admission reviews received
 	Blocked int64 `json:"blocked"` // DELETE requests denied
 	Allowed int64 `json:"allowed"` // DELETE requests allowed through
+}
+
+// NamespaceProtectionResponse exposes namespace protection status for the CRD detail view.
+type NamespaceProtectionResponse struct {
+	Enabled              bool     `json:"enabled"`
+	HasNamespaceRules    bool     `json:"hasNamespaceRules"`
+	Total                int64    `json:"total"`
+	Blocked              int64    `json:"blocked"`
+	Allowed              int64    `json:"allowed"`
+	AllowedNamespaces    []string `json:"allowedNamespaces,omitempty"`    // non-nil only when allowedNamespaces: is declared
+	RestrictedNamespaces []string `json:"restrictedNamespaces,omitempty"` // non-nil only when restrictedNamespaces: is declared
 }
 
 // WebhookControllerStats tracks reconciliation counters for the webhook controller.
@@ -261,16 +282,25 @@ func BuildCRDInfoHandler(
 	h *CRDHealth,
 	convStats *health.ConversionStats,
 	admStats *health.AdmissionStats,
-	protStats *health.ProtectionStats,
+	protStats *health.DeletionProtectionStats,
 	webhookControllerStats *health.WebhookStats,
 	isProtected bool,
 	provStats *health.ProviderStats,
+	nsStats *health.NamespaceProtectionStats,
+	isNamespaceProtected bool,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := resolveCRDDisplayValues(crd, kfg, inf)
 
 		// Generate RBAC info for this CRD
 		rbacInfo := generateRBACInfo(crd, v)
+
+		autoMetrics := make(map[string]interface{})
+		if crd.AutoscaleEnabled() {
+			autoMetrics = h.GetAutoMetrics()
+		} else {
+			autoMetrics = nil
+		}
 
 		response := CRDInfoResponse{
 			Name:                crd.Name,
@@ -300,6 +330,14 @@ func BuildCRDInfoHandler(
 			Pending:             h.Pending(),
 			ErrorRate:           h.ErrorRatePercent(),
 			RBAC:                rbacInfo,
+			AutoscalerEnabled:   crd.AutoscaleEnabled(),
+			AutoscalerWorkers:   h.GetWorkerInfo(),
+			Metrics:             autoMetrics,
+		}
+
+		if crd.HasRollbackRules() {
+			stats := h.RollbackStats()
+			response.Rollback = &stats
 		}
 
 		// Version conversion statistics
@@ -339,14 +377,31 @@ func BuildCRDInfoHandler(
 		// Protection stats
 		if protStats != nil {
 			snap := protStats.GetStats()
-			response.Protection = &ProtectionStatsResponse{
+			response.DeletionProtection = &DeletionProtectionStatsResponse{
 				Enabled: isProtected,
 				Total:   snap.TotalRequests,
 				Blocked: snap.Blocked,
 				Allowed: snap.Allowed,
 			}
 		} else {
-			response.Protection = &ProtectionStatsResponse{Enabled: isProtected}
+			response.DeletionProtection = &DeletionProtectionStatsResponse{Enabled: isProtected}
+		}
+
+		// Namespace protection stats — shown conditionally when namespace rules are declared
+		if crd.HasNamespaceRules() {
+			nsr := &NamespaceProtectionResponse{
+				Enabled:              isNamespaceProtected,
+				HasNamespaceRules:    crd.HasNamespaceRules(),
+				AllowedNamespaces:    []string(crd.AllAllowedNamespaces()),
+				RestrictedNamespaces: []string(crd.AllRestrictedNamespaces()),
+			}
+			if nsStats != nil {
+				snap := nsStats.GetStats()
+				nsr.Total = snap.TotalRequests
+				nsr.Blocked = snap.Blocked
+				nsr.Allowed = snap.Allowed
+			}
+			response.NamespaceProtection = nsr
 		}
 
 		// Webhook controller stats
@@ -488,7 +543,7 @@ func BuildKatalogHandler(
 	return func(w http.ResponseWriter, r *http.Request) {
 		crds := make([]CRDSummaryResponse, 0)
 		statusCounts := StatusCounts{}
-		protectedCRDs := kat.ProtectedCRDNames()
+		deletionProtectedCRDs := kat.DeletionProtectedCRDNames()
 
 		for _, crd := range kat.Enabled() {
 			gvk := crd.GVK().String()
@@ -547,7 +602,7 @@ func BuildKatalogHandler(
 				MaxQueueDepthSource:      v.maxQueueDepthSource,
 				RBACCount:                generateRBACInfo(crd, v).TotalRules,
 				ResourceCount:            v.resourceCount,
-				DeletionProtection:       isCRDProtected(protectedCRDs, crd.APITypes.Plural, crd.APITypes.Group),
+				DeletionProtection:       isCRDProtected(deletionProtectedCRDs, crd.APITypes.Plural, crd.APITypes.Group),
 				ProviderCount:            len(crd.OperatorBox.ProviderBlocks),
 				OperatorBox: OperatorBoxSummary{
 					Type:           "generic",

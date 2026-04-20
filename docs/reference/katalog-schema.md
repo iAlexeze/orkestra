@@ -522,6 +522,98 @@ All conditions in a `when` block are AND'd. An empty `when` block always passes.
 
 ---
 
+## `spec.security`
+
+Global security policy. All sub-blocks are optional and inactive when not declared.
+
+### `spec.security.deletionProtection`
+
+Protects CRDs and Orkestra's own resources from accidental deletion via a `ValidatingWebhookConfiguration` (`orkestra-delete-protection`).
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | bool | `true` (when block is present) | Enables deletion protection |
+| `serviceName` | string | `orkestra` | Kubernetes Service name for webhook clientConfig |
+| `failurePolicy` | `Fail` \| `Ignore` | `Fail` | API server behaviour when Orkestra is unreachable |
+| `cleanupOnShutdown` | bool | `false` | Remove the webhook configuration on operator shutdown |
+
+```yaml
+security:
+  deletionProtection:
+    enabled: true
+    failurePolicy: Fail
+    cleanupOnShutdown: false
+```
+
+When `enabled: true`, Orkestra registers a `ValidatingWebhookConfiguration` that blocks `DELETE` on managed CRDs, the Orkestra deployment, service, ingress, and its own admission webhook configurations.
+
+### `spec.security.namespaceProtection`
+
+Enforces per-CRD namespace allow/restrict rules via a `ValidatingWebhookConfiguration` (`orkestra-namespace-protection`). Only active when at least one CRD in the Katalog declares `allowedNamespaces` or `restrictedNamespaces`.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | bool | `true` (when block is present) | Enables namespace protection |
+| `serviceName` | string | `orkestra` | Kubernetes Service name for webhook clientConfig |
+| `failurePolicy` | `Fail` \| `Ignore` | `Fail` | API server behaviour when Orkestra is unreachable |
+
+```yaml
+security:
+  namespaceProtection:
+    enabled: true
+    failurePolicy: Fail
+```
+
+The webhook intercepts `CREATE` and `UPDATE` on CRDs that declare namespace rules. Rules are evaluated at admission time:
+- `allowedNamespaces` set → namespace must be in the list
+- `restrictedNamespaces` set → namespace must not be in the list
+- Neither → allow
+
+### `spec.crds[].allowedNamespaces`
+
+**Type:** `[]string` | **Required:** no | **Default:** `[]`
+
+Namespaces in which CRs of this type may be created or updated. Any CREATE or UPDATE request targeting a namespace not in this list is rejected by the namespace protection webhook (HTTP 403).
+
+```yaml
+crds:
+  - kind: Pipeline
+    allowedNamespaces:
+      - staging
+      - production
+```
+
+Mutually exclusive with `restrictedNamespaces`. When both are declared, `allowedNamespaces` takes precedence.
+
+### `spec.crds[].restrictedNamespaces`
+
+**Type:** `[]string` | **Required:** no | **Default:** `[]`
+
+Namespaces where CRs of this type may **not** be created or updated. Any CREATE or UPDATE request in a listed namespace is rejected.
+
+```yaml
+crds:
+  - kind: Pipeline
+    restrictedNamespaces:
+      - kube-system
+      - cert-manager
+```
+
+### `spec.security.webhooks`
+
+Controls the admission webhook surface (validation + mutation).
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `admission.enabled` | bool | — | Enables `/validate` and `/mutate` endpoints and registers `ValidatingWebhookConfiguration` + `MutatingWebhookConfiguration` |
+| `failurePolicy` | `Fail` \| `Ignore` | `Ignore` | API server behaviour when Orkestra is unreachable |
+| `serviceName` | string | `orkestra` | Kubernetes Service name for webhook clientConfig |
+| `cleanupOnShutdown` | bool | `false` | Remove webhook configurations on shutdown |
+| `controller.enabled` | bool | — | Enables the webhook controller that continuously reconciles webhook configurations |
+| `controller.syncInterval` | duration | `30s` | How often the controller reconciles |
+
+---
+
 ## Error reference
 
 ### Dependency errors

@@ -61,9 +61,11 @@ func runDeployments(
 			continue // skipped — CheckNamespace already logged the reason
 		}
 
-		logger.FromContext(ctx).Info().
+		logger.FromContext(ctx).Debug().
 			Str("resource", "Deployment").
 			Str("name", name).
+			Str("namespace", ns).
+			Bool("namespace_restricted", guard != nil).
 			Int("index", i).
 			Bool("condition_passed", conditionPassed).
 			Msg("deployment: condition evaluation")

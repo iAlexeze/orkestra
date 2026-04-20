@@ -35,6 +35,16 @@ type CRDHealth struct {
     dependenciesMu   sync.RWMutex
     hasUnhealthyDeps atomic.Bool
     healthySignaled  atomic.Bool
+
+    // Autoscaler worker snapshot — populated by kordinator after reconciler construction
+    workerInfoFn func() *ork_autoscaler.WorkerInfo
+
+    // Rollback tracking — updated by callbacks injected from the reconciler
+    rollbackTotal   atomic.Int64
+    rollbackActive  atomic.Bool
+    rollbackLastAt  atomic.Value  // time.Time
+    rollbackMu      sync.RWMutex
+    rollbackLastReason string
 }
 ```
 
@@ -91,6 +101,44 @@ type DependencyStatus struct {
 ```
 
 `hasUnhealthyDeps` is set to true when any dependency is not satisfied. This flows into the `/katalog/{crd}` response and the Control Center.
+
+## Autoscaler worker info
+
+`workerInfoFn` is a zero-argument closure injected by `startCRDWorkers` after the reconciler is constructed. It calls `reconciler.WorkerInfo(configuredWorkers, configuredQueueDepth)` and returns a live snapshot for the `/katalog/{crd}` endpoint.
+
+```go
+h.SetWorkerInfoFn(func() *ork_autoscaler.WorkerInfo {
+    info := rec.WorkerInfo(workers, queueDepth)
+    return &info
+})
+```
+
+`GetWorkerInfo()` calls the function on every request — it is never cached. Returns `nil` when no autoscaler is configured; the handler omits the field from the JSON response in that case.
+
+`autoMetricsFn` is a companion closure that returns `AutoMetrics.AsMap()` — the same five metric fields exposed for autoscale condition evaluation. It is included in the `/katalog/{crd}` response as `"metrics"` and serves as the HTTP endpoint that cross-binary autoscale conditions call via `source.endpoint`, following the same fallback pattern as `readCross`.
+
+```go
+h.SetAutoMetricsFn(m.AsMap)  // m is *autoscaler.AutoMetrics
+```
+
+## Rollback tracking
+
+When `operatorBox.rollback:` is declared, `startCRDWorkers` injects two callbacks into the reconciler via `SetRollbackNotifiers(onTrigger, onClear)`:
+
+- `onTrigger` — called by `markRollbackActive` when the failure trigger fires. Increments `rollbackTotal`, sets `rollbackActive = true`, stores `rollbackLastAt = now`.
+- `onClear` — called by `clearRollback` when the user submits a new spec generation. Sets `rollbackActive = false`.
+
+`RollbackStats()` returns a snapshot struct for the handler:
+
+```go
+type RollbackStats struct {
+    TotalRollbacks int64
+    Active         bool
+    LastRollbackAt string  // RFC3339, empty if never triggered
+}
+```
+
+The handler includes this under `"rollback"` in the `/katalog/{crd}` response only when `crd.HasRollbackRules()` is true.
 
 ## OrkestraHealth
 

@@ -147,39 +147,66 @@ type DependencyStatus struct {
 	AcceptableCondition string `json:"acceptableCondition"` // "started", "healthy", "ready"
 }
 
+// AutoscalerWorkersInfo mirrors autoscaler.WorkerInfo from the API response.
+type AutoscalerWorkersInfo struct {
+	Configured           int     `json:"configured"`
+	Effective            int     `json:"effective"`
+	InFlight             int     `json:"inFlight"`
+	Idle                 int     `json:"idle"`
+	Max                  int     `json:"max,omitempty"`
+	AutoscalerEnabled    bool    `json:"autoscalerEnabled"`
+	OverrideActive       bool    `json:"overrideActive,omitempty"`
+	OverrideWorkers      int     `json:"overrideWorkers,omitempty"`
+	QueueDepth           int64   `json:"queueDepth"`
+	QueueDepthConfigured int     `json:"queueDepthConfigured"`
+	QueueDepthEffective  int     `json:"queueDepthEffective"`
+	BusyPercent          float64 `json:"busyPercent"`
+}
+
+// RollbackStatsInfo mirrors kordinator.RollbackStats from the API response.
+type RollbackStatsInfo struct {
+	TotalRollbacks int    `json:"totalRollbacks"`
+	Active         bool   `json:"active"`
+	LastRollbackAt string `json:"lastRollbackAt,omitempty"`
+}
+
 // CRDInfo is the response from the /katalog/{crd} endpoint
 type CRDInfo struct {
-	Name                     string                 `json:"name"`
-	Description              string                 `json:"description"`
-	Mode                     string                 `json:"mode"`
-	GVK                      string                 `json:"gvk"`
-	GVR                      string                 `json:"gvr"`
-	Namespaced               bool                   `json:"namespaced"`
-	Namespace                string                 `json:"namespace"`
-	DependsOn                []string               `json:"dependsOn"`
-	Workers                  int                    `json:"workers"`
-	WorkersActive            int32                  `json:"workersActive"`
-	WorkersIdle              int32                  `json:"workersIdle"`
-	WorkersProcessing        int32                  `json:"workersProcessing"`
-	WorkerDetails            map[string]string      `json:"workerDetails,omitempty"`
-	WorkersSource            string                 `json:"workersSource"`
-	Resync                   string                 `json:"resync"`
-	ResyncSource             string                 `json:"resyncSource"`
-	QueueDepth               int                    `json:"queueDepth"`
-	MaxQueueDepth            int                    `json:"maxQueueDepth"`
-	MaxQueueDepthSource      string                 `json:"maxQueueDepthSource"`
-	ResourceCount            int                    `json:"resourceCount"`
-	TotalReconciles          int                    `json:"totalReconciles"`
-	OperatorBox              map[string]interface{} `json:"operatorBox"`
-	Healthy                  bool                   `json:"healthy"`
-	Started                  bool                   `json:"started"`
-	ErrorRate                float64                `json:"errorRate"`
-	Conversion               *ConversionStats       `json:"conversion"`
-	Admission                *AdmissionStats        `json:"admission"`
-	Protection               *ProtectionStats       `json:"protection,omitempty"`
-	Providers                []ProviderInfo         `json:"providers,omitempty"`
-	RBAC                     RBACInfo               `json:"rbac,omitempty"`
-	HasUnhealthyDependencies bool                   `json:"hasUnhealthyDependencies"`
+	Name                     string                    `json:"name"`
+	Description              string                    `json:"description"`
+	Mode                     string                    `json:"mode"`
+	GVK                      string                    `json:"gvk"`
+	GVR                      string                    `json:"gvr"`
+	Namespaced               bool                      `json:"namespaced"`
+	Namespace                string                    `json:"namespace"`
+	DependsOn                []string                  `json:"dependsOn"`
+	Workers                  int                       `json:"workers"`
+	WorkersActive            int32                     `json:"workersActive"`
+	WorkersIdle              int32                     `json:"workersIdle"`
+	WorkersProcessing        int32                     `json:"workersProcessing"`
+	WorkerDetails            map[string]string         `json:"workerDetails,omitempty"`
+	WorkersSource            string                    `json:"workersSource"`
+	Resync                   string                    `json:"resync"`
+	ResyncSource             string                    `json:"resyncSource"`
+	QueueDepth               int                       `json:"queueDepth"`
+	MaxQueueDepth            int                       `json:"maxQueueDepth"`
+	MaxQueueDepthSource      string                    `json:"maxQueueDepthSource"`
+	ResourceCount            int                       `json:"resourceCount"`
+	TotalReconciles          int                       `json:"totalReconciles"`
+	OperatorBox              map[string]interface{}    `json:"operatorBox"`
+	Healthy                  bool                      `json:"healthy"`
+	Started                  bool                      `json:"started"`
+	ErrorRate                float64                   `json:"errorRate"`
+	Conversion               *ConversionStats          `json:"conversion"`
+	Admission                *AdmissionStats           `json:"admission"`
+	DeletionProtection       *DeletionProtectionStats  `json:"deletionProtection,omitempty"`
+	NamespaceProtection      *NamespaceProtectionStats `json:"namespaceProtection,omitempty"`
+	Providers                []ProviderInfo            `json:"providers,omitempty"`
+	RBAC                     RBACInfo                  `json:"rbac,omitempty"`
+	HasUnhealthyDependencies bool                      `json:"hasUnhealthyDependencies"`
+	AutoscalerEnabled        bool                      `json:"autoscalerEnabled"`
+	AutoscalerWorkers        *AutoscalerWorkersInfo    `json:"autoscalerWorkers,omitempty"`
+	Rollback                 *RollbackStatsInfo        `json:"rollback,omitempty"`
 }
 
 // ConversionStats contains version conversion metrics
@@ -192,12 +219,23 @@ type ConversionStats struct {
 	P95LatencyMs float64 `json:"p95LatencyMs"`
 }
 
-// ProtectionStats contains deletion protection status
-type ProtectionStats struct {
+// DeletionProtectionStats contains deletion protection status
+type DeletionProtectionStats struct {
 	Enabled bool `json:"enabled"`
 	Total   int  `json:"total"`
 	Blocked int  `json:"blocked"`
 	Allowed int  `json:"allowed"`
+}
+
+// NamespaceProtectionStats contains namespace protection status and the declared namespace rules.
+type NamespaceProtectionStats struct {
+	Enabled              bool     `json:"enabled"`
+	HasNamespaceRules    bool     `json:"hasNamespaceRules"`
+	Total                int      `json:"total"`
+	Blocked              int      `json:"blocked"`
+	Allowed              int      `json:"allowed"`
+	AllowedNamespaces    []string `json:"allowedNamespaces,omitempty"`
+	RestrictedNamespaces []string `json:"restrictedNamespaces,omitempty"`
 }
 
 // ProviderInfo contains per-provider metadata and error rate for a CRD.
@@ -268,10 +306,14 @@ type CRDDetail struct {
 	ErrorRate                float64                     `json:"errorRate"`
 	Conversion               *ConversionStats            `json:"conversion"`
 	Admission                *AdmissionStats             `json:"admission"`
-	Protection               *ProtectionStats            `json:"protection,omitempty"`
+	DeletionProtection       *DeletionProtectionStats    `json:"deletionProtection,omitempty"`
+	NamespaceProtection      *NamespaceProtectionStats   `json:"namespaceProtection,omitempty"`
 	Providers                []ProviderInfo              `json:"providers,omitempty"`
 	RBAC                     RBACInfo                    `json:"rbac,omitempty"`
 	RBACCount                int                         `json:"rbacCount,omitempty"`
+	AutoscalerEnabled        bool                        `json:"autoscalerEnabled"`
+	AutoscalerWorkers        *AutoscalerWorkersInfo      `json:"autoscalerWorkers,omitempty"`
+	Rollback                 *RollbackStatsInfo          `json:"rollback,omitempty"`
 }
 
 // TODO: Future

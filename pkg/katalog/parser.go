@@ -136,6 +136,13 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 11. Validate Namespace protection
+	// -------------------------------------------------------------------------
+	if err := k.validateNamespaceProtection(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }
 

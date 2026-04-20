@@ -28,9 +28,7 @@ func NewNotificationState() *NotificationState {
 }
 
 // conditionKey is a stable identifier for a condition within an operatorBox.
-// You can refine this later (e.g. include source name, index, etc.).
 func conditionKey(cond orktypes.Condition) string {
-	// Minimal but stable-ish: field + operator + value
 	op, val := orktypes.ResolveConditionOp(cond)
 	return fmt.Sprintf("%s|%s|%s", cond.Field, op, val)
 }
@@ -46,7 +44,7 @@ func (s *NotificationState) ProcessConditionNotifications(
 	cond orktypes.Condition,
 	now time.Time,
 ) {
-	if len(cond.Notify) == 0 {
+	if cond.Notify == nil || len(cond.Notify.Teams) == 0 {
 		return
 	}
 	if !k.HasTeams() {
@@ -55,10 +53,9 @@ func (s *NotificationState) ProcessConditionNotifications(
 
 	ck := conditionKey(cond)
 
-	for _, teamName := range cond.Notify {
+	for _, teamName := range cond.Notify.Teams {
 		team, ok := k.Notification.Teams[teamName]
 		if !ok || team == nil {
-			// Unknown team name — you may want to log this.
 			continue
 		}
 
@@ -67,14 +64,16 @@ func (s *NotificationState) ProcessConditionNotifications(
 		interval := k.NotificationInterval(teamName)
 
 		if !last.IsZero() && now.Sub(last) < interval.Duration {
-			// Interval not elapsed yet — skip.
 			continue
 		}
 
-		// Dispatch notifications for this team.
-		s.dispatchTeamNotifications(ctx, k, teamName, team, cond, data)
+		// Message: condition-level override > team default
+		message := cond.Notify.Message
+		if message == "" {
+			message = k.Notification.EffectiveMessage(teamName)
+		}
 
-		// Record send time.
+		s.dispatchTeamNotifications(ctx, k, teamName, team, cond, message, data)
 		s.LastSent[key] = now
 	}
 }
@@ -86,19 +85,31 @@ func (s *NotificationState) dispatchTeamNotifications(
 	teamName string,
 	team *orktypes.NotificationTeam,
 	cond orktypes.Condition,
+	message string,
 	data map[string]interface{},
 ) {
 	if len(team.Email) > 0 && k.IsEmailNotificationEnabled() {
 		host, port, user, pass, from := k.SMTPConfig()
 		if host != "" && user != "" && pass != "" {
-			_ = sendEmailNotification(ctx, host, port, user, pass, from, team.Email, k.Meta().Name, teamName, cond, data)
+			cfg := SMTPConfig{
+				Host: host,
+				Port: fmt.Sprintf("%d", port),
+				User: user,
+				Pass: pass,
+				From: from,
+			}
+			subject := fmt.Sprintf("%s condition triggered", cond.Field)
+			_ = sendEmailNotification(ctx, cfg, team.Email, k.Meta().Name, teamName, subject, message)
 		}
 	}
 
 	if len(team.Slack) > 0 && k.IsSlackNotificationEnabled() {
-		webhook := k.SlackWebhook()
+		webhook := k.Notification.EffectiveSlackWebhook(teamName)
+		if webhook == "" {
+			webhook = k.SlackWebhook()
+		}
 		if webhook != "" {
-			_ = sendSlackNotification(ctx, webhook, team.Slack, k.Meta().Name, teamName, cond, data)
+			_ = sendSlackNotification(ctx, webhook, team.Slack, k.Meta().Name, teamName, message, "warning")
 		}
 	}
 }

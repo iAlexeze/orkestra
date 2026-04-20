@@ -31,4 +31,3 @@ func ResolveNamespace(owner domain.Object, namespace string) string {
 	}
 	return "default"
 }
-

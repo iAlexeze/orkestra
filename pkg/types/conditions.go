@@ -17,11 +17,17 @@ package types
 //
 // Both must pass for the resource to be created.
 
-// Condition declares a single condition to evaluate against the CR.
+// Condition declares a single condition to evaluate against the CR or runtime state.
 // Fields reference CR paths using dot notation: spec.environment, metadata.name.
+//
+// The same type is used in:
+//   - when: / anyOf: on template sources (resource conditions)
+//   - operatorBox.autoscale.conditions.anyOf and when: (autoscale conditions)
+//   - operatorBox.rollback.trigger (rollback conditions)
+//   - notification condition blocks
 type Condition struct {
-	// Field — dot-notation path to a field in the CR object.
-	// e.g. "spec.environment", "spec.replicas", "metadata.labels.tier"
+	// Field — dot-notation path to a field in the CR object or a runtime metric.
+	// e.g. "spec.environment", "metrics.queueDepth", "cross.managed-database.metrics.queueDepth"
 	Field string `yaml:"field" validate:"required"`
 
 	// Operator — how to compare the field value.
@@ -34,66 +40,77 @@ type Condition struct {
 	Value string `yaml:"value,omitempty"`
 
 	// Equals is a shorthand for operator: equals.
-	// If set, Operator is ignored. Exists so the common case reads cleanly:
-	//   when:
-	//     - field: spec.environment
-	//       equals: production
 	Equals string `yaml:"equals,omitempty"`
 
 	// NotEquals is a shorthand for operator: notEquals.
-	// If set, Operator is ignored.
-	// 	when:
-	//     - field: spec.environment
-	//       notEquals: production
 	NotEquals string `yaml:"notEquals,omitempty"`
 
 	// Contains is a shorthand for operator: contains.
-	// If set, Operator is ignored.
-	// 	when:
-	//     - field: spec.environment
-	//       contains: prod
 	Contains string `yaml:"contains,omitempty"`
 
 	// Prefix is a shorthand for operator: prefix.
-	// If set, Operator is ignored.
-	// 	when:
-	//     - field: spec.environment
-	//       prefix: prod
 	Prefix string `yaml:"prefix,omitempty"`
 
 	// Suffix is a shorthand for operator: suffix.
-	// If set, Operator is ignored.
-	// 	when:
-	//     - field: spec.environment
-	//       suffix: prod
 	Suffix string `yaml:"suffix,omitempty"`
 
 	// Numeric shorthands
 	GreaterThan string `yaml:"greaterThan,omitempty"`
 	LessThan    string `yaml:"lessThan,omitempty"`
 
-	// Notify — optional notification targets to trigger when this condition
-	// transitions from false → true.
+	// ── Time-based fields (anyOf in autoscale conditions) ────────────────────
+
+	// Time — active when the current time is within the declared window.
+	// After and Before are both optional; omit one for a half-open range.
+	//   anyOf:
+	//     - time:
+	//         after: "08:00"
+	//         before: "20:00"
+	Time *TimeWindow `yaml:"time,omitempty"`
+
+	// DayOfWeek — active on the specified days of the week.
+	//   anyOf:
+	//     - dayOfWeek:
+	//         in: [Monday, Tuesday, Wednesday, Thursday, Friday]
+	DayOfWeek *DayOfWeekCondition `yaml:"dayOfWeek,omitempty"`
+
+	// Cron — a standard cron expression (5-field) that defines when the
+	// window opens. Duration defines how long the window stays open.
+	// Without Duration, the window closes after one evaluation interval.
+	Cron string `yaml:"cron,omitempty"`
+
+	// Duration — how long a cron-opened window remains active.
+	Duration Duration `yaml:"duration,omitempty"`
+
+	// ── Notification ─────────────────────────────────────────────────────────
+
+	// Notify declares teams to alert when this condition is true.
+	Notify *NotifyBlock `yaml:"notify,omitempty"`
+
+	// ── Cross-binary metric fallback ─────────────────────────────────────────
+
+	// Source is the HTTP fallback for cross-binary metric observation.
+	// Only used when field is a cross.<crd>.metrics.* field and the CRD
+	// is not registered in GlobalCrossMetricsRegistry (different binary).
+	// The endpoint must be the remote operator's /katalog/{crd} URL.
 	//
-	// Targets reference names declared under:
-	//   notification:
-	//     teams:
-	//       platform:
-	//         email: [...]
-	//       application:
-	//         email: [...]
-	//         slack: [...]
-	//
-	// Example:
 	//   when:
-	//     - field: status.phase
-	//       equals: Degraded
-	//       notify:
-	//         - platform
-	//         - application
-	//
-	// Notifications fire only on transition, not on every reconcile.
-	Notify []string `yaml:"notify,omitempty"`
+	//     - field: cross.managed-database.metrics.queueDepth
+	//       greaterThan: "500"
+	//       source:
+	//         endpoint: "http://database-operator:8080/katalog/managed-database"
+	Source *CrossSource `yaml:"source,omitempty"`
+}
+
+// NotifyBlock declares notification targets and an optional message override
+// for a specific condition.
+type NotifyBlock struct {
+	// Teams is the list of team names (from notification.teams) to alert.
+	Teams []string `yaml:"teams"`
+	// Message is a Go template expression for the notification body.
+	// Overrides the team's own message template.
+	// When empty, uses the team's configured message or the system default.
+	Message string `yaml:"message,omitempty"`
 }
 
 // ConditionOperator defines how a condition's field is compared to its value.

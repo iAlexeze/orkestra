@@ -30,8 +30,11 @@ package types
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/orkspace/orkestra/pkg/note"
+	"github.com/robfig/cron/v3"
 )
 
 // EvaluateWhen evaluates when: (allOf, AND) and anyOf: (OR) conditions.
@@ -63,7 +66,37 @@ func EvaluateWhen(data map[string]interface{}, allOf []Condition, anyOf []Condit
 // EvaluateOneCond evaluates a single Condition against a data map.
 // Exported so the template package and reconciler package can both call it.
 // Defined here in pkg/types to avoid import cycles.
+//
+// Time-based conditions (time:, dayOfWeek:, cron:) are evaluated against the
+// current wall clock — they do not reference the data map.
+// Metric conditions (metrics.*, cross.<crd>.metrics.*) are navigated as
+// dot-paths through data, so callers must pre-populate the relevant keys.
 func EvaluateOneCond(data map[string]interface{}, cond Condition) bool {
+	// ── Time-based conditions ─────────────────────────────────────────────────
+
+	if cond.Time != nil {
+		return evalTimeWindow(cond.Time, time.Now())
+	}
+
+	if cond.DayOfWeek != nil {
+		return evalDayOfWeek(cond.DayOfWeek, time.Now())
+	}
+
+	if cond.Cron != "" {
+		// Prefer caller-injected window state (from TickCronWindow) when available.
+		// Callers that manage cron state (autoscaler, job runner) inject it under
+		// data["_cronWindows"][cronExpr] = "true"/"false" before calling EvaluateWhen.
+		if windows, ok := data["_cronWindows"].(map[string]interface{}); ok {
+			if v, ok := windows[cond.Cron]; ok {
+				return v == "true"
+			}
+		}
+		// Stateless fallback: window open if a cron fire occurred within duration.
+		return evalCronWindow(cond.Cron, cond.Duration.Duration, time.Now())
+	}
+
+	// ── Field-based conditions ────────────────────────────────────────────────
+
 	fieldVal := NavigateDotPath(data, cond.Field)
 
 	// Numeric absent-field fix: Kubernetes omits zero-value integers.
@@ -292,4 +325,70 @@ func typeParseFloat(s string) (float64, error) {
 	var f float64
 	_, err := fmt.Sscanf(s, "%f", &f)
 	return f, err
+}
+
+// ── Time-based condition helpers ──────────────────────────────────────────────
+
+// evalTimeWindow returns true when now is within the declared HH:MM window.
+func evalTimeWindow(tw *TimeWindow, now time.Time) bool {
+	if tw.After != "" {
+		t, err := parseHHMM(tw.After, now)
+		if err != nil || now.Before(t) {
+			return false
+		}
+	}
+	if tw.Before != "" {
+		t, err := parseHHMM(tw.Before, now)
+		if err != nil || now.After(t) {
+			return false
+		}
+	}
+	return true
+}
+
+// evalDayOfWeek returns true when today matches the declared day constraint.
+func evalDayOfWeek(d *DayOfWeekCondition, now time.Time) bool {
+	today := now.Weekday().String()
+	if len(d.In) > 0 {
+		for _, day := range d.In {
+			if strings.EqualFold(day, today) {
+				return true
+			}
+		}
+		return false
+	}
+	if len(d.NotIn) > 0 {
+		for _, day := range d.NotIn {
+			if strings.EqualFold(day, today) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+// evalCronWindow returns true when a cron-defined window is currently open.
+// The window opens at each cron fire and stays open for duration.
+// When duration is zero a 60s default is used — callers should always set it.
+func evalCronWindow(cronExpr string, duration time.Duration, now time.Time) bool {
+	schedule, err := cron.ParseStandard(cronExpr)
+	if err != nil {
+		return false
+	}
+	if duration == 0 {
+		duration = 60 * time.Second
+	}
+	// Find the most recent fire before now.
+	prev := schedule.Next(now.Add(-duration))
+	return !prev.After(now)
+}
+
+// parseHHMM parses "HH:MM" and anchors it to today in now's location.
+func parseHHMM(s string, now time.Time) (time.Time, error) {
+	t, err := time.Parse("15:04", s)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid time %q: expected HH:MM", s)
+	}
+	return time.Date(now.Year(), now.Month(), now.Day(), t.Hour(), t.Minute(), 0, 0, now.Location()), nil
 }

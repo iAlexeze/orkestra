@@ -41,6 +41,7 @@ orktypes.EvaluateWhen(data map[string]interface{}, allOf []Condition, anyOf []Co
 | `.children.*` | Owned child resource summaries |
 | `.external.<n>.*` | HTTP call responses |
 | `.cross.<kind>.*` | Sibling CRD status |
+| `.previous.*` | Last successfully reconciled spec (rollback path only — populated by `WithPrevious` in `runRollback`) |
 
 Do NOT pass `owner` (the `domain.Object`) directly. The injected fields are only on `resolver.Data()`.
 
@@ -144,6 +145,20 @@ If `(ns/name)` is in `activeNames`, at least one passing declaration will create
 - The resource type can never have two declarations with the same resolved name (uncommon — but if the type enforces unique names you can omit it).
 
 In all other cases, include the pre-pass. The cost is one extra loop over the source slice — negligible.
+
+## Unified Condition type
+
+`Condition` in `pkg/types/conditions.go` is the single condition type used everywhere in Orkestra — template sources, autoscale conditions, rollback triggers, and notification blocks. In addition to the field-comparison operators above, a `Condition` can carry:
+
+| Field | Used by | Notes |
+|-------|---------|-------|
+| `time:` | Autoscale `anyOf:` | Clock window (`after:` / `before:` in HH:MM) |
+| `dayOfWeek:` | Autoscale `anyOf:` | Day filter (`in:` / `notIn:`) |
+| `cron:` + `duration:` | Autoscale `anyOf:` | Cron-gated window, tracked statefully across ticks |
+| `notify:` | Template `when:`, autoscale `when:` | Alert teams when the condition passes |
+| `source:` | Autoscale `when:` on cross-metrics | HTTP fallback for cross-binary `cross.<crd>.metrics.*` |
+
+These fields are valid on any `Condition` struct (including template `when:`/`anyOf:`) and are evaluated by the shared `EvaluateOneCond` path. Time-based conditions on template sources evaluate against the operator process's wall clock at reconcile time — they do not inject cron window state into the resolver, so stateful `TickCronWindow` tracking is the autoscaler's responsibility.
 
 ## The Conditions and AnyOf fields on template source types
 

@@ -14,15 +14,12 @@ package autoscaler
 
 import (
 	"context"
-	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/metrics"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"github.com/robfig/cron/v3"
 )
 
 // AutoscaleTarget is implemented by the operatorbox runtime components that
@@ -133,185 +130,89 @@ func (a *Autoscaler) evaluate(ctx context.Context) {
 	}
 }
 
-// conditionsMet evaluates the full condition expression and returns true when
-// the override should be applied.
-//
-// Logic: (anyOf OR-block passes OR anyOf is empty) AND (when AND-block passes OR when is empty)
+// conditionsMet builds a data map from live metrics and delegates to EvaluateWhen —
+// the same general condition evaluator used by the reconciler for template
+// when:/anyOf: conditions. Time-based conditions (time:, dayOfWeek:, cron:) are
+// handled inside EvaluateOneCond. Metric conditions are pre-populated into the
+// data map so NavigateDotPath resolves them as normal dot-paths.
 func (a *Autoscaler) conditionsMet(_ context.Context) bool {
-	spec := a.spec
+	data := a.buildConditionData()
+	return orktypes.EvaluateWhen(data, a.spec.Conditions.When, a.spec.Conditions.AnyOf)
+}
+
+// buildConditionData returns the data map passed to EvaluateWhen.
+// Own metrics live under "metrics.*". Cross-CRD metrics are resolved (registry
+// first, HTTP fallback second) and injected under "cross.<crd>.metrics.<field>".
+// Cron windows are ticked and injected under "cron.<expr>.open" so that
+// EvaluateOneCond can read window state across evaluation ticks.
+func (a *Autoscaler) buildConditionData() map[string]interface{} {
 	now := time.Now()
-
-	// Evaluate anyOf block (OR)
-	anyOfPassed := len(spec.Conditions.AnyOf) == 0 // empty = always pass
-	for _, cond := range spec.Conditions.AnyOf {
-		if a.evalAnyOfCond(cond, now) {
-			anyOfPassed = true
-			break
-		}
-	}
-	if !anyOfPassed {
-		return false
+	data := map[string]interface{}{
+		"metrics": a.metrics.AsMap(),
 	}
 
-	// Evaluate when block (AND) — metric conditions
-	for _, cond := range spec.Conditions.When {
-		if !a.evalMetricCond(cond) {
-			return false
-		}
-	}
-
-	return true
-}
-
-// evalAnyOfCond evaluates one entry in the anyOf block.
-func (a *Autoscaler) evalAnyOfCond(cond orktypes.AutoscaleCondition, now time.Time) bool {
-	// Time window
-	if cond.Time != nil {
-		return evalTimeWindow(cond.Time, now)
-	}
-
-	// Day of week
-	if cond.DayOfWeek != nil {
-		return evalDayOfWeek(cond.DayOfWeek, now)
-	}
-
-	// Cron expression with duration
-	if cond.Cron != "" {
-		return a.evalCronWindow(cond, now)
-	}
-
-	// Inline metric condition in anyOf
-	if cond.Field != "" {
-		return a.evalMetricCond(orktypes.Condition{
-			Field:       cond.Field,
-			GreaterThan: cond.GreaterThan,
-			LessThan:    cond.LessThan,
-		})
-	}
-
-	return false
-}
-
-// evalTimeWindow returns true when now is within the declared time window.
-func evalTimeWindow(tw *orktypes.TimeWindow, now time.Time) bool {
-	if tw.After != "" {
-		t, err := parseHHMM(tw.After)
-		if err != nil {
-			return false
-		}
-		threshold := time.Date(now.Year(), now.Month(), now.Day(), t.Hour(), t.Minute(), 0, 0, now.Location())
-		if now.Before(threshold) {
-			return false
-		}
-	}
-	if tw.Before != "" {
-		t, err := parseHHMM(tw.Before)
-		if err != nil {
-			return false
-		}
-		threshold := time.Date(now.Year(), now.Month(), now.Day(), t.Hour(), t.Minute(), 0, 0, now.Location())
-		if now.After(threshold) {
-			return false
-		}
-	}
-	return true
-}
-
-// evalDayOfWeek returns true when today matches the declared day constraint.
-func evalDayOfWeek(d *orktypes.DayOfWeekCondition, now time.Time) bool {
-	today := now.Weekday().String()
-	if len(d.In) > 0 {
-		for _, day := range d.In {
-			if strings.EqualFold(day, today) {
-				return true
+	all := append(a.spec.Conditions.AnyOf, a.spec.Conditions.When...)
+	for _, cond := range all {
+		// Cross-metric resolution
+		if IsCrossMetricField(cond.Field) {
+			val := ResolveCrossMetric(GlobalCrossMetricsRegistry, cond.Field, cond.Source)
+			if val != "" {
+				injectCrossMetricValue(data, cond.Field, val)
 			}
 		}
-		return false
-	}
-	if len(d.NotIn) > 0 {
-		for _, day := range d.NotIn {
-			if strings.EqualFold(day, today) {
-				return false
-			}
+
+		// Cron window state — tick and inject so EvaluateOneCond reads persisted state
+		if cond.Cron != "" {
+			open := orktypes.TickCronWindow(a.state.CronWindowsOpenAt, cond.Cron, cond.Duration.Duration, a.spec.EffectiveInterval(), now)
+			injectCronWindowValue(data, cond.Cron, open)
 		}
-		return true
 	}
-	return false
+
+	return data
 }
 
-// evalCronWindow returns true when a cron-opened window is currently active.
-// The window opens when the cron expression fires and stays open for Duration.
-func (a *Autoscaler) evalCronWindow(cond orktypes.AutoscaleCondition, now time.Time) bool {
-	schedule, err := cron.ParseStandard(cond.Cron)
-	if err != nil {
-		logger.Warn().Str("crd", a.crdKind).Str("cron", cond.Cron).Err(err).
-			Msg("autoscaler: invalid cron expression — skipping")
-		return false
+// injectCronWindowValue injects a cron window open/closed state into the data map.
+// Stored under data["_cronWindows"][cronExpr] = "true"/"false".
+// EvaluateOneCond reads this key when evaluating cron: conditions so the
+// stateful window tracking (CronWindowsOpenAt) is respected across ticks.
+func injectCronWindowValue(data map[string]interface{}, cronExpr string, open bool) {
+	windows, _ := data["_cronWindows"].(map[string]interface{})
+	if windows == nil {
+		windows = make(map[string]interface{})
+		data["_cronWindows"] = windows
 	}
-
-	duration := cond.Duration.Duration
-	if duration == 0 {
-		// No duration — use one evaluation interval as the window.
-		// Document this behavior clearly: without duration, cron is point-in-time.
-		duration = a.spec.EffectiveInterval()
+	if open {
+		windows[cronExpr] = "true"
+	} else {
+		windows[cronExpr] = "false"
 	}
-
-	key := cond.Cron
-
-	// Check if a previously opened window is still active
-	if opened, ok := a.state.CronWindowsOpenAt[key]; ok {
-		if now.Before(opened.Add(duration)) {
-			return true // window still open
-		}
-		// Window closed
-		delete(a.state.CronWindowsOpenAt, key)
-	}
-
-	// Check if the cron fired within the last evaluation interval
-	interval := a.spec.EffectiveInterval()
-	prev := schedule.Next(now.Add(-interval))
-	if prev.Before(now) {
-		// Cron fired within the last interval — open a new window
-		a.state.CronWindowsOpenAt[key] = prev
-		return true
-	}
-
-	return false
 }
 
-// evalMetricCond evaluates a single metric condition (metrics.* field).
-func (a *Autoscaler) evalMetricCond(cond orktypes.Condition) bool {
-	if !IsMetricField(cond.Field) {
-		return false
+// injectCrossMetricValue writes val into data at the nested path encoded in field.
+// "cross.<crd>.metrics.<name>" → data["cross"][crd]["metrics"][name] = val.
+func injectCrossMetricValue(data map[string]interface{}, field, val string) {
+	parts := strings.SplitN(strings.TrimPrefix(field, "cross."), ".metrics.", 2)
+	if len(parts) != 2 {
+		return
 	}
+	crd, metric := parts[0], parts[1]
 
-	val := a.metrics.Get(cond.Field)
-	if val == "" {
-		return false // unknown metric — conservative: treat as not met
+	cross, _ := data["cross"].(map[string]interface{})
+	if cross == nil {
+		cross = make(map[string]interface{})
+		data["cross"] = cross
 	}
-
-	fVal, err := strconv.ParseFloat(val, 64)
-	if err != nil {
-		return false
+	crdMap, _ := cross[crd].(map[string]interface{})
+	if crdMap == nil {
+		crdMap = make(map[string]interface{})
+		cross[crd] = crdMap
 	}
-
-	if cond.GreaterThan != "" {
-		threshold, err := strconv.ParseFloat(cond.GreaterThan, 64)
-		if err != nil {
-			return false
-		}
-		return fVal > threshold
+	metricsMap, _ := crdMap["metrics"].(map[string]interface{})
+	if metricsMap == nil {
+		metricsMap = make(map[string]interface{})
+		crdMap["metrics"] = metricsMap
 	}
-
-	if cond.LessThan != "" {
-		threshold, err := strconv.ParseFloat(cond.LessThan, 64)
-		if err != nil {
-			return false
-		}
-		return fVal < threshold
-	}
-
-	return false
+	metricsMap[metric] = val
 }
 
 // applyOverride applies the do: block to the target operatorbox.
@@ -358,14 +259,4 @@ func (a *Autoscaler) restoreBaseline() {
 		Int("queueDepth", a.baseline.QueueDepth).
 		Dur("resync", a.baseline.Resync).
 		Msg("autoscaler: baseline restored")
-}
-
-// parseHHMM parses a "HH:MM" string into a time.Time on an arbitrary date.
-// Only the hour and minute are meaningful — the date is discarded.
-func parseHHMM(s string) (time.Time, error) {
-	t, err := time.Parse("15:04", s)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("invalid time %q: expected HH:MM", s)
-	}
-	return t, nil
 }

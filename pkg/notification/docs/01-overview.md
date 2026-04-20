@@ -1,0 +1,59 @@
+# 01 — Notification Overview
+
+## What the notification package does
+
+The notification package dispatches alerts when a Katalog condition evaluates to true. It does not evaluate conditions itself — the caller (reconciler or a dedicated watcher) evaluates the condition and calls `ProcessConditionNotifications` when the condition passes.
+
+Each notification is scoped to a **team**: a named group defined in the Katalog's `notification:` block. A team declares its delivery channels (email recipients, Slack channels) and an optional interval. The notification package enforces the interval — if the condition was already notified for this team within the interval, delivery is suppressed.
+
+## Architecture
+
+```
+condition evaluates true
+        │
+        └── NotificationState.ProcessConditionNotifications(ctx, katalog, data, cond, now)
+                │
+                ├── cond.Notify == nil or no Teams → return (no-op)
+                │
+                └── for each teamName in cond.Notify.Teams:
+                        │
+                        ├── look up team in katalog.Notification.Teams
+                        ├── check interval gate (LastSent[key] + interval > now → skip)
+                        │
+                        └── dispatchTeamNotifications(ctx, katalog, teamName, team, cond, message, data)
+                                │
+                                ├── email → sendEmailNotification   (email.go)
+                                └── slack → sendSlackNotification   (slack.go)
+```
+
+## NotificationState
+
+`NotificationState` holds a `LastSent` map keyed by `"<katalogName>|<conditionKey>|<teamName>"`. This prevents re-delivery while the condition remains true.
+
+- `conditionKey` encodes `field|operator|value` — it is stable across reconcile loops.
+- `LastSent` is in-process only. On restart, the clock resets and the next true evaluation will deliver.
+
+```go
+state := notification.NewNotificationState()
+
+// called by reconciler condition loop:
+state.ProcessConditionNotifications(ctx, k, resolverData, cond, time.Now())
+```
+
+## Interval enforcement
+
+The interval is read from the Katalog's notification config per team. If no team-specific interval is declared, `notification.defaults.interval` applies. The interval defaults to 15m.
+
+```yaml
+notification:
+  defaults:
+    interval: 30m       # global default
+  teams:
+    ops:
+      interval: 15m   # overrides global for this team
+      email: [ops@example.com]
+```
+
+---
+
+**Next →** [02 — NotifyBlock](02-notify-block.md)

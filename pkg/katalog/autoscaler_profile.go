@@ -162,7 +162,7 @@ func expandBatch(b orktypes.AutoscaleBaseline) *orktypes.AutoscaleSpec {
 		Interval: orktypes.Duration{Duration: 60 * 1e9},  // 60s
 		Cooldown: orktypes.Duration{Duration: 300 * 1e9}, // 5m
 		Conditions: orktypes.AutoscaleConditions{
-			AnyOf: []orktypes.AutoscaleCondition{
+			AnyOf: []orktypes.Condition{
 				{
 					Cron:     "0 23 * * *",
 					Duration: orktypes.Duration{Duration: 3 * 3600 * 1e9}, // 3h

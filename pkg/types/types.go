@@ -1364,14 +1364,20 @@ type PVTemplateSource struct {
 //	    - Jobs that must complete successfully before the CR can be considered deleted
 //	    - Notification or archival tasks that must run before deletion is finalized
 type HookTemplates struct {
-	Deployments     []DeploymentTemplateSource     `yaml:"deployments" json:"deployments,omitempty" validate:"omitempty"`
-	Services        []ServiceTemplateSource        `yaml:"services" json:"services,omitempty" validate:"omitempty"`
-	Pods            []PodTemplateSource            `yaml:"pods" json:"pods,omitempty" validate:"omitempty"`
-	Jobs            []JobTemplateSource            `yaml:"jobs" json:"jobs,omitempty" validate:"omitempty"`
-	CronJobs        []CronJobTemplateSource        `yaml:"cronJobs" json:"cronJobs,omitempty" validate:"omitempty"`
-	Secrets         []SecretTemplateSource         `yaml:"secrets" json:"secrets,omitempty" validate:"omitempty"`
-	ConfigMaps      []ConfigMapTemplateSource      `yaml:"configMaps" json:"configMaps,omitempty" validate:"omitempty"`
-	ServiceAccounts []ServiceAccountTemplateSource `yaml:"serviceAccounts" json:"serviceAccounts,omitempty" validate:"omitempty"`
+	Deployments              []DeploymentTemplateSource     `yaml:"deployments" json:"deployments,omitempty" validate:"omitempty"`
+	Services                 []ServiceTemplateSource        `yaml:"services" json:"services,omitempty" validate:"omitempty"`
+	Pods                     []PodTemplateSource            `yaml:"pods" json:"pods,omitempty" validate:"omitempty"`
+	Jobs                     []JobTemplateSource            `yaml:"jobs" json:"jobs,omitempty" validate:"omitempty"`
+	CronJobs                 []CronJobTemplateSource        `yaml:"cronJobs" json:"cronJobs,omitempty" validate:"omitempty"`
+	Secrets                  []SecretTemplateSource         `yaml:"secrets" json:"secrets,omitempty" validate:"omitempty"`
+	ConfigMaps               []ConfigMapTemplateSource      `yaml:"configMaps" json:"configMaps,omitempty" validate:"omitempty"`
+	ServiceAccounts          []ServiceAccountTemplateSource `yaml:"serviceAccounts" json:"serviceAccounts,omitempty" validate:"omitempty"`
+	StatefulSets             []StatefulSetTemplateSource    `yaml:"statefulSets" json:"statefulSets,omitempty" validate:"omitempty"`
+	Ingresses                []IngressTemplateSource        `yaml:"ingresses" json:"ingresses,omitempty" validate:"omitempty"`
+	PersistentVolumes        []PVTemplateSource             `yaml:"persistentVolumes" json:"persistentVolumes,omitempty" validate:"omitempty"`
+	PersistentVolumeClaims   []PVCTemplateSource            `yaml:"persistentVolumeClaims" json:"persistentVolumeClaims,omitempty" validate:"omitempty"`
+	HorizontalPodAutoscalers []HPATemplateSource            `yaml:"hpa" json:"hpa,omitempty" validate:"omitempty"`
+	PodDisruptionBudgets     []PDBTemplateSource            `yaml:"pdb" json:"pdb,omitempty" validate:"omitempty"`
 
 	// External declares HTTP calls to make before resource creation.
 	// Results available as .external.<n>.status, .body, .error
@@ -1397,19 +1403,22 @@ type HookTemplates struct {
 	//	- Builds and optionally pushes a docker image
 	Docker *DockerHookSpec `yaml:"docker,omitempty" json:"docker,omitempty"`
 
-	// TODO: find a better location for it
 	// Ordered controls whether deletion happens sequentially with verification.
 	// true  — delete groups in order, verify each is gone before proceeding
 	// false — delete all resources via owner references (default, parallel)
 	Ordered bool `yaml:"ordered,omitempty" json:"ordered,omitempty"`
 
-	StatefulSets           []StatefulSetTemplateSource `yaml:"statefulSets" json:"statefulSets,omitempty" validate:"omitempty"`
-	ReplicaSets            []PlaceholderSource         `yaml:"replicaSets" json:"replicaSets,omitempty" validate:"omitempty"`
-	DaemonSets             []PlaceholderSource         `yaml:"daemonSets" json:"daemonSets,omitempty" validate:"omitempty"`
-	Ingresses              []IngressTemplateSource     `yaml:"ingresses" json:"ingresses,omitempty" validate:"omitempty"`
-	NetworkPolicies        []PlaceholderSource         `yaml:"networkPolicies" json:"networkPolicies,omitempty" validate:"omitempty"`
-	PersistentVolumes      []PVTemplateSource          `yaml:"persistentVolumes" json:"persistentVolumes,omitempty" validate:"omitempty"`
-	PersistentVolumeClaims []PVCTemplateSource         `yaml:"persistentVolumeClaims" json:"persistentVolumeClaims,omitempty" validate:"omitempty"`
+	// Groups declares sequential deletion stages for ordered deletes.
+	// Each element is a full HookTemplates block whose resources are deleted
+	// as a unit. Orkestra deletes stage N, waits until all resources are gone,
+	// then deletes stage N+1. Omit when Ordered is false.
+	// When Ordered is true and Groups is empty, the flat resource fields above
+	// (Jobs, Deployments, …) are treated as a single implicit group.
+	Groups []HookTemplates `yaml:"groups,omitempty" json:"groups,omitempty"`
+
+	// Timeout is the maximum time to wait for each deletion group to complete.
+	// Defaults to 5m when Ordered is true. Ignored when Ordered is false.
+	Timeout *Duration `yaml:"timeout,omitempty" json:"timeout,omitempty"`
 
 	// TODO with placeholer
 	Volumes                     []PlaceholderSource `yaml:"volumes" json:"volumes,omitempty" validate:"omitempty"`
@@ -1419,15 +1428,16 @@ type HookTemplates struct {
 	ClusterRoles                []PlaceholderSource `yaml:"clusterRoles" json:"clusterRoles,omitempty" validate:"omitempty"`
 	ClusterRoleBindings         []PlaceholderSource `yaml:"clusterRoleBindings" json:"clusterRoleBindings,omitempty" validate:"omitempty"`
 	ServiceMonitors             []PlaceholderSource `yaml:"serviceMonitors" json:"serviceMonitors,omitempty" validate:"omitempty"`
-	PodDisruptionBudgets        []PDBTemplateSource `yaml:"pdb" json:"pdb,omitempty" validate:"omitempty"`
 	PodSecurityPolicies         []PlaceholderSource `yaml:"podSecurityPolicies" json:"podSecurityPolicies,omitempty" validate:"omitempty"`
 	PriorityClasses             []PlaceholderSource `yaml:"priorityClasses" json:"priorityClasses,omitempty" validate:"omitempty"`
 	LimitRanges                 []PlaceholderSource `yaml:"limitRanges" json:"limitRanges,omitempty" validate:"omitempty"`
 	ResourceQuotas              []PlaceholderSource `yaml:"resourceQuotas" json:"resourceQuotas,omitempty" validate:"omitempty"`
 	RuntimeClasses              []PlaceholderSource `yaml:"runtimeClasses" json:"runtimeClasses,omitempty" validate:"omitempty"`
 	PriorityLevelConfigurations []PlaceholderSource `yaml:"priorityLevelConfigurations" json:"priorityLevelConfigurations,omitempty" validate:"omitempty"`
-	HorizontalPodAutoscalers    []HPATemplateSource `yaml:"hpa" json:"hpa,omitempty" validate:"omitempty"`
 	PodTemplates                []PlaceholderSource `yaml:"podTemplates" json:"podTemplates,omitempty" validate:"omitempty"`
+	ReplicaSets                 []PlaceholderSource `yaml:"replicaSets" json:"replicaSets,omitempty" validate:"omitempty"`
+	DaemonSets                  []PlaceholderSource `yaml:"daemonSets" json:"daemonSets,omitempty" validate:"omitempty"`
+	NetworkPolicies             []PlaceholderSource `yaml:"networkPolicies" json:"networkPolicies,omitempty" validate:"omitempty"`
 
 	// Storage
 	StorageClasses   []PlaceholderSource `yaml:"storageClasses" json:"storageClasses,omitempty" validate:"omitempty"`
@@ -1530,6 +1540,25 @@ type OperatorBoxConfig struct {
 	// or restores worker/queue/resync overrides automatically.
 	// nil → no autoscaling; CRD runs with its declared static worker count.
 	Autoscale *AutoscaleSpec `yaml:"autoscale,omitempty" json:"autoscale,omitempty"`
+
+	// Rollback declares failure-recovery behavior for this operatorbox.
+	// When declared, Orkestra tracks consecutive reconcile failures and re-applies
+	// the last known good spec when the trigger threshold is crossed.
+	// nil → no rollback; failures are retried indefinitely.
+	Rollback *RollbackBlock `yaml:"rollback,omitempty" json:"rollback,omitempty"`
+
+	// When is an optional list of conditions that must all pass before
+	// this field is written. If absent or empty, the field is always written.
+	//
+	// All conditions are AND-ed together.
+	// To express OR logic, declare multiple StatusField entries for the same path.
+	//
+	// Conditions are evaluated against the full CR object map — the same
+	// map available to template expressions. This means .status.phase,
+	// .spec.image, .children.job.status.succeeded are all accessible.
+	When []Condition `yaml:"when,omitempty"`
+
+	AnyOf []Condition `yaml:"anyOf,omitempty"`
 }
 
 // HookDeclaration declares where a Go hook function lives.
@@ -1860,7 +1889,7 @@ type CRDEntry struct {
 	Normalize *NormalizeConfig `yaml:"normalize,omitempty"`
 
 	// NotificationEnabled returns whether this CRD belongs to katalog with notification access
-	NotificationEnabled bool `yaml:"-" json:"-"`
+	NotificationEnabled *bool `yaml:"-" json:"-"`
 
 	// RemoveFinalizers -> testing
 	RemoveFinalizers bool `yaml:"removeFinalizers,omitempty" json:"removeFinalizers,omitempty"`

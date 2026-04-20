@@ -107,8 +107,13 @@ func runGenerateCRD(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	crdMap := gen.kat.Enabled()
-	crds := filterByName(crdMap, crdName, all)
+	crds := filterByName(gen.m.Enabled(), crdName, all)
+	if len(crds) == 0 {
+		if crdName != "" {
+			return fmt.Errorf("CRD %q not found in Katalog", crdName)
+		}
+		return fmt.Errorf("no enabled CRDs found in Katalog")
+	}
 
 	for _, crd := range crds {
 		gen := generate.NewCRDGenerator(crd)
@@ -131,6 +136,9 @@ func runGenerateCRD(cmd *cobra.Command, _ []string) error {
 		// Directory output — one file per CRD
 		outPath := output
 		if all || isDir(output) {
+			if err := os.MkdirAll(output, 0755); err != nil {
+				return fmt.Errorf("creating output directory %s: %w", output, err)
+			}
 			outPath = filepath.Join(output, strings.ToLower(crd.Name)+"-crd.yaml")
 		}
 
@@ -153,7 +161,13 @@ func runGenerateCR(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	crds := filterByName(gen.kat.Enabled(), crdName, false)
+	crds := filterByName(gen.m.Enabled(), crdName, false)
+	if len(crds) == 0 {
+		if crdName != "" {
+			return fmt.Errorf("CRD %q not found in Katalog", crdName)
+		}
+		return fmt.Errorf("no enabled CRDs found in Katalog")
+	}
 
 	var out [][]byte
 	for _, crd := range crds {

@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	ork_autoscaler "github.com/orkspace/orkestra/pkg/autoscaler"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/queue"
 )
@@ -78,6 +79,93 @@ type CRDHealth struct {
 
 	// Track katalog health through the orkHealth tracker
 	orkHealth *OrkestraHealth
+
+	// workerInfoFn returns the live WorkerInfo for this operatorbox.
+	// Set by startCRDWorkers after the reconciler is constructed.
+	// nil when autoscale is not declared or reconciler doesn't expose metrics.
+	workerInfoFn func() *ork_autoscaler.WorkerInfo
+
+	// autoMetricsFn returns the live AutoMetrics as a string-keyed map.
+	// Used to populate the "metrics" key in the /katalog/{crd} response so
+	// cross-binary autoscale conditions can read them via HTTP fallback.
+	autoMetricsFn func() map[string]interface{}
+
+	// Rollback stats — updated by the reconciler on each rollback event.
+	rollbackTotal      atomic.Int64
+	rollbackActive     atomic.Bool
+	rollbackLastAt     atomic.Value // stores time.Time or zero
+	rollbackMu         sync.RWMutex
+	rollbackLastReason string // protected by rollbackMu
+}
+
+// SetWorkerInfoFn stores the function that returns live WorkerInfo for this CRD.
+// Called by startCRDWorkers after constructing the reconciler.
+func (h *CRDHealth) SetWorkerInfoFn(fn func() *ork_autoscaler.WorkerInfo) {
+	h.workerInfoFn = fn
+}
+
+// GetWorkerInfo returns the live WorkerInfo, or nil when not available.
+func (h *CRDHealth) GetWorkerInfo() *ork_autoscaler.WorkerInfo {
+	if h.workerInfoFn == nil {
+		return nil
+	}
+	info := h.workerInfoFn()
+	return info
+}
+
+// SetAutoMetricsFn stores the function that returns live AutoMetrics as a map.
+// Called by startCRDWorkers when autoscale: is declared.
+func (h *CRDHealth) SetAutoMetricsFn(fn func() map[string]interface{}) {
+	h.autoMetricsFn = fn
+}
+
+// GetAutoMetrics returns the live AutoMetrics map, or nil when not available.
+// Included in the /katalog/{crd} response as "metrics" so cross-binary
+// autoscale conditions can observe this CRD's metrics via HTTP fallback.
+func (h *CRDHealth) GetAutoMetrics() map[string]interface{} {
+	if h.autoMetricsFn == nil {
+		return nil
+	}
+	return h.autoMetricsFn()
+}
+
+// RollbackStats is a snapshot of rollback activity for one CRD.
+type RollbackStats struct {
+	// TotalRollbacks is the number of times rollback was triggered since startup.
+	TotalRollbacks int64 `json:"totalRollbacks"`
+	// Active is true when rollback is currently blocking normal reconciliation.
+	Active bool `json:"active"`
+	// LastRollbackAt is the RFC3339 timestamp of the most recent rollback trigger.
+	// Empty when no rollback has occurred.
+	LastRollbackAt string `json:"lastRollbackAt,omitempty"`
+}
+
+// RecordRollbackTriggered increments the rollback counter and marks rollback active.
+// Called by the reconciler when it triggers a rollback.
+func (h *CRDHealth) RecordRollbackTriggered() {
+	h.rollbackTotal.Add(1)
+	h.rollbackActive.Store(true)
+	h.rollbackLastAt.Store(time.Now())
+}
+
+// RecordRollbackCleared marks rollback inactive.
+// Called by the reconciler when it clears the rollback annotation.
+func (h *CRDHealth) RecordRollbackCleared() {
+	h.rollbackActive.Store(false)
+}
+
+// RollbackStats returns a snapshot of rollback activity for this CRD.
+func (h *CRDHealth) RollbackStats() RollbackStats {
+	s := RollbackStats{
+		TotalRollbacks: h.rollbackTotal.Load(),
+		Active:         h.rollbackActive.Load(),
+	}
+	if v := h.rollbackLastAt.Load(); v != nil {
+		if t, ok := v.(time.Time); ok && !t.IsZero() {
+			s.LastRollbackAt = t.Format(time.RFC3339)
+		}
+	}
+	return s
 }
 
 type DependencyStatus struct {

@@ -261,7 +261,8 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 
 		// Handle Notifications
 		if k.IsEmailNotificationEnabled() || k.IsSlackNotificationEnabled() {
-			crd.NotificationEnabled = true
+			enabled := true
+			crd.NotificationEnabled = &enabled
 		}
 
 		k.enabledCRDs[name] = crd
@@ -431,3 +432,56 @@ func (k *Katalog) validateAutoscalerMetrics() error {
 	}
 	return nil
 }
+
+// validateNamespaceProtection enforces the namespace‑rule invariants for all enabled CRDs.
+//
+// A CRD may define *either* allowedNamespaces (whitelist) *or* restrictedNamespaces (blacklist),
+// but never both. Allowing both simultaneously creates an ambiguous and contradictory policy:
+//   - allowedNamespaces = “only these namespaces are permitted”
+//   - restrictedNamespaces = “these namespaces are forbidden”
+//
+// Combining them would require precedence rules and conflict resolution, which Orkestra
+// intentionally avoids to keep namespace protection deterministic and easy to reason about.
+//
+// Valid states:
+//  1. No namespace rules → all namespaces allowed
+//  2. Only restrictedNamespaces → blacklist mode
+//  3. Only allowedNamespaces → whitelist mode
+//  4. Both defined → invalid (this function returns an error)
+//
+// This validator ensures each CRD selects exactly one model.
+func (k *Katalog) validateNamespaceProtection() error {
+	for name, crd := range k.enabledCRDs {
+		if !crd.IsNamespaced() || !crd.HasNamespaceRules() {
+			continue // valid
+		}
+		if crd.AllowedNamespacesOnly() || crd.RestrictedNamespacesOnly() {
+			continue // valid
+		}
+
+		// Both restricted and allowed are defined → invalid
+		if crd.HasAllowedNamespaces() && crd.HasRestrictedNamespaces() {
+			return fmt.Errorf(
+				"CRD %q cannot define both allowedNamespaces and restrictedNamespaces — choose one",
+				name, // invalid
+			)
+		}
+		k.enabledCRDs[name] = crd
+	}
+	return nil
+}
+
+// validateNotifyTeams checks that teams declared under notify actually exist in this katalog context
+// func (k *Katalog) validateNotifyTeams() error {
+// 	for name, crd := range k.enabledCRDs {
+// 		if !crd.IsNotificationEnabled() {
+// 			continue	// no-op
+// 		}
+
+// 		if crd.OperatorBox != nil {
+// 			if crd.HasAnyHooks() {
+
+// 			}
+// 	}
+// 	return nil
+// }

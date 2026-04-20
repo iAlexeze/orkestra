@@ -4,6 +4,7 @@ package secrets
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/konfig"
@@ -332,7 +333,7 @@ func resolveData(
 
 func buildSecret(owner domain.Object, spec ResolvedSecretSpec, namespace string, data map[string][]byte, stringData map[string]string) *corev1.Secret {
 	secretType := corev1.SecretTypeOpaque
-	switch spec.Type {
+	switch strings.ToLower(spec.Type) {
 	case "kubernetes.io/tls":
 		secretType = corev1.SecretTypeTLS
 	case "kubernetes.io/dockerconfigjson":

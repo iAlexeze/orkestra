@@ -91,33 +91,39 @@ for _, name := range startupOrder {
 runtime for one CRD:
 
 ```
-1. Compute goroutines = max(baseline.workers, do.workers)
-   — over-provision when autoscale: is declared so scale-up needs no new goroutines
-
-2. rec := entry.ReconcilerFactory()
+1. rec := entry.ReconcilerFactory()
    — creates the reconciler (GenericReconciler or custom)
 
-3. Inject the per-CRD queue (QueueInjector interface)
+2. Inject the per-CRD queue (QueueInjector interface)
    — so SetQueueDepthLimit and the resync goroutine can reach the right queue
 
-4. go runner.RunAutoscaler(crdCtx)        [if autoscalerRunner interface satisfied]
-   — evaluation loop: conditions → apply/restore override
+3. [if autoscale: declared]
+   a. Inject spawnWorker callback (workerSpawner interface)
+      — ResizeWorkers calls this to start new goroutines on scale-up
+   b. Register AutoMetrics with GlobalCrossMetricsRegistry under entry.CRD.Name
+      — enables cross.<crd>.metrics.* conditions from other operatorboxes
+   c. Set workerInfoFn on CRDHealth (workerInfoProvider interface)
+      — /katalog/{crd} calls this on every request for a live WorkerInfo snapshot
+   d. go runner.RunAutoscaler(crdCtx)  (autoscalerRunner interface)
+      — evaluation loop: conditions → apply/restore override
+   e. go rl.StartResyncLoop(crdCtx)    (resyncLoopStarter interface)
+      — re-enqueue goroutine: idles at 0 interval, fires at do.resync when active
 
-5. go rl.StartResyncLoop(crdCtx)          [if autoscale: declared + resyncLoopStarter]
-   — re-enqueue goroutine: idles at 0 interval, fires at do.resync when active
+4. [if rollback: declared]
+   Inject rollback notifier callbacks (rollbackNotifierSetter interface)
+   — onTrigger: increments rollbackTotal, sets rollbackActive in CRDHealth
+   — onClear:   clears rollbackActive in CRDHealth
 
-6. Start goroutines workers (over-provisioned count)
+5. Start baseline.workers goroutines
    — each runs runWorkerForGVK until crdCtx is cancelled or queue shutdown
-
+   — additional goroutines are started lazily by ResizeWorkers on scale-up
 ```
 
-All three interface checks (`QueueInjector`, `autoscalerRunner`,
-`resyncLoopStarter`) are duck-typed against the reconciler using local interface
-definitions to avoid an import cycle — the `reconciler` package already imports
-`kordinator`.
-
-```go
-```
+All interface checks are duck-typed against the reconciler using local interface
+definitions in kordinator to avoid an import cycle — the `reconciler` package
+already imports `kordinator`. The interfaces are: `QueueInjector`,
+`workerSpawner`, `autoMetricsExporter`, `workerInfoProvider`,
+`autoscalerRunner`, `resyncLoopStarter`, `rollbackNotifierSetter`.
 
 The loop iterates the topological order exactly once. It skips any CRD whose dependencies are not yet satisfied — it does not block, sleep, or retry. The background retry loop (see [04 — Self-healing](04-self-healing.md)) handles activation of deferred CRDs.
 

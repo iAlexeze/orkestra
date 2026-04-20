@@ -7,10 +7,8 @@ The reconciler package is the execution engine of every Orkestra operator. It ta
 | File | Role |
 |------|------|
 | `generic.go` | `GenericReconciler[T]` — the single reconciler used by all CRDs |
-| `generic_autoscale.go` | `AutoscaleTarget`, `AutoscalerRunner`, `ResyncLoopStarter`, `QueueInjector`, `QueueDepthReporter` implementations |
-| `autoscaler.go` | `Autoscaler` — condition evaluation loop; applies and restores overrides |
-| `autoscale_semaphore.go` | `ResizableSemaphore` — O(1) runtime concurrency resize without stopping goroutines |
-| `autoscale_metrics.go` | `AutoMetrics` — atomic runtime metrics (queue depth, P95 latency, error rate) read by the autoscaler |
+| `generic_autoscale.go` | `AutoscaleTarget`, `AutoscalerRunner`, `ResyncLoopStarter`, `QueueInjector`, `QueueDepthReporter` implementations; `SetSpawnWorker`, `SetRollbackNotifiers`, `GetAutoMetrics`, `WorkerInfo` wiring helpers |
+| `rollback.go` | Rollback subsystem — spec snapshotting, trigger evaluation, `onRollback` template execution, annotation lifecycle |
 | `run_template_reconcile.go` | Declarative pipeline: normalize → resolver → onCreate → onReconcile → providers |
 | `normalize.go` | `applyNormalize` — in-memory spec normalization before mutation/validation |
 | `run_*.go` | Per-resource-type runners (deployments, services, secrets, cronjobs, …) |
@@ -25,7 +23,7 @@ Full step-by-step documentation is in [docs/](docs/README.md).
 
 | I want to… | Go to |
 |-----------|-------|
-| Understand the full reconcile pipeline | [01 — Architecture](docs/01-architecture.md) |
+| Understand the full reconcile pipeline (including rollback gate) | [01 — Architecture](docs/01-architecture.md) |
 | Understand what every `run_*.go` must implement | [02 — The run_*.go Contract](docs/02-run-pattern.md) |
 | Understand the registry layer | [03 — Registry Layer](docs/03-registry-layer.md) |
 | Debug condition / activeNames issues | [04 — Conditions](docs/04-conditions.md) |

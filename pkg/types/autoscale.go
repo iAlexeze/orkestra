@@ -29,7 +29,11 @@
 //	      resync: 20s
 package types
 
-import "time"
+import (
+	"time"
+
+	"github.com/robfig/cron/v3"
+)
 
 // AutoscaleSpec declares the autoscale behavior for one operatorbox.
 // Declared inside OperatorBoxConfig.
@@ -63,43 +67,12 @@ type AutoscaleSpec struct {
 // AutoscaleConditions holds the condition blocks for autoscale evaluation.
 type AutoscaleConditions struct {
 	// AnyOf — OR semantics. At least one condition in this list must be true.
-	// Supports: metric conditions, time conditions, dayOfWeek conditions, cron conditions.
-	AnyOf []AutoscaleCondition `yaml:"anyOf,omitempty"`
+	// Supports all Condition kinds: time, dayOfWeek, cron, and metric fields.
+	AnyOf []Condition `yaml:"anyOf,omitempty"`
 
 	// When — AND semantics. All conditions in this list must be true.
-	// Supports: metric conditions (metrics.*).
-	// Time-based conditions belong in AnyOf.
+	// Supports: metric conditions (metrics.*, cross.<crd>.metrics.*).
 	When []Condition `yaml:"when,omitempty"`
-}
-
-// AutoscaleCondition is one condition in the anyOf block.
-// Exactly one of the fields should be set per entry.
-type AutoscaleCondition struct {
-	// Time — active when the current time is within the declared window.
-	// After and Before are both optional; omit one for a half-open range.
-	Time *TimeWindow `yaml:"time,omitempty"`
-
-	// DayOfWeek — active on the specified days of the week.
-	DayOfWeek *DayOfWeekCondition `yaml:"dayOfWeek,omitempty"`
-
-	// Cron — a standard cron expression (5-field) that defines when the
-	// window opens. Duration defines how long the window stays open.
-	// Without Duration, the window closes after one evaluation interval.
-	Cron string `yaml:"cron,omitempty"`
-
-	// Duration — how long a cron-opened window remains active.
-	// Required when Cron is set; ignored otherwise.
-	Duration Duration `yaml:"duration,omitempty"`
-
-	// Field — metric condition field path (metrics.*).
-	// Used when the anyOf entry is a metric condition rather than a time condition.
-	Field string `yaml:"field,omitempty"`
-
-	// GreaterThan — comparison value for metric conditions.
-	GreaterThan string `yaml:"greaterThan,omitempty"`
-
-	// LessThan — comparison value for metric conditions.
-	LessThan string `yaml:"lessThan,omitempty"`
 }
 
 // TimeWindow declares a clock-based active window.
@@ -156,7 +129,51 @@ type AutoscaleState struct {
 
 	// CronWindowsOpenAt tracks when each cron-condition window opened.
 	// Key is the cron expression string.
+	// Without this, a cron fire that happens between two evaluation ticks would
+	// be missed — the window must stay open across ticks until duration elapses.
 	CronWindowsOpenAt map[string]time.Time
+}
+
+// TickCronWindow advances the cron window state machine for one expression.
+// It updates windows (caller-owned state map) and returns whether the window
+// is currently open.
+//
+// duration is how long the window stays open after a cron fire.
+// interval is the evaluation tick period — used to detect fires between ticks.
+// When duration is zero, interval is used as the window length.
+//
+// This is the general-purpose cron window tracker. Any part of Orkestra that
+// needs cron-gated behaviour (autoscaler, future job runner, etc.) can bring
+// its own map[string]time.Time and call this on each evaluation tick.
+func TickCronWindow(windows map[string]time.Time, cronExpr string, duration, interval time.Duration, now time.Time) bool {
+	if duration == 0 {
+		duration = interval
+	}
+	if duration == 0 {
+		duration = 60 * time.Second
+	}
+
+	schedule, err := cron.ParseStandard(cronExpr)
+	if err != nil {
+		return false
+	}
+
+	// Check whether a previously opened window is still active.
+	if opened, ok := windows[cronExpr]; ok {
+		if now.Before(opened.Add(duration)) {
+			return true
+		}
+		delete(windows, cronExpr)
+	}
+
+	// Check whether the cron fired within the last interval.
+	prev := schedule.Next(now.Add(-interval))
+	if !prev.After(now) {
+		windows[cronExpr] = prev
+		return true
+	}
+
+	return false
 }
 
 // Duration is a time.Duration that unmarshals from YAML strings like "15s", "2m", "1h".
@@ -201,4 +218,39 @@ func (a *AutoscaleSpec) EffectiveCooldown() time.Duration {
 		return 2 * time.Minute
 	}
 	return a.Cooldown.Duration
+}
+
+// HasWhenConditions returns whether when conditions are declared.
+func (a *AutoscaleSpec) HasWhenConditions() bool {
+	return len(a.Conditions.When) > 0
+}
+
+// HasAnyOfConditions returns whether anyOf conditions are declared.
+func (a *AutoscaleSpec) HasAnyOfConditions() bool {
+	return len(a.Conditions.AnyOf) > 0
+}
+
+// HasDoWorkers returns whether do.workers is set.
+func (a *AutoscaleSpec) HasDoWorkers() bool {
+	return a.Do.Workers != nil
+}
+
+// HasDoQueueDepth returns whether do.queueDepth is set.
+func (a *AutoscaleSpec) HasDoQueueDepth() bool {
+	return a.Do.QueueDepth != nil
+}
+
+// HasDoResync returns whether do.resync is set.
+func (a *AutoscaleSpec) HasDoResync() bool {
+	return a.Do.Resync != nil
+}
+
+// HasIntervalDuration returns whether interval is set.
+func (a *AutoscaleSpec) HasIntervalDuration() bool {
+	return a.Interval.Duration != 0
+}
+
+// HasCooldownDuration returns whether cooldown is set.
+func (a *AutoscaleSpec) HasCooldownDuration() bool {
+	return a.Cooldown.Duration != 0
 }

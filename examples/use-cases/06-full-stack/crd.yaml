@@ -45,7 +45,7 @@ spec:
                   items:
                     type: string
                   minItems: 1
-                replicasPerRegion:
+                defaultReplicas:
                   type: integer
                   default: 1
                   minimum: 1

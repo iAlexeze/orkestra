@@ -10,6 +10,20 @@ metadata:
 
 spec:
   crds:
+    pod-watcher:
+      apiTypes:
+        kind: Pod
+      # labelSelector:
+      #   app: pod-watcher
+
+      allowedNamespaces:
+        - default
+      # restrictedNamespaces:
+      #   - kube-system
+      #   - gmp-**
+      #   - default
+
+
     # ── 01. forEach — N resources from a list ──────────────────────────────────
     multi-region-app:
       apiTypes:
@@ -33,7 +47,7 @@ spec:
 
       mutation:
         rules:
-          - field: spec.replicasPerRegion
+          - field: spec.defaultReplicas
             default: 1
 
       operatorBox:
@@ -41,7 +55,7 @@ spec:
           deployments:
             - name: "{{ .metadata.name }}-{{ .item }}"
               image: "{{ .spec.image }}"
-              replicas: "{{ .spec.replicasPerRegion }}"
+              replicas: "{{ .spec.defaultReplicas }}"
               forEach:
                 field: spec.regions
                 as: item
@@ -98,7 +112,7 @@ spec:
             - name: featureFlags             # camelCase
               url: "{{ .spec.serviceUrl }}/flags/{{ .metadata.name }}"
               method: GET
-              continueOnError: true
+              continueOnError: true          # this fails but its logged and allowed
               timeout: 3s
 
           deployments:
@@ -399,7 +413,7 @@ spec:
 
       mutation:
         rules:
-          - field: spec.replicasPerRegion
+          - field: spec.defaultReplicas
             default: 1
           - field: spec.notify
             default: "false"
@@ -433,7 +447,7 @@ spec:
           deployments:
             - name: "{{ .metadata.name }}-{{ .item }}"
               image: "{{ .spec.image }}"
-              replicas: "{{ .spec.replicasPerRegion }}"
+              replicas: "{{ .spec.defaultReplicas }}"
               forEach:
                 field: spec.regions
                 as: item

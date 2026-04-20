@@ -69,7 +69,7 @@ func isNotFoundErr(err error) bool {
 }
 
 func containsStr404(s string) bool {
-	return len(s) >= 9 && (containsSubstr(s, "not found") || containsSubstr(s, "NotFound"))
+	return len(s) >= 9 && (containsSubstr(s, "not found") || containsSubstr(s, "NotFound") || containsSubstr(s, "404"))
 }
 
 func containsSubstr(s, sub string) bool {

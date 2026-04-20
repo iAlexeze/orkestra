@@ -218,9 +218,18 @@ func (c *CRDEntry) AutoscaleEnabled() bool {
 	return c.OperatorBox.Autoscale != nil
 }
 
+// HasRollbackRules reports whether this CRD declares a rollback block.
+func (c *CRDEntry) HasRollbackRules() bool {
+	return c.OperatorBox.Rollback != nil
+}
+
 // NotificationEnabled reports whether this CRD declares the notification block
+// Enabled by default
 func (c *CRDEntry) IsNotificationEnabled() bool {
-	return c.NotificationEnabled
+	if c.NotificationEnabled == nil {
+		return true
+	}
+	return *c.NotificationEnabled
 }
 
 // ValidateMetricField returns an error if the field is not a known autoscale metric.
@@ -267,4 +276,59 @@ func (c *CRDEntry) UpdateCRDCaBundle() bool {
 		return false
 	}
 	return c.Conversion.UpdateCRD
+}
+
+// HasNamespaceRules reports whether this CRD declares any namespace rules.
+func (c *CRDEntry) HasNamespaceRules() bool {
+	return len(c.AllowedNamespaces) > 0 || len(c.RestrictedNamespaces) > 0
+}
+
+// HasOnCreate reports whether this CRD declares any onCreate hooks.
+func (c *CRDEntry) HasOnCreate() bool {
+	return c.OperatorBox.OnCreate == nil
+}
+
+// HasOnReconcile reports whether this CRD declares any onReconcile hooks.
+func (c *CRDEntry) HasOnReconcile() bool {
+	return c.OperatorBox.OnReconcile == nil
+}
+
+// HasOnDelete reports whether this CRD declares any onDelete hooks.
+func (c *CRDEntry) HasOnDelete() bool {
+	return c.OperatorBox.OnDelete == nil
+}
+
+// HasAnyHooks reports whether this CRD declares any onCreate, onReconcile, or onDelete hooks.
+func (c *CRDEntry) HasAnyHooks() bool {
+	return c.HasOnCreate() || c.HasOnReconcile() || c.HasOnDelete()
+}
+
+// AllRestrictedNamespaces returns a list of restricted namespaces for this crd
+func (c *CRDEntry) AllRestrictedNamespaces() RestrictedNamespaces {
+	return c.RestrictedNamespaces
+}
+
+// AllAllowedNamespaces returns a list of allowed namespaces for this crd
+func (c *CRDEntry) AllAllowedNamespaces() AllowedNamespaces {
+	return c.AllowedNamespaces
+}
+
+// AllowedNamespacesOnly reports if only allowedNamespaces is defined for this crd.
+func (c *CRDEntry) AllowedNamespacesOnly() bool {
+	return len(c.AllowedNamespaces) > 0 && len(c.RestrictedNamespaces) == 0
+}
+
+// RestrictedNamespacesOnly reports if only restrictedNamespaces is defined for this crd.
+func (c *CRDEntry) RestrictedNamespacesOnly() bool {
+	return len(c.RestrictedNamespaces) > 0 && len(c.AllowedNamespaces) == 0
+}
+
+// HasAllowedNamespaces reports if allowedNamespaces is defined for this crd.
+func (c *CRDEntry) HasAllowedNamespaces() bool {
+	return len(c.AllowedNamespaces) > 0
+}
+
+// HasRestrictedNamespaces reports if restrictedNamespaces is defined for this crd.
+func (c *CRDEntry) HasRestrictedNamespaces() bool {
+	return len(c.RestrictedNamespaces) > 0
 }

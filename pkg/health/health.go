@@ -68,7 +68,7 @@ type HealthServer struct {
 	admissionStats *AdmissionStats
 
 	// Rolling deletion protection statistics.
-	protectionStats *ProtectionStats
+	protectionStats *DeletionProtectionStats
 
 	// Webhook controller reconcilliation stats for observability
 	webhookStats *WebhookStats
@@ -90,6 +90,11 @@ type HealthServer struct {
 	// Populated only when deletion protection is enabled.
 	protectedCRDNames  map[string]struct{}
 	deletionProtection atomic.Bool
+
+	// Namespace protection — populated only when namespace protection is enabled.
+	namespaceRuleMap    map[string]*NamespaceRules
+	namespaceStats      *NamespaceProtectionStats
+	namespaceProtection atomic.Bool
 
 	// Full Konfig object for accessing cluster, security, and runtime settings.
 	konfig *konfig.Konfig
@@ -173,12 +178,34 @@ func NewHealthServer(kubeclient kubernetes.Interface, katalog *katalog.Katalog, 
 		admissionRegistry:  katalog.AdmissionRegistry(),
 		conversionStats:    NewConversionStats(hookKfg.ConversionWindow),
 		admissionStats:     NewAdmissionStats(hookKfg.ConversionWindow),
-		protectionStats:    NewProtectionStats(),
+		protectionStats:    NewDeletionProtectionStats(),
 	}
 
 	// Precompute protected CRD names for deletion‑protection enforcement.
 	if katalog.IsDeletionProtectionEnabled() {
-		hs.protectedCRDNames = katalog.ProtectedCRDNames()
+		hs.protectedCRDNames = katalog.DeletionProtectedCRDNames()
+	}
+
+	// Precompute namespace rule map for namespace protection enforcement.
+	if katalog.IsNamespaceProtectionEnabled() {
+		rawRules := katalog.NamespaceProtectionRuleMap()
+		if len(rawRules) > 0 {
+			hs.namespaceRuleMap = make(map[string]*NamespaceRules, len(rawRules))
+			for key, entry := range rawRules {
+				rules := &NamespaceRules{
+					Allowed:    make(map[string]struct{}, len(entry.Allowed)),
+					Restricted: make(map[string]struct{}, len(entry.Restricted)),
+				}
+				for _, ns := range entry.Allowed {
+					rules.Allowed[ns] = struct{}{}
+				}
+				for _, ns := range entry.Restricted {
+					rules.Restricted[ns] = struct{}{}
+				}
+				hs.namespaceRuleMap[key] = rules
+			}
+		}
+		hs.namespaceStats = NewNamespaceProtectionStats()
 	}
 
 	// Initialize all runtime state flags.
@@ -186,6 +213,7 @@ func NewHealthServer(kubeclient kubernetes.Interface, katalog *katalog.Katalog, 
 	hs.started.Store(false)
 	hs.healthy.Store(false)
 	hs.deletionProtection.Store(false)
+	hs.namespaceProtection.Store(false)
 
 	return hs
 }
@@ -296,14 +324,20 @@ func (h *HealthServer) Start(ctx context.Context) error {
 		h.deletionProtection.Store(true)
 	}
 
+	// Enable namespace protection if declared.
+	if kat.IsNamespaceProtectionEnabled() && len(kat.NamespaceProtectionGVRs()) > 0 {
+		h.namespaceProtection.Store(true)
+	}
+
 	logger.Debug().
 		Bool("deletionProtection", h.deletionProtection.Load()).
+		Bool("namespaceProtection", h.namespaceProtection.Load()).
 		Bool("conversion", h.hookKfg.ConvEnabled).
 		Bool("webhooks", h.hookKfg.WebhooksEnabled).
 		Msg("health server")
 
-	// Register HTTPS endpoints (conversion, admission, deletion protection).
-	if h.hookKfg.ConvEnabled || h.hookKfg.WebhooksEnabled || h.deletionProtection.Load() {
+	// Register HTTPS endpoints (conversion, admission, deletion protection, namespace protection).
+	if h.hookKfg.ConvEnabled || h.hookKfg.WebhooksEnabled || h.deletionProtection.Load() || h.namespaceProtection.Load() {
 
 		// Deletion protection endpoint.
 		if h.deletionProtection.Load() {
@@ -314,6 +348,17 @@ func (h *HealthServer) Start(ctx context.Context) error {
 				Str("addr", h.httpsPort).
 				Str("endpoint", "/deletion-protection").
 				Msg("deletion protection endpoint registered")
+		}
+
+		// Namespace protection endpoint.
+		if h.namespaceProtection.Load() {
+			h.hookMux.HandleFunc("/namespace-protection", h.namespaceProtectionHandler)
+			startHttpsServer = true
+
+			logger.Info().
+				Str("addr", h.httpsPort).
+				Str("endpoint", "/namespace-protection").
+				Msg("namespace protection endpoint registered")
 		}
 
 		// Conversion endpoint.
@@ -427,9 +472,42 @@ func (h *HealthServer) Start(ctx context.Context) error {
 					logger.Info().
 						Str("config", deletionProtectionWebhookConfigName).
 						Int("rules", len(dpGVRs)).
-						Int("protected", len(h.katalog.ProtectedCRDNames())).
+						Int("protected", len(h.katalog.DeletionProtectedCRDNames())).
 						Bool("inCluster", true).
 						Msg("deletion protection webhook registered")
+				}
+			}()
+		}
+
+		// Namespace protection webhook registration.
+		if h.namespaceProtection.Load() && h.kubeClient != nil {
+			go func() {
+				wctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+
+				npGVRs := kat.NamespaceProtectionGVRs()
+				if len(npGVRs) == 0 {
+					logger.Info().Msg("namespace protection: running outside cluster — webhook not registered (ork run mode)")
+					return
+				}
+
+				caBundle, err := readCABundle(h.hookReg.TLSCertFile)
+				if err != nil {
+					logger.Error().Err(err).Msg("namespace protection webhook: cannot read CA bundle")
+					return
+				}
+
+				svcName := kat.NamespaceProtectionServiceName()
+				failurePolicy := kat.NamespaceProtectionFailurePolicy()
+				if err := registerNamespaceProtectionWebhook(wctx, h.kubeClient, npGVRs, caBundle, h.hookReg, svcName, failurePolicy); err != nil {
+					logger.Error().Err(err).
+						Msg("namespace protection webhook registration failed — namespace rules will not be enforced")
+				} else {
+					logger.Info().
+						Str("config", namespaceProtectionWebhookConfigName).
+						Int("rules", len(npGVRs)).
+						Bool("inCluster", true).
+						Msg("namespace protection webhook registered")
 				}
 			}()
 		}
@@ -510,6 +588,17 @@ func (h *HealthServer) Shutdown(ctx context.Context) {
 					Msg("deletion protection webhook removed")
 			}
 		}
+
+		// Optional cleanup of namespace‑protection webhook configuration.
+		if kat.IsNamespaceProtectionEnabled() && kat.NamespaceProtectionCleanupOnShutdown() && h.kubeClient != nil {
+			if err := cleanupValidatingWebhook(ctx, h.kubeClient, namespaceProtectionWebhookConfigName); err != nil {
+				logger.Error().Err(err).Msg("namespace protection webhook cleanup error")
+			} else {
+				logger.Info().
+					Str("config", namespaceProtectionWebhookConfigName).
+					Msg("namespace protection webhook removed")
+			}
+		}
 	}
 }
 
@@ -583,8 +672,13 @@ func (h *HealthServer) GetAdmissionStats() *AdmissionStats {
 	return h.admissionStats
 }
 
+// GetNamespaceStats returns the namespace protection statistics for use in handlers.
+func (h *HealthServer) GetNamespaceStats() *NamespaceProtectionStats {
+	return h.namespaceStats
+}
+
 // GetProtectionStats returns the deletion protection statistics for use in handlers.
-func (h *HealthServer) GetProtectionStats() *ProtectionStats {
+func (h *HealthServer) GetProtectionStats() *DeletionProtectionStats {
 	return h.protectionStats
 }
 

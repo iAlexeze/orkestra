@@ -235,7 +235,7 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 
 func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace string) *appsv1.Deployment {
 	// Debug line
-	logger.Info().
+	logger.Debug().
 		Interface("env", spec.Env).
 		Interface("envFrom", spec.EnvFrom).
 		Msg("deployment.buildDeployment")
