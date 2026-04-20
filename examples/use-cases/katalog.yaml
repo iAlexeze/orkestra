@@ -13,11 +13,16 @@ spec:
     pod-watcher:
       apiTypes:
         kind: Pod
-      labelSelector:
-        app: pod-watcher
+      # labelSelector:
+      #   app: pod-watcher
 
       allowedNamespaces:
         - default
+      # restrictedNamespaces:
+      #   - kube-system
+      #   - gmp-**
+      #   - default
+
 
     # ── 01. forEach — N resources from a list ──────────────────────────────────
     multi-region-app:

@@ -248,6 +248,21 @@ func (r *GenericReconciler[T]) reconcileCore(ctx context.Context, key string) er
 		return r.handleDeletion(ctx, resolver, obj)
 	}
 
+	// Namespace guard — skip reconcile for CRs in restricted or non-allowed namespaces.
+	// Deletion is always allowed so finalizers can be removed; this guard runs after
+	// the deletion-timestamp check so deleting CRs are never blocked.
+	if r.crd.HasNamespaceRules() {
+		result := CheckNamespace(ctx, obj, obj.GetNamespace(), r.crd.RestrictedNamespaces, r.crd.AllowedNamespaces, r.crd.APITypes.Kind)
+		if !result.Allowed {
+			logger.FromContext(ctx).Debug().
+				Str("name", obj.GetName()).
+				Str("namespace", obj.GetNamespace()).
+				Str("reason", result.Reason).
+				Msg("reconcile: skipping CR in restricted/non-allowed namespace")
+			return nil
+		}
+	}
+
 	if !r.crd.RemoveFinalizers {
 		if err := r.ensureFinalizers(ctx, obj); err != nil {
 			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerError",

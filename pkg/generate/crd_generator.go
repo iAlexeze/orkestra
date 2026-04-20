@@ -84,7 +84,7 @@ func (g *CRDGenerator) buildSpec() apiextv1.CustomResourceDefinitionSpec {
 	}
 
 	// Conversion webhook — when conversion paths are declared
-	if len(g.crd.Conversion.Paths) > 0 {
+	if g.crd.Conversion != nil && len(g.crd.Conversion.Paths) > 0 {
 		spec.Conversion = &apiextv1.CustomResourceConversion{
 			Strategy: apiextv1.WebhookConverter,
 			Webhook: &apiextv1.WebhookConversion{

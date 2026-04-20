@@ -312,3 +312,23 @@ func (c *CRDEntry) AllRestrictedNamespaces() RestrictedNamespaces {
 func (c *CRDEntry) AllAllowedNamespaces() AllowedNamespaces {
 	return c.AllowedNamespaces
 }
+
+// AllowedNamespacesOnly reports if only allowedNamespaces is defined for this crd.
+func (c *CRDEntry) AllowedNamespacesOnly() bool {
+	return len(c.AllowedNamespaces) > 0 && len(c.RestrictedNamespaces) == 0
+}
+
+// RestrictedNamespacesOnly reports if only restrictedNamespaces is defined for this crd.
+func (c *CRDEntry) RestrictedNamespacesOnly() bool {
+	return len(c.RestrictedNamespaces) > 0 && len(c.AllowedNamespaces) == 0
+}
+
+// HasAllowedNamespaces reports if allowedNamespaces is defined for this crd.
+func (c *CRDEntry) HasAllowedNamespaces() bool {
+	return len(c.AllowedNamespaces) > 0
+}
+
+// HasRestrictedNamespaces reports if restrictedNamespaces is defined for this crd.
+func (c *CRDEntry) HasRestrictedNamespaces() bool {
+	return len(c.RestrictedNamespaces) > 0
+}
