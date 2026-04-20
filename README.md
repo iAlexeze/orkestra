@@ -100,28 +100,37 @@ Fifteen CRDs. One process. ~47 MB.
 ---
 ## Getting started
 
-```bash
-# Install
-brew install orkspace/tap/ork
-# or
+# Install (macOS)
+brew install orkspace/tap/ork orkspace/tap/orkcc
+
+# Install (Linux)
 curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
 
+# Install (Windows)
+winget install Orkspace.Orkestra
+winget install Orkspace.Orkestra Orkspace.OrkestraControlCenter
+
 # Initialize an operator
-ork init my-operator && cd my-operator
+ork init my-operator
+cd my-operator
 
-# Run
-kubectl apply -f examples/website/website-crd.yaml
-ork run --katalog examples/website/website-katalog.yaml
+# Apply the CRD
+kubectl apply -f examples/beginner/01-hello-website/crd.yaml
 
-# Apply a CR
-kubectl apply -f examples/website/website-cr.yaml
-```
+# Run the operator runtime
+ork run --katalog examples/beginner/01-hello-website/katalog.yaml
 
-### Watch live on Control Center → localhost:8090
+# Apply a CustomResource
+kubectl apply -f examples/beginner/01-hello-website/cr.yaml
+
+
+### Watch live on Control Center
 In another terminal, run:
 
 ```bash
 ork control start
+
+# → localhost:8090
 ```
 
 For production, deploy with Helm:

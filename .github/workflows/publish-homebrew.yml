@@ -1,0 +1,142 @@
+name: Update Homebrew Formulas
+
+on:
+  workflow_call:
+
+jobs:
+  homebrew:
+    name: Update Homebrew Formulas
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tap
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: ialexeze/homebrew-tap
+          token: ${{ secrets.ORK_PUBLISH_PAT }}
+          path: homebrew-tap
+
+      - name: Download checksums
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          curl -sSfL "https://github.com/ialexeze/orkestra/releases/download/${TAG}/checksums.txt" -o checksums.txt
+
+      - name: Extract SHA256 values
+        id: sha
+        run: |
+          echo "ORK_DARWIN_AMD64=$(grep 'ork_darwin_amd64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "ORK_DARWIN_ARM64=$(grep 'ork_darwin_arm64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "ORK_LINUX_AMD64=$(grep  'ork_linux_amd64'  checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "ORK_LINUX_ARM64=$(grep  'ork_linux_arm64'  checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "CC_DARWIN_AMD64=$(grep 'orkcc_darwin_amd64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "CC_DARWIN_ARM64=$(grep 'orkcc_darwin_arm64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "CC_LINUX_AMD64=$(grep  'orkcc_linux_amd64'  checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "CC_LINUX_ARM64=$(grep  'orkcc_linux_arm64'  checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Update runtime formula
+        env:
+          TAG: ${{ github.ref_name }}
+          DARWIN_AMD64: ${{ steps.sha.outputs.ORK_DARWIN_AMD64 }}
+          DARWIN_ARM64: ${{ steps.sha.outputs.ORK_DARWIN_ARM64 }}
+          LINUX_AMD64:  ${{ steps.sha.outputs.ORK_LINUX_AMD64 }}
+          LINUX_ARM64:  ${{ steps.sha.outputs.ORK_LINUX_ARM64 }}
+        run: |
+          VERSION="${TAG#v}"
+          cat > homebrew-tap/Formula/ork.rb << 'EOF'
+          class Ork < Formula
+            desc "Declarative Runtime for Kubernetes Operators"
+            homepage "https://github.com/orkspace/orkestra"
+            version "${VERSION}"
+            license "Apache 2.0"
+            on_macos do
+              on_arm   do
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_darwin_arm64.tar.gz"
+                sha256 "${DARWIN_ARM64}"
+              end
+              on_intel do
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_darwin_amd64.tar.gz"
+                sha256 "${DARWIN_AMD64}"
+              end
+            end
+            on_linux do
+              on_arm   do
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_linux_arm64.tar.gz"
+                sha256 "${LINUX_ARM64}"
+              end
+              on_intel do
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_linux_amd64.tar.gz"
+                sha256 "${LINUX_AMD64}"
+              end
+            end
+            def install
+              bin.install "ork"
+            end
+            test do
+              system "#{bin}/ork", "version"
+            end
+          end
+          EOF
+          sed -i "s/\${VERSION}/${VERSION}/g" homebrew-tap/Formula/ork.rb
+          sed -i "s/\${TAG}/${TAG}/g" homebrew-tap/Formula/ork.rb
+          sed -i "s/\${DARWIN_AMD64}/${DARWIN_AMD64}/g" homebrew-tap/Formula/ork.rb
+          sed -i "s/\${DARWIN_ARM64}/${DARWIN_ARM64}/g" homebrew-tap/Formula/ork.rb
+          sed -i "s/\${LINUX_AMD64}/${LINUX_AMD64}/g" homebrew-tap/Formula/ork.rb
+          sed -i "s/\${LINUX_ARM64}/${LINUX_ARM64}/g" homebrew-tap/Formula/ork.rb
+
+      - name: Update control center formula
+        env:
+          TAG: ${{ github.ref_name }}
+          DARWIN_AMD64: ${{ steps.sha.outputs.CC_DARWIN_AMD64 }}
+          DARWIN_ARM64: ${{ steps.sha.outputs.CC_DARWIN_ARM64 }}
+          LINUX_AMD64:  ${{ steps.sha.outputs.CC_LINUX_AMD64 }}
+          LINUX_ARM64:  ${{ steps.sha.outputs.CC_LINUX_ARM64 }}
+        run: |
+          VERSION="${TAG#v}"
+          cat > homebrew-tap/Formula/orkcc.rb << 'EOF'
+          class OrkCc < Formula
+            desc "Web-based Control Center for Orkestra - visualize and manage your operators"
+            homepage "https://github.com/orkspace/orkestra"
+            version "${VERSION}"
+            license "Apache 2.0"
+            on_macos do
+              on_arm   do
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_darwin_arm64.tar.gz"
+                sha256 "${DARWIN_ARM64}"
+              end
+              on_intel do
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_darwin_amd64.tar.gz"
+                sha256 "${DARWIN_AMD64}"
+              end
+            end
+            on_linux do
+              on_arm   do
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_linux_arm64.tar.gz"
+                sha256 "${LINUX_ARM64}"
+              end
+              on_intel do
+                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_linux_amd64.tar.gz"
+                sha256 "${LINUX_AMD64}"
+              end
+            end
+            def install
+              bin.install "orkcc"
+            end
+            test do
+              system "#{bin}/orkcc", "--help"
+            end
+          end
+          EOF
+          sed -i "s/\${VERSION}/${VERSION}/g" homebrew-tap/Formula/orkcc.rb
+          sed -i "s/\${TAG}/${TAG}/g" homebrew-tap/Formula/orkcc.rb
+          sed -i "s/\${DARWIN_AMD64}/${DARWIN_AMD64}/g" homebrew-tap/Formula/orkcc.rb
+          sed -i "s/\${DARWIN_ARM64}/${DARWIN_ARM64}/g" homebrew-tap/Formula/orkcc.rb
+          sed -i "s/\${LINUX_AMD64}/${LINUX_AMD64}/g" homebrew-tap/Formula/orkcc.rb
+          sed -i "s/\${LINUX_ARM64}/${LINUX_ARM64}/g" homebrew-tap/Formula/orkcc.rb
+
+      - name: Commit and push
+        run: |
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/ork.rb Formula/orkcc.rb
+          git commit -m "ork and orkcc ${GITHUB_REF_NAME}"
+          git push

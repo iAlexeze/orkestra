@@ -1,0 +1,154 @@
+name: Build Matrix
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}_${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            goarch: amd64
+            goos: linux
+          - os: linux
+            arch: arm64
+            goarch: arm64
+            goos: linux
+          - os: darwin
+            arch: amd64
+            goarch: amd64
+            goos: darwin
+          - os: darwin
+            arch: arm64
+            goarch: arm64
+            goos: darwin
+          - os: windows
+            arch: amd64
+            goarch: amd64
+            goos: windows
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Cache compiled binaries for ${{ matrix.os }}_${{ matrix.arch }}
+        id: cache-binaries
+        uses: actions/cache@v4
+        with:
+          path: |
+            dist/ork
+            dist/ork.exe
+            dist/orkcc
+            dist/orkcc.exe
+          key: binaries-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('go.sum', '**/*.go', 'cmd/**/*.go') }}
+
+      - name: Set binary names
+        run: |
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            echo "RUNTIME=ork.exe" >> $GITHUB_ENV
+            echo "CONTROL=orkcc.exe" >> $GITHUB_ENV
+          else
+            echo "RUNTIME=ork" >> $GITHUB_ENV
+            echo "CONTROL=orkcc" >> $GITHUB_ENV
+          fi
+
+      - name: Build runtime binary
+        if: steps.cache-binaries.outputs.cache-hit != 'true'
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+          RUNTIME: ${{ env.RUNTIME }}
+        run: |
+          mkdir -p dist
+          go build \
+            -trimpath \
+            -ldflags="-s -w \
+              -X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }} \
+              -X github.com/orkspace/orkestra/pkg/version.Commit=${{ github.sha }} \
+              -X github.com/orkspace/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o dist/${{ env.RUNTIME }} \
+            ./cmd/orkestra/
+          echo "✅ Runtime built: dist/${{ env.RUNTIME }}"
+
+      - name: Build control center binary
+        if: steps.cache-binaries.outputs.cache-hit != 'true'
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+          CONTROL: ${{ env.CONTROL }}
+        working-directory: cmd/controlcenter
+        run: |
+          go build \
+            -trimpath \
+            -ldflags="-s -w \
+              -X github.com/orkspace/orkestra-cc/version.Version=${{ github.ref_name }} \
+              -X github.com/orkspace/orkestra-cc/version.Commit=${{ github.sha }} \
+              -X github.com/orkspace/orkestra-cc/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o ../../dist/${{ env.CONTROL }} .
+          echo "✅ Control Center built: dist/${{ env.CONTROL }}"
+
+      - name: Package runtime tarball
+        env:
+          RUNTIME: ${{ env.RUNTIME }}
+        run: |
+          ARCHIVE="ork_${{ matrix.os }}_${{ matrix.arch }}.tar.gz"
+          tar -czf "dist/${ARCHIVE}" -C dist "${{ env.RUNTIME }}" -C "${{ github.workspace }}" README.md LICENSE
+          echo "✅ Archive: dist/${ARCHIVE}"
+
+      - name: Package control center tarball
+        env:
+          CONTROL: ${{ env.CONTROL }}
+        run: |
+          ARCHIVE="orkcc_${{ matrix.os }}_${{ matrix.arch }}.tar.gz"
+          tar -czf "dist/${ARCHIVE}" -C dist "${{ env.CONTROL }}" -C "${{ github.workspace }}" README.md LICENSE
+          echo "✅ Archive: dist/${ARCHIVE}"
+
+      - name: Package Windows ZIP (optional)
+        if: matrix.goos == 'windows'
+        env:
+          RUNTIME: ${{ env.RUNTIME }}
+          CONTROL: ${{ env.CONTROL }}
+        run: |
+          zip -j "dist/ork_${{ matrix.os }}_${{ matrix.arch }}.zip" "dist/${{ env.RUNTIME }}"
+          zip -j "dist/orkcc_${{ matrix.os }}_${{ matrix.arch }}.zip" "dist/${{ env.CONTROL }}"
+          zip -u "dist/ork_${{ matrix.os }}_${{ matrix.arch }}.zip" README.md LICENSE
+          zip -u "dist/orkcc_${{ matrix.os }}_${{ matrix.arch }}.zip" README.md LICENSE
+          echo "✅ ZIP packages created"
+
+      - name: Upload runtime artifact (tar.gz)
+        uses: actions/upload-artifact@v7
+        with:
+          name: ork_${{ matrix.os }}_${{ matrix.arch }}
+          path: dist/ork_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
+          retention-days: 1
+
+      - name: Upload control center artifact (tar.gz)
+        uses: actions/upload-artifact@v7
+        with:
+          name: orkcc_${{ matrix.os }}_${{ matrix.arch }}
+          path: dist/orkcc_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
+          retention-days: 1
+
+      - name: Upload Windows ZIP artifacts
+        if: matrix.goos == 'windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ork_windows_amd64_zip
+          path: |
+            dist/ork_windows_amd64.zip
+            dist/orkcc_windows_amd64.zip
+          retention-days: 1
