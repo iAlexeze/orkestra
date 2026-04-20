@@ -56,7 +56,7 @@ func downloadExamplePack(root, pack, version string, refresh bool) error {
 		version, filename,
 	)
 
-	fmt.Printf("    → Downloading %s\n", url)
+	fmt.Println("    → Downloading pack...")
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -149,6 +149,9 @@ func extractExamplePack(root, pack, version string) error {
 			out.Close()
 		}
 	}
+
+	// Remove tarball from project folder (keep cache intact)
+	_ = os.Remove(tarball)
 
 	return nil
 }

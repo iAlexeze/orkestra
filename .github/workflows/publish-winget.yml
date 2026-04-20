@@ -1,0 +1,66 @@
+name: Publish Winget Manifests
+
+on:
+  workflow_call:
+
+jobs:
+  winget:
+    name: Publish Winget Manifests
+    runs-on: windows-latest
+    steps:
+      - name: Checkout winget-pkgs fork
+        uses: actions/checkout@v4
+        with:
+          repository: ialexeze/winget-pkgs
+          token: ${{ secrets.ORK_PUBLISH_PAT }}
+          path: winget
+
+      - name: Install wingetcreate
+        run: winget install --id Microsoft.WingetCreate --source winget --silent
+
+      - name: Generate Winget manifest for Orkestra CLI
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^v',''
+          $url = "https://github.com/ialexeze/orkestra/releases/download/$tag/ork_windows_amd64.zip"
+          $manifestPath = "winget/manifests/o/Orkspace/Orkestra/$version"
+          wingetcreate new `
+            --output $manifestPath `
+            --publisher "Orkspace" `
+            --publisher-url "https://orkestra.io" `
+            --license "Apache-2.0" `
+            --license-url "https://github.com/ialexeze/orkestra/blob/main/LICENSE" `
+            --description "Declarative Runtime for Kubernetes Operators" `
+            --homepage "https://github.com/ialexeze/orkestra" `
+            --version $version `
+            --installer-url $url `
+            --installer-type zip `
+            --product-code "Orkspace.Orkestra"
+
+      - name: Generate Winget manifest for Orkestra Control Center
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^v',''
+          $url = "https://github.com/ialexeze/orkestra/releases/download/$tag/orkcc_windows_amd64.zip"
+          $manifestPath = "winget/manifests/o/Orkspace/OrkestraControlCenter/$version"
+          wingetcreate new `
+            --output $manifestPath `
+            --publisher "Orkspace" `
+            --publisher-url "https://orkestra.io" `
+            --license "Apache-2.0" `
+            --license-url "https://github.com/ialexeze/orkestra/blob/main/LICENSE" `
+            --description "Web-based Control Center for Orkestra" `
+            --homepage "https://github.com/ialexeze/orkestra" `
+            --version $version `
+            --installer-url $url `
+            --installer-type zip `
+            --product-code "Orkspace.OrkestraControlCenter"
+
+      - name: Commit and push manifests
+        run: |
+          cd winget
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Add Winget manifests for Orkestra and Orkestra Control Center ${{ github.ref_name }}"
+          git push

@@ -1,0 +1,47 @@
+name: Package Examples
+
+on:
+  workflow_call:
+
+jobs:
+  examples:
+    name: Package Examples
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Package example packs
+        run: |
+          mkdir -p dist/examples
+          TAG="${{ github.ref_name }}"
+          tar -czf "dist/examples_beginner_${TAG}.tar.gz" -C examples beginner
+          tar -czf "dist/examples_intermediate_${TAG}.tar.gz" -C examples intermediate
+          tar -czf "dist/examples_advanced_${TAG}.tar.gz" -C examples advanced
+          tar -czf "dist/examples_use-cases_${TAG}.tar.gz" -C examples use-cases
+          echo "📦 Example packs packaged"
+
+      - name: Upload example packs
+        uses: actions/upload-artifact@v7
+        with:
+          name: examples
+          path: dist/examples_*.tar.gz
+          retention-days: 1
+
+      - name: Write examples summary
+        run: |
+          TAG="${{ github.ref_name }}"
+          echo "## 📦 Example Packs" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Pack | Description | Archive |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|-------------|---------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Beginner | Getting started with Orkestra | \`examples_beginner_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Intermediate | Multi‑operator workflows | \`examples_intermediate_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Advanced | Custom resources & controllers | \`examples_advanced_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Use Cases | Real‑world scenarios | \`examples_use-cases_${TAG}.tar.gz\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Download from the release assets or run:**" >> "$GITHUB_STEP_SUMMARY"
+          echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+          echo "curl -LO https://github.com/ialexeze/orkestra/releases/download/${TAG}/examples_beginner_${TAG}.tar.gz" >> "$GITHUB_STEP_SUMMARY"
+          echo "tar -xzf examples_beginner_${TAG}.tar.gz" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

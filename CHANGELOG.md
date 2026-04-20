@@ -1,34 +1,29 @@
-# 📝 Changelog — CLI Refactor & Simplification
+# Changelog
 
-### [Unreleased] — CLI Modernization & Cleanup
+## [Unreleased]
 
-#### Removed
-- **Removed the entire `inspect` subsystem** (`get`, `describe`, `status`, `events`, `reconcile`), which is now fully superseded by the Orkestra Control Center (CC).  
-  These commands duplicated kubectl functionality and added unnecessary cognitive load.  
-  CC now provides richer, aggregated, real‑time introspection, making the inspect package obsolete.
+### Added
+- **Windows support**: Native `ork.exe` and `orkcc.exe` binaries with `.zip` packages (in addition to `.tar.gz`)
+- **Winget publishing**: Automated manifest generation for Windows Package Manager
+- **Reusable workflows**: Split monolithic release pipeline into composable components:
+  - `build-matrix.yml` – cross‑platform binary builds
+  - `package-examples.yml` – example packs
+  - `build-push-images.yml` – container images (GHCR)
+  - `release-helm.yml` – Helm chart release
+  - `sign-and-release.yml` – GPG signing + GitHub Release
+  - `publish-homebrew.yml` – Homebrew formulas
+  - `publish-winget.yml` – Winget manifests
+  - `release-summary.yml` – final status summary
+- **Caching optimisation**: Per‑matrix binary caching to speed up rebuilds
+- **GPG signing for ZIP archives**: Windows `.zip` files are now signed alongside tarballs
 
-#### Changed
-- **Streamlined CLI surface** to focus exclusively on authoring, generation, validation, and platform lifecycle.  
-  Orkestra CLI is now intentionally scoped to:
-  - `init`
-  - `validate`
-  - `template`
-  - `generate`
-  - `kompose`
-  - `run`
-  - `diff`
-  - `control`
-  - `upgrade`
-  - `version`
+### Fixed
+- Corrected `go build` syntax (missing `-o` flag) in matrix build
+- Fixed typo in cache path (`dis/` → `dist/`)
+- Removed duplicate Windows assets in release `files:` section
+- Reusable summary workflow now accepts job results as inputs
 
-- **Shadowed and hid global flags** (`--kubeconfig`, `--katalog`, `--debug`, `--verbose`) for commands that should not inherit them (`init`, `diff`, `upgrade`, etc.).  
-  This results in a cleaner, more intuitive help output and prevents irrelevant flags from leaking into non‑cluster commands.
-
-- **Improved `init` UX** by allowing utility flags (`--list-packs`, `--clear-cache`, `--refresh-cache`) to run without requiring a project name.
-
-#### Added
-- **Caching system for example packs** under `~/.orkestra/packs/`, enabling instant repeated `ork init` and offline usage.
-- **New cache management flags**:
-  - `--refresh-cache` — force re-download of example packs  
-  - `--clear-cache` — remove all cached packs  
-- **Automatic shell completion installation** (bash, zsh, fish) integrated into the installer, with opt‑out via `ORK_SKIP_COMPLETION=true`.
+### Changed
+- Helm chart publishing now only runs for stable releases (not pre‑releases)
+- Windows binaries are packaged as both `.tar.gz` and `.zip` for better user experience
+- Homebrew formulas update uses `ORK_PUBLISH_PAT` instead of `HOMEBREW_TAP_TOKEN`

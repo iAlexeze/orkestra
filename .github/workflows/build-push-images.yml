@@ -1,0 +1,116 @@
+name: Build and Push Images
+
+on:
+  workflow_call:
+
+jobs:
+  image:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.0.0
+        id: setup-buildx
+        with:
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for runtime
+        id: meta-runtime
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/ialexeze/orkestra
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+
+      - name: Extract metadata for control center
+        id: meta-cc
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/ialexeze/orkestra-cc
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+
+      - name: Cache compiled Linux binaries
+        id: cache-binaries
+        uses: actions/cache@v4
+        with:
+          path: |
+            ork-amd64
+            ork-arm64
+            cmd/controlcenter/orkcc-amd64
+            cmd/controlcenter/orkcc-arm64
+          key: linux-binaries-${{ hashFiles('go.sum', '**/*.go', 'cmd/**/*.go') }}
+
+      - name: Build Linux binaries (if cache miss)
+        if: steps.cache-binaries.outputs.cache-hit != 'true'
+        run: |
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ork-amd64 ./cmd/orkestra
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o ork-arm64 ./cmd/orkestra
+          cd ./cmd/controlcenter
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o orkcc-amd64 .
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o orkcc-arm64 .
+
+      - name: Build and push runtime image
+        id: push-runtime
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-runtime.outputs.tags }}
+          labels: ${{ steps.meta-runtime.outputs.labels }}
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ fromJSON(steps.meta-runtime.outputs.json).labels['org.opencontainers.image.created'] }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push control center image
+        id: push-cc
+        uses: docker/build-push-action@v5
+        with:
+          context: cmd/controlcenter
+          file: cmd/controlcenter/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-cc.outputs.tags }}
+          labels: ${{ steps.meta-cc.outputs.labels }}
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ fromJSON(steps.meta-cc.outputs.json).labels['org.opencontainers.image.created'] }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Write image summary
+        run: |
+          echo "## 🐳 Container Images" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Component | Registry | Image |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----------|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Runtime | GHCR | \`ghcr.io/ialexeze/orkestra:${{ github.ref_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Control Center | GHCR | \`ghcr.io/ialexeze/orkestra-cc:${{ github.ref_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Platforms:** \`linux/amd64\`, \`linux/arm64\`" >> "$GITHUB_STEP_SUMMARY"
