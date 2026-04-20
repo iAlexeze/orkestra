@@ -15,10 +15,23 @@ jobs:
         run: |
           mkdir -p dist/examples
           TAG="${{ github.ref_name }}"
-          tar -czf "dist/examples_beginner_${TAG}.tar.gz" -C examples beginner
-          tar -czf "dist/examples_intermediate_${TAG}.tar.gz" -C examples intermediate
-          tar -czf "dist/examples_advanced_${TAG}.tar.gz" -C examples advanced
-          tar -czf "dist/examples_use-cases_${TAG}.tar.gz" -C examples use-cases
+
+          # Beginner
+          tar -czf "dist/examples_beginner_${TAG}.tar.gz" \
+            -C examples/beginner .
+
+          # Intermediate
+          tar -czf "dist/examples_intermediate_${TAG}.tar.gz" \
+            -C examples/intermediate .
+
+          # Advanced
+          tar -czf "dist/examples_advanced_${TAG}.tar.gz" \
+            -C examples/advanced .
+
+          # Use-cases
+          tar -czf "dist/examples_use-cases_${TAG}.tar.gz" \
+            -C examples/use-cases .
+
           echo "📦 Example packs packaged"
 
       - name: Upload example packs
