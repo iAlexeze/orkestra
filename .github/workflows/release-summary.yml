@@ -3,6 +3,10 @@ name: Release Summary
 on:
   workflow_call:
     inputs:
+      image_tag:
+        description: 'Container image tag (without v prefix)'
+        required: true
+        type: string      
       build_result:
         required: true
         type: string
@@ -21,9 +25,9 @@ on:
       homebrew_result:
         required: true
         type: string
-      winget_result:
-        required: true
-        type: string
+      # winget_result:
+      #   required: true
+      #   type: string
 
 jobs:
   summary:

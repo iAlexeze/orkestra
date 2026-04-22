@@ -2,6 +2,20 @@ name: Update Homebrew Formulas
 
 on:
   workflow_call:
+    inputs:
+      image_tag:
+        description: 'Container image tag (without v prefix)'
+        required: true
+        type: string
+      repository:
+        description: 'GitHub repository (owner/name) for the main orkestra repo'
+        required: true
+        type: string
+        default: ${{ github.repository }}
+      tap_repository:
+        description: 'GitHub repository (owner/name) for the Homebrew tap'
+        required: true
+        type: string
 
 jobs:
   homebrew:
@@ -11,14 +25,14 @@ jobs:
       - name: Checkout tap
         uses: actions/checkout@v6.0.2
         with:
-          repository: ialexeze/homebrew-tap
+          repository: ${{ inputs.tap_repository }}
           token: ${{ secrets.ORK_PUBLISH_PAT }}
           path: homebrew-tap
 
       - name: Download checksums
         run: |
           TAG="${GITHUB_REF_NAME}"
-          curl -sSfL "https://github.com/ialexeze/orkestra/releases/download/${TAG}/checksums.txt" -o checksums.txt
+          curl -sSfL "https://github.com/${{ inputs.repository }}/releases/download/${TAG}/checksums.txt" -o checksums.txt
 
       - name: Extract SHA256 values
         id: sha
@@ -35,6 +49,7 @@ jobs:
       - name: Update runtime formula
         env:
           TAG: ${{ github.ref_name }}
+          REPO: ${{ inputs.repository }}
           DARWIN_AMD64: ${{ steps.sha.outputs.ORK_DARWIN_AMD64 }}
           DARWIN_ARM64: ${{ steps.sha.outputs.ORK_DARWIN_ARM64 }}
           LINUX_AMD64:  ${{ steps.sha.outputs.ORK_LINUX_AMD64 }}
@@ -44,26 +59,26 @@ jobs:
           cat > homebrew-tap/Formula/ork.rb << 'EOF'
           class Ork < Formula
             desc "Declarative Runtime for Kubernetes Operators"
-            homepage "https://github.com/orkspace/orkestra"
+            homepage "https://github.com/${REPO}"
             version "${VERSION}"
             license "Apache 2.0"
             on_macos do
               on_arm   do
-                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_darwin_arm64.tar.gz"
+                url    "https://github.com/${REPO}/releases/download/${TAG}/ork_darwin_arm64.tar.gz"
                 sha256 "${DARWIN_ARM64}"
               end
               on_intel do
-                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_darwin_amd64.tar.gz"
+                url    "https://github.com/${REPO}/releases/download/${TAG}/ork_darwin_amd64.tar.gz"
                 sha256 "${DARWIN_AMD64}"
               end
             end
             on_linux do
               on_arm   do
-                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_linux_arm64.tar.gz"
+                url    "https://github.com/${REPO}/releases/download/${TAG}/ork_linux_arm64.tar.gz"
                 sha256 "${LINUX_ARM64}"
               end
               on_intel do
-                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/ork_linux_amd64.tar.gz"
+                url    "https://github.com/${REPO}/releases/download/${TAG}/ork_linux_amd64.tar.gz"
                 sha256 "${LINUX_AMD64}"
               end
             end
@@ -77,6 +92,7 @@ jobs:
           EOF
           sed -i "s/\${VERSION}/${VERSION}/g" homebrew-tap/Formula/ork.rb
           sed -i "s/\${TAG}/${TAG}/g" homebrew-tap/Formula/ork.rb
+          sed -i "s/\${REPO}/${REPO}/g" homebrew-tap/Formula/ork.rb
           sed -i "s/\${DARWIN_AMD64}/${DARWIN_AMD64}/g" homebrew-tap/Formula/ork.rb
           sed -i "s/\${DARWIN_ARM64}/${DARWIN_ARM64}/g" homebrew-tap/Formula/ork.rb
           sed -i "s/\${LINUX_AMD64}/${LINUX_AMD64}/g" homebrew-tap/Formula/ork.rb
@@ -85,6 +101,7 @@ jobs:
       - name: Update control center formula
         env:
           TAG: ${{ github.ref_name }}
+          REPO: ${{ inputs.repository }}
           DARWIN_AMD64: ${{ steps.sha.outputs.CC_DARWIN_AMD64 }}
           DARWIN_ARM64: ${{ steps.sha.outputs.CC_DARWIN_ARM64 }}
           LINUX_AMD64:  ${{ steps.sha.outputs.CC_LINUX_AMD64 }}
@@ -94,26 +111,26 @@ jobs:
           cat > homebrew-tap/Formula/orkcc.rb << 'EOF'
           class OrkCc < Formula
             desc "Web-based Control Center for Orkestra - visualize and manage your operators"
-            homepage "https://github.com/orkspace/orkestra"
+            homepage "https://github.com/${REPO}"
             version "${VERSION}"
             license "Apache 2.0"
             on_macos do
               on_arm   do
-                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_darwin_arm64.tar.gz"
+                url    "https://github.com/${REPO}/releases/download/${TAG}/orkcc_darwin_arm64.tar.gz"
                 sha256 "${DARWIN_ARM64}"
               end
               on_intel do
-                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_darwin_amd64.tar.gz"
+                url    "https://github.com/${REPO}/releases/download/${TAG}/orkcc_darwin_amd64.tar.gz"
                 sha256 "${DARWIN_AMD64}"
               end
             end
             on_linux do
               on_arm   do
-                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_linux_arm64.tar.gz"
+                url    "https://github.com/${REPO}/releases/download/${TAG}/orkcc_linux_arm64.tar.gz"
                 sha256 "${LINUX_ARM64}"
               end
               on_intel do
-                url    "https://github.com/orkspace/orkestra/releases/download/${TAG}/orkcc_linux_amd64.tar.gz"
+                url    "https://github.com/${REPO}/releases/download/${TAG}/orkcc_linux_amd64.tar.gz"
                 sha256 "${LINUX_AMD64}"
               end
             end
@@ -127,6 +144,7 @@ jobs:
           EOF
           sed -i "s/\${VERSION}/${VERSION}/g" homebrew-tap/Formula/orkcc.rb
           sed -i "s/\${TAG}/${TAG}/g" homebrew-tap/Formula/orkcc.rb
+          sed -i "s/\${REPO}/${REPO}/g" homebrew-tap/Formula/orkcc.rb
           sed -i "s/\${DARWIN_AMD64}/${DARWIN_AMD64}/g" homebrew-tap/Formula/orkcc.rb
           sed -i "s/\${DARWIN_ARM64}/${DARWIN_ARM64}/g" homebrew-tap/Formula/orkcc.rb
           sed -i "s/\${LINUX_AMD64}/${LINUX_AMD64}/g" homebrew-tap/Formula/orkcc.rb

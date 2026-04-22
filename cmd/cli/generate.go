@@ -326,7 +326,7 @@ Examples:
 
 		bundle := rbacOut + "\n---\n" + configMapOut
 
-		log.Println("configmap generated successfully")
+		log.Println("bundle generated successfully")
 
 		if outputFile != "" {
 			return os.WriteFile(outputFile, []byte(bundle), 0644)

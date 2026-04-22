@@ -620,6 +620,52 @@ func validateOneHPARef(crdName, hpaName string, ref orktypes.ScaleTargetRef) err
 	return nil
 }
 
+// validateStatusTypes ensures that all declarative status fields declare a valid
+// type. StatusFieldSpec.Type controls how the resolved template value is cast
+// before being written into the CR's /status subresource.
+//
+// Supported type names (case‑insensitive):
+//   - "string", "str", ""      → string (default)
+//   - "bool", "boolean"        → boolean
+//   - "int", "integer"         → integer
+//
+// Any other value is rejected at katalog‑load time. This prevents silent
+// mis‑casts in the status resolver and ensures that typed CRD fields (such as
+// those required by the Kubernetes /scale subresource) receive correctly‑typed
+// values.
+//
+// This validator mirrors the style of validateHPAReference, validateTimeDuration,
+// and other fail‑fast katalog validators: the first invalid type aborts loading
+// with a clear, actionable error message.
+func (k *Katalog) validateStatusTypes() error {
+	for name, crd := range k.enabledCRDs {
+		// Skip CRDs without declarative status
+		if crd.OperatorBox.Status == nil {
+			continue
+		}
+
+		if crd.OperatorBox.Status.HasFields() {
+			for _, f := range crd.OperatorBox.Status.Fields {
+				switch strings.ToLower(f.Type) {
+				case "", "string", "str", "default":
+				case "int", "integer":
+				case "bool", "boolean":
+				case "float", "auto":
+					// valid
+				default:
+					return fmt.Errorf(
+						"invalid status field type %q in CRD %q (path: %q):\n"+
+							"  must be one of: string, str, int, integer, bool, boolean, float, auto\n",
+						f.Type, name, f.Path,
+					)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 // validateNotifyTeams checks that teams declared under notify actually exist in this katalog context
 // func (k *Katalog) validateNotifyTeams() error {
 // 	for name, crd := range k.enabledCRDs {

@@ -223,6 +223,8 @@ func mergeTemplates(operatorBox orktypes.OperatorBoxConfig) orktypes.HookTemplat
 	t := orktypes.HookTemplates{}
 	if operatorBox.OnCreate != nil {
 		t.Deployments = append(t.Deployments, operatorBox.OnCreate.Deployments...)
+		t.ReplicaSets = append(t.ReplicaSets, operatorBox.OnCreate.ReplicaSets...)
+		t.StatefulSets = append(t.StatefulSets, operatorBox.OnCreate.StatefulSets...)
 		t.Services = append(t.Services, operatorBox.OnCreate.Services...)
 		t.Secrets = append(t.Secrets, operatorBox.OnCreate.Secrets...)
 		t.ConfigMaps = append(t.ConfigMaps, operatorBox.OnCreate.ConfigMaps...)
@@ -231,9 +233,24 @@ func mergeTemplates(operatorBox orktypes.OperatorBoxConfig) orktypes.HookTemplat
 		t.Pods = append(t.Pods, operatorBox.OnCreate.Pods...)
 		t.ServiceAccounts = append(t.ServiceAccounts, operatorBox.OnCreate.ServiceAccounts...)
 		t.Namespaces = append(t.Namespaces, operatorBox.OnCreate.Namespaces...)
+		t.PersistentVolumes = append(t.PersistentVolumes, operatorBox.OnCreate.PersistentVolumes...)
+		t.PersistentVolumeClaims = append(t.PersistentVolumeClaims, operatorBox.OnCreate.PersistentVolumeClaims...)
+		t.Ingresses = append(t.Ingresses, operatorBox.OnCreate.Ingresses...)
+
+		// Future when added
+		t.StorageClasses = append(t.StorageClasses, operatorBox.OnCreate.StorageClasses...)
+		t.ClusterRoles = append(t.ClusterRoles, operatorBox.OnCreate.ClusterRoles...)
+		t.ClusterRoleBindings = append(t.ClusterRoleBindings, operatorBox.OnCreate.ClusterRoleBindings...)
+		t.Roles = append(t.Roles, operatorBox.OnCreate.Roles...)
+		t.RoleBindings = append(t.RoleBindings, operatorBox.OnCreate.RoleBindings...)
+		t.LimitRanges = append(t.LimitRanges, operatorBox.OnCreate.LimitRanges...)
+		t.ResourceQuotas = append(t.ResourceQuotas, operatorBox.OnCreate.ResourceQuotas...)
+		t.PriorityClasses = append(t.PriorityClasses, operatorBox.OnCreate.PriorityClasses...)
 	}
 	if operatorBox.OnReconcile != nil {
 		t.Deployments = append(t.Deployments, operatorBox.OnReconcile.Deployments...)
+		t.ReplicaSets = append(t.ReplicaSets, operatorBox.OnReconcile.ReplicaSets...)
+		t.StatefulSets = append(t.StatefulSets, operatorBox.OnReconcile.StatefulSets...)
 		t.Services = append(t.Services, operatorBox.OnReconcile.Services...)
 		t.Secrets = append(t.Secrets, operatorBox.OnReconcile.Secrets...)
 		t.ConfigMaps = append(t.ConfigMaps, operatorBox.OnReconcile.ConfigMaps...)
@@ -242,6 +259,19 @@ func mergeTemplates(operatorBox orktypes.OperatorBoxConfig) orktypes.HookTemplat
 		t.Pods = append(t.Pods, operatorBox.OnReconcile.Pods...)
 		t.ServiceAccounts = append(t.ServiceAccounts, operatorBox.OnReconcile.ServiceAccounts...)
 		t.Namespaces = append(t.Namespaces, operatorBox.OnReconcile.Namespaces...)
+		t.PersistentVolumes = append(t.PersistentVolumes, operatorBox.OnCreate.PersistentVolumes...)
+		t.PersistentVolumeClaims = append(t.PersistentVolumeClaims, operatorBox.OnCreate.PersistentVolumeClaims...)
+		t.Ingresses = append(t.Ingresses, operatorBox.OnCreate.Ingresses...)
+
+		// Future when added
+		t.StorageClasses = append(t.StorageClasses, operatorBox.OnCreate.StorageClasses...)
+		t.ClusterRoles = append(t.ClusterRoles, operatorBox.OnCreate.ClusterRoles...)
+		t.ClusterRoleBindings = append(t.ClusterRoleBindings, operatorBox.OnCreate.ClusterRoleBindings...)
+		t.Roles = append(t.Roles, operatorBox.OnCreate.Roles...)
+		t.RoleBindings = append(t.RoleBindings, operatorBox.OnCreate.RoleBindings...)
+		t.LimitRanges = append(t.LimitRanges, operatorBox.OnCreate.LimitRanges...)
+		t.ResourceQuotas = append(t.ResourceQuotas, operatorBox.OnCreate.ResourceQuotas...)
+		t.PriorityClasses = append(t.PriorityClasses, operatorBox.OnCreate.PriorityClasses...)
 	}
 	return t
 }

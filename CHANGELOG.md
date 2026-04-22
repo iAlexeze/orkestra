@@ -1,24 +1,31 @@
 # Changelog
 
-## [Unreleased]
+### CI/CD & Helm Chart Improvements
 
-### Added
-- ReplicaSet becomes a first‑class Orkestra workload primitive.
-- New `replicaSets:` template block in `operatorBox` (onCreate/onReconcile).
-- Full registry implementation: create, update, delete, deleteIfOwned.
-- Template resolver: `ResolveReplicaSetTemplate`.
-- Reconciler integration: `runReplicaSets`, forEach expansion, conditional cleanup.
-- Katalog schema support for ReplicaSetTemplateSource.
-- Example pack: multi‑region fan‑out using ReplicaSets.
+#### 🔧 Helm Chart
+- Removed unnecessary configurations after testing
+- Chart now uses stripped image tag (without `v` prefix) for `appVersion` and container image tags
+- Updated `values.yaml` to reference the correct image tag format
 
-### Changed
-- Workload orchestration no longer requires Deployments for simple pod replication.
-- forEach fan‑out now supports ReplicaSet workloads directly.
-- Simplified workload lifecycle: CR → ReplicaSet → Pod (Deployment layer removed).
+#### ⚙️ CI/CD Workflows – Made Fully Reusable
+- All workflows now accept configurable inputs:
+  - `image_tag` (stripped version) passed from a central `prepare` job
+  - Repository, image names, Helm repo URL, Homebrew tap, etc.
+- Removed hardcoded project names (`orkspace`, `ialexeze`, `orkestra`) – workflows are portable
+- Added `prepare` job to strip `v` from Git tags and propagate `image_tag` to downstream jobs
+- Standardized tag handling: Git tags keep `v`, container images and Helm charts use plain semver
 
-### Removed
-- Implicit reliance on Deployment rollout machinery for basic workloads.
+#### 🚀 Final Release Workflow
+- Orchestrates all jobs with proper dependencies and conditionals
+- Uses `prepare` to compute metadata once
+- All reusable workflows called with explicit inputs (defaults applied in the called workflows)
+- Added release summary job that aggregates status from all components
 
-### Fixed
-- Correct ownerReferences for ReplicaSets enabling full garbage collection.
-- Idempotent reconcile behavior for ReplicaSet drift correction.
+#### 📦 Affected Workflows
+- `build-matrix.yml` (unchanged but now receives metadata via prepare)
+- `build-push-images.yml` – configurable image names & registry
+- `package-examples.yml` – configurable repo and project name
+- `release-helm.yml` – configurable chart name, repo URL, namespace
+- `sign-and-release.yml` – fully configurable (GitHub repo, container registry, Helm repo, Homebrew tap)
+- `publish-homebrew.yml` – accepts tap repository and main repo
+- `release-summary.yml` – uses same configurable inputs for success instructions
