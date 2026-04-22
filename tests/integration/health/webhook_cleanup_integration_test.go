@@ -51,7 +51,7 @@ func TestWebhookLifecycle_Integration(t *testing.T) {
 	}
 
 	// Register
-	err = health.RegisterWebhooks(ctx, client, reg, opts)
+	err = health.RegisterAdmissionWebhooks(ctx, client, reg, opts)
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestWebhookLifecycle_Integration(t *testing.T) {
 	}
 
 	// Cleanup
-	err = health.UnregisterWebhooks(ctx, client)
+	err = health.UnregisterAdmissionWebhooks(ctx, client)
 	if err != nil {
 		t.Fatalf("cleanup failed: %v", err)
 	}

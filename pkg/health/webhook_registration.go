@@ -92,7 +92,7 @@ type WebhookRegistrationOptions struct {
 	OrkestraResourceSelector *metav1.LabelSelector
 }
 
-// RegisterWebhooks creates or updates the ValidatingWebhookConfiguration and
+// RegisterAdmissionWebhooks creates or updates the ValidatingWebhookConfiguration and
 // MutatingWebhookConfiguration based on the current admission registry.
 //
 // Called from HealthServer.Start() when ENABLE_ADMISSION_WEBHOOK=true, after the
@@ -101,7 +101,7 @@ type WebhookRegistrationOptions struct {
 // The function is idempotent — safe to call on restart. Existing configurations
 // are updated to match the current Katalog state. CRDs removed from the Katalog
 // are removed from the webhook configuration.
-func RegisterWebhooks(
+func RegisterAdmissionWebhooks(
 	ctx context.Context,
 	client kubernetes.Interface,
 	registry admissionRegistryReader,
@@ -140,7 +140,7 @@ func RegisterWebhooks(
 	return nil
 }
 
-// UnregisterWebhooks removes the ValidatingWebhookConfiguration and
+// UnregisterAdmissionWebhooks removes the ValidatingWebhookConfiguration and
 // MutatingWebhookConfiguration entries that were previously created from the
 // admission registry.
 //
@@ -154,7 +154,7 @@ type WebhookCleanupOptions struct {
 	validating bool
 }
 
-func UnregisterWebhooks(
+func UnregisterAdmissionWebhooks(
 	ctx context.Context,
 	client kubernetes.Interface,
 	opts WebhookCleanupOptions,

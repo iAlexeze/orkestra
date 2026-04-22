@@ -237,6 +237,7 @@ func (r *GenericReconciler[T]) reconcileCore(ctx context.Context, key string) er
 		return err
 	}
 
+	// Check if resource is being deleted
 	if obj.GetDeletionTimestamp() != nil {
 		logger.FromContext(ctx).Info().
 			Str("name", obj.GetName()).
@@ -263,6 +264,7 @@ func (r *GenericReconciler[T]) reconcileCore(ctx context.Context, key string) er
 		}
 	}
 
+	// Ensure finalizers
 	if !r.crd.RemoveFinalizers {
 		if err := r.ensureFinalizers(ctx, obj); err != nil {
 			r.event.Eventf(obj, corev1.EventTypeWarning, r.crd.APITypes.Kind+"FinalizerError",
@@ -281,10 +283,12 @@ func (r *GenericReconciler[T]) reconcileCore(ctx context.Context, key string) er
 
 	// Ensure managed label and annotations — idempotent, like finalizer patching.
 	// This is how ork reconcile knows what this operator instance manages.
+	// Labels
 	if err := r.ensureManagedLabel(ctx, obj); err != nil {
 		return err
 	}
 
+	// Annotations
 	if err := r.ensureManagedAnnotations(ctx, obj, r.crd.KatalogName); err != nil {
 		return err
 	}

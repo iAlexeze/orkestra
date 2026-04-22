@@ -143,6 +143,13 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 12. Validate Time Duration
+	// -------------------------------------------------------------------------
+	if err := k.validateTimeDuration(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }
 

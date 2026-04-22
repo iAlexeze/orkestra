@@ -136,6 +136,12 @@ func (r *GenericReconciler[T]) runResourceGroup(
 	// nil-safe: if CRD has no restrictions, guard is a no-op.
 	guard := r.namespaceGuardFunc(ctx, obj)
 
+	// Create namespaces first
+	if err := runNamespaces(ctx, kube, resolver, obj,
+		expandForEachNamespaces(resolver, t.Namespaces), update); err != nil {
+		return err
+	}
+
 	if err := runSecrets(ctx, kube, resolver, obj,
 		expandForEachSecrets(resolver, t.Secrets), update, guard); err != nil {
 		return err

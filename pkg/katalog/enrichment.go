@@ -32,7 +32,7 @@ func EnrichCRDEntry(entry *orktypes.CRDEntry) (orktypes.EnrichmentOutcome, error
 	apiTypes := &entry.APITypes
 
 	// Already fully specified — nothing to do
-	if isFullySpecified(apiTypes) {
+	if isFullySpecified(entry) {
 		return orktypes.EnrichmentNotNeeded, nil
 	}
 
@@ -42,13 +42,13 @@ func EnrichCRDEntry(entry *orktypes.CRDEntry) (orktypes.EnrichmentOutcome, error
 		return orktypes.EnrichmentFailed, fmt.Errorf(
 			"CRD %q: apiTypes is partially specified — either declare kind only "+
 				"(for Kubernetes built-ins) or declare all fields "+
-				"(kind, group, version, plural).\n"+
-				"  Have: kind=%q group=%q version=%q plural=%q\n"+
+				"(kind, group, version).\n"+
+				"  Have: kind=%q group=%q version=%q\n"+
 				"  Hint: for built-ins, only kind is needed:\n"+
 				"    apiTypes:\n"+
 				"      kind: %s",
 			entry.Name,
-			apiTypes.Kind, apiTypes.Group, apiTypes.Version, apiTypes.Plural,
+			apiTypes.Kind, apiTypes.Group, apiTypes.Version,
 			apiTypes.Kind,
 		)
 	}
@@ -112,9 +112,15 @@ func EnrichCRDEntry(entry *orktypes.CRDEntry) (orktypes.EnrichmentOutcome, error
 }
 
 // isFullySpecified reports whether all required apiTypes fields are present.
-func isFullySpecified(a *orktypes.APITypes) bool {
-	return a.Kind != "" && a.Version != "" && a.Plural != ""
-	// Group is intentionally excluded — core group is legitimately empty
+func isFullySpecified(entry *orktypes.CRDEntry) bool {
+	a := &entry.APITypes
+	if entry.IsBuiltInType() {
+		return a.Kind != "" && a.Version != "" && a.Plural != ""
+		// Group is intentionally excluded — core group is legitimately empty
+	} else {
+		return a.Kind != "" && a.Group != "" && a.Version != ""
+		// Plural is intentailly excluded — optional
+	}
 }
 
 // isPartiallySpecified reports whether some but not all required fields are set.

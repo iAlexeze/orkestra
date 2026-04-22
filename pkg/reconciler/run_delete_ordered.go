@@ -173,6 +173,7 @@ func (r *GenericReconciler[T]) expandAllForDelete(
 	out = append(out, resolveNames(resolver, pvGVR, false, t.PersistentVolumes, func(s orktypes.PVTemplateSource) (string, string) { return s.Name, "" })...)
 	out = append(out, resolveNames(resolver, hpaGVR, true, t.HorizontalPodAutoscalers, func(s orktypes.HPATemplateSource) (string, string) { return s.Name, s.Namespace })...)
 	out = append(out, resolveNames(resolver, pdbGVR, true, t.PodDisruptionBudgets, func(s orktypes.PDBTemplateSource) (string, string) { return s.Name, s.Namespace })...)
+	out = append(out, resolveNames(resolver, namespaceGVR, false, t.Namespaces, func(s orktypes.NamespaceTemplateSource) (string, string) { return s.Name, "" })...)
 
 	return out
 }

@@ -47,18 +47,8 @@ type childGVREntry struct {
 // knownChildGVRs is built once at startup from builtInRegistry.
 // Statusless is per-child-kind, independent of the parent CRD's statusless flag.
 var knownChildGVRs = func() []childGVREntry {
-	defs := []struct {
-		GVR schema.GroupVersionResource
-		Key string
-	}{
-		{crDeploymentGVR, "deployment"},
-		{crServiceGVR, "service"},
-		{crConfigMapGVR, "configmap"},
-		{crSecretGVR, "secret"},
-		{crJobGVR, "job"},
-		{crCronJobGVR, "cronjob"},
-		{crServiceAccountGVR, "serviceaccount"},
-	}
+	defs := katalog.ChildGVRs()
+
 	out := make([]childGVREntry, len(defs))
 	for i, d := range defs {
 		m := katalog.BuiltInMeta(d.Key)
