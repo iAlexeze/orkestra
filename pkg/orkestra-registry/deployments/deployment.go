@@ -6,16 +6,16 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -27,7 +27,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return fmt.Errorf("deployment.Create: invalid spec: %w", err)
 	}
 
-	namespace := resolveNamespace(owner, spec)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
 
 	_, err := kube.Clientset().AppsV1().Deployments(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -65,7 +65,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return fmt.Errorf("deployment.Update: invalid spec: %w", err)
 	}
 
-	namespace := resolveNamespace(owner, spec)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
 
 	existing, err := kube.Clientset().AppsV1().Deployments(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
@@ -127,7 +127,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // For most cases owner references handle cascade deletion — use this only
 // for explicit cleanup declared in onDelete templates.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedDeploymentSpec) error {
-	namespace := resolveNamespace(owner, spec)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
 
 	err := kube.Clientset().AppsV1().Deployments(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -183,6 +183,8 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 		Resources:   src.Resources,
 		Labels:      make(map[string]string),
 		Annotations: make(map[string]string),
+		Env:         make(map[string]orktypes.EnvVarSource),
+		EnvFrom:     src.EnvFrom,
 	}
 
 	// Default name
@@ -217,6 +219,11 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 		spec.Annotations[a.Key] = a.Value
 	}
 
+	// Copy Env map
+	for k, v := range src.Env {
+		spec.Env[k] = v
+	}
+
 	// Orkestra system labels — always added
 	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
 	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
@@ -227,6 +234,12 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace string) *appsv1.Deployment {
+	// Debug line
+	logger.Debug().
+		Interface("env", spec.Env).
+		Interface("envFrom", spec.EnvFrom).
+		Msg("deployment.buildDeployment")
+
 	replicas := spec.Replicas
 
 	d := &appsv1.Deployment{
@@ -278,7 +291,74 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 
 	// Resources
 	if spec.Resources != nil {
-		d.Spec.Template.Spec.Containers[0].Resources = buildResourceRequirements(spec.Resources)
+		d.Spec.Template.Spec.Containers[0].Resources = common.BuildResourceRequirements(spec.Resources)
+	}
+
+	// Env
+	if len(spec.Env) > 0 {
+		d.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{}
+		for k, src := range spec.Env {
+			ev := corev1.EnvVar{Name: k}
+
+			switch {
+			case src.SecretKeyRef != nil:
+				ev.ValueFrom = &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: src.SecretKeyRef.Name,
+						},
+						Key: src.SecretKeyRef.Key,
+					},
+				}
+
+			case src.ConfigMapKeyRef != nil:
+				ev.ValueFrom = &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: src.ConfigMapKeyRef.Name,
+						},
+						Key: src.ConfigMapKeyRef.Key,
+					},
+				}
+
+			default:
+				ev.Value = src.Value
+			}
+
+			d.Spec.Template.Spec.Containers[0].Env = append(
+				d.Spec.Template.Spec.Containers[0].Env, ev)
+		}
+	}
+
+	// EnvFrom
+	if len(spec.EnvFrom) > 0 {
+		d.Spec.Template.Spec.Containers[0].EnvFrom = []corev1.EnvFromSource{}
+		for _, src := range spec.EnvFrom {
+			if src.ConfigMapRef != "" {
+				d.Spec.Template.Spec.Containers[0].EnvFrom = append(
+					d.Spec.Template.Spec.Containers[0].EnvFrom,
+					corev1.EnvFromSource{
+						ConfigMapRef: &corev1.ConfigMapEnvSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: src.ConfigMapRef,
+							},
+						},
+					},
+				)
+			}
+			if src.SecretRef != "" {
+				d.Spec.Template.Spec.Containers[0].EnvFrom = append(
+					d.Spec.Template.Spec.Containers[0].EnvFrom,
+					corev1.EnvFromSource{
+						SecretRef: &corev1.SecretEnvSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: src.SecretRef,
+							},
+						},
+					},
+				)
+			}
+		}
 	}
 
 	return d
@@ -292,32 +372,14 @@ func validateSpec(spec ResolvedDeploymentSpec) error {
 	if spec.Image == "" {
 		missing = append(missing, "image")
 	}
+	if spec.Env == nil {
+		spec.Env = map[string]orktypes.EnvVarSource{}
+	}
+	if spec.EnvFrom == nil {
+		spec.EnvFrom = []orktypes.EnvFromSource{}
+	}
 	if len(missing) > 0 {
 		return fmt.Errorf("missing required fields: %v", missing)
 	}
 	return nil
-}
-
-func resolveNamespace(owner domain.Object, spec ResolvedDeploymentSpec) string {
-	if spec.Namespace != "" {
-		return spec.Namespace
-	}
-	if owner.GetNamespace() != "" {
-		return owner.GetNamespace()
-	}
-	return "default"
-}
-
-func buildResourceRequirements(r *orktypes.ResourceRequirements) corev1.ResourceRequirements {
-	req := corev1.ResourceRequirements{
-		Requests: corev1.ResourceList{},
-		Limits:   corev1.ResourceList{},
-	}
-	for k, v := range r.Requests {
-		req.Requests[corev1.ResourceName(k)] = resource.MustParse(v)
-	}
-	for k, v := range r.Limits {
-		req.Limits[corev1.ResourceName(k)] = resource.MustParse(v)
-	}
-	return req
 }

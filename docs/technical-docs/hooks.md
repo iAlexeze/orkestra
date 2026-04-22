@@ -87,11 +87,11 @@ import (
     "context"
     "fmt"
 
-    "github.com/ialexeze/orkestra/domain"
-    orkdeploy "github.com/ialexeze/orkestra/pkg/orkestra-registry/deployments"
-    orksvc    "github.com/ialexeze/orkestra/pkg/orkestra-registry/services"
-    orktmpl   "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
-    "github.com/ialexeze/orkestra/pkg/kubeclient"
+    "github.com/orkspace/orkestra/domain"
+    orkdeploy "github.com/orkspace/orkestra/pkg/orkestra-registry/deployments"
+    orksvc    "github.com/orkspace/orkestra/pkg/orkestra-registry/services"
+    orktmpl   "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+    "github.com/orkspace/orkestra/pkg/kubeclient"
     apiv1 "github.com/myorg/api/website/v1alpha1"
 )
 
@@ -160,7 +160,7 @@ func deleteWebsite(ctx context.Context, obj *apiv1.Website) error {
     plural: websites
     location: github.com/myorg/api/website/v1alpha1  # required for typed hooks
 
-  reconciler:
+  operatorBox:
     default: true
     hooks:
       location: github.com/myorg/hooks
@@ -170,7 +170,7 @@ func deleteWebsite(ctx context.Context, obj *apiv1.Website) error {
 ### Step 4: Generate the runtime registry
 
 ```bash
-ork generate runtime --katalog katalog.yaml
+ork generate registry --katalog katalog.yaml
 ```
 
 This produces `zz_generated_runtime_registry.go` which registers your hook function in `HookRegistry` keyed by GVK. The runtime reads this registry at startup.
@@ -188,10 +188,10 @@ import (
     "context"
     "fmt"
 
-    "github.com/ialexeze/orkestra/domain"
-    orkdeploy "github.com/ialexeze/orkestra/pkg/orkestra-registry/deployments"
-    orktmpl   "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
-    "github.com/ialexeze/orkestra/pkg/kubeclient"
+    "github.com/orkspace/orkestra/domain"
+    orkdeploy "github.com/orkspace/orkestra/pkg/orkestra-registry/deployments"
+    orktmpl   "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+    "github.com/orkspace/orkestra/pkg/kubeclient"
     "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -224,7 +224,7 @@ func WebsiteDynamicHooks() domain.AnyReconcileHooks {
 }
 ```
 
-Dynamic hooks do not need `apiTypes.location` in the Katalog. They also do not need `ork generate runtime` — register them directly in `BuildKatalogFromGo` or `konstructOrkestra`.
+Dynamic hooks do not need `apiTypes.location` in the Katalog. They also do not need `ork generate registry` — register them directly in `BuildKatalogFromGo` or `konstructOrkestra`.
 
 !!! note "When to use dynamic hooks"
     Dynamic hooks are the right choice when you have no generated API types
@@ -240,11 +240,11 @@ The OrkestraRegistry provides production-ready Create, Update, and Delete functi
 
 ```go
 import (
-    orkdeploy "github.com/ialexeze/orkestra/pkg/orkestra-registry/deployments"
-    orksvc    "github.com/ialexeze/orkestra/pkg/orkestra-registry/services"
-    orksecret "github.com/ialexeze/orkestra/pkg/orkestra-registry/secrets"
-    orkcm     "github.com/ialexeze/orkestra/pkg/orkestra-registry/configmaps"
-    orkjobs   "github.com/ialexeze/orkestra/pkg/orkestra-registry/jobs"
+    orkdeploy "github.com/orkspace/orkestra/pkg/orkestra-registry/deployments"
+    orksvc    "github.com/orkspace/orkestra/pkg/orkestra-registry/services"
+    orksecret "github.com/orkspace/orkestra/pkg/orkestra-registry/secrets"
+    orkcm     "github.com/orkspace/orkestra/pkg/orkestra-registry/configmaps"
+    orkjobs   "github.com/orkspace/orkestra/pkg/orkestra-registry/jobs"
 )
 
 // Create: idempotent — safe to call on every reconcile

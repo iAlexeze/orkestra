@@ -1,4 +1,4 @@
-name: Release
+name: Orkestra Release
 
 on:
   push:
@@ -10,591 +10,87 @@ permissions:
   packages: write
 
 jobs:
-  # ── Build binaries ─────────────────────────────────────────────────────────
-  build:
-    name: Build ${{ matrix.os }}_${{ matrix.arch }}
+  prepare:
+    name: Prepare Release Metadata
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        include:
-          - os: linux
-            arch: amd64
-            goarch: amd64
-            goos: linux
-          - os: linux
-            arch: arm64
-            goarch: arm64
-            goos: linux
-          - os: darwin
-            arch: amd64
-            goarch: amd64
-            goos: darwin
-          - os: darwin
-            arch: arm64
-            goarch: arm64
-            goos: darwin
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Build runtime binary
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
-        run: |
-          mkdir -p dist
-          go build \
-            -trimpath \
-            -ldflags="-s -w \
-              -X github.com/iAlexeze/orkestra/pkg/version.Version=${{ github.ref_name }} \
-              -X github.com/iAlexeze/orkestra/pkg/version.Commit=${{ github.sha }} \
-              -X github.com/iAlexeze/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            -o dist/ork \
-            ./cmd/orkestra/
-          echo "✅ Runtime built: dist/ork"
-
-      - name: Build control center binary
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
-        working-directory: cmd/controlcenter
-        run: |
-          go build \
-            -trimpath \
-            -ldflags="-s -w \
-              -X github.com/iAlexeze/orkestra/pkg/version.Version=${{ github.ref_name }} \
-              -X github.com/iAlexeze/orkestra/pkg/version.Commit=${{ github.sha }} \
-              -X github.com/iAlexeze/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            -o ../../dist/orkcc .
-          echo "✅ Control Center built: dist/orkcc"
-
-      - name: Package runtime tarball
-        run: |
-          ARCHIVE="ork_${{ matrix.os }}_${{ matrix.arch }}.tar.gz"
-          tar -czf "dist/${ARCHIVE}" -C dist ork -C "${{ github.workspace }}" README.md LICENSE
-          echo "✅ Archive: dist/${ARCHIVE}"
-
-      - name: Package control center tarball
-        run: |
-          ARCHIVE="orkcc_${{ matrix.os }}_${{ matrix.arch }}.tar.gz"
-          tar -czf "dist/${ARCHIVE}" -C dist orkcc -C "${{ github.workspace }}" README.md LICENSE
-          echo "✅ Archive: dist/${ARCHIVE}"
-
-      - name: Upload runtime artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ork_${{ matrix.os }}_${{ matrix.arch }}
-          path: dist/ork_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
-          retention-days: 1
-
-      - name: Upload control center artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: orkcc_${{ matrix.os }}_${{ matrix.arch }}
-          path: dist/orkcc_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
-          retention-days: 1
-
-  # ── Build and push container image ─────────────────────────────────────────
-  image:
-    name: Build and Push Image
-    runs-on: ubuntu-latest
-
     outputs:
-      digest: ${{ steps.push.outputs.digest }}
-
+      image_tag: ${{ steps.imagetag.outputs.value }}
+      chart_version: ${{ steps.imagetag.outputs.value }}   # same as image_tag for now
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.0.0
-        id: setup-buildx
-        with:
-          driver-opts: |
-            image=moby/buildkit:buildx-stable-1
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata for runtime
-        id: meta-runtime
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ghcr.io/ialexeze/orkestra
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
-
-      - name: Extract metadata for control center
-        id: meta-cc
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ghcr.io/ialexeze/orkestra-cc
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
-
-      - name: Build and push runtime image
-        id: push-runtime
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta-runtime.outputs.tags }}
-          labels: ${{ steps.meta-runtime.outputs.labels }}
-          build-args: |
-            VERSION=${{ github.ref_name }}
-            COMMIT=${{ github.sha }}
-            BUILD_DATE=${{ fromJSON(steps.meta-runtime.outputs.json).labels['org.opencontainers.image.created'] }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push control center image
-        id: push-cc
-        uses: docker/build-push-action@v5
-        with:
-          context: cmd/controlcenter
-          file: Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta-cc.outputs.tags }}
-          labels: ${{ steps.meta-cc.outputs.labels }}
-          build-args: |
-            VERSION=${{ github.ref_name }}
-            COMMIT=${{ github.sha }}
-            BUILD_DATE=${{ fromJSON(steps.meta-cc.outputs.json).labels['org.opencontainers.image.created'] }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Write image summary
-        run: |
-          echo "## 🐳 Container Images" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Component | Registry | Image |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|-----------|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Runtime | GHCR | \`ghcr.io/ialexeze/orkestra:${{ github.ref_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Control Center | GHCR | \`ghcr.io/ialexeze/orkestra-cc:${{ github.ref_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Platforms:** \`linux/amd64\`, \`linux/arm64\`" >> "$GITHUB_STEP_SUMMARY"
-
-  # ── Sign + Checksums + GitHub Release ──────────────────────────────────────
-  release:
-    name: Sign and Release
-    runs-on: ubuntu-latest
-    needs: [build, image]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist/
-          merge-multiple: true
-
-      - name: Import GPG signing key
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: |
-          echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
-          FINGERPRINT=$(gpg --list-secret-keys --with-colons releases@orkestra.io \
-            | grep '^fpr' \
-            | head -1 \
-            | cut -d: -f10)
-          echo "${FINGERPRINT}:6:" | gpg --import-ownertrust
-          echo "✅ GPG key imported: ${FINGERPRINT}"
-
-      - name: Sign tarballs
-        env:
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: |
-          cd dist
-          for archive in ork_*.tar.gz orkcc_*.tar.gz; do
-            gpg --batch --yes \
-                --passphrase "${GPG_PASSPHRASE}" \
-                --pinentry-mode loopback \
-                --armor \
-                --detach-sign \
-                "${archive}"
-            echo "✅ Signed: ${archive}"
-          done
-
-      - name: Export public key
-        run: |
-          gpg --armor --export releases@orkestra.io > dist/orkestra-public-key.asc
-          echo "✅ Public key exported"
-
-      - name: Generate checksums
-        run: |
-          cd dist
-          sha256sum ork_*.tar.gz orkcc_*.tar.gz > checksums.txt
-          echo "✅ Checksums generated"
-
-      - name: Verify signatures
-        run: |
-          cd dist
-          for archive in ork_*.tar.gz orkcc_*.tar.gz; do
-            gpg --verify "${archive}.asc" "${archive}" \
-              && echo "✅ Verified: ${archive}" \
-              || { echo "❌ Failed: ${archive}"; exit 1; }
-          done
-
-      - name: Extract changelog
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-          if grep -q "## \[${TAG}\]" CHANGELOG.md 2>/dev/null; then
-            awk "/## \[${TAG}\]/{found=1; next} /## \[v/{if(found) exit} found{print}" \
-              CHANGELOG.md > release_notes.txt
-          else
-            echo "Release ${TAG}" > release_notes.txt
-          fi
-
-          cat >> release_notes.txt << EOF
-
-          ### 📦 Installation
-
-          #### CLI (Runtime + Control Center)
-
-          \`\`\`bash
-          # macOS
-          brew tap iAlexeze/tap && brew install ork orkcc
-
-          # Linux
-          curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | bash
-          \`\`\`
-
-          #### Container Images
-
-          \`\`\`bash
-          # Runtime
-          docker pull ghcr.io/ialexeze/orkestra:${TAG}
-
-          # Control Center
-          docker pull ghcr.io/ialexeze/orkestra-cc:${TAG}
-          \`\`\`
-
-          #### Helm
-
-          \`\`\`bash
-          helm repo add orkestra https://ialexeze.github.io/orkestra
-          helm install orkestra orkestra/orkestra -n orkestra-system --create-namespace
-          \`\`\`
-          EOF
-
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: "${{ github.ref_name }}"
-          body_path: release_notes.txt
-          draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          files: |
-            dist/ork_linux_amd64.tar.gz
-            dist/ork_linux_amd64.tar.gz.asc
-            dist/ork_linux_arm64.tar.gz
-            dist/ork_linux_arm64.tar.gz.asc
-            dist/ork_darwin_amd64.tar.gz
-            dist/ork_darwin_amd64.tar.gz.asc
-            dist/ork_darwin_arm64.tar.gz
-            dist/ork_darwin_arm64.tar.gz.asc
-            dist/orkcc_linux_amd64.tar.gz
-            dist/orkcc_linux_amd64.tar.gz.asc
-            dist/orkcc_linux_arm64.tar.gz
-            dist/orkcc_linux_arm64.tar.gz.asc
-            dist/orkcc_darwin_amd64.tar.gz
-            dist/orkcc_darwin_amd64.tar.gz.asc
-            dist/orkcc_darwin_arm64.tar.gz
-            dist/orkcc_darwin_arm64.tar.gz.asc
-            dist/checksums.txt
-            dist/orkestra-public-key.asc
-          fail_on_unmatched_files: true
-
-  # ── Helm chart release ─────────────────────────────────────────────────────
-  helm:
-    name: Release Helm Chart
-    runs-on: ubuntu-latest
-    needs: release
-    if: ${{ !contains(github.ref_name, '-') }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Configure Git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Install Helm
-        uses: azure/setup-helm@v4
-
-      - name: Install yq
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
-
-      - name: Update chart values with new tags
+      - name: Compute image tag (strip v prefix)
+        id: imagetag
         run: |
           TAG="${{ github.ref_name }}"
-          
-          # Update both image tags using yq
-          yq eval ".runtime.image.tag = \"${TAG}\"" -i charts/orkestra/values.yaml
-          yq eval ".controlCenter.image.tag = \"${TAG}\"" -i charts/orkestra/values.yaml
-          
-          # Verify changes
-          echo "Updated values.yaml:"
-          yq eval '.runtime.image.tag, .controlCenter.image.tag' charts/orkestra/values.yaml
+          # Strip 'v' prefix if present (for version tags)
+          STRIPPED="${TAG#v}"
+          echo "value=$STRIPPED" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG=$STRIPPED" >> $GITHUB_ENV
 
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.6.0
-        env:
-          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          charts_dir: charts
+  build:
+    name: Build Runtime and Control Center
+    needs: [prepare]
+    uses: ./.github/workflows/build-matrix.yml
+    secrets: inherit
 
-      - name: Write summary
-        run: |
-          echo "### ⎈ Helm chart published" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo '```bash' >> "$GITHUB_STEP_SUMMARY"
-          echo "helm repo add orkestra https://ialexeze.github.io/orkestra" >> "$GITHUB_STEP_SUMMARY"
-          echo "helm repo update" >> "$GITHUB_STEP_SUMMARY"
-          echo "helm install orkestra orkestra/orkestra --namespace orkestra-system --create-namespace" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+  examples:
+    name: Package Examples
+    needs: [prepare]
+    uses: ./.github/workflows/package-examples.yml
+    secrets: inherit
 
-  # ── Homebrew formulas update ───────────────────────────────────────────────
-  homebrew:
-    name: Update Homebrew Formulas
-    runs-on: ubuntu-latest
-    needs: release
+  image:
+    name: Build and Push Image
+    needs: [prepare]
+    uses: ./.github/workflows/build-push-images.yml
+    secrets: inherit
+    with:
+      image_tag: ${{ needs.prepare.outputs.image_tag }}
+
+  helm:
+    name: Release Helm Chart
+    uses: ./.github/workflows/release-helm.yml
+    needs: [prepare, build, image]
     if: ${{ !contains(github.ref_name, '-') }}
+    secrets: inherit
+    with:
+      image_tag: ${{ needs.prepare.outputs.image_tag }}
 
-    steps:
-      - name: Checkout tap
-        uses: actions/checkout@v4
-        with:
-          repository: iAlexeze/homebrew-tap
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          path: homebrew-tap
+  release:
+    name: Sign and Release
+    uses: ./.github/workflows/sign-and-release.yml
+    needs: [prepare, build, image, examples]
+    secrets: inherit
+    with:
+      image_tag: ${{ needs.prepare.outputs.image_tag }}
 
-      - name: Download checksums
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-          curl -sSfL \
-            "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/checksums.txt" \
-            -o checksums.txt
+  homebrew:
+    name: Publish Homebrew Formulas
+    needs: [prepare, release]
+    uses: ./.github/workflows/publish-homebrew.yml
+    if: ${{ !contains(github.ref_name, '-') }}
+    secrets: inherit
+    with:
+      image_tag: ${{ needs.prepare.outputs.image_tag }}
+      tap_repository: ialexeze/homebrew-tap
 
-      - name: Extract SHA256 values
-        id: sha
-        run: |
-          # Runtime
-          echo "ORK_DARWIN_AMD64=$(grep 'ork_darwin_amd64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "ORK_DARWIN_ARM64=$(grep 'ork_darwin_arm64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "ORK_LINUX_AMD64=$(grep  'ork_linux_amd64'  checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "ORK_LINUX_ARM64=$(grep  'ork_linux_arm64'  checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          
-          # Control Center
-          echo "CC_DARWIN_AMD64=$(grep 'orkcc_darwin_amd64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "CC_DARWIN_ARM64=$(grep 'orkcc_darwin_arm64' checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "CC_LINUX_AMD64=$(grep  'orkcc_linux_amd64'  checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "CC_LINUX_ARM64=$(grep  'orkcc_linux_arm64'  checksums.txt | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+  # winget:
+  #   name: Publish Winget Manifests
+  #   uses: ./.github/workflows/publish-winget.yml
+  #   needs: [prepare, lease]
+  #   if: ${{ !contains(github.ref_name, '-') }}
+  #   secrets: inherit
 
-      - name: Update runtime formula
-        env:
-          TAG: ${{ github.ref_name }}
-          DARWIN_AMD64: ${{ steps.sha.outputs.ORK_DARWIN_AMD64 }}
-          DARWIN_ARM64: ${{ steps.sha.outputs.ORK_DARWIN_ARM64 }}
-          LINUX_AMD64:  ${{ steps.sha.outputs.ORK_LINUX_AMD64 }}
-          LINUX_ARM64:  ${{ steps.sha.outputs.ORK_LINUX_ARM64 }}
-        run: |
-          VERSION="${TAG#v}"
-          cat > homebrew-tap/Formula/ork.rb << 'EOF'
-          class Ork < Formula
-            desc "The Kubernetes operator runtime that needs no programming language"
-            homepage "https://github.com/iAlexeze/orkestra"
-            version "${VERSION}"
-            license "MIT"
-
-            on_macos do
-              on_arm   do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/ork_darwin_arm64.tar.gz"
-                sha256 "${DARWIN_ARM64}"
-              end
-              on_intel do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/ork_darwin_amd64.tar.gz"
-                sha256 "${DARWIN_AMD64}"
-              end
-            end
-
-            on_linux do
-              on_arm   do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/ork_linux_arm64.tar.gz"
-                sha256 "${LINUX_ARM64}"
-              end
-              on_intel do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/ork_linux_amd64.tar.gz"
-                sha256 "${LINUX_AMD64}"
-              end
-            end
-
-            def install
-              bin.install "ork"
-            end
-
-            test do
-              system "#{bin}/ork", "version"
-            end
-          end
-          EOF
-          
-          # Replace variables
-          sed -i "s/\${VERSION}/${VERSION}/g" homebrew-tap/Formula/ork.rb
-          sed -i "s/\${TAG}/${TAG}/g" homebrew-tap/Formula/ork.rb
-          sed -i "s/\${DARWIN_AMD64}/${DARWIN_AMD64}/g" homebrew-tap/Formula/ork.rb
-          sed -i "s/\${DARWIN_ARM64}/${DARWIN_ARM64}/g" homebrew-tap/Formula/ork.rb
-          sed -i "s/\${LINUX_AMD64}/${LINUX_AMD64}/g" homebrew-tap/Formula/ork.rb
-          sed -i "s/\${LINUX_ARM64}/${LINUX_ARM64}/g" homebrew-tap/Formula/ork.rb
-
-      - name: Update control center formula
-        env:
-          TAG: ${{ github.ref_name }}
-          DARWIN_AMD64: ${{ steps.sha.outputs.CC_DARWIN_AMD64 }}
-          DARWIN_ARM64: ${{ steps.sha.outputs.CC_DARWIN_ARM64 }}
-          LINUX_AMD64:  ${{ steps.sha.outputs.CC_LINUX_AMD64 }}
-          LINUX_ARM64:  ${{ steps.sha.outputs.CC_LINUX_ARM64 }}
-        run: |
-          VERSION="${TAG#v}"
-          cat > homebrew-tap/Formula/orkcc.rb << 'EOF'
-          class OrkCc < Formula
-            desc "Web-based Control Center for Orkestra - visualize and manage your operators"
-            homepage "https://github.com/iAlexeze/orkestra"
-            version "${VERSION}"
-            license "MIT"
-
-            on_macos do
-              on_arm   do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/orkcc_darwin_arm64.tar.gz"
-                sha256 "${DARWIN_ARM64}"
-              end
-              on_intel do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/orkcc_darwin_amd64.tar.gz"
-                sha256 "${DARWIN_AMD64}"
-              end
-            end
-
-            on_linux do
-              on_arm   do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/orkcc_linux_arm64.tar.gz"
-                sha256 "${LINUX_ARM64}"
-              end
-              on_intel do
-                url    "https://github.com/iAlexeze/orkestra/releases/download/${TAG}/orkcc_linux_amd64.tar.gz"
-                sha256 "${LINUX_AMD64}"
-              end
-            end
-
-            def install
-              bin.install "orkcc"
-            end
-
-            test do
-              system "#{bin}/orkcc", "--help"
-            end
-          end
-          EOF
-          
-          # Replace variables
-          sed -i "s/\${VERSION}/${VERSION}/g" homebrew-tap/Formula/orkcc.rb
-          sed -i "s/\${TAG}/${TAG}/g" homebrew-tap/Formula/orkcc.rb
-          sed -i "s/\${DARWIN_AMD64}/${DARWIN_AMD64}/g" homebrew-tap/Formula/orkcc.rb
-          sed -i "s/\${DARWIN_ARM64}/${DARWIN_ARM64}/g" homebrew-tap/Formula/orkcc.rb
-          sed -i "s/\${LINUX_AMD64}/${LINUX_AMD64}/g" homebrew-tap/Formula/orkcc.rb
-          sed -i "s/\${LINUX_ARM64}/${LINUX_ARM64}/g" homebrew-tap/Formula/orkcc.rb
-
-      - name: Commit and push
-        run: |
-          cd homebrew-tap
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/ork.rb Formula/orkcc.rb
-          git commit -m "ork and orkcc ${GITHUB_REF_NAME}"
-          git push
-
-  # ── Final summary ──────────────────────────────────────────────────────────
   summary:
     name: Release Summary
-    runs-on: ubuntu-latest
-    needs: [build, image, release, helm, homebrew]
+    needs: [prepare, build, image, examples, release, helm, homebrew]
     if: always()
-
-    steps:
-      - name: Write summary
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-
-          echo "## Release ${TAG}" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Component | Status |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|-----------|--------|" >> "$GITHUB_STEP_SUMMARY"
-
-          icon() { [ "$1" = "success" ] && echo "✅" || ([ "$1" = "skipped" ] && echo "⏭️" || echo "❌"); }
-
-          echo "| Runtime binaries | $(icon ${{ needs.build.result }}) ${{ needs.build.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Control Center binaries | $(icon ${{ needs.build.result }}) ${{ needs.build.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Container images | $(icon ${{ needs.image.result }}) ${{ needs.image.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| GPG signing + GitHub Release | $(icon ${{ needs.release.result }}) ${{ needs.release.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Helm chart | $(icon ${{ needs.helm.result }}) ${{ needs.helm.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Homebrew formulas | $(icon ${{ needs.homebrew.result }}) ${{ needs.homebrew.result }} |" >> "$GITHUB_STEP_SUMMARY"
-
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-
-          if [ "${{ needs.release.result }}" = "success" ] && [ "${{ needs.image.result }}" = "success" ]; then
-            echo "### ✅ Release ${TAG} complete" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo '```bash' >> "$GITHUB_STEP_SUMMARY"
-            echo "# Install CLI tools" >> "$GITHUB_STEP_SUMMARY"
-            echo "brew tap iAlexeze/tap && brew install ork orkcc" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "# Deploy with Helm (Runtime + Control Center)" >> "$GITHUB_STEP_SUMMARY"
-            echo "helm repo add orkestra https://ialexeze.github.io/orkestra" >> "$GITHUB_STEP_SUMMARY"
-            echo "helm install orkestra orkestra/orkestra -n orkestra-system --create-namespace" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "# Run Control Center separately" >> "$GITHUB_STEP_SUMMARY"
-            echo "orkcc --orkestra-url http://localhost:8080" >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "### ❌ Release ${TAG} had failures — check jobs above" >> "$GITHUB_STEP_SUMMARY"
-          fi
+    uses: ./.github/workflows/release-summary.yml
+    with:
+      build_result: ${{ needs.build.result }}
+      image_tag: ${{ needs.prepare.outputs.image_tag }}
+      image_result: ${{ needs.image.result }}
+      examples_result: ${{ needs.examples.result }}
+      release_result: ${{ needs.release.result }}
+      helm_result: ${{ needs.helm.result }}
+      homebrew_result: ${{ needs.homebrew.result }}
+      # winget_result: ${{ needs.winget.result }}

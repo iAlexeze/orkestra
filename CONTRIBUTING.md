@@ -23,7 +23,7 @@ This project and everyone participating in it is governed by the [Orkestra Code 
 - **Read the docs** – Start with the [README](README.md) and [docs](./docs/) folder
 - **Search issues** – Someone may have already asked your question
 - **Kubernetes Slack** – Join the [#orkestra](https://kubernetes.slack.com) channel (coming soon)
-- **GitHub Discussions** – Use [Discussions](https://github.com/ialexeze/orkestra/discussions) for questions
+- **GitHub Discussions** – Use [Discussions](https://github.com/orkspace/orkestra/discussions) for questions
 
 ---
 
@@ -34,12 +34,12 @@ This project and everyone participating in it is governed by the [Orkestra Code 
 #### Before Submitting a Bug Report
 
 - **Check the [README](README.md)** – You might find that your "bug" is actually expected behavior
-- **Search [issues](https://github.com/ialexeze/orkestra/issues)** – The bug may have already been reported
+- **Search [issues](https://github.com/orkspace/orkestra/issues)** – The bug may have already been reported
 - **Check if it's a known limitation** – Some features are still in development
 
 #### How to Submit a Good Bug Report
 
-Bugs are tracked as [GitHub issues](https://github.com/ialexeze/orkestra/issues). Create an issue and provide the following information:
+Bugs are tracked as [GitHub issues](https://github.com/orkspace/orkestra/issues). Create an issue and provide the following information:
 
 - **Use a clear, descriptive title**
 - **Describe the exact steps to reproduce** – Be as specific as possible
@@ -72,7 +72,7 @@ Actual: Panics with "sources: unbound variable"
 
 ### Suggesting Enhancements
 
-Enhancements are tracked as [GitHub issues](https://github.com/ialexeze/orkestra/issues). When suggesting an enhancement:
+Enhancements are tracked as [GitHub issues](https://github.com/orkspace/orkestra/issues). When suggesting an enhancement:
 
 - **Use a clear, descriptive title**
 - **Describe the problem** – What problem does this solve?
@@ -150,7 +150,7 @@ All contributions are reviewed for:
 
 ```bash
 # Clone the repository
-git clone https://github.com/ialexeze/orkestra.git
+git clone https://github.com/orkspace/orkestra.git
 cd orkestra
 
 # Build the CLI

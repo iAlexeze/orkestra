@@ -2,80 +2,124 @@
 //
 // Execution order (each step can reference all previous steps):
 //
-//  1. NewResolver        → .spec.*, .status.*, .metadata.*
-//  2. r.readCross        → .cross.<kind>.status.* (informer cache, zero API calls)
-//  3. runExternal        → .external.<n>.status, .body (HTTP calls)
-//  4. forEach expand     → N sources from N-element list fields
-//  5. onCreate groups    → deployments, services, secrets, configmaps, ...
+//  1. Recieve NewResolver        → .spec.*, .status.*, .metadata.*
+//  2. r.readCross     			  → .cross.<crd>.status.* (informer cache, zero API calls)
+//  3. runExternal        	      → .external.<n>.status, .body (HTTP calls)
+//  4. forEach expand             → N sources from N-element list fields
+//  5. onCreate groups            → deployments, services, secrets, configmaps, ...
 //  6. onReconcile groups
-//  7. runProviders       → aws:, mongodb:, ... (external infra)
+//  7. runProviders               → aws:, mongodb:, ... (external infra)
 package reconciler
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // runTemplateReconcile interprets the Katalog's onCreate and onReconcile blocks.
-func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, obj domain.Object) error {
+// Returns the enriched resolver so callers (reconcileImpl) can pass cross/external
+// data into patchStatusWithChildren for status field evaluation.
+func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, resolver *orktmpl.Resolver, obj domain.Object) (*orktmpl.Resolver, error) {
 	kube, ok := kubeclient.FromContext(ctx)
 	if !ok {
-		return fmt.Errorf("kubeclient not found in context")
+		return resolver, fmt.Errorf("kubeclient not found in context")
 	}
 
-	// Step 1: base resolver
-	resolver, err := orktmpl.NewResolver(ctx, obj)
-	if err != nil {
-		return fmt.Errorf("building resolver: %w", err)
-	}
+	// Step 1: We now receive a base resolver (already normalized) from reconcileImpl.
+	// All subsequent steps (cross, git, external, docker, resources, providers)
+	// enrich this resolver in-place.
+	var err error
 
 	// Step 2: cross-CRD observation
 	// Reads from sibling CRD informer caches via r.katalogRegistry — zero API calls.
-	// Must run first so external calls and resources can reference .cross.*
-	if len(r.rc.Cross) > 0 {
-		crossData := r.readCross(ctx, obj, r.rc.Cross, resolver)
+	// Must run first so git, docker, external calls, and resources can reference .cross.*
+	if len(r.operatorBox.Cross) > 0 {
+		crossData := r.readCross(ctx, obj, r.operatorBox.Cross, resolver)
+		logger.FromContext(ctx).Debug().
+			Str("observer", obj.GetName()).
+			Int("cross_entries", len(crossData)).
+			Interface("cross_keys", crossDataKeys(crossData)).
+			Msg("cross: resolver enrichment")
 		if len(crossData) > 0 {
 			resolver = resolver.WithCross(crossData)
 		}
 	}
 
-	// Step 3: external HTTP calls
-	if t := r.rc.OnReconcile; t != nil && len(t.External) > 0 {
-		resolver, err = runExternal(ctx, resolver, t.External)
+	// Step 3: Git hook
+	// Runs before external calls so URLs, tokens, and payloads can reference .git.commit,
+	// .git.changed, and .git.path. Git is a declarative precondition for pipelines.
+	if t := r.operatorBox.OnReconcile; t != nil && t.Git != nil {
+		resolver, err = runGit(ctx, r.crd.GVKString(), resolver, kube, obj, r.crd.GVR(), t.Git)
 		if err != nil {
-			return fmt.Errorf("external calls: %w", err)
+			return resolver, fmt.Errorf("git hook: %w", err)
+		}
+	}
+	if t := r.operatorBox.OnCreate; t != nil && t.Git != nil {
+		resolver, err = runGit(ctx, r.crd.GVKString(), resolver, kube, obj, r.crd.GVR(), t.Git)
+		if err != nil {
+			return resolver, fmt.Errorf("git hook: %w", err)
 		}
 	}
 
-	// Steps 4+5: onCreate resource groups (update=false)
-	if t := r.rc.OnCreate; t != nil {
+	// Step 4: external HTTP calls
+	// Runs after Git so external URLs can embed commit hashes or paths.
+	if t := r.operatorBox.OnReconcile; t != nil && len(t.External) > 0 {
+		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, t.External)
+		if err != nil {
+			return resolver, fmt.Errorf("external calls: %w", err)
+		}
+	}
+	if t := r.operatorBox.OnCreate; t != nil && len(t.External) > 0 {
+		resolver, err = runExternal(ctx, r.crd.GVKString(), resolver, t.External)
+		if err != nil {
+			return resolver, fmt.Errorf("external calls: %w", err)
+		}
+	}
+
+	// Step 5: Docker hook
+	// Runs after external so build/push can use tokens or metadata from external calls.
+	if t := r.operatorBox.OnReconcile; t != nil && t.Docker != nil {
+		resolver, err = runDocker(ctx, r.crd.GVKString(), resolver, t.Docker)
+		if err != nil {
+			return resolver, fmt.Errorf("docker hook: %w", err)
+		}
+	}
+	if t := r.operatorBox.OnCreate; t != nil && t.Docker != nil {
+		resolver, err = runDocker(ctx, r.crd.GVKString(), resolver, t.Docker)
+		if err != nil {
+			return resolver, fmt.Errorf("docker hook: %w", err)
+		}
+	}
+
+	// Step 6: onCreate resource groups (update=false)
+	if t := r.operatorBox.OnCreate; t != nil {
 		if err := r.runResourceGroup(ctx, kube, resolver, obj, t, false); err != nil {
-			return err
+			return resolver, err
 		}
 	}
 
-	// Step 6: onReconcile resource groups (update=true)
-	if t := r.rc.OnReconcile; t != nil {
+	// Step 7: onReconcile resource groups (update=true)
+	if t := r.operatorBox.OnReconcile; t != nil {
 		if err := r.runResourceGroup(ctx, kube, resolver, obj, t, true); err != nil {
-			return err
+			return resolver, err
 		}
 	}
 
-	// Step 7: provider dispatch
-	if len(r.rc.ProviderBlocks) > 0 && r.providerRegistry != nil && r.providerRegistry.Len() > 0 {
+	// Step 8: provider dispatch
+	if len(r.operatorBox.ProviderBlocks) > 0 && r.providerRegistry != nil && r.providerRegistry.Len() > 0 {
 		kubeReader := &kubeReaderAdapter{kube: kube}
-		if err := runProviders(ctx, obj, resolver, r.rc.ProviderBlocks, r.providerRegistry, kubeReader); err != nil {
-			return fmt.Errorf("providers: %w", err)
+		if err := runProviders(ctx, obj, resolver, r.operatorBox.ProviderBlocks, r.providerRegistry, kubeReader, r.providerStats); err != nil {
+			return resolver, fmt.Errorf("providers: %w", err)
 		}
 	}
 
-	return nil
+	return resolver, nil
 }
 
 // runResourceGroup dispatches all resource types in one HookTemplates block.
@@ -88,62 +132,97 @@ func (r *GenericReconciler[T]) runResourceGroup(
 	t *orktypes.HookTemplates,
 	update bool,
 ) error {
-	if err := runDeployments(ctx, kube, resolver, obj,
-		expandForEachDeployments(resolver, t.Deployments), update); err != nil {
+	// Guard closure — captures r for access to CRD config.
+	// nil-safe: if CRD has no restrictions, guard is a no-op.
+	guard := r.namespaceGuardFunc(ctx, obj)
+
+	// Create namespaces first
+	if err := runNamespaces(ctx, kube, resolver, obj,
+		expandForEachNamespaces(resolver, t.Namespaces), update); err != nil {
 		return err
 	}
-	if err := runServices(ctx, kube, resolver, obj,
-		expandForEachServices(resolver, t.Services), update); err != nil {
-		return err
-	}
+
 	if err := runSecrets(ctx, kube, resolver, obj,
-		expandForEachSecrets(resolver, t.Secrets), update); err != nil {
+		expandForEachSecrets(resolver, t.Secrets), update, guard); err != nil {
 		return err
 	}
 	if err := runConfigMaps(ctx, kube, resolver, obj,
-		expandForEachConfigMaps(resolver, t.ConfigMaps), update); err != nil {
+		expandForEachConfigMaps(resolver, t.ConfigMaps), update, guard); err != nil {
 		return err
 	}
 	if err := runServiceAccounts(ctx, kube, resolver, obj,
-		expandForEachServiceAccounts(resolver, t.ServiceAccounts), update); err != nil {
+		expandForEachServiceAccounts(resolver, t.ServiceAccounts), update, guard); err != nil {
+		return err
+	}
+	if err := runReplicaSets(ctx, kube, resolver, obj,
+		expandForEachReplicaSets(resolver, t.ReplicaSets), update, guard); err != nil {
+		return err
+	}
+	if err := runDeployments(ctx, kube, resolver, obj,
+		expandForEachDeployments(resolver, t.Deployments), update, guard); err != nil {
+		return err
+	}
+	if err := runServices(ctx, kube, resolver, obj,
+		expandForEachServices(resolver, t.Services), update, guard); err != nil {
 		return err
 	}
 	if err := runJobs(ctx, kube, resolver, obj,
-		expandForEachJobs(resolver, t.Jobs)); err != nil {
+		expandForEachJobs(resolver, t.Jobs), guard); err != nil {
 		return err
 	}
 	if err := runCronJobs(ctx, kube, resolver, obj,
-		expandForEachCronJobs(resolver, t.CronJobs), update); err != nil {
+		expandForEachCronJobs(resolver, t.CronJobs), update, guard); err != nil {
+		return err
+	}
+	if err := runStatefulSets(ctx, kube, resolver, obj,
+		expandForEachStatefulSets(resolver, t.StatefulSets), update, guard); err != nil {
+		return err
+	}
+	if err := runPVs(ctx, kube, resolver, obj,
+		expandForEachPVs(resolver, t.PersistentVolumes), update); err != nil {
+		return err
+	}
+	if err := runPVCs(ctx, kube, resolver, obj,
+		expandForEachPVCs(resolver, t.PersistentVolumeClaims), update, guard); err != nil {
+		return err
+	}
+	if err := runIngresses(ctx, kube, resolver, obj,
+		expandForEachIngresses(resolver, t.Ingresses), update, guard); err != nil {
+		return err
+	}
+	if err := runHPAs(ctx, kube, resolver, obj,
+		expandForEachHPAs(resolver, t.HorizontalPodAutoscalers), update, guard); err != nil {
+		return err
+	}
+	if err := runPDBs(ctx, kube, resolver, obj,
+		expandForEachPDBs(resolver, t.PodDisruptionBudgets), update, guard); err != nil {
 		return err
 	}
 	return nil
 }
 
 // runTemplateOnDelete interprets the onDelete block.
-func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, obj domain.Object) error {
+func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, resolver *orktmpl.Resolver, obj domain.Object) error {
 	kube, ok := kubeclient.FromContext(ctx)
 	if !ok {
 		return fmt.Errorf("kubeclient not found in context")
 	}
 
-	resolver, err := orktmpl.NewResolver(ctx, obj)
-	if err != nil {
-		return fmt.Errorf("building resolver: %w", err)
-	}
+	guard := r.namespaceGuardFunc(ctx, obj)
 
-	if t := r.rc.OnDelete; t != nil {
+	if t := r.operatorBox.OnDelete; t != nil {
 		if t.Ordered {
-			return r.runOrderedDelete(ctx, kube, resolver, obj, t)
+			return r.runOrderedDelete(ctx, kube, resolver, obj, t, guard)
 		}
 		if err := runJobs(ctx, kube, resolver, obj,
-			expandForEachJobs(resolver, t.Jobs)); err != nil {
+			expandForEachJobs(resolver, t.Jobs), guard); err != nil {
 			return err
 		}
 	}
 
-	if len(r.rc.ProviderBlocks) > 0 && r.providerRegistry != nil {
+	if len(r.operatorBox.ProviderBlocks) > 0 && r.providerRegistry != nil {
 		kubeReader := &kubeReaderAdapter{kube: kube}
-		if err := runProviderDelete(ctx, obj, resolver, r.rc.ProviderBlocks, r.providerRegistry, kubeReader); err != nil {
+		if err := runProviderDelete(ctx, obj, resolver, r.operatorBox.ProviderBlocks, r.providerRegistry, kubeReader, r.providerStats); err != nil {
 			return fmt.Errorf("provider cleanup: %w", err)
 		}
 	}
@@ -151,25 +230,12 @@ func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, obj doma
 	return nil
 }
 
-// runOrderedDelete deletes resource groups sequentially with verification.
-func (r *GenericReconciler[T]) runOrderedDelete(
-	ctx context.Context,
-	kube *kubeclient.Kubeclient,
-	resolver *orktmpl.Resolver,
-	obj domain.Object,
-	t *orktypes.HookTemplates,
-) error {
-	log := logger.FromContext(ctx)
-	log.Info().Str("name", obj.GetName()).Msg("ordered delete: starting sequential cleanup")
-
-	if len(t.Jobs) > 0 {
-		jobs := expandForEachJobs(resolver, t.Jobs)
-		if err := runJobs(ctx, kube, resolver, obj, jobs); err != nil {
-			return fmt.Errorf("ordered delete: cleanup jobs: %w", err)
-		}
+func crossDataKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
 	}
-
-	return nil
+	return keys
 }
 
 // readCross reads cross-CRD observations for all declared cross: entries.
@@ -192,10 +258,12 @@ func (r *GenericReconciler[T]) readCross(
 	log := logger.FromContext(ctx)
 	result := make(map[string]interface{}, len(decls))
 
+	registryNil := r.katalogRegistry == nil
+
 	for _, decl := range decls {
 		as := decl.As
 		if as == "" {
-			as = decl.Kind
+			as = decl.Crd
 		}
 
 		name, _ := resolver.Resolve(decl.Selector.Name)
@@ -207,19 +275,41 @@ func (r *GenericReconciler[T]) readCross(
 
 		// Path 1: informer cache — zero API calls.
 		// katalogRegistry is threaded in from konstructOrkestra via NewGenericReconciler.
-		// GetInformerByName returns the live SharedIndexInformer for the target CRD.
-		if r.katalogRegistry != nil {
-			if inf, ok := r.katalogRegistry.GetInformerByName(decl.Kind); ok {
-				data := ReadCrossFromInformer(inf.GetIndexer(), key)
-				result[as] = data
-				log.Debug().
-					Str("kind", decl.Kind).
+		// Path 1a: label-based informer lookup
+		if len(decl.LabelSelector) > 0 && r.katalogRegistry != nil {
+			for labelKey, labelValue := range decl.LabelSelector {
+				inf, found := r.katalogRegistry.GetInformerByLabelSelector(labelKey, labelValue)
+				if found {
+					data := ReadCrossFromInformerByLabel(inf.GetIndexer(), labelKey, labelValue)
+					result[as] = data
+					break
+				}
+				log.Warn().
+					Str("label_key", labelKey).
+					Str("label_val", labelValue).
+					Str("crd", decl.Crd).
 					Str("as", as).
-					Str("key", key).
-					Bool("found", data["found"] == "true").
-					Msg("cross: read from informer cache")
+					Msg("cross: no CRD matched label selector in registry")
+			}
+		}
+		// Path 1b: name-based informer lookup (existing, unchanged)
+		if decl.Crd != "" && r.katalogRegistry != nil {
+			inf, found := r.katalogRegistry.GetInformerByName(decl.Crd)
+			if found {
+				name, _ := resolver.Resolve(decl.Selector.Name)
+				ns, _ := resolver.Resolve(decl.Selector.Namespace)
+				if ns == "" {
+					ns = obj.GetNamespace()
+				}
+				data := ReadCrossFromInformer(inf.GetIndexer(), crossKey(ns, name))
+				result[as] = data
 				continue
 			}
+			log.Warn().
+				Str("crd", decl.Crd).
+				Str("as", as).
+				Bool("registry_nil", registryNil).
+				Msg("cross: no CRD matched name in registry")
 		}
 
 		// Path 2: HTTP endpoint fallback.
@@ -231,12 +321,16 @@ func (r *GenericReconciler[T]) readCross(
 			if data != nil {
 				result[as] = data
 				log.Debug().
-					Str("kind", decl.Kind).
+					Str("crd", decl.Crd).
 					Str("as", as).
 					Str("endpoint", endpointURL).
 					Msg("cross: read via HTTP endpoint")
 				continue
 			}
+			log.Warn().
+				Str("crd", decl.Crd).
+				Str("endpoint", endpointURL).
+				Msg("cross: HTTP endpoint returned nil")
 		}
 
 		// Path 3: not found.
@@ -248,10 +342,10 @@ func (r *GenericReconciler[T]) readCross(
 			"spec":      map[string]interface{}{},
 		}
 		log.Debug().
-			Str("kind", decl.Kind).
+			Str("crd", decl.Crd).
 			Str("as", as).
 			Str("key", key).
-			Msg("cross: not found in registry or HTTP source")
+			Msg("cross: not found — empty result")
 	}
 
 	return result

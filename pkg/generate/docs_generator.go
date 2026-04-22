@@ -6,7 +6,7 @@ import (
 	"text/template"
 	"time"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 var (
@@ -48,8 +48,8 @@ func Docs(c []orktypes.CRDEntry, dryRun bool) error {
 		m.API.Alias = crd.APITypes.Alias
 
 		m.Reconciler.Default = crd.DefaultReconcile()
-		if crd.ReconcilerConfig.Constructor != nil {
-			m.Reconciler.Function = crd.ReconcilerConfig.ConstructorDecl.Function
+		if crd.OperatorBox.Constructor != nil {
+			m.Reconciler.Function = crd.OperatorBox.ConstructorDecl.Function
 		}
 
 		crds = append(crds, m)

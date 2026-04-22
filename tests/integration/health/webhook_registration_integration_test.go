@@ -6,9 +6,9 @@ import (
 	"context"
 	"os"
 	"testing"
-	"time"
 
-	"github.com/ialexeze/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -52,7 +52,7 @@ func TestWebhookRegistration_Integration(t *testing.T) {
 	}
 
 	// Register
-	if err := ExportRegisterWebhooks(ctx, client, reg, opts); err != nil {
+	if err := ExportRegisterAdmissionWebhooks(ctx, client, reg, opts); err != nil {
 		t.Fatalf("registration failed: %v", err)
 	}
 
@@ -81,7 +81,7 @@ func TestWebhookRegistration_Integration(t *testing.T) {
 	}
 
 	// Idempotency: calling again should not error
-	if err := ExportRegisterWebhooks(ctx, client, reg, opts); err != nil {
+	if err := ExportRegisterAdmissionWebhooks(ctx, client, reg, opts); err != nil {
 		t.Fatalf("idempotent registration failed: %v", err)
 	}
 }

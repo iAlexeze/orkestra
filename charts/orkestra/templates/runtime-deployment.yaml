@@ -14,18 +14,18 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
-    component: runtime
+    app.kubernetes.io/component: runtime
 spec:
   replicas: {{ .Values.runtime.replicaCount }}
   selector:
     matchLabels:
       {{- include "orkestra.selectorLabels" . | nindent 6 }}
-      component: runtime
+      app.kubernetes.io/component: runtime
   template:
     metadata:
       labels:
         {{- include "orkestra.selectorLabels" . | nindent 8 }}
-        component: runtime
+        app.kubernetes.io/component: runtime
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -38,7 +38,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "orkestra.runtimeServiceAccountName" . }}
+      serviceAccountName: {{ .Values.runtime.serviceAccount | default "orkestra" }}
       securityContext:
         {{- toYaml .Values.runtime.podSecurityContext | nindent 8 }}
 
@@ -71,15 +71,11 @@ spec:
               value: {{ .Values.runtime.config.degradeThreshold | quote }}
             - name: ORK_REGISTRY
               value: {{ .Values.registry.url | quote }}
-            {{- if .Values.runtime.config.watchNamespace }}
-            - name: NAMESPACE
-              value: {{ .Values.runtime.config.watchNamespace | quote }}
-            {{- end }}
+            - name: ORK_NAMESPACE
+              value: {{ .Release.Namespace }}
             {{- if .Values.runtime.leaderElection.enabled }}
             - name: LEADER_ELECTION
               value: "true"
-            - name: LEADER_ELECTION_NAMESPACE
-              value: {{ include "orkestra.leaderElectionNamespace" . | quote }}
             - name: LEASE_DURATION
               value: {{ .Values.runtime.leaderElection.leaseDuration | quote }}
             - name: RENEW_DEADLINE
@@ -115,9 +111,18 @@ spec:
           {{- end }}
 
           ports:
-            - name: health
+            - name: http
               containerPort: {{ .Values.runtime.server.port }}
               protocol: TCP
+          
+          startupProbe:
+            httpGet:
+              path: /startup
+              port: http
+            initialDelaySeconds: {{ .Values.runtime.startupProbe.initialDelaySeconds | default 10 }}
+            periodSeconds: {{ .Values.runtime.startupProbe.periodSeconds | default 10 }}
+            failureThreshold: {{ .Values.runtime.startupProbe.failureThreshold | default 3 }}
+            timeoutSeconds: {{ .Values.runtime.startupProbe.timeoutSeconds | default 1 }}
 
           livenessProbe:
             httpGet:

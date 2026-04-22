@@ -32,15 +32,25 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
+
+// providerStatsRecorder is a minimal interface for recording provider call outcomes.
+// *health.ProviderStats satisfies this interface; pass nil to skip recording.
+type providerStatsRecorder interface {
+	RecordSuccess(provider string)
+	RecordFailure(provider string)
+	RecordDeleteSuccess(provider string)
+	RecordDeleteFailure(provider string)
+}
 
 // runProviders dispatches provider blocks to registered provider libraries.
 // Called after all Kubernetes resource reconciliation is complete.
 // Blocks are dispatched in declaration order.
+// stats may be nil — recording is skipped when no stats collector is wired.
 func runProviders(
 	ctx context.Context,
 	obj domain.Object,
@@ -48,6 +58,7 @@ func runProviders(
 	blocks []orktypes.ProviderBlock,
 	registry orktypes.ProviderRegistry,
 	kube orktypes.KubeReader,
+	stats providerStatsRecorder,
 ) error {
 	if len(blocks) == 0 {
 		return nil
@@ -79,7 +90,7 @@ func runProviders(
 
 		// Evaluate when: conditions — drop declarations that do not pass.
 		// resolver.Data() includes .spec.*, .status.*, .children.*
-		active := filterProviderDeclarations(obj, resolved)
+		active := filterProviderDeclarations(resolver.Data(), resolved)
 		if len(active) == 0 {
 			log.Debug().
 				Str("provider", block.Name).
@@ -105,7 +116,13 @@ func runProviders(
 			Msg("calling provider.Reconcile")
 
 		if err := provider.Reconcile(ctx, req); err != nil {
+			if stats != nil {
+				stats.RecordFailure(block.Name)
+			}
 			return fmt.Errorf("provider %q: %w", block.Name, err)
+		}
+		if stats != nil {
+			stats.RecordSuccess(block.Name)
 		}
 	}
 
@@ -116,6 +133,7 @@ func runProviders(
 // Called during finalizer execution. All declarations are passed to Delete
 // regardless of when: conditions — deletion is attempted for everything
 // that might have been created. All errors collected before returning.
+// stats may be nil — recording is skipped when no stats collector is wired.
 func runProviderDelete(
 	ctx context.Context,
 	obj domain.Object,
@@ -123,6 +141,7 @@ func runProviderDelete(
 	blocks []orktypes.ProviderBlock,
 	registry orktypes.ProviderRegistry,
 	kube orktypes.KubeReader,
+	stats providerStatsRecorder,
 ) error {
 	if len(blocks) == 0 || registry == nil {
 		return nil
@@ -167,6 +186,11 @@ func runProviderDelete(
 		if err := provider.Delete(ctx, req); err != nil {
 			// Collect — do not return. Try all providers before surfacing errors.
 			errs = append(errs, fmt.Sprintf("provider %q: %v", block.Name, err))
+			if stats != nil {
+				stats.RecordDeleteFailure(block.Name)
+			}
+		} else if stats != nil {
+			stats.RecordDeleteSuccess(block.Name)
 		}
 	}
 
@@ -184,7 +208,8 @@ func runProviderDelete(
 type resolvedDeclaration struct {
 	Kind       string
 	Fields     map[string]string
-	Conditions []orktypes.Condition
+	Conditions []orktypes.Condition // when: AND conditions
+	AnyOf      []orktypes.Condition // anyOf: OR conditions
 }
 
 // resolveProviderBlock resolves template expressions in all field values.
@@ -199,6 +224,7 @@ func resolveProviderBlock(
 			Kind:       raw.Kind,
 			Fields:     make(map[string]string, len(raw.Fields)),
 			Conditions: raw.Conditions,
+			AnyOf:      raw.AnyOf,
 		}
 		for key, tmplVal := range raw.Fields {
 			val, err := resolver.Resolve(tmplVal)
@@ -213,15 +239,17 @@ func resolveProviderBlock(
 	return result, nil
 }
 
-// filterProviderDeclarations removes declarations whose when: conditions fail.
-// Uses EvaluateConditions from resolver_conditions.go (same package).
+// filterProviderDeclarations removes declarations whose conditions fail.
+// Uses EvaluateWhen — handles when: (AND), anyOf: (OR), and all operators
+// including typeOf. Takes resolver data (not domain.Object) so that
+// template-resolved .spec.*, .status.*, .cross.* fields are visible.
 func filterProviderDeclarations(
-	obj domain.Object,
+	data map[string]interface{},
 	declarations []resolvedDeclaration,
 ) []orktypes.ProviderDeclaration {
 	result := make([]orktypes.ProviderDeclaration, 0, len(declarations))
 	for _, decl := range declarations {
-		if len(decl.Conditions) > 0 && !evaluateConditions(obj, decl.Conditions) {
+		if !orktypes.EvaluateWhen(data, decl.Conditions, decl.AnyOf) {
 			continue
 		}
 		result = append(result, orktypes.ProviderDeclaration{

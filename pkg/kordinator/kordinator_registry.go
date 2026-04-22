@@ -4,8 +4,8 @@ package kordinator
 import (
 	"sync"
 
-	"github.com/ialexeze/orkestra/domain"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/client-go/tools/cache"
 )
 

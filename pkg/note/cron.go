@@ -8,14 +8,18 @@ import (
 
 func cronNotes() template.FuncMap {
 	return template.FuncMap{
-		"cronMinute": cronMinute,
-		"cronHour":   cronHour,
-		"cronDom":    cronDom,
-		"cronMonth":  cronMonth,
-		"cronDow":    cronDow,
-		"cronField":  cronField,
-		"cronExpr":   cronExpr,
-		"cronValid":  cronValid,
+		"cronMinute":    cronMinute,
+		"cronHour":      cronHour,
+		"cronDom":       cronDom,
+		"cronMonth":     cronMonth,
+		"cronDow":       cronDow,
+		"cronField":     cronField,
+		"cronExpr":      cronExpr,
+		"cronValid":     cronValid,
+		"cronFromMap":   cronFromMap,
+		"cronToMap":     cronToMap,
+		"cronNormalize": cronNormalize,
+		"cronDescribe":  cronDescribe,
 	}
 }
 
@@ -117,4 +121,134 @@ func starIfEmpty(s string) string {
 		return "*"
 	}
 	return s
+}
+
+func cronFromMap(m map[string]interface{}) string {
+	get := func(key string) string {
+		if v, ok := m[key]; ok {
+			s := fmt.Sprintf("%v", v)
+			if strings.TrimSpace(s) != "" {
+				return s
+			}
+		}
+		return "*"
+	}
+
+	return cronExpr(
+		get("minute"),
+		get("hour"),
+		get("dayOfMonth"),
+		get("month"),
+		get("dayOfWeek"),
+	)
+}
+
+// This takes a cron string (including @‑macros) and returns a map:
+func cronToMap(expr string) map[string]interface{} {
+	out := map[string]interface{}{
+		"minute":     "*",
+		"hour":       "*",
+		"dayOfMonth": "*",
+		"month":      "*",
+		"dayOfWeek":  "*",
+	}
+
+	if strings.TrimSpace(expr) == "" {
+		return out
+	}
+
+	expanded := expandCronMacro(expr)
+	parts := strings.Fields(expanded)
+	if len(parts) != 5 {
+		return out
+	}
+
+	out["minute"] = parts[0]
+	out["hour"] = parts[1]
+	out["dayOfMonth"] = parts[2]
+	out["month"] = parts[3]
+	out["dayOfWeek"] = parts[4]
+
+	return out
+}
+
+// cronNormalize — canonical formatting
+// This ensures:
+// macros expanded
+// whitespace trimmed
+// missing fields → *
+// output always 5 fields
+// no surprises
+func cronNormalize(expr string) string {
+	if strings.TrimSpace(expr) == "" {
+		return "* * * * *"
+	}
+
+	expanded := expandCronMacro(expr)
+	parts := strings.Fields(expanded)
+
+	// If invalid, normalize to all "*"
+	if len(parts) != 5 {
+		return "* * * * *"
+	}
+
+	// Trim each field
+	for i := range parts {
+		if strings.TrimSpace(parts[i]) == "" {
+			parts[i] = "*"
+		}
+	}
+
+	return strings.Join(parts, " ")
+}
+
+// cronDescribe — human‑readable explanation
+// This is the fun one.
+// It turns:
+//
+//	*/5 * * * *
+//		into:
+//	Every 5 minutes
+//
+// And:
+//
+//	0 2 * * 1
+//		into:
+//	At 02:00 on Mondays
+func cronDescribe(expr string) string {
+	norm := cronNormalize(expr)
+	parts := strings.Fields(norm)
+	if len(parts) != 5 {
+		return "Invalid cron expression"
+	}
+
+	min, hr, dom, mon, dow := parts[0], parts[1], parts[2], parts[3], parts[4]
+
+	// Minute-only interval
+	if strings.HasPrefix(min, "*/") && hr == "*" && dom == "*" && mon == "*" && dow == "*" {
+		return fmt.Sprintf("Every %s minutes", strings.TrimPrefix(min, "*/"))
+	}
+
+	// Hourly
+	if min == "0" && hr == "*" && dom == "*" && mon == "*" && dow == "*" {
+		return "Every hour"
+	}
+
+	// Daily at specific time
+	if dom == "*" && mon == "*" && dow == "*" && min != "*" && hr != "*" {
+		return fmt.Sprintf("At %s:%s every day", hr, min)
+	}
+
+	// Weekly
+	if dom == "*" && mon == "*" && dow != "*" {
+		return fmt.Sprintf("At %s:%s on day-of-week %s", hr, min, dow)
+	}
+
+	// Monthly
+	if dom != "*" && mon == "*" && dow == "*" {
+		return fmt.Sprintf("At %s:%s on day %s of every month", hr, min, dom)
+	}
+
+	// Fallback
+	return fmt.Sprintf("Cron: %s", norm)
 }

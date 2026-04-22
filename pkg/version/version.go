@@ -5,9 +5,9 @@ import "fmt"
 
 // These variables are set at build time via ldflags:
 //
-//	-X github.com/ialexeze/orkestra/pkg/version.Version=v1.0.0
-//	-X github.com/ialexeze/orkestra/pkg/version.Commit=abc1234
-//	-X github.com/ialexeze/orkestra/pkg/version.Date=2026-03-19T10:00:00Z
+//	-X github.com/orkspace/orkestra/pkg/version.Version=v1.0.0
+//	-X github.com/orkspace/orkestra/pkg/version.Commit=abc1234
+//	-X github.com/orkspace/orkestra/pkg/version.Date=2026-03-19T10:00:00Z
 var (
 	Version = "dev"
 	Commit  = "none"

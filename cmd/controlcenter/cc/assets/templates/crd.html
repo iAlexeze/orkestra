@@ -64,12 +64,11 @@
         <span class="sep">›</span>
         <a href="/controlcenter/katalog/{{ .KatalogName }}">{{ .KatalogName }}</a>
         <span class="sep">›</span>
-        <span class="current cc-crumb-clickable" id="crdNameCrumb"
-              onclick="showJsonViewer('{{ .CRD.Name }}', 'raw')"
-              title="Click to inspect CRD config (raw &amp; enriched)">
-          {{ .CRD.Name }}
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.5;vertical-align:middle;margin-left:2px"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-        </span>
+        <span class="current">{{ .CRD.Name }}</span>
+        <button class="cc-btn cc-btn-secondary" onclick="showJsonViewer('{{ .CRD.Name }}', 'raw')"
+                title="View CRD YAML" style="font-size:11px;padding:2px 8px;margin-left:4px">
+          View YAML
+        </button>
         <span style="margin-left:8px">
           {{- if .CRD.HasUnhealthyDependencies }}
           <span class="cc-badge cc-badge-pending" data-tooltip="Unhealthy dependencies">
@@ -228,6 +227,120 @@
         </div>
       </div>
 
+      <!-- Autoscaler Info — only shown when autoscale is declared -->
+      {{ if .CRD.AutoscalerEnabled }}
+      {{ $aw := .CRD.AutoscalerWorkers }}
+      <div class="cc-section">
+        <div class="cc-section-header">
+          <h2 class="cc-section-title" style="margin:0">
+            Autoscaler
+            {{ if $aw.OverrideActive }}
+            <span style="font-size:12px;font-weight:500;color:var(--color-started);margin-left:8px;background:rgba(234,179,8,0.1);padding:2px 8px;border-radius:9999px">Override Active</span>
+            {{ else }}
+            <span style="font-size:12px;font-weight:500;color:var(--text-muted);margin-left:8px">Baseline</span>
+            {{ end }}
+          </h2>
+          <button onclick="document.getElementById('autoscalerDetail').classList.toggle('hidden')" class="cc-btn cc-btn-secondary" style="font-size:12px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            Details
+          </button>
+        </div>
+
+        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
+          <div class="cc-stats-grid" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:0">
+            <div style="text-align:center">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Configured</div>
+              <div style="font-size:22px;font-weight:600">{{ $aw.Configured }}</div>
+              <div style="font-size:11px;color:var(--text-muted)">baseline workers</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Effective</div>
+              <div style="font-size:22px;font-weight:600;{{ if $aw.OverrideActive }}color:var(--color-started){{ end }}">{{ $aw.Effective }}</div>
+              <div style="font-size:11px;color:var(--text-muted)">{{ if $aw.OverrideActive }}override{{ else }}= configured{{ end }}</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">In-Flight</div>
+              <div style="font-size:22px;font-weight:600;color:var(--color-started)">{{ $aw.InFlight }}</div>
+              <div style="font-size:11px;color:var(--text-muted)">reconciling now</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Busy</div>
+              <div style="font-size:22px;font-weight:600">{{ printf "%.0f" $aw.BusyPercent }}%</div>
+              <div style="font-size:11px;color:var(--text-muted)">utilization</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expanded autoscale config — hidden by default -->
+        <div id="autoscalerDetail" class="hidden" style="margin-top:8px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;font-size:13px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div>
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">Capacity</div>
+              <table style="width:100%;border-collapse:collapse">
+                <tr><td style="color:var(--text-muted);padding:3px 0">Configured</td><td style="text-align:right;font-weight:500">{{ $aw.Configured }} workers</td></tr>
+                {{ if $aw.OverrideActive }}<tr><td style="color:var(--color-started);padding:3px 0">Override</td><td style="text-align:right;font-weight:500;color:var(--color-started)">{{ $aw.OverrideWorkers }} workers</td></tr>{{ end }}
+                <tr><td style="color:var(--text-muted);padding:3px 0">Max (pool)</td><td style="text-align:right;font-weight:500">{{ $aw.Max }}</td></tr>
+              </table>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">Queue</div>
+              <table style="width:100%;border-collapse:collapse">
+                <tr><td style="color:var(--text-muted);padding:3px 0">Depth now</td><td style="text-align:right;font-weight:500">{{ $aw.QueueDepth }}</td></tr>
+                <tr><td style="color:var(--text-muted);padding:3px 0">Configured limit</td><td style="text-align:right;font-weight:500">{{ if gt $aw.QueueDepthConfigured 0 }}{{ $aw.QueueDepthConfigured }}{{ else }}∞{{ end }}</td></tr>
+                {{ if $aw.OverrideActive }}<tr><td style="color:var(--color-started);padding:3px 0">Effective limit</td><td style="text-align:right;font-weight:500;color:var(--color-started)">{{ $aw.QueueDepthEffective }}</td></tr>{{ end }}
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      {{ end }}
+
+      <!-- Rollback Stats — only shown when rollback rules are declared -->
+      {{ if .CRD.Rollback }}
+      {{ $rb := .CRD.Rollback }}
+      <div class="cc-section">
+        <div class="cc-section-header">
+          <h2 class="cc-section-title" style="margin:0">
+            Rollback
+            {{ if $rb.Active }}
+            <span style="font-size:12px;font-weight:500;color:var(--color-degraded);margin-left:8px;background:var(--color-degraded-bg);padding:2px 8px;border-radius:9999px">Active</span>
+            {{ else }}
+            <span style="font-size:12px;font-weight:500;color:var(--color-healthy);margin-left:8px;background:var(--color-healthy-bg);padding:2px 8px;border-radius:9999px">Normal</span>
+            {{ end }}
+          </h2>
+        </div>
+
+        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
+          {{ if $rb.Active }}
+          <div class="cc-alert mb-4" style="background:var(--color-degraded-bg);border-color:var(--color-degraded-border);color:var(--color-degraded)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            <span style="font-size:12px">Rollback active — normal reconciliation is blocked. Update the CR spec to resume.</span>
+          </div>
+          {{ end }}
+
+          <div class="cc-stats-grid" style="grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:0">
+            <div style="text-align:center">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Total Rollbacks</div>
+              <div style="font-size:28px;font-weight:600;{{ if gt $rb.TotalRollbacks 0 }}color:var(--color-started){{ end }}">{{ $rb.TotalRollbacks }}</div>
+              <div style="font-size:11px;color:var(--text-muted)">since startup</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Status</div>
+              <div style="font-size:18px;font-weight:600;{{ if $rb.Active }}color:var(--color-degraded){{ else }}color:var(--color-healthy){{ end }}">
+                {{ if $rb.Active }}Active{{ else }}Normal{{ end }}
+              </div>
+              <div style="font-size:11px;color:var(--text-muted)">current state</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Last Triggered</div>
+              <div style="font-size:14px;font-weight:500;font-family:monospace">{{ if $rb.LastRollbackAt }}{{ $rb.LastRollbackAt }}{{ else }}—{{ end }}</div>
+              <div style="font-size:11px;color:var(--text-muted)">timestamp</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {{ end }}
+
       <!-- Queue Visualization -->
       <div class="cc-section">
         <h2 class="cc-section-title">Queue Pressure</h2>
@@ -345,6 +458,141 @@
         </div>
       </div>
 
+      <!-- Deletion Protection -->
+      <div class="cc-section">
+        <h2 class="cc-section-title">Deletion Protection</h2>
+        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
+          {{ if .CRD.DeletionProtection }}
+            {{ if .CRD.DeletionProtection.Enabled }}
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+              <span class="cc-badge cc-badge-healthy" style="gap:5px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                Enabled
+              </span>
+              <span style="font-size:12px;color:var(--text-muted)">DELETE requests for this CRD are blocked by Orkestra's admission webhook</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+              <div>
+                <div style="color:var(--text-muted);font-size:11px">Blocked Deletions</div>
+                <div style="font-size:20px;font-weight:700;color:var(--color-degraded)" title="{{ .CRD.DeletionProtection.Blocked }}">{{ formatNumber .CRD.DeletionProtection.Blocked }}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Since operator start</div>
+              </div>
+              <div>
+                <div style="color:var(--text-muted);font-size:11px">Webhook</div>
+                <div style="font-size:13px;font-weight:500;margin-top:4px">orkestra-delete-protection</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px">failurePolicy: Fail</div>
+              </div>
+            </div>
+            {{ else }}
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-muted)">
+              <span class="cc-badge cc-badge-pending" style="gap:5px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
+                Disabled
+              </span>
+              Set <span class="cc-code">security.deletionProtection.enabled: true</span> in the Katalog to protect this CRD from deletion.
+            </div>
+            {{ end }}
+          {{ else }}
+          <div style="font-size:13px;color:var(--text-muted)">Deletion protection not configured. Set <span class="cc-code">security.deletionProtection.enabled: true</span> in the Katalog.</div>
+          {{ end }}
+        </div>
+      </div>
+
+      <!-- Namespace Protection — only shown when namespace rules are declared -->
+      {{ if .CRD.NamespaceProtection.HasNamespaceRules }}
+      {{ $np := .CRD.NamespaceProtection }}
+      <div class="cc-section">
+        <h2 class="cc-section-title">Namespace Protection</h2>
+        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+            {{ if $np.Enabled }}
+            <span class="cc-badge cc-badge-healthy" style="gap:5px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              Active
+            </span>
+            <span style="font-size:12px;color:var(--text-muted)">failurePolicy: Fail — CREATE/UPDATE blocked in forbidden namespaces</span>
+            {{ else }}
+            <span class="cc-badge cc-badge-pending" style="gap:5px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              Rules declared, webhook not active
+            </span>
+            {{ end }}
+          </div>
+          <!-- Namespace rule lists -->
+          {{ if $np.AllowedNamespaces }}
+          <div style="margin-bottom:14px">
+            <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Allowed Namespaces</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              {{ range $np.AllowedNamespaces }}
+              <span style="background:var(--color-healthy-bg,rgba(34,197,94,.12));color:var(--color-healthy);padding:2px 10px;border-radius:999px;font-size:12px;font-family:monospace">{{ . }}</span>
+              {{ end }}
+            </div>
+          </div>
+          {{ end }}
+          {{ if $np.RestrictedNamespaces }}
+          <div style="margin-bottom:14px">
+            <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Restricted Namespaces</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              {{ range $np.RestrictedNamespaces }}
+              <span style="background:var(--color-degraded-bg,rgba(239,68,68,.12));color:var(--color-degraded);padding:2px 10px;border-radius:999px;font-size:12px;font-family:monospace">{{ . }}</span>
+              {{ end }}
+            </div>
+          </div>
+          {{ end }}
+          <!-- Admission counters (omitted when webhook not active) -->
+          {{ if $np.Enabled }}
+          <div style="display:flex;gap:24px;margin-top:4px">
+            <div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Total Reviews</div>
+              <div style="font-size:22px;font-weight:600">{{ $np.Total }}</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Blocked</div>
+              <div style="font-size:22px;font-weight:600;{{ if gt $np.Blocked 0 }}color:var(--color-degraded){{ end }}">{{ $np.Blocked }}</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Allowed</div>
+              <div style="font-size:22px;font-weight:600">{{ $np.Allowed }}</div>
+            </div>
+          </div>
+          {{ end }}
+        </div>
+      </div>
+      {{ end }}
+
+      <!-- Providers -->
+      {{ if .CRD.Providers }}
+      <div class="cc-section">
+        <h2 class="cc-section-title">Providers</h2>
+        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            {{ range .CRD.Providers }}
+            <div style="display:flex;align-items:flex-start;gap:16px;padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius)">
+              <div style="min-width:120px">
+                <div style="font-size:13px;font-weight:600">{{ .Name }}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px">{{ range $i, $k := .Kinds }}{{ if $i }}, {{ end }}{{ $k }}{{ end }}</div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;flex:1">
+                <div>
+                  <div style="color:var(--text-muted);font-size:11px">Total Calls</div>
+                  <div style="font-size:18px;font-weight:700">{{ .Total }}</div>
+                </div>
+                <div>
+                  <div style="color:var(--text-muted);font-size:11px">Errors</div>
+                  <div style="font-size:18px;font-weight:700{{ if gt .Errors 0 }};color:var(--color-degraded){{ end }}">{{ .Errors }}</div>
+                </div>
+                <div>
+                  <div style="color:var(--text-muted);font-size:11px">Error Rate</div>
+                  <div style="font-size:18px;font-weight:700{{ if gt .ErrorRate 0.0 }};color:var(--color-degraded){{ end }}">{{ printf "%.1f%%" (mulFloat .ErrorRate 100.0) }}</div>
+                </div>
+              </div>
+            </div>
+            {{ end }}
+          </div>
+        </div>
+      </div>
+      {{ end }}
+
       <!-- Dependencies -->
       {{ if .CRD.Dependencies }}
       <div class="cc-section">
@@ -432,14 +680,14 @@
       </div>
       {{ end }}
 
-      <!-- Reconciler Configuration -->
+      <!-- operatorBox: Configuration -->
       <div class="cc-section">
-        <h2 class="cc-section-title">Reconciler Configuration</h2>
+        <h2 class="cc-section-title">operatorBox: Configuration</h2>
         <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px;margin-bottom:16px">
             <div>
               <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">Reconciler Type</div>
-              <div style="font-weight:500">{{ .CRD.Reconciler.type }}</div>
+              <div style="font-weight:500">{{ .crd.OperatorBox.type }}</div>
             </div>
             <div>
               <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">Resync</div>
@@ -448,27 +696,27 @@
           </div>
           <div style="font-size:13px;margin-bottom:8px">
             <div style="color:var(--text-muted);font-size:11px;margin-bottom:6px">Finalizers</div>
-            {{ if .CRD.Reconciler.finalizers.values }}
-              {{ range .CRD.Reconciler.finalizers.values }}
+            {{ if .crd.OperatorBox.finalizers.values }}
+              {{ range .crd.OperatorBox.finalizers.values }}
               <span class="cc-code" style="margin-right:6px;margin-bottom:4px;display:inline-block">{{ . }}</span>
               {{ end }}
-              <span class="text-muted text-xs">({{ .CRD.Reconciler.finalizers.source }})</span>
+              <span class="text-muted text-xs">({{ .crd.OperatorBox.finalizers.source }})</span>
             {{ else }}
               <span class="text-muted">No finalizers configured</span>
             {{ end }}
           </div>
-          {{ if .CRD.Reconciler.hooks.configured }}
+          {{ if .crd.OperatorBox.hooks.configured }}
           <div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg-elevated);border-radius:var(--radius-sm);margin-top:8px;font-size:12px">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             <span>Go hooks configured</span>
-            <span class="text-muted">({{ .CRD.Reconciler.hooks.source }})</span>
+            <span class="text-muted">({{ .crd.OperatorBox.hooks.source }})</span>
           </div>
           {{ end }}
-          {{ if .CRD.Reconciler.constructor.configured }}
+          {{ if .crd.OperatorBox.constructor.configured }}
           <div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg-elevated);border-radius:var(--radius-sm);margin-top:8px;font-size:12px">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             <span>Custom reconciler configured</span>
-            <span class="text-muted">({{ .CRD.Reconciler.constructor.source }})</span>
+            <span class="text-muted">({{ .crd.OperatorBox.constructor.source }})</span>
           </div>
           {{ end }}
         </div>
@@ -522,7 +770,7 @@
     </div>
   </div>
 
-  <script src="/controlcenter/assets/static/js/dashboard.js"></script>
+  <script src="/controlcenter/assets/static/js/controlcenter.js"></script>
   <script>
     // JSON Viewer Modal
     const jsonModal = document.getElementById('jsonViewerModal');

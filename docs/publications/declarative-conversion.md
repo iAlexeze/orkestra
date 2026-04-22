@@ -94,7 +94,7 @@ crds:
       group: demo.orkestra.io
       version: v1alpha1
       kind: Website
-    reconciler:
+    operatorBox:
       default: true
       # ... v1alpha1 reconcile templates
 
@@ -103,7 +103,7 @@ crds:
       group: demo.orkestra.io
       version: v1
       kind: Website
-    reconciler:
+    operatorBox:
       default: true
       # ... v1 reconcile templates
     conversion:
@@ -455,4 +455,4 @@ makes that possible.
 ---
 
 *Orkestra — Declarative Operators for Kubernetes*
-*March 2026 — https://github.com/iAlexeze/orkestra*
+*March 2026 — https://github.com/orkspace/orkestra*

@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/merger"
 )
 
 // writeKatalogFile creates a minimal Katalog YAML temp file with the given CRD names.

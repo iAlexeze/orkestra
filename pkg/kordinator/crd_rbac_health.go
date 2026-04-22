@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 type RBACInfo struct {
@@ -34,31 +34,31 @@ func generateRBACInfo(crd orktypes.CRDEntry, v crdDisplayValues) RBACInfo {
 			Verbs:       []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 			Description: fmt.Sprintf("Manage %s custom resources", crd.Name),
 		})
+
+		// 2. Status subresource if needed
+		rules = append(rules, RBACRule{
+			APIGroups:   []string{crd.APITypes.Group},
+			Resources:   []string{crd.APITypes.Plural + "/status"},
+			Verbs:       []string{"get", "update", "patch"},
+			Description: fmt.Sprintf("Update status of %s resources", crd.Name),
+		})
 	}
 
-	// 2. Status subresource if needed
-	rules = append(rules, RBACRule{
-		APIGroups:   []string{crd.APITypes.Group},
-		Resources:   []string{crd.APITypes.Plural + "/status"},
-		Verbs:       []string{"get", "update", "patch"},
-		Description: fmt.Sprintf("Update status of %s resources", crd.Name),
-	})
-
 	// 3. Resources from declarative templates
-	if crd.ReconcilerConfig.OnCreate != nil {
-		resourceRules := extractResourceRules(crd.ReconcilerConfig.OnCreate)
+	if crd.OperatorBox.OnCreate != nil {
+		resourceRules := extractResourceRules(crd.OperatorBox.OnCreate)
 		rules = append(rules, resourceRules...)
 	}
 
 	// 4. Resources from onReconcile
-	if crd.ReconcilerConfig.OnReconcile != nil {
-		resourceRules := extractResourceRules(crd.ReconcilerConfig.OnReconcile)
+	if crd.OperatorBox.OnReconcile != nil {
+		resourceRules := extractResourceRules(crd.OperatorBox.OnReconcile)
 		rules = append(rules, resourceRules...)
 	}
 
 	// 5. Resources from onDelete
-	if crd.ReconcilerConfig.OnDelete != nil {
-		resourceRules := extractResourceRules(crd.ReconcilerConfig.OnDelete)
+	if crd.OperatorBox.OnDelete != nil {
+		resourceRules := extractResourceRules(crd.OperatorBox.OnDelete)
 		rules = append(rules, resourceRules...)
 	}
 

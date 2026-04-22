@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/informer"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/queue"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/informer"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/queue"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -27,12 +27,44 @@ import (
 //
 //	if a CRD is deleted after startup, the informer continues running.
 //	But workers are drained through deactivateCRD.
+// dependenciesReady returns true if all declared dependencies are currently
+// satisfied (i.e., the required channel is already closed).
+// This check is non‑blocking.
+// func (k *DependencyKordinator) dependenciesReady(crd orktypes.CRDEntry, nameToGVK map[string]string) bool {
+// 	for depName, depCond := range crd.DependsOn {
+// 		depGVK, ok := nameToGVK[depName]
+// 		if !ok {
+// 			logger.Error().Str("crd", crd.Name).Str("dependency", depName).Msg("dependency GVK not found")
+// 			return false
+// 		}
+// 		switch strings.ToLower(depCond.Condition) {
+// 		case string(orktypes.DependencyConditionHealthy):
+// 			select {
+// 			case <-k.healthyCh[depGVK]:
+// 				// channel closed → dependency healthy
+// 			default:
+// 				return false
+// 			}
+// 		default: // started
+// 			select {
+// 			case <-k.startedCh[depGVK]:
+// 				// channel closed → dependency started
+// 			default:
+// 				return false
+// 			}
+// 		}
+// 	}
+// 	return true
+// }
+
+// retryMissingCRDs runs continuously to detect and activate CRDs that were missing at startup
+// or deferred because dependencies were not ready.
 func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 	ticker := time.NewTicker(PostStartRetryInterval)
 	defer ticker.Stop()
 
-	// backoff starts small (fast retries)
 	backoff := PostStartBackoff
+	nameToGVK := k.NameToGVKMap()
 
 	for {
 		select {
@@ -41,46 +73,43 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 
 		case <-ticker.C:
 			runtimeMissing := make(map[string]*informer.InformerEntry)
+
 			// ───────────────────────────────────────────────
 			// 1. Detect CRDs that disappeared at runtime
 			// ───────────────────────────────────────────────
 			registered := k.informerFactory.Registered()
-
 			for gvkStr, entry := range registered {
 				if entry == nil || entry.Missing {
 					continue
 				}
-
 				ok, _ := k.crdExists(entry.GVK)
 				if !ok {
-					logger.Warn().Str("gvk", gvkStr).
-						Msg("CRD disappeared at runtime — marking missing")
-
+					logger.Warn().Str("gvk", gvkStr).Msg("CRD disappeared at runtime — marking missing")
 					entry.Missing = true
 					runtimeMissing[gvkStr] = entry
 					k.informerFactory.SetMissingOnStartup(runtimeMissing)
+
+					// Health tracking
+					// 	CRD
 					k.crdHealthMap[gvkStr].SetMissingAtRuntime()
 					k.crdHealthMap[gvkStr].SetDegraded()
+
+					// 	Katalog
+					k.allOnline.Store(false)
+					k.orkHealth.allOnline.Store(false)
 					k.orkHealth.SetKatalogDegraded()
 
-					// Get the dependants
+					// Degrade dependents that require healthy condition
 					deps := k.depGraph.GetDependents(entry.Name)
-					if len(deps) > 0 {
-						for _, dep := range deps {
-							crd := k.depGraph.GetNode(dep).CRD
-							if crd.DependsOn[entry.Name].Condition == string(orktypes.DependencyConditionHealthy) {
-								// Degrade this dependant though could still be processing,
-								// But lets operators know what is happening
-								k.crdHealthMap[crd.GVK().String()].SetDegraded() // TODO: look again here
-							} else {
-								// Just log this
-								logger.Info().Str("gvk", gvkStr).
-									Msgf("dependency %s is unhealthy", entry.Name)
-							}
+					for _, dep := range deps {
+						crd := k.depGraph.GetNode(dep).CRD
+						if crd.DependsOn[entry.Name].Condition == string(orktypes.DependencyConditionHealthy) {
+							k.crdHealthMap[crd.GVK().String()].SetDegraded()
+						} else {
+							logger.Info().Str("gvk", gvkStr).Msgf("dependency %s is unhealthy", entry.Name)
 						}
 					}
 
-					// Stop workers (queue stays alive)
 					if !k.deactivated[gvkStr] {
 						k.crdHealthMap[gvkStr].StartedAt()
 						logger.Info().Str("gvk", gvkStr).Msg("stopping workers")
@@ -93,70 +122,108 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 			// 2. Handle CRDs currently missing
 			// ───────────────────────────────────────────────
 			missing := k.informerFactory.Missing()
-
 			if len(missing) == 0 {
-				// No missing CRDs → system healthy → slow mode
-				// Reset backoff so next missing event is fast again
 				backoff = PostStartBackoff
-
 				logger.Debug().Msg("retry loop: no missing CRDs")
-				k.allOnline.Store(true)
-				k.orkHealth.SetKatalogReady()
-				continue
-			}
+				// Continue to Phase 3 before marking all online
+			} else {
+				backoff = PostStartBackoff
+				logger.Debug().Msgf("retry loop: checking %d missing CRD(s)", len(missing))
+				stillMissing := make(map[string]*informer.InformerEntry)
 
-			// Missing CRDs → fast mode
-			// Reset backoff so we retry quickly
-			backoff = PostStartBackoff
+				for gvkStr, entry := range missing {
+					ok, _ := k.crdExists(entry.GVK)
+					if ok {
+						k.activateCRD(ctx, entry)
+						k.deactivated[gvkStr] = false
+						k.crdHealthMap[gvkStr].SetStarted()
+					} else {
+						stillMissing[gvkStr] = entry
+						k.crdHealthMap[gvkStr].SetMissingAtRuntime()
+						k.crdHealthMap[gvkStr].SetDegraded()
+						k.orkHealth.allOnline.Store(false)
+						k.orkHealth.SetKatalogDegraded()
+						logger.Debug().Msgf("retry loop: %s still not available", gvkStr)
+					}
+				}
+				k.informerFactory.SetMissingOnStartup(stillMissing)
 
-			logger.Debug().Msgf("retry loop: checking %d missing CRD(s)", len(missing))
-
-			stillMissing := make(map[string]*informer.InformerEntry)
-
-			for gvkStr, entry := range missing {
-				ok, _ := k.crdExists(entry.GVK)
-				if ok {
-					// CRD reappeared → activate immediately
-					k.activateCRD(ctx, entry)
-					k.deactivated[gvkStr] = false
-					k.crdHealthMap[gvkStr].SetStarted()
-				} else {
-					// Still missing → keep tracking it
-					stillMissing[gvkStr] = entry
-					k.crdHealthMap[gvkStr].SetMissingAtRuntime()
-					k.crdHealthMap[gvkStr].SetDegraded()
+				if len(stillMissing) > 0 {
+					logger.Info().Msgf("retry loop: %d CRD(s) still missing", len(stillMissing))
+					k.allOnline.Store(false)
+					k.orkHealth.allOnline.Store(false)
 					k.orkHealth.SetKatalogDegraded()
-
-					logger.Debug().Msgf("retry loop: %s still not available", gvkStr)
 				}
 			}
 
-			// Update missing map
-			k.informerFactory.SetMissingOnStartup(stillMissing)
+			// ───────────────────────────────────────────────────────────
+			// 3. Activate deferred CRDs (skipped at startup because
+			//    dependencies were not ready)
+			// ───────────────────────────────────────────────────────────
+			for _, name := range k.depGraph.StartupOrder() {
+				gvk := nameToGVK[name]
 
-			if len(stillMissing) == 0 {
-				k.allOnline.Store(true)
-				k.orkHealth.SetKatalogReady()
-				logger.Info().Msg("retry loop: all CRDs activated")
-			} else {
-				logger.Info().Msgf("retry loop: %d CRD(s) still missing", len(stillMissing))
-				k.allOnline.Store(false)
-				k.orkHealth.SetKatalogDegraded()
+				k.mu.RLock()
+				started := k.started[gvk]
+				k.mu.RUnlock()
+				if started {
+					continue // already running
+				}
+
+				// Skip if it's already in the missing map (handled by Phase 2)
+				if k.informerFactory.IsMissing(gvk) {
+					continue
+				}
+
+				crd := k.depGraph.GetNode(name).CRD
+				if !k.dependenciesReady(crd, nameToGVK) {
+					continue // still waiting for dependencies
+				}
+
+				// CRD exists and dependencies are ready → activate
+				logger.Info().Str("crd", name).Msg("dependencies now satisfied, activating")
+				entry, ok := k.informerFactory.Registered()[gvk]
+				if !ok || entry == nil {
+					logger.Error().Str("crd", name).Str("gvk", gvk).Msg("no informer entry found for deferred CRD")
+					continue
+				}
+				k.activateCRD(ctx, entry)
+				k.deactivated[gvk] = false
+				k.crdHealthMap[gvk].SetStarted()
 			}
 
 			// ───────────────────────────────────────────────
-			// 3. Exponential backoff (only when still missing)
+			// 4. Update overall health
 			// ───────────────────────────────────────────────
-			if len(stillMissing) > 0 {
-				time.Sleep(backoff)
+			if len(k.informerFactory.Missing()) == 0 && k.allCRDsStarted() {
+				k.allOnline.Store(true)
+				k.orkHealth.allOnline.Store(true)
+				k.orkHealth.SetKatalogReady()
+				logger.Debug().Msg("retry loop: all CRDs active")
+			}
 
-				// Cap at 1 minute
+			// Exponential backoff only when CRDs are still missing
+			if len(k.informerFactory.Missing()) > 0 {
+				time.Sleep(backoff)
 				if backoff < time.Minute {
 					backoff *= 2
 				}
 			}
 		}
 	}
+}
+
+// allCRDsStarted returns true if every CRD in the graph has started.
+func (k *DependencyKordinator) allCRDsStarted() bool {
+	k.mu.RLock()
+	defer k.mu.RUnlock()
+	for _, node := range k.depGraph.GetNodes() {
+		gvk := node.CRD.GroupVersionKind.String()
+		if !k.started[gvk] {
+			return false
+		}
+	}
+	return true
 }
 
 // activateCRD brings a previously missing CRD online after it appears in the cluster.

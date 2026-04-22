@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -93,4 +93,14 @@ func init() {
 
 	komposeCmd.Flags().StringP("output", "o", "", "Write merged katalog to file")
 	komposeCmd.Flags().StringSliceP("katalog", "k", nil, "Path to komposer.yaml")
+
+	// Shadow global flags so they don't appear under `ork kompose`
+	komposeCmd.Flags().Bool("debug", false, "")
+	komposeCmd.Flags().String("kubeconfig", "", "")
+	komposeCmd.Flags().Bool("verbose", false, "")
+
+	// Hide them from help output
+	komposeCmd.Flags().MarkHidden("debug")
+	komposeCmd.Flags().MarkHidden("kubeconfig")
+	komposeCmd.Flags().MarkHidden("verbose")
 }

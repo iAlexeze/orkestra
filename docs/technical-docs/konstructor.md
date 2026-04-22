@@ -145,16 +145,26 @@ Shared pointers mean no copying — a worker incrementing a counter is immediate
 ### Step 5b — Route registration
 
 ```go
+// providerStatsMap: one *health.ProviderStats per CRD with provider blocks
+providerStatsMap := make(map[string]*health.ProviderStats)
+for _, crd := range kat.Enabled() {
+    if crd.HasProviders() {
+        providerStatsMap[crd.GVK().String()] = health.NewProviderStats()
+    }
+}
+
 for _, crd := range kat.Enabled() {
     hs.Register("/katalog/"+crdName+"/health", kordinator.BuildCRDHealthHandler(...))
-    hs.Register("/katalog/"+crdName,           kordinator.BuildCRDInfoHandler(...))
+    hs.Register("/katalog/"+crdName,           kordinator.BuildCRDInfoHandler(..., providerStatsMap[gvk]))
 }
 hs.Register("/katalog", kordinator.BuildKatalogHandler(...))
 ```
 
-Routes are registered before `hs.Start()`. The handlers close over the `CRDHealth` pointers, the informer (for cache-based resource count), and the conversion/admission stats.
+Routes are registered before `hs.Start()`. The handlers close over the `CRDHealth` pointers, the informer (for cache-based resource count), and the conversion/admission/protection/provider stats.
 
-`BuildCRDInfoHandler` receives `hs.GetConversionStats()` and `hs.GetAdmissionStats()` — the same stats objects that the conversion and admission handlers write to. The info endpoint always shows the live stats.
+`BuildCRDInfoHandler` receives `hs.GetConversionStats()`, `hs.GetAdmissionStats()`, `hs.GetProtectionStats()`, and `providerStatsMap[gvk]` — the same stats objects that the reconciler and webhook handlers write to. The info endpoint always shows live stats.
+
+`providerStatsMap[gvk]` is nil for CRDs without provider blocks — `BuildCRDInfoHandler` handles nil safely and omits the `providers` field from the response.
 
 ### Step 6 — Dependency Kordinator
 

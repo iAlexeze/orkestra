@@ -100,7 +100,7 @@ data:
                 message: "spec.enabled should be declared explicitly"
                 action: warn   # advisory
 
-          reconciler:
+          operatorBox:
             default: true
             onCreate:
               deployments:

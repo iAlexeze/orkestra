@@ -1,6 +1,6 @@
 package secrets
 
-import orktypes "github.com/ialexeze/orkestra/pkg/types"
+import orktypes "github.com/orkspace/orkestra/pkg/types"
 
 // ── Secret ────────────────────────────────────────────────────────────────────
 

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 func (k *Katalog) List() map[string]orktypes.CRDEntry {
@@ -76,9 +76,9 @@ func (k *Katalog) Explain(name string) (string, error) {
 	fmt.Fprint(b, "List Type:    runtime.Object")
 	fmt.Fprint(b, "Object Type:  runtime.Object")
 	if crd.DefaultReconcile() {
-		fmt.Fprint(b, "Reconciler:   Default\n")
+		fmt.Fprint(b, "operatorBox:   Default\n")
 	} else {
-		fmt.Fprintf(b, "Reconciler:   %T\n", crd.ReconcilerConfig.Constructor)
+		fmt.Fprintf(b, "operatorBox:   %T\n", crd.OperatorBox.Constructor)
 	}
 	fmt.Fprintf(b, "Informer:     LIST, WATCH\n")
 
@@ -111,7 +111,7 @@ func (k *Katalog) Order() []string {
 func (k *Katalog) Controllers() []string {
 	var out []string
 	for _, crd := range k.enabledCRDs {
-		if crd.ReconcilerConfig.Constructor != nil && crd.DefaultReconcile() {
+		if crd.OperatorBox.Constructor != nil && crd.DefaultReconcile() {
 			out = append(out, crd.Name)
 		}
 	}

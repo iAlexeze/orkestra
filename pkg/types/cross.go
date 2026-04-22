@@ -12,14 +12,14 @@
 //	  crds:
 //	    application:
 //	      cross:
-//	        - kind: database            # target CRD name (lowercase)
+//	        - crd: database             # target CRD name (lowercase, matches spec.crds key)
 //	          selector:
 //	            name: "{{ .metadata.name }}"       # find by name
 //	            namespace: "{{ .metadata.namespace }}"
 //	          as: database              # available as .cross.database.*
 //
 //	    database:
-//	      reconciler: ...               # database CRD — already has an informer
+//	      operatorBox: ...               # database CRD — already has an informer
 //
 // After ReadCross runs, the Application reconciler has access to:
 //
@@ -39,19 +39,46 @@
 //   - Service mesh without a service mesh: Application watches Database watches Network
 package types
 
+// ── Cross declaration type ────────────────────────────────────────────────────
+// The cross: YAML block should use explicit fields rather than overloading
+// the crd: string with "key=value" syntax.
+//
+// YAML:
+//
+//   cross:
+//     - crd: managed-database          # name-based (existing path)
+//       selector:
+//         name: "{{ .metadata.name }}-db"
+//       as: db
+//
+//     - labelSelector:                  # label-based (new path)
+//         tier: platform
+//       selector:
+//         name: "{{ .metadata.name }}-platform"
+//       as: platform
+//
+// The reconciler checks CrossSelector.LabelSelector first. If non-empty,
+// it calls ReadCrossFromInformerByLabel. Otherwise it uses the crd name
+// to look up the informer and calls ReadCrossFromInformer with the
+// resolved namespace/name key.
+
 // CrossCRDDeclaration declares one cross-CRD observation.
-// Declared in the reconciler config under cross: for a CRD.
+// Declared in the operatorBox config under cross: for a CRD.
 type CrossCRDDeclaration struct {
-	// Kind is the target CRD name (lowercase, matches the map key in spec.crds).
-	//   kind: database
-	Kind string `yaml:"kind"`
+	// Crd is the target CRD name (lowercase, matches the map key in spec.crds).
+	//   crd: database
+	Crd string `yaml:"crd"`
+
+	// LabelSelector is a label key/value pair for label-based informer lookup.
+	// Mutually exclusive with Kind.
+	LabelSelector map[string]string `yaml:"labelSelector,omitempty"`
 
 	// Selector identifies which CR instance to observe.
 	Selector CrossSelector `yaml:"selector"`
 
 	// As is the key under .cross.* where the result is accessible.
 	//   as: database → .cross.database.status.phase
-	// Default: same as Kind.
+	// Default: same as Crd.
 	As string `yaml:"as,omitempty"`
 
 	// Strategy controls what happens when multiple CRs match the selector.
@@ -66,6 +93,8 @@ type CrossCRDDeclaration struct {
 }
 
 // CrossSelector identifies a CR in the target CRD.
+// The selector block on a cross: declaration.
+// Exactly one of Name or LabelSelector should be set per entry.
 type CrossSelector struct {
 	// Name is the CR name to look up. Template expressions supported.
 	//   name: "{{ .metadata.name }}"    → same name as the current CR

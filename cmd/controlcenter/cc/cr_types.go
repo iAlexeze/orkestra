@@ -1,5 +1,10 @@
 package controlcenter
 
+import (
+	"encoding/json"
+	"sort"
+)
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CR types — mirror the JSON shapes returned by Orkestra's
 // /katalog/{crd}/cr and /katalog/{crd}/cr/{namespace}/{name} endpoints.
@@ -9,6 +14,7 @@ package controlcenter
 type CRSummary struct {
 	Name        string `json:"name"`
 	Namespace   string `json:"namespace,omitempty"`
+	Namespaced  bool   `json:"namespaced"`
 	Phase       string `json:"phase,omitempty"`
 	Ready       bool   `json:"ready"`
 	ReadyReason string `json:"readyReason,omitempty"`
@@ -34,19 +40,70 @@ type ChildSummary struct {
 }
 
 // CRDetailResponse is returned by GET /katalog/{crd}/cr/{namespace}/{name}.
+// Children is map[string]json.RawMessage because each value is either a single
+// ChildSummary object or an array of ChildSummary objects (when multiple children
+// of the same kind exist).
 type CRDetailResponse struct {
-	Name              string                  `json:"name"`
-	Namespace         string                  `json:"namespace,omitempty"`
-	Generation        int64                   `json:"generation"`
-	CreationTimestamp string                  `json:"creationTimestamp"`
-	Labels            map[string]string       `json:"labels,omitempty"`
-	Annotations       map[string]string       `json:"annotations,omitempty"`
-	Ready             bool                    `json:"ready"`
-	ReadyReason       string                  `json:"readyReason,omitempty"`
-	ReadyMessage      string                  `json:"readyMessage,omitempty"`
-	Status            map[string]interface{}  `json:"status,omitempty"`
-	Children          map[string]ChildSummary `json:"children,omitempty"`
-	EventsEndpoint    string                  `json:"eventsEndpoint"`
+	Name              string                     `json:"name"`
+	Namespace         string                     `json:"namespace,omitempty"`
+	Generation        int64                      `json:"generation"`
+	CreationTimestamp string                     `json:"creationTimestamp"`
+	Labels            map[string]string          `json:"labels,omitempty"`
+	Annotations       map[string]string          `json:"annotations,omitempty"`
+	Ready             bool                       `json:"ready"`
+	ReadyReason       string                     `json:"readyReason,omitempty"`
+	ReadyMessage      string                     `json:"readyMessage,omitempty"`
+	Status            map[string]interface{}     `json:"status,omitempty"`
+	Children          map[string]json.RawMessage `json:"children,omitempty"`
+	EventsEndpoint    string                     `json:"eventsEndpoint"`
+}
+
+// ChildGroup is the normalised view of children grouped by kind.
+// IsMultiple is true when there are more than one child of this kind.
+type ChildGroup struct {
+	Kind       string
+	Items      []ChildSummary
+	IsMultiple bool
+	ReadyCount int // number of ready items — pre-computed for template use
+}
+
+func countReady(items []ChildSummary) int {
+	n := 0
+	for _, s := range items {
+		if s.Ready {
+			n++
+		}
+	}
+	return n
+}
+
+// normalizeChildGroups converts the polymorphic children map into a sorted
+// slice of ChildGroup values ready for template rendering.
+func normalizeChildGroups(raw map[string]json.RawMessage) []ChildGroup {
+	if len(raw) == 0 {
+		return nil
+	}
+	groups := make([]ChildGroup, 0, len(raw))
+	for kind, msg := range raw {
+		// Try array first (multiple children of same kind)
+		var arr []ChildSummary
+		if err := json.Unmarshal(msg, &arr); err == nil && len(arr) > 0 {
+			sort.Slice(arr, func(i, j int) bool { return arr[i].Name < arr[j].Name })
+			groups = append(groups, ChildGroup{Kind: kind, Items: arr, IsMultiple: len(arr) > 1, ReadyCount: countReady(arr)})
+			continue
+		}
+		// Fall back to single object
+		var single ChildSummary
+		if err := json.Unmarshal(msg, &single); err == nil {
+			ready := 0
+			if single.Ready {
+				ready = 1
+			}
+			groups = append(groups, ChildGroup{Kind: kind, Items: []ChildSummary{single}, IsMultiple: false, ReadyCount: ready})
+		}
+	}
+	sort.Slice(groups, func(i, j int) bool { return groups[i].Kind < groups[j].Kind })
+	return groups
 }
 
 // CREvent is one Kubernetes event involving this CR.
@@ -93,6 +150,7 @@ type CRDetailView struct {
 	CR          CRDetailResponse
 	Events      []CREvent
 	EventTotal  int
-	Phase       string // extracted from status.phase for convenience
-	BackURL     string // back to /katalog/{crd}/cr
+	Phase       string       // extracted from status.phase for convenience
+	ChildGroups []ChildGroup // normalised children — single or grouped per kind
+	BackURL     string       // back to /katalog/{crd}/cr
 }

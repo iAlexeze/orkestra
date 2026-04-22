@@ -70,7 +70,7 @@ spec:
         kind: ApplicationStack
         plural: applicationstacks
 
-      reconciler:
+      operatorBox:
         default: true
 
         onCreate:
@@ -354,7 +354,7 @@ import (
     "context"
     "fmt"
 
-    orktypes "github.com/ialexeze/orkestra/pkg/types"
+    orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // Provider implements orktypes.Provider for the "myprovider" block.
@@ -433,7 +433,7 @@ Registration at startup:
 ```go
 import (
     "github.com/myorg/orkestra-provider-myprovider"
-    orktypes "github.com/ialexeze/orkestra/pkg/types"
+    orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 registry := orktypes.NewProviderRegistry()
@@ -456,14 +456,13 @@ kind: Pattern
 metadata:
   name: rds-backed-application
   version: 1.2.0
-spec:
-  providers:
-    - name: aws
-      library: oci://registry.orkestra.io/providers/aws:1.8.0
-      required: true
-    - name: database
-      library: oci://registry.orkestra.io/providers/database:2.1.0
-      required: false
+providers:
+  - name: aws
+    library: oci://registry.orkestra.io/providers/aws:1.8.0
+    required: true
+  - name: database
+    library: oci://registry.orkestra.io/providers/database:2.1.0
+    required: false
 ```
 
 The `ork` CLI handles provider installation:

@@ -195,7 +195,7 @@ the reconcile loop — no webhook server, no policy engine deployment, no
 certificate management.
 
 ```yaml
-reconciler:
+operatorBox:
   validation:
     - field: spec.image
       prefix: "registry.myorg.io/"
@@ -488,4 +488,4 @@ https://github.com/kubernetes/enhancements/tree/master/keps/sig-api-machinery/34
 ---
 
 *Orkestra — Declarative Operators for Kubernetes*
-*March 2026 — https://github.com/iAlexeze/orkestra*
+*March 2026 — https://github.com/orkspace/orkestra*

@@ -6,15 +6,15 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/ialexeze/orkestra/domain"
-	orkerror "github.com/ialexeze/orkestra/pkg/error"
-	"github.com/ialexeze/orkestra/pkg/event"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	orkerror "github.com/orkspace/orkestra/pkg/error"
+	"github.com/orkspace/orkestra/pkg/event"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 
-	"github.com/ialexeze/orkestra/pkg/informer"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/queue"
+	"github.com/orkspace/orkestra/pkg/informer"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/queue"
 )
 
 var _ domain.Komponent = (*Kontroller)(nil)
@@ -31,6 +31,7 @@ type Kontroller struct {
 
 	hs           domain.Health
 	crdHealthMap map[string]*CRDHealth
+	orkHealth    *OrkestraHealth
 
 	defaultWorkers int
 	startedKtrl    atomic.Bool
@@ -54,6 +55,7 @@ func NewKontroller(
 	event *event.Event,
 	hs domain.Health,
 	crdHealthMap map[string]*CRDHealth,
+	orkHealth *OrkestraHealth,
 	queueRegistry *queue.QueueRegistry,
 	defaultWorkqueue *queue.Workqueue,
 	defaultWorkers int,
@@ -157,4 +159,20 @@ func (k *Kontroller) errorRate(gvk string) float64 {
 	}
 
 	return float64(k.failed[gvk] / k.total[gvk])
+}
+
+// Handle failure writes for concurrency
+func (k *Kontroller) failedReconcile(gvk string) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	k.failed[gvk]++
+}
+
+// Handle success writes for concurrency
+func (k *Kontroller) successReconcile(gvk string) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	k.total[gvk]++
 }

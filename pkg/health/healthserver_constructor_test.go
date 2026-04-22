@@ -1,11 +1,12 @@
 package health
 
 import (
+	"context"
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
 )
 
 func TestNewHealthServer_ConstructorWiresAllFields(t *testing.T) {
@@ -17,7 +18,6 @@ func TestNewHealthServer_ConstructorWiresAllFields(t *testing.T) {
 	// Minimal konfig
 	kfg.Ork().Name = "test-runtime"
 	kfg.Health().Port = "8080"
-	kfg.WebhookConfig().Port = "9443"
 
 	// Empty katalog (no rules)
 	kat := katalog.NewEmptyKatalog()
@@ -45,10 +45,10 @@ func TestNewHealthServer_ConstructorWiresAllFields(t *testing.T) {
 	}
 
 	// --- Webhook config must be populated from konfig ---
-	if hs.hookKfg.TLSCert != kfg.WebhookConfig().TLSCert {
+	if hs.hookKfg.TLSCert != kfg.Security().Webhooks.TLSCert {
 		t.Fatal("hookKfg.TLSCert not wired correctly")
 	}
-	if hs.hookReg.ServiceName != kfg.WebhookRegistration().ServiceName {
+	if hs.hookReg.ServiceName != kat.WebhooksServiceName() {
 		t.Fatal("hookReg.ServiceName not wired correctly")
 	}
 
@@ -60,5 +60,5 @@ func TestNewHealthServer_ConstructorWiresAllFields(t *testing.T) {
 	}()
 
 	// We don't care about actual serving — just that Start() doesn't crash
-	_ = hs.Start(nil)
+	_ = hs.Start(context.Background())
 }

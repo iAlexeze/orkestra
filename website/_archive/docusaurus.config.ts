@@ -113,7 +113,7 @@ const config: Config = {
           path: '../docs',
           routeBasePath: 'docs',
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/iAlexeze/orkestra/edit/main/',
+          editUrl: 'https://github.com/orkspace/orkestra/edit/main/',
           showLastUpdateTime: true,
           showLastUpdateAuthor: true,
           // Don't auto-generate sidebar — use explicit sidebars.ts
@@ -153,7 +153,7 @@ const config: Config = {
     announcementBar: {
       id: 'alpha',
       content:
-        'Orkestra is in active development. <a target="_blank" href="https://github.com/iAlexeze/orkestra/releases">View releases →</a>',
+        'Orkestra is in active development. <a target="_blank" href="https://github.com/orkspace/orkestra/releases">View releases →</a>',
       backgroundColor: '#0e0a14',
       textColor: '#ffffff',
       isCloseable: true,
@@ -190,7 +190,7 @@ const config: Config = {
           position: 'left',
         },
         {
-          href: 'https://github.com/iAlexeze/orkestra',
+          href: 'https://github.com/orkspace/orkestra',
           position: 'right',
           className: 'header-github-link',
           'aria-label': 'GitHub repository',
@@ -257,7 +257,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/iAlexeze/orkestra',
+              href: 'https://github.com/orkspace/orkestra',
             },
             {
               label: 'Twitter',
@@ -265,7 +265,7 @@ const config: Config = {
             },
             {
               label: 'Releases',
-              href: 'https://github.com/iAlexeze/orkestra/releases',
+              href: 'https://github.com/orkspace/orkestra/releases',
             },
           ],
         },

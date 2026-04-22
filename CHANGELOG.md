@@ -1,40 +1,31 @@
 # Changelog
 
-## [Unreleased] — CHANGELOG — Rename DependencyKontroller → DependencyKordinator
+### CI/CD & Helm Chart Improvements
 
-### **Changed**
-- Renamed package **`kontroller` → `kordinator`**.
-- Renamed struct **`DependencyKontroller` → `DependencyKordinator`**.
-- Updated constructor to **`NewDependencyKordinator`**.
-- Updated all imports, references, and type usages accordingly.
+#### 🔧 Helm Chart
+- Removed unnecessary configurations after testing
+- Chart now uses stripped image tag (without `v` prefix) for `appVersion` and container image tags
+- Updated `values.yaml` to reference the correct image tag format
 
-### **Rationale**
-The component previously named *DependencyKontroller* no longer behaved like a traditional controller.  
-It evolved into a **coordination layer** responsible for orchestrating multiple subsystems:
+#### ⚙️ CI/CD Workflows – Made Fully Reusable
+- All workflows now accept configurable inputs:
+  - `image_tag` (stripped version) passed from a central `prepare` job
+  - Repository, image names, Helm repo URL, Homebrew tap, etc.
+- Removed hardcoded project names (`orkspace`, `ialexeze`, `orkestra`) – workflows are portable
+- Added `prepare` job to strip `v` from Git tags and propagate `image_tag` to downstream jobs
+- Standardized tag handling: Git tags keep `v`, container images and Helm charts use plain semver
 
-- CRD startup sequencing based on dependency graph  
-- Worker lifecycle coordination  
-- Health propagation (CRD → Orkestra → Katalog)  
-- Queue registry and informer registry wiring  
-- Safe reconcile orchestration  
-- Dependency gating via `startedCh` and `healthyCh`  
-- Ordered shutdown and draining  
-- Centralized access to kubeclient, events, CRD health map, and reconcilers  
+#### 🚀 Final Release Workflow
+- Orchestrates all jobs with proper dependencies and conditionals
+- Uses `prepare` to compute metadata once
+- All reusable workflows called with explicit inputs (defaults applied in the called workflows)
+- Added release summary job that aggregates status from all components
 
-Because it **coordinates** controllers rather than *being* one, the name “Kontroller” became misleading.
-
-The new name **Kordinator** reflects its true role:
-
-> A system‑level orchestrator that brings together controllers, queues, informers, health, and dependency logic into a single coordination unit.
-
-### **Impact**
-- No functional behavior changed.
-- No API semantics changed.
-- Only naming and package paths updated for clarity.
-- Existing controllers, reconcilers, and workers continue to operate unchanged.
-- Improves architectural readability and contributor understanding.
-
-### **Migration Notes**
-- Update imports from `kontroller` → `kordinator`.
-- Replace references to `DependencyKontroller` with `DependencyKordinator`.
-- No other code changes required.
+#### 📦 Affected Workflows
+- `build-matrix.yml` (unchanged but now receives metadata via prepare)
+- `build-push-images.yml` – configurable image names & registry
+- `package-examples.yml` – configurable repo and project name
+- `release-helm.yml` – configurable chart name, repo URL, namespace
+- `sign-and-release.yml` – fully configurable (GitHub repo, container registry, Helm repo, Homebrew tap)
+- `publish-homebrew.yml` – accepts tap repository and main repo
+- `release-summary.yml` – uses same configurable inputs for success instructions

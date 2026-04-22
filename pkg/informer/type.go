@@ -6,8 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/queue"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/queue"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -26,9 +26,11 @@ type GenericClient interface {
 }
 
 type Options struct {
-	Name   string
-	Resync time.Duration
-	Wq     *queue.Workqueue
+	Name          string
+	Resync        time.Duration
+	Wq            *queue.Workqueue
+	LabelSelector string
+	FieldSelector string
 }
 
 // InformerEntry holds an informer and its metadata — avoids storing
@@ -39,6 +41,7 @@ type InformerEntry struct {
 	Resync   time.Duration
 	Missing  bool
 	GVK      *schema.GroupVersionKind
+
 	// Store the context and cancel function
 	Ctx             context.Context    // stored context
 	Cancel          context.CancelFunc // stored cancel function

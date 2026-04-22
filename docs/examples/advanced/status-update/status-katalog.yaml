@@ -12,7 +12,7 @@ spec:
         kind: Website
         plural: websites
 
-      reconciler:
+      operatorBox:
         default: true
 
         status:

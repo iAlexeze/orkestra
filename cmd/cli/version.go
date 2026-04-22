@@ -4,8 +4,8 @@ package cli
 import (
 	"fmt"
 
-	"github.com/ialexeze/orkestra/pkg/utils"
-	"github.com/ialexeze/orkestra/pkg/version"
+	"github.com/orkspace/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/version"
 	"github.com/spf13/cobra"
 )
 
@@ -22,4 +22,16 @@ var versionCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
+
+	// Shadow global flags so they don't appear under `ork version`
+	versionCmd.Flags().Bool("debug", false, "")
+	versionCmd.Flags().String("kubeconfig", "", "")
+	versionCmd.Flags().StringSlice("katalog", nil, "")
+	versionCmd.Flags().Bool("verbose", false, "")
+
+	// Hide them from help output
+	versionCmd.Flags().MarkHidden("debug")
+	versionCmd.Flags().MarkHidden("kubeconfig")
+	versionCmd.Flags().MarkHidden("katalog")
+	versionCmd.Flags().MarkHidden("verbose")
 }

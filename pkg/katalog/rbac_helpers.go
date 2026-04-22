@@ -1,6 +1,9 @@
 package katalog
 
-import orktypes "github.com/ialexeze/orkestra/pkg/types"
+import (
+	"github.com/orkspace/orkestra/pkg/logger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+)
 
 // Methods to maintain the zero footprint promise of orkestra
 //
@@ -13,15 +16,24 @@ import orktypes "github.com/ialexeze/orkestra/pkg/types"
 func (k *Katalog) HasConversionPaths() bool {
 	// Katalog or konfig may be nil in edge cases (e.g., NewEmptyKatalog)
 	if k == nil || k.konfig == nil {
+		logger.Debug().Msg("katalog or konfig is nil")
 		return false
 	}
 
-	if !k.konfig.ConversionEnabled() {
+	if !k.IsConversionEnabled() {
+		logger.Debug().Msg("conversion is disabled")
 		return false
 	}
 
-	for _, crd := range k.Spec.CRDs {
-		if crd.Conversion != nil && len(crd.Conversion.Paths) > 0 {
+	for _, crd := range k.Enabled() {
+		// Protect against nil Conversion or nil Paths
+		if crd.Conversion == nil {
+			logger.Debug().Str("crd", crd.Name).Msg("conversion is nil")
+			continue
+		}
+		// Protect against empty Paths
+		if len(crd.Conversion.Paths) > 0 {
+			logger.Debug().Str("crd", crd.Name).Msg("conversion has paths")
 			return true
 		}
 	}
@@ -35,15 +47,23 @@ func (k *Katalog) HasConversionPaths() bool {
 // This ensures /validate is created ONLY when the user declares rules.
 func (k *Katalog) HasValidationRules() bool {
 	if k == nil || k.konfig == nil {
+		logger.Debug().Msg("katalog or konfig is nil")
 		return false
 	}
 
-	if !k.konfig.AdmissionEnabled() {
+	if !k.IsAdmissionEnabled() {
+		logger.Debug().Msg("admission is disabled")
 		return false
 	}
 
-	for _, crd := range k.Spec.CRDs {
-		if crd.Validation != nil && len(crd.Validation.Rules) > 0 {
+	for _, crd := range k.Enabled() {
+		if crd.Validation == nil {
+			logger.Debug().Str("crd", crd.Name).Msg("validation is nil")
+			continue
+		}
+
+		if len(crd.Validation.Rules) > 0 {
+			logger.Debug().Str("crd", crd.Name).Msg("validation has rules")
 			return true
 		}
 	}
@@ -57,18 +77,41 @@ func (k *Katalog) HasValidationRules() bool {
 // This ensures /mutate is created ONLY when the user declares rules.
 func (k *Katalog) HasMutationRules() bool {
 	if k == nil || k.konfig == nil {
+		logger.Debug().Msg("katalog or konfig is nil")
 		return false
 	}
 
-	if !k.konfig.AdmissionEnabled() {
+	if !k.IsAdmissionEnabled() {
+		logger.Debug().Msg("admission is disabled")
 		return false
 	}
 
-	for _, crd := range k.Spec.CRDs {
+	for _, crd := range k.Enabled() {
 		// Protect against nil Mutation or nil Rules
-		if crd.Mutation != nil && len(crd.Mutation.Rules) > 0 {
+		if crd.Mutation == nil {
+			logger.Debug().Str("crd", crd.Name).Msg("mutation is nil")
+			continue
+		}
+
+		if len(crd.Mutation.Rules) > 0 {
+			logger.Debug().Str("crd", crd.Name).Msg("mutation has rules")
 			return true
 		}
+	}
+	return false
+}
+
+// HasValidationOrMutationRules returns true only if:
+// - There is at least one CRD that declares validation or mutation rules.
+// - Admission is enabled in konfig.
+func (k *Katalog) HasValidationOrMutationRules() bool {
+	if k == nil || k.konfig == nil {
+		logger.Debug().Msg("katalog or konfig is nil")
+		return false
+	}
+
+	if k.HasValidationRules() || k.HasMutationRules() {
+		return true
 	}
 	return false
 }
@@ -79,7 +122,7 @@ func (k *Katalog) Uses(resource string) bool {
 	if !ok {
 		return false
 	}
-	for _, crd := range k.Spec.CRDs {
+	for _, crd := range k.Enabled() {
 		if check.Get(crd) {
 			return true
 		}

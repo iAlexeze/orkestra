@@ -1,0 +1,293 @@
+{{ define "main" }}
+
+<!-- ── Hero ───────────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-bg-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="container hero-inner">
+    <div class="hero-text">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        Alpha · v0.1.0 · <a href="{{ .Site.Params.github }}/releases" target="_blank">View releases →</a>
+      </div>
+      <h1 class="hero-title">
+        Zero-Code<br>
+        <span class="hero-accent">Kubernetes Operators</span>
+      </h1>
+      <p class="hero-subtitle">
+        Declare your CRDs in YAML. Orkestra turns them into production-grade operators —
+        no Go, no controller boilerplate, no reconcile loops.
+      </p>
+      <div class="hero-ctas">
+        <a href="/docs/getting-started/" class="btn btn-primary">Get Started</a>
+        <a href="/docs/" class="btn btn-outline">Read the Docs</a>
+        <a href="{{ .Site.Params.github }}" target="_blank" rel="noopener" class="btn btn-ghost">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.757-1.333-1.757-1.089-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+          </svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+    <div class="hero-code">
+      <div class="code-window">
+        <div class="code-window-bar">
+          <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+          <span class="code-window-title">katalog.yaml</span>
+        </div>
+        <pre class="code-window-body"><code class="language-yaml"><span class="kw">metadata</span>:
+  <span class="kw">name</span>: website-operator
+  <!-- <span class="kw">version</span>: v1
+  <span class="kw">description</span>: My website operator -->
+<span class="kw">crds</span>:
+  <span class="kw">website</span>: 
+    <span class="kw">apiTypes</span>:
+      <span class="kw">group</span>: apps.myorg.io
+      <span class="kw">version</span>: v1
+      <span class="kw">kind</span>: Website
+
+    <span class="kw">validation</span>:
+      - <span class="kw">field</span>: spec.image
+        <span class="kw">prefix</span>: <span class="str">"myorg/"</span>
+        <span class="kw">message</span>: <span class="str">"image must be from myorg"</span>
+
+    <span class="kw">reconciler</span>:
+      <span class="kw">onCreate</span>:
+        <span class="kw">deployments</span>:
+          - <span class="kw">name</span>: <span class="tmpl">"{{"{{"}} .metadata.name {{"}}"}}"</span>
+            <span class="kw">image</span>: <span class="tmpl">"{{"{{"}} .spec.image {{"}}"}}"</span>
+            <span class="kw">replicas</span>: <span class="tmpl">"{{"{{"}} .spec.replicas {{"}}"}}"</span>
+            <span class="kw">reconcile</span>: <span class="bool">true</span>
+        <span class="kw">services</span>:
+          - <span class="kw">name</span>: <span class="tmpl">"{{"{{"}} .metadata.name {{"}}"}}-svc"</span>
+            <span class="kw">port</span>: <span class="str">"80"</span>
+            <span class="kw">reconcile</span>: <span class="bool">true</span></code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Trust bar ───────────────────────────────────────────────────────────── -->
+<section class="trust-bar">
+  <div class="container">
+    <p class="trust-label">Runs on Kubernetes · Zero dependencies · Apache 2.0</p>
+  </div>
+</section>
+
+<!-- ── Problem / Solution ─────────────────────────────────────────────────── -->
+<section class="section problem-solution">
+  <div class="container">
+    <div class="ps-grid">
+      <div class="ps-card ps-problem">
+        <div class="ps-icon">⚙️</div>
+        <h3>The operator problem</h3>
+        <p>Every CRD needs a controller. Every controller means weeks of Go — informers, reconcilers, finalizers, events, metrics. You repeat the same 2,000 lines. Every. Single. Time.</p>
+        <ul>
+          <li>Weeks of boilerplate per CRD</li>
+          <li>Deep Kubernetes client-go expertise required</li>
+          <li>Operator sprawl — dozens of binaries to manage</li>
+          <li>Testing, observability, and drift correction built from scratch</li>
+        </ul>
+      </div>
+      <div class="ps-divider">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </div>
+      <div class="ps-card ps-solution">
+        <div class="ps-icon">✦</div>
+        <h3>The Orkestra solution</h3>
+        <p>Write a Katalog YAML. Orkestra generates and runs the operator. All CRDs in one runtime binary. Observability, health, metrics, and events — included.</p>
+        <ul>
+          <li>One YAML file, multiple declarations</li>
+          <li>No Go, no code generation required</li>
+          <li>One runtime binary — any number of CRDs</li>
+          <li>Built-in drift correction, health API, and Prometheus metrics</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ───────────────────────────────────────────────────────────── -->
+<section class="section features">
+  <div class="container">
+    <div class="section-header">
+      <h2>Everything you need. Nothing you don't.</h2>
+      <p>Orkestra handles the Kubernetes operator framework so you focus on your domain logic.</p>
+    </div>
+    <div class="features-grid">
+      {{ range .Site.Data.features }}
+      <div class="feature-card">
+        <div class="feature-icon">{{ .icon }}</div>
+        <h3>{{ .title }}</h3>
+        <p>{{ .description }}</p>
+      </div>
+      {{ end }}
+    </div>
+  </div>
+</section>
+
+<!-- ── How it works ───────────────────────────────────────────────────────── -->
+<section class="section how-it-works">
+  <div class="container">
+    <div class="section-header">
+      <h2>How it works</h2>
+      <p>From YAML declaration to running operator in four steps.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <h3>Write a Katalog</h3>
+          <p>Declare your CRDs, the resources they should create, validation rules, and mutation defaults in a single YAML file.</p>
+        </div>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <h3>Run <code>ork run</code></h3>
+          <p>Orkestra validates your Katalog, registers CRD informers, starts worker pools, and begins watching for Custom Resources.</p>
+        </div>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <h3>Apply your CR</h3>
+          <p>Orkestra reconciles the CR, creates declared resources (Deployments, Services, Secrets), adds finalizers, and enables drift correction.</p>
+        </div>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-body">
+          <h3>Observe everything</h3>
+          <p>Health endpoints, Prometheus metrics, <code>ork status</code>, and the Control Center — all included. No instrumentation required.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Control Center spotlight ───────────────────────────────────────────── -->
+<section class="section control-center">
+  <div class="container">
+    <div class="cc-inner">
+      <div class="cc-text">
+        <div class="cc-badge">New</div>
+        <h2>Orkestra Control Center</h2>
+        <p>Unified observability across every Orkestra runtime. One dashboard. Zero configuration.</p>
+        <ul class="cc-features">
+          <li>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Live health status per CRD and per instance
+          </li>
+          <li>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Worker pool visualization — see concurrency in real time
+          </li>
+          <li>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Multi-instance monitoring — watch every cluster at once
+          </li>
+          <li>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Queue depth, reconcile rates, and error tracking
+          </li>
+        </ul>
+        <div class="cc-ctas">
+          <a href="/docs/controlcenter/" class="btn btn-primary">Learn more</a>
+          <code class="cc-command">ork control start</code>
+        </div>
+      </div>
+      <div class="cc-visual">
+        <div class="cc-terminal">
+          <div class="cc-terminal-bar">
+            <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+            <span class="cc-terminal-title">Orkestra Control Center</span>
+          </div>
+          <div class="cc-terminal-body">
+            <div class="cc-stat-row">
+              <span class="cc-stat-label">Runtimes</span>
+              <span class="cc-stat-value healthy">3 healthy</span>
+            </div>
+            <div class="cc-stat-row">
+              <span class="cc-stat-label">CRDs managed</span>
+              <span class="cc-stat-value">24</span>
+            </div>
+            <div class="cc-stat-row">
+              <span class="cc-stat-label">Reconcile rate</span>
+              <span class="cc-stat-value">142/min</span>
+            </div>
+            <div class="cc-stat-row">
+              <span class="cc-stat-label">Queue depth</span>
+              <span class="cc-stat-value">0</span>
+            </div>
+            <div class="cc-workers">
+              <span class="cc-stat-label">Workers</span>
+              <div class="worker-dots">
+                <span class="worker-dot active"></span>
+                <span class="worker-dot active"></span>
+                <span class="worker-dot active"></span>
+                <span class="worker-dot idle"></span>
+                <span class="worker-dot idle"></span>
+                <span class="worker-dot idle"></span>
+                <span class="worker-dot idle"></span>
+                <span class="worker-dot idle"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Quickstart ──────────────────────────────────────────────────────────── -->
+<section class="section quickstart">
+  <div class="container">
+    <div class="section-header">
+      <h2>Up and running in 3 minutes</h2>
+    </div>
+    <div class="qs-grid">
+      <div class="qs-step">
+        <div class="qs-step-num">1</div>
+        <h3>Install</h3>
+        <div class="terminal">
+          <pre><code><span class="term-prompt">$</span> brew install iAlexeze/tap/ork
+<span class="term-comment"># or</span>
+<span class="term-prompt">$</span> curl -sSL https://install.orkestra.sh | bash</code></pre>
+        </div>
+      </div>
+      <div class="qs-step">
+        <div class="qs-step-num">2</div>
+        <h3>Write your Katalog</h3>
+        <div class="terminal">
+          <pre><code><span class="term-prompt">$</span> ork init my-operator
+<span class="term-output">✓ Created katalog.yaml</span>
+<span class="term-output">✓ Created crd.yaml</span>
+<span class="term-prompt">$</span> ork validate
+<span class="term-output">✓ Katalog valid</span></code></pre>
+        </div>
+      </div>
+      <div class="qs-step">
+        <div class="qs-step-num">3</div>
+        <h3>Run your operator</h3>
+        <div class="terminal">
+          <pre><code><span class="term-prompt">$</span> ork run
+<span class="term-output">✓ CRD registered: website</span>
+<span class="term-output">✓ Workers started: 3</span>
+<span class="term-output">✓ Watching namespace: default</span>
+<span class="term-output">✓ Health: http://localhost:8080/health</span></code></pre>
+        </div>
+      </div>
+    </div>
+    <div class="qs-cta">
+      <a href="/docs/getting-started/" class="btn btn-primary btn-lg">Full Getting Started Guide →</a>
+    </div>
+  </div>
+</section>
+
+{{ end }}

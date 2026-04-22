@@ -50,7 +50,7 @@ addRuntimeObjects(entry)
   │  dynamic mode: sets DynamicModeObject and ListDynamicModeObject
   │                to factory functions returning *unstructured.Unstructured
   │  typed mode:   looks up ObjectRegistry[gvk] and ListRegistry[gvk]
-  │                set by ork generate runtime
+  │                set by ork generate registry
   │
   ▼
 addHooks(entry)
@@ -72,7 +72,7 @@ conversionRegistry.RegisterConversionRulesFromEntry(entry)
   │  only for entries with conversion.paths declared
   │
   ▼
-admissionRegistry.RegisterAdmissionRulesFromEntry(entry)
+admissionRegistry.registerAdmissionRulesFromEntry(entry)
   │  populates InMemoryAdmissionRegistry
   │  only for entries with validation or mutation rules
   │
@@ -171,12 +171,12 @@ In typed mode, `DynamicModeObject` is looked up from `ObjectRegistry`:
 ```go
 factory, ok := orktypes.ObjectRegistry[gvk]
 if !ok {
-    return fmt.Errorf("no object factory for %s — run ork generate runtime", gvk)
+    return fmt.Errorf("no object factory for %s — run ork generate registry", gvk)
 }
 entry.DynamicModeObject = factory
 ```
 
-The `ObjectRegistry` is populated by `zz_generated_runtime_registry.go`, which `ork generate runtime` produces. If this file is missing or stale, typed mode CRDs fail to start with the above error.
+The `ObjectRegistry` is populated by `zz_generated_runtime_registry.go`, which `ork generate registry` produces. If this file is missing or stale, typed mode CRDs fail to start with the above error.
 
 ---
 
@@ -219,7 +219,7 @@ This builds a `ConversionRules` struct containing the storage version and all de
 For each CRD entry with `validation` or `mutation` rules declared:
 
 ```go
-reg.RegisterAdmissionRulesFromEntry(entry)
+reg.registerAdmissionRulesFromEntry(entry)
 ```
 
 Reads `entry.Validation.Rules` and `entry.Mutation.Rules` directly (they live on `CRDEntry`, not under `ReconcilerConfig`). Builds the GVR key from `entry.APITypes.Group`, `.Version`, `.Plural`. Skips entries where `apiTypes.plural` is empty (enrichment not complete — should not occur after `EnrichCRDEntry`).

@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/metrics"
-	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/metrics"
+	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -54,6 +54,7 @@ func runMutation(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
 	obj domain.Object,
+	resolver *orktmpl.Resolver,
 	cfg *orktypes.MutationConfig,
 	gvr schema.GroupVersionResource,
 	crdName string,
@@ -72,10 +73,7 @@ func runMutation(
 		return result, nil
 	}
 
-	resolver, err := orktmpl.NewResolver(ctx, obj)
-	if err != nil {
-		return nil, fmt.Errorf("mutation: building resolver: %w", err)
-	}
+	var err error
 
 	// patch accumulates all field changes.
 	// Keys are the top-level field names (e.g. "spec").

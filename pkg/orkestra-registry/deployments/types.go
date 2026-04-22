@@ -1,7 +1,7 @@
 // pkg/orkestra-registry/deployments/types.go
 package deployments
 
-import orktypes "github.com/ialexeze/orkestra/pkg/types"
+import orktypes "github.com/orkspace/orkestra/pkg/types"
 
 // ResolvedDeploymentSpec is the fully resolved Deployment specification.
 // Produced by resolving template expressions and merging static values.
@@ -28,6 +28,10 @@ type ResolvedDeploymentSpec struct {
 
 	// Annotations — applied to the Deployment.
 	Annotations map[string]string
+
+	// Env — environment variables.
+	Env     map[string]orktypes.EnvVarSource
+	EnvFrom []orktypes.EnvFromSource
 
 	// Resources — CPU and memory requests/limits. nil means no limits set.
 	Resources *orktypes.ResourceRequirements

@@ -24,4 +24,7 @@ type ResolvedServiceSpec struct {
 	// Labels — applied to Service metadata.
 	// Orkestra always adds: managed-by=orkestra, orkestra-owner=<cr-name>
 	Labels map[string]string
+
+	// Selector —> service selector to route traffic to pods.
+	Selector map[string]string
 }

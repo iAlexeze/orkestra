@@ -1,10 +1,9 @@
 package konfig
 
 import (
-	"strings"
 	"time"
 
-	admissionv1 "k8s.io/api/admissionregistration/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Konfig struct {
@@ -13,8 +12,13 @@ type Konfig struct {
 	konductor    konductorElection
 	healthServer healthServer
 	katalog      katalogKonfig
-	webhook      webhookConfig
+	security     SecurityConfig
+	notification NotificationConfig
 	registry     registryConfig
+}
+
+func (k *Konfig) WebhookConfig() {
+	panic("unimplemented")
 }
 
 type orkKonfig struct {
@@ -47,36 +51,88 @@ type registryConfig struct {
 	RegistryURL string
 }
 
-type webhookConfig struct {
-	// Admission webhooks
-	EnableWebhooks bool
+// SecurityConfig is the unified security configuration populated from ENV vars
+// at Init() time. Katalog YAML values are merged on top via the Katalog
+// loader, so this represents the ENV-level defaults.
+//
+// Precedence: Katalog YAML > SecurityConfig (ENV) > hard default.
+type SecurityConfig struct {
+	DeletionProtection struct {
+		Enabled           bool
+		CleanupOnShutdown bool
+		ServiceName       string
+		FailurePolicy     string
+	}
+	Webhooks struct {
+		Admission struct {
+			Enabled bool
+		}
+		CleanupOnShutdown bool
+		FailurePolicy     string
+		ServiceName       string
+		// TLS paths — shared with deletion protection, admission, and conversion.
+		// Set by ensureSecurity() after cert generation/loading.
+		TLSCert string
+		TLSKey  string
 
-	// Conversion webhooks
-	EnableConversion bool
-	ConversionWindow int
+		Controller struct {
+			Enabled      bool
+			SyncInterval time.Duration
+		}
+	}
+	// Conversion is separate from admission webhooks — conversion has its own
+	// /convert endpoint, window stats, and CRD patch logic.
+	Conversion struct {
+		Enabled bool
+		// ConversionWindow is the rolling window size for latency/throughput stats.
+		ConversionWindow int
+	}
 
-	// Certificates
-	TLSCert string
-	TLSKey  string
-
-	// Port
-	Port    string
-	PortInt int32
-
-	// Registration
-	WebhookRegistration webhookRegistration
+	// NamespaceProtection controls the optional validating webhook that prevents
+	// Orkestra-managed CRs from being created or updated in forbidden namespaces.
+	//
+	// This is an admission-time safeguard only. If disabled, namespace rules are
+	// not enforced at apply time. If enabled, the webhook blocks CRs whose target
+	// namespace violates the CRD’s declared allowedNamespaces or restrictedNamespaces.
+	//
+	// The webhook is managed by the WebhookController and will be recreated if
+	// deleted, ensuring continuous enforcement when enabled.
+	//
+	// Precedence: Katalog YAML > SecurityConfig (ENV) > hard default.
+	NamespaceProtection struct {
+		Enabled           bool
+		FailurePolicy     string
+		ServiceName       string
+		CleanupOnShutdown bool
+	}
 }
 
-type webhookRegistration struct {
-	ServiceName      string
-	ServiceNamespace string
-	FailurePolicy    string
+// NotificationConfig is the unified notification configuration populated from
+// ENV vars at Init() time. Katalog YAML values are merged on top via the Katalog
+// loader, so this represents the ENV-level defaults.
+//
+// Precedence: Katalog YAML > NotificationConfig (ENV) > hard default.
+//
+// This struct defines *capability* — whether Orkestra is able to send email or
+// Slack notifications at all. Teams and conditions define *intent*.
+type NotificationConfig struct {
+	Email struct {
+		Enabled  bool // true when SMTP_* env vars are present
+		SMTPHost string
+		SMTPPort int
+		SMTPUser string
+		SMTPPass string
+		From     string // optional override for From: header
+	}
 
-	TLSCert string // Same as the one above
+	Slack struct {
+		Enabled bool   // true when SLACK_WEBHOOK_URL is present
+		Webhook string // default webhook URL
+	}
 
-	// FailurePolicy admissionv1.FailurePolicyType
-	// Used to return the appropriate admission policy type
-	FailurePolicyType admissionv1.FailurePolicyType
+	// DefaultInterval is the fallback notification interval when neither the
+	// team nor the Katalog YAML defines one.
+	DefaultInterval time.Duration
 }
 
 type katalogKonfig struct {
@@ -170,40 +226,51 @@ func (k *Konfig) Finalizers() []string {
 	return []string{FinalizerOrkestra}
 }
 
-// WebhookConfig returns true is enabled
-func (k *Konfig) WebhookConfig() *webhookConfig {
-	return &k.webhook
+// Security returns the unified security configuration.
+// This is the primary accessor for all security-related settings.
+func (k *Konfig) Security() *SecurityConfig {
+	return &k.security
 }
 
-// RegistryConfig returns true is enabled
+// Notification returns the unified notification configuration.
+// This is the primary accessor for all notification-related settings.
+func (k *Konfig) Notification() *NotificationConfig {
+	return &k.notification
+}
+
+// RegistryConfig returns registry configuration.
 func (k *Konfig) RegistryConfig() *registryConfig {
 	return &k.registry
 }
 
-// ConversionEnabled returns true if mutation rules
+// ConversionEnabled reports whether the conversion webhook is enabled.
+// Reads from SecurityConfig (populated from ENV at Init).
 func (k *Konfig) ConversionEnabled() bool {
-	return k.webhook.EnableConversion
+	return k.security.Conversion.Enabled
 }
 
-// AdmissionEnabled returns true if admission rules
+// AdmissionEnabled reports whether admission webhooks are enabled.
+// Reads from SecurityConfig (populated from ENV at Init).
 func (k *Konfig) AdmissionEnabled() bool {
-	return k.webhook.EnableWebhooks
+	return k.security.Webhooks.Admission.Enabled
 }
 
-// WebhookRegistration
-func (k *Konfig) WebhookRegistration() *webhookRegistration {
-	// Convert failurePolicy input to failurePolicyType
-	switch strings.ToLower(k.webhook.WebhookRegistration.FailurePolicy) {
-	case "ignore":
-		k.webhook.WebhookRegistration.FailurePolicyType = admissionv1.Ignore
-	case "fail":
-		k.webhook.WebhookRegistration.FailurePolicyType = admissionv1.Fail
-	default:
-		k.webhook.WebhookRegistration.FailurePolicyType = admissionv1.Ignore
-	}
+// HTTPSPort returns the HTTPS port string (e.g. ":8443") used by the webhook server.
+func (k *Konfig) HTTPSPort() string {
+	return httpsPort
+}
 
-	// Assign ports and return
-	k.webhook.Port = httpsPort
-	k.webhook.PortInt = httpsPortInt32
-	return &k.webhook.WebhookRegistration
+// HTTPSPortInt32 returns the HTTPS port as int32 (8443) used in webhook client configs.
+func (k *Konfig) HTTPSPortInt32() int32 {
+	return httpsPortInt32
+}
+
+// OrkestraResourceSelector returns the internal label selector for orkestra control plane resources
+func (k *Konfig) OrkestraResourceSelector() *metav1.LabelSelector {
+	return orkestraResourceSelector
+}
+
+// OrkestraResourceLabels returns the internal labels for orkestra control plane resources
+func (k *Konfig) OrkestraResourceLabels() map[string]string {
+	return orkestraResourceLabels
 }

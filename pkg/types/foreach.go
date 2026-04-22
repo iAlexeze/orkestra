@@ -39,12 +39,18 @@
 // resource types or use a hook.
 package types
 
-// ForEachSpec declares dynamic expansion over a list field.
+// ForEachSpec declares dynamic expansion over a list or map field.
 type ForEachSpec struct {
-	// Field is the dot-notation path to a list field on the CR.
-	// The field must resolve to []interface{} (a YAML list).
-	//   field: spec.regions            → ["us-east-1", "eu-west-1"]
-	//   field: spec.databases          → [{name: "users"}, {name: "logs"}]
+	// Field is the dot-notation path to a list or map field on the CR.
+	//
+	// List field → one item per element:
+	//   field: spec.regions  → ["us-east-1", "eu-west-1"]
+	//   .item = element value ("us-east-1")
+	//
+	// Map field → one item per key (sorted alphabetically):
+	//   field: spec.regions  → {us-east-1: {replicas: 3}, eu-west-1: {replicas: 1}}
+	//   .item = map key ("us-east-1"), .value = map value ({replicas: 3})
+	//   .value.replicas = "3"
 	Field string `yaml:"field"`
 
 	// As is the name used to access the current item in template expressions.

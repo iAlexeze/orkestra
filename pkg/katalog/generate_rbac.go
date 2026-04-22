@@ -29,21 +29,21 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 	// ───────────────────────────────────────────────
 	// Admission webhook RBAC (conditional)
 	// ───────────────────────────────────────────────
-	if k.HasValidationRules() || k.HasMutationRules() || k.HasConversionPaths() {
+	if k.NeedsCertificates() {
 		rules = append(rules, rbacv1.PolicyRule{
 			APIGroups: []string{"admissionregistration.k8s.io"},
 			Resources: []string{
 				"validatingwebhookconfigurations",
 				"mutatingwebhookconfigurations",
 			},
-			Verbs: []string{"get", "create", "update", "patch"},
+			Verbs: defaultVerbs,
 		})
 	}
 
 	// ───────────────────────────────────────────────
 	// CRD RBAC (main + status)
 	// ───────────────────────────────────────────────
-	for _, crd := range k.Spec.CRDs {
+	for _, crd := range k.Enabled() {
 		if crd.APITypes.Group == "" || crd.APITypes.Plural == "" {
 			continue
 		}
@@ -61,6 +61,16 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 			Resources: []string{crd.APITypes.Plural + "/status"},
 			Verbs:     []string{"get", "update", "patch"},
 		})
+
+		// CRD patching with CA bundle
+		if crd.Conversion != nil && crd.UpdateCRDCaBundle() {
+			rules = append(rules, rbacv1.PolicyRule{
+				APIGroups:     []string{"apiextensions.k8s.io"},
+				Resources:     []string{"customresourcedefinitions"},
+				Verbs:         []string{"patch"},
+				ResourceNames: []string{crd.APITypes.Plural + "." + crd.APITypes.Group},
+			})
+		}
 	}
 
 	// ───────────────────────────────────────────────

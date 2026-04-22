@@ -6,7 +6,7 @@ metadata:
   version: 0.1.0
   description: >
     Typed Go hooks for the Database CRD. Demonstrates apiTypes.location,
-    ork generate runtime, and OrkestraRegistry usage from Go.
+    ork generate registry, and OrkestraRegistry usage from Go.
 
 spec:
   crds:
@@ -19,13 +19,13 @@ spec:
         # location enables typed mode — the informer decodes API server
         # responses into *apiv1.Database rather than *unstructured.Unstructured.
         # Required when hooks need type-safe struct access.
-        # After setting this, run: ork generate runtime --katalog katalog.yaml
+        # After setting this, run: ork generate registry --katalog katalog.yaml
         location: 09-hooks-example/09-hooks/v1alpha1
 
       workers: 3
       resync: 30s
 
-      reconciler:
+      operatorBox:
         default: true   # GenericReconciler is still used — hooks are additive
 
         # Hooks run INSTEAD OF declarative templates when OnReconcile is defined.

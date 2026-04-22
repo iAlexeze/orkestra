@@ -7,10 +7,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"strings"
+
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/utils"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,13 +34,16 @@ import (
 // Configuration names:
 //   orkestra-validation   → ValidatingWebhookConfiguration
 //   orkestra-mutation     → MutatingWebhookConfiguration
+//   orkestra-delete-protection → ValidatingWebhookConfiguration
 //
 // Both are created with FailurePolicy: Ignore during initial rollout.
 // Platform operators who want hard enforcement can change this to Fail.
 
 const (
-	validatingWebhookConfigName = "orkestra-validation"
-	mutatingWebhookConfigName   = "orkestra-mutation"
+	validatingWebhookConfigName          = "orkestra-validation"
+	mutatingWebhookConfigName            = "orkestra-mutation"
+	deletionProtectionWebhookConfigName  = "orkestra-deletion-protection"
+	namespaceProtectionWebhookConfigName = "orkestra-namespace-protection"
 
 	// Webhook Cleanup setup
 	// MaxAttempts — number of retries for cleanup operations.
@@ -70,16 +74,25 @@ type WebhookRegistrationOptions struct {
 	// FailurePolicy — what the API server does if Orkestra is unreachable.
 	// admissionv1.Ignore (default): allow the operation and continue.
 	// admissionv1.Fail: reject the operation if Orkestra cannot be reached.
-	// Configurable from FAILURE_POLICY environment variable.
+	// Configurable from WEBHOOK_FAILURE_POLICY environment variable.
 	FailurePolicy admissionv1.FailurePolicyType
 
 	// TLSCertFile — path to the TLS certificate file.
 	// The certificate is read and used as the caBundle in the webhook config.
 	// Default: read from TLS_CERT environment variable.
 	TLSCertFile string
+
+	// OrkestraResourceLabels defines the labels used to identify Orkestra-managed
+	// resources for deletion protection.
+	OrkestraResourceLabels map[string]string
+
+	// Label selector shared by all Orkestra-managed Kubernetes resources.
+	// Narrows the webhook to only the operator's own deployment, service, ingress,
+	// and admission webhook configurations (validation + mutation).
+	OrkestraResourceSelector *metav1.LabelSelector
 }
 
-// RegisterWebhooks creates or updates the ValidatingWebhookConfiguration and
+// RegisterAdmissionWebhooks creates or updates the ValidatingWebhookConfiguration and
 // MutatingWebhookConfiguration based on the current admission registry.
 //
 // Called from HealthServer.Start() when ENABLE_ADMISSION_WEBHOOK=true, after the
@@ -88,7 +101,7 @@ type WebhookRegistrationOptions struct {
 // The function is idempotent — safe to call on restart. Existing configurations
 // are updated to match the current Katalog state. CRDs removed from the Katalog
 // are removed from the webhook configuration.
-func RegisterWebhooks(
+func RegisterAdmissionWebhooks(
 	ctx context.Context,
 	client kubernetes.Interface,
 	registry admissionRegistryReader,
@@ -127,7 +140,7 @@ func RegisterWebhooks(
 	return nil
 }
 
-// UnregisterWebhooks removes the ValidatingWebhookConfiguration and
+// UnregisterAdmissionWebhooks removes the ValidatingWebhookConfiguration and
 // MutatingWebhookConfiguration entries that were previously created from the
 // admission registry.
 //
@@ -141,7 +154,7 @@ type WebhookCleanupOptions struct {
 	validating bool
 }
 
-func UnregisterWebhooks(
+func UnregisterAdmissionWebhooks(
 	ctx context.Context,
 	client kubernetes.Interface,
 	opts WebhookCleanupOptions,
@@ -196,10 +209,8 @@ func registerValidatingWebhook(
 
 	config := &admissionv1.ValidatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: validatingWebhookConfigName,
-			Labels: map[string]string{
-				konfig.LabelManaged: konfig.LabelManagedValue,
-			},
+			Name:   validatingWebhookConfigName,
+			Labels: opts.OrkestraResourceLabels, // Add orkestra labels for deletion protection
 		},
 		Webhooks: []admissionv1.ValidatingWebhook{
 			{
@@ -249,10 +260,8 @@ func registerMutatingWebhook(
 
 	config := &admissionv1.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: mutatingWebhookConfigName,
-			Labels: map[string]string{
-				konfig.LabelManaged: konfig.LabelManagedValue,
-			},
+			Name:   mutatingWebhookConfigName,
+			Labels: opts.OrkestraResourceLabels, // Add orkestra labels for deletion protection
 		},
 		Webhooks: []admissionv1.MutatingWebhook{
 			{
@@ -283,9 +292,191 @@ func registerMutatingWebhook(
 	return applyMutatingWebhookConfig(ctx, client, config)
 }
 
+// registerDeletionProtectionWebhook creates or updates the ValidatingWebhookConfiguration for deletion protection.
+//
+// Two webhook entries are registered within the same configuration:
+//
+//  1. CRD protection — intercepts DELETE on customresourcedefinitions.
+//     No ObjectSelector: the handler narrows to managed CRDs via ProtectedCRDNames().
+//
+//  2. Orkestra resource protection — intercepts DELETE on deployments, services, ingresses,
+//     and now Orkestra’s own admission webhooks (validating + mutating).
+//     ObjectSelector narrows to Orkestra-owned resources only, so the webhook never
+//     intercepts unrelated cluster resources.
+//
+//     This ensures:
+//     • The Orkestra operator cannot be deleted while deletion protection is enabled
+//     • The Orkestra Service and Ingress cannot be deleted
+//     • The ValidatingWebhookConfiguration and MutatingWebhookConfiguration used for
+//     admission (validation + mutation) cannot be deleted
+//
+//     Protecting the admission webhooks themselves closes the loop: deletion protection
+//     guarantees that the admission surface cannot be disabled by removing the webhook
+//     configuration. This makes the system self-protecting and fully declarative.
+func registerDeletionProtectionWebhook(
+	ctx context.Context,
+	client kubernetes.Interface,
+	gvrs []katalog.GVREntry,
+	caBundle []byte,
+	opts WebhookRegistrationOptions,
+) error {
+	sideEffects := admissionv1.SideEffectClassNone
+	path := "/deletion-protection"
+	port := opts.Port
+
+	// Split GVRs into two groups:
+	//   crdGVRs      — customresourcedefinitions; no ObjectSelector, handler filters by name
+	//   orkestraGVRs — deployment, service, ingress, validatingwebhookconfigurations,
+	//                   mutatingwebhookconfigurations; ObjectSelector narrows to Orkestra resources only
+	//
+	// The admission webhook GVRs (validating + mutating) are included here so that
+	// deletion protection also shields Orkestra’s own admission webhooks from deletion.
+	var crdGVRs, orkestraGVRs []katalog.GVREntry
+	for _, gvr := range gvrs {
+		if gvr.Resource == "customresourcedefinitions" {
+			crdGVRs = append(crdGVRs, gvr)
+		} else {
+			// Includes deployments, services, ingresses, validatingwebhookconfigurations,
+			// mutatingwebhookconfigurations — all protected via ObjectSelector.
+			orkestraGVRs = append(orkestraGVRs, gvr)
+		}
+	}
+
+	webhooks := make([]admissionv1.ValidatingWebhook, 0, 2)
+
+	// Webhook 1: CRD deletions — handler filters by ProtectedCRDNames()
+	if len(crdGVRs) > 0 {
+		webhooks = append(webhooks, admissionv1.ValidatingWebhook{
+			Name: "protect.crds.orkestra.konductor.io",
+			ClientConfig: admissionv1.WebhookClientConfig{
+				Service: &admissionv1.ServiceReference{
+					Name:      opts.ServiceName,
+					Namespace: opts.ServiceNamespace,
+					Path:      &path,
+					Port:      &port,
+				},
+				CABundle: caBundle,
+			},
+			Rules:                   buildDeletionProtectionRules(crdGVRs),
+			FailurePolicy:           failurePolicyPtr(admissionv1.Fail),
+			MatchPolicy:             matchPolicyPtr(admissionv1.Exact),
+			AdmissionReviewVersions: []string{"v1"},
+			SideEffects:             &sideEffects,
+			TimeoutSeconds:          int32Ptr(5),
+		})
+	}
+
+	// Webhook 2: Orkestra resource deletions (deployment, service, ingress, validatingwebhookconfigurations,
+	// mutatingwebhookconfigurations).
+	//
+	// ObjectSelector ensures only resources carrying the Orkestra labels are intercepted.
+	// This includes the admission webhooks themselves, making them deletion-protected.
+	//
+	// Handler always blocks — if the webhook fired, the ObjectSelector already confirmed ownership.
+	if len(orkestraGVRs) > 0 {
+		webhooks = append(webhooks, admissionv1.ValidatingWebhook{
+			Name: "protect.resources.orkestra.konductor.io",
+			ClientConfig: admissionv1.WebhookClientConfig{
+				Service: &admissionv1.ServiceReference{
+					Name:      opts.ServiceName,
+					Namespace: opts.ServiceNamespace,
+					Path:      &path,
+					Port:      &port,
+				},
+				CABundle: caBundle,
+			},
+			ObjectSelector:          opts.OrkestraResourceSelector,
+			Rules:                   buildDeletionProtectionRules(orkestraGVRs),
+			FailurePolicy:           failurePolicyPtr(admissionv1.Fail),
+			MatchPolicy:             matchPolicyPtr(admissionv1.Exact),
+			AdmissionReviewVersions: []string{"v1"},
+			SideEffects:             &sideEffects,
+			TimeoutSeconds:          int32Ptr(5),
+		})
+	}
+
+	config := &admissionv1.ValidatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   deletionProtectionWebhookConfigName,
+			Labels: opts.OrkestraResourceLabels,
+		},
+		Webhooks: webhooks,
+	}
+
+	return applyWebhookConfig(ctx, client, config)
+}
+
+// registerNamespaceProtectionWebhook creates or updates the ValidatingWebhookConfiguration
+// for namespace protection. Intercepts CREATE and UPDATE on CRDs that declare
+// allowedNamespaces or restrictedNamespaces. A single webhook entry covers all matching GVRs.
+// failurePolicy: Fail — if Orkestra is unreachable, the operation is blocked.
+func registerNamespaceProtectionWebhook(
+	ctx context.Context,
+	client kubernetes.Interface,
+	gvrs []katalog.GVREntry,
+	caBundle []byte,
+	opts WebhookRegistrationOptions,
+	svcName string,
+	failurePolicy string,
+) error {
+	sideEffects := admissionv1.SideEffectClassNone
+	path := "/namespace-protection"
+	port := opts.Port
+	fp := admissionv1FailurePolicyType(failurePolicy)
+
+	config := &admissionv1.ValidatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   namespaceProtectionWebhookConfigName,
+			Labels: opts.OrkestraResourceLabels,
+		},
+		Webhooks: []admissionv1.ValidatingWebhook{
+			{
+				Name: "namespace-protect.orkestra.konductor.io",
+				ClientConfig: admissionv1.WebhookClientConfig{
+					Service: &admissionv1.ServiceReference{
+						Name:      svcName,
+						Namespace: opts.ServiceNamespace,
+						Path:      &path,
+						Port:      &port,
+					},
+					CABundle: caBundle,
+				},
+				Rules:                   buildAdmissionRules(gvrs),
+				FailurePolicy:           &fp,
+				MatchPolicy:             matchPolicyPtr(admissionv1.Exact),
+				AdmissionReviewVersions: []string{"v1"},
+				SideEffects:             &sideEffects,
+				TimeoutSeconds:          int32Ptr(5),
+			},
+		},
+	}
+
+	return applyWebhookConfig(ctx, client, config)
+}
+
 // buildAdmissionRules converts GVREntry slices to Kubernetes RuleWithOperations.
 // Each GVREntry becomes one rule covering the specific group/version/resource.
 func buildAdmissionRules(gvrs []katalog.GVREntry) []admissionv1.RuleWithOperations {
+	rules := make([]admissionv1.RuleWithOperations, 0, len(gvrs))
+	for _, gvr := range gvrs {
+		ops := make([]admissionv1.OperationType, 0, len(gvr.Operations))
+		for _, op := range gvr.Operations {
+			ops = append(ops, admissionv1.OperationType(op))
+		}
+		rules = append(rules, admissionv1.RuleWithOperations{
+			Operations: ops,
+			Rule: admissionv1.Rule{
+				APIGroups:   []string{gvr.Group},
+				APIVersions: []string{gvr.Version},
+				Resources:   []string{gvr.Resource},
+			},
+		})
+	}
+	return rules
+}
+
+// buildDeletionProtectionRules mirrors buildAdmissionRules but for deletion protection.
+func buildDeletionProtectionRules(gvrs []katalog.GVREntry) []admissionv1.RuleWithOperations {
 	rules := make([]admissionv1.RuleWithOperations, 0, len(gvrs))
 	for _, gvr := range gvrs {
 		ops := make([]admissionv1.OperationType, 0, len(gvr.Operations))
@@ -387,11 +578,23 @@ func readCABundle(certFile string) ([]byte, error) {
 
 // ── Pointer helpers ───────────────────────────────────────────────────────
 
-func int32Ptr(i int32) *int32                                                   { return &i }
-func int64Ptr(i int64) *int64                                                   { return &i }
-func matchPolicyPtr(p admissionv1.MatchPolicyType) *admissionv1.MatchPolicyType { return &p }
+func int32Ptr(i int32) *int32                                                         { return &i }
+func int64Ptr(i int64) *int64                                                         { return &i }
+func matchPolicyPtr(p admissionv1.MatchPolicyType) *admissionv1.MatchPolicyType       { return &p }
+func failurePolicyPtr(p admissionv1.FailurePolicyType) *admissionv1.FailurePolicyType { return &p }
 func reinvocationPolicyPtr(p admissionv1.ReinvocationPolicyType) *admissionv1.ReinvocationPolicyType {
 	return &p
+}
+
+// admissionv1FailurePolicyType converts a string failure policy ("Fail" or "Ignore")
+// to the typed admissionv1.FailurePolicyType. Unrecognised values default to Ignore.
+func admissionv1FailurePolicyType(policy string) admissionv1.FailurePolicyType {
+	switch strings.ToLower(policy) {
+	case "fail":
+		return admissionv1.Fail
+	default:
+		return admissionv1.Ignore
+	}
 }
 
 // admissionRegistryReader is the subset of AdmissionRegistry used by registration.

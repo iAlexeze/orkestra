@@ -1,0 +1,47 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: orkspacefanouts.orkspace.io
+spec:
+  group: orkspace.io
+  scope: Namespaced
+  names:
+    plural: orkspacefanouts
+    singular: orkspacefanout
+    kind: OrkspaceFanOut
+    shortNames: [ofn]
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+        scale:
+          specReplicasPath: .spec.replicas
+          statusReplicasPath: .status.replicas
+          labelSelectorPath: .status.selector
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [image, replicas]
+              properties:
+                image:
+                  type: string
+                replicas:
+                  type: integer
+                  minimum: 0
+                  description: Desired replica count (HPA writes here)
+                port:
+                  type: integer
+                  default: 8080
+            status:
+              type: object
+              properties:
+                replicas:
+                  type: integer
+                selector:
+                  type: string
+              x-kubernetes-preserve-unknown-fields: true

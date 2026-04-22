@@ -6,95 +6,137 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // NamespaceGuardResult holds the outcome of a namespace restriction check.
 type NamespaceGuardResult struct {
-	// Allowed — true when the namespace is not restricted
-	Allowed bool
-
-	// Namespace — the namespace that was checked
+	Allowed   bool
 	Namespace string
-
-	// Pattern — the restriction pattern that matched (empty when Allowed)
-	Pattern string
+	Pattern   string // matched restricted or allowed pattern (for logs)
+	Reason    string // "restricted", "not-allowed", or ""
 }
 
-// CheckNamespace reports whether a target namespace is permitted for
-// child resource creation. Returns a NamespaceGuardResult.
+// CheckNamespace determines whether a target namespace is permitted for
+// child resource creation. It evaluates both RestrictedNamespaces and
+// AllowedNamespaces with the following precedence:
 //
-// Called from the registry before every Create operation:
-//   - runDeployments calls this before orkdeploy.Create
-//   - runSecrets calls this before orksecret.Create
-//   - etc.
+//  1. RestrictedNamespaces — deny-list (always wins)
+//  2. AllowedNamespaces    — allow-list (optional; empty = allow all)
 //
-// Also called directly from runTemplateReconcile before dispatching to
-// the registry — if the CR's own namespace is restricted, skip entirely.
+// Called before onCreate, onReconcile, onDelete, and before registry dispatch.
 func CheckNamespace(
 	ctx context.Context,
 	obj domain.Object,
 	targetNamespace string,
 	restricted orktypes.RestrictedNamespaces,
+	allowed orktypes.AllowedNamespaces,
 	crdName string,
 ) *NamespaceGuardResult {
-	if len(restricted) == 0 {
-		return &NamespaceGuardResult{Allowed: true, Namespace: targetNamespace}
-	}
 
+	// 1. RestrictedNamespaces always win
 	if restricted.IsRestricted(targetNamespace) {
+		pattern := matchedPattern(targetNamespace, restricted)
+
 		logger.FromContext(ctx).Warn().
 			Str("crd", crdName).
 			Str("cr", fmt.Sprintf("%s/%s", obj.GetNamespace(), obj.GetName())).
 			Str("targetNamespace", targetNamespace).
+			Str("pattern", pattern).
 			Msg("namespace guard: child resource creation skipped — namespace is restricted")
 
 		return &NamespaceGuardResult{
 			Allowed:   false,
 			Namespace: targetNamespace,
-			Pattern:   matchedPattern(targetNamespace, restricted),
+			Pattern:   pattern,
+			Reason:    "restricted",
 		}
 	}
 
-	return &NamespaceGuardResult{Allowed: true, Namespace: targetNamespace}
+	// 2. AllowedNamespaces (optional allow-list)
+	//    If empty → allow all (unless restricted)
+	if len(allowed) > 0 && !allowed.IsAllowed(targetNamespace) {
+		pattern := matchedAllowedPattern(targetNamespace, allowed)
+
+		logger.FromContext(ctx).Warn().
+			Str("crd", crdName).
+			Str("cr", fmt.Sprintf("%s/%s", obj.GetNamespace(), obj.GetName())).
+			Str("targetNamespace", targetNamespace).
+			Msg("namespace guard: child resource creation skipped — namespace not in allowed list")
+
+		return &NamespaceGuardResult{
+			Allowed:   false,
+			Namespace: targetNamespace,
+			Pattern:   pattern,
+			Reason:    "not-allowed",
+		}
+	}
+
+	// 3. Allowed
+	return &NamespaceGuardResult{
+		Allowed:   true,
+		Namespace: targetNamespace,
+	}
 }
 
 // EventMessage returns the Kubernetes event message for a blocked namespace.
 func (r *NamespaceGuardResult) EventMessage(resourceKind, resourceName string) string {
-	return fmt.Sprintf(
-		"Skipped creating %s %q in namespace %q — namespace is restricted (matched pattern: %q)",
-		resourceKind, resourceName, r.Namespace, r.Pattern,
-	)
+	switch r.Reason {
+	case "restricted":
+		return fmt.Sprintf(
+			"Skipped creating %s %q in namespace %q — namespace is restricted (matched pattern: %q)",
+			resourceKind, resourceName, r.Namespace, r.Pattern,
+		)
+	case "not-allowed":
+		return fmt.Sprintf(
+			"Skipped creating %s %q in namespace %q — namespace is not in allowedNamespaces (closest match: %q)",
+			resourceKind, resourceName, r.Namespace, r.Pattern,
+		)
+	default:
+		return ""
+	}
 }
 
-// matchedPattern returns the first pattern in the restriction list that
-// matches the given namespace. Used for event and log messages.
+// matchedPattern returns the first restricted pattern that matches.
 func matchedPattern(namespace string, restricted orktypes.RestrictedNamespaces) string {
 	for _, pattern := range restricted {
-		if matchesPattern(namespace, string(pattern)) {
+		if matchesPattern(namespace, pattern) {
 			return pattern
 		}
 	}
 	return ""
 }
 
-// matchesPattern reports whether a namespace matches a restriction pattern.
-// Supports exact matches and suffix wildcards (e.g. "kube-*").
+// matchedAllowedPattern returns the first allowed pattern that matches.
+// If none match, returns empty string.
+func matchedAllowedPattern(namespace string, allowed orktypes.AllowedNamespaces) string {
+	for _, pattern := range allowed {
+		if matchesPattern(namespace, pattern) {
+			return pattern
+		}
+	}
+	return ""
+}
+
+// matchesPattern supports exact, prefix*, and *suffix patterns.
 func matchesPattern(namespace, pattern string) bool {
+	if pattern == namespace {
+		return true
+	}
 	if strings.HasSuffix(pattern, "*") {
 		prefix := strings.TrimSuffix(pattern, "*")
 		return strings.HasPrefix(namespace, prefix)
 	}
-	return namespace == pattern
+	if strings.HasPrefix(pattern, "*") {
+		suffix := strings.TrimPrefix(pattern, "*")
+		return strings.HasSuffix(namespace, suffix)
+	}
+	return false
 }
 
-// resolveTargetNamespace resolves the target namespace for a child resource.
-// For namespaced child resources, the target is the CR's namespace by default.
-// Template expressions in the namespace field override this.
-//
-// If the resolved namespace is empty, falls back to the CR's namespace.
+// resolveTargetNamespace resolves the namespace for a child resource.
 func resolveTargetNamespace(crNamespace, templateNamespace string) string {
 	if templateNamespace != "" {
 		return templateNamespace

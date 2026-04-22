@@ -1,0 +1,118 @@
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: configmap-manager
+  description: |
+    Demonstration of Orkestra's data-driven operator model.
+    This Katalog attaches behavior to ConfigMaps and derives:
+      - a Secret
+      - a Deployment
+      - a Service
+spec:
+  crds:
+    configmap-manager:
+      apiTypes:
+        kind: ConfigMap
+      labelSelector:
+        orkestra.io/katalog: configmap-manager
+      allowedNamespaces:
+        - default
+      operatorBox:
+        default: true
+
+        onCreate:
+
+          # 1. Secret derived from ConfigMap data
+          secrets:
+            - name: "{{ .metadata.name }}-credentials"
+              once: true
+              rotateAfter: 30d
+              type: Opaque
+              data:
+                username: "{{ .data.username }}"
+                password: "{{ randomAlphanumeric 32 }}"
+          
+          # 2. Create a new configmap
+          configMaps:
+            - name: "{{ .metadata.name }}-new"      # If you want to modify the parent configMap use: "{{ .metadata.name }}"
+              data:
+                region: "{{ .data.region }}"
+                image: "{{ .data.image }}"
+                replicas: "{{ .data.replicas }}"
+              reconcile: true
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}-new"   # Different label from the parent
+
+          # 3. Deployment consuming the Secret and ConfigMap
+          deployments:
+            # ---- With Secret ----
+            - name: "{{ .metadata.name }}-with-secret"
+              image: "{{ .data.image }}"
+              replicas: "{{ getIntOr .data.replicas 1 }}"
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}-with-secret"
+              port: 8080
+              reconcile: true
+
+              # env is a map[string]EnvVarSource
+              env:
+                USERNAME:
+                  secretKeyRef:
+                    name: "{{ .metadata.name }}-credentials"
+                    key: username
+                PASSWORD:
+                  secretKeyRef:
+                    name: "{{ .metadata.name }}-credentials"
+                    key: password
+
+              # envFrom is a list of EnvFromSource (secretRef / configMapRef)
+              # This imports ALL keys from the Secret into the container.
+              envFrom:
+                - secretRef: "{{ .metadata.name }}-credentials"
+
+          # 4. Deployment consuming the configmap
+           # ---- With ConfigMap ----
+            - name: "{{ .metadata.name }}-with-configmap"
+              image: "{{ .data.image }}"
+              replicas: "{{ getIntOr .data.replicas 3 }}"
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}-with-configmap"
+              port: 80
+              reconcile: true
+              env:
+                REGION:
+                  configMapKeyRef:
+                    name: "{{ .metadata.name }}-new"
+                    key: region
+              envFrom:
+                - configMapRef: "{{ .metadata.name }}-new"
+
+          # 4. Service exposing the Deployments
+          services:
+            # ---- With Secret ----
+            - name: "{{ .metadata.name }}-with-secret"
+              port: 80
+              targetPort: 8080
+              reconcile: true
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}-with-secret"
+            
+            - name: "{{ .metadata.name }}-with-configmap"
+              port: 80
+              targetPort: 8081
+              reconcile: true
+              labels:
+                - key: app
+                  value: "{{ .metadata.name }}-with-configmap"
+
+        status:
+          fields:
+            - path: annotations.orkestra.io/phase
+              value: "Ready"
+              when:
+                - field: children.deployment.status.readyReplicas
+                  operator: exists

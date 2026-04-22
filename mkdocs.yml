@@ -88,7 +88,7 @@ nav:
           - ork init: reference/cli/init.md
           - ork validate: reference/cli/validate.md
           - ork template: reference/cli/template.md
-          - ork generate runtime: reference/cli/generate-runtime.md
+          - ork generate registry: reference/cli/generate/registry.md
           - ork run: reference/cli/run.md
           - ork status: reference/cli/status.md
           - ork get: reference/cli/get.md
@@ -169,7 +169,7 @@ nav:
 - security.md
 - support.md
 - roadmap.md
-- Releases ⧉: https://github.com/iAlexeze/orkestra/releases
+- Releases ⧉: https://github.com/orkspace/orkestra/releases
 - Blog ⧉: https://blog.orkestra.sh/
 
 
@@ -185,7 +185,7 @@ plugins:
         startOnLoad: true
         theme: "^(document.querySelector('body').getAttribute('data-md-color-scheme') === 'slate') ? 'dark' : 'default'"
   - gh-admonitions
-repo_url: https://github.com/iAlexeze/orkestra
+repo_url: https://github.com/orkspace/orkestra
 site_name: Orkestra - Declarative Operator Runtime for Kubernetes
 site_description: Declarative Operator Runtime for Kubernetes
 site_url: https://orkestra.sh

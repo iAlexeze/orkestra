@@ -61,7 +61,7 @@ What exists in production today:
 - `ork status` — live view of all managed CRDs (queries `/katalog`)
 - `ork get` / `ork describe` / `ork events` / `ork top` — per-CRD inspection
 - `ork template` — preview the merged, validated configuration
-- `ork generate runtime` — code generation for typed-mode CRDs
+- `ork generate registry` — code generation for typed-mode CRDs
 - `ork version` — version information
 
 **Distribution**
@@ -303,8 +303,8 @@ The highest-value contributions right now:
 | **Documentation** | Edge cases, gotchas, things that weren't obvious |
 | **Hooks** | Real-world hook implementations for complex operators |
 
-Open a [GitHub issue](https://github.com/iAlexeze/orkestra/issues) or
-[Discussion](https://github.com/iAlexeze/orkestra/discussions) for anything not
+Open a [GitHub issue](https://github.com/orkspace/orkestra/issues) or
+[Discussion](https://github.com/orkspace/orkestra/discussions) for anything not
 covered above. See [Contributing to Orkestra](./technical-docs/CONTRIBUTING.md) for the development setup
 and code standards.
 

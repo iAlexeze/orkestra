@@ -86,19 +86,26 @@
         <div class="cc-info-card-head">
           <div class="cc-flex-1">
             <div class="flex items-center gap-3 mb-2" style="flex-wrap:wrap">
-              <h2 class="cc-katalog-name-link" onclick="showKatalogViewer('raw')"
-                  title="Click to inspect Katalog config"
-                  style="font-size:18px;font-weight:700;color:var(--text-primary);margin:0;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
-                {{ .KatalogName }}
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.45"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-              </h2>
+              <h2 style="font-size:18px;font-weight:700;color:var(--text-primary);margin:0">{{ .KatalogName }}</h2>
+              <button class="cc-btn cc-btn-secondary" onclick="showKatalogViewer('raw')"
+                      title="View Katalog YAML" style="font-size:11px;padding:3px 10px">
+                View YAML
+              </button>
               {{ if .KatalogHealthy }}
               <span class="cc-badge cc-badge-healthy"><span class="cc-status-dot healthy"></span>Healthy</span>
               {{ else }}
               <span class="cc-badge cc-badge-degraded"><span class="cc-status-dot degraded"></span>Degraded</span>
               {{ end }}
-              {{ if .OrkReady }}
-              <span class="cc-badge cc-badge-started"><span class="cc-status-dot started"></span>Operational</span>
+              {{ if .DeletionProtection }}
+              <span class="cc-badge cc-badge-healthy" title="Deletion protection enabled" style="cursor:default;gap:4px">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                Protected
+              </span>
+              {{ else }}
+              <span class="cc-badge cc-badge-pending" title="Deletion protection disabled" style="cursor:default;gap:4px">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
+                Unprotected
+              </span>
               {{ end }}
             </div>
             <p style="font-size:13px;color:var(--text-secondary);margin:0 0 8px">
@@ -307,6 +314,12 @@
                 <span class="cc-card-row-label">RBAC Rules</span>
                 <span class="cc-card-row-value">{{ .RBACCount }}</span>
               </div>
+              {{ if gt .ProviderCount 0 }}
+              <div class="cc-card-row">
+                <span class="cc-card-row-label">Providers</span>
+                <span class="cc-card-row-value">{{ .ProviderCount }}</span>
+              </div>
+              {{ end }}
               <div class="cc-card-row">
                 <span class="cc-card-row-label">Uptime</span>
                 <span class="cc-card-row-value font-mono text-sm">{{ .Uptime }}</span>
@@ -387,7 +400,7 @@
     </div>
   </div>
 
-  <script src="/controlcenter/assets/static/js/dashboard.js"></script>
+  <script src="/controlcenter/assets/static/js/controlcenter.js"></script>
   <script>
   /* ── Katalog config popup ─────────────────────────────────── */
   (function () {

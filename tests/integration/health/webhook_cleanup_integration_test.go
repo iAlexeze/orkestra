@@ -6,9 +6,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/health"
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/health"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -51,7 +51,7 @@ func TestWebhookLifecycle_Integration(t *testing.T) {
 	}
 
 	// Register
-	err = health.RegisterWebhooks(ctx, client, reg, opts)
+	err = health.RegisterAdmissionWebhooks(ctx, client, reg, opts)
 	if err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestWebhookLifecycle_Integration(t *testing.T) {
 	}
 
 	// Cleanup
-	err = health.UnregisterWebhooks(ctx, client)
+	err = health.UnregisterAdmissionWebhooks(ctx, client)
 	if err != nil {
 		t.Fatalf("cleanup failed: %v", err)
 	}

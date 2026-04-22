@@ -65,7 +65,7 @@ spec:
             default: "development" # if environment not declared, default to development
 
       # ── Reconciler ────────────────────────────────────────────────────
-      reconciler:
+      operatorBox:
         default: true
 
         status:

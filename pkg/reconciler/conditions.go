@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -42,7 +42,7 @@ import (
 // evaluateConditions reports whether *all* conditions pass for the given CR.
 //
 // - nil or empty slice → unconditional (true)
-// - typed CRDs → always true (cannot evaluate dot‑notation paths)
+// - typed CRDs → always true (cannot evaluate dot‑notation paths) -> Solved
 // - unstructured CRDs → evaluate each condition using dot‑notation
 //
 // Any condition that fails causes the entire block to fail (AND semantics).
@@ -55,6 +55,7 @@ func evaluateConditions(obj domain.Object, conditions []orktypes.Condition) bool
 	u, ok := toUnstructured(obj)
 	if !ok {
 		// Typed CRDs cannot evaluate conditions — do not silently skip resources.
+		// TODO: resolver.ObjectToMAp solves this
 		logger.Warn().
 			Str("kind", obj.GetObjectKind().GroupVersionKind().Kind).
 			Str("name", obj.GetName()).

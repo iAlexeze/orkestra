@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,7 +28,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return fmt.Errorf("service.Create: invalid spec: %w", err)
 	}
 
-	namespace := resolveNamespace(owner, spec)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
 
 	_, err := kube.Clientset().CoreV1().Services(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -65,7 +66,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return fmt.Errorf("service.Update: invalid spec: %w", err)
 	}
 
-	namespace := resolveNamespace(owner, spec)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
 
 	existing, err := kube.Clientset().CoreV1().Services(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
@@ -115,7 +116,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 
 // Delete deletes the Service if it exists.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedServiceSpec) error {
-	namespace := resolveNamespace(owner, spec)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
 
 	err := kube.Clientset().CoreV1().Services(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -163,8 +164,9 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 // This function assembles the spec and applies defaults.
 func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServiceSpec {
 	spec := ResolvedServiceSpec{
-		Name:   src.Name,
-		Labels: make(map[string]string),
+		Name:     src.Name,
+		Labels:   make(map[string]string),
+		Selector: make(map[string]string),
 	}
 
 	if spec.Name == "" {
@@ -199,6 +201,10 @@ func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServi
 		spec.Labels[l.Key] = l.Value
 	}
 
+	for k, v := range src.Selector {
+		spec.Selector[k] = v
+	}
+
 	// System labels
 	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
 	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
@@ -218,9 +224,7 @@ func buildService(owner domain.Object, spec ResolvedServiceSpec, namespace strin
 	}
 
 	// Selector matches pods created by deployments with the same owner
-	selector := map[string]string{
-		"orkestra-owner": owner.GetName(),
-	}
+	spec.Selector["orkestra-owner"] = owner.GetName()
 
 	// For unstructured owners the GVK may not be set on the object itself —
 	// use the unstructured helper to get it
@@ -254,7 +258,7 @@ func buildService(owner domain.Object, spec ResolvedServiceSpec, namespace strin
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     svcType,
-			Selector: selector,
+			Selector: spec.Selector,
 			Ports: []corev1.ServicePort{
 				{
 					Port:       spec.Port,
@@ -278,14 +282,4 @@ func validateSpec(spec ResolvedServiceSpec) error {
 		return fmt.Errorf("missing required fields: %v", missing)
 	}
 	return nil
-}
-
-func resolveNamespace(owner domain.Object, spec ResolvedServiceSpec) string {
-	if spec.Namespace != "" {
-		return spec.Namespace
-	}
-	if owner.GetNamespace() != "" {
-		return owner.GetNamespace()
-	}
-	return "default"
 }

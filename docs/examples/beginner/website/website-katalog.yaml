@@ -56,7 +56,7 @@ spec:
         plural: orkapps
       endpoints:
         enabled: true  # This disables endpoint creation for this CRD
-      reconciler:
+      operatorBox:
         default: true
       dependsOn:
         - frontend
@@ -77,7 +77,7 @@ spec:
         # location omitted — no compiled types needed
         # Orkestra uses *unstructured.Unstructured automatically
 
-      reconciler:
+      operatorBox:
         finalizers:
           - finalizer.demo.orkestra.io/website
 

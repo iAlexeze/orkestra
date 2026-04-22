@@ -64,6 +64,11 @@ func buildNotes() template.FuncMap {
 	register(m, typeNotes())
 	register(m, conditionalNotes())
 	register(m, randomNotes())
+	register(m, kubernetesNotes())
+	register(m, listMapNotes())
+	register(m, safeAccessNotes())
+	register(m, containerNotes())
+	register(m, asNotes())
 	return m
 }
 

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=9292&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Installation — Orkestra">
 <meta property="og:description" content="Install the Orkestra CLI and get your cluster ready.">
-<meta property="og:url" content="http://localhost:9292/docs/getting-started/installation/">
+<meta property="og:url" content="http://localhost:8191/docs/getting-started/installation/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -110,7 +110,7 @@
       </a>
 
       
-      <a href="https://github.com/iAlexeze/orkestra" class="btn-github" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
+      <a href="https://github.com/orkspace/orkestra" class="btn-github" target="_blank" rel="noopener noreferrer" aria-label="View on GitHub">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
           <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
         </svg>
@@ -534,7 +534,7 @@
               
               <li>
                 <a href="/docs/cli/generate-runtime/" class="sidebar-link">
-                  ork generate runtime
+                  ork generate registry
                 </a>
               </li>
               
@@ -987,31 +987,31 @@
 
 <h2 id="install-the-cli">Install the CLI</h2>
 <h3 id="using-go-install-recommended">Using <code>go install</code> (recommended)</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>go install github.com/iAlexeze/orkestra/cmd/ork@latest
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>go install github.com/orkspace/orkestra/cmd/ork@latest
 </span></span></code></pre></div><p>Verify the installation:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork version
 </span></span></code></pre></div><p>Expected output:</p>
 <pre tabindex="0"><code>Orkestra v1.0.0  (commit: abc1234, built: 2025-01-01)
 </code></pre><h3 id="download-a-binary-release">Download a binary release</h3>
-<p>Pre-built binaries are available for Linux, macOS, and Windows on the <a href="https://github.com/iAlexeze/orkestra/releases">GitHub Releases</a> page.</p>
+<p>Pre-built binaries are available for Linux, macOS, and Windows on the <a href="https://github.com/orkspace/orkestra/releases">GitHub Releases</a> page.</p>
 <p><strong>Linux (amd64)</strong></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl -sSL https://github.com/iAlexeze/orkestra/releases/latest/download/ork_linux_amd64 <span style="color:#f1fa8c">\
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl -sSL https://github.com/orkspace/orkestra/releases/latest/download/ork_linux_amd64 <span style="color:#f1fa8c">\
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  -o /usr/local/bin/ork <span style="color:#ff79c6">&amp;&amp;</span> chmod +x /usr/local/bin/ork
 </span></span></code></pre></div><p><strong>macOS (arm64)</strong></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl -sSL https://github.com/iAlexeze/orkestra/releases/latest/download/ork_darwin_arm64 <span style="color:#f1fa8c">\
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl -sSL https://github.com/orkspace/orkestra/releases/latest/download/ork_darwin_arm64 <span style="color:#f1fa8c">\
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  -o /usr/local/bin/ork <span style="color:#ff79c6">&amp;&amp;</span> chmod +x /usr/local/bin/ork
 </span></span></code></pre></div><p><strong>macOS (amd64)</strong></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl -sSL https://github.com/iAlexeze/orkestra/releases/latest/download/ork_darwin_amd64 <span style="color:#f1fa8c">\
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl -sSL https://github.com/orkspace/orkestra/releases/latest/download/ork_darwin_amd64 <span style="color:#f1fa8c">\
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  -o /usr/local/bin/ork <span style="color:#ff79c6">&amp;&amp;</span> chmod +x /usr/local/bin/ork
 </span></span></code></pre></div><h3 id="build-from-source">Build from source</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>git clone https://github.com/iAlexeze/orkestra.git
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>git clone https://github.com/orkspace/orkestra.git
 </span></span><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">cd</span> orkestra
 </span></span><span style="display:flex;"><span>make build
 </span></span><span style="display:flex;"><span>sudo mv bin/ork /usr/local/bin/ork
 </span></span></code></pre></div><h2 id="install-the-orkestra-runtime">Install the Orkestra runtime</h2>
 <p>The Orkestra runtime runs in-cluster and handles CRD registration, reconciliation, and the Control Center UI.</p>
 <h3 id="install-via-kubectl">Install via kubectl</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl apply -f https://github.com/iAlexeze/orkestra/releases/latest/download/install.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl apply -f https://github.com/orkspace/orkestra/releases/latest/download/install.yaml
 </span></span></code></pre></div><p>This creates the <code>orkestra-system</code> namespace and deploys:</p>
 <table>
   <thead>
@@ -1072,7 +1072,7 @@ control-center-6b7c8d9e0-p4qrs         1/1     Running   0          42s
 </span></span></code></pre></div><p>Then open <a href="http://localhost:8080">http://localhost:8080</a> in your browser.</p>
 <h2 id="uninstall">Uninstall</h2>
 <p>To remove Orkestra from your cluster:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl delete -f https://github.com/iAlexeze/orkestra/releases/latest/download/install.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl delete -f https://github.com/orkspace/orkestra/releases/latest/download/install.yaml
 </span></span></code></pre></div>
 
 
@@ -1098,7 +1098,7 @@ control-center-6b7c8d9e0-p4qrs         1/1     Running   0          42s
 <ul>
 <li><a href="/docs/getting-started/quickstart/">Quick Start</a> — build a working operator in 5 minutes</li>
 <li><a href="/docs/basics/">Katalog Basics</a> — understand the core manifest structure</li>
-<li><a href="https://github.com/iAlexeze/orkestra/tree/main/examples">Examples</a> — real-world examples on GitHub</li>
+<li><a href="https://github.com/orkspace/orkestra/tree/main/examples">Examples</a> — real-world examples on GitHub</li>
 </ul>
 
       </div>
@@ -1145,7 +1145,7 @@ control-center-6b7c8d9e0-p4qrs         1/1     Running   0          42s
   </ul>
 </nav>
     <div class="toc-footer">
-      <a href="https://github.com/iAlexeze/orkestra/edit/main/docs/docs/getting-started/installation.md" target="_blank" rel="noopener noreferrer" class="edit-on-github">
+      <a href="https://github.com/orkspace/orkestra/edit/main/docs/docs/getting-started/installation.md" target="_blank" rel="noopener noreferrer" class="edit-on-github">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
           <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -1170,7 +1170,7 @@ control-center-6b7c8d9e0-p4qrs         1/1     Running   0          42s
       </a>
       <p class="footer-tagline">The declarative control plane<br>for Kubernetes operators.</p>
       <div class="footer-social">
-        <a href="https://github.com/iAlexeze/orkestra" target="_blank" rel="noopener noreferrer" aria-label="GitHub" class="footer-social-link">
+        <a href="https://github.com/orkspace/orkestra" target="_blank" rel="noopener noreferrer" aria-label="GitHub" class="footer-social-link">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
             <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
           </svg>
@@ -1198,9 +1198,9 @@ control-center-6b7c8d9e0-p4qrs         1/1     Running   0          42s
       <div class="footer-col">
         <h4 class="footer-col-title">Community</h4>
         <ul role="list">
-          <li><a href="https://github.com/iAlexeze/orkestra" target="_blank" rel="noopener noreferrer">GitHub</a></li>
-          <li><a href="https://github.com/iAlexeze/orkestra/issues" target="_blank" rel="noopener noreferrer">Issues</a></li>
-          <li><a href="https://github.com/iAlexeze/orkestra/discussions" target="_blank" rel="noopener noreferrer">Discussions</a></li>
+          <li><a href="https://github.com/orkspace/orkestra" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li><a href="https://github.com/orkspace/orkestra/issues" target="_blank" rel="noopener noreferrer">Issues</a></li>
+          <li><a href="https://github.com/orkspace/orkestra/discussions" target="_blank" rel="noopener noreferrer">Discussions</a></li>
           <li><a href="https://twitter.com/orkspace" target="_blank" rel="noopener noreferrer">@orkspace</a></li>
         </ul>
       </div>
@@ -1208,9 +1208,9 @@ control-center-6b7c8d9e0-p4qrs         1/1     Running   0          42s
       <div class="footer-col">
         <h4 class="footer-col-title">Resources</h4>
         <ul role="list">
-          <li><a href="https://github.com/iAlexeze/orkestra/releases" target="_blank" rel="noopener noreferrer">Releases</a></li>
-          <li><a href="https://github.com/iAlexeze/orkestra/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a></li>
-          <li><a href="https://github.com/iAlexeze/orkestra/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
+          <li><a href="https://github.com/orkspace/orkestra/releases" target="_blank" rel="noopener noreferrer">Releases</a></li>
+          <li><a href="https://github.com/orkspace/orkestra/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a></li>
+          <li><a href="https://github.com/orkspace/orkestra/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
           <li><a href="/docs/reference/">API Reference</a></li>
         </ul>
       </div>

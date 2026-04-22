@@ -61,9 +61,9 @@ import (
     "context"
     "fmt"
 
-    "github.com/ialexeze/orkestra/domain"
-    orktypes "github.com/ialexeze/orkestra/pkg/types"
-    "github.com/ialexeze/orkestra/pkg/kubeclient"
+    "github.com/orkspace/orkestra/domain"
+    orktypes "github.com/orkspace/orkestra/pkg/types"
+    "github.com/orkspace/orkestra/pkg/kubeclient"
     apiv1 "github.com/myorg/api/database/v1alpha1"
     "k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -163,7 +163,7 @@ func (r *databaseReconciler) handleReconcile(ctx context.Context, obj *apiv1.Dat
     plural: databases
     location: github.com/myorg/api/database/v1alpha1
 
-  reconciler:
+  operatorBox:
     default: false       # ← must be false when using constructor
     constructor:
       location: github.com/myorg/reconcilers
@@ -173,7 +173,7 @@ func (r *databaseReconciler) handleReconcile(ctx context.Context, obj *apiv1.Dat
 ### Generate the registry
 
 ```bash
-ork generate runtime --katalog katalog.yaml
+ork generate registry --katalog katalog.yaml
 ```
 
 Generates the `ReconcilerRegistry` entry for `NewDatabaseReconciler`.

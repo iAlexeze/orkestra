@@ -140,7 +140,7 @@ spec:
         version: v1alpha1
         kind: Website
         plural: websites
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:
@@ -479,4 +479,4 @@ The same principle, applied one level up.
 ---
 
 *Orkestra — Declarative Operators for Kubernetes*
-*March 2026 — https://github.com/iAlexeze/orkestra*
+*March 2026 — https://github.com/orkspace/orkestra*

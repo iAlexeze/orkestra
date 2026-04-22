@@ -23,7 +23,7 @@ However, some use cases require full control:
 - using advanced caching or sharding strategies  
 
 !!! note
-    Constructors give you the ability to plug in a custom reconciler while still benefiting from Orkestra’s Katalog, Komposer, and runtime wiring.
+    Constructors give you the ability to plug in a custom reconciler while still benefiting from Orkestra’s Katalog, Komposer, and runtime registry.
 
 ---
 
@@ -32,7 +32,7 @@ However, some use cases require full control:
 Constructors are configured per‑CRD:
 
 ```yaml
-reconciler:
+operatorBox:
   default: false
   constructor:
     location: github.com/myorg/my-operator/pkg/runtime
@@ -48,7 +48,7 @@ reconciler:
 After declaring a constructor, run:
 
 ```bash
-ork generate runtime --katalog <path>
+ork generate registry --katalog <path>
 ```
 
 to generate the runtime registry wiring.
@@ -57,7 +57,7 @@ to generate the runtime registry wiring.
 
 ## Constructor function shape
 
-A constructor typically returns a controller‑runtime‑style reconciler:
+A constructor typically returns a controller‑runtime‑style operatorBox:
 
 ```go
 func NewWebsiteReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {

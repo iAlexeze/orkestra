@@ -5,12 +5,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orkdeploy "github.com/ialexeze/orkestra/pkg/orkestra-registry/deployments"
-	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orkdeploy "github.com/orkspace/orkestra/pkg/orkestra-registry/deployments"
+	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // runDeployments resolves and applies Deployment template declarations.
@@ -28,29 +28,56 @@ func runDeployments(
 	owner domain.Object,
 	srcs []orktypes.DeploymentTemplateSource,
 	update bool,
+	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
+	activeNames := make(map[string]bool, len(srcs))
+	for _, s := range srcs {
+		if !orktypes.EvaluateWhen(resolver.Data(), s.Conditions, s.AnyOf) {
+			continue
+		}
+		n, _ := resolver.Resolve(s.Name)
+		nsp, _ := resolver.Resolve(s.Namespace)
+		if nsp == "" {
+			nsp = owner.GetNamespace()
+		}
+		activeNames[nsp+"/"+n] = true
+	}
+
 	for i, src := range srcs {
 
 		// 1. Evaluate conditions BEFORE resolving templates
 		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf)
 
+		// Early name/ns resolution — needed for guard check and DeleteIfOwned cleanup.
+		// ResolveDeploymentTemplate resolves these again internally — intentional, cheap.
+		name, _ := resolver.Resolve(src.Name)
+		ns, _ := resolver.Resolve(src.Namespace)
+		if ns == "" {
+			ns = owner.GetNamespace()
+		}
+
+		// ── Namespace guard ───────────────────────────────────────────────────
+		if guard != nil && !guard(ctx, owner, ns) {
+			continue // skipped — CheckNamespace already logged the reason
+		}
+
+		logger.FromContext(ctx).Debug().
+			Str("resource", "Deployment").
+			Str("name", name).
+			Str("namespace", ns).
+			Bool("namespace_restricted", guard != nil).
+			Int("index", i).
+			Bool("condition_passed", conditionPassed).
+			Msg("deployment: condition evaluation")
+
 		if !conditionPassed {
-			if update || src.Reconcile { // ← src.Reconcile here too to show that this resource is continuously managed
-				// Condition no longer passes — delete if owned by this CR
-				name, _ := resolver.Resolve(src.Name)
-				ns, _ := resolver.Resolve(src.Namespace)
-				if ns == "" {
-					ns = owner.GetNamespace()
-				}
-				if err := orkdeploy.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
-					return fmt.Errorf("deployments[%d]: conditional cleanup: %w", i, err)
+			if update || src.Reconcile {
+				if !activeNames[ns+"/"+name] {
+					if err := orkdeploy.DeleteIfOwned(ctx, kube, owner, name, ns); err != nil {
+						return fmt.Errorf("deployments[%d]: conditional cleanup: %w", i, err)
+					}
 				}
 			}
-			logger.FromContext(ctx).Debug().
-				Str("resource", "Deployment").
-				Int("index", i).
-				Msg("conditions not met — skipping resource")
-
 			continue
 		}
 

@@ -7,7 +7,7 @@ import (
 	"sort"
 	"testing"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // crd builds a map entry for use in test Katalog construction.

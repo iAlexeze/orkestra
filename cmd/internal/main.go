@@ -3,18 +3,18 @@ package internal
 import (
 	"context"
 
-	"github.com/ialexeze/orkestra/pkg/konductor"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/merger"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/konductor"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 func Konduct(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	// create domain komponent and build orkestra
 	startup := konstructOrkestra(kfg, m, ctx)
 
-	// Start all orkestra komponents
+	// ── Start ─────────────────────────────────────────────────────────────────
 	go func() {
 		if err := startup.orkestra.Start(ctx); err != nil {
 			logger.Fatal().AnErr("orkestra startup error", err)
@@ -25,7 +25,7 @@ func Konduct(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	ko := konductor.NewKonductorElection(
 		startup.kube,
 		startup.event,
-		func(ctx context.Context) { startup.kord.Kordinate(ctx) }, // kordinator kordination
+		func(ctx context.Context) { startup.kord.Kordinate(ctx) },
 		func(konductor string) {
 			// Banner prints here — konductor is the actual winner
 			printBanner(startup, konductor)

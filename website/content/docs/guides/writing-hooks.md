@@ -86,7 +86,7 @@ import (
     "fmt"
     "net/http"
 
-    "github.com/ialexeze/orkestra/domain"
+    "github.com/orkspace/orkestra/domain"
     websitev1 "github.com/myorg/apis/website/v1alpha1"
 )
 
@@ -133,17 +133,17 @@ crds:
       kind: Website
       plural: websites
       location: github.com/myorg/apis/website/v1alpha1
-    reconciler:
+    operatorBox:
       default: true
       hooks:
         location: github.com/myorg/my-operator/pkg/hooks
         function: WebsiteHooks
 ```
 
-### Step 3: Generate Runtime Wiring
+### Step 3: Generate Runtime Registry
 
 ```bash
-ork generate runtime --katalog katalogs/website.yaml
+ork generate registry --katalog katalogs/website.yaml
 go mod tidy
 ```
 

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/pkg/inspect"
-	"github.com/ialexeze/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +19,7 @@ var validateCmd = &cobra.Command{
 		}
 
 		var k katalog.Katalog
-		entries, err := k.KomposeKatalogFromYaml(m.m)
+		entries, err := k.KomposeKatalogFromYaml(kfg, m.m)
 		if err != nil {
 			return err
 		}
@@ -30,7 +30,7 @@ var validateCmd = &cobra.Command{
 		}
 
 		fmt.Println()
-		fmt.Println(inspect.Bold("Validating Katalog..."))
+		fmt.Println(utils.Bold("Validating Katalog..."))
 		fmt.Println()
 
 		builtIn := 0
@@ -52,14 +52,22 @@ var validateCmd = &cobra.Command{
 		fmt.Println(strings.Repeat("─", 60))
 		fmt.Printf("%d CRDs valid (%d built-in, %d custom)\n", len(entries), builtIn, custom)
 
-		// fmt.Println()
-		// fmt.Println("Built-in resources are enriched automatically from the Kubernetes API.")
-		// fmt.Println("No apiTypes.location or code generation required.")
-
 		return nil
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(validateCmd)
+
+	validateCmd.Flags().StringSliceP("katalog", "k", nil, "Path to katalog.yaml")
+
+	// Shadow global flags so they don't appear under `ork validate`
+	validateCmd.Flags().Bool("debug", false, "")
+	validateCmd.Flags().String("kubeconfig", "", "")
+	validateCmd.Flags().Bool("verbose", false, "")
+
+	// Hide them from help output
+	validateCmd.Flags().MarkHidden("debug")
+	validateCmd.Flags().MarkHidden("kubeconfig")
+	validateCmd.Flags().MarkHidden("verbose")
 }

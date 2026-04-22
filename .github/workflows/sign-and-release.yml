@@ -1,0 +1,112 @@
+name: Release Summary
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: 'Container image tag (without v prefix)'
+        required: true
+        type: string
+      # Results from other jobs
+      build_result:
+        required: true
+        type: string
+      image_result:
+        required: true
+        type: string
+      examples_result:
+        required: true
+        type: string
+      release_result:
+        required: true
+        type: string
+      helm_result:
+        required: true
+        type: string
+      homebrew_result:
+        required: true
+        type: string
+      winget_result:
+        required: true
+        type: string
+      # Configurable branding / repository settings
+      github_repo:
+        description: 'GitHub repository (owner/name) for the main repo'
+        required: false
+        type: string
+        default: 'orkspace/orkestra'
+      container_registry:
+        description: 'Container registry base (e.g., ghcr.io/owner)'
+        required: false
+        type: string
+        default: 'ghcr.io/orkspace'
+      ork:
+        description: 'Shorthand for orkestra (used in helm, namespace, etc.)'
+        required: false
+        type: string
+        default: 'orkestra'
+      ork_image:
+        description: 'Runtime image name (without registry)'
+        required: false
+        type: string
+        default: 'orkestra'
+      orkcc_image:
+        description: 'Control center image name (without registry)'
+        required: false
+        type: string
+        default: 'orkestra-cc'
+      helm_repo_url:
+        description: 'Helm repository URL'
+        required: false
+        type: string
+        default: 'https://orkspace.github.io/orkestra'
+      helm_chart:
+        description: 'Helm chart reference (repo/chart)'
+        required: false
+        type: string
+        default: 'orkspace/orkestra'
+      brew_tap:
+        description: 'Homebrew tap (owner/tap)'
+        required: false
+        type: string
+        default: 'orkspace/tap'
+
+jobs:
+  summary:
+    name: Release Summary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write summary
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "## Release ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Component | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          icon() { [ "$1" = "success" ] && echo "✅" || ([ "$1" = "skipped" ] && echo "⏭️" || echo "❌"); }
+          echo "| Runtime binaries | $(icon ${{ inputs.build_result }}) ${{ inputs.build_result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Control Center binaries | $(icon ${{ inputs.build_result }}) ${{ inputs.build_result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Example packs | $(icon ${{ inputs.examples_result }}) ${{ inputs.examples_result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Container images | $(icon ${{ inputs.image_result }}) ${{ inputs.image_result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| GPG signing + GitHub Release | $(icon ${{ inputs.release_result }}) ${{ inputs.release_result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Helm chart | $(icon ${{ inputs.helm_result }}) ${{ inputs.helm_result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Homebrew formulas | $(icon ${{ inputs.homebrew_result }}) ${{ inputs.homebrew_result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Winget manifests | $(icon ${{ inputs.winget_result }}) ${{ inputs.winget_result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ inputs.release_result }}" = "success" ] && [ "${{ inputs.image_result }}" = "success" ]; then
+            echo "### ✅ Release ${TAG} complete" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+            echo "# Install CLI tools" >> "$GITHUB_STEP_SUMMARY"
+            echo "brew tap ${{ inputs.brew_tap }} && brew install ork orkcc" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "# Deploy with Helm (Runtime + Control Center)" >> "$GITHUB_STEP_SUMMARY"
+            echo "helm repo add ${{ inputs.ork }} ${{ inputs.helm_repo_url }}" >> "$GITHUB_STEP_SUMMARY"
+            echo "helm install ${{ inputs.ork }} ${{ inputs.helm_chart }} -n ${{ inputs.ork }}-system --create-namespace" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "# Run Control Center separately" >> "$GITHUB_STEP_SUMMARY"
+            echo "orkcc -u http://localhost:8080" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ❌ Release ${TAG} had failures — check jobs above" >> "$GITHUB_STEP_SUMMARY"
+          fi

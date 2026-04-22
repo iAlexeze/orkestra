@@ -1,14 +1,17 @@
 {{- if .Values.controlCenter.enabled }}
 
-{{- $orkestraURLs := .Values.controlCenter.config.orkestraURLs | default (list .Values.controlCenter.config.orkestraURL) }}
-{{- if not $orkestraURLs }}
-{{- $orkestraURLs = list (printf "http://%s-runtime:8080" (include "orkestra.fullname" .)) }}
+{{- $orkestraURLs := .Values.controlCenter.config.orkestraURLs }}
+{{- $urlString := "" }}
+
+{{- if or (not $orkestraURLs) (eq (len $orkestraURLs) 0) }}
+  {{- if .Values.controlCenter.config.orkestraURLs }}
+    {{- $orkestraURLs = list .Values.controlCenter.config.orkestraURLs }}
+  {{- else }}
+    {{- $orkestraURLs = list (printf "http://%s-runtime:8080" (include "orkestra.fullname" .)) }}
+  {{- end }}
 {{- end }}
 
-{{- $urlString := "" }}
-{{- range $i, $url := $orkestraURLs }}
-{{- if $i }}{{ $urlString = printf "%s,%s" $urlString $url }}{{ else }}{{ $urlString = $url }}{{ end }}
-{{- end }}
+{{- $urlString = join "," $orkestraURLs }}
 
 apiVersion: apps/v1
 kind: Deployment
@@ -17,18 +20,18 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "orkestra.labels" . | nindent 4 }}
-    component: controlcenter
+    app.kubernetes.io/component: controlcenter
 spec:
   replicas: {{ .Values.controlCenter.replicaCount }}
   selector:
     matchLabels:
       {{- include "orkestra.selectorLabels" . | nindent 6 }}
-      component: controlcenter
+      app.kubernetes.io/component: controlcenter
   template:
     metadata:
       labels:
         {{- include "orkestra.selectorLabels" . | nindent 8 }}
-        component: controlcenter
+        app.kubernetes.io/component: controlcenter
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -41,7 +44,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "orkestra.ccServiceAccountName" . }}
+      serviceAccountName: {{ .Values.controlCenter.serviceAccount | default "orkestra-cc" }}
       securityContext:
         {{- toYaml .Values.controlCenter.podSecurityContext | nindent 8 }}
 
@@ -68,6 +71,14 @@ spec:
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+
+          {{- with .Values.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
 
           ports:
             - name: http

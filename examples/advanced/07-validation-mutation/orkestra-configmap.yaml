@@ -49,7 +49,7 @@ data:
                 default: "8080"
               - field: spec.environment
                 default: "development"
-          reconciler:
+          operatorBox:
             default: true
             status:
               fields:

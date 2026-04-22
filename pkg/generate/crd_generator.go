@@ -29,7 +29,7 @@ import (
 	"sort"
 	"strings"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -84,7 +84,14 @@ func (g *CRDGenerator) buildSpec() apiextv1.CustomResourceDefinitionSpec {
 	}
 
 	// Conversion webhook — when conversion paths are declared
-	if len(g.crd.Conversion.Paths) > 0 {
+	if g.crd.Conversion != nil && len(g.crd.Conversion.Paths) > 0 {
+		storageVersion := g.crd.APITypes.Version
+		if g.crd.Conversion != nil {
+			if g.crd.Conversion.StorageVersion != "" {
+				storageVersion = g.crd.Conversion.StorageVersion
+			}
+		}
+
 		spec.Conversion = &apiextv1.CustomResourceConversion{
 			Strategy: apiextv1.WebhookConverter,
 			Webhook: &apiextv1.WebhookConversion{
@@ -95,9 +102,9 @@ func (g *CRDGenerator) buildSpec() apiextv1.CustomResourceDefinitionSpec {
 						Path:      strPtr("/convert"),
 						Port:      int32Ptr(8443),
 					},
-					// caBundle: filled in after cert generation
+					CABundle: nil, // caBundle: filled in after cert generation
 				},
-				ConversionReviewVersions: []string{"v1"},
+				ConversionReviewVersions: []string{storageVersion},
 			},
 		}
 	}
@@ -118,10 +125,22 @@ func (g *CRDGenerator) buildVersion() apiextv1.CustomResourceDefinitionVersion {
 		},
 	}
 
+	storageVersion := g.crd.APITypes.Version
+	if g.crd.Conversion != nil {
+		if g.crd.Conversion.StorageVersion != "" {
+			storageVersion = g.crd.Conversion.StorageVersion
+		}
+	}
+
+	storage := false
+	if storageVersion == g.crd.APITypes.Version {
+		storage = true
+	}
+
 	return apiextv1.CustomResourceDefinitionVersion{
 		Name:    g.crd.APITypes.Version,
 		Served:  true,
-		Storage: true,
+		Storage: storage,
 		Subresources: &apiextv1.CustomResourceSubresources{
 			Status: &apiextv1.CustomResourceSubresourceStatus{},
 		},
@@ -206,7 +225,7 @@ func (g *CRDGenerator) inferSpecProperties() map[string]apiextv1.JSONSchemaProps
 
 // inferStatusProperties derives the status schema from status.fields declarations.
 func (g *CRDGenerator) inferStatusProperties() map[string]apiextv1.JSONSchemaProps {
-	if g.crd.ReconcilerConfig.Status == nil {
+	if g.crd.OperatorBox.Status == nil {
 		return nil
 	}
 
@@ -223,7 +242,7 @@ func (g *CRDGenerator) inferStatusProperties() map[string]apiextv1.JSONSchemaPro
 		"observedGeneration": {Type: "integer"},
 	}
 
-	for _, field := range g.crd.ReconcilerConfig.Status.Fields {
+	for _, field := range g.crd.OperatorBox.Status.Fields {
 		path := field.Path
 		if strings.Contains(path, ".") {
 			continue // nested — handled by x-kubernetes-preserve-unknown-fields
@@ -268,7 +287,7 @@ func (g *CRDGenerator) buildPrinterColumns() []apiextv1.CustomResourceColumnDefi
 		},
 	}
 
-	if g.crd.ReconcilerConfig.Status == nil {
+	if g.crd.OperatorBox.Status == nil {
 		return cols
 	}
 
@@ -276,7 +295,7 @@ func (g *CRDGenerator) buildPrinterColumns() []apiextv1.CustomResourceColumnDefi
 	var statusCols []apiextv1.CustomResourceColumnDefinition
 
 	// phase first
-	for _, field := range g.crd.ReconcilerConfig.Status.Fields {
+	for _, field := range g.crd.OperatorBox.Status.Fields {
 		if field.Path == "phase" && !seen["phase"] {
 			statusCols = append([]apiextv1.CustomResourceColumnDefinition{
 				{Name: "Phase", Type: "string", JSONPath: ".status.phase"},
@@ -287,7 +306,7 @@ func (g *CRDGenerator) buildPrinterColumns() []apiextv1.CustomResourceColumnDefi
 
 	// other simple fields (max 3 additional columns)
 	count := 0
-	for _, field := range g.crd.ReconcilerConfig.Status.Fields {
+	for _, field := range g.crd.OperatorBox.Status.Fields {
 		if strings.Contains(field.Path, ".") || seen[field.Path] || count >= 3 {
 			continue
 		}
@@ -308,7 +327,7 @@ func (g *CRDGenerator) buildPrinterColumns() []apiextv1.CustomResourceColumnDefi
 func (g *CRDGenerator) extractTemplateSpecFields() []string {
 	// Collect all raw template strings from the reconciler config
 	var templates []string
-	rc := g.crd.ReconcilerConfig
+	op := g.crd.OperatorBox
 
 	collectFromTemplates := func(t *orktypes.HookTemplates) {
 		if t == nil {
@@ -332,11 +351,11 @@ func (g *CRDGenerator) extractTemplateSpecFields() []string {
 		}
 	}
 
-	collectFromTemplates(rc.OnCreate)
-	collectFromTemplates(rc.OnReconcile)
+	collectFromTemplates(op.OnCreate)
+	collectFromTemplates(op.OnReconcile)
 
 	// Also collect from provider block fields
-	for _, block := range rc.ProviderBlocks {
+	for _, block := range op.ProviderBlocks {
 		for _, decl := range block.Declarations {
 			for _, v := range decl.Fields {
 				templates = append(templates, v)
@@ -345,8 +364,8 @@ func (g *CRDGenerator) extractTemplateSpecFields() []string {
 	}
 
 	// Also collect from status fields
-	if rc.Status != nil {
-		for _, f := range rc.Status.Fields {
+	if op.Status != nil {
+		for _, f := range op.Status.Fields {
 			templates = append(templates, f.Value)
 		}
 	}

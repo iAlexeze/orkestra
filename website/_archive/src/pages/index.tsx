@@ -36,7 +36,7 @@ function HomepageHero(): React.JSX.Element {
           </Link>
           <Link
             className={styles.btnSecondary}
-            href="https://github.com/iAlexeze/orkestra">
+            href="https://github.com/orkspace/orkestra">
             GitHub
           </Link>
         </div>
@@ -85,7 +85,7 @@ crds:
       group: apps.myorg.io
       version: v1
       kind: Website
-    reconciler:
+    operatorBox:
       onCreate:
         deployments:
           - name: "{{ .metadata.name }}"

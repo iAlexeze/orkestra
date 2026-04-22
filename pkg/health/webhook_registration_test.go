@@ -5,14 +5,14 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func TestRegisterWebhooks_CreatesValidatingAndMutating(t *testing.T) {
+func TestRegisterAdmissionWebhooks_CreatesValidatingAndMutating(t *testing.T) {
 	ctx := context.Background()
 
 	// Fake CA bundle
@@ -45,7 +45,7 @@ func TestRegisterWebhooks_CreatesValidatingAndMutating(t *testing.T) {
 	client := fake.NewClientset()
 
 	// Register
-	if err := RegisterWebhooks(ctx, client, reg, opts); err != nil {
+	if err := RegisterAdmissionWebhooks(ctx, client, reg, opts); err != nil {
 		t.Fatalf("registration failed: %v", err)
 	}
 
@@ -97,7 +97,7 @@ func TestRegisterWebhooks_CreatesValidatingAndMutating(t *testing.T) {
 	}
 
 	// Idempotency: calling again should not error
-	if err := RegisterWebhooks(ctx, client, reg, opts); err != nil {
+	if err := RegisterAdmissionWebhooks(ctx, client, reg, opts); err != nil {
 		t.Fatalf("idempotent registration failed: %v", err)
 	}
 }

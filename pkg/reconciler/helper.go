@@ -6,9 +6,9 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -27,7 +27,7 @@ func (r *GenericReconciler[T]) ensureManagedLabel(ctx context.Context, obj T) er
 	// Add/overwrite the managed label
 	labels[konfig.LabelManaged] = konfig.LabelManagedValue
 
-	return r.kube.PatchLabels(ctx, obj, r.crd.GVR, labels)
+	return r.kube.PatchLabels(ctx, obj, r.crd.GVR(), labels)
 }
 
 // ── Annotation management ──────────────────────────────────────────────────────
@@ -56,24 +56,24 @@ func (r *GenericReconciler[T]) ensureManagedAnnotations(ctx context.Context, obj
 		return nil
 	}
 
-	return r.kube.PatchAnnotations(ctx, obj, r.crd.GVR, ann)
+	return r.kube.PatchAnnotations(ctx, obj, r.crd.GVR(), ann)
 }
 
 // ── Finalizer management ──────────────────────────────────────────────────────
 
 func (r *GenericReconciler[T]) ensureFinalizers(ctx context.Context, obj T) error {
-	if len(r.crd.Finalizers) == 0 {
+	if len(r.crd.OperatorBox.Finalizers) == 0 {
 		return nil
 	}
 
 	logger.Debug().
 		Str("name", obj.GetName()).
-		Any("crd finalizers", r.crd.Finalizers).
+		Any("crd finalizers", r.crd.OperatorBox.Finalizers).
 		Msgf("checking finalizers: %v", obj.GetFinalizers())
 
 	needsUpdate := false
-	for _, f := range r.crd.Finalizers {
-		if !ContainsFinalizer(obj, f) {
+	for _, f := range r.crd.OperatorBox.Finalizers {
+		if !ContainsFinalizer(obj, f) && r.crd.RemoveFinalizers { // Added for testing -> could be useful in future
 			needsUpdate = true
 			break
 		}
@@ -83,7 +83,7 @@ func (r *GenericReconciler[T]) ensureFinalizers(ctx context.Context, obj T) erro
 	}
 
 	newFinalizers := obj.GetFinalizers()
-	for _, f := range r.crd.Finalizers {
+	for _, f := range r.crd.OperatorBox.Finalizers {
 		if !ContainsFinalizer(obj, f) {
 			newFinalizers = append(newFinalizers, f)
 		}
@@ -93,10 +93,10 @@ func (r *GenericReconciler[T]) ensureFinalizers(ctx context.Context, obj T) erro
 		Str("name", obj.GetName()).
 		Msgf("adding finalizers: %v → %v", obj.GetFinalizers(), newFinalizers)
 
-	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.Kind+"FinalizerAdded",
+	r.event.Eventf(obj, corev1.EventTypeNormal, r.crd.APITypes.Kind+"FinalizerAdded",
 		fmt.Sprintf("Added finalizers to %s/%s", obj.GetNamespace(), obj.GetName()))
 
-	return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR, newFinalizers)
+	return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR(), newFinalizers)
 }
 
 func (r *GenericReconciler[T]) removeFinalizers(ctx context.Context, obj T) error {
@@ -106,7 +106,7 @@ func (r *GenericReconciler[T]) removeFinalizers(ctx context.Context, obj T) erro
 
 	newFinalizers := make([]string, 0, len(obj.GetFinalizers()))
 	for _, f := range obj.GetFinalizers() {
-		if !slices.Contains(r.crd.Finalizers, f) {
+		if !slices.Contains(r.crd.OperatorBox.Finalizers, f) {
 			newFinalizers = append(newFinalizers, f)
 		}
 	}
@@ -119,7 +119,7 @@ func (r *GenericReconciler[T]) removeFinalizers(ctx context.Context, obj T) erro
 		Str("name", obj.GetName()).
 		Msgf("removing finalizers: %v → %v", obj.GetFinalizers(), newFinalizers)
 
-	return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR, newFinalizers)
+	return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR(), newFinalizers)
 }
 
 // ── Finalizer helpers — exported for custom reconcilers ───────────────────────

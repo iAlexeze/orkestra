@@ -6,11 +6,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ialexeze/orkestra/pkg/generate"
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/merger"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/generate"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/merger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/spf13/cobra"
 )
 
@@ -57,7 +57,8 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 
 	m := merger.New(expanded...)
 	if err := m.Merge(); err != nil {
-		return nil, fmt.Errorf("merge katalogs: %w", err)
+		//return nil, fmt.Errorf("merge katalogs: %w", err)
+		return nil, err
 	}
 
 	var kat katalog.Katalog
@@ -79,7 +80,7 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 }
 
 var generateRuntimeCmd = &cobra.Command{
-	Use:   "runtime",
+	Use:   "registry",
 	Short: "Generate 'pkg/runtime/zz_generated_runtime_registry.go' from a Katalog (local or remote)",
 	Long: `Reads one or more crd-katalog.yaml files (local paths or remote URLs), validates them,
 and emits 'pkg/runtime/zz_generated_runtime_registry.go' containing RegisterRuntimeObjects() and
@@ -88,10 +89,10 @@ RegisterScheme() for all enabled CRDs with reconciler.default: true.
 The file is created if it does not exist and overwritten on each run — idempotent.
 
 Examples:
-  ork generate runtime --katalog ./example-crds/website-crd/website-katalog.yaml
-  ork generate runtime --katalog ./path/to/first.yaml --katalog ./path/to/second.yaml
-  ork generate runtime --katalog ./path/to/first.yaml,./path/to/second.yaml
-  ork generate runtime --katalog https://raw.githubusercontent.com/.../crd-katalog.yaml`,
+  ork generate registry --katalog ./example-crds/website-crd/website-katalog.yaml
+  ork generate registry --katalog ./path/to/first.yaml --katalog ./path/to/second.yaml
+  ork generate registry --katalog ./path/to/first.yaml,./path/to/second.yaml
+  ork generate registry --katalog https://raw.githubusercontent.com/.../crd-katalog.yaml`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		out, err := generateKatalog(cmd)
 		if err != nil {
@@ -100,15 +101,15 @@ Examples:
 
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 
-		log.Printf("generating runtime...\n")
+		log.Printf("generating runtime registry...\n")
 		log.Printf("dry-run: %t\n", dryRun)
 
 		if err := generate.Runtime(out.m, dryRun); err != nil {
-			return fmt.Errorf("generate runtime: %w", err)
+			return fmt.Errorf("generate runtime registry: %w", err)
 		}
 
-		log.Printf("runtime generated successfully\n")
-		log.Printf("runtime: %s/%s\n", generate.RuntimePackage, generate.RegistryFile)
+		log.Printf("runtime registry generated successfully\n")
+		log.Printf("registry: %s/%s\n", generate.RuntimePackage, generate.RegistryFile)
 		return nil
 	},
 }
@@ -161,53 +162,6 @@ var generateDashboardsCmd = &cobra.Command{
 	},
 }
 
-var generateExamplesCmd = &cobra.Command{
-	Use:   "examples",
-	Short: "Generate example manifests for all CRDs",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		out, err := generateKatalog(cmd)
-		if err != nil {
-			return err
-		}
-
-		dryRun, _ := cmd.Flags().GetBool("dry-run")
-
-		log.Printf("generating examples...\n")
-		log.Printf("dry-run: %t\n", dryRun)
-
-		if err := generate.Examples(out.crds, dryRun); err != nil {
-			return fmt.Errorf("generate examples: %w", err)
-		}
-
-		log.Println("examples generated successfully")
-		log.Printf("out: %s\n", generate.ExamplesDir)
-		return nil
-	},
-}
-
-var generateTestsCmd = &cobra.Command{
-	Use:   "tests",
-	Short: "Generate test scaffolding for all CRDs",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		out, err := generateKatalog(cmd)
-		if err != nil {
-			return err
-		}
-		dryRun, _ := cmd.Flags().GetBool("dry-run")
-
-		log.Printf("generating tests...\n")
-		log.Printf("dry-run: %t\n", dryRun)
-
-		if err := generate.Tests(out.crds, dryRun); err != nil {
-			return fmt.Errorf("generate tests: %w", err)
-		}
-
-		log.Println("tests generated successfully")
-		log.Printf("out: %s\n", generate.TestDir)
-		return nil
-	},
-}
-
 var generateAllCmd = &cobra.Command{
 	Use:   "all",
 	Short: "Generate runtime, docs, dashboards, examples, tests, and graphs",
@@ -229,12 +183,6 @@ var generateAllCmd = &cobra.Command{
 		}
 		if err := generate.Dashboards(out.crds, dryRun); err != nil {
 			return fmt.Errorf("generate dashboards: %w", err)
-		}
-		if err := generate.Examples(out.crds, dryRun); err != nil {
-			return fmt.Errorf("generate examples: %w", err)
-		}
-		if err := generate.Tests(out.crds, dryRun); err != nil {
-			return fmt.Errorf("generate tests: %w", err)
 		}
 		log.Println("all generators completed successfully")
 		return nil
@@ -264,7 +212,17 @@ Example:
 
 		log.Println("generating rbac...")
 
-		if err := generate.RBAC(out.m, namespace, outputFile); err != nil {
+		var k katalog.Katalog
+		if _, err = k.KomposeKatalogFromYaml(kfg, out.m); err != nil {
+			return fmt.Errorf("build katalog: %w", err)
+		}
+		if _, err = k.ValidateConfig(kfg); err != nil {
+			return fmt.Errorf("validate katalog: %w", err)
+		}
+
+		rules := k.GenerateRBACRules()
+
+		if err := generate.RBAC(kfg, rules, namespace, outputFile); err != nil {
 			return fmt.Errorf("generate rbac: %w", err)
 		}
 
@@ -341,13 +299,22 @@ Examples:
 		if err != nil {
 			return err
 		}
-
 		namespace, _ := cmd.Flags().GetString("namespace")
 		outputFile, _ := cmd.Flags().GetString("output")
 
 		log.Println("generating bundle...")
 
-		rbacOut, err := generate.RenderRBACToString(out.m, namespace)
+		var k katalog.Katalog
+		if _, err = k.KomposeKatalogFromYaml(kfg, out.m); err != nil {
+			return fmt.Errorf("build katalog: %w", err)
+		}
+		if _, err = k.ValidateConfig(kfg); err != nil {
+			return fmt.Errorf("validate katalog: %w", err)
+		}
+
+		rules := k.GenerateRBACRules()
+
+		rbacOut, err := generate.RenderRBACToString(kfg, rules, namespace)
 		if err != nil {
 			return fmt.Errorf("generate rbac: %w", err)
 		}
@@ -359,7 +326,7 @@ Examples:
 
 		bundle := rbacOut + "\n---\n" + configMapOut
 
-		log.Println("configmap generated successfully")
+		log.Println("bundle generated successfully")
 
 		if outputFile != "" {
 			return os.WriteFile(outputFile, []byte(bundle), 0644)
@@ -377,8 +344,6 @@ func init() {
 	generateCmd.AddCommand(generateRuntimeCmd)
 	generateCmd.AddCommand(generateDocsCmd)
 	generateCmd.AddCommand(generateDashboardsCmd)
-	generateCmd.AddCommand(generateExamplesCmd)
-	generateCmd.AddCommand(generateTestsCmd)
 	generateCmd.AddCommand(generateAllCmd)
 	generateCmd.AddCommand(generateRbacCmd)
 	generateCmd.AddCommand(generateConfigMapCmd)
@@ -397,8 +362,6 @@ func init() {
 		generateRuntimeCmd,
 		generateDocsCmd,
 		generateDashboardsCmd,
-		generateExamplesCmd,
-		generateTestsCmd,
 		generateAllCmd,
 		generateRbacCmd,
 	} {
@@ -416,4 +379,14 @@ func init() {
 		cmd.Flags().StringP("output", "o", "", "Write generated output to file")
 		cmd.Flags().StringP("namespace", "n", DefaultNamespace, "Namespace for the ServiceAccount")
 	}
+
+	// Shadow global flags so they don't appear under `ork generate`
+	generateCmd.Flags().Bool("debug", false, "")
+	generateCmd.Flags().String("kubeconfig", "", "")
+	generateCmd.Flags().Bool("verbose", false, "")
+
+	// Hide them from help output
+	generateCmd.Flags().MarkHidden("debug")
+	generateCmd.Flags().MarkHidden("kubeconfig")
+	generateCmd.Flags().MarkHidden("verbose")
 }

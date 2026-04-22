@@ -24,7 +24,8 @@ Orkestra exposes a focused set of high‑signal Prometheus metrics:
 - queue depth and worker utilization  
 - CRD activation latency  
 - informer resource counts  
-- reconcile success/failure rates  
+- reconcile success/failure rates
+- provider call outcomes (when providers declared)
 
 Metrics are exposed at:
 
@@ -95,6 +96,22 @@ For each CRD, Orkestra tracks:
 This provides a complete picture of reconcile performance and system load.
 
 The `ork status` command surfaces these metrics in a human‑readable format.
+
+---
+
+## Provider Call Visibility
+
+When a CRD declares provider blocks, Orkestra records every `provider.Reconcile` and `provider.Delete` call:
+
+```
+orkestra_provider_reconcile_total{crd, provider, kind, result}     +1 per call
+orkestra_provider_delete_total{crd, provider, kind, result}        +1 per call
+orkestra_provider_reconcile_duration_seconds{crd, provider, kind}  latency histogram
+```
+
+`result` is `"success"` or `"failure"`. These metrics enable per-provider SLO tracking and alerting independent of overall reconcile error rates.
+
+Provider error rates are also available via `/katalog/{crd}` without querying Prometheus — in-memory `ProviderStats` is updated on each call and surfaced in the response JSON.
 
 ---
 

@@ -24,17 +24,14 @@
 
 set -euo pipefail
 
-# ── Configuration ────────────────────────────────────────────────────────────
+# ── Config ────────────────────────────────────────────────────────────────────
 
-REPO="iAlexeze/orkestra"
+REPO="ialexeze/orkestra"
 RUNTIME_BINARY="ork"
-CONTROL_CENTER_BINARY="orkcc"
-
-# Default to ~/.orkestra/bin (user-local, no sudo needed)
-DEFAULT_INSTALL_DIR="${HOME}/.orkestra/bin"
-INSTALL_DIR="${ORK_INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
+CONTROL_BINARY="orkcc"
+INSTALL_DIR="${ORK_INSTALL_DIR:-/usr/local/bin}"
 VERSION="${ORK_VERSION:-}"
-SKIP_CC="${ORK_SKIP_CC:-false}"
+ORK_SKIP_COMPLETION="${ORK_SKIP_COMPLETION:-false}"
 
 # ── Colours ───────────────────────────────────────────────────────────────────
 
@@ -42,7 +39,6 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-CYAN='\033[0;36m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
@@ -63,8 +59,6 @@ cat <<'EOF'
           O R K E S T R A
 EOF
 echo -e "${RESET}"
-echo -e "${CYAN}  The Kubernetes operator runtime that needs no programming language${RESET}"
-echo
 
 # ── Detect OS and architecture ────────────────────────────────────────────────
 
@@ -94,233 +88,162 @@ resolve_version() {
         return
     fi
 
-    info "Fetching latest version from GitHub..."
+    info "Fetching latest version..." >&2
 
-    local latest
-    latest=$(curl -sSf "https://api.github.com/repos/${REPO}/releases/latest" \
+    curl -sSf "https://api.github.com/repos/${REPO}/releases/latest" \
         | grep '"tag_name"' \
-        | sed -E 's/.*"tag_name": "([^"]+)".*/\1/' \
-        | head -1)
-
-    if [[ -z "${latest}" ]]; then
-        fatal "Could not resolve latest version. Set ORK_VERSION manually."
-    fi
-
-    echo "${latest}"
+        | sed -E 's/.*"tag_name": "([^"]+)".*/\1/'
 }
 
 # ── Check dependencies ────────────────────────────────────────────────────────
 
 check_deps() {
-    local missing=()
     for cmd in curl tar; do
-        if ! command -v "${cmd}" &>/dev/null; then
-            missing+=("${cmd}")
-        fi
+        command -v "${cmd}" >/dev/null 2>&1 \
+            || fatal "Required command not found: ${cmd}"
     done
-
-    if [[ ${#missing[@]} -gt 0 ]]; then
-        fatal "Required commands not found: ${missing[*]}"
-    fi
 }
 
-# ── Create install directory if needed ────────────────────────────────────────
-
-ensure_install_dir() {
-    if [[ ! -d "${INSTALL_DIR}" ]]; then
-        info "Creating directory: ${INSTALL_DIR}"
-        mkdir -p "${INSTALL_DIR}"
-    fi
-}
-
-# ── Add to PATH helper (prints instructions) ──────────────────────────────────
-
-print_path_instructions() {
-    # Check if already in PATH
-    if echo "$PATH" | grep -q "${INSTALL_DIR}"; then
+# ── Install command completion ───────────────────────────────────────────────────
+install_completion() {
+    if [[ "${ORK_SKIP_COMPLETION}" == "true" ]]; then
+        info "Skipping shell completion installation (ORK_SKIP_COMPLETION=true)"
         return
     fi
-    
+
+    # Detect shell
+    local shell_name
+    shell_name=$(basename "${SHELL:-}")
+
+    case "${shell_name}" in
+        bash)
+            local dir="${HOME}/.bash_completion.d"
+            mkdir -p "${dir}"
+            info "Installing bash completion to ${dir}/ork"
+            ork completion bash > "${dir}/ork"
+            ;;
+        zsh)
+            local dir="${HOME}/.oh-my-zsh/completions"
+            mkdir -p "${dir}"
+            info "Installing zsh completion to ${dir}/_ork"
+            ork completion zsh > "${dir}/_ork"
+            ;;
+        fish)
+            local dir="${HOME}/.config/fish/completions"
+            mkdir -p "${dir}"
+            info "Installing fish completion to ${dir}/ork.fish"
+            ork completion fish > "${dir}/ork.fish"
+            ;;
+        *)
+            warn "Unknown shell '${shell_name}'. Skipping completion installation."
+            return
+            ;;
+    esac
+
+    success "Shell completion installed for ${shell_name}"
     echo
-    echo -e "${YELLOW}⚠️  ${INSTALL_DIR} is not in your PATH${RESET}"
-    echo
-    echo "Add this to your ~/.bashrc, ~/.zshrc, or ~/.profile:"
-    echo
-    echo -e "  ${CYAN}export PATH=\"\$PATH:${INSTALL_DIR}\"${RESET}"
-    echo
-    echo "Then reload your shell:"
-    echo -e "  ${CYAN}source ~/.bashrc${RESET} (or restart your terminal)"
-    echo
+    echo "Restart your shell or run 'source ~/.bashrc' / 'source ~/.zshrc' to activate."
 }
 
-# ── Download and install runtime ──────────────────────────────────────────────
+# ── Generic installer (runtime + control center) ──────────────────────────────
 
-install_runtime() {
-    local platform version download_url tmp_dir archive checksum_url
+install_component() {
+    local binary="$1"
+    local platform="$2"
+    local version="$3"
+    local archive="${binary}_${platform}.tar.gz"
+    local download_url="https://github.com/${REPO}/releases/download/${version}/${archive}"
+    local checksum_url="https://github.com/${REPO}/releases/download/${version}/checksums.txt"
 
-    platform=$(detect_platform)
-    version=$(resolve_version)
-
-    info "Installing ${BOLD}ork${RESET} (runtime) version ${version} for ${platform}..."
-
-    archive="ork_${platform}.tar.gz"
-    download_url="https://github.com/${REPO}/releases/download/${version}/${archive}"
-    checksum_url="https://github.com/${REPO}/releases/download/${version}/checksums.txt"
-
-    # Create temp directory — cleaned up automatically on exit
+    local tmp_dir
     tmp_dir=$(mktemp -d)
-    trap 'rm -rf "${tmp_dir}"' EXIT
+    trap '[[ -n "${tmp_dir:-}" ]] && rm -rf "${tmp_dir}"' RETURN
 
     info "Downloading ${archive}..."
     if ! curl -sSfL "${download_url}" -o "${tmp_dir}/${archive}"; then
-        fatal "Download failed. Check that version ${version} exists at:
-  https://github.com/${REPO}/releases"
-    fi
-
-    if [[ ! -f "${tmp_dir}/${archive}" ]]; then
-        fatal "Downloaded file not found — something went wrong"
+        warn "${binary} not available for this version — skipping"
+        return 1
     fi
 
     # Verify checksum if available
     if curl -sSfL "${checksum_url}" -o "${tmp_dir}/checksums.txt" 2>/dev/null; then
         info "Verifying checksum..."
-        cd "${tmp_dir}"
-        if command -v sha256sum &>/dev/null; then
-            grep "${archive}" checksums.txt | sha256sum --check --quiet \
-                || fatal "Checksum verification failed for ${archive}"
-        elif command -v shasum &>/dev/null; then
-            grep "${archive}" checksums.txt | shasum -a 256 --check --quiet \
-                || fatal "Checksum verification failed for ${archive}"
-        else
-            warn "sha256sum not available — skipping checksum verification"
-        fi
-        cd - >/dev/null
+        (
+            cd "${tmp_dir}"
+            if command -v sha256sum >/dev/null 2>&1; then
+                grep "${archive}" checksums.txt | sha256sum --check --quiet \
+                    || fatal "Checksum verification failed for ${archive}"
+            else
+                grep "${archive}" checksums.txt | shasum -a 256 --check --quiet \
+                    || fatal "Checksum verification failed for ${archive}"
+            fi
+        )
+    fi
+
+    info "Extracting ${archive}..."
+    tar -xzf "${tmp_dir}/${archive}" -C "${tmp_dir}"
+
+    info "Installing ${binary} to ${INSTALL_DIR}..."
+    if [[ ! -w "${INSTALL_DIR}" ]]; then
+        sudo install -m 755 "${tmp_dir}/${binary}" "${INSTALL_DIR}/${binary}"
     else
-        warn "No checksums.txt found — skipping verification"
+        install -m 755 "${tmp_dir}/${binary}" "${INSTALL_DIR}/${binary}"
     fi
 
-    # Extract
-    info "Extracting ${archive}..."
-    tar -xzf "${tmp_dir}/${archive}" -C "${tmp_dir}"
-
-    # Install
-    ensure_install_dir
-    info "Installing to ${INSTALL_DIR}..."
-    install -m 755 "${tmp_dir}/${RUNTIME_BINARY}" "${INSTALL_DIR}/${RUNTIME_BINARY}"
-
-    success "ork ${version} installed to ${INSTALL_DIR}/${RUNTIME_BINARY}"
-}
-
-# ── Download and install control center ───────────────────────────────────────
-
-install_control_center() {
-    if [[ "${SKIP_CC}" == "true" ]]; then
-        warn "Skipping Control Center installation (ORK_SKIP_CC=true)"
-        return
-    fi
-
-    local platform version download_url tmp_dir archive
-
-    platform=$(detect_platform)
-    version=$(resolve_version)
-
-    info "Installing ${BOLD}orkcc${RESET} (Control Center) version ${version} for ${platform}..."
-
-    archive="orkcc_${platform}.tar.gz"
-    download_url="https://github.com/${REPO}/releases/download/${version}/${archive}"
-
-    tmp_dir=$(mktemp -d)
-
-    info "Downloading ${archive}..."
-    if ! curl -sSfL "${download_url}" -o "${tmp_dir}/${archive}"; then
-        warn "Control Center download failed — continuing with runtime only"
-        rm -rf "${tmp_dir}"
-        return
-    fi
-
-    # Extract
-    info "Extracting ${archive}..."
-    tar -xzf "${tmp_dir}/${archive}" -C "${tmp_dir}"
-
-    # Install
-    if [[ ! -f "${tmp_dir}/${CONTROL_CENTER_BINARY}" ]]; then
-        warn "Control Center binary not found in archive — skipping"
-        rm -rf "${tmp_dir}"
-        return
-    fi
-
-    ensure_install_dir
-    install -m 755 "${tmp_dir}/${CONTROL_CENTER_BINARY}" "${INSTALL_DIR}/${CONTROL_CENTER_BINARY}"
-
-    success "orkcc ${version} installed to ${INSTALL_DIR}/${CONTROL_CENTER_BINARY}"
-
-    # Clean up
-    rm -rf "${tmp_dir}"
+    success "${binary} ${version} installed"
 }
 
 # ── Verify installation ───────────────────────────────────────────────────────
 
 verify_install() {
-    local has_ork=false
-    local has_orkcc=false
+    echo
 
-    # Check if ork is in PATH or install directory
-    if command -v ork &>/dev/null; then
-        has_ork=true
-    elif [[ -f "${INSTALL_DIR}/ork" ]]; then
-        has_ork=true
-        # Temporarily add to PATH for this check
-        export PATH="${INSTALL_DIR}:$PATH"
+    if command -v ork >/dev/null 2>&1; then
+        ork version
+    else
+        warn "ork is not in your PATH."
     fi
 
-    if command -v orkcc &>/dev/null; then
-        has_orkcc=true
-    elif [[ -f "${INSTALL_DIR}/orkcc" ]]; then
-        has_orkcc=true
-        export PATH="${INSTALL_DIR}:$PATH"
-    fi
-
-    if [[ "${has_ork}" == "false" ]]; then
-        warn "ork installation failed"
-        return
+    if command -v orkcc >/dev/null 2>&1; then
+        orkcc --version || true
     fi
 
     echo
-    echo -e "${BOLD}Installed versions:${RESET}"
-    ork version
-
-    if [[ "${has_orkcc}" == "true" ]]; then
-        orkcc --version 2>/dev/null || echo "orkcc version ${VERSION:-latest}"
-    fi
-
+    success "Installation complete."
     echo
-    success "Installation complete!"
+    echo -e "  ${BOLD}Get started:${RESET}"
+    echo -e "    ork init my-operator           Scaffold a new operator"
+    echo -e "    ork validate --katalog <path>  Validate a Katalog"
+    echo -e "    ork run --katalog <path>       Start the operator runtime"
     echo
-    echo -e "${BOLD}🚀 Get started:${RESET}"
-    echo -e "  ${CYAN}ork run --katalog my-katalog.yaml${RESET}        Start the operator runtime"
-    echo -e "  ${CYAN}ork validate --katalog my-katalog.yaml${RESET}    Validate a Katalog"
-    echo -e "  ${CYAN}ork kompose --katalog komposer.yaml${RESET}       Compose multiple Katalogs"
-    echo -e "  ${CYAN}ork generate rbac --katalog katalog.yaml${RESET}  Generate RBAC from Katalog"
+    echo -e "  ${BOLD}Control Center:${RESET}"
+    echo -e "    ork control start              Start the web UI (port 8090)"
+    echo -e "    ork control start --port 9090 --urls \"http://...\""
+    echo -e "    ork control version            Show Control Center version"
     echo
-    echo -e "${BOLD}📊 Control Center:${RESET}"
-    echo -e "  ${CYAN}ork control start${RESET}                         Start the web UI (port 8090)"
-    echo -e "  ${CYAN}ork control start --port 9090 --urls \"http://...\"${RESET}"
-    echo -e "  ${CYAN}ork control version${RESET}                       Show Control Center version"
+    echo -e "  ${BOLD}Documentation:${RESET}"
+    echo -e "    https://github.com/${REPO}"
     echo
-    echo -e "${BOLD}📚 Documentation:${RESET}"
-    echo -e "  https://github.com/${REPO}"
-    
-    print_path_instructions
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 main() {
-    echo
     check_deps
-    install_runtime
-    install_control_center
+
+    local platform version
+    platform=$(detect_platform)
+    version=$(resolve_version)
+
+    # Install runtime and control center
+    install_component "${RUNTIME_BINARY}" "${platform}" "${version}"
+    install_component "${CONTROL_BINARY}" "${platform}" "${version}" || true
+
+    # Install shell completion
+    install_completion
+
+    # Verify installation
     verify_install
 }
 
-main "$@"
+main

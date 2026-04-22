@@ -1,7 +1,7 @@
 package health
 
 import (
-	"github.com/ialexeze/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/katalog"
 	"k8s.io/client-go/kubernetes"
 )
 

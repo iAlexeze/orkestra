@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	"github.com/ialexeze/orkestra/pkg/merger"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -27,7 +27,7 @@ import (
 //	    "kind": "Website",
 //	    "plural": "websites"
 //	  },
-//	  "reconciler": {
+//	  "operatorBox:": {
 //	    "onCreate": {
 //	      "deployments": [
 //	        {
@@ -84,7 +84,7 @@ func BuildCRDRawHandler(m *merger.Merger, crdName string) http.HandlerFunc {
 //	      {
 //	        "name": "website",
 //	        "apiTypes": { ... },
-//	        "reconciler": { ... }
+//	        "operatorBox:": { ... }
 //	      }
 //	    ]
 //	  }
@@ -113,7 +113,7 @@ func BuildRawKatalogHandler(m *merger.Merger) http.HandlerFunc {
 //   - Default resync applied when not specified (from DEFAULT_RESYNC env var)
 //   - Default queue depth applied when not specified (from MAX_QUEUE_DEPTH env var)
 //   - All validation and mutation rules merged from sources
-//   - Complete reconciler configuration after inheritance
+//   - Complete operatorBox: configuration after inheritance
 //
 // Endpoint: /katalog/{crd}/enriched
 //
@@ -167,7 +167,7 @@ func BuildCRDEnrichedHandler(kat *katalog.Katalog, crdName string) http.HandlerF
 //   - All defaults applied (workers, resync, queue depth)
 //   - All API types enriched (group, version, plural from discovery API)
 //   - All validation and mutation rules merged
-//   - Complete reconciler configuration after inheritance
+//   - Complete operatorBox: configuration after inheritance
 //   - Resolved dependencies with conditions
 //
 // This endpoint is useful for:
@@ -200,7 +200,7 @@ func BuildCRDEnrichedHandler(kat *katalog.Katalog, crdName string) http.HandlerF
 //	        "maxQueueDepth": 2000,
 //	        "degradeThreshold": 10,
 //	        "namespaced": true,
-//	        "reconciler": {
+//	        "operatorBox:": {
 //	          "default": true
 //	        }
 //	      }

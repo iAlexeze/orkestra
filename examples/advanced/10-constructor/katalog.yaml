@@ -24,7 +24,7 @@ spec:
       workers: 5       # pipelines can be IO-bound — more workers tolerated
       resync: 10s      # short resync to check Job completion quickly
 
-      reconciler:
+      operatorBox:
         # default: false tells Orkestra NOT to use the GenericReconciler.
         # The constructor below provides the complete reconcile implementation.
         default: false

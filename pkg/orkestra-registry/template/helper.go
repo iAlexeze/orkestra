@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/domain"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -20,6 +20,25 @@ func (r *Resolver) ResolveLabels(labels []orktypes.ResourceLabel) ([]orktypes.Re
 			return nil, fmt.Errorf("label %q: %w", l.Key, err)
 		}
 		resolved = append(resolved, orktypes.ResourceLabel{Key: l.Key, Value: v})
+	}
+	return resolved, nil
+}
+
+// ResolveSelectors evaluates template expressions in selector maps
+// Keys are never template expressions — only values are resolved.
+//
+// Example:
+//
+//	name: {{ .metadata.name }}
+//	app: {{ .metadata.labels.app }}
+func (r *Resolver) ResolveSelectors(selectors map[string]string) (map[string]string, error) {
+	resolved := make(map[string]string, len(selectors))
+	for k, v := range selectors {
+		v, err := r.Resolve(v)
+		if err != nil {
+			return nil, fmt.Errorf("selector %q: %w", k, err)
+		}
+		resolved[k] = v
 	}
 	return resolved, nil
 }
@@ -54,34 +73,23 @@ func (r *Resolver) ResolveStringSlice(values []string) ([]string, error) {
 
 // ── Internal ──────────────────────────────────────────────────────────────────
 
-// objectToMap converts a domain.Object to map[string]interface{} for template execution.
+// objectToMap converts any domain.Object to map[string]interface{} for template execution.
 //
-// Fast path: *unstructured.Unstructured already has the full object map including
-// all spec fields — used directly with zero allocation overhead.
+// Two paths, one result:
 //
-// Typed objects: only metadata fields are extracted. Spec fields are not accessible
-// without reflection or JSON round-trip. Typed object users should use Typed mode
-// hooks with 'Go' for full spec access rather than YAML template expressions.
-// func objectToMap(obj domain.Object) (map[string]interface{}, error) {
-// 	// Fast path — unstructured has full map natively
-// 	if u, ok := obj.(*unstructured.Unstructured); ok {
-// 		return u.Object, nil
-// 	}
-
-// 	// Typed fallback — metadata only
-// 	// spec fields not available without reflection on typed objects
-// 	return map[string]interface{}{
-// 		"metadata": map[string]interface{}{
-// 			"name":        obj.GetName(),
-// 			"namespace":   obj.GetNamespace(),
-// 			"labels":      obj.GetLabels(),
-// 			"annotations": obj.GetAnnotations(),
-// 		},
-// 	}, nil
-// }
-
-// Breakthrough with typed > may likely remove the need for hooks
-// or shrink it to the very least
+//	*unstructured.Unstructured — already a complete map. Used directly with no
+//	allocation. This is the common path for all declarative (default: true) operators.
+//
+//	Typed objects — marshaled to JSON and back. The JSON round-trip uses the
+//	struct's json tags to produce the same map shape as the unstructured path:
+//	spec fields, status fields, and metadata all accessible as .spec.*, .status.*,
+//	.metadata.* in templates.
+//
+// The JSON round-trip on typed objects was the key insight that unified the two modes.
+// Template expressions, conditions, status fields, and cross-CRD reads all work
+// identically regardless of whether the operator uses typed or unstructured mode.
+// The 5% of patterns that still require Go hooks do so because of business logic
+// complexity — not because of any templating limitation.
 func objectToMap(obj domain.Object) (map[string]interface{}, error) {
 	// Unstructured — already a map, use directly
 	if u, ok := obj.(*unstructured.Unstructured); ok {

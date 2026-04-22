@@ -1,0 +1,83 @@
+name: Release Helm Chart
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: 'Container image tag (without v prefix)'
+        required: true
+        type: string
+      repository:
+        description: 'GitHub repository (owner/name) for image registry'
+        required: false
+        type: string
+        default: ${{ github.repository }}
+      ork:
+        description: 'Shorthand for orkestra (used in chart name, repo, namespace)'
+        required: false
+        type: string
+        default: 'orkestra'
+      helm_repo_url:
+        description: 'URL of the Helm repository (GitHub Pages)'
+        required: false
+        type: string
+        default: 'https://orkspace.github.io/orkestra'
+      helm_chart:
+        description: 'Helm chart reference (repo/chart) – used in summary'
+        required: false
+        type: string
+        default: 'orkspace/orkestra'
+
+jobs:
+  helm:
+    name: Release Helm Chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Update Chart metadata and values
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          yq eval ".version = \"${VERSION}\"" -i charts/${{ inputs.ork }}/Chart.yaml
+          yq eval ".appVersion = \"${{ inputs.image_tag }}\"" -i charts/${{ inputs.ork }}/Chart.yaml
+          yq eval ".runtime.image.tag = \"${{ inputs.image_tag }}\"" -i charts/${{ inputs.ork }}/values.yaml
+          yq eval ".controlCenter.image.tag = \"${{ inputs.image_tag }}\"" -i charts/${{ inputs.ork }}/values.yaml
+          # Optional: update image repositories if you want to parameterize registry
+          # yq eval ".runtime.image.repository = \"ghcr.io/${{ inputs.repository }}/${{ inputs.ork }}\"" -i charts/${{ inputs.ork }}/values.yaml
+          # yq eval ".controlCenter.image.repository = \"ghcr.io/${{ inputs.repository }}/${{ inputs.ork }}-cc\"" -i charts/${{ inputs.ork }}/values.yaml
+
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.7.0
+        env:
+          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          charts_dir: charts
+          skip_existing: true
+
+      - name: Write summary
+        run: |
+          echo "### ⎈ Helm chart published" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+          echo "helm repo add ${{ inputs.ork }} ${{ inputs.helm_repo_url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "helm repo update" >> "$GITHUB_STEP_SUMMARY"
+          echo "helm install ${{ inputs.ork }} ${{ inputs.helm_chart }} --namespace ${{ inputs.ork }}-system --create-namespace" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"

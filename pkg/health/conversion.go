@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	"github.com/ialexeze/orkestra/pkg/metrics"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/metrics"
 )
 
 // --- Kubernetes-style ConversionReview types ---

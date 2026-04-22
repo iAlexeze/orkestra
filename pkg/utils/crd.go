@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -56,4 +57,20 @@ func BuildAnnotationPatch(key, value string) map[string]interface{} {
 			},
 		},
 	}
+}
+
+// Used to merge labels
+func Merge(target *string, incoming, sep string) {
+	if *target == "" {
+		*target = incoming
+	} else {
+		*target = *target + sep + incoming
+	}
+}
+
+// IsRunningInCluster returns true when running inside a Kubernetes pod.
+// The service account token is always present inside a pod.
+func IsRunningInCluster() bool {
+	_, err := os.Stat("/var/run/secrets/kubernetes.io/serviceaccount/token")
+	return err == nil
 }

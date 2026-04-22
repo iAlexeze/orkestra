@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 var (
@@ -40,6 +40,11 @@ func Execute(k *konfig.Konfig, c context.Context) {
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	// SilenceUsage is an option to silence usage when an error occurs.
+	rootCmd.SilenceUsage = true
+	// SilenceErrors is an option to quiet errors down stream.
+	rootCmd.SilenceErrors = true
+
 	// Global flags — highest‑priority overrides for config resolution
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug logging")
 	rootCmd.PersistentFlags().String("kubeconfig", "", "Path to kubeconfig file")
@@ -53,8 +58,6 @@ func init() {
 		generateRuntimeCmd,
 		generateDocsCmd,
 		generateDashboardsCmd,
-		generateExamplesCmd,
-		generateTestsCmd,
 		generateAllCmd,
 	} {
 		cobra.MarkFlagRequired(cmd.Flags(), "katalog")

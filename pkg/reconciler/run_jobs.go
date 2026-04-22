@@ -5,12 +5,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orkjobs "github.com/ialexeze/orkestra/pkg/orkestra-registry/jobs"
-	orktmpl "github.com/ialexeze/orkestra/pkg/orkestra-registry/template"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orkjobs "github.com/orkspace/orkestra/pkg/orkestra-registry/jobs"
+	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // runJobs resolves and applies Job template declarations.
@@ -35,10 +35,26 @@ func runJobs(
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.JobTemplateSource,
+	guard func(ctx context.Context, obj domain.Object, ns string) bool,
 ) error {
 	for i, src := range srcs {
 		// 1. Evaluate conditions BEFORE resolving templates
 		conditionPassed := orktypes.EvaluateWhen(resolver.Data(), src.Conditions, src.AnyOf)
+
+		// Early name/ns resolution — needed for guard check.
+		// Jobs are terminal (no DeleteIfOwned on condition fail), but guard
+		// still prevents creating jobs in restricted namespaces.
+		name, _ := resolver.Resolve(src.Name)
+		_ = name // resolved for guard; ResolveJobTemplate re-resolves internally
+		ns, _ := resolver.Resolve(src.Namespace)
+		if ns == "" {
+			ns = owner.GetNamespace()
+		}
+
+		// ── Namespace guard ───────────────────────────────────────────────────
+		if guard != nil && !guard(ctx, owner, ns) {
+			continue // skipped — CheckNamespace already logged the reason
+		}
 
 		if !conditionPassed {
 			logger.FromContext(ctx).Debug().

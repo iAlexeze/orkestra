@@ -2,9 +2,9 @@ package health
 
 // Export internal functions for integration tests only.
 var (
-	ExportedApplyConversion  = applyConversion
-	ExportRegisterWebhooks   = RegisterWebhooks
-	ExportUnregisterWebhooks = UnregisterWebhooks
+	ExportedApplyConversion           = applyConversion
+	ExportRegisterAdmissionWebhooks   = RegisterAdmissionWebhooks
+	ExportUnregisterAdmissionWebhooks = UnregisterAdmissionWebhooks
 
 	ExportApplyValidatingWebhook = applyWebhookConfig
 	ExportApplyMutatingWebhook   = applyMutatingWebhookConfig

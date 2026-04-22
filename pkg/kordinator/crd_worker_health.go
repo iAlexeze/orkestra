@@ -1,6 +1,6 @@
 package kordinator
 
-import "github.com/ialexeze/orkestra/pkg/metrics"
+import "github.com/orkspace/orkestra/pkg/metrics"
 
 // Worker state constants
 const (

@@ -19,6 +19,7 @@ const (
 	ColorBlink     = "\033[5m"
 	ColorReverse   = "\033[7m"
 	ColorHidden    = "\033[8m"
+	ColorGray      = "\033[90m"
 )
 
 var OrkestraLogo = `

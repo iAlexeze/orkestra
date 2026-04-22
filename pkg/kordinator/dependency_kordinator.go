@@ -23,7 +23,8 @@ Retry loop (every PostStartRetryInterval):
     - calls utils.WaitForCRD() → false
     - remains in missing map
   - Phase 2: checks running CRDs (none)
-  - Phase 3: allReady? false
+  - Phase 3: checks deferred (not‑started) CRDs (A not ready due to missing)
+  - Phase 4: allReady? false
 
 Later:
   - User applies CRD A to cluster
@@ -57,7 +58,7 @@ User deletes CRD A:
         - marks as missing in informerFactory
         - health.SetStarted(false)
         - DOES NOT close startedCh[A]
-  - Phase 3: allReady becomes false
+  - Phase 4: allReady becomes false
 
 Result: CRD A becomes degraded, workers stop, but dependents continue (degraded).
 No more reflector errors.
@@ -89,33 +90,32 @@ After deactivation:
 Result: CRD A becomes operational again without restarting Orkestra.
 
 ─────────────────────────────────────────────────────────────────────────────────
-SCENARIO 4: DEPENDENCY CHAIN WITH DELAYED ACTIVATION
+SCENARIO 4: DEPENDENCY CHAIN WITH DELAYED ACTIVATION (FIXED BEHAVIOR)
 ─────────────────────────────────────────────────────────────────────────────────
 
-StartupOrder: [A, B, C] where B depends on A, C depends on B
+StartupOrder: [A, B, C] where B depends on A:started, C depends on B:healthy
 
 Initial state:
-  - A: missing
+  - A: present
   - B: present
   - C: present
 
 Kordinate loop:
-  - A → missing → continue (startedCh["A"] open)
-  - B → waits on startedCh["A"] → BLOCKS here (main goroutine blocked)
-  - C → never reached (blocked at B)
+  - A → starts, closes startedCh["A"]
+  - B → dependenciesReady? true (A started) → starts, closes startedCh["B"]
+  - C → dependenciesReady? false (B not yet healthy) → SKIPS (does NOT block)
+  - Main loop finishes.
 
-Retry loop:
-  - Phase 1: missing map contains A
-  - utils.WaitForCRD(A) → true
-  - activateCRD(A):
-    - starts workers
-    - closes startedCh["A"] ← UNBLOCKS Kordinate loop
+Retry loop (periodic):
+  - Phase 3: checks not‑started CRDs
+  - C: dependenciesReady? false (B still not healthy) → skip
+  - Later, B becomes healthy → health checker closes healthyCh["B"]
+  - Next retry tick:
+    - Phase 3: C dependenciesReady? true → activateCRD(C)
+    - Workers start, C becomes operational
 
-Kordinate loop continues:
-  - B → startedCh["A"] closed → starts workers → closes startedCh["B"]
-  - C → startedCh["B"] closed → starts workers → closes startedCh["C"]
-
-Result: Full dependency chain resolves dynamically as CRDs appear.
+Result: A and B start immediately; C starts only when B becomes healthy,
+without blocking the main goroutine or starving other CRDs.
 
 ─────────────────────────────────────────────────────────────────────────────────
 SCENARIO 5: DEPENDENCY CHAIN WITH DELETION IN THE MIDDLE
@@ -123,7 +123,7 @@ SCENARIO 5: DEPENDENCY CHAIN WITH DELETION IN THE MIDDLE
 
 Running state:
   - A, B, C all active and healthy
-  - D depends on C
+  - D depends on C:started
 
 User deletes CRD C:
   - Retry loop detects C missing
@@ -165,6 +165,12 @@ KEY DESIGN DECISIONS
 5. health.SetStarted(false) on deactivation.
    Reason: Allows health endpoint to show the CRD as not started.
 
+6. Main Kordinate loop NEVER BLOCKS on dependency conditions.
+   Reason: Dependencies with "healthy" requirement may take arbitrary time.
+   Blocking would starve other CRDs that are ready to start. Instead, we skip
+   CRDs whose dependencies aren't ready and rely on the retry loop to activate
+   them later when conditions are satisfied.
+
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 */
 package kordinator
@@ -177,16 +183,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/event"
-	"github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/event"
+	"github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/ialexeze/orkestra/pkg/informer"
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/queue"
+	ork_autoscaler "github.com/orkspace/orkestra/pkg/autoscaler"
+	"github.com/orkspace/orkestra/pkg/informer"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/queue"
 )
 
 // DependencyKordinator extends the base Kontroller with dependency‑aware startup.
@@ -213,7 +220,7 @@ type DependencyKordinator struct {
 }
 
 // NewDependencyKordinator constructs a dependency‑aware kordinator.
-// It embeds the base Kontroller wll also handling dependencies in the right order
+// It embeds the base Kontroller and handles dependencies in the correct order.
 func NewDependencyKordinator(
 	kube *kubeclient.Kubeclient,
 	factory *informer.Factory,
@@ -232,8 +239,8 @@ func NewDependencyKordinator(
 	kord := &DependencyKordinator{
 		Kontroller: NewKontroller(
 			kube, factory, katalog,
-			events, hs, crdHealthMap, queueRegistry,
-			defaultWorkqueue, defaultWorkers,
+			events, hs, crdHealthMap, orkHealth,
+			queueRegistry, defaultWorkqueue, defaultWorkers,
 		),
 		orkHealth:      orkHealth,
 		depGraph:       depGraph,
@@ -250,12 +257,15 @@ func NewDependencyKordinator(
 
 // Kordinate starts CRDs in dependency order and blocks until leadership is lost.
 // When leadership ends, it shuts down CRDs in reverse dependency order.
+//
+// The startup loop is non‑blocking: if a CRD's dependencies are not yet
+// satisfied (e.g., waiting for "healthy"), the CRD is skipped. The background
+// retry loop will activate it later when dependencies become ready.
 func (k *DependencyKordinator) Kordinate(ctx context.Context) {
 	logger.Info().Str("component", k.Name()).Msg("starting")
 	k.startedAt = time.Now()
 
 	// Mark as ready immediately - the kordinator can serve requests
-	k.hs.SetReady()
 	k.orkHealth.SetOrkReady()
 
 	// Track allOnline
@@ -295,8 +305,8 @@ func (k *DependencyKordinator) Kordinate(ctx context.Context) {
 	// Start dependency health checker (runs until ctx is cancelled)
 	go k.dependencyHealthChecker(ctx)
 
-	// Periodically check dependency health if there are dependencies
-	// Process CRDs in dependency order
+	// Process CRDs in dependency order — but do NOT block on unsatisfied conditions.
+	// Any CRD that cannot start immediately will be picked up by the retry loop.
 	for _, name := range startupOrder {
 		node := k.depGraph.GetNode(name)
 		if node == nil {
@@ -305,44 +315,13 @@ func (k *DependencyKordinator) Kordinate(ctx context.Context) {
 		crd := node.CRD
 		gvk := crd.GroupVersionKind.String()
 
-		if len(crd.DependsOn) > 0 {
-			logger.Info().
-				Str("crd", name).
-				Str("depends_on", strings.Join(crd.GetDependencies(), ", ")).
-				Msg("starting CRD")
-		} else {
-			logger.Info().Str("crd", name).Msg("starting CRD")
+		// Check if dependencies are satisfied RIGHT NOW
+		if !k.dependenciesReady(crd, nameToGVK) {
+			logger.Info().Str("crd", name).Msg("dependencies not ready — deferring activation")
+			continue // do NOT block; let retry loop handle it
 		}
 
-		// Wait for dependencies using correct condition
-		for depName, depCond := range crd.DependsOn {
-			depGVK, ok := nameToGVK[depName]
-			if !ok {
-				logger.Error().Str("crd", name).Str("dependency", depName).Msg("dependency not found in dependency graph")
-				continue
-			}
-
-			logger.Debug().Str("crd", name).Str("dependency", depName).Str("gvk", depGVK).Msg("waiting for dependency")
-
-			switch strings.ToLower(depCond.Condition) {
-			case string(types.DependencyConditionHealthy):
-				select {
-				case <-k.healthyCh[depGVK]:
-					logger.Debug().Str("crd", name).Str("dependency", depName).Msg("dependency healthy")
-				case <-ctx.Done():
-					return
-				}
-			default: // started
-				select {
-				case <-k.startedCh[depGVK]:
-					logger.Debug().Str("crd", name).Str("dependency", depName).Msg("dependency started")
-				case <-ctx.Done():
-					return
-				}
-			}
-		}
-
-		// Check if CRD exists
+		// Check if CRD exists in cluster
 		if k.informerFactory.IsMissing(gvk) {
 			logger.Debug().Str("crd", name).Str("gvk", gvk).Msg("CRD missing — workers not started, waiting for retry")
 			// DO NOT close startedCh or healthyCh — dependents must block
@@ -371,7 +350,7 @@ func (k *DependencyKordinator) Kordinate(ctx context.Context) {
 	// Mark controller started
 	k.startedKtrl.Store(true)
 	if k.anyOnline.Load() {
-		logger.Info().Str("component", k.Name()).Int("crds_online", len(startupOrder)).Msg("started")
+		logger.Info().Str("component", k.Name()).Int("crds_online", onlineCRDs).Msg("started")
 	} else {
 		logger.Warn().Str("component", k.Name()).Msg("started — all CRDs missing, waiting for retry loop")
 	}
@@ -379,9 +358,11 @@ func (k *DependencyKordinator) Kordinate(ctx context.Context) {
 	// Compute final katalog health
 	if onlineCRDs == totalCRDs {
 		k.allOnline.Store(true)
+		k.orkHealth.allOnline.Store(true)
 		k.orkHealth.SetKatalogReady()
 	} else {
 		k.allOnline.Store(false)
+		k.orkHealth.allOnline.Store(false)
 		k.orkHealth.SetKatalogDegraded()
 	}
 
@@ -389,8 +370,9 @@ func (k *DependencyKordinator) Kordinate(ctx context.Context) {
 	<-ctx.Done()
 	logger.Info().Msg("leadership lost — beginning dependency-aware shutdown")
 	k.hs.Unhealthy()
+	k.orkHealth.SetOrkDegraded()
 
-	// Shut down CRDs
+	// Shut down CRDs in reverse dependency order
 	shutdownOrder := k.depGraph.ShutdownOrder()
 	logger.Info().Str("order", strings.Join(shutdownOrder, " → ")).Msg("shutdown order")
 	for _, name := range shutdownOrder {
@@ -402,7 +384,82 @@ func (k *DependencyKordinator) Kordinate(ctx context.Context) {
 	logger.Info().Str("component", k.Name()).Msg("drained and stopped")
 }
 
+// dependenciesReady returns true if all declared dependencies are currently
+// satisfied (i.e., the required channel is already closed).
+// This check is non‑blocking.
+func (k *DependencyKordinator) dependenciesReady(crd types.CRDEntry, nameToGVK map[string]string) bool {
+	for depName, depCond := range crd.DependsOn {
+		depGVK, ok := nameToGVK[depName]
+		if !ok {
+			logger.Error().Str("crd", crd.Name).Str("dependency", depName).Msg("dependency GVK not found")
+			return false
+		}
+		switch strings.ToLower(depCond.Condition) {
+		case string(types.DependencyConditionHealthy):
+			select {
+			case <-k.healthyCh[depGVK]:
+				// channel closed → dependency healthy
+			default:
+				return false
+			}
+		default: // started
+			select {
+			case <-k.startedCh[depGVK]:
+				// channel closed → dependency started
+			default:
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // startCRDWorkers starts a worker pool for a specific CRD and is invoked in dependency order.
+// autoscalerRunner is a local interface satisfied by GenericReconciler when
+// autoscale: is declared. Defined here (not imported from reconciler) to avoid
+// import cycles — reconciler already imports kordinator.
+type autoscalerRunner interface {
+	RunAutoscaler(ctx context.Context)
+}
+
+// queueInjector is a local interface for injecting the per-CRD workqueue into
+// the reconciler after construction. Avoids import cycles.
+type queueInjector interface {
+	SetQueue(wq *queue.Workqueue)
+}
+
+// resyncLoopStarter is a local interface for starting the adjustable resync
+// goroutine inside the reconciler. Avoids import cycles.
+type resyncLoopStarter interface {
+	StartResyncLoop(ctx context.Context)
+}
+
+// workerSpawner is a local interface for injecting the goroutine-spawn function
+// into the reconciler. When the autoscaler calls ResizeWorkers(n) with n > old,
+// the reconciler calls the injected function to start the additional goroutines.
+// Avoids import cycles (reconciler does not import kordinator).
+type workerSpawner interface {
+	SetSpawnWorker(fn func())
+}
+
+// autoMetricsExporter is a local interface for reading the live AutoMetrics from
+// a reconciler, so it can be registered in the cross-metrics registry at startup.
+type autoMetricsExporter interface {
+	GetAutoMetrics() *ork_autoscaler.AutoMetrics
+}
+
+// workerInfoProvider is a local interface for reading a live WorkerInfo snapshot
+// from a reconciler. Used to populate the /katalog/{crd} handler response.
+type workerInfoProvider interface {
+	WorkerInfo(configuredWorkers, configuredQueueDepth int) *ork_autoscaler.WorkerInfo
+}
+
+// rollbackNotifierSetter is a local interface for injecting CRDHealth rollback
+// callbacks into the reconciler. Called once after reconciler construction.
+type rollbackNotifierSetter interface {
+	SetRollbackNotifiers(onTrigger, onClear func())
+}
+
 func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, workers int) {
 	entry, ok := k.katalog.Get(gvk)
 	if !ok {
@@ -410,32 +467,117 @@ func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, 
 		return
 	}
 
+	// Compute the goroutine count: start max(baseline, override) goroutines so
+	// that the autoscaler can scale up without spawning new goroutines at runtime.
+	// The semaphore inside the reconciler gates effective concurrency to `workers`.
+	goroutines := workers
+	if ob := entry.CRD.OperatorBox.Autoscale; ob != nil {
+		if ob.Do.Workers != nil && *ob.Do.Workers > goroutines {
+			goroutines = *ob.Do.Workers
+		}
+	}
+
 	crdCtx, cancel := context.WithCancel(ctx)
+	wg := &sync.WaitGroup{}
 	rec := entry.ReconcilerFactory()
+
+	// Inject the per-CRD workqueue so SetQueueDepthLimit and the resync goroutine
+	// can reach the right queue without importing the reconciler package.
+	if wq, ok := k.queueReg.For(gvk); ok {
+		if qi, ok := rec.(queueInjector); ok {
+			qi.SetQueue(wq)
+		}
+	}
+
+	// Register this operatorbox's AutoMetrics in the global cross-metrics registry
+	// so other operatorboxes can reference it via cross.<kind>.metrics.* in autoscale conditions.
+	if exporter, ok := rec.(autoMetricsExporter); ok {
+		if m := exporter.GetAutoMetrics(); m != nil {
+			// Register under the katalog CRD name (lowercase spec.crds key), matching
+			// how cross: declarations reference other CRDs: cross.<crd-name>.metrics.*
+			ork_autoscaler.GlobalCrossMetricsRegistry.Register(entry.CRD.Name, m)
+		}
+	}
+
+	// Inject the goroutine-spawn function into the reconciler. When the autoscaler
+	// scales UP (ResizeWorkers(n) with n > current), the reconciler calls this to
+	// start the additional goroutines. This keeps goroutine count == semaphore capacity.
+	workerCounter := atomic.Int64{}
+	spawnWorker := func() {
+		n := workerCounter.Add(1)
+		wg.Add(1)
+		workerID := fmt.Sprintf("%s-autoscale-worker-%d", gvk, n)
+		workerID = strings.ReplaceAll(workerID, ",", "")
+		workerID = strings.ReplaceAll(workerID, " ", "-")
+		k.crdHealthMap[gvk].workerStates.Store(workerID, WorkerStateIdle)
+		go func(id string) {
+			defer wg.Done()
+			k.runWorkerForGVK(crdCtx, gvk, id)
+		}(workerID)
+	}
+	if ws, ok := rec.(workerSpawner); ok {
+		ws.SetSpawnWorker(spawnWorker)
+	}
+
+	// Inject rollback notifiers so reconciler can update CRDHealth on rollback events.
+	if rns, ok := rec.(rollbackNotifierSetter); ok {
+		health := k.crdHealthMap[gvk]
+		rns.SetRollbackNotifiers(
+			health.RecordRollbackTriggered,
+			health.RecordRollbackCleared,
+		)
+	}
+
+	// Wire the WorkerInfo provider so the /katalog/{crd} handler can report
+	// live concurrency metrics without importing the reconciler package.
+	if wip, ok := rec.(workerInfoProvider); ok {
+		k.crdHealthMap[gvk].SetWorkerInfoFn(func() *ork_autoscaler.WorkerInfo {
+			info := wip.WorkerInfo(workers, entry.CRD.Queue.MaxQueueDepth)
+			return info
+		})
+	}
+
+	// Wire AutoMetrics as a map so the /katalog/{crd} response includes a "metrics"
+	// key. Cross-binary autoscale conditions use this endpoint as their source.endpoint
+	// HTTP fallback — same resolution path as readCross uses for cross-CRD observation.
+	if exporter, ok := rec.(autoMetricsExporter); ok {
+		if m := exporter.GetAutoMetrics(); m != nil {
+			k.crdHealthMap[gvk].SetAutoMetricsFn(m.AsMap)
+		}
+	}
+
+	// Start autoscaler goroutine if the reconciler supports it.
+	if runner, ok := rec.(autoscalerRunner); ok {
+		go runner.RunAutoscaler(crdCtx)
+	}
+
+	// Start adjustable resync goroutine if autoscale is declared.
+	if entry.CRD.OperatorBox.Autoscale != nil {
+		if rl, ok := rec.(resyncLoopStarter); ok {
+			go rl.StartResyncLoop(crdCtx)
+		}
+	}
 
 	k.mu.Lock()
 	k.reconcilers[gvk] = rec
 	k.cancelFuncs[gvk] = cancel
-	wg := &sync.WaitGroup{}
 	k.wgs[gvk] = wg
 	k.crdHealthMap[gvk].SetStarted()
 
+	// Start only the declared baseline goroutines. The autoscaler scales up by
+	// calling spawnWorker (injected above) rather than pre-allocating max goroutines.
 	k.crdHealthMap[gvk].SetTotalWorkers(int32(workers))
-	k.crdHealthMap[gvk].gvk = gvk // Set GVK for metrics
+	k.crdHealthMap[gvk].gvk = gvk
 	k.started[gvk] = true
 	k.total[gvk]++
 	k.mu.Unlock()
 
-	// Initialize all workers as idle (not processing)
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		workerID := fmt.Sprintf("%s-worker-%d", gvk, i)
 		workerID = strings.ReplaceAll(workerID, ",", "")
 		workerID = strings.ReplaceAll(workerID, " ", "-")
-
-		// Mark as idle initially (not processing)
 		k.crdHealthMap[gvk].workerStates.Store(workerID, WorkerStateIdle)
-
 		go func(id string) {
 			defer wg.Done()
 			k.runWorkerForGVK(crdCtx, gvk, id)
@@ -467,7 +609,7 @@ func (k *DependencyKordinator) stopCRDWorkers(gvk string) {
 		return
 	}
 
-	// Reset worker counts after shutdown
+	// Step 3: Reset worker counts after shutdown
 	if health, ok := k.crdHealthMap[gvk]; ok {
 		health.ResetWorkerCounts()
 		health.workerStates.Range(func(key, value interface{}) bool {
@@ -506,7 +648,7 @@ func (k *DependencyKordinator) NameToCRD(name string) types.CRDEntry {
 	return k.depGraph.GetNode(name).CRD
 }
 
-// NameToGVK returns the GVK fr a giben name
+// NameToGVK returns the GVK for a given name
 func (k *DependencyKordinator) NameToGVK(name string) schema.GroupVersionKind {
 	return k.depGraph.GetNode(name).CRD.GroupVersionKind
 }

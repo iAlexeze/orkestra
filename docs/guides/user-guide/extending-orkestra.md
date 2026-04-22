@@ -27,7 +27,7 @@ spec:
         version: v1alpha1
         kind: MyResource
         plural: myresources
-      reconciler:
+      operatorBox:
         default: true
 ```
 
@@ -67,7 +67,7 @@ Example:
     # location omitted → dynamic mode
     # location: github.com/myorg/apis/v1alpha1 → typed mode
 
-  reconciler:
+  operatorBox:
     default: true
 
   queue:
@@ -105,7 +105,7 @@ This is the simplest and most common path.
 You declare what resources should exist. Orkestra creates and reconciles them.
 
 ```yaml
-reconciler:
+operatorBox:
   default: true
   finalizers:
     - finalizer.myorg.io/myresource
@@ -158,7 +158,7 @@ Use Go hooks when you need:
 Katalog:
 
 ```yaml
-reconciler:
+operatorBox:
   default: true
   hooks:
     location: github.com/myorg/hooks
@@ -194,7 +194,7 @@ func MyResourceHooks() domain.AnyReconcileHooks {
 ```
 
 :::note
-Go hooks require `apiTypes.location` and `ork generate runtime` command to register the hook.
+Go hooks require `apiTypes.location` and `ork generate registry` command to register the hook.
 :::
 ---
 
@@ -210,7 +210,7 @@ Use this when you need:
 Katalog:
 
 ```yaml
-reconciler:
+operatorBox:
   default: false
   constructor:
     location: github.com/myorg/reconcilers
@@ -263,12 +263,12 @@ controller-gen object paths=./api/types/myresource/...
 
 ---
 
-## Step 4 — Generate Runtime Wiring (Typed + Hooks Only)
+## Step 4 — Generate Runtime Registry (Typed + Hooks Only)
 
 Dynamic CRDs skip this step.
 
 ```bash
-ork generate runtime --katalog katalog.yaml
+ork generate registry --katalog katalog.yaml
 go mod tidy
 ```
 

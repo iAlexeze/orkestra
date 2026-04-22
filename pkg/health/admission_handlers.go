@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/metrics"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/metrics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -143,8 +143,11 @@ func (h *HealthServer) validationHandler(w http.ResponseWriter, r *http.Request)
 			msgs = append(msgs, fmt.Sprintf("field %q: %s (got: %q)", d.Field, d.Message, d.Got))
 		}
 		resp.Status = &AdmissionStatus{
-			Message: fmt.Sprintf("\n\n[orkestra] validation failed: %s\n\n", strings.Join(msgs, "; ")),
-			Code:    400,
+			Message: fmt.Sprintf(
+				"\n\n[Orkestra Validation] validation failed\n\n"+
+					"%s/%s/%s was blocked due to the following policies:\n"+
+					" %s\n\n", req.Kind.Kind, req.Name, req.Namespace, strings.Join(msgs, "; ")),
+			Code: 400,
 		}
 
 		logger.Info().

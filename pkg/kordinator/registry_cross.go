@@ -38,3 +38,42 @@ func (r *ResourceKatalog) GetInformerByName(name string) (cache.SharedIndexInfor
 	}
 	return nil, false
 }
+
+// GetInformerByLabelSelector returns the SharedIndexInformer for a CRD whose
+// metadata.labelSelector contain the given key/value pair.
+//
+// This enables cross‑CRD observation by semantic grouping rather than
+// by CRD name. Platform teams can labelSelector CRDs (e.g. "tier=platform",
+// "domain=payments") and application‑level logic can reference them
+// without knowing the exact CRD name.
+//
+// Lookup rules:
+//   - Match is case‑insensitive on both key and value
+//   - Returns the first CRD whose labelSelector contain key=value
+//   - Returns nil, false when no CRD matches
+//
+// This is used by GenericReconciler via the KatalogRegistry interface
+// to support cross‑context reads without importing pkg/kordinator
+// directly (avoiding import cycles).
+func (r *ResourceKatalog) GetInformerByLabelSelector(key, value string) (cache.SharedIndexInformer, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	keyLower := strings.ToLower(key)
+	valueLower := strings.ToLower(value)
+
+	for _, entry := range r.entries {
+		labels := entry.CRD.LabelSelector
+		if labels == nil {
+			continue // no labels
+		}
+
+		for k, v := range labels {
+			if strings.ToLower(k) == keyLower && strings.ToLower(v) == valueLower {
+				return entry.Informer, true
+			}
+		}
+	}
+
+	return nil, false
+}

@@ -17,8 +17,9 @@ spec:
         version: v1alpha1
         kind: SecretDistribution
         plural: secretdistributions
+      namespaced: false             # Default: (true)
 
-      reconciler:
+      operatorBox:
         default: true
 
         status:

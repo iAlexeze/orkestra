@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/merger"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/merger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // ── RegistrySource.ResolvedURL ────────────────────────────────────────────────
@@ -212,7 +212,7 @@ spec:
         version: v1alpha1
         kind: MyApp
         plural: myapps
-      reconciler:
+      operatorBox:
         default: true
 `)
 

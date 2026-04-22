@@ -1,0 +1,11 @@
+# CR #1 — Literal env only
+apiVersion: apps.example.io/v1alpha1
+kind: WebApp
+metadata:
+  name: webapp-literal
+spec:
+  image: nginx:1.25
+  replicas: 2
+  region: us-east-1
+  env:
+    APP_ENV: "staging"

@@ -69,7 +69,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -96,6 +96,33 @@ func NewFromContext(ctx context.Context) (*Provider, error) {
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("aws: loading default config: %w", err)
+	}
+	return New(cfg), nil
+}
+
+// NewFromAuth creates an AWS provider using explicit credentials from a map.
+// Recognised keys: "accessKeyId", "secretAccessKey", "sessionToken", "region".
+// Any missing key falls back to the standard AWS credential chain.
+// Call this when credentials come from the Katalog providers[].auth block.
+func NewFromAuth(ctx context.Context, auth map[string]string) (*Provider, error) {
+	opts := []func(*awsconfig.LoadOptions) error{}
+
+	keyID := auth["accessKeyId"]
+	secret := auth["secretAccessKey"]
+	token := auth["sessionToken"] // optional
+
+	if keyID != "" && secret != "" {
+		opts = append(opts, awsconfig.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(keyID, secret, token),
+		))
+	}
+	if region := auth["region"]; region != "" {
+		opts = append(opts, awsconfig.WithRegion(region))
+	}
+
+	cfg, err := awsconfig.LoadDefaultConfig(ctx, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("aws: loading config from auth: %w", err)
 	}
 	return New(cfg), nil
 }

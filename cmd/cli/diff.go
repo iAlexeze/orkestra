@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -35,6 +36,18 @@ var diffCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(diffCmd)
+
+	// Shadow global flags so they don't appear under `ork init`
+	diffCmd.Flags().Bool("debug", false, "")
+	diffCmd.Flags().String("kubeconfig", "", "")
+	diffCmd.Flags().StringSlice("katalog", nil, "")
+	diffCmd.Flags().Bool("verbose", false, "")
+
+	// Hide them from help output
+	diffCmd.Flags().MarkHidden("debug")
+	diffCmd.Flags().MarkHidden("kubeconfig")
+	diffCmd.Flags().MarkHidden("katalog")
+	diffCmd.Flags().MarkHidden("verbose")
 }
 
 // Helper
@@ -43,8 +56,8 @@ func unifiedDiff(nameA, nameB string, a, b []byte, verbose bool) string {
 	blines := strings.Split(string(b), "\n")
 
 	var out []string
-	out = append(out, fmt.Sprintf("%s--- %s%s", ColorGrey, nameA, ColorReset))
-	out = append(out, fmt.Sprintf("%s+++ %s%s", ColorGrey, nameB, ColorReset))
+	out = append(out, fmt.Sprintf("%s--- %s%s", utils.ColorGray, nameA, utils.ColorReset))
+	out = append(out, fmt.Sprintf("%s+++ %s%s", utils.ColorGray, nameB, utils.ColorReset))
 
 	max := len(alines)
 	if len(blines) > max {
@@ -66,12 +79,12 @@ func unifiedDiff(nameA, nameB string, a, b []byte, verbose bool) string {
 				out = append(out, " "+A)
 			}
 		case A == "":
-			out = append(out, ColorGreen+"+"+B+ColorReset)
+			out = append(out, utils.ColorGreen+"+"+B+utils.ColorReset)
 		case B == "":
-			out = append(out, ColorRed+"-"+A+ColorReset)
+			out = append(out, utils.ColorRed+"-"+A+utils.ColorReset)
 		default:
-			out = append(out, ColorRed+"-"+A+ColorReset)
-			out = append(out, ColorGreen+"+"+B+ColorReset)
+			out = append(out, utils.ColorRed+"-"+A+utils.ColorReset)
+			out = append(out, utils.ColorGreen+"+"+B+utils.ColorReset)
 		}
 	}
 

@@ -107,4 +107,8 @@ type ExternalCallResult struct {
 
 	// Called is "true" when the call was made, "false" when skipped (conditions failed).
 	Called string `json:"called"`
+
+	// Additional values for metrics
+	StatusCode      int     `json:"statusCode"`
+	DurationSeconds float64 `json:"durationSeconds"`
 }

@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/ialexeze/orkestra/domain"
-	orkerror "github.com/ialexeze/orkestra/pkg/error"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/domain"
+	orkerror "github.com/orkspace/orkestra/pkg/error"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/utils"
+	apiextclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -25,6 +26,7 @@ type Kubeclient struct {
 	restConfig *rest.Config
 	clientset  kubernetes.Interface
 	dynamic    dynamic.Interface
+	apiext     apiextclientset.Interface
 	Info       *CRDInfo
 	started    atomic.Bool
 
@@ -77,6 +79,13 @@ func (k *Kubeclient) Start(ctx context.Context) error {
 	k.dynamic, err = dynamic.NewForConfig(cfg)
 	if err != nil {
 		return fmt.Errorf("kubeclient -- failed to create dynamic client: %w", err)
+	}
+
+	// Build apiextensions clientset (for CRD patching)
+	logger.Debug().Msg("creating apiextensions clientset")
+	k.apiext, err = apiextclientset.NewForConfig(cfg)
+	if err != nil {
+		return fmt.Errorf("kubeclient -- failed to create apiextensions clientset: %w", err)
 	}
 
 	k.started.Store(true)
@@ -149,6 +158,9 @@ func (k *Kubeclient) DynamicClient() dynamic.Interface { return k.dynamic }
 
 // Scheme returns the runtime scheme for yhe kubeclient
 func (k *Kubeclient) Scheme() *runtime.Scheme { return k.scheme }
+
+// ApiextensionsClient returns the apiextensions clientset for CRD operations.
+func (k *Kubeclient) ApiextensionsClient() apiextclientset.Interface { return k.apiext }
 
 // New fake client
 func NewFakeClientset() kubernetes.Interface {

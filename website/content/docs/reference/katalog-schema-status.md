@@ -17,7 +17,7 @@ reconcile cycle.
     Reconciliation is not affected — the CRD simply shows no status.
 
 ```yaml
-reconciler:
+operatorBox:
   status:
     conditions: bool          # default: true
     fields:
@@ -118,7 +118,7 @@ before Kubernetes has populated child resource status.
     kind: Website
     plural: websites
 
-  reconciler:
+  operatorBox:
     default: true
 
     status:

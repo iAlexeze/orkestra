@@ -2,7 +2,7 @@
 package helpers
 
 import (
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 )

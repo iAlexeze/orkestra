@@ -7,8 +7,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/logger"
 )
 
 type QueueRegistry struct {
@@ -36,8 +36,8 @@ func (qr *QueueRegistry) Register(gvk string, maxQueueDepth int) *Workqueue {
 	defer qr.mu.Unlock()
 
 	wq := NewWorkqueue()
-	qr.queues[gvk] = wq              // Register each CRD to a workqueue
-	wq.maxQueueDepth = maxQueueDepth // Set the maximum queue depth for this new queue per CRD
+	qr.queues[gvk] = wq                          // Register each CRD to a workqueue
+	wq.maxQueueDepth.Store(int32(maxQueueDepth)) // Set the maximum queue depth for this new queue per CRD
 
 	return wq
 }

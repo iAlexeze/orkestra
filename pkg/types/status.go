@@ -12,13 +12,13 @@ package types
 // the same way every CR gets the managed label and finalizers.
 //
 // Layer 2 — declarative status fields.
-// Optional. Declared in the Katalog under reconciler.status.fields.
+// Optional. Declared in the Katalog under operatorBox.status.fields.
 // Resolved after reconcile templates complete, patched to /status.
 // Field values support the same Go template expressions as onCreate templates.
 //
 // Example:
 //
-//	reconciler:
+//	operatorBox:
 //	  status:
 //	    fields:
 //	      - path: phase
@@ -33,9 +33,9 @@ package types
 // Paths are relative to status — "phase" becomes status.phase.
 // Dot-notation is supported for nested fields at any depth.
 //
-// Layer 3 — child resource status propagation — is designed but not yet
-// implemented. It will add a "children" context to the resolver, making
-// child resource status fields accessible in path expressions.
+// Layer 3 — child resource status propagation adds a "children"
+// context to the resolver, making child resource status fields
+// accessible in path expressions.
 
 // StatusFieldSpec declares one field to write into the CR's status.
 //
@@ -44,8 +44,25 @@ package types
 //
 // Value supports Go text/template expressions evaluated against the CR:
 //   - "{{ .spec.replicas }}"    — from the CR's spec
-//   - "{{ .metadata.name }}"   — CR name
+//   - "{{ .metadata.name }}"    — CR name
 //   - "Running"                 — static string (fast path, no template parsing)
+//
+// Type controls how the resolved value is written into the status patch.
+// By default, all values are written as strings. When Type is set,
+// the resolver will cast the resolved value into the requested type:
+//
+//	type: int       → writes an integer (e.g., 3)
+//	type: float     → writes a float64 (e.g., 3.14)
+//	type: bool      → writes a boolean (e.g., true)
+//	type: string    → writes a string (default behavior)
+//	type: auto      → attempts to infer the type from the resolved value
+//
+// Example:
+//   - path: replicas
+//     type: int
+//     value: "{{ toInt .spec.replicas }}"
+//
+// This ensures status.replicas is written as an integer, not a string.
 type StatusFieldSpec struct {
 	// Path — dot-notation path relative to status.
 	// "phase"            → status.phase
@@ -58,6 +75,17 @@ type StatusFieldSpec struct {
 	// Empty string is written as-is — declare a static empty string to clear a field.
 	Value string `yaml:"value" json:"value"`
 
+	// Type — optional explicit type for the resolved value.
+	// If omitted, the value is written as a string.
+	//
+	// Supported values:
+	//   "string", "str, "" (default)
+	//   "int", "integer"
+	//   "float"
+	//   "bool", "boolean"
+	//   "auto" — infer type from the resolved value
+	Type string `yaml:"type,omitempty" json:"type,omitempty"`
+
 	// When is an optional list of conditions that must all pass before
 	// this field is written. If absent or empty, the field is always written.
 	//
@@ -68,6 +96,10 @@ type StatusFieldSpec struct {
 	// map available to template expressions. This means .status.phase,
 	// .spec.image, .children.job.status.succeeded are all accessible.
 	When []Condition `yaml:"when,omitempty"`
+
+	// AnyOf — optional OR-conditions. If any condition passes, the field is written.
+	// Useful for multi-branch declarative state machines.
+	AnyOf []Condition `yaml:"anyOf,omitempty"`
 }
 
 // MORE NOTES ON StatusFieldSpec
@@ -82,28 +114,32 @@ type StatusFieldSpec struct {
 //
 // Example — a three-phase state machine declared entirely in YAML:
 //
-//	status:
-//	  fields:
-//	    - path: phase
-//	      value: "Pending"
-//	      when:
-//	        - field: status.phase
-//	          operator: notExists
+//  status:
+//    fields:
+//      - path: phase
+//        value: "Pending"
+//        when:
+//          - field: status.phase
+//            operator: notExists
 //
-//	    - path: phase
-//	      value: "Running"
-//	      when:
-//	        - field: status.phase
-//	          equals: "Pending"
+//      - path: phase
+//        value: "Running"
+//        when:
+//          - field: status.phase
+//            equals: "Pending"
 //
-//	    - path: phase
-//	      value: "Succeeded"
-//	      when:
-//	        - field: status.phase
-//	          equals: "Running"
-//	        - field: children.job.status.succeeded
-//	          operator: gt
-//	          value: "0"
+//      - path: phase
+//        value: "Succeeded"
+//        when:
+//          - field: status.phase
+//            equals: "Running"
+//          - field: children.job.status.succeeded
+//            operator: gt
+//            value: "0"
+//
+// With the new Type field, these state transitions can now write strongly-typed
+// values into status, enabling CRDs that expose the Kubernetes /scale subresource
+// or other typed fields to be updated correctly.
 
 // StatusConfig declares the declarative status behavior for a CRD.
 // Declared under spec.crds[].reconciler.status in the Katalog.

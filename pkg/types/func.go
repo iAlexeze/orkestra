@@ -1,9 +1,9 @@
 package types
 
 import (
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/event"
-	"github.com/ialexeze/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/event"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"k8s.io/client-go/tools/cache"
 )
 

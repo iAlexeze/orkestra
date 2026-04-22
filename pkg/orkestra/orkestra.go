@@ -9,19 +9,20 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ialexeze/orkestra/domain"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 const eventHandler = "event handler"
 
 type Orkestra struct {
-	komponents []domain.Komponent
-	postStart  []postStart
-	timeout    time.Duration
-	logLevel   string
-	done       chan struct{}
+	komponents    []domain.Komponent
+	postStart     []postStart
+	shutdownHooks []func(context.Context) // called after all komponents stop
+	timeout       time.Duration
+	logLevel      string
+	done          chan struct{}
 }
 
 type postStart struct {
@@ -35,6 +36,22 @@ func NewOrkestra(timeout time.Duration, logLevel string) *Orkestra {
 		logLevel: logLevel,
 		done:     make(chan struct{}),
 	}
+}
+
+// OnShutdown registers a function to be called after all komponents have
+// stopped, within the graceful shutdown timeout.
+//
+// Use this for cleanup that must happen after the operator stops processing
+// but before the process exits:
+//   - RBAC deletion (security.rbac.cleanupOnShutdown: true)
+//   - Deletion protection webhook removal
+//   - Temp file cleanup (generated TLS certs)
+//
+// Hooks are called in registration order, sequentially.
+// If the shutdown timeout is exceeded before all hooks run, remaining hooks
+// are skipped — the process is exiting regardless.
+func (o *Orkestra) OnShutdown(fn func(context.Context)) {
+	o.shutdownHooks = append(o.shutdownHooks, fn)
 }
 
 func (o *Orkestra) Start(ctx context.Context) error {
@@ -101,6 +118,7 @@ func (o *Orkestra) gracefulShutdown(ctx context.Context, cancel context.CancelFu
 		)
 		defer shutdownCancel()
 
+		// Stop komponents in reverse start order
 		for _, comp := range utils.Reversed(o.komponents) {
 			// Respect the timeout between iterations
 			select {
@@ -125,6 +143,21 @@ func (o *Orkestra) gracefulShutdown(ctx context.Context, cancel context.CancelFu
 		if ev := o.GetKomponent(eventHandler); ev != nil {
 			ev.Shutdown(shutdownCtx)
 			logger.Warn().Msgf("%s: offline", ev.Name())
+		}
+
+		// Run shutdown hooks after all komponents have stopped
+		// Hooks run in registration order — RBAC cleanup, webhook removal, etc.
+		for i, hook := range o.shutdownHooks {
+			select {
+			case <-shutdownCtx.Done():
+				logger.Warn().
+					Int("remaining", len(o.shutdownHooks)-i).
+					Msg("shutdown timeout exceeded — skipping remaining hooks")
+				close(o.done)
+				return
+			default:
+			}
+			hook(shutdownCtx)
 		}
 
 		logger.Warn().Msg("all komponents shut down gracefully")

@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -18,15 +18,21 @@ import (
 // -----------------------------------------------------------------------------
 
 func (k *Katalog) handleValidationErrors(err error) {
-	logger.Info().Msg("Validation error:")
+	logger.Error().Msg("Validation failed")
 
+	// Case 1: struct field validation errors (validator.v10)
 	if errs, ok := err.(validator.ValidationErrors); ok {
 		for _, e := range errs {
-			fmt.Printf("CRD field '%s' failed on '%s'\n", e.Field(), e.Tag())
+			fmt.Printf(
+				"  • Field '%s' failed validation rule '%s'\n",
+				e.Field(), e.Tag(),
+			)
 		}
-	} else {
-		fmt.Println(err)
+		return
 	}
+
+	// Case 2: custom validation errors (like duration parsing)
+	fmt.Printf("  • %s\n", err.Error())
 }
 
 // -----------------------------------------------------------------------------
@@ -164,6 +170,20 @@ func (k *Katalog) detectDependencyCycles() error {
 // Set GroupVersionKind
 func (k *Katalog) setGroupVersionKind() error {
 	for name, crd := range k.enabledCRDs {
+
+		// Set require fields
+		// Just additional guard in case not caught at enrichment level
+		if crd.APITypes.Kind == "" {
+			return fmt.Errorf("CRD '%s': missing required field: apiTypes.kind", name)
+		}
+		if crd.APITypes.Group == "" {
+			return fmt.Errorf("CRD '%s': missing required field: apiTypes.group", name)
+		}
+		if crd.APITypes.Version == "" {
+			return fmt.Errorf("CRD '%s': missing required field: apiTypes.version", name)
+
+		}
+
 		crd.GroupVersionKind = schema.GroupVersionKind{
 			Group:   crd.APITypes.Group,
 			Version: crd.APITypes.Version,
@@ -188,10 +208,6 @@ func (k *Katalog) setGroupVersionKind() error {
 			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.group, apiTypes.version", name)
 		}
 
-		if crd.APITypes.Kind == "" {
-			return fmt.Errorf("CRD '%s': missing required field: apiTypes.kind", name)
-		}
-
 		if crd.GroupVersionResource.Empty() {
 			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.plural", name)
 		}
@@ -206,11 +222,12 @@ func (k *Katalog) setGroupVersionKind() error {
 // Set SetDefaults
 func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 	for name, crd := range k.enabledCRDs {
-		// Add labels
-		crd.Labels = append(crd.Labels, orktypes.ResourceLabel{
-			Key:   konfig.LabelManaged,
-			Value: konfig.LabelManagedValue,
-		})
+		// Add katalog Name
+		if k.metadata.Name != "" {
+			crd.KatalogName = k.metadata.Name
+		} else {
+			crd.KatalogName = kfg.Cluster().Name
+		}
 
 		// Name is already set from map key — normalise it
 		crd.Name = strings.ReplaceAll(crd.Name, " ", "")
@@ -244,8 +261,8 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		}
 
 		// Handle finalizers
-		if len(crd.ReconcilerConfig.Finalizers) == 0 {
-			crd.ReconcilerConfig.Finalizers = k.Spec.Finalizers
+		if len(crd.OperatorBox.Finalizers) == 0 {
+			crd.OperatorBox.Finalizers = k.Spec.Finalizers
 		}
 
 		// Handle Resync
@@ -256,6 +273,12 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		// Handle Workers
 		if crd.Workers == 0 {
 			crd.Workers = kfg.Cluster().DefaultWorkers
+		}
+
+		// Handle Notifications
+		if k.IsEmailNotificationEnabled() || k.IsSlackNotificationEnabled() {
+			enabled := true
+			crd.NotificationEnabled = &enabled
 		}
 
 		k.enabledCRDs[name] = crd
@@ -314,7 +337,7 @@ func (k *Katalog) addRuntimeObjects() error {
 // Add reconcilers
 func (k *Katalog) addReconcilers() error {
 	for name, crd := range k.enabledCRDs {
-		rc := crd.ReconcilerConfig
+		rc := crd.OperatorBox
 
 		// Add providers block
 		if len(rc.ProviderBlocks) > 0 {
@@ -334,7 +357,7 @@ func (k *Katalog) addReconcilers() error {
 			if !ok {
 				return fmt.Errorf(
 					"CRD %q: no constructor registered — "+
-						"check reconciler.constructor in Katalog and re-run ork generate runtime",
+						"check reconciler.constructor in Katalog and re-run ork generate registry",
 					name,
 				)
 			}
@@ -342,7 +365,7 @@ func (k *Katalog) addReconcilers() error {
 			rc.Constructor = constructorFn
 		}
 
-		crd.ReconcilerConfig = rc
+		crd.OperatorBox = rc
 		k.enabledCRDs[name] = crd
 	}
 	return nil
@@ -356,10 +379,304 @@ func (k *Katalog) addHooks() error {
 			continue
 		}
 		if hookFn, ok := orktypes.HookRegistry[crd.GroupVersionKind]; ok {
-			crd.ReconcilerConfig.HookFactory = hookFn
+			crd.OperatorBox.HookFactory = hookFn
 			k.enabledCRDs[name] = crd
 		}
 		// not found — fine, GenericReconciler runs without hooks
 	}
 	return nil
 }
+
+// validateStatus sets IgnoreStatusPatch and IgnoreObservedGeneration on each
+// enabled CRD entry based on the built-in resource registry.
+//
+// Called once during Katalog loading — flags are set once, checked cheaply
+// in the hot reconcile path.
+func (k *Katalog) validateStatus() {
+	for name, crd := range k.enabledCRDs {
+		// Look up by Kind directly — avoids GVK string format mismatch.
+		// BuiltInMeta returns zero value for unknown kinds (safe).
+		meta := BuiltInMeta(crd.APITypes.Kind)
+
+		if meta.SkipStatusSubresource {
+			// ConfigMap, Secret, ServiceAccount, Role, ClusterRole, etc.
+			// These have no /status subresource — PATCH would return 404.
+			crd.IgnoreStatusPatch = true
+		}
+
+		if meta.SkipObservedGeneration {
+			// Namespace, Node, Service, Pod, PVC, etc.
+			// These have status but no observedGeneration field.
+			crd.IgnoreObservedGeneration = true
+		}
+
+		k.enabledCRDs[name] = crd
+	}
+}
+
+// validateAutoscalerMetrics ensures only supported metrics.* fields are used.
+// This is a fail-fast mechanism to avoid runtime errors.
+func (k *Katalog) validateAutoscalerMetrics() error {
+	for _, crd := range k.enabledCRDs {
+		if !crd.AutoscaleEnabled() {
+			continue
+		}
+
+		conds := crd.OperatorBox.Autoscale.Conditions
+
+		// Validate anyOf
+		for _, c := range conds.AnyOf {
+			if strings.HasPrefix(c.Field, "metrics.") {
+				if err := crd.ValidateMetricField(c.Field); err != nil {
+					k.handleValidationErrors(err)
+					return err
+				}
+			}
+		}
+
+		// Validate when
+		for _, c := range conds.When {
+			if strings.HasPrefix(c.Field, "metrics.") {
+				if err := crd.ValidateMetricField(c.Field); err != nil {
+					k.handleValidationErrors(err)
+					return err
+				}
+			}
+		}
+
+	}
+	return nil
+}
+
+// validateNamespaceProtection enforces the namespace‑rule invariants for all enabled CRDs.
+//
+// A CRD may define *either* allowedNamespaces (whitelist) *or* restrictedNamespaces (blacklist),
+// but never both. Allowing both simultaneously creates an ambiguous and contradictory policy:
+//   - allowedNamespaces = “only these namespaces are permitted”
+//   - restrictedNamespaces = “these namespaces are forbidden”
+//
+// Combining them would require precedence rules and conflict resolution, which Orkestra
+// intentionally avoids to keep namespace protection deterministic and easy to reason about.
+//
+// Valid states:
+//  1. No namespace rules → all namespaces allowed
+//  2. Only restrictedNamespaces → blacklist mode
+//  3. Only allowedNamespaces → whitelist mode
+//  4. Both defined → invalid (this function returns an error)
+//
+// This validator ensures each CRD selects exactly one model.
+func (k *Katalog) validateNamespaceProtection() error {
+	for name, crd := range k.enabledCRDs {
+		if !crd.IsNamespaced() || !crd.HasNamespaceRules() {
+			continue // valid
+		}
+		if crd.AllowedNamespacesOnly() || crd.RestrictedNamespacesOnly() {
+			continue // valid
+		}
+
+		// Both restricted and allowed are defined → invalid
+		if crd.HasAllowedNamespaces() && crd.HasRestrictedNamespaces() {
+			return fmt.Errorf(
+				"CRD %q cannot define both allowedNamespaces and restrictedNamespaces — choose one",
+				name, // invalid
+			)
+		}
+	}
+	return nil
+}
+
+// validateTimeDuration validates all rotation-related duration fields
+// across all enabled CRDs. It is fail-fast: the first invalid duration
+// returns an error immediately.
+//
+// Supported units (extended by ParseRotationDuration):
+//
+//	d   = days (24h)
+//	w   = weeks (7d)
+//	mo  = months (30d)
+//	y   = years (365d)
+func (k *Katalog) validateTimeDuration() error {
+	for name, crd := range k.enabledCRDs {
+		if !crd.HasAnyHooks() || !crd.HasAnySecrets() {
+			continue
+		}
+
+		if crd.HasOnCreate() {
+			for _, s := range crd.OperatorBox.OnCreate.Secrets {
+				if s.RotateAfter != "" {
+					if _, err := orktypes.ParseRotationDuration(s.RotateAfter); err != nil {
+						return durationError(name, s.Name, "rotateAfter", s.RotateAfter, err)
+					}
+				}
+				// Check per-secret TLS presence
+				if s.TLS != nil && s.TLS.ValidFor != "" {
+					if _, err := orktypes.ParseRotationDuration(s.TLS.ValidFor); err != nil {
+						return durationError(name, s.Name, "validFor", s.TLS.ValidFor, err)
+					}
+				}
+			}
+		}
+
+		if crd.HasOnReconcile() {
+			for _, s := range crd.OperatorBox.OnReconcile.Secrets {
+				if s.RotateAfter != "" {
+					if _, err := orktypes.ParseRotationDuration(s.RotateAfter); err != nil {
+						return durationError(name, s.Name, "rotateAfter", s.RotateAfter, err)
+					}
+				}
+				// Check per-secret TLS presence
+				if s.TLS != nil && s.TLS.ValidFor != "" {
+					if _, err := orktypes.ParseRotationDuration(s.TLS.ValidFor); err != nil {
+						return durationError(name, s.Name, "validFor", s.TLS.ValidFor, err)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// Helpers
+func durationError(crdName, secretName, field, value string, err error) error {
+	return fmt.Errorf(
+		"invalid duration %q in CRD %q (secret %q, field %q): %v\n\n"+
+			"Allowed units:\n"+
+			"  d   = days (24h)\n"+
+			"  w   = weeks (7d)\n"+
+			"  mo  = months (30d)\n"+
+			"  y   = years (365d)\n\n"+
+			"Examples: 30d, 2w, 3mo, 1y",
+		value, crdName, secretName, field, err,
+	)
+}
+
+// validateHPAReference ensures that every HPA declaration has a valid ScaleTargetRef.
+// Fail-fast: the first invalid reference returns an error immediately.
+func (k *Katalog) validateHPAReference() error {
+	for crdName, crd := range k.enabledCRDs {
+		if !crd.HasAnyHooks() || !crd.HasAnyHPA() {
+			continue
+		}
+
+		// onCreate
+		if crd.HasOnCreate() {
+			for _, h := range crd.OperatorBox.OnCreate.HorizontalPodAutoscalers {
+				if err := validateOneHPARef(crdName, h.Name, h.ScaleTargetRef); err != nil {
+					return err
+				}
+			}
+		}
+
+		// onReconcile
+		if crd.HasOnReconcile() {
+			for _, h := range crd.OperatorBox.OnReconcile.HorizontalPodAutoscalers {
+				if err := validateOneHPARef(crdName, h.Name, h.ScaleTargetRef); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func validateOneHPARef(crdName, hpaName string, ref orktypes.ScaleTargetRef) error {
+	if ref.APIVersion == "" {
+		return fmt.Errorf(
+			"invalid HPA ScaleTargetRef in CRD %q (hpa %q): missing apiVersion\n\n"+
+				"Example:\n"+
+				"  ScaleTargetRef:\n"+
+				"    apiVersion: apps/v1\n"+
+				"    kind: Deployment\n"+
+				"    name: my-app",
+			crdName, hpaName,
+		)
+	}
+
+	if ref.Kind == "" {
+		return fmt.Errorf(
+			"invalid HPA ScaleTargetRef in CRD %q (hpa %q): missing kind\n\n"+
+				"Example:\n"+
+				"  ScaleTargetRef:\n"+
+				"    apiVersion: apps/v1\n"+
+				"    kind: ReplicaSet\n"+
+				"    name: my-app",
+			crdName, hpaName,
+		)
+	}
+
+	if ref.Name == "" {
+		return fmt.Errorf(
+			"invalid HPA ScaleTargetRef in CRD %q (hpa %q): missing name\n\n"+
+				"Example:\n"+
+				"  ScaleTargetRef:\n"+
+				"    apiVersion: apps/v1\n"+
+				"    kind: StatefulSet\n"+
+				"    name: my-app",
+			crdName, hpaName,
+		)
+	}
+
+	return nil
+}
+
+// validateStatusTypes ensures that all declarative status fields declare a valid
+// type. StatusFieldSpec.Type controls how the resolved template value is cast
+// before being written into the CR's /status subresource.
+//
+// Supported type names (case‑insensitive):
+//   - "string", "str", ""      → string (default)
+//   - "bool", "boolean"        → boolean
+//   - "int", "integer"         → integer
+//
+// Any other value is rejected at katalog‑load time. This prevents silent
+// mis‑casts in the status resolver and ensures that typed CRD fields (such as
+// those required by the Kubernetes /scale subresource) receive correctly‑typed
+// values.
+//
+// This validator mirrors the style of validateHPAReference, validateTimeDuration,
+// and other fail‑fast katalog validators: the first invalid type aborts loading
+// with a clear, actionable error message.
+func (k *Katalog) validateStatusTypes() error {
+	for name, crd := range k.enabledCRDs {
+		// Skip CRDs without declarative status
+		if crd.OperatorBox.Status == nil {
+			continue
+		}
+
+		if crd.OperatorBox.Status.HasFields() {
+			for _, f := range crd.OperatorBox.Status.Fields {
+				switch strings.ToLower(f.Type) {
+				case "", "string", "str", "default":
+				case "int", "integer":
+				case "bool", "boolean":
+				case "float", "auto":
+					// valid
+				default:
+					return fmt.Errorf(
+						"invalid status field type %q in CRD %q (path: %q):\n"+
+							"  must be one of: string, str, int, integer, bool, boolean, float, auto\n",
+						f.Type, name, f.Path,
+					)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// validateNotifyTeams checks that teams declared under notify actually exist in this katalog context
+// func (k *Katalog) validateNotifyTeams() error {
+// 	for name, crd := range k.enabledCRDs {
+// 		if !crd.IsNotificationEnabled() {
+// 			continue	// no-op
+// 		}
+
+// 		if crd.OperatorBox != nil {
+// 			if crd.HasAnyHooks() {
+
+// 			}
+// 	}
+// 	return nil
+// }

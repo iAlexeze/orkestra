@@ -1,0 +1,5 @@
+name        = "Orkestra"
+license     = "MIT"
+licenselink = "https://github.com/iAlexeze/orkestra/blob/main/LICENSE"
+description = "Custom Hugo theme for orkestra.sh — inspired by Crossplane and Kubernetes"
+min_version = "0.120.0"

@@ -361,7 +361,7 @@ spec:
         version: {{ $.Values.apiVersion | default "v1alpha1" }}
         kind: {{ .kind }}
         plural: {{ .plural }}
-      reconciler:
+      operatorBox:
         default: {{ .reconciler.default | default true }}
     {{- end }}
 ```
@@ -392,7 +392,7 @@ spec:
         version: v1alpha1
         kind: Website
         plural: websites
-      reconciler:
+      operatorBox:
         default: true
 ```
 
@@ -452,11 +452,11 @@ ork template --katalog ./komposer.yaml --graph
 ork template --katalog ./komposer.yaml --json
 ```
 
-### `ork generate runtime`
+### `ork generate registry`
 
 ```bash
-ork generate runtime --katalog ./komposer.yaml
-ork generate runtime --katalog ./komposer.yaml --dry-run
+ork generate registry --katalog ./komposer.yaml
+ork generate registry --katalog ./komposer.yaml --dry-run
 ```
 
 ### `ork run`
@@ -490,7 +490,7 @@ spec:
         version: v1alpha1
         kind: Website
         plural: websites
-      reconciler:
+      operatorBox:
         default: true
         onCreate:
           deployments:
@@ -529,7 +529,7 @@ spec:
         kind: Application
         plural: applications
         location: github.com/myorg/apis/application/v1alpha1
-      reconciler:
+      operatorBox:
         default: true
         hooks:
           location: github.com/myorg/hooks
@@ -593,7 +593,7 @@ spec:
         version: v1alpha1
         kind: Application
         plural: applications
-      reconciler:
+      operatorBox:
         default: true
 ```
 
@@ -642,7 +642,7 @@ spec:
         version: v1alpha1
         kind: Database
         plural: databases
-      reconciler:
+      operatorBox:
         default: false
         constructor:
           location: github.com/myorg/reconcilers

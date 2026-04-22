@@ -24,7 +24,7 @@ var ResourceChecks = map[string]ResourceCheck{
 
 	"deployments": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
+			rc := crd.OperatorBox
 			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []DeploymentTemplateSource { return t.Deployments }) ||
 				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []DeploymentTemplateSource { return t.Deployments }) ||
 				usesTemplates(rc.OnDelete, func(t *HookTemplates) []DeploymentTemplateSource { return t.Deployments })
@@ -33,16 +33,16 @@ var ResourceChecks = map[string]ResourceCheck{
 
 	"statefulsets": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
-			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PlaceholderSource { return t.StatefulSets }) ||
-				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PlaceholderSource { return t.StatefulSets }) ||
-				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PlaceholderSource { return t.StatefulSets })
+			rc := crd.OperatorBox
+			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []StatefulSetTemplateSource { return t.StatefulSets }) ||
+				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []StatefulSetTemplateSource { return t.StatefulSets }) ||
+				usesTemplates(rc.OnDelete, func(t *HookTemplates) []StatefulSetTemplateSource { return t.StatefulSets })
 		},
 	},
 
 	"daemonsets": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
+			rc := crd.OperatorBox
 			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PlaceholderSource { return t.DaemonSets }) ||
 				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PlaceholderSource { return t.DaemonSets }) ||
 				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PlaceholderSource { return t.DaemonSets })
@@ -51,7 +51,7 @@ var ResourceChecks = map[string]ResourceCheck{
 
 	"jobs": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
+			rc := crd.OperatorBox
 			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []JobTemplateSource { return t.Jobs }) ||
 				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []JobTemplateSource { return t.Jobs }) ||
 				usesTemplates(rc.OnDelete, func(t *HookTemplates) []JobTemplateSource { return t.Jobs })
@@ -60,7 +60,7 @@ var ResourceChecks = map[string]ResourceCheck{
 
 	"cronjobs": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
+			rc := crd.OperatorBox
 			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []CronJobTemplateSource { return t.CronJobs }) ||
 				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []CronJobTemplateSource { return t.CronJobs }) ||
 				usesTemplates(rc.OnDelete, func(t *HookTemplates) []CronJobTemplateSource { return t.CronJobs })
@@ -73,7 +73,7 @@ var ResourceChecks = map[string]ResourceCheck{
 
 	"services": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
+			rc := crd.OperatorBox
 			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []ServiceTemplateSource { return t.Services }) ||
 				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []ServiceTemplateSource { return t.Services }) ||
 				usesTemplates(rc.OnDelete, func(t *HookTemplates) []ServiceTemplateSource { return t.Services })
@@ -82,16 +82,16 @@ var ResourceChecks = map[string]ResourceCheck{
 
 	"ingresses": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
-			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PlaceholderSource { return t.Ingresses }) ||
-				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PlaceholderSource { return t.Ingresses }) ||
-				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PlaceholderSource { return t.Ingresses })
+			rc := crd.OperatorBox
+			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []IngressTemplateSource { return t.Ingresses }) ||
+				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []IngressTemplateSource { return t.Ingresses }) ||
+				usesTemplates(rc.OnDelete, func(t *HookTemplates) []IngressTemplateSource { return t.Ingresses })
 		},
 	},
 
 	"networkpolicies": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
+			rc := crd.OperatorBox
 			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PlaceholderSource { return t.NetworkPolicies }) ||
 				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PlaceholderSource { return t.NetworkPolicies }) ||
 				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PlaceholderSource { return t.NetworkPolicies })
@@ -104,7 +104,7 @@ var ResourceChecks = map[string]ResourceCheck{
 
 	"configmaps": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
+			rc := crd.OperatorBox
 			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []ConfigMapTemplateSource { return t.ConfigMaps }) ||
 				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []ConfigMapTemplateSource { return t.ConfigMaps }) ||
 				usesTemplates(rc.OnDelete, func(t *HookTemplates) []ConfigMapTemplateSource { return t.ConfigMaps })
@@ -113,7 +113,7 @@ var ResourceChecks = map[string]ResourceCheck{
 
 	"secrets": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
+			rc := crd.OperatorBox
 			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []SecretTemplateSource { return t.Secrets }) ||
 				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []SecretTemplateSource { return t.Secrets }) ||
 				usesTemplates(rc.OnDelete, func(t *HookTemplates) []SecretTemplateSource { return t.Secrets })
@@ -124,18 +124,27 @@ var ResourceChecks = map[string]ResourceCheck{
 	// Storage
 	// ───────────────────────────────────────────────
 
+	"persistentvolumes": {
+		Get: func(crd CRDEntry) bool {
+			rc := crd.OperatorBox
+			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PVTemplateSource { return t.PersistentVolumes }) ||
+				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PVTemplateSource { return t.PersistentVolumes }) ||
+				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PVTemplateSource { return t.PersistentVolumes })
+		},
+	},
+
 	"persistentvolumeclaims": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
-			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PlaceholderSource { return t.PersistentVolumeClaims }) ||
-				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PlaceholderSource { return t.PersistentVolumeClaims }) ||
-				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PlaceholderSource { return t.PersistentVolumeClaims })
+			rc := crd.OperatorBox
+			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PVCTemplateSource { return t.PersistentVolumeClaims }) ||
+				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PVCTemplateSource { return t.PersistentVolumeClaims }) ||
+				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PVCTemplateSource { return t.PersistentVolumeClaims })
 		},
 	},
 
 	"volumes": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
+			rc := crd.OperatorBox
 			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PlaceholderSource { return t.Volumes }) ||
 				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PlaceholderSource { return t.Volumes }) ||
 				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PlaceholderSource { return t.Volumes })
@@ -144,7 +153,7 @@ var ResourceChecks = map[string]ResourceCheck{
 
 	"volumemounts": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
+			rc := crd.OperatorBox
 			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PlaceholderSource { return t.VolumeMounts }) ||
 				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PlaceholderSource { return t.VolumeMounts }) ||
 				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PlaceholderSource { return t.VolumeMounts })
@@ -155,9 +164,18 @@ var ResourceChecks = map[string]ResourceCheck{
 	// RBAC Resources
 	// ───────────────────────────────────────────────
 
+	"namespaces": {
+		Get: func(crd CRDEntry) bool {
+			rc := crd.OperatorBox
+			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []NamespaceTemplateSource { return t.Namespaces }) ||
+				usesTemplates(rc.OnReconcile, func(ht *HookTemplates) []NamespaceTemplateSource { return ht.Namespaces }) ||
+				usesTemplates(rc.OnDelete, func(ht *HookTemplates) []NamespaceTemplateSource { return ht.Namespaces })
+		},
+	},
+
 	"serviceaccounts": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
+			rc := crd.OperatorBox
 			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []ServiceAccountTemplateSource { return t.ServiceAccounts }) ||
 				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []ServiceAccountTemplateSource { return t.ServiceAccounts }) ||
 				usesTemplates(rc.OnDelete, func(t *HookTemplates) []ServiceAccountTemplateSource { return t.ServiceAccounts })
@@ -166,7 +184,7 @@ var ResourceChecks = map[string]ResourceCheck{
 
 	"roles": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
+			rc := crd.OperatorBox
 			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PlaceholderSource { return t.Roles }) ||
 				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PlaceholderSource { return t.Roles }) ||
 				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PlaceholderSource { return t.Roles })
@@ -175,7 +193,7 @@ var ResourceChecks = map[string]ResourceCheck{
 
 	"rolebindings": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
+			rc := crd.OperatorBox
 			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PlaceholderSource { return t.RoleBindings }) ||
 				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PlaceholderSource { return t.RoleBindings }) ||
 				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PlaceholderSource { return t.RoleBindings })
@@ -188,25 +206,25 @@ var ResourceChecks = map[string]ResourceCheck{
 
 	"horizontalpodautoscalers": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
-			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PlaceholderSource { return t.HorizontalPodAutoscalers }) ||
-				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PlaceholderSource { return t.HorizontalPodAutoscalers }) ||
-				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PlaceholderSource { return t.HorizontalPodAutoscalers })
+			rc := crd.OperatorBox
+			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []HPATemplateSource { return t.HorizontalPodAutoscalers }) ||
+				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []HPATemplateSource { return t.HorizontalPodAutoscalers }) ||
+				usesTemplates(rc.OnDelete, func(t *HookTemplates) []HPATemplateSource { return t.HorizontalPodAutoscalers })
 		},
 	},
 
 	"poddisruptionbudgets": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
-			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PlaceholderSource { return t.PodDisruptionBudgets }) ||
-				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PlaceholderSource { return t.PodDisruptionBudgets }) ||
-				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PlaceholderSource { return t.PodDisruptionBudgets })
+			rc := crd.OperatorBox
+			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PDBTemplateSource { return t.PodDisruptionBudgets }) ||
+				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PDBTemplateSource { return t.PodDisruptionBudgets }) ||
+				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PDBTemplateSource { return t.PodDisruptionBudgets })
 		},
 	},
 
 	"podtemplates": {
 		Get: func(crd CRDEntry) bool {
-			rc := crd.ReconcilerConfig
+			rc := crd.OperatorBox
 			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PlaceholderSource { return t.PodTemplates }) ||
 				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PlaceholderSource { return t.PodTemplates }) ||
 				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PlaceholderSource { return t.PodTemplates })

@@ -4,7 +4,7 @@ package katalog
 import (
 	"sync"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // ConversionRegistry is the interface used by the health server's /convert handler.

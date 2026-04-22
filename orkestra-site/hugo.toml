@@ -1,0 +1,82 @@
+baseURL = "https://orkestra.sh/"
+languageCode = "en-us"
+title = "Orkestra"
+theme = "orkestra"
+enableRobotsTXT = true
+enableGitInfo = true
+[pagination]
+  pagerSize = 10
+
+[params]
+  description     = "Zero-code Kubernetes Operator Runtime"
+  tagline         = "Build production-grade Kubernetes operators without writing a line of code"
+  github          = "https://github.com/orkspace/orkestra"
+  twitter         = "https://twitter.com/orkestra"
+  blog            = "https://blog.orkestra.sh"
+  version         = "v0.1.0"
+  docsVersion     = "latest"
+  editBase        = "https://github.com/orkspace/orkestra/edit/main/docs"
+  googleAnalytics = "G-5Z1VTPDL73"
+  defaultMode     = "dark"
+
+[markup]
+  [markup.highlight]
+    style          = "dracula"
+    lineNos        = false
+    codeFences     = true
+    guessSyntax    = true
+    noClasses      = false
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+    [markup.goldmark.extensions]
+      table = true
+  [markup.tableOfContents]
+    endLevel   = 3
+    ordered    = false
+    startLevel = 2
+
+[outputs]
+  home    = ["HTML", "RSS", "JSON"]
+  section = ["HTML", "RSS"]
+  page    = ["HTML"]
+
+[outputFormats]
+  [outputFormats.JSON]
+    mediaType   = "application/json"
+    baseName    = "index"
+    isPlainText = true
+
+[menu]
+  [[menu.main]]
+    name       = "Docs"
+    url        = "/docs/"
+    weight     = 1
+  [[menu.main]]
+    name       = "Reference"
+    url        = "/docs/reference/"
+    weight     = 2
+  [[menu.main]]
+    name       = "Use Cases"
+    url        = "/docs/use-cases/"
+    weight     = 3
+  [[menu.main]]
+    name       = "Publications"
+    url        = "/docs/publications/"
+    weight     = 4
+  [[menu.main]]
+    name       = "Blog ↗"
+    url        = "https://blog.orkestra.sh/"
+    weight     = 5
+    [menu.main.params]
+      external = true
+  [[menu.main]]
+    name       = "GitHub"
+    url        = "https://github.com/orkspace/orkestra"
+    weight     = 6
+    [menu.main.params]
+      icon = "github"
+
+[taxonomies]
+  tag      = "tags"
+  category = "categories"

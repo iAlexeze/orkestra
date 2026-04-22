@@ -3,7 +3,7 @@ package cli
 import (
 	"fmt"
 
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 type CRDEntryDTO struct {
@@ -35,7 +35,7 @@ func toDTO(crd orktypes.CRDEntry) CRDEntryDTO {
 		Workers:    crd.Workers,
 		Resync:     crd.Resync.String(),
 		DependsOn:  crd.DependsOn.Names(),
-		Finalizers: crd.ReconcilerConfig.Finalizers,
+		Finalizers: crd.OperatorBox.Finalizers,
 		Mode:       crd.Mode,
 	}
 }
@@ -46,9 +46,9 @@ func printPrettyCRD(crd orktypes.CRDEntry) {
 	fmt.Printf("  Version: %s\n", crd.APITypes.Version)
 	fmt.Printf("  Kind: %s\n", crd.APITypes.Kind)
 	fmt.Printf("  Plural: %s\n", crd.APITypes.Plural)
-	fmt.Printf("  Enabled: %v\n", crd.Enabled)
+	fmt.Printf("  Enabled: %v\n", crd.IsEnabled())
 	fmt.Printf("  Mode: %s\n", crd.Mode)
-	fmt.Printf("  Namespaced: %v\n", crd.Namespaced)
+	fmt.Printf("  Namespaced: %v\n", crd.IsNamespaced())
 	if crd.Namespace != "" {
 		fmt.Printf("  Namespace: %s\n", crd.Namespace)
 	}
@@ -63,11 +63,17 @@ func printPrettyCRD(crd orktypes.CRDEntry) {
 	}
 
 	fmt.Println("  Reconciler:")
-	fmt.Printf("    Default: %v\n", crd.ReconcilerConfig.Default)
+	if crd.DefaultReconcile() {
+		fmt.Println("    Default: true")
+	} else if crd.CustomHooksEnabled() {
+		fmt.Printf("    Hooks: %v\n", crd.OperatorBox.Hooks.Function)
+	} else if crd.ConstructorEnabled() {
+		fmt.Printf("    Constructor: %v\n", crd.OperatorBox.ConstructorDecl.Function)
+	}
 
-	if len(crd.ReconcilerConfig.Finalizers) > 0 {
+	if len(crd.OperatorBox.Finalizers) > 0 {
 		fmt.Println("    Finalizers:")
-		for _, f := range crd.ReconcilerConfig.Finalizers {
+		for _, f := range crd.OperatorBox.Finalizers {
 			fmt.Printf("      - %s\n", f)
 		}
 	}

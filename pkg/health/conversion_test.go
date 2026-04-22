@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/ialexeze/orkestra/pkg/health"
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/health"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 // buildWebsiteV1Alpha1 returns a minimal v1alpha1 Website object

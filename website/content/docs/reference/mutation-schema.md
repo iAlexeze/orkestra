@@ -11,7 +11,7 @@ Complete schema reference for `reconciler.mutation` in a Katalog CRD entry.
 ## `reconciler.mutation`
 
 ```yaml
-reconciler:
+operatorBox:
   mutation:
     rules:
       - field: string       # required
@@ -161,7 +161,7 @@ Events:
     mutation: true
     operations: ["CREATE", "UPDATE"]
 
-  reconciler:
+  operatorBox:
     mutation:
       # Defaults — applied when field is absent
       - field: spec.replicas
@@ -188,7 +188,7 @@ Events:
 ### With mutateFirst: true
 
 ```yaml
-reconciler:
+operatorBox:
   validation:
     - field: spec.replicas
       min: "1"

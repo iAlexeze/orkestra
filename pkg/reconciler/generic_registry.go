@@ -21,4 +21,13 @@ type KatalogRegistry interface {
 	// lowercase name (the map key in spec.crds).
 	// Returns nil, false when the CRD is not registered.
 	GetInformerByName(name string) (cache.SharedIndexInformer, bool)
+
+	// GetInformerByLabelSelector returns the SharedIndexInformer for a CRD whose
+	// metadata.labelSelector contain the given key/value pair.
+	//
+	// This enables semantic grouping of CRDs for cross-CRD observation
+	// (e.g. "tier=platform", "domain=payments") without requiring callers
+	// to know the CRD's short name. Lookup is case-insensitive on both
+	// key and value. Returns nil, false when no CRD matches.
+	GetInformerByLabel(key, value string) (cache.SharedIndexInformer, bool)
 }

@@ -27,6 +27,18 @@ func init() {
 	controlCmd.AddCommand(controlStartCmd)
 	controlCmd.AddCommand(controlVersionCmd)
 	rootCmd.AddCommand(controlCmd)
+
+	// Shadow global flags so they don't appear under `ork control`
+	controlCmd.Flags().Bool("debug", false, "")
+	controlCmd.Flags().String("kubeconfig", "", "")
+	controlCmd.Flags().StringSlice("katalog", nil, "")
+	controlCmd.Flags().Bool("verbose", false, "")
+
+	// Hide them from help output
+	controlCmd.Flags().MarkHidden("debug")
+	controlCmd.Flags().MarkHidden("kubeconfig")
+	controlCmd.Flags().MarkHidden("katalog")
+	controlCmd.Flags().MarkHidden("verbose")
 }
 
 var controlCmd = &cobra.Command{
@@ -163,7 +175,7 @@ func installControlCenterBinary() error {
 
 	// TODO: Add actual download logic
 	// Example:
-	// url := fmt.Sprintf("https://github.com/ialexeze/orkestra/releases/download/%s/orkcc_%s.tar.gz", version, platform)
+	// url := fmt.Sprintf("https://github.com/orkspace/orkestra/releases/download/%s/orkcc_%s.tar.gz", version, platform)
 	// Download, extract, and install to binDir
 
 	return fmt.Errorf("automatic installation not yet implemented. Please build manually: make orkcc")

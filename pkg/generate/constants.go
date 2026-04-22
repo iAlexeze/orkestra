@@ -13,7 +13,7 @@ const (
 	//   - ReconcilerRegistry
 	//   - RegisterScheme()
 	//
-	// It is regenerated on every `ork generate runtime` invocation.
+	// It is regenerated on every `ork generate registry` invocation.
 	RegistryFile = "zz_generated_runtime_registry.go"
 
 	// ExamplesDir is the output directory for generated example manifests.

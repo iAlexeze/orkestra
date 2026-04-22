@@ -4,10 +4,10 @@ package merger
 import (
 	"fmt"
 
-	"github.com/ialexeze/orkestra/pkg/konfig"
-	"github.com/ialexeze/orkestra/pkg/logger"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/logger"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // ── Merge rules ───────────────────────────────────────────────────────────────
@@ -86,6 +86,18 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 		}
 		// Duplicate within the same file is impossible — map keys are unique.
 		crd.Name = name
+
+		// Merge spec-level restrictions into each CRD (additive).
+		protect := doc.Security.NamespaceProtection
+		if protect != nil {
+			if len(protect.RestrictedNamespaces) > 0 {
+				crd.RestrictedNamespaces = protect.RestrictedNamespaces.Merge(crd.RestrictedNamespaces)
+			}
+			if len(protect.AllowedNamespaces) > 0 {
+				crd.AllowedNamespaces = protect.AllowedNamespaces.Merge(crd.AllowedNamespaces)
+			}
+		}
+
 		result[name] = crd
 
 		logger.Debug().
@@ -106,6 +118,8 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 		Metadata:   doc.Metadata,
 	}
 	m.apiMetadata = apiMetadata
+	m.security = doc.Security
+	m.providers = doc.Providers
 
 	return result, nil
 }
@@ -227,6 +241,18 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 
 		localSeen[name] = inlineKey
 	}
+	// Merge Komposer-level restrictions into every CRD (additive).
+	protect := doc.Security.NamespaceProtection
+	if protect != nil {
+		if len(protect.RestrictedNamespaces) > 0 || len(protect.AllowedNamespaces) > 0 {
+			for name, crd := range allCRDs {
+				crd.RestrictedNamespaces = protect.RestrictedNamespaces.Merge(crd.RestrictedNamespaces)
+				crd.AllowedNamespaces = protect.AllowedNamespaces.Merge(crd.AllowedNamespaces)
+				allCRDs[name] = crd
+			}
+		}
+	}
+
 	logger.Debug().
 		Str("path", path).
 		Int("crds", len(allCRDs)).
@@ -240,5 +266,7 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 	}
 
 	m.apiMetadata = apiMetadata
+	m.security = doc.Security
+	m.providers = doc.Providers
 	return allCRDs, nil
 }

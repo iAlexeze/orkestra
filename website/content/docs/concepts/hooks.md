@@ -38,7 +38,7 @@ But some behaviors require code:
 Hooks are configured per‑CRD in the Katalog:
 
 ```yaml
-reconciler:
+operatorBox:
   hooks:
     location: github.com/myorg/my-operator/pkg/hooks
     function: ReconcileWebsite
@@ -52,7 +52,7 @@ reconciler:
 When hooks are declared, you must run:
 
 ```bash
-ork generate runtime --katalog <path>
+ork generate registry --katalog <path>
 ```
 
 to generate the runtime registry wiring.

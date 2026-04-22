@@ -37,7 +37,7 @@ spec:
   crds:                 # map of CRD entries
     <crdName>:
       apiTypes:
-      reconciler:
+      operatorBox:
       dependsOn:
       workers:
       resync:
@@ -79,7 +79,7 @@ Orkestra uses this to:
 This is where Orkestra defines what to create when a CR instance appears.
 
 ```yaml
-reconciler:
+operatorBox:
   onCreate:
     deployments:
       - image: "{{ .spec.image }}"

@@ -1,0 +1,87 @@
+{{/* Recursive sidebar — walks the docs section tree */}}
+{{ $currentPage := . }}
+{{ $docsSection := .Site.GetPage "section" "docs" }}
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-inner">
+
+    {{/* Version badge */}}
+    <div class="sidebar-version">
+      <span class="version-badge">{{ .Site.Params.docsVersion }}</span>
+    </div>
+
+    {{/* Walk each top-level docs subsection */}}
+    {{ range $docsSection.Sections }}
+      {{ $section := . }}
+      {{ $isActive := or ($currentPage.IsDescendant $section) (eq $currentPage.Section $section.Section) }}
+
+      <div class="sidebar-group{{ if $isActive }} is-open{{ end }}">
+        <button class="sidebar-group-toggle" aria-expanded="{{ if $isActive }}true{{ else }}false{{ end }}">
+          <span>{{ $section.Title }}</span>
+          <svg class="toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+
+        <ul class="sidebar-items">
+          {{/* Index page of section */}}
+          {{ with $section.GetPage "index" }}
+            <li class="sidebar-item{{ if eq $currentPage.RelPermalink .RelPermalink }} active{{ end }}">
+              <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+            </li>
+          {{ end }}
+
+          {{/* Child pages (flat) */}}
+          {{ range $section.Pages }}
+            {{ if not .IsSection }}
+              <li class="sidebar-item{{ if eq $currentPage.RelPermalink .RelPermalink }} active{{ end }}">
+                <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+              </li>
+            {{ end }}
+          {{ end }}
+
+          {{/* Nested subsections */}}
+          {{ range $section.Sections }}
+            {{ $sub := . }}
+            {{ $subActive := or ($currentPage.IsDescendant $sub) (eq $currentPage.RelPermalink $sub.RelPermalink) }}
+            <li class="sidebar-subgroup{{ if $subActive }} is-open{{ end }}">
+              <button class="sidebar-subgroup-toggle">
+                <span>{{ $sub.Title }}</span>
+                <svg class="toggle-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+              <ul class="sidebar-subitems">
+                {{ with $sub.GetPage "index" }}
+                  <li class="sidebar-item{{ if eq $currentPage.RelPermalink .RelPermalink }} active{{ end }}">
+                    <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+                  </li>
+                {{ end }}
+                {{ range $sub.Pages }}
+                  {{ if not .IsSection }}
+                    <li class="sidebar-item{{ if eq $currentPage.RelPermalink .RelPermalink }} active{{ end }}">
+                      <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+                    </li>
+                  {{ end }}
+                {{ end }}
+              </ul>
+            </li>
+          {{ end }}
+        </ul>
+      </div>
+    {{ end }}
+
+    {{/* Standalone docs pages (security, support, roadmap) */}}
+    {{ $standalone := slice "security" "support" "roadmap" }}
+    {{ range $standalone }}
+      {{ $p := $docsSection.GetPage . }}
+      {{ if $p }}
+        <a href="{{ $p.RelPermalink }}"
+           class="sidebar-standalone{{ if eq $currentPage.RelPermalink $p.RelPermalink }} active{{ end }}">
+          {{ $p.Title }}
+        </a>
+      {{ end }}
+    {{ end }}
+
+  </div>
+</aside>

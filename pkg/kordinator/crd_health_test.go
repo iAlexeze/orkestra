@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ialexeze/orkestra/pkg/kordinator"
+	"github.com/orkspace/orkestra/pkg/kordinator"
 	"github.com/stretchr/testify/assert"
 )
 

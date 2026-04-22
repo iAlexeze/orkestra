@@ -1,4 +1,4 @@
-.PHONY: build orkcc clean test test-unit test-race test-integration test-e2e test-all test-coverage test-coverage-text vet certs docs docs-build docs-serve
+.PHONY: build orkcc clean test test-unit test-race test-integration test-e2e test-all test-coverage test-coverage-text vet certs docs docs-build docs-serve site site-sync site-build site-start hugo-install
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
@@ -47,6 +47,74 @@ uninstall:
 path-help:
 	@echo "Add this to your ~/.bashrc or ~/.zshrc:"
 	@echo "export PATH=\$$PATH:$(OUTPUT_DIR)"
+
+# ── Docker Image Configuration ────────────────────────────────────────────────
+
+# Default to short git commit, fallback to timestamp if git fails
+# Fail explicitly if not in a Git repo
+GIT_COMMIT := $(shell git rev-parse --short HEAD)
+ifeq ($(GIT_COMMIT),)
+  $(error "Not a Git repository. Set ORK_IMAGE and ORK_CC_IMAGE manually.")
+endif
+
+ORK_IMAGE ?= ghcr.io/orkspace/orkestra:$(GIT_COMMIT)
+ORK_CC_IMAGE ?= ghcr.io/orkspace/orkestra-cc:$(GIT_COMMIT)
+
+# Target architectures
+ORK_AMD64_TARGET="ork-amd64"
+ORK_ARM64_TARGET="ork-arm64"
+ORK_CC_AMD64_TARGET="orkcc-amd64"
+ORK_CC_ARM64_TARGET="orkcc-arm64"
+
+
+
+# Path where the built binary lives
+BIN := $(OUTPUT_DIR)/ork
+
+# ── Linux Build Targets (for Docker) ──────────────────────────────────────────
+
+ork-linux:
+	@echo "Building Orkestra (Linux amd64)..."
+	@mkdir -p $(OUTPUT_DIR)
+	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $(OUTPUT_DIR)/ork ./cmd/orkestra
+	@echo "✅ Linux Orkestra binary built: $(OUTPUT_DIR)/ork"
+
+orkcc-linux:
+	@echo "Building Orkestra Control Center (Linux amd64)..."
+	@mkdir -p $(OUTPUT_DIR)
+	cd $(CONTROL_CENTER_DIR) && gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $(OUTPUT_DIR)/orkcc .
+	@echo "✅ Linux Control Center binary built: $(OUTPUT_DIR)/orkcc"
+
+# ── Docker Build ──────────────────────────────────────────────────────────────
+
+docker: ork-linux
+	@echo "Building Docker image: $(ORK_IMAGE)"
+	@cp $(OUTPUT_DIR)/ork ./$(ORK_AMD64_TARGET)
+	
+	docker build -t $(ORK_IMAGE) .
+	@rm -f ./$(ORK_AMD64_TARGET)
+	@echo "✔ Docker image built: $(ORK_IMAGE)"
+
+docker-cc: orkcc-linux
+	@echo "Building Docker image: $(ORK_CC_IMAGE)"
+	cd $(CONTROL_CENTER_DIR) && cp $(OUTPUT_DIR)/orkcc ./$(ORK_CC_AMD64_TARGET)
+	cd $(CONTROL_CENTER_DIR) && docker build -t $(ORK_CC_IMAGE) . && rm -rf ./$(ORK_CC_AMD64_TARGET)
+	@echo "✔ Docker image built: $(ORK_CC_IMAGE)"
+
+# ── Docker Push ───────────────────────────────────────────────────────────────
+
+docker-push:
+	@echo "Pushing Docker image: $(ORK_IMAGE)"
+	docker push $(ORK_IMAGE)
+	@echo "✔ Docker image pushed: $(ORK_IMAGE)"
+	@echo "Pushing Docker image: $(ORK_CC_IMAGE)"
+	docker push $(ORK_CC_IMAGE)
+	@echo "✔ Docker image pushed: $(ORK_CC_IMAGE)"
+
+# ── Docker Release (build + push) ─────────────────────────────────────────────
+
+docker-release: docker docker-cc docker-push
+	@echo "✔ Docker release complete: $(ORK_IMAGE)"
 
 # ── Primary targets ───────────────────────────────────────────────────────────
 
@@ -160,27 +228,66 @@ test-coverage-text:
 # The Hugo site lives in website/ and renders the docs/ directory.
 # Requires the hugo binary — install with: brew install hugo  or  snap install hugo
 
-HUGO_BIN ?= $(shell which hugo 2>/dev/null || echo /tmp/hugo)
 DOCS_PORT ?= 8191
 
 docs:
+	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
 	@echo "Starting Hugo docs server at http://localhost:$(DOCS_PORT) ..."
-	@$(HUGO_BIN) server \
-		--source website \
-		--port $(DOCS_PORT) \
-		--bind 0.0.0.0 \
-		--disableFastRender \
-		--logLevel warn
+	hugo server --source website --port $(DOCS_PORT) --bind 0.0.0.0 --disableFastRender --logLevel warn
 	@echo "✅ Docs server stopped"
 
 docs-build:
+	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
 	@echo "Building Hugo static site..."
-	$(HUGO_BIN) --source website --minify
+	hugo --source website --minify
 	@echo "✅ Hugo site built to website/public/"
 
 docs-serve:
+	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
 	@echo "Serving production Hugo build on port $(DOCS_PORT)..."
-	$(HUGO_BIN) server --source website --port $(DOCS_PORT) --bind 0.0.0.0 --renderStaticToDisk
+	hugo server --source website --port $(DOCS_PORT) --bind 0.0.0.0 --renderStaticToDisk
+
+# ── Hugo site (orkestra-site/) ────────────────────────────────────────────────
+# The redesigned marketing + docs site.
+# Requires hugo >= 0.120: brew install hugo  or  snap install hugo --channel=extended
+
+SITE_DIR  := ./orkestra-site
+SITE_PORT ?= 8565
+HUGO      := $(shell which hugo 2>/dev/null)
+
+# Install Hugo extended if not present (Linux/macOS)
+.PHONY: hugo-install
+hugo-install:
+	@if [ -n "$(HUGO)" ]; then echo "Hugo already installed: $(HUGO)"; exit 0; fi; \
+	OS=$$(uname -s | tr '[:upper:]' '[:lower:]'); \
+	ARCH=$$(uname -m); \
+	if [ "$$ARCH" = "x86_64" ]; then ARCH="amd64"; elif [ "$$ARCH" = "aarch64" ] || [ "$$ARCH" = "arm64" ]; then ARCH="arm64"; fi; \
+	VER="0.147.0"; \
+	if [ "$$OS" = "darwin" ]; then \
+	  brew install hugo && exit 0; \
+	fi; \
+	URL="https://github.com/gohugoio/hugo/releases/download/v$${VER}/hugo_extended_$${VER}_$${OS}-$${ARCH}.tar.gz"; \
+	echo "Installing Hugo v$${VER} from $$URL ..."; \
+	curl -sSL "$$URL" | tar -xz -C /tmp hugo && sudo mv /tmp/hugo /usr/local/bin/hugo; \
+	echo "✅ Hugo installed: $$(hugo version)"
+
+site-sync:
+	@echo "Syncing docs/ → orkestra-site/content/docs/ ..."
+	@bash $(SITE_DIR)/scripts/sync-docs.sh
+	@echo "✅ Docs synced"
+
+site: site-sync
+	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
+	@echo "Starting Hugo site at http://localhost:$(SITE_PORT) ..."
+	hugo server --source $(SITE_DIR) --port $(SITE_PORT) --bind 0.0.0.0 --disableFastRender
+
+site-start: site
+
+site-build: site-sync
+	@if [ -z "$(HUGO)" ]; then echo "Hugo not found. Run: make hugo-install"; exit 1; fi
+	@echo "Building Hugo site..."
+	hugo --source $(SITE_DIR) --minify
+	@echo "✅ Site built to orkestra-site/public/"
 
 # ── Vet ───────────────────────────────────────────────────────────────────────
 vet:

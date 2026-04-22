@@ -114,7 +114,7 @@ import (
     "context"
     "fmt"
 
-    orktypes "github.com/ialexeze/orkestra/pkg/types"
+    orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 type Provider struct {
@@ -388,10 +388,15 @@ func TestDeleteWidgetIdempotent(t *testing.T) {
 
 ## Current providers
 
-| Block name | Package | Handles |
+| Block name | Package | Kinds |
 |---|---|---|
-| `aws` | `pkg/providers/aws` | S3, RDS, Route53 |
-| `mongodb` | `pkg/providers/mongodb` | databases, users, collections |
+| `aws` | `pkg/provider/aws` | `s3`, `rds`, `route53` |
+| `mongodb` | `pkg/provider/mongo` | `database`, `user`, `collection` |
+| `postgres` | `pkg/provider/postgres` | `database`, `role`, `extension` |
+| `cache` | `pkg/provider/redis` | `acluser`, `config` |
+| `mysql` | `pkg/provider/mysql` | `database`, `user` |
+| `google` | `pkg/provider/google` | `gcs`, `pubsub`, `cloudsql` |
+| `azure` | `pkg/provider/azure` | `blob`, `servicebus`, `sqldatabase` |
 
 ---
 

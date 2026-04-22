@@ -22,15 +22,15 @@ package cli
 import (
 	"fmt"
 
-	"github.com/ialexeze/orkestra/pkg/inspect"
-	orktypes "github.com/ialexeze/orkestra/pkg/types"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // printCRDValidationLine prints one CRD entry's validation result.
 // Shows enrichment clearly when it occurred.
 func printCRDValidationLine(entry orktypes.CRDEntry) {
-	icon := inspect.HealthIcon("ready")
-	fmt.Printf("%s %s\n", icon, inspect.Bold(entry.Name))
+	icon := utils.HealthIcon("ready")
+	fmt.Printf("%s %s\n", icon, utils.Bold(entry.Name))
 
 	if entry.IsBuiltIn {
 		// Enriched from built-in — tell the user what was resolved
@@ -40,8 +40,8 @@ func printCRDValidationLine(entry orktypes.CRDEntry) {
 		}
 
 		fmt.Printf("    %s kind: %s %s built-in registry\n",
-			ColorGrey,
-			inspect.Bold(entry.APITypes.Kind),
+			utils.ColorGray,
+			utils.Bold(entry.APITypes.Kind),
 			"→ enriched from",
 		)
 		fmt.Printf("    group: %s / version: %s / plural: %s / scope: %s%s\n",
@@ -49,7 +49,7 @@ func printCRDValidationLine(entry orktypes.CRDEntry) {
 			entry.APITypes.Version,
 			entry.APITypes.Plural,
 			scope,
-			ColorReset,
+			utils.ColorReset,
 		)
 	} else {
 		// Custom CRD — show the declared values
@@ -58,22 +58,22 @@ func printCRDValidationLine(entry orktypes.CRDEntry) {
 			scope = "ClusterScoped"
 		}
 		fmt.Printf("    %skind: %s / group: %s / version: %s / plural: %s / scope: %s%s\n",
-			ColorGrey,
+			utils.ColorGray,
 			entry.APITypes.Kind,
 			entry.APITypes.Group,
 			entry.APITypes.Version,
 			entry.APITypes.Plural,
 			scope,
-			ColorReset,
+			utils.ColorReset,
 		)
 	}
 
 	// Add mode / workers / resync
 	fmt.Printf("    %smode: %s / workers: %v / resync: %v%s\n",
-		ColorGrey,
+		utils.ColorGray,
 		entry.Mode,
 		entry.Workers,
 		entry.Resync,
-		ColorReset,
+		utils.ColorReset,
 	)
 }

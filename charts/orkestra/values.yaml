@@ -20,10 +20,8 @@ runtime:
       cpu: 500m
       memory: 512Mi
 
-  serviceAccount:
-    create: true
-    name: ""
-    annotations: {}
+  # Use 'ork generate rbac' to create the ServiceAccount
+  serviceAccount: "orkestra"
 
   # Health server (runtime only)
   server:
@@ -39,22 +37,25 @@ runtime:
     maxQueueDepth: 500
     degradeThreshold: 10
     environment: development
-    watchNamespace: ""
 
-  # Probes
-  livenessProbe:
-    httpGet:
-      path: /controlcenter/health
-      port: http
+  # Probes for runtime
+  startupProbe:
     initialDelaySeconds: 5
     periodSeconds: 10
+    failureThreshold: 30
+    timeoutSeconds: 5
+
+  livenessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 30
+    timeoutSeconds: 5
 
   readinessProbe:
-    httpGet:
-      path: /controlcenter/ready
-      port: http
     initialDelaySeconds: 3
     periodSeconds: 5
+    failureThreshold: 30
+    timeoutSeconds: 5
 
   # ── Security ───────────────────────────────────────────────────────────────────
   podSecurityContext:
@@ -77,9 +78,9 @@ runtime:
   # Leader election (runtime only)
   leaderElection:
     enabled: true
-    leaseDuration: 15s
-    renewDeadline: 10s
-    retryPeriod: 5s
+    leaseDuration: 15
+    renewDeadline: 10
+    retryPeriod: 5
 
   # Webhooks for admission control and CRD conversion (runtime only)
   webhooks:
@@ -99,7 +100,7 @@ runtime:
         name: default-katalog
       spec:
         crds: []
-    existingConfigMap: ""
+    existingConfigMap: ""               # Enter the configmap name created with 'ork generate bundle'
     configMapKey: katalog.yaml
     mountPath: /etc/orkestra/katalog
 
@@ -122,21 +123,12 @@ controlCenter:
       memory: 256Mi
 
   # No RBAC needed - control center only reads from runtime API
-  serviceAccount:
-    create: true
-    name: ""
-    annotations: {}
+  serviceAccount: "orkestra-cc"
 
   # Control center config
   config:
-    # Multiple Orkestra URLs
-    orkestraURLs:
-      - http://orkestra-runtime-1:8080
-      - http://orkestra-runtime-2:8080
-      - http://orkestra-prod:8080
-    
-    # Or single URL (backward compatible)
-    # orkestraURL: http://orkestra-runtime:8080
+    # Set this to your runtime service URL(s)
+    orkestraURLs: []
     
     port: 8090
     refreshInterval: 10s
@@ -148,14 +140,10 @@ controlCenter:
     annotations: {}
 
   ingress:
-    enabled: true
+    enabled: false                  # Disabled by default – enable and set hosts
     className: ""
     annotations: {}
-    hosts:
-      - host: orkestra-cc.local
-        paths:
-          - path: /
-            pathType: Prefix
+    hosts: []
     tls: []
 
   # Security (control center doesn't need root)
@@ -174,22 +162,17 @@ controlCenter:
     runAsGroup: 1001
     fsGroup: 1001
 
-  # Probes
+  # Probes for control center
   livenessProbe:
-    httpGet:
-      path: /controlcenter/health
-      port: http
     initialDelaySeconds: 5
     periodSeconds: 10
 
   readinessProbe:
-    httpGet:
-      path: /controlcenter/ready
-      port: http
     initialDelaySeconds: 3
     periodSeconds: 5
 
 # ── Shared ────────────────────────────────────────────────────────────────────
+namespace: orkestra-system
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -199,10 +182,6 @@ registry:
   enabled: true
   url: ""
 
-# ── RBAC ───────────────────────────────────────────────────────────────────────
-rbac:
-  create: true
-
 # Global HPA (if you want to scale both)
 hpa:
   enabled: false
@@ -210,10 +189,12 @@ hpa:
     minReplicas: 2
     maxReplicas: 5
     targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
   controlCenter:
     minReplicas: 1
     maxReplicas: 3
     targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
 
 # ── Network Policy ─────────────────────────────────────────────────────────────
 networkPolicy:
@@ -231,9 +212,11 @@ pdb:
   runtime:
     enabled: true
     minAvailable: 1
+    # maxUnavailable: 5
   controlCenter:
     enabled: true
     minAvailable: 1
+    # maxUnavailable: 5
 
 # Scheduling (shared)
 nodeSelector: {}

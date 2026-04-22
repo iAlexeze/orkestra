@@ -3,6 +3,7 @@ package controlcenter
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -50,6 +51,16 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		return nil, fmt.Errorf("fetching info: %w", err)
 	}
 
+	nsProtection := info.NamespaceProtection
+	if nsProtection == nil {
+		nsProtection = &NamespaceProtectionStats{
+			Enabled:           false,
+			HasNamespaceRules: false,
+		}
+	}
+
+	log.Println("Namespaced: ", info.Namespaced)
+
 	detail := &CRDDetail{
 		Name:                     info.Name,
 		Description:              info.Description,
@@ -73,14 +84,17 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		MaxQueueDepth:            info.MaxQueueDepth,
 		ResourceCount:            info.ResourceCount,
 		TotalReconciles:          info.TotalReconciles,
-		Reconciler:               info.Reconciler,
+		OperatorBox:              info.OperatorBox,
 		Healthy:                  health.Healthy,
 		Started:                  health.Started,
 		Pending:                  health.Pending,
 		ErrorRate:                health.ErrorRate,
 		Conversion:               info.Conversion,
 		Admission:                info.Admission,
-		State:                    getState(health),
+		DeletionProtection:       info.DeletionProtection,
+		NamespaceProtection:      nsProtection,
+		Providers:                info.Providers,
+		State:                    health.State,
 		StartedAt:                health.StartedAt,
 		Uptime:                   health.Uptime,
 		ConsecutiveFails:         health.ConsecutiveFails,
@@ -88,6 +102,9 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		LastReconcile:            health.LastReconcile,
 		RBAC:                     info.RBAC,
 		RBACCount:                info.RBAC.TotalRules,
+		AutoscalerEnabled:        info.AutoscalerEnabled,
+		AutoscalerWorkers:        info.AutoscalerWorkers,
+		Rollback:                 info.Rollback,
 	}
 
 	detail.StartedAgo = humanDuration(health.StartedAt)
@@ -183,6 +200,24 @@ func (c *Client) FetchCREvents(instanceURL, crdName, namespace, name string) (*C
 // Internal helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Health Checker
+func (c *Client) CheckHealth() error {
+	url := strings.TrimSuffix(c.baseURL, "/") + "/health"
+
+	client := http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
 // getJSON is a generic GET → JSON decode helper.
 func getJSON[T any](c *Client, path string) (*T, error) {
 	resp, err := c.httpClient.Get(c.baseURL + path)
@@ -200,19 +235,6 @@ func getJSON[T any](c *Client, path string) (*T, error) {
 		return nil, fmt.Errorf("decoding response from %s: %w", path, err)
 	}
 	return &v, nil
-}
-
-func getState(h *CRDHealth) string {
-	if h.Healthy {
-		return "healthy"
-	}
-	if h.Pending && h.LastReconcile == "no reconciles yet" {
-		return "pending"
-	}
-	if h.Started && h.ConsecutiveFails == 0 {
-		return "started"
-	}
-	return "degraded"
 }
 
 func humanDuration(rfc3339 string) string {

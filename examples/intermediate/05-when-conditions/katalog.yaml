@@ -18,7 +18,7 @@ spec:
         kind: Platform
         plural: platforms
 
-      reconciler:
+      operatorBox:
         default: true
 
         status:

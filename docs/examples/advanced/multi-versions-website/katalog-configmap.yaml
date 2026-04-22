@@ -37,7 +37,7 @@ data:
             kind: Website
             plural: websites
 
-          reconciler:
+          operatorBox:
             default: true
             onCreate:
               deployments:
@@ -68,7 +68,7 @@ data:
             kind: Website
             plural: websites
 
-          reconciler:
+          operatorBox:
             default: true
             onCreate:
               deployments:

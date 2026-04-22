@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/pkg/katalog"
-	"github.com/ialexeze/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 	"go.yaml.in/yaml/v2"
 )
@@ -21,7 +21,7 @@ var templateCmd = &cobra.Command{
 		}
 
 		var k katalog.Katalog
-		if _, err = k.KomposeKatalogFromYaml(m.m); err != nil {
+		if _, err = k.KomposeKatalogFromYaml(kfg, m.m); err != nil {
 			return err
 		}
 		if _, err = k.ValidateConfig(kfg); err != nil {
@@ -50,7 +50,7 @@ var templateCmd = &cobra.Command{
 				dtos = append(dtos, toDTO(crd))
 			}
 			b, _ := yaml.Marshal(dtos)
-			fmt.Println(string(b))
+			fmt.Printf("---\n%s\n", string(b))
 
 		case graphOut:
 			printGraph(crds)
@@ -82,4 +82,12 @@ func init() {
 	templateCmd.Flags().BoolP("json", "j", false, "Output CRDs as JSON")
 	templateCmd.Flags().BoolP("yaml", "y", false, "Output CRDs as YAML")
 	templateCmd.Flags().BoolP("graph", "g", false, "Show ASCII dependency graph")
+
+	// Shadow global flags so they don't appear under `ork template`
+	templateCmd.Flags().Bool("debug", false, "")
+	templateCmd.Flags().String("kubeconfig", "", "")
+
+	// Hide them from help output
+	templateCmd.Flags().MarkHidden("debug")
+	templateCmd.Flags().MarkHidden("kubeconfig")
 }

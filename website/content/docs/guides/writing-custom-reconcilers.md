@@ -63,10 +63,10 @@ import (
     "context"
     "fmt"
 
-    "github.com/ialexeze/orkestra/domain"
-    "github.com/ialexeze/orkestra/pkg/event"
-    "github.com/ialexeze/orkestra/pkg/kubeclient"
-    "github.com/ialexeze/orkestra/pkg/logger"
+    "github.com/orkspace/orkestra/domain"
+    "github.com/orkspace/orkestra/pkg/event"
+    "github.com/orkspace/orkestra/pkg/kubeclient"
+    "github.com/orkspace/orkestra/pkg/logger"
     websitev1 "github.com/myorg/apis/website/v1alpha1"
     corev1 "k8s.io/api/core/v1"
     apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -270,17 +270,17 @@ crds:
       kind: Website
       plural: websites
       location: github.com/myorg/apis/website/v1alpha1
-    reconciler:
+    operatorBox:
       default: false
       constructor:
         location: github.com/myorg/my-operator/pkg/reconciler
         function: NewWebsiteReconciler
 ```
 
-Then generate the runtime wiring:
+Then generate the runtime registry:
 
 ```bash
-ork generate runtime --katalog katalogs/website.yaml
+ork generate registry --katalog katalogs/website.yaml
 go mod tidy
 ```
 

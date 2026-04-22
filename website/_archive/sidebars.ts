@@ -188,7 +188,7 @@ const sidebars: SidebarsConfig = {
                 {type: 'doc', id: 'reference/cli/init', label: 'ork init'},
                 {type: 'doc', id: 'reference/cli/validate', label: 'ork validate'},
                 {type: 'doc', id: 'reference/cli/template', label: 'ork template'},
-                {type: 'doc', id: 'reference/cli/generate-runtime', label: 'ork generate runtime'},
+                {type: 'doc', id: 'reference/cli/generate-runtime', label: 'ork generate registry'},
                 {type: 'doc', id: 'reference/cli/run', label: 'ork run'},
                 {type: 'doc', id: 'reference/cli/status', label: 'ork status'},
                 {type: 'doc', id: 'reference/cli/get', label: 'ork get'},

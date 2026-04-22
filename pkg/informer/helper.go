@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ialexeze/orkestra/domain"
-	orkerror "github.com/ialexeze/orkestra/pkg/error"
-	"github.com/ialexeze/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/domain"
+	orkerror "github.com/orkspace/orkestra/pkg/error"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -45,13 +46,22 @@ func (f *Factory) handleEvent(obj interface{}) {
 
 // newListWatch returns a ListWatch for the given object type.
 // Both List and Watch block on f.ready so they never run before Start().
-func (f *Factory) newListWatch(obj runtime.Object) *cache.ListWatch {
+func (f *Factory) newListWatch(obj runtime.Object, labelSelector, fieldSelector string) *cache.ListWatch {
 	return &cache.ListWatch{
 		ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
 			if ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
 			<-f.ready
+
+			// Inject label selector
+			if labelSelector != "" {
+				utils.Merge(&options.LabelSelector, labelSelector, ",")
+			}
+			// Inject field selector
+			if fieldSelector != "" {
+				utils.Merge(&options.FieldSelector, fieldSelector, ",")
+			}
 
 			client, err := f.clientProvider.For(obj)
 			if err != nil {
@@ -64,6 +74,15 @@ func (f *Factory) newListWatch(obj runtime.Object) *cache.ListWatch {
 				return nil, ctx.Err()
 			}
 			<-f.ready
+
+			// Inject label selector
+			if labelSelector != "" {
+				utils.Merge(&options.LabelSelector, labelSelector, ",")
+			}
+			// Inject field selector
+			if fieldSelector != "" {
+				utils.Merge(&options.FieldSelector, fieldSelector, ",")
+			}
 
 			client, err := f.clientProvider.For(obj)
 			if err != nil {

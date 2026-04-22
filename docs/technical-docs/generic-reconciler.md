@@ -34,7 +34,7 @@ Finalizers are the mechanism Kubernetes uses to block CR deletion until cleanup 
 
 **On create:** The first reconcile adds all declared finalizers (Katalog-level + CRD-level) to the CR via a patch. The patch uses `Update` semantics — if it fails with a conflict, the workqueue retries.
 
-**On delete:** When `DeletionTimestamp` is set on the CR, the reconciler:
+**On delete:** When `DeletionTimestamp` is set on the CR, the operatorBox:
 1. Runs the `onDelete` template block (if declared) — this creates Jobs or other cleanup resources
 2. Waits for Jobs to complete (owner reference `blockOwnerDeletion: true` handles this)
 3. Removes finalizers one by one via patch
@@ -102,6 +102,16 @@ controller_queue_depth{crd}                                      updated (gauge)
 controller_resource_count{crd}                                   updated (gauge)
 ```
 
+When providers are declared, each provider call also emits:
+
+```
+orkestra_provider_reconcile_total{crd, provider, kind, result}   +1
+orkestra_provider_delete_total{crd, provider, kind, result}      +1
+orkestra_provider_reconcile_duration_seconds{crd, provider, kind}  duration
+```
+
+`result` is `"success"` or `"failure"`. The `provider` label is the block name (e.g. `"aws"`, `"mongodb"`). The `kind` label is the resource kind within the block (e.g. `"s3"`, `"database"`).
+
 `controller_resource_count` is the number of CRs currently managed — updated from the informer cache count. `controller_workers_active` is updated at the start and end of each reconcile.
 
 ---
@@ -148,7 +158,7 @@ The patch is idempotent — if the label is already set, no API call is made.
 - Objects are decoded into concrete Go types by the REST client
 - Go hooks can do `obj.(*Website)` for type-safe field access
 - The Resolver falls back to metadata-only context for typed objects
-- `ork generate runtime` is required before `ork run`
+- `ork generate registry` is required before `ork run`
 
 The `GenericReconciler` itself does not distinguish — it calls the same functions. The distinction surfaces in the `Resolver` (unstructured gets full spec access) and in hook type assertions.
 
@@ -157,5 +167,25 @@ The `GenericReconciler` itself does not distinguish — it calls the same functi
 ## Constructor vs default reconciler
 
 When `reconciler.default: false` and a `constructor` is declared, `GenericReconciler` is not used. The custom reconciler returned by the constructor receives raw reconcile events and is responsible for its own entire lifecycle — finalizers, events, metrics, everything.
+
+---
+
+## Provider stats
+
+When a CRD declares provider blocks, `GenericReconciler` accepts a `providerStats providerStatsRecorder` parameter and records the outcome of each provider call:
+
+```go
+// After provider.Reconcile succeeds
+providerStats.RecordSuccess(block.Name)
+
+// After provider.Reconcile fails
+providerStats.RecordFailure(block.Name)
+
+// After provider.Delete succeeds / fails
+providerStats.RecordDeleteSuccess(block.Name)
+providerStats.RecordDeleteFailure(block.Name)
+```
+
+The `providerStatsRecorder` interface is satisfied by `*health.ProviderStats`. The parameter is nil-safe — if not wired, recording is silently skipped. The stats are used by `BuildCRDInfoHandler` to populate per-provider error rates in the `/katalog/{crd}` response without querying Prometheus.
 
 See [Constructor Guide](./constructor.md) for when this is appropriate.

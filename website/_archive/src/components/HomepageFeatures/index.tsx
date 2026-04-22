@@ -16,7 +16,7 @@ const features: FeatureItem[] = [
     description: (
       <>
         Write a Katalog YAML — Orkestra generates and runs the full operator. No
-        reconcile loops, no client-go boilerplate, no controller-runtime wiring.
+        reconcile loops, no client-go boilerplate, no controller-runtime registry.
       </>
     ),
   },
