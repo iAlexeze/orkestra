@@ -297,17 +297,17 @@ func (c *CRDEntry) HasNamespaceRules() bool {
 
 // HasOnCreate reports whether this CRD declares any onCreate hooks.
 func (c *CRDEntry) HasOnCreate() bool {
-	return c.OperatorBox.OnCreate == nil
+	return c.OperatorBox.OnCreate != nil
 }
 
 // HasOnReconcile reports whether this CRD declares any onReconcile hooks.
 func (c *CRDEntry) HasOnReconcile() bool {
-	return c.OperatorBox.OnReconcile == nil
+	return c.OperatorBox.OnReconcile != nil
 }
 
 // HasOnDelete reports whether this CRD declares any onDelete hooks.
 func (c *CRDEntry) HasOnDelete() bool {
-	return c.OperatorBox.OnDelete == nil
+	return c.OperatorBox.OnDelete != nil
 }
 
 // HasAnyHooks reports whether this CRD declares any onCreate, onReconcile, or onDelete hooks.
@@ -343,4 +343,39 @@ func (c *CRDEntry) HasAllowedNamespaces() bool {
 // HasRestrictedNamespaces reports if restrictedNamespaces is defined for this crd.
 func (c *CRDEntry) HasRestrictedNamespaces() bool {
 	return len(c.RestrictedNamespaces) > 0
+}
+
+// HasAnySecrets reports whether this CRD defines any secrets
+// in either OnCreate or OnReconcile phases.
+func (c *CRDEntry) HasAnySecrets() bool {
+	if c.HasOnCreate() {
+		return len(c.OperatorBox.OnCreate.Secrets) > 0
+	}
+	if c.HasOnReconcile() {
+		return len(c.OperatorBox.OnReconcile.Secrets) > 0
+	}
+
+	return false
+}
+
+// HasAnyTLSSecrets reports whether any secret in either phase
+// defines a TLS configuration.
+func (c *CRDEntry) HasAnyTLSSecrets() bool {
+	if c.HasOnCreate() {
+		for _, s := range c.OperatorBox.OnCreate.Secrets {
+			if s.TLS != nil {
+				return true
+			}
+		}
+	}
+
+	if c.HasOnReconcile() {
+		for _, s := range c.OperatorBox.OnReconcile.Secrets {
+			if s.TLS != nil {
+				return true
+			}
+		}
+	}
+
+	return false
 }

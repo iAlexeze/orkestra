@@ -40,6 +40,11 @@ func Execute(k *konfig.Konfig, c context.Context) {
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	// SilenceUsage is an option to silence usage when an error occurs.
+	rootCmd.SilenceUsage = true
+	// SilenceErrors is an option to quiet errors down stream.
+	rootCmd.SilenceErrors = true
+
 	// Global flags — highest‑priority overrides for config resolution
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug logging")
 	rootCmd.PersistentFlags().String("kubeconfig", "", "Path to kubeconfig file")

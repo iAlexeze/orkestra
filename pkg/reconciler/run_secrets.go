@@ -268,16 +268,5 @@ func runTLSSecret(
 		return fmt.Errorf("generating TLS bundle: %w", err)
 	}
 
-	// ownerMeta := owner.(interface {
-	// 	GetName() string
-	// 	// 	GetNamespace() string
-	// 	// })
-	//
-	// 	// return createTLSSecret(ctx, kube, ownerMeta.(interface {
-	// 	GetName() string
-	// 	GetNamespace() string
-	// 	GetUID() interface{}
-	// }), name, namespace, src.RotateAfter, bundle)
-
 	return createTLSSecret(ctx, kube, owner, name, namespace, src.RotateAfter, bundle)
 }

@@ -42,7 +42,7 @@ var runCmd = &cobra.Command{
 			return fmt.Errorf("merging katalogs: %w", err)
 		}
 
-		logger.Info().
+		logger.Debug().
 			Str("katalogs", strings.Join(paths, ", ")).
 			Int("total", m.Count()).
 			Int("enabled", m.EnabledCount()).

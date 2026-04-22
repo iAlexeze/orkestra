@@ -22,6 +22,7 @@ var (
 	pvGVR                 = kat.PersistentVolumeGVR
 	hpaGVR                = kat.HorizontalPodAutoscalerGVR
 	pdbGVR                = kat.PodDisruptionBudgetGVR
+	namespaceGVR          = kat.NamespaceGVR
 	daemonSetGVR          = kat.DaemonSetGVR
 	replicaSetGVR         = kat.ReplicaSetGVR
 	networkPolicyGVR      = kat.NetworkPolicyGVR
@@ -29,6 +30,5 @@ var (
 	roleBindingGVR        = kat.RoleBindingGVR
 	clusterRoleGVR        = kat.ClusterRoleGVR
 	clusterRoleBindingGVR = kat.ClusterRoleBindingGVR
-	namespaceGVR          = kat.NamespaceGVR
 	nodeGVR               = kat.NodeGVR
 )

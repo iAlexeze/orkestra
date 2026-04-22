@@ -164,6 +164,15 @@ var ResourceChecks = map[string]ResourceCheck{
 	// RBAC Resources
 	// ───────────────────────────────────────────────
 
+	"namespaces": {
+		Get: func(crd CRDEntry) bool {
+			rc := crd.OperatorBox
+			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []NamespaceTemplateSource { return t.Namespaces }) ||
+				usesTemplates(rc.OnReconcile, func(ht *HookTemplates) []NamespaceTemplateSource { return ht.Namespaces }) ||
+				usesTemplates(rc.OnDelete, func(ht *HookTemplates) []NamespaceTemplateSource { return ht.Namespaces })
+		},
+	},
+
 	"serviceaccounts": {
 		Get: func(crd CRDEntry) bool {
 			rc := crd.OperatorBox

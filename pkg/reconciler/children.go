@@ -12,6 +12,7 @@ import (
 	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -116,6 +117,14 @@ func ReadChildren(
 		children["serviceaccount"] = firstValue(m)
 	}
 
+	// ── Namespaces ───────────────────────────────────────────────────
+	if len(templates.Namespaces) > 0 {
+		m := readResourceGroup(ctx, kube, obj, resolver, namespaceGVR,
+			namespaceNames(resolver, templates.Namespaces))
+		children["namespaces"] = m
+		children["namespace"] = firstValue(m)
+	}
+
 	return children
 }
 
@@ -138,10 +147,20 @@ func readResourceGroup(
 			ns = obj.GetNamespace()
 		}
 
-		u, err := kube.DynamicClient().
-			Resource(gvr).
-			Namespace(ns).
-			Get(ctx, child.name, metav1.GetOptions{})
+		var err error
+		var u *unstructured.Unstructured
+		if child.namespaced {
+			// Namespaced
+			u, err = kube.DynamicClient().
+				Resource(gvr).
+				Namespace(ns).
+				Get(ctx, child.name, metav1.GetOptions{})
+		} else {
+			// Cluster-scoped
+			u, err = kube.DynamicClient().
+				Resource(gvr).
+				Get(ctx, child.name, metav1.GetOptions{})
+		}
 
 		if err != nil {
 			// Not found on first reconcile is expected and not an error.
@@ -175,8 +194,9 @@ func readResourceGroup(
 // resolvedChildName holds a resolved (non-template) name and namespace
 // for one child resource.
 type resolvedChildName struct {
-	name      string
-	namespace string
+	name       string
+	namespace  string
+	namespaced bool
 }
 
 // firstValue returns the first value from a map[string]interface{}.
@@ -210,6 +230,7 @@ func mergeTemplates(operatorBox orktypes.OperatorBoxConfig) orktypes.HookTemplat
 		t.CronJobs = append(t.CronJobs, operatorBox.OnCreate.CronJobs...)
 		t.Pods = append(t.Pods, operatorBox.OnCreate.Pods...)
 		t.ServiceAccounts = append(t.ServiceAccounts, operatorBox.OnCreate.ServiceAccounts...)
+		t.Namespaces = append(t.Namespaces, operatorBox.OnCreate.Namespaces...)
 	}
 	if operatorBox.OnReconcile != nil {
 		t.Deployments = append(t.Deployments, operatorBox.OnReconcile.Deployments...)
@@ -220,6 +241,7 @@ func mergeTemplates(operatorBox orktypes.OperatorBoxConfig) orktypes.HookTemplat
 		t.CronJobs = append(t.CronJobs, operatorBox.OnReconcile.CronJobs...)
 		t.Pods = append(t.Pods, operatorBox.OnReconcile.Pods...)
 		t.ServiceAccounts = append(t.ServiceAccounts, operatorBox.OnReconcile.ServiceAccounts...)
+		t.Namespaces = append(t.Namespaces, operatorBox.OnReconcile.Namespaces...)
 	}
 	return t
 }
@@ -338,6 +360,17 @@ func serviceAccountNames(resolver *orktmpl.Resolver, srcs []orktypes.ServiceAcco
 	names := make([]resolvedChildName, 0, len(expanded))
 	for _, s := range expanded {
 		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+func namespaceNames(resolver *orktmpl.Resolver, srcs []orktypes.NamespaceTemplateSource) []resolvedChildName {
+	expanded := expandForEachNamespaces(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
+		if n, ok := resolveName(resolver, s.Name, ""); ok {
 			names = append(names, n)
 		}
 	}

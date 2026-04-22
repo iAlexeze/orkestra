@@ -27,7 +27,7 @@ spec:
     # ── 01. forEach — N resources from a list ──────────────────────────────────
     multi-region-app:
       apiTypes:
-        group: advanced.orkestra.io
+        # group: advanced.orkestra.io
         version: v1alpha1
         kind: MultiRegionApp
         plural: multiregionapps
@@ -51,6 +51,32 @@ spec:
             default: 1
 
       operatorBox:
+        onCreate:
+          secrets:
+            - name: "{{ .metadata.name }}-creds"
+              once: true
+              rotateAfter: 90d
+              tls:
+                commonName: "{{ .metadata.name }}"
+                dnsNames:
+                  - "{{ .metadata.name }}.{{ .metadata.namespace }}.svc"
+                  - "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+                validFor: 30d
+
+            - name: "{{ .metadata.name }}-plaintext"
+              once: true
+              rotateAfter: 90d
+              fromSecret: "{{ .metadata.name }}-creds"
+
+          services:
+            - name: "{{ .metadata.name }}-{{ .item }}"
+              port: "80"
+              forEach:
+                field: spec.regions
+                as: item
+              reconcile: true
+
+          deployments:
         onReconcile:
           namespaces:
             - name: "{{ .metadata.name }}-{{ .item }}"

@@ -52,10 +52,6 @@ var validateCmd = &cobra.Command{
 		fmt.Println(strings.Repeat("─", 60))
 		fmt.Printf("%d CRDs valid (%d built-in, %d custom)\n", len(entries), builtIn, custom)
 
-		// fmt.Println()
-		// fmt.Println("Built-in resources are enriched automatically from the Kubernetes API.")
-		// fmt.Println("No apiTypes.location or code generation required.")
-
 		return nil
 	},
 }

@@ -18,15 +18,21 @@ import (
 // -----------------------------------------------------------------------------
 
 func (k *Katalog) handleValidationErrors(err error) {
-	logger.Info().Msg("Validation error:")
+	logger.Error().Msg("Validation failed")
 
+	// Case 1: struct field validation errors (validator.v10)
 	if errs, ok := err.(validator.ValidationErrors); ok {
 		for _, e := range errs {
-			fmt.Printf("CRD field '%s' failed on '%s'\n", e.Field(), e.Tag())
+			fmt.Printf(
+				"  • Field '%s' failed validation rule '%s'\n",
+				e.Field(), e.Tag(),
+			)
 		}
-	} else {
-		fmt.Println(err)
+		return
 	}
+
+	// Case 2: custom validation errors (like duration parsing)
+	fmt.Printf("  • %s\n", err.Error())
 }
 
 // -----------------------------------------------------------------------------
@@ -164,6 +170,20 @@ func (k *Katalog) detectDependencyCycles() error {
 // Set GroupVersionKind
 func (k *Katalog) setGroupVersionKind() error {
 	for name, crd := range k.enabledCRDs {
+
+		// Set require fields
+		// Just additional guard in case not caught at enrichment level
+		if crd.APITypes.Kind == "" {
+			return fmt.Errorf("CRD '%s': missing required field: apiTypes.kind", name)
+		}
+		if crd.APITypes.Group == "" {
+			return fmt.Errorf("CRD '%s': missing required field: apiTypes.group", name)
+		}
+		if crd.APITypes.Version == "" {
+			return fmt.Errorf("CRD '%s': missing required field: apiTypes.version", name)
+
+		}
+
 		crd.GroupVersionKind = schema.GroupVersionKind{
 			Group:   crd.APITypes.Group,
 			Version: crd.APITypes.Version,
@@ -186,10 +206,6 @@ func (k *Katalog) setGroupVersionKind() error {
 
 		if crd.GroupVersion.Empty() {
 			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.group, apiTypes.version", name)
-		}
-
-		if crd.APITypes.Kind == "" {
-			return fmt.Errorf("CRD '%s': missing required field: apiTypes.kind", name)
 		}
 
 		if crd.GroupVersionResource.Empty() {
@@ -401,7 +417,7 @@ func (k *Katalog) validateStatus() {
 // validateAutoscalerMetrics ensures only supported metrics.* fields are used.
 // This is a fail-fast mechanism to avoid runtime errors.
 func (k *Katalog) validateAutoscalerMetrics() error {
-	for name, crd := range k.enabledCRDs {
+	for _, crd := range k.enabledCRDs {
 		if !crd.AutoscaleEnabled() {
 			continue
 		}
@@ -428,7 +444,6 @@ func (k *Katalog) validateAutoscalerMetrics() error {
 			}
 		}
 
-		k.enabledCRDs[name] = crd
 	}
 	return nil
 }
@@ -466,9 +481,73 @@ func (k *Katalog) validateNamespaceProtection() error {
 				name, // invalid
 			)
 		}
-		k.enabledCRDs[name] = crd
 	}
 	return nil
+}
+
+// validateTimeDuration validates all rotation-related duration fields
+// across all enabled CRDs. It is fail-fast: the first invalid duration
+// returns an error immediately.
+//
+// Supported units (extended by ParseRotationDuration):
+//
+//	d   = days (24h)
+//	w   = weeks (7d)
+//	mo  = months (30d)
+//	y   = years (365d)
+func (k *Katalog) validateTimeDuration() error {
+	for name, crd := range k.enabledCRDs {
+		if !crd.HasAnySecrets() {
+			continue
+		}
+
+		if crd.HasOnCreate() {
+			for _, s := range crd.OperatorBox.OnCreate.Secrets {
+				if s.RotateAfter != "" {
+					if _, err := orktypes.ParseRotationDuration(s.RotateAfter); err != nil {
+						return durationError(name, s.Name, "validFor", s.RotateAfter, err)
+					}
+				}
+				// Check per-secret TLS presence
+				if s.TLS != nil && s.TLS.ValidFor != "" {
+					if _, err := orktypes.ParseRotationDuration(s.TLS.ValidFor); err != nil {
+						return durationError(name, s.Name, "validFor", s.TLS.ValidFor, err)
+					}
+				}
+			}
+		}
+
+		if crd.HasOnReconcile() {
+			for _, s := range crd.OperatorBox.OnReconcile.Secrets {
+				if s.RotateAfter != "" {
+					if _, err := orktypes.ParseRotationDuration(s.RotateAfter); err != nil {
+						return durationError(name, s.Name, "validFor", s.RotateAfter, err)
+					}
+				}
+				// Check per-secret TLS presence
+				if s.TLS != nil && s.TLS.ValidFor != "" {
+					if _, err := orktypes.ParseRotationDuration(s.TLS.ValidFor); err != nil {
+						return durationError(name, s.Name, "validFor", s.TLS.ValidFor, err)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// Helpers
+func durationError(crdName, secretName, field, value string, err error) error {
+	return fmt.Errorf(
+		"invalid duration %q in CRD %q (secret %q, field %q): %v\n\n"+
+			"Allowed units:\n"+
+			"  d   = days (24h)\n"+
+			"  w   = weeks (7d)\n"+
+			"  mo  = months (30d)\n"+
+			"  y   = years (365d)\n\n"+
+			"Examples: 30d, 2w, 3mo, 1y",
+		value, crdName, secretName, field, err,
+	)
 }
 
 // validateNotifyTeams checks that teams declared under notify actually exist in this katalog context
