@@ -1,6 +1,10 @@
 // pkg/orkestra-registry/hpas/types.go
 package hpas
 
+import (
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+)
+
 // ResolvedHPASpec is the fully resolved HorizontalPodAutoscaler specification.
 // All template expressions have been evaluated before this struct is populated.
 // Passed directly to Create, Update, and Delete.
@@ -11,8 +15,9 @@ type ResolvedHPASpec struct {
 	// Namespace — target namespace.
 	Namespace string
 
-	// DeploymentRef — name of the Deployment this HPA scales.
-	DeploymentRef string
+	// ScaleTargetRef — the target workload this HPA scales.
+	// Supports Deployment, ReplicaSet, StatefulSet, or any scalable resource.
+	ScaleTargetRef orktypes.ScaleTargetRef
 
 	// MinReplicas — minimum pod replica count. Default: 1.
 	MinReplicas int32

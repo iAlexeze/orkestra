@@ -497,7 +497,7 @@ func (k *Katalog) validateNamespaceProtection() error {
 //	y   = years (365d)
 func (k *Katalog) validateTimeDuration() error {
 	for name, crd := range k.enabledCRDs {
-		if !crd.HasAnySecrets() {
+		if !crd.HasAnyHooks() || !crd.HasAnySecrets() {
 			continue
 		}
 
@@ -505,7 +505,7 @@ func (k *Katalog) validateTimeDuration() error {
 			for _, s := range crd.OperatorBox.OnCreate.Secrets {
 				if s.RotateAfter != "" {
 					if _, err := orktypes.ParseRotationDuration(s.RotateAfter); err != nil {
-						return durationError(name, s.Name, "validFor", s.RotateAfter, err)
+						return durationError(name, s.Name, "rotateAfter", s.RotateAfter, err)
 					}
 				}
 				// Check per-secret TLS presence
@@ -521,7 +521,7 @@ func (k *Katalog) validateTimeDuration() error {
 			for _, s := range crd.OperatorBox.OnReconcile.Secrets {
 				if s.RotateAfter != "" {
 					if _, err := orktypes.ParseRotationDuration(s.RotateAfter); err != nil {
-						return durationError(name, s.Name, "validFor", s.RotateAfter, err)
+						return durationError(name, s.Name, "rotateAfter", s.RotateAfter, err)
 					}
 				}
 				// Check per-secret TLS presence
@@ -548,6 +548,76 @@ func durationError(crdName, secretName, field, value string, err error) error {
 			"Examples: 30d, 2w, 3mo, 1y",
 		value, crdName, secretName, field, err,
 	)
+}
+
+// validateHPAReference ensures that every HPA declaration has a valid ScaleTargetRef.
+// Fail-fast: the first invalid reference returns an error immediately.
+func (k *Katalog) validateHPAReference() error {
+	for crdName, crd := range k.enabledCRDs {
+		if !crd.HasAnyHooks() || !crd.HasAnyHPA() {
+			continue
+		}
+
+		// onCreate
+		if crd.HasOnCreate() {
+			for _, h := range crd.OperatorBox.OnCreate.HorizontalPodAutoscalers {
+				if err := validateOneHPARef(crdName, h.Name, h.ScaleTargetRef); err != nil {
+					return err
+				}
+			}
+		}
+
+		// onReconcile
+		if crd.HasOnReconcile() {
+			for _, h := range crd.OperatorBox.OnReconcile.HorizontalPodAutoscalers {
+				if err := validateOneHPARef(crdName, h.Name, h.ScaleTargetRef); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func validateOneHPARef(crdName, hpaName string, ref orktypes.ScaleTargetRef) error {
+	if ref.APIVersion == "" {
+		return fmt.Errorf(
+			"invalid HPA ScaleTargetRef in CRD %q (hpa %q): missing apiVersion\n\n"+
+				"Example:\n"+
+				"  ScaleTargetRef:\n"+
+				"    apiVersion: apps/v1\n"+
+				"    kind: Deployment\n"+
+				"    name: my-app",
+			crdName, hpaName,
+		)
+	}
+
+	if ref.Kind == "" {
+		return fmt.Errorf(
+			"invalid HPA ScaleTargetRef in CRD %q (hpa %q): missing kind\n\n"+
+				"Example:\n"+
+				"  ScaleTargetRef:\n"+
+				"    apiVersion: apps/v1\n"+
+				"    kind: ReplicaSet\n"+
+				"    name: my-app",
+			crdName, hpaName,
+		)
+	}
+
+	if ref.Name == "" {
+		return fmt.Errorf(
+			"invalid HPA ScaleTargetRef in CRD %q (hpa %q): missing name\n\n"+
+				"Example:\n"+
+				"  ScaleTargetRef:\n"+
+				"    apiVersion: apps/v1\n"+
+				"    kind: StatefulSet\n"+
+				"    name: my-app",
+			crdName, hpaName,
+		)
+	}
+
+	return nil
 }
 
 // validateNotifyTeams checks that teams declared under notify actually exist in this katalog context

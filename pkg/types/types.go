@@ -1293,6 +1293,12 @@ type IngressTLSSpec struct {
 
 // ── HorizontalPodAutoscaler ───────────────────────────────────────────────────
 
+type ScaleTargetRef struct {
+	APIVersion string `yaml:"apiVersion" json:"apiVersion"`
+	Kind       string `yaml:"kind" json:"kind"`
+	Name       string `yaml:"name" json:"name"`
+}
+
 // HPATemplateSource declares one HorizontalPodAutoscaler to be managed by Orkestra.
 //
 // Example:
@@ -1316,9 +1322,10 @@ type HPATemplateSource struct {
 	// Namespace — target namespace. Default: CR namespace.
 	Namespace string `yaml:"namespace" json:"namespace,omitempty"`
 
-	// DeploymentRef — name of the Deployment this HPA targets.
+	// ScaleTargetRef — the target workload this HPA scales.
+	// Supports Deployment, ReplicaSet, StatefulSet, or any scalable resource.
 	// Supports template expressions: "{{ .metadata.name }}"
-	DeploymentRef string `yaml:"deploymentRef" json:"deploymentRef,omitempty"`
+	ScaleTargetRef ScaleTargetRef `yaml:"scaleTargetRef" json:"scaleTargetRef,omitempty"`
 
 	// MinReplicas — minimum replica count as a string. Supports template expressions.
 	MinReplicas string `yaml:"minReplicas" json:"minReplicas,omitempty"`

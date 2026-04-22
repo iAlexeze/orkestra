@@ -379,3 +379,16 @@ func (c *CRDEntry) HasAnyTLSSecrets() bool {
 
 	return false
 }
+
+// HasAnyHPA reports whether this CRD defines any HPA defined
+// in either OnCreate or OnReconcile phases.
+func (c *CRDEntry) HasAnyHPA() bool {
+	if c.HasOnCreate() {
+		return c.OperatorBox.OnCreate.HorizontalPodAutoscalers != nil
+	}
+	if c.HasOnReconcile() {
+		return c.OperatorBox.OnReconcile.HorizontalPodAutoscalers != nil
+	}
+
+	return false
+}

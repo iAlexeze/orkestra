@@ -161,19 +161,19 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 // All template expressions must be evaluated before calling here.
 func Resolve(src orktypes.HPATemplateSource, ownerName string) ResolvedHPASpec {
 	spec := ResolvedHPASpec{
-		Name:          src.Name,
-		Namespace:     src.Namespace,
-		DeploymentRef: src.DeploymentRef,
-		MinReplicas:   1,
-		MaxReplicas:   1,
-		Labels:        make(map[string]string),
+		Name:           src.Name,
+		Namespace:      src.Namespace,
+		ScaleTargetRef: src.ScaleTargetRef,
+		MinReplicas:    1,
+		MaxReplicas:    1,
+		Labels:         make(map[string]string),
 	}
 
 	if spec.Name == "" {
 		spec.Name = ownerName + "-hpa"
 	}
-	if spec.DeploymentRef == "" {
-		spec.DeploymentRef = ownerName
+	if spec.ScaleTargetRef.Name == "" {
+		spec.ScaleTargetRef.Name = ownerName
 	}
 
 	if src.MinReplicas != "" {
@@ -237,9 +237,9 @@ func buildHPA(owner domain.Object, spec ResolvedHPASpec, namespace string) *auto
 		},
 		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
 			ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
-				APIVersion: "apps/v1",
-				Kind:       "Deployment",
-				Name:       spec.DeploymentRef,
+				APIVersion: spec.ScaleTargetRef.APIVersion,
+				Kind:       spec.ScaleTargetRef.Kind,
+				Name:       spec.ScaleTargetRef.Name,
 			},
 			MinReplicas: &minR,
 			MaxReplicas: spec.MaxReplicas,

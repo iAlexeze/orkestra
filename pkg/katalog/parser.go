@@ -150,6 +150,15 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 13. Validate HPA Reference
+	// -------------------------------------------------------------------------
+	if err := k.validateHPAReference(); err != nil {
+		return nil, err
+	}
+
+	// 14. Validate Notify Teams
+
 	return k, nil
 }
 
