@@ -542,7 +542,9 @@ func expandForEachHPAs(
 			expanded.ForEach = nil
 			expanded.Name, _ = ir.Resolve(src.Name)
 			expanded.Namespace, _ = ir.Resolve(src.Namespace)
-			expanded.DeploymentRef, _ = ir.Resolve(src.DeploymentRef)
+			expanded.ScaleTargetRef.APIVersion, _ = ir.Resolve(src.ScaleTargetRef.APIVersion)
+			expanded.ScaleTargetRef.Kind, _ = ir.Resolve(src.ScaleTargetRef.Kind)
+			expanded.ScaleTargetRef.Name, _ = ir.Resolve(src.ScaleTargetRef.Name)
 			expanded.MinReplicas, _ = ir.Resolve(src.MinReplicas)
 			expanded.MaxReplicas, _ = ir.Resolve(src.MaxReplicas)
 			expanded.TargetCPUUtilizationPercentage, _ = ir.Resolve(src.TargetCPUUtilizationPercentage)

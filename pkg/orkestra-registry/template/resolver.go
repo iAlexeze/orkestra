@@ -821,8 +821,14 @@ func (r *Resolver) ResolveHPATemplate(src orktypes.HPATemplateSource) (orktypes.
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
 		return resolved, fmt.Errorf("hpa.name: %w", err)
 	}
-	if resolved.DeploymentRef, err = r.Resolve(src.DeploymentRef); err != nil {
-		return resolved, fmt.Errorf("hpa.deploymentRef: %w", err)
+	if resolved.ScaleTargetRef.APIVersion, err = r.Resolve(src.ScaleTargetRef.APIVersion); err != nil {
+		return resolved, fmt.Errorf("hpa.scaledRef.apiVersion: %w", err)
+	}
+	if resolved.ScaleTargetRef.Kind, err = r.Resolve(src.ScaleTargetRef.Kind); err != nil {
+		return resolved, fmt.Errorf("hpa.scaledRef.kind: %w", err)
+	}
+	if resolved.ScaleTargetRef.Name, err = r.Resolve(src.ScaleTargetRef.Name); err != nil {
+		return resolved, fmt.Errorf("hpa.scaledRef.name: %w", err)
 	}
 	if resolved.MinReplicas, err = r.Resolve(src.MinReplicas); err != nil {
 		return resolved, fmt.Errorf("hpa.minReplicas: %w", err)

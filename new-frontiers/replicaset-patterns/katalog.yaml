@@ -24,7 +24,7 @@ spec:
       resync: 30s
 
       operatorBox:
-        onReconcile:
+        onCreate:
           replicaSets:
             - name: "{{ .metadata.name }}-{{ .item }}"
               image: "{{ .spec.image }}"
@@ -32,3 +32,17 @@ spec:
               forEach:
                 field: spec.regions
                 as: item
+              reconcile: true
+          hpa:
+            - name: "{{ .metadata.name }}-{{ .item }}-hpa"
+              minReplicas: 1
+              maxReplicas: 10
+              targetCPUUtilizationPercentage: 50
+              scaleTargetRef:
+                apiVersion: apps/v1
+                kind: ReplicaSet
+                name: "{{ .metadata.name }}-{{ .item }}"
+              forEach:
+                field: spec.regions
+                as: item
+              reconcile: true
