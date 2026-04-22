@@ -152,7 +152,7 @@ The following are tested at integration or E2E level only:
 | Informer factory | Requires `cache.SharedIndexInformer` and a real client or `envtest` |
 | `pkg/inspect` discovery | Requires a live Kubernetes discovery API |
 | Full katalog parsing | Requires YAML fixtures and enrichment of full CRD entries |
-| Webhook registration (`RegisterWebhooks`) | Requires `admissionregistration.k8s.io` API group — integration concern |
+| Webhook registration (`RegisterAdmissionWebhooks`) | Requires `admissionregistration.k8s.io` API group — integration concern |
 
 ---
 

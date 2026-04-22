@@ -44,6 +44,54 @@ import (
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Namespace expansion
+// ─────────────────────────────────────────────────────────────────────────────
+
+func expandForEachNamespaces(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.NamespaceTemplateSource,
+) []orktypes.NamespaceTemplateSource {
+	if !anyHasForEach(len(srcs), func(i int) *orktypes.ForEachSpec { return srcs[i].ForEach }) {
+		return srcs
+	}
+	var result []orktypes.NamespaceTemplateSource
+	for _, src := range srcs {
+		if src.ForEach == nil {
+			result = append(result, src)
+			continue
+		}
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
+			expanded := src
+			expanded.ForEach = nil
+			expanded.Name, _ = ir.Resolve(src.Name)
+
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := ir.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{
+						Key:   l.Key,
+						Value: resolvedVal,
+					})
+				}
+			}
+
+			if len(src.Finalizers) > 0 {
+				expanded.Finalizers = make([]string, 0, len(src.Finalizers))
+				for _, f := range src.Finalizers {
+					resolvedVal, _ := ir.Resolve(f)
+					expanded.Finalizers = append(expanded.Finalizers, resolvedVal)
+				}
+			}
+
+			result = append(result, expanded)
+		}
+	}
+	return result
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Deployment expansion
 // ─────────────────────────────────────────────────────────────────────────────
 

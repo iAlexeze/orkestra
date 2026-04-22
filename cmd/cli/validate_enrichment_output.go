@@ -40,7 +40,7 @@ func printCRDValidationLine(entry orktypes.CRDEntry) {
 		}
 
 		fmt.Printf("    %s kind: %s %s built-in registry\n",
-			ColorGrey,
+			utils.ColorGray,
 			utils.Bold(entry.APITypes.Kind),
 			"→ enriched from",
 		)
@@ -49,7 +49,7 @@ func printCRDValidationLine(entry orktypes.CRDEntry) {
 			entry.APITypes.Version,
 			entry.APITypes.Plural,
 			scope,
-			ColorReset,
+			utils.ColorReset,
 		)
 	} else {
 		// Custom CRD — show the declared values
@@ -58,22 +58,22 @@ func printCRDValidationLine(entry orktypes.CRDEntry) {
 			scope = "ClusterScoped"
 		}
 		fmt.Printf("    %skind: %s / group: %s / version: %s / plural: %s / scope: %s%s\n",
-			ColorGrey,
+			utils.ColorGray,
 			entry.APITypes.Kind,
 			entry.APITypes.Group,
 			entry.APITypes.Version,
 			entry.APITypes.Plural,
 			scope,
-			ColorReset,
+			utils.ColorReset,
 		)
 	}
 
 	// Add mode / workers / resync
 	fmt.Printf("    %smode: %s / workers: %v / resync: %v%s\n",
-		ColorGrey,
+		utils.ColorGray,
 		entry.Mode,
 		entry.Workers,
 		entry.Resync,
-		ColorReset,
+		utils.ColorReset,
 	)
 }

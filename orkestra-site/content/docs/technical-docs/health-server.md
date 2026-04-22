@@ -68,7 +68,7 @@ func (h *HealthServer) Start(ctx context.Context) error
 5. If `ENABLE_ADMISSION_WEBHOOK=true`: registers `/validate` and `/mutate` on the HTTPS mux, then registers webhook configurations with the API server in a background goroutine
 
 {{< callout type="warning" title="Webhook registration is best-effort" >}}
-The `RegisterWebhooks` call in step 5 runs in a goroutine and does not block startup.
+The `RegisterAdmissionWebhooks` call in step 5 runs in a goroutine and does not block startup.
 If it fails (e.g. insufficient RBAC), the HTTPS endpoints are still reachable but the
 API server does not know to call them. Check logs for:
 ```

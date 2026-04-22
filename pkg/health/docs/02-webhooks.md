@@ -66,12 +66,12 @@ The webhook is only registered when running inside a cluster. With `ork run` (lo
 
 ## Webhook registration
 
-`RegisterWebhooks` is called in a goroutine after `Start()`:
+`RegisterAdmissionWebhooks` is called in a goroutine after `Start()`:
 - Creates or updates `ValidatingWebhookConfiguration` / `MutatingWebhookConfiguration`
 - Requires RBAC on `admissionregistration.k8s.io`
 - Best-effort: failure is logged but does not block operator startup
 
-`UnregisterWebhooks` is called in `Shutdown()`:
+`UnregisterAdmissionWebhooks` is called in `Shutdown()`:
 - Removes the webhook configurations
 - Ensures the API server stops sending requests to a dead endpoint
 

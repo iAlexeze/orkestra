@@ -12,6 +12,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/client-go/kubernetes"
 )
@@ -334,42 +335,33 @@ func (h *HealthServer) Start(ctx context.Context) error {
 		Bool("namespaceProtection", h.namespaceProtection.Load()).
 		Bool("conversion", h.hookKfg.ConvEnabled).
 		Bool("webhooks", h.hookKfg.WebhooksEnabled).
-		Msg("health server")
+		Msg("health server configured")
 
-	// Register HTTPS endpoints (conversion, admission, deletion protection, namespace protection).
-	if h.hookKfg.ConvEnabled || h.hookKfg.WebhooksEnabled || h.deletionProtection.Load() || h.namespaceProtection.Load() {
-
-		// Deletion protection endpoint.
+	// ─────────────────────────────────────────────────────────────────────────
+	// HTTPS & Webhook setup – only when running inside a cluster
+	// ─────────────────────────────────────────────────────────────────────────
+	if !utils.IsRunningInCluster() {
+		logger.Debug().Msg("not running in cluster – skipping HTTPS/webhook setup")
+	} else {
+		// We are in cluster. Register HTTPS endpoints based on declared capabilities.
 		if h.deletionProtection.Load() {
 			h.hookMux.HandleFunc("/deletion-protection", h.deletionProtectionHandler)
 			startHttpsServer = true
-
-			logger.Info().
-				Str("addr", h.httpsPort).
-				Str("endpoint", "/deletion-protection").
-				Msg("deletion protection endpoint registered")
+			logger.Info().Str("endpoint", "/deletion-protection").Msg("deletion protection endpoint registered")
 		}
 
 		// Namespace protection endpoint.
 		if h.namespaceProtection.Load() {
 			h.hookMux.HandleFunc("/namespace-protection", h.namespaceProtectionHandler)
 			startHttpsServer = true
-
-			logger.Info().
-				Str("addr", h.httpsPort).
-				Str("endpoint", "/namespace-protection").
-				Msg("namespace protection endpoint registered")
+			logger.Info().Str("endpoint", "/namespace-protection").Msg("namespace protection endpoint registered")
 		}
 
 		// Conversion endpoint.
 		if kat.HasConversionPaths() {
 			h.hookMux.HandleFunc("/convert", h.conversionHandler)
 			startHttpsServer = true
-
-			logger.Info().
-				Str("addr", h.httpsPort).
-				Str("endpoint", "/convert").
-				Msg("conversion webhook endpoint registered")
+			logger.Info().Str("endpoint", "/convert").Msg("conversion webhook endpoint registered")
 		}
 
 		// Validation endpoint.
@@ -377,11 +369,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 			h.hookMux.HandleFunc("/validate", h.validationHandler)
 			admissionRuleExists = true
 			startHttpsServer = true
-
-			logger.Info().
-				Str("addr", h.httpsPort).
-				Str("endpoint", "/validate").
-				Msg("validation endpoint registered")
+			logger.Info().Str("endpoint", "/validate").Msg("validation endpoint registered")
 		}
 
 		// Mutation endpoint.
@@ -389,15 +377,11 @@ func (h *HealthServer) Start(ctx context.Context) error {
 			h.hookMux.HandleFunc("/mutate", h.mutationHandler)
 			admissionRuleExists = true
 			startHttpsServer = true
-
-			logger.Info().
-				Str("addr", h.httpsPort).
-				Str("endpoint", "/mutate").
-				Msg("mutation endpoint registered")
+			logger.Info().Str("endpoint", "/mutate").Msg("mutation endpoint registered")
 		}
 
 		// Normalize HTTPS port format.
-		if !strings.HasPrefix(h.httpPort, ":") {
+		if !strings.HasPrefix(h.httpsPort, ":") {
 			h.httpsPort = ":" + h.httpsPort
 		}
 
@@ -413,9 +397,9 @@ func (h *HealthServer) Start(ctx context.Context) error {
 					Str("addr", h.httpsPort).
 					Str("cert_file", h.hookKfg.TLSCert).
 					Str("key_file", h.hookKfg.TLSKey).
-					Msg("https server listening")
+					Msg("HTTPS server listening")
 				if err := h.hookSrv.ListenAndServeTLS(h.hookKfg.TLSCert, h.hookKfg.TLSKey); err != nil && err != http.ErrServerClosed {
-					logger.Error().Err(err).Str("addr", h.httpsPort).Msg("https server error")
+					logger.Error().Err(err).Str("addr", h.httpsPort).Msg("HTTPS server error")
 				}
 			}()
 		}
@@ -425,25 +409,10 @@ func (h *HealthServer) Start(ctx context.Context) error {
 			go func() {
 				wctx, cancel := context.WithTimeout(context.Background(), httpsCtxTimeout)
 				defer cancel()
-				if err := RegisterWebhooks(wctx, h.kubeClient, h.admissionRegistry, h.hookReg); err != nil {
-					logger.Error().Err(err).
-						Msg("webhook configuration registration failed — admission interception will not work. Check RBAC for admissionregistration.k8s.io")
+				if err := RegisterAdmissionWebhooks(wctx, h.kubeClient, h.admissionRegistry, h.hookReg); err != nil {
+					logger.Error().Err(err).Msg("admission webhook registration failed – RBAC may be missing")
 				}
 			}()
-		} else {
-			// Log why admission registration was skipped.
-			if !h.hookKfg.WebhooksEnabled {
-				logger.Debug().Msg("webhook not enabled")
-			}
-			if !admissionRuleExists {
-				logger.Debug().Msg("admission rules empty")
-			}
-			if h.kubeClient == nil {
-				logger.Debug().Msg("kube client not set")
-			}
-			if h.admissionRegistry == nil {
-				logger.Debug().Msg("admission registry not set")
-			}
 		}
 
 		// Deletion protection webhook registration.
@@ -454,8 +423,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 
 				dpGVRs := kat.DeletionProtectionGVRs()
 				if len(dpGVRs) == 0 {
-					// Not in cluster — webhook not registered, protection is local-only
-					logger.Info().Msg("deletion protection: running outside cluster — webhook not registered (ork run mode)")
+					logger.Info().Msg("deletion protection: no GVRs found – webhook not registered")
 					return
 				}
 
@@ -466,8 +434,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 				}
 
 				if err := registerDeletionProtectionWebhook(wctx, h.kubeClient, dpGVRs, caBundle, h.hookReg); err != nil {
-					logger.Error().Err(err).
-						Msg("deletion protection webhook registration failed — CRDs are not protected")
+					logger.Error().Err(err).Msg("deletion protection webhook registration failed – CRDs not protected")
 				} else {
 					logger.Info().
 						Str("config", deletionProtectionWebhookConfigName).
@@ -487,7 +454,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 
 				npGVRs := kat.NamespaceProtectionGVRs()
 				if len(npGVRs) == 0 {
-					logger.Info().Msg("namespace protection: running outside cluster — webhook not registered (ork run mode)")
+					logger.Info().Msg("namespace protection: no GVRs found – webhook not registered")
 					return
 				}
 
@@ -500,8 +467,7 @@ func (h *HealthServer) Start(ctx context.Context) error {
 				svcName := kat.NamespaceProtectionServiceName()
 				failurePolicy := kat.NamespaceProtectionFailurePolicy()
 				if err := registerNamespaceProtectionWebhook(wctx, h.kubeClient, npGVRs, caBundle, h.hookReg, svcName, failurePolicy); err != nil {
-					logger.Error().Err(err).
-						Msg("namespace protection webhook registration failed — namespace rules will not be enforced")
+					logger.Error().Err(err).Msg("namespace protection webhook registration failed – rules not enforced")
 				} else {
 					logger.Info().
 						Str("config", namespaceProtectionWebhookConfigName).
@@ -511,15 +477,12 @@ func (h *HealthServer) Start(ctx context.Context) error {
 				}
 			}()
 		}
-	}
 
-	// Begin continuous reconciliation of webhook configurations if enabled.
-	// Enabled by default but can be disabled by user
-	// Webhooks need HTTPS server, so should be started when https server is
-	// running
-	if startHttpsServer && kat.IsWebhookControllerEnabled() {
-		if err := h.webhookController(); err != nil {
-			logger.Error().Err(err).Msg("webhook controller failed to start")
+		// Start webhook controller if HTTPS server is running and controller enabled.
+		if startHttpsServer && kat.IsWebhookControllerEnabled() {
+			if err := h.webhookController(); err != nil {
+				logger.Error().Err(err).Msg("webhook controller failed to start")
+			}
 		}
 	}
 
@@ -574,7 +537,7 @@ func (h *HealthServer) Shutdown(ctx context.Context) {
 		}
 
 		// Best‑effort removal of admission webhook configurations.
-		if err := UnregisterWebhooks(ctx, h.kubeClient, cleanupOpts); err != nil {
+		if err := UnregisterAdmissionWebhooks(ctx, h.kubeClient, cleanupOpts); err != nil {
 			logger.Error().Err(err).Msg("webhook cleanup error")
 		}
 

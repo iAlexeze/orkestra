@@ -306,6 +306,33 @@ func (r *Resolver) ResolveServiceTemplate(src orktypes.ServiceTemplateSource) (o
 	return resolved, nil
 }
 
+// ResolveNamespaceTemplate resolves all template expressions in a NamespaceTemplateSource.
+func (r *Resolver) ResolveNamespaceTemplate(src orktypes.NamespaceTemplateSource) (orktypes.NamespaceTemplateSource, error) {
+	resolved := orktypes.NamespaceTemplateSource{
+		Version: src.Version,
+	}
+
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("namespace.name: %w", err)
+	}
+
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("namespace.labels: %w", err)
+	}
+
+	for i, a := range src.Finalizers {
+		rv, e := r.Resolve(a)
+		if e != nil {
+			return resolved, fmt.Errorf("namespace.finalizers[%d]: %w", i, e)
+		}
+		resolved.Finalizers = append(resolved.Finalizers, rv)
+	}
+
+	return resolved, nil
+}
+
 // ResolveJobTemplate resolves all template expressions in a JobTemplateSource.
 func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.JobTemplateSource, error) {
 	resolved := orktypes.JobTemplateSource{

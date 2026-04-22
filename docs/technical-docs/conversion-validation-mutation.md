@@ -302,7 +302,7 @@ export TLS_CERT=/path/to/tls.crt
 export TLS_KEY=/path/to/tls.key
 ```
 
-At startup, `health.go` registers `/validate` and `/mutate` on the HTTPS server (`:8443`), then calls `RegisterWebhooks` to create the `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration` objects in the cluster. Without this, the API server does not know to call Orkestra and admission interception does not happen.
+At startup, `health.go` registers `/validate` and `/mutate` on the HTTPS server (`:8443`), then calls `RegisterAdmissionWebhooks` to create the `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration` objects in the cluster. Without this, the API server does not know to call Orkestra and admission interception does not happen.
 
 Conversion is enabled separately:
 

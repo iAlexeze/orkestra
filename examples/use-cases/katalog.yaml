@@ -13,8 +13,8 @@ spec:
     pod-watcher:
       apiTypes:
         kind: Pod
-      # labelSelector:
-      #   app: pod-watcher
+      labelSelector:
+        app: pod-watcher
 
       allowedNamespaces:
         - default
@@ -52,6 +52,13 @@ spec:
 
       operatorBox:
         onReconcile:
+          namespaces:
+            - name: "{{ .metadata.name }}-{{ .item }}"
+              forEach:
+                field: spec.regions
+                as: item
+              reconcile: true
+
           deployments:
             - name: "{{ .metadata.name }}-{{ .item }}"
               image: "{{ .spec.image }}"

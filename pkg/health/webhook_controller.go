@@ -149,7 +149,7 @@ func (h *HealthServer) reconcileAdmissionWebhooks() {
 		if (cleanupOpts.mutating || cleanupOpts.validating) && h.kubeClient != nil {
 			ctx, cancel := context.WithTimeout(context.Background(), lowTimeout)
 			defer cancel()
-			if err := UnregisterWebhooks(ctx, h.kubeClient, cleanupOpts); err != nil {
+			if err := UnregisterAdmissionWebhooks(ctx, h.kubeClient, cleanupOpts); err != nil {
 				logger.Error().Err(err).Msg("webhook controller: admission webhook cleanup failed")
 
 				// UI stats
@@ -175,11 +175,11 @@ func (h *HealthServer) reconcileAdmissionWebhooks() {
 		return
 	}
 
-	// Register or refresh admission webhooks. RegisterWebhooks is expected to be idempotent.
+	// Register or refresh admission webhooks. RegisterAdmissionWebhooks is expected to be idempotent.
 	if h.kubeClient != nil && h.admissionRegistry != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), highTimeout)
 		defer cancel()
-		if err := RegisterWebhooks(ctx, h.kubeClient, h.admissionRegistry, h.hookReg); err != nil {
+		if err := RegisterAdmissionWebhooks(ctx, h.kubeClient, h.admissionRegistry, h.hookReg); err != nil {
 			logger.Error().Err(err).
 				Msg("webhook controller: admission webhook registration failed — admission interception may not work")
 
