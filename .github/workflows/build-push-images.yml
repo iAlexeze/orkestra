@@ -2,6 +2,26 @@ name: Build and Push Images
 
 on:
   workflow_call:
+    inputs:
+      image_tag:
+        description: 'Container image tag (without v prefix)'
+        required: true
+        type: string
+      repository:
+        description: 'GitHub repository (owner/name) for image registry'
+        required: false
+        type: string
+        default: ${{ github.repository }}
+      ork_image:
+        description: 'Base image name for the runtime (without repository prefix)'
+        required: false
+        type: string
+        default: 'orkestra'
+      orkcc_image:
+        description: 'Base image name for the control center (without repository prefix)'
+        required: false
+        type: string
+        default: 'orkestra-cc'
 
 jobs:
   image:
@@ -32,22 +52,22 @@ jobs:
         id: meta-runtime
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/ialexeze/orkestra
+          images: ghcr.io/${{ inputs.repository }}/${{ inputs.ork_image }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{version}},value=${{ inputs.image_tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.image_tag }}
+            type=semver,pattern={{major}},value=${{ inputs.image_tag }}
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
       - name: Extract metadata for control center
         id: meta-cc
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/ialexeze/orkestra-cc
+          images: ghcr.io/${{ inputs.repository }}/${{ inputs.orkcc_image }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{version}},value=${{ inputs.image_tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.image_tag }}
+            type=semver,pattern={{major}},value=${{ inputs.image_tag }}
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
       - name: Cache compiled Linux binaries
@@ -81,7 +101,7 @@ jobs:
           tags: ${{ steps.meta-runtime.outputs.tags }}
           labels: ${{ steps.meta-runtime.outputs.labels }}
           build-args: |
-            VERSION=${{ github.ref_name }}
+            VERSION=${{ inputs.image_tag }}
             COMMIT=${{ github.sha }}
             BUILD_DATE=${{ fromJSON(steps.meta-runtime.outputs.json).labels['org.opencontainers.image.created'] }}
           cache-from: type=gha
@@ -98,7 +118,7 @@ jobs:
           tags: ${{ steps.meta-cc.outputs.tags }}
           labels: ${{ steps.meta-cc.outputs.labels }}
           build-args: |
-            VERSION=${{ github.ref_name }}
+            VERSION=${{ inputs.image_tag }}
             COMMIT=${{ github.sha }}
             BUILD_DATE=${{ fromJSON(steps.meta-cc.outputs.json).labels['org.opencontainers.image.created'] }}
           cache-from: type=gha
@@ -110,7 +130,7 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Component | Registry | Image |" >> "$GITHUB_STEP_SUMMARY"
           echo "|-----------|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Runtime | GHCR | \`ghcr.io/ialexeze/orkestra:${{ github.ref_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Control Center | GHCR | \`ghcr.io/ialexeze/orkestra-cc:${{ github.ref_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Runtime | GHCR | \`ghcr.io/${{ inputs.repository }}/${{ inputs.ork_image }}:${{ inputs.image_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Control Center | GHCR | \`ghcr.io/${{ inputs.repository }}/${{ inputs.orkcc_image }}:${{ inputs.image_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**Platforms:** \`linux/amd64\`, \`linux/arm64\`" >> "$GITHUB_STEP_SUMMARY"

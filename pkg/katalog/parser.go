@@ -157,7 +157,19 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
 	// 14. Validate Notify Teams
+	// -------------------------------------------------------------------------
+	// if err := k.validateNotifyTeams(); err != nil {
+	// 	return nil, err
+	// }
+
+	// -------------------------------------------------------------------------
+	// 15 Validate Status Types
+	// -------------------------------------------------------------------------
+	if err := k.validateStatusTypes(); err != nil {
+		return nil, err
+	}
 
 	return k, nil
 }

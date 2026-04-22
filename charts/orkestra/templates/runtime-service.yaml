@@ -18,9 +18,9 @@ spec:
     {{- include "orkestra.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: runtime
   ports:
-    - name: health
+    - name: http
       port: {{ .Values.runtime.service.port }}
-      targetPort: health
+      targetPort: http
       protocol: TCP
 
 {{- end }}

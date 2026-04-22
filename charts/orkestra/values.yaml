@@ -37,7 +37,6 @@ runtime:
     maxQueueDepth: 500
     degradeThreshold: 10
     environment: development
-    watchNamespace: ""
 
   # Probes for runtime
   startupProbe:
@@ -79,9 +78,9 @@ runtime:
   # Leader election (runtime only)
   leaderElection:
     enabled: true
-    leaseDuration: 15s
-    renewDeadline: 10s
-    retryPeriod: 5s
+    leaseDuration: 15
+    renewDeadline: 10
+    retryPeriod: 5
 
   # Webhooks for admission control and CRD conversion (runtime only)
   webhooks:
@@ -163,7 +162,7 @@ controlCenter:
     runAsGroup: 1001
     fsGroup: 1001
 
-  # Probes for control center (paths include /controlcenter prefix)
+  # Probes for control center
   livenessProbe:
     initialDelaySeconds: 5
     periodSeconds: 10
@@ -173,6 +172,7 @@ controlCenter:
     periodSeconds: 5
 
 # ── Shared ────────────────────────────────────────────────────────────────────
+namespace: orkestra-system
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""

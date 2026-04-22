@@ -86,6 +86,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		// Orkestra
 		SkipObservedGeneration: true, // v1/Namespace
 		OrkestraInternal:       true,
+		IsChild:                true,
 	},
 	"serviceaccount": {
 		Group:      "",

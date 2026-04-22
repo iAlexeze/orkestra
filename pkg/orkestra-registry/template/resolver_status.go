@@ -3,6 +3,7 @@ package template
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -45,13 +46,22 @@ func (r *Resolver) ResolveStatusFields(fields []orktypes.StatusFieldSpec) (map[s
 			continue
 		}
 
-		resolved, err := r.Resolve(f.Value)
+		// ── Resolve template expression ─────────────────────────────────────
+		raw, err := r.Resolve(f.Value)
 		if err != nil {
 			errs = append(errs, fmt.Sprintf("status.%s: %v", f.Path, err))
 			continue
 		}
 
-		if err := setNestedStatusField(result, f.Path, resolved); err != nil {
+		// ── Apply type casting (default: string) ───────────────────────
+		typedValue, err := castStatusValue(raw, f.Type)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("status.%s: %v", f.Path, err))
+			continue
+		}
+
+		// ── Write into nested map ───────────────────────────────────────────
+		if err := setNestedStatusField(result, f.Path, typedValue); err != nil {
 			errs = append(errs, fmt.Sprintf("status.%s: %v", f.Path, err))
 		}
 	}
@@ -73,7 +83,7 @@ func (r *Resolver) ResolveStatusFields(fields []orktypes.StatusFieldSpec) (map[s
 //
 // If an intermediate path segment already contains a non-map value, it is
 // replaced with a map. This avoids panics from type-assertion failures.
-func setNestedStatusField(dst map[string]interface{}, path string, value string) error {
+func setNestedStatusField(dst map[string]interface{}, path string, value interface{}) error {
 	parts := strings.SplitN(path, ".", 2)
 
 	if len(parts) == 1 {
@@ -99,4 +109,51 @@ func setNestedStatusField(dst map[string]interface{}, path string, value string)
 
 	dst[key] = child
 	return setNestedStatusField(child, rest, value)
+}
+
+func castStatusValue(raw string, typ string) (interface{}, error) {
+	switch strings.ToLower(typ) {
+	case "", "string", "str", "default":
+		return raw, nil
+
+	case "int", "integer":
+		v, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("expected int, got %q: %w", raw, err)
+		}
+		return v, nil
+
+	case "float":
+		v, err := strconv.ParseFloat(raw, 64)
+		if err != nil {
+			return nil, fmt.Errorf("expected float, got %q: %w", raw, err)
+		}
+		return v, nil
+
+	case "bool", "boolean":
+		v, err := strconv.ParseBool(raw)
+		if err != nil {
+			return nil, fmt.Errorf("expected bool, got %q: %w", raw, err)
+		}
+		return v, nil
+
+	case "auto":
+		// Try int
+		if i, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			return i, nil
+		}
+		// Try float
+		if f, err := strconv.ParseFloat(raw, 64); err == nil {
+			return f, nil
+		}
+		// Try bool
+		if b, err := strconv.ParseBool(raw); err == nil {
+			return b, nil
+		}
+		// Fallback to string
+		return raw, nil
+
+	default:
+		return nil, fmt.Errorf("unknown type %q", typ)
+	}
 }

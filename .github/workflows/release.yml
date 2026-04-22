@@ -10,58 +10,87 @@ permissions:
   packages: write
 
 jobs:
+  prepare:
+    name: Prepare Release Metadata
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.imagetag.outputs.value }}
+      chart_version: ${{ steps.imagetag.outputs.value }}   # same as image_tag for now
+    steps:
+      - name: Compute image tag (strip v prefix)
+        id: imagetag
+        run: |
+          TAG="${{ github.ref_name }}"
+          # Strip 'v' prefix if present (for version tags)
+          STRIPPED="${TAG#v}"
+          echo "value=$STRIPPED" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG=$STRIPPED" >> $GITHUB_ENV
+
   build:
     name: Build Runtime and Control Center
+    needs: [prepare]
     uses: ./.github/workflows/build-matrix.yml
     secrets: inherit
 
   examples:
     name: Package Examples
+    needs: [prepare]
     uses: ./.github/workflows/package-examples.yml
     secrets: inherit
 
   image:
     name: Build and Push Image
+    needs: [prepare]
     uses: ./.github/workflows/build-push-images.yml
     secrets: inherit
+    with:
+      image_tag: ${{ needs.prepare.outputs.image_tag }}
 
   helm:
     name: Release Helm Chart
     uses: ./.github/workflows/release-helm.yml
-    needs: [build, image]
+    needs: [prepare, build, image]
     if: ${{ !contains(github.ref_name, '-') }}
     secrets: inherit
+    with:
+      image_tag: ${{ needs.prepare.outputs.image_tag }}
 
   release:
     name: Sign and Release
     uses: ./.github/workflows/sign-and-release.yml
-    needs: [build, image, examples]
+    needs: [prepare, build, image, examples]
     secrets: inherit
+    with:
+      image_tag: ${{ needs.prepare.outputs.image_tag }}
 
   homebrew:
     name: Publish Homebrew Formulas
+    needs: [prepare, release]
     uses: ./.github/workflows/publish-homebrew.yml
-    needs: release
     if: ${{ !contains(github.ref_name, '-') }}
     secrets: inherit
+    with:
+      image_tag: ${{ needs.prepare.outputs.image_tag }}
+      tap_repository: ialexeze/homebrew-tap
 
   # winget:
   #   name: Publish Winget Manifests
   #   uses: ./.github/workflows/publish-winget.yml
-  #   needs: release
+  #   needs: [prepare, lease]
   #   if: ${{ !contains(github.ref_name, '-') }}
   #   secrets: inherit
 
   summary:
     name: Release Summary
-    needs: [build, image, examples, release, helm, homebrew]
+    needs: [prepare, build, image, examples, release, helm, homebrew]
     if: always()
     uses: ./.github/workflows/release-summary.yml
     with:
       build_result: ${{ needs.build.result }}
+      image_tag: ${{ needs.prepare.outputs.image_tag }}
       image_result: ${{ needs.image.result }}
       examples_result: ${{ needs.examples.result }}
       release_result: ${{ needs.release.result }}
       helm_result: ${{ needs.helm.result }}
       homebrew_result: ${{ needs.homebrew.result }}
-      winget_result: ${{ needs.winget.result }}
+      # winget_result: ${{ needs.winget.result }}
