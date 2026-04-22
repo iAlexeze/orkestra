@@ -154,6 +154,10 @@ func (r *GenericReconciler[T]) runResourceGroup(
 		expandForEachServiceAccounts(resolver, t.ServiceAccounts), update, guard); err != nil {
 		return err
 	}
+	if err := runReplicaSets(ctx, kube, resolver, obj,
+		expandForEachReplicaSets(resolver, t.ReplicaSets), update, guard); err != nil {
+		return err
+	}
 	if err := runDeployments(ctx, kube, resolver, obj,
 		expandForEachDeployments(resolver, t.Deployments), update, guard); err != nil {
 		return err
