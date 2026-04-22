@@ -1,36 +1,24 @@
-# Changelog (Beginner Pack Flow Fixes)
+# Changelog
 
-## Fixes & Improvements (Beginner Pack)
+## [Unreleased]
 
-**Status patching not working**  
-- Added `status` subresource to all example CRDs in the beginner pack  
-- Ensures the runtime can patch `.status` fields without API server rejections  
-- Fixes reconcile loops that previously failed silently
+### Added
+- ReplicaSet becomes a first‑class Orkestra workload primitive.
+- New `replicaSets:` template block in `operatorBox` (onCreate/onReconcile).
+- Full registry implementation: create, update, delete, deleteIfOwned.
+- Template resolver: `ResolveReplicaSetTemplate`.
+- Reconciler integration: `runReplicaSets`, forEach expansion, conditional cleanup.
+- Katalog schema support for ReplicaSetTemplateSource.
+- Example pack: multi‑region fan‑out using ReplicaSets.
 
-**Control Center namespace display**  
-- Cluster‑scoped resources were showing an empty namespace field  
-- Updated the CRD info handler to correctly identify cluster‑scoped CRDs  
-- Control Center now displays:  
-  ```
-  Namespace: cluster-scoped
-  ```
+### Changed
+- Workload orchestration no longer requires Deployments for simple pod replication.
+- forEach fan‑out now supports ReplicaSet workloads directly.
+- Simplified workload lifecycle: CR → ReplicaSet → Pod (Deployment layer removed).
 
-**SecretDistribution & ConfigMapDistribution examples**  
-- Updated beginner katalogs to use `namespaced: false`  
-- Aligns with the actual CRD definitions  
-- Fixes apply errors and ensures consistent behavior across packs
+### Removed
+- Implicit reliance on Deployment rollout machinery for basic workloads.
 
-**CRD Info Handler improvements**  
-- Enhanced the handler that feeds CRD metadata to the Control Center  
-- Now reports:  
-  - scope (Namespaced / Cluster)  
-  - group/version/kind  
-  - status subresource availability  
-  - schema presence  
-- Enables richer UI rendering and more accurate runtime insights
-
----
-
-## Result
-
-The entire beginner pack flow now works **end‑to‑end**:
+### Fixed
+- Correct ownerReferences for ReplicaSets enabling full garbage collection.
+- Idempotent reconcile behavior for ReplicaSet drift correction.

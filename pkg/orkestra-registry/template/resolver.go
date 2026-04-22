@@ -266,6 +266,119 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 	return resolved, nil
 }
 
+// ResolveReplicaSetTemplate resolves all template expressions in a ReplicaSetTemplateSource.
+// Returns a new ReplicaSetTemplateSource with all expressions evaluated — safe to pass
+// directly to replicasets.Resolve().
+func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSource) (orktypes.ReplicaSetTemplateSource, error) {
+	resolved := orktypes.ReplicaSetTemplateSource{
+		Version:   src.Version,
+		Resources: src.Resources, // static — not resolved
+	}
+
+	var err error
+
+	// Name
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("replicaset.name: %w", err)
+	}
+
+	// Image
+	if resolved.Image, err = r.Resolve(src.Image); err != nil {
+		return resolved, fmt.Errorf("replicaset.image: %w", err)
+	}
+
+	// Replicas
+	if resolved.Replicas, err = r.Resolve(src.Replicas); err != nil {
+		return resolved, fmt.Errorf("replicaset.replicas: %w", err)
+	}
+
+	// Port
+	if resolved.Port, err = r.Resolve(src.Port); err != nil {
+		return resolved, fmt.Errorf("replicaset.port: %w", err)
+	}
+
+	// Namespace (default to CR namespace)
+	ns := src.Namespace
+	if ns == "" {
+		ns = "{{ .metadata.namespace }}"
+	}
+	if resolved.Namespace, err = r.Resolve(ns); err != nil {
+		return resolved, fmt.Errorf("replicaset.namespace: %w", err)
+	}
+
+	// Labels
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("replicaset.labels: %w", err)
+	}
+
+	// Annotations
+	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
+		return resolved, fmt.Errorf("replicaset.annotations: %w", err)
+	}
+
+	// Env
+	if len(src.Env) > 0 {
+		resolved.Env = make(map[string]orktypes.EnvVarSource, len(src.Env))
+		for k, v := range src.Env {
+			ev := orktypes.EnvVarSource{}
+
+			if v.Value != "" {
+				if ev.Value, err = r.Resolve(v.Value); err != nil {
+					return resolved, fmt.Errorf("replicaset.env[%s].value: %w", k, err)
+				}
+			}
+
+			if v.SecretKeyRef != nil {
+				name, err := r.Resolve(v.SecretKeyRef.Name)
+				if err != nil {
+					return resolved, fmt.Errorf("replicaset.env[%s].secretKeyRef.name: %w", k, err)
+				}
+				ev.SecretKeyRef = &orktypes.SecretKeyRef{
+					Name: name,
+					Key:  v.SecretKeyRef.Key,
+				}
+			}
+
+			if v.ConfigMapKeyRef != nil {
+				name, err := r.Resolve(v.ConfigMapKeyRef.Name)
+				if err != nil {
+					return resolved, fmt.Errorf("replicaset.env[%s].configMapKeyRef.name: %w", k, err)
+				}
+				ev.ConfigMapKeyRef = &orktypes.ConfigMapKeyRef{
+					Name: name,
+					Key:  v.ConfigMapKeyRef.Key,
+				}
+			}
+
+			resolved.Env[k] = ev
+		}
+	}
+
+	// EnvFrom
+	if len(src.EnvFrom) > 0 {
+		resolved.EnvFrom = make([]orktypes.EnvFromSource, len(src.EnvFrom))
+		for i, ef := range src.EnvFrom {
+			var resolvedEF orktypes.EnvFromSource
+
+			if ef.ConfigMapRef != "" {
+				if resolvedEF.ConfigMapRef, err = r.Resolve(ef.ConfigMapRef); err != nil {
+					return resolved, fmt.Errorf("replicaset.envFrom[%d].configMapRef: %w", i, err)
+				}
+			}
+
+			if ef.SecretRef != "" {
+				if resolvedEF.SecretRef, err = r.Resolve(ef.SecretRef); err != nil {
+					return resolved, fmt.Errorf("replicaset.envFrom[%d].secretRef: %w", i, err)
+				}
+			}
+
+			resolved.EnvFrom[i] = resolvedEF
+		}
+	}
+
+	return resolved, nil
+}
+
 // ResolveServiceTemplate resolves all template expressions in a ServiceTemplateSource.
 func (r *Resolver) ResolveServiceTemplate(src orktypes.ServiceTemplateSource) (orktypes.ServiceTemplateSource, error) {
 	resolved := orktypes.ServiceTemplateSource{

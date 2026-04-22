@@ -1,0 +1,34 @@
+apiVersion: orkestra.konductor.io/v1Alpha
+kind: Katalog
+metadata:
+  name: advanced-replicaset-usecases
+  author: orkspace
+  version: 0.2.0
+  description: >
+    Advanced Orkestra patterns using ReplicaSet as the native workload primitive.
+    Demonstrates forEach expansion, dynamic topology, and declarative fan-out
+    without Deployments or custom controllers. Each CRD shows how ReplicaSet
+    enables direct, zero-code orchestration of multi-instance applications.
+
+spec:
+  crds:
+    # ── 01. forEach — N ReplicaSets from a list ────────────────────────────────
+    multi-region-app:
+      apiTypes:
+        group: advanced.orkestra.io
+        version: v1alpha1
+        kind: MultiRegionApp
+        plural: multiregionapps
+
+      workers: 2
+      resync: 30s
+
+      operatorBox:
+        onReconcile:
+          replicaSets:
+            - name: "{{ .metadata.name }}-{{ .item }}"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.defaultReplicas }}"
+              forEach:
+                field: spec.regions
+                as: item

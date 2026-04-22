@@ -57,7 +57,8 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 
 	m := merger.New(expanded...)
 	if err := m.Merge(); err != nil {
-		return nil, fmt.Errorf("merge katalogs: %w", err)
+		//return nil, fmt.Errorf("merge katalogs: %w", err)
+		return nil, err
 	}
 
 	var kat katalog.Katalog

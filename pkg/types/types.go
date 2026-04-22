@@ -407,6 +407,111 @@ type DeploymentTemplateSource struct {
 	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
 }
 
+// ── ReplicaSet ────────────────────────────────────────────────────────────────
+
+// ReplicaSetTemplateSource declares one ReplicaSet to be managed by Orkestra.
+//
+// Declare under onCreate to create the ReplicaSet on first reconcile.
+// Declare under onReconcile to apply drift correction on every reconcile.
+// Declare under both to get idempotent creation and drift correction together.
+//
+// Minimal example — static values only:
+//
+//	onCreate:
+//	  replicasets:
+//	    - image: nginx:1.25
+//	      replicas: "3"
+//	      port: "8080"
+//
+// Full example — dynamic values from the CR:
+//
+//	onCreate:
+//	  replicasets:
+//	    - name: "{{ .metadata.name }}-app"
+//	      image: "{{ .spec.image }}"
+//	      replicas: "{{ .spec.replicas }}"
+//	      port: "{{ .spec.port }}"
+//	      namespace: "{{ .metadata.namespace }}"
+//	      labels:
+//	        - key: app
+//	          value: "{{ .metadata.name }}"
+//	        - key: managed-by
+//	          value: orkestra
+//	      resources:
+//	        requests:
+//	          cpu: 100m
+//	          memory: 128Mi
+//	        limits:
+//	          cpu: 500m
+//	          memory: 512Mi
+type ReplicaSetTemplateSource struct {
+	// Version — OrkestraRegistry implementation version to use. Omit for latest.
+	Version string `yaml:"version" json:"version,omitempty" validate:"omitempty"`
+
+	// Name — ReplicaSet and primary container name.
+	// Supports template expressions.
+	// Default when omitted: "{{ .metadata.name }}-replicaset"
+	Name string `yaml:"name" json:"name,omitempty" validate:"omitempty"`
+
+	// Image — container image. Required (must be declared here or resolvable from CR).
+	// Static:  "nginx:1.25"
+	// Dynamic: "{{ .spec.image }}"
+	Image string `yaml:"image" json:"image" validate:"omitempty"`
+
+	// Replicas — number of pod replicas as a string.
+	// Static:  "3"
+	// Dynamic: "{{ .spec.replicas }}"
+	// Default: "1"
+	Replicas string `yaml:"replicas" json:"replicas,omitempty" validate:"omitempty"`
+
+	// Port — primary container port as a string.
+	// Static:  "8080"
+	// Dynamic: "{{ .spec.port }}"
+	// Omit to expose no port.
+	Port string `yaml:"port" json:"port,omitempty" validate:"omitempty"`
+
+	// Namespace — target namespace for the ReplicaSet.
+	// Default when omitted: "{{ .metadata.namespace }}" (same namespace as the CR).
+	Namespace string `yaml:"namespace" json:"namespace,omitempty" validate:"omitempty"`
+
+	// Labels — applied to the ReplicaSet ObjectMeta and the pod template.
+	// Label values support template expressions.
+	// Orkestra always adds: managed-by=orkestra, orkestra-owner=<cr-name>
+	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty" validate:"omitempty"`
+
+	// Annotations — applied to the ReplicaSet ObjectMeta only.
+	// Annotation values support template expressions.
+	Annotations []ResourceLabel `yaml:"annotations" json:"annotations,omitempty" validate:"omitempty"`
+
+	// Resources — CPU and memory requests/limits for the primary container.
+	// Values are static Kubernetes quantity strings.
+	// Template expressions are not supported in resource quantities.
+	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
+
+	// Env — environment variables for the primary container.
+	// Keys are env var names. Values support template expressions.
+	Env map[string]EnvVarSource `yaml:"env" json:"env,omitempty"`
+
+	EnvFrom []EnvFromSource `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
+
+	// Reconcile: true — also apply this declaration as drift correction on every
+	// reconcile. Equivalent to declaring the same entry under both onCreate and
+	// onReconcile. When false (default), only runs on onCreate (idempotent create).
+	Reconcile bool `yaml:"reconcile" json:"reconcile,omitempty" validate:"omitempty"`
+
+	// Conditions (when) — AND semantics.
+	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+
+	// ForEach declares dynamic expansion over a list field.
+	ForEach *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// AnyOf holds OR conditions — at least one must pass for this resource.
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// WorkingDirectory sets the container's working directory (container.WorkingDir).
+	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 // ServiceTemplateSource declares one Service to be managed by Orkestra.
@@ -1428,6 +1533,7 @@ type PVTemplateSource struct {
 //	    - Notification or archival tasks that must run before deletion is finalized
 type HookTemplates struct {
 	Deployments              []DeploymentTemplateSource     `yaml:"deployments" json:"deployments,omitempty" validate:"omitempty"`
+	ReplicaSets              []ReplicaSetTemplateSource     `yaml:"replicaSets" json:"replicaSets,omitempty" validate:"omitempty"`
 	Services                 []ServiceTemplateSource        `yaml:"services" json:"services,omitempty" validate:"omitempty"`
 	Pods                     []PodTemplateSource            `yaml:"pods" json:"pods,omitempty" validate:"omitempty"`
 	Jobs                     []JobTemplateSource            `yaml:"jobs" json:"jobs,omitempty" validate:"omitempty"`
@@ -1499,7 +1605,6 @@ type HookTemplates struct {
 	RuntimeClasses              []PlaceholderSource `yaml:"runtimeClasses" json:"runtimeClasses,omitempty" validate:"omitempty"`
 	PriorityLevelConfigurations []PlaceholderSource `yaml:"priorityLevelConfigurations" json:"priorityLevelConfigurations,omitempty" validate:"omitempty"`
 	PodTemplates                []PlaceholderSource `yaml:"podTemplates" json:"podTemplates,omitempty" validate:"omitempty"`
-	ReplicaSets                 []PlaceholderSource `yaml:"replicaSets" json:"replicaSets,omitempty" validate:"omitempty"`
 	DaemonSets                  []PlaceholderSource `yaml:"daemonSets" json:"daemonSets,omitempty" validate:"omitempty"`
 	NetworkPolicies             []PlaceholderSource `yaml:"networkPolicies" json:"networkPolicies,omitempty" validate:"omitempty"`
 
