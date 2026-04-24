@@ -321,6 +321,9 @@ CRDs and custom resources that Orkestra was managing are **not** deleted – the
 
 ## Production Example
 
+<details>
+<summary>Click to expand full production values</summary>
+  
 ```yaml
 # production-values.yaml
 runtime:
@@ -381,6 +384,7 @@ networkPolicy:
         matchLabels:
           kubernetes.io/metadata.name: monitoring
 ```
+</details>
 
 ```bash
 helm install orkestra orkestra/orkestra \
