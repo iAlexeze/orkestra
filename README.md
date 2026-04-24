@@ -90,6 +90,9 @@ kubectl get pods -n orkestra-system
 kubectl get websites -A   # (if your Katalog defines the Website CRD)
 ```
 
+> [!IMPORTANT]
+> **Why this matters**: Traditional operators are massively over‑permissioned. Orkestra generates RBAC from your **declared intent**, giving you least‑privilege security by default.
+
 ---
 
 ## Customising service accounts (advanced)
