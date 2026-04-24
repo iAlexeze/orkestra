@@ -217,6 +217,7 @@ CRDs and custom resources that Orkestra was managing are **not** deleted – the
 <details>
 <summary>Click to expand full configuration options</summary>
 
+
 ### Runtime Configuration
 
 | Parameter | Description | Default |
@@ -326,7 +327,8 @@ CRDs and custom resources that Orkestra was managing are **not** deleted – the
 
 <details>
 <summary>Click to expand full production values</summary>
-  
+
+
 ```yaml
 # production-values.yaml
 runtime:
