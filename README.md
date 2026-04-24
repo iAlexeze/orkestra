@@ -30,7 +30,7 @@ metadata:
   name: my-first-katalog
 spec:
   crds:
-    - name: website
+    website:
       enabled: true
       apiTypes:
         group: demo.orkestra.io
