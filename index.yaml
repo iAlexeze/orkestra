@@ -23,13 +23,13 @@ entries:
           description: "OCI registry pattern distribution"
       artifacthub.io/crds: |
         - kind: Katalog
-          version: v1Alpha
-          name: katalogs.orkestra.konductor.io
+          version: v1
+          name: katalogs.orkestra.orkspace.io
           displayName: Katalog
           description: Declarative operator definition for one or more CRDs
         - kind: Komposer
-          version: v1Alpha
-          name: komposers.orkestra.konductor.io
+          version: v1
+          name: komposers.orkestra.orkspace.io
           displayName: Komposer
           description: Compose multiple Katalogs from different sources
       artifacthub.io/license: MIT
@@ -107,13 +107,13 @@ entries:
           description: "OCI registry pattern distribution"
       artifacthub.io/crds: |
         - kind: Katalog
-          version: v1Alpha
-          name: katalogs.orkestra.konductor.io
+          version: v1
+          name: katalogs.orkestra.orkspace.io
           displayName: Katalog
           description: Declarative operator definition for one or more CRDs
         - kind: Komposer
-          version: v1Alpha
-          name: komposers.orkestra.konductor.io
+          version: v1
+          name: komposers.orkestra.orkspace.io
           displayName: Komposer
           description: Compose multiple Katalogs from different sources
       artifacthub.io/license: MIT
@@ -191,13 +191,13 @@ entries:
           description: "OCI registry pattern distribution"
       artifacthub.io/crds: |
         - kind: Katalog
-          version: v1Alpha
-          name: katalogs.orkestra.konductor.io
+          version: v1
+          name: katalogs.orkestra.orkspace.io
           displayName: Katalog
           description: Declarative operator definition for one or more CRDs
         - kind: Komposer
-          version: v1Alpha
-          name: komposers.orkestra.konductor.io
+          version: v1
+          name: komposers.orkestra.orkspace.io
           displayName: Komposer
           description: Compose multiple Katalogs from different sources
       artifacthub.io/license: MIT
@@ -275,13 +275,13 @@ entries:
           description: "OCI registry pattern distribution"
       artifacthub.io/crds: |
         - kind: Katalog
-          version: v1Alpha
-          name: katalogs.orkestra.konductor.io
+          version: v1
+          name: katalogs.orkestra.orkspace.io
           displayName: Katalog
           description: Declarative operator definition for one or more CRDs
         - kind: Komposer
-          version: v1Alpha
-          name: komposers.orkestra.konductor.io
+          version: v1
+          name: komposers.orkestra.orkspace.io
           displayName: Komposer
           description: Compose multiple Katalogs from different sources
       artifacthub.io/license: MIT
@@ -359,13 +359,13 @@ entries:
           description: "OCI registry pattern distribution"
       artifacthub.io/crds: |
         - kind: Katalog
-          version: v1Alpha
-          name: katalogs.orkestra.konductor.io
+          version: v1
+          name: katalogs.orkestra.orkspace.io
           displayName: Katalog
           description: Declarative operator definition for one or more CRDs
         - kind: Komposer
-          version: v1Alpha
-          name: komposers.orkestra.konductor.io
+          version: v1
+          name: komposers.orkestra.orkspace.io
           displayName: Komposer
           description: Compose multiple Katalogs from different sources
       artifacthub.io/license: MIT
@@ -443,13 +443,13 @@ entries:
           description: "OCI registry pattern distribution"
       artifacthub.io/crds: |
         - kind: Katalog
-          version: v1Alpha
-          name: katalogs.orkestra.konductor.io
+          version: v1
+          name: katalogs.orkestra.orkspace.io
           displayName: Katalog
           description: Declarative operator definition for one or more CRDs
         - kind: Komposer
-          version: v1Alpha
-          name: komposers.orkestra.konductor.io
+          version: v1
+          name: komposers.orkestra.orkspace.io
           displayName: Komposer
           description: Compose multiple Katalogs from different sources
       artifacthub.io/license: MIT
@@ -527,13 +527,13 @@ entries:
           description: "OCI registry pattern distribution"
       artifacthub.io/crds: |
         - kind: Katalog
-          version: v1Alpha
-          name: katalogs.orkestra.konductor.io
+          version: v1
+          name: katalogs.orkestra.orkspace.io
           displayName: Katalog
           description: Declarative operator definition for one or more CRDs
         - kind: Komposer
-          version: v1Alpha
-          name: komposers.orkestra.konductor.io
+          version: v1
+          name: komposers.orkestra.orkspace.io
           displayName: Komposer
           description: Compose multiple Katalogs from different sources
       artifacthub.io/license: MIT
@@ -611,13 +611,13 @@ entries:
           description: "OCI registry pattern distribution"
       artifacthub.io/crds: |
         - kind: Katalog
-          version: v1Alpha
-          name: katalogs.orkestra.konductor.io
+          version: v1
+          name: katalogs.orkestra.orkspace.io
           displayName: Katalog
           description: Declarative operator definition for one or more CRDs
         - kind: Komposer
-          version: v1Alpha
-          name: komposers.orkestra.konductor.io
+          version: v1
+          name: komposers.orkestra.orkspace.io
           displayName: Komposer
           description: Compose multiple Katalogs from different sources
       artifacthub.io/license: MIT
@@ -695,13 +695,13 @@ entries:
           description: "OCI registry pattern distribution"
       artifacthub.io/crds: |
         - kind: Katalog
-          version: v1Alpha
-          name: katalogs.orkestra.konductor.io
+          version: v1
+          name: katalogs.orkestra.orkspace.io
           displayName: Katalog
           description: Declarative operator definition for one or more CRDs
         - kind: Komposer
-          version: v1Alpha
-          name: komposers.orkestra.konductor.io
+          version: v1
+          name: komposers.orkestra.orkspace.io
           displayName: Komposer
           description: Compose multiple Katalogs from different sources
       artifacthub.io/license: MIT
@@ -779,13 +779,13 @@ entries:
           description: "OCI registry pattern distribution"
       artifacthub.io/crds: |
         - kind: Katalog
-          version: v1Alpha
-          name: katalogs.orkestra.konductor.io
+          version: v1
+          name: katalogs.orkestra.orkspace.io
           displayName: Katalog
           description: Declarative operator definition for one or more CRDs
         - kind: Komposer
-          version: v1Alpha
-          name: komposers.orkestra.konductor.io
+          version: v1
+          name: komposers.orkestra.orkspace.io
           displayName: Komposer
           description: Compose multiple Katalogs from different sources
       artifacthub.io/license: MIT
@@ -863,13 +863,13 @@ entries:
           description: "OCI registry pattern distribution"
       artifacthub.io/crds: |
         - kind: Katalog
-          version: v1Alpha
-          name: katalogs.orkestra.konductor.io
+          version: v1
+          name: katalogs.orkestra.orkspace.io
           displayName: Katalog
           description: Declarative operator definition for one or more CRDs
         - kind: Komposer
-          version: v1Alpha
-          name: komposers.orkestra.konductor.io
+          version: v1
+          name: komposers.orkestra.orkspace.io
           displayName: Komposer
           description: Compose multiple Katalogs from different sources
       artifacthub.io/license: MIT
@@ -947,13 +947,13 @@ entries:
           description: "OCI registry pattern distribution"
       artifacthub.io/crds: |
         - kind: Katalog
-          version: v1Alpha
-          name: katalogs.orkestra.konductor.io
+          version: v1
+          name: katalogs.orkestra.orkspace.io
           displayName: Katalog
           description: Declarative operator definition for one or more CRDs
         - kind: Komposer
-          version: v1Alpha
-          name: komposers.orkestra.konductor.io
+          version: v1
+          name: komposers.orkestra.orkspace.io
           displayName: Komposer
           description: Compose multiple Katalogs from different sources
       artifacthub.io/license: MIT

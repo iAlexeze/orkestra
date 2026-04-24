@@ -134,7 +134,7 @@ You can also provide the Katalog directly to Helm without using a ConfigMap bund
 runtime:
   katalog:
     inline: |
-      apiVersion: orkestra.konductor.io/v1Alpha
+      apiVersion: orkestra.orkspace.io/v1Alpha
       kind: Katalog
       metadata:
         name: my-katalog
