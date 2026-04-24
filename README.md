@@ -15,12 +15,14 @@ Deploy Orkestra — the declarative Kubernetes operator runtime — along with i
 
 ## Before you begin
 
-1. **Install the Orkestra CLI**  
+1. **Install the Orkestra CLI**
+
 ```bash
 curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | bash
 ```
 
 2. **Create a minimal Katalog** (save as `katalog.yaml`)
+
 ```yaml
 apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
@@ -42,6 +44,7 @@ spec:
             - image: nginx
               replicas: 1
 ```
+
 > [!TIP]
 > This assumes you have a website CRD installed in your cluster. If not, generate one from your Katalog:
 > ```bash
