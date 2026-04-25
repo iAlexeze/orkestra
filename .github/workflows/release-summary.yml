@@ -6,7 +6,8 @@ on:
       image_tag:
         description: 'Container image tag (without v prefix)'
         required: true
-        type: string      
+        type: string
+      # Results from other jobs
       build_result:
         required: true
         type: string
@@ -25,9 +26,47 @@ on:
       homebrew_result:
         required: true
         type: string
-      # winget_result:
-      #   required: true
-      #   type: string
+      # Configurable branding / repository settings
+      github_repo:
+        description: 'GitHub repository (owner/name) for the main repo'
+        required: false
+        type: string
+        default: ${{ github.repository }}
+      container_registry:
+        description: 'Container registry base (e.g., ghcr.io/owner)'
+        required: false
+        type: string
+        default: 'ghcr.io/orkspace'
+      ork:
+        description: 'Shorthand for orkestra (used in helm, namespace, etc.)'
+        required: false
+        type: string
+        default: 'orkestra'
+      ork_image:
+        description: 'Runtime image name (without registry)'
+        required: false
+        type: string
+        default: 'orkestra'
+      orkcc_image:
+        description: 'Control center image name (without registry)'
+        required: false
+        type: string
+        default: 'orkestra-cc'
+      helm_repo_url:
+        description: 'Helm repository URL'
+        required: false
+        type: string
+        default: 'https://orkspace.github.io/orkestra'
+      helm_chart:
+        description: 'Helm chart reference (repo/chart)'
+        required: false
+        type: string
+        default: ${{ github.repository }}
+      brew_tap:
+        description: 'Homebrew tap (owner/tap)'
+        required: false
+        type: string
+        default: 'orkspace/tap'
 
 jobs:
   summary:
@@ -37,6 +76,7 @@ jobs:
       - name: Write summary
         run: |
           TAG="${GITHUB_REF_NAME}"
+          REPO="${{ inputs.github_repo }}"
           echo "## Release ${TAG}" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Component | Status |" >> "$GITHUB_STEP_SUMMARY"
@@ -49,18 +89,20 @@ jobs:
           echo "| GPG signing + GitHub Release | $(icon ${{ inputs.release_result }}) ${{ inputs.release_result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Helm chart | $(icon ${{ inputs.helm_result }}) ${{ inputs.helm_result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Homebrew formulas | $(icon ${{ inputs.homebrew_result }}) ${{ inputs.homebrew_result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Winget manifests | $(icon ${{ inputs.winget_result }}) ${{ inputs.winget_result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Windows packages | 📦 Download from [GitHub Releases](https://github.com/${REPO}/releases/tag/${TAG}) |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ inputs.release_result }}" = "success" ] && [ "${{ inputs.image_result }}" = "success" ]; then
             echo "### ✅ Release ${TAG} complete" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo '```bash' >> "$GITHUB_STEP_SUMMARY"
-            echo "# Install CLI tools" >> "$GITHUB_STEP_SUMMARY"
-            echo "brew tap orkspace/tap && brew install ork" >> "$GITHUB_STEP_SUMMARY"
+            echo "# Install CLI tools (macOS/Linux)" >> "$GITHUB_STEP_SUMMARY"
+            echo "brew tap ${{ inputs.brew_tap }} && brew install ork orkcc" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "# Windows users: download ork_windows_amd64.zip and orkcc_windows_amd64.zip from the release assets" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo "# Deploy with Helm (Runtime + Control Center)" >> "$GITHUB_STEP_SUMMARY"
-            echo "helm repo add orkestra https://orkspace.github.io/orkestra" >> "$GITHUB_STEP_SUMMARY"
-            echo "helm install orkestra orkestra/orkestra -n orkestra-system --create-namespace" >> "$GITHUB_STEP_SUMMARY"
+            echo "helm repo add ${{ inputs.ork }} ${{ inputs.helm_repo_url }}" >> "$GITHUB_STEP_SUMMARY"
+            echo "helm install ${{ inputs.ork }} ${{ inputs.helm_chart }} -n ${{ inputs.ork }}-system --create-namespace" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo "# Run Control Center separately" >> "$GITHUB_STEP_SUMMARY"
             echo "orkcc -u http://localhost:8080" >> "$GITHUB_STEP_SUMMARY"

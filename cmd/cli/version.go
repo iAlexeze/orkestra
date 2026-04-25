@@ -35,7 +35,7 @@ var versionCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
-	versionCmd.Flags().BoolVarP(&verbose, "verbose", "vb", false, "Show detailed build information")
+	versionCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show detailed build information")
 
 	// Shadow global flags so they don't appear under `ork version`
 	versionCmd.Flags().Bool("debug", false, "")
