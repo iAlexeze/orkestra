@@ -108,7 +108,7 @@ five minutes.
 
 ```bash
 # Install
-brew install iAlexeze/tap/ork
+brew install orkspace/tap/ork
 
 # Scaffold a project
 ork init my-platform

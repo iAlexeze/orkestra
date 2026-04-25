@@ -2,7 +2,7 @@
 # install.sh — Orkestra CLI Installer (Runtime + Control Center)
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/refs/heads/main/install.sh | bash
 #
 # Options (via environment variables):
 #   ORK_VERSION     — pin a specific version (default: latest release)
@@ -11,22 +11,22 @@
 #
 # Examples:
 #   # Install latest (both runtime and control center)
-#   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | bash
+#   curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/refs/heads/main/install.sh | bash
 #
 #   # Install specific version
-#   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | ORK_VERSION=v1.0.0 bash
+#   curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/refs/heads/main/install.sh | ORK_VERSION=v1.0.0 bash
 #
 #   # Install to custom directory
-#   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
+#   curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/refs/heads/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
 #
 #   # Install runtime only (skip control center)
-#   curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/refs/heads/main/install.sh | ORK_SKIP_CC=true bash
+#   curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/refs/heads/main/install.sh | ORK_SKIP_CC=true bash
 
 set -euo pipefail
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-REPO="ialexeze/orkestra"
+REPO="orkspace/orkestra"
 RUNTIME_BINARY="ork"
 CONTROL_BINARY="orkcc"
 INSTALL_DIR="${ORK_INSTALL_DIR:-/usr/local/bin}"

@@ -63,10 +63,10 @@ Install the `ork` CLI – the control center is built right in.
 
 ```bash
 # macOS
-brew tap iAlexeze/tap && brew install ork
+brew tap orkspace/tap && brew install ork
 
 # Linux
-curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
 
 # Verify installation
 ork version
@@ -137,7 +137,7 @@ helm upgrade --install orkestra orkestra/orkestra -f values.yaml
 docker run -d \
   --name orkestra-cc \
   -p 8090:8090 \
-  ghcr.io/iAlexeze/orkestra-cc:latest \
+  ghcr.io/orkspace/orkestra-cc:latest \
   -u "http://host.docker.internal:8080,http://host.docker.internal:8081"
 ```
 

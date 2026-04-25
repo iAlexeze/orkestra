@@ -59,7 +59,7 @@ Raw dot-path navigation (`{{ .children.deployment.status.readyReplicas }}`) pani
 - All workflows now accept configurable inputs:
   - `image_tag` (stripped version) passed from a central `prepare` job
   - Repository, image names, Helm repo URL, Homebrew tap, etc.
-- Removed hardcoded project names (`orkspace`, `ialexeze`, `orkestra`) – workflows are portable
+- Removed hardcoded project names (`orkspace`, `orkestra`) – workflows are portable
 - Added `prepare` job to strip `v` from Git tags and propagate `image_tag` to downstream jobs
 - Standardized tag handling: Git tags keep `v`, container images and Helm charts use plain semver
 

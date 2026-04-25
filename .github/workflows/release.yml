@@ -71,7 +71,7 @@ jobs:
     secrets: inherit
     with:
       image_tag: ${{ needs.prepare.outputs.image_tag }}
-      tap_repository: ialexeze/homebrew-tap
+      tap_repository: orkspace/homebrew-tap
 
   # winget:
   #   name: Publish Winget Manifests
