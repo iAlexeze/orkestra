@@ -9,7 +9,7 @@ Deploy Orkestra — the declarative Kubernetes operator runtime — along with i
 - Kubernetes 1.28+
 - Helm 3.10+
 - `kubectl` configured for your cluster
-- `ork` CLI installed (see [Orkestra CLI installation](https://github.com/ialexeze/orkestra))
+- `ork` CLI installed (see [Orkestra CLI installation](https://github.com/orkspace/orkestra))
 
 ---
 
@@ -18,7 +18,7 @@ Deploy Orkestra — the declarative Kubernetes operator runtime — along with i
 1. **Install the Orkestra CLI**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ialexeze/orkestra/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
 ```
 
 2. **Create a minimal Katalog** (save as `katalog.yaml`)
@@ -80,7 +80,7 @@ kubectl apply -f bundle.yaml
 ### Step 3 – Deploy with Helm
 
 ```bash
-helm repo add orkestra https://ialexeze.github.io/orkestra
+helm repo add orkestra https://orkspace.github.io/orkestra
 helm install orkestra orkestra/orkestra --namespace orkestra-system
 ```
 
@@ -230,7 +230,7 @@ CRDs and custom resources that Orkestra was managing are **not** deleted – the
 | `runtime.service.type` | Service type | `ClusterIP` |
 | `runtime.service.port` | Service port | `8080` |
 | `runtime.service.annotations` | Service annotations | `{}` |
-| `runtime.resources` | Resource limits and requests | See [values.yaml](https://github.com/ialexeze/orkestra/blob/main/charts/orkestra/values.yaml) |
+| `runtime.resources` | Resource limits and requests | See [values.yaml](https://github.com/orkspace/orkestra/blob/main/charts/orkestra/values.yaml) |
 | `runtime.serviceAccount` | ServiceAccount name (must match generated RBAC) | `"orkestra"` |
 | `runtime.server.readTimeout` | HTTP server read timeout (seconds) | `30` |
 | `runtime.server.writeTimeout` | HTTP server write timeout (seconds) | `60` |
@@ -242,7 +242,7 @@ CRDs and custom resources that Orkestra was managing are **not** deleted – the
 | `runtime.config.degradeThreshold` | Consecutive failures before degraded | `10` |
 | `runtime.config.environment` | Deployment environment | `development` |
 | `runtime.config.watchNamespace` | Restrict to single namespace (empty = all) | `""` |
-| `runtime.startupProbe` | Startup probe configuration | See [values.yaml](https://github.com/ialexeze/orkestra/blob/main/charts/orkestra/values.yaml) |
+| `runtime.startupProbe` | Startup probe configuration | See [values.yaml](https://github.com/orkspace/orkestra/blob/main/charts/orkestra/values.yaml) |
 | `runtime.livenessProbe` | Liveness probe configuration | See values.yaml |
 | `runtime.readinessProbe` | Readiness probe configuration | See values.yaml |
 | `runtime.podSecurityContext` | Pod security context | Non-root (1000) |
