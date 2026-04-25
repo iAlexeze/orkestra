@@ -63,42 +63,13 @@ jobs:
           yq eval ".runtime.image.repository = \"ghcr.io/${{ inputs.repository }}\"" -i charts/${{ inputs.ork }}/values.yaml
           yq eval ".controlCenter.image.repository = \"ghcr.io/${{ inputs.repository }}-cc\"" -i charts/${{ inputs.ork }}/values.yaml
 
-      # - name: Run chart-releaser
-      #   uses: helm/chart-releaser-action@v1.7.0
-      #   env:
-      #     CR_TOKEN: ${{ secrets.ORK_PUBLISH_PAT }}
-      #   with:
-      #     charts_dir: charts
-      #     skip_existing: true
-
-      - name: Package and push Helm chart to gh-pages
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.7.0
         env:
-          GH_TOKEN: ${{ secrets.ORK_PUBLISH_PAT }}
-        run: |
-          set -eux
-          CHART_DIR="charts/${{ inputs.ork }}"
-          TAG="${{ github.ref_name }}"
-          VERSION="${TAG#v}"
-
-          # Package chart
-          helm package "$CHART_DIR" --version "$VERSION" --app-version "${{ inputs.image_tag }}" -d .cr-release-packages
-
-          # Clone gh-pages branch
-          git clone --branch gh-pages "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" /tmp/gh-pages
-
-          # Copy tgz
-          cp ".cr-release-packages/${ORK}-${VERSION}.tgz" /tmp/gh-pages/
-
-          # Update index
-          cd /tmp/gh-pages
-          helm repo index . --url "https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}" --merge index.yaml
-
-          # Commit & push
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "*.tgz" index.yaml
-          git commit -m "Release ${ORK}-${VERSION}"
-          git push origin gh-pages
+          CR_TOKEN: ${{ secrets.ORK_PUBLISH_PAT }}
+        with:
+          charts_dir: charts
+          skip_existing: true
 
       - name: Write summary
         run: |

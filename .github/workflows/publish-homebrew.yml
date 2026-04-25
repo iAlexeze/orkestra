@@ -31,7 +31,7 @@ jobs:
 
       - name: Download checksums
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          TAG="${{ github.ref_name }}"
           curl -sSfL "https://github.com/${{ inputs.repository }}/releases/download/${TAG}/checksums.txt" -o checksums.txt
 
       - name: Extract SHA256 values

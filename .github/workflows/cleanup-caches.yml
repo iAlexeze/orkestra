@@ -1,0 +1,60 @@
+name: 'Cleanup GitHub Actions Caches'
+on:
+  workflow_call:
+    inputs:
+      older_than_days:
+        description: 'Delete caches older than this many days'
+        required: false
+        type: string
+        default: '2'
+      owner:
+        description: 'Repository owner'
+        required: false
+        type: string
+        default: ${{ github.repository_owner }}
+      repo:
+        description: 'Repository name'
+        required: false
+        type: string
+        default: ${{ github.event.repository.name }}
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install gh (if missing)
+        shell: bash
+        run: |
+          if ! command -v gh &> /dev/null; then
+            echo "gh not found, installing..."
+            curl -fsSL https://github.com/cli/cli/releases/download/v2.48.0/gh_2.48.0_linux_amd64.tar.gz -o gh.tar.gz
+            sudo tar -xzf gh.tar.gz -C /usr/local --strip-components=1
+            rm gh.tar.gz
+          fi
+      - name: Clean up old caches
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.ORK_PUBLISH_PAT }}
+          OWNER: ${{ inputs.owner }}
+          REPO: ${{ inputs.repo }}
+          OLDER_THAN_DAYS: ${{ inputs.older_than_days }}
+        run: |
+          set -euo pipefail
+          now=$(date +%s)
+          deleted=0
+
+          echo "Fetching caches for ${OWNER}/${REPO} older than ${OLDER_THAN_DAYS} days..."
+
+          gh api "/repos/${OWNER}/${REPO}/actions/caches" --paginate --jq '.actions_caches[]' | while read -r cache; do
+            id=$(echo "$cache" | jq -r '.id')
+            key=$(echo "$cache" | jq -r '.key')
+            created_at=$(echo "$cache" | jq -r '.created_at')
+            created_ts=$(date -d "$created_at" +%s)
+            age_days=$(( (now - created_ts) / 86400 ))
+            if [ "$age_days" -ge "$OLDER_THAN_DAYS" ]; then
+              echo "Deleting cache id=$id key=$key age=${age_days}d"
+              gh api -X DELETE "/repos/${OWNER}/${REPO}/actions/caches/$id" --silent
+            fi
+          done
+
+          echo "Deleted ${deleted} caches."
