@@ -24,14 +24,14 @@ var validateCmd = &cobra.Command{
 			return err
 		}
 
+		fmt.Println()
+		fmt.Println(utils.Bold("Validating Katalog..."))
+		fmt.Println()
+
 		_, err = k.ValidateConfig(kfg)
 		if err != nil {
 			return err
 		}
-
-		fmt.Println()
-		fmt.Println(utils.Bold("Validating Katalog..."))
-		fmt.Println()
 
 		builtIn := 0
 		custom := 0

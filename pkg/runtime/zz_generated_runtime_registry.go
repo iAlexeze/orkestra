@@ -4,11 +4,21 @@
 package runtime
 
 import (
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func RegisterRuntimeObjects() {}
 
+// RegisterTypedScheme drains orktypes.SchemeAdderFns — functions registered by
+// external generated packages via their init() calls. This is how the user's
+// generated pkg/runtime wires its AddToScheme functions into NewSchemeRegistry
+// without any explicit call beyond the blank import.
 func RegisterTypedScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
+	for _, fn := range orktypes.SchemeAdderFns {
+		if err := fn(scheme); err != nil {
+			return nil, err
+		}
+	}
 	return scheme, nil
 }
