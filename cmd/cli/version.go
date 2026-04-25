@@ -9,12 +9,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var verbose bool
-
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show Orkestra version",
 	Run: func(cmd *cobra.Command, args []string) {
+		verbose, _ := cmd.Flags().GetBool("verbose")
+
 		if verbose {
 			fmt.Println(utils.OrkestraLogoCLI)
 			fmt.Println("Orkestra")
@@ -35,13 +35,11 @@ var versionCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
-	versionCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show detailed build information")
 
 	// Shadow global flags so they don't appear under `ork version`
 	versionCmd.Flags().Bool("debug", false, "")
 	versionCmd.Flags().String("kubeconfig", "", "")
 	versionCmd.Flags().StringSlice("katalog", nil, "")
-	versionCmd.Flags().Bool("verbose", false, "")
 
 	// Hide them from help output
 	versionCmd.Flags().MarkHidden("debug")

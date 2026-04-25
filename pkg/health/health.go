@@ -17,6 +17,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// certManagerIface is the subset of certmanager.Manager that HealthServer needs.
+// Defined locally so pkg/health does not import pkg/certmanager.
+type certManagerIface interface {
+	DeleteCertificateAndSecret(ctx context.Context, namespace, secretName string) error
+}
+
 // HealthServer is Orkestra’s runtime-facing health and admission surface.
 // It owns all HTTP/HTTPS endpoints (health, readiness, metrics, conversion,
 // validation, mutation, deletion protection) and acts as the lifecycle anchor
@@ -99,6 +105,10 @@ type HealthServer struct {
 
 	// Full Konfig object for accessing cluster, security, and runtime settings.
 	konfig *konfig.Konfig
+
+	// certMgr handles TLS secret lifecycle. Set via SetCertManager.
+	// Nil when TLS was user-provided or security is disabled.
+	certMgr certManagerIface
 }
 
 // WebhookConfgurationOptions captures the declarative enablement state for all
@@ -560,6 +570,18 @@ func (h *HealthServer) Shutdown(ctx context.Context) {
 				logger.Info().
 					Str("config", namespaceProtectionWebhookConfigName).
 					Msg("namespace protection webhook removed")
+			}
+		}
+
+		// Optional cleanup of the TLS Secret when deletion-protection cleanupOnShutdown is enabled.
+		if h.certMgr != nil && kat.DeletionProtectionCleanupOnShutdown() && h.konfig != nil {
+			ns := h.konfig.Cluster().Namespace
+			if err := h.certMgr.DeleteCertificateAndSecret(ctx, ns, "orkestra-tls"); err != nil {
+				logger.Error().Err(err).Msg("tls secret cleanup error")
+			} else {
+				logger.Info().
+					Str("namespace", ns).
+					Msg("tls secret removed on shutdown")
 			}
 		}
 	}

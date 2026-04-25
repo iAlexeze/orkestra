@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/orkspace/orkestra/pkg/konfig"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -21,9 +22,9 @@ func ConfigMap(inputFile, namespace, outputFile string) error {
 		return fmt.Errorf("read %s: %w", inputFile, err)
 	}
 
-	// Use default namespace if not provided
+	// Use ORKESTRA_NAMESPACE env var when the caller does not pass --namespace.
 	if namespace == "" {
-		namespace = "orkestra-system"
+		namespace = konfig.GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system")
 	}
 
 	// Build ConfigMap
@@ -35,6 +36,7 @@ func ConfigMap(inputFile, namespace, outputFile string) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      defaultConfigMapName,
 			Namespace: namespace,
+			Labels:    konfig.OrkestraBaseLabels(),
 		},
 		Data: map[string]string{
 			defaultConfigMapKey: string(raw),
@@ -74,6 +76,7 @@ func RenderConfigMapToString(inputFile, namespace string) (string, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      defaultConfigMapName,
 			Namespace: namespace,
+			Labels:    konfig.OrkestraBaseLabels(),
 		},
 		Data: map[string]string{
 			defaultConfigMapKey: string(raw),

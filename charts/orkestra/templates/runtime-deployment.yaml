@@ -66,7 +66,9 @@ spec:
             - name: MAX_QUEUE_DEPTH
               value: {{ .Values.runtime.config.maxQueueDepth | quote }}
             - name: ORKESTRA_NAMESPACE
-              value: {{ .Release.Namespace }}
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             - name: ORKESTRA_ENV
               value: {{ .Values.runtime.config.environment | quote }}
             - name: DEGRADE_THRESHOLD

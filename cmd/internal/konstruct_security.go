@@ -7,7 +7,7 @@
 //
 //  1. TLS certificate generation — when deletion protection, admission webhooks,
 //     or conversion webhooks are enabled and no explicit cert is configured.
-//     Uses GenerateTLSBundle from run_secrets_tls.go. Stores in orkestra-tls Secret.
+//     Uses certmanager.Manager to generate and store the bundle in orkestra-tls Secret.
 //
 //  2. CRD conversion webhook patch — when a CRD declares conversion.updateCRD: true,
 //     Orkestra patches the CRD's spec.conversion.webhook.clientConfig.caBundle with
@@ -23,24 +23,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"time"
 
+	"github.com/orkspace/orkestra/pkg/certmanager"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/reconciler"
-	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
-	// orkestraTLSSecretName is the default Secret name for Orkestra's TLS cert.
-	orkestraTLSSecretName = "orkestra-tls"
-
-	// Default cert validity — 1 year.
+	// defaultCertValidFor is the default certificate validity duration.
 	defaultCertValidFor = "1y"
 )
 
@@ -50,13 +46,28 @@ const (
 // Order:
 //  1. TLS  — must succeed before the HTTPS server starts (webhook endpoint)
 //  2. CRD patch — patches caBundle into CRDs that declare updateCRD: true
+//
+// Returns the cert file path, key file path, and the cert manager (for shutdown cleanup).
 func ensureSecurity(
 	ctx context.Context,
 	kfg *konfig.Konfig,
 	kat *katalog.Katalog,
 	kube *kubeclient.Kubeclient,
-) (tlsCertFile, tlsKeyFile string, err error) {
+) (tlsCertFile, tlsKeyFile string, certMgr certmanager.Manager, err error) {
 	namespace := kfg.Cluster().Namespace
+
+	// ── Namespace labeling ────────────────────────────────────────────────
+	// The deletion-protection webhook uses ObjectSelector to narrow to labeled
+	// resources. Namespaces are cluster-scoped and carry no labels by default,
+	// so the webhook would never fire for the Orkestra namespace unless we label
+	// it ourselves. Apply the full orkestra resource label set (including
+	// orkestra.io/deletion-protection) so the webhook intercepts any attempt to
+	// delete this namespace.
+	if err := ensureNamespaceLabeled(ctx, kube, namespace, kfg.OrkestraResourceLabels()); err != nil {
+		logger.Warn().Err(err).
+			Str("namespace", namespace).
+			Msg("security: failed to label orkestra namespace — deletion protection will not cover it")
+	}
 
 	// ── TLS certificate management ────────────────────────────────────────
 	// TLS is required whenever deletion protection, admission webhooks, or
@@ -64,9 +75,8 @@ func ensureSecurity(
 	// TLS_KEY those are used as-is. Otherwise Orkestra generates self-signed
 	// certs and stores them in the orkestra-tls Secret.
 	needsTLS := kat.NeedsCertificates()
-
 	if !needsTLS {
-		return "", "", nil
+		return "", "", nil, nil
 	}
 
 	configuredCert := kfg.Security().Webhooks.TLSCert
@@ -77,27 +87,42 @@ func ensureSecurity(
 		logger.Info().
 			Str("cert", configuredCert).
 			Msg("security: using provided TLS certificates")
-		return configuredCert, configuredKey, nil
+		return configuredCert, configuredKey, nil, nil
 	}
 
-	// No explicit cert configured — generate self-signed
+	// No explicit cert configured — generate self-signed via certmanager.
 	logger.Info().Msg("security: generating TLS certificates")
 
 	serviceName := kat.OrkestraServiceName()
-	svcNamespace := namespace
+	mgr := certmanager.New(kube.Clientset())
 
-	bundle, err := reconciler.GenerateTLSBundle(
-		serviceName+"."+svcNamespace+".svc",
-		[]string{
-			serviceName,
-			serviceName + "." + svcNamespace,
-			serviceName + "." + svcNamespace + ".svc",
-			serviceName + "." + svcNamespace + ".svc.cluster.local",
-		},
-		defaultCertValidFor,
-	)
+	bundle, err := mgr.EnsureCertificate(ctx, certmanager.CertificateSpec{
+		ServiceName: serviceName,
+		Namespace:   namespace,
+		SecretName:  certmanager.DefaultTLSSecretName,
+		ValidFor:    defaultCertValidFor,
+		BaseLabels:  kfg.OrkestraResourceLabels(),
+	})
 	if err != nil {
-		logger.Fatal().Err(err).Msg("security: failed to generate TLS certificates")
+		// Best-effort — webhook caBundle may be unavailable, but log and continue.
+		logger.Warn().Err(err).
+			Str("secret", certmanager.DefaultTLSSecretName).
+			Msg("security: failed to store TLS secret — webhook caBundle may be unavailable")
+		// Re-generate bundle without storing so certs can still be written to files.
+		bundle, err = reconciler.GenerateTLSBundle(
+			serviceName+"."+namespace+".svc",
+			[]string{
+				serviceName,
+				serviceName + "." + namespace,
+				serviceName + "." + namespace + ".svc",
+				serviceName + "." + namespace + ".svc.cluster.local",
+			},
+			defaultCertValidFor,
+		)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("security: failed to generate TLS certificates")
+		}
+		mgr = nil // no secret was stored; don't attempt cleanup
 	}
 
 	certFile, keyFile, writeErr := writeTLSToFiles(bundle)
@@ -105,29 +130,22 @@ func ensureSecurity(
 		logger.Fatal().Err(writeErr).Msg("security: failed to write TLS certificates to files")
 	}
 
-	// Store in the orkestra-tls Secret for the webhook caBundle
-	if err := storeTLSSecret(kfg, ctx, kube, namespace, orkestraTLSSecretName, bundle); err != nil {
-		logger.Warn().Err(err).
-			Str("secret", orkestraTLSSecretName).
-			Msg("security: failed to store TLS secret — webhook caBundle may be unavailable")
-	}
-
 	logger.Info().
 		Str("cert", certFile).
-		Str("secret", orkestraTLSSecretName).
+		Str("secret", certmanager.DefaultTLSSecretName).
 		Msg("security: TLS certificates generated and stored")
 
 	// ── 2. CRD conversion webhook patch ──────────────────────────────────────
 	// For each enabled CRD that declares conversion.updateCRD: true, patch the
 	// CRD's spec.conversion.webhook.clientConfig.caBundle with the generated CA.
-	if err := patchConversionCRDs(ctx, kube, kat, bundle.CACertPEM, serviceName, svcNamespace); err != nil {
+	if err := patchConversionCRDs(ctx, kube, kat, bundle.CACertPEM, serviceName, namespace); err != nil {
 		logger.Warn().Err(err).Msg("security: some CRD conversion patches failed")
 	}
 
-	// Update katalog field - needed for deciding crd patching rbac
+	// Update katalog field — needed for deciding CRD patching RBAC.
 	kat.AutogeneratedCerts.Store(true)
 
-	return certFile, keyFile, nil
+	return certFile, keyFile, mgr, nil
 }
 
 // patchConversionCRDs patches the caBundle into every enabled CRD that has
@@ -151,8 +169,8 @@ func patchConversionCRDs(
 		}
 
 		crdName := crd.APITypes.Plural + "." + crd.APITypes.Group
+		storageVersion := crd.Conversion.StorageVersion
 
-		// Strategic-merge patch for the conversion block
 		patch := map[string]interface{}{
 			"spec": map[string]interface{}{
 				"conversion": map[string]interface{}{
@@ -167,7 +185,7 @@ func patchConversionCRDs(
 								"port":      port,
 							},
 						},
-						"conversionReviewVersions": []string{"v1"},
+						"conversionReviewVersions": []string{storageVersion},
 					},
 				},
 			},
@@ -183,7 +201,7 @@ func patchConversionCRDs(
 			ApiextensionsV1().
 			CustomResourceDefinitions().
 			Patch(ctx, crdName, types.MergePatchType, patchBytes, metav1.PatchOptions{})
-		if err != nil {
+		if err != nil && !k8serrors.IsNotFound(err) {
 			errs = append(errs, fmt.Errorf("patching CRD %s: %w", crdName, err))
 			continue
 		}
@@ -224,60 +242,26 @@ func writeTLSToFiles(bundle *reconciler.TLSBundle) (certFile, keyFile string, er
 	return cert.Name(), key.Name(), nil
 }
 
-// storeTLSSecret creates or updates the orkestra-tls Secret with the generated
-// TLS bundle. The Secret holds three keys:
-//
-//	tls.crt — PEM-encoded signed certificate (server cert)
-//	tls.key — PEM-encoded private key
-//	ca.crt  — PEM-encoded CA certificate (used as caBundle in webhook config)
-func storeTLSSecret(
-	kfg *konfig.Konfig,
-	ctx context.Context,
-	kube *kubeclient.Kubeclient,
-	namespace, secretName string,
-	bundle *reconciler.TLSBundle,
-) error {
-	client := kube.Clientset().CoreV1().Secrets(namespace)
-
-	labels := kfg.OrkestraResourceLabels()
-	labels["app.kubernetes.io/component"] = "tls"
-
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: namespace,
-			Labels:    labels,
-			Annotations: map[string]string{
-				"orkestra.orkspace.io/generated-at": time.Now().UTC().Format(time.RFC3339),
-			},
-		},
-		Type: corev1.SecretTypeTLS,
-		Data: map[string][]byte{
-			"tls.crt": bundle.CertPEM,
-			"tls.key": bundle.KeyPEM,
-			"ca.crt":  bundle.CACertPEM,
+// ensureNamespaceLabeled patches the Orkestra namespace with the given labels
+// so that the deletion-protection webhook's ObjectSelector can match it.
+// Namespaces are cluster-scoped and carry no labels by default — without this
+// patch the webhook rule for namespaces would never fire for this namespace.
+// Uses a strategic-merge patch so existing labels are preserved.
+func ensureNamespaceLabeled(ctx context.Context, kube *kubeclient.Kubeclient, namespace string, labels map[string]string) error {
+	patch := map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"labels": labels,
 		},
 	}
-
-	_, err := client.Create(ctx, secret, metav1.CreateOptions{})
-	if err == nil {
-		return nil
-	}
-
-	if !k8serrors.IsAlreadyExists(err) {
-		return fmt.Errorf("creating tls secret %s/%s: %w", namespace, secretName, err)
-	}
-
-	existing, err := client.Get(ctx, secretName, metav1.GetOptions{})
+	patchBytes, err := json.Marshal(patch)
 	if err != nil {
-		return fmt.Errorf("getting existing tls secret %s/%s: %w", namespace, secretName, err)
+		return fmt.Errorf("marshalling namespace label patch: %w", err)
 	}
-
-	secret.ResourceVersion = existing.ResourceVersion
-	_, err = client.Update(ctx, secret, metav1.UpdateOptions{})
-	if err != nil {
-		return fmt.Errorf("updating tls secret %s/%s: %w", namespace, secretName, err)
+	_, err = kube.Clientset().CoreV1().Namespaces().Patch(
+		ctx, namespace, types.MergePatchType, patchBytes, metav1.PatchOptions{},
+	)
+	if err != nil && !k8serrors.IsNotFound(err) {
+		return fmt.Errorf("patching namespace %s: %w", namespace, err)
 	}
-
 	return nil
 }

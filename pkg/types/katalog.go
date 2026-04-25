@@ -13,6 +13,13 @@ type KatalogFile struct {
 	Spec       KatalogSpec     `yaml:"spec"`
 	Security   KatalogSecurity `yaml:"security"`
 
+	// Notification holds the top-level alerting configuration for this Katalog.
+	// Defines channels (email, Slack) and per-team routing rules that fire when
+	// a managed CRD's conditions transition. When a Komposer references multiple
+	// source Katalogs, notification blocks are merged — source teams are inherited
+	// and the Komposer's own teams win on name conflict.
+	Notification *KatalogNotification `yaml:"notification,omitempty"`
+
 	// Providers declares which external provider libraries this Katalog requires.
 	// Top-level alongside spec: and security: — providers represent a distinct
 	// operational concern (infrastructure dependencies) separate from CRD definitions.

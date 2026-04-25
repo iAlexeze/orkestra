@@ -36,7 +36,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.ORK_PUBLISH_PAT }}
 
       - name: Extract metadata for runtime
         id: meta-runtime

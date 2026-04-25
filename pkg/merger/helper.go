@@ -8,7 +8,59 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
+
+// mergeKatalogSecurity merges two KatalogSecurity values.
+// Fields that are non-nil/non-zero in override win; otherwise the base value is kept.
+// This is the correct semantics for Komposer layering: source Katalog settings are
+// inherited, and the Komposer only needs to declare what it explicitly wants to change.
+func mergeKatalogSecurity(base, override orktypes.KatalogSecurity) orktypes.KatalogSecurity {
+	result := base
+	if override.DeletionProtection != nil {
+		result.DeletionProtection = override.DeletionProtection
+	}
+	if override.Webhooks != nil {
+		result.Webhooks = override.Webhooks
+	}
+	if override.Conversion != nil {
+		result.Conversion = override.Conversion
+	}
+	if override.NamespaceProtection != nil {
+		result.NamespaceProtection = override.NamespaceProtection
+	}
+	if override.ServiceName != "" {
+		result.ServiceName = override.ServiceName
+	}
+	return result
+}
+
+// mergeKatalogNotification merges two KatalogNotification values.
+// Source teams are inherited as the base; override teams win on name conflict.
+// If override declares Defaults, those replace the base Defaults entirely.
+// A nil override returns base unchanged; a nil base returns override.
+func mergeKatalogNotification(base, override *orktypes.KatalogNotification) *orktypes.KatalogNotification {
+	if override == nil {
+		return base
+	}
+	if base == nil {
+		return override
+	}
+	result := *base
+	if len(override.Teams) > 0 {
+		if result.Teams == nil {
+			result.Teams = make(map[string]*orktypes.NotificationTeam, len(override.Teams))
+		}
+		for name, team := range override.Teams {
+			result.Teams[name] = team
+		}
+	}
+	if override.Defaults != nil {
+		result.Defaults = override.Defaults
+	}
+	return &result
+}
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
