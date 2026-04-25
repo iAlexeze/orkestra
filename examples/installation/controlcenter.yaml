@@ -29,7 +29,7 @@ spec:
       serviceAccountName: orkestra-cc
       containers:
         - name: control-center
-          image: ghcr.io/ialexeze/orkestra-cc:0.1.3
+          image: ghcr.io/orkspace/orkestra-cc:0.1.3
           imagePullPolicy: Always
           args:
             - -u

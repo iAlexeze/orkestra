@@ -13,4 +13,4 @@ spec:
   deploy:
     enabled: true
   region: "us-east-1"
-  imageRegistry: "ialexeze/webapp-java"
+  imageRegistry: "orkspace/webapp-java"

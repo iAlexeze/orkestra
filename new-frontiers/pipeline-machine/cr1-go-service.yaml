@@ -13,4 +13,4 @@ spec:
   deploy:
     enabled: true
   region: "eu-west-1"
-  imageRegistry: "ialexeze/webapp-go"
+  imageRegistry: "orkspace/webapp-go"

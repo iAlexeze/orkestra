@@ -64,7 +64,7 @@ For additional details, see the [Architecture Overview](./runtime-manual/archite
 
 ```bash
 # Install Orkestra
-brew install iAlexeze/tap/ork
+brew install orkspace/tap/ork
 # or
 curl -sSL https://raw.githubusercontent.com/orkestra-sh/orkestra/main/install.sh | bash
 ```

@@ -30,24 +30,24 @@ If you want to understand the concepts before diving in, read
 ### macOS (Homebrew)
 
 ```bash
-brew tap iAlexeze/tap
+brew tap orkspace/tap
 brew install ork
 ```
 
 ### Linux / macOS (curl)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
 ```
 
 ### Options
 
 ```bash
 # Pin to a specific version
-curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | ORK_VERSION=v1.0.0 bash
+curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | ORK_VERSION=v1.0.0 bash
 
 # Install to a custom directory
-curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
+curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
 ```
 
 ### Verify the binary (recommended)

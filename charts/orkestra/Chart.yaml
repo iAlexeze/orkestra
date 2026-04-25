@@ -19,16 +19,16 @@ keywords:
   - dashboard
   - observability
 
-home: https://github.com/iAlexeze/orkestra
+home: https://github.com/orkspace/orkestra
 sources:
-  - https://github.com/iAlexeze/orkestra
+  - https://github.com/orkspace/orkestra
 
 maintainers:
   - name: Orkspace
     email: orkestra-releases@orkspace.io
-    url: https://github.com/iAlexeze/orkestra
+    url: https://github.com/orkspace/orkestra
 
-icon: https://raw.githubusercontent.com/iAlexeze/orkestra/main/docs/assets/logo.png
+icon: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/logo.png
 
 annotations:
   artifacthub.io/license: MIT
@@ -36,20 +36,20 @@ annotations:
   artifacthub.io/operatorCapabilities: Basic Install
   artifacthub.io/links: |
     - name: Documentation
-      url: https://github.com/iAlexeze/orkestra/tree/main/docs
+      url: https://github.com/orkspace/orkestra/tree/main/docs
     - name: Whitepaper
-      url: https://github.com/iAlexeze/orkestra/blob/main/publish/declarative-operators-whitepaper.md
+      url: https://github.com/orkspace/orkestra/blob/main/publish/declarative-operators-whitepaper.md
     - name: Why Orkestra?
-      url: https://github.com/iAlexeze/orkestra/blob/main/publish/why-orkestra.md
+      url: https://github.com/orkspace/orkestra/blob/main/publish/why-orkestra.md
     - name: Control Center Dashboard
-      url: https://github.com/iAlexeze/orkestra/blob/main/docs/controlcenter.md
+      url: https://github.com/orkspace/orkestra/blob/main/docs/controlcenter.md
   artifacthub.io/screenshots: |
     - title: Orkestra Dashboard
-      url: https://raw.githubusercontent.com/iAlexeze/orkestra/main/docs/assets/dashboard.png
+      url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/dashboard.png
     - title: CRD Health View
-      url: https://raw.githubusercontent.com/iAlexeze/orkestra/main/docs/assets/crd-health.png
+      url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/crd-health.png
     - title: Metrics Overview
-      url: https://raw.githubusercontent.com/iAlexeze/orkestra/main/docs/assets/metrics.png
+      url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
   artifacthub.io/crds: |
     - kind: Katalog
       version: v1Alpha
@@ -75,7 +75,7 @@ annotations:
       description: "Initial release of Orkestra v1.0.0"
       links:
         - name: GitHub Release
-          url: https://github.com/iAlexeze/orkestra/releases/tag/v1.0.0
+          url: https://github.com/orkspace/orkestra/releases/tag/v1.0.0
     - kind: added
       description: "Control Center dashboard for real-time CRD observability"
     - kind: added

@@ -52,7 +52,7 @@ func downloadExamplePack(root, pack, version string, refresh bool) error {
 
 	// Otherwise download
 	url := fmt.Sprintf(
-		"https://github.com/ialexeze/orkestra/releases/download/%s/%s",
+		"https://github.com/orkspace/orkestra/releases/download/%s/%s",
 		version, filename,
 	)
 

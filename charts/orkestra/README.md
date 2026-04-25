@@ -8,7 +8,7 @@ Orkestra is a **declarative operator runtime**: a platform for building Kubernet
 - **Orkestra Control Center** — multi‑instance observability UI  
 
 ```bash
-helm repo add orkestra https://ialexeze.github.io/orkestra
+helm repo add orkestra https://orkspace.github.io/orkestra
 helm repo update
 
 helm install orkestra orkestra/orkestra \

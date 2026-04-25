@@ -71,7 +71,7 @@ What exists in production today:
 
 **Distribution**
 
-- Homebrew tap — `brew install iAlexeze/tap/ork`
+- Homebrew tap — `brew install orkspace/tap/ork`
 - curl installer — `curl -sSL .../install.sh | bash` with GPG signing
 - Docker image — GHCR, distroless, two-stage build
 - Helm chart — production-ready deployment chart

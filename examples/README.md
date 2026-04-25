@@ -45,7 +45,7 @@ Production deployment. Admission policy, registry composition, Go hooks, custom 
 All examples require:
 - A running Kubernetes cluster (kind, minikube, or remote)
 - `kubectl` configured
-- `ork` installed: `brew install iAlexeze/tap/ork`
+- `ork` installed: `brew install orkspace/tap/ork`
 
 Advanced examples additionally require:
 - Orkestra deployed in-cluster: see [Deployment Guide](../docs/guides/deployment.md)

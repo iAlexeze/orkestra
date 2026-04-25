@@ -146,7 +146,7 @@ func resolveVersion(requested string) (string, error) {
 	}
 
 	// Fetch latest release tag from GitHub API
-	resp, err := http.Get("https://api.github.com/repos/ialexeze/orkestra/releases/latest")
+	resp, err := http.Get("https://api.github.com/repos/orkspace/orkestra/releases/latest")
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch latest version: %w", err)
 	}
@@ -206,7 +206,7 @@ func runUpgradeCheck(requested string) error {
 
 func installBinary(binary, platform, version string) error {
 	archive := fmt.Sprintf("%s_%s.tar.gz", binary, platform)
-	url := fmt.Sprintf("https://github.com/ialexeze/orkestra/releases/download/%s/%s", version, archive)
+	url := fmt.Sprintf("https://github.com/orkspace/orkestra/releases/download/%s/%s", version, archive)
 
 	fmt.Printf("→ Downloading %s...\n", archive)
 
