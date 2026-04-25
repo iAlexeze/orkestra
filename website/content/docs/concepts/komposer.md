@@ -14,7 +14,7 @@ declares CRDs, a Komposer declares where to find them.
 
 ## A Simple Komposer?
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer          # ← the distinction
 metadata:
   name: platform-komposer
@@ -66,7 +66,7 @@ what a source contains.
 ## Komposer structure
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: my-komposer
@@ -347,7 +347,7 @@ CRD definitions from the rendered output.
 
 ```yaml
 # charts/platform-crds/templates/katalog.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: {{ .Release.Name }}-katalog
@@ -477,7 +477,7 @@ are composing definitions from multiple sources.
 
 ```yaml
 # katalog.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-katalog
@@ -507,7 +507,7 @@ ork run --katalog ./katalog.yaml
 
 ```yaml
 # komposer.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform-komposer
@@ -546,7 +546,7 @@ ork run --katalog ./komposer.yaml
 
 ```yaml
 # enterprise-komposer.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: enterprise-komposer
@@ -615,7 +615,7 @@ ork template --katalog enterprise-komposer.yaml --graph
 
 ```yaml
 # production-komposer.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: production-komposer

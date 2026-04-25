@@ -18,7 +18,7 @@ A **Katalog** is a declarative file that tells Orkestra:
 Create a file called `my-katalog.yaml`:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: my-first-katalog
@@ -203,7 +203,7 @@ Orkestra ensures:
 Here is a complete Katalog for a simple web application:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: webapp-katalog

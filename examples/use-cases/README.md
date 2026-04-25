@@ -202,12 +202,12 @@ spec:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
               when:
-                - field: cross.db.status.phase
+                - field: "{{ phase .cross.db }}"
                   equals: "Ready"             # gate on Database CR's phase
           configmaps:
             - name: "{{ .metadata.name }}-config"
               data:
-                DB_HOST: "{{ .cross.db.status.endpoint }}"  # copy endpoint
+                DB_HOST: "{{ get .cross.db "status" "endpoint" }}"  # copy endpoint
 ```
 
 **Apply:**
@@ -218,7 +218,7 @@ kubectl apply -f 03-cross-crd/application-cr.yaml # Application observes it
 
 **Watch it:**
 1. Control Center → application → View Resources → click `my-app`
-2. Status shows `cross.db.status.phase` — watch it change as Database reconciles
+2. Status shows the `phase` field — watch it change as Database reconciles
 3. The Deployment appears only when the Database CR reaches `Ready`
 4. The ConfigMap contains the database endpoint — auto-updated on every reconcile
 
@@ -433,4 +433,4 @@ writing a single line of Go.
 | AND conditions | `when: [{field, equals}]` | `if a && b` |
 | Provider call | `providers: {aws: [{s3: ...}]}` | AWS SDK v2 in a hook |
 | Ordered phases | `status.fields` with `when:` | State machine in constructor |
-| Child status | `{{ .children.deployment.status.readyReplicas }}` | `client.Get` for child resource |
+| Child status | `{{ readyReplicas .children.deployment }}` | `client.Get` for child resource |

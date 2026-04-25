@@ -144,7 +144,7 @@ operatorBox:
     deployments:
       - name: "{{ .metadata.name }}"
         when:
-          - field: cross.db.status.phase
+          - field: "{{ phase .cross.db }}"
             equals: "Ready"
 ```
 

@@ -45,14 +45,15 @@ type KatalogData struct {
 
 // IndexData is the data for the main page
 type IndexData struct {
-	Katalogs        []KatalogSummary
-	TotalKatalogs   int
-	HealthyKatalogs int
-	TotalCRDs       int
-	TotalWorkers    int
-	TotalResources  int
-	AnyHealthy      bool
-	OrkestraURLs    string
+	Katalogs             []KatalogSummary
+	TotalKatalogs        int
+	HealthyKatalogs      int
+	TotalCRDs            int
+	TotalWorkers         int
+	TotalResources       int
+	AnyHealthy           bool
+	OrkestraURLs         string
+	EnableRuntimeManager bool
 }
 
 // StatusCounts tracks CRD health counts

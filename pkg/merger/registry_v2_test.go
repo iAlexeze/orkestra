@@ -199,7 +199,7 @@ func TestValidatePatternStructure_MultipleViolations_AllReported(t *testing.T) {
 // by serving files at raw.githubusercontent.com-like paths on a test server.
 // They use ExportedGitHubRawURL to construct the expected request paths.
 
-var v2KatalogYAML = []byte(`apiVersion: orkestra.konductor.io/v1Alpha
+var v2KatalogYAML = []byte(`apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: test-katalog
@@ -223,7 +223,7 @@ func v2PatternServer(t *testing.T, version string, overrides map[string][]byte) 
 	files := map[string][]byte{
 		"/" + version + "/crd.yaml":      []byte("kind: CustomResourceDefinition"),
 		"/" + version + "/katalog.yaml":  v2KatalogYAML,
-		"/" + version + "/komposer.yaml": []byte("apiVersion: orkestra.konductor.io/v1Alpha\nkind: Komposer\nmetadata:\n  name: c\nspec:\n  crds:\n    - name: myapp\n      enabled: true\n      apiTypes:\n        group: test.orkestra.io\n        version: v1alpha1\n        kind: MyApp\n        plural: myapps\n"),
+		"/" + version + "/komposer.yaml": []byte("apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: c\nspec:\n  crds:\n    - name: myapp\n      enabled: true\n      apiTypes:\n        group: test.orkestra.io\n        version: v1alpha1\n        kind: MyApp\n        plural: myapps\n"),
 		"/" + version + "/cr.yaml":       []byte("kind: MyApp"),
 		"/" + version + "/README.md":     []byte("# MyApp"),
 	}

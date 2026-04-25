@@ -284,10 +284,12 @@ func BuildCRDInfoHandler(
 	admStats *health.AdmissionStats,
 	protStats *health.DeletionProtectionStats,
 	webhookControllerStats *health.WebhookStats,
-	isProtected bool,
 	provStats *health.ProviderStats,
 	nsStats *health.NamespaceProtectionStats,
+	isDeletionProtected bool,
 	isNamespaceProtected bool,
+	isConversionEnabled bool,
+	isAdmissionEnabled bool,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := resolveCRDDisplayValues(crd, kfg, inf)
@@ -344,7 +346,7 @@ func BuildCRDInfoHandler(
 		if convStats != nil {
 			snapshot := convStats.GetStats()
 			response.Conversion = &ConversionStatsResponse{
-				Enabled:      kfg.ConversionEnabled(),
+				Enabled:      isConversionEnabled,
 				Total:        snapshot.TotalRequests,
 				Success:      snapshot.SuccessRequests,
 				Failures:     snapshot.FailedRequests,
@@ -357,7 +359,7 @@ func BuildCRDInfoHandler(
 		if admStats != nil {
 			snap := admStats.GetStats(crd.Webhooks.WebhookValidationEnabled() || crd.Webhooks.WebhookMutationEnabled())
 			response.Admission = &AdmissionStatsResponse{
-				WebhooksEnabled:   kfg.AdmissionEnabled(),
+				WebhooksEnabled:   isAdmissionEnabled,
 				ValidationTotal:   snap.ValidationTotal,
 				ValidationAllowed: snap.ValidationAllowed,
 				ValidationDenied:  snap.ValidationDenied,
@@ -378,13 +380,13 @@ func BuildCRDInfoHandler(
 		if protStats != nil {
 			snap := protStats.GetStats()
 			response.DeletionProtection = &DeletionProtectionStatsResponse{
-				Enabled: isProtected,
+				Enabled: isDeletionProtected,
 				Total:   snap.TotalRequests,
 				Blocked: snap.Blocked,
 				Allowed: snap.Allowed,
 			}
 		} else {
-			response.DeletionProtection = &DeletionProtectionStatsResponse{Enabled: isProtected}
+			response.DeletionProtection = &DeletionProtectionStatsResponse{Enabled: isDeletionProtected}
 		}
 
 		// Namespace protection stats — shown conditionally when namespace rules are declared

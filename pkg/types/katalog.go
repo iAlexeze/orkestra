@@ -77,7 +77,7 @@ type KatalogSources struct {
 //
 // Example chart template (templates/katalog.yaml):
 //
-//	apiVersion: orkestra.konductor.io/v1Alpha
+//	apiVersion: orkestra.orkspace.io/v1
 //	kind: Katalog
 //	spec:
 //	  crds:

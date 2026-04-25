@@ -42,7 +42,7 @@ import (
 )
 
 const (
-	finalizerName = "orkestra.konductor.io/pipeline-cleanup"
+	finalizerName = "orkestra.orkspace.io/pipeline-cleanup"
 	backoffLimit  = 5
 )
 

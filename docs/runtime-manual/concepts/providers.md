@@ -170,7 +170,7 @@ through declared `status.fields` using known paths:
 status:
   fields:
     - path: databaseEndpoint
-      value: "{{ .children.rds.endpoint }}"
+      value: "{{ get .children.rds "endpoint" }}"
 ```
 
 The `.children.rds` path is populated when the provider writes the endpoint

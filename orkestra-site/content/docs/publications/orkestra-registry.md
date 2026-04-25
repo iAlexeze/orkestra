@@ -115,7 +115,7 @@ workqueue, health endpoint, and metrics — with no additional code.
 
 ```yaml
 # postgres/v14/katalog.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: postgres-v14

@@ -32,7 +32,7 @@ Orkestra removes that entirely.
 
 ```yaml
 # Declare
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-operator
@@ -290,7 +290,7 @@ operatorBox:
       - path: endpoint
         value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
       - path: readyReplicas
-        value: "{{ .children.deployment.status.readyReplicas }}"
+        value: "{{ get .children.deployment "status" "readyReplicas" }}"
 ```
 
 Status fields are resolved from the live CR and its children after every reconcile. No `updateStatus` calls. No diff logic. Declare what the status should contain. Orkestra writes it.
@@ -359,9 +359,9 @@ operatorBox:
         image: "{{ .spec.image }}"
         env:
           DB_HOST:
-            value: "{{ .cross.db.status.endpoint }}"
+            value: "{{ get .cross.db "status" "endpoint" }}"
         when:
-          - field: cross.db.status.phase
+          - field: "{{ phase .cross.db }}"
             equals: Ready
 ```
 
@@ -527,7 +527,7 @@ operatorBox:
 Pull Katalogs from files, Helm, Git, or OCI registries:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform

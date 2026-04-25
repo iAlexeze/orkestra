@@ -29,7 +29,7 @@ They only load katalogs and merge them into a final, resolved state.
 Create a file called `komposer.yaml`:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: my-first-komposer
@@ -212,7 +212,7 @@ Use inline overrides for environment‑specific settings such as worker counts, 
 Here is a Komposer that loads katalogs from multiple sources and applies overrides:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform-komposer

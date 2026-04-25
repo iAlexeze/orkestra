@@ -34,6 +34,10 @@ package types
 
 // KatalogSecurity holds the full security configuration for a Katalog.
 type KatalogSecurity struct {
+	// ServiceName is the name of the kubernetes service where orkestra
+	// is deployed
+	ServiceName string `yaml:"serviceName,omitempty"`
+
 	// DeletionProtection controls whether Orkestra registers a webhook that
 	// blocks deletion of its managed CRDs, deployment, service, etc.
 	//
@@ -225,6 +229,15 @@ func (s *KatalogSecurity) IsConversionEnabled() bool {
 func (s *KatalogSecurity) DeletionProtectionServiceName(envDefault string) string {
 	if s != nil && s.DeletionProtection != nil && s.DeletionProtection.ServiceName != "" {
 		return s.DeletionProtection.ServiceName
+	}
+	return envDefault
+}
+
+// OrkestraServiceName returns the effective service name for orkestra.
+// Falls back to the provided ENV default.
+func (s *KatalogSecurity) OrkestraServiceName(envDefault string) string {
+	if s != nil && s.ServiceName != "" {
+		return s.ServiceName
 	}
 	return envDefault
 }

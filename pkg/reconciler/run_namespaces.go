@@ -8,10 +8,47 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
-	orkns "github.com/orkspace/orkestra/pkg/orkestra-registry/namespace"
+	orkns "github.com/orkspace/orkestra/pkg/orkestra-registry/namespaces"
 	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
+
+// deleteOwnedNamespaces explicitly deletes all Namespaces declared across
+// onCreate and onReconcile that are owned by this CR.
+//
+// Kubernetes GC does not handle this automatically: owner references from
+// namespace-scoped resources (CRs) to cluster-scoped resources (Namespaces)
+// are not honoured by the garbage collector. Explicit deletion is required.
+func deleteOwnedNamespaces(
+	ctx context.Context,
+	kube *kubeclient.Kubeclient,
+	resolver *orktmpl.Resolver,
+	obj domain.Object,
+	box orktypes.OperatorBoxConfig,
+) error {
+	// Collect all declared namespace sources across template blocks.
+	var srcs []orktypes.NamespaceTemplateSource
+	if box.OnCreate != nil {
+		srcs = append(srcs, box.OnCreate.Namespaces...)
+	}
+	if box.OnReconcile != nil {
+		srcs = append(srcs, box.OnReconcile.Namespaces...)
+	}
+	if box.OnDelete != nil {
+		srcs = append(srcs, box.OnDelete.Namespaces...)
+	}
+
+	for i, src := range srcs {
+		name, err := resolver.Resolve(src.Name)
+		if err != nil || name == "" {
+			continue
+		}
+		if err := orkns.DeleteIfOwned(ctx, kube, obj, name); err != nil {
+			return fmt.Errorf("namespace[%d] %q: %w", i, name, err)
+		}
+	}
+	return nil
+}
 
 // runNamespaces resolves and applies Namespace template declarations.
 //

@@ -169,11 +169,12 @@ The result is that every template expression in the Katalog has access to the
 live state of every child resource without any Go code:
 
 ```
-.children.deployment.status.readyReplicas   — number of ready pods
-.children.deployment.status.replicas        — total pods
-.children.service.status.loadBalancer       — LB ingress IP or hostname
-.children.job.status.succeeded              — completed job count
-.children.cronjob.status.lastScheduleTime   — last run timestamp
+{{ readyReplicas .children.deployment }}                       — number of ready pods
+{{ desiredReplicas .children.deployment }}                     — total desired pods
+{{ serviceLoadBalancerIP .children.service }}                  — LB ingress IP
+{{ serviceLoadBalancerHost .children.service }}                — LB ingress hostname
+{{ jobSucceeded .children.job }}                               — true when job completed
+{{ get .children.cronjob "status" "lastScheduleTime" }}        — last run timestamp
 ```
 
 The same data is available in status field expressions, cross-CRD observation,

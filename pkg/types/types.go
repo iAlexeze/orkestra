@@ -1042,7 +1042,7 @@ type SecretTemplateSource struct {
 	// RotateAfter declares a time-based rotation threshold.
 	// When set alongside once: true, the Secret is recreated when its age
 	// exceeds this duration. The creation time is tracked via the annotation:
-	//   orkestra.konductor.io/generated-at: "2026-04-06T08:00:00Z"
+	//   orkestra.orkspace.io/generated-at: "2026-04-06T08:00:00Z"
 	//
 	// Supported formats: 30s, 5m, 12h, 90d, 1y
 	// Days (d) and years (y) are extensions beyond Go's standard duration format.

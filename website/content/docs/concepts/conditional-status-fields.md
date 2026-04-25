@@ -179,7 +179,7 @@ always drive to `Failed` regardless of what the current phase says.
 
 ## The children dependency
 
-The `when:` conditions on status fields frequently reference `.children.job.status.succeeded`.
+The `when:` conditions on status fields frequently reference `{{ jobSucceeded .children.job }}`.
 This works because `ReadChildren` is called before `resolveStatusFields`:
 
 ```

@@ -16,13 +16,13 @@ func Init(filenames ...string) (*Konfig, error) {
 		ork: orkKonfig{
 			Name:        Orkestra,
 			ShortName:   Ork,
-			Environment: GetStrEnv("ORK_ENV", "development"),
+			Environment: GetStrEnv("ORKESTRA_ENV", "development"),
 		},
 		cluster: clusterKonfig{
 			// KubekonfigPath:   GetStrEnv("KUBEKONFIG", ""),
 			MasterURL: GetStrEnv("MASTER_URL", ""),
 			Name:      GetStrEnv("CLUSTER_NAME", "orkestra-cluster"),
-			Namespace: GetStrEnv("ORKESTRA_NAMESPACE", "default"),
+			Namespace: GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system"),
 
 			// Workload
 			DefaultResync:       GetDurEnvSeconds("DEFAULT_RESYNC", 15),
@@ -47,15 +47,15 @@ func Init(filenames ...string) (*Konfig, error) {
 		//                                 values; overwritten by ensureSecurity() when
 		//                                 Orkestra generates its own certificates)
 		security: func() SecurityConfig {
-			svcName := GetStrEnv("ORKESTRA_SERVICE_NAME", "orkestra")
 			var s SecurityConfig
+			s.ServiceName = GetStrEnv("ORKESTRA_SERVICE_NAME", "orkestra-runtime")
 			s.DeletionProtection.Enabled = GetBoolEnv("ENABLE_DELETION_PROTECTION", false)
 			s.DeletionProtection.FailurePolicy = GetStrEnv("DELETION_PROTECTION_POLICY", "Fail")
-			s.DeletionProtection.ServiceName = svcName
+			s.DeletionProtection.ServiceName = s.ServiceName
 			s.Webhooks.Admission.Enabled = GetBoolEnv("ENABLE_ADMISSION_WEBHOOK", false)
 			s.Conversion.Enabled = GetBoolEnv("ENABLE_CONVERSION", false)
 			s.Webhooks.FailurePolicy = GetStrEnv("WEBHOOK_FAILURE_POLICY", "Ignore")
-			s.Webhooks.ServiceName = svcName
+			s.Webhooks.ServiceName = s.ServiceName
 			s.Conversion.ConversionWindow = GetIntEnv("CONVERSION_WINDOW", 100)
 			s.Webhooks.TLSCert = GetStrEnv("TLS_CERT", "")
 			s.Webhooks.TLSKey = GetStrEnv("TLS_KEY", "")
@@ -64,7 +64,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			s.NamespaceProtection.Enabled = GetBoolEnv("ENABLE_NAMESPACE_PROTECTION", false)
 			s.NamespaceProtection.FailurePolicy = GetStrEnv("NAMESPACE_PROTECTION_FAILURE_POLICY", "Fail")
 			s.NamespaceProtection.CleanupOnShutdown = GetBoolEnv("NAMESPACE_PROTECTION_CLEANUP_ON_SHUTDOWN", false)
-			s.NamespaceProtection.ServiceName = svcName
+			s.NamespaceProtection.ServiceName = s.ServiceName
 			return s
 		}(),
 
@@ -115,7 +115,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			WriteTimeout: GetDurEnvSeconds("SRV_WRITE_TIMEOUT", 20),
 		},
 		konductor: konductorElection{
-			Namespace:     GetStrEnv("ORKESTRA_NAMESPACE", "default"),
+			Namespace:     GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system"),
 			LeaseDuration: GetDurEnvSeconds("LEASE_DURATION", 60),
 			RenewDeadline: GetDurEnvSeconds("RENEW_DEADLINE", 40),
 			RetryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),

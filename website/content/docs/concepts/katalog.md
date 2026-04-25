@@ -54,7 +54,7 @@ A **Katalog** is a YAML file that declares one or more CRD entries. Each entry d
 The simplest Katalog manages a single CRD with no reconciliation logic — just watches and reports health.
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: simple-observer
@@ -78,7 +78,7 @@ Orkestra:
 A complete Katalog declares CRDs, reconciliation templatess and conditional creation.
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-katalog

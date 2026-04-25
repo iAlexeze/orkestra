@@ -24,7 +24,7 @@ The first decision you'll make is whether to use a single Katalog or a Komposer.
 
 ```yaml
 # katalog.yaml — everything in one file
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 spec:
   crds:
@@ -46,7 +46,7 @@ spec:
 
 ```yaml
 # komposer.yaml — combines multiple sources
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 sources:
   files:
@@ -82,7 +82,7 @@ That's the entire decision. See 👉 **[Choosing Between Katalog and Komposer](.
 
 ```yaml
 # Good — start here
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: my-operator

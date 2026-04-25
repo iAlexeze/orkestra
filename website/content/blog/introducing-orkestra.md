@@ -13,7 +13,7 @@ Orkestra flips this model. You write a single YAML file — a **Katalog** — an
 ## The core idea
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-operator

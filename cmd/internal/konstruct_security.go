@@ -83,7 +83,7 @@ func ensureSecurity(
 	// No explicit cert configured — generate self-signed
 	logger.Info().Msg("security: generating TLS certificates")
 
-	serviceName := kat.DeletionProtectionServiceName()
+	serviceName := kat.OrkestraServiceName()
 	svcNamespace := namespace
 
 	bundle, err := reconciler.GenerateTLSBundle(
@@ -248,7 +248,7 @@ func storeTLSSecret(
 			Namespace: namespace,
 			Labels:    labels,
 			Annotations: map[string]string{
-				"orkestra.konductor.io/generated-at": time.Now().UTC().Format(time.RFC3339),
+				"orkestra.orkspace.io/generated-at": time.Now().UTC().Format(time.RFC3339),
 			},
 		},
 		Type: corev1.SecretTypeTLS,

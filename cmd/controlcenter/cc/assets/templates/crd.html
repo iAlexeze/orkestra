@@ -499,65 +499,67 @@
       </div>
 
       <!-- Namespace Protection — only shown when namespace rules are declared -->
-      {{ if .CRD.NamespaceProtection.HasNamespaceRules }}
-      {{ $np := .CRD.NamespaceProtection }}
-      <div class="cc-section">
-        <h2 class="cc-section-title">Namespace Protection</h2>
-        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-            {{ if $np.Enabled }}
-            <span class="cc-badge cc-badge-healthy" style="gap:5px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              Active
-            </span>
-            <span style="font-size:12px;color:var(--text-muted)">failurePolicy: Fail — CREATE/UPDATE blocked in forbidden namespaces</span>
-            {{ else }}
-            <span class="cc-badge cc-badge-pending" style="gap:5px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              Rules declared, webhook not active
-            </span>
-            {{ end }}
-          </div>
-          <!-- Namespace rule lists -->
-          {{ if $np.AllowedNamespaces }}
-          <div style="margin-bottom:14px">
-            <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Allowed Namespaces</div>
-            <div style="display:flex;flex-wrap:wrap;gap:6px">
-              {{ range $np.AllowedNamespaces }}
-              <span style="background:var(--color-healthy-bg,rgba(34,197,94,.12));color:var(--color-healthy);padding:2px 10px;border-radius:999px;font-size:12px;font-family:monospace">{{ . }}</span>
+      {{ if .CRD.NamespaceProtection }}
+        {{ $np := .CRD.NamespaceProtection }}
+        {{ if $np.HasNamespaceRules }}
+          <div class="cc-section">
+            <h2 class="cc-section-title">Namespace Protection</h2>
+            <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+                {{ if $np.Enabled }}
+                <span class="cc-badge cc-badge-healthy" style="gap:5px">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                  Active
+                </span>
+                <span style="font-size:12px;color:var(--text-muted)">failurePolicy: Fail — CREATE/UPDATE blocked in forbidden namespaces</span>
+                {{ else }}
+                <span class="cc-badge cc-badge-pending" style="gap:5px">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                  Rules declared, webhook not active
+                </span>
+                {{ end }}
+              </div>
+              <!-- Namespace rule lists -->
+              {{ if $np.AllowedNamespaces }}
+              <div style="margin-bottom:14px">
+                <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Allowed Namespaces</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  {{ range $np.AllowedNamespaces }}
+                  <span style="background:var(--color-healthy-bg,rgba(34,197,94,.12));color:var(--color-healthy);padding:2px 10px;border-radius:999px;font-size:12px;font-family:monospace">{{ . }}</span>
+                  {{ end }}
+                </div>
+              </div>
+              {{ end }}
+              {{ if $np.RestrictedNamespaces }}
+              <div style="margin-bottom:14px">
+                <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Restricted Namespaces</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  {{ range $np.RestrictedNamespaces }}
+                  <span style="background:var(--color-degraded-bg,rgba(239,68,68,.12));color:var(--color-degraded);padding:2px 10px;border-radius:999px;font-size:12px;font-family:monospace">{{ . }}</span>
+                  {{ end }}
+                </div>
+              </div>
+              {{ end }}
+              <!-- Admission counters (omitted when webhook not active) -->
+              {{ if $np.Enabled }}
+              <div style="display:flex;gap:24px;margin-top:4px">
+                <div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Total Reviews</div>
+                  <div style="font-size:22px;font-weight:600">{{ $np.Total }}</div>
+                </div>
+                <div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Blocked</div>
+                  <div style="font-size:22px;font-weight:600;{{ if gt $np.Blocked 0 }}color:var(--color-degraded){{ end }}">{{ $np.Blocked }}</div>
+                </div>
+                <div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Allowed</div>
+                  <div style="font-size:22px;font-weight:600">{{ $np.Allowed }}</div>
+                </div>
+              </div>
               {{ end }}
             </div>
           </div>
-          {{ end }}
-          {{ if $np.RestrictedNamespaces }}
-          <div style="margin-bottom:14px">
-            <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Restricted Namespaces</div>
-            <div style="display:flex;flex-wrap:wrap;gap:6px">
-              {{ range $np.RestrictedNamespaces }}
-              <span style="background:var(--color-degraded-bg,rgba(239,68,68,.12));color:var(--color-degraded);padding:2px 10px;border-radius:999px;font-size:12px;font-family:monospace">{{ . }}</span>
-              {{ end }}
-            </div>
-          </div>
-          {{ end }}
-          <!-- Admission counters (omitted when webhook not active) -->
-          {{ if $np.Enabled }}
-          <div style="display:flex;gap:24px;margin-top:4px">
-            <div>
-              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Total Reviews</div>
-              <div style="font-size:22px;font-weight:600">{{ $np.Total }}</div>
-            </div>
-            <div>
-              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Blocked</div>
-              <div style="font-size:22px;font-weight:600;{{ if gt $np.Blocked 0 }}color:var(--color-degraded){{ end }}">{{ $np.Blocked }}</div>
-            </div>
-            <div>
-              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Allowed</div>
-              <div style="font-size:22px;font-weight:600">{{ $np.Allowed }}</div>
-            </div>
-          </div>
-          {{ end }}
-        </div>
-      </div>
+        {{ end }}
       {{ end }}
 
       <!-- Providers -->

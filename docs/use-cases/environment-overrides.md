@@ -6,7 +6,7 @@ forking it.
 
 ```yaml
 # production-komposer.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: production-komposer

@@ -57,6 +57,9 @@ type registryConfig struct {
 //
 // Precedence: Katalog YAML > SecurityConfig (ENV) > hard default.
 type SecurityConfig struct {
+	// One service name per orkestra instance
+	ServiceName string
+
 	DeletionProtection struct {
 		Enabled           bool
 		CleanupOnShutdown bool
@@ -85,7 +88,8 @@ type SecurityConfig struct {
 	Conversion struct {
 		Enabled bool
 		// ConversionWindow is the rolling window size for latency/throughput stats.
-		ConversionWindow int
+		ConversionWindow  int
+		CleanupOnShutdown bool // TODO
 	}
 
 	// NamespaceProtection controls the optional validating webhook that prevents
@@ -204,6 +208,11 @@ func (k *Konfig) Health() *healthServer {
 // Ork returns Ork Konfigurations
 func (k *Konfig) Ork() *orkKonfig {
 	return &k.ork
+}
+
+// Orkestra service name
+func (k *Konfig) OrkestraServiceName() string {
+	return k.security.ServiceName
 }
 
 // Cluster returns cluster Konfigurations

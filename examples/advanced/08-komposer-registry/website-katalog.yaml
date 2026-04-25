@@ -1,4 +1,4 @@
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-production
@@ -40,7 +40,7 @@ spec:
             - path: phase
               value: "Running"
             - path: readyReplicas
-              value: "{{ .children.deployment.status.readyReplicas }}"
+              value: "{{ get .children.deployment "status" "readyReplicas" }}"
         onCreate:
           deployments:
             - image: "{{ .spec.image }}"

@@ -23,6 +23,10 @@ type ClientProvider interface {
 type GenericClient interface {
 	List(ctx context.Context, opts metav1.ListOptions) (runtime.Object, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
+	// ListInNamespace and WatchInNamespace scope the request to a single namespace.
+	// Used by Tier 1 (namespace-scoped ListerWatcher) when IsSingleNamespace() is true.
+	ListInNamespace(ctx context.Context, namespace string, opts metav1.ListOptions) (runtime.Object, error)
+	WatchInNamespace(ctx context.Context, namespace string, opts metav1.ListOptions) (watch.Interface, error)
 }
 
 type Options struct {
@@ -31,6 +35,10 @@ type Options struct {
 	Wq            *queue.Workqueue
 	LabelSelector string
 	FieldSelector string
+	// Namespace scopes the ListerWatcher to a single namespace (Tier 1 filter).
+	// "" means cluster-scoped watch (all namespaces). Set by RegisterNamespaceFilter
+	// when IsSingleNamespace() is true.
+	Namespace string
 }
 
 // InformerEntry holds an informer and its metadata — avoids storing
@@ -65,6 +73,11 @@ type Factory struct {
 
 	// Post start retry for missing CRDs
 	missing map[string]*InformerEntry
+
+	// namespaceFilters maps GVK string to its namespace restriction.
+	// Populated by RegisterNamespaceFilter during CRD registration.
+	// Checked in handleEvent before enqueue — read lock only on the hot path.
+	namespaceFilters map[string]*NamespaceFilter
 }
 
 func SharedInformerFactory(
@@ -76,15 +89,16 @@ func SharedInformerFactory(
 	kfg *konfig.Konfig,
 ) *Factory {
 	return &Factory{
-		clientProvider: cp,
-		restConfig:     restConfig,
-		queueRegistry:  queueRegistry,
-		defaultWq:      defaultWq,
-		namespace:      kfg.Cluster().Namespace,
-		scheme:         scheme,
-		defaultResync:  kfg.Cluster().DefaultResync,
-		informers:      make(map[string]*InformerEntry),
-		missing:        make(map[string]*InformerEntry),
-		ready:          make(chan struct{}),
+		clientProvider:   cp,
+		restConfig:       restConfig,
+		queueRegistry:    queueRegistry,
+		defaultWq:        defaultWq,
+		namespace:        kfg.Cluster().Namespace,
+		scheme:           scheme,
+		defaultResync:    kfg.Cluster().DefaultResync,
+		informers:        make(map[string]*InformerEntry),
+		missing:          make(map[string]*InformerEntry),
+		ready:            make(chan struct{}),
+		namespaceFilters: make(map[string]*NamespaceFilter),
 	}
 }

@@ -1,4 +1,4 @@
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: application-operator
@@ -37,9 +37,9 @@ spec:
               value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
             # Layer 3 — reads back from the Deployment after reconcile
             - path: readyReplicas
-              value: "{{ .children.deployment.status.readyReplicas }}"
+              value: "{{ get .children.deployment "status" "readyReplicas" }}"
             - path: availableReplicas
-              value: "{{ .children.deployment.status.availableReplicas }}"
+              value: "{{ get .children.deployment "status" "availableReplicas" }}"
 
         onCreate:
           # ── Deployment ─────────────────────────────────────────────────

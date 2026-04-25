@@ -216,7 +216,7 @@ func registerValidatingWebhook(
 			{
 				// One webhook per CRD in the registry.
 				// The webhook name must be a fully-qualified domain name.
-				Name: "validate.orkestra.konductor.io",
+				Name: "validate.orkestra.orkspace.io",
 				ClientConfig: admissionv1.WebhookClientConfig{
 					Service: &admissionv1.ServiceReference{
 						Name:      opts.ServiceName,
@@ -265,7 +265,7 @@ func registerMutatingWebhook(
 		},
 		Webhooks: []admissionv1.MutatingWebhook{
 			{
-				Name: "mutate.orkestra.konductor.io",
+				Name: "mutate.orkestra.orkspace.io",
 				ClientConfig: admissionv1.WebhookClientConfig{
 					Service: &admissionv1.ServiceReference{
 						Name:      opts.ServiceName,
@@ -347,7 +347,7 @@ func registerDeletionProtectionWebhook(
 	// Webhook 1: CRD deletions — handler filters by ProtectedCRDNames()
 	if len(crdGVRs) > 0 {
 		webhooks = append(webhooks, admissionv1.ValidatingWebhook{
-			Name: "protect.crds.orkestra.konductor.io",
+			Name: "protect.crds.orkestra.orkspace.io",
 			ClientConfig: admissionv1.WebhookClientConfig{
 				Service: &admissionv1.ServiceReference{
 					Name:      opts.ServiceName,
@@ -375,7 +375,7 @@ func registerDeletionProtectionWebhook(
 	// Handler always blocks — if the webhook fired, the ObjectSelector already confirmed ownership.
 	if len(orkestraGVRs) > 0 {
 		webhooks = append(webhooks, admissionv1.ValidatingWebhook{
-			Name: "protect.resources.orkestra.konductor.io",
+			Name: "protect.resources.orkestra.orkspace.io",
 			ClientConfig: admissionv1.WebhookClientConfig{
 				Service: &admissionv1.ServiceReference{
 					Name:      opts.ServiceName,
@@ -431,7 +431,7 @@ func registerNamespaceProtectionWebhook(
 		},
 		Webhooks: []admissionv1.ValidatingWebhook{
 			{
-				Name: "namespace-protect.orkestra.konductor.io",
+				Name: "namespace-protect.orkestra.orkspace.io",
 				ClientConfig: admissionv1.WebhookClientConfig{
 					Service: &admissionv1.ServiceReference{
 						Name:      svcName,

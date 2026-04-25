@@ -1267,10 +1267,10 @@ CRD, even when <code>ENABLE_ADMISSION_WEBHOOK=true</code> globally.</p>
 <hr>
 <h2 id="error-reference">Error reference</h2>
 <h3 id="admission-time-errors-kubectl-output">Admission-time errors (kubectl output)</h3>
-<pre tabindex="0"><code>Error from server: admission webhook &#34;validate.orkestra.konductor.io&#34; denied the request:
+<pre tabindex="0"><code>Error from server: admission webhook &#34;validate.orkestra.orkspace.io&#34; denied the request:
 [orkestra] validation failed: field &#34;spec.image&#34;: image must be from the myorg registry (got: &#34;nginx:1.25&#34;)
 </code></pre><p>Multiple violations:</p>
-<pre tabindex="0"><code>Error from server: admission webhook &#34;validate.orkestra.konductor.io&#34; denied the request:
+<pre tabindex="0"><code>Error from server: admission webhook &#34;validate.orkestra.orkspace.io&#34; denied the request:
 [orkestra] validation failed: field &#34;spec.image&#34;: image must be from the myorg registry (got: &#34;nginx:1.25&#34;); field &#34;spec.replicas&#34;: replicas cannot exceed 10 (got: &#34;15&#34;)
 </code></pre><p>Warnings (action: warn):</p>
 <pre tabindex="0"><code>Warning: orkestra: field &#34;metadata.labels.team&#34;: all resources should declare a team owner

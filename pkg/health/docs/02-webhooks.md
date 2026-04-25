@@ -47,12 +47,12 @@ Intercepts DELETE requests for CRDs and Orkestra's own Kubernetes resources (dep
 
 Two webhook entries are registered in a single `ValidatingWebhookConfiguration`:
 
-**Entry 1 — CRD protection** (`protect.crds.orkestra.konductor.io`):
+**Entry 1 — CRD protection** (`protect.crds.orkestra.orkspace.io`):
 - Rule: all DELETE on `customresourcedefinitions` (apiextensions.k8s.io/v1)
 - No ObjectSelector: the rule is broad; the handler narrows via `ProtectedCRDNames()`
 - A CRD from a different operator passes through even though the webhook intercepted it
 
-**Entry 2 — Orkestra resource protection** (`protect.resources.orkestra.konductor.io`):
+**Entry 2 — Orkestra resource protection** (`protect.resources.orkestra.orkspace.io`):
 - Rules: DELETE on `deployments`, `services`, `ingresses`
 - ObjectSelector: `app.kubernetes.io/name: orkestra` + `app.kubernetes.io/tag: orkestra-internal`
 - Any resource in the cluster without these labels is never intercepted

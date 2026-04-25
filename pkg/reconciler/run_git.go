@@ -34,7 +34,7 @@
 //
 // Change detection is annotation-based — the last-seen commit is stored in:
 //
-//	orkestra.konductor.io/last-commit
+//	orkestra.orkspace.io/last-commit
 //
 // This annotation survives pod restarts, preventing spurious rebuilds.
 package reconciler
@@ -56,7 +56,7 @@ import (
 // runGit executes the declared Git hook and returns a new resolver with
 // .git.* injected.
 //
-// kube and gvr are used to patch the orkestra.konductor.io/last-commit
+// kube and gvr are used to patch the orkestra.orkspace.io/last-commit
 // annotation on the CR after each successful operation — this is how
 // change detection survives pod restarts without writing to disk.
 //

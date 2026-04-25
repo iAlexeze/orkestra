@@ -29,7 +29,7 @@ does not need to exist.
 You write a **Katalog** — a YAML file that declares what a CRD should do:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-operator

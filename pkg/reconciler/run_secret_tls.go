@@ -8,8 +8,8 @@
 //
 // The generated Secret is annotated with:
 //
-//	orkestra.konductor.io/generated-at: "2026-04-06T08:00:00Z"
-//	orkestra.konductor.io/rotate-after: "90d"
+//	orkestra.orkspace.io/generated-at: "2026-04-06T08:00:00Z"
+//	orkestra.orkspace.io/rotate-after: "90d"
 //
 // On each reconcile, secretNeedsRotation reads these annotations and returns
 // true when the threshold is crossed. The caller deletes and recreates.
@@ -36,6 +36,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -216,7 +217,7 @@ func GenerateTLSBundle(commonName string, dnsNames []string, validFor string) (*
 func createTLSSecret(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
-	owner metav1.Object,
+	owner domain.Object,
 	name, namespace, rotateAfter string,
 	bundle *TLSBundle,
 ) error {
@@ -226,6 +227,8 @@ func createTLSSecret(
 
 	annotations := generationAnnotations(rotateAfter)
 
+	controller := true
+	blockOwner := true
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
@@ -234,6 +237,16 @@ func createTLSSecret(
 			Labels: map[string]string{
 				"orkestra-owner":               owner.GetName(),
 				"app.kubernetes.io/managed-by": "orkestra",
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         owner.GetObjectKind().GroupVersionKind().GroupVersion().String(),
+					Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
+					Name:               owner.GetName(),
+					UID:                owner.GetUID(),
+					Controller:         &controller,
+					BlockOwnerDeletion: &blockOwner,
+				},
 			},
 		},
 		Type: corev1.SecretTypeTLS,

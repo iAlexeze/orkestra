@@ -12,7 +12,7 @@ The most immediate use case. Write a CRD definition, write a Katalog, run.
 
 ```yaml
 # website-katalog.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-katalog
@@ -167,7 +167,7 @@ forking it.
 
 ```yaml
 # production-komposer.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: production-komposer
@@ -204,7 +204,7 @@ distribution mechanism.
 
 ```yaml
 # charts/platform-crds/templates/katalog.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 spec:
   crds:
@@ -243,7 +243,7 @@ teams — each owning their own CRDs. A Komposer brings them together.
 
 ```yaml
 # platform-komposer.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform-komposer

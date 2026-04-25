@@ -10,7 +10,6 @@ runtime:
   replicaCount: 2
   service:
     type: ClusterIP
-    port: 8080
     annotations: {}
   resources:
     requests:
@@ -27,7 +26,8 @@ runtime:
   server:
     readTimeout: 30
     writeTimeout: 60
-    port: 8080
+    httpPort: 8080
+    httpsPort: 8443
 
   # Runtime-specific config
   config:
@@ -36,7 +36,7 @@ runtime:
     defaultResync: 30s
     maxQueueDepth: 500
     degradeThreshold: 10
-    environment: development
+    environment: production
 
   # Probes for runtime
   startupProbe:

@@ -81,11 +81,11 @@ declarations needed.
 
 ```
 labels:
-  orkestra.konductor.io/managed: "true"
+  orkestra.orkspace.io/managed: "true"
 
 annotations:
-  orkestra.konductor.io/managed-by: website-katalog
-  orkestra.konductor.io/managed-since: 2026-03-25T10:30:45Z
+  orkestra.orkspace.io/managed-by: website-katalog
+  orkestra.orkspace.io/managed-since: 2026-03-25T10:30:45Z
 ```
 
 ## Deployments

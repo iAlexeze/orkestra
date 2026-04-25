@@ -1139,7 +1139,7 @@ Orkestra registers a <code>ValidatingWebhookConfiguration</code> and a
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">action</span>: deny
 </span></span></code></pre></div><p>If this rule fires, the API server returns an error to the client before the object
 is stored. The user sees:</p>
-<pre tabindex="0"><code>Error from server: admission webhook &#34;validate.orkestra.konductor.io&#34; denied the request:
+<pre tabindex="0"><code>Error from server: admission webhook &#34;validate.orkestra.orkspace.io&#34; denied the request:
 [orkestra] validation failed: field &#34;spec.image&#34;: images must come from the internal registry
 </code></pre><p>The CR does not exist in the cluster. There is nothing to reconcile. Nothing to
 clean up. The enforcement boundary is at apply time, and it is absolute.</p>

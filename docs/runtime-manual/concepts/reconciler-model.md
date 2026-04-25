@@ -86,11 +86,11 @@ Orkestra adds labels and annotations to your CR so you can see it's being manage
 
 ```
 labels:
-  orkestra.konductor.io/managed: "true"
+  orkestra.orkspace.io/managed: "true"
 
 annotations:
-  orkestra.konductor.io/managed-by: website-katalog
-  orkestra.konductor.io/managed-since: 2026-03-25T10:30:45Z
+  orkestra.orkspace.io/managed-by: website-katalog
+  orkestra.orkspace.io/managed-since: 2026-03-25T10:30:45Z
 ```
 
 These are purely informational — they help you understand which operator is managing your resources.

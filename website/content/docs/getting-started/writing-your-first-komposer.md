@@ -27,7 +27,7 @@ Komposers support multiple source types:
 Create a file called `komposer.yaml`:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: my-first-komposer
@@ -202,7 +202,7 @@ Inline overrides apply **after** all sources are merged.
 Here is a Komposer that loads katalogs from multiple sources and applies overrides:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform-komposer

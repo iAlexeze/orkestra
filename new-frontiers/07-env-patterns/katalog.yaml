@@ -1,5 +1,5 @@
 # Katalog using all env capabilities
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: webapp-env-patterns

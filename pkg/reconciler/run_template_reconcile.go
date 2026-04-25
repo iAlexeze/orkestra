@@ -227,6 +227,12 @@ func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, resolver
 		}
 	}
 
+	// Namespaces are cluster-scoped resources — Kubernetes GC does not honor
+	// owner references from namespace-scoped owners, so we delete them explicitly.
+	if err := deleteOwnedNamespaces(ctx, kube, resolver, obj, r.operatorBox); err != nil {
+		return fmt.Errorf("namespace cleanup: %w", err)
+	}
+
 	return nil
 }
 

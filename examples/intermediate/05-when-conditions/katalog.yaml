@@ -1,4 +1,4 @@
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: platform-operator
@@ -28,7 +28,7 @@ spec:
             - path: phase
               value: "Running"
             - path: readyReplicas
-              value: "{{ .children.deployment.status.readyReplicas }}"
+              value: "{{ get .children.deployment "status" "readyReplicas" }}"
 
         onCreate:
           # ── Deployment — always created (all tiers) ────────────────────

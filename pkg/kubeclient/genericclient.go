@@ -61,3 +61,27 @@ func (c *Client) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Inte
 		VersionedParams(&opts, c.codec).
 		Watch(ctx)
 }
+
+// ListInNamespace lists resources scoped to the given namespace.
+// Used by the Tier 1 namespace filter when allowedNamespaces has exactly one entry.
+func (c *Client) ListInNamespace(ctx context.Context, namespace string, opts metav1.ListOptions) (runtime.Object, error) {
+	list := reflect.New(reflect.TypeOf(c.objList).Elem()).Interface().(runtime.Object)
+	err := c.restClient.Get().
+		Namespace(namespace).
+		Resource(c.plural).
+		VersionedParams(&opts, c.codec).
+		Do(ctx).
+		Into(list)
+	return list, err
+}
+
+// WatchInNamespace watches resources scoped to the given namespace.
+// Used by the Tier 1 namespace filter when allowedNamespaces has exactly one entry.
+func (c *Client) WatchInNamespace(ctx context.Context, namespace string, opts metav1.ListOptions) (watch.Interface, error) {
+	opts.Watch = true
+	return c.restClient.Get().
+		Namespace(namespace).
+		Resource(c.plural).
+		VersionedParams(&opts, c.codec).
+		Watch(ctx)
+}

@@ -17,7 +17,7 @@ starts as a Katalog — written directly or pulled from a registry.
 ## Document structure
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha    # required
+apiVersion: orkestra.orkspace.io/v1    # required
 kind: Katalog                                # required
 
 metadata:
@@ -77,7 +77,7 @@ spec:
 ```
 
 {{< callout type="note" >}}
-Orkestra always adds its own internal finalizer (`orkestra.konductor.io/cleanup`)
+Orkestra always adds its own internal finalizer (`orkestra.orkspace.io/cleanup`)
 to every CR it manages, regardless of this field. Declared finalizers are
 additional, domain-specific finalizers that you control.
 {{< /callout >}}

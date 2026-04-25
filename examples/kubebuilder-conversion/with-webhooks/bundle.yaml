@@ -119,7 +119,7 @@ data:
   katalog.yaml: |
 
     # Runtime katalog
-    apiVersion: orkestra.konductor.io/v1Alpha
+    apiVersion: orkestra.orkspace.io/v1
     kind: Katalog
     metadata:
       name: cronjob-operator
@@ -227,10 +227,10 @@ data:
 
                 # Last schedule time from the child CronJob
                 - path: lastScheduleTime
-                  value: "{{ .children.cronjob.status.lastScheduleTime }}"
+                  value: "{{ get .children.cronjob "status" "lastScheduleTime" }}"
 
                 - path: nextScheduleTime
-                  value: "{{ .children.cronjob.status.nextScheduleTime }}"
+                  value: "{{ get .children.cronjob "status" "nextScheduleTime" }}"
 
             # Creates the Kubernetes CronJob resource
             # The schedule field reconstructs the standard cron expression

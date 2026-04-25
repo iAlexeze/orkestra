@@ -19,8 +19,13 @@ spec:
     app.kubernetes.io/component: runtime
   ports:
     - name: http
-      port: {{ .Values.runtime.service.port }}
+      port: {{ .Values.runtime.server.httpPort }}
       targetPort: http
+      protocol: TCP
+
+    - name: https
+      port: {{ .Values.runtime.server.httpsPort }}
+      targetPort: https
       protocol: TCP
 
 {{- end }}
