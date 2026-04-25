@@ -9,7 +9,7 @@ on:
         type: string
       repository:
         description: 'GitHub repository (owner/name) for the main orkestra repo'
-        required: true
+        required: false
         type: string
         default: ${{ github.repository }}
       tap_repository:

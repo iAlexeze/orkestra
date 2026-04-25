@@ -28,13 +28,11 @@ jobs:
 
   build:
     name: Build Runtime and Control Center
-    needs: [prepare]
     uses: ./.github/workflows/build-matrix.yml
     secrets: inherit
 
   examples:
     name: Package Examples
-    needs: [prepare]
     uses: ./.github/workflows/package-examples.yml
     secrets: inherit
 
@@ -73,13 +71,6 @@ jobs:
       image_tag: ${{ needs.prepare.outputs.image_tag }}
       tap_repository: orkspace/homebrew-tap
 
-  # winget:
-  #   name: Publish Winget Manifests
-  #   uses: ./.github/workflows/publish-winget.yml
-  #   needs: [prepare, lease]
-  #   if: ${{ !contains(github.ref_name, '-') }}
-  #   secrets: inherit
-
   summary:
     name: Release Summary
     needs: [prepare, build, image, examples, release, helm, homebrew]
@@ -93,4 +84,3 @@ jobs:
       release_result: ${{ needs.release.result }}
       helm_result: ${{ needs.helm.result }}
       homebrew_result: ${{ needs.homebrew.result }}
-      # winget_result: ${{ needs.winget.result }}
