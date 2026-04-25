@@ -84,3 +84,10 @@ jobs:
       release_result: ${{ needs.release.result }}
       helm_result: ${{ needs.helm.result }}
       homebrew_result: ${{ needs.homebrew.result }}
+
+  cleanup:
+    name: Clean up old GitHub Actions caches
+    uses: ./.github/workflows/cleanup-caches.yml
+    secrets: inherit
+    with:
+      older_than_days: 2
