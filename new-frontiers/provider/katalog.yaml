@@ -1,4 +1,4 @@
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: saas-backend
@@ -84,7 +84,7 @@ spec:
                 zoneId: "{{ .spec.hostedZoneId }}"
                 record: "{{ .metadata.name }}.{{ .spec.domain }}"
                 type: CNAME
-                target: "{{ default .children.service.status.loadBalancer.ingress \"\" }}"
+                target: "{{ serviceLoadBalancerHost .children.service }}"
                 ttl: "300"
                 when:
                   - field: spec.domain
@@ -132,7 +132,7 @@ spec:
                   value: "0"
 
             - path: replicas
-              value: "{{ .children.deployment.status.readyReplicas }}"
+              value: "{{ readyReplicas .children.deployment }}"
 
             - path: image
               value: "{{ .spec.image }}"

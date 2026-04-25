@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-FINALIZER="orkestra.konductor.io/finalizer"
+FINALIZER="orkestra.orkspace.io/finalizer"
 
 # All kinds from your watchers (including commented ones)
 KINDS=(

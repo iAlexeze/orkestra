@@ -134,7 +134,7 @@ complete operator definition in both cases.
 ## Complete Katalog
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: cronjob-operator
@@ -207,7 +207,7 @@ spec:
             - path: concurrencyPolicy
               value: "{{ .spec.concurrencyPolicy }}"
             - path: lastScheduleTime
-              value: "{{ .children.cronjob.status.lastScheduleTime }}"
+              value: "{{ get .children.cronjob \"status\" \"lastScheduleTime\" }}"
 
         onReconcile:
           cronJobs:

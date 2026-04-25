@@ -11,10 +11,10 @@
 //
 //  First reconcile (Secret does not exist):
 //    → generate credentials, create Secret
-//    → annotate with orkestra.konductor.io/generated-at: <RFC3339 timestamp>
+//    → annotate with orkestra.orkspace.io/generated-at: <RFC3339 timestamp>
 //
 //  Subsequent reconciles (Secret exists):
-//    → read orkestra.konductor.io/generated-at annotation
+//    → read orkestra.orkspace.io/generated-at annotation
 //    → if age < rotateAfter: no-op (preserve credentials)
 //    → if age >= rotateAfter: delete Secret, recreate with new credentials
 //       then re-annotate with new timestamp
@@ -75,8 +75,8 @@
 // ── Annotation ────────────────────────────────────────────────────────────
 //
 //  All Orkestra-generated secrets receive:
-//    orkestra.konductor.io/generated-at: "2026-04-06T08:00:00Z"
-//    orkestra.konductor.io/rotate-after: "90d"
+//    orkestra.orkspace.io/generated-at: "2026-04-06T08:00:00Z"
+//    orkestra.orkspace.io/rotate-after: "90d"
 //
 //  These annotations are the source of truth for rotation decisions.
 //  Do not remove them manually — doing so will cause regeneration on next reconcile.
@@ -92,10 +92,10 @@ import (
 
 const (
 	// AnnotationGeneratedAt is the RFC3339 timestamp when the secret was last generated.
-	AnnotationGeneratedAt = "orkestra.konductor.io/generated-at"
+	AnnotationGeneratedAt = "orkestra.orkspace.io/generated-at"
 
 	// AnnotationRotateAfter stores the declared rotation duration.
-	AnnotationRotateAfter = "orkestra.konductor.io/rotate-after"
+	AnnotationRotateAfter = "orkestra.orkspace.io/rotate-after"
 )
 
 // TLSSpec declares TLS certificate generation for a secret.

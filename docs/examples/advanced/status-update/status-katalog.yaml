@@ -1,4 +1,4 @@
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: status-update-kat
@@ -27,9 +27,9 @@ spec:
             
             # Layer 3 — from child resource status
             - path: readyReplicas
-              value: "{{ .children.deployment.status.readyReplicas }}"
+              value: "{{ get .children.deployment "status" "readyReplicas" }}"
             - path: availableReplicas
-              value: "{{ .children.deployment.status.availableReplicas }}"
+              value: "{{ get .children.deployment "status" "availableReplicas" }}"
 
         onCreate:
           deployments:

@@ -154,7 +154,7 @@ spec:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
               when:
-                - field: cross.db.status.phase
+                - field: "{{ phase .cross.db }}"
                   equals: "Ready"
 ```
 

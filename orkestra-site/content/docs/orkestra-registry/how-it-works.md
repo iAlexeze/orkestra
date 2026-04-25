@@ -101,7 +101,7 @@ consumer imports it, overrides what they need, and runs it.
 
 ```yaml
 # orkestra-core/postgres/v14/katalog.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: postgres-v14

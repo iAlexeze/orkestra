@@ -69,7 +69,7 @@ alongside the existing operator and let both run simultaneously during migration
 
 ```yaml
 # website-katalog.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-operator-v2
@@ -143,7 +143,7 @@ Kubebuilder operator until you explicitly transfer them.
 To transfer an existing CR to Orkestra, add the managed label:
 
 ```bash
-kubectl label website my-site orkestra.konductor.io/managed=true
+kubectl label website my-site orkestra.orkspace.io/managed=true
 ```
 
 Orkestra picks up the label on the next watch event and adds its finalizer.
@@ -232,7 +232,7 @@ status:
     - path: observedReplicas
       value: "{{ .spec.replicas }}"
     - path: readyReplicas
-      value: "{{ .children.deployment.status.readyReplicas }}"
+      value: "{{ get .children.deployment "status" "readyReplicas" }}"
 ```
 
 The Ready condition is written automatically by Orkestra — no need to replicate

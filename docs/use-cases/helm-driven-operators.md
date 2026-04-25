@@ -5,7 +5,7 @@ The chart becomes the distribution mechanism; Orkestra becomes the runtime.
 
 ```yaml
 # charts/platform-crds/templates/katalog.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 spec:
   crds:
@@ -59,7 +59,7 @@ This allows teams to override values without forking the chart.
 
 ```yaml
 # komposer.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform-komposer

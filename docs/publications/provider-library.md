@@ -110,7 +110,7 @@ spec:
                 zone: "{{ .spec.domain }}"
                 record: "{{ .metadata.name }}.{{ .spec.domain }}"
                 type: CNAME
-                target: "{{ .children.service.status.loadBalancer.ingress }}"
+                target: "{{ serviceLoadBalancerHost .children.service }}"
 
           database:
             - driver: mongo
@@ -135,7 +135,7 @@ spec:
                   equals: "true"
 
             - path: databaseEndpoint
-              value: "{{ .children.rds.status.endpoint }}"
+              value: "{{ get .children.rds "status" "endpoint" }}"
               when:
                 - field: spec.needsDatabase
                   equals: "true"
@@ -551,8 +551,8 @@ provider interface returns a `ReconcileResult` that Orkestra merges into the
 status patch alongside the declared status fields.
 
 This closes the loop: the Katalog can declare `status.fields` that reference
-`{{ .children.rds.status.endpoint }}` — the same way it references
-`{{ .children.deployment.status.readyReplicas }}`. External and internal
+`{{ get .children.rds "status" "endpoint" }}` — the same way it references
+`{{ readyReplicas .children.deployment }}`. External and internal
 children are addressed identically.
 
 ---

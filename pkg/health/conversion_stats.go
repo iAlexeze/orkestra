@@ -86,7 +86,7 @@ func (s *ConversionStats) GetStats() ConversionStatsSnapshot {
 		MinLatency:      s.minLatency,
 	}
 
-	if s.TotalRequests > 0 {
+	if s.SuccessRequests > 0 {
 		snapshot.AvgLatency = s.totalLatency / time.Duration(s.SuccessRequests)
 	}
 

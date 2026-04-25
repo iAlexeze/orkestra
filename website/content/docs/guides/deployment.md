@@ -132,7 +132,7 @@ helm install orkestra orkestra/orkestra \
 # my-values.yaml
 katalog:
   inline: |
-    apiVersion: orkestra.konductor.io/v1Alpha
+    apiVersion: orkestra.orkspace.io/v1
     kind: Katalog
     metadata:
       name: my-katalog
@@ -180,7 +180,7 @@ a ConfigMap from it. Good for small operators and getting started.
 ```yaml
 katalog:
   inline: |
-    apiVersion: orkestra.konductor.io/v1Alpha
+    apiVersion: orkestra.orkspace.io/v1
     kind: Katalog
     ...
 ```
@@ -224,7 +224,7 @@ metadata:
   namespace: orkestra-system
 data:
   katalog.yaml: |
-    apiVersion: orkestra.konductor.io/v1Alpha
+    apiVersion: orkestra.orkspace.io/v1
     kind: Komposer
     metadata:
       name: platform-komposer
@@ -254,7 +254,7 @@ With Komposer, each team maintains their own Katalog. The platform's Komposer
 composes them:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform-komposer

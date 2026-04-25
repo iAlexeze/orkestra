@@ -18,7 +18,7 @@ Teams compose them into Komposers. Environment-specific overrides are inline
 ## Document structure
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha    # required
+apiVersion: orkestra.orkspace.io/v1    # required
 kind: Komposer                               # required
 
 metadata:

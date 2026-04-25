@@ -2,7 +2,7 @@
 # Test case C: SHOULD BE REJECTED at admission time
 #
 # Expected with ENABLE_ADMISSION_WEBHOOK=true:
-#   Error from server: admission webhook "validate.orkestra.konductor.io" denied the request:
+#   Error from server: admission webhook "validate.orkestra.orkspace.io" denied the request:
 #   [orkestra] validation failed: field "spec.image": image must be from the myorg registry
 #   — use myorg/<n>:<tag> (got: "nginx:1.25")
 #

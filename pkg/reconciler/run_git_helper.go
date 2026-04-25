@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-const annotationLastCommit = "orkestra.konductor.io/last-commit"
+const annotationLastCommit = "orkestra.orkspace.io/last-commit"
 
 type GitOperationResult struct {
 	Operation string // "clone" | "fetch"

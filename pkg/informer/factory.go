@@ -23,7 +23,7 @@ func (f *Factory) For(obj runtime.Object, ctx context.Context, opts Options) cac
 		return nil
 	}
 
-	return f.getOrCreate(gvk, f.newListWatch(obj, opts.LabelSelector, opts.FieldSelector), obj, ctx, opts)
+	return f.getOrCreate(gvk, f.newListWatch(obj, opts), obj, ctx, opts)
 }
 
 // ForListerWatcher creates or returns a SharedIndexInformer using an explicit

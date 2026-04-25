@@ -822,7 +822,7 @@ jobs:
 
 ```yaml
 # tests/fixtures/katalogs/website.yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-katalog

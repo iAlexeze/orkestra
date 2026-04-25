@@ -962,7 +962,7 @@ declares CRDs, a Komposer declares where to find them.</p>
 A komposer is not a CRD and <a href="../../faqs/why-not-crds.md">here is why</a>.</p>
 <hr>
 <h2 id="a-simple-komposer">A Simple Komposer?</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer          <span style="color:#6272a4"># ← the distinction</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: platform-komposer
@@ -1025,7 +1025,7 @@ only Katalog files are valid sources
 what a source contains.</p>
 <hr>
 <h2 id="komposer-structure">Komposer structure</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: my-komposer
@@ -1217,7 +1217,7 @@ or commit hash) and loads the chart from <code>path</code> within the repo.</p>
 <p>The chart renders a template with <code>kind: Katalog</code>. Orkestra extracts
 CRD definitions from the rendered output.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># charts/platform-crds/templates/katalog.yaml</span>
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: {{ .Release.Name }}-katalog
@@ -1298,7 +1298,7 @@ The merger handles both transparently.</p>
 <p>Most operators need only a Katalog. A Komposer is only needed when you
 are composing definitions from multiple sources.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># katalog.yaml</span>
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: website-katalog
@@ -1321,7 +1321,7 @@ are composing definitions from multiple sources.</p>
 </span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run --katalog ./katalog.yaml
 </span></span></code></pre></div><h3 id="multi-team-composition">Multi-team composition</h3>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># komposer.yaml</span>
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: platform-komposer
@@ -1353,7 +1353,7 @@ are composing definitions from multiple sources.</p>
 </span></span><span style="display:flex;"><span>ork run --katalog ./komposer.yaml
 </span></span></code></pre></div><h3 id="enterprise--private-sources-with-mixed-auth">Enterprise — private sources with mixed auth</h3>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># enterprise-komposer.yaml</span>
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: enterprise-komposer
@@ -1415,7 +1415,7 @@ are composing definitions from multiple sources.</p>
 </span></span><span style="display:flex;"><span>ork template --katalog enterprise-komposer.yaml --graph
 </span></span></code></pre></div><h3 id="helm-chart--local-katalog--inline-override">Helm chart + local Katalog + inline override</h3>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># production-komposer.yaml</span>
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: production-komposer

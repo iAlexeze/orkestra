@@ -124,7 +124,7 @@ cd my-platform
 Create a `komposer.yaml`:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: my-platform

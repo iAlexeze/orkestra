@@ -1191,7 +1191,7 @@ cluster — not by merging their logic, but by running on common platforms.</p>
 <h3 id="31-the-katalog">3.1 The Katalog</h3>
 <p>A Katalog is a YAML document that declares one or more CRDs and how they
 should be reconciled. It is the unit of operator definition in Orkestra.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: website-operator
@@ -1274,7 +1274,7 @@ property of the Katalog.</p>
 orphaned resources.</p>
 <h3 id="35-the-komposer">3.5 The Komposer</h3>
 <p>A Komposer composes Katalogs from multiple sources into one runtime:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: platform-komposer

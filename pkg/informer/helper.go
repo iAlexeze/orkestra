@@ -31,6 +31,20 @@ func (f *Factory) handleEvent(obj interface{}) {
 
 	gvkStr := gvk.String()
 
+	// ── Tier 2: Pre-enqueue namespace filter ─────────────────────────────
+	// Check namespace restriction BEFORE the item enters the queue.
+	// Items that fail this check are dropped — they do no work and create
+	// no queue pressure. The reconciler check (Tier 3) remains as a safety
+	// net for race conditions during startup.
+	namespace := extractNamespace(obj)
+	if !f.namespaceAllowed(gvkStr, namespace) {
+		logger.Debug().
+			Str("gvk", gvkStr).
+			Str("namespace", namespace).
+			Msg("informer: event dropped — namespace not allowed")
+		return
+	}
+
 	// Route to per-CRD queue if registered, otherwise fall back to default
 	wq, ok := f.queueRegistry.For(gvkStr)
 	if !ok {
@@ -38,7 +52,7 @@ func (f *Factory) handleEvent(obj interface{}) {
 			Str("gvk", gvkStr).
 			Msg("no per-CRD queue registered — falling back to default queue")
 		f.defaultWq.Enqueue(obj, gvkStr)
-		return // ← return here — do not also enqueue below
+		return
 	}
 
 	wq.Enqueue(obj, gvkStr)
@@ -46,7 +60,9 @@ func (f *Factory) handleEvent(obj interface{}) {
 
 // newListWatch returns a ListWatch for the given object type.
 // Both List and Watch block on f.ready so they never run before Start().
-func (f *Factory) newListWatch(obj runtime.Object, labelSelector, fieldSelector string) *cache.ListWatch {
+// When opts.Namespace is set (Tier 1 single-namespace filter), the ListerWatcher
+// is scoped to that namespace — the informer never sees events from other namespaces.
+func (f *Factory) newListWatch(obj runtime.Object, opts Options) *cache.ListWatch {
 	return &cache.ListWatch{
 		ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
 			if ctx.Err() != nil {
@@ -54,18 +70,19 @@ func (f *Factory) newListWatch(obj runtime.Object, labelSelector, fieldSelector 
 			}
 			<-f.ready
 
-			// Inject label selector
-			if labelSelector != "" {
-				utils.Merge(&options.LabelSelector, labelSelector, ",")
+			if opts.LabelSelector != "" {
+				utils.Merge(&options.LabelSelector, opts.LabelSelector, ",")
 			}
-			// Inject field selector
-			if fieldSelector != "" {
-				utils.Merge(&options.FieldSelector, fieldSelector, ",")
+			if opts.FieldSelector != "" {
+				utils.Merge(&options.FieldSelector, opts.FieldSelector, ",")
 			}
 
 			client, err := f.clientProvider.For(obj)
 			if err != nil {
 				return nil, fmt.Errorf("list: failed to get client for %T: %w", obj, err)
+			}
+			if opts.Namespace != "" {
+				return client.ListInNamespace(ctx, opts.Namespace, options)
 			}
 			return client.List(ctx, options)
 		},
@@ -75,18 +92,19 @@ func (f *Factory) newListWatch(obj runtime.Object, labelSelector, fieldSelector 
 			}
 			<-f.ready
 
-			// Inject label selector
-			if labelSelector != "" {
-				utils.Merge(&options.LabelSelector, labelSelector, ",")
+			if opts.LabelSelector != "" {
+				utils.Merge(&options.LabelSelector, opts.LabelSelector, ",")
 			}
-			// Inject field selector
-			if fieldSelector != "" {
-				utils.Merge(&options.FieldSelector, fieldSelector, ",")
+			if opts.FieldSelector != "" {
+				utils.Merge(&options.FieldSelector, opts.FieldSelector, ",")
 			}
 
 			client, err := f.clientProvider.For(obj)
 			if err != nil {
 				return nil, fmt.Errorf("watch: failed to get client for %T: %w", obj, err)
+			}
+			if opts.Namespace != "" {
+				return client.WatchInNamespace(ctx, opts.Namespace, options)
 			}
 			return client.Watch(ctx, options)
 		},

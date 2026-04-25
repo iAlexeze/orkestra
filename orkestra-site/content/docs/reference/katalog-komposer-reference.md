@@ -67,7 +67,7 @@ ork run --katalog komposer.yaml    # Komposer — many sources merged
 
 | Field | Type | Required | Default |
 |---|---|---|---|
-| `apiVersion` | `orkestra.konductor.io/v1Alpha` | yes | — |
+| `apiVersion` | `orkestra.orkspace.io/v1` | yes | — |
 | `kind` | `Katalog` | yes | — |
 | `metadata.name` | string | yes | — |
 | `metadata.description` | string | no | `""` |
@@ -118,7 +118,7 @@ ork run --katalog komposer.yaml    # Komposer — many sources merged
 
 | Field | Type | Required | Default |
 |---|---|---|---|
-| `apiVersion` | `orkestra.konductor.io/v1Alpha` | yes | — |
+| `apiVersion` | `orkestra.orkspace.io/v1` | yes | — |
 | `kind` | `Komposer` | yes | — |
 | `metadata.name` | string | yes | — |
 | `metadata.description` | string | no | `""` |
@@ -191,7 +191,7 @@ ork run --katalog komposer.yaml    # Komposer — many sources merged
 ### Minimal Katalog
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-operator
@@ -220,7 +220,7 @@ spec:
 ### Katalog with full options
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-operator
@@ -287,7 +287,7 @@ spec:
 ### Minimal Komposer
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform-komposer
@@ -305,7 +305,7 @@ spec:
 ### Komposer with all source types
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform-komposer

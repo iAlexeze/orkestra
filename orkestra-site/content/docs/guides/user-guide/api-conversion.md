@@ -97,7 +97,7 @@ storageVersion: &storageVersion v1
 alpha: &alpha v1alpha1
 
 # ── Katalog ─────────────────────────────────────────────────────────────
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-multiversion

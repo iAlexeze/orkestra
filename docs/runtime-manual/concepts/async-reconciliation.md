@@ -68,13 +68,14 @@ watch cache — no etcd round-trip, no added latency.
 
 Common fields:
 
-| Expression | What it holds |
+| Note expression | What it returns |
 |---|---|
-| `.children.deployment.status.readyReplicas` | Number of ready pods |
-| `.children.deployment.status.replicas` | Total pods |
-| `.children.job.status.succeeded` | Completed job count |
-| `.children.service.status.loadBalancer` | LB ingress IP or hostname |
-| `.children.cronjob.status.lastScheduleTime` | Last scheduled run |
+| `{{ readyReplicas .children.deployment }}` | Number of ready pods |
+| `{{ desiredReplicas .children.deployment }}` | Total desired pods |
+| `{{ jobSucceeded .children.job }}` | `true` when job completed |
+| `{{ serviceLoadBalancerIP .children.service }}` | LB ingress IP |
+| `{{ serviceLoadBalancerHost .children.service }}` | LB ingress hostname |
+| `{{ get .children.cronjob "status" "lastScheduleTime" }}` | Last scheduled run |
 
 When multiple children of the same kind exist, `.children.deployment` returns
 the first. Access by name via `.children.deployment[0]` for arrays (when
@@ -87,9 +88,9 @@ the CR's status a live view of its children:
 status:
   fields:
     - path: readyReplicas
-      value: "{{ .children.deployment.status.readyReplicas }}"
+      value: "{{ get .children.deployment "status" "readyReplicas" }}"
     - path: endpoint
-      value: "{{ .children.service.status.loadBalancer.ingress[0].hostname }}"
+      value: "{{ get .children.service "status" "loadBalancer" "ingress" }}"
 ```
 
 ---

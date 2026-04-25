@@ -98,7 +98,7 @@ The operator behavior. Reconcile templates, conversion rules, workers,
 resync interval, and dependency ordering.
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: postgres-v14
@@ -134,7 +134,7 @@ This is documentation through example — it should demonstrate the patterns
 a real consumer would use.
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: postgres-example

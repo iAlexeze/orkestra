@@ -402,7 +402,7 @@ func buildCRDetail(objMap map[string]interface{}, children map[string]interface{
 	annotations := make(map[string]string, len(rawAnnotations))
 	for k, v := range rawAnnotations {
 		s, _ := v.(string)
-		if !strings.HasPrefix(k, "orkestra.konductor.io/") &&
+		if !strings.HasPrefix(k, "orkestra.orkspace.io/") &&
 			k != "kubectl.kubernetes.io/last-applied-configuration" {
 			annotations[k] = s
 		}

@@ -3,9 +3,9 @@ kind: CustomResourceDefinition
 metadata:
   name: cronjobs.demo.orkestra.io
   annotations:
-    orkestra.konductor.io/pattern: cronjob
-    orkestra.konductor.io/pattern-version: "2.0.0"
-    orkestra.konductor.io/managed-by: orkestra
+    orkestra.orkspace.io/pattern: cronjob
+    orkestra.orkspace.io/pattern-version: "2.0.0"
+    orkestra.orkspace.io/managed-by: orkestra
 spec:
   group: demo.orkestra.io
   scope: Namespaced

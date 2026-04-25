@@ -38,6 +38,14 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 			},
 			Verbs: defaultVerbs,
 		})
+		// ───────────────────────────────────────────────
+		// Needs permission to create and manage secret
+		// ───────────────────────────────────────────────
+		rules = append(rules, rbacv1.PolicyRule{
+			APIGroups: []string{""},
+			Resources: []string{"secrets"},
+			Verbs:     defaultVerbs,
+		})
 	}
 
 	// ───────────────────────────────────────────────

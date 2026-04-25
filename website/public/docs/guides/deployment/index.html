@@ -1037,7 +1037,7 @@ before running any real CRDs.</p>
 </span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># my-values.yaml</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">katalog</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">inline</span>: |<span style="color:#f1fa8c">
-</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    apiVersion: orkestra.konductor.io/v1Alpha
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    apiVersion: orkestra.orkspace.io/v1
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    kind: Katalog
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    metadata:
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">      name: my-katalog
@@ -1073,7 +1073,7 @@ before running any real CRDs.</p>
 a ConfigMap from it. Good for small operators and getting started.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">katalog</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">inline</span>: |<span style="color:#f1fa8c">
-</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    apiVersion: orkestra.konductor.io/v1Alpha
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    apiVersion: orkestra.orkspace.io/v1
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    kind: Katalog
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    ...</span>
 </span></span></code></pre></div><p><strong>Updating:</strong> change <code>values.yaml</code> and run <code>helm upgrade</code>. The ConfigMap
@@ -1102,7 +1102,7 @@ This is how platform teams distribute shared CRD definitions across clusters.</p
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">namespace</span>: orkestra-system
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">data</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">katalog.yaml</span>: |<span style="color:#f1fa8c">
-</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    apiVersion: orkestra.konductor.io/v1Alpha
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    apiVersion: orkestra.orkspace.io/v1
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    kind: Komposer
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    metadata:
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">      name: platform-komposer
@@ -1123,7 +1123,7 @@ The namespace CRD is owned by the platform team. The database CRD is owned
 by the data team.</p>
 <p>With Komposer, each team maintains their own Katalog. The platform&rsquo;s Komposer
 composes them:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: platform-komposer

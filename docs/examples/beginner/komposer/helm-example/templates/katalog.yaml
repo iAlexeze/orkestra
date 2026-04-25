@@ -3,7 +3,7 @@
   Orkestra's merger reads this template's output and extracts CRD definitions.
   The chart must render at least one template with kind: Katalog.
 */ -}}
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: {{ .Release.Name }}-katalog

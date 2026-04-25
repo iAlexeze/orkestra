@@ -274,7 +274,7 @@ func (r *Resolver) WithDocker(data map[string]interface{}) *Resolver {
 // the "previous" key. Used by runRollback when applying onRollback templates.
 //
 // The previous spec is the last successfully reconciled spec, captured in the
-// orkestra.konductor.io/previous-spec annotation before each spec change.
+// orkestra.orkspace.io/previous-spec annotation before each spec change.
 //
 // Templates in onRollback: declarations can reference:
 //

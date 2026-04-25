@@ -24,7 +24,7 @@ This guide assumes you have already completed the installation steps and success
 Create a file called `my-katalog.yaml`:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: my-first-katalog
@@ -216,7 +216,7 @@ Dependencies apply to reconciliation order, not CR creation order.
 Here is a complete Katalog for a simple web application:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: webapp-katalog

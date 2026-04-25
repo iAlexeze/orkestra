@@ -30,7 +30,7 @@
 //
 // The .previous.* context is hydrated from the annotation:
 //
-//	orkestra.konductor.io/previous-spec
+//	orkestra.orkspace.io/previous-spec
 //
 // which is written atomically before each spec change is applied.
 //
@@ -87,11 +87,11 @@ const (
 // PreviousSpecAnnotation is the annotation key where the previous spec
 // is stored before a spec change is applied.
 // Value is a base64-encoded, gzip-compressed JSON of the CR spec.
-const PreviousSpecAnnotation = "orkestra.konductor.io/previous-spec"
+const PreviousSpecAnnotation = "orkestra.orkspace.io/previous-spec"
 
 // RollbackGenerationAnnotation records the generation at which rollback
 // was last triggered. Used to detect spec changes that should exit rollback.
-const RollbackGenerationAnnotation = "orkestra.konductor.io/rollback-at-generation"
+const RollbackGenerationAnnotation = "orkestra.orkspace.io/rollback-at-generation"
 
 // EffectiveConsecutiveFailures returns the consecutive failure threshold,
 // applying the default of 3 when not declared.

@@ -52,7 +52,7 @@ A registry entry looks like this:
 
 ```yaml
 # registry entry: prometheus@v2.45
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: prometheus
@@ -100,7 +100,7 @@ Teams no longer write this logic — they **consume** it.
 A Komposer can reference registry entries just like files or Helm charts:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform-komposer

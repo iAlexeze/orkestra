@@ -1,0 +1,94 @@
+# Dockerfile.typed
+#
+# Use this Dockerfile when your operator has Go hooks or a custom constructor.
+# For 100% declarative operators, use the standard Dockerfile instead —
+# it uses a pre-built binary and produces a much smaller, faster image.
+#
+# ── How to use this file ──────────────────────────────────────────────────────
+#
+# 1. Your repository needs:
+#      go.mod   — with: require github.com/orkspace/orkestra v<version>
+#      go.sum
+#      katalog.yaml          — with hooks.location + hooks.function declared
+#      hooks/your_hook.go    — your hook or constructor implementation
+#
+# 2. Build:
+#      docker build -f Dockerfile.typed -t myregistry/my-operator:v1 .
+#
+# 3. Deploy:
+#      helm install my-operator oci://ghcr.io/orkspace/charts/orkestra \
+#        --set image.repository=myregistry/my-operator \
+#        --set image.tag=v1
+#
+# Everything below the "YOUR CODE STARTS HERE" marker is what you write.
+# Everything above it is infrastructure — do not change it unless you
+# know what you are doing.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Stage 1: Build ────────────────────────────────────────────────────────────
+FROM golang:1.25-alpine AS builder
+
+RUN apk add --no-cache git ca-certificates tzdata
+
+WORKDIR /build
+
+# ── INFRASTRUCTURE — do not modify ───────────────────────────────────────────
+#
+# Download dependencies first — Docker layer cache reuse.
+# Only re-downloads when go.mod or go.sum changes.
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Install the ork CLI from the Orkestra module already in the cache.
+# go install reads the version from go.mod — no separate version pin needed.
+# The ork binary is available at $GOPATH/bin/ork for the generate step below.
+RUN ORKESTRA_VERSION=$(grep 'github.com/orkspace/orkestra ' go.mod | awk '{print $2}') && \
+    go install github.com/orkspace/orkestra/cmd/ork@${ORKESTRA_VERSION}
+
+# ── YOUR CODE STARTS HERE ─────────────────────────────────────────────────────
+#
+# Copy your hook or constructor source files.
+# Adjust the paths to match your repository layout.
+
+COPY hooks/ hooks/
+COPY katalog.yaml katalog.yaml
+
+# Generate the registry wiring.
+# ork reads katalog.yaml, finds hooks.location and hooks.function (or constructor),
+# and writes zz_generated_runtime_registry.go into the current directory.
+# This file imports your hooks package and registers it with the Orkestra runtime.
+RUN ork generate registry -k katalog.yaml
+
+# ── INFRASTRUCTURE — do not modify ───────────────────────────────────────────
+#
+# Copy the remaining source (go.mod and go.sum already copied above).
+# The dot (.) copies everything not already copied, including the
+# generated registry file from the step above.
+COPY . .
+
+ARG VERSION=dev
+ARG COMMIT=none
+ARG BUILD_DATE=unknown
+
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -trimpath \
+    -ldflags="-s -w \
+      -X github.com/orkspace/orkestra/pkg/version.Version=${VERSION} \
+      -X github.com/orkspace/orkestra/pkg/version.Commit=${COMMIT} \
+      -X github.com/orkspace/orkestra/pkg/version.Date=${BUILD_DATE}" \
+    -o /build/ork \
+    .
+
+RUN file /build/ork && ldd /build/ork 2>&1 || true
+
+# ── Stage 2: Runtime image ────────────────────────────────────────────────────
+FROM gcr.io/distroless/static-debian12:nonroot
+
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=builder /build/ork /usr/local/bin/ork
+
+USER 65532:65532
+
+ENTRYPOINT ["/usr/local/bin/ork"]

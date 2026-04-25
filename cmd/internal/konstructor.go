@@ -298,10 +298,40 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			opts.Wq = wq
 		}
 
+		// ── Namespace filter — Tier 1 (scope ListerWatcher) + Tier 2 (pre-enqueue) ──
+		// Tier 2 is always registered when namespace rules exist.
+		// Tier 1 scopes the ListerWatcher to a single namespace when allowedNamespaces
+		// has exactly one entry — the informer never sees events from other namespaces.
+		if len(crd.AllowedNamespaces) > 0 || len(crd.RestrictedNamespaces) > 0 {
+			filter := &informer.NamespaceFilter{
+				AllowedNamespaces:    []string(crd.AllowedNamespaces),
+				RestrictedNamespaces: []string(crd.RestrictedNamespaces),
+			}
+			if filter.IsSingleNamespace() {
+				opts.Namespace = filter.SingleNamespace()
+				logger.Debug().
+					Str("crd", crd.APITypes.Kind).
+					Str("namespace", opts.Namespace).
+					Msg("informer: namespace-scoped watch (Tier 1)")
+			}
+			infFactory.RegisterNamespaceFilter(gvk, filter)
+			logger.Debug().
+				Str("crd", crd.APITypes.Kind).
+				Str("filter", informer.NamespaceFilterSummary(filter)).
+				Msg("informer: namespace filter registered (Tier 2)")
+		}
+
 		// Choose typed or dynamic informer.
 		// Dynamic CRDs use *unstructured.Unstructured — no Go type needed.
 		// Typed CRDs use the registered concrete Go type for type-safe access.
 		var inf cache.SharedIndexInformer
+
+		// For dynamic CRDs, use opts.Namespace from the Tier 1 filter when set;
+		// otherwise fall back to crd.Namespace (operator-level namespace setting).
+		dynNamespace := crd.Namespace
+		if opts.Namespace != "" {
+			dynNamespace = opts.Namespace
+		}
 
 		if crd.IsDynamic() {
 			lw := kube.NewDynamicListerWatcher(kubeclient.CRDInfo{
@@ -311,7 +341,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 				APIPath:      crd.APITypes.APIPath,
 				GroupVersion: crd.GroupVersion,
 				Plural:       crd.APITypes.Plural,
-				Namespace:    crd.Namespace,
+				Namespace:    dynNamespace,
 				Namespaced:   crd.IsNamespaced(),
 			}, kubeclient.ListOptions{
 				LabelSelector: labelSelector,
@@ -439,10 +469,12 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 					hs.GetAdmissionStats(),
 					hs.GetProtectionStats(),
 					hs.GetWebhookStats(),
-					isDeletionProtected,
 					providerStatsMap[gvk],
 					hs.GetNamespaceStats(),
+					isDeletionProtected,
 					kat.IsNamespaceProtectionEnabled(),
+					kat.IsConversionEnabled(),
+					kat.IsAdmissionEnabled(),
 				),
 			)
 			hs.Register(

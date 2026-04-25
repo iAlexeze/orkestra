@@ -3,7 +3,7 @@
 The simplest Orkestra pattern: define a CRD, write a Katalog, run the operator.
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 spec:
   crds:

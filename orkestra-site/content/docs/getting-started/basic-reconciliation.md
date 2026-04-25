@@ -103,7 +103,7 @@ Orkestra only reconciles CRs when the runtime is running and a Komposer has load
 Create `katalog.yaml`:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: myapp-katalog
@@ -144,7 +144,7 @@ This is the smallest meaningful operator you can build with Orkestra.
 Create `komposer.yaml`:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: myapp-komposer

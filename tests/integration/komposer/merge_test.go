@@ -13,7 +13,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/merger"
 )
 
-const katalogYAML = `apiVersion: orkestra.konductor.io/v1Alpha
+const katalogYAML = `apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: test-katalog
@@ -25,7 +25,7 @@ spec:
       enabled: true
 `
 
-const katalogDisabledYAML = `apiVersion: orkestra.konductor.io/v1Alpha
+const katalogDisabledYAML = `apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: test-disabled-katalog
@@ -37,7 +37,7 @@ spec:
       enabled: true
 `
 
-const komposerWithFileSourceYAML = `apiVersion: orkestra.konductor.io/v1Alpha
+const komposerWithFileSourceYAML = `apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: test-komposer
@@ -48,7 +48,7 @@ spec:
   crds: []
 `
 
-const komposerWithInlineOverrideYAML = `apiVersion: orkestra.konductor.io/v1Alpha
+const komposerWithInlineOverrideYAML = `apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: override-komposer
@@ -121,7 +121,7 @@ func TestMerger_GetCRD_ByName(t *testing.T) {
 }
 
 func TestMerger_TwoKatalogFiles_Merged(t *testing.T) {
-	a := writeTemp(t, `apiVersion: orkestra.konductor.io/v1Alpha
+	a := writeTemp(t, `apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: katalog-a
@@ -130,7 +130,7 @@ spec:
     - name: alpha
       enabled: true
 `)
-	b := writeTemp(t, `apiVersion: orkestra.konductor.io/v1Alpha
+	b := writeTemp(t, `apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: katalog-b
@@ -149,7 +149,7 @@ spec:
 }
 
 func TestMerger_DuplicateCRD_AcrossEntryPoints_ReturnsError(t *testing.T) {
-	a := writeTemp(t, `apiVersion: orkestra.konductor.io/v1Alpha
+	a := writeTemp(t, `apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: katalog-a
@@ -158,7 +158,7 @@ spec:
     - name: website
       enabled: true
 `)
-	b := writeTemp(t, `apiVersion: orkestra.konductor.io/v1Alpha
+	b := writeTemp(t, `apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: katalog-b
@@ -174,7 +174,7 @@ spec:
 }
 
 func TestMerger_KomposerFileSource_LoadsKatalog(t *testing.T) {
-	katalogPath := writeTemp(t, `apiVersion: orkestra.konductor.io/v1Alpha
+	katalogPath := writeTemp(t, `apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: source-katalog
@@ -183,7 +183,7 @@ spec:
     - name: sourced-crd
       enabled: true
 `)
-	komposerContent := "apiVersion: orkestra.konductor.io/v1Alpha\nkind: Komposer\nmetadata:\n  name: test-komposer\nsources:\n  files:\n    - url: " + katalogPath + "\nspec:\n  crds: []\n"
+	komposerContent := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: test-komposer\nsources:\n  files:\n    - url: " + katalogPath + "\nspec:\n  crds: []\n"
 	komposerPath := writeTemp(t, komposerContent)
 
 	m := merger.New(komposerPath)
@@ -199,7 +199,7 @@ spec:
 }
 
 func TestMerger_Add_AppendsEntryPoints(t *testing.T) {
-	a := writeTemp(t, `apiVersion: orkestra.konductor.io/v1Alpha
+	a := writeTemp(t, `apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: katalog-a
@@ -208,7 +208,7 @@ spec:
     - name: alpha
       enabled: true
 `)
-	b := writeTemp(t, `apiVersion: orkestra.konductor.io/v1Alpha
+	b := writeTemp(t, `apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: katalog-b

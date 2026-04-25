@@ -134,7 +134,7 @@ and propagated from child resource status:
 status:
   fields:
     - path: readyReplicas
-      value: "{{ .children.deployment.status.readyReplicas }}"
+      value: "{{ get .children.deployment "status" "readyReplicas" }}"
     - path: endpoint
       value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
 ```

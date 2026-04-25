@@ -62,7 +62,7 @@ If this rule fires, the API server returns an error to the client before the obj
 is stored. The user sees:
 
 ```
-Error from server: admission webhook "validate.orkestra.konductor.io" denied the request:
+Error from server: admission webhook "validate.orkestra.orkspace.io" denied the request:
 [orkestra] validation failed: field "spec.image": images must come from the internal registry
 ```
 

@@ -140,14 +140,14 @@ CRD, even when `ENABLE_ADMISSION_WEBHOOK=true` globally.
 ### Admission-time errors (kubectl output)
 
 ```
-Error from server: admission webhook "validate.orkestra.konductor.io" denied the request:
+Error from server: admission webhook "validate.orkestra.orkspace.io" denied the request:
 [orkestra] validation failed: field "spec.image": image must be from the myorg registry (got: "nginx:1.25")
 ```
 
 Multiple violations:
 
 ```
-Error from server: admission webhook "validate.orkestra.konductor.io" denied the request:
+Error from server: admission webhook "validate.orkestra.orkspace.io" denied the request:
 [orkestra] validation failed: field "spec.image": image must be from the myorg registry (got: "nginx:1.25"); field "spec.replicas": replicas cannot exceed 10 (got: "15")
 ```
 

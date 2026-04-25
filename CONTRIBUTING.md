@@ -60,7 +60,7 @@ Title: ork validate crashes when Komposer has empty sources block
 
 Steps:
 1. Create a file with:
-   apiVersion: orkestra.konductor.io/v1Alpha
+   apiVersion: orkestra.orkspace.io/v1
    kind: Komposer
    sources: {}
    

@@ -1013,7 +1013,7 @@ come from, then merges them into one runtime configuration. Inline
   <tbody>
       <tr>
           <td><code>apiVersion</code></td>
-          <td><code>orkestra.konductor.io/v1Alpha</code></td>
+          <td><code>orkestra.orkspace.io/v1</code></td>
           <td>yes</td>
           <td>—</td>
       </tr>
@@ -1149,7 +1149,7 @@ come from, then merges them into one runtime configuration. Inline
   <tbody>
       <tr>
           <td><code>apiVersion</code></td>
-          <td><code>orkestra.konductor.io/v1Alpha</code></td>
+          <td><code>orkestra.orkspace.io/v1</code></td>
           <td>yes</td>
           <td>—</td>
       </tr>
@@ -1447,7 +1447,7 @@ come from, then merges them into one runtime configuration. Inline
 <hr>
 <h2 id="complete-examples">Complete examples</h2>
 <h3 id="minimal-katalog">Minimal Katalog</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: website-operator
@@ -1472,7 +1472,7 @@ come from, then merges them into one runtime configuration. Inline
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">targetPort</span>: <span style="color:#f1fa8c">&#34;{{ .spec.port }}&#34;</span>
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
 </span></span></code></pre></div><h3 id="katalog-with-full-options">Katalog with full options</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: website-operator
@@ -1535,7 +1535,7 @@ come from, then merges them into one runtime configuration. Inline
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">command</span>: [<span style="color:#f1fa8c">&#34;sh&#34;</span>, <span style="color:#f1fa8c">&#34;-c&#34;</span>, <span style="color:#f1fa8c">&#34;echo cleanup&#34;</span>]
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">backoffLimit</span>: <span style="color:#bd93f9">3</span>
 </span></span></code></pre></div><h3 id="minimal-komposer">Minimal Komposer</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: platform-komposer
@@ -1549,7 +1549,7 @@ come from, then merges them into one runtime configuration. Inline
 </span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: website
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">8</span>
 </span></span></code></pre></div><h3 id="komposer-with-all-source-types">Komposer with all source types</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: platform-komposer
