@@ -49,6 +49,20 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 	}
 
 	// ───────────────────────────────────────────────
+	// Deletion protection — namespace labeling
+	// ───────────────────────────────────────────────
+	// ensureNamespaceLabeled patches the Orkestra namespace with deletion-protection
+	// labels at startup so the admission webhook's ObjectSelector matches it.
+	// Requires get (to confirm the namespace exists) and patch (to apply labels).
+	if k.IsDeletionProtectionEnabled() {
+		rules = append(rules, rbacv1.PolicyRule{
+			APIGroups: []string{""},
+			Resources: []string{"namespaces"},
+			Verbs:     []string{"get", "patch"},
+		})
+	}
+
+	// ───────────────────────────────────────────────
 	// CRD RBAC (main + status)
 	// ───────────────────────────────────────────────
 	for _, crd := range k.Enabled() {

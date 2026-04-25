@@ -103,6 +103,7 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/certmanager"
 	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/health"
 	"github.com/orkspace/orkestra/pkg/informer"
@@ -180,8 +181,9 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	}
 
 	var tlsCert, tlsKey string
+	var certMgr certmanager.Manager
 	if kat.DeletionProtectionGVRs() != nil {
-		tlsCert, tlsKey, err = ensureSecurity(ctx, kfg, kat, kube)
+		tlsCert, tlsKey, certMgr, err = ensureSecurity(ctx, kfg, kat, kube)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("security setup failed")
 		}
@@ -201,6 +203,9 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// HealthServer — HTTP mux created now, routes registered below, Start()
 	// binds the port later. Routes must be registered before Start().
 	hs := health.NewHealthServer(kube.Clientset(), kat, kfg)
+	if certMgr != nil {
+		hs.SetCertManager(certMgr)
+	}
 
 	ev := event.NewEvent(kube)
 	defaultWq := queue.NewWorkqueue()

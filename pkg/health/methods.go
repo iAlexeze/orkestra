@@ -22,3 +22,9 @@ func (h *HealthServer) SetKubeClient(c kubernetes.Interface) {
 func (h *HealthServer) SetWebhookOpts(opts WebhookRegistrationOptions) {
 	h.hookReg = opts
 }
+
+// SetCertManager provides the cert manager used to delete the TLS Secret on
+// graceful shutdown when cleanupOnShutdown is enabled.
+func (h *HealthServer) SetCertManager(m certManagerIface) {
+	h.certMgr = m
+}

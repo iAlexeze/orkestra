@@ -1,4 +1,15 @@
 // pkg/merger/merger.go
+//
+// Package merger resolves and merges Katalog and Komposer YAML files into a
+// single unified CRD map that the Katalog runtime consumes. It is the
+// ingestion layer between raw YAML on disk (or remote sources) and the
+// operator's live configuration.
+//
+// Entry point: New(paths...).Merge() — call once; query with Enabled, All,
+// ToSpec, ToSecurity, ToNotification, and ToProviders.
+//
+// See README.md for merge rules, source-loading order, and top-level field
+// accumulation semantics.
 package merger
 
 import (
@@ -31,6 +42,9 @@ type Merger struct {
 
 	// security holds the security configuration of the final katalog
 	security orktypes.KatalogSecurity
+
+	// notification holds the merged notification configuration of the final katalog
+	notification *orktypes.KatalogNotification
 
 	// providers holds the top-level provider requirements of the final katalog
 	providers []orktypes.KatalogProviderRequirement
@@ -305,6 +319,15 @@ func (m *Merger) ToSecurity() orktypes.KatalogSecurity {
 func (m *Merger) ToProviders() []orktypes.KatalogProviderRequirement {
 	m.mustBeMerged()
 	return m.providers
+}
+
+// ToNotification returns the merged notification configuration of the merged result.
+// When a Komposer references multiple source Katalogs, teams from all sources are
+// merged — source teams are inherited and the Komposer's own teams win on conflict.
+// Used by KomposeKatalogFromYaml to populate Katalog.Notification.
+func (m *Merger) ToNotification() *orktypes.KatalogNotification {
+	m.mustBeMerged()
+	return m.notification
 }
 
 // APIMetadata returns the merged result as a KatalogMeta with apiversion and kind.

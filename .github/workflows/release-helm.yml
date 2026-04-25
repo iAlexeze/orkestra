@@ -66,14 +66,14 @@ jobs:
       # - name: Run chart-releaser
       #   uses: helm/chart-releaser-action@v1.7.0
       #   env:
-      #     CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     CR_TOKEN: ${{ secrets.ORK_PUBLISH_PAT }}
       #   with:
       #     charts_dir: charts
       #     skip_existing: true
 
       - name: Package and push Helm chart to gh-pages
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.ORK_PUBLISH_PAT }}
         run: |
           set -eux
           CHART_DIR="charts/${{ inputs.ork }}"

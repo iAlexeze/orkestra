@@ -279,6 +279,17 @@ func (k *Konfig) OrkestraResourceSelector() *metav1.LabelSelector {
 	return orkestraResourceSelector
 }
 
+// OrkestraBaseLabels returns a copy of the standard Orkestra control-plane labels.
+// It can be called without a Konfig instance — useful in generators and CLI commands
+// that do not load the full operator configuration.
+func OrkestraBaseLabels() map[string]string {
+	out := make(map[string]string, len(orkestraResourceLabels))
+	for k, v := range orkestraResourceLabels {
+		out[k] = v
+	}
+	return out
+}
+
 // OrkestraResourceLabels returns the internal labels for orkestra control plane resources
 func (k *Konfig) OrkestraResourceLabels() map[string]string {
 	return orkestraResourceLabels

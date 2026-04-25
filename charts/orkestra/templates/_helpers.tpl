@@ -47,11 +47,9 @@ Selector labels — used in Deployment selector and Service selector.
 MUST remain stable across upgrades (do not change).
 */}}
 {{- define "orkestra.selectorLabels" -}}
-# Deletion Protection labels
 app.kubernetes.io/name: orkestra
 app.kubernetes.io/tag: orkestra-internal
-
-# Other labels
+orkestra.io/deletion-protection: "true"
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 

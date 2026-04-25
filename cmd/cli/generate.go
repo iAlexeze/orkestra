@@ -14,9 +14,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	DefaultNamespace = "orkestra-system"
-)
+// defaultNamespace returns the namespace to use when --namespace is not supplied.
+// Reads ORKESTRA_NAMESPACE from the environment so that CLI invocations inside
+// an already-configured cluster automatically target the right namespace.
+func defaultNamespace() string {
+	if ns := os.Getenv("ORKESTRA_NAMESPACE"); ns != "" {
+		return ns
+	}
+	return "orkestra-system"
+}
 
 var generateCmd = &cobra.Command{
 	Use:   "generate",
@@ -367,7 +373,7 @@ func init() {
 	} {
 		cmd.Flags().Bool("dry-run", false, "Print generated output to stdout without writing files")
 		cmd.Flags().StringP("output", "o", "", "Write generated output to file")
-		cmd.Flags().StringP("namespace", "n", DefaultNamespace, "Namespace for the ServiceAccount")
+		cmd.Flags().StringP("namespace", "n", defaultNamespace(), "Namespace for the ServiceAccount")
 	}
 
 	// Add shared flags for configmap and bundle (without StringSlice)
@@ -377,7 +383,7 @@ func init() {
 	} {
 		cmd.Flags().Bool("dry-run", false, "Print generated output to stdout without writing files")
 		cmd.Flags().StringP("output", "o", "", "Write generated output to file")
-		cmd.Flags().StringP("namespace", "n", DefaultNamespace, "Namespace for the ServiceAccount")
+		cmd.Flags().StringP("namespace", "n", defaultNamespace(), "Namespace for the ServiceAccount")
 	}
 
 	// Shadow global flags so they don't appear under `ork generate`

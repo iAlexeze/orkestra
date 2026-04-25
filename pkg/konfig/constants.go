@@ -59,11 +59,15 @@ var (
 	}
 )
 
-// orkestraResourceLabels defines the labels used to identify Orkestra-managed
-// resources for deletion protection.
+// orkestraResourceLabels defines the labels applied to every Orkestra control-plane
+// resource (Deployment, Service, ServiceAccount, ClusterRole, ClusterRoleBinding,
+// webhook configurations, and the TLS Secret). The deletion-protection label is
+// included so the admission webhook's objectSelector matches exactly these
+// resources — it fires only for objects already carrying the label.
 var orkestraResourceLabels = map[string]string{
-	"app.kubernetes.io/name": "orkestra",
-	"app.kubernetes.io/tag":  "orkestra-internal",
+	"app.kubernetes.io/name":          "orkestra",
+	"app.kubernetes.io/tag":           "orkestra-internal",
+	"orkestra.io/deletion-protection": "true",
 }
 
 // Label selector shared by all Orkestra-managed Kubernetes resources.
