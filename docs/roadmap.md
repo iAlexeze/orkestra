@@ -138,9 +138,9 @@ The planned command suite for working with OCI-distributed operator patterns:
 ork registry login ghcr.io
 ork registry push ghcr.io/myorg/postgres:v14 ./postgres/v14
 ork registry pull ghcr.io/myorg/postgres:v14 ./local
-ork registry list ghcr.io/konduktor-io/orkestra-registry
+ork registry list ghcr.io/orkspace/orkestra-registry
 ork registry search postgres
-ork registry info ghcr.io/konduktor-io/orkestra-registry/postgres:v14
+ork registry info ghcr.io/orkspace/orkestra-registry/postgres:v14
 ```
 
 OCI patterns are consumable today via direct `oci:` references in Komposers.

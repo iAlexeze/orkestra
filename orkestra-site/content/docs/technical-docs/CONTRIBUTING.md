@@ -286,7 +286,7 @@ rootCmd.AddCommand(newMyCommand())
 
 ### Publishing a registry pattern
 
-Registry patterns belong in the `konduktor-io/orkestra-registry` repository, not in this repository.
+Registry patterns belong in the `orkspace/orkestra-registry` repository, not in this repository.
 
 The pattern directory must contain exactly five files:
 

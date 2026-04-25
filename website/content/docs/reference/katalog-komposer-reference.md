@@ -312,7 +312,7 @@ metadata:
 
 sources:
   registry:
-    - url: ghcr.io/konduktor-io/orkestra-registry/postgres@v14
+    - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
       oci: true
     - url: https://github.com/myorg/internal-registry@main
       auth:

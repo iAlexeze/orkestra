@@ -82,7 +82,7 @@ Registry sources pull a complete five-file pattern from a Git or OCI registry:
 ```yaml
 sources:
   registry:
-    - url: ghcr.io/konduktor-io/orkestra-registry/postgres@v14
+    - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
       oci: true
     - url: https://github.com/myorg/registry@main
 ```

@@ -17,10 +17,10 @@ import (
 
 func TestResolvedURL_AtShorthand(t *testing.T) {
 	src := orktypes.RegistrySource{
-		URL: "ghcr.io/konduktor-io/orkestra-registry/postgres@v14",
+		URL: "ghcr.io/orkspace/orkestra-registry/postgres@v14",
 	}
 	url, version := src.ResolvedURL()
-	if url != "ghcr.io/konduktor-io/orkestra-registry/postgres" {
+	if url != "ghcr.io/orkspace/orkestra-registry/postgres" {
 		t.Errorf("url: expected stripped @, got %q", url)
 	}
 	if version != "v14" {
@@ -43,11 +43,11 @@ func TestResolvedURL_AtShorthand_GitURL(t *testing.T) {
 
 func TestResolvedURL_ExplicitVersion(t *testing.T) {
 	src := orktypes.RegistrySource{
-		URL:     "ghcr.io/konduktor-io/orkestra-registry/postgres",
+		URL:     "ghcr.io/orkspace/orkestra-registry/postgres",
 		Version: "v14.2.0",
 	}
 	url, version := src.ResolvedURL()
-	if url != "ghcr.io/konduktor-io/orkestra-registry/postgres" {
+	if url != "ghcr.io/orkspace/orkestra-registry/postgres" {
 		t.Errorf("url: expected unchanged, got %q", url)
 	}
 	if version != "v14.2.0" {
@@ -57,7 +57,7 @@ func TestResolvedURL_ExplicitVersion(t *testing.T) {
 
 func TestResolvedURL_AtShorthand_Takes_Priority(t *testing.T) {
 	src := orktypes.RegistrySource{
-		URL:     "ghcr.io/konduktor-io/orkestra-registry/postgres@v14",
+		URL:     "ghcr.io/orkspace/orkestra-registry/postgres@v14",
 		Version: "v15",
 	}
 	_, version := src.ResolvedURL()
@@ -68,7 +68,7 @@ func TestResolvedURL_AtShorthand_Takes_Priority(t *testing.T) {
 
 func TestResolvedURL_DefaultVersion_OCI(t *testing.T) {
 	src := orktypes.RegistrySource{
-		URL: "ghcr.io/konduktor-io/orkestra-registry/postgres",
+		URL: "ghcr.io/orkspace/orkestra-registry/postgres",
 		OCI: true,
 	}
 	_, version := src.ResolvedURL()

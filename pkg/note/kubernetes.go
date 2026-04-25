@@ -27,6 +27,8 @@ func kubernetesNotes() template.FuncMap {
 	return template.FuncMap{
 		// ── Metadata ──────────────────────────────────────────────────────────
 		"meta":        noteMeta,
+		"name":        noteName,
+		"namespace":   noteNamespace,
 		"labels":      noteLabels,
 		"annotations": noteAnnotations,
 
@@ -75,6 +77,28 @@ func noteMeta(obj interface{}) map[string]interface{} {
 		}
 	}
 	return map[string]interface{}{}
+}
+
+// noteName returns metadata.name or an empty string.
+//
+//	{{ name .children.deployment }}  → "my-deployment"
+func noteName(obj interface{}) string {
+	meta := noteMeta(obj)
+	if n, ok := meta["name"].(string); ok {
+		return n
+	}
+	return ""
+}
+
+// noteNamespace returns metadata.namespace or an empty string.
+//
+//	{{ namespace .children.deployment }}  → "orkestra-system"
+func noteNamespace(obj interface{}) string {
+	meta := noteMeta(obj)
+	if ns, ok := meta["namespace"].(string); ok {
+		return ns
+	}
+	return ""
 }
 
 // noteLabels returns the labels map from metadata.
