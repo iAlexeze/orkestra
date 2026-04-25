@@ -197,3 +197,10 @@ jobs:
             dist/examples_advanced_${{ github.ref_name }}.tar.gz
             dist/examples_use-cases_${{ github.ref_name }}.tar.gz
           fail_on_unmatched_files: true
+      
+      - name: Upload checksums as artifact
+        uses: actions/upload-artifact@v4
+        with:
+         name: checksums
+         path: dist/checksums.txt
+         retention-days: 1
