@@ -65,6 +65,7 @@ ork generate bundle --katalog katalog.yaml -o bundle.yaml
 ```
 
 This produces a single YAML file containing:
+- A `Namespace` named `orkestra-system `. Use `-n <my-namespace>` to override
 - `ServiceAccounts` for Runtime (`orkestra`) and Control Center (`orkestra-cc`)
 - A `ClusterRole` with **only** the permissions your Katalog needs
 - A `ClusterRoleBinding`
@@ -73,7 +74,6 @@ This produces a single YAML file containing:
 ### Step 2 – Apply the bundle
 
 ```bash
-kubectl create namespace orkestra-system   # if not already present
 kubectl apply -f bundle.yaml
 ```
 
@@ -82,6 +82,8 @@ kubectl apply -f bundle.yaml
 ```bash
 helm repo add orkestra https://orkspace.github.io/orkestra
 helm install orkestra orkestra/orkestra --namespace orkestra-system
+
+# Replace 'orkestra-system' if you used a different namespace in Step 1
 ```
 
 That’s it. The Helm chart automatically uses the `ServiceAccount` and `ConfigMap` you just applied.
