@@ -42,6 +42,7 @@
                </svg>
                Metrics
             </a>
+            {{ if .EnableRuntimeManager }}
             <a href="#" id="sidebarRuntimesBtn" class="cc-nav-item">
                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
@@ -49,7 +50,8 @@
                </svg>
                Manage Runtimes
             </a>
-            <a href="https://orkestra.sh" target="_blank" class="cc-nav-item">
+            {{ end }}
+            <a href="/controlcenter/docs" class="cc-nav-item">
                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
@@ -63,6 +65,7 @@
          <div class="cc-sidebar-footer">
             <span class="cc-refresh-dot" id="sse-dot" title="Live connection"></span>
             <span class="cc-refresh-label">Live</span>
+            {{ if .CCVersion }}<span class="cc-version-label">{{ .CCVersion }}</span>{{ end }}
          </div>
       </aside>
       <div class="cc-sidebar-overlay" id="cc-overlay"></div>
@@ -77,10 +80,12 @@
             </button>
             <span class="cc-navbar-title">Multi-Runtime Viewer</span>
             <div class="cc-navbar-right">
+               {{ if .EnableRuntimeManager }}
                <button id="manageRuntimesBtn" class="cc-btn cc-btn-outline" style="margin-right: 8px;" aria-label="Manage Runtimes">
                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/><circle cx="12" cy="12" r="4"/></svg>
                  Runtimes
                </button>
+               {{ end }}
                <button class="cc-theme-toggle" id="cc-theme-toggle" title="Toggle theme">☀️</button>
             </div>
          </div>
@@ -183,6 +188,7 @@
          </div>
       </main>
       <!-- ── Runtime Management Drawer ────────────────────────── -->
+      {{ if .EnableRuntimeManager }}
       <div id="runtimeDrawer" class="rt-drawer" role="dialog" aria-modal="true" aria-label="Manage Runtimes" hidden>
         <div class="rt-drawer-backdrop" id="rtBackdrop"></div>
         <div class="rt-drawer-panel">
@@ -226,8 +232,11 @@
           </div>
         </div>
       </div>
+      {{ end }}
       <!-- Script to manage runtimes -->
       <script src="/controlcenter/assets/static/js/controlcenter.js"></script>
+      {{ if .EnableRuntimeManager }}
       <script src="/controlcenter/assets/static/js/manageRuntime.js"></script>
+      {{ end }}
    </body>
 </html>

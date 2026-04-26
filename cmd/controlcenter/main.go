@@ -59,9 +59,10 @@ func main() {
 
 	// Create control center
 	cc := cc.New(urls, cc.Config{
-		RefreshInterval: *refresh,
-		LogLevel:        *logLevel,
-		Version:         version,
+		RefreshInterval:      *refresh,
+		LogLevel:             *logLevel,
+		Version:              version,
+		EnableRuntimeManager: kfg.EnableRuntimeManager,
 	})
 
 	// Setup routes

@@ -193,6 +193,13 @@ code, .mono {
   color: #64748B;  /* CHANGED: Fixed muted color for dark sidebar */
 }
 
+.cc-version-label {
+  font-size: 10px;
+  color: #475569;
+  margin-left: auto;
+  font-family: var(--font-mono, monospace);
+}
+
 /* ── Sidebar Collapse Toggle ───────────────────────────────── */
 .cc-sidebar-toggle {
   display: flex;
@@ -1851,4 +1858,32 @@ details > summary::-webkit-details-marker { display: none; }
 #ym-copyBtn:hover {
   background: #10B981 !important;
   color: white !important;
+}
+
+/* ── Docs ──────────────────────────────────────────────────── */
+.cc-code-block {
+  display: block;
+  padding: 8px 12px;
+  background: var(--bg-subtle, rgba(0,0,0,.15));
+  border: 1px solid var(--border-color, rgba(255,255,255,.08));
+  border-radius: 6px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.cc-sidebar-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+  padding: 12px 12px 4px;
+}
+
+.cc-nav-item-sub {
+  padding-left: 24px;
+  font-size: 12px;
 }
