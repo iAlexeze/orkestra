@@ -56,8 +56,92 @@ entries:
         - title: Metrics Overview
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
+    appVersion: 0.2.8
+    created: "2026-04-26T01:54:54.940974256Z"
+    description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
+      manage your CRDs declaratively with Katalog YAML files. Includes the Control
+      Center for real-time observability of all managed CRDs.
+    digest: 6ec96c555baa60e17eb2cd77ec75e25cb8045d21b32717ad46de2babf0a48858
+    home: https://github.com/orkspace/orkestra
+    icon: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/logo.png
+    keywords:
+    - orkestra
+    - operator
+    - kubernetes
+    - crd
+    - declarative
+    - controller
+    - controlcenter
+    - dashboard
+    - observability
+    maintainers:
+    - email: orkestra-releases@orkspace.io
+      name: Orkspace
+      url: https://github.com/orkspace/orkestra
+    name: orkestra
+    sources:
+    - https://github.com/orkspace/orkestra
+    type: application
+    urls:
+    - https://orkspace.github.io/orkestra/orkestra-0.2.8.tgz
+    version: 0.2.8
+  - annotations:
+      artifacthub.io/alternativeNames: |
+        - operator-sdk
+        - kubebuilder
+        - kudo
+        - crossplane
+      artifacthub.io/changes: |-
+        - kind: added
+          description: "Initial release of Orkestra v1.0.0"
+          links:
+            - name: GitHub Release
+              url: https://github.com/orkspace/orkestra/releases/tag/v1.0.0
+        - kind: added
+          description: "Control Center dashboard for real-time CRD observability"
+        - kind: added
+          description: "Declarative version conversion between API versions"
+        - kind: added
+          description: "Built-in validation and mutation rules for any CRD"
+        - kind: added
+          description: "OCI registry pattern distribution"
+      artifacthub.io/crds: |
+        - kind: Katalog
+          version: v1Alpha
+          name: katalogs.orkestra.konductor.io
+          displayName: Katalog
+          description: Declarative operator definition for one or more CRDs
+        - kind: Komposer
+          version: v1Alpha
+          name: komposers.orkestra.konductor.io
+          displayName: Komposer
+          description: Compose multiple Katalogs from different sources
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Documentation
+          url: https://github.com/orkspace/orkestra/tree/main/docs
+        - name: Whitepaper
+          url: https://github.com/orkspace/orkestra/blob/main/publish/declarative-operators-whitepaper.md
+        - name: Why Orkestra?
+          url: https://github.com/orkspace/orkestra/blob/main/publish/why-orkestra.md
+        - name: Control Center Dashboard
+          url: https://github.com/orkspace/orkestra/blob/main/docs/controlcenter.md
+      artifacthub.io/operator: "true"
+      artifacthub.io/operatorCapabilities: Basic Install
+      artifacthub.io/recommendations: |
+        - url: https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack
+        - url: https://artifacthub.io/packages/helm/cert-manager/cert-manager
+        - url: https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx
+      artifacthub.io/screenshots: |
+        - title: Orkestra Dashboard
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/dashboard.png
+        - title: CRD Health View
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/crd-health.png
+        - title: Metrics Overview
+          url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
+    apiVersion: v2
     appVersion: 0.2.7
-    created: "2026-04-25T17:39:15.440319516Z"
+    created: "2026-04-26T01:54:54.940115003Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -225,7 +309,7 @@ entries:
           url: https://raw.githubusercontent.com/iAlexeze/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.2.5
-    created: "2026-04-25T17:39:15.439268866Z"
+    created: "2026-04-26T01:54:54.939237447Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -309,7 +393,7 @@ entries:
           url: https://raw.githubusercontent.com/iAlexeze/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.2.4
-    created: "2026-04-25T17:39:15.437518624Z"
+    created: "2026-04-26T01:54:54.938305288Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -1093,4 +1177,4 @@ entries:
     urls:
     - https://github.com/orkspace/orkestra/releases/download/orkestra-0.1.4/orkestra-0.1.4.tgz
     version: 0.1.4
-generated: "2026-04-25T17:39:15.436447623Z"
+generated: "2026-04-26T01:54:54.93723936Z"
