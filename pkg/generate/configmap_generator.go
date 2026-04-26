@@ -16,58 +16,41 @@ const (
 )
 
 func ConfigMap(inputFile, namespace, outputFile string) error {
-	// Read the file
-	raw, err := os.ReadFile(inputFile)
-	if err != nil {
-		return fmt.Errorf("read %s: %w", inputFile, err)
-	}
-
-	// Use ORKESTRA_NAMESPACE env var when the caller does not pass --namespace.
 	if namespace == "" {
 		namespace = konfig.GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system")
 	}
-
-	// Build ConfigMap
-	cm := corev1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1",
-			Kind:       "ConfigMap",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      defaultConfigMapName,
-			Namespace: namespace,
-			Labels:    konfig.OrkestraBaseLabels(),
-		},
-		Data: map[string]string{
-			defaultConfigMapKey: string(raw),
-		},
-	}
-
-	// Marshal to YAML
-	out, err := yaml.Marshal(cm)
+	out, err := renderNamespaceAndConfigMap(inputFile, namespace)
 	if err != nil {
-		return fmt.Errorf("marshal configmap: %w", err)
+		return err
 	}
-
-	// Write output
 	if outputFile != "" {
 		return os.WriteFile(outputFile, out, 0644)
 	}
-
 	fmt.Println(string(out))
 	return nil
 }
 
-func RenderConfigMapToString(inputFile, namespace string) (string, error) {
+// renderNamespaceAndConfigMap is the full standalone output: Namespace + ConfigMap.
+func renderNamespaceAndConfigMap(inputFile, namespace string) ([]byte, error) {
+	nsBytes, err := renderNamespace(namespace)
+	if err != nil {
+		return nil, err
+	}
+	cmBytes, err := renderConfigMapBytes(inputFile, namespace)
+	if err != nil {
+		return nil, err
+	}
+	return []byte("---\n" + string(nsBytes) + "\n---\n" + string(cmBytes)), nil
+}
+
+// renderConfigMapBytes marshals a ConfigMap from the given file.
+// The Namespace is intentionally excluded — callers prepend it so that
+// bundle assembly can include it exactly once.
+func renderConfigMapBytes(inputFile, namespace string) ([]byte, error) {
 	raw, err := os.ReadFile(inputFile)
 	if err != nil {
-		return "", fmt.Errorf("read %s: %w", inputFile, err)
+		return nil, fmt.Errorf("read %s: %w", inputFile, err)
 	}
-
-	if namespace == "" {
-		namespace = "orkestra-system"
-	}
-
 	cm := corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -82,11 +65,9 @@ func RenderConfigMapToString(inputFile, namespace string) (string, error) {
 			defaultConfigMapKey: string(raw),
 		},
 	}
-
 	out, err := yaml.Marshal(cm)
 	if err != nil {
-		return "", fmt.Errorf("marshal configmap: %w", err)
+		return nil, fmt.Errorf("marshal configmap: %w", err)
 	}
-
-	return string(out), nil
+	return out, nil
 }

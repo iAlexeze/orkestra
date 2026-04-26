@@ -48,7 +48,7 @@ func parseKatalogPaths(paths []string) []string {
 type mergerOut struct {
 	m     *merger.Merger
 	crds  []orktypes.CRDEntry
-	kat   katalog.Katalog
+	kat   *katalog.Katalog
 	paths []string
 }
 
@@ -80,7 +80,7 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 	return &mergerOut{
 		m:     m,
 		crds:  crds,
-		kat:   kat,
+		kat:   &kat,
 		paths: katalogPaths,
 	}, nil
 }
@@ -320,17 +320,10 @@ Examples:
 
 		rules := k.GenerateRBACRules()
 
-		rbacOut, err := generate.RenderRBACToString(kfg, rules, namespace)
+		bundle, err := generate.RenderBundle(kfg, rules, katalogPath, namespace)
 		if err != nil {
-			return fmt.Errorf("generate rbac: %w", err)
+			return fmt.Errorf("generate bundle: %w", err)
 		}
-
-		configMapOut, err := generate.RenderConfigMapToString(katalogPath, namespace)
-		if err != nil {
-			return fmt.Errorf("generate configmap: %w", err)
-		}
-
-		bundle := rbacOut + "\n---\n" + configMapOut
 
 		log.Println("bundle generated successfully")
 
@@ -346,6 +339,7 @@ Examples:
 func init() {
 	rootCmd.AddCommand(generateCmd)
 
+	generateCmd.AddCommand(generateKatalogCmd)
 	generateCmd.AddCommand(generateCRDCmd)
 	generateCmd.AddCommand(generateRuntimeCmd)
 	generateCmd.AddCommand(generateDocsCmd)

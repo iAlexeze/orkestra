@@ -111,6 +111,14 @@ func (k *Katalog) validateReconcilerMode() error {
 			)
 		}
 
+		// ── Mutual exclusivity: hooks and constructor cannot both be declared ──
+		if crd.WithHooksDecl() && crd.WithConstructorDecl() {
+			return fmt.Errorf(
+				"CRD %q: cannot declare both 'hooks' and 'constructor' – choose one",
+				name,
+			)
+		}
+
 		// ── Common requirement for typed mode ──────────────────────────────
 		if crd.Mode == orktypes.CRDModeTyped && crd.APITypes.Location == "" {
 			return fmt.Errorf(
@@ -118,7 +126,6 @@ func (k *Katalog) validateReconcilerMode() error {
 				name,
 			)
 		}
-
 		// ── Hooks declaration validation ──────────────────────────────────
 		if crd.WithHooksDecl() {
 			if crd.APITypes.Location == "" {

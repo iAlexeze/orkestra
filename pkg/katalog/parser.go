@@ -91,82 +91,82 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 5. Add Reconcilers		// ReconcilerRegistry → Constructor
-	// -------------------------------------------------------------------------
-	if err := k.addReconcilers(); err != nil {
-		logger.Error().Err(err).Msg("failed to add reconcilers")
-		return nil, err
-	}
-	// -------------------------------------------------------------------------
-	// 6. Add RuntimeObjects	// ObjectRegistry + ListRegistry
-	// -------------------------------------------------------------------------
-	if err := k.addRuntimeObjects(); err != nil {
-		return nil, err
-	}
-
-	// -------------------------------------------------------------------------
-	// 6. Add Hooks	// HookRegistry → HookFactory
-	// -------------------------------------------------------------------------
-	if err := k.addHooks(); err != nil {
-		return nil, err
-	}
-
-	// -------------------------------------------------------------------------
-	// 7. Validate Reconciler modes
+	// 5. Validate Reconciler modes
 	// -------------------------------------------------------------------------
 	if err := k.validateReconcilerMode(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 8. Validate Status
+	// 6. Add Reconcilers		// ReconcilerRegistry → Constructor
+	// -------------------------------------------------------------------------
+	if err := k.addReconcilers(); err != nil {
+		logger.Error().Err(err).Msg("failed to add reconcilers")
+		return nil, err
+	}
+	// -------------------------------------------------------------------------
+	// 7. Add RuntimeObjects	// ObjectRegistry + ListRegistry
+	// -------------------------------------------------------------------------
+	if err := k.addRuntimeObjects(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 8. Add Hooks	// HookRegistry → HookFactory
+	// -------------------------------------------------------------------------
+	if err := k.addHooks(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 9. Validate Status
 	// -------------------------------------------------------------------------
 	k.validateStatus()
 
 	// -------------------------------------------------------------------------
-	// 9. Validate Autoscale Profile
+	// 10. Validate Autoscale Profile
 	// -------------------------------------------------------------------------
 	if err := k.validateAutoscaleProfile(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 10. Validate Autoscale Metrics Type
+	// 11. Validate Autoscale Metrics Type
 	// -------------------------------------------------------------------------
 	if err := k.validateAutoscalerMetrics(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 11. Validate Namespace protection
+	// 12. Validate Namespace protection
 	// -------------------------------------------------------------------------
 	if err := k.validateNamespaceProtection(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 12. Validate Time Duration
+	// 13. Validate Time Duration
 	// -------------------------------------------------------------------------
 	if err := k.validateTimeDuration(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 13. Validate HPA Reference
+	// 14. Validate HPA Reference
 	// -------------------------------------------------------------------------
 	if err := k.validateHPAReference(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 14. Validate Notify Teams
+	// 15. Validate Notify Teams
 	// -------------------------------------------------------------------------
 	// if err := k.validateNotifyTeams(); err != nil {
 	// 	return nil, err
 	// }
 
 	// -------------------------------------------------------------------------
-	// 15 Validate Status Types
+	// 16 Validate Status Types
 	// -------------------------------------------------------------------------
 	if err := k.validateStatusTypes(); err != nil {
 		return nil, err

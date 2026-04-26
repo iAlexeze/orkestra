@@ -1,54 +1,69 @@
-# Changelog
+## Changelog – Orkestra v0.2.9
+
+### ✨ New `ork generate katalog` – scaffold a Katalog in seconds
+
+Scaffold a production‑ready `katalog.yaml` with sensible defaults, optional typed‑mode placeholders, and built‑in security, notification, and provider blocks. No more memorising the schema.
+
+**Flags:**
+- `--add-hook` – typed mode with a `hooks` declaration (comment)
+- `--add-constructor` – typed mode with a `constructor` declaration (`default: false`)
+- `--typed` – both hook and constructor sections commented; you choose one
+- `--add-security` – add namespace & deletion protection stubs
+- `--add-notification` – add Slack/email notification example
+- `--add-provider <aws|azure|gcp>` – add cloud provider configuration
+
+**Example:**
+```bash
+ork generate katalog --add-hook --add-security --add-provider aws -o my-katalog.yaml
+```
+
+[Read the full command reference](https://docs.orkestra.io/reference/cli/generate-katalog)
 
 ---
 
-### Added (feat/deletion-protection-certmanager)
+### 🚀 Complete CI/CD for typed operators (hooks & constructors)
 
-**Deletion protection label propagation**
-- Added `orkestra.io/deletion-protection: "true"` to `orkestraResourceLabels` — single source of truth; Deployment, Service, RBAC, ConfigMap, TLS Secret, and webhook configurations all carry it automatically
-- Added `pkg/labels` package with `DeletionProtectionLabel` constant and `WithDeletionProtection` helper (immutable — never mutates the input map)
-- Added `OrkestraBaseLabels()` package-level function to `pkg/konfig` for callers without a `Konfig` instance (e.g. `configmap_generator.go`)
-- Added `orkestra.io/deletion-protection: "true"` to the Helm chart `orkestra.selectorLabels` helper
+Two new E2E workflows now run in GitHub Actions for the **advanced pack**:
 
-**Namespace deletion protection**
-- `ensureSecurity` now patches the Orkestra namespace with deletion-protection labels at startup so the admission webhook's `ObjectSelector` fires on namespace-delete attempts
-- Added RBAC rule (`get` + `patch` on `namespaces`) to `GenerateRBACRules` when deletion protection is enabled
+- **09-hooks** – typed hooks for a `Database` CRD (StatefulSet + Service + optional CronJob)
+- **10-constructors** – custom constructor for a `Pipeline` CRD (state machine with Jobs)
 
-**Certificate manager (`pkg/certmanager`)**
-- New `Manager` interface: `EnsureCertificate` and `DeleteCertificateAndSecret`
-- `k8sManager` implementation stores the TLS bundle in a Secret labeled with deletion-protection labels; upserts on conflict
-- `HealthServer` now accepts a `certManagerIface` (local interface, avoids circular import) and cleans up the TLS Secret on graceful shutdown when deletion protection cleanup is enabled
+Both workflows:
+- Generate the typed registry (`ork generate registry`)
+- Show the expected validation failure with the standard `ork` binary
+- Build a custom `ork` binary that includes the user’s Go code
+- Build, tag (with `hooks-` or `constructor-` prefix), and push a container image to `ghcr.io/orkspace/orkestra-typed-extensions`
+- Deploy the image via Helm, apply the CR, and verify resource creation
+- Test cleanup via owner reference garbage collection
 
-**`ORKESTRA_NAMESPACE` wiring**
-- Helm chart `ORKESTRA_NAMESPACE` env var switched from static `{{ .Release.Namespace }}` to Downward API `fieldRef: metadata.namespace`
-- `cmd/cli/generate.go` `DefaultNamespace` constant replaced with `defaultNamespace()` function that reads `$ORKESTRA_NAMESPACE` at call time
-
-**Merger — top-level field inheritance for Komposer**
-- Fixed: `ork generate rbac` / `ork generate configmap` against a Komposer now produces the same output as running against the source Katalogs directly
-- `loadKomposer` accumulates `security`, `notification`, and `providers` from every source Katalog; the Komposer's own block is merged on top with override semantics
-- Added `mergeKatalogSecurity` and `mergeKatalogNotification` helpers to `pkg/merger/helper.go`
-- Added `Notification *KatalogNotification` as a top-level field on `KatalogFile` (was missing — only existed on the runtime `Katalog` struct)
-- `Merger` gains a `notification` field and `ToNotification()` accessor; `KomposeKatalogFromYaml` wires it into `Katalog.Notification`
-
-**Merger documentation**
-- Added `pkg/merger/README.md` — package overview, file table, merge rules, accumulation semantics, usage example
-- Added `pkg/merger/docs/` directory with five progressive documents following the reconciler/katalog pattern:
-  - `01-architecture.md` — full pipeline diagram and invariants
-  - `02-kinds.md` — Katalog vs Komposer rules with YAML examples
-  - `03-sources.md` — source types, auth, and how to add a new source type
-  - `04-deduplication.md` — two deduplication scopes and error message format
-  - `05-top-level-accumulation.md` — explains the accumulation bug, the fix, and per-field merge semantics
+These workflows prove that typed operators are **fully automatable** – from `git push` to a running cluster – using the same Orkestra GitHub Action that works for dynamic operators.
 
 ---
 
-### Added (feat/e2e-suite-onboarding)
+### 🔧 Action improvements
 
-Onboarded the full Orkestra E2E example suite into the repository
+- New input `generate-registry` – runs `ork generate registry` after `init`
+- New output `registry_file` – path to the generated registry (for inspection)
+- `namespace` input now defaults to `orkestra-system` and is passed to `generate configmap` and `generate bundle`
+- Support for custom `image_repo` and `image_tag` in typed E2E workflows
 
-Added beginner packs 01, 02, 03, and 03b
+---
 
-Added corresponding GitHub Actions workflows under .github/workflows/
+### 🐛 Fixes
 
-Introduced a versioned, extensible example system for demonstrating Orkestra capabilities
+- `mode:` is now automatically inferred when `apiTypes.location` is set (no need to write `mode: typed` manually)
+- Registry generation no longer requires `init=true` – works with any existing Katalog
+- The stub `pkg/runtime/zz_generated_runtime_registry.go` now includes structured debug logging (`logger.Debug()`) to help diagnose registration issues
 
-Established a contribution path for community-authored example packs
+---
+
+### 📖 Documentation
+
+- New command reference for `ork generate katalog`
+- Updated typed extensions guide (`09-hooks` and `10-constructors`) with step‑by‑step instructions and the full E2E workflow
+
+---
+
+### Upgrading
+
+No upgrade required if you’re using `ork generate bundle` or `ork run`. For typed operators, simply regenerate your registry file with the new `ork generate registry` (the output format has not changed).
