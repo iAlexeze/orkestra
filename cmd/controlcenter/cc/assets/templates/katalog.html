@@ -40,10 +40,15 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
         {{ .KatalogName }}
       </a>
+      <a href="/controlcenter/docs" class="cc-nav-item">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+        Documentation
+      </a>
     </nav>
     <div class="cc-sidebar-footer">
       <span class="cc-refresh-dot" id="sse-dot" title="Live connection"></span>
       <span class="cc-refresh-label">Live</span>
+      {{ if .RuntimeVersion }}<span class="cc-version-label">runtime {{ .RuntimeVersion }}</span>{{ end }}
     </div>
   </aside>
   <div class="cc-sidebar-overlay" id="cc-overlay"></div>
@@ -326,10 +331,13 @@
               </div>
             </div>
           </div>
-          <div class="cc-card-footer" style="padding:10px 18px">
-            <a href="/controlcenter/katalog/{{ $.KatalogName }}/crd/{{ .Name }}" class="cc-btn cc-btn-secondary w-full" style="justify-content:center;font-size:12px">
+          <div class="cc-card-footer" style="padding:10px 18px;display:flex;gap:8px">
+            <a href="/controlcenter/katalog/{{ $.KatalogName }}/crd/{{ .Name }}" class="cc-btn cc-btn-secondary" style="flex:1;justify-content:center;font-size:12px">
               View Details
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+            <a href="/controlcenter/docs/{{ $.KatalogName }}/{{ .Name }}" class="cc-btn cc-btn-secondary" style="justify-content:center;font-size:12px;padding:6px 10px" title="View documentation">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             </a>
           </div>
         </div>

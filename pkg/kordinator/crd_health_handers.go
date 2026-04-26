@@ -12,6 +12,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/konfig"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/version"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -470,6 +471,7 @@ type KatalogResponse struct {
 	Author             string               `json:"author,omitempty"`
 	Description        string               `json:"description,omitempty"`
 	License            string               `json:"license,omitempty"`
+	RuntimeVersion     string               `json:"runtimeVersion,omitempty"`
 }
 
 type CRDSummaryResponse struct {
@@ -664,6 +666,7 @@ func BuildKatalogHandler(
 			Author:             kat.Meta().Author,
 			License:            kat.Meta().License,
 			Description:        kat.Meta().Description,
+			RuntimeVersion:     version.Short(),
 		})
 	}
 }
