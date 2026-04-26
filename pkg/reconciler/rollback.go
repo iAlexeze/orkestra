@@ -46,7 +46,7 @@ import (
 //
 // The spec is gzip-compressed and base64-encoded to keep the annotation small.
 // A typical CRD spec compresses to a few hundred bytes.
-func (r *GenericReconciler[T]) snapshotSpec(ctx context.Context, obj T) error {
+func (r *GenericReconciler[PTR]) snapshotSpec(ctx context.Context, obj PTR) error {
 	u, ok := any(obj).(*unstructured.Unstructured)
 	if !ok {
 		return nil // only unstructured mode supports snapshotting
@@ -148,7 +148,7 @@ func (h *rollbackFailureHistory) record(required int) {
 
 // shouldRollback returns true when the rollback trigger conditions are met.
 // Uses the CR's failure history and the operatorbox's consecutive failure count.
-func (r *GenericReconciler[T]) shouldRollback(
+func (r *GenericReconciler[PTR]) shouldRollback(
 	consecutiveFailures int,
 	history *rollbackFailureHistory,
 ) bool {
@@ -183,7 +183,7 @@ func isRollbackActive(obj domain.Object) bool {
 
 // runRollback applies the onRollback resource group with the previous spec
 // hydrated into the resolver as .previous.*.
-func (r *GenericReconciler[T]) runRollback(ctx context.Context, resolver *orktmpl.Resolver, obj T) error {
+func (r *GenericReconciler[PTR]) runRollback(ctx context.Context, resolver *orktmpl.Resolver, obj PTR) error {
 	rollback := r.crd.OperatorBox.Rollback
 	if !r.crd.HasRollbackRules() {
 		// No onRollback declared — rollback blocks normal reconcile but is a no-op resource-wise.
@@ -226,7 +226,7 @@ func (r *GenericReconciler[T]) runRollback(ctx context.Context, resolver *orktmp
 
 // markRollbackActive writes RollbackGenerationAnnotation = currentGen, signalling
 // that rollback is active for this generation. isRollbackActive reads this annotation.
-func (r *GenericReconciler[T]) markRollbackActive(ctx context.Context, obj T) error {
+func (r *GenericReconciler[PTR]) markRollbackActive(ctx context.Context, obj PTR) error {
 	patchData := fmt.Sprintf(
 		`{"metadata":{"annotations":{%q:%q}}}`,
 		orktypes.RollbackGenerationAnnotation, fmt.Sprintf("%d", obj.GetGeneration()),
@@ -254,7 +254,7 @@ func (r *GenericReconciler[T]) markRollbackActive(ctx context.Context, obj T) er
 
 // getFailureHistory returns the failure history for a CR key, creating it if absent.
 // Caller must not hold rollbackMu.
-func (r *GenericReconciler[T]) getFailureHistory(key string) *rollbackFailureHistory {
+func (r *GenericReconciler[PTR]) getFailureHistory(key string) *rollbackFailureHistory {
 	r.rollbackMu.Lock()
 	defer r.rollbackMu.Unlock()
 	h, ok := r.rollbackHistory[key]
@@ -266,7 +266,7 @@ func (r *GenericReconciler[T]) getFailureHistory(key string) *rollbackFailureHis
 }
 
 // clearFailureHistory resets the failure history for a CR key after a successful reconcile.
-func (r *GenericReconciler[T]) clearFailureHistory(key string) {
+func (r *GenericReconciler[PTR]) clearFailureHistory(key string) {
 	r.rollbackMu.Lock()
 	delete(r.rollbackHistory, key)
 	r.rollbackMu.Unlock()
@@ -274,7 +274,7 @@ func (r *GenericReconciler[T]) clearFailureHistory(key string) {
 
 // clearRollback removes the rollback annotation, allowing normal reconciliation
 // to resume after the spec has been corrected.
-func (r *GenericReconciler[T]) clearRollback(ctx context.Context, obj T) error {
+func (r *GenericReconciler[PTR]) clearRollback(ctx context.Context, obj PTR) error {
 	patchData := fmt.Sprintf(
 		`{"metadata":{"annotations":{%q:null,%q:null}}}`,
 		orktypes.PreviousSpecAnnotation,

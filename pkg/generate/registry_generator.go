@@ -59,6 +59,7 @@ package runtime
 import (
 	"fmt"
 
+	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -80,9 +81,11 @@ import (
 //
 // No explicit call to RegisterRuntimeObjects or RegisterTypedScheme is required.
 func init() {
+	logger.Debug().Msg("runtime.init() started")
 	RegisterRuntimeObjects()
 {{ range .Entries }}	orktypes.SchemeAdderFns = append(orktypes.SchemeAdderFns, {{ .Alias }}.AddToScheme)
-{{ end }}}
+{{ end }}	logger.Debug().Int("length", len(orktypes.SchemeAdderFns)).Msg("runtime.init() finished")
+}
 
 // RegisterRuntimeObjects populates ObjectRegistry, ListRegistry, HookRegistry,
 // and ReconcilerRegistry. Called by init() — do not call directly.
@@ -101,6 +104,7 @@ func init() {
 //   onto the CRD entry. DependencyKordinator calls Constructor() once at
 //   startCRDWorkers time to build the reconciler.
 func RegisterRuntimeObjects() {
+	logger.Debug().Msg("RegisterRuntimeObjects called")
 {{ range .Entries }}
 	// {{ .Kind }} — typed CRD object and list factories
 	orktypes.ObjectRegistry[schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}] =
@@ -123,7 +127,14 @@ func RegisterRuntimeObjects() {
 		func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
 			return {{ .Alias }}.{{ .Function }}(kube, inf, ev)
 		}
-{{ end }}{{ end }}}
+{{ end }}{{ end }}
+	logger.Debug().
+		Int("objectRegistrySize", len(orktypes.ObjectRegistry)).
+		Int("listRegistrySize", len(orktypes.ListRegistry)).
+		{{ if .HookEntries }}Int("hookRegistrySize", len(orktypes.HookRegistry)).{{ end }}
+		{{ if .RecEntries }}Int("reconcilerRegistrySize", len(orktypes.ReconcilerRegistry)).{{ end }}
+		Msg("Runtime objects registered")
+}
 
 // RegisterTypedScheme is kept for backward compatibility. Scheme registration
 // now happens through orktypes.SchemeAdderFns populated in init().

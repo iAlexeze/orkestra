@@ -1,260 +1,194 @@
 # 10 — Custom Constructor
 
-Full reconciler control. The GenericReconciler is replaced entirely by a
-constructor that implements `domain.Reconciler` directly. This is the pattern
-for state machine operators, for migrating existing controller-runtime operators,
-and for the 1% of use cases where the reconcile loop itself must be controlled.
+**When you need maximal control — migrate existing operators, run state machines, or own the reconcile loop.**
 
-**What you learn:** `reconciler.default: false`, constructor signature, state
-machine pattern, finalizer management from Go, status patching from Go, when
-constructors are the right tool.
-
-**Builds on:** [09 — Hooks](../09-hooks/)
+Orkestra is declarative first. Most operators — even complex ones — are fully expressible in a Katalog using `when:` conditions, dependencies, status fields, and hook templates. Only when you have an existing controller‑runtime operator that you want to bring in as‑is, or when you need complete control over the reconcile loop (e.g., a custom state machine not easily described in YAML), do you reach for a custom constructor.
 
 ---
 
-## Hooks vs constructor
+## The three layers of Orkestra
 
-| | Hooks | Constructor |
-|---|---|---|
-| GenericReconciler used | Yes | No |
-| Finalizer management | Orkestra handles | You handle |
-| Status Layer 1 (Ready condition) | Orkestra writes | You write |
-| Status Layer 2 (declared fields) | Orkestra writes | Ignored |
-| Kubernetes events | Orkestra emits | You emit |
-| Cache reads | Orkestra handles | You handle |
-| Use case | Most advanced operators | State machines, migrations |
+| Layer | What you write | Use case |
+|-------|----------------|----------|
+| **Declarative Katalog** | YAML (status, when, resources) | 95% of operators |
+| **Typed Hooks** | Go functions (`OnReconcile`, `OnDelete`) | Adding complex external calls, custom logic inside the safe loop |
+| **Custom Constructor** | Full `domain.Reconciler` implementation | Migrating existing controllers, state machines that own the loop |
 
-Hooks are additive — you add logic inside Orkestra's loop. Constructors
-replace the loop. Choose hooks unless you genuinely need to control the
-loop itself.
+**Try declarative first. If you can’t, try hooks. Only then consider a constructor.**
 
 ---
 
-## What Orkestra still provides with a constructor
+## What a constructor gives you – and what you lose
 
-Even with `reconciler.default: false`, Orkestra provides:
+| Feature | Declarative / Hooks | Constructor |
+|---------|---------------------|--------------|
+| Finalizer management | Automatic | You handle |
+| Status (Ready condition) | Automatic | You write |
+| Declared status fields | Written automatically | Ignored |
+| Kubernetes events | Automatic | You emit |
+| Drift correction (onReconcile templates) | Yes | You implement |
+| Panic recovery | Yes | Yes (still safe) |
+| Metrics (reconcile duration, errors) | Yes | Yes |
+| Worker pool, queue, informer | Yes | Yes |
 
-- Informer watching `demo.orkestra.io/v1alpha1, Kind=Pipeline`
-- Workqueue — the constructor's `Reconcile` is called when items are dequeued
-- Worker pool — `workers: 5` goroutines call `Reconcile` concurrently
-- `safeReconcile` — panics in `Reconcile` are caught, logged, and requeued
-- Prometheus metrics — reconcile total, duration, queue depth, error rate
-- Per-CRD health tracking — `/katalog/pipeline/health`
-
-The constructor owns everything else.
+**Constructor gives you full control over the reconcile method. Use it when you already have an existing reconciler and want to plug it into Orkestra without rewriting.**
 
 ---
 
-## The state machine
+## How to migrate an existing controller‑runtime operator
 
-```
-Create Pipeline CR
-       │
-       ▼
-   Pending ──────────────────────────────────────────────────────────┐
-       │                                                              │
-       │  Create Job for step[0]                                     │
-       │  status.phase = Running                                      │
-       │  status.currentStep = "build"                               │
-       ▼                                                              │
-   Running                                                           │
-       │                                                              │
-       │  On each reconcile: check current step Job status            │
-       │                                                              │
-       ├── Job still running → no-op (resync will re-check)          │
-       │                                                              │
-       ├── Job failed ──────────────────────────────────────────────►┤
-       │                 status.phase = Failed                        │
-       │                                                              │
-       └── Job succeeded:                                            │
-               nextStep exists?                                       │
-                    Yes → Create next step Job                        │
-                          status.currentStep = "test"                 │
-                          (loop back to Running)                      │
-                    No  → status.phase = Succeeded                   │
-                          status.completionTime = now                 │
-                          → Terminal, no more reconciles needed       │
-                                                                      │
-Failed ◄──────────────────────────────────────────────────────────────┘
-       Terminal state — no further reconciles
+Suppose you have a standard controller‑runtime reconciler:
+
+```go
+// Existing code – controller‑runtime
+func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    // your logic here
+    return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+}
 ```
 
+To move it to Orkestra:
+
+1. Change the signature to `Reconcile(ctx context.Context, key string) error`
+   - `key` is `namespace/name` (same as `req.String()`)
+   - Return `nil` for done, `error` to requeue with exponential backoff
+2. Remove the manager setup – Orkestra provides the informer, queue, and metrics.
+3. Register your constructor in the Katalog with `reconciler.default: false`
+4. Run `ork generate registry` to wire it into Orkestra.
+
+That’s it. Your existing reconcile logic runs inside Orkestra’s runtime infrastructure.
+
 ---
 
-## Step 1 — Code generation
+## When you might still want a constructor (migration aside)
+
+- **State machines with many phases** – you could also do this declaratively with `when:` conditions, but a constructor lets you centralise the state transition logic.
+- **Complex external API dependencies** – if the hook model’s `OnReconcile` is too restrictive (e.g., you need to requeue conditionally based on external state), a constructor gives you full control.
+- **Gradual adoption** – you have a large codebase that already implements `Reconcile`, and you want to run it under Orkestra while you later refactor parts into hooks.
+
+Otherwise, **use declarative Katalog or typed hooks**.
+
+---
+
+## The example: Pipeline state machine
+
+This example demonstrates a constructor that runs a series of Jobs (build → test → notify). It is intentionally written as a constructor to show the pattern. But **the same behaviour can be expressed declaratively** in the Katalog. We provide the constructor version for learning and migration reference.
+
+---
+
+## Files in this pack
+
+```
+.
+├── api/v1alpha/           ← Pipeline CRD Go types
+├── reconciler/            ← custom reconciler implementation
+│   └── reconciler.go      ← NewPipelineReconciler + Reconcile logic
+├── cmd/orkestra/          ← main.go (imports generated registry)
+├── pkg/runtime/           ← generated registry (after `make registry`)
+├── katalog.yaml
+├── Makefile
+├── Dockerfile
+└── crd.yaml, cr.yaml
+```
+
+---
+
+## Step 1 – Generate the registry
 
 ```bash
-ork generate registry --katalog katalog.yaml --output ./cmd/
+make registry
 ```
 
-This registers `*apiv1.Pipeline` in the object registry and
-`NewPipelineReconciler` in the reconciler registry.
+This creates `pkg/runtime/zz_generated_runtime_registry.go`, which registers your CRD types and the `NewPipelineReconciler` constructor.
 
 ---
 
-## Step 2 — Build
+## Step 2 – Enable the registry in main.go
 
-```bash
-go mod tidy
-go build ./...
+In `cmd/orkestra/main.go`, uncomment the blank import:
+
+```go
+import (
+    _ "github.com/workspace/orkestra-pipeline-demo/pkg/runtime"
+    // ...
+)
 ```
 
 ---
 
-## Step 3 — Install and run
+## Step 3 – Build your custom binary
+
+First, see the expected error with the standard `ork` CLI:
 
 ```bash
+ork validate -k katalog.yaml
+# error: no reconciler constructor registered for Kind=Pipeline
+```
+
+Now build your own binary:
+
+```bash
+make clean
+make build
+cp ~/.orkestra/bin/ork ./ork
+```
+
+Validate with your binary:
+
+```bash
+./ork validate -k katalog.yaml   # passes
+```
+
+---
+
+## Step 4 – Run locally
+
+```bash
+kind create cluster --name ork-pipeline
 kubectl apply -f crd.yaml
-
-# Local development
-ork run --katalog katalog.yaml
-
-# In-cluster
-kubectl apply -f orkestra-configmap.yaml
-kubectl apply -f ../../installation/install-webhook-support.yaml
-kubectl wait --for=condition=available deployment/orkestra \
-  -n orkestra-system --timeout=60s
+./ork run -k katalog.yaml
 ```
 
----
-
-## Step 4 — Apply the CR
+In another terminal:
 
 ```bash
 kubectl apply -f cr.yaml
-```
-
----
-
-## Step 5 — Watch the state machine
-
-```bash
-# Watch status change in real time
-kubectl get pipeline build-and-test -w
-```
-
-```
-NAME             PHASE     STEP
-build-and-test   Pending
-build-and-test   Running   build
-build-and-test   Running   test
-build-and-test   Running   notify
-build-and-test   Succeeded
-```
-
-Watch Jobs being created and completed:
-
-```bash
+kubectl get pipeline -w
 kubectl get jobs -w
 ```
 
-```
-NAME                         COMPLETIONS   DURATION
-build-and-test-build         0/1           3s
-build-and-test-build         1/1           3s
-build-and-test-test          0/1           2s
-build-and-test-test          1/1           2s
-build-and-test-notify        0/1           1s
-build-and-test-notify        1/1           1s
-```
+You’ll see the state machine step through `build` → `test` → `notify`.
 
 ---
 
-## Step 6 — Check the final status
+## Step 5 – Deploy to a cluster
 
 ```bash
-kubectl get pipeline build-and-test -o yaml | grep -A10 "status:"
+make release IMAGE=yourregistry/pipeline-operator:v1
+./ork generate bundle -k katalog.yaml -o bundle.yaml
+kubectl apply -f bundle.yaml
+helm repo add orkestra https://ialexeze.github.io/orkestra
+helm install orkestra orkestra/orkestra \
+  --set runtime.image.repository=yourregistry/pipeline-operator \
+  --set runtime.image.tag=v1 \
+  --namespace orkestra-system --create-namespace
+kubectl apply -f crd.yaml
+kubectl apply -f cr.yaml
 ```
-
-```yaml
-status:
-  phase: Succeeded
-  currentStep: notify
-  message: "all steps completed"
-  startTime: "2026-03-29T10:00:00Z"
-  completionTime: "2026-03-29T10:00:06Z"
-```
-
----
-
-## Step 7 — Test failure
-
-Edit the CR to introduce a failing step:
-
-```bash
-kubectl patch pipeline build-and-test --type=merge -p '{
-  "spec": {
-    "steps": [
-      {"name": "fail", "command": ["sh", "-c", "exit 1"]}
-    ]
-  }
-}'
-```
-
-The state machine drives to `Failed`:
-
-```yaml
-status:
-  phase: Failed
-  message: "step \"fail\" failed"
-```
-
-Because `Failed` is a terminal state, no further reconciles run. The Pipeline
-stays in `Failed` until you delete it and create a new one — or until your
-reconciler adds a retry mechanism.
-
----
-
-## When to use a constructor
-
-The constructor is the right tool when:
-
-- The reconcile loop drives through **named phases** where each phase has
-  distinct behavior — state machines
-- You have an **existing controller-runtime reconciler** and want Orkestra's
-  runtime infrastructure without rewriting your logic
-- The reconcile logic needs to **read other resources** mid-reconcile and
-  make decisions based on their state (Job completion, external API status)
-- You need **complete control over event emission** and status — the hook
-  model's automatic events and status would conflict with your logic
-
-For everything else — hooks are the right tool. Hooks give you type-safe
-struct access and full Go expressiveness while Orkestra manages the loop.
-
----
-
-## Migration from controller-runtime
-
-If you have an existing `Reconcile(ctx, req) (ctrl.Result, error)`:
-
-```go
-// Before: controller-runtime
-func (r *PipelineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-    // your existing logic
-    return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
-}
-
-// After: Orkestra constructor
-func (r *PipelineReconciler) Reconcile(ctx context.Context, key string) error {
-    // same logic — return error to requeue, nil to complete
-    // RequeueAfter equivalent: return a sentinel error with exponential backoff
-    return nil
-}
-```
-
-The key changes:
-- `ctrl.Request` → `key string` (same namespace/name, different format)
-- `(ctrl.Result, error)` → `error` (requeue by returning an error)
-- Remove `ctrl.Manager` setup — Orkestra provides the informer and queue
-
-Register `NewPipelineReconciler` in the Katalog and run `ork generate registry`.
-Your existing reconcile logic stays intact.
 
 ---
 
 ## Cleanup
 
 ```bash
-chmod +x cleanup.sh && ./cleanup.sh
+kind delete cluster --name ork-pipeline
+helm uninstall orkestra -n orkestra-system
+kubectl delete -f bundle.yaml
 ```
+
+---
+
+## Next steps
+
+- If you have an existing controller‑runtime operator, try migrating it using this pattern.
+- For new operators, start with the declarative Katalog (example 01–08). Only reach for a constructor if you truly need to own the reconcile loop.

@@ -81,6 +81,21 @@ func (c *CRDEntry) IsDynamic() bool {
 	return c.APITypes.Location == ""
 }
 
+// WithHooksDecl returns true if the CRD has a hooks declaration (HookDeclaration).
+// Used to determine whether to generate registry entries for the HookRegistry.
+// Does not imply anything about Default: true/false — a typed CRD can have hooks
+// even when Default: true (generic reconciler) or false (custom reconciler).
+func (c *CRDEntry) WithHooksDecl() bool {
+	return c.OperatorBox.Hooks != nil && c.OperatorBox.Hooks.Location != ""
+}
+
+// WithConstructorDecl returns true if the CRD has a constructor declaration.
+// Required when Default: false in the Katalog. The generated registry will
+// emit a ReconcilerRegistry entry for this CRD.
+func (c *CRDEntry) WithConstructorDecl() bool {
+	return c.OperatorBox.ConstructorDecl != nil && c.OperatorBox.ConstructorDecl.Location != ""
+}
+
 // HasTemplates reports whether this CRD declares any declarative hook templates.
 // Used by `ork generate` to determine whether to emit generated runtime hooks.
 func (c *CRDEntry) HasTemplates() bool {

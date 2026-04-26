@@ -42,9 +42,9 @@ import (
 //
 // Always called — even when reconcile returned an error — so that
 // Ready=False is written on failure. The error argument controls Layer 1.
-func (r *GenericReconciler[T]) patchStatusWithChildren(
+func (r *GenericReconciler[PTR]) patchStatusWithChildren(
 	ctx context.Context,
-	obj T,
+	obj PTR,
 	resolver *orktmpl.Resolver,
 	reconcileErr error,
 ) {
@@ -73,10 +73,10 @@ func (r *GenericReconciler[T]) patchStatusWithChildren(
 // PatchStatus only needs domain.Object (for GetName/GetNamespace), so obj is passed
 // directly — objectToMap in the template package already handles the JSON round-trip
 // for typed spec access, so there is no longer any structural gap between the two modes.
-func runStatusPatch[T domain.Object](
+func runStatusPatch[PTR domain.Object](
 	ctx context.Context,
-	r *GenericReconciler[T],
-	obj T,
+	r *GenericReconciler[PTR],
+	obj PTR,
 	resolver *orktmpl.Resolver,
 	reconcileErr error,
 ) error {
