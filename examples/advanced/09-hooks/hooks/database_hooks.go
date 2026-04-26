@@ -21,13 +21,13 @@ import (
 	"context"
 	"fmt"
 
+	apiv1 "github.com/orkspace/orkestra-hooks-demo/api/v1alpha1"
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	orkcron "github.com/orkspace/orkestra/pkg/orkestra-registry/cronjobs"
 	orkdeploy "github.com/orkspace/orkestra/pkg/orkestra-registry/deployments"
 	orksvc "github.com/orkspace/orkestra/pkg/orkestra-registry/services"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	apiv1 "orkestra-hooks-demo/v1alpha1"
 )
 
 // DatabaseHooks returns the hook implementation for the Database CRD.
@@ -58,12 +58,14 @@ func onDatabaseReconcile(ctx context.Context, obj *apiv1.Database) error {
 	// ── Create the StatefulSet via OrkestraRegistry ────────────────────────
 	// OrkestraRegistry handles: owner references, idempotency, system labels.
 	// The hook only provides the resolved spec.
+	replicas := "1"
+	staticReplicas := 1
 	deploySpec := orkdeploy.Resolve(
 		orktypes.DeploymentTemplateSource{
 			Name:      obj.Name,
 			Namespace: obj.Namespace,
 			Image:     image,
-			Replicas:  "1",
+			Replicas:  replicas,
 			Port:      dbPort(engine),
 			Labels: []orktypes.ResourceLabel{
 				{Key: "db-engine", Value: engine},
@@ -71,6 +73,7 @@ func onDatabaseReconcile(ctx context.Context, obj *apiv1.Database) error {
 				{Key: "storage-size", Value: storage},
 			},
 		},
+		staticReplicas,
 		obj.Name,
 	)
 	if err := orkdeploy.Update(ctx, kube, obj, deploySpec); err != nil {

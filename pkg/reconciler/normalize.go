@@ -50,10 +50,10 @@ import (
 //   - Path navigation fails (segment is not a map)
 //
 // The returned object is always a deep copy — safe to mutate.
-func (r *GenericReconciler[T]) applyNormalize(
+func (r *GenericReconciler[PTR]) applyNormalize(
 	ctx context.Context,
-	obj T,
-) (T, *orktmpl.Resolver, error) {
+	obj PTR,
+) (PTR, *orktmpl.Resolver, error) {
 	// No normalize block → just build a resolver and return
 	if r.crd.Normalize == nil || len(r.crd.Normalize.Spec) == 0 {
 		baseResolver, err := orktmpl.NewResolver(ctx, obj)
@@ -65,7 +65,7 @@ func (r *GenericReconciler[T]) applyNormalize(
 
 	log := logger.FromContext(ctx)
 
-	cloned := obj.DeepCopyObject().(T)
+	cloned := obj.DeepCopyObject().(PTR)
 
 	// Resolver over pre-normalize spec (for template evaluation)
 	baseResolver, err := orktmpl.NewResolver(ctx, cloned)

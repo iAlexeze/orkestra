@@ -338,6 +338,9 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			dynNamespace = opts.Namespace
 		}
 
+		logger.Debug().
+			Bool("dynamic:", crd.IsDynamic()).
+			Msgf("[DEBUG] CRD %s: location = %q\n", crd.APITypes.Kind, crd.APITypes.Location)
 		if crd.IsDynamic() {
 			lw := kube.NewDynamicListerWatcher(kubeclient.CRDInfo{
 				Kind:         crd.APITypes.Kind,

@@ -1,4 +1,5 @@
 .env
+extensions/
 unknown/
 _runtime_*/
 example-crds/

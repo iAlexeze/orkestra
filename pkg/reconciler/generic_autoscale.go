@@ -56,12 +56,17 @@ var _ ResyncLoopStarter = (*GenericReconciler[domain.Object])(nil)
 var _ QueueInjector = (*GenericReconciler[domain.Object])(nil)
 var _ QueueDepthReporter = (*GenericReconciler[domain.Object])(nil)
 
+// Note: interface-satisfaction checks use domain.Object as the type argument
+// because it satisfies the PTR domain.Object constraint and is the widest valid
+// instantiation. Concrete operators use PTR = *TheirType; the interfaces are
+// identical regardless of which pointer type PTR resolves to.
+
 // ── AutoscaleTarget ───────────────────────────────────────────────────────────
 
 // ResizeWorkers adjusts the semaphore capacity and, when scaling up, starts
 // additional goroutines via the injected spawnWorker function so that goroutine
 // count stays equal to the effective concurrency limit.
-func (r *GenericReconciler[T]) ResizeWorkers(n int) {
+func (r *GenericReconciler[PTR]) ResizeWorkers(n int) {
 	old := r.workerSem.Capacity()
 	r.workerSem.Resize(n)
 	if n > old && r.spawnWorker != nil {
@@ -77,26 +82,26 @@ func (r *GenericReconciler[T]) ResizeWorkers(n int) {
 
 // SetSpawnWorker injects the goroutine-spawn function from kordinator.
 // Called once after construction — before the autoscaler starts.
-func (r *GenericReconciler[T]) SetSpawnWorker(fn func()) {
+func (r *GenericReconciler[PTR]) SetSpawnWorker(fn func()) {
 	r.spawnWorker = fn
 }
 
 // SetRollbackNotifiers injects CRDHealth callbacks for rollback tracking.
 // Called once by kordinator after constructing the reconciler.
-func (r *GenericReconciler[T]) SetRollbackNotifiers(onTrigger, onClear func()) {
+func (r *GenericReconciler[PTR]) SetRollbackNotifiers(onTrigger, onClear func()) {
 	r.rollbackTriggerFn = onTrigger
 	r.rollbackClearFn = onClear
 }
 
 // GetAutoMetrics returns the live AutoMetrics for this reconciler.
 // Called by kordinator to register it in the cross-metrics registry.
-func (r *GenericReconciler[T]) GetAutoMetrics() *autoscaler.AutoMetrics {
+func (r *GenericReconciler[PTR]) GetAutoMetrics() *autoscaler.AutoMetrics {
 	return r.autoMetrics
 }
 
 // WorkerInfo returns a live WorkerInfo snapshot for the /katalog/{crd} endpoint.
 // configuredWorkers and configuredQueueDepth come from the CRD entry at startup.
-func (r *GenericReconciler[T]) WorkerInfo(configuredWorkers, configuredQueueDepth int) *autoscaler.WorkerInfo {
+func (r *GenericReconciler[PTR]) WorkerInfo(configuredWorkers, configuredQueueDepth int) *autoscaler.WorkerInfo {
 	maxWorkers := configuredWorkers
 	if r.autoscaler != nil {
 		if snap := r.autoscaler.Snapshot(); snap != nil && snap.EffectiveWorkers > maxWorkers {
@@ -118,7 +123,7 @@ func (r *GenericReconciler[T]) WorkerInfo(configuredWorkers, configuredQueueDept
 // SetQueueDepthLimit updates the workqueue's depth limit. New enqueue calls
 // that would push the queue beyond this limit are dropped with a warning.
 // 0 means unlimited (the default). Safe to call at any time.
-func (r *GenericReconciler[T]) SetQueueDepthLimit(n int) {
+func (r *GenericReconciler[PTR]) SetQueueDepthLimit(n int) {
 	if r.queue != nil {
 		r.queue.SetMaxQueueDepth(n)
 	}
@@ -132,7 +137,7 @@ func (r *GenericReconciler[T]) SetQueueDepthLimit(n int) {
 // goroutine — the informer's built-in resync handles the baseline cadence.
 // Non-zero values trigger an additional re-enqueue of all cached objects
 // at that interval, independently of the informer's resync period.
-func (r *GenericReconciler[T]) SetResyncInterval(d time.Duration) {
+func (r *GenericReconciler[PTR]) SetResyncInterval(d time.Duration) {
 	r.resyncNs.Store(d.Nanoseconds())
 	logger.Info().
 		Str("crd", r.crd.GVKString()).
@@ -145,7 +150,7 @@ func (r *GenericReconciler[T]) SetResyncInterval(d time.Duration) {
 // RunAutoscaler starts the autoscale evaluation loop. Blocks until ctx is
 // cancelled. Called by DependencyKordinator in a dedicated goroutine.
 // No-op when no autoscale spec is declared.
-func (r *GenericReconciler[T]) RunAutoscaler(ctx context.Context) {
+func (r *GenericReconciler[PTR]) RunAutoscaler(ctx context.Context) {
 	if r.autoscaler != nil {
 		r.autoscaler.Run(ctx)
 	}
@@ -155,7 +160,7 @@ func (r *GenericReconciler[T]) RunAutoscaler(ctx context.Context) {
 
 // StartResyncLoop launches the adjustable resync goroutine. Called once by
 // startCRDWorkers when autoscale: is declared on the operatorbox.
-func (r *GenericReconciler[T]) StartResyncLoop(ctx context.Context) {
+func (r *GenericReconciler[PTR]) StartResyncLoop(ctx context.Context) {
 	go r.resyncLoop(ctx)
 }
 
@@ -164,7 +169,7 @@ func (r *GenericReconciler[T]) StartResyncLoop(ctx context.Context) {
 // stored interval otherwise. This is an additive resync — it runs alongside
 // the informer's built-in resync period. The workqueue deduplicates items so
 // double-enqueue is safe.
-func (r *GenericReconciler[T]) resyncLoop(ctx context.Context) {
+func (r *GenericReconciler[PTR]) resyncLoop(ctx context.Context) {
 	logger.Debug().Str("crd", r.crd.GVKString()).Msg("autoscaler: resync loop started")
 
 	for {
@@ -190,7 +195,7 @@ func (r *GenericReconciler[T]) resyncLoop(ctx context.Context) {
 
 // requeue enqueues all objects currently in the informer's store.
 // Called by resyncLoop on each fire.
-func (r *GenericReconciler[T]) requeue() {
+func (r *GenericReconciler[PTR]) requeue() {
 	if r.queue == nil {
 		return
 	}
@@ -211,7 +216,7 @@ func (r *GenericReconciler[T]) requeue() {
 // SetQueue injects the per-CRD workqueue. Called by startCRDWorkers after
 // ReconcilerFactory() so both SetQueueDepthLimit and the resync goroutine
 // have a reference to the right queue.
-func (r *GenericReconciler[T]) SetQueue(wq *orkqueue.Workqueue) {
+func (r *GenericReconciler[PTR]) SetQueue(wq *orkqueue.Workqueue) {
 	r.queue = wq
 }
 
@@ -219,6 +224,6 @@ func (r *GenericReconciler[T]) SetQueue(wq *orkqueue.Workqueue) {
 
 // ReportQueueDepth updates the live queue depth metric read by the autoscaler.
 // Called by the worker loop after each item is processed.
-func (r *GenericReconciler[T]) ReportQueueDepth(depth int64) {
+func (r *GenericReconciler[PTR]) ReportQueueDepth(depth int64) {
 	r.autoMetrics.SetQueueDepth(depth)
 }

@@ -46,7 +46,6 @@ func (k *Katalog) validateUniqueness() error {
 // -----------------------------------------------------------------------------
 // Validation: GVK uniqueness
 // -----------------------------------------------------------------------------
-
 func (k *Katalog) validateGVKUniqueness() error {
 	seen := make(map[string]string) // key -> name
 
@@ -66,20 +65,43 @@ func (k *Katalog) validateGVKUniqueness() error {
 	return nil
 }
 
+// -----------------------------------------------------------------------------
+// Validation: Reconciler Mode
+// -----------------------------------------------------------------------------
+
+// validateReconcilerMode determines the mode (dynamic/typed) for each CRD and
+// performs consistency checks for hooks and constructor declarations.
+//
+// Rules:
+//   - If mode is empty: default to typed when APITypes.Location is set,
+//     otherwise default to dynamic.
+//   - If mode is typed: APITypes.Location must be set.
+//   - If hooks are declared (WithHooksDecl): APITypes.Location must be set,
+//     and Hooks.Location + Hooks.Function are required.
+//   - If constructor is declared (WithConstructorDecl): APITypes.Location must
+//     be set, and ConstructorDecl.Location + ConstructorDecl.Function are required.
+//
+// The method modifies crd.Mode in place for CRDs that defaulted.
 func (k *Katalog) validateReconcilerMode() error {
 	for name, crd := range k.enabledCRDs {
 		mode := crd.Mode
 
+		// ── Default mode if not explicitly set ──────────────────────────────
 		switch mode {
 		case "":
-			logger.Debug().
-				Str("crd", name).
-				Msg("reconciler mode not set — defaulting to 'dynamic'")
-			crd.Mode = orktypes.CRDModeDynamic
-
+			if crd.APITypes.Location != "" {
+				crd.Mode = orktypes.CRDModeTyped
+				logger.Debug().
+					Str("crd", name).
+					Msg("reconciler mode defaulted to 'typed' because apiTypes.location is set")
+			} else {
+				crd.Mode = orktypes.CRDModeDynamic
+				logger.Debug().
+					Str("crd", name).
+					Msg("reconciler mode defaulted to 'dynamic'")
+			}
 		case orktypes.CRDModeDynamic, orktypes.CRDModeTyped:
-			// Valid — nothing to do
-
+			// Valid – fine
 		default:
 			return fmt.Errorf(
 				"CRD %q: reconciler mode %q is not supported — use %q or %q",
@@ -87,6 +109,60 @@ func (k *Katalog) validateReconcilerMode() error {
 				orktypes.CRDModeDynamic,
 				orktypes.CRDModeTyped,
 			)
+		}
+
+		// ── Common requirement for typed mode ──────────────────────────────
+		if crd.Mode == orktypes.CRDModeTyped && crd.APITypes.Location == "" {
+			return fmt.Errorf(
+				"CRD %q: mode is 'typed' but apiTypes.location is missing",
+				name,
+			)
+		}
+
+		// ── Hooks declaration validation ──────────────────────────────────
+		if crd.WithHooksDecl() {
+			if crd.APITypes.Location == "" {
+				return fmt.Errorf(
+					"CRD %q: hooks declared but apiTypes.location is missing (typed hooks require typed CRD)",
+					name,
+				)
+			}
+			if crd.OperatorBox.Hooks.Location == "" {
+				return fmt.Errorf(
+					"CRD %q: hooks.location is required",
+					name,
+				)
+			}
+			if crd.OperatorBox.Hooks.Function == "" {
+				return fmt.Errorf(
+					"CRD %q: hooks.function is required",
+					name,
+				)
+			}
+			// (Alias is optional)
+		}
+
+		// ── Constructor declaration validation ────────────────────────────
+		if crd.WithConstructorDecl() {
+			if crd.APITypes.Location == "" {
+				return fmt.Errorf(
+					"CRD %q: constructor declared but apiTypes.location is missing (typed constructor requires typed CRD)",
+					name,
+				)
+			}
+			if crd.OperatorBox.ConstructorDecl.Location == "" {
+				return fmt.Errorf(
+					"CRD %q: constructor.location is required",
+					name,
+				)
+			}
+			if crd.OperatorBox.ConstructorDecl.Function == "" {
+				return fmt.Errorf(
+					"CRD %q: constructor.function is required",
+					name,
+				)
+			}
+			// (Alias is optional)
 		}
 
 		k.enabledCRDs[name] = crd

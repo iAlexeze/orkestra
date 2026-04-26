@@ -27,6 +27,13 @@ var ListRegistry = map[schema.GroupVersionKind]func() runtime.Object{}
 var HookRegistry = map[schema.GroupVersionKind]func() domain.AnyReconcileHooks{}
 var ReconcilerRegistry = map[schema.GroupVersionKind]NewReconcilerFunc{}
 
+// SchemeAdderFns holds AddToScheme functions collected from generated init()
+// calls. Each generated zz_generated_runtime_registry.go appends to this slice
+// in its init(); NewSchemeRegistry drains it via RegisterTypedScheme.
+// This is the bridge between the user's generated package and the Orkestra
+// internal pkg/runtime stub — no explicit call needed beyond the blank import.
+var SchemeAdderFns []func(*runtime.Scheme) error
+
 // ── CRDMode ────────────────────────────────────────────────────────────
 
 // CRDMode controls how the GenericReconciler handles CR objects at runtime.
