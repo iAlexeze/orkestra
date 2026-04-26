@@ -57,6 +57,7 @@
             <li class="ork-sidebar-item"><a href="#reconcile-mode">Reconcile Mode</a></li>
             <li class="ork-sidebar-item"><a href="#configuration">Configuration</a></li>
             {{ if .CRD.DependsOn }}<li class="ork-sidebar-item"><a href="#dependencies">Dependencies</a></li>{{ end }}
+            {{ if .HasChildren }}<li class="ork-sidebar-item"><a href="#child-resources">Child Resources</a></li>{{ end }}
             <li class="ork-sidebar-item"><a href="#kubectl">kubectl Reference</a></li>
             {{ if .HasRBAC }}<li class="ork-sidebar-item"><a href="#rbac">Access Control</a></li>{{ end }}
             {{ if or .HasAdmission .HasConversion }}<li class="ork-sidebar-item"><a href="#webhooks">Webhooks</a></li>{{ end }}
@@ -228,6 +229,46 @@
           </tbody>
         </table>
 
+        <hr>
+        {{ end }}
+
+        <!-- ── Child Resources ───────────────────────────────── -->
+        {{ if .HasChildren }}
+        <h2 id="child-resources">Child Resources</h2>
+        <p>
+          When the operator reconciles a <code>{{ .CRD.Name }}</code> instance it creates and manages
+          the following Kubernetes resources on its behalf. These are owned by the CR via owner references
+          and are deleted automatically when the CR is deleted (unless deletion protection is active).
+        </p>
+        <p>
+          Resources listed under <strong>onCreate</strong> are created on the first reconcile.
+          Resources listed under <strong>onReconcile</strong> are re-applied on every reconcile cycle.
+          A resource appearing in both phases is created once and kept in sync thereafter.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Kind</th>
+              <th>Count</th>
+              <th>Lifecycle phases</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{ range .ChildResources }}
+            <tr>
+              <td><code>{{ .Kind }}</code></td>
+              <td>{{ .Count }}</td>
+              <td>
+                {{ range .Phases }}<span class="ork-state ork-state-started" style="margin-right:4px">{{ . }}</span>{{ end }}
+              </td>
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+        <p>
+          To see the actual child resources created for a running instance, navigate to the instance's
+          detail page from the <a href="/controlcenter/katalog/{{ .KatalogName }}">{{ .KatalogName }} control panel</a>.
+        </p>
         <hr>
         {{ end }}
 

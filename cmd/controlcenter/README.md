@@ -275,6 +275,18 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 Apache license – see [LICENSE](LICENSE) file for details.
 
+## Developer documentation
+
+For maintainers and contributors who need to understand the internals:
+
+| I want to… | Go to |
+|-----------|-------|
+| Understand the overall architecture and boot sequence | [docs/01-architecture.md](docs/01-architecture.md) |
+| Understand URL routing and how requests are dispatched | [docs/02-routing.md](docs/02-routing.md) |
+| Understand how data flows from runtime to the UI | [docs/03-data-flow.md](docs/03-data-flow.md) |
+| Understand the UI design system and CSS | [docs/04-ui-design.md](docs/04-ui-design.md) |
+| Understand runtime manager, instance storage, env vars | [docs/05-runtime-manager.md](docs/05-runtime-manager.md) |
+
 ## Related Projects
 
 - [Orkestra Runtime](https://github.com/orkspace/orkestra) – The declarative operator runtime
