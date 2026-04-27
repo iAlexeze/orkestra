@@ -144,6 +144,11 @@ controlCenter:
     className: ""
     annotations: {}
     hosts: []
+    # hosts:
+    #   - host: control-center.mycompany.com
+    #     paths:
+    #       - path: /
+    #         pathType: Prefix
     tls: []
 
   # Security (control center doesn't need root)
