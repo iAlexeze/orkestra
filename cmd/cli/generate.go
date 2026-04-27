@@ -219,7 +219,7 @@ Example:
 		log.Println("generating rbac...")
 
 		var k katalog.Katalog
-		if _, err = k.KomposeKatalogFromYaml(kfg, out.m); err != nil {
+		if _, err = k.KomposeRuntimeKatalog(kfg, out.m); err != nil {
 			return fmt.Errorf("build katalog: %w", err)
 		}
 		if _, err = k.ValidateConfig(kfg); err != nil {
@@ -311,7 +311,7 @@ Examples:
 		log.Println("generating bundle...")
 
 		var k katalog.Katalog
-		if _, err = k.KomposeKatalogFromYaml(kfg, out.m); err != nil {
+		if _, err = k.KomposeRuntimeKatalog(kfg, out.m); err != nil {
 			return fmt.Errorf("build katalog: %w", err)
 		}
 		if _, err = k.ValidateConfig(kfg); err != nil {

@@ -1,5 +1,5 @@
-// health/admission_evaluation.go
-package health
+// webhook/admission_evaluation.go — validation and mutation rule evaluation.
+package webhook
 
 import (
 	"context"
@@ -12,26 +12,17 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// ── Validation evaluation ─────────────────────────────────────────────────
-//
-// evaluateValidationRules runs all validation rules against an unstructured
-// object map. Returns denials (action: deny) and warnings (action: warn)
-// as separate slices so the handler can build the correct response.
-//
-// All rules are evaluated — not fail-fast — so the user sees all violations
-// in one kubectl apply output rather than fixing one at a time.
+// ── Validation evaluation ─────────────────────────────────────────────────────
 
-// validationViolation describes one violated rule.
 type validationViolation struct {
 	Field    string
 	Message  string
-	Got      string // the actual field value that failed
-	RuleType string // operator name (e.g. "prefix", "exists") for metrics
+	Got      string
+	RuleType string
 	Action   orktypes.ValidationAction
 }
 
-// evaluateValidationRules evaluates all rules and returns denials and warnings.
-func (h *HealthServer) evaluateValidationRules(
+func (ws *WebhookServer) evaluateValidationRules(
 	obj map[string]interface{},
 	cfg *orktypes.ValidationConfig,
 	kindName string,
@@ -39,9 +30,8 @@ func (h *HealthServer) evaluateValidationRules(
 	for _, rule := range cfg.Rules {
 		v := evaluateOneRule(obj, rule)
 		if v == nil {
-			continue // rule passed
+			continue
 		}
-
 		switch orktypes.EffectiveAction(rule.Action) {
 		case orktypes.ValidationActionDeny:
 			denials = append(denials, *v)
@@ -52,8 +42,6 @@ func (h *HealthServer) evaluateValidationRules(
 	return
 }
 
-// evaluateOneRule evaluates a single validation rule against the object.
-// Returns nil when the rule passes, a violation when it fails.
 func evaluateOneRule(obj map[string]interface{}, rule orktypes.ValidationRule) *validationViolation {
 	op, expected := resolveValidationOperator(rule)
 	fieldVal, found := resolveFieldPath(obj, rule.Field)
@@ -97,7 +85,7 @@ func evaluateOneRule(obj map[string]interface{}, rule orktypes.ValidationRule) *
 		if !found || !strings.HasSuffix(fieldVal, expected) {
 			return fail()
 		}
-	case orktypes.ConditionGt: // used for Min
+	case orktypes.ConditionGt:
 		cv, err := strconv.ParseFloat(expected, 64)
 		if err != nil {
 			logger.Warn().Str("field", rule.Field).Str("min", expected).
@@ -108,7 +96,7 @@ func evaluateOneRule(obj map[string]interface{}, rule orktypes.ValidationRule) *
 		if err != nil || fv < cv {
 			return fail()
 		}
-	case orktypes.ConditionLt: // used for Max
+	case orktypes.ConditionLt:
 		cv, err := strconv.ParseFloat(expected, 64)
 		if err != nil {
 			logger.Warn().Str("field", rule.Field).Str("max", expected).
@@ -121,11 +109,9 @@ func evaluateOneRule(obj map[string]interface{}, rule orktypes.ValidationRule) *
 		}
 	}
 
-	return nil // rule passed
+	return nil
 }
 
-// resolveValidationOperator extracts the effective operator and comparison
-// value from a ValidationRule, preferring shorthands over the explicit form.
 func resolveValidationOperator(r orktypes.ValidationRule) (orktypes.ConditionOperator, string) {
 	switch {
 	case r.Equals != "":
@@ -153,18 +139,9 @@ func resolveValidationOperator(r orktypes.ValidationRule) (orktypes.ConditionOpe
 	}
 }
 
-// ── Mutation evaluation ───────────────────────────────────────────────────
-//
-// applyMutationRules applies mutation rules to an already-copied object map.
-// Returns the list of changes made. The caller diffs original vs mutated to
-// build the JSON patch.
-//
-// Template expressions are resolved against the object being admitted —
-// {{ .metadata.name }} resolves to the CR's name, {{ .spec.image }} resolves
-// to the declared image, etc.
+// ── Mutation evaluation ───────────────────────────────────────────────────────
 
-// applyMutationRules mutates obj in place and returns the list of changes.
-func (h *HealthServer) applyMutationRules(
+func (ws *WebhookServer) applyMutationRules(
 	ctx context.Context,
 	obj map[string]interface{},
 	cfg *orktypes.MutationConfig,
@@ -174,21 +151,15 @@ func (h *HealthServer) applyMutationRules(
 		return nil, nil
 	}
 
-	// Build a resolver from the object map
-	// The same resolver used by conversion — resolves {{ .spec.X }} etc.
 	resolver := orktmpl.NewResolverFromMap(obj)
-
 	var changes []fieldChange
 
 	for _, rule := range cfg.Rules {
 		currentVal, found := resolveFieldPath(obj, rule.Field)
-
-		var newVal string
-		var changeType string
+		var newVal, changeType string
 
 		switch {
 		case rule.Override != nil && anyToString(rule.Override) != "":
-			// Override — always apply regardless of current value
 			resolved, err := resolver.Resolve(anyToString(rule.Override))
 			if err != nil {
 				return nil, fmt.Errorf("mutation rule override for field %q: %w", rule.Field, err)
@@ -197,9 +168,8 @@ func (h *HealthServer) applyMutationRules(
 			changeType = "override"
 
 		case rule.Default != nil:
-			// Default — apply only when field is absent or empty
 			if found && currentVal != "" {
-				continue // field already has a value — skip
+				continue
 			}
 			resolved, err := resolver.Resolve(anyToString(rule.Default))
 			if err != nil {
@@ -209,17 +179,14 @@ func (h *HealthServer) applyMutationRules(
 			changeType = "default"
 
 		default:
-			continue // rule has neither Default nor Override — skip
+			continue
 		}
 
-		// Skip if the value is already what we want to set
 		if newVal == currentVal {
 			continue
 		}
 
-		// Apply the change to the object map in-place
 		setFieldPath(obj, rule.Field, newVal)
-
 		changes = append(changes, fieldChange{
 			Field:      rule.Field,
 			OldValue:   currentVal,
@@ -239,14 +206,8 @@ func (h *HealthServer) applyMutationRules(
 	return changes, nil
 }
 
-// ── Field path helpers ────────────────────────────────────────────────────
-//
-// These are identical to the conversion logic field helpers.
-// They live here too so this package is self-contained.
-// In the final merge, share them via an internal package.
+// ── Field path helpers ────────────────────────────────────────────────────────
 
-// resolveFieldPath resolves a dot-notation path against an object map.
-// Returns the string value and whether the field was found.
 func resolveFieldPath(obj map[string]interface{}, path string) (string, bool) {
 	parts := strings.Split(path, ".")
 	current := obj
@@ -268,8 +229,6 @@ func resolveFieldPath(obj map[string]interface{}, path string) (string, bool) {
 	return "", false
 }
 
-// setFieldPath sets a value at a dot-notation path, creating intermediate
-// maps as needed. Used by mutation to apply defaults in place.
 func setFieldPath(obj map[string]interface{}, path string, value string) {
 	parts := strings.Split(path, ".")
 	current := obj
@@ -291,8 +250,6 @@ func setFieldPath(obj map[string]interface{}, path string, value string) {
 	}
 }
 
-// anyToString converts an unstructured field value to its string form.
-// Handles all types that Kubernetes JSON objects contain after decode.
 func anyToString(v interface{}) string {
 	switch val := v.(type) {
 	case string:
@@ -302,7 +259,6 @@ func anyToString(v interface{}) string {
 	case int64:
 		return strconv.FormatInt(val, 10)
 	case float64:
-		// JSON numbers are float64 — integers should print without decimals
 		if val == float64(int64(val)) {
 			return strconv.FormatInt(int64(val), 10)
 		}

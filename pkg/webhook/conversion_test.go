@@ -1,11 +1,10 @@
-// pkg/health/conversion_test.go
-package health_test
+// pkg/webhook/conversion_test.go
+package webhook
 
 import (
 	"encoding/json"
 	"testing"
 
-	"github.com/orkspace/orkestra/pkg/health"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
@@ -87,7 +86,7 @@ func TestApplyConversion_UpConversion_V1alpha1ToV1(t *testing.T) {
 	obj := buildWebsiteV1Alpha1()
 	rules := websiteRules()
 
-	result, err := health.ExportedApplyConversion(obj, rules, "demo.orkestra.io/v1")
+	result, err := applyConversion(obj, rules, "demo.orkestra.io/v1")
 	if err != nil {
 		t.Fatalf("up-conversion failed: %v", err)
 	}
@@ -124,7 +123,7 @@ func TestApplyConversion_DownConversion_V1ToV1alpha1(t *testing.T) {
 	obj := buildWebsiteV1()
 	rules := websiteRules()
 
-	result, err := health.ExportedApplyConversion(obj, rules, "demo.orkestra.io/v1alpha1")
+	result, err := applyConversion(obj, rules, "demo.orkestra.io/v1alpha1")
 	if err != nil {
 		t.Fatalf("down-conversion failed: %v", err)
 	}
@@ -157,7 +156,7 @@ func TestApplyConversion_SameVersion_NoOp(t *testing.T) {
 	obj := buildWebsiteV1()
 	rules := websiteRules()
 
-	result, err := health.ExportedApplyConversion(obj, rules, "demo.orkestra.io/v1")
+	result, err := applyConversion(obj, rules, "demo.orkestra.io/v1")
 	if err != nil {
 		t.Fatalf("no-op conversion failed: %v", err)
 	}
@@ -179,7 +178,7 @@ func TestApplyConversion_MissingPath_Error(t *testing.T) {
 		},
 	}
 
-	_, err := health.ExportedApplyConversion(obj, rules, "demo.orkestra.io/v1beta1")
+	_, err := applyConversion(obj, rules, "demo.orkestra.io/v1beta1")
 	if err == nil {
 		t.Error("expected error for missing conversion path")
 	}
@@ -207,7 +206,7 @@ func TestApplyConversion_BareVersionTarget(t *testing.T) {
 		},
 	}
 
-	result, err := health.ExportedApplyConversion(obj, rules, "v1")
+	result, err := applyConversion(obj, rules, "v1")
 	if err != nil {
 		t.Fatalf("bare version no-op failed: %v", err)
 	}
@@ -271,7 +270,7 @@ func TestConversionReview_RoundTrip(t *testing.T) {
 	registry := katalog.NewInMemoryRegistryForTest()
 	registry.RegisterConversionRules(rules)
 
-	response := health.ProcessConversionReviewForTest(review, registry)
+	response := processConversionForTest(review, registry)
 
 	if response.Response.Result.Status != "Success" {
 		t.Errorf("expected Success, got %q: %s",
@@ -293,7 +292,3 @@ func TestConversionReview_RoundTrip(t *testing.T) {
 			converted["apiVersion"])
 	}
 }
-
-// ── Type aliases for test access ─────────────────────────────────────────────
-type ConversionReview = health.ConversionReview
-type ConversionReviewRequest = health.ConversionReviewRequest

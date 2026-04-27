@@ -1,4 +1,4 @@
-package health
+package webhook
 
 import (
 	"context"
@@ -16,6 +16,9 @@ func TestRegisterAdmissionWebhooks_CreatesValidatingAndMutating(t *testing.T) {
 	ctx := context.Background()
 
 	// Fake CA bundle
+	if err := os.MkdirAll("testdata", 0755); err != nil {
+		t.Fatalf("failed to create testdata dir: %v", err)
+	}
 	tmpCert := "testdata/tls.crt"
 	if err := os.WriteFile(tmpCert, []byte("FAKECERT"), 0600); err != nil {
 		t.Fatalf("failed to write cert: %v", err)
@@ -24,6 +27,7 @@ func TestRegisterAdmissionWebhooks_CreatesValidatingAndMutating(t *testing.T) {
 
 	// Fake admission registry
 	gvr := katalog.GVREntry{
+		Key:        "demo.orkestra.io/v1alpha1/websites",
 		Group:      "demo.orkestra.io",
 		Version:    "v1alpha1",
 		Resource:   "websites",
@@ -31,8 +35,8 @@ func TestRegisterAdmissionWebhooks_CreatesValidatingAndMutating(t *testing.T) {
 	}
 
 	reg := katalog.NewInMemoryAdmissionRegistry()
-	reg.RegisterValidationRules(gvr.Key, &orktypes.ValidationConfig{})
-	reg.RegisterMutationRules(gvr.Key, &orktypes.MutationConfig{})
+	reg.AddValidationGVR(gvr, &orktypes.ValidationConfig{})
+	reg.AddMutationGVR(gvr, &orktypes.MutationConfig{})
 
 	opts := WebhookRegistrationOptions{
 		ServiceName:      "orkestra",

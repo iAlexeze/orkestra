@@ -32,7 +32,7 @@ func Init(filenames ...string) (*Konfig, error) {
 		},
 		// ── Unified security configuration ───────────────────────────────────
 		// ENV vars populate SecurityConfig as defaults.
-		// Katalog YAML values are merged on top in KomposeKatalogFromYaml.
+		// Katalog YAML values are merged on top in KomposeRuntimeKatalog.
 		//
 		// ENV → SecurityConfig mapping:
 		//   ENABLE_DELETION_PROTECTION  → security.DeletionProtection.Enabled
@@ -70,7 +70,7 @@ func Init(filenames ...string) (*Konfig, error) {
 
 		// ── Unified notification configuration ───────────────────────────────
 		// ENV vars populate NotificationConfig as defaults.
-		// Katalog YAML values are merged on top in KomposeKatalogFromYaml.
+		// Katalog YAML values are merged on top in KomposeRuntimeKatalog.
 		//
 		// ENV → NotificationConfig mapping:
 		//   SMTP_HOST              → notification.Email.SMTPHost

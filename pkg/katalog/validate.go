@@ -255,18 +255,6 @@ func (k *Katalog) setGroupVersionKind() error {
 	for name, crd := range k.enabledCRDs {
 
 		// Set require fields
-		// Just additional guard in case not caught at enrichment level
-		if crd.APITypes.Kind == "" {
-			return fmt.Errorf("CRD '%s': missing required field: apiTypes.kind", name)
-		}
-		if crd.APITypes.Group == "" {
-			return fmt.Errorf("CRD '%s': missing required field: apiTypes.group", name)
-		}
-		if crd.APITypes.Version == "" {
-			return fmt.Errorf("CRD '%s': missing required field: apiTypes.version", name)
-
-		}
-
 		crd.GroupVersionKind = schema.GroupVersionKind{
 			Group:   crd.APITypes.Group,
 			Version: crd.APITypes.Version,

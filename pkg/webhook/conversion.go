@@ -1,5 +1,9 @@
-// health/conversion.go
-package health
+// webhook/conversion.go — /convert HTTP handler for CRD version conversion.
+//
+// The Kubernetes API server POSTs a ConversionReview to this endpoint when it
+// needs to convert a CR from one version to another. Orkestra applies the
+// conversion rules declared in the Katalog for the object's Kind.
+package webhook
 
 import (
 	"encoding/json"
@@ -11,7 +15,8 @@ import (
 	"github.com/orkspace/orkestra/pkg/metrics"
 )
 
-// --- Kubernetes-style ConversionReview types ---
+// --- Kubernetes ConversionReview types ---
+
 type ConversionReview struct {
 	APIVersion string                    `json:"apiVersion"`
 	Kind       string                    `json:"kind"`
@@ -36,8 +41,7 @@ type Status struct {
 	Message string `json:"message,omitempty"`
 }
 
-// --- HTTP handler for /convert ---
-func (h *HealthServer) conversionHandler(w http.ResponseWriter, r *http.Request) {
+func (ws *WebhookServer) conversionHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -48,19 +52,18 @@ func (h *HealthServer) conversionHandler(w http.ResponseWriter, r *http.Request)
 
 	var review ConversionReview
 	if err := json.NewDecoder(r.Body).Decode(&review); err != nil {
-		h.conversionStats.RecordFailure()
+		ws.conversionStats.RecordFailure()
 		metrics.RecordConversionError("unknown", "invalid_request")
 		http.Error(w, "invalid ConversionReview", http.StatusBadRequest)
 		return
 	}
 	if review.Request == nil {
-		h.conversionStats.RecordFailure()
+		ws.conversionStats.RecordFailure()
 		metrics.RecordConversionError("unknown", "missing_request")
 		http.Error(w, "missing request", http.StatusBadRequest)
 		return
 	}
 
-	// Extract source version from the first object
 	sourceVersion := ""
 	if len(review.Request.Objects) > 0 {
 		var firstObj map[string]interface{}
@@ -96,7 +99,7 @@ func (h *HealthServer) conversionHandler(w http.ResponseWriter, r *http.Request)
 			resp.Result = &Status{Status: "Failure", Message: "invalid object payload"}
 			metrics.RecordConversionError(kind, "invalid_payload")
 			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
-			h.conversionStats.RecordFailure()
+			ws.conversionStats.RecordFailure()
 			break
 		}
 
@@ -105,16 +108,16 @@ func (h *HealthServer) conversionHandler(w http.ResponseWriter, r *http.Request)
 			resp.Result = &Status{Status: "Failure", Message: "object missing kind"}
 			metrics.RecordConversionError(kind, "missing_kind")
 			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
-			h.conversionStats.RecordFailure()
+			ws.conversionStats.RecordFailure()
 			break
 		}
 
-		rules := h.conversionRegistry.GetConversionRules(kind)
+		rules := ws.conversionRegistry.GetConversionRules(kind)
 		if rules == nil {
 			resp.Result = &Status{Status: "Failure", Message: "no conversion rules for kind"}
 			metrics.RecordConversionError(kind, "no_rules")
 			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
-			h.conversionStats.RecordFailure()
+			ws.conversionStats.RecordFailure()
 			break
 		}
 
@@ -123,15 +126,14 @@ func (h *HealthServer) conversionHandler(w http.ResponseWriter, r *http.Request)
 			resp.Result = &Status{Status: "Failure", Message: err.Error()}
 			metrics.RecordConversionError(kind, "apply_failed")
 			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
-			h.conversionStats.RecordFailure()
+			ws.conversionStats.RecordFailure()
 			break
 		}
 
-		// Success
 		objDuration := time.Since(objStart).Seconds()
 		metrics.ObserveConversionDuration(kind, sourceVersion, targetVersion, objDuration)
 		metrics.RecordConversion(kind, sourceVersion, targetVersion, "success")
-		h.conversionStats.RecordSuccess(time.Duration(objDuration * float64(time.Second)))
+		ws.conversionStats.RecordSuccess(time.Duration(objDuration * float64(time.Second)))
 
 		out, _ := json.Marshal(converted)
 		resp.ConvertedObjects[i] = out
@@ -147,8 +149,8 @@ func (h *HealthServer) conversionHandler(w http.ResponseWriter, r *http.Request)
 	_ = json.NewEncoder(w).Encode(response)
 }
 
-// For tests
-func processConversion(review ConversionReview, rulesRegistry katalog.ConversionRegistry) ConversionReview {
+// processConversionForTest exposes the conversion logic for unit tests.
+func processConversionForTest(review ConversionReview, rulesRegistry katalog.ConversionRegistry) ConversionReview {
 	resp := &ConversionReviewResponse{
 		UID:              review.Request.UID,
 		ConvertedObjects: make([]json.RawMessage, len(review.Request.Objects)),
@@ -161,25 +163,21 @@ func processConversion(review ConversionReview, rulesRegistry katalog.Conversion
 			resp.Result = &Status{Status: "Failure", Message: "invalid object payload"}
 			break
 		}
-
 		kind, _ := obj["kind"].(string)
 		if kind == "" {
 			resp.Result = &Status{Status: "Failure", Message: "object missing kind"}
 			break
 		}
-
 		rules := rulesRegistry.GetConversionRules(kind)
 		if rules == nil {
 			resp.Result = &Status{Status: "Failure", Message: "no conversion rules for kind"}
 			break
 		}
-
 		converted, err := applyConversion(obj, rules, review.Request.DesiredAPIVersion)
 		if err != nil {
 			resp.Result = &Status{Status: "Failure", Message: err.Error()}
 			break
 		}
-
 		out, _ := json.Marshal(converted)
 		resp.ConvertedObjects[i] = out
 	}
@@ -189,9 +187,4 @@ func processConversion(review ConversionReview, rulesRegistry katalog.Conversion
 		Kind:       "ConversionReview",
 		Response:   resp,
 	}
-}
-
-// ProcessConversionReviewForTest exposes the conversion logic for unit tests.
-func ProcessConversionReviewForTest(review ConversionReview, registry katalog.ConversionRegistry) ConversionReview {
-	return processConversion(review, registry)
 }

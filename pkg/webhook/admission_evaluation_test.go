@@ -1,10 +1,10 @@
 // Tests for the pure evaluation logic in admission_evaluation.go and
-// the shared helper functions in admission_handlers.go.
+// the shared helper functions in admission.go.
 //
-// Package health (white-box) — gives direct access to unexported functions
+// Package webhook (white-box) — gives direct access to unexported functions
 // without requiring exported test shims. These are the innermost unit tests:
 // no network, no Kubernetes, no filesystem.
-package health
+package webhook
 
 import (
 	"context"
@@ -467,7 +467,7 @@ func TestEvaluateOneRule_ViolationFieldsArePopulated(t *testing.T) {
 // ── evaluateValidationRules: multi-rule ───────────────────────────────────────
 
 func TestEvaluateValidationRules_MixedDenyAndWarn(t *testing.T) {
-	h := &HealthServer{}
+	h := &WebhookServer{}
 
 	obj := map[string]interface{}{
 		"spec": map[string]interface{}{
@@ -494,7 +494,7 @@ func TestEvaluateValidationRules_MixedDenyAndWarn(t *testing.T) {
 }
 
 func TestEvaluateValidationRules_AllPass(t *testing.T) {
-	h := &HealthServer{}
+	h := &WebhookServer{}
 
 	obj := map[string]interface{}{
 		"spec": map[string]interface{}{
@@ -520,7 +520,7 @@ func TestEvaluateValidationRules_AllPass(t *testing.T) {
 }
 
 func TestEvaluateValidationRules_EmptyActionDefaultsToDeny(t *testing.T) {
-	h := &HealthServer{}
+	h := &WebhookServer{}
 
 	obj := specObj(map[string]interface{}{"image": "bad-registry/nginx"})
 	cfg := &orktypes.ValidationConfig{
@@ -539,7 +539,7 @@ func TestEvaluateValidationRules_EmptyActionDefaultsToDeny(t *testing.T) {
 // ── applyMutationRules ────────────────────────────────────────────────────────
 
 func TestApplyMutationRules_NilConfig(t *testing.T) {
-	h := &HealthServer{}
+	h := &WebhookServer{}
 	obj := specObj(map[string]interface{}{})
 
 	changes, err := h.applyMutationRules(context.Background(), obj, nil, "Website")
@@ -549,7 +549,7 @@ func TestApplyMutationRules_NilConfig(t *testing.T) {
 }
 
 func TestApplyMutationRules_EmptyRules(t *testing.T) {
-	h := &HealthServer{}
+	h := &WebhookServer{}
 	obj := specObj(map[string]interface{}{})
 	cfg := &orktypes.MutationConfig{Rules: []orktypes.MutationRule{}}
 
@@ -560,7 +560,7 @@ func TestApplyMutationRules_EmptyRules(t *testing.T) {
 }
 
 func TestApplyMutationRules_DefaultAppliedWhenAbsent(t *testing.T) {
-	h := &HealthServer{}
+	h := &WebhookServer{}
 	obj := map[string]interface{}{
 		"metadata": map[string]interface{}{"name": "my-site"},
 		"spec":     map[string]interface{}{},
@@ -586,7 +586,7 @@ func TestApplyMutationRules_DefaultAppliedWhenAbsent(t *testing.T) {
 }
 
 func TestApplyMutationRules_DefaultSkippedWhenPresent(t *testing.T) {
-	h := &HealthServer{}
+	h := &WebhookServer{}
 	obj := map[string]interface{}{
 		"metadata": map[string]interface{}{"name": "my-site"},
 		"spec":     map[string]interface{}{"replicas": "5"},
@@ -607,7 +607,7 @@ func TestApplyMutationRules_DefaultSkippedWhenPresent(t *testing.T) {
 }
 
 func TestApplyMutationRules_DefaultSkippedWhenValueAlreadyMatches(t *testing.T) {
-	h := &HealthServer{}
+	h := &WebhookServer{}
 	obj := map[string]interface{}{
 		"metadata": map[string]interface{}{"name": "my-site"},
 		"spec":     map[string]interface{}{"logLevel": "info"},
@@ -625,7 +625,7 @@ func TestApplyMutationRules_DefaultSkippedWhenValueAlreadyMatches(t *testing.T) 
 }
 
 func TestApplyMutationRules_OverrideAlwaysApplies(t *testing.T) {
-	h := &HealthServer{}
+	h := &WebhookServer{}
 	obj := map[string]interface{}{
 		"metadata": map[string]interface{}{"name": "my-site"},
 		"spec":     map[string]interface{}{},
@@ -646,7 +646,7 @@ func TestApplyMutationRules_OverrideAlwaysApplies(t *testing.T) {
 }
 
 func TestApplyMutationRules_OverrideReplacesExistingValue(t *testing.T) {
-	h := &HealthServer{}
+	h := &WebhookServer{}
 	obj := map[string]interface{}{
 		"metadata": map[string]interface{}{
 			"name": "my-site",
@@ -672,7 +672,7 @@ func TestApplyMutationRules_OverrideReplacesExistingValue(t *testing.T) {
 }
 
 func TestApplyMutationRules_MultipleRules(t *testing.T) {
-	h := &HealthServer{}
+	h := &WebhookServer{}
 	obj := map[string]interface{}{
 		"metadata": map[string]interface{}{"name": "my-site"},
 		"spec":     map[string]interface{}{},
@@ -696,7 +696,7 @@ func TestApplyMutationRules_MultipleRules(t *testing.T) {
 }
 
 func TestApplyMutationRules_NestedFieldCreated(t *testing.T) {
-	h := &HealthServer{}
+	h := &WebhookServer{}
 	obj := map[string]interface{}{
 		"metadata": map[string]interface{}{"name": "my-site"},
 		"spec":     map[string]interface{}{},
@@ -727,10 +727,10 @@ func TestDeepCopyMap_IndependentFromOriginal(t *testing.T) {
 		},
 	}
 
-	copy := deepCopyMap(original)
+	cp := deepCopyMap(original)
 
 	// Mutate the copy — original must not change
-	copy["spec"].(map[string]interface{})["image"] = "mutated"
+	cp["spec"].(map[string]interface{})["image"] = "mutated"
 
 	assert.Equal(t, "myorg/nginx:1.25",
 		original["spec"].(map[string]interface{})["image"],
@@ -749,12 +749,12 @@ func TestDeepCopyMap_PreservesAllFields(t *testing.T) {
 		"d": map[string]interface{}{"nested": "value"},
 	}
 
-	copy := deepCopyMap(original)
+	cp := deepCopyMap(original)
 
-	assert.Equal(t, "string", copy["a"])
-	assert.Equal(t, float64(42), copy["b"])
-	assert.Equal(t, true, copy["c"])
-	assert.Equal(t, "value", copy["d"].(map[string]interface{})["nested"])
+	assert.Equal(t, "string", cp["a"])
+	assert.Equal(t, float64(42), cp["b"])
+	assert.Equal(t, true, cp["c"])
+	assert.Equal(t, "value", cp["d"].(map[string]interface{})["nested"])
 }
 
 // ── buildJSONPatch ────────────────────────────────────────────────────────────

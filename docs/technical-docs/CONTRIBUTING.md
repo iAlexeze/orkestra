@@ -127,7 +127,7 @@ health/
 
 pkg/
   katalog/
-    katalog.go           KomposeKatalogFromYaml, Katalog struct
+    katalog.go           KomposeRuntimeKatalog, Katalog struct
     builtins.go          Built-in kind registry (Deployment, Pod, etc.)
     enrichment.go        EnrichCRDEntry — discovery API + built-in lookup
     conversion_registry.go InMemoryConversionRegistry

@@ -22,7 +22,7 @@ ork run
 konstructOrkestra()
   │  reads environment variables
   │  builds Merger
-  │  calls KomposeKatalogFromYaml()
+  │  calls KomposeRuntimeKatalog()
   │
   ▼
 Merger

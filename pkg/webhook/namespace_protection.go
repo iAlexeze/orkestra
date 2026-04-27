@@ -1,17 +1,11 @@
-// health/namespace_protection_handler.go
-//
-// /namespace-protection webhook handler.
+// webhook/namespace_protection.go — /namespace-protection webhook handler.
 //
 // Registered only when security.namespaceProtection.enabled: true in the Katalog.
-// Separate from /validate — different semantics, different failure policy.
+// Intercepts CREATE and UPDATE on CRDs that declare allowedNamespaces or
+// restrictedNamespaces, and rejects operations in forbidden namespaces.
 //
-// Intercepts CREATE and UPDATE operations on CRDs that declare namespace rules
-// (allowedNamespaces or restrictedNamespaces). The webhook rules filter by GVR;
-// the handler performs the namespace check.
-//
-// failurePolicy: Fail — if Orkestra is unreachable, CREATE/UPDATE is blocked.
-// This ensures namespace rules remain enforced even during transient outages.
-package health
+// failurePolicy: Fail — if Orkestra is unreachable, the operation is blocked.
+package webhook
 
 import (
 	"encoding/json"
@@ -23,9 +17,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/metrics"
 )
 
-// namespaceProtectionHandler is the HTTP handler for /namespace-protection.
-// It is registered on the HTTPS mux when namespace protection is enabled.
-func (h *HealthServer) namespaceProtectionHandler(w http.ResponseWriter, r *http.Request) {
+func (ws *WebhookServer) namespaceProtectionHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -47,19 +39,16 @@ func (h *HealthServer) namespaceProtectionHandler(w http.ResponseWriter, r *http
 
 	req := review.Request
 
-	// Only CREATE and UPDATE matter — namespace rules apply at admission.
 	if req.Operation != "CREATE" && req.Operation != "UPDATE" {
-		h.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
+		ws.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
 			UID: req.UID, Allowed: true,
 		})
 		return
 	}
 
-	// Lookup namespace rules for this CRD.
-	rules, ok := h.namespaceRulesForCRD(req.Resource.Group, req.Resource.Resource)
+	rules, ok := ws.namespaceRulesForCRD(req.Resource.Group, req.Resource.Resource)
 	if !ok {
-		// CRD has no namespace rules — allow.
-		h.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
+		ws.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
 			UID: req.UID, Allowed: true,
 		})
 		return
@@ -67,7 +56,6 @@ func (h *HealthServer) namespaceProtectionHandler(w http.ResponseWriter, r *http
 
 	ns := req.Namespace
 
-	// Evaluate namespace rules.
 	if !rules.IsNamespaceAllowed(ns) {
 		logger.Info().
 			Str("crd", req.Resource.Resource+"."+req.Resource.Group).
@@ -76,9 +64,11 @@ func (h *HealthServer) namespaceProtectionHandler(w http.ResponseWriter, r *http
 			Msg("namespace-protection: blocking CR creation/update in forbidden namespace")
 
 		metrics.RecordNamespaceProtectionBlocked(req.Resource.Resource)
-		h.namespaceStats.RecordBlocked()
+		if ws.namespaceStats != nil {
+			ws.namespaceStats.RecordBlocked()
+		}
 
-		h.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
+		ws.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
 			UID:     req.UID,
 			Allowed: false,
 			Status: &AdmissionStatus{
@@ -93,43 +83,40 @@ func (h *HealthServer) namespaceProtectionHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Allowed.
-	h.namespaceStats.RecordAllowed()
+	if ws.namespaceStats != nil {
+		ws.namespaceStats.RecordAllowed()
+	}
 	_ = time.Since(start)
 
-	h.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
+	ws.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
 		UID: req.UID, Allowed: true,
 	})
 }
 
-// namespaceRulesForCRD returns the namespace rules for a CRD, if any.
-func (h *HealthServer) namespaceRulesForCRD(group, plural string) (*NamespaceRules, bool) {
-	if h.namespaceRuleMap == nil {
+func (ws *WebhookServer) namespaceRulesForCRD(group, plural string) (*NamespaceRules, bool) {
+	if ws.namespaceRuleMap == nil {
 		return nil, false
 	}
 	key := plural + "." + group
-	r, ok := h.namespaceRuleMap[key]
+	r, ok := ws.namespaceRuleMap[key]
 	return r, ok
 }
 
+// NamespaceRules holds the allow/restrict namespace sets for one CRD.
 type NamespaceRules struct {
 	Allowed    map[string]struct{}
 	Restricted map[string]struct{}
 }
 
+// IsNamespaceAllowed returns true when the namespace passes the CRD's namespace rules.
 func (r *NamespaceRules) IsNamespaceAllowed(ns string) bool {
-	// Allowed list takes precedence.
 	if len(r.Allowed) > 0 {
 		_, ok := r.Allowed[ns]
 		return ok
 	}
-
-	// Otherwise restricted list applies.
 	if len(r.Restricted) > 0 {
 		_, forbidden := r.Restricted[ns]
 		return !forbidden
 	}
-
-	// No rules — everything allowed.
 	return true
 }

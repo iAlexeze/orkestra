@@ -315,7 +315,7 @@ func (m *Merger) ToSecurity() orktypes.KatalogSecurity {
 }
 
 // ToProviders returns the top-level provider requirements of the merged result.
-// Used by KomposeKatalogFromYaml to populate Katalog.Providers.
+// Used by KomposeRuntimeKatalog to populate Katalog.Providers.
 func (m *Merger) ToProviders() []orktypes.KatalogProviderRequirement {
 	m.mustBeMerged()
 	return m.providers
@@ -324,7 +324,7 @@ func (m *Merger) ToProviders() []orktypes.KatalogProviderRequirement {
 // ToNotification returns the merged notification configuration of the merged result.
 // When a Komposer references multiple source Katalogs, teams from all sources are
 // merged — source teams are inherited and the Komposer's own teams win on conflict.
-// Used by KomposeKatalogFromYaml to populate Katalog.Notification.
+// Used by KomposeRuntimeKatalog to populate Katalog.Notification.
 func (m *Merger) ToNotification() *orktypes.KatalogNotification {
 	m.mustBeMerged()
 	return m.notification

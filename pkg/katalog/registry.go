@@ -33,7 +33,7 @@ func NewKatalog(kfg *konfig.Konfig, m *merger.Merger) *Katalog {
 	ork_runtime.RegisterRuntimeObjects()
 
 	// Build CRDs
-	entries, err := katalog.KomposeKatalogFromYaml(kfg, m, paths...)
+	entries, err := katalog.KomposeRuntimeKatalog(kfg, m, paths...)
 	if err != nil {
 		utils.Exit(err)
 	}

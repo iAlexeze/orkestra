@@ -15,7 +15,7 @@ import (
 //	YAML Builder
 //
 // -----------------------------------------------------------------------------
-func (k *Katalog) KomposeKatalogFromYaml(kfg *konfig.Konfig, m *merger.Merger, paths ...string) (map[string]orktypes.CRDEntry, error) {
+func (k *Katalog) KomposeRuntimeKatalog(kfg *konfig.Konfig, m *merger.Merger, paths ...string) (map[string]orktypes.CRDEntry, error) {
 	k.Spec = m.ToSpec()
 	k.Security = m.ToSecurity()
 	k.Notification = m.ToNotification()
@@ -33,6 +33,8 @@ func (k *Katalog) KomposeKatalogFromYaml(kfg *konfig.Konfig, m *merger.Merger, p
 	// Enrich enabled CRDs
 	// Switching from slice to map — must copy back since map values are not addressable
 	for name, entry := range k.enabledCRDs {
+		logger.Debug().Str("name", name).
+			Msgf("enriching %s", name)
 		outcome, err := EnrichCRDEntry(&entry)
 		if err != nil {
 			return nil, err
@@ -46,7 +48,7 @@ func (k *Katalog) KomposeKatalogFromYaml(kfg *konfig.Konfig, m *merger.Merger, p
 	k.admissionRegistry = NewInMemoryAdmissionRegistry()
 
 	// now safe to register rules
-	for _, entry := range k.Spec.CRDs {
+	for _, entry := range k.enabledCRDs {
 		k.admissionRegistry.registerAdmissionRulesFromEntry(entry)
 		k.conversionRegistry.registerConversionRulesFromSpec(entry)
 	}
