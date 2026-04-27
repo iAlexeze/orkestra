@@ -91,4 +91,4 @@ jobs:
     uses: ./.github/workflows/cleanup-caches.yml
     secrets: inherit
     with:
-      older_than_days: 2
+      older_than_hours: 2
