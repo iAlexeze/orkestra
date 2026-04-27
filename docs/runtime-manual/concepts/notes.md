@@ -8,7 +8,7 @@ expression. They are the vocabulary of declarative operator behavior.
 ## The idea
 
 A Katalog template expression like `{{ .spec.image }}` reads a field.
-A note like `{{ cronMinute .spec.schedule }}` transforms one. The distinction
+A note like `{{ cronFromAny .spec.schedule }}` transforms one. The distinction
 is simple but the consequence is significant: with notes, the gap between
 "what I can express declaratively" and "what requires Go hooks" becomes very
 small.
@@ -30,8 +30,7 @@ conversion:
     - from: v1
       to: v2
       spec:
-        schedule:
-          minute: "{{ cronMinute .spec.schedule }}"
+        schedule: "{{ cronToMap .spec.schedule }}"
 
 # Status field values
 status:
@@ -50,7 +49,7 @@ mutation:
 # onCreate templates
 onCreate:
   cronJobs:
-    - schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+    - schedule: "{{ cronFromAny .spec.schedule }}"
 ```
 
 ---
@@ -63,33 +62,33 @@ Parse and reconstruct standard cron expressions. Handles five-field expressions
 and @-macros (`@hourly`, `@daily`, `@weekly`, `@monthly`, `@yearly`).
 
 ```
-cronMinute  expr          → minute field (0-59, */n, ranges)
-cronHour    expr          → hour field (0-23)
-cronDom     expr          → day-of-month field (1-31)
-cronMonth   expr          → month field (1-12 or JAN-DEC)
-cronDow     expr          → day-of-week field (0-6 or SUN-SAT)
+cronToMap   expr          → structured map {minute, hour, dayOfMonth, month, dayOfWeek}
+cronFromMap map           → cron string (errors if input is not a map)
+cronFromAny map|string    → cron string (safe for any input shape)
+cronNormalize expr        → normalised five-field string, @-macros expanded
+cronDescribe  expr        → human-readable description ("Every 5 minutes")
+cronValid   expr          → true if structurally valid
+cronMinute  expr          → minute field
+cronHour    expr          → hour field
+cronDom     expr          → day-of-month field
+cronMonth   expr          → month field
+cronDow     expr          → day-of-week field
 cronField   expr pos      → field at position 0-4
 cronExpr    min hr d m w  → reconstruct "min hr d m w" string
-cronValid   expr          → true if structurally valid
 ```
 
-**Example — v1 (string) to v2 (structured) conversion:**
+**Example — v1 (string) ↔ v2 (structured map) conversion:**
 
 ```yaml
 - from: v1
   to: v2
   spec:
-    schedule:
-      minute: "{{ cronMinute .spec.schedule }}"
-      hour:   "{{ cronHour   .spec.schedule }}"
-      dayOfMonth: "{{ cronDom .spec.schedule }}"
-      month:  "{{ cronMonth  .spec.schedule }}"
-      dayOfWeek:  "{{ cronDow .spec.schedule }}"
+    schedule: "{{ cronToMap .spec.schedule }}"   # string → structured map
 
 - from: v2
   to: v1
   spec:
-    schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+    schedule: "{{ cronFromAny .spec.schedule }}"  # map or legacy string → cron string
 ```
 
 ### String
@@ -197,7 +196,7 @@ replicas: "{{ default .spec.replicas 2 }}"
 
 | Need | Use |
 |---|---|
-| Parse a cron string | `cronMinute`, `cronHour`, ... |
+| Convert cron string ↔ map | `cronToMap`, `cronFromMap`, `cronFromAny` |
 | Apply a default value | `default` |
 | Choose between values | `ternary`, `coalesce` |
 | String manipulation | `toLower`, `trimPrefix`, `replace`, ... |
@@ -230,7 +229,8 @@ side effects — it is a note. If it requires I/O, it is a hook.
 // Typed — return native type, not always string
 
 // Return (value, error) for functions that can fail:
-func cronMinute(expr string) (string, error) { ... }
+func cronFromAny(v interface{}) string { ... }          // infallible
+func cronFromMap(v interface{}) (string, error) { ... } // errors on non-map
 
 // Return just value for infallible functions:
 func toLower(s string) string { return strings.ToLower(s) }

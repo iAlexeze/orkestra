@@ -152,6 +152,8 @@ func patchConversionCRDs(
 		crdName := crd.APITypes.Plural + "." + crd.APITypes.Group
 		storageVersion := crd.Conversion.StorageVersion
 
+		logger.Info().Msgf("storage version: %s", storageVersion)
+
 		patch := map[string]interface{}{
 			"spec": map[string]interface{}{
 				"conversion": map[string]interface{}{

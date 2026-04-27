@@ -11,8 +11,6 @@ metadata:
 security:
   deletionProtection:
     enabled: true
-  rbac:
-    enabled: true
 
 spec:
   crds:
@@ -46,12 +44,7 @@ spec:
       #
       normalize:
         spec:
-          schedule: >
-            {{ if typeMap .spec.schedule }}
-              {{ cronFromMap .spec.schedule }}
-            {{ else }}
-              {{ cronNormalize .spec.schedule }}
-            {{ end }}
+          schedule: "{{ cronFromAny .spec.schedule }}"
 
       mutation:
         mutateFirst: true
@@ -92,9 +85,9 @@ spec:
             - path: concurrencyPolicy
               value: "{{ .spec.concurrencyPolicy }}"
             - path: lastScheduleTime
-              value: "{{ get .children.cronjob "status" "lastScheduleTime" }}"
+              value: "{{ get .children.cronjob \"status\" \"lastScheduleTime\" }}"
             - path: nextScheduleTime
-              value: "{{ get .children.cronjob "status" "nextScheduleTime" }}"
+              value: "{{ get .children.cronjob \"status\" \"nextScheduleTime\" }}"
 
         onCreate:
           cronJobs:

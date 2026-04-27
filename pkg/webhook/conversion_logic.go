@@ -2,9 +2,11 @@
 package webhook
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/orkspace/orkestra/pkg/note"
 	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
@@ -74,7 +76,22 @@ func resolveMap(r *orktmpl.Resolver, src map[string]interface{}) (map[string]int
 func resolveValue(r *orktmpl.Resolver, v interface{}) (interface{}, error) {
 	switch tv := v.(type) {
 	case string:
-		return r.Resolve(tv)
+		resolved, err := r.Resolve(tv)
+		if err != nil {
+			return nil, err
+		}
+		// cronToMap returns CronMapSentinel + JSON so that the conversion spec
+		// can use {{ cronToMap .spec.schedule }} as a one-liner shorthand.
+		// Detect the sentinel and parse back to map[string]interface{}.
+		if strings.HasPrefix(resolved, note.CronMapSentinel) {
+			payload := resolved[len(note.CronMapSentinel):]
+			var m map[string]interface{}
+			if err := json.Unmarshal([]byte(payload), &m); err != nil {
+				return nil, fmt.Errorf("cronToMap: invalid JSON payload: %w", err)
+			}
+			return m, nil
+		}
+		return resolved, nil
 	case map[string]interface{}:
 		return resolveMap(r, tv)
 	case []interface{}:

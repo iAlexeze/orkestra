@@ -296,7 +296,21 @@ func registerDeletionProtectionWebhook(
 		Webhooks: webhooks,
 	}
 
-	return applyWebhookConfig(ctx, client, config)
+	// return applyWebhookConfig(ctx, client, config)
+	// Retry a few times on AlreadyExists or Conflict
+	for i := 0; i < 5; i++ {
+		err := applyWebhookConfig(ctx, client, config)
+		if err == nil {
+			return nil
+		}
+		if errors.IsAlreadyExists(err) || errors.IsConflict(err) {
+			// Wait a bit and retry (exponential backoff)
+			time.Sleep(time.Duration(100*(1<<i)) * time.Millisecond)
+			continue
+		}
+		return err
+	}
+	return fmt.Errorf("failed to register deletion protection webhook after retries")
 }
 
 // registerNamespaceProtectionWebhook creates or updates the ValidatingWebhookConfiguration
