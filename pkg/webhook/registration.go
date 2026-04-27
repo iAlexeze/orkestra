@@ -389,6 +389,16 @@ func applyWebhookConfig(ctx context.Context, client kubernetes.Interface, cfg *a
 	existing, err := client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, cfg.Name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		_, err = client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Create(ctx, cfg, metav1.CreateOptions{})
+		if errors.IsAlreadyExists(err) {
+			// Race: another replica created it. Fetch and update.
+			existing, getErr := client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, cfg.Name, metav1.GetOptions{})
+			if getErr != nil {
+				return getErr
+			}
+			cfg.ResourceVersion = existing.ResourceVersion
+			_, err = client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Update(ctx, cfg, metav1.UpdateOptions{})
+			return err
+		}
 		return err
 	}
 	if err != nil {

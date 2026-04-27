@@ -29,7 +29,6 @@ import (
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
-	"github.com/orkspace/orkestra/pkg/reconciler"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -104,25 +103,7 @@ func ensureSecurity(
 		BaseLabels:  kfg.OrkestraResourceLabels(),
 	})
 	if err != nil {
-		// Best-effort — webhook caBundle may be unavailable, but log and continue.
-		logger.Warn().Err(err).
-			Str("secret", certmanager.DefaultTLSSecretName).
-			Msg("security: failed to store TLS secret — webhook caBundle may be unavailable")
-		// Re-generate bundle without storing so certs can still be written to files.
-		bundle, err = reconciler.GenerateTLSBundle(
-			serviceName+"."+namespace+".svc",
-			[]string{
-				serviceName,
-				serviceName + "." + namespace,
-				serviceName + "." + namespace + ".svc",
-				serviceName + "." + namespace + ".svc.cluster.local",
-			},
-			defaultCertValidFor,
-		)
-		if err != nil {
-			logger.Fatal().Err(err).Msg("security: failed to generate TLS certificates")
-		}
-		mgr = nil // no secret was stored; don't attempt cleanup
+		logger.Fatal().Err(err).Msg("security: failed to ensure TLS secret")
 	}
 
 	certFile, keyFile, writeErr := writeTLSToFiles(bundle)
@@ -220,7 +201,7 @@ func patchConversionCRDs(
 
 // writeTLSToFiles writes the TLS bundle to temporary files.
 // Returns the cert file path and key file path.
-func writeTLSToFiles(bundle *reconciler.TLSBundle) (certFile, keyFile string, err error) {
+func writeTLSToFiles(bundle *certmanager.TLSBundle) (certFile, keyFile string, err error) {
 	cert, err := os.CreateTemp("", "orkestra-tls-cert-*.pem")
 	if err != nil {
 		return "", "", err

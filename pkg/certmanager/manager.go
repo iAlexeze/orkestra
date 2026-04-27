@@ -47,7 +47,7 @@ import (
 	"time"
 
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
-	"github.com/orkspace/orkestra/pkg/reconciler"
+	"github.com/orkspace/orkestra/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,7 +55,7 @@ import (
 )
 
 // DefaultTLSSecretName is the Secret name used for Orkestra's auto-generated TLS bundle.
-const DefaultTLSSecretName = "orkestra-tls"
+const DefaultTLSSecretName = "orkestra-internal-tls"
 
 // CertificateSpec describes the TLS certificate Orkestra should generate and store.
 type CertificateSpec struct {
@@ -75,7 +75,7 @@ type CertificateSpec struct {
 type Manager interface {
 	// EnsureCertificate generates a TLS bundle and stores it in a Kubernetes Secret.
 	// If the Secret already exists it is updated in-place.
-	EnsureCertificate(ctx context.Context, spec CertificateSpec) (*reconciler.TLSBundle, error)
+	EnsureCertificate(ctx context.Context, spec CertificateSpec) (*TLSBundle, error)
 	// DeleteCertificateAndSecret removes the TLS Secret from the cluster.
 	// A NotFound error is silently ignored.
 	DeleteCertificateAndSecret(ctx context.Context, namespace, secretName string) error
@@ -91,8 +91,33 @@ func New(client kubernetes.Interface) Manager {
 }
 
 // EnsureCertificate generates a self-signed TLS bundle and stores it in a Secret.
-func (m *k8sManager) EnsureCertificate(ctx context.Context, spec CertificateSpec) (*reconciler.TLSBundle, error) {
-	bundle, err := reconciler.GenerateTLSBundle(
+// If the Secret already exists and is valid, it is reused without regeneration.
+// If the Secret exists but is malformed, it is deleted and a new one is created.
+// If the Secret does not exist, a new one is created.
+func (m *k8sManager) EnsureCertificate(ctx context.Context, spec CertificateSpec) (*TLSBundle, error) {
+	client := m.client.CoreV1().Secrets(spec.Namespace)
+
+	// 1. Try to fetch existing secret
+	existing, err := client.Get(ctx, spec.SecretName, metav1.GetOptions{})
+	if err == nil {
+		// Secret exists – try to extract a valid bundle
+		bundle, err := bundleFromSecret(existing)
+		if err == nil {
+			// Valid certificate – reuse it
+			return bundle, nil
+		}
+		// Secret exists but is malformed – log, delete, and regenerate
+		logger.Warn().Err(err).Msg("existing TLS secret invalid, deleting and regenerating")
+		if err := client.Delete(ctx, spec.SecretName, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+			return nil, fmt.Errorf("deleting invalid tls secret: %w", err)
+		}
+	} else if !k8serrors.IsNotFound(err) {
+		// Some other error (e.g., network, permissions) – fail fast
+		return nil, fmt.Errorf("checking existing tls secret: %w", err)
+	}
+
+	// 2. Generate a new TLS bundle (secret does not exist or was deleted)
+	bundle, err := GenerateTLSBundle(
 		spec.ServiceName+"."+spec.Namespace+".svc",
 		[]string{
 			spec.ServiceName,
@@ -106,6 +131,7 @@ func (m *k8sManager) EnsureCertificate(ctx context.Context, spec CertificateSpec
 		return nil, fmt.Errorf("generating tls bundle: %w", err)
 	}
 
+	// 3. Prepare the secret object
 	secretLabels := orklabels.WithDeletionProtection(spec.BaseLabels)
 	secretLabels["app.kubernetes.io/component"] = "tls"
 
@@ -115,7 +141,7 @@ func (m *k8sManager) EnsureCertificate(ctx context.Context, spec CertificateSpec
 			Namespace: spec.Namespace,
 			Labels:    secretLabels,
 			Annotations: map[string]string{
-				"orkestra.orkspace.io/generated-at": time.Now().UTC().Format(time.RFC3339),
+				"orkestra.workspace.io/generated-at": time.Now().UTC().Format(time.RFC3339),
 			},
 		},
 		Type: corev1.SecretTypeTLS,
@@ -126,26 +152,34 @@ func (m *k8sManager) EnsureCertificate(ctx context.Context, spec CertificateSpec
 		},
 	}
 
-	client := m.client.CoreV1().Secrets(spec.Namespace)
+	// 4. Create the secret (idempotent)
 	_, err = client.Create(ctx, secret, metav1.CreateOptions{})
-	if err == nil {
-		return bundle, nil
-	}
-	if !k8serrors.IsAlreadyExists(err) {
-		return nil, fmt.Errorf("creating tls secret %s/%s: %w", spec.Namespace, spec.SecretName, err)
-	}
-
-	existing, err := client.Get(ctx, spec.SecretName, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("getting existing tls secret %s/%s: %w", spec.Namespace, spec.SecretName, err)
+		return nil, fmt.Errorf("creating tls secret: %w", err)
 	}
-
-	secret.ResourceVersion = existing.ResourceVersion
-	if _, err = client.Update(ctx, secret, metav1.UpdateOptions{}); err != nil {
-		return nil, fmt.Errorf("updating tls secret %s/%s: %w", spec.Namespace, spec.SecretName, err)
-	}
-
 	return bundle, nil
+}
+
+// bundleFromSecret extracts a TLSBundle from a Kubernetes Secret.
+// Expects the Secret to have keys "tls.crt", "tls.key", and "ca.crt".
+func bundleFromSecret(secret *corev1.Secret) (*TLSBundle, error) {
+	certPEM, ok := secret.Data["tls.crt"]
+	if !ok {
+		return nil, fmt.Errorf("secret missing tls.crt")
+	}
+	keyPEM, ok := secret.Data["tls.key"]
+	if !ok {
+		return nil, fmt.Errorf("secret missing tls.key")
+	}
+	caPEM, ok := secret.Data["ca.crt"]
+	if !ok {
+		return nil, fmt.Errorf("secret missing ca.crt")
+	}
+	return &TLSBundle{
+		CertPEM:   certPEM,
+		KeyPEM:    keyPEM,
+		CACertPEM: caPEM,
+	}, nil
 }
 
 // DeleteCertificateAndSecret removes the TLS Secret. Silently succeeds if already gone.
