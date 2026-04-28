@@ -1,4 +1,5 @@
-// cmd/cli/init.go
+//go:build !runtime
+
 package cli
 
 import (
@@ -102,6 +103,7 @@ func listPacks() error {
 		"intermediate": "Multi-resource patterns, when/anyOf, Komposer basics.",
 		"advanced":     "Hooks, constructors, validation/mutation, registries.",
 		"use-cases":    "Full-stack, cross-CRD, external gates, once-secrets.",
+		"rollback":     "Zero-config and configurable failure recovery",
 	}
 
 	for name, desc := range packs {

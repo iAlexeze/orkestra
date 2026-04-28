@@ -14,6 +14,9 @@
 //	--add-security          — namespace + deletion protection block
 //	--add-notification      — notification / alerting block
 //	--add-provider <cloud>  — providers block for aws | azure | gcp
+
+//go:build !runtime
+
 package cli
 
 import (

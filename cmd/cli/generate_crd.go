@@ -22,6 +22,9 @@
 //
 //	ork generate crd --katalog katalog.yaml --crd pipeline -o pipeline-crd.yaml
 //	ork generate cr  --katalog katalog.yaml --crd pipeline -o pipeline-cr.yaml
+
+//go:build !runtime
+
 package cli
 
 import (

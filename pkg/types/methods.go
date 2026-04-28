@@ -245,9 +245,10 @@ func (c *CRDEntry) AutoscaleEnabled() bool {
 	return c.OperatorBox.Autoscale != nil
 }
 
-// HasRollbackRules reports whether this CRD declares a rollback block.
+// HasRollbackRules reports whether this CRD has any rollback behavior configured —
+// either via an explicit rollback: block or the rollBackOnError: true shorthand.
 func (c *CRDEntry) HasRollbackRules() bool {
-	return c.OperatorBox.Rollback != nil
+	return c.OperatorBox.Rollback != nil || c.OperatorBox.RollBackOnError
 }
 
 // NotificationEnabled reports whether this CRD declares the notification block

@@ -1,4 +1,5 @@
-// cmd/cli/validate_enrichment_output.go
+//go:build !runtime
+
 package cli
 
 // printEnrichmentReport prints the enrichment summary as part of ork validate output.

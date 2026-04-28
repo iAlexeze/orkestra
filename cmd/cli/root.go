@@ -44,24 +44,13 @@ func init() {
 	rootCmd.SilenceUsage = true
 	// SilenceErrors is an option to quiet errors down stream.
 	rootCmd.SilenceErrors = true
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
-	// Global flags — highest‑priority overrides for config resolution
+	// Global flags — always present in both runtime and dev builds
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug logging")
-	rootCmd.PersistentFlags().String("kubeconfig", "", "Path to kubeconfig file")
 	rootCmd.PersistentFlags().StringSliceP("katalog", "k", nil, "Path(s) or URL(s) to crd-katalog.yaml (repeatable)")
-	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Show full context")
-
-	// Mark katalog as required for all commands
-	for _, cmd := range []*cobra.Command{
-		validateCmd,
-		templateCmd,
-		generateRuntimeCmd,
-		generateDocsCmd,
-		generateDashboardsCmd,
-		generateAllCmd,
-	} {
-		cobra.MarkFlagRequired(cmd.Flags(), "katalog")
-	}
+	// Dev-only flags (--kubeconfig, --verbose) and required-flag marking for
+	// dev commands are registered in root_dev.go (//go:build !runtime).
 }
 
 func initConfig() {

@@ -1,3 +1,5 @@
+//go:build !runtime
+
 package cli
 
 import (
@@ -389,4 +391,6 @@ func init() {
 	generateCmd.Flags().MarkHidden("debug")
 	generateCmd.Flags().MarkHidden("kubeconfig")
 	generateCmd.Flags().MarkHidden("verbose")
+
+	cobra.MarkFlagRequired(generateCmd.Flags(), "katalog")
 }
