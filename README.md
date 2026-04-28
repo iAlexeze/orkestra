@@ -292,34 +292,43 @@ CRDs and custom resources that Orkestra was managing are **not** deleted – the
 | `controlCenter.livenessProbe` | Liveness probe configuration | See values.yaml |
 | `controlCenter.readinessProbe` | Readiness probe configuration | See values.yaml |
 
-### Shared Configuration
+### Global Configuration
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `imagePullSecrets` | Image pull secrets | `[]` |
-| `nameOverride` | Override chart name | `""` |
-| `fullnameOverride` | Override full name | `""` |
-| `registry.enabled` | Enable registry support | `true` |
-| `registry.url` | Global registry URL | `""` |
-| `hpa.enabled` | Enable HorizontalPodAutoscaler | `false` |
-| `hpa.runtime` | HPA configuration for runtime | See values.yaml |
-| `hpa.controlCenter` | HPA configuration for control center | See values.yaml |
-| `networkPolicy.enabled` | Enable NetworkPolicy | `false` |
-| `networkPolicy.ingressFrom` | Allowed ingress sources | `[]` |
-| `pdb.runtime.enabled` | Enable PDB for runtime | `true` |
-| `pdb.runtime.minAvailable` | Min available runtime pods | `1` |
-| `pdb.controlCenter.enabled` | Enable PDB for control center | `true` |
-| `pdb.controlCenter.minAvailable` | Min available control center pods | `1` |
-| `nodeSelector` | Node selector for all pods | `{}` |
-| `tolerations` | Tolerations for all pods | `[]` |
-| `affinity` | Affinity for all pods | `{}` |
-| `topologySpreadConstraints` | Topology spread constraints | `[]` |
-| `extraEnv` | Extra environment variables | `[]` |
-| `extraEnvFrom` | Extra environment variables from sources | `[]` |
-| `extraVolumes` | Extra volumes | `[]` |
-| `extraVolumeMounts` | Extra volume mounts | `[]` |
-| `podAnnotations` | Annotations for all pods | `{}` |
-| `podLabels` | Labels for all pods | `{}` |
+| `global.namespace` | Default namespace hint | `orkestra-system` |
+| `global.nameOverride` | Override chart name | `""` |
+| `global.fullnameOverride` | Override full resource name | `""` |
+
+### Per-Component Configuration (Runtime and Control Center)
+
+All keys below exist under **both** `runtime:` and `controlCenter:` independently. `registry` is runtime-only.
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `<component>.imagePullSecrets` | Image pull secrets for this component | `[]` |
+| `runtime.registry.enabled` | Enable registry integration (runtime only) | `false` |
+| `runtime.registry.url` | Registry URL (runtime only) | `""` |
+| `<component>.hpa.enabled` | Enable HorizontalPodAutoscaler | `false` |
+| `<component>.hpa.minReplicas` | HPA minimum replicas | `2` / `1` |
+| `<component>.hpa.maxReplicas` | HPA maximum replicas | `5` / `3` |
+| `<component>.hpa.targetCPUUtilizationPercentage` | HPA CPU target | `80` |
+| `<component>.hpa.targetMemoryUtilizationPercentage` | HPA memory target | `80` |
+| `<component>.networkPolicy.enabled` | Enable NetworkPolicy | `false` |
+| `<component>.networkPolicy.ingressFrom` | Allowed ingress sources | `[]` |
+| `<component>.pdb.enabled` | Enable PodDisruptionBudget | `true` |
+| `<component>.pdb.minAvailable` | Minimum available pods | `1` |
+| `<component>.pdb.maxUnavailable` | Maximum unavailable pods | `""` |
+| `<component>.nodeSelector` | Node selector | `{}` |
+| `<component>.tolerations` | Tolerations | `[]` |
+| `<component>.affinity` | Affinity rules | `{}` |
+| `<component>.topologySpreadConstraints` | Topology spread constraints | `[]` |
+| `<component>.extraEnv` | Extra environment variables | `[]` |
+| `<component>.extraEnvFrom` | Extra env var sources (ConfigMap/Secret) | `[]` |
+| `<component>.extraVolumes` | Extra volumes | `[]` |
+| `<component>.extraVolumeMounts` | Extra volume mounts | `[]` |
+| `<component>.podAnnotations` | Pod annotations | `{}` |
+| `<component>.podLabels` | Extra pod labels | `{}` |
 
 </details>
 
@@ -349,6 +358,17 @@ runtime:
     defaultResync: 1m
   katalog:
     existingConfigMap: platform-katalog   # managed by GitOps
+  hpa:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 70
+  networkPolicy:
+    enabled: true
+    ingressFrom:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: monitoring
 
 controlCenter:
   enabled: true
@@ -372,24 +392,17 @@ controlCenter:
       - secretName: control-center-tls
         hosts:
           - control-center.platform.myorg.io
-
-hpa:
-  enabled: true
-  runtime:
-    minReplicas: 3
-    maxReplicas: 8
-    targetCPUUtilizationPercentage: 70
-  controlCenter:
+  hpa:
+    enabled: true
     minReplicas: 2
     maxReplicas: 5
     targetCPUUtilizationPercentage: 70
-
-networkPolicy:
-  enabled: true
-  ingressFrom:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: monitoring
+  networkPolicy:
+    enabled: true
+    ingressFrom:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: monitoring
 ```
 </details>
 
