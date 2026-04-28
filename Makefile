@@ -1,4 +1,4 @@
-.PHONY: build orkcc clean test test-unit test-race test-integration test-e2e test-all test-coverage test-coverage-text vet certs docs docs-build docs-serve site site-sync site-build site-start hugo-install
+.PHONY: build orkcc clean test test-unit test-race test-integration test-e2e test-all test-coverage test-coverage-text vet certs docs docs-build docs-serve site site-sync site-build site-start hugo-install generate-notes
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
@@ -20,6 +20,11 @@ CC_LDFLAGS  := -X github.com/orkspace/orkestra-cc/version.Version=$(GIT_VERSION)
                -X github.com/orkspace/orkestra-cc/version.Date=$(GIT_DATE)
 
 # ── Local build ───────────────────────────────────────────────────────────
+generate-notes:
+	@echo "Generating note catalog..."
+	go run ./hack/generate-notes
+	@echo "✅ Note catalog generated at pkg/note/catalog_generated.go"
+
 ork:
 	@echo "Building Orkestra..."
 	@mkdir -p $(OUTPUT_DIR)
