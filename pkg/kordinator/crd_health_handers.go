@@ -344,7 +344,7 @@ func BuildCRDInfoHandler(
 		}
 
 		// Version conversion statistics
-		if convStats != nil {
+		if convStats != nil && crd.InvolvedInConversion() {
 			snapshot := convStats.GetStats()
 			response.Conversion = &ConversionStatsResponse{
 				Enabled:      isConversionEnabled,

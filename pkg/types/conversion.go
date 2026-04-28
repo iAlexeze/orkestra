@@ -24,19 +24,22 @@ package types
 //	        replicas: "{{ .spec.replicas }}"
 //	        theme: "default"   # default — v1 has no theme field
 type CRDConversion struct {
-	// Tenants represents the list of crds involved in conversion
-	// This is used to compute data for metrics, and control center
-	Tenants []string `yaml:"tenants"`
+	// Participant marks this CRD as a conversion participant without declaring
+	// conversion paths. Use this on the stable/storage-version CRD when the
+	// conversion paths are declared on the other version. Both CRDs need to
+	// be marked (one with paths, one with participant: true) for conversion
+	// stats to appear for each in the Control Center.
+	Participant bool `yaml:"participant,omitempty"`
 
 	// StorageVersion — the version all objects are stored as internally.
 	// All conversion paths route through this version.
-	StorageVersion string `yaml:"storageVersion"`
+	StorageVersion string `yaml:"storageVersion,omitempty"`
 
 	// Paths — one entry per (from, to) pair.
 	// You need at least two paths for a two-version CRD:
 	//   - old → storage  (up-conversion)
 	//   - storage → old  (down-conversion)
-	Paths []ConversionPath `yaml:"paths"`
+	Paths []ConversionPath `yaml:"paths,omitempty"`
 
 	// UpdateCRD — when true, Orkestra patches the CRD's
 	// spec.conversion.webhook.clientConfig.caBundle with the CA bundle

@@ -137,6 +137,11 @@ spec:
         plural: cronjobs
       workers: 2
       resync: 30s
+      # participant: true marks this CRD as part of the conversion pair.
+      # The paths live on cronjob-v2. This flag lets the Control Center
+      # show conversion stats for v1 without duplicating path declarations.
+      conversion:
+        participant: true
       operatorBox:
         default: true
         status:

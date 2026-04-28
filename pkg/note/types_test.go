@@ -126,8 +126,8 @@ func TestIsComposite(t *testing.T) {
 
 func TestTypeMapListStringNumberBoolNull(t *testing.T) {
 	tests := []struct {
-		name string
-		v    interface{}
+		name                                                          string
+		v                                                             interface{}
 		wantMap, wantList, wantString, wantNumber, wantBool, wantNull bool
 	}{
 		{"map", map[string]interface{}{}, true, false, false, false, false, false},

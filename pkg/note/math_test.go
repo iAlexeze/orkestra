@@ -203,10 +203,10 @@ func TestNoteMax(t *testing.T) {
 
 func TestNoteClamp(t *testing.T) {
 	tests := []struct {
-		name    string
+		name        string
 		val, lo, hi interface{}
-		want    interface{}
-		wantErr bool
+		want        interface{}
+		wantErr     bool
 	}{
 		{"within", 5, 1, 10, int64(5), false},
 		{"below", 0, 1, 10, int64(1), false},
