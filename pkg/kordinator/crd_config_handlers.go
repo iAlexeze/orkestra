@@ -71,7 +71,7 @@ func BuildCRDRawHandler(m *merger.Merger, crdName string) http.HandlerFunc {
 // Example response:
 //
 //	{
-//	  "apiVersion": "orkestra.konductor.io/v1Alpha",
+//	  "apiVersion": "orkestra.orkspace.io/v1",
 //	  "kind": "Katalog",
 //	  "metadata": {
 //	    "name": "platform-katalog",
@@ -179,7 +179,7 @@ func BuildCRDEnrichedHandler(kat *katalog.Katalog, crdName string) http.HandlerF
 // Example response (user wrote minimal Katalog with just `kind: Pod`):
 //
 //	{
-//	  "apiVersion": "orkestra.konductor.io/v1Alpha",
+//	  "apiVersion": "orkestra.orkspace.io/v1",
 //	  "kind": "Katalog",
 //	  "metadata": {
 //	    "name": "platform-katalog",

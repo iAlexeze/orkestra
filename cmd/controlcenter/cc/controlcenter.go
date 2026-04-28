@@ -13,6 +13,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	ccversion "github.com/orkspace/orkestra-cc/version"
 )
 
 //go:embed assets/templates/*.html assets/static/* assets/static/css/* assets/static/js/*
@@ -25,9 +27,10 @@ const TemplateDir = "assets/templates"
 // ─────────────────────────────────────────────────────────────────────────────
 
 type Config struct {
-	RefreshInterval time.Duration
-	LogLevel        string
-	Version         string
+	RefreshInterval      time.Duration
+	LogLevel             string
+	Version              string
+	EnableRuntimeManager bool
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -234,6 +237,8 @@ func (cc *ControlCenter) clientFor(instanceURL string) *Client {
 //	/assets/**                                          → static files
 //	/metrics                                            → metrics page
 //	/debug/file                                         → debug
+//	/docs                                               → docs landing
+//	/docs/{katalog}/{crd}                               → CRD docs page
 //	/katalog/{katalog}                                  → katalog panel
 //	/katalog/{katalog}/crd/{crd}                        → CRD detail
 //	/katalog/{katalog}/crd/{crd}/cr                     → CR list
@@ -263,6 +268,18 @@ func (cc *ControlCenter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	case path == "/debug/file":
 		cc.handleDebugFile(w, r)
+
+	case path == "/docs":
+		cc.handleDocsLanding(w, r)
+
+	case strings.HasPrefix(path, "/docs/"):
+		// /docs/{katalog}/{crd}
+		parts := strings.SplitN(strings.TrimPrefix(path, "/docs/"), "/", 2)
+		if len(parts) == 2 {
+			cc.handleCRDDocs(w, r, parts[0], parts[1])
+		} else {
+			cc.handleDocsLanding(w, r)
+		}
 
 	case strings.HasPrefix(path, "/katalog/"):
 		// Strip leading slash and split
@@ -511,14 +528,16 @@ func (cc *ControlCenter) handleIndex(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	cc.renderTemplate(w, "index.html", IndexData{
-		Katalogs:        summaries,
-		TotalKatalogs:   len(summaries),
-		HealthyKatalogs: healthyKatalogs,
-		TotalCRDs:       totalCRDs,
-		TotalWorkers:    totalWorkers,
-		TotalResources:  totalResources,
-		AnyHealthy:      len(summaries) > 0,
-		OrkestraURLs:    strings.Join(cc.urls, ", "),
+		Katalogs:             summaries,
+		TotalKatalogs:        len(summaries),
+		HealthyKatalogs:      healthyKatalogs,
+		TotalCRDs:            totalCRDs,
+		TotalWorkers:         totalWorkers,
+		TotalResources:       totalResources,
+		AnyHealthy:           len(summaries) > 0,
+		OrkestraURLs:         strings.Join(cc.urls, ", "),
+		CCVersion:            ccversion.Short(),
+		EnableRuntimeManager: cc.config.EnableRuntimeManager,
 	})
 }
 
@@ -559,6 +578,7 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 		KatalogLicense:     kat.License,
 		DegradedReason:     kat.DegradedReason,
 		StatusCounts:       kat.StatusCounts,
+		RuntimeVersion:     kat.RuntimeVersion,
 	})
 }
 

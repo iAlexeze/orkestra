@@ -6,7 +6,8 @@ The reconciler package is the execution engine of every Orkestra operator. It ta
 
 | File | Role |
 |------|------|
-| `generic.go` | `GenericReconciler[T]` — the single reconciler used by all CRDs |
+| `generic.go` | `GenericReconciler[PTR]` — the single reconciler used by all CRDs; PTR must be a pointer to the concrete CR type (e.g. `*Database`) |
+| `ptr_hooks.go` | Design note: explains the PTR naming convention, the ObjectHooks adapter, and why the two-type-parameter form was not used |
 | `generic_autoscale.go` | `AutoscaleTarget`, `AutoscalerRunner`, `ResyncLoopStarter`, `QueueInjector`, `QueueDepthReporter` implementations; `SetSpawnWorker`, `SetRollbackNotifiers`, `GetAutoMetrics`, `WorkerInfo` wiring helpers |
 | `rollback.go` | Rollback subsystem — spec snapshotting, trigger evaluation, `onRollback` template execution, annotation lifecycle |
 | `run_template_reconcile.go` | Declarative pipeline: normalize → resolver → onCreate → onReconcile → providers |

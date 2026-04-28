@@ -1,5 +1,5 @@
 # Runtime Horizontal Pod Autoscaler
-{{- if .Values.hpa.enabled }}
+{{- if .Values.runtime.hpa.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -13,29 +13,29 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: {{ include "orkestra.fullname" . }}
-  minReplicas: {{ .Values.hpa.runtime.minReplicas }}
-  maxReplicas: {{ .Values.hpa.runtime.maxReplicas }}
+  minReplicas: {{ .Values.runtime.hpa.minReplicas }}
+  maxReplicas: {{ .Values.runtime.hpa.maxReplicas }}
   metrics:
-    {{- if .Values.hpa.targetCPUUtilizationPercentage }}
+    {{- if .Values.runtime.hpa.targetCPUUtilizationPercentage }}
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: {{ .Values.hpa.runtime.targetCPUUtilizationPercentage }}
+          averageUtilization: {{ .Values.runtime.hpa.targetCPUUtilizationPercentage }}
     {{- end }}
-    {{- if .Values.hpa.targetMemoryUtilizationPercentage }}
+    {{- if .Values.runtime.hpa.targetMemoryUtilizationPercentage }}
     - type: Resource
       resource:
         name: memory
         target:
           type: Utilization
-          averageUtilization: {{ .Values.hpa.runtime.targetMemoryUtilizationPercentage }}
+          averageUtilization: {{ .Values.runtime.hpa.targetMemoryUtilizationPercentage }}
     {{- end }}
 {{- end }}
 
 # Control Center Horizontal Pod Autoscaler
-{{- if and .Values.hpa.enabled .Values.controlCenter.enabled }}
+{{- if and .Values.controlCenter.hpa.enabled .Values.controlCenter.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -49,23 +49,23 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: {{ include "orkestra.fullname" . }}
-  minReplicas: {{ .Values.hpa.controlCenter.minReplicas }}
-  maxReplicas: {{ .Values.hpa.controlCenter.maxReplicas }}
+  minReplicas: {{ .Values.controlCenter.hpa.minReplicas }}
+  maxReplicas: {{ .Values.controlCenter.hpa.maxReplicas }}
   metrics:
-    {{- if .Values.hpa.targetCPUUtilizationPercentage }}
+    {{- if .Values.controlCenter.hpa.targetCPUUtilizationPercentage }}
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: {{ .Values.hpa.controlCenter.targetCPUUtilizationPercentage }}
+          averageUtilization: {{ .Values.controlCenter.hpa.targetCPUUtilizationPercentage }}
     {{- end }}
-    {{- if .Values.hpa.targetMemoryUtilizationPercentage }}
+    {{- if .Values.controlCenter.hpa.targetMemoryUtilizationPercentage }}
     - type: Resource
       resource:
         name: memory
         target:
           type: Utilization
-          averageUtilization: {{ .Values.hpa.controlCenter.targetMemoryUtilizationPercentage }}
+          averageUtilization: {{ .Values.controlCenter.hpa.targetMemoryUtilizationPercentage }}
     {{- end }}
 {{- end }}

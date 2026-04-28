@@ -36,7 +36,7 @@ livenessProbe:
 
 Returns `200` when the controller is ready to serve traffic, `503` during startup and shutdown.
 
-`SetReady()` / `Degraded()` toggle the ready state. The reconciler calls `Degraded()` when informer caches are not yet synced.
+`SetReady()` / `Degraded()` toggle the ready state. The dependency kordinator calls `Degraded()` while informer caches are syncing, and `SetReady()` once workers are running.
 
 ```yaml
 readinessProbe:
@@ -52,11 +52,14 @@ readinessProbe:
 All three endpoints return JSON:
 
 ```json
-{ 
-  "status": "healthy", 
-  "service": "my-operator", "uptime": "2h3m", "started": "2025-01-01T10:00:00Z" }
+{
+  "status": "healthy",
+  "service": "my-operator",
+  "uptime": "2h3m",
+  "started": "2025-01-01T10:00:00Z"
+}
 ```
 
 The `uptime` field is the duration since `Start()` was called, rounded to the nearest second.
 
-→ Next: [02-webhooks.md](02-webhooks.md)
+→ Next: [02-stats.md](02-stats.md)

@@ -23,7 +23,7 @@ import (
 
 // namespaceGuardFunc returns a guard closure pre-bound to this CRD's
 // namespace restrictions, or nil when no restrictions are configured.
-func (r *GenericReconciler[T]) namespaceGuardFunc(
+func (r *GenericReconciler[PTR]) namespaceGuardFunc(
 	ctx context.Context,
 	obj domain.Object,
 ) func(ctx context.Context, obj domain.Object, ns string) bool {

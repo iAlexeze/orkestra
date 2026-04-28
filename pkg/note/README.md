@@ -19,7 +19,7 @@ Every `{{ }}` expression in any Katalog field:
 ```yaml
 normalize:
   spec:
-    schedule: "{{ if typeMap .spec.schedule }}{{ cronFromMap .spec.schedule }}{{ else }}{{ cronNormalize .spec.schedule }}{{ end }}"
+    schedule: "{{ cronFromMap .spec.schedule }}"
 
 status:
   fields:

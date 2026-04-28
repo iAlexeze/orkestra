@@ -21,7 +21,7 @@ You only add Go code when you *need* typed access or complex custom logic.
 The minimum required for any CRD:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 spec:
   crds:

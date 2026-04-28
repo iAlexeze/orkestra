@@ -127,7 +127,7 @@ kubectl apply -f cr-bad-image.yaml
 
 Expected:
 ```
-Error from server: admission webhook "validate.orkestra.konductor.io" denied the request:
+Error from server: admission webhook "validate.orkestra.orkspace.io" denied the request:
 [orkestra] validation failed: field "spec.image": image must be from the myorg registry
 — use myorg/<n>:<tag> (got: "nginx:1.25")
 ```
@@ -148,7 +148,7 @@ kubectl apply -f cr-too-many-replicas.yaml
 
 Expected:
 ```
-Error from server: admission webhook "validate.orkestra.konductor.io" denied the request:
+Error from server: admission webhook "validate.orkestra.orkspace.io" denied the request:
 [orkestra] validation failed: field "spec.replicas": replicas cannot exceed 10
 — contact platform team for exceptions (got: "15")
 ```

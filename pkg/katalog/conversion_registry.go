@@ -48,7 +48,7 @@ func (r *InMemoryConversionRegistry) RegisterConversionRules(rules *orktypes.Con
 // registerConversionRulesFromSpec builds ConversionRules from a CRDEntry
 // and registers them in the registry.
 //
-// Called from KomposeKatalogFromYaml for every CRD entry that declares
+// Called from KomposeRuntimeKatalog for every CRD entry that declares
 // a conversion block. Only the CRD with storageVersion declared does this —
 // other versions of the same CRD don't need conversion rules registered
 // because conversion is always expressed relative to the storage version.

@@ -14,5 +14,6 @@ This directory explains how the `pkg/reconciler` package works and how to add ne
 | [06-normalize.md](06-normalize.md) | The `normalize:` phase — collapsing multiple input shapes before reconcile |
 | [07-adding-a-resource.md](07-adding-a-resource.md) | Step-by-step guide — using `run_ingress.go` as the worked example |
 | [08-rollback.md](08-rollback.md) | Declarative rollback — spec snapshotting, trigger evaluation, `onRollback` templates |
+| [09-ptr-hooks.md](09-ptr-hooks.md) | Why `PTR` not `T`, the `ObjectHooks` adapter, and why the two-type-parameter form was not used |
 
 Read them in order the first time. For a quick reference when writing a new runner, jump straight to [07-adding-a-resource.md](07-adding-a-resource.md) and use the checklist at the bottom.

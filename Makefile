@@ -5,19 +5,32 @@ ORKESTRA_DIR := .
 CONTROL_CENTER_DIR := ./cmd/controlcenter
 OUTPUT_DIR := $(HOME)/.orkestra/bin
 
+# Version stamping — reads from git; matches what CI/CD injects via ldflags.
+GIT_VERSION := $(shell git describe --tags --always 2>/dev/null || echo "dev")
+GIT_COMMIT  := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
+GIT_DATE    := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+ORK_LDFLAGS := -X github.com/orkspace/orkestra/pkg/version.Version=$(GIT_VERSION) \
+               -X github.com/orkspace/orkestra/pkg/version.Commit=$(GIT_COMMIT) \
+               -X github.com/orkspace/orkestra/pkg/version.Date=$(GIT_DATE)
+
+CC_LDFLAGS  := -X github.com/orkspace/orkestra-cc/version.Version=$(GIT_VERSION) \
+               -X github.com/orkspace/orkestra-cc/version.Commit=$(GIT_COMMIT) \
+               -X github.com/orkspace/orkestra-cc/version.Date=$(GIT_DATE)
+
 # ── Local build ───────────────────────────────────────────────────────────
-ork: 
+ork:
 	@echo "Building Orkestra..."
 	@mkdir -p $(OUTPUT_DIR)
 	cd $(ORKESTRA_DIR) && gofmt -w .
-	cd $(ORKESTRA_DIR) && go build -o $(OUTPUT_DIR)/ork ./cmd/orkestra
+	cd $(ORKESTRA_DIR) && go build -ldflags "$(ORK_LDFLAGS)" -o $(OUTPUT_DIR)/ork ./cmd/orkestra
 	@echo "✅ Orkestra built successfully"
 
 orkcc:
 	@echo "Building Orkestra Control Center..."
 	@mkdir -p $(OUTPUT_DIR)
 	cd $(CONTROL_CENTER_DIR) && gofmt -w .
-	cd $(CONTROL_CENTER_DIR) && go build -o $(OUTPUT_DIR)/orkcc .
+	cd $(CONTROL_CENTER_DIR) && go build -ldflags "$(CC_LDFLAGS)" -o $(OUTPUT_DIR)/orkcc .
 	@echo "✅ Orkestra Control Center built successfully"
 
 build: ork orkcc

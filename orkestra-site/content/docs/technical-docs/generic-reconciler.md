@@ -16,7 +16,7 @@ The `GenericReconciler` is generic over `T domain.Object` — it works with both
 On every reconcile event, the `GenericReconciler` executes in this order:
 
 ```
-1. Ensure managed label    — idempotent, sets orkestra.konductor.io/managed=true
+1. Ensure managed label    — idempotent, sets orkestra.orkspace.io/managed=true
 2. Finalizer add           — on new CRs, adds declared finalizers
 3. Deletion check          — if DeletionTimestamp is set, run onDelete + remove finalizers
 4. MutateFirst (optional)  — apply defaults before validation (if mutateFirst: true)
@@ -129,14 +129,14 @@ On every reconcile, before any other logic, the reconciler ensures the CR has:
 
 ```
 Labels:
-  orkestra.konductor.io/managed: "true"
+  orkestra.orkspace.io/managed: "true"
 
 Annotations:
-  orkestra.konductor.io/managed-by: <operator-name>
-  orkestra.konductor.io/managed-since: <timestamp>
+  orkestra.orkspace.io/managed-by: <operator-name>
+  orkestra.orkspace.io/managed-since: <timestamp>
 ```
 
-This label is the foundation of `ork reconcile all` — it uses `metav1.ListOptions{LabelSelector: "orkestra.konductor.io/managed=true"}` to scope its operations to exactly what this operator instance manages.
+This label is the foundation of `ork reconcile all` — it uses `metav1.ListOptions{LabelSelector: "orkestra.orkspace.io/managed=true"}` to scope its operations to exactly what this operator instance manages.
 
 The patch is idempotent — if the label is already set, no API call is made.
 

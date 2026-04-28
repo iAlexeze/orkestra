@@ -106,7 +106,7 @@ The previous spec is captured automatically before each spec change is applied.
 It is stored in a compressed annotation on the CR:
 
 ```
-orkestra.konductor.io/previous-spec: <gzip+base64 encoded JSON>
+orkestra.orkspace.io/previous-spec: <gzip+base64 encoded JSON>
 ```
 
 You do not manage this annotation. Orkestra writes it on every generation change.

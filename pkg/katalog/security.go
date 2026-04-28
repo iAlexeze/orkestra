@@ -14,11 +14,16 @@
 // is present but deletionProtection is not declared.
 package katalog
 
-import "time"
+import (
+	"time"
+
+	"github.com/orkspace/orkestra/pkg/utils"
+)
 
 // securityEnvDefaults returns the SecurityConfig from konfig, or a zero
 // value when konfig is not wired (e.g. NewEmptyKatalog in tests).
 func (k *Katalog) securityEnvDefaults() interface {
+	OrkestraServiceName() string
 	DeletionProtectionEnabled() bool
 	DeletionProtectionSvcName() string
 	DeletionProtectionPolicy() string
@@ -46,6 +51,13 @@ const (
 // envSecurityReader adapts *konfig.SecurityConfig through a small interface
 // so that security.go does not import konfig directly.
 type envSecurityReader struct{ k *Katalog }
+
+func (r *envSecurityReader) OrkestraServiceName() string {
+	if r.k.konfig == nil {
+		return "orkestra-runtime"
+	}
+	return r.k.konfig.Security().ServiceName
+}
 
 func (r *envSecurityReader) DeletionProtectionEnabled() bool {
 	if r.k.konfig == nil {
@@ -169,6 +181,13 @@ func (k *Katalog) IsDeletionProtectionEnabled() bool {
 func (k *Katalog) DeletionProtectionServiceName() string {
 	env := k.securityEnvDefaults()
 	return k.Security.DeletionProtectionServiceName(env.DeletionProtectionSvcName())
+}
+
+// Orkestra Service Name returns the effective service name for orkestra.
+// YAML value takes precedence over ENV.
+func (k *Katalog) OrkestraServiceName() string {
+	env := k.securityEnvDefaults()
+	return k.Security.OrkestraServiceName(env.OrkestraServiceName())
 }
 
 // DeletionProtectionFailurePolicy returns the effective failure policy string.
@@ -305,6 +324,9 @@ func (k *Katalog) ConversionWindow() int {
 // or conversion webhooks are enabled with valid usecases
 // configured in at least 1 CRD— all three use the same TLS cert.
 func (k *Katalog) NeedsCertificates() bool {
+	if !utils.IsRunningInCluster() {
+		return false // fast path
+	}
 	return k.IsDeletionProtectionEnabled() ||
 		k.IsNamespaceProtectionEnabled() ||
 		k.HasValidationOrMutationRules() || // Valid admission rule

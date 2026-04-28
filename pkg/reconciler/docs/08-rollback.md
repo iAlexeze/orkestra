@@ -54,7 +54,7 @@ Phase 6 — Spec snapshot (on dispatch success)
 
 ## Spec snapshotting (`snapshotSpec`)
 
-Before each spec change is applied, `snapshotSpec` gzip-compresses and base64-encodes the current spec and writes it to the CR annotation `orkestra.konductor.io/previous-spec`. This annotation is the source of truth for rollback templates.
+Before each spec change is applied, `snapshotSpec` gzip-compresses and base64-encodes the current spec and writes it to the CR annotation `orkestra.orkspace.io/previous-spec`. This annotation is the source of truth for rollback templates.
 
 Snapshotting only runs on the unstructured path (`*unstructured.Unstructured`). Typed reconcilers (Go hook path) are not snapshotted.
 
@@ -69,7 +69,7 @@ The failure history (`rollbackHistory` map keyed by `"namespace/name"`) is in-pr
 
 ## Rollback state (`isRollbackActive`)
 
-Rollback state lives in the CR annotation `orkestra.konductor.io/rollback-at-generation`, set to the generation at which rollback triggered. `isRollbackActive` returns true when this annotation equals the CR's current generation.
+Rollback state lives in the CR annotation `orkestra.orkspace.io/rollback-at-generation`, set to the generation at which rollback triggered. `isRollbackActive` returns true when this annotation equals the CR's current generation.
 
 Exit condition: the user submits a spec change. The new generation differs from the annotation value → `isRollbackActive` returns false → normal reconciliation runs. On the first successful reconcile after rollback, Phase 6 detects the stale `RollbackGenerationAnnotation` and calls `clearRollback`, which removes both annotations and fires `rollbackClearFn` to update `CRDHealth`. `snapshotSpec` then writes a fresh `PreviousSpecAnnotation`.
 
@@ -94,7 +94,7 @@ When no `onRollback` block is declared, rollback still activates (blocks normal 
 
 | Annotation | Value | Meaning |
 |-----------|-------|---------|
-| `orkestra.konductor.io/previous-spec` | gzip+base64 JSON | Last successfully reconciled spec |
-| `orkestra.konductor.io/rollback-at-generation` | generation number | Generation at which rollback was triggered |
+| `orkestra.orkspace.io/previous-spec` | gzip+base64 JSON | Last successfully reconciled spec |
+| `orkestra.orkspace.io/rollback-at-generation` | generation number | Generation at which rollback was triggered |
 
 Both annotations are cleared by `clearRollback` when the spec is corrected.

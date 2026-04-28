@@ -1,6 +1,7 @@
 package note
 
 import (
+	"fmt"
 	"text/template"
 )
 
@@ -24,16 +25,38 @@ import (
 
 func kubernetesNotes() template.FuncMap {
 	return template.FuncMap{
-		"meta":           noteMeta,
-		"labels":         noteLabels,
-		"annotations":    noteAnnotations,
-		"spec":           noteSpec,
-		"status":         noteStatus,
-		"get":            noteGet,
-		"ownerKind":      noteOwnerKind,
-		"ownerName":      noteOwnerName,
-		"hasCondition":   noteHasCondition,
+		// ── Metadata ──────────────────────────────────────────────────────────
+		"meta":        noteMeta,
+		"name":        noteName,
+		"namespace":   noteNamespace,
+		"labels":      noteLabels,
+		"annotations": noteAnnotations,
+
+		// ── Spec / Status / Phase ─────────────────────────────────────────────
+		"spec":   noteSpec,
+		"status": noteStatus,
+		"phase":  notePhase,
+
+		// ── Safe nested field lookup ──────────────────────────────────────────
+		"get": noteGet,
+
+		// ── Owner references ──────────────────────────────────────────────────
+		"ownerKind": noteOwnerKind,
+		"ownerName": noteOwnerName,
+
+		// ── Conditions ────────────────────────────────────────────────────────
+		"hasCondition":     noteHasCondition,
+		"conditionReason":  noteConditionReason,
+		"conditionMessage": noteConditionMessage,
+
+		// ── Existence and lifecycle ───────────────────────────────────────────
 		"resourceExists": noteExists,
+		"isTerminating":  noteIsTerminating,
+
+		// ── Generation sync ───────────────────────────────────────────────────
+		"generation":         noteGeneration,
+		"observedGeneration": noteObservedGeneration,
+		"isSynced":           noteIsSynced,
 	}
 }
 
@@ -54,6 +77,28 @@ func noteMeta(obj interface{}) map[string]interface{} {
 		}
 	}
 	return map[string]interface{}{}
+}
+
+// noteName returns metadata.name or an empty string.
+//
+//	{{ name .children.deployment }}  → "my-deployment"
+func noteName(obj interface{}) string {
+	meta := noteMeta(obj)
+	if n, ok := meta["name"].(string); ok {
+		return n
+	}
+	return ""
+}
+
+// noteNamespace returns metadata.namespace or an empty string.
+//
+//	{{ namespace .children.deployment }}  → "orkestra-system"
+func noteNamespace(obj interface{}) string {
+	meta := noteMeta(obj)
+	if ns, ok := meta["namespace"].(string); ok {
+		return ns
+	}
+	return ""
 }
 
 // noteLabels returns the labels map from metadata.
@@ -218,4 +263,196 @@ func noteExists(obj interface{}) bool {
 	}
 	_, ok := obj.(map[string]interface{})
 	return ok
+}
+
+//   "phase":              notePhase,
+//   "conditionReason":    noteConditionReason,
+//   "conditionMessage":   noteConditionMessage,
+//   "isTerminating":      noteIsTerminating,
+//   "generation":         noteGeneration,
+//   "observedGeneration": noteObservedGeneration,
+//   "isSynced":           noteIsSynced,
+
+// ── Phase ─────────────────────────────────────────────────────────────────────
+
+// notePhase returns status.phase from a Kubernetes object.
+// Returns "" when the field is absent or the object is nil.
+// Safer than navigating .children.deployment.status.phase directly —
+// no template error when status or phase is missing.
+//
+//	{{ phase .children.deployment }}
+//	{{ if eq (phase .children.job) "Succeeded" }}
+func notePhase(obj interface{}) string {
+	status := noteStatus(obj)
+	v, _ := status["phase"].(string)
+	return v
+}
+
+// ── Condition detail ──────────────────────────────────────────────────────────
+
+// noteConditionReason returns the reason field of a named condition.
+// Returns "" when the condition is absent or has no reason.
+//
+//	{{ conditionReason .children.deployment "Available" }}
+//	→ "MinimumReplicasAvailable" or ""
+func noteConditionReason(obj interface{}, condType string) string {
+	return conditionField(obj, condType, "reason")
+}
+
+// noteConditionMessage returns the message field of a named condition.
+// Returns "" when the condition is absent or has no message.
+//
+//	{{ conditionMessage .children.deployment "Progressing" }}
+//	→ "ReplicaSet has successfully progressed." or ""
+func noteConditionMessage(obj interface{}, condType string) string {
+	return conditionField(obj, condType, "message")
+}
+
+// conditionField is the shared implementation for noteConditionReason
+// and noteConditionMessage.
+func conditionField(obj interface{}, condType, field string) string {
+	status := noteStatus(obj)
+	conds, ok := status["conditions"].([]interface{})
+	if !ok {
+		return ""
+	}
+	for _, c := range conds {
+		cm, ok := c.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		t, _ := cm["type"].(string)
+		if t != condType {
+			continue
+		}
+		v, _ := cm[field].(string)
+		return v
+	}
+	return ""
+}
+
+// ── Lifecycle ─────────────────────────────────────────────────────────────────
+
+// noteIsTerminating returns true when the object has a deletionTimestamp set.
+// An object with a deletionTimestamp is in the process of being deleted —
+// it exists in the cluster but is not healthy to use as a dependency.
+//
+// Use in onDelete ordered sequences:
+//
+//	when:
+//	  - field: "{{ isTerminating .children.job }}"
+//	    equals: "false"
+//
+// Or in onReconcile to avoid routing traffic to terminating pods:
+//
+//	when:
+//	  - field: "{{ isTerminating .children.deployment }}"
+//	    equals: "false"
+func noteIsTerminating(obj interface{}) bool {
+	if obj == nil {
+		return false
+	}
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return false
+	}
+	meta, ok := m["metadata"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	// deletionTimestamp is set when the object is terminating.
+	// It is either a non-empty string or a time.Time via JSON unmarshal.
+	ts := meta["deletionTimestamp"]
+	if ts == nil {
+		return false
+	}
+	// String representation: non-empty means terminating
+	if s, ok := ts.(string); ok {
+		return s != "" && s != "null"
+	}
+	// Any other non-nil value is also terminating
+	return true
+}
+
+// ── Generation tracking ───────────────────────────────────────────────────────
+
+// noteGeneration returns metadata.generation as an int64.
+// Returns 0 when the field is absent.
+//
+// Generation increments every time spec is changed.
+//
+//	{{ generation .children.deployment }}
+//	→ 3
+func noteGeneration(obj interface{}) int64 {
+	if obj == nil {
+		return 0
+	}
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return 0
+	}
+	meta, ok := m["metadata"].(map[string]interface{})
+	if !ok {
+		return 0
+	}
+	return toInt64(meta["generation"])
+}
+
+// noteObservedGeneration returns status.observedGeneration as an int64.
+// Returns 0 when the field is absent.
+//
+// observedGeneration is the generation the controller last acted on.
+// When generation > observedGeneration, the controller has not yet
+// processed the current spec change.
+//
+//	{{ observedGeneration .children.deployment }}
+//	→ 3
+func noteObservedGeneration(obj interface{}) int64 {
+	status := noteStatus(obj)
+	return toInt64(status["observedGeneration"])
+}
+
+// noteIsSynced returns true when metadata.generation equals
+// status.observedGeneration, meaning the controller has fully processed
+// the current spec.
+//
+// Use in when: conditions to wait for a child resource to stabilize
+// before proceeding with dependent resources:
+//
+//	when:
+//	  - field: "{{ isSynced .children.deployment }}"
+//	    equals: "true"
+//
+// Or in status fields to surface whether children are current:
+//
+//   - path: deploymentSynced
+//     value: "{{ isSynced .children.deployment }}"
+func noteIsSynced(obj interface{}) bool {
+	gen := noteGeneration(obj)
+	obsGen := noteObservedGeneration(obj)
+	// Both 0 means the resource has no generation tracking (statusless types).
+	// Treat as synced to avoid blocking.
+	if gen == 0 && obsGen == 0 {
+		return true
+	}
+	return gen == obsGen
+}
+
+// toInt64 converts JSON number types to int64 safely.
+// JSON unmarshals numbers as float64 by default.
+func toInt64(v interface{}) int64 {
+	switch t := v.(type) {
+	case int64:
+		return t
+	case int:
+		return int64(t)
+	case float64:
+		return int64(t)
+	case string:
+		var n int64
+		fmt.Sscanf(t, "%d", &n)
+		return n
+	default:
+		return 0
+	}
 }

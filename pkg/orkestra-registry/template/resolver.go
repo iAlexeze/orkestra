@@ -27,8 +27,11 @@ import (
 //	"{{ .metadata.name }}-app"    → CR name with a static suffix
 //
 // For *unstructured.Unstructured (unstructured mode) the full CR map including
-// all spec fields is available. For typed objects only metadata fields are
-// accessible — typed objects should use Go mode hooks for full spec access.
+// all spec fields is available.
+//
+// TYPED:
+// For typed objects only metadata fields were accessible — and used Go mode hooks for full spec access.
+// Until 'objectToMap' breakthrough
 type Resolver struct {
 	data           map[string]interface{}
 	ownerName      string
@@ -36,10 +39,8 @@ type Resolver struct {
 }
 
 // NewResolver creates a Resolver from any domain.Object.
-// For unstructured CRDs the object is *unstructured.Unstructured — full spec accessible.
-// For typed CRDs only metadata fields are available in template expressions.
 func NewResolver(ctx context.Context, obj domain.Object) (*Resolver, error) {
-	data, err := objectToMap(obj)
+	data, err := objectToMap(obj) // converts any domain.Object to mapstringinterface{} for template execution.
 	if err != nil {
 		return nil, fmt.Errorf("template.NewResolver: %w", err)
 	}
@@ -76,6 +77,23 @@ func NewResolverFromMap(data map[string]interface{}) *Resolver {
 	}
 }
 
+// ── Performance review from Engr. Kenny ───────────────────────────────────────────────────
+//
+// note.Map() is called on every Resolve() call that contains "{{".
+// Each call allocates a new FuncMap. For high-throughput operators this
+// can be optimised by making the FuncMap a package-level variable:
+//
+//	var orkNotes = note.Map()
+//
+// And referencing it in Resolve():
+//
+//	.Funcs(orkNotes)
+//
+// This is a safe optimisation — note.Map() is a pure function that always
+// returns the same map. The template engine does not modify the FuncMap
+// after registration.
+var orkNotes = note.Map()
+
 // Resolve evaluates a single field value against the CR.
 //
 // If value contains "{{" it is a template expression — evaluated
@@ -92,7 +110,7 @@ func (r *Resolver) Resolve(value string) (string, error) {
 	}
 
 	tmpl, err := template.New("f").Option("missingkey=zero").
-		Funcs(note.Map()). // ← notes registered here, once per resolution
+		Funcs(orkNotes). // ← notes registered here
 		Parse(value)
 	if err != nil {
 		return "", fmt.Errorf("parsing %q: %w", value, err)
@@ -110,21 +128,6 @@ func (r *Resolver) Resolve(value string) (string, error) {
 	out = strings.ReplaceAll(out, "<no value>", "")
 	return out, nil
 }
-
-// ── Performance note ──────────────────────────────────────────────────────────
-//
-// note.Map() is called on every Resolve() call that contains "{{".
-// Each call allocates a new FuncMap. For high-throughput operators this
-// can be optimised by making the FuncMap a package-level variable:
-//
-//   var orkNotes = note.Map()
-//
-// And referencing it in Resolve():
-//   .Funcs(orkNotes)
-//
-// This is a safe optimisation — note.Map() is a pure function that always
-// returns the same map. The template engine does not modify the FuncMap
-// after registration.
 
 // ResolvePodTemplate resolves all template expressions in a PodTemplateSource.
 // Returns a new PodTemplateSource with all expressions evaluated — safe to pass
@@ -666,9 +669,6 @@ func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource
 	return resolved, nil
 }
 
-// Additional resolver methods needed by run_cronjobs.go and run_serviceaccounts.go
-// Add these alongside existing Resolve* methods in resolver.go
-
 // ResolveCronJobTemplate resolves all template expressions in a CronJobTemplateSource.
 func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (orktypes.CronJobTemplateSource, error) {
 	resolved := orktypes.CronJobTemplateSource{
@@ -896,8 +896,6 @@ func (r *Resolver) ResolvePDBTemplate(src orktypes.PDBTemplateSource) (orktypes.
 func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSource) (orktypes.StatefulSetTemplateSource, error) {
 	resolved := orktypes.StatefulSetTemplateSource{
 		Version:   src.Version,
-		Env:       src.Env,
-		EnvFrom:   src.EnvFrom,
 		Resources: src.Resources,
 	}
 
@@ -944,6 +942,59 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 	}
 	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
 		return resolved, fmt.Errorf("statefulset.annotations: %w", err)
+	}
+
+	// Env resolution
+	if len(src.Env) > 0 {
+		resolved.Env = make(map[string]orktypes.EnvVarSource, len(src.Env))
+		for k, v := range src.Env {
+			ev := orktypes.EnvVarSource{}
+			if v.Value != "" {
+				if ev.Value, err = r.Resolve(v.Value); err != nil {
+					return resolved, fmt.Errorf("statefulset.env[%s].value: %w", k, err)
+				}
+			}
+			if v.SecretKeyRef != nil {
+				name, err := r.Resolve(v.SecretKeyRef.Name)
+				if err != nil {
+					return resolved, fmt.Errorf("statefulset.env[%s].secretKeyRef.name: %w", k, err)
+				}
+				ev.SecretKeyRef = &orktypes.SecretKeyRef{
+					Name: name,
+					Key:  v.SecretKeyRef.Key, // Key is usually static
+				}
+			}
+			if v.ConfigMapKeyRef != nil {
+				name, err := r.Resolve(v.ConfigMapKeyRef.Name)
+				if err != nil {
+					return resolved, fmt.Errorf("statefulset.env[%s].configMapKeyRef.name: %w", k, err)
+				}
+				ev.ConfigMapKeyRef = &orktypes.ConfigMapKeyRef{
+					Name: name,
+					Key:  v.ConfigMapKeyRef.Key,
+				}
+			}
+			resolved.Env[k] = ev
+		}
+	}
+
+	// EnvFrom resolution
+	if len(src.EnvFrom) > 0 {
+		resolved.EnvFrom = make([]orktypes.EnvFromSource, len(src.EnvFrom))
+		for i, ef := range src.EnvFrom {
+			var resolvedEF orktypes.EnvFromSource
+			if ef.ConfigMapRef != "" {
+				if resolvedEF.ConfigMapRef, err = r.Resolve(ef.ConfigMapRef); err != nil {
+					return resolved, fmt.Errorf("statefulset.envFrom[%d].configMapRef: %w", i, err)
+				}
+			}
+			if ef.SecretRef != "" {
+				if resolvedEF.SecretRef, err = r.Resolve(ef.SecretRef); err != nil {
+					return resolved, fmt.Errorf("statefulset.envFrom[%d].secretRef: %w", i, err)
+				}
+			}
+			resolved.EnvFrom[i] = resolvedEF
+		}
 	}
 
 	return resolved, nil

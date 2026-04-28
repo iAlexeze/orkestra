@@ -1135,7 +1135,7 @@ TYPE       REASON           OBJECT             MESSAGE                         A
 ● Normal   FinalizerAdded   default/my-blog    Added finalizers to Website...  3d
 </code></pre><hr>
 <h2 id="ork-reconcile"><code>ork reconcile</code></h2>
-<p>Trigger reconciliation by patching the <code>orkestra.konductor.io/reconcile-at</code>
+<p>Trigger reconciliation by patching the <code>orkestra.orkspace.io/reconcile-at</code>
 annotation. The Orkestra informer detects the metadata change and re-queues
 the object on the next reconcile loop.</p>
 <p>This is non-destructive — only the annotation is changed, never the spec.</p>

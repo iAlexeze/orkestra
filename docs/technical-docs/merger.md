@@ -1,6 +1,6 @@
 # Merger
 
-`pkg/merger.Merger` resolves all Katalog and Komposer sources into one validated list of `CRDEntry` values. It is the first thing `KomposeKatalogFromYaml` calls, and its output is what the Katalog uses to start the runtime.
+`pkg/merger.Merger` resolves all Katalog and Komposer sources into one validated list of `CRDEntry` values. It is the first thing `KomposeRuntimeKatalog` calls, and its output is what the Katalog uses to start the runtime.
 
 ---
 
@@ -76,7 +76,7 @@ Registry sources pull a complete five-file pattern from a Git or OCI registry:
 ```yaml
 sources:
   registry:
-    - url: ghcr.io/konduktor-io/orkestra-registry/postgres@v14
+    - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
       oci: true
     - url: https://github.com/myorg/registry@main
 ```
@@ -116,7 +116,7 @@ The `enabled` slice contains CRDs where `enabled: true` (or the default). The `a
 
 ### `Merge(paths ...string) ([]CRDEntry, error)`
 
-Entry point. Takes one or more file paths, processes each through `loadKatalogFile`, and returns the deduplicated result. Called from `KomposeKatalogFromYaml`.
+Entry point. Takes one or more file paths, processes each through `loadKatalogFile`, and returns the deduplicated result. Called from `KomposeRuntimeKatalog`.
 
 ### `loadKatalogFile(path string) ([]CRDEntry, error)`
 

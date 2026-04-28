@@ -7,21 +7,23 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
-func Bundle(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace, outputFile string) error {
-	var bundle string
-
-	// 1. Generate RBAC
-	rbacOut, err := renderRBAC(kfg, rules, namespace)
+// RenderBundle assembles a complete installation bundle:
+// Namespace (once) → ServiceAccounts → ClusterRole → ClusterRoleBinding → ConfigMap.
+// The Namespace appears exactly once at the top regardless of how many components
+// are combined, so the output is safe to pipe directly into kubectl apply.
+func RenderBundle(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, inputFile, namespace string) (string, error) {
+	nsBytes, err := renderNamespace(namespace)
 	if err != nil {
-		return fmt.Errorf("generate rbac: %w", err)
+		return "", fmt.Errorf("render namespace: %w", err)
 	}
-	bundle += string(rbacOut)
-
-	// 2. Add separator
-	bundle += "\n---\n"
-
-	// 3. Generate ConfigMap from the first input file
-	// Note: This requires knowing the original file path
-	// For now, return error suggesting separate commands
-	return fmt.Errorf("bundle command requires --katalog flag pointing to a file")
+	rbacBytes, err := renderRBAC(kfg, rules, namespace)
+	if err != nil {
+		return "", fmt.Errorf("render rbac: %w", err)
+	}
+	cmBytes, err := renderConfigMapBytes(inputFile, namespace)
+	if err != nil {
+		return "", fmt.Errorf("render configmap: %w", err)
+	}
+	out := "---\n" + string(nsBytes) + "\n" + string(rbacBytes) + "\n---\n" + string(cmBytes)
+	return out, nil
 }

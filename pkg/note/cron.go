@@ -1,10 +1,21 @@
 package note
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"text/template"
 )
+
+// CronMapSentinel is a prefix written by the cronToMap template function
+// to signal that the resolved string is a JSON-encoded cron map, not a plain
+// string. Detected by pkg/webhook/conversion_logic.resolveValue, which parses
+// it back to map[string]interface{} so it lands as a nested object in the
+// converted spec — enabling {{ cronToMap .spec.schedule }} as a one-liner
+// shorthand for the v1 → v2 conversion path.
+//
+// Null bytes are used because they cannot appear in normal YAML field values.
+const CronMapSentinel = "\x00CMAP\x00"
 
 func cronNotes() template.FuncMap {
 	return template.FuncMap{
@@ -16,8 +27,9 @@ func cronNotes() template.FuncMap {
 		"cronField":     cronField,
 		"cronExpr":      cronExpr,
 		"cronValid":     cronValid,
-		"cronFromMap":   cronFromMap,
-		"cronToMap":     cronToMap,
+		"cronFromMap":   cronFromMapStrict,
+		"cronToMap":     cronToMapTemplate,
+		"cronFromAny":   cronFromMapAny,
 		"cronNormalize": cronNormalize,
 		"cronDescribe":  cronDescribe,
 	}
@@ -123,6 +135,76 @@ func starIfEmpty(s string) string {
 	return s
 }
 
+// cronFromMapStrict reconstructs a five-field cron expression from a schedule map.
+// Errors if the input is not a map — use cronFromAny when the input may be a string.
+//
+//	{{ cronFromMap .spec.schedule }}  →  "*/5 0 * * 1"
+func cronFromMapStrict(v interface{}) (string, error) {
+	m, ok := v.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("cronFromMap: expected map, got %T — use cronFromAny if the input may be a cron string", v)
+	}
+	return cronFromMap(m), nil
+}
+
+// cronFromMapAny reconstructs a five-field cron expression from either a schedule
+// map or a cron string. Safe zero value ("* * * * *") for nil or unknown input.
+//
+//	{{ cronFromAny .spec.schedule }}  →  "*/5 0 * * 1"
+func cronFromMapAny(v interface{}) string {
+	switch m := v.(type) {
+	case map[string]interface{}:
+		return cronFromMap(m)
+	case string:
+		return cronNormalize(m)
+	default:
+		return "* * * * *"
+	}
+}
+
+// CronToMap is the Go API for splitting a cron expression into its five named
+// fields. Accepts a string or an existing map (returned as-is).
+func CronToMap(v interface{}) map[string]interface{} {
+	if m, ok := v.(map[string]interface{}); ok {
+		return m
+	}
+	expr := fmt.Sprintf("%v", v)
+	out := map[string]interface{}{
+		"minute": "*", "hour": "*", "dayOfMonth": "*", "month": "*", "dayOfWeek": "*",
+	}
+	if strings.TrimSpace(expr) == "" {
+		return out
+	}
+	expanded := expandCronMacro(expr)
+	parts := strings.Fields(expanded)
+	if len(parts) != 5 {
+		return out
+	}
+	out["minute"] = parts[0]
+	out["hour"] = parts[1]
+	out["dayOfMonth"] = parts[2]
+	out["month"] = parts[3]
+	out["dayOfWeek"] = parts[4]
+	return out
+}
+
+// cronToMapTemplate is the FuncMap registration for cronToMap.
+// It serialises the result as CronMapSentinel + JSON so that resolveValue in
+// pkg/webhook/conversion_logic can detect it and return a proper
+// map[string]interface{} instead of a flat string — enabling
+// {{ cronToMap .spec.schedule }} as a one-liner in conversion path specs.
+//
+//	{{ cronToMap .spec.schedule }}  →  (detected by resolveValue → map)
+func cronToMapTemplate(v interface{}) (string, error) {
+	m := CronToMap(v)
+	b, err := json.Marshal(m)
+	if err != nil {
+		return "", fmt.Errorf("cronToMap: %w", err)
+	}
+	return CronMapSentinel + string(b), nil
+}
+
+// cronFromMap is kept as the unexported Go helper used internally.
 func cronFromMap(m map[string]interface{}) string {
 	get := func(key string) string {
 		if v, ok := m[key]; ok {
@@ -133,7 +215,6 @@ func cronFromMap(m map[string]interface{}) string {
 		}
 		return "*"
 	}
-
 	return cronExpr(
 		get("minute"),
 		get("hour"),
@@ -141,35 +222,6 @@ func cronFromMap(m map[string]interface{}) string {
 		get("month"),
 		get("dayOfWeek"),
 	)
-}
-
-// This takes a cron string (including @‑macros) and returns a map:
-func cronToMap(expr string) map[string]interface{} {
-	out := map[string]interface{}{
-		"minute":     "*",
-		"hour":       "*",
-		"dayOfMonth": "*",
-		"month":      "*",
-		"dayOfWeek":  "*",
-	}
-
-	if strings.TrimSpace(expr) == "" {
-		return out
-	}
-
-	expanded := expandCronMacro(expr)
-	parts := strings.Fields(expanded)
-	if len(parts) != 5 {
-		return out
-	}
-
-	out["minute"] = parts[0]
-	out["hour"] = parts[1]
-	out["dayOfMonth"] = parts[2]
-	out["month"] = parts[3]
-	out["dayOfWeek"] = parts[4]
-
-	return out
 }
 
 // cronNormalize — canonical formatting

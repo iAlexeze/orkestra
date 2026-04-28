@@ -990,14 +990,14 @@ is crossed. Check before generating. Annotate when generated.</p>
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">data</span>:
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">password</span>: <span style="color:#f1fa8c">&#34;{{ randomAlphanumeric 32 }}&#34;</span>
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">apiKey</span>:   <span style="color:#f1fa8c">&#34;{{ randomHex 16 }}&#34;</span>
-</span></span></code></pre></div><p>On each reconcile, Orkestra reads the <code>orkestra.konductor.io/generated-at</code>
+</span></span></code></pre></div><p>On each reconcile, Orkestra reads the <code>orkestra.orkspace.io/generated-at</code>
 annotation on the Secret and compares it to <code>now - rotateAfter</code>. If the
 threshold is crossed, the Secret is deleted and recreated with new values.</p>
 <p>The annotation is the source of truth:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">annotations</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">orkestra.konductor.io/generated-at</span>: <span style="color:#f1fa8c">&#34;2026-04-06T08:00:00Z&#34;</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">orkestra.konductor.io/rotate-after</span>: <span style="color:#f1fa8c">&#34;90d&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">orkestra.orkspace.io/generated-at</span>: <span style="color:#f1fa8c">&#34;2026-04-06T08:00:00Z&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">orkestra.orkspace.io/rotate-after</span>: <span style="color:#f1fa8c">&#34;90d&#34;</span>
 </span></span></code></pre></div><p><strong>Duration format:</strong> <code>30s</code>, <code>5m</code>, <code>12h</code>, <code>90d</code>, <code>1y</code>
 Days and years are extensions of Go&rsquo;s standard duration format.</p>
 <hr>

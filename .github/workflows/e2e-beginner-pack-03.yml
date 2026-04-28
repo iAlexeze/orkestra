@@ -1,0 +1,242 @@
+name: Orkestra E2E Test (Secret Distribution)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: ork-e2e
+
+      # ----------------------------------------------------------------------
+      # Setup operator and generate artifacts (CRD, CR, bundle, katalog)
+      # ----------------------------------------------------------------------
+      - name: Setup operator, validate katalog and generate bundle
+        id: ork
+        uses: orkspace/orkestra-action@v0.0.1
+        with:
+          init: true
+          pack: beginner
+          example-subdir: 03-secret-copy
+          validate: true
+          generate-bundle: true
+
+      # ----------------------------------------------------------------------
+      # Prepare namespaces and source secret (from the example's setup.yaml)
+      # ----------------------------------------------------------------------
+      - name: Check content of setup file
+        run: cat ${{ steps.ork.outputs.example_dir }}/setup.yaml
+
+      - name: Prepare namespaces and source secret
+        run: kubectl apply -f ${{ steps.ork.outputs.example_dir }}/setup.yaml
+
+      # ----------------------------------------------------------------------
+      # Apply CRD
+      # ----------------------------------------------------------------------
+      - name: Apply CRD
+        run: kubectl apply -f ${{ steps.ork.outputs.crd_path }}
+
+      # ----------------------------------------------------------------------
+      # Examine and Apply generated bundle (RBAC + ConfigMap)
+      # ----------------------------------------------------------------------
+      - name: Examine generated bundle
+        run: cat ${{ steps.ork.outputs.bundle_file }}
+
+      - name: Apply generated bundle
+        run: kubectl apply -f ${{ steps.ork.outputs.bundle_file }}
+
+      # ----------------------------------------------------------------------
+      # Install Orkestra Helm chart (operator runtime)
+      # ----------------------------------------------------------------------
+      - name: Install Orkestra Helm chart
+        run: |
+          helm repo add orkestra https://orkspace.github.io/orkestra
+          helm install orkestra orkestra/orkestra \
+            --namespace ${{ steps.ork.outputs.namespace }}
+
+      # ----------------------------------------------------------------------
+      # Step Summary: Initialize report
+      # ----------------------------------------------------------------------
+      - name: Initialize summary
+        run: |
+          echo "# Orkestra E2E Test Report" >> $GITHUB_STEP_SUMMARY
+          echo "**Pack:** beginner / 03-secret-copy" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      # ----------------------------------------------------------------------
+      # Before CR – verify no secret copies
+      # ----------------------------------------------------------------------
+      - name: Verify no secret copies exist before CR
+        run: |
+          echo "## 📌 Before applying SecretDistribution CR" >> $GITHUB_STEP_SUMMARY
+          echo "Target namespaces should have NO secret copies." >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "team-alpha:" >> $GITHUB_STEP_SUMMARY
+          kubectl get secret database-credentials -n team-alpha || true >> $GITHUB_STEP_SUMMARY
+          echo "team-beta:" >> $GITHUB_STEP_SUMMARY
+          kubectl get secret database-credentials -n team-beta || true >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "Source secret in platform:" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl get secret database-credentials -n platform >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Original output (still printed to console)
+          echo "==> Before applying SecretDistribution CR, target namespaces should have NO secret copies"
+          kubectl get secret database-credentials -n team-alpha || true
+          kubectl get secret database-credentials -n team-beta || true
+          echo "Source secret in platform:"
+          kubectl get secret database-credentials -n platform
+
+      # ----------------------------------------------------------------------
+      # Apply the SecretDistribution CR
+      # ----------------------------------------------------------------------
+      - name: Apply SecretDistribution CR
+        run: kubectl apply -f ${{ steps.ork.outputs.cr_path }}
+
+      # ----------------------------------------------------------------------
+      # Wait for operator and verify secret copies
+      # ----------------------------------------------------------------------
+      - name: Wait for operator and verify secret copies
+        run: |
+          kubectl wait --for=condition=available deployment -l app.kubernetes.io/name=orkestra \
+            -n orkestra-system --timeout=120s
+
+          echo "Waiting for secret copies to appear..."
+          sleep 10
+
+          # Verify secret exists in team-alpha
+          if ! kubectl get secret database-credentials -n team-alpha &>/dev/null; then
+            echo "❌ Secret not found in team-alpha"
+            exit 1
+          fi
+          kubectl get secret -n team-alpha
+          echo "✅ Secret found in team-alpha"
+
+          # Verify secret exists in team-beta
+          if ! kubectl get secret database-credentials -n team-beta &>/dev/null; then
+            echo "❌ Secret not found in team-beta"
+            exit 1
+          fi
+          kubectl get secret -n team-beta
+          echo "✅ Secret found in team-beta"
+
+          # Write to summary
+          echo "## ✅ After applying SecretDistribution CR" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "team-alpha secrets:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          kubectl get secret -n team-alpha >> $GITHUB_STEP_SUMMARY
+          echo "team-beta secrets:" >> $GITHUB_STEP_SUMMARY
+          kubectl get secret -n team-beta >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      # ----------------------------------------------------------------------
+      # Test sync: update source secret and verify propagation
+      # ----------------------------------------------------------------------
+      - name: Test sync (source secret update)
+        run: |
+          echo "Updating source secret in 'platform' namespace..."
+          kubectl patch secret database-credentials -n platform \
+            --type=merge -p '{"stringData":{"password":"newpassword"}}'
+
+          echo "Waiting for operator to sync (15s)..."
+          sleep 15
+
+          # Check updated password in team-alpha copy
+          PASSWORD=$(kubectl get secret database-credentials -n team-alpha \
+            -o jsonpath='{.data.password}' | base64 -d)
+          if [[ "$PASSWORD" != "newpassword" ]]; then
+            echo "❌ Password in team-alpha copy is not updated. Got: $PASSWORD"
+            exit 1
+          fi
+          echo "Password: $PASSWORD"
+          echo "✅ Password synced to team-alpha"
+
+          echo "## 🔄 Sync test" >> $GITHUB_STEP_SUMMARY
+          echo "Source secret updated, password synced to team-alpha: \`$PASSWORD\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      # ----------------------------------------------------------------------
+      # Test cleanup: delete CR and verify secrets are garbage-collected
+      # ----------------------------------------------------------------------
+      - name: Test cleanup (delete CR)
+        run: |
+          CR_NAME=$(kubectl get secretdistribution -o jsonpath='{.items[0].metadata.name}')
+          if [[ -z "$CR_NAME" ]]; then
+            echo "No SecretDistribution CR found"
+            exit 1
+          fi
+          kubectl delete secretdistribution "$CR_NAME"
+
+          echo "Waiting 10 seconds for garbage collection..."
+          sleep 10
+
+          # Ensure secrets are removed from team-alpha and team-beta
+          if kubectl get secret database-credentials -n team-alpha &>/dev/null; then
+            echo "❌ Secret still exists in team-alpha after CR deletion"
+            exit 1
+          fi
+          if kubectl get secret database-credentials -n team-beta &>/dev/null; then
+            echo "❌ Secret still exists in team-beta after CR deletion"
+            exit 1
+          fi
+
+          kubectl get secret -n team-alpha
+          kubectl get secret -n team-beta
+          echo "✅ Secrets removed from target namespaces"
+
+          # Source secret must remain untouched
+          if ! kubectl get secret database-credentials -n platform &>/dev/null; then
+            echo "❌ Source secret was deleted - should not happen"
+            exit 1
+          fi
+
+          kubectl get secret -n platform
+          echo "✅ Source secret still intact in platform namespace"
+
+          # Write to summary
+          echo "## 🧹 After deleting SecretDistribution CR" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Secrets removed from target namespaces." >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "team-alpha secrets:" >> $GITHUB_STEP_SUMMARY
+          kubectl get secret -n team-alpha >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "team-beta secrets:" >> $GITHUB_STEP_SUMMARY
+          kubectl get secret -n team-beta >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Source secret still intact in platform namespace." >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl get secret database-credentials -n platform >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      # ----------------------------------------------------------------------
+      # Show logs on failure
+      # ----------------------------------------------------------------------
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          echo "## 🔍 Debug logs (failure)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl logs -n orkestra-system deployment/orkestra-runtime --tail=100 || true >> $GITHUB_STEP_SUMMARY
+          kubectl logs -n orkestra-system deployment/orkestra-cc --tail=100 || true >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # ----------------------------------------------------------------------
+      # Show Helm release info
+      # ----------------------------------------------------------------------
+      - name: Show Helm release info
+        if: always()
+        run: helm list -A

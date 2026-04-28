@@ -13,7 +13,7 @@ import (
 // applyReconcileTimeValidation evaluates validation rules against the live CR.
 // Deny rules return an error — reconcile halts and the error is recorded.
 // Warn rules log an advisory — reconcile continues.
-func (r *GenericReconciler[T]) applyReconcileTimeValidation(ctx context.Context, obj T) error {
+func (r *GenericReconciler[PTR]) applyReconcileTimeValidation(ctx context.Context, obj PTR) error {
 	if r.crd.Validation == nil || len(r.crd.Validation.Rules) == 0 {
 		return nil
 	}
@@ -52,7 +52,7 @@ func (r *GenericReconciler[T]) applyReconcileTimeValidation(ctx context.Context,
 // applyReconcileTimeMutation applies mutation defaults to the CR and patches
 // the spec subresource when changes are needed.
 // Mutation failures are non-fatal — the caller logs and continues.
-func (r *GenericReconciler[T]) applyReconcileTimeMutation(ctx context.Context, resolver *orktmpl.Resolver, obj T) error {
+func (r *GenericReconciler[PTR]) applyReconcileTimeMutation(ctx context.Context, resolver *orktmpl.Resolver, obj PTR) error {
 	if r.crd.Mutation == nil || len(r.crd.Mutation.Rules) == 0 {
 		return nil
 	}

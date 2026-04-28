@@ -51,7 +51,7 @@ secrets:
       apiKey:   "{{ randomHex 16 }}"
 ```
 
-On each reconcile, Orkestra reads the `orkestra.konductor.io/generated-at`
+On each reconcile, Orkestra reads the `orkestra.orkspace.io/generated-at`
 annotation on the Secret and compares it to `now - rotateAfter`. If the
 threshold is crossed, the Secret is deleted and recreated with new values.
 
@@ -59,8 +59,8 @@ The annotation is the source of truth:
 ```yaml
 metadata:
   annotations:
-    orkestra.konductor.io/generated-at: "2026-04-06T08:00:00Z"
-    orkestra.konductor.io/rotate-after: "90d"
+    orkestra.orkspace.io/generated-at: "2026-04-06T08:00:00Z"
+    orkestra.orkspace.io/rotate-after: "90d"
 ```
 
 **Duration format:** `30s`, `5m`, `12h`, `90d`, `1y`

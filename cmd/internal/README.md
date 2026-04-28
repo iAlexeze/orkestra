@@ -11,7 +11,7 @@ decision point.
 A Katalog is a YAML file that declares everything an operator does:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: platform
@@ -58,7 +58,7 @@ spec:
               when:
                 - field: external.registry-check.status
                   equals: "200"
-                - field: cross.db.status.phase
+                - field: "{{ phase .cross.db }}"
                   equals: "Ready"
           secrets:
             - name: "{{ .metadata.name }}-credentials"
@@ -118,6 +118,11 @@ main()
         ├── 4d. ktrlRegistry (ResourceKatalog) + per-CRD factory closures
         │         For each CRD in kat.Enabled():
         │           - create queue entry in queueRegistry
+        │           - namespace filter (if allowedNamespaces or restrictedNamespaces set):
+        │               Tier 1: opts.Namespace = filter.SingleNamespace() when exactly one allowed
+        │                       dynNamespace = opts.Namespace (scopes DynamicListerWatcher)
+        │               Tier 2: infFactory.RegisterNamespaceFilter(gvk, filter)
+        │                       handleEvent drops events before they reach the queue
         │           - create SharedIndexInformer (typed or dynamic)
         │           - build reconciler factory closure capturing:
         │               crdInfo, inf, ev, kube, hooks, newObj,
@@ -147,7 +152,7 @@ main()
 `orkestra.Start(ctx)` calls `komponent.Start()` in registration order:
 
 ```
-1. HealthServer.Start()      → binds port, /readyz returns 200
+1. HealthServer.Start()      → binds port, /ready returns 200
 2. Kubeclient.Start()        → (already started, no-op)
 3. Event.Start()             → connects recorder to clientset
 4. QueueRegistry.Start()     → initialises per-CRD queues
@@ -230,7 +235,7 @@ Inside `GenericReconciler.Reconcile(ctx, key)`:
          │         → ReadCrossFromInformer → {found, spec, status, labels}
          │       OR fetchCrossViaHTTP (cross-binary/cluster fallback)
          │     resolver = resolver.WithCross(crossData)
-         │     .cross.database.status.phase now available in all expressions
+         │     {{ phase .cross.database }} now available in all expressions
          ├── Step 3: runGit(rc.OnReconcile.Git, resolver)
          │     If a git: block is declared in the Katalog:
          │       - resolve repo, branch, and path templates
@@ -338,19 +343,38 @@ Inside `GenericReconciler.Reconcile(ctx, key)`:
 
 ## Watch events → reconcile triggers
 
-The informer factory routes API server events to workqueues:
+The informer factory routes API server events to workqueues. Namespace filtering happens before the queue is touched:
 
 ```
 API server watch event (Added/Modified/Deleted for any CR)
     │
+    │  [Tier 1] If allowedNamespaces has exactly one entry,
+    │           the ListerWatcher itself is scoped — only events from
+    │           that namespace ever arrive here.
+    │
     ▼
 informer.handleEvent(obj)
     │
-    ├── namespace/name → queue key
+    ├── gvkFromObject(obj)
+    │       scheme.ObjectKinds → *GroupVersionKind
+    │
+    ├── extractNamespace(obj)
+    │       unwrap DeletedFinalStateUnknown (tombstone) if needed
+    │       meta.Accessor(obj).GetNamespace()
+    │
+    ├── [Tier 2] namespaceAllowed(gvkStr, namespace)
+    │       mu.RLock → look up NamespaceFilter → mu.RUnlock
+    │       filter.Allows(namespace)
+    │       if not allowed: log debug + return   ← queue never touched
+    │
     ├── find queue for this GVK from queueRegistry
     └── queue.AddRateLimited(key)
             │
             └── worker.GetWithContext() unblocks
+                    │
+                    ├── [Tier 3] reconciler.CheckNamespace(obj.Namespace)
+                    │       safety net — should never fire if Tiers 1+2 are wired
+                    │
                     └── reconciler.Reconcile(ctx, key)
 ```
 
@@ -414,8 +438,8 @@ Application operatorBox: readCross(decls=[{kind: "database", as: "db"}], ...)
     └── ReadCrossFromInformer → {found: "true", status: {phase: "Ready", endpoint: "..."}}
           resolver = resolver.WithCross({db: {found, status, spec, labels}})
 
-Template engine: "{{ .cross.db.status.phase }}"  → "Ready"
-when: condition: cross.db.status.phase equals "Ready"  → true
+Template engine: "{{ phase .cross.db }}"  → "Ready"
+when: condition: "{{ phase .cross.db }}" equals "Ready"  → true
 Deployment is created.
 ```
 

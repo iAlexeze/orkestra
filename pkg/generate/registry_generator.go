@@ -59,6 +59,7 @@ package runtime
 import (
 	"fmt"
 
+	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -70,8 +71,24 @@ import (
 {{ range .Imports }}	{{ .Alias }} "{{ .Location }}"
 {{ end }})
 
+// init runs before main(). It calls RegisterRuntimeObjects to populate the
+// GVK-keyed registries and appends AddToScheme functions to SchemeAdderFns so
+// that NewSchemeRegistry can find them through the internal pkg/runtime stub.
+//
+// A blank import of this package from main.go is the only wiring needed:
+//
+//	import _ "myapp/pkg/runtime"
+//
+// No explicit call to RegisterRuntimeObjects or RegisterTypedScheme is required.
+func init() {
+	logger.Debug().Msg("runtime.init() started")
+	RegisterRuntimeObjects()
+{{ range .Entries }}	orktypes.SchemeAdderFns = append(orktypes.SchemeAdderFns, {{ .Alias }}.AddToScheme)
+{{ end }}	logger.Debug().Int("length", len(orktypes.SchemeAdderFns)).Msg("runtime.init() finished")
+}
+
 // RegisterRuntimeObjects populates ObjectRegistry, ListRegistry, HookRegistry,
-// and ReconcilerRegistry. Called once at startup before Katalog validation.
+// and ReconcilerRegistry. Called by init() — do not call directly.
 //
 // Object/List entries — factory functions for typed CRDs.
 //   Used by the informer to create zero-value instances for cache storage
@@ -87,6 +104,7 @@ import (
 //   onto the CRD entry. DependencyKordinator calls Constructor() once at
 //   startCRDWorkers time to build the reconciler.
 func RegisterRuntimeObjects() {
+	logger.Debug().Msg("RegisterRuntimeObjects called")
 {{ range .Entries }}
 	// {{ .Kind }} — typed CRD object and list factories
 	orktypes.ObjectRegistry[schema.GroupVersionKind{Group: "{{ .Group }}", Version: "{{ .Version }}", Kind: "{{ .Kind }}"}] =
@@ -109,14 +127,18 @@ func RegisterRuntimeObjects() {
 		func(kube *kubeclient.Kubeclient, inf cache.SharedIndexInformer, ev *event.Event) domain.Reconciler {
 			return {{ .Alias }}.{{ .Function }}(kube, inf, ev)
 		}
-{{ end }}{{ end }}}
+{{ end }}{{ end }}
+	logger.Debug().
+		Int("objectRegistrySize", len(orktypes.ObjectRegistry)).
+		Int("listRegistrySize", len(orktypes.ListRegistry)).
+		{{ if .HookEntries }}Int("hookRegistrySize", len(orktypes.HookRegistry)).{{ end }}
+		{{ if .RecEntries }}Int("reconcilerRegistrySize", len(orktypes.ReconcilerRegistry)).{{ end }}
+		Msg("Runtime objects registered")
+}
 
-// RegisterTypedScheme registers the AddToScheme function for each typed CRD.
-// Called by NewSchemeRegistry during startup so the REST client can decode
-// API server responses into compiled Go structs.
-//
-// Dynamic CRDs do not appear here — *unstructured.Unstructured is registered
-// separately in registerDynamicScheme using AddKnownTypeWithName.
+// RegisterTypedScheme is kept for backward compatibility. Scheme registration
+// now happens through orktypes.SchemeAdderFns populated in init().
+// Retained so existing code that calls it directly continues to compile.
 func RegisterTypedScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
 {{ range .Entries }}	if err := {{ .Alias }}.AddToScheme(scheme); err != nil {
 		return nil, fmt.Errorf("failed to register {{ .Object }} scheme: %w", err)

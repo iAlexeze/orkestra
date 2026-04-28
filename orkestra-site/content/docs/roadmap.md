@@ -71,7 +71,7 @@ What exists in production today:
 
 **Distribution**
 
-- Homebrew tap — `brew install iAlexeze/tap/ork`
+- Homebrew tap — `brew install orkspace/tap/ork`
 - curl installer — `curl -sSL .../install.sh | bash` with GPG signing
 - Docker image — GHCR, distroless, two-stage build
 - Helm chart — production-ready deployment chart
@@ -143,9 +143,9 @@ The planned command suite for working with OCI-distributed operator patterns:
 ork registry login ghcr.io
 ork registry push ghcr.io/myorg/postgres:v14 ./postgres/v14
 ork registry pull ghcr.io/myorg/postgres:v14 ./local
-ork registry list ghcr.io/konduktor-io/orkestra-registry
+ork registry list ghcr.io/orkspace/orkestra-registry
 ork registry search postgres
-ork registry info ghcr.io/konduktor-io/orkestra-registry/postgres:v14
+ork registry info ghcr.io/orkspace/orkestra-registry/postgres:v14
 ```
 
 OCI patterns are consumable today via direct `oci:` references in Komposers.

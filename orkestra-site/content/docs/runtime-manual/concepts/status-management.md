@@ -159,21 +159,21 @@ operatorBox:
     fields:
       # From the Deployment
       - path: readyReplicas
-        value: "{{ .children.deployment.status.readyReplicas }}"
+        value: "{{ readyReplicas .children.deployment }}"
 
       - path: availableReplicas
-        value: "{{ .children.deployment.status.availableReplicas }}"
+        value: "{{ availableReplicas .children.deployment }}"
 
       # From the Service
       - path: loadBalancerIP
-        value: "{{ (index .children.services.ingress 0).ip }}"
+        value: "{{ serviceLoadBalancerIP .children.service }}"
 ```
 
 **Access patterns:**
 
 `{{ .children.deployment }}` — the first (or only) Deployment created by this CR. For operators with a single Deployment this is the ergonomic path.
 
-`{{ (index .children.deployments "my-site-api").status.readyReplicas }}` — access by exact Kubernetes name when multiple Deployments exist.
+`{{ readyReplicas (index .children.deployments "my-site-api") }}` — access by exact Kubernetes name when multiple Deployments exist.
 
 The same patterns work for all resource types:
 
@@ -268,9 +268,9 @@ Katalog with all three layers:
 
         # Layer 3 — from child resource status
         - path: readyReplicas
-          value: "{{ .children.deployment.status.readyReplicas }}"
+          value: "{{ readyReplicas .children.deployment }}"
         - path: availableReplicas
-          value: "{{ .children.deployment.status.availableReplicas }}"
+          value: "{{ availableReplicas .children.deployment }}"
 
     onCreate:
       deployments:

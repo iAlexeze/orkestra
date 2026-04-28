@@ -28,7 +28,7 @@ patterns:
         artifactType: application/vnd.orkestra.katalog.v1.tar+gzip
         digest: "sha256:2258726047733aa22ca7fe64e1a6e15c7d00f1c28b62d6a3fe91611b8d340510"
         urls:
-          - oci://docker.io/ialexeze/postgres:v1
+          - oci://docker.io/orkspace/postgres:v1
         created: "2026-04-01T11:58:00Z"
         maintainers:
           - name: Alex Eze
@@ -82,7 +82,7 @@ The workflow is intentionally simple and mirrors Helm’s UX, but tailored to Or
 ## 2.1. Add a Registry
 
 ```
-ork registry add myrepo oci://docker.io/ialexeze
+ork registry add myrepo oci://docker.io/orkspace
 ```
 
 Stores:

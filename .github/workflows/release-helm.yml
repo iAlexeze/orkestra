@@ -26,7 +26,7 @@ on:
         description: 'Helm chart reference (repo/chart) – used in summary'
         required: false
         type: string
-        default: 'orkspace/orkestra'
+        default: ${{ github.repository }}
 
 jobs:
   helm:
@@ -59,17 +59,46 @@ jobs:
           yq eval ".appVersion = \"${{ inputs.image_tag }}\"" -i charts/${{ inputs.ork }}/Chart.yaml
           yq eval ".runtime.image.tag = \"${{ inputs.image_tag }}\"" -i charts/${{ inputs.ork }}/values.yaml
           yq eval ".controlCenter.image.tag = \"${{ inputs.image_tag }}\"" -i charts/${{ inputs.ork }}/values.yaml
-          # Optional: update image repositories if you want to parameterize registry
-          # yq eval ".runtime.image.repository = \"ghcr.io/${{ inputs.repository }}/${{ inputs.ork }}\"" -i charts/${{ inputs.ork }}/values.yaml
-          # yq eval ".controlCenter.image.repository = \"ghcr.io/${{ inputs.repository }}/${{ inputs.ork }}-cc\"" -i charts/${{ inputs.ork }}/values.yaml
 
-      - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.7.0
+          yq eval ".runtime.image.repository = \"ghcr.io/${{ inputs.repository }}\"" -i charts/${{ inputs.ork }}/values.yaml
+          yq eval ".controlCenter.image.repository = \"ghcr.io/${{ inputs.repository }}-cc\"" -i charts/${{ inputs.ork }}/values.yaml
+
+      - name: Package and push Helm chart to gh-pages
         env:
-          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          charts_dir: charts
-          skip_existing: true
+          GH_TOKEN: ${{ secrets.ORK_PUBLISH_PAT }}
+        run: |
+          set -eux
+          ORK="${{ inputs.ork }}"
+          CHART_DIR="charts/${ORK}"
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          IMAGE_TAG="${{ inputs.image_tag }}"
+
+          helm package "$CHART_DIR" --version "$VERSION" --app-version "$IMAGE_TAG" -d .cr-release-packages
+
+          git clone --branch gh-pages "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" /tmp/gh-pages
+
+          cp ".cr-release-packages/${ORK}-${VERSION}.tgz" /tmp/gh-pages/
+
+          # Stamp version under the title in the existing gh-pages README
+          awk 'NR==2{print; print "> **Chart version:** '"${VERSION}"' | **App version:** '"${IMAGE_TAG}"'"; print ""; next}1' \
+            /tmp/gh-pages/README.md > /tmp/README.tmp && mv /tmp/README.tmp /tmp/gh-pages/README.md
+
+          # Copy values.yaml so users can inspect defaults from the gh-pages site
+          cp "charts/${ORK}/values.yaml" /tmp/gh-pages/values.yaml
+
+          cd /tmp/gh-pages
+          if [[ -f index.yaml ]]; then
+            helm repo index . --url "https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}" --merge index.yaml
+          else
+            helm repo index . --url "https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "*.tgz" index.yaml README.md values.yaml
+          git commit -m "Release ${ORK}-${VERSION}"
+          git push origin gh-pages
 
       - name: Write summary
         run: |

@@ -1,4 +1,4 @@
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: cronjob-operator
@@ -7,7 +7,6 @@ metadata:
     structured schedule object. Conversion is lossless and bidirectional,
     declared entirely in YAML using cron notes. No Go. No hooks.
     No separate conversion webhook. One process. One Katalog.
-
 security:
   deletionProtection:
     enabled: true
@@ -33,37 +32,31 @@ spec:
       # ── Lossless version conversion using cron notes ───────────────────────
       #
       # The core change between v1 and v2:
-      #   v1: schedule: "*/5 0 * * 1"        (one string, five fields joined)
-      #   v2: schedule:                        (named structured fields)
+      #   v1: schedule: "*/5 0 * * 1"    (one string, five fields joined)
+      #   v2: schedule:                   (named structured fields)
       #         minute: "*/5"
       #         hour: "0"
       #         dayOfMonth: "*"
       #         month: "*"
       #         dayOfWeek: "1"
       #
-      # cron notes split and reconstruct this without losing information:
+      # Shorthands:
+      #   cronToMap "*/5 0 * * 1"  →  {minute:"*/5", hour:"0", dom:"*", month:"*", dow:"1"}
+      #   cronFromMap {minute:"*/5", …}  →  "*/5 0 * * 1"
       #
-      #   cronMinute "*/5 0 * * 1"  →  "*/5"
-      #   cronHour   "*/5 0 * * 1"  →  "0"
-      #   cronDom    "*/5 0 * * 1"  →  "*"
-      #   cronMonth  "*/5 0 * * 1"  →  "*"
-      #   cronDow    "*/5 0 * * 1"  →  "1"
-      #
-      #   cronExpr "*/5" "0" "*" "*" "1"  →  "*/5 0 * * 1"
-      #
-      # Round-trip guarantee: v1 → v2 → v1 produces the canonical
-      # cron string — semantically identical to the original.
-      # @-macros are expanded: @hourly → "0 * * * *"
+      # Both notes accept either shape (string or map) so the conversion is
+      # robust even when objects were stored before the schema was updated.
+      # Round-trip guarantee: v1 → v2 → v1 produces the canonical cron string.
+      # @-macros are expanded transparently: @hourly → "0 * * * *"
       #
       conversion:
-        storageVersion: v2
-        updateCRD: true     # This will update the CRD with the correct CA Bundle
+        storageVersion: v1
         paths:
-          # v1 → v2: split the cron string into named fields
+          # v1 → v2: cronToMap splits the cron string into the structured map
           - from: v1
             to: v2
             spec:
-              schedule: "{{ cronFromMap .spec.schedule }}"
+              schedule:                   "{{ cronToMap .spec.schedule }}"
               image:                      "{{ .spec.image }}"
               concurrencyPolicy:          "{{ default .spec.concurrencyPolicy \"Allow\" }}"
               startingDeadlineSeconds:    "{{ .spec.startingDeadlineSeconds }}"
@@ -71,39 +64,17 @@ spec:
               failedJobsHistoryLimit:     "{{ default .spec.failedJobsHistoryLimit 1 }}"
               suspend:                    "{{ default .spec.suspend false }}"
 
-          # v2 → v1: reconstruct the cron string from named fields
+          # v2 → v1: cronFromAny handles both structured maps and legacy flat strings.
           - from: v2
             to: v1
             spec:
-              schedule: "{{ cronNormalize .spec.schedule }}"
+              schedule:                   "{{ cronFromAny .spec.schedule }}"
               image:                      "{{ .spec.image }}"
               concurrencyPolicy:          "{{ default .spec.concurrencyPolicy \"Allow\" }}"
               startingDeadlineSeconds:    "{{ .spec.startingDeadlineSeconds }}"
               successfulJobsHistoryLimit: "{{ default .spec.successfulJobsHistoryLimit 3 }}"
               failedJobsHistoryLimit:     "{{ default .spec.failedJobsHistoryLimit 1 }}"
               suspend:                    "{{ default .spec.suspend false }}"
-
-      # ── Admission Validation and Mutation ─────────────────────────────────────────────────────────
-      # Defaults applied before validation, before reconcile
-      mutation:
-        mutateFirst: true
-        rules:
-          - field: spec.concurrencyPolicy
-            default: "Allow"
-          - field: spec.successfulJobsHistoryLimit
-            default: 3
-          - field: spec.failedJobsHistoryLimit
-            default: 1
-          - field: spec.suspend
-            default: false
-
-      # Validation — deny if image is empty
-      validation:
-        rules:
-          - field: spec.image
-            operator: exists
-            message: "spec.image is required"
-            action: deny
 
       # ── Reconciler ─────────────────────────────────────────────────────────
       operatorBox:
@@ -116,12 +87,13 @@ spec:
         status:
           fields:
             - path: phase
-              value: "{{ ternary .spec.suspend \"Suspended\" \"Active\" }}"
+              value: "{{ boolTernary .spec.suspend \"Suspended\" \"Active\" }}"
 
-            # Reconstruct the human-readable cron expression for display
-            # This is what kubectl get cj shows in the Schedule column
             - path: scheduleExpression
-              value: "{{ cronNormalize .spec.schedule }}"
+              value: "{{ cronFromAny .spec.schedule }}"
+
+            - path: scheduleDescription
+              value: "{{ cronDescribe .spec.schedule }}"
 
             - path: image
               value: "{{ .spec.image }}"
@@ -131,28 +103,23 @@ spec:
 
             # Last schedule time from the child CronJob
             - path: lastScheduleTime
-              value: "{{ .children.cronjob.status.lastScheduleTime }}"
+              value: "{{ default .children.cronjob.status.lastScheduleTime \"\" }}"
 
             - path: nextScheduleTime
-              value: "{{ .children.cronjob.status.nextScheduleTime }}"
+              value: "{{ default .children.cronjob.status.nextScheduleTime \"\" }}"
 
-        # Creates the Kubernetes CronJob resource
-        # The schedule field reconstructs the standard cron expression
-        # from the v2 structured fields — ready for Kubernetes to use
         onCreate:
           cronJobs:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
-              schedule: "{{ cronNormalize .spec.schedule }}"
+              schedule: "{{ cronFromAny .spec.schedule }}"
               reconcile: true
 
-        # When the CR is suspended, the child CronJob is suspended too
-        # When unsuspended, it is restored — no manual intervention needed
         onReconcile:
           cronJobs:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
-              schedule: "{{ cronNormalize .spec.schedule }}"
+              schedule: "{{ cronFromAny .spec.schedule }}"
               suspend: "{{ .spec.suspend }}"
               successfulJobsHistoryLimit: "{{ .spec.successfulJobsHistoryLimit }}"
               failedJobsHistoryLimit: "{{ .spec.failedJobsHistoryLimit }}"
@@ -168,29 +135,13 @@ spec:
         version: v1
         kind: CronJob
         plural: cronjobs
-
       workers: 2
       resync: 30s
-
-      mutation:
-        mutateFirst: true
-        rules:
-          - field: spec.concurrencyPolicy
-            default: "Allow"
-          - field: spec.suspend
-            default: false
-
-      validation:
-        rules:
-          - field: spec.image
-            operator: exists
-            message: "spec.image is required"
-            action: deny
-          - field: spec.schedule
-            operator: exists
-            message: "spec.schedule is required"
-            action: deny
-
+      # participant: true marks this CRD as part of the conversion pair.
+      # The paths live on cronjob-v2. This flag lets the Control Center
+      # show conversion stats for v1 without duplicating path declarations.
+      conversion:
+        participant: true
       operatorBox:
         default: true
         status:

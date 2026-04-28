@@ -103,7 +103,10 @@
           Resources
           <span class="cc-badge" style="padding:1px 6px;font-size:10px;background:var(--bg-elevated);color:var(--text-muted)">{{ .CRD.ResourceCount }}</span>
         </a>
-        <button class="cc-theme-toggle" id="cc-theme-toggle" title="Toggle theme">☀️</button>
+        <button class="cc-theme-toggle" id="cc-theme-toggle" title="Toggle theme">
+          <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
       </div>
     </div>
 
@@ -499,65 +502,76 @@
       </div>
 
       <!-- Namespace Protection — only shown when namespace rules are declared -->
-      {{ if .CRD.NamespaceProtection.HasNamespaceRules }}
-      {{ $np := .CRD.NamespaceProtection }}
-      <div class="cc-section">
-        <h2 class="cc-section-title">Namespace Protection</h2>
-        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-            {{ if $np.Enabled }}
-            <span class="cc-badge cc-badge-healthy" style="gap:5px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              Active
-            </span>
-            <span style="font-size:12px;color:var(--text-muted)">failurePolicy: Fail — CREATE/UPDATE blocked in forbidden namespaces</span>
-            {{ else }}
-            <span class="cc-badge cc-badge-pending" style="gap:5px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              Rules declared, webhook not active
-            </span>
-            {{ end }}
-          </div>
-          <!-- Namespace rule lists -->
-          {{ if $np.AllowedNamespaces }}
-          <div style="margin-bottom:14px">
-            <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Allowed Namespaces</div>
-            <div style="display:flex;flex-wrap:wrap;gap:6px">
-              {{ range $np.AllowedNamespaces }}
-              <span style="background:var(--color-healthy-bg,rgba(34,197,94,.12));color:var(--color-healthy);padding:2px 10px;border-radius:999px;font-size:12px;font-family:monospace">{{ . }}</span>
+      {{ if .CRD.NamespaceProtection }}
+        {{ $np := .CRD.NamespaceProtection }}
+        {{ if $np.HasNamespaceRules }}
+          <div class="cc-section">
+            <h2 class="cc-section-title">Namespace Protection</h2>
+            <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+                {{ if $np.Enabled }}
+                <span class="cc-badge cc-badge-healthy" style="gap:5px">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                  Active
+                </span>
+                <span style="font-size:12px;color:var(--text-muted)">failurePolicy: Fail — CREATE/UPDATE blocked in forbidden namespaces</span>
+                {{ else }}
+                <span class="cc-badge cc-badge-pending" style="gap:5px">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                  Rules declared, webhook not active
+                </span>
+                {{ end }}
+              </div>
+              <!-- Namespace rule lists -->
+              {{ if $np.AllowedNamespaces }}
+              <div style="margin-bottom:14px">
+                <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Allowed Namespaces</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  {{ range $np.AllowedNamespaces }}
+                  <span style="background:var(--color-healthy-bg,rgba(34,197,94,.12));color:var(--color-healthy);padding:2px 10px;border-radius:999px;font-size:12px;font-family:monospace">{{ . }}</span>
+                  {{ end }}
+                </div>
+              </div>
+              {{ end }}
+              {{ if $np.RestrictedNamespaces }}
+              <div style="margin-bottom:14px">
+                <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Restricted Namespaces</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px">
+                  {{ range $np.RestrictedNamespaces }}
+                  <span style="background:var(--color-degraded-bg,rgba(239,68,68,.12));color:var(--color-degraded);padding:2px 10px;border-radius:999px;font-size:12px;font-family:monospace">{{ . }}</span>
+                  {{ end }}
+                </div>
+              </div>
+              {{ end }}
+              <!-- Admission counters (omitted when webhook not active) -->
+              {{ if $np.Enabled }}
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+                <div>
+                  <div style="display:flex;gap:24px;flex-wrap:wrap">
+                    <div>
+                      <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Total Reviews</div>
+                      <div style="font-size:22px;font-weight:600">{{ $np.Total }}</div>
+                    </div>
+                    <div>
+                      <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Blocked</div>
+                      <div style="font-size:22px;font-weight:600;{{ if gt $np.Blocked 0 }}color:var(--color-degraded){{ end }}">{{ $np.Blocked }}</div>
+                    </div>
+                    <div>
+                      <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Allowed</div>
+                      <div style="font-size:22px;font-weight:600">{{ $np.Allowed }}</div>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <div style="color:var(--text-muted);font-size:11px">Webhook</div>
+                  <div style="font-size:13px;font-weight:500;margin-top:4px">orkestra-namespace-protection</div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">failurePolicy: Fail</div>
+                </div>
+              </div>
               {{ end }}
             </div>
           </div>
-          {{ end }}
-          {{ if $np.RestrictedNamespaces }}
-          <div style="margin-bottom:14px">
-            <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Restricted Namespaces</div>
-            <div style="display:flex;flex-wrap:wrap;gap:6px">
-              {{ range $np.RestrictedNamespaces }}
-              <span style="background:var(--color-degraded-bg,rgba(239,68,68,.12));color:var(--color-degraded);padding:2px 10px;border-radius:999px;font-size:12px;font-family:monospace">{{ . }}</span>
-              {{ end }}
-            </div>
-          </div>
-          {{ end }}
-          <!-- Admission counters (omitted when webhook not active) -->
-          {{ if $np.Enabled }}
-          <div style="display:flex;gap:24px;margin-top:4px">
-            <div>
-              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Total Reviews</div>
-              <div style="font-size:22px;font-weight:600">{{ $np.Total }}</div>
-            </div>
-            <div>
-              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Blocked</div>
-              <div style="font-size:22px;font-weight:600;{{ if gt $np.Blocked 0 }}color:var(--color-degraded){{ end }}">{{ $np.Blocked }}</div>
-            </div>
-            <div>
-              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Allowed</div>
-              <div style="font-size:22px;font-weight:600">{{ $np.Allowed }}</div>
-            </div>
-          </div>
-          {{ end }}
-        </div>
-      </div>
+        {{ end }}
       {{ end }}
 
       <!-- Providers -->
@@ -681,45 +695,132 @@
       {{ end }}
 
       <!-- operatorBox: Configuration -->
+      {{ $ob := .CRD.OperatorBox }}
+      {{ $obType   := mapGet $ob "type"        | asString }}
+      {{ $fins     := mapGet $ob "finalizers" }}
+      {{ $hooks    := mapGet $ob "hooks" }}
+      {{ $ctor     := mapGet $ob "constructor" }}
+      {{ $tmpls    := mapGet $ob "templates" }}
+      {{ $hookConf := mapGet $hooks "configured" | asBool }}
+      {{ $ctorConf := mapGet $ctor  "configured" | asBool }}
+      {{ $finVals  := mapGet $fins  "values"     | asSlice }}
+      {{ $finSrc   := mapGet $fins  "source"     | asString }}
+
       <div class="cc-section">
-        <h2 class="cc-section-title">operatorBox: Configuration</h2>
-        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px;margin-bottom:16px">
-            <div>
-              <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">Reconciler Type</div>
-              <div style="font-weight:500">{{ .crd.OperatorBox.type }}</div>
-            </div>
-            <div>
-              <div style="color:var(--text-muted);font-size:11px;margin-bottom:4px">Resync</div>
-              <div style="font-weight:500">{{ .CRD.Resync }} <span class="text-muted text-xs">({{ .CRD.ResyncSource }})</span></div>
-            </div>
-          </div>
-          <div style="font-size:13px;margin-bottom:8px">
-            <div style="color:var(--text-muted);font-size:11px;margin-bottom:6px">Finalizers</div>
-            {{ if .crd.OperatorBox.finalizers.values }}
-              {{ range .crd.OperatorBox.finalizers.values }}
-              <span class="cc-code" style="margin-right:6px;margin-bottom:4px;display:inline-block">{{ . }}</span>
-              {{ end }}
-              <span class="text-muted text-xs">({{ .crd.OperatorBox.finalizers.source }})</span>
-            {{ else }}
-              <span class="text-muted">No finalizers configured</span>
-            {{ end }}
-          </div>
-          {{ if .crd.OperatorBox.hooks.configured }}
-          <div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg-elevated);border-radius:var(--radius-sm);margin-top:8px;font-size:12px">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            <span>Go hooks configured</span>
-            <span class="text-muted">({{ .crd.OperatorBox.hooks.source }})</span>
-          </div>
-          {{ end }}
-          {{ if .crd.OperatorBox.constructor.configured }}
-          <div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--bg-elevated);border-radius:var(--radius-sm);margin-top:8px;font-size:12px">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            <span>Custom reconciler configured</span>
-            <span class="text-muted">({{ .crd.OperatorBox.constructor.source }})</span>
-          </div>
+        <div class="cc-section-header">
+          <h2 class="cc-section-title" style="margin:0">operatorBox</h2>
+          {{ if $tmpls }}
+          <button onclick="document.getElementById('obTemplates').classList.toggle('hidden')" class="cc-btn cc-btn-secondary" style="font-size:12px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            Templates
+          </button>
           {{ end }}
         </div>
+
+        <!-- Overview row -->
+        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
+
+          <!-- Reconciler type + resync -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+            {{ if eq $obType "custom" }}
+            <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(96,165,250,.1);color:var(--color-started);border:1px solid rgba(96,165,250,.25);border-radius:9999px;padding:4px 12px;font-size:12px;font-weight:600">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              Custom Reconciler
+            </span>
+            {{ else }}
+            <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(52,211,153,.1);color:var(--color-healthy);border:1px solid rgba(52,211,153,.25);border-radius:9999px;padding:4px 12px;font-size:12px;font-weight:600">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
+              Generic Reconciler
+            </span>
+            {{ end }}
+            <span style="font-size:12px;color:var(--text-muted)">
+              Resync: <span style="color:var(--text-secondary);font-weight:500">{{ .CRD.Resync }}</span>
+              <span style="color:var(--text-muted);font-size:11px">({{ .CRD.ResyncSource }})</span>
+            </span>
+          </div>
+
+          <!-- Feature chips -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+
+            <!-- Hooks -->
+            {{ if $hookConf }}
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-started)" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <span style="font-weight:500">Hooks</span>
+              <span style="color:var(--text-muted)">{{ mapGet $hooks "source" | asString }}</span>
+              {{ if mapGet $hooks "function" | asString }}<span class="cc-code" style="font-size:10px">{{ mapGet $hooks "function" | asString }}</span>{{ end }}
+            </div>
+            {{ else }}
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;color:var(--text-muted)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              No hooks
+            </div>
+            {{ end }}
+
+            <!-- Constructor -->
+            {{ if $ctorConf }}
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-started)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+              <span style="font-weight:500">Constructor</span>
+              <span style="color:var(--text-muted)">{{ mapGet $ctor "source" | asString }}</span>
+            </div>
+            {{ end }}
+
+            <!-- Finalizers -->
+            {{ if $finVals }}
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-pending)" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              <span style="font-weight:500">{{ len $finVals }} finalizer{{ if gt (len $finVals) 1 }}s{{ end }}</span>
+              <span style="color:var(--text-muted)">({{ $finSrc }})</span>
+            </div>
+            {{ else }}
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;color:var(--text-muted)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              No finalizers
+            </div>
+            {{ end }}
+          </div>
+
+          <!-- Finalizer values (when set) -->
+          {{ if $finVals }}
+          <div style="font-size:12px;border-top:1px solid var(--border);padding-top:12px">
+            <span style="color:var(--text-muted);font-size:11px;margin-right:8px">Finalizers:</span>
+            {{ range $finVals }}
+            <span class="cc-code" style="margin-right:6px;margin-bottom:4px;display:inline-block">{{ . }}</span>
+            {{ end }}
+          </div>
+          {{ end }}
+
+        </div>
+
+        <!-- Templates breakdown — hidden by default, toggled by button -->
+        {{ if $tmpls }}
+        <div id="obTemplates" class="hidden" style="margin-top:8px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:12px">Declared Templates</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
+            {{ range $phase, $counts := asMap $tmpls }}
+            {{ $cm := asMap $counts }}
+            {{ if $cm }}
+            <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px">
+              <div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin-bottom:8px">{{ $phase }}</div>
+              {{ range $kind, $count := $cm }}
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0">
+                <span style="color:var(--text-muted)">{{ $kind }}</span>
+                <span style="font-weight:600;color:var(--text-primary)">{{ $count }}</span>
+              </div>
+              {{ end }}
+            </div>
+            {{ else }}
+            <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px">
+              <div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin-bottom:4px">{{ $phase }}</div>
+              <div style="font-size:11px;color:var(--text-muted)">{{ $counts }}</div>
+            </div>
+            {{ end }}
+            {{ end }}
+          </div>
+        </div>
+        {{ end }}
+
       </div>
 
     </div>

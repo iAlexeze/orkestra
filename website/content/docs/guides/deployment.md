@@ -14,29 +14,29 @@ production multi-cluster setup. Choose the path that matches your situation.
 ### macOS (Homebrew)
 
 ```bash
-brew tap iAlexeze/tap
+brew tap orkspace/tap
 brew install ork
 ```
 
 ### Linux / macOS (curl)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
 ```
 
 ### Options
 
 ```bash
 # Review before running
-curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh -o install.sh
+curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh -o install.sh
 less install.sh
 bash install.sh
 
 # Pin to a specific version
-curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | ORK_VERSION=v0.1.1 bash
+curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | ORK_VERSION=v0.1.1 bash
 
 # Install to a custom directory
-curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
+curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
 ```
 
 ### Verify the binary (recommended)
@@ -104,7 +104,7 @@ Helm is the recommended path for running Orkestra on a cluster.
 ### Add the chart repository
 
 ```bash
-helm repo add orkestra https://ialexeze.github.io/orkestra
+helm repo add orkestra https://orkspace.github.io/orkestra
 helm repo update
 ```
 
@@ -132,7 +132,7 @@ helm install orkestra orkestra/orkestra \
 # my-values.yaml
 katalog:
   inline: |
-    apiVersion: orkestra.konductor.io/v1Alpha
+    apiVersion: orkestra.orkspace.io/v1
     kind: Katalog
     metadata:
       name: my-katalog
@@ -180,7 +180,7 @@ a ConfigMap from it. Good for small operators and getting started.
 ```yaml
 katalog:
   inline: |
-    apiVersion: orkestra.konductor.io/v1Alpha
+    apiVersion: orkestra.orkspace.io/v1
     kind: Katalog
     ...
 ```
@@ -224,7 +224,7 @@ metadata:
   namespace: orkestra-system
 data:
   katalog.yaml: |
-    apiVersion: orkestra.konductor.io/v1Alpha
+    apiVersion: orkestra.orkspace.io/v1
     kind: Komposer
     metadata:
       name: platform-komposer
@@ -254,7 +254,7 @@ With Komposer, each team maintains their own Katalog. The platform's Komposer
 composes them:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform-komposer
@@ -532,7 +532,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://ialexeze.github.io/orkestra
+    repoURL: https://orkspace.github.io/orkestra
     chart: orkestra
     targetRevision: 0.1.0
     helm:
@@ -587,7 +587,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1h
-  url: https://ialexeze.github.io/orkestra
+  url: https://orkspace.github.io/orkestra
 ```
 
 ---

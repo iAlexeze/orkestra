@@ -26,6 +26,16 @@ onCreate:
         password: "{{ randomAlphanumeric 32 }}"
 ```
 
+Notes work in both `value:` and `field:` positions — use template syntax for `field:`:
+
+```yaml
+when:
+  - field: "{{ replicasReady .children.deployment }}"
+    equals: "true"
+  - field: "{{ resourceExists .children.secret }}"
+    equals: "true"
+```
+
 ## Documents
 
 | File | Notes covered |
@@ -38,7 +48,12 @@ onCreate:
 | [06-random.md](06-random.md) | `randomAlphanumeric` `randomHex` `randomBase64` |
 | [07-collections.md](07-collections.md) | `listHas` `listGet` `listLen` `mapGet` `mapKeys` `mapValues` `asList` `asMap` `asString` |
 | [08-safe-access.md](08-safe-access.md) | `getOr` `getStringOr` `getIntOr` `getBoolOr` |
-| [09-kubernetes.md](09-kubernetes.md) | `meta` `labels` `annotations` `spec` `status` `get` `ownerKind` `ownerName` `hasCondition` |
+| [09-kubernetes.md](09-kubernetes.md) | `meta` `labels` `annotations` `spec` `status` `phase` `get` `ownerKind` `ownerName` `hasCondition` `conditionReason` `conditionMessage` `resourceExists` `isTerminating` `generation` `observedGeneration` `isSynced` |
 | [10-container.md](10-container.md) | `containerImage` `containerEnv` `containerPort` |
+| [11-quantity.md](11-quantity.md) | `parseQuantity` `formatQuantity` `sumQuantity` |
+| [12-replica.md](12-replica.md) | `replicasReady` `readyReplicas` `availableReplicas` `updatedReplicas` `desiredReplicas` |
+| [13-job.md](13-job.md) | `jobSucceeded` `jobFailed` `jobActive` |
+| [14-service.md](14-service.md) | `serviceClusterIP` `serviceNodePort` `serviceLoadBalancerIP` `serviceLoadBalancerHost` `endpointsReady` |
+| [15-fields.md](15-fields.md) | `resourceName` `resourceNamespace` `resourceUID` `resourceVersion` `creationTimestamp` |
 
 Read the docs for the category you need. For a quick lookup of a specific function name, use the table above as an index.

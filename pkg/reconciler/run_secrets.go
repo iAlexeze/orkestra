@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/certmanager"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orksecrets "github.com/orkspace/orkestra/pkg/orkestra-registry/secrets"
@@ -263,7 +264,7 @@ func runTLSSecret(
 		validFor = "1y"
 	}
 
-	bundle, err := GenerateTLSBundle(commonName, dnsNames, validFor)
+	bundle, err := certmanager.GenerateTLSBundle(commonName, dnsNames, validFor)
 	if err != nil {
 		return fmt.Errorf("generating TLS bundle: %w", err)
 	}

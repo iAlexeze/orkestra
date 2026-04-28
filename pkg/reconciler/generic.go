@@ -29,7 +29,7 @@ import (
 //   - Context enrichment
 //   - Cache reads
 //   - Deletion routing
-//   - Finalizer/Annotation/Labele management
+//   - Finalizer/Annotation/Label management
 //   - Template interpretation
 //   - Reconcile priority (Go hooks → declarative templates → no-op)
 //   - Event firing and logging
@@ -49,18 +49,32 @@ import (
 //  2. Call it from runTemplateReconcile() and/or runTemplateOnDelete()
 //  3. Add the field to orktypes.HookTemplates
 //     That is all — generic.go does not change.
-type GenericReconciler[T domain.Object] struct {
+//
+// Type parameter PTR:
+//
+// PTR must be a pointer to the concrete CR struct (e.g. *Database).
+// This matches Kubernetes informer semantics: the informer stores pointer values
+// so the type assertion raw.(PTR) in reconcileCore succeeds only for pointer types.
+// When used through the dynamic registry path in konstructor.go, PTR is inferred
+// as domain.Object (the interface), which also satisfies the constraint and is safe
+// because the informer cache always holds the correct underlying concrete type.
+// See pkg/reconciler/ptr_hooks.go for the full design rationale.
+type GenericReconciler[PTR domain.Object] struct {
 	katalogRegistry  *kordinator.ResourceKatalog
 	providerRegistry orktypes.ProviderRegistry
 	providerStats    providerStatsRecorder
 	informer         cache.SharedIndexInformer
 	event            *event.Event
 	kube             *kubeclient.Kubeclient
-	hooks            domain.ReconcileHooks[T]
-	operatorBox      orktypes.OperatorBoxConfig
-	newObj           func() T
-	crd              orktypes.CRDEntry
-	kat              *katalog.Katalog
+	// hooks holds type-erased, domain.Object-parameterized callbacks built at
+	// construction time from the user's ReconcileHooks[PTR]. Stored as
+	// ObjectHooks rather than ReconcileHooks[PTR] so the reconciler remains
+	// compatible with the runtime registry path (PTR = domain.Object interface).
+	hooks       domain.ObjectHooks
+	operatorBox orktypes.OperatorBoxConfig
+	newObj      func() PTR
+	crd         orktypes.CRDEntry
+	kat         *katalog.Katalog
 
 	// workerSem gates concurrent reconcile execution. All worker goroutines run
 	// continuously; the semaphore controls how many may be in Reconcile simultaneously.
@@ -101,28 +115,44 @@ type GenericReconciler[T domain.Object] struct {
 	rollbackClearFn   func()
 }
 
-func NewGenericReconciler[T domain.Object](
+// NewGenericReconciler constructs a GenericReconciler for the given CRD.
+//
+// PTR must be a pointer to the concrete CR type (e.g. *Database). When called
+// from the runtime registry path in konstructor.go, PTR is inferred as
+// domain.Object (the interface) — this is also valid because the constraint
+// domain.Object is satisfied and the informer stores the correct concrete type.
+//
+// anyHooks, if non-nil, must implement domain.HookBinder. Every
+// domain.ReconcileHooks[T] value satisfies HookBinder automatically via its
+// BindToObjectHooks() method. Passing any other type panics at startup.
+func NewGenericReconciler[PTR domain.Object](
 	crd orktypes.CRDEntry,
 	informer cache.SharedIndexInformer,
 	ev *event.Event,
 	kube *kubeclient.Kubeclient,
 	anyHooks domain.AnyReconcileHooks,
-	newObj func() T,
+	newObj func() PTR,
 	katalogRegistry *kordinator.ResourceKatalog,
 	providerRegistry orktypes.ProviderRegistry,
 	providerStats providerStatsRecorder,
-) *GenericReconciler[T] {
+) *GenericReconciler[PTR] {
 
-	var hooks domain.ReconcileHooks[T]
+	// Adapt the user's strongly-typed ReconcileHooks[PTR] to the type-erased
+	// ObjectHooks stored on the reconciler. BindToObjectHooks wraps each hook
+	// in a closure that performs obj.(PTR) at call time — safe because the
+	// informer cache only ever holds objects of the type it was built for.
+	var hooks domain.ObjectHooks
 	if anyHooks != nil {
-		typed, ok := anyHooks.(domain.ReconcileHooks[T])
+		binder, ok := anyHooks.(domain.HookBinder)
 		if !ok {
 			panic(fmt.Sprintf(
-				"GenericReconciler[%T]: hooks type mismatch — got %T",
+				"NewGenericReconciler[%T]: hooks value must implement domain.HookBinder "+
+					"(got %T) — use domain.ReconcileHooks[*YourType]{...} or a type that "+
+					"wraps one and forwards BindToObjectHooks()",
 				newObj(), anyHooks,
 			))
 		}
-		hooks = typed
+		hooks = binder.BindToObjectHooks()
 	}
 
 	workers := crd.Workers
@@ -132,7 +162,7 @@ func NewGenericReconciler[T domain.Object](
 	sem := autoscaler.NewResizableSemaphore(workers)
 	autoMet := autoscaler.NewAutoMetrics(sem)
 
-	r := &GenericReconciler[T]{
+	r := &GenericReconciler[PTR]{
 		katalogRegistry:  katalogRegistry,
 		providerRegistry: providerRegistry,
 		providerStats:    providerStats,
@@ -184,7 +214,7 @@ var _ domain.Reconciler = (*GenericReconciler[domain.Object])(nil)
 //
 // The semaphore gates concurrent execution — when an autoscaler is active it
 // can reduce effective concurrency below the goroutine count without stopping goroutines.
-func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error {
+func (r *GenericReconciler[PTR]) Reconcile(ctx context.Context, key string) error {
 	if err := r.workerSem.Acquire(ctx); err != nil {
 		return err // context cancelled while waiting for a concurrency slot
 	}
@@ -195,7 +225,7 @@ func (r *GenericReconciler[T]) Reconcile(ctx context.Context, key string) error 
 	return err
 }
 
-func (r *GenericReconciler[T]) reconcileCore(ctx context.Context, key string) error {
+func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) error {
 	ctx = kubeclient.WithKubeclient(ctx, r.kube)
 	if err := ctx.Err(); err != nil {
 		return err
@@ -224,11 +254,11 @@ func (r *GenericReconciler[T]) reconcileCore(ctx context.Context, key string) er
 		return nil
 	}
 
-	obj, ok := raw.(T)
+	obj, ok := raw.(PTR)
 	if !ok {
 		return fmt.Errorf("type assertion failed: expected %T, got %T", r.newObj(), raw)
 	}
-	rawObj := obj.DeepCopyObject().(T)
+	rawObj := obj.DeepCopyObject().(PTR)
 
 	// Normalize before mutation/validation/template rendering ─────────────
 	// Normalize + base resolver
@@ -307,7 +337,7 @@ func (r *GenericReconciler[T]) reconcileCore(ctx context.Context, key string) er
 //  4. Reconcile dispatch
 //  5. Failure trigger check — record failure; trigger rollback if threshold met
 //  6. Status patch
-func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, resolver *orktmpl.Resolver, obj T) error {
+func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *orktmpl.Resolver, obj PTR) error {
 	var err error
 
 	// ── Phase 1: Rollback gate ────────────────────────────────────────────────
@@ -458,7 +488,7 @@ func (r *GenericReconciler[T]) reconcileImpl(ctx context.Context, resolver *orkt
 // namespaceAllowed returns true when the target namespace passes both the
 // restricted and allowed namespace checks for this CRD.
 // Called inside runResourceGroup before dispatching to each resource type.
-func (r *GenericReconciler[T]) namespaceAllowed(
+func (r *GenericReconciler[PTR]) namespaceAllowed(
 	ctx context.Context,
 	obj domain.Object,
 	targetNamespace string,
@@ -477,7 +507,7 @@ func (r *GenericReconciler[T]) namespaceAllowed(
 // handleDeletion runs cleanup then removes our finalizers.
 // Finalizers are never removed on error — object stays protected until
 // cleanup succeeds.
-func (r *GenericReconciler[T]) handleDeletion(ctx context.Context, resolver *orktmpl.Resolver, obj T) error {
+func (r *GenericReconciler[PTR]) handleDeletion(ctx context.Context, resolver *orktmpl.Resolver, obj PTR) error {
 	switch {
 	case r.hooks.OnDelete != nil:
 		if err := r.hooks.OnDelete(ctx, obj); err != nil {

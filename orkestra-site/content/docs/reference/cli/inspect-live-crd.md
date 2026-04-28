@@ -182,7 +182,7 @@ TYPE       REASON           OBJECT             MESSAGE                         A
 
 ## `ork reconcile`
 
-Trigger reconciliation by patching the `orkestra.konductor.io/reconcile-at`
+Trigger reconciliation by patching the `orkestra.orkspace.io/reconcile-at`
 annotation. The Orkestra informer detects the metadata change and re-queues
 the object on the next reconcile loop.
 

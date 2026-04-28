@@ -103,6 +103,7 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/certmanager"
 	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/health"
 	"github.com/orkspace/orkestra/pkg/informer"
@@ -116,6 +117,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/queue"
 	"github.com/orkspace/orkestra/pkg/reconciler"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/webhook"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -180,30 +182,45 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	}
 
 	var tlsCert, tlsKey string
-	if kat.DeletionProtectionGVRs() != nil {
-		tlsCert, tlsKey, err = ensureSecurity(ctx, kfg, kat, kube)
+	var certMgr certmanager.Manager
+	if kat.NeedsCertificates() {
+		tlsCert, tlsKey, certMgr, err = ensureSecurity(ctx, kfg, kat, kube)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("security setup failed")
 		}
 
-		// If certs were generated, make them available to the HealthServer
-		// by setting them in kfg:
+		// Make generated certs available to the WebhookServer via kfg.
 		if tlsCert != "" {
 			logger.Debug().
 				Str("cert_file", tlsCert).
 				Str("cert_key", tlsKey).
-				Msg("passing cert to webhook")
+				Msg("passing generated TLS cert to webhook server")
 			kfg.Security().Webhooks.TLSCert = tlsCert
 			kfg.Security().Webhooks.TLSKey = tlsKey
 		}
 	}
 
-	// HealthServer — HTTP mux created now, routes registered below, Start()
-	// binds the port later. Routes must be registered before Start().
-	hs := health.NewHealthServer(kube.Clientset(), kat, kfg)
+	// HealthServer — HTTP-only (health, readiness, metrics, Katalog API routes).
+	// Routes registered below before Start() binds the port.
+	hs := health.NewHealthServer(kfg)
 
+	// WebhookServer — HTTPS admission and conversion webhook surface.
+	// Starts after HealthServer so /ready is live before webhook registration.
+	ws := webhook.NewWebhookServer(kube.Clientset(), kat, kfg)
+	if certMgr != nil {
+		ws.SetCertManager(certMgr)
+	}
+
+	// Event recorder — surfaces notable state changes to the Kubernetes event stream
+	// (visible via kubectl describe). Shared by all controllers that emit events.
 	ev := event.NewEvent(kube)
+
+	// Default work queue — rate-limiting reconcile queue shared by controllers that
+	// do not need a dedicated queue. Bounded to prevent runaway reconcile storms.
 	defaultWq := queue.NewWorkqueue()
+
+	// Queue registry — maps GVK strings to dedicated work queues. Controllers
+	// register here so that cross-controller enqueues are dispatched correctly.
 	queueRegistry := queue.NewQueueRegistry()
 
 	// ── 4a. REST client provider ──────────────────────────────────────────────
@@ -298,11 +315,44 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			opts.Wq = wq
 		}
 
+		// ── Namespace filter — Tier 1 (scope ListerWatcher) + Tier 2 (pre-enqueue) ──
+		// Tier 2 is always registered when namespace rules exist.
+		// Tier 1 scopes the ListerWatcher to a single namespace when allowedNamespaces
+		// has exactly one entry — the informer never sees events from other namespaces.
+		if len(crd.AllowedNamespaces) > 0 || len(crd.RestrictedNamespaces) > 0 {
+			filter := &informer.NamespaceFilter{
+				AllowedNamespaces:    []string(crd.AllowedNamespaces),
+				RestrictedNamespaces: []string(crd.RestrictedNamespaces),
+			}
+			if filter.IsSingleNamespace() {
+				opts.Namespace = filter.SingleNamespace()
+				logger.Debug().
+					Str("crd", crd.APITypes.Kind).
+					Str("namespace", opts.Namespace).
+					Msg("informer: namespace-scoped watch (Tier 1)")
+			}
+			infFactory.RegisterNamespaceFilter(gvk, filter)
+			logger.Debug().
+				Str("crd", crd.APITypes.Kind).
+				Str("filter", informer.NamespaceFilterSummary(filter)).
+				Msg("informer: namespace filter registered (Tier 2)")
+		}
+
 		// Choose typed or dynamic informer.
 		// Dynamic CRDs use *unstructured.Unstructured — no Go type needed.
 		// Typed CRDs use the registered concrete Go type for type-safe access.
 		var inf cache.SharedIndexInformer
 
+		// For dynamic CRDs, use opts.Namespace from the Tier 1 filter when set;
+		// otherwise fall back to crd.Namespace (operator-level namespace setting).
+		dynNamespace := crd.Namespace
+		if opts.Namespace != "" {
+			dynNamespace = opts.Namespace
+		}
+
+		logger.Debug().
+			Bool("dynamic:", crd.IsDynamic()).
+			Msgf("[DEBUG] CRD %s: location = %q\n", crd.APITypes.Kind, crd.APITypes.Location)
 		if crd.IsDynamic() {
 			lw := kube.NewDynamicListerWatcher(kubeclient.CRDInfo{
 				Kind:         crd.APITypes.Kind,
@@ -311,7 +361,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 				APIPath:      crd.APITypes.APIPath,
 				GroupVersion: crd.GroupVersion,
 				Plural:       crd.APITypes.Plural,
-				Namespace:    crd.Namespace,
+				Namespace:    dynNamespace,
 				Namespaced:   crd.IsNamespaced(),
 			}, kubeclient.ListOptions{
 				LabelSelector: labelSelector,
@@ -435,14 +485,16 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 				"/katalog/"+crdName,
 				kordinator.BuildCRDInfoHandler(
 					crd, kfg, inf, crdHealth,
-					hs.GetConversionStats(),
-					hs.GetAdmissionStats(),
-					hs.GetProtectionStats(),
-					hs.GetWebhookStats(),
-					isDeletionProtected,
+					ws.GetConversionStats(),
+					ws.GetAdmissionStats(),
+					ws.GetProtectionStats(),
+					ws.GetWebhookStats(),
 					providerStatsMap[gvk],
-					hs.GetNamespaceStats(),
+					ws.GetNamespaceStats(),
+					isDeletionProtected,
 					kat.IsNamespaceProtectionEnabled(),
+					kat.IsConversionEnabled(),
+					kat.IsAdmissionEnabled(),
 				),
 			)
 			hs.Register(
@@ -505,17 +557,18 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// Start order: each komponent must start after its dependencies.
 	// Stop order: reverse of start order (automatic).
 	//
-	// HealthServer starts first so it can serve /readyz during startup.
+	// HealthServer starts first so it can serve /ready during startup.
 	// Kubeclient is already started above but is still registered so
 	// orkestra manages its Stop().
 	komponents := []domain.Komponent{
-		hs,            // 1. HTTP server — /readyz, /livez, /katalog routes
-		kube,          // 2. REST clients — already started, managed for Stop()
-		ev,            // 3. event recorder — depends on kube
-		queueRegistry, // 4. per-CRD bounded queues
-		defaultWq,     // 5. default unbounded queue
-		infFactory,    // 6. informer factory — starts watchers, closes ready channel
-		kord,          // 7. dependency kordinator — starts workers in topo order
+		hs,            // 1. HTTP server — /ready, /livez, /katalog routes
+		ws,            // 2. HTTPS webhook server — /validate, /mutate, /convert, etc.
+		kube,          // 3. REST clients — already started, managed for Stop()
+		ev,            // 4. event recorder — depends on kube
+		queueRegistry, // 5. per-CRD bounded queues
+		defaultWq,     // 6. default unbounded queue
+		infFactory,    // 7. informer factory — starts watchers, closes ready channel
+		kord,          // 8. dependency kordinator — starts workers in topo order
 	}
 
 	// ── 8. Orkestra ───────────────────────────────────────────────────────────

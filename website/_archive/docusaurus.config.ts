@@ -10,7 +10,7 @@ const config: Config = {
   url: 'https://orkestra.sh',
   baseUrl: '/',
 
-  organizationName: 'iAlexeze',
+  organizationName: 'orkspace',
   projectName: 'orkestra',
 
   // Broken links in the existing docs should warn, not fail the build

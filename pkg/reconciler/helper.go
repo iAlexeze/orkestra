@@ -13,7 +13,7 @@ import (
 )
 
 // ── Label management ──────────────────────────────────────────────────────
-func (r *GenericReconciler[T]) ensureManagedLabel(ctx context.Context, obj T) error {
+func (r *GenericReconciler[PTR]) ensureManagedLabel(ctx context.Context, obj PTR) error {
 	labels := obj.GetLabels()
 	if labels == nil {
 		labels = map[string]string{}
@@ -31,7 +31,7 @@ func (r *GenericReconciler[T]) ensureManagedLabel(ctx context.Context, obj T) er
 }
 
 // ── Annotation management ──────────────────────────────────────────────────────
-func (r *GenericReconciler[T]) ensureManagedAnnotations(ctx context.Context, obj T, operator string) error {
+func (r *GenericReconciler[PTR]) ensureManagedAnnotations(ctx context.Context, obj PTR, operator string) error {
 	ann := obj.GetAnnotations()
 	if ann == nil {
 		ann = map[string]string{}
@@ -61,7 +61,7 @@ func (r *GenericReconciler[T]) ensureManagedAnnotations(ctx context.Context, obj
 
 // ── Finalizer management ──────────────────────────────────────────────────────
 
-func (r *GenericReconciler[T]) ensureFinalizers(ctx context.Context, obj T) error {
+func (r *GenericReconciler[PTR]) ensureFinalizers(ctx context.Context, obj PTR) error {
 	if len(r.crd.OperatorBox.Finalizers) == 0 {
 		return nil
 	}
@@ -99,7 +99,7 @@ func (r *GenericReconciler[T]) ensureFinalizers(ctx context.Context, obj T) erro
 	return r.kube.PatchFinalizers(ctx, obj, r.crd.GVR(), newFinalizers)
 }
 
-func (r *GenericReconciler[T]) removeFinalizers(ctx context.Context, obj T) error {
+func (r *GenericReconciler[PTR]) removeFinalizers(ctx context.Context, obj PTR) error {
 	if len(obj.GetFinalizers()) == 0 {
 		return nil
 	}

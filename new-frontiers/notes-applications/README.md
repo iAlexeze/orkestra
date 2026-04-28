@@ -20,7 +20,7 @@ Below is the complete operator, followed by a breakdown of how each helper is us
 ## Katalog: `multi-region-webapp`
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: multi-region-webapp

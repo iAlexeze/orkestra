@@ -16,6 +16,7 @@ Each generator reads one or more `katalog.yaml` files, merges them, and produces
 
 | Command     | Description                                                   |
 |-------------|---------------------------------------------------------------|
+| [katalog](./katalog.md)   | Scaffold a starter katalog.yaml for a new operator          |
 | [crd](./crd.md)           | Generate Kubernetes CRDs from a Katalog                     |
 | [cr](./cr.md)             | Generate example CustomResources for a CRD                  |
 | [registry](./registry.md) | Generate zz_generated_runtime_registry.go for typed operators |

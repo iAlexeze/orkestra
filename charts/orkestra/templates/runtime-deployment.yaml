@@ -26,15 +26,15 @@ spec:
       labels:
         {{- include "orkestra.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: runtime
-        {{- with .Values.podLabels }}
+        {{- with .Values.runtime.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-      {{- with .Values.podAnnotations }}
+      {{- with .Values.runtime.podAnnotations }}
       annotations:
-        {{- toYaml . | nindent 2 }}
+        {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {{- with .Values.runtime.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -58,21 +58,23 @@ spec:
             - name: LOG_LEVEL
               value: {{ .Values.runtime.config.logLevel | quote }}
             - name: ORK_PORT
-              value: {{ .Values.runtime.server.port | quote }}
+              value: {{ .Values.runtime.server.httpPort | quote }}
             - name: DEFAULT_WORKERS
               value: {{ .Values.runtime.config.defaultWorkers | quote }}
             - name: DEFAULT_RESYNC
               value: {{ .Values.runtime.config.defaultResync | quote }}
             - name: MAX_QUEUE_DEPTH
               value: {{ .Values.runtime.config.maxQueueDepth | quote }}
-            - name: ORK_ENV
+            - name: ORKESTRA_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: ORKESTRA_ENV
               value: {{ .Values.runtime.config.environment | quote }}
             - name: DEGRADE_THRESHOLD
               value: {{ .Values.runtime.config.degradeThreshold | quote }}
             - name: ORK_REGISTRY
-              value: {{ .Values.registry.url | quote }}
-            - name: ORK_NAMESPACE
-              value: {{ .Release.Namespace }}
+              value: {{ .Values.runtime.registry.url | quote }}
             {{- if .Values.runtime.leaderElection.enabled }}
             - name: LEADER_ELECTION
               value: "true"
@@ -101,20 +103,23 @@ spec:
             - name: TLS_KEY_FILE
               value: /tls/{{ $webhooks.keyKey }}
             {{- end }}
-            {{- with .Values.extraEnv }}
+            {{- with .Values.runtime.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
 
-          {{- with .Values.extraEnvFrom }}
+          {{- with .Values.runtime.extraEnvFrom }}
           envFrom:
             {{- toYaml . | nindent 12 }}
           {{- end }}
 
           ports:
             - name: http
-              containerPort: {{ .Values.runtime.server.port }}
+              containerPort: {{ .Values.runtime.server.httpPort }}
               protocol: TCP
-          
+            - name: https
+              containerPort: {{ .Values.runtime.server.httpsPort }}
+              protocol: TCP
+
           startupProbe:
             httpGet:
               path: /startup
@@ -156,7 +161,7 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
-            {{- with .Values.extraVolumeMounts }}
+            {{- with .Values.runtime.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
 
@@ -171,22 +176,27 @@ spec:
             name: {{ include "orkestra.katalogConfigMapName" . }}
         - name: tmp
           emptyDir: {}
-        {{- with .Values.extraVolumes }}
+        {{- with .Values.runtime.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
 
-      {{- with .Values.nodeSelector }}
+      {{- with .Values.runtime.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 
-      {{- with .Values.tolerations }}
+      {{- with .Values.runtime.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 
-      {{- with .Values.affinity }}
+      {{- with .Values.runtime.affinity }}
       affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with .Values.runtime.topologySpreadConstraints }}
+      topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 

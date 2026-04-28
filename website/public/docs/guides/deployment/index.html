@@ -961,21 +961,21 @@ production multi-cluster setup. Choose the path that matches your situation.</p>
 <hr>
 <h2 id="installation">Installation</h2>
 <h3 id="macos-homebrew">macOS (Homebrew)</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>brew tap iAlexeze/tap
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>brew tap orkspace/tap
 </span></span><span style="display:flex;"><span>brew install ork
 </span></span></code></pre></div><h3 id="linux--macos-curl">Linux / macOS (curl)</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | bash
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
 </span></span></code></pre></div><h3 id="options">Options</h3>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#6272a4"># Review before running</span>
-</span></span><span style="display:flex;"><span>curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh -o install.sh
+</span></span><span style="display:flex;"><span>curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh -o install.sh
 </span></span><span style="display:flex;"><span>less install.sh
 </span></span><span style="display:flex;"><span>bash install.sh
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># Pin to a specific version</span>
-</span></span><span style="display:flex;"><span>curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | <span style="color:#8be9fd;font-style:italic">ORK_VERSION</span><span style="color:#ff79c6">=</span>v0.1.1 bash
+</span></span><span style="display:flex;"><span>curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | <span style="color:#8be9fd;font-style:italic">ORK_VERSION</span><span style="color:#ff79c6">=</span>v0.1.1 bash
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># Install to a custom directory</span>
-</span></span><span style="display:flex;"><span>curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | <span style="color:#8be9fd;font-style:italic">ORK_INSTALL_DIR</span><span style="color:#ff79c6">=</span>~/.local/bin bash
+</span></span><span style="display:flex;"><span>curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | <span style="color:#8be9fd;font-style:italic">ORK_INSTALL_DIR</span><span style="color:#ff79c6">=</span>~/.local/bin bash
 </span></span></code></pre></div><h3 id="verify-the-binary-recommended">Verify the binary (recommended)</h3>
 <p>Every release is GPG-signed. To verify the binary before running it:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#6272a4"># Import the Orkestra public key (one time)</span>
@@ -1021,7 +1021,7 @@ deploying it to a cluster.</p>
 <h2 id="helm-deployment">Helm deployment</h2>
 <p>Helm is the recommended path for running Orkestra on a cluster.</p>
 <h3 id="add-the-chart-repository">Add the chart repository</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>helm repo add orkestra https://ialexeze.github.io/orkestra
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>helm repo add orkestra https://orkspace.github.io/orkestra
 </span></span><span style="display:flex;"><span>helm repo update
 </span></span></code></pre></div><h3 id="install-with-defaults">Install with defaults</h3>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>helm install orkestra orkestra/orkestra <span style="color:#f1fa8c">\
@@ -1037,7 +1037,7 @@ before running any real CRDs.</p>
 </span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># my-values.yaml</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">katalog</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">inline</span>: |<span style="color:#f1fa8c">
-</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    apiVersion: orkestra.konductor.io/v1Alpha
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    apiVersion: orkestra.orkspace.io/v1
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    kind: Katalog
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    metadata:
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">      name: my-katalog
@@ -1073,7 +1073,7 @@ before running any real CRDs.</p>
 a ConfigMap from it. Good for small operators and getting started.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">katalog</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">inline</span>: |<span style="color:#f1fa8c">
-</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    apiVersion: orkestra.konductor.io/v1Alpha
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    apiVersion: orkestra.orkspace.io/v1
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    kind: Katalog
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    ...</span>
 </span></span></code></pre></div><p><strong>Updating:</strong> change <code>values.yaml</code> and run <code>helm upgrade</code>. The ConfigMap
@@ -1102,7 +1102,7 @@ This is how platform teams distribute shared CRD definitions across clusters.</p
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">namespace</span>: orkestra-system
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">data</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">katalog.yaml</span>: |<span style="color:#f1fa8c">
-</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    apiVersion: orkestra.konductor.io/v1Alpha
+</span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    apiVersion: orkestra.orkspace.io/v1
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    kind: Komposer
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">    metadata:
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c">      name: platform-komposer
@@ -1123,7 +1123,7 @@ The namespace CRD is owned by the platform team. The database CRD is owned
 by the data team.</p>
 <p>With Komposer, each team maintains their own Katalog. The platform&rsquo;s Komposer
 composes them:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: platform-komposer
@@ -1329,7 +1329,7 @@ from landing on the same node. If a node goes down, one pod survives.</p>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">project</span>: default
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">source</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">repoURL</span>: https://ialexeze.github.io/orkestra
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">repoURL</span>: https://orkspace.github.io/orkestra
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">chart</span>: orkestra
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">targetRevision</span>: <span style="color:#bd93f9">0.1.0</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">helm</span>:
@@ -1376,7 +1376,7 @@ CRD definitions without touching the Orkestra deployment.</p>
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">namespace</span>: flux-system
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">interval</span>: 1h
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">url</span>: https://ialexeze.github.io/orkestra
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">url</span>: https://orkspace.github.io/orkestra
 </span></span></code></pre></div><hr>
 <h2 id="multi-cluster">Multi-cluster</h2>
 <p>Each cluster runs its own Orkestra instance. There is no cross-cluster

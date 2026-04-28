@@ -19,12 +19,7 @@ var validateCmd = &cobra.Command{
 		}
 
 		var k katalog.Katalog
-		entries, err := k.KomposeKatalogFromYaml(kfg, m.m)
-		if err != nil {
-			return err
-		}
-
-		_, err = k.ValidateConfig(kfg)
+		entries, err := k.KomposeRuntimeKatalog(kfg, m.m)
 		if err != nil {
 			return err
 		}
@@ -32,6 +27,11 @@ var validateCmd = &cobra.Command{
 		fmt.Println()
 		fmt.Println(utils.Bold("Validating Katalog..."))
 		fmt.Println()
+
+		_, err = k.ValidateConfig(kfg)
+		if err != nil {
+			return err
+		}
 
 		builtIn := 0
 		custom := 0

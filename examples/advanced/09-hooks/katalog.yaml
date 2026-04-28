@@ -1,4 +1,4 @@
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: database-operator
@@ -16,11 +16,14 @@ spec:
         version: v1alpha1
         kind: Database
         plural: databases
+        object: Database
+        objectList: DatabaseList
         # location enables typed mode — the informer decodes API server
         # responses into *apiv1.Database rather than *unstructured.Unstructured.
         # Required when hooks need type-safe struct access.
         # After setting this, run: ork generate registry --katalog katalog.yaml
-        location: 09-hooks-example/09-hooks/v1alpha1
+        location: github.com/orkspace/orkestra-hooks-demo/api/v1alpha1
+        alias: demov1alpha1
 
       workers: 3
       resync: 30s
@@ -31,8 +34,9 @@ spec:
         # Hooks run INSTEAD OF declarative templates when OnReconcile is defined.
         # The hook calls OrkestraRegistry directly for Kubernetes resources.
         hooks:
-          location: 09-hooks-example/09-hooks/hooks
+          location: github.com/orkspace/orkestra-hooks-demo/hooks
           function: DatabaseHooks
+          alias: dbhooks
 
         # Status Layer 1 (Ready condition) is always automatic.
         # Layer 2 fields are still written after the hook completes.

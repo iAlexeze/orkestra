@@ -96,7 +96,7 @@ makes that possible.
 You write a Katalog:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 spec:
   crds:

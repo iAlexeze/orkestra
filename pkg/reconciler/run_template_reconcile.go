@@ -25,7 +25,7 @@ import (
 // runTemplateReconcile interprets the Katalog's onCreate and onReconcile blocks.
 // Returns the enriched resolver so callers (reconcileImpl) can pass cross/external
 // data into patchStatusWithChildren for status field evaluation.
-func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, resolver *orktmpl.Resolver, obj domain.Object) (*orktmpl.Resolver, error) {
+func (r *GenericReconciler[PTR]) runTemplateReconcile(ctx context.Context, resolver *orktmpl.Resolver, obj domain.Object) (*orktmpl.Resolver, error) {
 	kube, ok := kubeclient.FromContext(ctx)
 	if !ok {
 		return resolver, fmt.Errorf("kubeclient not found in context")
@@ -124,7 +124,7 @@ func (r *GenericReconciler[T]) runTemplateReconcile(ctx context.Context, resolve
 
 // runResourceGroup dispatches all resource types in one HookTemplates block.
 // forEach expansion happens here — run_*.go receives already-expanded slices.
-func (r *GenericReconciler[T]) runResourceGroup(
+func (r *GenericReconciler[PTR]) runResourceGroup(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
 	resolver *orktmpl.Resolver,
@@ -202,7 +202,7 @@ func (r *GenericReconciler[T]) runResourceGroup(
 }
 
 // runTemplateOnDelete interprets the onDelete block.
-func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, resolver *orktmpl.Resolver, obj domain.Object) error {
+func (r *GenericReconciler[PTR]) runTemplateOnDelete(ctx context.Context, resolver *orktmpl.Resolver, obj domain.Object) error {
 	kube, ok := kubeclient.FromContext(ctx)
 	if !ok {
 		return fmt.Errorf("kubeclient not found in context")
@@ -227,6 +227,12 @@ func (r *GenericReconciler[T]) runTemplateOnDelete(ctx context.Context, resolver
 		}
 	}
 
+	// Namespaces are cluster-scoped resources — Kubernetes GC does not honor
+	// owner references from namespace-scoped owners, so we delete them explicitly.
+	if err := deleteOwnedNamespaces(ctx, kube, resolver, obj, r.operatorBox); err != nil {
+		return fmt.Errorf("namespace cleanup: %w", err)
+	}
+
 	return nil
 }
 
@@ -245,7 +251,7 @@ func crossDataKeys(m map[string]interface{}) []string {
 //  1. Informer cache via r.katalogRegistry — zero API calls, same-binary CRDs
 //  2. HTTP endpoint (decl.Source.Endpoint) — cross-binary, cross-cluster
 //  3. Empty not-found map — when neither path is available
-func (r *GenericReconciler[T]) readCross(
+func (r *GenericReconciler[PTR]) readCross(
 	ctx context.Context,
 	obj domain.Object,
 	decls []orktypes.CrossCRDDeclaration,

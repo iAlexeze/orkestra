@@ -1,4 +1,4 @@
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: orkspace-fanout
@@ -56,11 +56,12 @@ spec:
             - path: phase
               value: "FanOutComplete"
               when:
-                - field: children.deployment.status.readyReplicas
-                  operator: exists
+                - field: "{{ readyReplicas .children.deployment }}"
+                  operator: gt
+                  value: "0"
               # when:
-              #   - field: "{{ .children.replicaset.status.readyReplicas }}"
-              #     equals: "{{ .spec.replicas }}"
+              #   - field: "{{ replicasReady .children.replicaset }}"
+              #     equals: "true"
 
             - path: observedReplicas
               value: "{{ .spec.replicas }}"

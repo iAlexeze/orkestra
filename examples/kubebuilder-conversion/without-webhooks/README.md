@@ -37,9 +37,37 @@ spec:
 
 ---
 
-## How it works
+## How it works — two approaches
 
-`typeOf .spec.schedule` returns `"string"` or `"map"` — the runtime type of the value.
+### Approach A: normalize block (recommended)
+
+`normalize.spec` runs before mutation, validation, and all template rendering.
+It rewrites the in-memory spec — the raw CR in etcd is unchanged.
+
+```yaml
+normalize:
+  spec:
+    schedule: "{{ cronFromAny .spec.schedule }}"
+```
+
+`cronFromAny` accepts both a cron string and a structured map and always produces
+a canonical five-field cron string. After normalize, `.spec.schedule` is always a
+plain string everywhere downstream — `onReconcile`, status fields, validation.
+No branching needed anywhere.
+
+```yaml
+onReconcile:
+  cronJobs:
+    - name: "{{ .metadata.name }}"
+      schedule: "{{ .spec.schedule }}"   # always a string after normalize
+      image: "{{ .spec.image }}"
+```
+
+See `normalize-powered-katalog.yaml` for the complete version.
+
+### Approach B: typeOf branching (no normalize)
+
+`typeOf .spec.schedule` returns `"string"` or `"map"` at runtime.
 `when:` conditions branch on this. Only one CronJob declaration fires per reconcile.
 
 ```yaml
@@ -56,7 +84,7 @@ onReconcile:
 
     # Path B — user wrote structured fields
     - name: "{{ .metadata.name }}"
-      schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+      schedule: "{{ cronFromMap .spec.schedule }}"   # input is guaranteed map by when:
       image: "{{ .spec.image }}"
       when:
         - field: spec.schedule
@@ -65,8 +93,7 @@ onReconcile:
 ```
 
 The created Kubernetes CronJob is identical regardless of which format the user
-chose. Orkestra normalizes at creation time. No stored v1 objects. No conversion
-needed on read.
+chose. No stored v1 objects. No conversion needed on read.
 
 ---
 
@@ -134,7 +161,7 @@ complete operator definition in both cases.
 ## Complete Katalog
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: cronjob-operator
@@ -191,11 +218,9 @@ spec:
             - path: scheduleFormat
               value: "{{ typeOf .spec.schedule }}"
 
-            # The canonical cron expression — same regardless of input format.
-            # String format: use as-is.
-            # Structured format: reconstruct with cronExpr.
+            # The canonical cron expression — cronFromAny accepts string or map.
             - path: scheduleExpression
-              value: "{{ if eq (typeOf .spec.schedule) \"map\" }}{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}{{ else }}{{ .spec.schedule }}{{ end }}"
+              value: "{{ cronFromAny .spec.schedule }}"
 
             # When schedule is structured: show how many fields are defined.
             # Useful for validating partial structured schedules in the UI.
@@ -207,7 +232,7 @@ spec:
             - path: concurrencyPolicy
               value: "{{ .spec.concurrencyPolicy }}"
             - path: lastScheduleTime
-              value: "{{ .children.cronjob.status.lastScheduleTime }}"
+              value: "{{ get .children.cronjob \"status\" \"lastScheduleTime\" }}"
 
         onReconcile:
           cronJobs:
@@ -227,13 +252,10 @@ spec:
                   value: string
 
             # ── Path B: user wrote structured fields ──────────────────────────
-            # typeOf .spec.schedule == "map"
-            # Reconstruct the standard cron expression using cronExpr.
-            # The Kubernetes CronJob always receives a plain cron string —
-            # it does not know which format the user originally wrote.
+            # typeOf .spec.schedule == "map" — input is guaranteed a map here.
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
-              schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+              schedule: "{{ cronFromMap .spec.schedule }}"
               suspend: "{{ .spec.suspend }}"
               successfulJobsHistoryLimit: "{{ .spec.successfulJobsHistoryLimit }}"
               failedJobsHistoryLimit: "{{ .spec.failedJobsHistoryLimit }}"
@@ -365,9 +387,10 @@ take down all their CronJob CRs. The ConfigMap is permanent infrastructure.
 
 | Note | What it does | Used for |
 |---|---|---|
-| `typeOf .spec.schedule` | Returns `"string"` or `"map"` at runtime | Branching between schedule formats |
+| `cronFromAny .spec.schedule` | Accepts string or map, returns canonical cron string | normalize block, status, any unknown-shape input |
+| `cronFromMap .spec.schedule` | Accepts map only, errors on string | onReconcile Path B (behind `typeOf: map` gate) |
+| `typeOf .spec.schedule` | Returns `"string"` or `"map"` at runtime | Branching in Approach B (no normalize) |
 | `len .spec.schedule` | Returns field count for maps, char count for strings | Showing schedule completeness in status |
-| `cronExpr min hr dom mon dow` | Reconstructs canonical cron string | Path B: normalizing structured schedule |
 | `ternary .spec.suspend "Suspended" "Active"` | Conditional value | Phase field |
 | `default .spec.concurrencyPolicy "Allow"` | Field default with fallback | Mutation defaults |
 

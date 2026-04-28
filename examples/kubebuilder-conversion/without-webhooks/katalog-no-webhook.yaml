@@ -1,12 +1,16 @@
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: cronjob-operator
   description: >
-    Single-version CronJob operator. Accepts both cron strings and structured
-    schedule maps. Format detected via typeString/typeMap — no conversion
-    webhook, no TLS, no multi-version CRD complexity.
-    Run with: ork run -k katalog-no-webhook.yaml
+    Single-version CronJob operator. Accepts both cron string and structured
+    schedule formats. normalize.spec collapses all inputs into a canonical cron
+    string before any reconcile logic runs. No typeOf branching needed anywhere.
+    No webhooks. No multi-version CRD. Run with: ork run -k katalog-no-webhook.yaml
+
+security:
+  deletionProtection:
+    enabled: true
 
 spec:
   crds:
@@ -18,9 +22,30 @@ spec:
         plural: cronjobs
 
       workers: 5
-      resync: 15s
+      resync: 45s
 
-      # Defaults applied before validation
+      # normalize runs before mutation, validation, and template rendering.
+      # Produces an in-memory canonical spec — raw CR in etcd is unchanged.
+      # After this, .spec.schedule is ALWAYS a plain cron string.
+      # ── 1. Normalize: map/string → canonical cron string ─────────────────
+      #
+      # Users can write:
+      #   spec.schedule: "*/5 * * * *"
+      # or:
+      #   spec.schedule:
+      #     minute: "*/5"
+      #     hour: "*"
+      #     dayOfMonth: "*"
+      #     month: "*"
+      #     dayOfWeek: "*"
+      #
+      # After normalize:
+      #   .spec.schedule is always a canonical cron string, e.g. "*/5 * * * *".
+      #
+      normalize:
+        spec:
+          schedule: "{{ cronFromAny .spec.schedule }}"
+
       mutation:
         mutateFirst: true
         rules:
@@ -45,100 +70,34 @@ spec:
             action: deny
 
       operatorBox:
+        finalizers:
+          - finalizer.cron.orkestra.io/cron-normalizer
         default: true
 
         status:
           fields:
-            # Phase: Active or Suspended
             - path: phase
               value: "{{ boolTernary .spec.suspend \"Suspended\" \"Active\" }}"
-
-            # "string" or "map"
-            - path: scheduleFormat
-              value: "{{ typeOf .spec.schedule }}"
-
-            # Canonical cron expression (string always)
             - path: scheduleExpression
-              value: >
-                {{ if typeMap .spec.schedule }}
-                  {{ cronFromMap .spec.schedule }}
-                {{ else }}
-                  {{ cronNormalize .spec.schedule }}
-                {{ end }}
-
-            # Structured schedules: number of fields defined
-            # String schedules: 1
-            - path: scheduleFieldsDefined
-              value: >
-                {{ if typeMap .spec.schedule }}
-                  {{ len .spec.schedule }}
-                {{ else }}
-                  1
-                {{ end }}"
-
-            # Human-readable description
+              value: "{{ .spec.schedule }}"
             - path: scheduleDescription
-              value: >
-                {{ if typeMap .spec.schedule }}
-                  {{ cronDescribe (cronFromMap .spec.schedule) }}
-                {{ else }}
-                  {{ cronDescribe .spec.schedule }}
-                {{ end }}
-
+              value: "{{ cronDescribe .spec.schedule }}"
             - path: image
               value: "{{ .spec.image }}"
             - path: concurrencyPolicy
               value: "{{ .spec.concurrencyPolicy }}"
-
-            # Propagated from child CronJob
             - path: lastScheduleTime
-              value: "{{ .children.cronjob.status.lastScheduleTime }}"
+              value: "{{ get .children.cronjob \"status\" \"lastScheduleTime\" }}"
             - path: nextScheduleTime
-              value: "{{ .children.cronjob.status.nextScheduleTime }}"
+              value: "{{ get .children.cronjob \"status\" \"nextScheduleTime\" }}"
 
         onCreate:
           cronJobs:
-
-            # ────────────────────────────────────────────────────────────────
-            # Path A — schedule is a plain string
-            # ────────────────────────────────────────────────────────────────
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
-              schedule: "{{ cronNormalize .spec.schedule }}"
+              schedule: "{{ .spec.schedule }}"
               suspend: "{{ .spec.suspend }}"
               successfulJobsHistoryLimit: "{{ .spec.successfulJobsHistoryLimit }}"
               failedJobsHistoryLimit: "{{ .spec.failedJobsHistoryLimit }}"
               concurrencyPolicy: "{{ .spec.concurrencyPolicy }}"
-              when:
-                - field: spec.schedule
-                  operator: typeString
-
-            # ────────────────────────────────────────────────────────────────
-            # Path B — schedule is a structured map
-            # ────────────────────────────────────────────────────────────────
-            - name: "{{ .metadata.name }}"
-              image: "{{ .spec.image }}"
-              schedule: "{{ cronFromMap .spec.schedule }}"
-              suspend: "{{ .spec.suspend }}"
-              successfulJobsHistoryLimit: "{{ .spec.successfulJobsHistoryLimit }}"
-              failedJobsHistoryLimit: "{{ .spec.failedJobsHistoryLimit }}"
-              concurrencyPolicy: "{{ .spec.concurrencyPolicy }}"
-              when:
-                - field: spec.schedule
-                  operator: typeMap
-        
-        onReconcile:  # This is defined to avoid the error on the UI during reconcile when orkestra still reads from the original CR
-          cronJobs:
-            - name: "{{ .metadata.name }}"
-              schedule: >
-                {{ if typeMap .spec.schedule }}
-                  {{ cronFromMap .spec.schedule }}
-                {{ else }}
-                  {{ cronNormalize .spec.schedule }}
-                {{ end }}
-              image: "{{ .spec.image }}"
-              suspend: "{{ .spec.suspend }}"
-              successfulJobsHistoryLimit: "{{ .spec.successfulJobsHistoryLimit }}"
-              failedJobsHistoryLimit: "{{ .spec.failedJobsHistoryLimit }}"
-              concurrencyPolicy: "{{ .spec.concurrencyPolicy }}"
-
+              reconcile: true

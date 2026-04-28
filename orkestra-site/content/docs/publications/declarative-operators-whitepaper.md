@@ -127,7 +127,7 @@ A Katalog is a YAML document that declares one or more CRDs and how they
 should be reconciled. It is the unit of operator definition in Orkestra.
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-operator
@@ -236,7 +236,7 @@ orphaned resources.
 A Komposer composes Katalogs from multiple sources into one runtime:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform-komposer

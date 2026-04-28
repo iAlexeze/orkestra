@@ -13,10 +13,23 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show Orkestra version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(utils.OrkestraLogoCLI)
-		fmt.Printf("Orkestra version: %s\n", version.Short())
-		fmt.Printf("Commit:           %s\n", version.Commit)
-		fmt.Printf("Built:            %s\n", version.Date)
+		verbose, _ := cmd.Flags().GetBool("verbose")
+
+		if verbose {
+			fmt.Println(utils.OrkestraLogoCLI)
+			fmt.Println("Orkestra")
+			fmt.Printf("%-12s %s\n", "Version:", version.Short())
+			fmt.Printf("%-12s %s\n", "Commit:", version.Commit)
+			fmt.Printf("%-12s %s\n", "Built:", version.Date)
+			return
+		}
+
+		fmt.Printf(
+			"ork %s (commit %s, built %s)\n",
+			version.Short(),
+			version.Commit,
+			version.Date,
+		)
 	},
 }
 
@@ -27,7 +40,6 @@ func init() {
 	versionCmd.Flags().Bool("debug", false, "")
 	versionCmd.Flags().String("kubeconfig", "", "")
 	versionCmd.Flags().StringSlice("katalog", nil, "")
-	versionCmd.Flags().Bool("verbose", false, "")
 
 	// Hide them from help output
 	versionCmd.Flags().MarkHidden("debug")

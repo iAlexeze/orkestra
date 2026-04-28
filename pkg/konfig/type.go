@@ -57,6 +57,9 @@ type registryConfig struct {
 //
 // Precedence: Katalog YAML > SecurityConfig (ENV) > hard default.
 type SecurityConfig struct {
+	// One service name per orkestra instance
+	ServiceName string
+
 	DeletionProtection struct {
 		Enabled           bool
 		CleanupOnShutdown bool
@@ -85,7 +88,8 @@ type SecurityConfig struct {
 	Conversion struct {
 		Enabled bool
 		// ConversionWindow is the rolling window size for latency/throughput stats.
-		ConversionWindow int
+		ConversionWindow  int
+		CleanupOnShutdown bool // TODO
 	}
 
 	// NamespaceProtection controls the optional validating webhook that prevents
@@ -206,6 +210,11 @@ func (k *Konfig) Ork() *orkKonfig {
 	return &k.ork
 }
 
+// Orkestra service name
+func (k *Konfig) OrkestraServiceName() string {
+	return k.security.ServiceName
+}
+
 // Cluster returns cluster Konfigurations
 func (k *Konfig) Cluster() *clusterKonfig {
 	return &k.cluster
@@ -268,6 +277,17 @@ func (k *Konfig) HTTPSPortInt32() int32 {
 // OrkestraResourceSelector returns the internal label selector for orkestra control plane resources
 func (k *Konfig) OrkestraResourceSelector() *metav1.LabelSelector {
 	return orkestraResourceSelector
+}
+
+// OrkestraBaseLabels returns a copy of the standard Orkestra control-plane labels.
+// It can be called without a Konfig instance — useful in generators and CLI commands
+// that do not load the full operator configuration.
+func OrkestraBaseLabels() map[string]string {
+	out := make(map[string]string, len(orkestraResourceLabels))
+	for k, v := range orkestraResourceLabels {
+		out[k] = v
+	}
+	return out
 }
 
 // OrkestraResourceLabels returns the internal labels for orkestra control plane resources

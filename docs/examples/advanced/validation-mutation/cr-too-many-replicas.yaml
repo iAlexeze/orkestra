@@ -2,7 +2,7 @@
 # Test case F: SHOULD BE REJECTED at admission time
 #
 # Expected with ENABLE_ADMISSION_WEBHOOK=true:
-#   Error from server: admission webhook "validate.orkestra.konductor.io" denied the request:
+#   Error from server: admission webhook "validate.orkestra.orkspace.io" denied the request:
 #   [orkestra] validation failed: field "spec.replicas": replicas cannot exceed 10
 #   — contact platform team for exceptions (got: "15")
 apiVersion: demo.orkestra.io/v1alpha1

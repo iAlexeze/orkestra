@@ -32,7 +32,7 @@ Orkestra removes that entirely.
 
 ```yaml
 # Declare
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-operator
@@ -107,10 +107,6 @@ brew install orkspace/tap/ork orkspace/tap/orkcc
 # Install (Linux)
 curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
 
-# Install (Windows)
-winget install Orkspace.Orkestra
-winget install Orkspace.Orkestra Orkspace.OrkestraControlCenter
-
 # Initialize an operator
 ork init my-operator
 cd my-operator
@@ -140,7 +136,7 @@ For production, deploy with Helm:
 
 ```bash
 helm install orkestra orkestra/orkestra \
-  --set katalog.configMap=my-platform-katalog \
+  --set runtime.katalog.existingConfigMap=my-platform-katalog \
   --namespace orkestra-system \
   --create-namespace
 ```
@@ -290,7 +286,7 @@ operatorBox:
       - path: endpoint
         value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
       - path: readyReplicas
-        value: "{{ .children.deployment.status.readyReplicas }}"
+        value: "{{ get .children.deployment "status" "readyReplicas" }}"
 ```
 
 Status fields are resolved from the live CR and its children after every reconcile. No `updateStatus` calls. No diff logic. Declare what the status should contain. Orkestra writes it.
@@ -312,12 +308,12 @@ conversion:
     - from: v1
       to: v2
       spec:
-        schedule: "{{ cronFromMap .spec.schedule }}"
+        schedule: "{{ cronToMap .spec.schedule }}"
 
     - from: v2
       to: v1
       spec:
-        schedule: "{{ cronNormalize .spec.schedule }}"
+        schedule: "{{ cronFromMap .spec.schedule }}"
 ```
 
 **In production:** 11,279 conversions. 0 failures. 0.59 ms average latency.
@@ -359,9 +355,9 @@ operatorBox:
         image: "{{ .spec.image }}"
         env:
           DB_HOST:
-            value: "{{ .cross.db.status.endpoint }}"
+            value: "{{ get .cross.db "status" "endpoint" }}"
         when:
-          - field: cross.db.status.phase
+          - field: "{{ phase .cross.db }}"
             equals: Ready
 ```
 
@@ -391,8 +387,8 @@ operatorBox:
         when:
           - field: status.phase
             equals: "Running/build"
-          - field: children.job.status.succeeded
-            greaterThan: "0"
+          - field: "{{ jobSucceeded .children.job }}"
+            equals: "true"
 
       # Step 3 — notify after tests pass
       - name: "{{ .metadata.name }}-notify"
@@ -400,23 +396,23 @@ operatorBox:
         when:
           - field: status.phase
             equals: "Running/test"
-          - field: children.job.status.succeeded
-            greaterThan: "0"
+          - field: "{{ jobSucceeded .children.job }}"
+            equals: "true"
 
   status:
     fields:
       - path: phase
         value: "Running/build"
         when:
-          - field: children.job.metadata.name
+          - field: "{{ name children.job }}"
             hasSuffix: "-build"
       - path: phase
         value: "Succeeded"
         when:
           - field: status.phase
             equals: "Running/notify"
-          - field: children.job.status.succeeded
-            greaterThan: "0"
+          - field: "{{ jobSucceeded .children.job }}"
+            equals: "true"
 ```
 
 Each reconcile advances one step and writes one state. The queue fires again on the next resync. This is level-triggered reconciliation — idempotent by design.
@@ -527,13 +523,13 @@ operatorBox:
 Pull Katalogs from files, Helm, Git, or OCI registries:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform
 sources:
   registry:
-    - url: ghcr.io/konduktor-io/orkestra-registry/postgres@v14
+    - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
       oci: true
   files:
     - ./katalogs/website.yaml

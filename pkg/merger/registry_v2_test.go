@@ -17,10 +17,10 @@ import (
 
 func TestResolvedURL_AtShorthand(t *testing.T) {
 	src := orktypes.RegistrySource{
-		URL: "ghcr.io/konduktor-io/orkestra-registry/postgres@v14",
+		URL: "ghcr.io/orkspace/orkestra-registry/postgres@v14",
 	}
 	url, version := src.ResolvedURL()
-	if url != "ghcr.io/konduktor-io/orkestra-registry/postgres" {
+	if url != "ghcr.io/orkspace/orkestra-registry/postgres" {
 		t.Errorf("url: expected stripped @, got %q", url)
 	}
 	if version != "v14" {
@@ -43,11 +43,11 @@ func TestResolvedURL_AtShorthand_GitURL(t *testing.T) {
 
 func TestResolvedURL_ExplicitVersion(t *testing.T) {
 	src := orktypes.RegistrySource{
-		URL:     "ghcr.io/konduktor-io/orkestra-registry/postgres",
+		URL:     "ghcr.io/orkspace/orkestra-registry/postgres",
 		Version: "v14.2.0",
 	}
 	url, version := src.ResolvedURL()
-	if url != "ghcr.io/konduktor-io/orkestra-registry/postgres" {
+	if url != "ghcr.io/orkspace/orkestra-registry/postgres" {
 		t.Errorf("url: expected unchanged, got %q", url)
 	}
 	if version != "v14.2.0" {
@@ -57,7 +57,7 @@ func TestResolvedURL_ExplicitVersion(t *testing.T) {
 
 func TestResolvedURL_AtShorthand_Takes_Priority(t *testing.T) {
 	src := orktypes.RegistrySource{
-		URL:     "ghcr.io/konduktor-io/orkestra-registry/postgres@v14",
+		URL:     "ghcr.io/orkspace/orkestra-registry/postgres@v14",
 		Version: "v15",
 	}
 	_, version := src.ResolvedURL()
@@ -68,7 +68,7 @@ func TestResolvedURL_AtShorthand_Takes_Priority(t *testing.T) {
 
 func TestResolvedURL_DefaultVersion_OCI(t *testing.T) {
 	src := orktypes.RegistrySource{
-		URL: "ghcr.io/konduktor-io/orkestra-registry/postgres",
+		URL: "ghcr.io/orkspace/orkestra-registry/postgres",
 		OCI: true,
 	}
 	_, version := src.ResolvedURL()
@@ -199,7 +199,7 @@ func TestValidatePatternStructure_MultipleViolations_AllReported(t *testing.T) {
 // by serving files at raw.githubusercontent.com-like paths on a test server.
 // They use ExportedGitHubRawURL to construct the expected request paths.
 
-var v2KatalogYAML = []byte(`apiVersion: orkestra.konductor.io/v1Alpha
+var v2KatalogYAML = []byte(`apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: test-katalog
@@ -223,7 +223,7 @@ func v2PatternServer(t *testing.T, version string, overrides map[string][]byte) 
 	files := map[string][]byte{
 		"/" + version + "/crd.yaml":      []byte("kind: CustomResourceDefinition"),
 		"/" + version + "/katalog.yaml":  v2KatalogYAML,
-		"/" + version + "/komposer.yaml": []byte("apiVersion: orkestra.konductor.io/v1Alpha\nkind: Komposer\nmetadata:\n  name: c\nspec:\n  crds:\n    - name: myapp\n      enabled: true\n      apiTypes:\n        group: test.orkestra.io\n        version: v1alpha1\n        kind: MyApp\n        plural: myapps\n"),
+		"/" + version + "/komposer.yaml": []byte("apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: c\nspec:\n  crds:\n    - name: myapp\n      enabled: true\n      apiTypes:\n        group: test.orkestra.io\n        version: v1alpha1\n        kind: MyApp\n        plural: myapps\n"),
 		"/" + version + "/cr.yaml":       []byte("kind: MyApp"),
 		"/" + version + "/README.md":     []byte("# MyApp"),
 	}

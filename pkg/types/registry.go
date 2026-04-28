@@ -14,12 +14,12 @@ import "strings"
 //
 // URL shorthand — version inline with @:
 //
-//   - url: ghcr.io/konduktor-io/orkestra-registry/postgres@v14
+//   - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
 //     oci: true
 //
 // Explicit form:
 //
-//   - url: ghcr.io/konduktor-io/orkestra-registry/postgres
+//   - url: ghcr.io/orkspace/orkestra-registry/postgres
 //     version: v14
 //     oci: true
 //
@@ -47,10 +47,10 @@ type RegistrySource struct {
 	// URL — the registry URL.
 	//
 	// Git:  https://github.com/myorg/orkestra-registry
-	// OCI:  ghcr.io/konduktor-io/orkestra-registry/postgres
+	// OCI:  ghcr.io/orkspace/orkestra-registry/postgres
 	//
 	// Shorthand — embed version with @:
-	//   ghcr.io/konduktor-io/orkestra-registry/postgres@v14
+	//   ghcr.io/orkspace/orkestra-registry/postgres@v14
 	//   https://github.com/myorg/registry@main
 	//
 	// When @ is present, Version field is ignored.

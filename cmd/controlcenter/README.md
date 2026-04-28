@@ -63,10 +63,10 @@ Install the `ork` CLI – the control center is built right in.
 
 ```bash
 # macOS
-brew tap iAlexeze/tap && brew install ork
+brew tap orkspace/tap && brew install ork
 
 # Linux
-curl -sSL https://raw.githubusercontent.com/iAlexeze/orkestra/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
 
 # Verify installation
 ork version
@@ -137,7 +137,7 @@ helm upgrade --install orkestra orkestra/orkestra -f values.yaml
 docker run -d \
   --name orkestra-cc \
   -p 8090:8090 \
-  ghcr.io/iAlexeze/orkestra-cc:latest \
+  ghcr.io/orkspace/orkestra-cc:latest \
   -u "http://host.docker.internal:8080,http://host.docker.internal:8081"
 ```
 
@@ -274,6 +274,18 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 ## License
 
 Apache license – see [LICENSE](LICENSE) file for details.
+
+## Developer documentation
+
+For maintainers and contributors who need to understand the internals:
+
+| I want to… | Go to |
+|-----------|-------|
+| Understand the overall architecture and boot sequence | [docs/01-architecture.md](docs/01-architecture.md) |
+| Understand URL routing and how requests are dispatched | [docs/02-routing.md](docs/02-routing.md) |
+| Understand how data flows from runtime to the UI | [docs/03-data-flow.md](docs/03-data-flow.md) |
+| Understand the UI design system and CSS | [docs/04-ui-design.md](docs/04-ui-design.md) |
+| Understand runtime manager, instance storage, env vars | [docs/05-runtime-manager.md](docs/05-runtime-manager.md) |
 
 ## Related Projects
 

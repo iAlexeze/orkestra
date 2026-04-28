@@ -14,7 +14,7 @@ Teams compose them into Komposers. Environment-specific overrides are inline
 ## Document structure
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha    # required
+apiVersion: orkestra.orkspace.io/v1    # required
 kind: Komposer                               # required
 
 metadata:
@@ -190,7 +190,7 @@ its five-file structure, and loads either `katalog.yaml` or `komposer.yaml`.
 ```yaml
 sources:
   registry:
-    - url: ghcr.io/konduktor-io/orkestra-registry/postgres@v14
+    - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
       oci: true
 
     - url: https://github.com/myorg/registry@main
@@ -214,10 +214,10 @@ sources:
 
 ```yaml
 # These are equivalent:
-- url: ghcr.io/konduktor-io/orkestra-registry/postgres@v14
+- url: ghcr.io/orkspace/orkestra-registry/postgres@v14
   oci: true
 
-- url: ghcr.io/konduktor-io/orkestra-registry/postgres
+- url: ghcr.io/orkspace/orkestra-registry/postgres
   version: v14
   oci: true
 ```

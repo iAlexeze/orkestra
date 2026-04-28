@@ -965,7 +965,7 @@ Teams compose them into Komposers. Environment-specific overrides are inline
 <code>spec.crds</code> entries that win over any source definition.</p>
 <hr>
 <h2 id="document-structure">Document structure</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.konductor.io/v1Alpha    <span style="color:#6272a4"># required</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1    <span style="color:#6272a4"># required</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer                               <span style="color:#6272a4"># required</span>
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
@@ -1211,7 +1211,7 @@ Workers, resync, and other per-CRD settings can be driven by Helm values.</p>
 its five-file structure, and loads either <code>katalog.yaml</code> or <code>komposer.yaml</code>.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">registry</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: ghcr.io/konduktor-io/orkestra-registry/postgres@v14
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: ghcr.io/orkspace/orkestra-registry/postgres@v14
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">oci</span>: <span style="color:#ff79c6">true</span>
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://github.com/myorg/registry@main
@@ -1289,10 +1289,10 @@ its five-file structure, and loads either <code>katalog.yaml</code> or <code>kom
 </table>
 <p><strong>URL shorthand:</strong></p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># These are equivalent:</span>
-</span></span><span style="display:flex;"><span>- <span style="color:#ff79c6">url</span>: ghcr.io/konduktor-io/orkestra-registry/postgres@v14
+</span></span><span style="display:flex;"><span>- <span style="color:#ff79c6">url</span>: ghcr.io/orkspace/orkestra-registry/postgres@v14
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">oci</span>: <span style="color:#ff79c6">true</span>
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>- <span style="color:#ff79c6">url</span>: ghcr.io/konduktor-io/orkestra-registry/postgres
+</span></span><span style="display:flex;"><span>- <span style="color:#ff79c6">url</span>: ghcr.io/orkspace/orkestra-registry/postgres
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">version</span>: v14
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">oci</span>: <span style="color:#ff79c6">true</span>
 </span></span></code></pre></div><p><strong>Version defaults:</strong></p>

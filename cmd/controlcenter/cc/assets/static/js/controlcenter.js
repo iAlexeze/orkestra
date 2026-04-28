@@ -18,7 +18,6 @@
     localStorage.setItem(THEME_KEY, theme);
     var btn = document.getElementById('cc-theme-toggle');
     if (btn) {
-      btn.textContent = theme === 'dark' ? '☀️' : '🌙';
       btn.title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
     }
   }

@@ -41,18 +41,21 @@ type KatalogData struct {
 	KatalogLicense     string
 	DegradedReason     string
 	StatusCounts       StatusCounts
+	RuntimeVersion     string
 }
 
 // IndexData is the data for the main page
 type IndexData struct {
-	Katalogs        []KatalogSummary
-	TotalKatalogs   int
-	HealthyKatalogs int
-	TotalCRDs       int
-	TotalWorkers    int
-	TotalResources  int
-	AnyHealthy      bool
-	OrkestraURLs    string
+	Katalogs             []KatalogSummary
+	TotalKatalogs        int
+	HealthyKatalogs      int
+	TotalCRDs            int
+	TotalWorkers         int
+	TotalResources       int
+	AnyHealthy           bool
+	OrkestraURLs         string
+	EnableRuntimeManager bool
+	CCVersion            string
 }
 
 // StatusCounts tracks CRD health counts
@@ -94,6 +97,7 @@ type KatalogResponse struct {
 	DegradedReason     string       `json:"degradedReason,omitempty"`
 	StatusCounts       StatusCounts `json:"statusCounts"`
 	License            string       `json:"license,omitempty"`
+	RuntimeVersion     string       `json:"runtimeVersion,omitempty"`
 }
 
 // CRDSummary is a summary of a CRD

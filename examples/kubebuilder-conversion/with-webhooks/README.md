@@ -45,28 +45,25 @@ spec:
     dayOfWeek: "1-5"   # Monday through Friday
 ```
 
-Orkestra expresses the conversion as template expressions using cron notes:
+Orkestra expresses the conversion as two one-liner notes:
 
 ```yaml
-# v1 → v2: split the cron string into named fields
+# v1 → v2: cronToMap splits the cron string into the structured map
 - from: v1
   to: v2
   spec:
-    schedule:
-      minute:     "{{ cronMinute .spec.schedule }}"
-      hour:       "{{ cronHour   .spec.schedule }}"
-      dayOfMonth: "{{ cronDom    .spec.schedule }}"
-      month:      "{{ cronMonth  .spec.schedule }}"
-      dayOfWeek:  "{{ cronDow    .spec.schedule }}"
+    schedule: "{{ cronToMap .spec.schedule }}"
 
-# v2 → v1: reconstruct the cron string from named fields
+# v2 → v1: cronFromAny handles both structured maps and legacy flat strings.
 - from: v2
   to: v1
   spec:
-    schedule: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+    schedule: "{{ cronFromAny .spec.schedule }}"
 ```
 
 Round-trip: `"0 2 * * 1-5"` → `{minute:"0", hour:"2", dom:"*", month:"*", dow:"1-5"}` → `"0 2 * * 1-5"`. Lossless. `@`-macros (`@hourly`, `@daily`) are expanded transparently.
+
+Both notes accept either schedule shape — if an object was stored before the schema added structured fields, `cronFromAny` falls back to normalising the flat string rather than failing.
 
 ---
 
@@ -97,7 +94,7 @@ When you apply a CronJob CR, Orkestra:
 
 3. **Mutates** — applies defaults (`concurrencyPolicy: Allow`, `successfulJobsHistoryLimit: 3`, `failedJobsHistoryLimit: 1`) before validation runs. `mutateFirst: true` ensures defaults exist before rules check them.
 
-4. **Reconciles** — creates a Kubernetes `batch/v1 CronJob` with the schedule reconstructed by `cronExpr`. The child CronJob has owner references — garbage collected when the CR is deleted.
+4. **Reconciles** — creates a Kubernetes `batch/v1 CronJob` with the schedule reconstructed by `cronFromAny`. The child CronJob has owner references — garbage collected when the CR is deleted.
 
 5. **Propagates status** — writes `phase`, `scheduleExpression`, `lastScheduleTime`, and `nextScheduleTime` after every successful reconcile. Phase respects `spec.suspend` via the `ternary` note.
 
@@ -182,8 +179,8 @@ print-hello-v1   */1 * * * *   Active   12s
 print-hello-v2   */1 * * * *   Active   8s
 ```
 
-The `SCHEDULE` column shows the cron expression reconstructed by `cronExpr`
-from v2 structured fields — whether the CR was applied as v1 or v2.
+The `SCHEDULE` column shows the cron expression reconstructed by `cronFromAny`
+from the v2 schedule field — whether the CR was applied as v1 or v2.
 
 ### 8. Verify the round-trip conversion
 
@@ -265,12 +262,9 @@ kubectl patch cronjob.v2.demo.orkestra.io daily-backup -n default \
 
 | Note | What it does | Replaces in Go |
 |---|---|---|
-| `cronMinute .spec.schedule` | Extract minute field from cron string | `strings.Split(s, " ")[0]` + nil checks |
-| `cronHour .spec.schedule` | Extract hour field | `strings.Split(s, " ")[1]` + nil checks |
-| `cronDom .spec.schedule` | Extract day-of-month | `strings.Split(s, " ")[2]` + nil checks |
-| `cronMonth .spec.schedule` | Extract month | `strings.Split(s, " ")[3]` + nil checks |
-| `cronDow .spec.schedule` | Extract day-of-week | `strings.Split(s, " ")[4]` + nil checks |
-| `cronExpr min hr dom mon dow` | Reconstruct canonical cron string | `fmt.Sprintf("%s %s %s %s %s", ...)` |
+| `cronToMap .spec.schedule` | Split cron string into structured map | `strings.Split` + five field assignments |
+| `cronFromAny .spec.schedule` | String or map → canonical cron string | `if/else` type check + `strings.Split` + nil checks |
+| `cronFromMap .spec.schedule` | Map → canonical cron string | `strings.Join(fields, " ")` |
 | `ternary .spec.suspend "Suspended" "Active"` | Conditional status value | `if/else` block |
 | `default .spec.concurrencyPolicy "Allow"` | Field default with fallback | nil check + default assignment |
 

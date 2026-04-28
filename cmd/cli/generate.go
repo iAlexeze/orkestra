@@ -14,9 +14,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	DefaultNamespace = "orkestra-system"
-)
+// defaultNamespace returns the namespace to use when --namespace is not supplied.
+// Reads ORKESTRA_NAMESPACE from the environment so that CLI invocations inside
+// an already-configured cluster automatically target the right namespace.
+func defaultNamespace() string {
+	if ns := os.Getenv("ORKESTRA_NAMESPACE"); ns != "" {
+		return ns
+	}
+	return "orkestra-system"
+}
 
 var generateCmd = &cobra.Command{
 	Use:   "generate",
@@ -42,7 +48,7 @@ func parseKatalogPaths(paths []string) []string {
 type mergerOut struct {
 	m     *merger.Merger
 	crds  []orktypes.CRDEntry
-	kat   katalog.Katalog
+	kat   *katalog.Katalog
 	paths []string
 }
 
@@ -74,7 +80,7 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 	return &mergerOut{
 		m:     m,
 		crds:  crds,
-		kat:   kat,
+		kat:   &kat,
 		paths: katalogPaths,
 	}, nil
 }
@@ -213,7 +219,7 @@ Example:
 		log.Println("generating rbac...")
 
 		var k katalog.Katalog
-		if _, err = k.KomposeKatalogFromYaml(kfg, out.m); err != nil {
+		if _, err = k.KomposeRuntimeKatalog(kfg, out.m); err != nil {
 			return fmt.Errorf("build katalog: %w", err)
 		}
 		if _, err = k.ValidateConfig(kfg); err != nil {
@@ -305,7 +311,7 @@ Examples:
 		log.Println("generating bundle...")
 
 		var k katalog.Katalog
-		if _, err = k.KomposeKatalogFromYaml(kfg, out.m); err != nil {
+		if _, err = k.KomposeRuntimeKatalog(kfg, out.m); err != nil {
 			return fmt.Errorf("build katalog: %w", err)
 		}
 		if _, err = k.ValidateConfig(kfg); err != nil {
@@ -314,17 +320,10 @@ Examples:
 
 		rules := k.GenerateRBACRules()
 
-		rbacOut, err := generate.RenderRBACToString(kfg, rules, namespace)
+		bundle, err := generate.RenderBundle(kfg, rules, katalogPath, namespace)
 		if err != nil {
-			return fmt.Errorf("generate rbac: %w", err)
+			return fmt.Errorf("generate bundle: %w", err)
 		}
-
-		configMapOut, err := generate.RenderConfigMapToString(katalogPath, namespace)
-		if err != nil {
-			return fmt.Errorf("generate configmap: %w", err)
-		}
-
-		bundle := rbacOut + "\n---\n" + configMapOut
 
 		log.Println("bundle generated successfully")
 
@@ -340,6 +339,7 @@ Examples:
 func init() {
 	rootCmd.AddCommand(generateCmd)
 
+	generateCmd.AddCommand(generateKatalogCmd)
 	generateCmd.AddCommand(generateCRDCmd)
 	generateCmd.AddCommand(generateRuntimeCmd)
 	generateCmd.AddCommand(generateDocsCmd)
@@ -367,7 +367,7 @@ func init() {
 	} {
 		cmd.Flags().Bool("dry-run", false, "Print generated output to stdout without writing files")
 		cmd.Flags().StringP("output", "o", "", "Write generated output to file")
-		cmd.Flags().StringP("namespace", "n", DefaultNamespace, "Namespace for the ServiceAccount")
+		cmd.Flags().StringP("namespace", "n", defaultNamespace(), "Namespace for the ServiceAccount")
 	}
 
 	// Add shared flags for configmap and bundle (without StringSlice)
@@ -377,7 +377,7 @@ func init() {
 	} {
 		cmd.Flags().Bool("dry-run", false, "Print generated output to stdout without writing files")
 		cmd.Flags().StringP("output", "o", "", "Write generated output to file")
-		cmd.Flags().StringP("namespace", "n", DefaultNamespace, "Namespace for the ServiceAccount")
+		cmd.Flags().StringP("namespace", "n", defaultNamespace(), "Namespace for the ServiceAccount")
 	}
 
 	// Shadow global flags so they don't appear under `ork generate`

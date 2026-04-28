@@ -88,17 +88,17 @@ With notes, the same conversion is declared in the Katalog:
 - from: v1
   to: v2
   spec:
-    schedule:
-      minute:     "{{ cronMinute .spec.schedule }}"
-      hour:       "{{ cronHour   .spec.schedule }}"
-      dayOfMonth: "{{ cronDom    .spec.schedule }}"
-      month:      "{{ cronMonth  .spec.schedule }}"
-      dayOfWeek:  "{{ cronDow    .spec.schedule }}"
+    schedule: "{{ cronToMap .spec.schedule }}"    # string → structured map
+
+- from: v2
+  to: v1
+  spec:
+    schedule: "{{ cronFromAny .spec.schedule }}"  # map or legacy string → cron string
 ```
 
-The cron notes handle @-macros, empty input, and malformed expressions
-gracefully — returning `"*"` when a field cannot be extracted rather than
-panicking or returning an error that breaks a conversion.
+`cronToMap` and `cronFromAny` handle @-macros, empty input, and legacy objects
+where the schedule was stored as a flat string rather than a structured map —
+all without branching logic in the Katalog.
 
 **Verified in production:** 11,279 conversions, 0 failures, 0.69ms p95 latency.
 
@@ -206,8 +206,8 @@ note library without any additional configuration.
 
 ## The current note catalogue
 
-**Cron:** `cronMinute`, `cronHour`, `cronDom`, `cronMonth`, `cronDow`,
-`cronField`, `cronExpr`, `cronValid`
+**Cron:** `cronToMap`, `cronFromMap`, `cronFromAny`, `cronNormalize`, `cronDescribe`,
+`cronValid`, `cronField`, `cronMinute`, `cronHour`, `cronDom`, `cronMonth`, `cronDow`, `cronExpr`
 
 **String:** `toLower`, `toUpper`, `trimSpace`, `trimPrefix`, `trimSuffix`,
 `replace`, `contains`, `hasPrefix`, `hasSuffix`, `split`, `join`,

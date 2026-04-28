@@ -2,17 +2,17 @@
 Expand the name of the chart.
 */}}
 {{- define "orkestra.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- default .Chart.Name .Values.global.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
 {{- define "orkestra.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- if .Values.global.fullnameOverride }}
+{{- .Values.global.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- $name := default .Chart.Name .Values.global.nameOverride }}
 {{- if contains $name .Release.Name }}
 {{- .Release.Name | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -47,11 +47,9 @@ Selector labels — used in Deployment selector and Service selector.
 MUST remain stable across upgrades (do not change).
 */}}
 {{- define "orkestra.selectorLabels" -}}
-# Deletion Protection labels
 app.kubernetes.io/name: orkestra
 app.kubernetes.io/tag: orkestra-internal
-
-# Other labels
+orkestra.io/deletion-protection: "true"
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 

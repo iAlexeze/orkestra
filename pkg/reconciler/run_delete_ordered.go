@@ -37,7 +37,7 @@ type orderedDeleteEntry struct {
 
 // runOrderedDelete deletes resource groups sequentially.
 // For each group: submit all deletes, then poll until every resource is gone.
-func (r *GenericReconciler[T]) runOrderedDelete(
+func (r *GenericReconciler[PTR]) runOrderedDelete(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
 	resolver *orktmpl.Resolver,
@@ -87,7 +87,7 @@ func (r *GenericReconciler[T]) runOrderedDelete(
 
 // submitGroupDeletion issues Delete calls for all resources in a HookTemplates
 // block and returns the list of resources to poll for.
-func (r *GenericReconciler[T]) submitGroupDeletion(
+func (r *GenericReconciler[PTR]) submitGroupDeletion(
 	ctx context.Context,
 	kube *kubeclient.Kubeclient,
 	resolver *orktmpl.Resolver,
@@ -154,7 +154,7 @@ type expandedResourceDef struct {
 
 // expandAllForDelete resolves template source names for every resource type
 // in the HookTemplates block. Only types with entries are included.
-func (r *GenericReconciler[T]) expandAllForDelete(
+func (r *GenericReconciler[PTR]) expandAllForDelete(
 	resolver *orktmpl.Resolver,
 	t *orktypes.HookTemplates,
 ) []expandedResourceDef {

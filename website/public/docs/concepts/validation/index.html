@@ -1025,7 +1025,7 @@ interception. When you are confident in the rules, set <code>ENABLE_ADMISSION_WE
 <p><strong>At admission:</strong> The API server rejects the operation. <code>kubectl apply</code> returns
 an error immediately. The object is not stored.</p>
 <pre tabindex="0"><code>$ kubectl apply -f website.yaml
-Error from server: admission webhook &#34;validate.orkestra.konductor.io&#34; denied the request:
+Error from server: admission webhook &#34;validate.orkestra.orkspace.io&#34; denied the request:
 [orkestra] validation failed: field &#34;spec.image&#34;: image must be from the myorg registry (got: &#34;nginx:1.25&#34;)
 </code></pre><p><strong>At reconcile:</strong> Reconciliation halts. A <code>Warning</code> Kubernetes event is recorded
 on the CR. The workqueue retries with backoff. Child resources are not created

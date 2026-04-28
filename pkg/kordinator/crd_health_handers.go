@@ -12,6 +12,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/konfig"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
+	"github.com/orkspace/orkestra/pkg/version"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -284,10 +285,12 @@ func BuildCRDInfoHandler(
 	admStats *health.AdmissionStats,
 	protStats *health.DeletionProtectionStats,
 	webhookControllerStats *health.WebhookStats,
-	isProtected bool,
 	provStats *health.ProviderStats,
 	nsStats *health.NamespaceProtectionStats,
+	isDeletionProtected bool,
 	isNamespaceProtected bool,
+	isConversionEnabled bool,
+	isAdmissionEnabled bool,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		v := resolveCRDDisplayValues(crd, kfg, inf)
@@ -341,10 +344,10 @@ func BuildCRDInfoHandler(
 		}
 
 		// Version conversion statistics
-		if convStats != nil {
+		if convStats != nil && crd.InvolvedInConversion() {
 			snapshot := convStats.GetStats()
 			response.Conversion = &ConversionStatsResponse{
-				Enabled:      kfg.ConversionEnabled(),
+				Enabled:      isConversionEnabled,
 				Total:        snapshot.TotalRequests,
 				Success:      snapshot.SuccessRequests,
 				Failures:     snapshot.FailedRequests,
@@ -357,7 +360,7 @@ func BuildCRDInfoHandler(
 		if admStats != nil {
 			snap := admStats.GetStats(crd.Webhooks.WebhookValidationEnabled() || crd.Webhooks.WebhookMutationEnabled())
 			response.Admission = &AdmissionStatsResponse{
-				WebhooksEnabled:   kfg.AdmissionEnabled(),
+				WebhooksEnabled:   isAdmissionEnabled,
 				ValidationTotal:   snap.ValidationTotal,
 				ValidationAllowed: snap.ValidationAllowed,
 				ValidationDenied:  snap.ValidationDenied,
@@ -378,13 +381,13 @@ func BuildCRDInfoHandler(
 		if protStats != nil {
 			snap := protStats.GetStats()
 			response.DeletionProtection = &DeletionProtectionStatsResponse{
-				Enabled: isProtected,
+				Enabled: isDeletionProtected,
 				Total:   snap.TotalRequests,
 				Blocked: snap.Blocked,
 				Allowed: snap.Allowed,
 			}
 		} else {
-			response.DeletionProtection = &DeletionProtectionStatsResponse{Enabled: isProtected}
+			response.DeletionProtection = &DeletionProtectionStatsResponse{Enabled: isDeletionProtected}
 		}
 
 		// Namespace protection stats — shown conditionally when namespace rules are declared
@@ -468,6 +471,7 @@ type KatalogResponse struct {
 	Author             string               `json:"author,omitempty"`
 	Description        string               `json:"description,omitempty"`
 	License            string               `json:"license,omitempty"`
+	RuntimeVersion     string               `json:"runtimeVersion,omitempty"`
 }
 
 type CRDSummaryResponse struct {
@@ -662,6 +666,7 @@ func BuildKatalogHandler(
 			Author:             kat.Meta().Author,
 			License:            kat.Meta().License,
 			Description:        kat.Meta().Description,
+			RuntimeVersion:     version.Short(),
 		})
 	}
 }
@@ -680,7 +685,7 @@ func isCRDProtected(protected map[string]struct{}, plural, group string) bool {
 
 // Helper function to convert to struct-based reconciler info
 func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
-	rc := crd.OperatorBox
+	op := crd.OperatorBox
 
 	reconcilerType := "generic"
 	if !crd.DefaultReconcile() {
@@ -691,20 +696,20 @@ func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
 		Source: "default",
 		Values: []string{},
 	}
-	if len(rc.Finalizers) > 0 {
+	if len(op.Finalizers) > 0 {
 		finalizersInfo.Source = "configured"
-		finalizersInfo.Values = rc.Finalizers
+		finalizersInfo.Values = op.Finalizers
 	}
 
 	hooksInfo := HooksInfo{Configured: false}
-	if rc.Hooks != nil {
+	if op.Hooks != nil {
 		hooksInfo = HooksInfo{
 			Configured: true,
 			Source:     "yaml",
-			Location:   rc.Hooks.Location,
-			Function:   rc.Hooks.Function,
+			Location:   op.Hooks.Location,
+			Function:   op.Hooks.Function,
 		}
-	} else if rc.HookFactory != nil {
+	} else if op.HookFactory != nil {
 		hooksInfo = HooksInfo{
 			Configured: true,
 			Source:     "go",
@@ -712,14 +717,14 @@ func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
 	}
 
 	constructorInfo := ConstructorInfo{Configured: false}
-	if rc.ConstructorDecl != nil {
+	if op.ConstructorDecl != nil {
 		constructorInfo = ConstructorInfo{
 			Configured: true,
 			Source:     "yaml",
-			Location:   rc.ConstructorDecl.Location,
-			Function:   rc.ConstructorDecl.Function,
+			Location:   op.ConstructorDecl.Location,
+			Function:   op.ConstructorDecl.Function,
 		}
-	} else if rc.Constructor != nil {
+	} else if op.Constructor != nil {
 		constructorInfo = ConstructorInfo{
 			Configured: true,
 			Source:     "go",
@@ -733,131 +738,24 @@ func operatorBoxInfoStruct(crd orktypes.CRDEntry) OperatorBoxInfo {
 		Constructor: constructorInfo,
 	}
 
-	if rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil {
+	if op.OnCreate != nil || op.OnReconcile != nil || op.OnDelete != nil {
 		result.Templates = make(map[string]interface{})
-		if rc.OnCreate != nil {
-			result.Templates["onCreate"] = templateSummary(rc.OnCreate)
-		}
-		if rc.OnReconcile != nil {
-			result.Templates["onReconcile"] = templateSummary(rc.OnReconcile)
-		}
-		if rc.OnDelete != nil {
-			result.Templates["onDelete"] = templateSummary(rc.OnDelete)
-		}
-	}
-
-	return result
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// reconcilerInfo
-// Produces a structured summary of how a CRD is reconciled.
-// This avoids exposing internal Go function pointers and instead reports:
-//
-//   - reconciler type: generic (default) or custom
-//   - finalizers: configured or default
-//   - hooks: yaml, generated, go, or none
-//   - constructor: yaml, go, or none
-//   - declarative templates: counts only (not full templates)
-//
-// This keeps the API stable and safe for dashboards.
-// ─────────────────────────────────────────────────────────────────────────────
-
-func reconcilerInfo(crd orktypes.CRDEntry) map[string]interface{} {
-	rc := crd.OperatorBox
-
-	// Determine reconciler type
-	reconcilerType := "generic"
-	if !crd.DefaultReconcile() {
-		reconcilerType = "custom"
-	}
-
-	// Finalizers
-	var finalizersInfo map[string]interface{}
-	if len(rc.Finalizers) > 0 {
-		finalizersInfo = map[string]interface{}{
-			"source": "configured",
-			"values": rc.Finalizers,
-		}
-	} else {
-		finalizersInfo = map[string]interface{}{
-			"source": "default",
-			"values": []string{},
-		}
-	}
-
-	// Hooks
-	var hooksInfo map[string]interface{}
-	if rc.Hooks != nil {
-		hooksInfo = map[string]interface{}{
-			"configured": true,
-			"source":     "yaml",
-			"location":   rc.Hooks.Location,
-			"function":   rc.Hooks.Function,
-		}
-	} else if rc.HookFactory != nil && (rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil) {
-		hooksInfo = map[string]interface{}{
-			"configured": true,
-			"source":     "generated",
-		}
-	} else if rc.HookFactory != nil {
-		hooksInfo = map[string]interface{}{
-			"configured": true,
-			"source":     "go",
-		}
-	} else {
-		hooksInfo = map[string]interface{}{
-			"configured": false,
-		}
-	}
-
-	// Constructor
-	var constructorInfo map[string]interface{}
-	if rc.ConstructorDecl != nil {
-		constructorInfo = map[string]interface{}{
-			"configured": true,
-			"source":     "yaml",
-			"location":   rc.ConstructorDecl.Location,
-			"function":   rc.ConstructorDecl.Function,
-		}
-	} else if rc.Constructor != nil {
-		constructorInfo = map[string]interface{}{
-			"configured": true,
-			"source":     "go",
-		}
-	} else {
-		constructorInfo = map[string]interface{}{
-			"configured": false,
-		}
-	}
-
-	result := map[string]interface{}{
-		"type":        reconcilerType,
-		"finalizers":  finalizersInfo,
-		"hooks":       hooksInfo,
-		"constructor": constructorInfo,
-	}
-
-	// Declarative templates (dynamic mode)
-	if rc.OnCreate != nil || rc.OnReconcile != nil || rc.OnDelete != nil {
-		templates := map[string]interface{}{}
-		if rc.OnCreate != nil {
-			onCreate := templateSummary(rc.OnCreate)
-			if hasAutoReconcile(rc.OnCreate) {
-				templates["onReconcile"] = map[string]interface{}{
+		if op.OnCreate != nil {
+			onCreate := templateSummary(op.OnCreate)
+			if hasAutoReconcile(op.OnCreate) {
+				result.Templates["onReconcile"] = map[string]interface{}{
 					"source": "auto",
 					"from":   "onCreate[reconcile:true]",
 				}
 			}
-			templates["onCreate"] = onCreate
+			result.Templates["onCreate"] = onCreate
 		}
-		if rc.OnReconcile != nil {
-			templates["onReconcile"] = templateSummary(rc.OnReconcile)
+		if op.OnReconcile != nil {
+			result.Templates["onReconcile"] = templateSummary(op.OnReconcile)
 		}
-		if rc.OnDelete != nil {
-			templates["onDelete"] = templateSummary(rc.OnDelete)
+		if op.OnDelete != nil {
+			result.Templates["onDelete"] = templateSummary(op.OnDelete)
 		}
-		result["templates"] = templates
 	}
 
 	return result

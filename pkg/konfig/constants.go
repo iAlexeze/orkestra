@@ -31,7 +31,7 @@ const (
 	// LabelManaged is patched on every CR Orkestra manages.
 	// Used by ork reconcile, ork get, and ork events to scope
 	// their operations to exactly what this operator instance manages.
-	LabelManaged       = "orkestra.konductor.io/managed"
+	LabelManaged       = "orkestra.orkspace.io/managed"
 	LabelManagedValue  = "true"
 	LabelOrkestraOwner = "orkestra-owner"
 
@@ -40,13 +40,13 @@ const (
 	// AnnotationManagedBy identifies which Orkestra operator instance
 	// is managing this CR. Useful when multiple Orkestra operators
 	// run in the same cluster managing different CRD sets.
-	AnnotationManagedBy = "orkestra.konductor.io/managed-by"
+	AnnotationManagedBy = "orkestra.orkspace.io/managed-by"
 
 	// AnnotationManagedSince records when Orkestra first took ownership.
-	AnnotationManagedSince = "orkestra.konductor.io/managed-since"
+	AnnotationManagedSince = "orkestra.orkspace.io/managed-since"
 
 	// Finalizers
-	FinalizerOrkestra = "orkestra.konductor.io/finalizer"
+	FinalizerOrkestra = "orkestra.orkspace.io/finalizer"
 
 	// HTTPS Port
 	httpsPort      = ":8443"
@@ -55,15 +55,19 @@ const (
 
 var (
 	apiVersions = []string{
-		"orkestra.konductor.io/v1Alpha",
+		"orkestra.orkspace.io/v1",
 	}
 )
 
-// orkestraResourceLabels defines the labels used to identify Orkestra-managed
-// resources for deletion protection.
+// orkestraResourceLabels defines the labels applied to every Orkestra control-plane
+// resource (Deployment, Service, ServiceAccount, ClusterRole, ClusterRoleBinding,
+// webhook configurations, and the TLS Secret). The deletion-protection label is
+// included so the admission webhook's objectSelector matches exactly these
+// resources — it fires only for objects already carrying the label.
 var orkestraResourceLabels = map[string]string{
-	"app.kubernetes.io/name": "orkestra",
-	"app.kubernetes.io/tag":  "orkestra-internal",
+	"app.kubernetes.io/name":          "orkestra",
+	"app.kubernetes.io/tag":           "orkestra-internal",
+	"orkestra.io/deletion-protection": "true",
 }
 
 // Label selector shared by all Orkestra-managed Kubernetes resources.

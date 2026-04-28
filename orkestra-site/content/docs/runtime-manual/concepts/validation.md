@@ -99,7 +99,7 @@ an error immediately. The object is not stored.
 
 ```
 $ kubectl apply -f website.yaml
-Error from server: admission webhook "validate.orkestra.konductor.io" denied the request:
+Error from server: admission webhook "validate.orkestra.orkspace.io" denied the request:
 [orkestra] validation failed: field "spec.image": image must be from the myorg registry (got: "nginx:1.25")
 ```
 

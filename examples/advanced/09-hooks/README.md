@@ -1,215 +1,291 @@
-# 09 — Go Hooks
+# 09 — Typed Extensions (Go Hooks)
 
-Declarative templates cover the common case. When your operator needs type-safe
-struct access, complex conditional logic, or calls to external APIs, hooks are
-the answer. Orkestra still provides everything else — you write only the logic
-that genuinely requires code.
+Orkestra's declarative Katalog can express the full lifecycle of a managed
+resource — deployments, services, cronjobs, dependencies, conditions, status,
+namespace protection, webhooks, and more. For most operators, a Katalog YAML
+file is all you need.
 
-**What you learn:** `apiTypes.location`, typed mode, `ork generate registry`,
-typed hooks, OrkestraRegistry from Go, the difference between hooks and a
-full constructor.
+Typed mode is for what comes after that line.
 
-**Builds on:** [07 — Validation and Mutation](../07-validation-mutation/)
+When your operator needs to provision an external resource (a cloud database, a
+message queue, an ACL entry) - not yet supported by orkestra providers, coordinate multiple CRDs with shared mutable
+state, call an existing Go SDK, or encode business rules that have no
+declarative equivalent — you write a typed extension. You bring the logic.
+Orkestra brings everything else: the informer, the workqueue, the worker pool,
+the finalizer, status management, events, metrics, and the full security layer.
+
+**What you learn:** how to build, validate, and ship a typed Orkestra extension
+— your own operator binary with your business logic compiled in.
+
+**Requirement:** `ork` CLI — install from [orkestra-install](https://github.com/orkspace/orkestra#getting-started)
 
 ---
 
-## Why typed hooks exist
+## How it works
 
-In dynamic mode (no `apiTypes.location`), the reconcile loop receives
-`*unstructured.Unstructured`. Accessing `spec.engine` looks like this:
+A typed extension is a separate Go module. It imports Orkestra as a library,
+adds a blank import of its generated registry package, and compiles into its
+own binary. The resulting binary is a fully self-contained Orkestra operator
+that knows about your CRD types.
 
-```go
-engine, _, _ := unstructured.NestedString(obj.Object, "spec", "engine")
+```
+your module
+├── api/v1alpha/
+│   └── types.go          ← your CRD Go types
+├── hooks/
+│   └── database_hooks.go ← your reconcile and delete logic
+├── pkg/runtime/
+│   └── zz_generated_runtime_registry.go  ← generated, do not edit
+├── cmd/orkestra/
+│   └── main.go           ← imports _ "yourmodule/pkg/runtime"
+├── katalog.yaml
+├── Makefile
+└── Dockerfile
 ```
 
-In typed mode, the same field is:
+---
 
-```go
-engine := obj.Spec.Engine
-```
+## Step 1 — Files already in place
 
-Type-safe, IDE-autocompleted, compile-time checked. Typed mode is what you
-reach for when hooks need to make decisions based on multiple spec fields,
-or when the spec is complex enough that map navigation becomes error-prone.
+This pack includes a complete typed operator: a `Database` CRD with a
+StatefulSet, Service, and optional backup CronJob. Examine the files:
+
+- `api/v1alpha/database_types.go` – the Go structs for your CRD.
+- `hooks/database_hooks.go` – the `OnReconcile` and `OnDelete` logic.
+- `katalog.yaml` – declares the CRD and points to the hook location.
+- `cmd/orkestra/main.go` – entrypoint (import disabled initially).
+- `Makefile` – build, registry, validate, release targets.
 
 ---
 
-## What Orkestra still provides
+## Step 2 — Generate the registry
 
-Hooks do not replace Orkestra's runtime. The hook receives control for
-reconcile and delete logic only. Orkestra still handles:
-
-- Informer watching `demo.orkestra.io/v1alpha1, Kind=Database`
-- Workqueue with deduplication and rate-limited backoff
-- Worker pool (3 workers per the Katalog)
-- Finalizer management — the CR is protected from dirty deletion
-- Kubernetes events — `Reconciled` and `ReconcileError` events emitted per cycle
-- Status Layer 1 — `Ready` condition written after every reconcile
-- Status Layer 2 — `phase`, `engine`, `endpoint` written on success
-- Prometheus metrics — reconcile total, duration, queue depth
-
-The hook provides: type-safe access to spec fields, the business logic that
-cannot be expressed in templates, and direct calls to OrkestraRegistry for
-Kubernetes child resources.
-
----
-
-## Step 1 — Code generation
-
-Because `apiTypes.location` is set, Orkestra needs a generated file that
-registers the Go types at startup. Run this once, and again whenever you
-change `apiTypes` fields:
+The registry file wires your Go types into Orkestra's internal maps. Run:
 
 ```bash
-ork generate registry --katalog katalog.yaml
+make registry
 ```
 
-This produces `pkg/zz_generated_runtime_registry.go` in your working directory.:
+This executes `ork generate registry --katalog katalog.yaml` and creates
+`pkg/runtime/zz_generated_runtime_registry.go`. The file contains an `init()`
+that populates `ObjectRegistry` and `HookRegistry` at startup.
+
+---
+
+## Step 3 — Enable the registry in main.go
+
+Open `cmd/orkestra/main.go`. Uncomment the blank import line:
 
 ```go
-func init() {
-    orktypes.ObjectRegistry[schema.GroupVersionKind{
-        Group:   "demo.orkestra.io",
-        Version: "v1alpha1",
-        Kind:    "Database",
-    }] = func() runtime.Object { return &apiv1.Database{} }
-
-    orktypes.SchemeRegistry = append(orktypes.SchemeRegistry, apiv1.AddToScheme)
-
-    orktypes.HookRegistry[schema.GroupVersionKind{
-        Group:   "demo.orkestra.io",
-        Version: "v1alpha1",
-        Kind:    "Database",
-    }] = hooks.DatabaseHooks
-}
+import (
+    "context"
+    _ "github.com/workspace/orkestra-hooks-demo/pkg/runtime"  // <-- uncomment this
+    // ...
+)
 ```
+
+This ensures the generated `init()` runs when your binary starts.
 
 ---
 
-## Step 2 — Build the binary
+## Step 4 — See why you need a custom binary
+
+The standard `ork` CLI does not know about your Go types. Validate it to see the
+expected error:
 
 ```bash
-go mod tidy
-go build -o orkestra-demo .
+ork validate -k katalog.yaml
 ```
 
-If code generation was not run, this fails with:
+Output:
 
 ```
-error: no object factory for demo.orkestra.io/v1alpha1, Kind=Database
-  — run: ork generate registry --katalog katalog.yaml
+addRuntimeObjects: no object constructor registered for demo.orkestra.io/v1alpha1, Kind=Database
+```
+
+This is fine — it tells you that the standard `ork` cannot run your typed
+operator. Now remove any previous local custom binary (if built before):
+
+```bash
+make clean
 ```
 
 ---
 
-## Step 3 — Install and run
+## Step 5 — Build your own operator binary
+
+Now build a binary that includes your generated registry:
+
+```bash
+make build
+```
+
+The binary is placed in `~/.orkestra/bin/ork` (the default `OUTPUT_DIR`). You will
+use this binary for the rest of the tutorial. To make it easy, either:
+
+- Add `$HOME/.orkestra/bin` to your PATH (if not already), or
+- Call it directly as `~/.orkestra/bin/ork`.
+
+For brevity, this guide will use `./ork` – you can copy the binary to the current
+directory or adjust your PATH. Run `make build` again and then:
+
+```bash
+cp ~/.orkestra/bin/ork ./ork
+```
+
+Now you have a custom `./ork` binary that knows your CRD type.
+
+---
+
+## Step 6 — Validate with your own binary
+
+```bash
+./ork validate -k katalog.yaml
+```
+
+It should pass without errors. The debug output (from the generated registry)
+will confirm that `ObjectRegistry` is populated.
+
+---
+
+## Step 7 — Run locally in Kind
+
+Create a Kind cluster (if not already):
+
+```bash
+kind create cluster --name ork-typed
+```
+
+Apply the CRD:
 
 ```bash
 kubectl apply -f crd.yaml
-
-# Option A: local development
-./orkestra-demo run --katalog katalog.yaml
-
-# Option B: in-cluster (after building and pushing your image)
-kubectl apply -f orkestra-configmap.yaml
-kubectl apply -f ../../installation/install-webhook-support.yaml
-kubectl wait --for=condition=available deployment/orkestra \
-  -n orkestra-system --timeout=60s
 ```
 
----
+Run your custom operator:
 
-## Step 4 — Apply the CR
+```bash
+./ork run -k katalog.yaml
+```
+
+In another terminal, apply the custom resource:
 
 ```bash
 kubectl apply -f cr.yaml
 ```
 
----
-
-## Step 5 — Verify hook behavior
-
-```bash
-# Deployment created by the hook via orkdeploy.Update
-kubectl get deployment my-db
-
-# Service created by the hook via orksvc.Update
-kubectl get service my-db-svc
-
-# Backup CronJob — created because spec.backup: true
-kubectl get cronjob my-db-backup
-```
-
-If `backup: false`, the CronJob is not created — the conditional in the hook
-prevents it. This is the equivalent of a `when:` condition, expressed in Go
-because the CronJob spec also varies by engine type.
-
----
-
-## Step 6 — Verify status
+Watch the operator logs: you will see the `OnReconcile` hook firing. Verify
+the created resources:
 
 ```bash
-kubectl get database my-db -o yaml | grep -A15 "status:"
+kubectl get statefulset,service,cronjob -A
 ```
 
-```yaml
-status:
-  conditions:
-    - type: Ready
-      status: "True"
-      reason: ReconcileSucceeded
-  phase: Running           ← Layer 2: from katalog status.fields
-  engine: postgres         ← Layer 2: from .spec.engine
-  endpoint: my-db-svc.default.svc.cluster.local
-```
-
-Layer 1 and Layer 2 status work even when hooks are used — Orkestra applies
-them after the hook returns.
-
----
-
-## Step 7 — Update the CR
-
-Change backup from true to false:
+Observe the events:
 
 ```bash
-kubectl patch database my-db --type=merge -p '{"spec":{"backup":false}}'
+kubectl get events --field-selector involvedObject.name=my-db
 ```
-
-The CronJob is **not** deleted automatically — the hook does not delete it,
-it only creates it. This is a deliberate design: hooks are responsible for
-what they explicitly manage. If the hook should remove the CronJob when
-`backup` becomes false, add explicit deletion logic:
-
-```go
-if !obj.Spec.Backup {
-    orkcron.Delete(ctx, kube, obj, cronSpec)
-}
-```
-
-Owner references handle deletion when the CR itself is deleted — the CronJob
-is garbage-collected when `my-db` is deleted.
 
 ---
 
-## Hooks vs templates: when to use each
+## Step 8 – Deploy to a cluster (production)
 
-| | Templates | Hooks |
-|---|---|---|
-| Resource creation from CR fields | ✓ preferred | possible |
-| Type-safe spec field access | ✗ | ✓ |
-| Complex conditional logic | limited (when:) | ✓ |
-| External API calls | ✗ | ✓ |
-| Multi-resource with shared state | limited | ✓ |
-| `ork generate registry` needed | ✗ | ✓ |
+### Build and push your Docker image
 
-Most operators use templates for the standard resources (Deployment, Service,
-ConfigMap) and hooks only for the parts that genuinely require Go.
+```bash
+make release IMAGE=yourregistry/your-operator:v1.0.0
+```
+
+### Generate the Orkestra bundle
+
+```bash
+./ork generate bundle -k katalog.yaml -o bundle.yaml
+```
+
+This creates a single YAML with Namespace, ServiceAccount, ClusterRole,
+ClusterRoleBinding, and the ConfigMap containing your Katalog.
+
+```bash
+kubectl apply -f bundle.yaml
+```
+
+### Install Orkestra Helm chart with your image
+
+```bash
+helm repo add orkestra https://ialexeze.github.io/orkestra
+helm install orkestra orkestra/orkestra \
+  --set runtime.image.repository=yourregistry/your-operator \
+  --set runtime.image.tag=v1.0.0 \
+  --namespace orkestra-system \
+  --create-namespace
+```
+
+### Apply the CRD and a custom resource
+
+```bash
+kubectl apply -f crd.yaml
+kubectl apply -f cr.yaml
+```
+
+---
+
+## What Orkestra provides, what you provide
+
+| Concern | Orkestra | Your hook |
+|---------|----------|-----------|
+| Informer watching your CRD | ✓ | |
+| Workqueue with dedup and backoff | ✓ | |
+| Worker pool | ✓ | |
+| Finalizer lifecycle | ✓ | |
+| Kubernetes events | ✓ | |
+| Ready condition (Layer 1 status) | ✓ | |
+| Custom status fields (Layer 2) | ✓ via katalog | |
+| Prometheus metrics | ✓ | |
+| Deletion protection webhook | ✓ via katalog | |
+| Namespace validation webhook | ✓ via katalog | |
+| Reconcile logic | | ✓ |
+| Delete logic | | ✓ |
+| External API calls | | ✓ |
+| Typed spec access | | ✓ |
+
+---
+
+## When to use typed mode
+
+Reach for typed mode when the business logic cannot be expressed in a Katalog:
+
+- Provisioning external resources that are not yet supported declaratively
+- Calling an existing Go SDK or internal library
+- Multi-resource coordination with shared mutable state across reconcile cycles
+- Complex validation that goes beyond admission webhook rules
+- Gradual migration of an existing kubebuilder/controller-runtime operator
+
+For resource orchestration, status, dependencies, webhooks, and conditions — the
+Katalog handles it without a line of Go.
 
 ---
 
 ## Cleanup
 
+Stop the local operator with `Ctrl+C`, then:
+
 ```bash
-chmod +x cleanup.sh && ./cleanup.sh
+kind delete cluster --name ork-typed
 ```
+
+For the production deployment:
+
+```bash
+helm uninstall orkestra -n orkestra-system
+kubectl delete -f bundle.yaml
+```
+
+---
+
+## Next steps
+
+- Read the `hooks/database_hooks.go` file – see how `OnReconcile` creates
+  a StatefulSet, Service, and optional CronJob using OrkestraRegistry.
+- Modify the Katalog to add status fields, webhooks, or dependencies.
+- Turn this example into your own operator by replacing the API types and hooks.

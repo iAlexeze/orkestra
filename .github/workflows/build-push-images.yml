@@ -12,16 +12,6 @@ on:
         required: false
         type: string
         default: ${{ github.repository }}
-      ork_image:
-        description: 'Base image name for the runtime (without repository prefix)'
-        required: false
-        type: string
-        default: 'orkestra'
-      orkcc_image:
-        description: 'Base image name for the control center (without repository prefix)'
-        required: false
-        type: string
-        default: 'orkestra-cc'
 
 jobs:
   image:
@@ -46,13 +36,13 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.ORK_PUBLISH_PAT }}
 
       - name: Extract metadata for runtime
         id: meta-runtime
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ inputs.repository }}/${{ inputs.ork_image }}
+          images: ghcr.io/${{ inputs.repository }}
           tags: |
             type=semver,pattern={{version}},value=${{ inputs.image_tag }}
             type=semver,pattern={{major}}.{{minor}},value=${{ inputs.image_tag }}
@@ -63,7 +53,7 @@ jobs:
         id: meta-cc
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ inputs.repository }}/${{ inputs.orkcc_image }}
+          images: ghcr.io/${{ inputs.repository }}-cc
           tags: |
             type=semver,pattern={{version}},value=${{ inputs.image_tag }}
             type=semver,pattern={{major}}.{{minor}},value=${{ inputs.image_tag }}
@@ -130,7 +120,7 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Component | Registry | Image |" >> "$GITHUB_STEP_SUMMARY"
           echo "|-----------|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Runtime | GHCR | \`ghcr.io/${{ inputs.repository }}/${{ inputs.ork_image }}:${{ inputs.image_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Control Center | GHCR | \`ghcr.io/${{ inputs.repository }}/${{ inputs.orkcc_image }}:${{ inputs.image_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Runtime | GHCR | \`ghcr.io/${{ inputs.repository }}:${{ inputs.image_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Control Center | GHCR | \`ghcr.io/${{ inputs.repository }}-cc:${{ inputs.image_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**Platforms:** \`linux/amd64\`, \`linux/arm64\`" >> "$GITHUB_STEP_SUMMARY"

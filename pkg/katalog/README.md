@@ -21,7 +21,7 @@ Nothing in Orkestra hardcodes a CRD — everything is driven by what the Katalog
 merger.Merger (merges N katalog YAML files)
     ↓
 NewKatalog(merger, konfig)
-    → KomposeKatalogFromYaml  — decode YAML, enrich entries
+    → KomposeRuntimeKatalog  — decode YAML, enrich entries
     → ValidateConfig          — field-level, uniqueness, dependency, GVK, defaults
     → updateResourceMapAndReturn — build GVK → type index
     ↓

@@ -75,7 +75,7 @@ A Katalog is a YAML document that declares how Orkestra should manage one or mor
 CRDs. It is not a Kubernetes CRD itself — it is a file.
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: website-operator
@@ -113,14 +113,14 @@ A Komposer composes multiple Katalogs from different sources into one unified
 runtime configuration.
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform-komposer
 
 sources:
   registry:
-    - url: ghcr.io/konduktor-io/orkestra-registry/postgres@v14
+    - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
       oci: true
   files:
     - ./katalogs/website.yaml
@@ -152,7 +152,7 @@ Deployments, Services, Secrets, ConfigMaps, Jobs, CronJobs, Pods, ServiceAccount
 These are called by the reconciler when it processes declarative templates. You never
 call them directly unless you are writing hooks.
 
-**2. The public pattern registry** (`konduktor-io/orkestra-registry`) — versioned
+**2. The public pattern registry** (`orkspace/orkestra-registry`) — versioned
 operator patterns distributed as OCI artifacts. Pull a Postgres operator pattern
 with one line in a Komposer. No binary. No deployment. Just a Katalog.
 

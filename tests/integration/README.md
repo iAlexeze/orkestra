@@ -67,7 +67,7 @@ import (
 
 func TestMerger_LoadsKatalogFromFile(t *testing.T) {
     f, _ := os.CreateTemp("", "*.yaml")
-    f.WriteString(`apiVersion: orkestra.konductor.io/v1Alpha
+    f.WriteString(`apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: my-katalog

@@ -14,7 +14,7 @@ import (
 // writeKatalogFile creates a minimal Katalog YAML temp file with the given CRD names.
 func writeKatalogFile(t *testing.T, name string, crdNames ...string) string {
 	t.Helper()
-	content := "apiVersion: orkestra.konductor.io/v1Alpha\nkind: Katalog\nmetadata:\n  name: " + name + "\nspec:\n  crds:\n"
+	content := "apiVersion: orkestra.orkspace.io/v1\nkind: Katalog\nmetadata:\n  name: " + name + "\nspec:\n  crds:\n"
 	for _, n := range crdNames {
 		content += "    - name: " + n + "\n      enabled: true\n"
 	}
@@ -31,7 +31,7 @@ func writeKatalogFile(t *testing.T, name string, crdNames ...string) string {
 // writeKomposerFile creates a Komposer YAML that sources the given Katalog file.
 func writeKomposerFile(t *testing.T, name, sourcePath string, inlineCRDs ...string) string {
 	t.Helper()
-	content := "apiVersion: orkestra.konductor.io/v1Alpha\nkind: Komposer\nmetadata:\n  name: " + name + "\nsources:\n  files:\n    - url: " + sourcePath + "\nspec:\n  crds:\n"
+	content := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: " + name + "\nsources:\n  files:\n    - url: " + sourcePath + "\nspec:\n  crds:\n"
 	for _, n := range inlineCRDs {
 		content += "    - name: " + n + "\n      enabled: true\n"
 	}
@@ -53,7 +53,7 @@ func TestKomposer_InlineOverride_WinsOverSource(t *testing.T) {
 	sourceKatalog := writeKatalogFile(t, "source", "website", "database")
 
 	// Komposer sources that katalog but overrides website with enabled=false
-	komposerContent := "apiVersion: orkestra.konductor.io/v1Alpha\nkind: Komposer\nmetadata:\n  name: override-test\nsources:\n  files:\n    - url: " + sourceKatalog + "\nspec:\n  crds:\n    - name: website\n      enabled: false\n"
+	komposerContent := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: override-test\nsources:\n  files:\n    - url: " + sourceKatalog + "\nspec:\n  crds:\n    - name: website\n      enabled: false\n"
 	f, err := os.CreateTemp("", "*.yaml")
 	if err != nil {
 		t.Fatalf("creating temp file: %v", err)
@@ -94,7 +94,7 @@ func TestKomposer_MultipleFileSources_AllMerged(t *testing.T) {
 	srcA := writeKatalogFile(t, "source-a", "crd-a1", "crd-a2")
 	srcB := writeKatalogFile(t, "source-b", "crd-b1")
 
-	content := "apiVersion: orkestra.konductor.io/v1Alpha\nkind: Komposer\nmetadata:\n  name: multi-source\nsources:\n  files:\n    - url: " + srcA + "\n    - url: " + srcB + "\nspec:\n  crds: []\n"
+	content := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: multi-source\nsources:\n  files:\n    - url: " + srcA + "\n    - url: " + srcB + "\nspec:\n  crds: []\n"
 	f, _ := os.CreateTemp("", "*.yaml")
 	f.WriteString(content)
 	f.Close()
@@ -111,7 +111,7 @@ func TestKomposer_MultipleFileSources_AllMerged(t *testing.T) {
 
 func TestKomposer_CannotSourceAnotherKomposer(t *testing.T) {
 	// A Komposer that references another Komposer as a source — should error
-	innerKomposer := `apiVersion: orkestra.konductor.io/v1Alpha
+	innerKomposer := `apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: inner-komposer
@@ -127,7 +127,7 @@ spec:
 	fInner.Close()
 	t.Cleanup(func() { os.Remove(fInner.Name()) })
 
-	outerContent := "apiVersion: orkestra.konductor.io/v1Alpha\nkind: Komposer\nmetadata:\n  name: outer-komposer\nsources:\n  files:\n    - url: " + fInner.Name() + "\nspec:\n  crds: []\n"
+	outerContent := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: outer-komposer\nsources:\n  files:\n    - url: " + fInner.Name() + "\nspec:\n  crds: []\n"
 	fOuter, _ := os.CreateTemp("", "*.yaml")
 	fOuter.WriteString(outerContent)
 	fOuter.Close()
@@ -141,7 +141,7 @@ spec:
 
 func TestKomposer_KatalogCannotDeclareSourcesBlock(t *testing.T) {
 	// A Katalog with a sources block is a configuration error
-	content := `apiVersion: orkestra.konductor.io/v1Alpha
+	content := `apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: bad-katalog
@@ -166,7 +166,7 @@ spec:
 
 func TestKomposer_DuplicateCRD_WithinSingleSource_ReturnsError(t *testing.T) {
 	// Katalog with two CRDs of the same name — should error
-	content := `apiVersion: orkestra.konductor.io/v1Alpha
+	content := `apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: dup-katalog

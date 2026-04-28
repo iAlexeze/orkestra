@@ -2,7 +2,6 @@ package generate
 
 import (
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
@@ -18,21 +17,50 @@ const (
 )
 
 func RBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace, outputFile string) error {
-	out, err := renderRBAC(kfg, rules, namespace)
+	out, err := renderNamespaceAndRBAC(kfg, rules, namespace)
 	if err != nil {
 		return err
 	}
-
 	if outputFile != "" {
 		return os.WriteFile(outputFile, out, 0644)
 	}
-
 	fmt.Println(string(out))
 	return nil
 }
 
+// renderNamespaceAndRBAC is the full standalone output: Namespace + ServiceAccounts + ClusterRole + ClusterRoleBinding.
+func renderNamespaceAndRBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace string) ([]byte, error) {
+	nsBytes, err := renderNamespace(namespace)
+	if err != nil {
+		return nil, err
+	}
+	rbacBytes, err := renderRBAC(kfg, rules, namespace)
+	if err != nil {
+		return nil, err
+	}
+	return prependNamespaceDoc(nsBytes, rbacBytes), nil
+}
+
+// renderNamespace marshals a Namespace object. Used by RBAC, ConfigMap, and Bundle
+// to ensure the namespace exists before any namespaced resources are applied.
+func renderNamespace(namespace string) ([]byte, error) {
+	ns := corev1.Namespace{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Namespace",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   namespace,
+			Labels: konfig.OrkestraBaseLabels(),
+		},
+	}
+	return yaml.Marshal(ns)
+}
+
+// renderRBAC marshals ServiceAccounts, ClusterRole, and ClusterRoleBinding only.
+// The Namespace is intentionally excluded — callers prepend it via renderNamespace
+// so that bundle assembly can include it exactly once.
 func renderRBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace string) ([]byte, error) {
-	// Build ServiceAccounts dynamically
 	var serviceAccounts []corev1.ServiceAccount
 	for _, name := range []string{ork, orkcc} {
 		sa := corev1.ServiceAccount{
@@ -49,7 +77,6 @@ func renderRBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace string)
 		serviceAccounts = append(serviceAccounts, sa)
 	}
 
-	// ClusterRole
 	cr := rbacv1.ClusterRole{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "rbac.authorization.k8s.io/v1",
@@ -62,7 +89,6 @@ func renderRBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace string)
 		Rules: rules,
 	}
 
-	// ClusterRoleBinding
 	crb := rbacv1.ClusterRoleBinding{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "rbac.authorization.k8s.io/v1",
@@ -86,14 +112,12 @@ func renderRBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace string)
 		},
 	}
 
-	// Collect all objects
 	objs := []interface{}{}
 	for _, sa := range serviceAccounts {
 		objs = append(objs, sa)
 	}
 	objs = append(objs, cr, crb)
 
-	// Marshal with separators
 	out := ""
 	for i, obj := range objs {
 		b, err := yaml.Marshal(obj)
@@ -105,21 +129,11 @@ func renderRBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace string)
 			out += "\n"
 		}
 	}
-
 	return []byte(out), nil
 }
 
-func rBACToWriter(kfg *konfig.Konfig, w io.Writer, rules []rbacv1.PolicyRule, namespace string) error {
-	out, err := renderRBAC(kfg, rules, namespace)
-	if err != nil {
-		return err
-	}
-
-	_, err = w.Write(out)
-	return err
-}
-
-func RenderRBACToString(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace string) (string, error) {
-	out, err := renderRBAC(kfg, rules, namespace)
-	return string(out), err
+// prependNamespaceDoc places the Namespace as the first document in a multi-doc
+// YAML stream, separated from the remaining docs by a blank line.
+func prependNamespaceDoc(nsBytes, rest []byte) []byte {
+	return []byte("---\n" + string(nsBytes) + "\n" + string(rest))
 }

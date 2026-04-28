@@ -95,7 +95,7 @@ At this point, nothing happens yet — Orkestra hasn’t been started.
 Create `katalog.yaml`:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: myapp-katalog
@@ -135,7 +135,7 @@ This tells Orkestra:
 Create `komposer.yaml`:
 
 ```yaml
-apiVersion: orkestra.konductor.io/v1Alpha
+apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: myapp-komposer

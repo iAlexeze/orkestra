@@ -85,7 +85,7 @@ them back and makes their status available under `.children`:
 fields:
   # Singular shorthand — first/only resource of this type
   - path: readyReplicas
-    value: "{{ .children.deployment.status.readyReplicas }}"
+    value: "{{ readyReplicas .children.deployment }}"
 
   # Plural — multiple resources, accessed by Kubernetes name
   - path: apiReadyReplicas
@@ -136,9 +136,9 @@ before Kubernetes has populated child resource status.
 
         # Layer 3 — from child resource status
         - path: readyReplicas
-          value: "{{ .children.deployment.status.readyReplicas }}"
+          value: "{{ readyReplicas .children.deployment }}"
         - path: availableReplicas
-          value: "{{ .children.deployment.status.availableReplicas }}"
+          value: "{{ availableReplicas .children.deployment }}"
 
         # Nested status — becomes status.database.host
         - path: database.host

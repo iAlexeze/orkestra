@@ -38,6 +38,28 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 			},
 			Verbs: defaultVerbs,
 		})
+		// ───────────────────────────────────────────────
+		// Needs permission to create and manage secret
+		// ───────────────────────────────────────────────
+		rules = append(rules, rbacv1.PolicyRule{
+			APIGroups: []string{""},
+			Resources: []string{"secrets"},
+			Verbs:     defaultVerbs,
+		})
+	}
+
+	// ───────────────────────────────────────────────
+	// Deletion protection — namespace labeling
+	// ───────────────────────────────────────────────
+	// ensureNamespaceLabeled patches the Orkestra namespace with deletion-protection
+	// labels at startup so the admission webhook's ObjectSelector matches it.
+	// Requires get (to confirm the namespace exists) and patch (to apply labels).
+	if k.IsDeletionProtectionEnabled() {
+		rules = append(rules, rbacv1.PolicyRule{
+			APIGroups: []string{""},
+			Resources: []string{"namespaces"},
+			Verbs:     []string{"get", "patch"},
+		})
 	}
 
 	// ───────────────────────────────────────────────

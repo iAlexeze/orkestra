@@ -22,19 +22,28 @@ var (
 	buildDate = v.Date
 )
 
+func printVersion() {
+	fmt.Printf("orkcc %s (commit %s, built %s)\n",
+		version, commit, buildDate)
+}
+
 func main() {
+	kfg := cc.NewControlCenterKonfig()
+
+	// Parse flags
 	var (
-		orkestraURLs  = flag.String("u", "", "Comma-separated URLs of Orkestra runtime instances")
-		ignoreDefault = flag.Bool("ignore-default", false, "Do not add the default localhost:8080 URL; start with no instances")
-		port          = flag.String("p", "8090", "Port to serve the control center on")
-		refresh       = flag.Duration("refresh", 10*time.Second, "Refresh interval for fetching Katalogs")
-		logLevel      = flag.String("log-level", "info", "Log level (debug, info, warn, error)")
+		orkestraURLs  = flag.String("u", strings.Join(kfg.URLs, ","), "Comma-separated URLs of Orkestra runtime instances")
+		ignoreDefault = flag.Bool("ignore-default", kfg.IgnoreDefault, "Do not add the default localhost:8080 URL; start with no instances")
+		port          = flag.String("p", kfg.Port, "Port to serve the control center on")
+		refresh       = flag.Duration("refresh", kfg.RefreshInterval, "Refresh interval for fetching Katalogs")
+		logLevel      = flag.String("log-level", kfg.LogLevel, "Log level (debug, info, warn, error)")
 		showVersion   = flag.Bool("version", false, "Show version information")
 	)
+
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Printf("orkestra-control-center version %s (commit: %s, built: %s)\n", version, commit, buildDate)
+		printVersion()
 		os.Exit(0)
 	}
 
@@ -50,9 +59,10 @@ func main() {
 
 	// Create control center
 	cc := cc.New(urls, cc.Config{
-		RefreshInterval: *refresh,
-		LogLevel:        *logLevel,
-		Version:         version,
+		RefreshInterval:      *refresh,
+		LogLevel:             *logLevel,
+		Version:              version,
+		EnableRuntimeManager: kfg.EnableRuntimeManager,
 	})
 
 	// Setup routes

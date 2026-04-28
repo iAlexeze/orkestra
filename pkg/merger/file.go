@@ -119,6 +119,7 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 	}
 	m.apiMetadata = apiMetadata
 	m.security = doc.Security
+	m.notification = doc.Notification
 	m.providers = doc.Providers
 
 	return result, nil
@@ -135,6 +136,14 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 
 	localSeen := map[string]string{}
 	allCRDs := make(map[string]orktypes.CRDEntry)
+
+	// accSecurity, accNotification, and accProviders accumulate top-level settings
+	// from all source Katalogs. Each source load that calls loadKatalog sets these
+	// as side-effects on m; we capture and merge here so they are not discarded
+	// when the Komposer's own (possibly empty) block is applied at the end.
+	var accSecurity orktypes.KatalogSecurity
+	var accNotification *orktypes.KatalogNotification
+	var accProviders []orktypes.KatalogProviderRequirement
 
 	// ── Step 1: registry sources ─────────────────────────────────────────────
 	if doc.Sources != nil {
@@ -155,6 +164,14 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 				localSeen[name] = srcName
 				allCRDs[name] = crd
 			}
+
+			// Accumulate security, notification, and providers from registry source Katalog.
+			accSecurity = mergeKatalogSecurity(accSecurity, m.security)
+			accNotification = mergeKatalogNotification(accNotification, m.notification)
+			accProviders = append(accProviders, m.providers...)
+			logger.Debug().
+				Str("source", fmt.Sprintf("registry:%d", i)).
+				Msg("merger: accumulated security, notification, and providers from registry source")
 		}
 	}
 
@@ -187,6 +204,14 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 				localSeen[name] = "file:" + resolved
 				allCRDs[name] = crd
 			}
+
+			// Accumulate security, notification, and providers from this Katalog file source.
+			accSecurity = mergeKatalogSecurity(accSecurity, m.security)
+			accNotification = mergeKatalogNotification(accNotification, m.notification)
+			accProviders = append(accProviders, m.providers...)
+			logger.Debug().
+				Str("source", "file:"+resolved).
+				Msg("merger: accumulated security, notification, and providers from file source")
 		}
 		// ── Step 3: helm sources ──────────────────────────────────────────────
 		for i, helmSrc := range doc.Sources.Helm {
@@ -203,6 +228,14 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 				localSeen[name] = srcName
 				allCRDs[name] = crd
 			}
+
+			// Accumulate security, notification, and providers from this Helm source Katalog.
+			accSecurity = mergeKatalogSecurity(accSecurity, m.security)
+			accNotification = mergeKatalogNotification(accNotification, m.notification)
+			accProviders = append(accProviders, m.providers...)
+			logger.Debug().
+				Str("source", srcName).
+				Msg("merger: accumulated security, notification, and providers from helm source")
 		}
 	}
 
@@ -266,7 +299,23 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 	}
 
 	m.apiMetadata = apiMetadata
-	m.security = doc.Security
-	m.providers = doc.Providers
+
+	// Merge accumulated source fields with the Komposer's own top-level blocks.
+	// Komposer-declared fields win on conflict (non-nil / non-empty override semantics).
+	// This ensures all top-level Katalog fields — security, notification, providers —
+	// are visible when running `ork generate rbac` or `ork generate configmap`
+	// against a Komposer, identical to running against the source Katalogs directly.
+	m.security = mergeKatalogSecurity(accSecurity, doc.Security)
+	m.notification = mergeKatalogNotification(accNotification, doc.Notification)
+	if len(doc.Providers) > 0 {
+		m.providers = doc.Providers
+	} else {
+		m.providers = accProviders
+	}
+
+	logger.Debug().
+		Str("path", path).
+		Msg("merger: Komposer security, notification, and providers merged from sources and inline")
+
 	return allCRDs, nil
 }
