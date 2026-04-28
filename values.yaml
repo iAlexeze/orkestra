@@ -1,0 +1,229 @@
+# ── Global ────────────────────────────────────────────────────────────────────
+global:
+  namespace: orkestra-system
+  nameOverride: ""
+  fullnameOverride: ""
+# ── Runtime ────────────────────────────────────────────────────────────────────
+runtime:
+  enabled: true
+  imagePullSecrets: []
+  image:
+    repository: ghcr.io/orkspace/orkestra
+    tag: "0.3.1"
+    pullPolicy: IfNotPresent
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    annotations: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  # Use 'ork generate rbac' to create the ServiceAccount
+  serviceAccount: "orkestra"
+  # Health server (runtime only)
+  server:
+    readTimeout: 30
+    writeTimeout: 60
+    httpPort: 8080
+    httpsPort: 8443
+  # Runtime-specific config
+  config:
+    logLevel: info
+    defaultWorkers: 2
+    defaultResync: 30s
+    maxQueueDepth: 500
+    degradeThreshold: 10
+    environment: production
+  # Probes for runtime
+  startupProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 30
+    timeoutSeconds: 5
+  livenessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 30
+    timeoutSeconds: 5
+  readinessProbe:
+    initialDelaySeconds: 3
+    periodSeconds: 5
+    failureThreshold: 30
+    timeoutSeconds: 5
+  # ── Security ───────────────────────────────────────────────────────────────────
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+    capabilities:
+      drop:
+        - ALL
+  # Leader election (runtime only)
+  leaderElection:
+    enabled: true
+    leaseDuration: 15
+    renewDeadline: 10
+    retryPeriod: 5
+  # Webhooks for admission control and CRD conversion (runtime only)
+  webhooks:
+    enabled: false # master switch - if false, nothing is enabled
+    admission: false # ENABLE_ADMISSION_WEBHOOK
+    conversion: false # ENABLE_CONVERSION
+    existingSecret: "" # TLS secret name (required if enabled)
+    certSecretKey: tls.crt # key in secret for certificate
+    keySecretKey: tls.key # key in secret for private key
+  # Katalog (runtime only)
+  katalog:
+    inline: |
+      apiVersion: orkestra.konductor.io/v1Alpha
+      kind: Katalog
+      metadata:
+        name: default-katalog
+      spec:
+        crds: []
+    existingConfigMap: "" # Enter the configmap name created with 'ork generate bundle'
+    configMapKey: katalog.yaml
+    mountPath: /etc/orkestra/katalog
+  # Registry (runtime only)
+  registry:
+    enabled: false
+    url: ""
+  # HPA
+  hpa:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+  # Network Policy
+  networkPolicy:
+    enabled: false
+    ingressFrom: []
+    #  - namespaceSelector:
+    #      matchLabels:
+    #        kubernetes.io/metadata.name: monitoring
+    #  - podSelector:
+    #      matchLabels:
+    #        app: prometheus
+  extraEnv: []
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  podAnnotations: {}
+  podLabels: {}
+  # PDB
+  pdb:
+    enabled: true
+    minAvailable: 1
+    # maxUnavailable: 5
+  # Scheduling
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+# ── Control Center ────────────────────────────────────────────────────────────
+controlCenter:
+  enabled: true
+  imagePullSecrets: []
+  image:
+    repository: ghcr.io/orkspace/orkestra-cc
+    tag: "0.3.1"
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  # No RBAC needed - control center only reads from runtime API
+  serviceAccount: "orkestra-cc"
+  # Control center config
+  config:
+    # Set this to your runtime service URL(s)
+    orkestraURLs: []
+    port: 8090
+    refreshInterval: 10s
+    logLevel: info
+  service:
+    type: ClusterIP
+    port: 8081
+    annotations: {}
+  ingress:
+    enabled: false # Disabled by default – enable and set hosts
+    className: ""
+    annotations: {}
+    hosts: []
+    # hosts:
+    #   - host: control-center.mycompany.com
+    #     paths:
+    #       - path: /
+    #         pathType: Prefix
+    tls: []
+  # Security (control center doesn't need root)
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1001
+    capabilities:
+      drop:
+        - ALL
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001
+  # Probes for control center
+  livenessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readinessProbe:
+    initialDelaySeconds: 3
+    periodSeconds: 5
+  # HPA
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+  # Network Policy
+  networkPolicy:
+    enabled: false
+    ingressFrom: []
+    #  - namespaceSelector:
+    #      matchLabels:
+    #        kubernetes.io/metadata.name: monitoring
+    #  - podSelector:
+    #      matchLabels:
+    #        app: prometheus
+  extraEnv: []
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  podAnnotations: {}
+  podLabels: {}
+  # PDB
+  pdb:
+    enabled: true
+    minAvailable: 1
+    # maxUnavailable: 5
+  # Scheduling
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
