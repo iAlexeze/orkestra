@@ -53,10 +53,46 @@ Complete documentation is in [docs/](docs/README.md).
 
 ## Adding a new note
 
-1. Identify the domain (`cron`, `strings`, `math`, `types`, `conditional`, …)
-2. Add the function to the appropriate `*.go` file
-3. Register it in that file's `xxxNotes()` function — it is automatically included via `note.Map()`
-4. Document it in the corresponding `docs/` file
-5. Write a test
+**1. Implement**
+
+- Identify the domain (`cron`, `strings`, `math`, `types`, `conditional`, `kubernetes`, `replica`, `container`, `job`, `service`, …)
+- Add the function to the appropriate `*.go` file
+- Register it in that file's `xxxNotes()` function — it is automatically included via `note.Map()`
+- Document it in the corresponding `docs/` file
 
 **Contract:** handle empty/nil input with a safe zero value, not a panic. Return `(value, error)` for functions that can meaningfully fail; return just `value` for infallible ones.
+
+**2. Unit test**
+
+Write a test in the corresponding `*_test.go` file. Cover the nil/empty path, the happy path, and any edge cases. For most note families (strings, math, conditional, types, cron, random, collections) this is sufficient — the note is done.
+
+**3. Kubernetes-family notes also require a katalog entry**
+
+Notes in `kubernetes.go`, `kube_replica.go`, `kube_container.go`, `kube_job.go`, and `kube_service.go` take live Kubernetes objects as input (`map[string]interface{}` from the dynamic client). Unit tests use hand-crafted maps — they cannot cover missing fields, null values, or schema variations that only appear with real API responses. The note katalog closes that gap.
+
+Add a `status.fields` entry to [`example/katalog.yaml`](example/katalog.yaml):
+
+```yaml
+- path: myNewNote
+  value: "{{ myNewNote .children.deployment }}"
+```
+
+Then verify it against a live cluster:
+
+```bash
+kubectl apply -f pkg/note/example/crd.yaml
+ork run -k pkg/note/example/katalog.yaml   # keep running in one terminal
+
+kubectl apply -f pkg/note/example/cr.yaml
+kubectl get noteprobe my-probe -o yaml -w  # watch until phase: Ready
+```
+
+Confirm the field appears with the expected value. Clean up when done:
+
+```bash
+cd pkg/note/example && bash cleanup.sh
+```
+
+---
+
+The [`example/`](example/) katalog is the living e2e test for the kubernetes note family. It runs in CI on every change to `kube_*.go` or `kubernetes.go`.

@@ -261,8 +261,14 @@ func noteExists(obj interface{}) bool {
 	if obj == nil {
 		return false
 	}
-	_, ok := obj.(map[string]interface{})
-	return ok
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return false
+	}
+	if v, _ := m["_placeholder"].(bool); v {
+		return false
+	}
+	return true
 }
 
 //   "phase":              notePhase,

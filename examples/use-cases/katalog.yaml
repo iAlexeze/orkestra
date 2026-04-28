@@ -183,6 +183,11 @@ spec:
               when:
                 - field: status.phase
                   operator: notExists
+            - path: resourceExists
+              value: "ResourceExists"
+              when:
+                - field: "{{ resourceExists .children.deployment }}"
+                  equals: "true"
             - path: phase
               value: "Ready"
               when:
@@ -190,6 +195,11 @@ spec:
                   equals: "true"
             - path: endpoint
               value: "{{ .metadata.name }}-postgres.{{ .metadata.namespace }}.svc.cluster.local:5432"
+            - path: replicasReady
+              value: "{{ replicasReady .children.deployment }}"
+            - path: resourceExists
+              value: "{{ resourceExists .children.deployment }}"
+
 
     database-backed-app:
       apiTypes:
@@ -243,11 +253,6 @@ spec:
             - path: phase
               value: "WaitingForDatabase"
               when:
-                - field: "{{ resourceExists .cross.db }}"
-                  equals: "false"
-            - path: phase
-              value: "WaitingForDatabase"
-              when:
                 - field: "{{ phase .cross.db }}"
                   notEquals: "Ready"
             - path: phase
@@ -255,9 +260,8 @@ spec:
               when:
                 - field: "{{ phase .cross.db }}"
                   equals: "Ready"
-                - field: "{{ readyReplicas .children.deployment }}"
-                  operator: gt
-                  value: "0"
+                - field: "{{ replicasReady .children.deployment }}"
+                  equals: "true"
             - path: databaseEndpoint
               value: "{{ get .cross.db \"status\" \"endpoint\" }}"
               when:

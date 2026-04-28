@@ -199,7 +199,7 @@ runtime:            # or controlCenter:
   podLabels: {}
 ```
 
-> `registry` is runtime-only — the Control Center has no image registry integration.
+> `registry` is runtime-only — the Control Center has no Orkestra registry integration.
 
 ---
 

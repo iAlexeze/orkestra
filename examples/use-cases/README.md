@@ -434,3 +434,10 @@ writing a single line of Go.
 | Provider call | `providers: {aws: [{s3: ...}]}` | AWS SDK v2 in a hook |
 | Ordered phases | `status.fields` with `when:` | State machine in constructor |
 | Child status | `{{ readyReplicas .children.deployment }}` | `client.Get` for child resource |
+
+## Cleanup
+
+```bash
+chmod +x cleanup.sh && ./cleanup.sh
+```
+
