@@ -1,0 +1,163 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: note-probe
+  author: orkspace
+  version: 0.1.0
+  description: >
+    NoteProbe — living integration test for all note functions.
+    Creates a Deployment, Service, and Job. Status fields exercise every
+    kubernetes, replica, container, job, and service note so each
+    note's output is visible via kubectl get noteprobe -o yaml.
+
+spec:
+  crds:
+    note-probe:
+      apiTypes:
+        group: note.orkestra.io
+        version: v1alpha1
+        kind: NoteProbe
+        plural: noteprobes
+      workers: 1
+      resync: 10s
+
+      operatorBox:
+        default: true
+
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-app"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+
+          services:
+            - name: "{{ .metadata.name }}-svc"
+              port: "80"
+              targetPort: "{{ .spec.port }}"
+              reconcile: true
+
+          jobs:
+            - name: "{{ .metadata.name }}-probe"
+              image: alpine:3.19
+              command: ["/bin/sh", "-c", "echo 'note probe complete'"]
+
+        # ── Status ─────────────────────────────────────────────────────────────
+        # Each field exercises a specific note function.
+        # Apply the CR and inspect: kubectl get noteprobe <name> -o yaml
+        status:
+          fields:
+            # ── Phase state machine ─────────────────────────────────────────
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+
+            - path: phase
+              value: "Deploying"
+              when:
+                - field: "{{ resourceExists .children.deployment }}"
+                  equals: "true"
+                - field: "{{ replicasReady .children.deployment }}"
+                  equals: "false"
+
+            - path: phase
+              value: "WaitingForJob"
+              when:
+                - field: "{{ replicasReady .children.deployment }}"
+                  equals: "true"
+                - field: "{{ jobSucceeded .children.job }}"
+                  equals: "false"
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ replicasReady .children.deployment }}"
+                  equals: "true"
+                - field: "{{ jobSucceeded .children.job }}"
+                  equals: "true"
+
+            # ── kubernetes notes ────────────────────────────────────────────
+            - path: resourceExistsDeployment
+              value: "{{ resourceExists .children.deployment }}"
+
+            - path: resourceExistsService
+              value: "{{ resourceExists .children.service }}"
+
+            - path: childName
+              value: "{{ name .children.deployment }}"
+
+            - path: childNamespace
+              value: "{{ namespace .children.deployment }}"
+
+            - path: isTerminating
+              value: "{{ isTerminating .children.deployment }}"
+
+            - path: generation
+              value: "{{ generation .children.deployment }}"
+
+            - path: observedGeneration
+              value: "{{ observedGeneration .children.deployment }}"
+
+            - path: isSynced
+              value: "{{ isSynced .children.deployment }}"
+
+            - path: hasConditionAvailable
+              value: "{{ hasCondition .children.deployment \"Available\" }}"
+
+            - path: hasConditionProgressing
+              value: "{{ hasCondition .children.deployment \"Progressing\" }}"
+
+            - path: conditionAvailableReason
+              value: "{{ conditionReason .children.deployment \"Available\" }}"
+
+            - path: conditionProgressingMessage
+              value: "{{ conditionMessage .children.deployment \"Progressing\" }}"
+
+            - path: deploymentPhase
+              value: "{{ phase .children.deployment }}"
+
+            # ── replica notes ───────────────────────────────────────────────
+            - path: replicasReady
+              value: "{{ replicasReady .children.deployment }}"
+
+            - path: desiredReplicas
+              value: "{{ desiredReplicas .children.deployment }}"
+
+            - path: readyReplicas
+              value: "{{ readyReplicas .children.deployment }}"
+
+            - path: availableReplicas
+              value: "{{ availableReplicas .children.deployment }}"
+
+            - path: updatedReplicas
+              value: "{{ updatedReplicas .children.deployment }}"
+
+            # ── container notes ─────────────────────────────────────────────
+            - path: containerImage
+              value: "{{ containerImage .children.deployment }}"
+
+            - path: containerCount
+              value: "{{ containerCount .children.deployment }}"
+
+            - path: containerPort
+              value: "{{ containerPort .children.deployment }}"
+
+            # ── job notes ───────────────────────────────────────────────────
+            - path: jobSucceeded
+              value: "{{ jobSucceeded .children.job }}"
+
+            - path: jobFailed
+              value: "{{ jobFailed .children.job }}"
+
+            - path: jobActive
+              value: "{{ jobActive .children.job }}"
+
+            # ── service notes ───────────────────────────────────────────────
+            - path: serviceClusterIP
+              value: "{{ serviceClusterIP .children.service }}"
+
+            - path: endpointsReady
+              value: "{{ endpointsReady .children.service }}"

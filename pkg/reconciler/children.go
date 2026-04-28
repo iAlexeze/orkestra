@@ -149,14 +149,14 @@ func readResourceGroup(
 
 		var err error
 		var u *unstructured.Unstructured
-		if child.namespaced {
-			// Namespaced
+		if ns != "" {
+			// Namespaced — use resolved namespace (template or owner fallback)
 			u, err = kube.DynamicClient().
 				Resource(gvr).
 				Namespace(ns).
 				Get(ctx, child.name, metav1.GetOptions{})
 		} else {
-			// Cluster-scoped
+			// Cluster-scoped (e.g. Namespace, ClusterRole)
 			u, err = kube.DynamicClient().
 				Resource(gvr).
 				Get(ctx, child.name, metav1.GetOptions{})
@@ -211,8 +211,10 @@ func firstValue(m map[string]interface{}) interface{} {
 	}
 	// Resource not yet created or name resolution failed.
 	// Return a placeholder so template field access is safe.
+	// _placeholder:true lets noteExists() distinguish this from a real resource.
 	return map[string]interface{}{
-		"status": map[string]interface{}{},
+		"_placeholder": true,
+		"status":       map[string]interface{}{},
 	}
 }
 
@@ -259,19 +261,19 @@ func mergeTemplates(operatorBox orktypes.OperatorBoxConfig) orktypes.HookTemplat
 		t.Pods = append(t.Pods, operatorBox.OnReconcile.Pods...)
 		t.ServiceAccounts = append(t.ServiceAccounts, operatorBox.OnReconcile.ServiceAccounts...)
 		t.Namespaces = append(t.Namespaces, operatorBox.OnReconcile.Namespaces...)
-		t.PersistentVolumes = append(t.PersistentVolumes, operatorBox.OnCreate.PersistentVolumes...)
-		t.PersistentVolumeClaims = append(t.PersistentVolumeClaims, operatorBox.OnCreate.PersistentVolumeClaims...)
-		t.Ingresses = append(t.Ingresses, operatorBox.OnCreate.Ingresses...)
+		t.PersistentVolumes = append(t.PersistentVolumes, operatorBox.OnReconcile.PersistentVolumes...)
+		t.PersistentVolumeClaims = append(t.PersistentVolumeClaims, operatorBox.OnReconcile.PersistentVolumeClaims...)
+		t.Ingresses = append(t.Ingresses, operatorBox.OnReconcile.Ingresses...)
 
 		// Future when added
-		t.StorageClasses = append(t.StorageClasses, operatorBox.OnCreate.StorageClasses...)
-		t.ClusterRoles = append(t.ClusterRoles, operatorBox.OnCreate.ClusterRoles...)
-		t.ClusterRoleBindings = append(t.ClusterRoleBindings, operatorBox.OnCreate.ClusterRoleBindings...)
-		t.Roles = append(t.Roles, operatorBox.OnCreate.Roles...)
-		t.RoleBindings = append(t.RoleBindings, operatorBox.OnCreate.RoleBindings...)
-		t.LimitRanges = append(t.LimitRanges, operatorBox.OnCreate.LimitRanges...)
-		t.ResourceQuotas = append(t.ResourceQuotas, operatorBox.OnCreate.ResourceQuotas...)
-		t.PriorityClasses = append(t.PriorityClasses, operatorBox.OnCreate.PriorityClasses...)
+		t.StorageClasses = append(t.StorageClasses, operatorBox.OnReconcile.StorageClasses...)
+		t.ClusterRoles = append(t.ClusterRoles, operatorBox.OnReconcile.ClusterRoles...)
+		t.ClusterRoleBindings = append(t.ClusterRoleBindings, operatorBox.OnReconcile.ClusterRoleBindings...)
+		t.Roles = append(t.Roles, operatorBox.OnReconcile.Roles...)
+		t.RoleBindings = append(t.RoleBindings, operatorBox.OnReconcile.RoleBindings...)
+		t.LimitRanges = append(t.LimitRanges, operatorBox.OnReconcile.LimitRanges...)
+		t.ResourceQuotas = append(t.ResourceQuotas, operatorBox.OnReconcile.ResourceQuotas...)
+		t.PriorityClasses = append(t.PriorityClasses, operatorBox.OnReconcile.PriorityClasses...)
 	}
 	return t
 }

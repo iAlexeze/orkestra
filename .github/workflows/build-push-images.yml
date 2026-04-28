@@ -74,11 +74,40 @@ jobs:
       - name: Build Linux binaries (if cache miss)
         if: steps.cache-binaries.outputs.cache-hit != 'true'
         run: |
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ork-amd64 ./cmd/orkestra
-          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o ork-arm64 ./cmd/orkestra
+          # Build runtime (ork)
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+            -trimpath \
+            -ldflags="-s -w \
+              -X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }} \
+              -X github.com/orkspace/orkestra/pkg/version.Commit=${{ github.sha }} \
+              -X github.com/orkspace/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o ork-amd64 ./cmd/orkestra
+
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build \
+            -trimpath \
+            -ldflags="-s -w \
+              -X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }} \
+              -X github.com/orkspace/orkestra/pkg/version.Commit=${{ github.sha }} \
+              -X github.com/orkspace/orkestra/pkg/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o ork-arm64 ./cmd/orkestra
+
+          # Build control center (orkcc)
           cd ./cmd/controlcenter
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o orkcc-amd64 .
-          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o orkcc-arm64 .
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+            -trimpath \
+            -ldflags="-s -w \
+              -X github.com/orkspace/orkestra-cc/version.Version=${{ github.ref_name }} \
+              -X github.com/orkspace/orkestra-cc/version.Commit=${{ github.sha }} \
+              -X github.com/orkspace/orkestra-cc/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o ../../orkcc-amd64 .
+
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build \
+            -trimpath \
+            -ldflags="-s -w \
+              -X github.com/orkspace/orkestra-cc/version.Version=${{ github.ref_name }} \
+              -X github.com/orkspace/orkestra-cc/version.Commit=${{ github.sha }} \
+              -X github.com/orkspace/orkestra-cc/version.Date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o ../../orkcc-arm64 .
 
       - name: Build and push runtime image
         id: push-runtime
