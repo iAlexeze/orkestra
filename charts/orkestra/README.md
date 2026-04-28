@@ -143,16 +143,63 @@ controlCenter:
 
 ---
 
-## Shared Settings
+## Global Settings
 
-- `imagePullSecrets`
-- `registry.enabled` / `registry.url`
-- `hpa.enabled`
-- `networkPolicy.enabled`
-- `pdb.runtime` / `pdb.controlCenter`
-- `nodeSelector`, `tolerations`, `affinity`
-- `extraEnv`, `extraVolumes`, `extraVolumeMounts`
-- `podAnnotations`, `podLabels`
+Only four keys are shared across all components:
+
+```yaml
+global:
+  namespace: orkestra-system
+  nameOverride: ""
+  fullnameOverride: ""
+```
+
+`imagePullSecrets` is intentionally **not** global — set it per component so each image can pull from a different registry if needed.
+
+---
+
+## Per-Component Settings
+
+Every tuning knob lives under `runtime:` or `controlCenter:`. Both components expose the same set of optional keys:
+
+```yaml
+runtime:            # or controlCenter:
+  imagePullSecrets: []
+
+  registry:         # runtime only
+    enabled: false
+    url: ""
+
+  hpa:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  networkPolicy:
+    enabled: false
+    ingressFrom: []
+
+  pdb:
+    enabled: true
+    minAvailable: 1
+    # maxUnavailable: 5
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+
+  extraEnv: []
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  podAnnotations: {}
+  podLabels: {}
+```
+
+> `registry` is runtime-only — the Control Center has no image registry integration.
 
 ---
 

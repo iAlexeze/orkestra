@@ -1,5 +1,5 @@
 # Runtime PodDisruptionBudget
-{{- if .Values.pdb.enabled }}
+{{- if .Values.runtime.pdb.enabled }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -12,16 +12,17 @@ spec:
   selector:
     matchLabels:
       {{- include "orkestra.selectorLabels" . | nindent 6 }}
-  {{- if .Values.pdb.minAvailable }}
-  minAvailable: {{ .Values.pdb.runtime.minAvailable }}
+      app.kubernetes.io/component: runtime
+  {{- if .Values.runtime.pdb.minAvailable }}
+  minAvailable: {{ .Values.runtime.pdb.minAvailable }}
   {{- end }}
-  {{- if .Values.pdb.maxUnavailable }}
-  maxUnavailable: {{ .Values.pdb.runtime.maxUnavailable }}
+  {{- if .Values.runtime.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.runtime.pdb.maxUnavailable }}
   {{- end }}
 {{- end }}
 
 # Control Center PodDisruptionBudget
-{{- if .Values.pdb.enabled }}
+{{- if and .Values.controlCenter.pdb.enabled .Values.controlCenter.enabled }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -34,10 +35,11 @@ spec:
   selector:
     matchLabels:
       {{- include "orkestra.selectorLabels" . | nindent 6 }}
-  {{- if .Values.pdb.minAvailable }}
-  minAvailable: {{ .Values.pdb.controlCenter.minAvailable }}
+      app.kubernetes.io/component: controlcenter
+  {{- if .Values.controlCenter.pdb.minAvailable }}
+  minAvailable: {{ .Values.controlCenter.pdb.minAvailable }}
   {{- end }}
-  {{- if .Values.pdb.maxUnavailable }}
-  maxUnavailable: {{ .Values.pdb.controlCenter.maxUnavailable }}
+  {{- if .Values.controlCenter.pdb.maxUnavailable }}
+  maxUnavailable: {{ .Values.controlCenter.pdb.maxUnavailable }}
   {{- end }}
 {{- end }}

@@ -80,6 +80,13 @@ jobs:
 
           cp ".cr-release-packages/${ORK}-${VERSION}.tgz" /tmp/gh-pages/
 
+          # Stamp version under the title in the existing gh-pages README
+          awk 'NR==2{print; print "> **Chart version:** '"${VERSION}"' | **App version:** '"${IMAGE_TAG}"'"; print ""; next}1' \
+            /tmp/gh-pages/README.md > /tmp/README.tmp && mv /tmp/README.tmp /tmp/gh-pages/README.md
+
+          # Copy values.yaml so users can inspect defaults from the gh-pages site
+          cp "charts/${ORK}/values.yaml" /tmp/gh-pages/values.yaml
+
           cd /tmp/gh-pages
           if [[ -f index.yaml ]]; then
             helm repo index . --url "https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}" --merge index.yaml
@@ -89,7 +96,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "*.tgz" index.yaml
+          git add "*.tgz" index.yaml README.md values.yaml
           git commit -m "Release ${ORK}-${VERSION}"
           git push origin gh-pages
 

@@ -32,15 +32,15 @@ spec:
       labels:
         {{- include "orkestra.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: controlcenter
-        {{- with .Values.podLabels }}
+        {{- with .Values.controlCenter.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-      {{- with .Values.podAnnotations }}
+      {{- with .Values.controlCenter.podAnnotations }}
       annotations:
-        {{- toYaml . | nindent 2 }}
+        {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {{- with .Values.controlCenter.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -68,14 +68,11 @@ spec:
           env:
             - name: LOG_LEVEL
               value: {{ .Values.controlCenter.config.logLevel | default "info" | quote }}
-            {{- with .Values.extraEnv }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-            {{- with .Values.extraEnv }}
+            {{- with .Values.controlCenter.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
 
-          {{- with .Values.extraEnvFrom }}
+          {{- with .Values.controlCenter.extraEnvFrom }}
           envFrom:
             {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -109,29 +106,34 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
-            {{- with .Values.extraVolumeMounts }}
+            {{- with .Values.controlCenter.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
 
       volumes:
         - name: tmp
           emptyDir: {}
-        {{- with .Values.extraVolumes }}
+        {{- with .Values.controlCenter.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
 
-      {{- with .Values.nodeSelector }}
+      {{- with .Values.controlCenter.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 
-      {{- with .Values.tolerations }}
+      {{- with .Values.controlCenter.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 
-      {{- with .Values.affinity }}
+      {{- with .Values.controlCenter.affinity }}
       affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      {{- with .Values.controlCenter.topologySpreadConstraints }}
+      topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 
