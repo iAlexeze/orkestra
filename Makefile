@@ -4,6 +4,7 @@
 ORKESTRA_DIR := .
 CONTROL_CENTER_DIR := ./cmd/controlcenter
 OUTPUT_DIR := $(HOME)/.orkestra/bin
+BUILD_TAGS ?=
 
 # Version stamping — reads from git; matches what CI/CD injects via ldflags.
 GIT_VERSION := $(shell git describe --tags --always 2>/dev/null || echo "dev")
@@ -89,7 +90,10 @@ BIN := $(OUTPUT_DIR)/ork
 ork-linux:
 	@echo "Building Orkestra (Linux amd64)..."
 	@mkdir -p $(OUTPUT_DIR)
-	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $(OUTPUT_DIR)/ork ./cmd/orkestra
+	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+		-tags "$(BUILD_TAGS)" \
+		-ldflags "$(ORK_LDFLAGS)" \
+		-o $(OUTPUT_DIR)/ork ./cmd/orkestra
 	@echo "✅ Linux Orkestra binary built: $(OUTPUT_DIR)/ork"
 
 orkcc-linux:
@@ -100,7 +104,8 @@ orkcc-linux:
 
 # ── Docker Build ──────────────────────────────────────────────────────────────
 
-docker: ork-linux
+docker:
+	$(MAKE) ork-linux BUILD_TAGS=runtime
 	@echo "Building Docker image: $(ORK_IMAGE)"
 	@cp $(OUTPUT_DIR)/ork ./$(ORK_AMD64_TARGET)
 	
@@ -306,9 +311,3 @@ site-build: site-sync
 vet:
 	@echo "Running go vet..."
 	go vet ./...
-
-# ── Certificates ─────────────────────────────────────────────────────────────
-certs:
-	@echo "Generating self-signed certificates for Orkestra..."
-	@bash scripts/self-signed-certificates.sh
-	@echo "Certificates generated in orkestrs-certs/"

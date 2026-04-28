@@ -267,6 +267,27 @@ func (r *Resolver) WithDocker(data map[string]interface{}) *Resolver {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// WithSpecOverride — derived rollback context
+// ─────────────────────────────────────────────────────────────────────────────
+
+// WithSpecOverride returns a new Resolver with the spec key replaced by the
+// provided map. Used by the rollBackOnError: true path to run derived rollback
+// templates against the previous spec without requiring .previous.spec.* syntax.
+//
+// The caller's templates use {{ .spec.image }} as written — during a derived
+// rollback run, that expression resolves to the previous spec's image value.
+// All other keys (.metadata, .status, .external, .cross) remain current.
+func (r *Resolver) WithSpecOverride(spec map[string]interface{}) *Resolver {
+	newData := r.shallowCopy()
+	newData["spec"] = spec
+	return &Resolver{
+		data:           newData,
+		ownerName:      r.ownerName,
+		ownerNamespace: r.ownerNamespace,
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // WithPrevious — rollback context injection
 // ─────────────────────────────────────────────────────────────────────────────
 

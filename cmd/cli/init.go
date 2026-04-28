@@ -1,4 +1,5 @@
-// cmd/cli/init.go
+//go:build !runtime
+
 package cli
 
 import (

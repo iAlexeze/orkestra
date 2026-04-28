@@ -102,6 +102,108 @@ func (t *RollbackTrigger) EffectiveConsecutiveFailures() int {
 	return t.ConsecutiveFailures
 }
 
+// ── DerivedRollback ───────────────────────────────────────────────────────────
+
+// DerivedRollback returns the effective RollbackBlock for this operatorbox,
+// merging rollBackOnError: true shorthand with any explicit rollback: declaration.
+//
+// Resolution order:
+//  1. Neither rollBackOnError nor rollback set → nil (no rollback)
+//  2. rollBackOnError: false, rollback set → explicit block returned as-is
+//  3. rollBackOnError: true → synthetic block derived from reconcile:true resources;
+//     explicit rollback.trigger and rollback.onRollback take precedence when set
+func (c *OperatorBoxConfig) DerivedRollback() *RollbackBlock {
+	if !c.RollBackOnError && c.Rollback == nil {
+		return nil
+	}
+	if !c.RollBackOnError {
+		return c.Rollback
+	}
+
+	block := &RollbackBlock{}
+
+	// Merge trigger from explicit block if declared
+	if c.Rollback != nil {
+		block.Trigger = c.Rollback.Trigger
+	}
+
+	// Explicit onRollback takes precedence over derived templates
+	if c.Rollback != nil && c.Rollback.OnRollback != nil {
+		block.OnRollback = c.Rollback.OnRollback
+		return block
+	}
+
+	block.OnRollback = deriveRollbackTemplates(c.OnCreate, c.OnReconcile)
+	return block
+}
+
+// deriveRollbackTemplates collects all resource declarations with reconcile: true
+// from onCreate and onReconcile into a synthetic HookTemplates for rollback.
+// Resources with once: true (generated secrets) are excluded.
+//
+// The returned templates are intended to be run with a resolver where .spec.*
+// has been substituted with the previous spec — so the same template expressions
+// ({{ .spec.image }}) work for both normal reconcile and rollback.
+func deriveRollbackTemplates(onCreate, onReconcile *HookTemplates) *HookTemplates {
+	derived := &HookTemplates{}
+
+	collect := func(src *HookTemplates) {
+		if src == nil {
+			return
+		}
+		for _, d := range src.Deployments {
+			if d.Reconcile {
+				derived.Deployments = append(derived.Deployments, d)
+			}
+		}
+		for _, s := range src.Services {
+			if s.Reconcile {
+				derived.Services = append(derived.Services, s)
+			}
+		}
+		for _, cm := range src.ConfigMaps {
+			if cm.Reconcile {
+				derived.ConfigMaps = append(derived.ConfigMaps, cm)
+			}
+		}
+		for _, ss := range src.StatefulSets {
+			if ss.Reconcile {
+				derived.StatefulSets = append(derived.StatefulSets, ss)
+			}
+		}
+		for _, rs := range src.ReplicaSets {
+			if rs.Reconcile {
+				derived.ReplicaSets = append(derived.ReplicaSets, rs)
+			}
+		}
+		for _, ing := range src.Ingresses {
+			if ing.Reconcile {
+				derived.Ingresses = append(derived.Ingresses, ing)
+			}
+		}
+		for _, hpa := range src.HorizontalPodAutoscalers {
+			if hpa.Reconcile {
+				derived.HorizontalPodAutoscalers = append(derived.HorizontalPodAutoscalers, hpa)
+			}
+		}
+		for _, pdb := range src.PodDisruptionBudgets {
+			if pdb.Reconcile {
+				derived.PodDisruptionBudgets = append(derived.PodDisruptionBudgets, pdb)
+			}
+		}
+		// Secrets: only include those without once:true
+		for _, sec := range src.Secrets {
+			if sec.Reconcile && !sec.Once {
+				derived.Secrets = append(derived.Secrets, sec)
+			}
+		}
+	}
+
+	collect(onCreate)
+	collect(onReconcile)
+	return derived
+}
+
 // ShouldTrigger returns true when the failure history meets the rollback criteria.
 //
 // failures is the list of failure timestamps in reverse chronological order

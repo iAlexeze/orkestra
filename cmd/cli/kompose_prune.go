@@ -1,3 +1,5 @@
+//go:build !runtime
+
 package cli
 
 import "gopkg.in/yaml.v3"

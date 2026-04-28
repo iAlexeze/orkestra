@@ -147,17 +147,17 @@ func (h *rollbackFailureHistory) record(required int) {
 }
 
 // shouldRollback returns true when the rollback trigger conditions are met.
-// Uses the CR's failure history and the operatorbox's consecutive failure count.
+// Uses the effective trigger from DerivedRollback so that rollBackOnError: true
+// uses the correct default threshold even when no explicit rollback block is set.
 func (r *GenericReconciler[PTR]) shouldRollback(
 	consecutiveFailures int,
 	history *rollbackFailureHistory,
 ) bool {
-	if r.crd.OperatorBox.Rollback == nil {
+	derived := r.crd.OperatorBox.DerivedRollback()
+	if derived == nil {
 		return false
 	}
-
-	trigger := r.crd.OperatorBox.Rollback.Trigger
-	return trigger.ShouldTrigger(history.times)
+	return derived.Trigger.ShouldTrigger(history.times)
 }
 
 // isRollbackActive returns true when the CR is currently in the rolled-back phase.
@@ -181,12 +181,19 @@ func isRollbackActive(obj domain.Object) bool {
 
 // ── Rollback execution ────────────────────────────────────────────────────────
 
-// runRollback applies the onRollback resource group with the previous spec
-// hydrated into the resolver as .previous.*.
+// runRollback applies the rollback resource group using either the explicit
+// onRollback: templates or the derived templates from rollBackOnError: true.
+//
+// Derived path (rollBackOnError: true, no explicit onRollback):
+//   - Templates are the reconcile:true declarations from onCreate/onReconcile.
+//   - Resolver has .spec.* replaced with the previous spec — templates run unchanged.
+//
+// Explicit path (onRollback: block declared):
+//   - Uses the declared templates as-is.
+//   - Resolver has .previous.* injected — templates use .previous.spec.* references.
 func (r *GenericReconciler[PTR]) runRollback(ctx context.Context, resolver *orktmpl.Resolver, obj PTR) error {
-	rollback := r.crd.OperatorBox.Rollback
-	if !r.crd.HasRollbackRules() {
-		// No onRollback declared — rollback blocks normal reconcile but is a no-op resource-wise.
+	rollback := r.crd.OperatorBox.DerivedRollback()
+	if rollback == nil || rollback.OnRollback == nil {
 		logger.Info().
 			Str("crd", r.crd.GVKString()).
 			Str("name", obj.GetName()).
@@ -208,10 +215,19 @@ func (r *GenericReconciler[PTR]) runRollback(ctx context.Context, resolver *orkt
 		return fmt.Errorf("rollback: kubeclient not found in context")
 	}
 
-	// Inject previous spec into resolver as .previous.*
-	rollbackResolver := resolver.WithPrevious(previousSpec)
+	var rollbackResolver *orktmpl.Resolver
+	usingDerived := r.crd.OperatorBox.RollBackOnError &&
+		(r.crd.OperatorBox.Rollback == nil || r.crd.OperatorBox.Rollback.OnRollback == nil)
 
-	// Apply the onRollback templates — same engine as onReconcile, update=true for idempotency
+	if usingDerived {
+		// Derived path: substitute .spec.* with previous spec so the same
+		// template expressions work for both normal reconcile and rollback.
+		rollbackResolver = resolver.WithSpecOverride(previousSpec)
+	} else {
+		// Explicit path: inject previous spec under .previous.* as documented.
+		rollbackResolver = resolver.WithPrevious(previousSpec)
+	}
+
 	if err := r.runResourceGroup(ctx, kube, rollbackResolver, obj, rollback.OnRollback, true); err != nil {
 		return fmt.Errorf("rollback: applying templates: %w", err)
 	}
@@ -219,6 +235,7 @@ func (r *GenericReconciler[PTR]) runRollback(ctx context.Context, resolver *orkt
 	logger.Info().
 		Str("crd", r.crd.GVKString()).
 		Str("name", obj.GetName()).
+		Bool("derived", usingDerived).
 		Msg("rollback: previous state re-applied")
 
 	return nil

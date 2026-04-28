@@ -424,8 +424,8 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 	if err != nil && r.crd.HasRollbackRules() {
 		key := obj.GetNamespace() + "/" + obj.GetName()
 		h := r.getFailureHistory(key)
-		trigger := r.crd.OperatorBox.Rollback.Trigger
-		h.record(trigger.EffectiveConsecutiveFailures())
+		derived := r.crd.OperatorBox.DerivedRollback()
+		h.record(derived.Trigger.EffectiveConsecutiveFailures())
 		if r.shouldRollback(len(h.times), h) {
 			logger.FromContext(ctx).Warn().
 				Str("name", obj.GetName()).

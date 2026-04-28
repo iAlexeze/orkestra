@@ -1,0 +1,52 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: apiservers.rollback.orkestra.io
+spec:
+  group: rollback.orkestra.io
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Image
+          type: string
+          jsonPath: .status.image
+        - name: Replicas
+          type: string
+          jsonPath: .status.replicas
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                replicas:
+                  type: integer
+                  default: 2
+                port:
+                  type: integer
+                  default: 8080
+                configData:
+                  type: string
+                  default: "default-config"
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+  names:
+    kind: ApiServer
+    plural: apiservers
+    singular: apiserver
+  scope: Namespaced

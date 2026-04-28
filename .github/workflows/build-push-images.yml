@@ -76,6 +76,7 @@ jobs:
         run: |
           # Build runtime (ork)
           GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+            -tags runtime \
             -trimpath \
             -ldflags="-s -w \
               -X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }} \
@@ -84,6 +85,7 @@ jobs:
             -o ork-amd64 ./cmd/orkestra
 
           GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build \
+            -tags runtime \
             -trimpath \
             -ldflags="-s -w \
               -X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }} \
