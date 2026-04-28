@@ -124,6 +124,7 @@ var BuiltinNotes = []NoteInfo{
 		Domain:      "cron",
 		Description: "Return a human-readable description of a cron expression. Useful in `status.fields` for the Control Center UI.",
 		Example:     "- path: scheduleDescription\n  value: \"{{ cronDescribe .spec.schedule }}\"",
+		Keywords:    []string{"cron", "schedule", "describe", "human-readable", "display", "status"},
 	},
 	{
 		Name:        "cronDom",
@@ -142,6 +143,7 @@ var BuiltinNotes = []NoteInfo{
 		Domain:      "cron",
 		Description: "Build a five-field cron expression from five explicit string parts. Empty parts default to `*`.",
 		Example:     "# value: \"{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}\"\n# minute=\"*/1\", hour=\"*\", dom=\"*\", month=\"*\", dow=\"*\" → \"*/1 * * * *\"",
+		Keywords:    []string{"cron", "schedule", "build", "expression", "fields", "construct"},
 	},
 	{
 		Name:        "cronField",
@@ -154,12 +156,14 @@ var BuiltinNotes = []NoteInfo{
 		Domain:      "cron",
 		Description: "Convert a schedule value to a five-field cron string. Accepts either shape: - **map** — reads keys `minute`, `hour`, `dayOfMonth`, `month`, `dayOfWeek`; absent keys default to `*` - **string** — treated as an already-complete cron expression and normalised - **nil / unknown** — returns `\"* * * * *\"`",
 		Example:     "# normalize block — user input may be either shape\nnormalize:\n  spec:\n    schedule: \"{{ cronFromAny .spec.schedule }}\"\n\n# v2 → v1 conversion — legacy v2 objects may have a flat string\n- from: v2\n  to: v1\n  spec:\n    schedule: \"{{ cronFromAny .spec.schedule }}\"\n\n# status field — safe regardless of stored shape\n- path: scheduleExpression\n  value: \"{{ cronFromAny .spec.schedule }}\"\n{minute: \"*/5\", hour: \"0\", dayOfMonth: \"*\", month: \"*\", dayOfWeek: \"1\"}\n→ \"*/5 0 * * 1\"\n\n\"*/5 0 * * 1\"\n→ \"*/5 0 * * 1\"   (string passthrough, normalised)\n# Old:\nschedule: >\n  {{ if typeMap .spec.schedule }}{{ cronFromMap .spec.schedule }}\n  {{ else }}{{ cronNormalize .spec.schedule }}{{ end }}\n\n# New:\nschedule: \"{{ cronFromAny .spec.schedule }}\"",
+		Keywords:    []string{"cron", "schedule", "convert", "string", "normalize", "any"},
 	},
 	{
 		Name:        "cronFromMap",
 		Domain:      "cron",
 		Description: "Convert a schedule **map** to a five-field cron string. Reads keys `minute`, `hour`, `dayOfMonth`, `month`, `dayOfWeek`; absent keys default to `*`. Errors if the input is not a map — use `cronFromAny` when the input may be a string.",
 		Example:     "# onReconcile Path B — input is guaranteed a map by the when: gate\n- name: \"{{ .metadata.name }}\"\n  schedule: \"{{ cronFromMap .spec.schedule }}\"\n  when:\n    - field: spec.schedule\n      operator: typeOf\n      value: map\n{minute: \"*/5\", hour: \"0\", dayOfMonth: \"*\", month: \"*\", dayOfWeek: \"1\"}\n→ \"*/5 0 * * 1\"",
+		Keywords:    []string{"cron", "schedule", "map", "convert", "fields", "expression"},
 	},
 	{
 		Name:        "cronHour",
@@ -184,18 +188,21 @@ var BuiltinNotes = []NoteInfo{
 		Domain:      "cron",
 		Description: "Normalize a cron string: expand `@`-macros, trim whitespace, ensure exactly five fields. Returns `\"* * * * *\"` for empty or malformed input.",
 		Example:     "# value: \"{{ cronNormalize .spec.schedule }}\"\n# \"@daily\"      → \"0 0 * * *\"\n# \"@hourly\"     → \"0 * * * *\"\n# \"*/5 * * * *\" → \"*/5 * * * *\"  (unchanged, already valid)\n# \"\"            → \"* * * * *\"",
+		Keywords:    []string{"cron", "schedule", "normalize", "macro", "expand", "sanitize"},
 	},
 	{
 		Name:        "cronToMap",
 		Domain:      "cron",
 		Description: "Convert a cron string to the structured map shape. For use in **conversion path specs only** — the result is a nested map, not a plain string. - **string** — splits into five named fields - **map** — returned as-is - `@`-macros expanded before splitting (`@hourly` → minute:`0`, hour:`*`, …)",
 		Example:     "# v1 → v2 conversion path\n- from: v1\n  to: v2\n  spec:\n    schedule: \"{{ cronToMap .spec.schedule }}\"\n\"*/5 0 * * 1\"\n→ {minute:\"*/5\", hour:\"0\", dayOfMonth:\"*\", month:\"*\", dayOfWeek:\"1\"}\n\n\"@hourly\"\n→ {minute:\"0\", hour:\"*\", dayOfMonth:\"*\", month:\"*\", dayOfWeek:\"*\"}",
+		Keywords:    []string{"cron", "schedule", "parse", "fields", "map", "convert", "structured"},
 	},
 	{
 		Name:        "cronValid",
 		Domain:      "cron",
 		Description: "Return `true` when the expression is structurally valid (five fields present after macro expansion). Does not validate field ranges.",
 		Example:     "validation:\n  rules:\n    - field: spec.schedule\n      operator: custom\n      value: \"{{ cronValid .spec.schedule }}\"\n      message: \"spec.schedule must be a valid cron expression\"\n      action: deny",
+		Keywords:    []string{"cron", "schedule", "validate", "valid", "check", "boolean"},
 	},
 	{
 		Name:        "creationTimestamp",
@@ -400,6 +407,27 @@ var BuiltinNotes = []NoteInfo{
 		Domain:      "math",
 		Description: "Subtract the second number from the first.",
 		Example:     "# value: \"{{ sub .spec.replicas 1 }}\"\n# replicas=3 → 2",
+	},
+	{
+		Name:        "cidrContains",
+		Domain:      "net",
+		Description: "Report whether an IP address falls within a CIDR block. Returns `false` for malformed input rather than panicking — safe to use in `when:` conditions and `status.fields`.",
+		Example:     "# Allow ingress only from the internal pod CIDR\nwhen:\n  - field: \"{{ cidrContains \\\"10.0.0.0/8\\\" .spec.clientIP }}\"\n    equals: \"true\"\n{{ cidrContains \"10.0.0.0/8\"      \"10.1.2.3\"   }}  → true\n{{ cidrContains \"192.168.0.0/16\"  \"10.0.0.1\"   }}  → false\n{{ cidrContains \"bad-cidr\"        \"10.0.0.1\"   }}  → false",
+		Keywords:    []string{"network", "cidr", "ip", "subnet", "contains", "range", "address"},
+	},
+	{
+		Name:        "ipIsPrivate",
+		Domain:      "net",
+		Description: "Report whether an IP address falls within a private (RFC 1918 / RFC 4193) range. Covers `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, and `fc00::/7`.",
+		Example:     "# Route traffic differently based on whether the source is internal\n- path: trafficClass\n  value: \"{{ if ipIsPrivate .spec.sourceIP }}internal{{ else }}external{{ end }}\"\n{{ ipIsPrivate \"10.0.0.1\"       }}  → true\n{{ ipIsPrivate \"192.168.1.100\"  }}  → true\n{{ ipIsPrivate \"172.20.0.5\"     }}  → true\n{{ ipIsPrivate \"8.8.8.8\"        }}  → false\n{{ ipIsPrivate \"2001:db8::1\"    }}  → false",
+		Keywords:    []string{"network", "ip", "address", "private", "internal", "rfc1918", "cidr"},
+	},
+	{
+		Name:        "ipValid",
+		Domain:      "net",
+		Description: "Report whether a string is a valid IPv4 or IPv6 address.",
+		Example:     "validation:\n  rules:\n    - field: spec.clientIP\n      operator: custom\n      value: \"{{ ipValid .spec.clientIP }}\"\n      message: \"spec.clientIP must be a valid IP address\"\n      action: deny\n{{ ipValid \"10.0.0.1\"     }}  → true\n{{ ipValid \"2001:db8::1\"  }}  → true\n{{ ipValid \"not-an-ip\"    }}  → false\n{{ ipValid \"\"             }}  → false",
+		Keywords:    []string{"network", "ip", "address", "validate", "valid", "ipv4", "ipv6"},
 	},
 	{
 		Name:        "formatQuantity",

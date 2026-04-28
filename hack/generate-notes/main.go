@@ -37,6 +37,7 @@ type noteEntry struct {
 	Domain      string
 	Description string
 	Example     string
+	Keywords    []string
 }
 
 var (
@@ -125,6 +126,7 @@ func parseDoc(path, domain string) ([]noteEntry, error) {
 		names       []string // current heading's note names
 		descLines   []string
 		exLines     []string
+		keywords    []string
 		inCodeBlock bool
 		st          state = stateScanning
 	)
@@ -135,17 +137,21 @@ func parseDoc(path, domain string) ([]noteEntry, error) {
 		}
 		desc := strings.TrimSpace(strings.Join(descLines, " "))
 		ex := strings.TrimSpace(strings.Join(exLines, "\n"))
+		kws := make([]string, len(keywords))
+		copy(kws, keywords)
 		for _, name := range names {
 			entries = append(entries, noteEntry{
 				Name:        name,
 				Domain:      domain,
 				Description: desc,
 				Example:     ex,
+				Keywords:    kws,
 			})
 		}
 		names = nil
 		descLines = nil
 		exLines = nil
+		keywords = nil
 		inCodeBlock = false
 		st = stateScanning
 	}
@@ -203,6 +209,17 @@ func parseDoc(path, domain string) ([]noteEntry, error) {
 				flush()
 				continue
 			}
+			// Detect "Keywords: a, b, c" line — strip from description, store separately.
+			if strings.HasPrefix(strings.ToLower(trimmed), "keywords:") {
+				raw := trimmed[len("keywords:"):]
+				for _, k := range strings.Split(raw, ",") {
+					k = strings.ToLower(strings.TrimSpace(k))
+					if k != "" {
+						keywords = append(keywords, k)
+					}
+				}
+				continue
+			}
 			descLines = append(descLines, trimmed)
 		}
 	}
@@ -245,6 +262,13 @@ func renderGoFile(entries []noteEntry) string {
 		fmt.Fprintf(&b, "\t\tDescription: %q,\n", e.Description)
 		if e.Example != "" {
 			fmt.Fprintf(&b, "\t\tExample:     %q,\n", e.Example)
+		}
+		if len(e.Keywords) > 0 {
+			kwParts := make([]string, len(e.Keywords))
+			for i, k := range e.Keywords {
+				kwParts[i] = fmt.Sprintf("%q", k)
+			}
+			fmt.Fprintf(&b, "\t\tKeywords:    []string{%s},\n", strings.Join(kwParts, ", "))
 		}
 		fmt.Fprintf(&b, "\t},\n")
 	}

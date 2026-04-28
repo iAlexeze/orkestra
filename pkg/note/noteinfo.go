@@ -11,6 +11,7 @@ type NoteInfo struct {
 	Description string   // one-line summary
 	Example     string   // short usage snippet (optional)
 	SeeAlso     []string // related note names
+	Keywords    []string // search tags parsed from the "Keywords:" line in the doc
 }
 
 // ListNotes returns all built-in notes sorted by domain then name.
@@ -42,8 +43,8 @@ func GetNote(name string) (NoteInfo, bool) {
 	return NoteInfo{}, false
 }
 
-// SearchNotes returns notes whose Name, Description, or Example contains term
-// (case-insensitive).
+// SearchNotes returns notes whose Name, Description, Example, or Keywords
+// contains term (case-insensitive).
 func SearchNotes(term string) []NoteInfo {
 	term = strings.ToLower(term)
 	var out []NoteInfo
@@ -52,6 +53,13 @@ func SearchNotes(term string) []NoteInfo {
 			strings.Contains(strings.ToLower(n.Description), term) ||
 			strings.Contains(strings.ToLower(n.Example), term) {
 			out = append(out, n)
+			continue
+		}
+		for _, kw := range n.Keywords {
+			if strings.Contains(kw, term) {
+				out = append(out, n)
+				break
+			}
 		}
 	}
 	return out

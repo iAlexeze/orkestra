@@ -140,6 +140,11 @@ func noteAbs(a interface{}) (interface{}, error) {
 // anyToFloat converts any numeric-ish value to float64.
 func anyToFloat(v interface{}) (float64, error) {
 	switch val := v.(type) {
+	case bool:
+		if val {
+			return 1, nil
+		}
+		return 0, nil
 	case int:
 		return float64(val), nil
 	case int32:

@@ -124,6 +124,9 @@ func printNoteDetail(n note.NoteInfo, noPager bool) error {
 	if n.Description != "" {
 		fmt.Fprintf(&sb, "  Description: %s\n", n.Description)
 	}
+	if len(n.Keywords) > 0 {
+		fmt.Fprintf(&sb, "  Keywords:    %s\n", strings.Join(n.Keywords, ", "))
+	}
 	if len(n.SeeAlso) > 0 {
 		fmt.Fprintf(&sb, "  See also:    %s\n", strings.Join(n.SeeAlso, ", "))
 	}
