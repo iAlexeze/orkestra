@@ -24,6 +24,10 @@ package types
 //	        replicas: "{{ .spec.replicas }}"
 //	        theme: "default"   # default — v1 has no theme field
 type CRDConversion struct {
+	// Tenants represents the list of crds involved in conversion
+	// This is used to compute data for metrics, and control center
+	Tenants []string `yaml:"tenants"`
+
 	// StorageVersion — the version all objects are stored as internally.
 	// All conversion paths route through this version.
 	StorageVersion string `yaml:"storageVersion"`

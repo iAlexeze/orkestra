@@ -1,11 +1,10 @@
 ---
 # cr-string-schedule.yaml
 # Legacy/simple format — cron string in spec.schedule.
-# typeOf detects "string" at reconcile time.
 apiVersion: demo.orkestra.io/v1
 kind: CronJob
 metadata:
-  name: daily-backup
+  name: daily-backup-string
   namespace: default
 spec:
   schedule: "0 2 * * 1-5"    # Monday–Friday at 02:00

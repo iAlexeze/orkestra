@@ -15,10 +15,13 @@ import (
 
 func timeNotes() template.FuncMap {
 	return template.FuncMap{
-		"timeAgo":    noteTimeAgo,
-		"timeSince":  noteTimeSince,
-		"isExpired":  noteIsExpired,
-		"timeFormat": noteTimeFormat,
+		"timeAgo":         noteTimeAgo,
+		"timeSince":       noteTimeSince,
+		"isExpired":       noteIsExpired,
+		"timeFormat":      noteTimeFormat,
+		"durationSeconds": noteDurationSeconds,
+		"durationAdd":     noteDurationAdd,
+		"durationValid":   noteDurationValid,
 	}
 }
 
@@ -107,4 +110,52 @@ func noteTimeFormat(timestamp interface{}, layout string) string {
 		return ""
 	}
 	return t.UTC().Format(layout)
+}
+
+// noteDurationSeconds parses a Go duration string and returns the total seconds as int64.
+// Safe zero value (0) for empty or invalid input.
+//
+//	{{ durationSeconds "5m" }}    → 300
+//	{{ durationSeconds "1h30m" }} → 5400
+//	{{ durationSeconds "24h" }}   → 86400
+func noteDurationSeconds(d string) int64 {
+	if d == "" {
+		return 0
+	}
+	dur, err := time.ParseDuration(d)
+	if err != nil {
+		return 0
+	}
+	return int64(dur.Seconds())
+}
+
+// noteDurationAdd adds two Go duration strings and returns the result as a
+// canonical duration string. Safe zero value ("0s") for invalid input.
+//
+//	{{ durationAdd "5m" "30s" }}  → "5m30s"
+//	{{ durationAdd "1h" "90m" }}  → "2h30m0s"
+func noteDurationAdd(a, b string) string {
+	da, err := time.ParseDuration(a)
+	if err != nil {
+		return "0s"
+	}
+	db, err := time.ParseDuration(b)
+	if err != nil {
+		return "0s"
+	}
+	return (da + db).String()
+}
+
+// noteDurationValid reports whether s is a valid Go duration string.
+// Useful in validation rules.
+//
+//	{{ durationValid "5m" }}   → true
+//	{{ durationValid "5d" }}   → false  (Go does not support days)
+//	{{ durationValid "" }}     → false
+func noteDurationValid(s string) bool {
+	if s == "" {
+		return false
+	}
+	_, err := time.ParseDuration(s)
+	return err == nil
 }

@@ -305,6 +305,18 @@ func (c *CRDEntry) UpdateCRDCaBundle() bool {
 	return c.Conversion.UpdateCRD
 }
 
+// InvolvedInConversion reports whether this CRD is involved in version conversion
+func (c *CRDEntry) InvolvedInConversion() bool {
+	if c.Conversion == nil {
+		return false
+	}
+	if c.Conversion.Paths != nil {
+		return true
+	}
+
+	return true
+}
+
 // HasNamespaceRules reports whether this CRD declares any namespace rules.
 func (c *CRDEntry) HasNamespaceRules() bool {
 	return len(c.AllowedNamespaces) > 0 || len(c.RestrictedNamespaces) > 0

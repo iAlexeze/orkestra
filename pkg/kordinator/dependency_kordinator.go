@@ -470,6 +470,8 @@ func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, 
 	// Compute the goroutine count: start max(baseline, override) goroutines so
 	// that the autoscaler can scale up without spawning new goroutines at runtime.
 	// The semaphore inside the reconciler gates effective concurrency to `workers`.
+	//
+	// TODO: concept in development
 	goroutines := workers
 	if ob := entry.CRD.OperatorBox.Autoscale; ob != nil {
 		if ob.Do.Workers != nil && *ob.Do.Workers > goroutines {

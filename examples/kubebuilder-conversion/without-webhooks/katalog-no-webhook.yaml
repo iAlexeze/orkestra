@@ -22,7 +22,7 @@ spec:
         plural: cronjobs
 
       workers: 5
-      resync: 15s
+      resync: 45s
 
       # normalize runs before mutation, validation, and template rendering.
       # Produces an in-memory canonical spec — raw CR in etcd is unchanged.
@@ -70,6 +70,8 @@ spec:
             action: deny
 
       operatorBox:
+        finalizers:
+          - finalizer.cron.orkestra.io/cron-normalizer
         default: true
 
         status:

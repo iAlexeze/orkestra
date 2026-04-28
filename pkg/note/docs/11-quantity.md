@@ -55,7 +55,14 @@ Add two Kubernetes quantity strings and return the canonical string sum. Both op
 
 ---
 
-## Combining with math notes
+### `subtractQuantity`
+
+Subtract the second Kubernetes quantity from the first and return the canonical string representation of the difference. Both operands must be the same dimension (CPU or memory).
+
+```yaml
+# value: "{{ subtractQuantity "100m" "200m" }}"  → "-100m"
+# value: "{{ subtractQuantity "500m" "500m" }}"  → "0"
+# value: "{{ subtractQuantity "1Gi" "512Mi" }}"  → "512Mi"
 
 Use `parseQuantity` and `formatQuantity` to do arithmetic with math notes:
 

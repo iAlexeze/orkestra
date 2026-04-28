@@ -28,7 +28,23 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
+	"text/template"
 )
+
+// randomNotes returns the FuncMap entries for random notes.
+// Called by note.Map() to register them with the template engine.
+func randomNotes() template.FuncMap {
+	return template.FuncMap{
+		// randomAlphanumeric n — returns n random alphanumeric characters
+		"randomAlphanumeric": randomAlphanumeric,
+
+		// randomHex n — returns 2n hex characters (n random bytes)
+		"randomHex": randomHex,
+
+		// randomBase64 n — returns URL-safe base64 from n random bytes
+		"randomBase64": randomBase64,
+	}
+}
 
 // charset for randomAlphanumeric
 const alphanumCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -95,19 +111,4 @@ func randomBase64(n int) string {
 		panic("note.randomBase64: system random source unavailable: " + err.Error())
 	}
 	return base64.URLEncoding.EncodeToString(b)
-}
-
-// randomNotes returns the FuncMap entries for random notes.
-// Called by note.Map() to register them with the template engine.
-func randomNotes() map[string]interface{} {
-	return map[string]interface{}{
-		// randomAlphanumeric n — returns n random alphanumeric characters
-		"randomAlphanumeric": randomAlphanumeric,
-
-		// randomHex n — returns 2n hex characters (n random bytes)
-		"randomHex": randomHex,
-
-		// randomBase64 n — returns URL-safe base64 from n random bytes
-		"randomBase64": randomBase64,
-	}
 }

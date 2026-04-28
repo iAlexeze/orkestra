@@ -542,18 +542,22 @@
               {{ end }}
               <!-- Admission counters (omitted when webhook not active) -->
               {{ if $np.Enabled }}
-              <div style="display:flex;gap:24px;margin-top:4px">
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
                 <div>
-                  <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Total Reviews</div>
-                  <div style="font-size:22px;font-weight:600">{{ $np.Total }}</div>
-                </div>
-                <div>
-                  <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Blocked</div>
-                  <div style="font-size:22px;font-weight:600;{{ if gt $np.Blocked 0 }}color:var(--color-degraded){{ end }}">{{ $np.Blocked }}</div>
-                </div>
-                <div>
-                  <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Allowed</div>
-                  <div style="font-size:22px;font-weight:600">{{ $np.Allowed }}</div>
+                  <div style="display:flex;gap:24px;flex-wrap:wrap">
+                    <div>
+                      <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Total Reviews</div>
+                      <div style="font-size:22px;font-weight:600">{{ $np.Total }}</div>
+                    </div>
+                    <div>
+                      <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Blocked</div>
+                      <div style="font-size:22px;font-weight:600;{{ if gt $np.Blocked 0 }}color:var(--color-degraded){{ end }}">{{ $np.Blocked }}</div>
+                    </div>
+                    <div>
+                      <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Allowed</div>
+                      <div style="font-size:22px;font-weight:600">{{ $np.Allowed }}</div>
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <div style="color:var(--text-muted);font-size:11px">Webhook</div>

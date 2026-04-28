@@ -95,21 +95,28 @@ func noteNotEmpty(v interface{}) bool {
 // }
 
 func noteIsTruthy(v interface{}) bool {
+	if v == nil {
+		return false
+	}
 	switch val := v.(type) {
 	case bool:
 		return val
 	case string:
 		return val != ""
-	case int, int64, float64:
+	case int, int8, int16, int32, int64:
 		return val != 0
+	case uint, uint8, uint16, uint32, uint64:
+		return val != 0
+	case float32:
+		return val != 0.0
+	case float64:
+		return val != 0.0
 	case []interface{}:
 		return len(val) > 0
 	case map[string]interface{}:
 		return len(val) > 0
-	case nil:
-		return false
 	default:
-		// fallback: treat any non-nil value as truthy
+		// For any other type (e.g. struct), treat as true
 		return true
 	}
 }

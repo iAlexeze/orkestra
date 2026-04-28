@@ -40,17 +40,34 @@ func strSplit(s, sep string) []string {
 //
 //	{{ camelToKebab "WebsiteOperator" }}   →  "website-operator"
 //	{{ camelToKebab "myAppName" }}         →  "my-app-name"
+//	{{ camelToKebab "HTTPRequest" }}         →  "http-request"
 func camelToKebab(s string) string {
 	var b strings.Builder
-	for i, r := range s {
-		if r >= 'A' && r <= 'Z' {
-			if i > 0 {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		// Convert to lowercase
+		lower := c
+		if c >= 'A' && c <= 'Z' {
+			lower = c - 'A' + 'a'
+		}
+		// Add hyphen before uppercase if:
+		// - it's not the first character,
+		// - and the previous character is lowercase (word boundary),
+		// - or the previous character is uppercase but the next is lowercase (acronym boundary).
+		if i > 0 && c >= 'A' && c <= 'Z' {
+			prev := s[i-1]
+			next := byte(0)
+			if i+1 < len(s) {
+				next = s[i+1]
+			}
+			// Insert hyphen when:
+			//   prev is lowercase (new word)
+			//   OR prev is uppercase and next is lowercase (end of acronym)
+			if (prev >= 'a' && prev <= 'z') || (prev >= 'A' && prev <= 'Z' && next >= 'a' && next <= 'z') {
 				b.WriteByte('-')
 			}
-			b.WriteRune(r + 32)
-		} else {
-			b.WriteRune(r)
 		}
+		b.WriteByte(lower)
 	}
 	return b.String()
 }
