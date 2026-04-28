@@ -116,7 +116,13 @@ func noteContainerPort(obj interface{}, index int, port int) bool {
 // Returns 0 when not found.
 //
 //	{{ containerPortByName .children.deployment 0 "http" }}  → 8080
+//
+// noteContainerPortByName returns the port number for a named container port.
+// Returns 0 when not found or when name is empty.
 func noteContainerPortByName(obj interface{}, index int, name string) int {
+	if name == "" {
+		return 0
+	}
 	containers := getContainers(obj)
 	if index < 0 || index >= len(containers) {
 		return 0

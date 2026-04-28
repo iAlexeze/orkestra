@@ -115,6 +115,46 @@ var templateFuncs = template.FuncMap{
 
 		return val
 	},
+	// mapGet retrieves a key from an interface{} that is a map[string]interface{}.
+	// Returns nil when the value is not a map or the key is absent.
+	// Used in templates to safely navigate OperatorBox and other JSON-decoded maps.
+	"mapGet": func(m interface{}, key string) interface{} {
+		if m == nil {
+			return nil
+		}
+		if mm, ok := m.(map[string]interface{}); ok {
+			return mm[key]
+		}
+		return nil
+	},
+	// asBool coerces an interface{} to bool.
+	"asBool": func(v interface{}) bool {
+		if b, ok := v.(bool); ok {
+			return b
+		}
+		return false
+	},
+	// asString coerces an interface{} to string.
+	"asString": func(v interface{}) string {
+		if s, ok := v.(string); ok {
+			return s
+		}
+		return ""
+	},
+	// asSlice coerces an interface{} to []interface{}.
+	"asSlice": func(v interface{}) []interface{} {
+		if s, ok := v.([]interface{}); ok {
+			return s
+		}
+		return nil
+	},
+	// asMap coerces an interface{} to map[string]interface{}.
+	"asMap": func(v interface{}) map[string]interface{} {
+		if m, ok := v.(map[string]interface{}); ok {
+			return m
+		}
+		return nil
+	},
 	// hasPrefix checks if a string has a given prefix
 	"hasPrefix": func(s, prefix string) bool {
 		return strings.HasPrefix(s, prefix)

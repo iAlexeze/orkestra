@@ -152,7 +152,7 @@ main()
 `orkestra.Start(ctx)` calls `komponent.Start()` in registration order:
 
 ```
-1. HealthServer.Start()      → binds port, /readyz returns 200
+1. HealthServer.Start()      → binds port, /ready returns 200
 2. Kubeclient.Start()        → (already started, no-op)
 3. Event.Start()             → connects recorder to clientset
 4. QueueRegistry.Start()     → initialises per-CRD queues

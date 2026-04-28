@@ -29,7 +29,7 @@
 //
 // Precedence: katalog YAML value > ENV value > hard default.
 // ENV values populate SecurityConfig during Init() and act as defaults.
-// Katalog values are merged on top in KomposeKatalogFromYaml.
+// Katalog values are merged on top in KomposeRuntimeKatalog.
 package types
 
 // KatalogSecurity holds the full security configuration for a Katalog.

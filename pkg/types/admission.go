@@ -18,7 +18,7 @@ package types
 //
 // Example:
 //
-//   reconciler:
+//   operatorBox:
 //     validation:
 //       - field: spec.image
 //         prefix: "myorg/"

@@ -1,17 +1,17 @@
 # 05 — Cron Notes
 
-Cron notes work with cron schedule expressions. They cover three problems: extracting individual fields from a string expression, converting structured map inputs to a string, and producing human-readable descriptions.
+Cron notes work with cron schedule expressions. They cover three problems: extracting individual fields from a string expression, converting between string and structured-map shapes, and producing human-readable descriptions.
 
 ## The two schedule shapes
 
 Users may declare schedules as a plain string or as a structured object:
 
 ```yaml
-# String
+# String (v1 shape)
 spec:
   schedule: "*/5 * * * *"
 
-# Structured map
+# Structured map (v2 shape)
 spec:
   schedule:
     minute: "*/5"
@@ -21,7 +21,7 @@ spec:
     dayOfWeek: "*"
 ```
 
-Cron notes handle both, and `normalize:` is the recommended place to collapse them into a single canonical string before any downstream phase uses the field. See the [normalize documentation](../../reconciler/docs/06-normalize.md).
+`cronFromMap` and `cronToMap` convert between the two shapes. Both notes accept either type — a string or a map — so conversion paths stay correct even when existing objects predate a schema change.
 
 ## Cron expression format
 
@@ -38,40 +38,99 @@ Standard five-field cron: `minute hour dayOfMonth month dayOfWeek`
 
 ## Reference
 
-### `cronExpr`
+### `cronFromMap`
 
-Build a five-field cron expression from five named parts. Empty parts default to `*`.
+Convert a schedule **map** to a five-field cron string. Reads keys `minute`, `hour`, `dayOfMonth`, `month`, `dayOfWeek`; absent keys default to `*`. Errors if the input is not a map — use `cronFromAny` when the input may be a string.
 
 ```yaml
-# value: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
-# minute="*/1", hour="*", dom="*", month="*", dow="*" → "*/1 * * * *"
+# onReconcile Path B — input is guaranteed a map by the when: gate
+- name: "{{ .metadata.name }}"
+  schedule: "{{ cronFromMap .spec.schedule }}"
+  when:
+    - field: spec.schedule
+      operator: typeOf
+      value: map
 ```
 
-The canonical way to reconstruct a cron string from a structured map's individual fields when you access them separately.
+```
+{minute: "*/5", hour: "0", dayOfMonth: "*", month: "*", dayOfWeek: "1"}
+→ "*/5 0 * * 1"
+```
 
 ---
 
-### `cronFromMap`
+### `cronFromAny`
 
-Convert a structured `map[string]interface{}` to a five-field cron string in one step. Reads keys `minute`, `hour`, `dayOfMonth`, `month`, `dayOfWeek`; defaults absent keys to `*`.
+Convert a schedule value to a five-field cron string. Accepts either shape:
+
+- **map** — reads keys `minute`, `hour`, `dayOfMonth`, `month`, `dayOfWeek`; absent keys default to `*`
+- **string** — treated as an already-complete cron expression and normalised
+- **nil / unknown** — returns `"* * * * *"`
 
 ```yaml
+# normalize block — user input may be either shape
 normalize:
   spec:
-    schedule: >
-      {{ if typeMap .spec.schedule }}
-        {{ cronFromMap .spec.schedule }}
-      {{ else }}
-        {{ cronNormalize .spec.schedule }}
-      {{ end }}
+    schedule: "{{ cronFromAny .spec.schedule }}"
+
+# v2 → v1 conversion — legacy v2 objects may have a flat string
+- from: v2
+  to: v1
+  spec:
+    schedule: "{{ cronFromAny .spec.schedule }}"
+
+# status field — safe regardless of stored shape
+- path: scheduleExpression
+  value: "{{ cronFromAny .spec.schedule }}"
 ```
 
 ```
-{minute: "*/5", hour: "*", dayOfMonth: "*", month: "*", dayOfWeek: "*"}
-→ "*/5 * * * *"
+{minute: "*/5", hour: "0", dayOfMonth: "*", month: "*", dayOfWeek: "1"}
+→ "*/5 0 * * 1"
+
+"*/5 0 * * 1"
+→ "*/5 0 * * 1"   (string passthrough, normalised)
 ```
 
-Use `cronFromMap` when the whole map is available. Use `cronExpr` when you need to access individual fields.
+`cronFromAny` replaces the old conditional pattern:
+
+```yaml
+# Old:
+schedule: >
+  {{ if typeMap .spec.schedule }}{{ cronFromMap .spec.schedule }}
+  {{ else }}{{ cronNormalize .spec.schedule }}{{ end }}
+
+# New:
+schedule: "{{ cronFromAny .spec.schedule }}"
+```
+
+---
+
+### `cronToMap`
+
+Convert a cron string to the structured map shape. For use in **conversion path specs only** — the result is a nested map, not a plain string.
+
+- **string** — splits into five named fields
+- **map** — returned as-is
+- `@`-macros expanded before splitting (`@hourly` → minute:`0`, hour:`*`, …)
+
+```yaml
+# v1 → v2 conversion path
+- from: v1
+  to: v2
+  spec:
+    schedule: "{{ cronToMap .spec.schedule }}"
+```
+
+```
+"*/5 0 * * 1"
+→ {minute:"*/5", hour:"0", dayOfMonth:"*", month:"*", dayOfWeek:"1"}
+
+"@hourly"
+→ {minute:"0", hour:"*", dayOfMonth:"*", month:"*", dayOfWeek:"*"}
+```
+
+`cronToMap` is only meaningful as a top-level conversion spec field value. It signals to the conversion engine to produce a nested object in the output rather than a string. Using it in `status.fields` or `onCreate` produces unexpected output.
 
 ---
 
@@ -81,13 +140,11 @@ Normalize a cron string: expand `@`-macros, trim whitespace, ensure exactly five
 
 ```yaml
 # value: "{{ cronNormalize .spec.schedule }}"
-# "@daily"     → "0 0 * * *"
-# "@hourly"    → "0 * * * *"
+# "@daily"      → "0 0 * * *"
+# "@hourly"     → "0 * * * *"
 # "*/5 * * * *" → "*/5 * * * *"  (unchanged, already valid)
 # ""            → "* * * * *"
 ```
-
-Use `cronNormalize` in the `else` branch of a `typeMap` check — it handles string schedules that may carry macros or extra whitespace.
 
 ---
 
@@ -106,7 +163,6 @@ Return a human-readable description of a cron expression. Useful in `status.fiel
 | `0 * * * *` | Every hour |
 | `0 2 * * *` | At 2:0 every day |
 | `0 2 * * 1` | At 02:00 on Mondays |
-| `@daily` | At 0:0 every day (after normalization) |
 
 ---
 
@@ -126,6 +182,19 @@ validation:
 
 ---
 
+### `cronExpr`
+
+Build a five-field cron expression from five explicit string parts. Empty parts default to `*`.
+
+```yaml
+# value: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+# minute="*/1", hour="*", dom="*", month="*", dow="*" → "*/1 * * * *"
+```
+
+Prefer `cronFromMap .spec.schedule` over `cronExpr` with five separate field navigations — it is shorter, handles both schedule shapes, and does not fail if the schedule is a flat string rather than a map.
+
+---
+
 ### `cronMinute` / `cronHour` / `cronDom` / `cronMonth` / `cronDow`
 
 Extract a single field by position from a cron string. Returns `*` for empty input. Returns an error for strings that don't expand to five fields.
@@ -138,7 +207,7 @@ Extract a single field by position from a cron string. Returns `*` for empty inp
 # value: "{{ cronDow    \"0 0 * * 1\" }}"     → "1"
 ```
 
-These are useful in conversion paths when you need to split a string schedule into its parts for storage in a structured format.
+These are useful when you need a single field in isolation. For splitting a full cron string into all five fields for storage as a structured map, use `cronToMap` instead.
 
 ---
 
@@ -167,19 +236,17 @@ Extract a field by index (0–4). The general form of the five named extractors 
 
 ## Quick reference
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `cronExpr` | `(minute, hour, dom, month, dow string)` | `string` |
-| `cronFromMap` | `(m map[string]interface{})` | `string` |
-| `cronNormalize` | `(expr string)` | `string` |
-| `cronDescribe` | `(expr string)` | `string` |
-| `cronValid` | `(expr string)` | `bool` |
-| `cronMinute` | `(expr string)` | `string` |
-| `cronHour` | `(expr string)` | `string` |
-| `cronDom` | `(expr string)` | `string` |
-| `cronMonth` | `(expr string)` | `string` |
-| `cronDow` | `(expr string)` | `string` |
-| `cronField` | `(expr string, pos int)` | `string` |
+| Note | Accepts | Returns | Use in |
+|------|---------|---------|--------|
+| `cronFromMap` | `map` only (errors on string) | `string` (cron expr) | onReconcile behind `typeOf: map` gate |
+| `cronFromAny` | `map` or `string` | `string` (cron expr) | normalize, status, conversion, unknown-shape input |
+| `cronToMap` | `string` (map returned as-is) | `map` (nested object) | conversion path spec only |
+| `cronExpr` | five `string` parts | `string` | status, reconcile |
+| `cronNormalize` | `string` | `string` | normalize, status |
+| `cronDescribe` | `string` | `string` | status (human display) |
+| `cronValid` | `string` | `bool` | validation rules |
+| `cronMinute` / `cronHour` / `cronDom` / `cronMonth` / `cronDow` | `string` | `string` | single-field extraction |
+| `cronField` | `string`, `int` | `string` | single-field extraction by index |
 
 ---
 

@@ -186,9 +186,8 @@ spec:
             - path: phase
               value: "Ready"
               when:
-                - field: "{{ readyReplicas .children.deployment }}"
-                  operator: gt
-                  value: "0"
+                - field: "{{ replicasReady .children.deployment }}"
+                  equals: "true"
             - path: endpoint
               value: "{{ .metadata.name }}-postgres.{{ .metadata.namespace }}.svc.cluster.local:5432"
 
@@ -228,7 +227,7 @@ spec:
           configMaps:
             - name: "{{ .metadata.name }}-config"
               data:
-                DB_HOST: "{{ get .cross.db "status" "endpoint" }}"
+                DB_HOST: "{{ .cross.db.status.endpoint }}"
                 DB_PORT: "5432"
               when:
                 - field: "{{ resourceExists .cross.db }}"
@@ -260,7 +259,7 @@ spec:
                   operator: gt
                   value: "0"
             - path: databaseEndpoint
-              value: "{{ get .cross.db "status" "endpoint" }}"
+              value: "{{ get .cross.db \"status\" \"endpoint\" }}"
               when:
                 - field: "{{ resourceExists .cross.db }}"
                   equals: "true"
@@ -450,7 +449,7 @@ spec:
           configMaps:
             - name: "{{ .metadata.name }}-config"
               data:
-                DB_HOST: "{{ get .cross.db "status" "endpoint" }}"
+                DB_HOST: "{{ get .cross.db \"status\" \"endpoint\" }}"
                 APP_ENV: "{{ .spec.environment }}"
               when:
                 - field: "{{ resourceExists .cross.db }}"
@@ -498,7 +497,7 @@ spec:
             - path: regionsDeployed
               value: "{{ len .spec.regions }}"
             - path: databaseEndpoint
-              value: "{{ get .cross.db "status" "endpoint" }}"
+              value: "{{ get .cross.db \"status\" \"endpoint\" }}"
               when:
                 - field: "{{ resourceExists .cross.db }}"
                   equals: "true"

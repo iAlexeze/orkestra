@@ -62,15 +62,12 @@ the same template `notes` available everywhere in the Katalog.
 operatorBox:
   normalize:
     spec:
-      schedule: >
-        {{ if typeMap .spec.schedule }}
-          {{ cronFromMap .spec.schedule }}
-        {{ else }}
-          {{ cronNormalize .spec.schedule }}
-        {{ end }}
+      schedule: "{{ cronFromAny .spec.schedule }}"
 ```
 
-After this block runs, `.spec.schedule` is always a plain cron string. Every
+After this block runs, `.spec.schedule` is always a plain cron string.
+`cronFromAny` accepts both a cron string and a structured map and produces the
+canonical five-field string in either case — no branching needed in normalize. Every
 downstream step — mutation rules, validation rules, status field expressions,
 onCreate templates, onReconcile templates — sees `"*/5 * * * *"`, not
 `map[minute:*/5 hour:* dayOfMonth:* month:* dayOfWeek:*]`. The branching on
@@ -149,34 +146,26 @@ and the normalize block handles representation flexibility in the interior.
 
 ## 5. The typeOf primitive
 
-The normalize block in the CronJob example uses `typeMap`, a shorthand for `typeOf` note
-that returns the runtime type of any value as a string: `"string"`, `"map"`,
-`"slice"`, `"number"`, `"bool"`, or `"null"`.
+`typeOf` returns the runtime type of any value as a string: `"string"`, `"map"`,
+`"slice"`, `"number"`, `"bool"`, or `"null"`. It is available both as a template
+expression and as a `when:` condition operator:
 
 ```yaml
-{{ if typeMap spec.schedule }} is equivalent to: {{ if eq (typeOf .spec.schedule) "map" }}
-```
+# template expression
+value: "{{ typeOf .spec.schedule }}"    # → "string" or "map"
 
-This is the same `typeOf` available in `when:` conditions:
-
-```yaml
-when:
-  - field: spec.schedule
-    operator: typeMap
-
-# is equivalent to:
-
+# condition operator
 when:
   - field: spec.schedule
     operator: typeOf
     value: map
 ```
 
-The dual availability — as a template function for value expressions and as a
-condition operator for boolean branching — follows Orkestra's general design
-principle: any mechanism available in one context is available in all contexts.
-A user who learns `typeOf` for normalize can use it in status conditions without
-learning a separate API.
+For the normalize block, `typeOf` is rarely needed directly. Notes like
+`cronFromAny` already accept both shapes — the branching is internal to the note
+rather than expressed in YAML. `typeOf` is most useful when you want to surface
+the input format to the user (e.g. a `scheduleFormat` status field) or gate
+`onReconcile` paths on the actual stored type.
 
 The `len` function is analogous: it returns the element count of a map, slice,
 or string, and is available in both template expressions and as a comparison

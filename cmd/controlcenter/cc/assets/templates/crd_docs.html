@@ -278,38 +278,38 @@
 
         {{ if .CRD.Namespaced }}
         <h3>List resources</h3>
-        <pre><code>kubectl get {{ .CRD.GVR }} -n &lt;namespace&gt;</code></pre>
+        <pre><code>kubectl get {{ .KubectlKindLower }} -n &lt;namespace&gt;</code></pre>
 
         <h3>Describe a resource</h3>
-        <pre><code>kubectl describe {{ .CRD.GVR }} &lt;name&gt; -n &lt;namespace&gt;</code></pre>
+        <pre><code>kubectl describe {{ .KubectlKindLower }} &lt;name&gt; -n &lt;namespace&gt;</code></pre>
 
         <h3>Get YAML</h3>
-        <pre><code>kubectl get {{ .CRD.GVR }} &lt;name&gt; -n &lt;namespace&gt; -o yaml</code></pre>
+        <pre><code>kubectl get {{ .KubectlKindLower }} &lt;name&gt; -n &lt;namespace&gt; -o yaml</code></pre>
 
         <h3>Watch for changes</h3>
-        <pre><code>kubectl get {{ .CRD.GVR }} -n &lt;namespace&gt; -w</code></pre>
+        <pre><code>kubectl get {{ .KubectlKindLower }} -n &lt;namespace&gt; -w</code></pre>
 
         <h3>Delete a resource</h3>
-        <pre><code>kubectl delete {{ .CRD.GVR }} &lt;name&gt; -n &lt;namespace&gt;</code></pre>
+        <pre><code>kubectl delete {{ .KubectlKindLower }} &lt;name&gt; -n &lt;namespace&gt;</code></pre>
         {{ else }}
         <h3>List resources</h3>
-        <pre><code>kubectl get {{ .CRD.GVR }}</code></pre>
+        <pre><code>kubectl get {{ .KubectlKindLower }}</code></pre>
 
         <h3>Describe a resource</h3>
-        <pre><code>kubectl describe {{ .CRD.GVR }} &lt;name&gt;</code></pre>
+        <pre><code>kubectl describe {{ .KubectlKindLower }} &lt;name&gt;</code></pre>
 
         <h3>Get YAML</h3>
-        <pre><code>kubectl get {{ .CRD.GVR }} &lt;name&gt; -o yaml</code></pre>
+        <pre><code>kubectl get {{ .KubectlKindLower }} &lt;name&gt; -o yaml</code></pre>
 
         <h3>Watch for changes</h3>
-        <pre><code>kubectl get {{ .CRD.GVR }} -w</code></pre>
+        <pre><code>kubectl get {{ .KubectlKindLower }} -w</code></pre>
 
         <h3>Delete a resource</h3>
-        <pre><code>kubectl delete {{ .CRD.GVR }} &lt;name&gt;</code></pre>
+        <pre><code>kubectl delete {{ .KubectlKindLower }} &lt;name&gt;</code></pre>
         {{ end }}
 
         <h3>Filter by Orkestra managed label</h3>
-        <pre><code>kubectl get {{ .CRD.GVR }} -l orkestra.orkspace.io/managed=true{{ if .CRD.Namespaced }} -n &lt;namespace&gt;{{ end }}</code></pre>
+        <pre><code>kubectl get {{ .KubectlKindLower }} -l orkestra.orkspace.io/managed=true{{ if .CRD.Namespaced }} -n &lt;namespace&gt;{{ end }}</code></pre>
 
         <hr>
 

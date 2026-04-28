@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/certmanager"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orkingress "github.com/orkspace/orkestra/pkg/orkestra-registry/ingresses"
@@ -140,7 +141,7 @@ func ensureIngressTLSSecret(
 		cn = hosts[0]
 	}
 
-	bundle, err := GenerateTLSBundle(cn, hosts, spec.TLS.ValidFor)
+	bundle, err := certmanager.GenerateTLSBundle(cn, hosts, spec.TLS.ValidFor)
 	if err != nil {
 		return fmt.Errorf("generating tls bundle for %q: %w", secretName, err)
 	}

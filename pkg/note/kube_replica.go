@@ -33,21 +33,17 @@ func replicaNotes() template.FuncMap {
 
 // ── Replica notes ─────────────────────────────────────────────────────────────
 
-// noteReplicasReady returns true when readyReplicas matches the desired replica count.
-// The single most common async gate condition — replaces the verbose:
+// noteReplicasReady returns true when readyReplicas equals the desired replica count.
+// Handles scale-to-zero correctly: desired=0 and ready=0 → true.
 //
-//	  children.deployment.status.readyReplicas == spec.replicas
-//
-//		when:
-//		  - field: "{{ replicasReady .children.deployment }}"
-//		    equals: "true"
+//	{{ replicasReady .children.deployment }}
 func noteReplicasReady(obj interface{}) bool {
-	desired := noteDesiredReplicas(obj)
-	ready := noteReadyReplicas(obj)
-	return desired > 0 && ready >= desired
+	return noteReadyReplicas(obj) == noteDesiredReplicas(obj)
 }
 
-// noteDesiredReplicas returns spec.replicas. Returns 1 when not set (Kubernetes default).
+// noteDesiredReplicas returns spec.replicas.
+// Returns 1 when the field is absent (Kubernetes default).
+// Returns 0 when explicitly set to 0 (scale-to-zero).
 //
 //	{{ desiredReplicas .children.deployment }}  → 3
 func noteDesiredReplicas(obj interface{}) int {
@@ -56,11 +52,11 @@ func noteDesiredReplicas(obj interface{}) int {
 	if !ok {
 		return 1
 	}
-	v := toInt64(m["replicas"])
-	if v == 0 {
-		return 1 // Kubernetes default when not specified
+	v, exists := m["replicas"]
+	if !exists || v == nil {
+		return 1
 	}
-	return int(v)
+	return int(toInt64(v))
 }
 
 // noteReadyReplicas returns status.readyReplicas safely. Returns 0 when not set.

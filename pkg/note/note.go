@@ -20,9 +20,7 @@
 //	    - from: v1
 //	      to: v2
 //	      spec:
-//	        schedule:
-//	          minute: "{{ cronMinute .spec.schedule }}"
-//	          hour:   "{{ cronHour   .spec.schedule }}"
+//	        schedule: "{{ cronToMap .spec.schedule }}"
 //
 //	status:
 //	  fields:
@@ -31,7 +29,7 @@
 //	    - path: replicas
 //	      value: "{{ default .spec.replicas 2 }}"
 //	    - path: schedule
-//	      value: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"
+//	      value: "{{ cronFromAny .spec.schedule }}"
 package note
 
 import "text/template"
@@ -76,6 +74,8 @@ func buildNotes() template.FuncMap {
 	register(m, replicaNotes())
 	register(m, jobNotes())
 	register(m, fieldNotes())
+	register(m, semverNotes())
+	register(m, netNotes())
 
 	// In development
 	// Initial scaffolding and documentation

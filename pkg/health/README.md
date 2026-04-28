@@ -1,38 +1,32 @@
 # pkg/health
 
-The health package owns the runtime servers that expose Orkestra to both Kubernetes probes and external webhook traffic.
+The health package owns the HTTP server that exposes Orkestra's lifecycle to Kubernetes. It has one responsibility: serve health and readiness probes so the cluster can gate traffic, restarts, and rolling updates correctly.
 
-A single `HealthServer` binds two listeners:
-
-- **HTTP** — probe endpoints (`/startup`, `/health`, `/ready`) and Prometheus metrics (`/metrics`).
-- **HTTPS** — webhook endpoints (`/convert`, `/validate`, `/mutate`, `/deletion-protection`), started only when the Katalog declares conversion paths, admission rules, or deletion protection.
+All webhook logic — admission, conversion, deletion protection, and namespace protection — lives in [`pkg/webhook`](../webhook/README.md).
 
 ## Responsibilities
 
 | Concern | Where |
 |---------|-------|
-| Lifecycle probes | `handler.go` — startup / health / ready handlers |
-| Conversion webhook | `conversion.go`, `conversion_logic.go`, `conversion_stats.go` |
-| Admission webhook (validate + mutate) | `admission_handlers.go`, `admission_evaluation.go`, `admission_stats.go` |
-| Deletion protection webhook | `deletion_protection_handler.go` |
-| Webhook registration / cleanup | `webhook_registration.go` |
-| Security context | `security.go` |
-| Admission rule registry | `admission_registry.go` |
+| Startup probe (`/startup`) | `handler.go` |
+| Liveness probe (`/health`) | `handler.go` |
+| Readiness probe (`/ready`) | `handler.go` |
+| Prometheus metrics (`/metrics`) | `health.go` (via `promhttp.Handler`) |
+| Katalog API routes (`/katalog/…`) | Registered externally by `cmd/internal/konstructor.go` |
+| Conversion / admission stats types | `conversion_stats.go`, `admission_stats.go`, etc. |
 
 ## Server lifecycle
 
 ```
-NewHealthServer(kubeClient, katalog, konfig)
+NewHealthServer(konfig)
+    ↓
+hs.Register(path, handler)   ← called by konstructor.go for all /katalog routes
     ↓
 hs.Start(ctx)
-    • binds HTTP  → /startup /health /ready /metrics
-    • binds HTTPS → /convert /validate /mutate /deletion-protection  (conditional)
-    • registers ValidatingWebhookConfiguration / MutatingWebhookConfiguration (in-cluster only)
+    • binds HTTP port  → /startup /health /ready /metrics + /katalog routes
     ↓
 hs.Shutdown(ctx)
-    • drains HTTP and HTTPS servers
-    • removes ValidatingWebhookConfiguration / MutatingWebhookConfiguration
-    • removes deletion protection webhook
+    • marks not-ready, drains HTTP server
 ```
 
 ## Probe semantics
@@ -40,23 +34,13 @@ hs.Shutdown(ctx)
 | Endpoint | Returns 200 when… |
 |----------|-------------------|
 | `/startup` | `SetStartupComplete()` has been called |
-| `/health` | `healthy` atomic is true (never flips false in normal operation) |
+| `/health` | `healthy` atomic is true |
 | `/ready` | `ready` atomic is true — false during boot and after shutdown begins |
 
-## Webhook routing
+`SetStartupComplete()` is called at the end of `Start()`. `Degraded()` and `SetReady()` are called by the dependency kordinator as informer caches sync and workers start.
 
-Routes are registered on the HTTPS mux **before** the server goroutine starts. Order is enforced by the `Start` method — callers cannot register routes after `Start()`.
+## Stats types
 
-The HTTPS server only starts if at least one route is needed. This avoids requiring TLS credentials when the Katalog declares no webhooks.
-
-## Deletion protection
-
-The `/deletion-protection` endpoint receives DELETE admission reviews from Kubernetes. The handler:
-
-1. Decodes the `AdmissionReview` request.
-2. Checks `isProtectedCRD(name)` — filters against `ProtectedCRDNames()` from the Katalog.
-3. Denies if the CRD is managed by this Katalog; allows all others through.
-
-Two-level filtering keeps the webhook rule broad (intercepts all CRD deletions) while the handler narrows to only the CRDs this operator owns.
+The stats types (`ConversionStats`, `AdmissionStats`, `DeletionProtectionStats`, `NamespaceProtectionStats`, `WebhookStats`) live in this package because the kordinator reads them when building the `/katalog/{crd}` API response. The webhook package writes to these instances; the health package only defines the types and exposes read snapshots.
 
 → Next: [docs/01-probes.md](docs/01-probes.md)

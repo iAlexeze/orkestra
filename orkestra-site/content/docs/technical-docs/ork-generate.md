@@ -127,7 +127,7 @@ Run `make generate` before `go build` whenever the Katalog changes.
 
 ## How it reads the Katalog
 
-`ork generate registry` runs the same Katalog loading path as `ork run` — it calls `KomposeKatalogFromYaml`, which enriches all CRD entries, and then reads the result to produce the registry entries.
+`ork generate registry` runs the same Katalog loading path as `ork run` — it calls `KomposeRuntimeKatalog`, which enriches all CRD entries, and then reads the result to produce the registry entries.
 
 This means if your Katalog has a syntax error or references an unknown kind, `ork generate registry` will fail with the same error as `ork run`. Fix the Katalog error first, then re-run generation.
 

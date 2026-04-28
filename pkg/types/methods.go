@@ -305,6 +305,17 @@ func (c *CRDEntry) UpdateCRDCaBundle() bool {
 	return c.Conversion.UpdateCRD
 }
 
+// InvolvedInConversion reports whether this CRD is involved in version conversion.
+// A CRD is involved when it either declares conversion paths (the CRD that hosts
+// the /convert logic) or explicitly opts in with participant: true (the stable/
+// storage-version CRD on the other side of the pair).
+func (c *CRDEntry) InvolvedInConversion() bool {
+	if c.Conversion == nil {
+		return false
+	}
+	return len(c.Conversion.Paths) > 0 || c.Conversion.Participant
+}
+
 // HasNamespaceRules reports whether this CRD declares any namespace rules.
 func (c *CRDEntry) HasNamespaceRules() bool {
 	return len(c.AllowedNamespaces) > 0 || len(c.RestrictedNamespaces) > 0

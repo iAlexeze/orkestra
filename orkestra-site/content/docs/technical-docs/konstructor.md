@@ -36,7 +36,7 @@ This constraint is what makes the wiring safe: you cannot call `reconcile` befor
 kat := katalog.NewKatalog(m, kfg.Katalog().Paths...)
 ```
 
-Calls `KomposeKatalogFromYaml`. Resolves all sources, enriches all CRD entries, validates the dependency graph, populates both registries (conversion and admission). Returns a fully-validated `*Katalog` where every `CRDEntry` in `kat.Enabled()` is ready for wiring.
+Calls `KomposeRuntimeKatalog`. Resolves all sources, enriches all CRD entries, validates the dependency graph, populates both registries (conversion and admission). Returns a fully-validated `*Katalog` where every `CRDEntry` in `kat.Enabled()` is ready for wiring.
 
 If Katalog construction fails (bad YAML, missing CRD, cycle in dependsOn), the process exits here with a descriptive error.
 

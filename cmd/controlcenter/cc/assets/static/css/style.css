@@ -775,21 +775,26 @@ code, .mono {
 
 /* ── Theme Toggle ──────────────────────────────────────────── */
 .cc-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
   background: none;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  color: var(--text-muted);
   cursor: pointer;
-  padding: 5px 8px;
-  font-size: 15px;
-  line-height: 1;
-  transition: background var(--transition), border-color var(--transition);
+  transition: color var(--transition), border-color var(--transition);
 }
 
 .cc-theme-toggle:hover {
-  background: var(--bg-hover);
+  color: var(--text-secondary);
   border-color: var(--text-muted);
 }
+
+[data-theme="light"] .cc-theme-toggle .icon-moon { display: none; }
+[data-theme="dark"]  .cc-theme-toggle .icon-sun  { display: none; }
 
 /* ── Buttons ───────────────────────────────────────────────── */
 .cc-btn {

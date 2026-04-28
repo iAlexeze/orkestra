@@ -201,6 +201,29 @@ code, pre { font-family: var(--font-mono); }
   scrollbar-color: var(--border-hi) transparent;
 }
 
+/* Sidebar stays dark in light mode, matching the CC dashboard sidebar */
+[data-theme="light"] .ork-sidebar {
+  background: #08080f;
+  border-right-color: #1e1e2e;
+}
+[data-theme="light"] .ork-sidebar-version {
+  border-bottom-color: #1e1e2e;
+}
+[data-theme="light"] .ork-sidebar-group-toggle {
+  color: #5a5a78;
+}
+[data-theme="light"] .ork-sidebar-group-toggle:hover { color: #9898b8; }
+[data-theme="light"] .ork-sidebar-item a { color: #9898b8; }
+[data-theme="light"] .ork-sidebar-item a:hover {
+  color: #e8e8f8;
+  background: #1e1e30;
+}
+[data-theme="light"] .ork-sidebar-item.active a {
+  color: #a78bfa;
+  background: rgba(124,58,237,.15);
+  border-left-color: #a78bfa;
+}
+
 .ork-sidebar-inner {
   padding: 20px 14px 40px;
 }

@@ -40,23 +40,24 @@ type DocsLandingData struct {
 
 // CRDDocsData is the view-model for a single CRD docs page.
 type CRDDocsData struct {
-	KatalogName    string
-	KatalogVersion string
-	CRD            *CRDDetail
-	KubectlKind    string
-	KubectlGroup   string
-	KubectlVersion string
-	HasAdmission   bool
-	HasConversion  bool
-	HasProtection  bool
-	HasRBAC        bool
-	HasAutoscaler  bool
-	HasRollback    bool
-	HasProviders   bool
-	HasChildren    bool
-	ChildResources []ChildResourceEntry
-	CCVersion      string
-	RuntimeVersion string
+	KatalogName      string
+	KatalogVersion   string
+	CRD              *CRDDetail
+	KubectlKind      string
+	KubectlKindLower string
+	KubectlGroup     string
+	KubectlVersion   string
+	HasAdmission     bool
+	HasConversion    bool
+	HasProtection    bool
+	HasRBAC          bool
+	HasAutoscaler    bool
+	HasRollback      bool
+	HasProviders     bool
+	HasChildren      bool
+	ChildResources   []ChildResourceEntry
+	CCVersion        string
+	RuntimeVersion   string
 }
 
 // handleDocsLanding renders /controlcenter/docs.
@@ -123,14 +124,15 @@ func (cc *ControlCenter) handleCRDDocs(w http.ResponseWriter, r *http.Request, k
 	children := extractChildResources(crd.OperatorBox)
 
 	cc.renderTemplate(w, "crd_docs.html", CRDDocsData{
-		KatalogName:    katalogName,
-		KatalogVersion: inst.Katalog.Version,
-		CRD:            crd,
-		KubectlKind:    kubectlKind,
-		KubectlGroup:   kubectlGroup,
-		KubectlVersion: kubectlVersion,
-		HasAdmission:   crd.Admission != nil && crd.Admission.WebhooksEnabled,
-		HasConversion:  crd.Conversion != nil && crd.Conversion.Enabled,
+		KatalogName:      katalogName,
+		KatalogVersion:   inst.Katalog.Version,
+		CRD:              crd,
+		KubectlKind:      kubectlKind,
+		KubectlKindLower: strings.ToLower(kubectlKind),
+		KubectlGroup:     kubectlGroup,
+		KubectlVersion:   kubectlVersion,
+		HasAdmission:     crd.Admission != nil && crd.Admission.WebhooksEnabled,
+		HasConversion:    crd.Conversion != nil && crd.Conversion.Enabled,
 		HasProtection: (crd.DeletionProtection != nil && crd.DeletionProtection.Enabled) ||
 			(crd.NamespaceProtection != nil && crd.NamespaceProtection.Enabled),
 		HasRBAC:        crd.RBAC.TotalRules > 0,

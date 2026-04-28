@@ -1,12 +1,10 @@
 ---
 # cr-structured-schedule.yaml
 # Modern format — structured object in spec.schedule.
-# typeOf detects "map" at reconcile time.
-# cronExpr reconstructs "*/1 * * * *" before creating the Kubernetes CronJob.
 apiVersion: demo.orkestra.io/v1
 kind: CronJob
 metadata:
-  name: print-hello
+  name: print-hello-structured
   namespace: default
 spec:
   schedule:

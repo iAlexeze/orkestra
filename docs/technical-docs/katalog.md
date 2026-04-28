@@ -17,10 +17,10 @@
 
 ---
 
-## KomposeKatalogFromYaml
+## KomposeRuntimeKatalog
 
 ```go
-func KomposeKatalogFromYaml(ctx context.Context, paths []string, kube *kubeclient.Kubeclient) (*Katalog, error)
+func KomposeRuntimeKatalog(ctx context.Context, paths []string, kube *kubeclient.Kubeclient) (*Katalog, error)
 ```
 
 This is the main entry point. It performs the following sequence:

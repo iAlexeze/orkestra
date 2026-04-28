@@ -29,6 +29,7 @@ func quantityNotes() template.FuncMap {
 		"parseQuantity":  noteParseQuantity,
 		"formatQuantity": noteFormatQuantity,
 		"sumQuantity":    noteSumQuantity,
+		"minusQuantity":  noteSubtractQuantity,
 	}
 }
 
@@ -58,8 +59,12 @@ func noteParseQuantity(q string) (float64, error) {
 //	{{ formatQuantity 1.0 }}       →  "1"
 //	{{ formatQuantity 1073741824 }} →  "1Gi"
 func noteFormatQuantity(f float64) (string, error) {
-	// Express as milli-units when the value is a sub-unit fraction.
-	// resource.NewMilliQuantity is exact for CPU math.
+	// Check if the value is an integer and >= 1 — likely a memory quantity
+	if f == float64(int64(f)) && f >= 1 {
+		q := resource.NewQuantity(int64(f), resource.BinarySI)
+		return q.String(), nil
+	}
+	// Otherwise treat as CPU (milli‑units)
 	millis := int64(f * 1000)
 	q := resource.NewMilliQuantity(millis, resource.DecimalSI)
 	return q.String(), nil
@@ -81,5 +86,24 @@ func noteSumQuantity(a, b string) (string, error) {
 		return "", fmt.Errorf("sumQuantity: %q: %w", b, err)
 	}
 	qa.Add(qb)
+	return qa.String(), nil
+}
+
+// noteSubtractQuantity subtracts the second quantity from the first and returns
+// the canonical string representation of their difference.
+//
+//	{{ subtractQuantity "300m" "100m" }}   →  "200m"
+//	{{ subtractQuantity "1" "500m" }}      →  "500m"
+//	{{ subtractQuantity "1536Mi" "512Mi" }} →  "1024Mi"
+func noteSubtractQuantity(a, b string) (string, error) {
+	qa, err := resource.ParseQuantity(a)
+	if err != nil {
+		return "", fmt.Errorf("subtractQuantity: %q: %w", a, err)
+	}
+	qb, err := resource.ParseQuantity(b)
+	if err != nil {
+		return "", fmt.Errorf("subtractQuantity: %q: %w", b, err)
+	}
+	qa.Sub(qb)
 	return qa.String(), nil
 }

@@ -20,12 +20,12 @@ import (
 
 func dataNotes() template.FuncMap {
 	return template.FuncMap{
-		"toBase64":   noteToBase64,
-		"fromBase64": noteFromBase64,
-		"toJSON":     noteToJSON,
-		"sha256sum":  noteSHA256Sum,
-		"truncate":   noteTruncate,
-		"slugify":    noteSlugify,
+		"toBase64":     noteToBase64,
+		"fromBase64":   noteFromBase64,
+		"toJSON":       noteToJSON,
+		"sha256sum":    noteSHA256Sum,
+		"truncateName": noteTruncate,
+		"slugify":      noteSlugify,
 	}
 }
 
@@ -72,11 +72,11 @@ func noteSHA256Sum(s string) string {
 	return fmt.Sprintf("%x", h[:4])
 }
 
-// noteTruncate returns the string truncated to maxLen characters.
-// Kubernetes resource names have a 253-character limit; labels have 63.
-// Use to safely generate resource names from user input:
+// noteTruncate hard-truncates s to maxLen characters with no suffix — for
+// generating valid Kubernetes resource names where "..." is not a legal character.
+// Use truncate (from strings notes) when displaying values to humans.
 //
-//	name: "{{ truncate .spec.projectName 50 }}-deployment"
+//	name: "{{ truncateName .spec.projectName 50 }}-deployment"
 func noteTruncate(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s

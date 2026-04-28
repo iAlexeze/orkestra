@@ -141,10 +141,24 @@ func (r *InMemoryAdmissionRegistry) addMutationGVR(entry GVREntry) {
 	r.mutGVRs = append(r.mutGVRs, entry)
 }
 
+// AddValidationGVR registers both validation rules and the GVR entry so that
+// ValidationGVRs() returns the entry. Used in tests and tooling.
+func (r *InMemoryAdmissionRegistry) AddValidationGVR(entry GVREntry, cfg *orktypes.ValidationConfig) {
+	r.RegisterValidationRules(entry.Key, cfg)
+	r.addValidationGVR(entry)
+}
+
+// AddMutationGVR registers both mutation rules and the GVR entry so that
+// MutationGVRs() returns the entry. Used in tests and tooling.
+func (r *InMemoryAdmissionRegistry) AddMutationGVR(entry GVREntry, cfg *orktypes.MutationConfig) {
+	r.RegisterMutationRules(entry.Key, cfg)
+	r.addMutationGVR(entry)
+}
+
 // ── Registration from Katalog entries ─────────────────────────────────────
 
 // registerAdmissionRulesFromEntry populates the admission registry from one
-// CRD entry. Called during KomposeKatalogFromYaml after all CRD entries
+// CRD entry. Called during KomposeRuntimeKatalog after all CRD entries
 // are loaded and enriched.
 //
 // Only CRDs with validation or mutation rules declared are registered.

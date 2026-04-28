@@ -23,6 +23,8 @@ func listMapNotes() template.FuncMap {
 		"mapGet":    noteMapGet,
 		"mapKeys":   noteMapKeys,
 		"mapValues": noteMapValues,
+		"mapPick":   noteMapPick,
+		"mapOmit":   noteMapOmit,
 	}
 }
 
@@ -103,4 +105,43 @@ func noteMapValues(m interface{}) []interface{} {
 		values = append(values, v)
 	}
 	return values
+}
+
+// noteMapPick returns a new map containing only the specified keys.
+// Missing keys are silently omitted.
+//
+//	{{ mapPick .spec "image" "replicas" }}
+func noteMapPick(m interface{}, keys ...string) map[string]interface{} {
+	mp, ok := m.(map[string]interface{})
+	out := make(map[string]interface{}, len(keys))
+	if !ok {
+		return out
+	}
+	for _, k := range keys {
+		if v, exists := mp[k]; exists {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+// noteMapOmit returns a new map with the specified keys removed.
+//
+//	{{ mapOmit .metadata.labels "internal-key" "debug" }}
+func noteMapOmit(m interface{}, keys ...string) map[string]interface{} {
+	mp, ok := m.(map[string]interface{})
+	if !ok {
+		return map[string]interface{}{}
+	}
+	skip := make(map[string]struct{}, len(keys))
+	for _, k := range keys {
+		skip[k] = struct{}{}
+	}
+	out := make(map[string]interface{}, len(mp))
+	for k, v := range mp {
+		if _, omit := skip[k]; !omit {
+			out[k] = v
+		}
+	}
+	return out
 }
