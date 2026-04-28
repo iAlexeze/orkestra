@@ -1,5 +1,7 @@
 # Orkestra Helm Chart
 
+> **Chart version:** 0.3.2 | **App version:** 0.3.2
+
 > **Chart version:** 0.3.1 | **App version:** 0.3.1
 
 Deploy Orkestra — the declarative Kubernetes operator runtime — along with its Control Center for multi‑instance observability.
