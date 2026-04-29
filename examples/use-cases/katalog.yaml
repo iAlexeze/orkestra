@@ -191,12 +191,12 @@ spec:
             - path: phase
               value: "Ready"
               when:
-                - field: "{{ replicasReady .children.deployment }}"
+                - field: "{{ allReplicasReady.children.deployment }}"
                   equals: "true"
             - path: endpoint
               value: "{{ .metadata.name }}-postgres.{{ .metadata.namespace }}.svc.cluster.local:5432"
             - path: replicasReady
-              value: "{{ replicasReady .children.deployment }}"
+              value: "{{ allReplicasReady.children.deployment }}"
             - path: resourceExists
               value: "{{ resourceExists .children.deployment }}"
 
@@ -260,7 +260,7 @@ spec:
               when:
                 - field: "{{ phase .cross.db }}"
                   equals: "Ready"
-                - field: "{{ replicasReady .children.deployment }}"
+                - field: "{{ allReplicasReady.children.deployment }}"
                   equals: "true"
             - path: databaseEndpoint
               value: "{{ get .cross.db \"status\" \"endpoint\" }}"

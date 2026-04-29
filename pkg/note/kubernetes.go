@@ -286,7 +286,6 @@ func noteExists(obj interface{}) bool {
 // Safer than navigating .children.deployment.status.phase directly —
 // no template error when status or phase is missing.
 //
-//	{{ phase .children.deployment }}
 //	{{ if eq (phase .children.job) "Succeeded" }}
 func notePhase(obj interface{}) string {
 	status := noteStatus(obj)

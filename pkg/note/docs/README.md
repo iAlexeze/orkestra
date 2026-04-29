@@ -30,7 +30,7 @@ Notes work in both `value:` and `field:` positions — use template syntax for `
 
 ```yaml
 when:
-  - field: "{{ replicasReady .children.deployment }}"
+  - field: "{{ allReplicasReady.children.deployment }}"
     equals: "true"
   - field: "{{ resourceExists .children.secret }}"
     equals: "true"

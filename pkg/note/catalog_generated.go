@@ -481,7 +481,7 @@ var BuiltinNotes = []NoteInfo{
 		Name:        "desiredReplicas",
 		Domain:      "replica",
 		Description: "Return `spec.replicas` as `int`. Returns `1` when not set (Kubernetes default).",
-		Example:     "# value: \"{{ desiredReplicas .children.deployment }}\"  → 3\nstatus:\n  fields:\n    # Expose rollout progress as a fraction\n    - path: rolloutProgress\n      value: \"{{ div (toFloat (readyReplicas .children.deployment)) (toFloat (desiredReplicas .children.deployment)) }}\"\n\n    # True only when all pods are both updated and ready\n    - path: fullyRolledOut\n      value: \"{{ and (replicasReady .children.deployment) (eq (updatedReplicas .children.deployment) (desiredReplicas .children.deployment)) }}\"\n\nwhen:\n  - field: \"{{ replicasReady .children.deployment }}\"\n    equals: \"true\"",
+		Example:     "# value: \"{{ desiredReplicas .children.deployment }}\"  → 3\nstatus:\n  fields:\n    # Expose rollout progress as a fraction\n    - path: rolloutProgress\n      value: \"{{ div (toFloat (readyReplicas .children.deployment)) (toFloat (desiredReplicas .children.deployment)) }}\"\n\n    # True only when all pods are both updated and ready\n    - path: fullyRolledOut\n      value: \"{{ and (replicasReady .children.deployment) (eq (updatedReplicas .children.deployment) (desiredReplicas .children.deployment)) }}\"\n\nwhen:\n  - field: \"{{ allReplicasReady.children.deployment }}\"\n    equals: \"true\"",
 	},
 	{
 		Name:        "readyReplicas",
@@ -493,7 +493,7 @@ var BuiltinNotes = []NoteInfo{
 		Name:        "replicasReady",
 		Domain:      "replica",
 		Description: "Return `true` when `status.readyReplicas >= spec.replicas`. The canonical rollout-complete gate.",
-		Example:     "# Gate dependent resources on a stable rollout:\nwhen:\n  - field: \"{{ replicasReady .children.deployment }}\"\n    equals: \"true\"",
+		Example:     "# Gate dependent resources on a stable rollout:\nwhen:\n  - field: \"{{ allReplicasReady.children.deployment }}\"\n    equals: \"true\"",
 	},
 	{
 		Name:        "updatedReplicas",

@@ -2,8 +2,8 @@
 package types_test
 
 import (
-	"time"
 	"testing"
+	"time"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/stretchr/testify/assert"
