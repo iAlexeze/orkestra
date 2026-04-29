@@ -85,7 +85,7 @@ var notesDomainCmd = &cobra.Command{
 }
 
 func init() {
-	notesCmd.Flags().String("domain", "", "Filter by domain (e.g. strings, cron, kubernetes)")
+	notesCmd.Flags().StringP("domain", "d", "", "Filter by domain (e.g. strings, cron, kubernetes)")
 	notesCmd.Flags().Bool("no-pager", false, "Print directly without paging")
 	notesSearchCmd.Flags().Bool("no-pager", false, "Print directly without paging")
 	notesShowCmd.Flags().Bool("no-pager", false, "Print directly without paging")
