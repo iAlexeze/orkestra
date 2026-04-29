@@ -115,7 +115,7 @@ runtime:
   # Registry (runtime only)
   registry:
     enabled: false
-    url: ""
+    url: ""     # ORKESTRA_REGISTRY
 
   # HPA
   hpa:

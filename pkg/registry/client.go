@@ -15,18 +15,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
+	// "io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"oras.land/oras-go/v2"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/credentials"
+	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
 // Client wraps ORAS for Orkestra pattern operations.
@@ -36,18 +37,14 @@ type Client struct {
 }
 
 // NewClient returns a Client with credentials loaded from the Docker config.
-// func NewClient() (*Client, error) {
-// 	store, err := credentials.NewStoreFromDocker(credentials.StoreOptions{
-// 		AllowPlaintextPut: false,
-// 	})
-// 	if err != nil {
-// 		return nil, fmt.Errorf("loading docker credentials: %w", err)
-// 	}
-// 	return &Client{credStore: store}, nil
-// }
-
 func NewClient() (*Client, error) {
-    return &Client{}, nil
+	store, err := credentials.NewStoreFromDocker(credentials.StoreOptions{
+		AllowPlaintextPut: false,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("loading docker credentials: %w", err)
+	}
+	return &Client{credStore: store}, nil
 }
 
 // Push validates the directory and pushes all pattern files to the registry.
@@ -68,7 +65,7 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, progress func(f
 	defer store.Close()
 
 	// Add each file as a layer
-	var descs []ociDesc
+	var descs []ocispec.Descriptor
 	for _, f := range files {
 		path := filepath.Join(dir, f)
 		info, err := os.Stat(path)
@@ -82,26 +79,22 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, progress func(f
 		if err != nil {
 			return "", fmt.Errorf("adding %s: %w", f, err)
 		}
-		descs = append(descs, ociDesc(desc))
+		descs = append(descs, desc)
 	}
 
 	// Pack into a manifest with annotations from pattern.yaml
 	annotations := metaToAnnotations(meta, ref)
-
-	layers := make([]ocispec.Descriptor, len(descs))
-	for i, d := range descs {
-		// descs[i] is of type ocispec.Descriptor (from file.Store.Add)
-		layers[i] = d
-	}
-
-	opts := oras.PackManifestOptions{
-		Layers:              layers,
+	manifestDesc, err := oras.Pack(ctx, store, MediaType, descs, oras.PackOptions{
+		PackImageManifest:   true,
 		ManifestAnnotations: annotations,
-	}
-
-	manifestDesc, err := oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, MediaType, opts)
+	})
 	if err != nil {
 		return "", fmt.Errorf("packing manifest: %w", err)
+	}
+
+	// Tag the manifest in the local store so oras.Copy can resolve it by name.
+	if err := store.Tag(ctx, manifestDesc, ref.Tag); err != nil {
+		return "", fmt.Errorf("tagging manifest: %w", err)
 	}
 
 	// Push to the remote repository
@@ -110,8 +103,7 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, progress func(f
 		return "", err
 	}
 
-	_, err = oras.Copy(ctx, store, manifestDesc.Digest.String(), repo, ref.Tag, oras.DefaultCopyOptions)
-	if err != nil {
+	if _, err := oras.Copy(ctx, store, ref.Tag, repo, ref.Tag, oras.DefaultCopyOptions); err != nil {
 		return "", fmt.Errorf("pushing: %w", err)
 	}
 
@@ -209,68 +201,89 @@ func (c *Client) Info(ctx context.Context, ref *Ref) (*PatternInfo, error) {
 	return info, nil
 }
 
-// List fetches the pattern index from the registry.
+// List enumerates patterns in the registry by walking its repository catalog.
+// For each repository under the base namespace, it fetches the manifest
+// annotations to build the pattern index on the fly.
 func (c *Client) List(ctx context.Context, registryURL string) (*PatternIndex, error) {
 	if registryURL == "" {
 		registryURL = DefaultRegistry
 	}
-	registryURL = strings.TrimPrefix(registryURL, "oci://")
+	clean := strings.TrimSuffix(strings.TrimPrefix(registryURL, "oci://"), "/")
 
-	indexRef := &Ref{Full: registryURL + "/index:latest"}
-	// Parse properly
-	parsed, err := Resolve("oci://" + registryURL + "/index:latest")
+	// Split "ghcr.io/orkspace/orkestra-registry/patterns"
+	// into host="ghcr.io" and namespace="orkspace/orkestra-registry/patterns".
+	hostEnd := strings.Index(clean, "/")
+	if hostEnd < 0 {
+		return nil, fmt.Errorf("invalid registry URL %q: expected host/namespace", registryURL)
+	}
+	host := clean[:hostEnd]
+	namespace := clean[hostEnd+1:]
+
+	reg, err := remote.NewRegistry(host)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid registry host %q: %w", host, err)
 	}
-	indexRef = parsed
+	reg.Client = &auth.Client{
+		Client:     retry.DefaultClient,
+		Cache:      auth.DefaultCache,
+		Credential: credentials.Credential(c.credStore),
+	}
 
-	repo, err := c.remoteRepo(indexRef)
+	prefix := namespace + "/"
+	var patterns []PatternEntry
+
+	err = reg.Repositories(ctx, "", func(repos []string) error {
+		for _, repo := range repos {
+			if !strings.HasPrefix(repo, prefix) {
+				continue
+			}
+			// name is the leaf segment after the namespace
+			name := repo[len(prefix):]
+			if name == "" || name == "index" || strings.Contains(name, "/") {
+				continue
+			}
+
+			ref, err2 := parseRef(host + "/" + repo + ":latest")
+			if err2 != nil {
+				continue
+			}
+			info, err2 := c.Info(ctx, ref)
+			if err2 != nil {
+				continue // tag missing or inaccessible — skip silently
+			}
+
+			patterns = append(patterns, PatternEntry{
+				Name:          name,
+				LatestVersion: info.Meta.Version,
+				Description:   info.Meta.Description,
+				Tags:          info.Meta.Tags,
+				Author:        info.Meta.Author,
+			})
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("listing patterns: %w", err)
 	}
 
-	// Fetch the index blob
-	desc, rc, err := repo.FetchReference(ctx, "latest")
-	if err != nil {
-		return nil, fmt.Errorf("fetching index: %w", err)
-	}
-	defer rc.Close()
-	_ = desc
-
-	data, err := io.ReadAll(rc)
-	if err != nil {
-		return nil, fmt.Errorf("reading index: %w", err)
-	}
-
-	var index PatternIndex
-	if err := json.Unmarshal(data, &index); err != nil {
-		return nil, fmt.Errorf("decoding index: %w", err)
-	}
-
-	return &index, nil
+	return &PatternIndex{
+		Patterns:  patterns,
+		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
+	}, nil
 }
 
 // remoteRepo returns an authenticated ORAS remote.Repository for the ref.
-// func (c *Client) remoteRepo(ref *Ref) (*remote.Repository, error) {
-// 	repo, err := remote.NewRepository(ref.Full)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("invalid reference %q: %w", ref.Full, err)
-// 	}
-// 	repo.Client = &auth.Client{
-// 		Client:     auth.DefaultClient,
-// 		Cache:      auth.DefaultCache,
-// 		Credential: credentials.Credential(c.credStore),
-// 	}
-// 	return repo, nil
-// }
-
 func (c *Client) remoteRepo(ref *Ref) (*remote.Repository, error) {
-    repo, err := remote.NewRepository(ref.Full)
-    if err != nil {
-        return nil, fmt.Errorf("invalid reference %q: %w", ref.Full, err)
-    }
-    repo.Client = auth.DefaultClient
-    return repo, nil
+	repo, err := remote.NewRepository(ref.Full)
+	if err != nil {
+		return nil, fmt.Errorf("invalid reference %q: %w", ref.Full, err)
+	}
+	repo.Client = &auth.Client{
+		Client:     retry.DefaultClient,
+		Cache:      auth.DefaultCache,
+		Credential: credentials.Credential(c.credStore),
+	}
+	return repo, nil
 }
 
 // mediaTypeForFile returns the OCI media type for a pattern file.
@@ -324,12 +337,4 @@ func annotationsToMeta(ann map[string]string) *PatternMeta {
 		License:     ann["io.orkestra.pattern.license"],
 		Tags:        tags,
 	}
-}
-
-// ociDesc and toDescs adapt internal types to the oras API.
-// Using type aliases to avoid importing oci descriptors directly in pattern.go.
-type ociDesc = interface{}
-
-func toDescs(descs []ociDesc) []interface{} {
-	return descs
 }

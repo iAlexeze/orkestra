@@ -22,7 +22,7 @@ import (
 
 const (
 	// DefaultRegistry is the official Orkestra pattern registry.
-	DefaultRegistry = "ghcr.io/orkspace/orkestra-registry"
+	DefaultRegistry = "ghcr.io/orkspace/orkestra-registry/patterns"
 
 	// EnvRegistry is the environment variable for overriding the registry.
 	EnvRegistry = "ORKESTRA_REGISTRY"

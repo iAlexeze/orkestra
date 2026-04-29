@@ -25,7 +25,7 @@ generate-notes:
 	go run ./hack/generate-notes
 	@echo "✅ Note catalog generated at pkg/note/catalog_generated.go"
 
-ork:
+ork: generate-notes
 	@echo "Building Orkestra..."
 	@mkdir -p $(OUTPUT_DIR)
 	cd $(ORKESTRA_DIR) && gofmt -w .
@@ -92,7 +92,7 @@ BIN := $(OUTPUT_DIR)/ork
 
 # ── Linux Build Targets (for Docker) ──────────────────────────────────────────
 
-ork-linux:
+ork-linux: generate-notes
 	@echo "Building Orkestra (Linux amd64)..."
 	@mkdir -p $(OUTPUT_DIR)
 	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \

@@ -299,7 +299,7 @@ var registryListCmd = &cobra.Command{
 // ── registration ──────────────────────────────────────────────────────────────
 
 func init() {
-	// rootCmd.AddCommand(registryCmd)
+	rootCmd.AddCommand(registryCmd)
 	registryCmd.AddCommand(registryPushCmd)
 	registryCmd.AddCommand(registryPullCmd)
 	registryCmd.AddCommand(registryInfoCmd)

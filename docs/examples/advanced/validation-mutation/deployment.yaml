@@ -41,7 +41,7 @@ spec:
               value: "/tls/tls.key"
 
             # ── Runtime ────────────────────────────────────────────────────
-            - name: ORK_PORT
+            - name: ORKESTRA_PORT
               value: "8080"
             - name: ORKESTRA_NAMESPACE
               valueFrom:
