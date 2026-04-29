@@ -22,6 +22,7 @@ func containerNotes() template.FuncMap {
 		"containerImage":      noteContainerImage,
 		"containerEnv":        noteContainerEnv,
 		"containerPort":       noteContainerPort,
+		"hasContainerPort":    noteHasContainerPort,
 		"containerPortByName": noteContainerPortByName,
 		"containerPorts":      noteContainerPorts,
 		"containerCount":      noteContainerCount,
@@ -31,17 +32,22 @@ func containerNotes() template.FuncMap {
 // noteContainerImage returns the image of containers[index].
 //
 //	{{ containerImage .children.deployment 0 }}
-func noteContainerImage(obj interface{}, index int) string {
+func noteContainerImage(obj interface{}, args ...int) string {
+	idx := 0
+	if len(args) > 0 {
+		idx = args[0]
+	}
+
 	spec := noteGet(obj, "spec", "template", "spec")
 	m, ok := spec.(map[string]interface{})
 	if !ok {
 		return ""
 	}
 	containers, ok := m["containers"].([]interface{})
-	if !ok || index < 0 || index >= len(containers) {
+	if !ok || idx < 0 || idx >= len(containers) {
 		return ""
 	}
-	cm, ok := containers[index].(map[string]interface{})
+	cm, ok := containers[idx].(map[string]interface{})
 	if !ok {
 		return ""
 	}
@@ -52,17 +58,22 @@ func noteContainerImage(obj interface{}, index int) string {
 // noteContainerEnv returns the value of an env var.
 //
 //	{{ containerEnv .children.deployment 0 "APP_ENV" }}
-func noteContainerEnv(obj interface{}, index int, key string) string {
+func noteContainerEnv(obj interface{}, key string, args ...int) string {
+	idx := 0
+	if len(args) > 0 {
+		idx = args[0]
+	}
+
 	spec := noteGet(obj, "spec", "template", "spec")
 	m, ok := spec.(map[string]interface{})
 	if !ok {
 		return ""
 	}
 	containers, ok := m["containers"].([]interface{})
-	if !ok || index < 0 || index >= len(containers) {
+	if !ok || idx < 0 || idx >= len(containers) {
 		return ""
 	}
-	cm, ok := containers[index].(map[string]interface{})
+	cm, ok := containers[idx].(map[string]interface{})
 	if !ok {
 		return ""
 	}
@@ -84,15 +95,50 @@ func noteContainerEnv(obj interface{}, index int, key string) string {
 
 // ── Container notes ───────────────────────────────────────
 
-// noteContainerPort returns the container port indexed.
+// noteContainerPort returns the port number at the given (containerIndex, portIndex).
+// Both indices default to 0 when omitted.
 //
-//	{{ containerPort .children.deployment 0 8080 }}
-func noteContainerPort(obj interface{}, index int, port int) bool {
+//	{{ containerPort .children.deployment }}      → first container, first port
+//	{{ containerPort .children.deployment 1 }}    → second container, first port
+//	{{ containerPort .children.deployment 1 2 }}  → second container, third port
+func noteContainerPort(obj interface{}, indices ...int) int {
+	containerIdx := 0
+	portIdx := 0
+	if len(indices) > 0 {
+		containerIdx = indices[0]
+	}
+	if len(indices) > 1 {
+		portIdx = indices[1]
+	}
+
 	containers := getContainers(obj)
-	if index < 0 || index >= len(containers) {
+	if containerIdx < 0 || containerIdx >= len(containers) {
+		return 0
+	}
+	cm, ok := containers[containerIdx].(map[string]interface{})
+	if !ok {
+		return 0
+	}
+	ports, ok := cm["ports"].([]interface{})
+	if !ok || portIdx < 0 || portIdx >= len(ports) {
+		return 0
+	}
+	pm, ok := ports[portIdx].(map[string]interface{})
+	if !ok {
+		return 0
+	}
+	return int(toInt64(pm["containerPort"]))
+}
+
+// noteHasContainerPort checks whether the container exposes a specific port number.
+//
+//	{{ hasContainerPort .children.deployment 0 8080 }} → true
+func noteHasContainerPort(obj interface{}, containerIndex int, port int) bool {
+	containers := getContainers(obj)
+	if containerIndex < 0 || containerIndex >= len(containers) {
 		return false
 	}
-	cm, ok := containers[index].(map[string]interface{})
+	cm, ok := containers[containerIndex].(map[string]interface{})
 	if !ok {
 		return false
 	}

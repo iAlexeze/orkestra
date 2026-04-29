@@ -60,7 +60,7 @@ spec:
                   operator: gt
                   value: "0"
               # when:
-              #   - field: "{{ replicasReady .children.replicaset }}"
+              #   - field: "{{ allReplicasReady.children.replicaset }}"
               #     equals: "true"
 
             - path: observedReplicas

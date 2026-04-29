@@ -42,6 +42,8 @@ Standard five-field cron: `minute hour dayOfMonth month dayOfWeek`
 
 Convert a schedule **map** to a five-field cron string. Reads keys `minute`, `hour`, `dayOfMonth`, `month`, `dayOfWeek`; absent keys default to `*`. Errors if the input is not a map — use `cronFromAny` when the input may be a string.
 
+Keywords: cron, schedule, map, convert, fields, expression
+
 ```yaml
 # onReconcile Path B — input is guaranteed a map by the when: gate
 - name: "{{ .metadata.name }}"
@@ -66,6 +68,8 @@ Convert a schedule value to a five-field cron string. Accepts either shape:
 - **map** — reads keys `minute`, `hour`, `dayOfMonth`, `month`, `dayOfWeek`; absent keys default to `*`
 - **string** — treated as an already-complete cron expression and normalised
 - **nil / unknown** — returns `"* * * * *"`
+
+Keywords: cron, schedule, convert, string, normalize, any
 
 ```yaml
 # normalize block — user input may be either shape
@@ -114,6 +118,8 @@ Convert a cron string to the structured map shape. For use in **conversion path 
 - **map** — returned as-is
 - `@`-macros expanded before splitting (`@hourly` → minute:`0`, hour:`*`, …)
 
+Keywords: cron, schedule, parse, fields, map, convert, structured
+
 ```yaml
 # v1 → v2 conversion path
 - from: v1
@@ -138,6 +144,8 @@ Convert a cron string to the structured map shape. For use in **conversion path 
 
 Normalize a cron string: expand `@`-macros, trim whitespace, ensure exactly five fields. Returns `"* * * * *"` for empty or malformed input.
 
+Keywords: cron, schedule, normalize, macro, expand, sanitize
+
 ```yaml
 # value: "{{ cronNormalize .spec.schedule }}"
 # "@daily"      → "0 0 * * *"
@@ -151,6 +159,8 @@ Normalize a cron string: expand `@`-macros, trim whitespace, ensure exactly five
 ### `cronDescribe`
 
 Return a human-readable description of a cron expression. Useful in `status.fields` for the Control Center UI.
+
+Keywords: cron, schedule, describe, human-readable, display, status
 
 ```yaml
 - path: scheduleDescription
@@ -170,6 +180,8 @@ Return a human-readable description of a cron expression. Useful in `status.fiel
 
 Return `true` when the expression is structurally valid (five fields present after macro expansion). Does not validate field ranges.
 
+Keywords: cron, schedule, validate, valid, check, boolean
+
 ```yaml
 validation:
   rules:
@@ -185,6 +197,8 @@ validation:
 ### `cronExpr`
 
 Build a five-field cron expression from five explicit string parts. Empty parts default to `*`.
+
+Keywords: cron, schedule, build, expression, fields, construct
 
 ```yaml
 # value: "{{ cronExpr .spec.schedule.minute .spec.schedule.hour .spec.schedule.dayOfMonth .spec.schedule.month .spec.schedule.dayOfWeek }}"

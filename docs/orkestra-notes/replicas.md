@@ -23,12 +23,12 @@ Inspect Deployment and ReplicaSet replica counts. All notes accept the unstructu
 ```yaml
 # Gate a dependent resource on rollout completion
 when:
-  - field: "{{ replicasReady .children.deployment }}"
+  - field: "{{ allReplicasReady.children.deployment }}"
     equals: "true"
 
 # Status: how many replicas are running
 - path: readyReplicas
-  value: "{{ readyReplicas .children.deployment }}"
+  value: "{{ allReplicasReady.children.deployment }}"
 
 # Status: is the rollout complete?
 - path: rolloutComplete

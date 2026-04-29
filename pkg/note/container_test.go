@@ -96,8 +96,31 @@ func TestNoteContainerEnv(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := noteContainerEnv(tt.obj, tt.index, tt.key); got != tt.want {
+			if got := noteContainerEnv(tt.obj, tt.key, tt.index); got != tt.want {
 				t.Errorf("noteContainerEnv() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNoteHasContainerPort(t *testing.T) {
+	tests := []struct {
+		name         string
+		obj          interface{}
+		containerIdx int
+		port         int
+		want         bool
+	}{
+		{"existing port", testDeployment, 0, 8080, true},
+		{"existing second port", testDeployment, 0, 9090, true},
+		{"non-existent port", testDeployment, 0, 9999, false},
+		{"second container port", testDeployment, 1, 3128, true},
+		{"out of range container index", testDeployment, 2, 8080, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteHasContainerPort(tt.obj, tt.containerIdx, tt.port); got != tt.want {
+				t.Errorf("noteHasContainerPort() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -105,22 +128,37 @@ func TestNoteContainerEnv(t *testing.T) {
 
 func TestNoteContainerPort(t *testing.T) {
 	tests := []struct {
-		name  string
-		obj   interface{}
-		index int
-		port  int
-		want  bool
+		name         string
+		obj          interface{}
+		containerIdx int
+		portIdx      int // optional – we test both with and without
+		want         int
 	}{
-		{"existing port", testDeployment, 0, 8080, true},
-		{"existing second port", testDeployment, 0, 9090, true},
-		{"non-existent port", testDeployment, 0, 9999, false},
-		{"second container port", testDeployment, 1, 3128, true},
-		{"out of range index", testDeployment, 2, 8080, false},
+		// No
+		// Variadic: no optional index → first port
+		{"first port, implicit index", testDeployment, 0, -1, 8080},
+		// Explicit index 0 → first port
+		{"first port, explicit index 0", testDeployment, 0, 0, 8080},
+		// Second port (index 1)
+		{"second port", testDeployment, 0, 1, 9090},
+		// Second container, first port (portIdx omitted → first)
+		{"second container, first port", testDeployment, 1, -1, 3128},
+		// Non‑existent container index
+		{"container out of range", testDeployment, 2, -1, 0},
+		// Port index out of range
+		{"port index out of range", testDeployment, 0, 5, 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := noteContainerPort(tt.obj, tt.index, tt.port); got != tt.want {
-				t.Errorf("noteContainerPort() = %v, want %v", got, tt.want)
+			var got int
+			if tt.portIdx == -1 {
+				// no optional argument – use the variadic version without second int
+				got = noteContainerPort(tt.obj, tt.containerIdx)
+			} else {
+				got = noteContainerPort(tt.obj, tt.containerIdx, tt.portIdx)
+			}
+			if got != tt.want {
+				t.Errorf("noteContainerPort() = %d, want %d", got, tt.want)
 			}
 		})
 	}

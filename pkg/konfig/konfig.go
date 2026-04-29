@@ -110,7 +110,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			RegistryURL: GetStrEnv("ORK_REGISTRY", ""),
 		},
 		healthServer: healthServer{
-			Port:         GetStrEnv("ORK_PORT", "8080"),
+			Port:         GetStrEnv("ORKESTRA_PORT", "8080"),
 			ReadTimeout:  GetDurEnvSeconds("SRV_READ_TIMEOUT", 5),
 			WriteTimeout: GetDurEnvSeconds("SRV_WRITE_TIMEOUT", 20),
 		},

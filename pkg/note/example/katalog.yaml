@@ -8,7 +8,8 @@ metadata:
     NoteProbe — living integration test for all note functions.
     Creates a Deployment, Service, and Job. Status fields exercise every
     kubernetes, replica, container, job, and service note so each
-    note's output is visible via kubectl get noteprobe -o yaml.
+    note's output is visible via kubectl get noteprobe -o yaml 
+    and on the Control Center.
 
 spec:
   crds:
@@ -19,7 +20,7 @@ spec:
         kind: NoteProbe
         plural: noteprobes
       workers: 1
-      resync: 10s
+      resync: 30s
 
       operatorBox:
         default: true
@@ -60,13 +61,13 @@ spec:
               when:
                 - field: "{{ resourceExists .children.deployment }}"
                   equals: "true"
-                - field: "{{ replicasReady .children.deployment }}"
+                - field: "{{ allReplicasReady.children.deployment }}"
                   equals: "false"
 
             - path: phase
               value: "WaitingForJob"
               when:
-                - field: "{{ replicasReady .children.deployment }}"
+                - field: "{{ allReplicasReady.children.deployment }}"
                   equals: "true"
                 - field: "{{ jobSucceeded .children.job }}"
                   equals: "false"
@@ -74,7 +75,7 @@ spec:
             - path: phase
               value: "Ready"
               when:
-                - field: "{{ replicasReady .children.deployment }}"
+                - field: "{{ allReplicasReady.children.deployment }}"
                   equals: "true"
                 - field: "{{ jobSucceeded .children.job }}"
                   equals: "true"
@@ -116,12 +117,14 @@ spec:
             - path: conditionProgressingMessage
               value: "{{ conditionMessage .children.deployment \"Progressing\" }}"
 
-            - path: deploymentPhase
-              value: "{{ phase .children.deployment }}"
+            # ── replica notes ───────────────────────────────────────────────            
+            # Status: are all desired replicas ready? (no rolling update in progress)
+            - path: allReady
+              value: "{{ allReplicasReady .children.deployment }}"
 
-            # ── replica notes ───────────────────────────────────────────────
-            - path: replicasReady
-              value: "{{ replicasReady .children.deployment }}"
+            # Status: has the rollout reached the desired version?
+            - path: rolloutDone
+              value: "{{ rolloutComplete .children.deployment }}"
 
             - path: desiredReplicas
               value: "{{ desiredReplicas .children.deployment }}"
@@ -144,6 +147,9 @@ spec:
 
             - path: containerPort
               value: "{{ containerPort .children.deployment }}"
+            
+            - path: hasContainerPort8080
+              value: "{{ hasContainerPort .children.deployment 0 8080 }}"
 
             # ── job notes ───────────────────────────────────────────────────
             - path: jobSucceeded
@@ -159,5 +165,6 @@ spec:
             - path: serviceClusterIP
               value: "{{ serviceClusterIP .children.service }}"
 
+            # In development 
             - path: endpointsReady
-              value: "{{ endpointsReady .children.service }}"
+              value: "{{ endpointsReady .children.endpoints }}"

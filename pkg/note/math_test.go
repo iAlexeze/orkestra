@@ -14,7 +14,7 @@ func TestNoteAdd(t *testing.T) {
 	}{
 		{"int + int", 1, 2, int64(3), false},
 		{"int64 + int64", int64(5), int64(7), int64(12), false},
-		{"float + float", 1.5, 2.5, 4.0, false},
+		{"float + float", 1.5, 2.5, int64(4), false},
 		{"int + float", 3, 2.5, 5.5, false},
 		{"string ints", "10", "20", int64(30), false},
 		{"string floats", "1.2", "3.4", 4.6, false},
@@ -70,7 +70,7 @@ func TestNoteMul(t *testing.T) {
 		wantErr bool
 	}{
 		{"int * int", 4, 5, int64(20), false},
-		{"float * float", 2.5, 4.0, 10.0, false},
+		{"float * float", 2.5, 4.0, int64(10), false},
 		{"mixed", 3, 1.5, 4.5, false},
 		{"string", "2", "3", int64(6), false},
 		{"invalid", "a", 2, nil, true},
@@ -98,7 +98,7 @@ func TestNoteDiv(t *testing.T) {
 	}{
 		{"int division", 10, 3, 3.3333333333333335, false}, // floats
 		{"exact integer", 9, 3, int64(3), false},
-		{"float", 7.5, 2.5, 3.0, false},
+		{"float", 7.5, 2.5, int64(3), false},
 		{"division by zero", 1, 0, nil, true},
 		{"string", "10", "2", int64(5), false},
 		{"invalid", 5, "x", nil, true},

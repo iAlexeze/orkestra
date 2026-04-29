@@ -35,7 +35,7 @@ spec:
             - run
             - --katalog=/etc/orkestra/katalog.yaml
           env:
-            - name: ORK_PORT
+            - name: ORKESTRA_PORT
               value: "8080"
             - name: LOG_LEVEL
               value: "info"

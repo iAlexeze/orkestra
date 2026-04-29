@@ -11,7 +11,7 @@ import "text/template"
 //
 // Template examples:
 //
-//	{{ replicasReady .children.deployment }}
+//	"{{ allReplicasReady .children.deployment }}
 //	{{ desiredReplicas .children.deployment }}
 //	{{ readyReplicas .children.deployment }}
 //	{{ availableReplicas .children.deployment }}
@@ -23,22 +23,32 @@ import "text/template"
 // stabilizes.
 func replicaNotes() template.FuncMap {
 	return template.FuncMap{
-		"replicasReady":     noteReplicasReady,
+		"allReplicasReady":  noteAllReplicasReady,
 		"desiredReplicas":   noteDesiredReplicas,
 		"readyReplicas":     noteReadyReplicas,
 		"availableReplicas": noteAvailableReplicas,
 		"updatedReplicas":   noteUpdatedReplicas,
+		"rolloutComplete":   noteRolloutComplete,
 	}
 }
 
 // ── Replica notes ─────────────────────────────────────────────────────────────
 
-// noteReplicasReady returns true when readyReplicas equals the desired replica count.
+// noteAllReplicasReady returns true when readyReplicas equals the desired replica count.
 // Handles scale-to-zero correctly: desired=0 and ready=0 → true.
 //
-//	{{ replicasReady .children.deployment }}
-func noteReplicasReady(obj interface{}) bool {
+//	{{ allReplicasReady .children.deployment }}
+func noteAllReplicasReady(obj interface{}) bool {
 	return noteReadyReplicas(obj) == noteDesiredReplicas(obj)
+}
+
+// noteRolloutComplete returns true when updatedReplicas equals desiredReplicas.
+// This indicates that all pods are running the latest specification (the rollout
+// has finished, though they may not all be ready yet).
+//
+//	{{ rolloutComplete .children.deployment }}  → true
+func noteRolloutComplete(obj interface{}) bool {
+	return noteUpdatedReplicas(obj) == noteDesiredReplicas(obj)
 }
 
 // noteDesiredReplicas returns spec.replicas.

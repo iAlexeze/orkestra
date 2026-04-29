@@ -13,7 +13,7 @@ Return `true` when `status.readyReplicas >= spec.replicas`. The canonical rollou
 ```yaml
 # Gate dependent resources on a stable rollout:
 when:
-  - field: "{{ replicasReady .children.deployment }}"
+  - field: "{{ allReplicasReady.children.deployment }}"
     equals: "true"
 ```
 
@@ -83,7 +83,7 @@ status:
       value: "{{ and (replicasReady .children.deployment) (eq (updatedReplicas .children.deployment) (desiredReplicas .children.deployment)) }}"
 
 when:
-  - field: "{{ replicasReady .children.deployment }}"
+  - field: "{{ allReplicasReady.children.deployment }}"
     equals: "true"
 ```
 

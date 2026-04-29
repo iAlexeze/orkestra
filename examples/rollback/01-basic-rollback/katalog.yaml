@@ -46,8 +46,11 @@ spec:
             - path: phase
               value: "Ready"
               when:
-                - field: "{{ replicasReady .children.deployment }}"
+                - field: "{{ allReplicasReady.children.deployment }}"
                   equals: "true"
+
+            - path: allReady
+              value: "{{ allReplicasReady .children.deployment }}"
 
             - path: image
               value: "{{ containerImage .children.deployment }}"

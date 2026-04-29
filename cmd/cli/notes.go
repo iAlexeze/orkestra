@@ -85,7 +85,7 @@ var notesDomainCmd = &cobra.Command{
 }
 
 func init() {
-	notesCmd.Flags().String("domain", "", "Filter by domain (e.g. strings, cron, kubernetes)")
+	notesCmd.Flags().StringP("domain", "d", "", "Filter by domain (e.g. strings, cron, kubernetes)")
 	notesCmd.Flags().Bool("no-pager", false, "Print directly without paging")
 	notesSearchCmd.Flags().Bool("no-pager", false, "Print directly without paging")
 	notesShowCmd.Flags().Bool("no-pager", false, "Print directly without paging")
@@ -123,6 +123,9 @@ func printNoteDetail(n note.NoteInfo, noPager bool) error {
 	fmt.Fprintf(&sb, "  Domain:      %s\n", n.Domain)
 	if n.Description != "" {
 		fmt.Fprintf(&sb, "  Description: %s\n", n.Description)
+	}
+	if len(n.Keywords) > 0 {
+		fmt.Fprintf(&sb, "  Keywords:    %s\n", strings.Join(n.Keywords, ", "))
 	}
 	if len(n.SeeAlso) > 0 {
 		fmt.Fprintf(&sb, "  See also:    %s\n", strings.Join(n.SeeAlso, ", "))

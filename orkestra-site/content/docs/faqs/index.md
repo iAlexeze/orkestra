@@ -283,7 +283,7 @@ mounts the resulting Secret automatically.
 
 | Variable | Default | Description |
 |---|---|---|
-| `ORK_PORT` | `8080` | HTTP server port |
+| `ORKESTRA_PORT` | `8080` | HTTP server port |
 | `ENABLE_CONVERSION` | `false` | Enable the `/convert` HTTPS endpoint |
 | `ENABLE_ADMISSION_WEBHOOK` | `false` | Enable `/validate` and `/mutate` (requires `ENABLE_CONVERSION`) |
 | `TLS_CERT` | — | Path to TLS certificate |

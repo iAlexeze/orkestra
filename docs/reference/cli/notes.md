@@ -73,7 +73,7 @@ Output:
 
   Example:
     # when:
-    #   - field: "{{ replicasReady .children.deployment }}"
+    #   - field: "{{ allReplicasReady.children.deployment }}"
     #     equals: "true"
 ────────────────────────────────────────────────────────────────
 ```

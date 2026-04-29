@@ -106,11 +106,11 @@ When modifying HTML templates:
 
 ```bash
 # Terminal 1 – Orkestra Runtime 1
-export ORK_PORT=8080
+export ORKESTRA_PORT=8080
 ork run -k katalog1.yaml
 
 # Terminal 2 – Orkestra Runtime 2
-export ORK_PORT=8081
+export ORKESTRA_PORT=8081
 ork run -k katalog2.yaml
 
 # Terminal 3 – Control Center

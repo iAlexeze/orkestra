@@ -268,7 +268,15 @@ func cronNormalize(expr string) string {
 //		into:
 //	At 02:00 on Mondays
 func cronDescribe(expr string) string {
-	norm := cronNormalize(expr)
+	trimmed := strings.TrimSpace(expr)
+	if trimmed == "" {
+		return "Invalid cron expression"
+	}
+	// Reject inputs that can't be a cron expression: must be a @macro or have 5 fields.
+	if !strings.HasPrefix(trimmed, "@") && len(strings.Fields(trimmed)) != 5 {
+		return "Invalid cron expression"
+	}
+	norm := cronNormalize(trimmed)
 	parts := strings.Fields(norm)
 	if len(parts) != 5 {
 		return "Invalid cron expression"
