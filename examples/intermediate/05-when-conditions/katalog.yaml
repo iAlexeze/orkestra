@@ -28,7 +28,7 @@ spec:
             - path: phase
               value: "Running"
             - path: readyReplicas
-              value: "{{ get .children.deployment "status" "readyReplicas" }}"
+              value: "{{ get .children.deployment \"status\" \"readyReplicas\" }}"
 
         onCreate:
           # ── Deployment — always created (all tiers) ────────────────────
