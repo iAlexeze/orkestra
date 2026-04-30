@@ -2,6 +2,8 @@
 
 > **Chart version:** 0.3.4 | **App version:** 0.3.4
 
+> **Chart version:** 0.3.4 | **App version:** 0.3.4
+
 > **Chart version:** 0.3.3 | **App version:** 0.3.3
 
 > **Chart version:** 0.3.2 | **App version:** 0.3.2
