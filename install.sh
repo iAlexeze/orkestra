@@ -159,7 +159,11 @@ install_component() {
     local tmp_dir
     tmp_dir=$(mktemp -d)
     # Always clean up temp dir, even on error.
-    trap 'rm -rf "${tmp_dir}"' RETURN
+    # Double-quoted so ${tmp_dir} is captured at trap-set time, not at RETURN time.
+    # Single quotes would cause "unbound variable" under set -u when the trap fires
+    # in the calling scope after the local variable goes out of scope.
+    # shellcheck disable=SC2064
+    trap "rm -rf '${tmp_dir}'" RETURN
 
     info "Downloading ${archive}..."
     if ! curl -sSfL "${download_url}" -o "${tmp_dir}/${archive}"; then
