@@ -15,7 +15,7 @@ import "text/template"
 //	{{ serviceNodePort .children.service "http" }}
 //	{{ serviceLoadBalancerIP .children.service }}
 //	{{ serviceLoadBalancerHost .children.service }}
-//	{{ endpointsReady .children.service }}
+//	{{ endpointsReady .children.endpointslice }}
 //
 // These helpers provide a concise way to surface clusterIP, nodePort,
 // load‑balancer details, and endpoint readiness—useful for gating traffic
@@ -115,28 +115,47 @@ func lbIngress(obj interface{}) map[string]interface{} {
 	return m
 }
 
-// noteEndpointsReady returns true when the Endpoints resource for a Service
-// has at least one ready address. Useful for gating Ingress creation on
-// actual backend availability, not just Service existence.
+// noteEndpointsReady returns true when at least one endpoint address is ready.
+// Accepts an EndpointSlice object (discovery.k8s.io/v1), auto-fetched as
+// .children.endpointslice for any Service declared in onCreate.
 //
-//	{{ endpointsReady .children.service }}
+//	{{ endpointsReady .children.endpointslice }}
 //
-// Note: this reads from the Endpoints object, not the Service itself.
-// Access via cross: declaration pointing to the Endpoints resource.
+// EndpointSlice format (checked first):
+//
+//	endpoints[].conditions.ready == true && endpoints[].addresses non-empty
+//
+// Legacy Endpoints format (fallback):
+//
+//	subsets[].addresses non-empty
 func noteEndpointsReady(obj interface{}) bool {
-	status := noteStatus(obj)
-	subsets, ok := status["subsets"].([]interface{})
+	m, ok := obj.(map[string]interface{})
 	if !ok {
-		// Endpoints object stores data in subsets, not status
-		// Try the top-level object
-		if m, ok := obj.(map[string]interface{}); ok {
-			subsets, ok = m["subsets"].([]interface{})
+		return false
+	}
+
+	// EndpointSlice format (discovery.k8s.io/v1)
+	if eps, ok := m["endpoints"].([]interface{}); ok {
+		for _, e := range eps {
+			em, ok := e.(map[string]interface{})
 			if !ok {
-				return false
+				continue
+			}
+			addrs, _ := em["addresses"].([]interface{})
+			if len(addrs) == 0 {
+				continue
+			}
+			cond, _ := em["conditions"].(map[string]interface{})
+			ready, _ := cond["ready"].(bool)
+			if ready {
+				return true
 			}
 		}
+		return false
 	}
-	for _, s := range subsets {
+
+	// Legacy Endpoints format (v1): subsets at top level or under status
+	for _, s := range legacyEndpointSubsets(m) {
 		sm, ok := s.(map[string]interface{})
 		if !ok {
 			continue
@@ -147,4 +166,16 @@ func noteEndpointsReady(obj interface{}) bool {
 		}
 	}
 	return false
+}
+
+func legacyEndpointSubsets(m map[string]interface{}) []interface{} {
+	if subsets, ok := m["subsets"].([]interface{}); ok {
+		return subsets
+	}
+	if status, ok := m["status"].(map[string]interface{}); ok {
+		if subsets, ok := status["subsets"].([]interface{}); ok {
+			return subsets
+		}
+	}
+	return nil
 }

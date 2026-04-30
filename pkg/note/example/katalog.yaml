@@ -61,13 +61,13 @@ spec:
               when:
                 - field: "{{ resourceExists .children.deployment }}"
                   equals: "true"
-                - field: "{{ allReplicasReady.children.deployment }}"
+                - field: "{{ allReplicasReady .children.deployment }}"
                   equals: "false"
 
             - path: phase
               value: "WaitingForJob"
               when:
-                - field: "{{ allReplicasReady.children.deployment }}"
+                - field: "{{ allReplicasReady .children.deployment }}"
                   equals: "true"
                 - field: "{{ jobSucceeded .children.job }}"
                   equals: "false"
@@ -75,7 +75,7 @@ spec:
             - path: phase
               value: "Ready"
               when:
-                - field: "{{ allReplicasReady.children.deployment }}"
+                - field: "{{ allReplicasReady .children.deployment }}"
                   equals: "true"
                 - field: "{{ jobSucceeded .children.job }}"
                   equals: "true"
@@ -165,6 +165,5 @@ spec:
             - path: serviceClusterIP
               value: "{{ serviceClusterIP .children.service }}"
 
-            # In development 
             - path: endpointsReady
-              value: "{{ endpointsReady .children.endpoints }}"
+              value: "{{ endpointsReady .children.endpointslice }}"

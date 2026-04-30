@@ -45,6 +45,11 @@ type KatalogMeta struct {
 	Version     string `yaml:"version,omitempty"`
 	Author      string `yaml:"author,omitempty"`
 	License     string `yaml:"license,omitempty"`
+	// Tags are optional labels for categorising the Katalog in the Orkestra Registry.
+	// They help with discovery (e.g., `database`, `stateful`, `security`) when using
+	// `ork registry list --tag <tag>` and for indexing in Artifact Hub.
+	// Tags have no effect on the runtime behaviour.
+	Tags []string `yaml:"tags,omitempty" json:"tags,omitempty"`
 }
 
 // KatalogSources declares where to load CRD definitions from.

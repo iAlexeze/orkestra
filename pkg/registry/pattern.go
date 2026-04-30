@@ -7,18 +7,18 @@
 //	crd.yaml      — CRD schema (required)
 //	README.md     — human documentation (optional)
 //	cr.yaml       — example CR (optional)
-//	pattern.yaml  — registry metadata (optional, overrides derived fields)
 //
-// The pattern metadata is primarily derived from katalog.yaml (metadata.name,
-// metadata.version, metadata.author, metadata.description, spec.providers).
-// If pattern.yaml is present, its fields override the derived values.
+// Pattern metadata is derived entirely from katalog.yaml:
+//   - name, version, description, author, tags from metadata
+//   - required providers from spec.providers
+//
+// No separate pattern.yaml is required or allowed.
 package registry
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -33,9 +33,6 @@ const (
 	// FileCRD is the required CRD schema file.
 	FileCRD = "crd.yaml"
 
-	// FilePattern is the optional registry metadata file.
-	FilePattern = "pattern.yaml"
-
 	// FileReadme is the human documentation file.
 	FileReadme = "README.md"
 
@@ -43,8 +40,7 @@ const (
 	FileCR = "cr.yaml"
 )
 
-// PatternMeta is the schema for pattern metadata.
-// Derived from katalog.yaml (and optionally pattern.yaml/CRD).
+// PatternMeta holds metadata derived from the Katalog.
 type PatternMeta struct {
 	Name        string           `yaml:"name"`
 	Version     string           `yaml:"version"`
@@ -53,7 +49,7 @@ type PatternMeta struct {
 	License     string           `yaml:"license,omitempty"`
 	Tags        []string         `yaml:"tags,omitempty"`
 	Requires    PatternRequires  `yaml:"requires,omitempty"`
-	Changelog   []ChangelogEntry `yaml:"changelog,omitempty"`
+	Changelog   []ChangelogEntry `yaml:"changelog,omitempty"` // reserved for future use
 }
 
 // PatternRequires declares external dependencies.
@@ -61,7 +57,7 @@ type PatternRequires struct {
 	Providers []string `yaml:"providers,omitempty"`
 }
 
-// ChangelogEntry is one version entry in the changelog.
+// ChangelogEntry represents one version entry in the changelog.
 type ChangelogEntry struct {
 	Version string `yaml:"version"`
 	Notes   string `yaml:"notes"`
@@ -82,54 +78,32 @@ type PatternEntry struct {
 	Author        string   `json:"author,omitempty"`
 }
 
-// ValidateDirectory validates that dir contains a valid pattern.
-// Returns the pattern metadata (derived from katalog.yaml, overridden by pattern.yaml if present),
-// and the list of files to include in the OCI artifact.
+// ValidateDirectory checks that dir contains a valid pattern.
+// Returns metadata (from katalog.yaml) and the list of files to include.
 func ValidateDirectory(dir string) (*PatternMeta, []string, error) {
-	// Required files
 	required := []string{FileKatalog, FileCRD}
 	for _, f := range required {
-		path := filepath.Join(dir, f)
-		if _, err := os.Stat(path); os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 			return nil, nil, fmt.Errorf("required file missing: %s", f)
 		}
 	}
 
-	// Derive metadata from katalog.yaml
 	meta, err := deriveMetadataFromKatalog(filepath.Join(dir, FileKatalog))
 	if err != nil {
-		return nil, nil, fmt.Errorf("reading katalog.yaml: %w", err)
+		return nil, nil, fmt.Errorf("parsing katalog.yaml: %w", err)
 	}
 
-	// Optionally override with pattern.yaml
-	patternPath := filepath.Join(dir, FilePattern)
-	if _, err := os.Stat(patternPath); err == nil {
-		override, err := loadPatternMeta(patternPath)
-		if err != nil {
-			return nil, nil, fmt.Errorf("pattern.yaml: %w", err)
-		}
-		mergeMeta(meta, override)
-	}
-
-	// Validate derived metadata
-	if err := meta.Validate(); err != nil {
-		return nil, nil, fmt.Errorf("invalid pattern metadata: %w", err)
-	}
-
-	// Collect present files in canonical order (katalog, crd, then optional)
 	files := []string{FileKatalog, FileCRD}
-	optional := []string{FileReadme, FileCR, FilePattern}
+	optional := []string{FileReadme, FileCR}
 	for _, f := range optional {
 		if _, err := os.Stat(filepath.Join(dir, f)); err == nil {
 			files = append(files, f)
 		}
 	}
-
 	return meta, files, nil
 }
 
-// deriveMetadataFromKatalog reads a katalog.yaml file and extracts pattern metadata.
-// It also reads the CRD to infer the pattern name if metadata.name is missing.
+// deriveMetadataFromKatalog reads katalog.yaml and builds PatternMeta.
 func deriveMetadataFromKatalog(path string) (*PatternMeta, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -137,10 +111,11 @@ func deriveMetadataFromKatalog(path string) (*PatternMeta, error) {
 	}
 	var katalog struct {
 		Metadata struct {
-			Name        string `yaml:"name"`
-			Version     string `yaml:"version"`
-			Author      string `yaml:"author"`
-			Description string `yaml:"description"`
+			Name        string   `yaml:"name"`
+			Version     string   `yaml:"version"`
+			Author      string   `yaml:"author"`
+			Description string   `yaml:"description"`
+			Tags        []string `yaml:"tags"`
 		} `yaml:"metadata"`
 		Spec struct {
 			Providers []struct {
@@ -152,16 +127,17 @@ func deriveMetadataFromKatalog(path string) (*PatternMeta, error) {
 	if err := yaml.Unmarshal(data, &katalog); err != nil {
 		return nil, err
 	}
-
+	if katalog.Metadata.Name == "" {
+		return nil, fmt.Errorf("metadata.name is required")
+	}
 	meta := &PatternMeta{
 		Name:        katalog.Metadata.Name,
 		Version:     katalog.Metadata.Version,
 		Description: katalog.Metadata.Description,
 		Author:      katalog.Metadata.Author,
-		Tags:        []string{},
+		Tags:        katalog.Metadata.Tags,
 	}
-
-	// Extract providers from spec.providers
+	// Collect required providers
 	var providers []string
 	for _, p := range katalog.Spec.Providers {
 		if p.Required {
@@ -171,20 +147,9 @@ func deriveMetadataFromKatalog(path string) (*PatternMeta, error) {
 	if len(providers) > 0 {
 		meta.Requires.Providers = providers
 	}
-
-	// If name is missing, try to infer from CRD (optional)
-	if meta.Name == "" {
-		if crdPath := filepath.Join(filepath.Dir(path), FileCRD); pathExists(crdPath) {
-			if crdName, err := inferNameFromCRD(crdPath); err == nil && crdName != "" {
-				meta.Name = crdName
-			}
-		}
-	}
-	if meta.Name == "" {
-		return nil, fmt.Errorf("failed to determine pattern name (set katalog.metadata.name or ensure crd.yaml exists)")
-	}
+	// Apply defaults
 	if meta.Version == "" {
-		meta.Version = "0.1.0"
+		meta.Version = "latest"
 	}
 	if meta.Description == "" {
 		meta.Description = fmt.Sprintf("Pattern for %s", meta.Name)
@@ -192,86 +157,7 @@ func deriveMetadataFromKatalog(path string) (*PatternMeta, error) {
 	return meta, nil
 }
 
-func pathExists(p string) bool {
-	_, err := os.Stat(p)
-	return err == nil
-}
-
-func inferNameFromCRD(path string) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	var crd struct {
-		Spec struct {
-			Names struct {
-				Kind string `yaml:"kind"`
-			} `yaml:"names"`
-		} `yaml:"spec"`
-	}
-	if err := yaml.Unmarshal(data, &crd); err != nil {
-		return "", err
-	}
-	return strings.ToLower(crd.Spec.Names.Kind), nil
-}
-
-// loadPatternMeta reads pattern.yaml.
-func loadPatternMeta(path string) (*PatternMeta, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	var meta PatternMeta
-	if err := yaml.Unmarshal(data, &meta); err != nil {
-		return nil, err
-	}
-	return &meta, nil
-}
-
-// mergeMeta overlays override fields onto base (non‑empty values from override win).
-func mergeMeta(base, override *PatternMeta) {
-	if override.Name != "" {
-		base.Name = override.Name
-	}
-	if override.Version != "" {
-		base.Version = override.Version
-	}
-	if override.Description != "" {
-		base.Description = override.Description
-	}
-	if override.Author != "" {
-		base.Author = override.Author
-	}
-	if override.License != "" {
-		base.License = override.License
-	}
-	if len(override.Tags) > 0 {
-		base.Tags = override.Tags
-	}
-	if len(override.Requires.Providers) > 0 {
-		base.Requires.Providers = override.Requires.Providers
-	}
-	if len(override.Changelog) > 0 {
-		base.Changelog = override.Changelog
-	}
-}
-
-// Validate checks required fields.
-func (m *PatternMeta) Validate() error {
-	if m.Name == "" {
-		return fmt.Errorf("pattern name is required")
-	}
-	if m.Version == "" {
-		return fmt.Errorf("pattern version is required")
-	}
-	if m.Description == "" {
-		return fmt.Errorf("pattern description is required")
-	}
-	return nil
-}
-
-// LoadPatternMeta reads pattern metadata from the given directory,
-// following the same derivation rules as ValidateDirectory.
+// LoadPatternMeta returns pattern metadata for a directory (convenience wrapper).
 func LoadPatternMeta(dir string) (*PatternMeta, error) {
 	meta, _, err := ValidateDirectory(dir)
 	return meta, err

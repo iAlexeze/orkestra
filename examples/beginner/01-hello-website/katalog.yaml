@@ -5,6 +5,10 @@ metadata:
   author: orkspace
   version: 0.1.0
   description: The simplest possible operator. One CRD, one Deployment.
+  tags:
+    - hello
+    - beginner
+    - web
 
 spec:
   crds:
