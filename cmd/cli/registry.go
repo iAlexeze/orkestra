@@ -18,9 +18,12 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/registry"
 	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var registryCmd = &cobra.Command{
@@ -66,7 +69,30 @@ var registryPushCmd = &cobra.Command{
 			return fmt.Errorf("\n  ✗ %w", err)
 		}
 
+		// Validate katalog.yaml — same pipeline as ork validate.
+		m := merger.New(filepath.Join(dir, registry.FileKatalog))
+		if err := m.Merge(); err != nil {
+			return fmt.Errorf("  ✗ katalog.yaml: %w", err)
+		}
+		var kat katalog.Katalog
+		if _, err := kat.KomposeRuntimeKatalog(kfg, m); err != nil {
+			return fmt.Errorf("  ✗ katalog.yaml: %w", err)
+		}
+		if _, err := kat.ValidateConfig(kfg); err != nil {
+			return fmt.Errorf("  ✗ katalog.yaml: %w", err)
+		}
+		fmt.Printf("  %s %-20s valid\n", utils.ColorGreen+"✓"+utils.ColorReset, "katalog.yaml")
+
+		// Validate crd.yaml has the required CRD structure.
+		if err := validateCRDFile(filepath.Join(dir, registry.FileCRD)); err != nil {
+			return fmt.Errorf("  ✗ crd.yaml: %w", err)
+		}
+		fmt.Printf("  %s %-20s valid\n", utils.ColorGreen+"✓"+utils.ColorReset, "crd.yaml")
+
 		for _, f := range files {
+			if f == registry.FileKatalog || f == registry.FileCRD {
+				continue // already printed above
+			}
 			info, _ := os.Stat(filepath.Join(dir, f))
 			fmt.Printf("  %s %-20s (%s)\n", utils.ColorGreen+"✓"+utils.ColorReset, f, formatSize(info.Size()))
 		}
@@ -286,7 +312,17 @@ var registryListCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Printf("\n%d patterns  ·  %s  ·  Updated %s\n", count, displayURL, updatedAt)
+		patternText := "patterns"
+		if count == 1 {
+			patternText = "pattern"
+		}
+
+		if count == 0 {
+			fmt.Printf("\n%d %s  ·  %s  \n", count, patternText, displayURL)
+		} else {
+			fmt.Printf("\n%d %s  ·  %s  ·  Updated %s\n", count, patternText, displayURL, updatedAt)
+		}
+
 		fmt.Printf("\nTo pull a pattern:\n  ork registry pull <name>:<version>\n")
 		if os.Getenv(registry.EnvRegistry) == "" {
 			fmt.Printf("\nTo use a different registry:\n  export %s=oci://myregistry.internal/patterns\n", registry.EnvRegistry)
@@ -391,4 +427,36 @@ func withContext(ctx context.Context, fn func(cmd *cobra.Command, args []string)
 		cmd.SetContext(ctx)
 		return fn(cmd, args)
 	}
+}
+
+// validateCRDFile checks that path is a valid YAML file with the required
+// CustomResourceDefinition fields: apiVersion, kind, spec.group, spec.names.kind.
+func validateCRDFile(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var crd struct {
+		APIVersion string `yaml:"apiVersion"`
+		Kind       string `yaml:"kind"`
+		Spec       struct {
+			Group string `yaml:"group"`
+			Names struct {
+				Kind string `yaml:"kind"`
+			} `yaml:"names"`
+		} `yaml:"spec"`
+	}
+	if err := yaml.Unmarshal(data, &crd); err != nil {
+		return fmt.Errorf("invalid YAML: %w", err)
+	}
+	if crd.Kind != "CustomResourceDefinition" {
+		return fmt.Errorf("kind must be CustomResourceDefinition, got %q", crd.Kind)
+	}
+	if crd.Spec.Group == "" {
+		return fmt.Errorf("spec.group is required")
+	}
+	if crd.Spec.Names.Kind == "" {
+		return fmt.Errorf("spec.names.kind is required")
+	}
+	return nil
 }

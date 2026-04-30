@@ -63,10 +63,19 @@ func ReadChildren(
 
 	// ── Services ──────────────────────────────────────────────────────────
 	if len(templates.Services) > 0 {
-		m := readResourceGroup(ctx, kube, obj, resolver, serviceGVR,
-			serviceNames(resolver, templates.Services))
+		svcNames := serviceNames(resolver, templates.Services)
+		m := readResourceGroup(ctx, kube, obj, resolver, serviceGVR, svcNames)
 		children["services"] = m
 		children["service"] = firstValue(m)
+
+		// Auto-fetch the EndpointSlice for each declared Service.
+		// EndpointSlices are created by Kubernetes (not Orkestra) and are labelled
+		// with kubernetes.io/service-name=<service-name>, so we list by label.
+		esMap := readEndpointSlicesForServices(ctx, kube, obj, svcNames)
+		if len(esMap) > 0 {
+			children["endpointslices"] = esMap
+			children["endpointslice"] = firstValue(esMap)
+		}
 	}
 
 	// ── Secrets ───────────────────────────────────────────────────────────
@@ -126,6 +135,41 @@ func ReadChildren(
 	}
 
 	return children
+}
+
+// readEndpointSlicesForServices lists the EndpointSlice for each declared Service
+// using the kubernetes.io/service-name label. The result is keyed by service name
+// so templates can reference {{ .children.endpointslice }} for single-service katalogs.
+func readEndpointSlicesForServices(
+	ctx context.Context,
+	kube *kubeclient.Kubeclient,
+	obj domain.Object,
+	svcNames []resolvedChildName,
+) map[string]interface{} {
+	result := map[string]interface{}{}
+	for _, svc := range svcNames {
+		ns := svc.namespace
+		if ns == "" {
+			ns = obj.GetNamespace()
+		}
+		list, err := kube.DynamicClient().
+			Resource(endpointSliceGVR).
+			Namespace(ns).
+			List(ctx, metav1.ListOptions{
+				LabelSelector:   fmt.Sprintf("kubernetes.io/service-name=%s", svc.name),
+				Limit:           1,
+				ResourceVersion: "0",
+			})
+		if err != nil || len(list.Items) == 0 {
+			continue
+		}
+		esObj := list.Items[0].Object
+		if s, ok := esObj["status"]; !ok || s == nil {
+			esObj["status"] = map[string]interface{}{}
+		}
+		result[svc.name] = esObj
+	}
+	return result
 }
 
 // readResourceGroup reads one or more resources of the same type and returns

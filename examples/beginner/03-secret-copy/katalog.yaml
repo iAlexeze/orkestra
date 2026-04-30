@@ -4,6 +4,10 @@ metadata:
   name: secret-distribution
   author: orkspace
   version: 0.1.0
+  tags:
+    - secret
+    - security
+    - namespace
   description: >
     Demonstrates built-in kind enrichment and cross-namespace secret distribution.
     Orkestra watches the SecretDistribution CRD and copies a named Secret
