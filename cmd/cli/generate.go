@@ -87,41 +87,6 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 	}, nil
 }
 
-var generateRuntimeCmd = &cobra.Command{
-	Use:   "registry",
-	Short: "Generate 'pkg/runtime/zz_generated_runtime_registry.go' from a Katalog (local or remote)",
-	Long: `Reads one or more crd-katalog.yaml files (local paths or remote URLs), validates them,
-and emits 'pkg/runtime/zz_generated_runtime_registry.go' containing RegisterRuntimeObjects() and
-RegisterScheme() for all enabled CRDs with reconciler.default: true.
-
-The file is created if it does not exist and overwritten on each run — idempotent.
-
-Examples:
-  ork generate registry --katalog ./example-crds/website-crd/website-katalog.yaml
-  ork generate registry --katalog ./path/to/first.yaml --katalog ./path/to/second.yaml
-  ork generate registry --katalog ./path/to/first.yaml,./path/to/second.yaml
-  ork generate registry --katalog https://raw.githubusercontent.com/.../crd-katalog.yaml`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		out, err := generateKatalog(cmd)
-		if err != nil {
-			return err
-		}
-
-		dryRun, _ := cmd.Flags().GetBool("dry-run")
-
-		log.Printf("generating runtime registry...\n")
-		log.Printf("dry-run: %t\n", dryRun)
-
-		if err := generate.Runtime(out.m, dryRun); err != nil {
-			return fmt.Errorf("generate runtime registry: %w", err)
-		}
-
-		log.Printf("runtime registry generated successfully\n")
-		log.Printf("registry: %s/%s\n", generate.RuntimePackage, generate.RegistryFile)
-		return nil
-	},
-}
-
 var generateDocsCmd = &cobra.Command{
 	Use:   "docs",
 	Short: "Generate Markdown documentation for all CRDs",
@@ -343,7 +308,7 @@ func init() {
 
 	generateCmd.AddCommand(generateKatalogCmd)
 	generateCmd.AddCommand(generateCRDCmd)
-	generateCmd.AddCommand(generateRuntimeCmd)
+	generateCmd.AddCommand(generateRegistryCmd)
 	generateCmd.AddCommand(generateDocsCmd)
 	generateCmd.AddCommand(generateDashboardsCmd)
 	generateCmd.AddCommand(generateAllCmd)
@@ -361,7 +326,7 @@ func init() {
 
 	// Add shared flags
 	for _, cmd := range []*cobra.Command{
-		generateRuntimeCmd,
+		generateRegistryCmd,
 		generateDocsCmd,
 		generateDashboardsCmd,
 		generateAllCmd,

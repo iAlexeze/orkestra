@@ -93,30 +93,30 @@ This example demonstrates a constructor that runs a series of Jobs (build → te
 
 ---
 
-## Step 1 – Generate the registry
+## Step 1 — Generate the registry and entrypoint
+
+Run the registry generator:
 
 ```bash
 make registry
 ```
 
-This creates `pkg/runtime/zz_generated_runtime_registry.go`, which registers your CRD types and the `NewPipelineReconciler` constructor.
+This executes:
 
----
-
-## Step 2 – Enable the registry in main.go
-
-In `cmd/orkestra/main.go`, uncomment the blank import:
-
-```go
-import (
-    _ "github.com/workspace/orkestra-pipeline-demo/pkg/runtime"
-    // ...
-)
+```bash
+ork generate registry --katalog katalog.yaml
 ```
 
+It creates (or updates) two files:
+
+- `pkg/runtime/zz_generated_runtime_registry.go` – registers your Go types and hooks.
+- `cmd/orkestra/main.go` – the entrypoint that imports the generated registry.
+
+Both files are marked `DO NOT EDIT` – they are regenerated whenever you change the Katalog.
+
 ---
 
-## Step 3 – Build your custom binary
+## Step 2 – Build your custom binary
 
 First, see the expected error with the standard `ork` CLI:
 
@@ -141,7 +141,7 @@ Validate with your binary:
 
 ---
 
-## Step 4 – Run locally
+## Step 3 – Run locally
 
 ```bash
 kind create cluster --name ork-pipeline
@@ -161,12 +161,15 @@ You’ll see the state machine step through `build` → `test` → `notify`.
 
 ---
 
-## Step 5 – Deploy to a cluster
+## Step 4 – Deploy to a cluster
 
 ```bash
 make release IMAGE=yourregistry/pipeline-operator:v1
+
 ./ork generate bundle -k katalog.yaml -o bundle.yaml
+
 kubectl apply -f bundle.yaml
+
 helm repo add orkestra https://ialexeze.github.io/orkestra
 helm install orkestra orkestra/orkestra \
   --set runtime.image.repository=yourregistry/pipeline-operator \
