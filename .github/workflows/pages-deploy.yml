@@ -73,9 +73,17 @@ jobs:
                --baseURL "https://docs.orkestra.sh/" \
                --cacheDir "${{ runner.temp }}/hugo_cache"
 
+      - name: Create Pages project (no-op if it already exists)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project create ${{ secrets.CLOUDFLARE_PAGES_PROJECT }} --production-branch=main
+        continue-on-error: true   # exits non-zero when project already exists — that is fine
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy orkestra-site/public --project-name=orkestra-docs --commit-dirty=true
+          command: pages deploy orkestra-site/public --project-name=${{ secrets.CLOUDFLARE_PAGES_PROJECT }} --commit-dirty=true
