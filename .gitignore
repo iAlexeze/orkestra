@@ -26,3 +26,4 @@ website/.cache-loader
 zz_generated_rbac.yaml
 *.tgz
 rbac.yaml
+DEPLOY.md
