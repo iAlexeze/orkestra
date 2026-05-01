@@ -20,6 +20,7 @@ import (
 	orkqueue "github.com/orkspace/orkestra/pkg/queue"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -267,6 +268,32 @@ func (r *GenericReconciler[PTR]) reconcileCore(ctx context.Context, key string) 
 		return err
 	}
 
+	// ──────────────────────────────────────────────────────────────────────────────
+	// GVK FIX: typed objects from the informer cache may arrive without a valid
+	// GroupVersionKind on the very first reconcile after a CR is created.
+	// This occurs because the watch event from the API server sometimes omits
+	// the TypeMeta fields (`apiVersion`, `kind`). The subsequent reconcile loop
+	// (e.g., after an operator restart) or a full list operation does include them.
+	//
+	// The effect: without a correct GVK, owner references created by hooks or
+	// registry functions become invalid, causing API server rejections like
+	//
+	//   metadata.ownerReferences.apiVersion: Invalid value: "": version must not be empty
+	//
+	// The fix: set the missing GVK using the known values from the CRD entry,
+	// which Orkestra parsed during startup from the Katalog. This ensures every
+	// typed object presented to hooks and child‑resource creation carries a
+	// complete TypeMeta.
+	//
+	// See: https://github.com/orkspace/orkestra/issues/85
+	// ──────────────────────────────────────────────────────────────────────────────
+	if obj.GetObjectKind().GroupVersionKind().Empty() {
+		obj.GetObjectKind().SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   r.crd.APITypes.Group,
+			Version: r.crd.APITypes.Version,
+			Kind:    r.crd.APITypes.Kind,
+		})
+	}
 	// Check if resource is being deleted
 	if obj.GetDeletionTimestamp() != nil {
 		logger.FromContext(ctx).Info().
