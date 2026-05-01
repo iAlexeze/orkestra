@@ -145,17 +145,19 @@ Expected:
 Now we have 3 valid CRDs to work with.
 
 > [!TIP]
-> If you want to enable the database CRD, you must uncomment the CRD block in [`crd.yaml`](crd.yaml) and [`cr.yaml`](cr.yaml).
+> If you want to enable the database CRD, uncomment the CRD block in [`crd.yaml`](crd.yaml) and [`cr.yaml`](cr.yaml).
 
 
-#### 2.2 Generate least-privilege RBAC for orkestra
+#### 2.2 Generate runtime bundle
 ```bash
 ork generate rbac -k komposer.yaml -o rbac.yaml
 ```
 This generates the following:
-- Service account
+- Namespace
+- Service accounts (runtime and control center)
 - Cluster role    _**(just enough to manage your CRDs)**_
 - Cluster role binding
+- ConfigMap with komposer as content
 
 This will be needed in the next step.
 
@@ -172,17 +174,12 @@ This will be needed in the next step.
 kubectl apply -f crd.yaml
 # (This file contains all CRDs)
 
-# Create the 'orkestra-system' namespace
-kubectl apply -f ../../installation/namespace.yaml
-
-# Apply RBAC generated in the previous step
+# Apply Bundle generated in the previous step
 kubectl apply -f rbac.yaml
 
-# Apply Katalog ConfigMap
-kubectl apply -f orkestra-configmap.yaml  # (This is just a copy of the komposer.yaml file)
-
 # Deploy Orkestra
-kubectl apply -f ../../installation/install.yaml
+helm repo add orkestra https://orkspace.github.io/orkestra
+helm install orkestra orkestra/orkestra --namespace orkestra-system
 
 kubectl wait --for=condition=available deployment/orkestra \
   -n orkestra-system --timeout=60s
@@ -204,6 +201,15 @@ Expected:
 
 ---
 
+### 5. Apply the CR and Watch the Control Center
+```bash
+kubectl apply -f cr.yaml
+
+# portforward to view the control center
+kubectl port-forward svc orkestra-cc 8090:8090 -n orkestra-system &
+
+```
+
 ## The production pattern
 
 This example shows the canonical structure for a production Orkestra deployment:
@@ -221,7 +227,7 @@ team-platform/
 
 The `komposer.yaml` is the production artifact. It pins every external source
 to a version. The CI pipeline runs `ork validate --katalog komposer.yaml` on
-every pull request. No cluster needed for validation.
+every pull request. No cluster needed for validation. Orkestra action provides easy E2E for your operator. Check it out here.
 
 ---
 
