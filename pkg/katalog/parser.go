@@ -2,8 +2,6 @@
 package katalog
 
 import (
-	// "fmt"
-
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
@@ -33,8 +31,8 @@ func (k *Katalog) KomposeRuntimeKatalog(kfg *konfig.Konfig, m *merger.Merger, pa
 	// Enrich enabled CRDs
 	// Switching from slice to map — must copy back since map values are not addressable
 	for name, entry := range k.enabledCRDs {
-		logger.Debug().Str("name", name).
-			Msgf("enriching %s", name)
+		// logger.Debug().Str("name", name).
+		// 	Msgf("enriching %s", name)
 		outcome, err := EnrichCRDEntry(&entry)
 		if err != nil {
 			return nil, err
@@ -103,7 +101,6 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	// 6. Add Reconcilers		// ReconcilerRegistry → Constructor
 	// -------------------------------------------------------------------------
 	if err := k.addReconcilers(); err != nil {
-		logger.Error().Err(err).Msg("failed to add reconcilers")
 		return nil, err
 	}
 	// -------------------------------------------------------------------------
@@ -163,9 +160,9 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	// -------------------------------------------------------------------------
 	// 15. Validate Notify Teams
 	// -------------------------------------------------------------------------
-	// if err := k.validateNotifyTeams(); err != nil {
-	// 	return nil, err
-	// }
+	if err := k.validateTeams(); err != nil {
+		return nil, err
+	}
 
 	// -------------------------------------------------------------------------
 	// 16 Validate Status Types
@@ -181,6 +178,9 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 func (k *Katalog) DebugKatalogInformation() {
 	// [DEBUG] Contents of k.Security
 	logger.Debug().Interface("katalog security", k.Security).Msg("katalog security")
+
+	// [DEBUG] Contents of k.Notiication
+	logger.Debug().Interface("katalog notification", k.Notification).Msg("katalog notification")
 
 	// [DEBUG] Contents of k.Providers
 	logger.Debug().Interface("katalog providers", k.Providers).Msg("katalog providers")

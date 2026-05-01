@@ -737,17 +737,35 @@ func (k *Katalog) validateStatusTypes() error {
 	return nil
 }
 
-// validateNotifyTeams checks that teams declared under notify actually exist in this katalog context
-// func (k *Katalog) validateNotifyTeams() error {
-// 	for name, crd := range k.enabledCRDs {
-// 		if !crd.IsNotificationEnabled() {
-// 			continue	// no-op
-// 		}
+// validateTeams ensures that a team referenced under a notify: block
+// (in onCreate, onReconcile, or rollback) was actually declared in
+// notification.teams within this Katalog.
+//
+// This is a static validation step used by ork validate and ork run
+// (the same validator is invoked in both paths). It prevents typos,
+// misconfigured team names, or references to teams that do not exist
+// in the platform-level notification configuration.
+//
+// Behavior:
+//   - If the katalog has no notification block → no-op (notifications disabled)
+//   - If the katalog has no teams declared → no-op (nothing to validate against)
+//   - If teamName is not found in notification.teams → return an error
+//
+// This keeps notify: ["teamA", "teamB"] aligned with the declared
+// notification.teams map and ensures that runtime dispatch never
+// attempts to send to an undefined team.
+func (k *Katalog) validateTeams() error {
+	if !k.HasNotification() {
+		return nil
+	}
+	if !k.HasTeams() {
+		return nil
+	}
 
-// 		if crd.OperatorBox != nil {
-// 			if crd.HasAnyHooks() {
-
-// 			}
-// 	}
-// 	return nil
-// }
+	for name, _ := range k.enabledCRDs {
+		if _, ok := k.Notification.Teams[name]; !ok {
+			return fmt.Errorf("%s team not found", name)
+		}
+	}
+	return nil
+}

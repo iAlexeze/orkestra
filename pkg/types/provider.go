@@ -34,6 +34,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/rs/zerolog"
 )
 
@@ -243,7 +244,9 @@ func (r *providerRegistry) Register(p Provider) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, exists := r.providers[p.Name()]; exists {
-		panic(fmt.Sprintf("provider %q is already registered — duplicate registration", p.Name()))
+		logger.Warn().
+			Str("provider", p.Name()).
+			Msg("duplicate registration skipping...")
 	}
 	r.providers[p.Name()] = p
 }

@@ -1,0 +1,157 @@
+# crdkatalog/crd-katalog.yaml
+#
+# EXAMPLE Katalog shipped with Orkestra.
+# Replace these entries with your own CRDs.
+# Run "ork generate registry --katalog <path>" after updating.
+# 
+# 
+#
+# Orkestra Katalog — declarative CRD runtime configuration.
+#
+# Modes:
+#   - Remote (preferred): load via URL, GitOps-friendly
+#   - Local: load from filesystem path
+#
+# Rules:
+#   - Disabled CRDs (enabled: false) are ignored at runtime — safe to leave in place
+#   - dependsOn controls startup and shutdown order — validated at startup (no missing deps, no cycles)
+#   - reconciler.default: true uses GenericReconciler — no reconciler code required
+#   - reconciler.default: false requires a Constructor registered in Go (custom reconciler path)
+#   - ork generate reads apiTypes and emits initialize/registry.go automatically
+#     for all enabled CRDs with reconciler.default: true
+
+apiVersion: orkestra.konductor.io/v1Aplha
+kind: Katalog
+metadata:
+  name: platform-katalog
+  description: >-
+    Platform Katalog — defines all CRDs managed by this Orkestra instance.
+    All CRDs are disabled by default. Set enabled: true to include in the runtime.
+
+spec:
+  # Orkestra-level finalizer — applied to all CRDs unless overridden per CRD.
+  finalizers:
+    - my-default-finalizer/platform-katalog
+
+  crds:
+
+    # ── PROJECT ───────────────────────────────────────────────────────────────
+    # Root CRD — no dependencies.
+    # Critical: controller health reflects this CRD's health.
+    - name: project
+      enabled: true
+      critical: true
+      resync: 10m
+      dependsOn: []
+      namespace: default
+      namespaced: true
+      # No workers          # Use default workers
+
+      apiTypes:
+        object: Project
+        list: ProjectList
+        alias: projv1                                                      # import alias — optional, defaults to last path segment
+        group: platform.orkestra.io
+        version: v1alpha1
+        kind: Project
+        plural: projects
+        apiPath: /apis                                                              # default is /apis — only override for core types
+        location: github.com/ialexeze/orkestra/example-crds/api/types/project/v1alpha1  # Go package path — used by ork generate
+
+      reconciler:
+        default: true                                                      # GenericReconciler — no reconciler code required
+        hooks:
+          location: github.com/ialexeze/orkestra/pkg/reconciler/hooks
+          function: ProjectHooks
+          alias: projhooks
+      
+      queue:
+        maxQueueDepth: 1000                                                # optional — defaults to MAX_QUEUE_DEPTH env var
+
+      description: >-
+        Defines an isolated logical boundary for applications, teams, or workloads.
+        Similar in concept to ArgoCD Projects — provides a high-level grouping
+        mechanism for access control, policies, and resource scoping.
+
+
+    # ── MANAGED NAMESPACE ─────────────────────────────────────────────────────
+    # Depends on Project — will not start until Project is confirmed present.
+    - name: managednamespace
+      enabled: true
+      workers: 2
+      dependsOn: [project]
+      namespaced: false                                                    # cluster-scoped
+      mode: dynamic
+
+      apiTypes:
+        object: ManagedNamespace
+        list: ManagedNamespaceList
+        alias: mnsv1
+        group: platform.orkestra.io
+        version: v1alpha1
+        kind: ManagedNamespace
+        plural: managednamespaces
+        location: github.com/ialexeze/orkestra/example-crds/api/types/managedNamespace/v1alpha1
+
+      reconciler:
+        default: false
+        constructor:
+          location: github.com/ialexeze/orkestra/pkg/reconciler
+          function: NewManagedNamespaceReconciler
+          alias: mnsreconciler        # Optional
+      
+      # No resync        → uses Orkestra default (DEFAULT_RESYNC env var)
+      # No queue         → uses per-CRD queue with default maxQueueDepth
+      # No namespace     → cluster-scoped, namespace not applicable
+
+      description: >-
+        Represents a namespace managed by Orkestra. Provisions standardized
+        namespaces with quotas, network policies, RBAC bindings, and baseline
+        configurations for multi-tenant platforms.
+
+
+    # ── APPLICATION ───────────────────────────────────────────────────────────
+    # Depends on both Project and ManagedNamespace.
+    # Uses the shared default queue (queue.default: true).
+    - name: application
+      enabled: true
+      workers: 2
+      resync: 3s
+      namespace: default
+      namespaced: true
+      dependsOn:
+        - project
+        - managednamespace
+
+      apiTypes:
+        object: Application
+        list: ApplicationList
+        alias: appv1
+        group: platform.orkestra.io
+        version: v1alpha1
+        kind: Application
+        plural: applications
+
+      reconciler:
+        default: true
+        finalizers:
+          - my-finalizer/application                                       # overrides Orkestra-level finalizer for this CRD
+
+      queue:
+        default: true                                                      # uses shared default queue instead of per-CRD queue
+        maxQueueDepth: 500
+
+      description: >-
+        Represents a deployable application workload managed by Orkestra.
+        Depends on both Project and ManagedNamespace — ensures namespace
+        and project boundaries exist before application resources are reconciled.
+
+
+    # ── EXAMPLE: DISABLED CRD ─────────────────────────────────────────────────
+    # Set enabled: false to exclude from the runtime without deleting the entry.
+    # WARNING: Only disable CRDs with no live resources, or strip Orkestra
+    # finalizers first — disabled CRDs with live finalizers will cause stuck objects.
+    #
+    # - name: legacyresource
+    #   enabled: false
+    #   ...

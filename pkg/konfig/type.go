@@ -17,10 +17,6 @@ type Konfig struct {
 	registry     registryConfig
 }
 
-func (k *Konfig) WebhookConfig() {
-	panic("unimplemented")
-}
-
 type orkKonfig struct {
 	Name        string `validate:"required"`
 	ShortName   string

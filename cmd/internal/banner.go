@@ -15,7 +15,8 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 	fmt.Print(utils.ColorReset)
 
 	fmt.Println("====================================================")
-	fmt.Printf("%s        Orkestra Runtime%s (v%s)\n", utils.ColorMagenta, utils.ColorReset, version.Version)
+	fmt.Printf("%s        Orkestra Runtime%s (%s)\n", utils.ColorMagenta, utils.ColorReset, version.Version)
+	fmt.Printf("        Namespace: %s\n", kfg.konfig.Cluster().Namespace)
 	fmt.Printf("        Environment: %s%s%s\n", utils.ColorBlue, kfg.konfig.Ork().Environment, utils.ColorReset)
 	fmt.Printf("        Listening on: %s:%s%s\n", utils.ColorGreen, kfg.konfig.Health().Port, utils.ColorReset)
 

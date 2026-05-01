@@ -146,7 +146,7 @@ Watch the operator logs: you will see the `OnReconcile` hook firing. Verify
 the created resources:
 
 ```bash
-kubectl get statefulset,service,cronjob -A
+kubectl get statefulset,service,cronjob -n default
 ```
 
 Observe the events:
