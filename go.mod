@@ -34,6 +34,8 @@ require (
 	k8s.io/apimachinery v0.35.2
 	k8s.io/client-go v0.35.2
 	oras.land/oras-go/v2 v2.6.0
+	// controller-runtime is used exclusively by envtest in tests/integration/.
+	// v1 production code uses raw client-go only. Do not import it from pkg/.
 	sigs.k8s.io/controller-runtime v0.23.3
 )
 

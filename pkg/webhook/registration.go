@@ -54,6 +54,12 @@ type WebhookCleanupOptions struct {
 	validating bool
 }
 
+// CleanupAllWebhooks returns a WebhookCleanupOptions that removes both
+// ValidatingWebhookConfiguration and MutatingWebhookConfiguration.
+func CleanupAllWebhooks() WebhookCleanupOptions {
+	return WebhookCleanupOptions{mutating: true, validating: true}
+}
+
 // admissionRegistryReader is the subset of katalog.AdmissionRegistry used here.
 type admissionRegistryReader interface {
 	ValidationGVRs() []katalog.GVREntry

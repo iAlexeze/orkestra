@@ -11,8 +11,9 @@ metadata:
     See pkg/reconciler/fixture/README.md for how to add coverage for a new run_*.
 
 security:
-  admission:
-    enabled: true     # Requires running in cluster for apply-time validation/mutation
+  webhooks:
+    admission:
+      enabled: true     # Requires running in cluster for apply-time validation/mutation
 
 spec:
   crds:
@@ -51,6 +52,9 @@ spec:
         # ── ServiceAccount ─────────────────────────────────────────────────
         # run_serviceaccounts.go
         onCreate:
+          namespaces:
+            - name: "{{ .metadata.name }}-ns"
+              reconcile: true
           serviceAccounts:
             - name: "{{ .metadata.name }}-sa"
               reconcile: true
@@ -59,6 +63,7 @@ spec:
           # run_configmaps.go
           configMaps:
             - name: "{{ .metadata.name }}-config"
+              namespace: "{{ .metadata.name }}-ns"
               reconcile: true
               data:
                 PORT: "{{ .spec.port }}"
@@ -69,6 +74,7 @@ spec:
           # run_secrets.go + run_secrets_once.go (once: true)
           secrets:
             - name: "{{ .metadata.name }}-creds"
+              namespace: "{{ .metadata.name }}-ns"
               once: true
               data:
                 token: "{{ randomAlphanumeric 32 }}"
@@ -78,6 +84,7 @@ spec:
           # run_services.go
           services:
             - name: "{{ .metadata.name }}-svc"
+              namespace: "{{ .metadata.name }}-ns"
               port: "80"
               targetPort: "{{ .spec.port }}"
               reconcile: true
@@ -86,6 +93,7 @@ spec:
           # run_cronjobs.go
           cronJobs:
             - name: "{{ .metadata.name }}-cron"
+              namespace: "{{ .metadata.name }}-ns"
               schedule: "{{ .spec.schedule }}"
               image: alpine:3.19
               command: ["/bin/sh", "-c", "echo probe-cron-ok"]
@@ -97,27 +105,29 @@ spec:
             - name: "{{ .metadata.name }}-init"
               image: alpine:3.19
               command: ["/bin/sh", "-c", "echo probe-job-ok"]
+              namespace: "{{ .metadata.name }}-ns"
 
           # ── Deployment ──────────────────────────────────────────────────
           # run_deployments.go
           deployments:
             - name: "{{ .metadata.name }}-app"
+              namespace: "{{ .metadata.name }}-ns"
               image: "{{ .spec.image }}"
               replicas: "{{ .spec.replicas }}"
               port: "{{ .spec.port }}"
               serviceAccountName: "{{ .metadata.name }}-sa"
               reconcile: true
               env:
-                - name: PORT
-                  valueFrom:
-                    configMapKeyRef:
-                      name: "{{ .metadata.name }}-config"
-                      key: PORT
+                PORT:
+                  configMapKeyRef:
+                    name: "{{ .metadata.name }}-config"
+                    key: PORT
 
           # ── Conditional resource (when:) ─────────────────────────────────
           # run_deployments.go + conditions.go
           # Only created when tier=premium — tests evaluateConditions path.
             - name: "{{ .metadata.name }}-premium"
+              namespace: "{{ .metadata.name }}-ns"
               image: "{{ .spec.image }}"
               replicas: "{{ .spec.replicas }}"
               port: "{{ .spec.port }}"
@@ -125,13 +135,26 @@ spec:
               when:
                 - field: spec.tier
                   equals: premium
+        
+        onDelete:
+          ordered: true
+          groups:
+            - deployments:
+            - cronJobs:
+            - jobs:
+            - services:
+            - secrets:
+            - configMaps:
+            - serviceAccounts:
+            - namespaces:
 
         # ── Status ──────────────────────────────────────────────────────────
         # run_status.go
         status:
-          phase: >
-            {{ if eq .spec.tier "premium" }}Premium{{ else }}Basic{{ end }}
           fields:
+            - path: phase
+              value: >
+                {{ if eq .spec.tier "premium" }}Premium{{ else }}Basic{{ end }}
             - path: tier
               value: "{{ .spec.tier }}"
             - path: image
@@ -139,6 +162,6 @@ spec:
             - path: replicas
               value: "{{ .spec.replicas }}"
             - path: configReady
-              value: "{{ exists .children.configmap }}"
+              value: "{{ resourceExists .children.configmap }}"
             - path: secretCreated
-              value: "{{ exists .children.secret }}"
+              value: "{{ resourceExists .children.secret }}"

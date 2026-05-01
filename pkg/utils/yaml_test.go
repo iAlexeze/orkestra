@@ -6,8 +6,8 @@ import (
 )
 
 type yamlTarget struct {
-	Name    string `yaml:"name"`
-	Replicas int   `yaml:"replicas"`
+	Name     string `yaml:"name"`
+	Replicas int    `yaml:"replicas"`
 }
 
 // ── StrictUnmarshal ───────────────────────────────────────────────────────────

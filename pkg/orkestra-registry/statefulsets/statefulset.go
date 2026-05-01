@@ -269,7 +269,9 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 					Labels: spec.Labels,
 				},
 				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{container},
+					ServiceAccountName: spec.ServiceAccountName,
+					NodeSelector:       spec.NodeSelector,
+					Containers:         []corev1.Container{container},
 				},
 			},
 		},

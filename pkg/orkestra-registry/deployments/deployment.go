@@ -271,6 +271,8 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 					Labels: spec.Labels,
 				},
 				Spec: corev1.PodSpec{
+					ServiceAccountName: spec.ServiceAccountName,
+					NodeSelector:       spec.NodeSelector,
 					Containers: []corev1.Container{
 						{
 							Name:  spec.Name,

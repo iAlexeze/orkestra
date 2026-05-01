@@ -99,8 +99,8 @@ func TestJitter_InRange(t *testing.T) {
 	d := 100 * time.Millisecond
 	for i := 0; i < 100; i++ {
 		j := Jitter(d)
-		lo := d / 2      // d - 50% = 50ms
-		hi := d + d/2    // d + 50% = 150ms (exclusive upper from rand)
+		lo := d / 2   // d - 50% = 50ms
+		hi := d + d/2 // d + 50% = 150ms (exclusive upper from rand)
 		if j < lo || j > hi {
 			t.Errorf("Jitter(%v) = %v, expected in [%v, %v]", d, j, lo, hi)
 		}

@@ -1,913 +1,254 @@
-# Orkestra Testing Strategy — A Complete Plan
+# Orkestra Testing Guide
 
-This is your blueprint for testing Orkestra from first principles to production readiness.
-
----
-
-## The Philosophy
-
-**Test for confidence, not coverage.** Every test should answer a question you're afraid to answer without it.
-
-```
-What breaks? → Write a test.
-What must work? → Write a test.
-What did we fix? → Write a test.
-```
+This document covers how tests are organized, how to run them, and what each
+category is testing.
 
 ---
 
-## The Testing Pyramid
-
-```
-        ┌─────────────┐
-        │    E2E      │  3-5 tests (slow, critical paths)
-        │  (real K8s) │  What: "Does the whole thing work?"
-        ├─────────────┤
-        │ Integration │  10-20 tests (medium, component interactions)
-        │  (fake K8s) │  What: "Do components work together?"
-        ├─────────────┤
-        │    Unit     │  50-100 tests (fast, logic)
-        │  (pure Go)  │  What: "Does each function do what it should?"
-        └─────────────┘
-```
-
----
-
-## Phase 1: Foundation (Week 1)
-
-### 1.1 Project Structure
+## How to run
 
 ```bash
+make test-unit          # fast, no cluster — run this constantly
+make test-race          # same but with Go's race detector — run before every PR
+make test-integration   # needs envtest binaries (see below)
+make test-all           # unit + integration
+make test-coverage      # unit tests + HTML coverage report (coverage.html)
+```
+
+---
+
+## Three categories of test
+
+### 1. Unit tests — `pkg/**/*_test.go`
+
+Unit tests live next to the code they test, inside each `pkg/` sub-package.
+They run with `go test ./pkg/...` and require nothing outside the process:
+no files, no cluster, no network.
+
+**When to write one**: any pure function — validation logic, string manipulation,
+state machines, math, filtering. If the function takes inputs and returns
+outputs without talking to Kubernetes or the filesystem, it belongs here.
+
+**What they cover today**:
+
+| Package | Coverage | What is tested |
+|---------|----------|----------------|
+| `pkg/health` | 77.9% | Admission stats, conversion stats, deletion/namespace protection stats |
+| `pkg/certmanager` | 71.4% | Certificate lifecycle |
+| `pkg/note` | 68.0% | Note catalog lookups |
+| `pkg/utils` | 60.9% | Template rendering, merge helpers, YAML formatting |
+| `pkg/queue` | 56.9% | Workqueue enqueue/dequeue/depth/shutdown |
+| `pkg/types` | 47.9% | Type conversions, tag handling |
+| `pkg/generate` | 39.3% | Pure code-gen helpers (spec path extraction, type inference, alias dedup) |
+| `pkg/webhook` | 27.2% | Admission webhook routing |
+| `pkg/merger` | 25.3% | Katalog/Komposer merge, provider/security/notification accumulation |
+| `pkg/metrics` | 24.7% | Prometheus counter/gauge wrappers |
+| `pkg/informer` | 15.0% | Namespace filter logic, GVK normalization |
+| `pkg/kordinator` | 12.4% | Parent-ready extraction, condition parsing |
+| `pkg/reconciler` | 8.7% | Validation rule pipelines |
+| `pkg/kubeclient` | 2.0% | Context wiring (patch operations covered by integration tests) |
+
+**Total unit coverage: ~20%** — the headline number is dragged down by large
+packages (`provider/*`, `orkestra-registry/*`, `registry`) that contain almost
+no testable pure logic; they are I/O and wiring. Every package that does contain
+pure logic has meaningful coverage.
+
+---
+
+### 2. Integration tests — `tests/integration/`
+
+Integration tests exercise behaviour that a unit test cannot reach: real file
+I/O across multiple packages, or a real Kubernetes API server. They are guarded
+by the `//go:build integration` build tag so `make test-unit` never runs them.
+
+There are two flavours:
+
+#### 2a. File-based integration tests
+
+These run with no cluster at all — just Go and the filesystem. They test paths
+that involve reading/writing real YAML files, loading multi-package pipelines,
+or traversing real dependency graphs.
+
+| Package | What it tests |
+|---------|---------------|
+| `tests/integration/activation/` | Informer factory lifecycle when a CRD is missing at startup then appears |
+| `tests/integration/dependency/` | Topological sort order, cycle detection across the full katalog graph |
+| `tests/integration/komposer/` | Merger loading Katalog and Komposer files from disk, upstream field accumulation (providers, security, notification), source deduplication |
+| `tests/integration/reconciler/` | Validation rule pipelines for Deployment, Service, and Secret CRDs |
+
+#### 2b. Envtest-based integration tests
+
+These spin up a real in-process Kubernetes API server and etcd using
+`sigs.k8s.io/controller-runtime/pkg/envtest`. The API server is real; the
+cluster lives only for the duration of the test binary.
+
+Use this category when you need to verify behaviour that only makes sense
+against a real watch stream or a real patch endpoint — things that fake clients
+get wrong.
+
+| Package | What it tests |
+|---------|---------------|
+| `tests/integration/kubeclient/` | `PatchFinalizers`, `PatchLabels`, `PatchStatus` — verifies merge-patch semantics (idempotency, labels merge not replace, status isolation from spec) |
+| `tests/integration/informer/` | Namespace filter wiring — verifies that events from a blocked namespace are silently dropped before reaching the queue, using a real Watch stream from envtest |
+
+**Why envtest and not a fake client?**
+
+Fake clients (like `k8s.io/client-go/kubernetes/fake`) implement a simplified
+in-memory store. They do not enforce actual Kubernetes merge-patch semantics. A
+merge-patch that silently duplicates finalizers or overwrites a label map would
+pass with a fake client but fail against a real API server. Envtest catches
+this class of bug.
+
+**Running envtest tests** requires the `kube-apiserver` and `etcd` binaries.
+Install once:
+
+```bash
+go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+setup-envtest use 1.32.x --bin-dir ~/.envtest-bins
+```
+
+`make test-integration` runs `setup-envtest` automatically and sets
+`KUBEBUILDER_ASSETS` for you.
+
+---
+
+### 3. E2E tests — not yet written
+
+End-to-end tests would run `ork` as a real process against a real cluster
+(e.g. kind) and verify that creating a CR causes the expected Deployments,
+Services, and health transitions. They are the planned next layer after
+integration coverage matures.
+
+---
+
+## Directory layout
+
+```
 tests/
-├── unit/
-│   ├── kordinator/
-│   │   ├── crd_health_test.go
-│   │   ├── dependency_test.go
-│   │   └── activation_test.go
-│   ├── katalog/
-│   │   ├── merge_test.go
-│   │   ├── validation_test.go
-│   │   └── translator_test.go
-│   ├── queue/
-│   │   └── workqueue_test.go
-│   └── utils/
-│       ├── template_test.go
-│       └── helpers_test.go
-│
 ├── integration/
-│   ├── reconciler/
-│   │   ├── deployment_test.go
-│   │   ├── service_test.go
-│   │   └── secret_test.go
-│   ├── dependency/
-│   │   ├── ordering_test.go
-│   │   └── cycle_detection_test.go
-│   ├── activation/
-│   │   └── missing_crd_test.go
-│   └── komposer/
-│       ├── merge_test.go
-│       └── sources_test.go
-│
-├── e2e/
-│   ├── website/
-│   │   └── test.sh
-│   ├── dependencies/
-│   │   └── test.sh
-│   ├── activation/
-│   │   └── test.sh
-│   └── komposer/
-│       └── test.sh
+│   ├── activation/          file-based — CRD missing-then-appears lifecycle
+│   ├── dependency/          file-based — topological sort, cycle detection
+│   ├── health/              envtest  — webhook registration and cleanup
+│   ├── informer/            envtest  — namespace filter drops blocked events
+│   ├── komposer/            file-based — merger field accumulation
+│   ├── kubeclient/          envtest  — patch merge-patch semantics
+│   ├── reconciler/          file-based — validation rule pipelines
+│   └── testenv/             shared envtest lifecycle (Start / Stop)
 │
 ├── fixtures/
-│   ├── katalogs/
-│   │   ├── website.yaml
-│   │   ├── dependencies.yaml
-│   │   └── komposer.yaml
-│   └── crds/
-│       ├── website-crd.yaml
-│       └── orkapp-crd.yaml
+│   ├── crds/
+│   │   ├── probe-crd.yaml   Probe CRD (integration.orkestra.io/v1) used by kubeclient + informer tests
+│   │   ├── orkapp-crd.yaml
+│   │   └── website-crd.yaml
+│   └── katalogs/
+│       ├── website.yaml
+│       ├── dependencies.yaml
+│       └── komposer.yaml
 │
-├── helpers/
-│   ├── fake_kubeclient.go
-│   ├── fake_informer.go
-│   └── testutils.go
-│
-├── Makefile
-└── README.md
+└── helpers/
+    ├── fake_kubeclient.go   Kubeclient backed by a fake clientset
+    ├── fake_informer.go     Minimal informer stub for unit tests
+    └── testutils.go         Shared assertion helpers
 ```
 
-### 1.2 Test Helpers
+---
 
-Create reusable test helpers first:
+## Writing a new test
 
-```go
-// tests/helpers/fake_kubeclient.go
-package helpers
+### Unit test (pure logic)
 
-import (
-    "context"
-    "k8s.io/client-go/kubernetes/fake"
-    "github.com/orkspace/orkestra/pkg/kubeclient"
-)
+Put it in the same package as the code being tested:
 
-func NewFakeKubeclient() *kubeclient.Kubeclient {
-    return &kubeclient.Kubeclient{
-        Clientset: fake.NewSimpleClientset(),
-    }
-}
-
-func NewFakeKubeclientWithObjects(objects ...runtime.Object) *kubeclient.Kubeclient {
-    return &kubeclient.Kubeclient{
-        Clientset: fake.NewSimpleClientset(objects...),
-    }
-}
+```
+pkg/merger/merger.go
+pkg/merger/merger_test.go   ← goes here
 ```
 
+No build tag needed. Keep it fast — no sleeps, no goroutines unless testing
+concurrency explicitly.
+
+### File-based integration test
+
+1. Create or pick a subdirectory under `tests/integration/`.
+2. First line of every file: `//go:build integration`
+3. Use `package <dir>_test` — black-box, import via public API.
+4. Use `t.Cleanup` to remove temp files. Call `t.Helper()` on shared helpers.
+
+### Envtest integration test
+
+1. Create `tests/integration/<name>/suite_test.go` with a `TestMain`:
+
 ```go
-// tests/helpers/testutils.go
-package helpers
+//go:build integration
+
+package myfeature_test
 
 import (
+    "os"
     "testing"
-    "github.com/stretchr/testify/assert"
-    "github.com/stretchr/testify/require"
+    "github.com/orkspace/orkestra/tests/integration/testenv"
+    "k8s.io/client-go/rest"
 )
 
-func AssertNoError(t *testing.T, err error) {
-    require.NoError(t, err)
-}
+var (
+    testCfg *rest.Config
+    testEnv *testenv.Env
+)
 
-func AssertError(t *testing.T, err error, msg string) {
-    require.Error(t, err)
-    assert.Contains(t, err.Error(), msg)
+func TestMain(m *testing.M) {
+    testEnv = testenv.Start([]string{"../../fixtures/crds"})
+    testCfg = testEnv.Config
+    code := m.Run()
+    testEnv.Stop()
+    os.Exit(code)
 }
 ```
 
----
+2. Access the API server through `testEnv.Dynamic` (dynamic client) or
+   `testEnv.Config` (REST config for custom clients like `kubeclient.NewForTesting`).
 
-## Phase 2: Unit Tests (Week 1-2)
-
-### 2.1 CRD Health Tests
+3. **Unstructured objects and the scheme**: when using `informer.ForListerWatcher`,
+   the example object you pass must have its GVK set — the scheme resolves Kind
+   from the object's metadata for unstructured types:
 
 ```go
-// tests/unit/kordinator/crd_health_test.go
-package kordinator_test
-
-import (
-    "fmt"
-    "testing"
-    "time"
-    
-    "github.com/orkspace/orkestra/pkg/kordinator"
-    "github.com/stretchr/testify/assert"
-)
-
-func TestCRDHealth_InitialState(t *testing.T) {
-    h := kordinator.NewCRDHealth("test")
-    
-    assert.False(t, h.IsHealthy())
-    assert.False(t, h.Started())
-    assert.Equal(t, int64(0), h.TotalReconciles())
-    assert.Equal(t, int64(0), h.FailedReconciles())
-    assert.Equal(t, float64(0), h.ErrorRate())
-}
-
-func TestCRDHealth_RecordSuccess(t *testing.T) {
-    h := kordinator.NewCRDHealth("test")
-    
-    h.RecordSuccess()
-    
-    assert.True(t, h.IsHealthy())
-    assert.Equal(t, int64(1), h.TotalReconciles())
-    assert.Equal(t, int64(0), h.FailedReconciles())
-    assert.Equal(t, int64(0), h.ConsecutiveFails())
-}
-
-func TestCRDHealth_RecordFailure(t *testing.T) {
-    h := kordinator.NewCRDHealth("test")
-    
-    h.RecordFailure(fmt.Errorf("something went wrong"), 3)
-    
-    assert.False(t, h.IsHealthy())
-    assert.Equal(t, int64(1), h.TotalReconciles())
-    assert.Equal(t, int64(1), h.FailedReconciles())
-    assert.Equal(t, int64(1), h.ConsecutiveFails())
-    assert.Equal(t, "something went wrong", h.LastError())
-}
-
-func TestCRDHealth_RecordFailureExceedsThreshold(t *testing.T) {
-    h := kordinator.NewCRDHealth("test")
-    
-    // First failure — still healthy (threshold=3)
-    h.RecordFailure(fmt.Errorf("error 1"), 3)
-    assert.True(t, h.IsHealthy())
-    
-    // Second failure — still healthy
-    h.RecordFailure(fmt.Errorf("error 2"), 3)
-    assert.True(t, h.IsHealthy())
-    
-    // Third failure — becomes degraded
-    h.RecordFailure(fmt.Errorf("error 3"), 3)
-    assert.False(t, h.IsHealthy())
-}
-
-func TestCRDHealth_SuccessResetsConsecutiveFails(t *testing.T) {
-    h := kordinator.NewCRDHealth("test")
-    
-    h.RecordFailure(fmt.Errorf("error"), 3)
-    h.RecordFailure(fmt.Errorf("error"), 3)
-    assert.Equal(t, int64(2), h.ConsecutiveFails())
-    
-    h.RecordSuccess()
-    assert.Equal(t, int64(0), h.ConsecutiveFails())
-    assert.True(t, h.IsHealthy())
-}
-
-func TestCRDHealth_ErrorRate(t *testing.T) {
-    h := kordinator.NewCRDHealth("test")
-    
-    h.RecordSuccess()  // 1 total, 0 failed
-    assert.Equal(t, float64(0), h.ErrorRate())
-    
-    h.RecordFailure(fmt.Errorf("error"), 3)  // 2 total, 1 failed
-    assert.Equal(t, 0.5, h.ErrorRate())
-    
-    h.RecordFailure(fmt.Errorf("error"), 3)  // 3 total, 2 failed
-    assert.InDelta(t, 0.666, h.ErrorRate(), 0.001)
-}
+exampleObj := &unstructured.Unstructured{}
+exampleObj.SetGroupVersionKind(myGVK)
+factory.ForListerWatcher(lw, exampleObj, ctx, opts)
 ```
 
-### 2.2 Dependency Graph Tests
+4. CRD paths in `testenv.Start` are relative to the test package directory.
+   From `tests/integration/<name>/` the fixtures path is `../../fixtures/crds`.
+
+---
+
+## Test exports pattern
+
+When an integration test needs to reach unexported internals, add a
+`test_exports.go` file inside the target package (no build tag — it compiles
+into all builds but is tiny):
 
 ```go
-// tests/unit/kordinator/dependency_test.go
-package kordinator_test
+// pkg/kubeclient/test_exports.go
+package kubeclient
 
-import (
-    "testing"
-    
-    "github.com/orkspace/orkestra/pkg/katalog"
-    "github.com/orkspace/orkestra/pkg/orktypes"
-    "github.com/stretchr/testify/assert"
-)
-
-func TestDependencyGraph_StartupOrder(t *testing.T) {
-    crds := []orktypes.CRDEntry{
-        {Name: "A", DependsOn: []string{}},
-        {Name: "B", DependsOn: []string{"A"}},
-        {Name: "C", DependsOn: []string{"B"}},
-    }
-    
-    graph := katalog.NewDependencyGraph(crds)
-    order := graph.StartupOrder()
-    
-    assert.Equal(t, []string{"A", "B", "C"}, order)
-}
-
-func TestDependencyGraph_ReverseShutdownOrder(t *testing.T) {
-    crds := []orktypes.CRDEntry{
-        {Name: "A", DependsOn: []string{}},
-        {Name: "B", DependsOn: []string{"A"}},
-        {Name: "C", DependsOn: []string{"B"}},
-    }
-    
-    graph := katalog.NewDependencyGraph(crds)
-    shutdownOrder := graph.ShutdownOrder()
-    
-    // Should be reverse of startup order
-    assert.Equal(t, []string{"C", "B", "A"}, shutdownOrder)
-}
-
-func TestDependencyGraph_DetectsCycle(t *testing.T) {
-    crds := []orktypes.CRDEntry{
-        {Name: "A", DependsOn: []string{"B"}},
-        {Name: "B", DependsOn: []string{"A"}},
-    }
-    
-    graph := katalog.NewDependencyGraph(crds)
-    err := graph.Validate()
-    
-    assert.Error(t, err)
-    assert.Contains(t, err.Error(), "cycle")
-}
-
-func TestDependencyGraph_MissingDependency(t *testing.T) {
-    crds := []orktypes.CRDEntry{
-        {Name: "A", DependsOn: []string{"B"}},
-    }
-    
-    graph := katalog.NewDependencyGraph(crds)
-    err := graph.Validate()
-    
-    assert.Error(t, err)
-    assert.Contains(t, err.Error(), "not found")
-}
-
-func TestDependencyGraph_GetDependents(t *testing.T) {
-    crds := []orktypes.CRDEntry{
-        {Name: "A", DependsOn: []string{}},
-        {Name: "B", DependsOn: []string{"A"}},
-        {Name: "C", DependsOn: []string{"A"}},
-    }
-    
-    graph := katalog.NewDependencyGraph(crds)
-    dependents := graph.GetDependents("A")
-    
-    assert.ElementsMatch(t, []string{"B", "C"}, dependents)
+func NewForTesting(cfg *rest.Config, dyn dynamic.Interface, s *runtime.Scheme) *Kubeclient {
+    return &Kubeclient{restConfig: cfg, dynamic: dyn, scheme: s}
 }
 ```
 
-### 2.3 Katalog Merge Tests
-
-```go
-// tests/unit/katalog/merge_test.go
-package katalog_test
-
-import (
-    "testing"
-    
-    "github.com/orkspace/orkestra/pkg/katalog"
-    "github.com/orkspace/orkestra/pkg/orktypes"
-    "github.com/stretchr/testify/assert"
-)
-
-func TestMerge_SingleSource(t *testing.T) {
-    source1 := []orktypes.CRDEntry{
-        {Name: "website", Workers: 2},
-    }
-    
-    merger := katalog.NewMerger()
-    result := merger.Merge(source1, nil)
-    
-    assert.Len(t, result, 1)
-    assert.Equal(t, "website", result[0].Name)
-    assert.Equal(t, 2, result[0].Workers)
-}
-
-func TestMerge_MultipleSources(t *testing.T) {
-    source1 := []orktypes.CRDEntry{
-        {Name: "website", Workers: 2},
-    }
-    source2 := []orktypes.CRDEntry{
-        {Name: "database", Workers: 3},
-    }
-    
-    merger := katalog.NewMerger()
-    result := merger.Merge(source1, source2)
-    
-    assert.Len(t, result, 2)
-}
-
-func TestMerge_DuplicateNameError(t *testing.T) {
-    source1 := []orktypes.CRDEntry{
-        {Name: "website", Workers: 2},
-    }
-    source2 := []orktypes.CRDEntry{
-        {Name: "website", Workers: 4},
-    }
-    
-    merger := katalog.NewMerger()
-    err := merger.MergeWithError(source1, source2)
-    
-    assert.Error(t, err)
-    assert.Contains(t, err.Error(), "duplicate")
-}
-
-func TestMerge_InlineOverride(t *testing.T) {
-    source := []orktypes.CRDEntry{
-        {Name: "website", Workers: 2},
-    }
-    override := []orktypes.CRDEntry{
-        {Name: "website", Workers: 4},
-    }
-    
-    merger := katalog.NewMerger()
-    result := merger.MergeWithOverride(source, override)
-    
-    assert.Len(t, result, 1)
-    assert.Equal(t, 4, result[0].Workers)
-}
-```
+Existing examples: [pkg/kubeclient/test_exports.go](../pkg/kubeclient/test_exports.go),
+[pkg/merger/test_exports.go](../pkg/merger/test_exports.go),
+[pkg/health/test_exports.go](../pkg/health/test_exports.go).
 
 ---
 
-## Phase 3: Integration Tests (Week 2-3)
-
-### 3.1 Reconciler Tests
-
-```go
-// tests/integration/reconciler/deployment_test.go
-package reconciler_test
-
-import (
-    "context"
-    "testing"
-    
-    "github.com/orkspace/orkestra/pkg/kubeclient"
-    "github.com/orkspace/orkestra/pkg/reconciler"
-    "github.com/orkspace/orkestra/pkg/orktypes"
-    "github.com/orkspace/orkestra/tests/helpers"
-    "github.com/stretchr/testify/assert"
-    corev1 "k8s.io/api/core/v1"
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-func TestGenericReconciler_CreatesDeployment(t *testing.T) {
-    // Setup fake client
-    fakeKube := helpers.NewFakeKubeclient()
-    
-    // Create CRD entry with Deployment template
-    crd := &orktypes.CRDEntry{
-        Name: "website",
-        ReconcilerConfig: orktypes.ReconcilerConfig{
-            OnCreate: &orktypes.HookTemplates{
-                Deployments: []orktypes.DeploymentTemplateSource{
-                    {
-                        Name:     "test-deployment",
-                        Image:    "nginx:latest",
-                        Replicas: "3",
-                        Port:     "80",
-                    },
-                },
-            },
-        },
-    }
-    
-    // Create reconciler
-    reconciler := helpers.NewTestReconciler(crd, fakeKube)
-    
-    // Reconcile
-    err := reconciler.Reconcile(context.Background(), "default/test-site")
-    
-    // Verify
-    assert.NoError(t, err)
-    
-    deployment, err := fakeKube.Clientset.AppsV1().Deployments("default").Get(
-        context.Background(), "test-deployment", metav1.GetOptions{})
-    assert.NoError(t, err)
-    assert.Equal(t, "nginx:latest", deployment.Spec.Template.Spec.Containers[0].Image)
-}
-
-func TestGenericReconciler_UpdatesDeploymentOnDrift(t *testing.T) {
-    fakeKube := helpers.NewFakeKubeclientWithObjects(
-        // Pre-existing deployment with wrong image
-        &appsv1.Deployment{
-            ObjectMeta: metav1.ObjectMeta{Name: "test-deployment", Namespace: "default"},
-            Spec: appsv1.DeploymentSpec{
-                Template: corev1.PodTemplateSpec{
-                    Spec: corev1.PodSpec{
-                        Containers: []corev1.Container{{Image: "old-image"}},
-                    },
-                },
-            },
-        },
-    )
-    
-    crd := &orktypes.CRDEntry{
-        Name: "website",
-        ReconcilerConfig: orktypes.ReconcilerConfig{
-            OnReconcile: &orktypes.HookTemplates{
-                Deployments: []orktypes.DeploymentTemplateSource{
-                    {Name: "test-deployment", Image: "nginx:latest", Replicas: "3", Reconcile: true},
-                },
-            },
-        },
-    }
-    
-    reconciler := helpers.NewTestReconciler(crd, fakeKube)
-    err := reconciler.Reconcile(context.Background(), "default/test-site")
-    
-    assert.NoError(t, err)
-    
-    deployment, _ := fakeKube.Clientset.AppsV1().Deployments("default").Get(
-        context.Background(), "test-deployment", metav1.GetOptions{})
-    assert.Equal(t, "nginx:latest", deployment.Spec.Template.Spec.Containers[0].Image)
-}
-```
-
-### 3.2 Activation Tests
-
-```go
-// tests/integration/activation/missing_crd_test.go
-package activation_test
-
-import (
-    "context"
-    "testing"
-    "time"
-    
-    "github.com/orkspace/orkestra/pkg/kordinator"
-    "github.com/orkspace/orkestra/tests/helpers"
-    "github.com/stretchr/testify/assert"
-)
-
-func TestActivation_MissingCRDAppearsLater(t *testing.T) {
-    // Setup: CRD missing
-    fakeKube := helpers.NewFakeKubeclient()
-    katalog := helpers.NewTestKatalogWithMissingCRD("missing-crd")
-    
-    kordinator := kordinator.NewDependencyKordinator(fakeKube, katalog)
-    
-    // Start controller (CRD missing, should not start workers)
-    ctx, cancel := context.WithCancel(context.Background())
-    defer cancel()
-    
-    go kordinator.RunOrDie(ctx)
-    time.Sleep(2 * time.Second)
-    
-    // Verify workers not started
-    assert.False(t, kordinator.IsStarted("missing-crd"))
-    
-    // Simulate CRD appearing
-    helpers.InstallCRD(fakeKube, "missing-crd")
-    
-    // Wait for retry loop to detect and activate
-    time.Sleep(5 * time.Second)
-    
-    // Verify workers started
-    assert.True(t, kordinator.IsStarted("missing-crd"))
-}
-```
-
-### 3.3 Komposer Tests
-
-```go
-// tests/integration/komposer/merge_test.go
-package komposer_test
-
-import (
-    "testing"
-    
-    "github.com/orkspace/orkestra/pkg/katalog"
-    "github.com/stretchr/testify/assert"
-)
-
-func TestKomposer_MergesFileSources(t *testing.T) {
-    komposer := &katalog.Komposer{
-        Sources: katalog.KomposerSources{
-            Files: []string{
-                "./fixtures/katalogs/website.yaml",
-                "./fixtures/katalogs/platform.yaml",
-            },
-        },
-    }
-    
-    result, err := katalog.MergeKomposer(komposer)
-    assert.NoError(t, err)
-    assert.Len(t, result.CRDs, 2)
-}
-
-func TestKomposer_MergesHelmSources(t *testing.T) {
-    komposer := &katalog.Komposer{
-        Sources: katalog.KomposerSources{
-            Helm: []katalog.HelmSource{
-                {
-                    Repo:    "./fixtures/charts",
-                    Chart:   "test-chart",
-                    Version: "0.1.0",
-                },
-            },
-        },
-    }
-    
-    result, err := katalog.MergeKomposer(komposer)
-    assert.NoError(t, err)
-    assert.NotEmpty(t, result.CRDs)
-}
-```
-
----
-
-## Phase 4: E2E Tests (Week 3-4)
-
-### 4.1 E2E Test Framework
-
-Create a reusable test harness:
-
-```bash
-#!/bin/bash
-# tests/e2e/run.sh
-set -e
-
-TEST_NAME=$1
-TIMEOUT=${2:-60}
-
-echo "=== Running E2E Test: $TEST_NAME ==="
-
-# Setup
-kind create cluster --name orkestra-test
-trap "kind delete cluster --name orkestra-test" EXIT
-
-# Build Orkestra
-go build -o /tmp/ork ./cmd/ork
-
-# Run test
-./tests/e2e/$TEST_NAME/test.sh
-
-echo "=== E2E Test Passed ==="
-```
-
-### 4.2 Website E2E Test
-
-```bash
-#!/bin/bash
-# tests/e2e/website/test.sh
-set -e
-
-echo "Testing: Website CRD → Deployment + Service"
-
-# Install CRD
-kubectl apply -f examples/website/website-crd.yaml
-
-# Start Orkestra
-/tmp/ork run --katalog examples/website/website-katalog.yaml &
-ORK_PID=$!
-sleep 5
-
-# Apply CR
-kubectl apply -f examples/website/website-cr.yaml
-sleep 5
-
-# Verify Deployment
-kubectl get deployment test-website -n default
-DEPLOYMENT_EXISTS=$?
-
-# Verify Service
-kubectl get service test-website-svc -n default
-SERVICE_EXISTS=$?
-
-# Verify Health Endpoint
-curl -s localhost:8080/katalog/website/health | jq -e '.healthy == true'
-HEALTH_OK=$?
-
-# Verify Metrics
-curl -s localhost:8080/metrics | grep controller_reconcile_total
-METRICS_EXIST=$?
-
-# Cleanup
-kill $ORK_PID
-
-if [ $DEPLOYMENT_EXISTS -eq 0 ] && [ $SERVICE_EXISTS -eq 0 ] && [ $HEALTH_OK -eq 0 ] && [ $METRICS_EXIST -eq 0 ]; then
-    echo "✅ Website E2E test passed"
-    exit 0
-else
-    echo "❌ Website E2E test failed"
-    exit 1
-fi
-```
-
-### 4.3 Activation E2E Test
-
-```bash
-#!/bin/bash
-# tests/e2e/activation/test.sh
-set -e
-
-echo "Testing: Missing CRD appears after startup"
-
-# Start Orkestra WITHOUT installing CRD
-/tmp/ork run --katalog tests/fixtures/katalogs/missing-crd.yaml &
-ORK_PID=$!
-sleep 5
-
-# Verify health shows degraded
-curl -s localhost:8080/katalog/missing-crd/health | jq -e '.healthy == false'
-HEALTH_DEGRADED=$?
-
-# Install CRD
-kubectl apply -f tests/fixtures/crds/missing-crd.yaml
-sleep 10
-
-# Verify health becomes healthy
-curl -s localhost:8080/katalog/missing-crd/health | jq -e '.healthy == true'
-HEALTH_HEALTHY=$?
-
-# Cleanup
-kill $ORK_PID
-kubectl delete -f tests/fixtures/crds/missing-crd.yaml
-
-if [ $HEALTH_DEGRADED -eq 0 ] && [ $HEALTH_HEALTHY -eq 0 ]; then
-    echo "✅ Activation E2E test passed"
-    exit 0
-else
-    echo "❌ Activation E2E test failed"
-    exit 1
-fi
-```
-
-### 4.4 Dependencies E2E Test
-
-```bash
-#!/bin/bash
-# tests/e2e/dependencies/test.sh
-set -e
-
-echo "Testing: Dependency ordering"
-
-# Install CRDs (A and B, where B depends on A)
-kubectl apply -f tests/fixtures/crds/crd-a.yaml
-kubectl apply -f tests/fixtures/crds/crd-b.yaml
-
-# Start Orkestra
-/tmp/ork run --katalog tests/fixtures/katalogs/dependencies.yaml &
-ORK_PID=$!
-sleep 5
-
-# Check startup order (B should start only after A)
-curl -s localhost:8080/katalog/crd-a/health | jq -e '.started == true'
-A_STARTED=$?
-curl -s localhost:8080/katalog/crd-b/health | jq -e '.started == true'
-B_STARTED=$?
-
-# Cleanup
-kill $ORK_PID
-kubectl delete -f tests/fixtures/crds/crd-a.yaml
-kubectl delete -f tests/fixtures/crds/crd-b.yaml
-
-if [ $A_STARTED -eq 0 ] && [ $B_STARTED -eq 0 ]; then
-    echo "✅ Dependencies E2E test passed"
-    exit 0
-else
-    echo "❌ Dependencies E2E test failed"
-    exit 1
-fi
-```
-
----
-
-## Phase 5: Test Automation (Week 4)
-
-### 5.1 Makefile
-
-```makefile
-# Makefile
-.PHONY: test test-unit test-integration test-e2e test-all
-
-test: test-unit test-integration
-
-test-unit:
-	@echo "Running unit tests..."
-	go test ./tests/unit/... -v -short
-
-test-integration:
-	@echo "Running integration tests..."
-	go test ./tests/integration/... -v -tags=integration
-
-test-e2e:
-	@echo "Running E2E tests..."
-	./tests/e2e/run.sh website
-	./tests/e2e/run.sh activation
-	./tests/e2e/run.sh dependencies
-
-test-all: test-unit test-integration test-e2e
-
-test-coverage:
-	@echo "Generating coverage report..."
-	go test ./... -coverprofile=coverage.out
-	go tool cover -html=coverage.out -o coverage.html
-	@echo "Coverage report: coverage.html"
-```
-
-### 5.2 GitHub Actions
-
-```yaml
-# .github/workflows/test.yml
-name: Tests
-
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
-
-jobs:
-  unit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '1.21'
-      - name: Unit Tests
-        run: make test-unit
-
-  integration:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '1.21'
-      - name: Integration Tests
-        run: make test-integration
-
-  e2e:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '1.21'
-      - name: Setup kind
-        uses: helm/kind-action@v1
-      - name: E2E Tests
-        run: make test-e2e
-```
-
----
-
-## Phase 6: Test Fixtures
-
-### 6.1 Sample Katalogs
-
-```yaml
-# tests/fixtures/katalogs/website.yaml
-apiVersion: orkestra.orkspace.io/v1
-kind: Katalog
-metadata:
-  name: website-katalog
-spec:
-  crds:
-    - name: website
-      apiTypes:
-        group: demo.orkestra.io
-        version: v1alpha1
-        kind: Website
-        plural: websites
-      operatorBox:
-        default: true
-        onCreate:
-          deployments:
-            - image: "nginx:latest"
-              replicas: "3"
-              reconcile: true
-```
-
-### 6.2 Sample CRDs
-
-```yaml
-# tests/fixtures/crds/website-crd.yaml
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: websites.demo.orkestra.io
-spec:
-  group: demo.orkestra.io
-  names:
-    kind: Website
-    plural: websites
-    singular: website
-  scope: Namespaced
-  versions:
-    - name: v1alpha1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              properties:
-                image:
-                  type: string
-                replicas:
-                  type: integer
-```
-
----
-
-## What Tests You Need for v1
-
-| Priority | Test | Type | Purpose |
-|----------|------|------|---------|
-| **P0** | Website example works | E2E | The "hello world" must work |
-| **P0** | Missing CRD activation | Integration | Core value: CRDs appear later |
-| **P0** | Dependency ordering | Unit | Core feature |
-| **P1** | Health tracking | Unit | Correct health transitions |
-| **P1** | Katalog merge | Unit | Komposer correctness |
-| **P1** | Reconciler creates resources | Integration | Templates work |
-| **P2** | Drift correction | Integration | reconcile:true works |
-| **P2** | Graceful shutdown | E2E | No panic on exit |
-| **P3** | Metrics emission | Integration | Prometheus works |
-| **P3** | Secret copy | Integration | FromSecret pattern |
-
----
-
-## Success Criteria for v1
-
-| Metric | Target |
-|--------|--------|
-| Unit test coverage | 70% on core packages |
-| Integration tests | 10 passing |
-| E2E tests | 3 passing (website, activation, dependencies) |
-| CI time | < 5 minutes |
-| E2E time | < 2 minutes per test |
-
----
-
-## The Bottom Line
-
-Start with the Website E2E test. That's your anchor. Then add unit tests for the logic you're most nervous about. Then add integration tests for the flows that broke during development.
-
-**You don't need 100% coverage. You need confidence.** This plan gives you that. 🎼
+## CI
+
+The CI pipeline runs `make test-unit` (fast gate, every commit) and
+`make test-integration` (slower gate, pre-merge). The `//go:build integration`
+tag guarantees the two jobs are fully isolated — there is no way for an
+integration test to sneak into the unit run.
+
+`sigs.k8s.io/controller-runtime` is a direct dependency in `go.mod` solely
+for envtest. Production code (`pkg/`) uses raw `client-go` only.

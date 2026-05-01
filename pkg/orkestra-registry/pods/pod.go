@@ -207,6 +207,8 @@ func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *core
 			},
 		},
 		Spec: corev1.PodSpec{
+			ServiceAccountName: spec.ServiceAccountName,
+			NodeSelector:       spec.NodeSelector,
 			Containers: []corev1.Container{
 				{
 					Name:  spec.Name,
