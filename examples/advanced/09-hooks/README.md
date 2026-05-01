@@ -21,30 +21,6 @@ the finalizer, status management, events, metrics, and the full security layer.
 
 ---
 
-## How it works
-
-A typed extension is a separate Go module. It imports Orkestra as a library,
-adds a blank import of its generated registry package, and compiles into its
-own binary. The resulting binary is a fully self-contained Orkestra operator
-that knows about your CRD types.
-
-```
-your module
-├── api/v1alpha/
-│   └── types.go          ← your CRD Go types
-├── hooks/
-│   └── database_hooks.go ← your reconcile and delete logic
-├── pkg/runtime/
-│   └── zz_generated_runtime_registry.go  ← generated, do not edit
-├── cmd/orkestra/
-│   └── main.go           ← imports _ "yourmodule/pkg/runtime"
-├── katalog.yaml
-├── Makefile
-└── Dockerfile
-```
-
----
-
 ## Step 1 — Files already in place
 
 This pack includes a complete typed operator: a `Database` CRD with a
@@ -53,42 +29,34 @@ StatefulSet, Service, and optional backup CronJob. Examine the files:
 - `api/v1alpha/database_types.go` – the Go structs for your CRD.
 - `hooks/database_hooks.go` – the `OnReconcile` and `OnDelete` logic.
 - `katalog.yaml` – declares the CRD and points to the hook location.
-- `cmd/orkestra/main.go` – entrypoint (import disabled initially).
 - `Makefile` – build, registry, validate, release targets.
 
 ---
 
-## Step 2 — Generate the registry
+## Step 2 — Generate the registry and entrypoint
 
-The registry file wires your Go types into Orkestra's internal maps. Run:
+Run the registry generator:
 
 ```bash
 make registry
 ```
 
-This executes `ork generate registry --katalog katalog.yaml` and creates
-`pkg/runtime/zz_generated_runtime_registry.go`. The file contains an `init()`
-that populates `ObjectRegistry` and `HookRegistry` at startup.
+This executes:
 
----
-
-## Step 3 — Enable the registry in main.go
-
-Open `cmd/orkestra/main.go`. Uncomment the blank import line:
-
-```go
-import (
-    "context"
-    _ "github.com/workspace/orkestra-hooks-demo/pkg/runtime"  // <-- uncomment this
-    // ...
-)
+```bash
+ork generate registry --katalog katalog.yaml
 ```
 
-This ensures the generated `init()` runs when your binary starts.
+It creates (or updates) two files:
+
+- `pkg/runtime/zz_generated_runtime_registry.go` – registers your Go types and hooks.
+- `cmd/orkestra/main.go` – the entrypoint that imports the generated registry.
+
+Both files are marked `DO NOT EDIT` – they are regenerated whenever you change the Katalog.
 
 ---
 
-## Step 4 — See why you need a custom binary
+## Step 3 — See why you need a custom binary
 
 The standard `ork` CLI does not know about your Go types. Validate it to see the
 expected error:
@@ -112,7 +80,7 @@ make clean
 
 ---
 
-## Step 5 — Build your own operator binary
+## Step 4 — Build your own operator binary
 
 Now build a binary that includes your generated registry:
 
@@ -137,7 +105,7 @@ Now you have a custom `./ork` binary that knows your CRD type.
 
 ---
 
-## Step 6 — Validate with your own binary
+## Step 5 — Validate with your own binary
 
 ```bash
 ./ork validate -k katalog.yaml
@@ -148,7 +116,7 @@ will confirm that `ObjectRegistry` is populated.
 
 ---
 
-## Step 7 — Run locally in Kind
+## Step 6 — Run locally in Kind
 
 Create a Kind cluster (if not already):
 
@@ -189,7 +157,7 @@ kubectl get events --field-selector involvedObject.name=my-db
 
 ---
 
-## Step 8 – Deploy to a cluster (production)
+## Step 7 – Deploy to a cluster (production)
 
 ### Build and push your Docker image
 

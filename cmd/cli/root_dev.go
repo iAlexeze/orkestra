@@ -22,7 +22,7 @@ func init() {
 	for _, cmd := range []*cobra.Command{
 		validateCmd,
 		templateCmd,
-		generateRuntimeCmd,
+		generateRegistryCmd,
 		generateDocsCmd,
 		generateDashboardsCmd,
 		generateAllCmd,

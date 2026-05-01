@@ -25,9 +25,16 @@ import (
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	orkcron "github.com/orkspace/orkestra/pkg/orkestra-registry/cronjobs"
-	orkdeploy "github.com/orkspace/orkestra/pkg/orkestra-registry/deployments"
 	orksvc "github.com/orkspace/orkestra/pkg/orkestra-registry/services"
+	orkstatefulset "github.com/orkspace/orkestra/pkg/orkestra-registry/statefulsets"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+)
+
+const (
+	// Test values
+	postgresUser     = "postgres"
+	postgresPassword = "postgres-password"
+	defaultReplicas  = "1"
 )
 
 // DatabaseHooks returns the hook implementation for the Database CRD.
@@ -58,26 +65,31 @@ func onDatabaseReconcile(ctx context.Context, obj *apiv1.Database) error {
 	// ── Create the StatefulSet via OrkestraRegistry ────────────────────────
 	// OrkestraRegistry handles: owner references, idempotency, system labels.
 	// The hook only provides the resolved spec.
-	replicas := "1"
-	staticReplicas := 1
-	deploySpec := orkdeploy.Resolve(
-		orktypes.DeploymentTemplateSource{
+	spec := orkstatefulset.Resolve(
+		orktypes.StatefulSetTemplateSource{
 			Name:      obj.Name,
 			Namespace: obj.Namespace,
 			Image:     image,
-			Replicas:  replicas,
+			Replicas:  defaultReplicas,
 			Port:      dbPort(engine),
+			Env: map[string]orktypes.EnvVarSource{
+				"POSTGRES_USER": {
+					Value: postgresUser,
+				},
+				"POSTGRES_PASSWORD": {
+					Value: postgresPassword,
+				},
+			},
 			Labels: []orktypes.ResourceLabel{
 				{Key: "db-engine", Value: engine},
 				{Key: "db-version", Value: version},
 				{Key: "storage-size", Value: storage},
 			},
 		},
-		staticReplicas,
 		obj.Name,
 	)
-	if err := orkdeploy.Update(ctx, kube, obj, deploySpec); err != nil {
-		return fmt.Errorf("database deployment: %w", err)
+	if err := orkstatefulset.Update(ctx, kube, obj, spec); err != nil {
+		return fmt.Errorf("database statefulSet: %w", err)
 	}
 
 	// ── Create the Service ─────────────────────────────────────────────────
@@ -120,7 +132,7 @@ func onDatabaseReconcile(ctx context.Context, obj *apiv1.Database) error {
 }
 
 // onDatabaseDelete runs when a Database CR is being deleted.
-// Owner references handle Deployment, Service, and CronJob cleanup automatically.
+// Owner references handle StatefulSet, Service, and CronJob cleanup automatically.
 // This hook handles external cleanup — nothing in this example, but the
 // pattern is here for operators that create external resources.
 func onDatabaseDelete(ctx context.Context, obj *apiv1.Database) error {
