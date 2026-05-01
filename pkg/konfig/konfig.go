@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 func Init(filenames ...string) (*Konfig, error) {
 	// load .env files for tesing...
 	_ = godotenv.Load(filenames...)
+	ns := resolveNamespace()
 
 	kfg := &Konfig{
 		ork: orkKonfig{
@@ -22,7 +24,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			// KubekonfigPath:   GetStrEnv("KUBEKONFIG", ""),
 			MasterURL: GetStrEnv("MASTER_URL", ""),
 			Name:      GetStrEnv("CLUSTER_NAME", "orkestra-cluster"),
-			Namespace: GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system"),
+			Namespace: ns,
 
 			// Workload
 			DefaultResync:       GetDurEnvSeconds("DEFAULT_RESYNC", 15),
@@ -115,7 +117,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			WriteTimeout: GetDurEnvSeconds("SRV_WRITE_TIMEOUT", 20),
 		},
 		konductor: konductorElection{
-			Namespace:     GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system"),
+			Namespace:     ns,
 			LeaseDuration: GetDurEnvSeconds("LEASE_DURATION", 60),
 			RenewDeadline: GetDurEnvSeconds("RENEW_DEADLINE", 40),
 			RetryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),
@@ -181,4 +183,18 @@ func GetIntEnv(key string, def int) int {
 		return valInt
 	}
 	return def
+}
+
+// resolveNamespace resolves the namespace for use by all internal orkestra resources
+func resolveNamespace() string {
+	// Resolve namespace
+	if os.Getenv("ORKESTRA_NAMESPACE") == "" {
+		// Set namespace to default if running outside a pod
+		// This is helpful for quick testing using an 'always available' namespace
+		if !utils.IsRunningInCluster() {
+			return "default"
+		}
+	}
+
+	return GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system")
 }

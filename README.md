@@ -15,7 +15,7 @@
 
   <p>
     <a href="https://orkestra.readthedocs.io">Docs</a> ·
-    <a href="https://orkestra.readthedocs.io/en/latest/getting-started">Quick Start</a> ·
+    <a href="https://docs.orkestra.sh/getting-started">Quick Start</a> ·
     <a href="https://github.com/orkspace/orkestra/discussions">Discussions</a>
   </p>
 </div>
@@ -95,7 +95,7 @@ Every CRD declared in a Katalog becomes a complete, isolated operator:
 | **Health API** | `/katalog/{crd}/health`, `/katalog/{crd}/cr`, `/metrics`. |
 | **Prometheus metrics** | Reconcile totals, queue depth, error rate — all per CRD. |
 
-Fifteen CRDs. One process. ~47 MB.
+Fifteen CRDs. One process. [~47 MB](https://cc.orkestra.sh).
 
 ---
 ## Getting started
@@ -105,7 +105,7 @@ Fifteen CRDs. One process. ~47 MB.
 brew install orkspace/tap/ork orkspace/tap/orkcc
 
 # Install (Linux)
-curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
+curl -sSL https://get.orkestra.sh | bash
 
 # Initialize an operator
 ork init my-operator
@@ -186,7 +186,7 @@ spec:
       workers: 8   # production override — everything else from the registry
 ```
 
-Full documentation: [Orkestra Registry](https://orkestra.readthedocs.io/en/latest/orkestra-registry/)
+Full documentation: [Orkestra Registry](https://docs.orkestra.sh/orkestra-registry/)
 
 ---
 ## Operator Autoscaler
@@ -316,7 +316,7 @@ conversion:
         schedule: "{{ cronFromMap .spec.schedule }}"
 ```
 
-**In production:** 11,279 conversions. 0 failures. 0.59 ms average latency.
+**In production:** [100,000+ conversions](https://cc.orkestra.sh). 0 failures. ~ 2ms average latency.
 
 **Option 2 — Internal normalization (no webhook)**
 
@@ -325,12 +325,7 @@ For simple or single-direction schema evolution, `normalize:` canonicalizes fiel
 ```yaml
 normalize:
   spec:
-    schedule: >
-      {{ if typeMap .spec.schedule }}
-        {{ cronFromMap .spec.schedule }}
-      {{ else }}
-        {{ .spec.schedule }}
-      {{ end }}
+    chedule: "{{ cronFromAny .spec.schedule }}"  # orkestra note 'cronFromAny'
 ```
 
 Runs before `onCreate`/`onReconcile`. The CR is patched with the normalized value before any resources are created.
@@ -583,16 +578,16 @@ operatorBox:
 
 ## Security
 
-Deletion protection, RBAC, admission webhooks, and conversion webhooks all share one certificate. One block. No separate TLS setup.
+Deletion protection, namespace protection, admission webhooks, and conversion webhooks all share one certificate. One block. No separate TLS setup.
 
 ```yaml
 security:
   deletionProtection:
     enabled: true             # protects your CRDs and Orkestra deployment from kubectl delete
+    cleanupOnShutdown: true   # Tells orkestra to cleanup deletionProtection webhooks and certs on shutdown
   
-  rbac:
-    enabled: true             # Orkestra generates and applies the minimum permissions required to run your operators
-    cleanupOnShutdown: true   # Tells orkestra to cleanup rbac on shutdown
+  namespaceProtection:
+    enabled: true             # Orkestra blocks creation of custom resources in restrictedNamespaces at apply time and creation of child resources at reconcile time. One declaration. Two enforcement points.
 
   webhooks:
     admission:
@@ -623,11 +618,11 @@ With `deletionProtection` enabled, Orkestra registers a validating webhook that 
 
 | | |
 |---|---|
-| [Getting Started](https://orkestra.readthedocs.io/en/latest/getting-started) | First operator in under an hour |
-| [Katalog Reference](https://orkestra.readthedocs.io/en/latest/reference/katalog-schema) | Complete field reference |
+| [Getting Started](https://docs.orkestra.sh/getting-started) | First operator in under an hour |
+| [Katalog Reference](https://docs.orkestra.sh/reference/katalog-schema) | Complete field reference |
 | [Examples](./examples/) | Beginner → advanced, all verified |
-| [Concepts](https://orkestra.readthedocs.io/en/latest/concepts) | Architecture and mental model |
-| [Papers](https://orkestra.readthedocs.io/en/latest/papers) | The case for declarative operators |
+| [Concepts](https://docs.orkestra.sh/concepts) | Architecture and mental model |
+| [Papers](https://docs.orkestra.sh/papers) | The case for declarative operators |
 
 ---
 

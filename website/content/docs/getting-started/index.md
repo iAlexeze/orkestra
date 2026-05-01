@@ -35,17 +35,17 @@ brew install ork
 ### Linux / macOS (curl)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
+curl -sSL https://get.orkestra.sh | bash
 ```
 
 ### Options
 
 ```bash
 # Pin to a specific version
-curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | ORK_VERSION=v1.0.0 bash
+curl -sSL https://get.orkestra.sh | ORK_VERSION=v1.0.0 bash
 
 # Install to a custom directory
-curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
+curl -sSL https://get.orkestra.sh | ORK_INSTALL_DIR=~/.local/bin bash
 ```
 
 ### Verify the binary (recommended)

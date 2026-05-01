@@ -2,7 +2,7 @@
 # install.sh — Orkestra CLI installer
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/refs/heads/main/install.sh | bash
+#   curl -sSL https://get.orkestra.sh | bash
 #
 # Environment variables:
 #   ORK_VERSION         — pin a specific version tag (default: latest release)

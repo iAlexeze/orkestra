@@ -66,7 +66,7 @@ Install the `ork` CLI – the control center is built right in.
 brew tap orkspace/tap && brew install ork
 
 # Linux
-curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
+curl -sSL https://get.orkestra.sh | bash
 
 # Verify installation
 ork version

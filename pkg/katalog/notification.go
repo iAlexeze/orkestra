@@ -19,11 +19,7 @@
 
 package katalog
 
-import (
-	"fmt"
-
-	orktypes "github.com/orkspace/orkestra/pkg/types"
-)
+import orktypes "github.com/orkspace/orkestra/pkg/types"
 
 // notificationEnvDefaults returns the NotificationConfig from konfig,
 // or a zero-value reader when konfig is not wired (e.g. tests).
@@ -200,35 +196,4 @@ func (k *Katalog) HasNotification() bool {
 // HasTeams returns whether a katalog has teams configured or not
 func (k *Katalog) HasTeams() bool {
 	return k.Notification != nil && len(k.Notification.Teams) > 0
-}
-
-// validateTeam ensures that a team referenced under a notify: block
-// (in onCreate, onReconcile, or rollback) was actually declared in
-// notification.teams within this Katalog.
-//
-// This is a static validation step used by ork validate and ork run
-// (the same validator is invoked in both paths). It prevents typos,
-// misconfigured team names, or references to teams that do not exist
-// in the platform-level notification configuration.
-//
-// Behavior:
-//   - If the katalog has no notification block → no-op (notifications disabled)
-//   - If the katalog has no teams declared → no-op (nothing to validate against)
-//   - If teamName is not found in notification.teams → return an error
-//
-// This keeps notify: ["teamA", "teamB"] aligned with the declared
-// notification.teams map and ensures that runtime dispatch never
-// attempts to send to an undefined team.
-func (k *Katalog) validateTeam(teamName string) error {
-	if !k.HasNotification() {
-		return nil
-	}
-	if !k.HasTeams() {
-		return nil
-	}
-
-	if _, ok := k.Notification.Teams[teamName]; !ok {
-		return fmt.Errorf("%s team not found", teamName)
-	}
-	return nil
 }
