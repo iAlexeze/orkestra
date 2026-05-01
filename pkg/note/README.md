@@ -70,7 +70,7 @@ Write a test in the corresponding `*_test.go` file. Cover the nil/empty path, th
 
 Notes in `kubernetes.go`, `kube_replica.go`, `kube_container.go`, `kube_job.go`, and `kube_service.go` take live Kubernetes objects as input (`map[string]interface{}` from the dynamic client). Unit tests use hand-crafted maps — they cannot cover missing fields, null values, or schema variations that only appear with real API responses. The note katalog closes that gap.
 
-Add a `status.fields` entry to [`example/katalog.yaml`](example/katalog.yaml):
+Add a `status.fields` entry to [`fixture/katalog.yaml`](fixture/katalog.yaml):
 
 ```yaml
 - path: myNewNote
@@ -80,19 +80,19 @@ Add a `status.fields` entry to [`example/katalog.yaml`](example/katalog.yaml):
 Then verify it against a live cluster:
 
 ```bash
-kubectl apply -f pkg/note/example/crd.yaml
-ork run -k pkg/note/example/katalog.yaml   # keep running in one terminal
+kubectl apply -f pkg/note/fixture/crd.yaml
+ork run -k pkg/note/fixture/katalog.yaml   # keep running in one terminal
 
-kubectl apply -f pkg/note/example/cr.yaml
+kubectl apply -f pkg/note/fixture/cr.yaml
 kubectl get noteprobe my-probe -o yaml -w  # watch until phase: Ready
 ```
 
 Confirm the field appears with the expected value. Clean up when done:
 
 ```bash
-cd pkg/note/example && bash cleanup.sh
+cd pkg/note/fixture && bash cleanup.sh
 ```
 
 ---
 
-The [`example/`](example/) katalog is the living e2e test for the kubernetes note family. It runs in CI on every change to `kube_*.go` or `kubernetes.go`.
+The [`fixture/`](fixture/) katalog is the living e2e test for the kubernetes note family. It runs in CI on every change to `kube_*.go` or `kubernetes.go`.
