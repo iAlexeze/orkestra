@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — Orkestra CLI installer
+# Orkestra CLI installer
 #
 # Usage:
 #   curl -sSL https://get.orkestra.sh | bash
@@ -10,16 +10,15 @@
 #   ORK_SKIP_CC         — skip Control Center binary (default: false)
 #   ORK_SKIP_COMPLETION — skip shell completion setup (default: false)
 #
-# ── Adding a new Orkestra binary ──────────────────────────────────────────────
 # 1. Add the binary name to BINARIES.
 # 2. If it should be skippable, add a case entry in component_skipped().
 # That is the only change needed — download URL, checksum, and extraction
 # all follow the same convention automatically.
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 set -euo pipefail
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# Config
 
 REPO="orkspace/orkestra"
 INSTALL_DIR="${ORK_INSTALL_DIR:-/usr/local/bin}"
@@ -31,7 +30,7 @@ SKIP_COMPLETION="${ORK_SKIP_COMPLETION:-false}"
 # To add a new binary, append it here.
 BINARIES=("ork" "orkcc")
 
-# ── Colours ───────────────────────────────────────────────────────────────────
+# Colours
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -46,7 +45,7 @@ warn()    { echo -e "${YELLOW}[orkestra]${RESET} $*"; }
 error()   { echo -e "${RED}[orkestra]${RESET} $*" >&2; }
 fatal()   { error "$*"; exit 1; }
 
-# ── Banner ────────────────────────────────────────────────────────────────────
+# Banner
 
 echo -e "${BOLD}"
 cat <<'EOF'
@@ -58,7 +57,7 @@ cat <<'EOF'
 EOF
 echo -e "${RESET}"
 
-# ── Dependencies ──────────────────────────────────────────────────────────────
+# Dependencies
 
 check_deps() {
     for cmd in curl tar grep sed; do
@@ -67,7 +66,7 @@ check_deps() {
     done
 }
 
-# ── Platform detection ────────────────────────────────────────────────────────
+# Platform detection 
 
 detect_platform() {
     local os arch
@@ -87,7 +86,7 @@ detect_platform() {
     echo "${os}_${arch}"
 }
 
-# ── Version resolution ────────────────────────────────────────────────────────
+# Version resolution 
 
 resolve_version() {
     if [[ -n "${VERSION}" ]]; then
@@ -109,7 +108,7 @@ resolve_version() {
     echo "${tag}"
 }
 
-# ── Component skip rules ──────────────────────────────────────────────────────
+# Component skip rules 
 # Returns 0 (true) when the binary should be skipped.
 # Add a case entry here when a new binary needs a skip flag.
 
@@ -121,7 +120,7 @@ component_skipped() {
     esac
 }
 
-# ── Checksum verification ─────────────────────────────────────────────────────
+# Checksum verification 
 # Uses -c (POSIX short form) which works on GNU coreutils, BusyBox, and macOS.
 # --check is GNU-only and fails on BusyBox (Alpine/CI containers).
 
@@ -140,7 +139,7 @@ verify_checksum() {
     fi
 }
 
-# ── Single component installer ────────────────────────────────────────────────
+# Single component installer 
 
 install_component() {
     local binary="$1"
@@ -196,7 +195,7 @@ install_component() {
     success "${binary} ${version} installed to ${INSTALL_DIR}/${binary}"
 }
 
-# ── Shell completion ──────────────────────────────────────────────────────────
+# Shell completion 
 
 install_completion() {
     if [[ "${SKIP_COMPLETION}" == "true" ]]; then
@@ -240,7 +239,7 @@ install_completion() {
     success "Shell completion installed for ${shell_name}"
 }
 
-# ── Post-install summary ──────────────────────────────────────────────────────
+# Post-install summary 
 
 print_summary() {
     local version="$1"
@@ -274,7 +273,7 @@ print_summary() {
     echo
 }
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# Main 
 
 main() {
     check_deps
