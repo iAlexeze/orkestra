@@ -78,4 +78,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy orkestra-site/public --project-name=${{ secrets.CLOUDFLARE_PAGES_PROJECT }} --commit-dirty=true
+          command: pages deploy orkestra-site/public --project-name=orkestra-docs --commit-dirty=true
