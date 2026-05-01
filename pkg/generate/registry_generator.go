@@ -2,8 +2,10 @@
 package generate
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -274,12 +276,39 @@ func resolveAlias(explicitAlias, prefix, location string) string {
 	if explicitAlias != "" {
 		return explicitAlias
 	}
+
+	// Extract path parts and build base name
 	parts := strings.Split(strings.TrimRight(location, "/"), "/")
+	var base string
 	if len(parts) >= 2 {
-		return prefix + parts[len(parts)-2] + strings.ReplaceAll(parts[len(parts)-1], ".", "")
+		base = parts[len(parts)-2] + parts[len(parts)-1]
+	} else if len(parts) == 1 {
+		base = parts[0]
+	} else {
+		base = "v1"
 	}
-	if len(parts) == 1 {
-		return prefix + strings.ReplaceAll(parts[0], ".", "")
+
+	// Normalize: remove dots, dashes and any non-alphanumeric characters
+	// then collapse repeated non-alnum (defensive)
+	reNonAlnum := regexp.MustCompile(`[^A-Za-z0-9]+`)
+	sanitized := reNonAlnum.ReplaceAllString(base, "")
+
+	// Optional: lowercase for consistency
+	sanitized = strings.ToLower(sanitized)
+
+	// Truncate if too long, appending a short hash suffix to reduce collisions
+	const maxLen = 30
+	if len(sanitized) > maxLen {
+		h := sha1.Sum([]byte(sanitized))
+		suffix := fmt.Sprintf("%x", h)[:6] // 6 hex chars
+		keep := maxLen - len(suffix)
+		if keep <= 0 {
+			// fallback: use only suffix if maxLen is very small
+			sanitized = suffix
+		} else {
+			sanitized = sanitized[:keep] + suffix
+		}
 	}
-	return prefix + "v1"
+
+	return prefix + sanitized
 }
