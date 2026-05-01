@@ -2,16 +2,6 @@
 
 > **Chart version:** 0.3.5 | **App version:** 0.3.5
 
-> **Chart version:** 0.3.4 | **App version:** 0.3.4
-
-> **Chart version:** 0.3.4 | **App version:** 0.3.4
-
-> **Chart version:** 0.3.3 | **App version:** 0.3.3
-
-> **Chart version:** 0.3.2 | **App version:** 0.3.2
-
-> **Chart version:** 0.3.1 | **App version:** 0.3.1
-
 Deploy Orkestra — the declarative Kubernetes operator runtime — along with its Control Center for multi‑instance observability.
 
 ---
