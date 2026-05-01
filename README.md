@@ -12,7 +12,7 @@ Deploy Orkestra — the declarative Kubernetes operator runtime — along with i
 - Kubernetes 1.28+
 - Helm 3.10+
 - `kubectl` configured for your cluster
-- `ork` CLI installed (see [Orkestra CLI installation](https://github.com/orkspace/orkestra))
+- `ork` CLI installed (see [Orkestra CLI installation](https://github.com/orkspace/orkestra#getting-started))
 
 ---
 
