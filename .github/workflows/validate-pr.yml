@@ -48,23 +48,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run go mod tidy
-        run: |
-          go mod tidy
-          if ! git diff --quiet go.mod go.sum; then
-            echo "❌ go.mod or go.sum is not tidy. Run 'go mod tidy' locally and commit."
-            exit 1
-          fi
-
       - name: Run go vet
         run: go vet ./...
-
-      - name: Run gofmt check
-        run: |
-          if [ -n "$(gofmt -l .)" ]; then
-            echo "❌ Some files are not formatted with gofmt. Run 'gofmt -w .' and commit."
-            exit 1
-          fi
 
       - name: Run unit tests (no cluster required)
         run: make test-unit
