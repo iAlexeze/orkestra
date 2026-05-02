@@ -117,7 +117,7 @@ type APITypes struct {
 	Version string `yaml:"version" json:"version" validate:"required"`
 
 	// Kind — resource Kind. Required in all modes.
-	// e.g. "Project"
+	// e.g. "Platform"
 	Kind string `yaml:"kind" json:"kind" validate:"required"`
 
 	// Plural — lowercase plural resource name. Required in all modes.

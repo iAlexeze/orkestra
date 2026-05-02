@@ -43,7 +43,7 @@ type KatalogSecurity struct {
 	//
 	// When enabled (default when block is present):
 	//   - Registers /deletion-protection endpoint on the HTTPS server
-	//   - Creates ValidatingWebhookConfiguration "orkestra-delete-protection"
+	//   - Creates ValidatingWebhookConfiguration "orkestra-deletion-protection"
 	//   - Entry 1: broad rule for CRDs; handler filters by ProtectedCRDNames()
 	//   - Entry 2: ObjectSelector-gated rule for deployment, service, etc
 	//

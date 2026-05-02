@@ -14,11 +14,7 @@
 // is present but deletionProtection is not declared.
 package katalog
 
-import (
-	"time"
-
-	"github.com/orkspace/orkestra/pkg/utils"
-)
+import "time"
 
 // securityEnvDefaults returns the SecurityConfig from konfig, or a zero
 // value when konfig is not wired (e.g. NewEmptyKatalog in tests).
@@ -301,6 +297,19 @@ func (k *Katalog) DeletionProtectionCleanupOnShutdown() bool {
 	return k.securityEnvDefaults().DeletionProtectionCleanup()
 }
 
+// WebhookCleanupOnShutdown reports whether admission webhooks should be deleted on shutdown.
+//
+// Precedence:
+//
+//	YAML security.webhooks.cleanupOnShutdown present → use YAML value
+//	YAML block absent                                → fall back to WEBHOOK_CLEANUP_ON_SHUTDOWN env
+func (k *Katalog) WebhookCleanupOnShutdown() bool {
+	if k.Security.Webhooks != nil {
+		return k.Security.Webhooks.CleanupOnShutdown
+	}
+	return k.securityEnvDefaults().WebhookCleanup()
+}
+
 // ── Conversion stats window ───────────────────────────────────────────────────
 
 // ConversionWindow returns the effective rolling window size for conversion/admission stats.
@@ -324,9 +333,6 @@ func (k *Katalog) ConversionWindow() int {
 // or conversion webhooks are enabled with valid usecases
 // configured in at least 1 CRD— all three use the same TLS cert.
 func (k *Katalog) NeedsCertificates() bool {
-	if !utils.IsRunningInCluster() {
-		return false // fast path
-	}
 	return k.IsDeletionProtectionEnabled() ||
 		k.IsNamespaceProtectionEnabled() ||
 		k.HasValidationOrMutationRules() || // Valid admission rule

@@ -50,6 +50,11 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 			fmt.Printf("- Deletion Protection Failure Policy: %s%s%s\n", utils.ColorCyan, kfg.katalog.DeletionProtectionFailurePolicy(), utils.ColorReset)
 		}
 
+		if kfg.katalog.IsNamespaceProtectionEnabled() && kfg.katalog.NamespaceProtectionGVRs() != nil {
+			fmt.Printf("- Namespace Protection: %s/namespace-protection%s\n", utils.ColorGreen, utils.ColorReset)
+			fmt.Printf("- Namespace Protection Failure Policy: %s%s%s\n", utils.ColorCyan, kfg.katalog.NamespaceProtectionFailurePolicy(), utils.ColorReset)
+		}
+
 		// ENABLE_CONVERSION=true
 		if kfg.katalog.HasConversionPaths() {
 			fmt.Printf("- Conversion: %s/convert%s\n", utils.ColorGreen, utils.ColorReset)

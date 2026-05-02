@@ -15,8 +15,8 @@ When enabled, deletion protection:
   - Managed CRDs (via `ProtectedCRDNames()`)
   - The Orkestra Deployment, Service, and Ingress
   - Orkestra’s admission webhooks:
-    - `ValidatingWebhookConfiguration` (`orkestra-validation`)
-    - `MutatingWebhookConfiguration` (`orkestra-mutation`)
+    - `ValidatingWebhookConfiguration` (`orkestra-admission-validation`)
+    - `MutatingWebhookConfiguration` (`orkestra-admission-mutation`)
 - Uses an `objectSelector` that matches only Orkestra‑owned resources, ensuring it never interferes with unrelated workloads.
 - Blocks deletion of any matched resource—if the webhook fires, ownership is already proven by labels.
 
@@ -51,9 +51,9 @@ The result is a **self‑healing admission control plane**: the webhooks that pr
          ┌──────────────────────────────────────────────────────────────────────────┐
          │                         Webhook Configurations                           │
          │──────────────────────────────────────────────────────────────────────────│
-         │ 1. ValidatingWebhookConfiguration (orkestra-validation)                  │
-         │ 2. MutatingWebhookConfiguration (orkestra-mutation)                      │
-         │ 3. ValidatingWebhookConfiguration (orkestra-delete-protection)           │
+         │ 1. ValidatingWebhookConfiguration (orkestra-admission-validation)                  │
+         │ 2. MutatingWebhookConfiguration (orkestra-admission-mutation)                      │
+         │ 3. ValidatingWebhookConfiguration (orkestra-deletion-protection)           │
          │                                                                          │
          │ All carry labels:                                                        │
          │   app.kubernetes.io/name=orkestra                                        │

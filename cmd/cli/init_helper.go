@@ -7,12 +7,67 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
 
+	"github.com/orkspace/orkestra/examples"
 	"github.com/orkspace/orkestra/pkg/utils"
 )
+
+// packPaths maps CLI pack names to their paths inside the embedded FS.
+// Most packs are top-level directories; rollback is nested under use-cases.
+var packPaths = map[string]string{
+	"beginner":     "beginner",
+	"intermediate": "intermediate",
+	"advanced":     "advanced",
+	"security":     "security",
+	"use-cases":    "use-cases",
+	"rollback":     "use-cases/rollback",
+}
+
+//
+// ──────────────────────────────────────────────────────────────────────────────
+//  Embedded Pack Extraction (default path — no network required)
+// ──────────────────────────────────────────────────────────────────────────────
+
+func extractEmbeddedPack(root, pack string) error {
+	srcPath, ok := packPaths[pack]
+	if !ok {
+		return fmt.Errorf("unknown pack %q — run `ork init --list-packs` to see available packs", pack)
+	}
+
+	targetDir := filepath.Join(root, "examples", pack)
+
+	return fs.WalkDir(examples.FS, srcPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		rel, err := filepath.Rel(srcPath, path)
+		if err != nil {
+			return err
+		}
+
+		dst := filepath.Join(targetDir, rel)
+
+		if d.IsDir() {
+			return os.MkdirAll(dst, 0755)
+		}
+
+		if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+			return err
+		}
+
+		data, err := examples.FS.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		return os.WriteFile(dst, data, 0644)
+	})
+}
 
 //
 // ──────────────────────────────────────────────────────────────────────────────

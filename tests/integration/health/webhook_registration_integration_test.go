@@ -66,7 +66,7 @@ func TestWebhookRegistration_Integration(t *testing.T) {
 
 	vwc, err := client.AdmissionregistrationV1().
 		ValidatingWebhookConfigurations().
-		Get(ctx, "orkestra-validation", metav1.GetOptions{})
+		Get(ctx, "orkestra-admission-validation", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("validating webhook missing: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestWebhookRegistration_Integration(t *testing.T) {
 
 	mwc, err := client.AdmissionregistrationV1().
 		MutatingWebhookConfigurations().
-		Get(ctx, "orkestra-mutation", metav1.GetOptions{})
+		Get(ctx, "orkestra-admission-mutation", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("mutating webhook missing: %v", err)
 	}

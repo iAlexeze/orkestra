@@ -404,13 +404,13 @@ func (ws *WebhookServer) Shutdown(ctx context.Context) {
 
 	kat := ws.katalog
 
-	// Best-effort admission webhook cleanup.
+	// Cleanup admission webhook.
 	cleanupOpts := WebhookCleanupOptions{}
 	if kat.HasMutationRules() {
-		cleanupOpts.mutating = kat.DeletionProtectionCleanupOnShutdown()
+		cleanupOpts.mutating = kat.WebhookCleanupOnShutdown()
 	}
 	if kat.HasValidationRules() {
-		cleanupOpts.validating = kat.DeletionProtectionCleanupOnShutdown()
+		cleanupOpts.validating = kat.WebhookCleanupOnShutdown()
 	}
 	if err := UnregisterAdmissionWebhooks(ctx, ws.kubeClient, cleanupOpts); err != nil {
 		logger.Error().Err(err).Msg("webhook cleanup error")
@@ -435,9 +435,14 @@ func (ws *WebhookServer) Shutdown(ctx context.Context) {
 	}
 
 	// Cleanup the TLS secret when auto-generated certs and cleanup is enabled.
-	if ws.certMgr != nil && kat.DeletionProtectionCleanupOnShutdown() && ws.konfig != nil {
+	shouldCleanupTLS :=
+		kat.WebhookCleanupOnShutdown() ||
+			kat.NamespaceProtectionCleanupOnShutdown() ||
+			kat.DeletionProtectionCleanupOnShutdown()
+
+	if ws.certMgr != nil && shouldCleanupTLS && ws.konfig != nil {
 		ns := ws.konfig.Cluster().Namespace
-		if err := ws.certMgr.DeleteCertificateAndSecret(ctx, ns, "orkestra-tls"); err != nil {
+		if err := ws.certMgr.DeleteCertificateAndSecret(ctx, ns, konfig.DefaultInternalTLSName()); err != nil {
 			logger.Error().Err(err).Msg("tls secret cleanup error")
 		} else {
 			logger.Info().Str("namespace", ns).Msg("tls secret removed on shutdown")

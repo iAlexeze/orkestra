@@ -132,10 +132,10 @@ ork generate bundle --rbac \
 ## Step 3 — Open the Control Center
 ### If running with Helm
 ```bash
-kubectl port-forward svc/orkestra-cc -n orkestra-system 8090:8090 &
+kubectl port-forward svc/orkestra-cc -n orkestra-system 8081:8081 &
 ```
 
-Open **http://localhost:8090** and select **multi-region-demo**. You will see
+Open **http://localhost:8081** and select **multi-region-demo**. You will see
 the `multi-region-app` operatorBox in `started` state — no CRs yet, so no
 reconciles have run.
 
@@ -145,11 +145,11 @@ reconciles have run.
 Open the Control Center in a second terminal:
 
 ```bash
-ork control start             # serves on http://localhost:8090 by default
+ork control start             # serves on http://localhost:8081 by default
 ork control start --port 9090 # or on a custom port
 ```
 
-Open **http://localhost:8090** (or whichever port you passed to `ork control start`).
+Open **http://localhost:8081** (or whichever port you passed to `ork control start`).
 Select **multi-region-demo**. You will see
 the `multi-region-app` operatorBox in `started` state — no CRs yet, so no
 reconciles have run.

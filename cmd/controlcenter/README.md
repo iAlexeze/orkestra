@@ -39,7 +39,7 @@ The Control Center acts as a reverse-proxy aggregator:
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                  Orkestra Control Center                    │
-│                  (Port 8090 by default)                     │
+│                  (Port 8081 by default)                     │
 │                                                             │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
 │  │ Katalog A   │  │ Katalog B   │  │ Katalog C   │          │
@@ -86,13 +86,13 @@ ork control start
 ork control start -u "http://localhost:8080,http://localhost:8082,http://orkestra-prod:8080"
 
 # Custom port
-ork control start -p 8090 -u "http://localhost:8080,http://localhost:8082"
+ork control start -p 8081 -u "http://localhost:8080,http://localhost:8082"
 
 # With debug logging
 ork control start --log-level debug
 ```
 
-The control center will be available at `http://localhost:8090/controlcenter`
+The control center will be available at `http://localhost:8081/controlcenter`
 
 ### Using Helm
 
@@ -106,7 +106,7 @@ controlCenter:
     - http://orkestra-cluster1:8080
     - http://orkestra-cluster2:8080
     - http://orkestra-staging:8080
-  port: 8090
+  port: 8081
   refreshInterval: 10s
   resources:
     requests:
@@ -136,7 +136,7 @@ helm upgrade --install orkestra orkestra/orkestra -f values.yaml
 ```bash
 docker run -d \
   --name orkestra-cc \
-  -p 8090:8090 \
+  -p 8081:8081 \
   ghcr.io/orkspace/orkestra-cc:latest \
   -u "http://host.docker.internal:8080,http://host.docker.internal:8081"
 ```
@@ -148,7 +148,7 @@ docker run -d \
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-u`, `--urls` | `http://localhost:8080` | Comma-separated list of Orkestra runtime URLs |
-| `-p`, `--port` | `8090` | Port to serve the control center on |
+| `-p`, `--port` | `8081` | Port to serve the control center on |
 | `--refresh` | `10s` | Interval for fetching Katalog data from instances |
 | `--log-level` | `info` | Log level (debug, info, warn, error) |
 | `--version` | - | Show version information |
@@ -220,7 +220,7 @@ ork control start -u "http://orkestra-stable:8080,http://orkestra-canary:8080"
 
 | Variable | Description |
 |----------|-------------|
-| `ORK_CC_PORT` | Override the default port (8090) |
+| `ORK_CC_PORT` | Override the default port (8081) |
 | `ORK_CC_REFRESH` | Override refresh interval |
 | `LOG_LEVEL` | Set log level (debug, info, warn, error) |
 
@@ -230,13 +230,13 @@ The Control Center exposes its own health endpoints:
 
 ```bash
 # Health check
-curl http://localhost:8090/controlcenter/health
+curl http://localhost:8081/controlcenter/health
 
 # Readiness probe
-curl http://localhost:8090/controlcenter/ready
+curl http://localhost:8081/controlcenter/ready
 
 # Version info
-curl http://localhost:8090/controlcenter/version
+curl http://localhost:8081/controlcenter/version
 ```
 
 ## Development
@@ -254,7 +254,7 @@ cd orkestra
 go build -o ork ./cmd/orkestra/
 
 # Start the control center
-./ork control start -u "http://localhost:8080" -p 8090
+./ork control start -u "http://localhost:8080" -p 8081
 ```
 
 <!-- ### Running with Hot Reload (using Air)

@@ -181,12 +181,12 @@ kubectl apply -f bundle.yaml
 ### Install Orkestra Helm chart with your image
 
 ```bash
-helm repo add orkestra https://ialexeze.github.io/orkestra
+helm repo add orkestra https://orkspace.github.io/orkestra
 helm install orkestra orkestra/orkestra \
   --set runtime.image.repository=yourregistry/your-operator \
   --set runtime.image.tag=v1.0.0 \
   --namespace orkestra-system \
-  --create-namespace
+  --wait --timeout 120s
 ```
 
 ### Apply the CRD and a custom resource

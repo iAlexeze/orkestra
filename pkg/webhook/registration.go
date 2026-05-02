@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	validatingWebhookConfigName          = "orkestra-validation"
-	mutatingWebhookConfigName            = "orkestra-mutation"
+	validatingWebhookConfigName          = "orkestra-admission-validation"
+	mutatingWebhookConfigName            = "orkestra-admission-mutation"
 	deletionProtectionWebhookConfigName  = "orkestra-deletion-protection"
 	namespaceProtectionWebhookConfigName = "orkestra-namespace-protection"
 

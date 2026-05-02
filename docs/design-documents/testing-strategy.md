@@ -321,7 +321,7 @@ are caught and the test maintenance burden is proportional.
    because only happy paths are exercised. Add error paths and edge cases.
 
 6. **`pkg/kubeclient`** — All the patch and apply helpers can be tested with
-   `fake.NewSimpleClientset()`. No cluster required.
+   `fake.NewClientset()`. No cluster required.
 
 7. **`pkg/orkestra-registry/*`** — 18 sub-packages, all 0%. Each sub-package
    builds resource objects (Deployment, Service, etc.). These are pure builders
@@ -364,7 +364,7 @@ func TestEvaluateRule(t *testing.T) {
 
 ```go
 func TestEnsureCertificate_Idempotent(t *testing.T) {
-    cs := fake.NewSimpleClientset()
+    cs := fake.NewClientset()
     mgr := certmanager.New(cs)
     ctx := context.Background()
 

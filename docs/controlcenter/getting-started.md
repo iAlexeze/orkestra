@@ -12,13 +12,13 @@ ork control start
 
 Defaults:
 
-- Port: `8090`
+- Port: `8081`
 - Runtime URLs: `http://localhost:8080`
 
 Visit:
 
 ```
-http://localhost:8090
+http://localhost:8081
 ```
 
 You will be presented with the login page.
@@ -105,7 +105,7 @@ Shows:
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-p, --port` | `8090` | Port to serve the Control Center on |
+| `-p, --port` | `8081` | Port to serve the Control Center on |
 | `-u, --urls` | `http://localhost:8080` | Comma-separated list of Orkestra runtime URLs |
 | `--refresh` | `10s` | Interval for fetching fresh Katalog data |
 | `--log-level` | `info` | Log level (debug, info, warn, error) |
@@ -116,7 +116,7 @@ Shows:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ORK_CC_PORT` | Override the default port | `8090` |
+| `ORK_CC_PORT` | Override the default port | `8081` |
 | `ORK_CC_REFRESH` | Override refresh interval | `10s` |
 | `LOG_LEVEL` | Set log level | `info` |
 | `IGNORE_DEFAULT` | Do not start with the default runtime URLs | `false` |

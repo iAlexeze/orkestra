@@ -25,9 +25,9 @@ kubectl apply -f 06-full-stack/crd.yaml
 Follow the steps in [here](../kubebuilder-conversion/README.md#steps) to deploy Orkestra with webhook support for admission control.
 
 ```bash
-kubectl port-forward svc/orkestra -n orkestra-system 9090:8090 &  # port-forward to view control center
+kubectl port-forward svc/orkestra -n orkestra-system 9090:8081 &  # port-forward to view control center
 
-# Accessible here: http://localhost:8090
+# Accessible here: http://localhost:8081
 ```
 
 You will see the `advanced use case` Katalog
@@ -407,7 +407,7 @@ kubectl apply -f 06-full-stack/cr.yaml
 
 **Watch the full lifecycle in the Control Center:**
 
-1. **Open:** `http://localhost:8090/controlcenter`
+1. **Open:** `http://localhost:8081/controlcenter`
 2. **Select:** advanced-usecases → full-stack-app
 3. **Click View Resources** (top right) — shows all CR instances
 4. **Click** `my-app` — opens the CR detail page

@@ -9,12 +9,12 @@ import (
 
 func NewFakeKubeclient() *kubeclient.Kubeclient {
 	return &kubeclient.Kubeclient{
-		FakeClientset: fake.NewSimpleClientset(),
+		FakeClientset: fake.NewClientset(),
 	}
 }
 
 func NewFakeKubeclientWithObjects(objects ...runtime.Object) *kubeclient.Kubeclient {
 	return &kubeclient.Kubeclient{
-		FakeClientset: fake.NewSimpleClientset(objects...),
+		FakeClientset: fake.NewClientset(objects...),
 	}
 }

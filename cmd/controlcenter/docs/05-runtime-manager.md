@@ -6,7 +6,7 @@ All configuration is read from the environment at startup by `cc/konfig.go`. The
 
 | Variable | Default | Type | Description |
 |----------|---------|------|-------------|
-| `PORT` | `8090` | string | HTTP listen port |
+| `PORT` | `8081` | string | HTTP listen port |
 | `ORKESTRA_URLS` | `""` | comma-separated | Orkestra runtime URLs to connect to at boot |
 | `REFRESH_INTERVAL` | `15` | seconds (int) | How often to poll each runtime |
 | `LOG_LEVEL` | `info` | string | Log verbosity (debug, info, warn, error) |

@@ -222,3 +222,43 @@ helm uninstall orkestra --namespace orkestra-system
 
 This removes deployments and services.  
 CRDs and CRs remain unless manually removed.
+
+---
+
+## Security Posture
+
+### Minimal production binary
+
+The Orkestra CLI ships in two forms: a **full CLI** (used by developers and CI) and a **runtime binary** (what runs in your cluster).
+
+The runtime binary is built with the `runtime` tag, which strips every command except `run` and `version`:
+
+| Command | Developer CLI | Runtime binary |
+|---------|:---:|:---:|
+| `ork run` | ✓ | ✓ |
+| `ork version` | ✓ | ✓ |
+| `ork generate` | ✓ | — |
+| `ork validate` | ✓ | — |
+| `ork init` | ✓ | — |
+| `ork template` | ✓ | — |
+| `ork diff` | ✓ | — |
+
+**Why this matters:** a compromised container cannot use the binary to generate RBAC bundles, enumerate registered CRDs, scaffold new operators, or exfiltrate Katalog definitions. The attack surface of the in-cluster binary is limited to what the operator actually does at runtime. There is no code generation surface to exploit.
+
+### Explicit, auditable RBAC
+
+Orkestra never auto-creates `ServiceAccount`, `ClusterRole`, or `ClusterRoleBinding` resources. You generate them from your Katalog using `ork generate bundle`, review the output, commit it, and apply it explicitly. Nothing is hidden inside the Helm chart. Every permission your operator has is visible in source control before it reaches the cluster.
+
+### Deletion protection
+
+Every resource the Helm chart creates carries the label `orkestra.io/deletion-protection: "true"`. With `security.deletionProtection.enabled: true` in your Katalog, a `ValidatingWebhookConfiguration` intercepts every DELETE request for any resource bearing that label — including the operator's own Deployment, Service, ServiceAccount, and TLS Secret. Accidental or malicious deletion is blocked at the API server before it reaches etcd.
+
+### Webhook self-healing
+
+The webhook controller watches its own `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration` objects. If either is deleted — accidentally or by an attacker who gained API server access — Orkestra recreates it within the configured sync interval (default 30 seconds). The protection gap is bounded and logged.
+
+> _Event-driven protection - planned_
+
+### TLS — automatic rotation
+
+Orkestra generates its own TLS certificate for webhook traffic and rotates it automatically. To supply your own certificate authority: `--set tls.certFile=/path/to/tls.crt --set tls.keyFile=/path/to/tls.key`.

@@ -130,7 +130,7 @@ kubectl get deployments
 
 # Open the Control Center
 ork control start
-# → localhost:8090
+# → localhost:8081
 ```
 
 The Control Center shows the operator's health, the CR's status, its child

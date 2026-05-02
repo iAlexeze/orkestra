@@ -24,6 +24,7 @@ import (
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/certmanager"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orksecrets "github.com/orkspace/orkestra/pkg/orkestra-registry/secrets"
@@ -47,7 +48,7 @@ func runSecrets(
 		}
 		n, _ := resolver.Resolve(s.Name)
 		if n == "" && s.TLS != nil {
-			n = "orkestra-tls"
+			n = owner.GetName() + "-" + konfig.DefaultWorkloadSecretName()
 		}
 		nsp, _ := resolver.Resolve(s.Namespace)
 		if nsp == "" {
@@ -70,7 +71,7 @@ func runSecrets(
 		name, _ := resolver.Resolve(src.Name)
 		if name == "" && src.TLS != nil {
 			// TLS secrets default to "orkestra-tls" when no name declared
-			name = "orkestra-tls"
+			name = owner.GetName() + "-" + konfig.DefaultWorkloadSecretName()
 		}
 		ns, _ := resolver.Resolve(src.Namespace)
 		if ns == "" {

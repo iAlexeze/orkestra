@@ -66,13 +66,13 @@ func TestWebhookLifecycle_Integration(t *testing.T) {
 
 	if _, err := client.AdmissionregistrationV1().
 		ValidatingWebhookConfigurations().
-		Get(ctx, "orkestra-validation", metav1.GetOptions{}); err != nil {
+		Get(ctx, "orkestra-admission-validation", metav1.GetOptions{}); err != nil {
 		t.Fatalf("validating webhook missing: %v", err)
 	}
 
 	if _, err := client.AdmissionregistrationV1().
 		MutatingWebhookConfigurations().
-		Get(ctx, "orkestra-mutation", metav1.GetOptions{}); err != nil {
+		Get(ctx, "orkestra-admission-mutation", metav1.GetOptions{}); err != nil {
 		t.Fatalf("mutating webhook missing: %v", err)
 	}
 
@@ -82,13 +82,13 @@ func TestWebhookLifecycle_Integration(t *testing.T) {
 
 	if _, err := client.AdmissionregistrationV1().
 		ValidatingWebhookConfigurations().
-		Get(ctx, "orkestra-validation", metav1.GetOptions{}); err == nil {
+		Get(ctx, "orkestra-admission-validation", metav1.GetOptions{}); err == nil {
 		t.Fatal("validating webhook still exists after unregister")
 	}
 
 	if _, err := client.AdmissionregistrationV1().
 		MutatingWebhookConfigurations().
-		Get(ctx, "orkestra-mutation", metav1.GetOptions{}); err == nil {
+		Get(ctx, "orkestra-admission-mutation", metav1.GetOptions{}); err == nil {
 		t.Fatal("mutating webhook still exists after unregister")
 	}
 }

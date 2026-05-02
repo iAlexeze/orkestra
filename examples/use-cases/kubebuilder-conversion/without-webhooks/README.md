@@ -143,10 +143,12 @@ For production, deploy using Helm with the same Katalog:
 
 ```bash
 # Install Orkestra with this Katalog
+helm repo add orkestra https://orkspace.github.io/orkestra
 helm install cronjob-operator orkestra/orkestra \
   --set katalog.configMap=cronjob-katalog \
   --namespace cronjob-system \
-  --create-namespace
+  --create-namespace \
+  --wait --timeout 120s
 
 # Or add the Katalog to an existing Orkestra deployment
 kubectl apply -f katalog-no-webhook.yaml -n orkestra-system
@@ -302,7 +304,7 @@ spec:
 
 ## What you see in the Control Center
 
-Open `http://localhost:8090/controlcenter` after `ork run`.
+Open `http://localhost:8081/controlcenter` after `ork run`.
 
 The CR detail page shows:
 

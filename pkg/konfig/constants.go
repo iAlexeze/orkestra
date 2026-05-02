@@ -51,6 +51,10 @@ const (
 	// HTTPS Port
 	httpsPort      = ":8443"
 	httpsPortInt32 = 8443
+
+	// Secrets
+	defaultInternalTLSSecretName = "orkestra-internal-tls"
+	defaultWorkloadSecretName    = "orkestra-tls"
 )
 
 var (

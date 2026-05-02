@@ -115,7 +115,7 @@ ork run -k katalog2.yaml
 
 # Terminal 3 – Control Center
 cd controlcenter
-go run main.go -u "http://localhost:8080,http://localhost:8081" -p 8090
+go run main.go -u "http://localhost:8080,http://localhost:8081" -p 8081
 ```
 
 ### Debug Mode
@@ -125,7 +125,7 @@ go run main.go -u "http://localhost:8080,http://localhost:8081" -p 8090
 ./orkcc -u "http://localhost:8080" -log-level debug
 
 # Check cached instances
-curl http://localhost:8090/controlcenter/debug/instances
+curl http://localhost:8081/controlcenter/debug/instances
 ```
 
 ## Pull Request Process

@@ -6,8 +6,8 @@
 
 | Configuration | Created when |
 |--------------|--------------|
-| `orkestra-validation` (`ValidatingWebhookConfiguration`) | `HasValidationRules()` |
-| `orkestra-mutation` (`MutatingWebhookConfiguration`) | `HasMutationRules()` |
+| `orkestra-admission-validation` (`ValidatingWebhookConfiguration`) | `HasValidationRules()` |
+| `orkestra-admission-mutation` (`MutatingWebhookConfiguration`) | `HasMutationRules()` |
 | `orkestra-deletion-protection` (`ValidatingWebhookConfiguration`) | `IsDeletionProtectionEnabled()` |
 | `orkestra-namespace-protection` (`ValidatingWebhookConfiguration`) | `IsNamespaceProtectionEnabled()` |
 
