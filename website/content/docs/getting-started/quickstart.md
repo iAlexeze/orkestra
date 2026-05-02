@@ -82,7 +82,7 @@ ork run --katalog ./katalog.yaml
 Orkestra will:
 1. Generate and register the `websites.apps.example.com` CRD
 2. Start the reconciliation controller
-3. Open Control Center at [http://localhost:8090](http://localhost:8090)
+3. Open Control Center at [http://localhost:8081](http://localhost:8081)
 
 ## 5. Create a Website resource
 
@@ -117,7 +117,7 @@ my-site   True    12s
 ```
 
 {{< callout type="tip" title="Control Center" >}}
-Open [http://localhost:8090](http://localhost:8090) to see your `Website` resource in the Control Center UI with live status, events, and child resource details.
+Open [http://localhost:8081](http://localhost:8081) to see your `Website` resource in the Control Center UI with live status, events, and child resource details.
 {{< /callout >}}
 
 ## Next steps

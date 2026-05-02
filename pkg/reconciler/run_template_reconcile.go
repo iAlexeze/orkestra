@@ -212,11 +212,14 @@ func (r *GenericReconciler[PTR]) runTemplateOnDelete(ctx context.Context, resolv
 
 	if t := r.operatorBox.OnDelete; t != nil {
 		if t.Ordered {
-			return r.runOrderedDelete(ctx, kube, resolver, obj, t, guard)
-		}
-		if err := runJobs(ctx, kube, resolver, obj,
-			expandForEachJobs(resolver, t.Jobs), guard); err != nil {
-			return err
+			if err := r.runOrderedDelete(ctx, kube, resolver, obj, t, guard); err != nil {
+				return err
+			}
+		} else {
+			if err := runJobs(ctx, kube, resolver, obj,
+				expandForEachJobs(resolver, t.Jobs), guard); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -227,8 +230,8 @@ func (r *GenericReconciler[PTR]) runTemplateOnDelete(ctx context.Context, resolv
 		}
 	}
 
-	// Namespaces are cluster-scoped resources — Kubernetes GC does not honor
-	// owner references from namespace-scoped owners, so we delete them explicitly.
+	// Namespaces are cluster-scoped and cannot have namespace-scoped owners, so GC
+	// never cleans them up. Always run explicit cleanup regardless of ordered/unordered path.
 	if err := deleteOwnedNamespaces(ctx, kube, resolver, obj, r.operatorBox); err != nil {
 		return fmt.Errorf("namespace cleanup: %w", err)
 	}

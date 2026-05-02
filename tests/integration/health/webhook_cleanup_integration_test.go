@@ -4,11 +4,12 @@ package health_test
 
 import (
 	"context"
+	"os"
 	"testing"
 
-	"github.com/orkspace/orkestra/pkg/health"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/webhook"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -23,15 +24,24 @@ func TestWebhookLifecycle_Integration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to start envtest: %v", err)
 	}
-	defer testEnv.Stop()
+	defer testEnv.Stop() //nolint:errcheck
 
 	client, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		t.Fatalf("failed to create client: %v", err)
 	}
 
-	// Fake registry with one validating + one mutating rule
+	certFile, err := os.CreateTemp(t.TempDir(), "tls-*.crt")
+	if err != nil {
+		t.Fatalf("create cert file: %v", err)
+	}
+	if _, err := certFile.WriteString("FAKECERT"); err != nil {
+		t.Fatalf("write cert: %v", err)
+	}
+	certFile.Close()
+
 	gvr := katalog.GVREntry{
+		Key:        "demo.orkestra.io/v1alpha1/websites",
 		Group:      "demo.orkestra.io",
 		Version:    "v1alpha1",
 		Resource:   "websites",
@@ -39,52 +49,46 @@ func TestWebhookLifecycle_Integration(t *testing.T) {
 	}
 
 	reg := katalog.NewInMemoryAdmissionRegistry()
-	reg.RegisterValidationRules(gvr.Key, &orktypes.ValidationConfig{})
-	reg.RegisterMutationRules(gvr.Key, &orktypes.MutationConfig{})
+	reg.AddValidationGVR(gvr, &orktypes.ValidationConfig{})
+	reg.AddMutationGVR(gvr, &orktypes.MutationConfig{})
 
-	opts := health.WebhookRegistrationOptions{
+	opts := webhook.WebhookRegistrationOptions{
 		ServiceName:      "orkestra",
 		ServiceNamespace: "default",
 		Port:             8443,
 		FailurePolicy:    admissionv1.Ignore,
-		TLSCertFile:      "testdata/tls.crt",
+		TLSCertFile:      certFile.Name(),
 	}
 
-	// Register
-	err = health.RegisterAdmissionWebhooks(ctx, client, reg, opts)
-	if err != nil {
+	if err := webhook.RegisterAdmissionWebhooks(ctx, client, reg, opts); err != nil {
 		t.Fatalf("register failed: %v", err)
 	}
 
-	// Ensure they exist
 	if _, err := client.AdmissionregistrationV1().
 		ValidatingWebhookConfigurations().
-		Get(ctx, "orkestra-validation", metav1.GetOptions{}); err != nil {
+		Get(ctx, "orkestra-admission-validation", metav1.GetOptions{}); err != nil {
 		t.Fatalf("validating webhook missing: %v", err)
 	}
 
 	if _, err := client.AdmissionregistrationV1().
 		MutatingWebhookConfigurations().
-		Get(ctx, "orkestra-mutation", metav1.GetOptions{}); err != nil {
+		Get(ctx, "orkestra-admission-mutation", metav1.GetOptions{}); err != nil {
 		t.Fatalf("mutating webhook missing: %v", err)
 	}
 
-	// Cleanup
-	err = health.UnregisterAdmissionWebhooks(ctx, client)
-	if err != nil {
+	if err := webhook.UnregisterAdmissionWebhooks(ctx, client, webhook.CleanupAllWebhooks()); err != nil {
 		t.Fatalf("cleanup failed: %v", err)
 	}
 
-	// Ensure deletion
 	if _, err := client.AdmissionregistrationV1().
 		ValidatingWebhookConfigurations().
-		Get(ctx, "orkestra-validation", metav1.GetOptions{}); err == nil {
-		t.Fatalf("validating webhook still exists")
+		Get(ctx, "orkestra-admission-validation", metav1.GetOptions{}); err == nil {
+		t.Fatal("validating webhook still exists after unregister")
 	}
 
 	if _, err := client.AdmissionregistrationV1().
 		MutatingWebhookConfigurations().
-		Get(ctx, "orkestra-mutation", metav1.GetOptions{}); err == nil {
-		t.Fatalf("mutating webhook still exists")
+		Get(ctx, "orkestra-admission-mutation", metav1.GetOptions{}); err == nil {
+		t.Fatal("mutating webhook still exists after unregister")
 	}
 }

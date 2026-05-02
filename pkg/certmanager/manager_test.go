@@ -12,7 +12,7 @@ import (
 
 func newManager(t *testing.T) (certmanager.Manager, *fake.Clientset) {
 	t.Helper()
-	cs := fake.NewSimpleClientset()
+	cs := fake.NewClientset()
 	return certmanager.New(cs), cs
 }
 
@@ -63,7 +63,7 @@ func TestEnsureCertificate_UpdatesExisting(t *testing.T) {
 		},
 		Type: corev1.SecretTypeTLS,
 	}
-	cs := fake.NewSimpleClientset(existing)
+	cs := fake.NewClientset(existing)
 	mgr := certmanager.New(cs)
 
 	spec := certmanager.CertificateSpec{
@@ -90,7 +90,7 @@ func TestDeleteCertificateAndSecret(t *testing.T) {
 			Namespace: "orkestra-system",
 		},
 	}
-	cs := fake.NewSimpleClientset(existing)
+	cs := fake.NewClientset(existing)
 	mgr := certmanager.New(cs)
 
 	if err := mgr.DeleteCertificateAndSecret(ctx, "orkestra-system", certmanager.DefaultTLSSecretName); err != nil {

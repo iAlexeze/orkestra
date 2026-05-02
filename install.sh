@@ -266,7 +266,7 @@ print_summary() {
     echo -e "    ork registry push name:v1 ./dir  Push a pattern to the registry"
     echo
     echo -e "  ${BOLD}Control Center:${RESET}"
-    echo -e "    ork control start                Start the web UI (port 8090)"
+    echo -e "    ork control start                Start the web UI (port 8081)"
     echo
     echo -e "  ${BOLD}Documentation:${RESET}"
     echo -e "    https://github.com/${REPO}"

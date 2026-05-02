@@ -179,10 +179,9 @@ kubectl apply -f rbac.yaml
 
 # Deploy Orkestra
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra --namespace orkestra-system
-
-kubectl wait --for=condition=available deployment/orkestra \
-  -n orkestra-system --timeout=60s
+helm install orkestra orkestra/orkestra \
+  --namespace orkestra-system \
+  --wait --timeout 120s
 ```
 
 ### 4. Verify both CRDs are managed
@@ -206,7 +205,7 @@ Expected:
 kubectl apply -f cr.yaml
 
 # portforward to view the control center
-kubectl port-forward svc orkestra-cc 8090:8090 -n orkestra-system &
+kubectl port-forward svc orkestra-cc 8081:8081 -n orkestra-system &
 
 ```
 

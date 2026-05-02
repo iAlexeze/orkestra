@@ -30,14 +30,16 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 	// Admission webhook RBAC (conditional)
 	// ───────────────────────────────────────────────
 	if k.NeedsCertificates() {
-		rules = append(rules, rbacv1.PolicyRule{
-			APIGroups: []string{"admissionregistration.k8s.io"},
-			Resources: []string{
-				"validatingwebhookconfigurations",
-				"mutatingwebhookconfigurations",
-			},
-			Verbs: defaultVerbs,
-		})
+		webhookResources := k.WebhookResources()
+
+		if len(webhookResources) > 0 {
+			rules = append(rules, rbacv1.PolicyRule{
+				APIGroups: []string{"admissionregistration.k8s.io"},
+				Resources: webhookResources,
+				Verbs:     defaultVerbs,
+			})
+		}
+
 		// ───────────────────────────────────────────────
 		// Needs permission to create and manage secret
 		// ───────────────────────────────────────────────
@@ -109,4 +111,31 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 	}
 
 	return rules
+}
+
+// WebhookResources returns the list of admission webhook resources that Orkestra
+// needs to manage when webhooks/certificates are required.
+//
+// Rules:
+//   - validatingwebhookconfigurations is required for deletion protection,
+//     namespace protection, or any validation rules.
+//   - mutatingwebhookconfigurations is required only when mutation rules exist.
+//   - conversion webhooks are handled separately and do not require these resources.
+func (k *Katalog) WebhookResources() []string {
+	var resources []string
+
+	// validatingwebhookconfigurations is needed for:
+	// - deletion protection
+	// - namespace protection
+	// - validation rules (HasValidationRules)
+	if k.IsDeletionProtectionEnabled() || k.IsNamespaceProtectionEnabled() || k.HasValidationRules() {
+		resources = append(resources, "validatingwebhookconfigurations")
+	}
+
+	// mutatingwebhookconfigurations is only needed when mutation rules exist
+	if k.HasMutationRules() {
+		resources = append(resources, "mutatingwebhookconfigurations")
+	}
+
+	return resources
 }

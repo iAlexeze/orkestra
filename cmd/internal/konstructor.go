@@ -117,6 +117,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/queue"
 	"github.com/orkspace/orkestra/pkg/reconciler"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/orkspace/orkestra/pkg/webhook"
 	"k8s.io/client-go/tools/cache"
 )
@@ -183,7 +184,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 
 	var tlsCert, tlsKey string
 	var certMgr certmanager.Manager
-	if kat.NeedsCertificates() {
+	if utils.IsRunningInCluster() {
 		tlsCert, tlsKey, certMgr, err = ensureSecurity(ctx, kfg, kat, kube)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("security setup failed")

@@ -119,7 +119,7 @@ type ValidationRule struct {
 	// Explicit operator form — use when no shorthand covers the comparison.
 	Operator  ConditionOperator `yaml:"operator,omitempty" json:"operator,omitempty"`
 	Value     string            `yaml:"value,omitempty" json:"value,omitempty"`
-	ValueType string            `yaml:"valueType,omitempty"` // "string", "int", "bool"
+	ValueType string            `yaml:"valueType,omitempty"` // "string", "int" or "integer", "float" or "number", "bool" or "boolean"
 }
 
 // ValidationConfig holds all validation rules for a CRD.

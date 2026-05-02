@@ -170,11 +170,12 @@ make release IMAGE=yourregistry/pipeline-operator:v1
 
 kubectl apply -f bundle.yaml
 
-helm repo add orkestra https://ialexeze.github.io/orkestra
+helm repo add orkestra https://orkspace.github.io/orkestra
 helm install orkestra orkestra/orkestra \
   --set runtime.image.repository=yourregistry/pipeline-operator \
   --set runtime.image.tag=v1 \
-  --namespace orkestra-system --create-namespace
+  --namespace orkestra-system \
+  --wait --timeout 120s
 kubectl apply -f crd.yaml
 kubectl apply -f cr.yaml
 ```

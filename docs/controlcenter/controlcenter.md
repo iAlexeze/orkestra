@@ -17,7 +17,7 @@ The Control Center is built into the `ork` CLI, making it instantly available wh
 ### Basic Usage
 
 ```bash
-# Start with default settings (port 8090, single instance on localhost:8080)
+# Start with default settings (port 8081, single instance on localhost:8080)
 ork control start
 
 # Specify a custom port
@@ -27,14 +27,14 @@ ork control start --port 9090
 ork control start --urls "http://localhost:8080,http://localhost:8082,https://orkestra.prod.internal:8080"
 
 # Combine options
-ork control start --port 8090 --urls "http://localhost:8080,http://cluster2:8080" --refresh 30s
+ork control start --port 8081 --urls "http://localhost:8080,http://cluster2:8080" --refresh 30s
 ```
 
 ### Command Line Options
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-p, --port` | `8090` | Port to serve the Control Center on |
+| `-p, --port` | `8081` | Port to serve the Control Center on |
 | `-u, --urls` | `http://localhost:8080` | Comma-separated list of Orkestra runtime URLs |
 | `--refresh` | `10s` | Interval for fetching fresh Katalog data |
 | `--log-level` | `info` | Log level (debug, info, warn, error) |

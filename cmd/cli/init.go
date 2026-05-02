@@ -64,13 +64,24 @@ func initProject(name, pack string, refresh bool) error {
 	fmt.Printf("Initialising %s%s%s using '%s' example pack...\n\n",
 		utils.ColorBold, name, utils.ColorReset, pack)
 
-	version := version.Version // ldflags
+	ver := version.Version // ldflags
 
 	steps := []initStep{
 		{"Creating project folder", func() error { return os.MkdirAll(name, 0755) }},
 		{"Creating examples folder", func() error { return os.MkdirAll(filepath.Join(name, "examples"), 0755) }},
-		{"Downloading example pack", func() error { return downloadExamplePack(name, pack, version, refresh) }},
-		{"Extracting example pack", func() error { return extractExamplePack(name, pack, version) }},
+	}
+
+	if refresh {
+		// Fetch from GitHub Releases and cache locally.
+		steps = append(steps,
+			initStep{"Downloading example pack", func() error { return downloadExamplePack(name, pack, ver, refresh) }},
+			initStep{"Extracting example pack", func() error { return extractExamplePack(name, pack, ver) }},
+		)
+	} else {
+		// Use the copy baked into the CLI at build time — instant, no network required.
+		steps = append(steps,
+			initStep{"Extracting example pack", func() error { return extractEmbeddedPack(name, pack) }},
+		)
 	}
 
 	if err := runSteps(steps); err != nil {
@@ -78,17 +89,17 @@ func initProject(name, pack string, refresh bool) error {
 	}
 
 	fmt.Printf("\n%s✅ Project ready: %s%s\n\n", utils.ColorGreen, name, utils.ColorReset)
-	fmt.Println("Next steps:")
+	fmt.Printf("Your examples are in: %s/examples/%s/\n\n", name, pack)
+	fmt.Println("Each example folder contains a README with step-by-step instructions.")
 	fmt.Println()
 	fmt.Printf("  cd %s\n", name)
-	fmt.Printf("  kubectl apply -f examples/%s/01-hello-website/crd.yaml\n", pack)
-	fmt.Printf("  ork run --katalog examples/%s/01-hello-website/katalog.yaml\n", pack)
+	fmt.Printf("  ls examples/%s/\n", pack)
 	fmt.Println()
-	fmt.Println("Apply the CR:")
-	fmt.Printf("  kubectl apply -f examples/%s/01-hello-website/cr.yaml\n", pack)
+	fmt.Println("To run any example:")
+	fmt.Printf("  ork run --katalog examples/%s/<example>/katalog.yaml\n", pack)
 	fmt.Println()
-	fmt.Println("View on Control Center → localhost:8090")
-	fmt.Printf("  ork control start\n\n")
+	fmt.Println("Control Center:")
+	fmt.Printf("  ork control start    # opens localhost:8081\n\n")
 
 	return nil
 }
@@ -123,7 +134,7 @@ func init() {
 	initCmd.Flags().StringP("pack", "p", "", "Example pack to initialize (default: beginner)")
 	initCmd.Flags().BoolP("list-packs", "l", false, "List available example packs")
 	initCmd.Flags().Bool("clear-cache", false, "Clear cached example packs")
-	initCmd.Flags().Bool("refresh-cache", false, "Force re-download of example pack")
+	initCmd.Flags().Bool("refresh-cache", false, "Fetch pack from GitHub Releases instead of using the built-in copy")
 
 	// Shadow global flags so they don't appear under `ork init`
 	initCmd.Flags().Bool("debug", false, "")

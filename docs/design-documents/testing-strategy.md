@@ -214,52 +214,56 @@ requires Orkestra's reconcile loop to run against a real API server.
 
 ---
 
-## The katalog approach in pkg/note — evaluation
+## The fixture pattern
 
-`pkg/note/example/` contains a live Katalog (`katalog.yaml`) and a companion
-CR (`cr.yaml`) that exercise every Kubernetes-family note by applying them to
-real child objects and inspecting the status fields. This is a **good pattern**
-for the specific problem it solves, but it is not the right pattern for all
-packages and should not be generalised.
+Certain packages cannot be meaningfully tested with unit tests because their
+logic only makes sense against a real API server. For these packages, a `fixture/`
+directory contains a Katalog, CRD, and CR that exercise the package end-to-end.
+Each fixture is run in CI on a kind cluster when the relevant package changes.
 
-### Why it exists
+### When to use a fixture
 
-The Kubernetes-family notes (`kube_replica.go`, `kube_container.go`,
-`kube_job.go`, `kube_service.go`, `kubernetes.go`) take `map[string]interface{}`
-from the dynamic client as input. Unit tests construct these maps by hand. Real
-API responses differ from hand-crafted maps in subtle ways: extra metadata fields,
-different numeric types after JSON round-tripping, absent optional fields. The
-katalog example catches regressions that unit tests cannot because it exercises
-the full path from API server → dynamic client → `map[string]interface{}` → note
-function → status update.
+Use a `fixture/` directory (not unit tests) when the package:
+- Applies resources to a Kubernetes API server (`run_*` functions)
+- Consumes raw API responses whose shape differs subtly from hand-crafted maps
+  (kubernetes-family notes: `kube_replica.go`, `kube_container.go`, etc.)
 
-### When it is appropriate
+### When NOT to use a fixture
 
-Use a katalog-style integration fixture for any note or function that:
-1. Consumes data originating from a live Kubernetes object, AND
-2. Has tripped over the hand-crafted-map vs real-API-response gap before.
+Do not add a fixture for pure logic, Kubernetes-wrapping, or adapter packages.
+Unit tests with fake clients cover those at lower cost and without cluster
+dependency.
 
-This is currently only true of the kubernetes-family notes. Pure-logic notes
-(`math`, `strings`, `conditional`, `cron`, `random`, `collections`) do not need
-it — unit tests are sufficient and complete for them.
+### Current fixtures
 
-### When it is not appropriate
+| Package | Fixture path | CI job | `make` command |
+|---|---|---|---|
+| `pkg/note` | `pkg/note/fixture/` | `fixture-note` | `make test-fixture-note` |
+| `pkg/reconciler` | `pkg/reconciler/fixture/` | `fixture-reconciler` | `make test-fixture-reconciler` |
 
-Do not replicate this pattern for packages whose core logic is not note-function
-evaluation. The katalog approach is a niche e2e tool, not a general-purpose
-integration test framework. For packages like `pkg/certmanager`, `pkg/webhook`,
-or `pkg/queue`, fake clients and `envtest` cover the equivalent gap at lower cost
-and without a real cluster dependency.
+### Adding a fixture for a new package
+
+1. Create `pkg/<package>/fixture/` with `katalog.yaml`, `crd.yaml`, `cr.yaml`, `cleanup.sh`, `README.md`
+2. Add a `test-fixture-<package>` target in the root `Makefile` following the pattern of `test-fixture-reconciler`
+3. Add a `fixture-<package>` job in `.github/workflows/validate-pr.yml` with path filter `pkg/<package>/`
+4. Document which code paths the fixture covers in its `README.md`
+
+### Path filtering
+
+Fixture jobs are gated on path filters — they only run when the relevant
+package or its fixture directory changes. This keeps every-PR CI fast while
+still catching regressions on affected code.
 
 ### Summary
 
 | Package type | Right test vehicle |
 |---|---|
 | Pure-logic notes | Unit tests only |
-| Kubernetes-family notes | Unit tests + katalog example (e2e) |
+| Kubernetes-family notes | Unit tests + `pkg/note/fixture/` |
+| `run_*` resource types | `pkg/reconciler/fixture/` |
 | Kubernetes-wrapping packages | Unit tests with fake client |
-| Cluster-dependent packages | `envtest` in tests/integration/ |
-| Full operator behaviour | tests/e2e/ scripts |
+| Cluster-dependent packages | `envtest` in `tests/integration/` |
+| Full operator behaviour | E2E workflows in `.github/workflows/e2e-*.yml` |
 
 ---
 
@@ -317,7 +321,7 @@ are caught and the test maintenance burden is proportional.
    because only happy paths are exercised. Add error paths and edge cases.
 
 6. **`pkg/kubeclient`** — All the patch and apply helpers can be tested with
-   `fake.NewSimpleClientset()`. No cluster required.
+   `fake.NewClientset()`. No cluster required.
 
 7. **`pkg/orkestra-registry/*`** — 18 sub-packages, all 0%. Each sub-package
    builds resource objects (Deployment, Service, etc.). These are pure builders
@@ -360,7 +364,7 @@ func TestEvaluateRule(t *testing.T) {
 
 ```go
 func TestEnsureCertificate_Idempotent(t *testing.T) {
-    cs := fake.NewSimpleClientset()
+    cs := fake.NewClientset()
     mgr := certmanager.New(cs)
     ctx := context.Background()
 

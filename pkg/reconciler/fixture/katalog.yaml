@@ -1,0 +1,167 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: reconciler-probe
+  author: orkspace
+  version: 0.1.0
+  description: >
+    ReconcilerProbe — living integration fixture for all reconciler run_* resource types.
+    Each block exercises a distinct run_* code path so any regression in template
+    rendering, apply logic, or status propagation surfaces as a visible failure.
+    See pkg/reconciler/fixture/README.md for how to add coverage for a new run_*.
+
+security:
+  webhooks:
+    admission:
+      enabled: true     # Requires running in cluster for apply-time validation/mutation
+
+spec:
+  crds:
+    reconciler-probe:
+      apiTypes:
+        group: reconciler.orkestra.io
+        version: v1alpha1
+        kind: ReconcilerProbe
+        plural: reconcilerprobes
+      workers: 1
+      resync: 30s
+
+      # ── Validation ────────────────────────────────────────────────────────
+      # run_validations.go
+      validation:
+        rules:
+          - field: spec.replicas
+            operator: gt
+            value: "0"
+            message: "replicas must be at least 1"
+          - field: spec.tier
+            operator: in
+            value: "basic,premium"
+            message: "tier must be basic or premium"
+
+      # ── Mutation ──────────────────────────────────────────────────────────
+      # run_mutations.go
+      mutation:
+        rules:
+          - field: spec.image
+            default: "nginx:stable"
+
+      operatorBox:
+        default: true
+
+        # ── ServiceAccount ─────────────────────────────────────────────────
+        # run_serviceaccounts.go
+        onCreate:
+          namespaces:
+            - name: "{{ .metadata.name }}-ns"
+              reconcile: true
+          serviceAccounts:
+            - name: "{{ .metadata.name }}-sa"
+              reconcile: true
+
+          # ── ConfigMap ───────────────────────────────────────────────────
+          # run_configmaps.go
+          configMaps:
+            - name: "{{ .metadata.name }}-config"
+              namespace: "{{ .metadata.name }}-ns"
+              reconcile: true
+              data:
+                PORT: "{{ .spec.port }}"
+                TIER: "{{ .spec.tier }}"
+                IMAGE: "{{ .spec.image }}"
+
+          # ── Secret ──────────────────────────────────────────────────────
+          # run_secrets.go + run_secrets_once.go (once: true)
+          secrets:
+            - name: "{{ .metadata.name }}-creds"
+              namespace: "{{ .metadata.name }}-ns"
+              once: true
+              data:
+                token: "{{ randomAlphanumeric 32 }}"
+                api-key: "{{ randomAlphanumeric 16 }}"
+
+          # ── Service ─────────────────────────────────────────────────────
+          # run_services.go
+          services:
+            - name: "{{ .metadata.name }}-svc"
+              namespace: "{{ .metadata.name }}-ns"
+              port: "80"
+              targetPort: "{{ .spec.port }}"
+              reconcile: true
+
+          # ── CronJob ─────────────────────────────────────────────────────
+          # run_cronjobs.go
+          cronJobs:
+            - name: "{{ .metadata.name }}-cron"
+              namespace: "{{ .metadata.name }}-ns"
+              schedule: "{{ .spec.schedule }}"
+              image: alpine:3.19
+              command: ["/bin/sh", "-c", "echo probe-cron-ok"]
+              reconcile: true
+
+          # ── Job (one-shot) ───────────────────────────────────────────────
+          # run_jobs.go
+          jobs:
+            - name: "{{ .metadata.name }}-init"
+              image: alpine:3.19
+              command: ["/bin/sh", "-c", "echo probe-job-ok"]
+              namespace: "{{ .metadata.name }}-ns"
+
+          # ── Deployment ──────────────────────────────────────────────────
+          # run_deployments.go
+          deployments:
+            - name: "{{ .metadata.name }}-app"
+              namespace: "{{ .metadata.name }}-ns"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: "{{ .spec.port }}"
+              serviceAccountName: "{{ .metadata.name }}-sa"
+              reconcile: true
+              env:
+                PORT:
+                  configMapKeyRef:
+                    name: "{{ .metadata.name }}-config"
+                    key: PORT
+
+          # ── Conditional resource (when:) ─────────────────────────────────
+          # run_deployments.go + conditions.go
+          # Only created when tier=premium — tests evaluateConditions path.
+            - name: "{{ .metadata.name }}-premium"
+              namespace: "{{ .metadata.name }}-ns"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+              when:
+                - field: spec.tier
+                  equals: premium
+        
+        onDelete:
+          ordered: true
+          groups:
+            - deployments:
+            - cronJobs:
+            - jobs:
+            - services:
+            - secrets:
+            - configMaps:
+            - serviceAccounts:
+            - namespaces:
+
+        # ── Status ──────────────────────────────────────────────────────────
+        # run_status.go
+        status:
+          fields:
+            - path: phase
+              value: >
+                {{ if eq .spec.tier "premium" }}Premium{{ else }}Basic{{ end }}
+            - path: tier
+              value: "{{ .spec.tier }}"
+            - path: image
+              value: "{{ .spec.image }}"
+            - path: replicas
+              value: "{{ .spec.replicas }}"
+            - path: configReady
+              value: "{{ resourceExists .children.configmap }}"
+            - path: secretCreated
+              value: "{{ resourceExists .children.secret }}"

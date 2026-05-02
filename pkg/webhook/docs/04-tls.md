@@ -35,11 +35,11 @@ When a CRD declares `conversion.updateCRD: true`, `ensureSecurity` patches the C
 
 ## Cert cleanup on shutdown
 
-When `cleanupOnShutdown: true` is set in the Katalog and certs were auto-generated (not user-provided), `Shutdown()` deletes the `orkestra-tls` Secret:
+When `cleanupOnShutdown: true` is set in the Katalog and certs were auto-generated (not user-provided), `Shutdown()` deletes the `orkestra-internal-tls` Secret:
 
 ```go
 if ws.certMgr != nil && kat.DeletionProtectionCleanupOnShutdown() {
-    ws.certMgr.DeleteCertificateAndSecret(ctx, namespace, "orkestra-tls")
+    ws.certMgr.DeleteCertificateAndSecret(ctx, namespace, "orkestra-internal-tls")
 }
 ```
 

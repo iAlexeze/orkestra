@@ -140,7 +140,7 @@ spec:
             - -u
             - "http://orkestra-runtime:8080"
             - -p
-            - "8090"
+            - "8081"
             - --refresh
             - "10s"
             - --log-level
@@ -150,7 +150,7 @@ spec:
               value: "info"
           ports:
             - name: http
-              containerPort: 8090
+              containerPort: 8081
               protocol: TCP
           livenessProbe:
             httpGet:
@@ -201,7 +201,7 @@ spec:
     app.kubernetes.io/component: control-center
   ports:
     - name: http
-      port: 8090
+      port: 8081
       targetPort: http
       protocol: TCP
   type: ClusterIP
@@ -232,4 +232,4 @@ spec:
 #           service:
 #             name: orkestra-cc
 #             port:
-#               number: 8090
+#               number: 8081

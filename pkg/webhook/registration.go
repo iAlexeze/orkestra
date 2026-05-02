@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	validatingWebhookConfigName          = "orkestra-validation"
-	mutatingWebhookConfigName            = "orkestra-mutation"
+	validatingWebhookConfigName          = "orkestra-admission-validation"
+	mutatingWebhookConfigName            = "orkestra-admission-mutation"
 	deletionProtectionWebhookConfigName  = "orkestra-deletion-protection"
 	namespaceProtectionWebhookConfigName = "orkestra-namespace-protection"
 
@@ -52,6 +52,12 @@ type WebhookRegistrationOptions struct {
 type WebhookCleanupOptions struct {
 	mutating   bool
 	validating bool
+}
+
+// CleanupAllWebhooks returns a WebhookCleanupOptions that removes both
+// ValidatingWebhookConfiguration and MutatingWebhookConfiguration.
+func CleanupAllWebhooks() WebhookCleanupOptions {
+	return WebhookCleanupOptions{mutating: true, validating: true}
 }
 
 // admissionRegistryReader is the subset of katalog.AdmissionRegistry used here.

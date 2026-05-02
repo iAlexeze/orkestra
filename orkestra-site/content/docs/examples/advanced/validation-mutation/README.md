@@ -85,14 +85,14 @@ kubectl logs -n orkestra -l app=orkestra-runtime -f
 Look for:
 ```
 {"level":"info","message":"admission webhooks: /validate and /mutate registered on :8443"}
-{"level":"info","crds":1,"config":"orkestra-validation","message":"webhook: ValidatingWebhookConfiguration registered"}
-{"level":"info","crds":1,"config":"orkestra-mutation","message":"webhook: MutatingWebhookConfiguration registered"}
+{"level":"info","crds":1,"config":"orkestra-admission-validation","message":"webhook: ValidatingWebhookConfiguration registered"}
+{"level":"info","crds":1,"config":"orkestra-admission-mutation","message":"webhook: MutatingWebhookConfiguration registered"}
 ```
 
 Verify the webhook configurations were created:
 ```bash
-kubectl get validatingwebhookconfigurations orkestra-validation
-kubectl get mutatingwebhookconfigurations orkestra-mutation
+kubectl get validatingwebhookconfigurations orkestra-admission-validation
+kubectl get mutatingwebhookconfigurations orkestra-admission-mutation
 ```
 
 ---
@@ -300,7 +300,7 @@ kubectl delete -f cr-valid.yaml
 kubectl delete -f cr-missing-defaults.yaml
 kubectl delete -f cr-warn-only.yaml
 kubectl delete -f deployment.yaml
-kubectl delete validatingwebhookconfigurations orkestra-validation
-kubectl delete mutatingwebhookconfigurations orkestra-mutation
+kubectl delete validatingwebhookconfigurations orkestra-admission-validation
+kubectl delete mutatingwebhookconfigurations orkestra-admission-mutation
 kubectl delete -f website-crd.yaml
 ```

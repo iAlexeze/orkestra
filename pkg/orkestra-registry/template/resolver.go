@@ -212,6 +212,10 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 	if resolved.Annotations, err = r.ResolveLabels(src.Annotations); err != nil {
 		return resolved, fmt.Errorf("deployment.annotations: %w", err)
 	}
+	// service account name
+	if resolved.ServiceAccountName, err = r.Resolve(src.ServiceAccountName); err != nil {
+		return resolved, fmt.Errorf("deployment.serviceAccountName: %w", err)
+	}
 
 	// Env resolution
 	if len(src.Env) > 0 {
@@ -307,6 +311,11 @@ func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSour
 	}
 	if resolved.Namespace, err = r.Resolve(ns); err != nil {
 		return resolved, fmt.Errorf("replicaset.namespace: %w", err)
+	}
+
+	// service account name
+	if resolved.ServiceAccountName, err = r.Resolve(src.ServiceAccountName); err != nil {
+		return resolved, fmt.Errorf("replicaet.serviceAccountName: %w", err)
 	}
 
 	// Labels
@@ -471,6 +480,10 @@ func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.
 	}
 	if resolved.Namespace, err = r.Resolve(ns); err != nil {
 		return resolved, fmt.Errorf("job.namespace: %w", err)
+	}
+	// service account name
+	if resolved.ServiceAccountName, err = r.Resolve(src.ServiceAccountName); err != nil {
+		return resolved, fmt.Errorf("job.serviceAccountName: %w", err)
 	}
 
 	// Each command element resolved independently
@@ -693,6 +706,10 @@ func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (o
 	}
 	if resolved.Namespace, err = r.Resolve(ns); err != nil {
 		return resolved, fmt.Errorf("cronjob.namespace: %w", err)
+	}
+	// service account name
+	if resolved.ServiceAccountName, err = r.Resolve(src.ServiceAccountName); err != nil {
+		return resolved, fmt.Errorf("cronjob.serviceAccountName: %w", err)
 	}
 
 	for i, c := range src.Command {
@@ -935,6 +952,10 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 	}
 	if resolved.Namespace, err = r.Resolve(ns); err != nil {
 		return resolved, fmt.Errorf("statefulset.namespace: %w", err)
+	}
+	// service account name
+	if resolved.ServiceAccountName, err = r.Resolve(src.ServiceAccountName); err != nil {
+		return resolved, fmt.Errorf("statefulset.serviceAccountName: %w", err)
 	}
 
 	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {

@@ -290,3 +290,14 @@ func OrkestraBaseLabels() map[string]string {
 func (k *Konfig) OrkestraResourceLabels() map[string]string {
 	return orkestraResourceLabels
 }
+
+// DefaultInternalTLSName returns the default name for Orkestra's internal TLS secret.
+func DefaultInternalTLSName() string {
+	return defaultInternalTLSSecretName
+}
+
+// DefaultWorkloadSecretName returns the base name used for generated workload secrets.
+// The caller appends the CR's name to form the final secret name.
+func DefaultWorkloadSecretName() string {
+	return defaultWorkloadSecretName
+}

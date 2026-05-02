@@ -1,4 +1,4 @@
-.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet certs docs docs-build docs-serve site site-sync site-build site-start hugo-install generate-notes
+.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet certs docs docs-build docs-serve site site-sync site-build site-start hugo-install generate-notes test-fixture-note test-fixture-reconciler
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
@@ -161,11 +161,18 @@ test-race:
 	go test ./pkg/... -short -race -count=1
 
 # ── Integration tests ─────────────────────────────────────────────────────────
-# Requires a reachable Kubernetes cluster (from KUBECONFIG).
+# Uses envtest (embedded API server) — no external cluster required.
+# setup-envtest must be installed: go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 # Tests are guarded by //go:build integration so they never run during test-unit.
+ENVTEST_K8S_VERSION ?= 1.32.x
+ENVTEST_BIN_DIR     ?= $(HOME)/.envtest-bins
+
+KUBEBUILDER_ASSETS ?= $(shell setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(ENVTEST_BIN_DIR) -p path 2>/dev/null)
+
 test-integration:
-	@echo "Running integration tests..."
-	go test ./pkg/... ./tests/integration/... -v -tags=integration -count=1
+	@echo "Running integration tests (KUBEBUILDER_ASSETS=$(KUBEBUILDER_ASSETS))..."
+	KUBEBUILDER_ASSETS=$(KUBEBUILDER_ASSETS) \
+	go test ./tests/integration/... -v -tags=integration -count=1 -timeout=120s
 
 # ── Full suite ────────────────────────────────────────────────────────────────
 test-all: test-unit test-integration
@@ -183,6 +190,47 @@ test-coverage-text:
 	@echo "Coverage summary..."
 	go test ./pkg/... -coverprofile=coverage.out -covermode=atomic -count=1
 	@go tool cover -func=coverage.out | tail -5
+
+# ── Fixture tests (kind cluster required) ────────────────────────────────────
+# Each target spins up a dedicated kind cluster, installs Orkestra via Helm,
+# applies the fixture katalog + CR, asserts resources exist, then tears down.
+# Requires: kind, helm, kubectl, ork — all on $PATH.
+
+FIXTURE_NOTE_CLUSTER      := orkestra-note-fixture
+FIXTURE_RECONCILER_CLUSTER := orkestra-reconciler-fixture
+HELM_CHART                := ./charts/orkestra
+
+test-fixture-note:
+	@echo "── Note fixture test ──────────────────────────────────────────"
+	@bash scripts/setup-kind.sh $(FIXTURE_NOTE_CLUSTER)
+	@kubectl apply -f pkg/note/fixture/crd.yaml
+	@ork generate bundle --katalog pkg/note/fixture/katalog.yaml | kubectl apply -f -
+	@helm install orkestra $(HELM_CHART) --namespace default --wait --timeout 120s
+	@kubectl apply -f pkg/note/fixture/cr.yaml
+	@kubectl wait reconcilerprobe/my-probe --for=jsonpath='{.status.phase}'=Ready \
+	    --timeout=120s 2>/dev/null || kubectl wait noteprobe/my-probe \
+	    --for=condition=Ready=true --timeout=120s || \
+	    kubectl get noteprobe my-probe -o yaml
+	@echo "✅ Note fixture passed"
+	@bash scripts/setup-kind.sh delete $(FIXTURE_NOTE_CLUSTER)
+
+test-fixture-reconciler:
+	@echo "── Reconciler fixture test ────────────────────────────────────"
+	@bash scripts/setup-kind.sh $(FIXTURE_RECONCILER_CLUSTER)
+	@kubectl apply -f pkg/reconciler/fixture/crd.yaml
+	@ork generate bundle --katalog pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
+	@helm install orkestra $(HELM_CHART) --namespace default --wait --timeout 120s
+	@kubectl apply -f pkg/reconciler/fixture/cr.yaml
+	@kubectl wait reconcilerprobe/probe --for=jsonpath='{.status.tier}'=premium \
+	    --timeout=120s || kubectl get reconcilerprobe probe -o yaml
+	@kubectl get deployment probe-app
+	@kubectl get service probe-svc
+	@kubectl get configmap probe-config
+	@kubectl get serviceaccount probe-sa
+	@kubectl get cronjob probe-cron
+	@kubectl get deployment probe-premium
+	@echo "✅ Reconciler fixture passed"
+	@bash scripts/setup-kind.sh delete $(FIXTURE_RECONCILER_CLUSTER)
 
 # ── Docs (Hugo) ───────────────────────────────────────────────────────────────
 # The Hugo site lives in website/ and renders the docs/ directory.

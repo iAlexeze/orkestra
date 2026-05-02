@@ -209,6 +209,9 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, staticReplicas int, ownerNam
 	for _, a := range src.Annotations {
 		spec.Annotations[a.Key] = a.Value
 	}
+	for _, a := range src.NodeSelector {
+		spec.NodeSelector[a] = a
+	}
 
 	for k, v := range src.Env {
 		spec.Env[k] = v
@@ -259,6 +262,8 @@ func buildReplicaSet(owner domain.Object, spec ResolvedReplicaSetSpec, namespace
 					Labels: spec.Labels,
 				},
 				Spec: corev1.PodSpec{
+					ServiceAccountName: spec.ServiceAccountName,
+					NodeSelector:       spec.NodeSelector,
 					Containers: []corev1.Container{
 						{
 							Name:  spec.Name,

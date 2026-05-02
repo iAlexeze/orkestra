@@ -70,7 +70,7 @@ Orkestra creates the Deployment and Service, sets owner references, writes statu
 ```bash
 ork control start
 
-# → localhost:8090
+# → localhost:8081
 ```
 
 **Your CRD is enough. The rest is just a Katalog.**
@@ -129,7 +129,7 @@ In another terminal, run:
 ```bash
 ork control start
 
-# → localhost:8090
+# → localhost:8081
 ```
 
 For production, deploy with Helm:
@@ -245,7 +245,7 @@ mutation:
       default: "8080"
 ```
 
-With `ENABLE_ADMISSION_WEBHOOK=true`, these intercept `kubectl apply` synchronously at the API server. Without it, they run on every reconcile. One declaration. Two enforcement points.
+With `ENABLE_ADMISSION_WEBHOOK=true`, or `security.webhooks.admission.enabled=true` these intercept `kubectl apply` synchronously at the API server. Without it, they run on every reconcile. One declaration. Two enforcement points.
 
 ---
 
