@@ -17,6 +17,11 @@ on:
         required: false
         type: string
         default: 'ghcr.io/orkspace'
+      get_orkestra:
+        description: 'Orkestra installation script for Linux'
+        required: false
+        type: string
+        default: 'get.orkestra.sh'
       ork:
         description: 'Shorthand for orkestra'
         required: false
@@ -134,7 +139,7 @@ jobs:
           brew tap ${{ inputs.brew_tap }} && brew install ork orkcc
 
           # Linux
-          curl -sSL https://raw.githubusercontent.com/${{ inputs.github_repo }}/main/install.sh | bash
+          curl -sSL ${{ inputs.get_orkestra }} | bash
 
           # Windows (ZIP)
           # Download ork_windows_amd64.zip and orkcc_windows_amd64.zip from release assets
