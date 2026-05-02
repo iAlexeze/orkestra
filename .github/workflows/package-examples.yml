@@ -43,6 +43,10 @@ jobs:
           tar -czf "dist/examples_use-cases_${TAG}.tar.gz" \
             -C examples/use-cases .
 
+          # Security
+          tar -czf "dist/examples_security_${TAG}.tar.gz" \
+            -C examples/security .
+
           echo "📦 Example packs packaged"
 
       - name: Upload example packs
