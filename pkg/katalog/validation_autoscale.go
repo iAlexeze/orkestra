@@ -66,7 +66,7 @@ func (k *Katalog) validateAutoscaleProfile() error {
 		}
 
 		// Rule 2: profile must be recognized
-		if !isValidProfile(profile) {
+		if !isValidAutoscaleProfile(profile) {
 			return fmt.Errorf("unknown autoscale profile: %q", profile)
 		}
 
@@ -93,14 +93,14 @@ func autoscaleIsProfileOnly(spec *orktypes.AutoscaleSpec) bool {
 	return true
 }
 
-// isValidProfile returns true if the profile name is one of the supported presets.
-func isValidProfile(p string) bool {
+// isValidAutoscaleProfile returns true if the profile name is one of the supported presets.
+func isValidAutoscaleProfile(p string) bool {
 	switch p {
-	case string(Burst),
-		string(Steady),
-		string(Batch),
-		string(LatencySensitive),
-		string(CostOptimized):
+	case string(AutoscaleBurst),
+		string(AutoscaleSteady),
+		string(AutoscaleBatch),
+		string(AutoscaleLatencySensitive),
+		string(AutoscaleCostOptimized):
 		return true
 	default:
 		return false

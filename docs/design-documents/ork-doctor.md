@@ -68,8 +68,9 @@ ENVIRONMENT=production        # ork:cfg → ConfigMap
 MAX_CONNECTIONS=100           # ork:cfg → ConfigMap
 ```
 
-The `# ork:cfg` comment on the same line is the only convention the developer
-needs to learn. Without it: Secret. With it: ConfigMap.
+>[!Important]
+>The `# ork:cfg` comment on the same line is the only convention the developer
+>needs to learn. Without it: Secret. With it: ConfigMap.
 
 The bundle command reads the `.env` at generation time, splits the variables,
 and produces:
@@ -112,6 +113,7 @@ Orkestra will create:
   PDB            minAvailable: 1
 
 Run 'ork doctor init' to generate .orkestra/katalog.yaml
+Run with --no-secure to skip deletion protection (development mode)
 Run with --no-ha to skip HPA and PDB (development mode)
 ```
 
@@ -132,6 +134,7 @@ Generates `.orkestra/katalog.yaml` from what was found.
 
 ```bash
 ork doctor init
+ork doctor init --no-secure    # skip deletion protection
 ork doctor init --no-ha        # skip HPA and PDB
 ork doctor init --name my-app  # override project name
 ```
@@ -156,6 +159,13 @@ apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: my-app
+  version: latest     # Modify
+  description: Orkestra HA (if enabled) deployment for my-app
+
+# Added except in --no-secure
+security:
+  deletionProtection:
+    enabled: true
 
 spec:
   crds:
@@ -174,7 +184,7 @@ spec:
         onReconcile:
           when:
             - field: spec.image
-              operator: exists
+              exists: true
 
           deployments:
             - name: "{{ .metadata.name }}"
@@ -185,6 +195,7 @@ spec:
                     name: my-app-secrets
                 - configMapRef:
                     name: my-app-config
+              resourceProfile: "{{ .spec.resourceProfile | default burst }}"
               reconcile: true
 
           services:
@@ -200,7 +211,7 @@ spec:
               reconcile: true
               when:
                 - field: spec.host
-                  operator: exists
+                  exists: true
 
           hpas:
             - name: "{{ .metadata.name }}-hpa"
@@ -220,13 +231,13 @@ spec:
               value: "Pending"
               when:
                 - field: spec.image
-                  operator: notExists
+                  notExists: true
 
             - path: phase
               value: "Deploying"
               when:
                 - field: spec.image
-                  operator: exists
+                  exists: true
                 - field: "{{ replicasReady .children.deployment }}"
                   equals: "false"
 
@@ -240,7 +251,7 @@ spec:
               value: "https://{{ .spec.host }}"
               when:
                 - field: spec.host
-                  operator: exists
+                  exists: true
 
             - path: image
               value: "{{ .spec.image }}"

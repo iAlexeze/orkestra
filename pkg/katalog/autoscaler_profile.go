@@ -31,11 +31,11 @@ import (
 type AutoscaleProfile string
 
 const (
-	Burst            AutoscaleProfile = "burst"
-	Steady           AutoscaleProfile = "steady"
-	Batch            AutoscaleProfile = "batch"
-	LatencySensitive AutoscaleProfile = "latency-sensitive"
-	CostOptimized    AutoscaleProfile = "cost-optimized"
+	AutoscaleBurst            AutoscaleProfile = "burst"
+	AutoscaleSteady           AutoscaleProfile = "steady"
+	AutoscaleBatch            AutoscaleProfile = "batch"
+	AutoscaleLatencySensitive AutoscaleProfile = "latency-sensitive"
+	AutoscaleCostOptimized    AutoscaleProfile = "cost-optimized"
 )
 
 // ApplyAutoscalerProfile expands a named autoscale profile into a complete
@@ -45,19 +45,19 @@ const (
 func ApplyAutoscalerProfile(profile string, baseline orktypes.AutoscaleBaseline) (*orktypes.AutoscaleSpec, error) {
 	switch AutoscaleProfile(strings.ToLower(profile)) {
 
-	case Burst:
+	case AutoscaleBurst:
 		return expandBurst(baseline), nil
 
-	case Steady:
+	case AutoscaleSteady:
 		return expandSteady(baseline), nil
 
-	case Batch:
+	case AutoscaleBatch:
 		return expandBatch(baseline), nil
 
-	case LatencySensitive:
+	case AutoscaleLatencySensitive:
 		return expandLatencySensitive(baseline), nil
 
-	case CostOptimized:
+	case AutoscaleCostOptimized:
 		return expandCostOptimized(baseline), nil
 
 	default:

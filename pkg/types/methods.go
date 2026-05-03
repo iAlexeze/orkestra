@@ -297,6 +297,16 @@ func (c *CRDEntry) AutoScaleProfile() string {
 	return c.OperatorBox.Autoscale.Profile
 }
 
+// HasResourceProfile reports whether this crd defined autoscale profile
+func (c *CRDEntry) HasResourceProfile() bool {
+	return c.OperatorBox.Autoscale != nil && c.OperatorBox.Autoscale.Profile != ""
+}
+
+// ResourceProfile returns the string value of the autoscale profile
+func (c *CRDEntry) ResourceProfile() string {
+	return c.OperatorBox.Autoscale.Profile
+}
+
 // UpdateCRDCaBundle reports whether this CRD declares an updateCRD field
 // Used to update the crd when certificate is autogenerted by orkestra
 func (c *CRDEntry) UpdateCRDCaBundle() bool {
@@ -418,4 +428,109 @@ func (c *CRDEntry) HasAnyHPA() bool {
 	}
 
 	return false
+}
+
+// HasAnyDeployments reports whether this CRD defines any Deployments
+// in either OnCreate or OnReconcile phases.
+func (c *CRDEntry) HasAnyDeployments() bool {
+	if c.HasOnCreate() {
+		return c.OperatorBox.OnCreate.Deployments != nil
+	}
+	if c.HasOnReconcile() {
+		return c.OperatorBox.OnReconcile.Deployments != nil
+	}
+
+	return false
+}
+
+// HasAnyStatefulSets reports whether this CRD defines any StatefulSets
+// in either OnCreate or OnReconcile phases.
+func (c *CRDEntry) HasAnyStatefulSets() bool {
+	if c.HasOnCreate() {
+		return c.OperatorBox.OnCreate.StatefulSets != nil
+	}
+	if c.HasOnReconcile() {
+		return c.OperatorBox.OnReconcile.StatefulSets != nil
+	}
+
+	return false
+}
+
+// HasAnyReplicaSets reports whether this CRD defines any ReplicaSets
+// in either OnCreate or OnReconcile phases.
+func (c *CRDEntry) HasAnyReplicaSets() bool {
+	if c.HasOnCreate() {
+		return c.OperatorBox.OnCreate.ReplicaSets != nil
+	}
+	if c.HasOnReconcile() {
+		return c.OperatorBox.OnReconcile.ReplicaSets != nil
+	}
+
+	return false
+}
+
+// NeedsResourceDecl reports whether this CRD defines any workload resources
+// (Deployments, StatefulSets, or ReplicaSets) in either OnCreate or OnReconcile.
+func (c *CRDEntry) NeedsResourceDecl() bool {
+	return c.HasAnyDeployments() ||
+		c.HasAnyReplicaSets() ||
+		c.HasAnyStatefulSets()
+}
+
+// ResourceDecl returns the first ResourceRequirements defined for this CRD.
+// It checks OnCreate first, then OnReconcile, and searches Deployments,
+// StatefulSets, and ReplicaSets in that order. Returns nil if none exist.
+func (c *CRDEntry) ResourceDecl() *ResourceRequirements {
+	// OnCreate phase takes precedence
+	if c.HasOnCreate() {
+		if req := findResourceDeclInPhase(c.OperatorBox.OnCreate); req != nil {
+			return req
+		}
+	}
+
+	// OnReconcile fallback
+	if c.HasOnReconcile() {
+		if req := findResourceDeclInPhase(c.OperatorBox.OnReconcile); req != nil {
+			return req
+		}
+	}
+
+	return nil
+}
+
+// findResourceDeclInPhase searches Deployments, StatefulSets, and ReplicaSets
+// inside a single OperatorPhase and returns the first non-nil ResourceRequirements.
+func findResourceDeclInPhase(tmpl *HookTemplates) *ResourceRequirements {
+	if tmpl == nil {
+		return nil
+	}
+
+	// Deployments
+	if tmpl.Deployments != nil {
+		for _, d := range tmpl.Deployments {
+			if d.Resources != nil {
+				return d.Resources
+			}
+		}
+	}
+
+	// StatefulSets
+	if tmpl.StatefulSets != nil {
+		for _, s := range tmpl.StatefulSets {
+			if s.Resources != nil {
+				return s.Resources
+			}
+		}
+	}
+
+	// ReplicaSets
+	if tmpl.ReplicaSets != nil {
+		for _, r := range tmpl.ReplicaSets {
+			if r.Resources != nil {
+				return r.Resources
+			}
+		}
+	}
+
+	return nil
 }

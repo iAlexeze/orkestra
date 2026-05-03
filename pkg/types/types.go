@@ -293,6 +293,7 @@ type ConfigMapKeyRef struct {
 //	    - image: nginx:1.25
 //	      replicas: "3"
 //	      port: "8080"
+//		  resourceProfile: burst		# Use orkestra's burst resource configuration
 //
 // Full example — dynamic values from the CR:
 //
@@ -358,6 +359,15 @@ type DeploymentTemplateSource struct {
 	// Values are static Kubernetes quantity strings.
 	// Template expressions are not supported in resource quantities.
 	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
+
+	// ResourceProfile — semantic CPU/memory preset for the primary container.
+	// Profiles expand into a complete ResourceRequirements struct during katalog
+	// enrichment. Allowed values: tiny, small, medium, large, burst, steady,
+	// compute-heavy, memory-heavy.
+	//
+	// When resourceProfile is set, manual resources.requests/limits must not be
+	// provided. Profiles are atomic and fully define resource behavior.
+	ResourceProfile string `yaml:"resourceProfile" json:"resourceProfile,omitempty" validate:"omitempty"`
 
 	// Env — environment variables for the primary container.
 	// Keys are env var names. Values support template expressions.
@@ -506,6 +516,15 @@ type ReplicaSetTemplateSource struct {
 	// Values are static Kubernetes quantity strings.
 	// Template expressions are not supported in resource quantities.
 	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
+
+	// ResourceProfile — semantic CPU/memory preset for the primary container.
+	// Profiles expand into a complete ResourceRequirements struct during katalog
+	// enrichment. Allowed values: tiny, small, medium, large, burst, steady,
+	// compute-heavy, memory-heavy.
+	//
+	// When resourceProfile is set, manual resources.requests/limits must not be
+	// provided. Profiles are atomic and fully define resource behavior.
+	ResourceProfile string `yaml:"resourceProfile" json:"resourceProfile,omitempty" validate:"omitempty"`
 
 	// Env — environment variables for the primary container.
 	// Keys are env var names. Values support template expressions.
@@ -672,6 +691,15 @@ type PodTemplateSource struct {
 
 	// Resources — static CPU and memory requests/limits.
 	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
+
+	// ResourceProfile — semantic CPU/memory preset for the primary container.
+	// Profiles expand into a complete ResourceRequirements struct during katalog
+	// enrichment. Allowed values: tiny, small, medium, large, burst, steady,
+	// compute-heavy, memory-heavy.
+	//
+	// When resourceProfile is set, manual resources.requests/limits must not be
+	// provided. Profiles are atomic and fully define resource behavior.
+	ResourceProfile string `yaml:"resourceProfile" json:"resourceProfile,omitempty" validate:"omitempty"`
 
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
@@ -1510,7 +1538,20 @@ type StatefulSetTemplateSource struct {
 	Annotations []ResourceLabel         `yaml:"annotations" json:"annotations,omitempty"`
 	Env         map[string]EnvVarSource `yaml:"env" json:"env,omitempty"`
 	EnvFrom     []EnvFromSource         `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
-	Resources   *ResourceRequirements   `yaml:"resources" json:"resources,omitempty"`
+
+	// Resources — CPU and memory requests/limits for the primary container.
+	// Values are static Kubernetes quantity strings.
+	// Template expressions are not supported in resource quantities.
+	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
+
+	// ResourceProfile — semantic CPU/memory preset for the primary container.
+	// Profiles expand into a complete ResourceRequirements struct during katalog
+	// enrichment. Allowed values: tiny, small, medium, large, burst, steady,
+	// compute-heavy, memory-heavy.
+	//
+	// When resourceProfile is set, manual resources.requests/limits must not be
+	// provided. Profiles are atomic and fully define resource behavior.
+	ResourceProfile string `yaml:"resourceProfile" json:"resourceProfile,omitempty" validate:"omitempty"`
 
 	Reconcile  bool         `yaml:"reconcile" json:"reconcile,omitempty"`
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
