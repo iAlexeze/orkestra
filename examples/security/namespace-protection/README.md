@@ -201,21 +201,22 @@ Navigate to **namespace-protection** → click any CRD → the **Security** tab 
 
 ## Step 10 — Webhook self-healing
 
-Orkestra's webhook controller watches the `ValidatingWebhookConfiguration` it owns. If it is deleted manually, Orkestra recreates it within the configured sync interval (default 30 seconds; set `WEBHOOK_CONTROLLER_SYNC_INTERVAL` to any value in seconds — minimum 1):
+Orkestra's housekeeper watches the `ValidatingWebhookConfiguration` it owns. If it is deleted, Orkestra detects the change immediately through a Kubernetes Watch and recreates it — no restart required, no poll delay:
 
 ```bash
 kubectl delete validatingwebhookconfiguration orkestra-namespace-protection
 ```
 
-Watch the webhook recreated:
+Watch the operator logs:
 
-```bash
-kubectl get validatingwebhookconfiguration -w
-
-# 'orkestra-namespace-protection' reaapears
+```
+{"level":"warn","message":"housekeeper: configuration deleted — triggering reconcile"}
+{"level":"info","message":"namespace protection webhook registered: orkestra-namespace-protection"}
 ```
 
-The webhook is back. Namespace rules are enforced again without restarting the operator.
+The webhook is back within milliseconds. Namespace rules are enforced again without restarting the operator.
+
+A safety poll (`WEBHOOK_CONTROLLER_SYNC_INTERVAL`, default 30 s) continues in parallel as a backstop — it catches any drift the Watch stream might silently miss on some managed cluster distributions.
 
 ---
 

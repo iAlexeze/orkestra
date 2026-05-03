@@ -263,23 +263,25 @@ This gives you full audit visibility without `kubectl` — one place to see ever
 
 ## Step 10 — Webhook self-healing
 
-Orkestra's webhook controller watches the `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration` it owns. If either is deleted manually, Orkestra recreates it within the configured sync interval (default 30 seconds; set `WEBHOOK_CONTROLLER_SYNC_INTERVAL` to any value in seconds — minimum 1):
+Orkestra's housekeeper watches the `ValidatingWebhookConfiguration` and `MutatingWebhookConfiguration` it owns. If either is deleted, Orkestra detects the change immediately through a Kubernetes Watch and recreates it — no restart required, no poll delay:
 
 ```bash
 kubectl delete validatingwebhookconfiguration orkestra-admission-validation
 kubectl delete mutatingwebhookconfiguration orkestra-admission-mutation
 ```
 
-Watch the webhooks recreated:
+Watch the operator logs:
 
-```bash
-kubectl get validatingwebhookconfiguration -w
-kubectl get mutatingwebhookconfiguration -w
-
-# orkestra-admission-validation and orkestra-admission-mutation reappears
+```
+{"level":"warn","message":"housekeeper: configuration deleted — triggering reconcile"}
+{"level":"info","message":"admission validation webhook registered: orkestra-admission-validation"}
+{"level":"warn","message":"housekeeper: configuration deleted — triggering reconcile"}
+{"level":"info","message":"admission mutation webhook registered: orkestra-admission-mutation"}
 ```
 
-Both webhooks are back. Validation and mutation are restored without restarting the operator.
+Both webhooks are back within milliseconds. Validation and mutation are restored without restarting the operator.
+
+A safety poll (`WEBHOOK_CONTROLLER_SYNC_INTERVAL`, default 30 s) continues in parallel as a backstop — it catches any drift the Watch stream might silently miss on some managed cluster distributions.
 
 ---
 

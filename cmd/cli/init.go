@@ -109,16 +109,8 @@ func listPacks() error {
 
 	fmt.Printf("Available example packs:\n")
 
-	packs := map[string]string{
-		"beginner":     "Start here. Simple CRDs, Deployments, Services.",
-		"intermediate": "Multi-resource patterns, when/anyOf, Komposer basics.",
-		"advanced":     "Hooks, constructors, validation/mutation, registries.",
-		"use-cases":    "Full-stack, cross-CRD, external gates, once-secrets.",
-		"rollback":     "Zero-config and configurable failure recovery",
-	}
-
-	for name, desc := range packs {
-		fmt.Printf("  %-13s → %s\n", name, desc)
+	for _, p := range ListPacks() {
+		fmt.Printf("  %-13s → %s\n", p.Name, p.Description)
 	}
 
 	fmt.Printf("\nUse:")

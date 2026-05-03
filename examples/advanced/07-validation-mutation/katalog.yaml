@@ -77,7 +77,7 @@ spec:
             - path: observedReplicas
               value: "{{ .spec.replicas }}"
             - path: readyReplicas
-              value: "{{ get .children.deployment "status" "readyReplicas" }}"
+              value: '{{ get .children.deployment "status" "readyReplicas" }}'
 
         onCreate:
           deployments:

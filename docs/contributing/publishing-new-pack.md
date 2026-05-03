@@ -47,17 +47,12 @@ var FS embed.FS
 
 ---
 
-#### Step 3 – Update [cmd/cli/init_helper.go](../../cmd/cli/init_helper.go)
+#### Step 3 – Update [cmd/cli/init_helper.go](../../cmd/cli/init_packs.go)
 
 Add the pack name and its path to the `packPaths` map:
 
 ```go
-var packPaths = map[string]string{
-    "beginner":     "beginner",
-    "intermediate": "intermediate",
-    "advanced":     "advanced",
-    "security":     "security",
-    "use-cases":    "use-cases",
+var Packs = map[string]Pack{
     "new-pack":     "new-pack",   // <--- add this
 }
 ```

@@ -244,21 +244,22 @@ Click any CRD → Scroll down to **deletion-protection**. It shows a timestamped
 
 ## Step 11 — Webhook self-healing
 
-Orkestra's webhook controller watches the `ValidatingWebhookConfiguration` it owns. If someone deletes it manually, Orkestra recreates it within the configured sync interval (default 30 seconds; set `WEBHOOK_CONTROLLER_SYNC_INTERVAL` to any value in seconds — minimum 1):
+Orkestra's housekeeper watches the `ValidatingWebhookConfiguration` it owns. If it is deleted, Orkestra detects the change immediately through a Kubernetes Watch and recreates it — no restart required, no poll delay:
 
 ```bash
 kubectl delete validatingwebhookconfiguration orkestra-deletion-protection
 ```
 
-Watch the webhook recreated:
+Watch the operator logs:
 
-```bash
-kubectl get validatingwebhookconfiguration -w
-
-# 'orkestra-deletion-protection' reappears
+```
+{"level":"warn","message":"housekeeper: configuration deleted — triggering reconcile"}
+{"level":"info","message":"deletion protection webhook registered: orkestra-deletion-protection"}
 ```
 
-The webhook is back. Protection is restored automatically without restarting the operator.
+The webhook is back within milliseconds. Protection is restored automatically without restarting the operator.
+
+A safety poll (`WEBHOOK_CONTROLLER_SYNC_INTERVAL`, default 30 s) continues in parallel as a backstop — it catches any drift the Watch stream might silently miss on some managed cluster distributions.
 
 ---
 

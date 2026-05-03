@@ -377,10 +377,10 @@ func (ws *WebhookServer) Start(ctx context.Context) error {
 		}()
 	}
 
-	// Start the webhook controller to keep configurations in sync.
+	// Start the housekeeper to keep webhook configurations in sync.
 	if kat.IsWebhookControllerEnabled() {
-		if err := ws.webhookController(ws.ctx); err != nil {
-			logger.Error().Err(err).Msg("webhook controller failed to start")
+		if err := ws.housekeeper(ws.ctx); err != nil {
+			logger.Error().Err(err).Msg("housekeeper failed to start")
 		}
 	}
 
