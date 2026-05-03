@@ -196,6 +196,16 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				fmt.Printf("  ✓ %s applied\n", doktor.ApplicationFile)
 			}
 
+			// Auto-use .orkestra/values.yaml when --values is not explicitly set.
+			resolvedValues := values
+			if resolvedValues == "" {
+				localValues := filepath.Join(dir, orkDir, "values.yaml")
+				if fileExistsAtPath(localValues) {
+					resolvedValues = localValues
+					fmt.Printf("  Using values: %s\n", localValues)
+				}
+			}
+
 			// Always add the repo (idempotent)
 			repoAdd := exec.Command("helm", "repo", "add",
 				doktor.Orkestra, doktor.OrkestraChartRepo)
@@ -219,7 +229,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 
 				if err := doktor.InstallOrUpgradeOrkestra(
 					orkestraVersion,
-					values,
+					resolvedValues,
 					upgradeOrkestra,
 				); err != nil {
 					return err
@@ -230,7 +240,45 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				fmt.Println("  ✓ Orkestra already installed")
 			}
 
-			// Step 5 — Patch image in CR.
+			// Step 5 — Verify runtime health before touching workload state.
+			fmt.Print("\n  Checking runtime health...")
+			health := doktor.CheckRuntimeHealth()
+			if !health.Running {
+				fmt.Println()
+				tail, fetchErr := doktor.FetchRuntimeLogs()
+				if fetchErr == nil && tail != "" {
+					fmt.Printf("\n--- Runtime log (last 10 lines) ---\n%s\n---\n\n", tail)
+				}
+				fmt.Printf("  ✗ Orkestra runtime is not healthy: %s\n", health.Reason)
+				fmt.Printf("    Full logs:           %s\n", "/tmp/orkestra/runtime.log")
+				fmt.Printf("    Control Center logs: %s\n", "/tmp/orkestra/controlcenter.log")
+				fmt.Println("    Fix the operator before deploying workloads.")
+				return fmt.Errorf("orkestra runtime is not healthy")
+			}
+			fmt.Println(" ✓")
+
+			// Restart the operator when the Katalog changed so it picks up the
+			// new bundle before the workload image is patched.
+			if doktor.KatalogChanged(dir) {
+				fmt.Println("  Katalog changed — restarting Orkestra runtime")
+				if err := doktor.RestartOrkestra(); err != nil {
+					return fmt.Errorf("restarting Orkestra: %w", err)
+				}
+			} else {
+				fmt.Println("  Katalog unchanged — Orkestra restart not required")
+			}
+
+			// Step 6 — Patch image in CR.
+			// Save the current image as an annotation first so 'ork deploy rollback'
+			// can restore it instantly without rebuilding anything.
+			if prevOut, err := exec.Command("kubectl", "get", "configmap", crName,
+				"-n", ns, "-o", `go-template={{index .data "image"}}`).Output(); err == nil {
+				if prev := strings.TrimSpace(string(prevOut)); prev != "" && prev != image {
+					_ = exec.Command("kubectl", "annotate", "configmap", crName,
+						"-n", ns, "orkestra.io/previous-image="+prev, "--overwrite").Run()
+				}
+			}
+
 			patchCmd := exec.Command("kubectl", "patch", "configmap", crName,
 				"-n", ns,
 				"--patch", fmt.Sprintf(`{"data":{"image":%q}}`, image),
@@ -240,7 +288,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			}
 			fmt.Printf("  ✓ Image: %s\n", image)
 
-			// Step 6 — Watch until ready.
+			// Step 7 — Watch until ready.
 			fmt.Println("\nWaiting for deployment...")
 			if err := watchUntilReady(crName, ns); err != nil {
 				fmt.Printf("  ~ could not confirm readiness: %v\n", err)
@@ -290,6 +338,68 @@ var openCmd = &cobra.Command{
 	},
 }
 
+var rollbackCmd = &cobra.Command{
+	Use:   "rollback",
+	Short: "Roll back to the previous deployed image",
+	Long: `Restore the previous image instantly by patching the ConfigMap.
+No rebuild or push required — the image was saved as an annotation on deploy.
+
+  ork deploy rollback                       # restore previous image
+  ork deploy rollback --image ghcr.io/x:v1  # restore a specific image`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		targetImage, _ := cmd.Flags().GetString("image")
+
+		dir, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		appYAML := filepath.Join(dir, orkDir, doktor.ApplicationFile)
+		crName, err := doktor.ReadCRName(appYAML)
+		if err != nil {
+			return fmt.Errorf("run 'ork doktor init --name <app>' first: %w", err)
+		}
+		ns := crName + "-ns"
+
+		if targetImage == "" {
+			// Read the previous image from the annotation saved by 'ork deploy'.
+			out, err := exec.Command("kubectl", "get", "configmap", crName,
+				"-n", ns, "-o", `go-template={{index .metadata.annotations "orkestra.io/previous-image"}}`).Output()
+			if err != nil {
+				return fmt.Errorf("reading previous-image annotation: %w", err)
+			}
+			targetImage = strings.TrimSpace(string(out))
+			if targetImage == "" || targetImage == "<no value>" {
+				return fmt.Errorf("no previous image found — deploy at least once before rolling back")
+			}
+		}
+
+		// Save the current image so a second rollback call can re-roll-forward.
+		if currOut, err := exec.Command("kubectl", "get", "configmap", crName,
+			"-n", ns, "-o", `go-template={{index .data "image"}}`).Output(); err == nil {
+			if curr := strings.TrimSpace(string(currOut)); curr != "" && curr != targetImage {
+				_ = exec.Command("kubectl", "annotate", "configmap", crName,
+					"-n", ns, "orkestra.io/previous-image="+curr, "--overwrite").Run()
+			}
+		}
+
+		fmt.Printf("Rolling back to %s\n", targetImage)
+		patch := exec.Command("kubectl", "patch", "configmap", crName,
+			"-n", ns, "--patch", fmt.Sprintf(`{"data":{"image":%q}}`, targetImage))
+		patch.Stdout = os.Stdout
+		patch.Stderr = os.Stderr
+		if err := patch.Run(); err != nil {
+			return fmt.Errorf("patching image: %w", err)
+		}
+		fmt.Printf("  ✓ Image set to %s\n", targetImage)
+
+		fmt.Println("\nWaiting for rollback...")
+		if err := watchUntilReady(crName, ns); err != nil {
+			fmt.Printf("  ~ could not confirm readiness: %v\n", err)
+		}
+		return nil
+	},
+}
+
 func init() {
 	deployCmd.Flags().StringP("registry", "r", "", "Container registry (e.g. ghcr.io/myorg)")
 	deployCmd.Flags().StringP("tag", "t", "", "Image tag (default: git commit SHA)")
@@ -302,6 +412,9 @@ func init() {
 	deployCmd.Flags().String("orkestra-version", "", "Version of Orkestra operator to install")
 	deployCmd.Flags().String("values", "", "Path to Helm values.yaml for Orkestra installation")
 
+	rollbackCmd.Flags().String("image", "", "Image to roll back to (default: previous deployed image)")
+
+	deployCmd.AddCommand(rollbackCmd)
 	rootCmd.AddCommand(deployCmd)
 	rootCmd.AddCommand(openCmd)
 }
@@ -340,7 +453,14 @@ func watchUntilReady(appName, ns string) error {
 				fmt.Printf("  Image: %s\n", img)
 			}
 			fmt.Println()
-			fmt.Println("  Control Center → ork control start")
+			ccOut, _ := exec.Command("kubectl", "get", "configmap", appName,
+				"-n", ns, "-o", `go-template={{index .data "controlCenterHost"}}`).Output()
+			if ccHost := strings.TrimSpace(string(ccOut)); ccHost != "" {
+				fmt.Printf("  Control Center → https://%s\n", ccHost)
+			} else {
+				fmt.Println("  Control Center → http://orkestra-cc.orkestra-system.svc.cluster.local:8081")
+				fmt.Println("                   set controlCenterHost in .orkestra/app.yaml for external access")
+			}
 			fmt.Printf("  Logs          → kubectl logs -n %s -l ork.io/app=%s -f\n", ns, appName)
 			return nil
 		case "Deploying", "Pending":

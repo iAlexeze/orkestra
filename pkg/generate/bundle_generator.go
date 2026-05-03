@@ -2,6 +2,7 @@ package generate
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -46,10 +47,12 @@ func RenderBundle(
 		docs = append(docs, string(workloadNsBytes))
 	}
 
-	docs = append(docs, string(rbacBytes))
+	// renderRBAC prefixes each object with its own ---; strip the leading one
+	// so the assembler loop below adds it uniformly alongside the other docs.
+	docs = append(docs, strings.TrimPrefix(string(rbacBytes), "---\n"))
 	docs = append(docs, string(cmBytes))
 
-	// Join all docs with `---\n`
+	// Join all docs: each gets a leading --- from here.
 	out := ""
 	for i, d := range docs {
 		out += "---\n" + d + "\n"

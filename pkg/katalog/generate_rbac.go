@@ -69,7 +69,9 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 	// ───────────────────────────────────────────────
 	for _, crd := range k.Enabled() {
 		if crd.APITypes.Group == "" || crd.APITypes.Plural == "" {
-			continue
+			if !crd.IsBuiltInType() {
+				continue
+			}
 		}
 
 		// Main resource

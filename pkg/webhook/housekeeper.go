@@ -17,9 +17,12 @@
 // # Event-Driven Reconciliation
 //
 // The housekeeper uses a Kubernetes Watch on ValidatingWebhookConfiguration and
-// MutatingWebhookConfiguration objects as the fast path. A DELETED or MODIFIED
-// event triggers an immediate reconcile — the window during which a webhook is
-// absent is bounded only by the API server round-trip, not by a poll interval.
+// MutatingWebhookConfiguration objects as the fast path. A DELETED event
+// triggers an immediate reconcile — the window during which a webhook is absent
+// is bounded only by the API server round-trip, not by a poll interval.
+// MODIFIED events are intentionally ignored: every reconcile Update fires one,
+// and reacting to it would create a tight loop. Content drift is caught by the
+// safety ticker instead.
 //
 // A safety ticker (WEBHOOK_CONTROLLER_SYNC_INTERVAL, default 30 s) runs in
 // parallel as a backstop for drift that Watch silently misses: partial mutations,
@@ -197,7 +200,13 @@ func (ws *WebhookServer) watchMutatingWebhooks(ctx context.Context, trigger chan
 }
 
 // drainWatchEvents reads events from a watcher until the channel closes or ctx
-// is cancelled. DELETED and MODIFIED events signal the trigger channel.
+// is cancelled. Only DELETED events signal the trigger channel.
+//
+// MODIFIED is intentionally ignored. Every reconcile calls Update on the
+// webhook configuration, which always fires a MODIFIED event — reacting to it
+// would immediately re-trigger the reconcile that just finished, creating a
+// tight reconcile→update→MODIFIED→reconcile loop. Content drift from external
+// modifications is caught within one safety-ticker interval instead.
 func (ws *WebhookServer) drainWatchEvents(ctx context.Context, w watch.Interface, trigger chan<- struct{}, kind string) {
 	for {
 		select {
@@ -208,15 +217,8 @@ func (ws *WebhookServer) drainWatchEvents(ctx context.Context, w watch.Interface
 				// Channel closed: Watch stream expired or network error. Reconnect.
 				return
 			}
-			switch event.Type {
-			case watch.Deleted:
+			if event.Type == watch.Deleted {
 				logger.Warn().Str("kind", kind).Msg("housekeeper: configuration deleted — triggering reconcile")
-				select {
-				case trigger <- struct{}{}:
-				default: // already pending
-				}
-			case watch.Modified:
-				logger.Warn().Str("kind", kind).Msg("housekeeper: configuration modified — triggering reconcile")
 				select {
 				case trigger <- struct{}{}:
 				default: // already pending

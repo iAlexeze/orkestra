@@ -120,12 +120,14 @@ var doktorInitCmd = &cobra.Command{
 		noSecure, _ := cmd.Flags().GetBool("no-secure")
 		clean, _ := cmd.Flags().GetBool("clean")
 		name, _ := cmd.Flags().GetString("name")
+		addIngress, _ := cmd.Flags().GetBool("add-ingress")
 
 		opts := doktor.GenerateOptions{
-			NoHA:     noHA,
-			NoSecure: noSecure,
-			Clean:    clean,
-			Name:     name,
+			NoHA:       noHA,
+			NoSecure:   noSecure,
+			Clean:      clean,
+			Name:       name,
+			AddIngress: addIngress,
 		}
 
 		if err := doktor.Init(info, opts); err != nil {
@@ -142,10 +144,14 @@ var doktorInitCmd = &cobra.Command{
 		fmt.Println()
 		fmt.Println("Generated .orkestra/katalog.yaml")
 		fmt.Println("Generated .orkestra/app.yaml")
+		fmt.Println("Generated .orkestra/values.yaml")
+		if addIngress && !info.HasFrontend {
+			fmt.Println("  (Ingress included via --add-ingress)")
+		}
 		fmt.Println()
 		fmt.Println("Next steps:")
 		fmt.Println("  1. Review .orkestra/katalog.yaml  (edit freely)")
-		fmt.Println("  2. Fill in .orkestra/app.yaml      (replicas, host, etc.)")
+		fmt.Println("  2. Fill in .orkestra/app.yaml      (replicas, host, controlCenterHost, etc.)")
 		fmt.Println("  3. Run 'ork deploy --registry <your-registry>'")
 
 		return nil
@@ -158,6 +164,7 @@ func init() {
 	doktorCmd.PersistentFlags().Bool("clean", false, "Remove deletion protection webhook on operator shutdown")
 
 	doktorInitCmd.Flags().String("name", "", "App name (e.g. my-app → CR: my-app-orkestra, namespace: my-app-orkestra-ns)")
+	doktorInitCmd.Flags().Bool("add-ingress", false, "Include Ingress even when no frontend was auto-detected")
 	_ = doktorInitCmd.MarkFlagRequired("name")
 
 	doktorCmd.AddCommand(doktorInitCmd)

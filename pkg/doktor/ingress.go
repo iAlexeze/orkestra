@@ -1,8 +1,10 @@
 package doktor
 
 import (
+	"context"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // IngressController is the ingress controller detected on the cluster.
@@ -71,5 +73,23 @@ func OrkestraInstalledRunning() bool {
 // KubectlAvailable reports whether kubectl is present in PATH.
 func KubectlAvailable() bool {
 	_, err := exec.LookPath("kubectl")
+	return err == nil
+}
+
+// ClusterReachable reports whether kubectl can reach the cluster configured
+// in the current kubeconfig (KUBECONFIG env, ~/.kube/config, or --kubeconfig
+// flag resolved by root.go). Times out after 5 seconds.
+func ClusterReachable() bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err := exec.CommandContext(ctx, "kubectl", "cluster-info",
+		"--request-timeout=5s").Run()
+	return err == nil
+}
+
+// GoInstalled reports whether the Go toolchain is present in PATH.
+// Required when kind needs to be installed via `go install`.
+func GoInstalled() bool {
+	_, err := exec.LookPath("go")
 	return err == nil
 }

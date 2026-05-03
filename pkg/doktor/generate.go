@@ -11,10 +11,11 @@ const deletionProtectionLabel = "orkestra.io/deletion-protection"
 
 // GenerateOptions controls which sections are included in the generated Katalog.
 type GenerateOptions struct {
-	NoHA     bool   // skip HPA and PDB; single replica
-	NoSecure bool   // skip deletionProtection and protection labels
-	Clean    bool   // add cleanupOnShutdown: true to deletionProtection
-	Name     string // override app name
+	NoHA       bool   // skip HPA and PDB; single replica
+	NoSecure   bool   // skip deletionProtection and protection labels
+	Clean      bool   // add cleanupOnShutdown: true to deletionProtection
+	Name       string // override app name
+	AddIngress bool   // force-include Ingress even when no frontend was detected
 }
 
 // Init generates .orkestra/katalog.yaml and .orkestra/app.yaml, creates the
@@ -42,6 +43,15 @@ func Init(info *ProjectInfo, opts GenerateOptions) error {
 
 	if err := updateGitignore(info.Dir); err != nil {
 		return fmt.Errorf("updating .gitignore: %w", err)
+	}
+
+	// Write .orkestra/values.yaml only when it doesn't already exist so
+	// user edits are never overwritten on re-init.
+	valuesPath := filepath.Join(orkDir, "values.yaml")
+	if _, err := os.Stat(valuesPath); os.IsNotExist(err) {
+		if err := os.WriteFile(valuesPath, []byte(buildOrkestraValues(name)), 0o644); err != nil {
+			return fmt.Errorf("writing values.yaml: %w", err)
+		}
 	}
 
 	return nil
@@ -106,7 +116,7 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 	b.WriteString(protectionLabels("              ", secure))
 	b.WriteString("\n")
 
-	// Deployment — only when spec.image is set
+	// Deployment — only when data.image is set
 	replicas := "2"
 	if opts.NoHA {
 		replicas = "1"
@@ -114,8 +124,8 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 	b.WriteString("          deployments:\n")
 	b.WriteString("            - name: \"{{ .metadata.name }}\"\n")
 	b.WriteString("              namespace: \"{{ .metadata.name }}-ns\"\n")
-	b.WriteString("              image: \"{{ .spec.image }}\"\n")
-	b.WriteString("              replicas: \"{{ .spec.replicas | default \\\"" + replicas + "\\\" }}\"\n")
+	b.WriteString("              image: \"{{ .data.image }}\"\n")
+	b.WriteString("              replicas: \"{{ .data.replicas | default \\\"" + replicas + "\\\" }}\"\n")
 	b.WriteString("              serviceAccountName: \"{{ .metadata.name }}-sa\"\n")
 	if len(info.Secrets) > 0 || len(info.Config) > 0 {
 		b.WriteString("              envFrom:\n")
@@ -126,33 +136,33 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 			b.WriteString("                - configMapRef: " + name + "-config\n")
 		}
 	}
-	b.WriteString("              resourceProfile: \"{{ .spec.resourceProfile | default \\\"burst\\\" }}\"\n")
+	b.WriteString("              resourceProfile: \"{{ .data.resourceProfile | default \\\"burst\\\" }}\"\n")
 	b.WriteString(protectionLabels("              ", secure))
 	b.WriteString("              reconcile: true\n")
 	b.WriteString("              when:\n")
-	b.WriteString("                - field: spec.image\n")
+	b.WriteString("                - field: data.image\n")
 	b.WriteString("                  exists: true\n\n")
 
 	// Service
 	b.WriteString("          services:\n")
 	b.WriteString("            - name: \"{{ .metadata.name }}-svc\"\n")
 	b.WriteString("              namespace: \"{{ .metadata.name }}-ns\"\n")
-	b.WriteString("              port: \"{{ .spec.port | default \\\"" + info.Port + "\\\" }}\"\n")
-	b.WriteString("              targetPort: \"{{ .spec.port | default \\\"" + info.Port + "\\\" }}\"\n")
+	b.WriteString("              port: \"{{ .data.port | default \\\"" + info.Port + "\\\" }}\"\n")
+	b.WriteString("              targetPort: \"{{ .data.port | default \\\"" + info.Port + "\\\" }}\"\n")
 	b.WriteString(protectionLabels("              ", secure))
 	b.WriteString("              reconcile: true\n\n")
 
-	// Ingress — only when spec.host is set
-	if info.HasFrontend {
+	// Ingress — when frontend was detected or explicitly requested via --add-ingress
+	if info.HasFrontend || opts.AddIngress {
 		b.WriteString("          ingresses:\n")
 		b.WriteString("            - name: \"{{ .metadata.name }}-ingress\"\n")
 		b.WriteString("              namespace: \"{{ .metadata.name }}-ns\"\n")
-		b.WriteString("              host: \"{{ .spec.host }}\"\n")
+		b.WriteString("              host: \"{{ .data.host }}\"\n")
 		b.WriteString("              serviceName: \"{{ .metadata.name }}-svc\"\n")
 		b.WriteString(protectionLabels("              ", secure))
 		b.WriteString("              reconcile: true\n")
 		b.WriteString("              when:\n")
-		b.WriteString("                - field: spec.host\n")
+		b.WriteString("                - field: data.host\n")
 		b.WriteString("                  exists: true\n\n")
 	}
 
@@ -165,13 +175,13 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 		b.WriteString("                apiVersion: apps/v1\n")
 		b.WriteString("                kind: Deployment\n")
 		b.WriteString("                name: \"{{ .metadata.name }}\"\n")
-		b.WriteString("              minReplicas: \"{{ .spec.minReplicas | default \\\"2\\\" }}\"\n")
-		b.WriteString("              maxReplicas: \"{{ .spec.maxReplicas | default \\\"10\\\" }}\"\n")
+		b.WriteString("              minReplicas: \"{{ .data.minReplicas | default \\\"2\\\" }}\"\n")
+		b.WriteString("              maxReplicas: \"{{ .data.maxReplicas | default \\\"10\\\" }}\"\n")
 		b.WriteString("              targetCPUUtilizationPercentage: \"70\"\n")
 		b.WriteString(protectionLabels("              ", secure))
 		b.WriteString("              reconcile: true\n")
 		b.WriteString("              when:\n")
-		b.WriteString("                - field: spec.image\n")
+		b.WriteString("                - field: data.image\n")
 		b.WriteString("                  exists: true\n\n")
 
 		b.WriteString("          pdb:\n")
@@ -181,7 +191,7 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 		b.WriteString(protectionLabels("              ", secure))
 		b.WriteString("              reconcile: true\n")
 		b.WriteString("              when:\n")
-		b.WriteString("                - field: spec.image\n")
+		b.WriteString("                - field: data.image\n")
 		b.WriteString("                  exists: true\n\n")
 	}
 
@@ -192,13 +202,13 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 	b.WriteString("            - path: phase\n")
 	b.WriteString("              value: \"Pending\"\n")
 	b.WriteString("              when:\n")
-	b.WriteString("                - field: spec.image\n")
+	b.WriteString("                - field: data.image\n")
 	b.WriteString("                  notExists: true\n\n")
 
 	b.WriteString("            - path: phase\n")
 	b.WriteString("              value: \"Deploying\"\n")
 	b.WriteString("              when:\n")
-	b.WriteString("                - field: spec.image\n")
+	b.WriteString("                - field: data.image\n")
 	b.WriteString("                  exists: true\n")
 	b.WriteString("                - field: \"{{ replicasReady .children.deployment }}\"\n")
 	b.WriteString("                  equals: \"false\"\n\n")
@@ -209,16 +219,16 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 	b.WriteString("                - field: \"{{ replicasReady .children.deployment }}\"\n")
 	b.WriteString("                  equals: \"true\"\n\n")
 
-	if info.HasFrontend {
+	if info.HasFrontend || opts.AddIngress {
 		b.WriteString("            - path: url\n")
-		b.WriteString("              value: \"https://{{ .spec.host }}\"\n")
+		b.WriteString("              value: \"https://{{ .data.host }}\"\n")
 		b.WriteString("              when:\n")
-		b.WriteString("                - field: spec.host\n")
+		b.WriteString("                - field: data.host\n")
 		b.WriteString("                  exists: true\n\n")
 	}
 
 	b.WriteString("            - path: image\n")
-	b.WriteString("              value: \"{{ .spec.image }}\"\n")
+	b.WriteString("              value: \"{{ .data.image }}\"\n")
 
 	return b.String()
 }
@@ -243,6 +253,9 @@ func buildCR(name string, info *ProjectInfo, opts GenerateOptions) string {
 	b.WriteString("  namespace: " + ns + "\n")
 	b.WriteString("  labels:\n")
 	b.WriteString("    ork.io/app: " + crName + "\n")
+	if !opts.NoSecure {
+		b.WriteString("    " + deletionProtectionLabel + ": \"true\"\n")
+	}
 	b.WriteString("data:\n")
 	b.WriteString(fmt.Sprintf("  port: \"%s\"\n", info.Port))
 	b.WriteString(fmt.Sprintf("  replicas: \"%s\"\n", replicas))
@@ -250,9 +263,13 @@ func buildCR(name string, info *ProjectInfo, opts GenerateOptions) string {
 		b.WriteString(fmt.Sprintf("  minReplicas: \"%s\"\n", minReplicas))
 		b.WriteString("  maxReplicas: \"10\"\n")
 	}
-	if info.HasFrontend {
-		b.WriteString("  host: \"\"              # fill this: myapp.example.com\n")
+	if info.HasFrontend || opts.AddIngress {
+		// host routes traffic to this specific app via the Ingress.
+		b.WriteString("  host: \"\"              # this app's public hostname (e.g. myapp.example.com)\n")
 	}
+	// controlCenterHost is the Orkestra Control Center — the same URL for every app
+	// in this cluster. host (above) is per-app; controlCenterHost is per-cluster.
+	b.WriteString("  controlCenterHost: \"\"  # Orkestra Control Center hostname (e.g. control.mycompany.com)\n")
 	b.WriteString("  image: \"\"             # set by ork deploy — do not edit manually\n")
 
 	return b.String()
@@ -272,6 +289,46 @@ func ReadCRName(appYAML string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("name field not found in %s", appYAML)
+}
+
+// buildOrkestraValues returns a commented-out values.yaml template for the
+// Orkestra Helm chart. The most actionable setting (Control Center ingress)
+// is at the top so the user can immediately expose the CC URL after install.
+func buildOrkestraValues(name string) string {
+	return `# .orkestra/values.yaml — Orkestra cluster configuration
+# Apply changes with: ork deploy --upgrade-orkestra
+#
+# ── Control Center ────────────────────────────────────────────────────────────
+# Expose the Control Center externally so 'ork deploy' can show its URL.
+# After enabling, set controlCenterHost in .orkestra/app.yaml to the same host.
+#
+# controlCenter:
+#   ingress:
+#     enabled: true
+#     className: nginx          # nginx | traefik | kong | etc.
+#     hosts:
+#       - host: control.mycompany.com
+#         paths:
+#           - path: /
+#             pathType: Prefix
+#     tls:
+#       - secretName: control-center-tls
+#         hosts:
+#           - control.mycompany.com
+
+# ── Runtime ───────────────────────────────────────────────────────────────────
+# runtime:
+#   replicaCount: 2
+#   resources:
+#     requests:
+#       cpu: 100m
+#       memory: 128Mi
+#     limits:
+#       cpu: 500m
+#       memory: 512Mi
+#   image:
+#     tag: ""                   # pin to a specific Orkestra version
+`
 }
 
 func updateGitignore(dir string) error {
