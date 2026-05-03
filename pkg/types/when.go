@@ -244,6 +244,12 @@ func NavigateDotPath(m map[string]interface{}, path string) string {
 // from a Condition, respecting shorthand fields.
 // Exported so the template package can use the same resolution logic.
 func ResolveConditionOp(c Condition) (ConditionOperator, string) {
+	if c.Exists != nil && *c.Exists {
+		return ConditionExists, ""
+	}
+	if c.NotExists != nil && *c.NotExists {
+		return ConditionNotExists, ""
+	}
 	if c.Equals != "" {
 		return ConditionEquals, c.Equals
 	}

@@ -15,19 +15,16 @@ const (
 	defaultConfigMapKey  = "katalog.yaml"
 )
 
-func ConfigMap(inputFile, namespace, outputFile string) error {
+func ConfigMap(inputFile, namespace, outputFile string) ([]byte, error) {
 	if namespace == "" {
 		namespace = konfig.GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system")
 	}
 	out, err := renderNamespaceAndConfigMap(inputFile, namespace)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if outputFile != "" {
-		return os.WriteFile(outputFile, out, 0644)
-	}
-	fmt.Println(string(out))
-	return nil
+
+	return out, nil
 }
 
 // renderNamespaceAndConfigMap is the full standalone output: Namespace + ConfigMap.

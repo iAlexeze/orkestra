@@ -85,8 +85,17 @@ func (ws *WebhookServer) housekeeper(ctx context.Context) error {
 	// Buffered capacity 1: bursts of Watch events collapse into one reconcile.
 	trigger := make(chan struct{}, 1)
 
-	go ws.watchValidatingWebhooks(ctx, trigger)
-	go ws.watchMutatingWebhooks(ctx, trigger)
+	// Start housekeepers only for the features that require them.
+	// Validation, deletion‑protection, and namespace‑protection all use
+	// ValidatingWebhookConfiguration, so they share the same watcher.
+	// Mutation rules use a separate MutatingWebhookConfiguration watcher.
+	if kat.HasValidationRules() || hasDeletionProtection || hasNamespaceProtection {
+		go ws.watchValidatingWebhooks(ctx, trigger)
+	}
+
+	if kat.HasMutationRules() {
+		go ws.watchMutatingWebhooks(ctx, trigger)
+	}
 
 	go func() {
 		safetyTicker := time.NewTicker(kat.WebhookControllerSyncInterval())

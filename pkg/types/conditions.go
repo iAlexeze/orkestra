@@ -54,6 +54,14 @@ type Condition struct {
 	// Suffix is a shorthand for operator: suffix.
 	Suffix string `yaml:"suffix,omitempty"`
 
+	// Exists is a shorthand for operator: exists.
+	// When true, the condition passes when the field is present and non-empty.
+	Exists *bool `yaml:"exists,omitempty"`
+
+	// NotExists is a shorthand for operator: notExists.
+	// When true, the condition passes when the field is absent or empty.
+	NotExists *bool `yaml:"notExists,omitempty"`
+
 	// Numeric shorthands
 	GreaterThan string `yaml:"greaterThan,omitempty"`
 	LessThan    string `yaml:"lessThan,omitempty"`

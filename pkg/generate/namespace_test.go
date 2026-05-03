@@ -45,7 +45,8 @@ func TestRBAC_ContainsNamespaceFirst(t *testing.T) {
 	kfg := newKfg(t)
 	out := filepath.Join(t.TempDir(), "rbac.yaml")
 
-	if err := generate.RBAC(kfg, nil, testNamespace, out); err != nil {
+	output, err := generate.RBAC(kfg, nil, testNamespace, out)
+	if err != nil {
 		t.Fatalf("RBAC: %v", err)
 	}
 
