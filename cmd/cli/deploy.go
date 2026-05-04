@@ -180,12 +180,11 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				// permission/syntax errors surface here before Orkestra sees anything.
 				komposer.RegisterKatalog(absKatalogPath)
 				state.ClusterContext = clusterCtx
+				komposer.Metadata.Name = clusterCtx
+				komposer.Metadata.License = info.License
 				if saveErr := komposer.Save(); saveErr != nil {
 					return fmt.Errorf("saving komposer: %w", saveErr)
 				}
-
-				// Add project license
-				komposer.Metadata.License = info.License
 
 				// Merge all registered Katalogs into one. Orkestra sees the merged
 				// result, never the raw Komposer file. Any unreadable or malformed
@@ -264,6 +263,29 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 					return fmt.Errorf("applying application file (%s): %w", doktor.ApplicationFile, err)
 				}
 				fmt.Printf("  ✓ %s applied\n", doktor.ApplicationFile)
+			}
+
+			// Notification secret — created when SMTP or Slack env vars are present.
+			// Mounted into the Orkestra runtime via runtime.extraEnvFrom so
+			// pkg/konfig reads SMTP_HOST, SLACK_WEBHOOK_URL, etc. as normal env vars.
+			if info.HasSMTP || info.HasSlack {
+				notifEnvMap := doktor.NotificationEnvVars(info.EnvVars)
+				secretYAML := doktor.BuildNotificationSecret(notifEnvMap)
+				if secretYAML != "" {
+					secretPath := filepath.Join(bundleDir, doktor.NotificationSecretFile)
+					if err := os.WriteFile(secretPath, []byte(secretYAML), 0o600); err != nil {
+						fmt.Printf("  ~ Could not write notification secret: %v\n", err)
+					} else {
+						applySecret := exec.Command("kubectl", "apply", "-f", secretPath)
+						applySecret.Stdout = os.Stdout
+						applySecret.Stderr = os.Stderr
+						if err := applySecret.Run(); err != nil {
+							fmt.Printf("  ~ Could not apply notification secret: %v\n", err)
+						} else {
+							fmt.Printf("  ✓ orkestra-notification Secret applied\n")
+						}
+					}
+				}
 			}
 
 			// Auto-use .orkestra/values.yaml when --values is not explicitly set.
@@ -683,24 +705,24 @@ func ensureMetricsServer() error {
 	contextOut, _ := exec.Command("kubectl", "config", "current-context").Output()
 	isKind := strings.Contains(string(contextOut), "kind")
 
-	var cmd *exec.Cmd
-	if isKind {
-		// Kind-compatible manifest (includes insecure TLS flags)
-		cmd = exec.Command("kubectl", "apply", "-f",
-			"https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml")
-	} else {
-		// Generic install via Helm
-		exec.Command("helm", "repo", "add", "metrics-server",
-			"https://kubernetes-sigs.github.io/metrics-server/").Run()
-		exec.Command("helm", "repo", "update").Run()
+	// Both paths go through Helm so we can pass --kubelet-insecure-tls only
+	// where it is needed. The standard components.yaml does not include that
+	// flag and fails on kind because kubelet certs are not CA-signed there.
+	exec.Command("helm", "repo", "add", "metrics-server",
+		"https://kubernetes-sigs.github.io/metrics-server/").Run()
+	exec.Command("helm", "repo", "update").Run()
 
-		cmd = exec.Command("helm", "install", "metrics-server",
-			"metrics-server/metrics-server",
-			"--namespace", "kube-system",
-			"--set", "args={--kubelet-insecure-tls}",
-			"--wait", "--timeout=120s",
-		)
+	args := []string{
+		"install", "metrics-server",
+		"metrics-server/metrics-server",
+		"--namespace", "kube-system",
+		"--wait", "--timeout=120s",
 	}
+	if isKind {
+		// kind kubelets use self-signed certs — skip TLS verification
+		args = append(args, "--set", "args={--kubelet-insecure-tls}")
+	}
+	cmd := exec.Command("helm", args...)
 
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard

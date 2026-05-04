@@ -64,6 +64,15 @@ var doktorCmd = &cobra.Command{
 			fmt.Println("  ~ .env not found — variables can be added later")
 		}
 
+		// SMTP/Slack hint — shown before the "Orkestra will create" section.
+		if info.HasSMTP || info.HasSlack {
+			fmt.Println()
+			fmt.Println("  ~ SMTP/Slack detected in .env")
+			fmt.Println("    Run 'ork doktor init --name <app> --notify-me' to wire notifications.")
+			fmt.Println("    Orkestra will create an orkestra-notification Secret and notify your team")
+			fmt.Println("    on deployment status changes.")
+		}
+
 		fmt.Println()
 		fmt.Println("Orkestra will create:")
 

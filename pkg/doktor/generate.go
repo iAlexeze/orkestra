@@ -50,7 +50,7 @@ func Init(info *ProjectInfo, opts GenerateOptions) error {
 	// user edits are never overwritten on re-init.
 	valuesPath := filepath.Join(orkDir, "values.yaml")
 	if _, err := os.Stat(valuesPath); os.IsNotExist(err) {
-		if err := os.WriteFile(valuesPath, []byte(buildOrkestraValues(name)), 0o644); err != nil {
+		if err := os.WriteFile(valuesPath, []byte(buildOrkestraValues(name, opts.NotifyMe)), 0o644); err != nil {
 			return fmt.Errorf("writing values.yaml: %w", err)
 		}
 	}
@@ -100,8 +100,26 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 	}
 
 	if notifyME {
+		author, _ := LastCommitAuthor()
+
 		b.WriteString("notification:\n")
 		b.WriteString("  enabled: true\n")
+		b.WriteString("  defaults:\n")
+		b.WriteString("    interval: 15m\n")
+		b.WriteString("    # slackWebhookUrl injected via SLACK_WEBHOOK_URL in orkestra-notification Secret\n")
+		b.WriteString("  teams:\n")
+		b.WriteString("    developer:\n")
+		if info.HasSMTP && author != nil && author.Email != "" {
+			b.WriteString("      email:\n")
+			b.WriteString("        - " + author.Email + "\n")
+		}
+		if info.HasSlack {
+			b.WriteString("      slack:\n")
+			b.WriteString("        - \"#deployments\"\n")
+			b.WriteString("      # slackWebhookUrl falls back to notification.defaults.slackWebhookUrl\n")
+		}
+		b.WriteString("      message: \"{{ .metadata.name }}: {{ .status.phase }}\"\n")
+		b.WriteString("\n")
 	}
 
 	b.WriteString("spec:\n")
@@ -218,7 +236,13 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 	b.WriteString("                - field: data.image\n")
 	b.WriteString("                  exists: true\n")
 	b.WriteString("                - field: \"{{ replicasReady .children.deployment }}\"\n")
-	b.WriteString("                  equals: \"false\"\n\n")
+	b.WriteString("                  equals: \"false\"\n")
+	b.WriteString("                  notify:\n")
+	b.WriteString("                    teams: [developer]\n")
+	b.WriteString("                    message: \"{{ .metadata.name }} is deploying but replicas are not ready yet.")
+	b.WriteString(" Check logs: kubectl logs -n {{ .metadata.namespace }} -l ork.io/app={{ .metadata.name }} --tail=50")
+	b.WriteString(" | Roll back if stuck: ork deploy rollback\"\n")
+	b.WriteString("\n")
 
 	b.WriteString("            - path: phase\n")
 	b.WriteString("              value: \"Ready\"\n")
@@ -301,7 +325,21 @@ func ReadCRName(appYAML string) (string, error) {
 // buildOrkestraValues returns a commented-out values.yaml template for the
 // Orkestra Helm chart. The most actionable setting (Control Center ingress)
 // is at the top so the user can immediately expose the CC URL after install.
-func buildOrkestraValues(name string) string {
+func buildOrkestraValues(name string, notifyMe bool) string {
+	extraEnvFrom := ""
+	if notifyMe {
+		extraEnvFrom = `
+# ── Notifications ─────────────────────────────────────────────────────────────
+# orkestra-notification Secret is created by ork deploy when SMTP/Slack env
+# vars are present. It injects credentials into the Orkestra runtime so
+# pkg/konfig reads them as normal env vars.
+runtime:
+  extraEnvFrom:
+    - secretRef:
+        name: orkestra-notification
+`
+	}
+	_ = name
 	return `# .orkestra/values.yaml — Orkestra cluster configuration
 # Apply changes with: ork deploy --upgrade-orkestra
 #
@@ -335,7 +373,7 @@ func buildOrkestraValues(name string) string {
 #       memory: 512Mi
 #   image:
 #     tag: ""                   # pin to a specific Orkestra version
-`
+` + extraEnvFrom
 }
 
 func updateGitignore(dir string) error {
