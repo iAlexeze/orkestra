@@ -130,42 +130,49 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 11. Validate Autoscale Metrics Type
+	// 11. Validate Resource Profile
+	// -------------------------------------------------------------------------
+	if err := k.validateResourceProfile(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 12. Validate Autoscale Metrics Type
 	// -------------------------------------------------------------------------
 	if err := k.validateAutoscalerMetrics(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 12. Validate Namespace protection
+	// 13. Validate Namespace protection
 	// -------------------------------------------------------------------------
 	if err := k.validateNamespaceProtection(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 13. Validate Time Duration
+	// 14. Validate Time Duration
 	// -------------------------------------------------------------------------
 	if err := k.validateTimeDuration(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 14. Validate HPA Reference
+	// 15. Validate HPA Reference
 	// -------------------------------------------------------------------------
 	if err := k.validateHPAReference(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 15. Validate Notify Teams
+	// 16. Validate Notify Teams
 	// -------------------------------------------------------------------------
 	if err := k.validateTeams(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 16 Validate Status Types
+	// 17 Validate Status Types
 	// -------------------------------------------------------------------------
 	if err := k.validateStatusTypes(); err != nil {
 		return nil, err

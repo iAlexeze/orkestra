@@ -20,10 +20,10 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "ork",
-	Short: "Orkestra — The Universal CRD Runtime",
+	Short: "Orkestra — Kubernetes for Everyone",
 	Long: fmt.Sprintf(`
 %s
-Orkestra — The Universal CRD Runtime
+Orkestra — Kubernetes for Everyone
 Kompose. Konduct. OrKestrate.
 `, utils.OrkestraLogoCLI),
 }

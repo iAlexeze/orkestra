@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/orkspace/orkestra/cmd/cmdutil"
 	"github.com/orkspace/orkestra/pkg/generate"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -195,16 +196,12 @@ Example:
 
 		rules := k.GenerateRBACRules()
 
-		if err := generate.RBAC(kfg, rules, namespace, outputFile); err != nil {
+		output, err := generate.RBAC(kfg, rules, namespace, outputFile)
+		if err != nil {
 			return fmt.Errorf("generate rbac: %w", err)
 		}
 
-		log.Println("rbac generated successfully")
-
-		if outputFile != "" {
-			log.Printf("out: %s\n", outputFile)
-		}
-		return nil
+		return cmdutil.WriteOutput(outputFile, "rbac.yaml", []byte(output))
 	},
 }
 
@@ -230,15 +227,12 @@ Example:
 
 		log.Println("generating configmap...")
 
-		if err := generate.ConfigMap(katalogPath, namespace, outputFile); err != nil {
+		out, err := generate.ConfigMap(katalogPath, namespace, outputFile)
+		if err != nil {
 			return fmt.Errorf("generate configmap: %w", err)
 		}
 
-		log.Println("configmap generated successfully")
-		if outputFile != "" {
-			log.Printf("out: %s\n", outputFile)
-		}
-		return nil
+		return cmdutil.WriteOutput(outputFile, "config.yaml", []byte(out))
 	},
 }
 
@@ -246,6 +240,7 @@ var generateBundleCmd = &cobra.Command{
 	Use:   "bundle",
 	Short: "Generate a complete installation bundle (RBAC + ConfigMap)",
 	Long: `Generates a complete Orkestra installation bundle containing:
+  • Namespace (default: 'orkestra-system')
   • ServiceAccounts (runtime + control center)
   • ClusterRole (minimal permissions derived from your Katalog)
   • ClusterRoleBinding
@@ -256,6 +251,7 @@ The bundle is self-contained and ready to apply with kubectl.
 Examples:
   ork generate bundle --katalog my-katalog.yaml
   ork generate bundle --katalog my-katalog.yaml -o bundle.yaml
+  ork generate bundle --katalog my-katalog.yaml -o bundle/
   ork generate bundle --katalog my-katalog.yaml --namespace custom-ns`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get the katalog paths as a slice
@@ -273,6 +269,7 @@ Examples:
 			return err
 		}
 		namespace, _ := cmd.Flags().GetString("namespace")
+		workloadNamespace, _ := cmd.Flags().GetString("workload-namespace")
 		outputFile, _ := cmd.Flags().GetString("output")
 
 		log.Println("generating bundle...")
@@ -287,19 +284,13 @@ Examples:
 
 		rules := k.GenerateRBACRules()
 
-		bundle, err := generate.RenderBundle(kfg, rules, katalogPath, namespace)
+		bundle, err := generate.RenderBundle(kfg, rules, katalogPath, namespace, workloadNamespace)
 		if err != nil {
 			return fmt.Errorf("generate bundle: %w", err)
 		}
 
-		log.Println("bundle generated successfully")
+		return cmdutil.WriteOutput(outputFile, "bundle.yaml", []byte(bundle))
 
-		if outputFile != "" {
-			return os.WriteFile(outputFile, []byte(bundle), 0644)
-		}
-
-		fmt.Println(bundle)
-		return nil
 	},
 }
 
@@ -345,6 +336,7 @@ func init() {
 		cmd.Flags().Bool("dry-run", false, "Print generated output to stdout without writing files")
 		cmd.Flags().StringP("output", "o", "", "Write generated output to file")
 		cmd.Flags().StringP("namespace", "n", defaultNamespace(), "Namespace for the ServiceAccount")
+		cmd.Flags().StringP("workload-namespace", "w", "", "Namespace for the Deployment Workloads. Used by 'ork deploy'")
 	}
 
 	// Shadow global flags so they don't appear under `ork generate`

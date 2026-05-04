@@ -2,7 +2,6 @@ package generate
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
 	corev1 "k8s.io/api/core/v1"
@@ -16,16 +15,13 @@ const (
 	orkcc = "orkestra-cc"
 )
 
-func RBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace, outputFile string) error {
+func RBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace, outputFile string) ([]byte, error) {
 	out, err := renderNamespaceAndRBAC(kfg, rules, namespace)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if outputFile != "" {
-		return os.WriteFile(outputFile, out, 0644)
-	}
-	fmt.Println(string(out))
-	return nil
+
+	return out, nil
 }
 
 // renderNamespaceAndRBAC is the full standalone output: Namespace + ServiceAccounts + ClusterRole + ClusterRoleBinding.

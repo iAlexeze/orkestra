@@ -41,6 +41,11 @@ var Packs = map[string]Pack{
 		Description: "Zero-config and configurable failure recovery",
 		Path:        "use-cases/rollback",
 	},
+	"developer": {
+		Name:        "developer",
+		Description: "Local to production in minutes — deploy your app without writing operator code.",
+		Path:        "developer",
+	},
 }
 
 func GetPack(name string) (Pack, bool) {
@@ -55,4 +60,3 @@ func ListPacks() []Pack {
 	}
 	return out
 }
-

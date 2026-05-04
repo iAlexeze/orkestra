@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head><title>Orkestra Developer Example</title></head>
+<body>
+  <h1>Frontend</h1>
+  <p>This is the static frontend. It proxies <code>/api/</code> to the backend service.</p>
+  <button onclick="fetch('/api/').then(r=>r.text()).then(t=>document.getElementById('r').innerText=t)">
+    Call backend
+  </button>
+  <pre id="r"></pre>
+</body>
+</html>

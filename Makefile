@@ -126,6 +126,13 @@ docker-cc: orkcc-linux
 
 # ── Docker Push ───────────────────────────────────────────────────────────────
 
+KIND_CLUSTER ?= orkestra-playground
+
+docker-load: docker
+	@echo "Loading image into kind cluster: $(KIND_CLUSTER)"
+	kind load docker-image $(ORK_IMAGE) --name $(KIND_CLUSTER)
+	@echo "✔ Image loaded into kind cluster: $(KIND_CLUSTER)"
+
 docker-push:
 	@echo "Pushing Docker image: $(ORK_IMAGE)"
 	docker push $(ORK_IMAGE)

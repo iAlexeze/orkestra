@@ -56,6 +56,13 @@ and emits a fully merged Katalog suitable for use with Orkestra runtime.`,
 		kat.Kind = konfig.KatalogKind()
 		kat.KomposerMetadata = doc.Metadata
 
+		// Populate all top-level fields from the merged result — the merger
+		// accumulates security, notification, and providers from every source
+		// Katalog additively, then lets the Komposer's own declarations win.
+		kat.Security = out.m.ToSecurity()
+		kat.Notification = out.m.ToNotification()
+		kat.Providers = out.m.ToProviders()
+
 		// Step 3: validate merged katalog
 		validKat, err := out.kat.ValidateConfig(kfg)
 		if err != nil {
