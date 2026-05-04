@@ -76,3 +76,34 @@ func SplitEnvVars(vars []EnvVar) (secrets, config []EnvVar) {
 	}
 	return
 }
+
+// HasSMTP returns true if any variable starts with "SMTP_".
+func HasSMTP(vars []EnvVar) bool {
+	for _, v := range vars {
+		if strings.HasPrefix(strings.ToUpper(v.Key), "SMTP_") {
+			return true
+		}
+	}
+	return false
+}
+
+// HasSlack returns true if any variable starts with "SLACK_".
+func HasSlack(vars []EnvVar) bool {
+	for _, v := range vars {
+		if strings.HasPrefix(strings.ToUpper(v.Key), "SLACK_") {
+			return true
+		}
+	}
+	return false
+}
+
+// GetEnvValue returns the value of an ENV var or false if not exists
+func GetEnvValue(vars []EnvVar, key string) (string, bool) {
+	key = strings.ToUpper(key)
+	for _, v := range vars {
+		if strings.ToUpper(v.Key) == key {
+			return v.Value, true
+		}
+	}
+	return "", false
+}

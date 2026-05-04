@@ -112,7 +112,7 @@ Orkestra will create:
   HPA            min 2 / max 10
   PDB            minAvailable: 1
 
-Run 'ork doktor init' to generate .orkestra/katalog.yaml
+Run 'ork doktor init --name <my-project>' to generate .orkestra/katalog.yaml
 Run with --no-secure to skip deletion protection (development mode)
 Run with --no-ha to skip HPA and PDB (development mode)
 ```

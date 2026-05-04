@@ -4,7 +4,9 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -40,6 +42,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		orkestraVersion, _ := cmd.Flags().GetString("orkestra-version")
 		values, _ := cmd.Flags().GetString("values")
 		upgradeOrkestra, _ := cmd.Flags().GetBool("upgrade-orkestra")
+		dev, _ := cmd.Flags().GetBool("dev")
 
 		dir, err := os.Getwd()
 		if err != nil {
@@ -53,20 +56,17 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		}
 
 		// Resolve CR name from .orkestra/app.yaml (written by ork doktor init --name).
-		// Fall back to info.AppName only when app.yaml doesn't exist yet.
 		appYAML := filepath.Join(dir, orkDir, doktor.ApplicationFile)
 		crName, err := doktor.ReadCRName(appYAML)
 		if err != nil {
-			// app.yaml not yet generated — we'll auto-init below; need --name
 			nameFlag, _ := cmd.Flags().GetString("name")
 			if nameFlag == "" {
 				return fmt.Errorf("run 'ork doktor init --name <app>' first, or pass --name here")
 			}
 			crName = nameFlag + orkSuffix
 		}
-		// appName is the bare project name (crName without the -orkestra suffix).
 		appName := strings.TrimSuffix(crName, orkSuffix)
-		ns := crName + "-ns" // corresponds to "{{ .metadata.name }}-ns"
+		ns := crName + "-ns"
 
 		if tag == "" {
 			tag = info.GitCommit
@@ -79,6 +79,39 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		}
 
 		image := doktor.ImageTag(registry, appName, tag)
+
+		// Load persistent state and global Komposer (both non-fatal if missing).
+		state, err := doktor.LoadState()
+		if err != nil {
+			state = &doktor.DeployState{Projects: make(map[string]*doktor.ProjectState)}
+		}
+		komposer, _ := doktor.LoadGlobalKomposer()
+
+		if !dryRun {
+			// Step 0 — Cluster connectivity.
+			// --dev spins up a local kind cluster; otherwise verify the current context.
+			if dev {
+				if !doktor.GoInstalled() {
+					return fmt.Errorf("Go is required to install kind — install from https://go.dev/dl/")
+				}
+				fmt.Printf("\n  Setting up kind cluster '%s'...\n", doktor.KindClusterName)
+				if err := doktor.EnsureKindCluster(doktor.KindClusterName); err != nil {
+					return fmt.Errorf("setting up kind cluster: %w", err)
+				}
+			} else if !doktor.ClusterReachable() {
+				fmt.Println("\n  Cannot reach Kubernetes cluster.")
+				fmt.Println("  Check your kubeconfig, or run with --dev to deploy to a local kind cluster.")
+				return fmt.Errorf("cluster not reachable")
+			}
+		}
+
+		// Show cluster context and currently deployed projects.
+		clusterCtx := doktor.CurrentContext()
+		deployed := komposer.DeployedProjects()
+		fmt.Printf("\nCluster:  %s\n", clusterCtx)
+		if len(deployed) > 0 {
+			fmt.Printf("Deployed: %s\n", strings.Join(deployed, ", "))
+		}
 
 		// Step 1 — Build
 		fmt.Printf("\nBuilding %s...\n", appName)
@@ -93,7 +126,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			}
 			fmt.Printf("  ✓ Built (%ds)\n", int(time.Since(start).Seconds()))
 
-			// Step 2 — Push
 			var pushOut bytes.Buffer
 			if err := doktor.Push(image, &pushOut); err != nil {
 				fmt.Print(pushOut.String())
@@ -114,6 +146,9 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		}
 
 		bundleDir := filepath.Join(dir, orkDir, "bundle")
+		katalogPath := filepath.Join(dir, orkDir, "katalog.yaml")
+		absKatalogPath, _ := filepath.Abs(katalogPath)
+
 		if !dryRun {
 			if err := doktor.GenerateBundle(appName, ns, info.Secrets, info.Config, bundleDir); err != nil {
 				return err
@@ -128,7 +163,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		}
 
 		// Auto-generate katalog if not present yet.
-		katalogPath := filepath.Join(dir, orkDir, "katalog.yaml")
 		if !fileExistsAtPath(katalogPath) {
 			if !dryRun {
 				if err := doktor.Init(info, initOpts); err != nil {
@@ -138,10 +172,30 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			fmt.Println("  ✓ katalog.yaml generated")
 		}
 
-		// Generate Orkestra katalog bundle (RBAC, namespace, etc.)
 		if fileExistsAtPath(katalogPath) || dryRun {
 			if !dryRun {
-				genArgs := []string{"generate", "bundle", "-k", katalogPath, "-w", ns, "-o", bundleDir}
+				// Register this project in the global Komposer using its absolute
+				// local path — no git commit or GitHub access required. The merger
+				// reads katalog files directly from the filesystem, so file
+				// permission/syntax errors surface here before Orkestra sees anything.
+				komposer.RegisterKatalog(absKatalogPath)
+				state.ClusterContext = clusterCtx
+				if saveErr := komposer.Save(); saveErr != nil {
+					return fmt.Errorf("saving komposer: %w", saveErr)
+				}
+
+				// Merge all registered Katalogs into one. Orkestra sees the merged
+				// result, never the raw Komposer file. Any unreadable or malformed
+				// katalog file will cause ork kompose to fail here — before the
+				// bundle is applied to the cluster.
+				mergedPath, mergeErr := runKompose()
+				if mergeErr != nil {
+					return fmt.Errorf("merging katalogs: %w", mergeErr)
+				}
+				effectiveKatalog := mergedPath
+				fmt.Printf("  ✓ Komposer merged (%d projects)\n", len(komposer.DeployedProjects()))
+
+				genArgs := []string{"generate", "bundle", "-k", effectiveKatalog, "-w", ns, "-o", bundleDir}
 				genCmd := exec.Command("ork", genArgs...)
 				genCmd.Stdout = os.Stdout
 				genCmd.Stderr = os.Stderr
@@ -160,7 +214,20 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				return fmt.Errorf("kubectl not found in PATH")
 			}
 
-			// Apply the bundle.
+			// Auto-install ingress controller when the project has a frontend.
+			if info.HasFrontend {
+				if err := ensureIngressController(); err != nil {
+					fmt.Printf("  ~ Could not install ingress controller: %v\n", err)
+					fmt.Println("    Install manually: https://kubernetes.github.io/ingress-nginx/deploy/")
+				}
+			}
+
+			// Auto-install metrics server when not available - useful with --dev
+			if err := ensureMetricsServer(); err != nil {
+				fmt.Printf("  ~ Could not install metrics server: %v\n", err)
+				fmt.Println("    Install manually: https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml")
+			}
+
 			bundleFile := filepath.Join(bundleDir, doktor.BundleFile)
 			applyBundle := exec.Command("kubectl", "apply", "-f", bundleFile)
 			applyBundle.Stdout = os.Stdout
@@ -170,7 +237,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			}
 			fmt.Println("  ✓ Bundle applied")
 
-			// Now apply app-config + app-secrets
 			for _, f := range []string{doktor.AppConfigFile, doktor.AppSecretFile} {
 				path := filepath.Join(bundleDir, f)
 				if _, err := os.Stat(path); err == nil {
@@ -184,7 +250,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				}
 			}
 
-			// Apply the application CR (app.yaml)
 			appFile := filepath.Join(dir, orkDir, doktor.ApplicationFile)
 			if _, err := os.Stat(appFile); err == nil {
 				applyApp := exec.Command("kubectl", "apply", "-f", appFile)
@@ -206,14 +271,12 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				}
 			}
 
-			// Always add the repo (idempotent)
 			repoAdd := exec.Command("helm", "repo", "add",
 				doktor.Orkestra, doktor.OrkestraChartRepo)
 			repoAdd.Stdout = os.Stdout
 			repoAdd.Stderr = os.Stderr
-			_ = repoAdd.Run() // ignore error: repo may already exist
+			_ = repoAdd.Run()
 
-			// If upgrade flag is set, update the repo
 			if upgradeOrkestra {
 				updateRepo := exec.Command("helm", "repo", "update", doktor.Orkestra)
 				updateRepo.Stdout = os.Stdout
@@ -223,18 +286,13 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				}
 			}
 
-			// Install Orkestra if not present
 			if !doktor.OrkestraInstalled() || upgradeOrkestra {
 				fmt.Println("  ⠸ Installing Orkestra...")
-
 				if err := doktor.InstallOrUpgradeOrkestra(
-					orkestraVersion,
-					resolvedValues,
-					upgradeOrkestra,
+					orkestraVersion, resolvedValues, upgradeOrkestra,
 				); err != nil {
 					return err
 				}
-
 				fmt.Println("  ✓ Orkestra installed")
 			} else {
 				fmt.Println("  ✓ Orkestra already installed")
@@ -257,8 +315,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			}
 			fmt.Println(" ✓")
 
-			// Restart the operator when the Katalog changed so it picks up the
-			// new bundle before the workload image is patched.
 			if doktor.KatalogChanged(dir) {
 				fmt.Println("  Katalog changed — restarting Orkestra runtime")
 				if err := doktor.RestartOrkestra(); err != nil {
@@ -269,8 +325,13 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			}
 
 			// Step 6 — Patch image in CR.
-			// Save the current image as an annotation first so 'ork deploy rollback'
-			// can restore it instantly without rebuilding anything.
+			// Record previous image in state BEFORE patching so rollback is instant.
+			state.RecordDeploy(appName, ns, absKatalogPath, image)
+			if err := state.Save(); err != nil {
+				fmt.Printf("  ~ State save failed: %v\n", err)
+			}
+
+			// Also persist as annotation for kubectl introspection / backward compat.
 			if prevOut, err := exec.Command("kubectl", "get", "configmap", crName,
 				"-n", ns, "-o", `go-template={{index .data "image"}}`).Output(); err == nil {
 				if prev := strings.TrimSpace(string(prevOut)); prev != "" && prev != image {
@@ -290,7 +351,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 
 			// Step 7 — Watch until ready.
 			fmt.Println("\nWaiting for deployment...")
-			if err := watchUntilReady(crName, ns); err != nil {
+			if err := watchUntilReady(crName, ns, appName, state); err != nil {
 				fmt.Printf("  ~ could not confirm readiness: %v\n", err)
 			}
 		} else {
@@ -322,7 +383,7 @@ var openCmd = &cobra.Command{
 		}
 
 		crName := appName + orkSuffix
-		ns := appName + "ns" // corresponds to "{{ .metadata.name }}-ns"
+		ns := crName + "-ns"
 		out, err := exec.Command("kubectl", "get", "configmap", crName,
 			"-n", ns, "-o", `jsonpath={.data.url}`).Output()
 		if err != nil {
@@ -330,7 +391,7 @@ var openCmd = &cobra.Command{
 		}
 		url := strings.TrimSpace(string(out))
 		if url == "" {
-			return fmt.Errorf("no url in %s CR status — fill in spec.host and redeploy", crName)
+			return fmt.Errorf("no url in %s CR status — fill in data.host and redeploy", crName)
 		}
 
 		fmt.Printf("Opening %s\n", url)
@@ -339,13 +400,14 @@ var openCmd = &cobra.Command{
 }
 
 var rollbackCmd = &cobra.Command{
-	Use:   "rollback",
+	Use:   "rollback [app-name]",
 	Short: "Roll back to the previous deployed image",
 	Long: `Restore the previous image instantly by patching the ConfigMap.
-No rebuild or push required — the image was saved as an annotation on deploy.
+No rebuild or push required — the image is stored in ~/.orkestra/deploy/state.json.
 
   ork deploy rollback                       # restore previous image
   ork deploy rollback --image ghcr.io/x:v1  # restore a specific image`,
+	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		targetImage, _ := cmd.Flags().GetString("image")
 
@@ -353,27 +415,53 @@ No rebuild or push required — the image was saved as an annotation on deploy.
 		if err != nil {
 			return err
 		}
+
 		appYAML := filepath.Join(dir, orkDir, doktor.ApplicationFile)
 		crName, err := doktor.ReadCRName(appYAML)
 		if err != nil {
 			return fmt.Errorf("run 'ork doktor init --name <app>' first: %w", err)
 		}
 		ns := crName + "-ns"
+		appName := strings.TrimSuffix(crName, orkSuffix)
+		if len(args) > 0 {
+			appName = args[0]
+		}
 
 		if targetImage == "" {
-			// Read the previous image from the annotation saved by 'ork deploy'.
-			out, err := exec.Command("kubectl", "get", "configmap", crName,
-				"-n", ns, "-o", `go-template={{index .metadata.annotations "orkestra.io/previous-image"}}`).Output()
-			if err != nil {
-				return fmt.Errorf("reading previous-image annotation: %w", err)
+			// Check state.json first, then fall back to the annotation.
+			state, _ := doktor.LoadState()
+			if state != nil {
+				targetImage = state.PreviousImage(appName)
 			}
-			targetImage = strings.TrimSpace(string(out))
-			if targetImage == "" || targetImage == "<no value>" {
-				return fmt.Errorf("no previous image found — deploy at least once before rolling back")
+			if targetImage == "" {
+				out, annotErr := exec.Command("kubectl", "get", "configmap", crName,
+					"-n", ns, "-o", `go-template={{index .metadata.annotations "orkestra.io/previous-image"}}`).Output()
+				if annotErr == nil {
+					targetImage = strings.TrimSpace(string(out))
+					if targetImage == "<no value>" {
+						targetImage = ""
+					}
+				}
+			}
+			if targetImage == "" {
+				return fmt.Errorf("no previous image found for %s — use --image to specify", appName)
 			}
 		}
 
-		// Save the current image so a second rollback call can re-roll-forward.
+		fmt.Printf("Rolling back %s...\n", appName)
+		fmt.Printf("  → %s\n\n", targetImage)
+
+		// Swap current ↔ previous in state before patching.
+		state, _ := doktor.LoadState()
+		if state != nil {
+			if p := state.Projects[appName]; p != nil {
+				p.PreviousImage = p.CurrentImage
+				p.CurrentImage = targetImage
+				_ = state.Save()
+			}
+		}
+
+		// Update annotation so a second rollback can re-roll-forward.
 		if currOut, err := exec.Command("kubectl", "get", "configmap", crName,
 			"-n", ns, "-o", `go-template={{index .data "image"}}`).Output(); err == nil {
 			if curr := strings.TrimSpace(string(currOut)); curr != "" && curr != targetImage {
@@ -382,7 +470,6 @@ No rebuild or push required — the image was saved as an annotation on deploy.
 			}
 		}
 
-		fmt.Printf("Rolling back to %s\n", targetImage)
 		patch := exec.Command("kubectl", "patch", "configmap", crName,
 			"-n", ns, "--patch", fmt.Sprintf(`{"data":{"image":%q}}`, targetImage))
 		patch.Stdout = os.Stdout
@@ -393,7 +480,7 @@ No rebuild or push required — the image was saved as an annotation on deploy.
 		fmt.Printf("  ✓ Image set to %s\n", targetImage)
 
 		fmt.Println("\nWaiting for rollback...")
-		if err := watchUntilReady(crName, ns); err != nil {
+		if err := watchUntilReady(crName, ns, appName, nil); err != nil {
 			fmt.Printf("  ~ could not confirm readiness: %v\n", err)
 		}
 		return nil
@@ -411,6 +498,7 @@ func init() {
 	deployCmd.Flags().BoolP("upgrade-orkestra", "u", false, "Upgrade Orkestra to latest version before deployment")
 	deployCmd.Flags().String("orkestra-version", "", "Version of Orkestra operator to install")
 	deployCmd.Flags().String("values", "", "Path to Helm values.yaml for Orkestra installation")
+	deployCmd.Flags().Bool("dev", false, "Create a local kind cluster (orkestra-playground) for development")
 
 	rollbackCmd.Flags().String("image", "", "Image to roll back to (default: previous deployed image)")
 
@@ -419,59 +507,208 @@ func init() {
 	rootCmd.AddCommand(openCmd)
 }
 
-// watchUntilReady polls the CR phase field until it is Ready or until timeout.
-func watchUntilReady(appName, ns string) error {
-	deadline := time.Now().Add(5 * time.Minute)
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
+// watchUntilReady waits for the Deployment rollout to complete via
+// kubectl rollout status. On failure it fetches pod logs and, when a
+// previous image is recorded in state, suggests rolling back.
+//
+// appName is the bare project name (without -orkestra suffix) used for state
+// lookup. state may be nil (e.g. when called from rollbackCmd).
+func watchUntilReady(crName, ns, appName string, state *doktor.DeployState) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
 
-	for time.Now().Before(deadline) {
-		<-ticker.C
-		out, err := exec.Command("kubectl", "get", "configmap", appName,
-			"-n", ns, "-o", `jsonpath={.data.phase}`).Output()
-		if err != nil {
-			continue
+	fmt.Printf("  ⠸ Waiting for rollout...")
+
+	cmd := exec.CommandContext(ctx,
+		"kubectl", "rollout", "status",
+		"deployment/"+crName,
+		"-n", ns,
+		"--timeout=5m",
+	)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+
+	if err := cmd.Run(); err != nil {
+		fmt.Println()
+
+		// Fetch recent pod logs to help the developer diagnose the failure.
+		logOut, logErr := exec.Command("kubectl", "logs",
+			"deployment/"+crName, "-n", ns,
+			"--tail=20",
+		).CombinedOutput()
+		if logErr == nil && len(bytes.TrimSpace(logOut)) > 0 {
+			fmt.Printf("\n--- %s logs (last 20 lines) ---\n%s\n---\n", crName, string(logOut))
 		}
-		phase := strings.TrimSpace(string(out))
-		switch phase {
-		case "Ready":
-			// Read URL if available.
-			urlOut, _ := exec.Command("kubectl", "get", "configmap", appName,
-				"-n", ns, "-o", `jsonpath={.data.url}`).Output()
-			url := strings.TrimSpace(string(urlOut))
 
-			commitOut, _ := exec.Command("kubectl", "get", "configmap", appName,
-				"-n", ns, "-o", `jsonpath={.data.image}`).Output()
-			img := strings.TrimSpace(string(commitOut))
+		// Rollback hint — only when this is not the first deploy.
+		if state != nil && state.PreviousImage(appName) != "" {
+			fmt.Printf("\n  A previous good image is available.\n")
+			fmt.Printf("  Roll back with: ork deploy rollback\n")
+		}
 
-			fmt.Println()
-			if url != "" {
-				fmt.Printf("  App: %s\n", url)
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("timed out waiting for %s — check: kubectl get pods -n %s", crName, ns)
+		}
+		return fmt.Errorf("rollout failed for %s — check: kubectl describe deployment %s -n %s",
+			crName, crName, ns)
+	}
+
+	fmt.Printf("\r  ✓ Deployment ready        \n")
+	printReadySummary(crName, ns, state)
+	return nil
+}
+
+// printReadySummary shows the app URL, image, Control Center link, and a
+// checklist of internal service URLs for all deployed projects.
+func printReadySummary(crName, ns string, state *doktor.DeployState) {
+	get := func(jsonpath string) string {
+		out, _ := exec.Command("kubectl", "get", "configmap", crName,
+			"-n", ns, "-o", "jsonpath="+jsonpath).Output()
+		return strings.TrimSpace(string(out))
+	}
+
+	fmt.Println()
+	if url := get("{.data.url}"); url != "" {
+		fmt.Printf("  App:    %s\n", url)
+	}
+	fmt.Printf("  Status: Ready\n")
+	if img := get("{.data.image}"); img != "" {
+		fmt.Printf("  Image:  %s\n", img)
+	}
+	fmt.Println()
+
+	ccOut, _ := exec.Command("kubectl", "get", "configmap", crName,
+		"-n", ns, "-o", `go-template={{index .data "controlCenterHost"}}`).Output()
+	if ccHost := strings.TrimSpace(string(ccOut)); ccHost != "" {
+		fmt.Printf("  Control Center → https://%s\n", ccHost)
+	} else {
+		fmt.Println("  Control Center → http://localhost:8081")
+		fmt.Printf("                   kubectl port-forward svc/orkestra-cc 8081:8081 -n %s &\n",
+			doktor.OrkestraNamespace)
+		fmt.Println("                   set controlCenterHost in .orkestra/app.yaml to expose externally")
+	}
+	fmt.Printf("  Logs          → kubectl logs -n %s -l ork.io/app=%s -f\n", ns, crName)
+
+	// Print internal service URLs for every deployed project so developers can
+	// wire them together (e.g. FRONTEND_URL=http://my-frontend-orkestra-svc...).
+	if state != nil && len(state.Projects) > 0 {
+		fmt.Println()
+		fmt.Println("  Internal service URLs:")
+		for _, p := range state.Projects {
+			svcName := p.Name + "-orkestra-svc"
+			portOut, _ := exec.Command("kubectl", "get", "svc", svcName,
+				"-n", p.Namespace, "-o", "jsonpath={.spec.ports[0].port}").Output()
+			port := strings.TrimSpace(string(portOut))
+			if port == "" {
+				port = "8080"
 			}
-			fmt.Printf("  Status: Ready\n")
-			if img != "" {
-				fmt.Printf("  Image: %s\n", img)
-			}
-			fmt.Println()
-			ccOut, _ := exec.Command("kubectl", "get", "configmap", appName,
-				"-n", ns, "-o", `go-template={{index .data "controlCenterHost"}}`).Output()
-			if ccHost := strings.TrimSpace(string(ccOut)); ccHost != "" {
-				fmt.Printf("  Control Center → https://%s\n", ccHost)
-			} else {
-				fmt.Println("  Control Center → http://orkestra-cc.orkestra-system.svc.cluster.local:8081")
-				fmt.Println("                   set controlCenterHost in .orkestra/app.yaml for external access")
-			}
-			fmt.Printf("  Logs          → kubectl logs -n %s -l ork.io/app=%s -f\n", ns, appName)
-			return nil
-		case "Deploying", "Pending":
-			fmt.Printf("\r  ⠸ %s...", phase)
+			envVar := strings.ToUpper(strings.ReplaceAll(p.Name, "-", "_")) + "_URL"
+			internalURL := fmt.Sprintf("http://%s.%s.svc.cluster.local:%s", svcName, p.Namespace, port)
+			fmt.Printf("    %-30s %s\n", p.Name, internalURL)
+			fmt.Printf("    %-30s export %s=%s\n", "", envVar, internalURL)
 		}
 	}
-	return fmt.Errorf("timed out after 5 minutes")
+}
+
+// runKompose runs ork kompose to produce ~/.orkestra/deploy/merged-katalog.yaml
+// from all registered Katalogs. Returns the path to the merged file.
+func runKompose() (string, error) {
+	komposerPath, err := doktor.GlobalKomposerPath()
+	if err != nil {
+		return "", err
+	}
+	mergedPath := filepath.Join(filepath.Dir(komposerPath), doktor.RuntimeKatalogPath)
+	if err := exec.Command("ork", "kompose", "-k", komposerPath, "-o", mergedPath).Run(); err != nil {
+		return "", fmt.Errorf("ork kompose: %w", err)
+	}
+	return mergedPath, nil
+}
+
+// ensureIngressController installs nginx-ingress if no ingress controller is
+// found on the current cluster. Uses the kind-specific manifest when the
+// current context is a kind cluster; otherwise installs via Helm.
+func ensureIngressController() error {
+	if doktor.DetectIngressController() != doktor.IngressNone {
+		return nil
+	}
+
+	fmt.Println("  → Installing ingress controller (nginx)...")
+
+	contextOut, _ := exec.Command("kubectl", "config", "current-context").Output()
+	isKind := strings.Contains(string(contextOut), "kind")
+
+	var cmd *exec.Cmd
+	if isKind {
+		cmd = exec.Command("kubectl", "apply", "-f",
+			"https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml")
+	} else {
+		exec.Command("helm", "repo", "add", "ingress-nginx",
+			"https://kubernetes.github.io/ingress-nginx").Run()
+		exec.Command("helm", "repo", "update").Run()
+		cmd = exec.Command("helm", "install", "ingress-nginx",
+			"ingress-nginx/ingress-nginx",
+			"--namespace", "ingress-nginx",
+			"--create-namespace",
+			"--wait", "--timeout=120s",
+		)
+	}
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	fmt.Println("  ✓ Ingress controller ready")
+	return nil
+}
+
+// ensureMetricsServer installs the Kubernetes metrics-server if it is not
+// already present on the cluster. Uses the kind-compatible manifest when the
+// current context is a kind cluster; otherwise installs via Helm.
+func ensureMetricsServer() error {
+	// Detect if metrics-server already exists
+	out, _ := exec.Command("kubectl", "get", "deployment", "-n", "kube-system", "metrics-server").CombinedOutput()
+	if strings.Contains(string(out), "metrics-server") {
+		return nil
+	}
+
+	fmt.Println("  → Installing metrics-server...")
+
+	// Detect if current context is kind
+	contextOut, _ := exec.Command("kubectl", "config", "current-context").Output()
+	isKind := strings.Contains(string(contextOut), "kind")
+
+	var cmd *exec.Cmd
+	if isKind {
+		// Kind-compatible manifest (includes insecure TLS flags)
+		cmd = exec.Command("kubectl", "apply", "-f",
+			"https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml")
+	} else {
+		// Generic install via Helm
+		exec.Command("helm", "repo", "add", "metrics-server",
+			"https://kubernetes-sigs.github.io/metrics-server/").Run()
+		exec.Command("helm", "repo", "update").Run()
+
+		cmd = exec.Command("helm", "install", "metrics-server",
+			"metrics-server/metrics-server",
+			"--namespace", "kube-system",
+			"--set", "args={--kubelet-insecure-tls}",
+			"--wait", "--timeout=120s",
+		)
+	}
+
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	fmt.Println("  ✓ Metrics server ready")
+	return nil
 }
 
 func openBrowser(url string) error {
-	// Try common openers in order.
 	for _, prog := range []string{"xdg-open", "open", "start"} {
 		if _, err := exec.LookPath(prog); err == nil {
 			return exec.Command(prog, url).Start()

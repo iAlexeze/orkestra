@@ -32,6 +32,8 @@ type ProjectInfo struct {
 	Config        []EnvVar // IsCfg == true
 	HasFrontend   bool
 	AppName       string // derived from directory name
+	HasSMTP       bool   // if env has smtp vars
+	HasSlack      bool   // if env has slack vars
 }
 
 // Detect examines dir and returns a ProjectInfo. Missing .env is not an error.
@@ -54,6 +56,8 @@ func Detect(dir string) (*ProjectInfo, error) {
 		}
 		info.EnvVars = vars
 		info.Secrets, info.Config = SplitEnvVars(vars)
+		info.HasSMTP = HasSMTP(vars)
+		info.HasSlack = HasSlack(vars)
 	}
 
 	info.Port = detectPort(info.EnvVars, info.Language)

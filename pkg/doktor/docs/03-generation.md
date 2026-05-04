@@ -1,11 +1,12 @@
 # 03 — Katalog Generation
 
-`Init(info *ProjectInfo, opts GenerateOptions)` writes two files into `.orkestra/`:
+`Init(info *ProjectInfo, opts GenerateOptions)` writes three files into `.orkestra/`:
 
 | File | Purpose |
 |------|---------|
 | `katalog.yaml` | The Orkestra Katalog — what the operator creates and reconciles |
 | `app.yaml` | The application ConfigMap — the only YAML the developer manages |
+| `values.yaml` | Helm chart overrides for the Orkestra installation (never overwritten after first write) |
 
 It also appends `.orkestra/bundle/` to `.gitignore` so generated secrets never enter source control.
 
@@ -13,11 +14,15 @@ It also appends `.orkestra/bundle/` to `.gitignore` so generated secrets never e
 
 ```go
 type GenerateOptions struct {
-    NoHA     bool   // skip HPA and PDB; single replica
-    NoSecure bool   // skip deletionProtection
-    Name     string // override app name (default: directory basename)
+    NoHA       bool   // skip HPA and PDB; single replica
+    NoSecure   bool   // skip deletionProtection and protection labels
+    Clean      bool   // add cleanupOnShutdown: true to deletionProtection
+    Name       string // override app name (default: directory basename)
+    AddIngress bool   // force-include Ingress even when no frontend was detected
 }
 ```
+
+`--add-ingress` is useful when the auto-detection misses a frontend or when you want to add an Ingress to a backend service that should be publicly reachable.
 
 ## What the Katalog contains
 
@@ -31,23 +36,23 @@ The Katalog is built entirely from `ProjectInfo` and `GenerateOptions`. No templ
 | ServiceAccount | ✓ | `<name>-sa`, referenced by the Deployment |
 | Service | ✓ reconcile | Port from `.env` `PORT` or language default |
 
-### Resources created when `spec.image` is set
+### Resources created when `data.image` is set
 
-The Deployment, HPA, and PDB all carry `when: - field: spec.image / exists: true`. Until `ork deploy` patches the image field, these resources are not created — the namespace and service account exist but the workload is idle.
+The Deployment, HPA, and PDB all carry `when: - field: data.image / exists: true`. Until `ork deploy` patches the image field, these resources are not created — the namespace and service account exist but the workload is idle.
 
 | Resource | onCreate | Condition |
 |----------|----------|-----------|
-| Deployment | ✓ reconcile | spec.image exists |
-| HPA | ✓ reconcile | spec.image exists |
-| PDB | ✓ reconcile | spec.image exists |
+| Deployment | ✓ reconcile | data.image exists |
+| HPA | ✓ reconcile | data.image exists (HA mode only) |
+| PDB | ✓ reconcile | data.image exists (HA mode only) |
 
-### Resources gated on `spec.host`
+### Resources gated on `data.host`
 
-The Ingress is only generated when `HasFrontend` is true (see [01-detection.md](01-detection.md)). Even then, it is only applied when `spec.host` is set — so a new deployment does not create a broken Ingress with an empty hostname.
+The Ingress is generated when `HasFrontend` is true (see [01-detection.md](01-detection.md)) or when `--add-ingress` is passed. Even then, it is only applied when `data.host` is set — so a new deployment does not create a broken Ingress with an empty hostname.
 
 | Resource | Condition |
 |----------|-----------|
-| Ingress | spec.host exists |
+| Ingress | `HasFrontend || AddIngress`, and data.host exists at runtime |
 
 ### HA vs no-HA
 
@@ -59,6 +64,19 @@ Without `--no-ha` (default):
 With `--no-ha`:
 - Deployment: 1 replica
 - HPA and PDB: not generated
+
+### Deletion protection
+
+Without `--no-secure` (default), the Katalog includes:
+
+```yaml
+security:
+  deletionProtection:
+    enabled: true
+    cleanupOnShutdown: true  # only with --clean
+```
+
+All resources carry the `orkestra.io/deletion-protection: "true"` label so they cannot be accidentally deleted.
 
 ### envFrom
 
@@ -78,14 +96,14 @@ The Katalog drives a three-phase state machine written to the CR's status:
 
 | Phase | Condition |
 |-------|-----------|
-| `Pending` | spec.image not set |
-| `Deploying` | spec.image set, pods not yet ready |
+| `Pending` | data.image not set |
+| `Deploying` | data.image set, pods not yet ready |
 | `Ready` | all replicas ready |
 
-When `HasFrontend` is true and `spec.host` is set, a `url` field is also written:
+When `HasFrontend` is true (or `AddIngress` is set) and `data.host` is set, a `url` field is also written:
 
 ```
-status.url = "https://<spec.host>"
+status.url = "https://<data.host>"
 ```
 
 ## app.yaml
@@ -96,20 +114,43 @@ The application ConfigMap is the only file the developer touches directly. It ex
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: my-app
-  namespace: my-app-ns
+  name: my-app-orkestra
+  namespace: my-app-orkestra-ns
   labels:
-    ork.io/app: my-app
+    ork.io/app: my-app-orkestra
+    orkestra.io/deletion-protection: "true"   # omitted with --no-secure
 data:
   port: "8080"
   replicas: "2"
   minReplicas: "2"
   maxReplicas: "10"
-  host: ""         # fill this: myapp.example.com
-  image: ""        # set by ork deploy — do not edit manually
+  host: ""              # this app's public hostname (e.g. myapp.example.com)
+  controlCenterHost: "" # Orkestra Control Center hostname (e.g. control.mycompany.com)
+  image: ""             # set by ork deploy — do not edit manually
 ```
 
 `ork deploy` patches the `image` field. Everything else is developer-managed.
+
+`controlCenterHost` is cluster-wide — the same value for all apps in the cluster. When empty, `ork deploy` shows the internal svc URL `http://orkestra-cc.orkestra-system.svc.cluster.local:8081`. Set it in `.orkestra/app.yaml` to expose the Control Center externally and have `ork deploy` print the public URL after each deploy.
+
+## values.yaml
+
+`ork doktor init` writes `.orkestra/values.yaml` on first run and never overwrites it. This file controls Helm chart overrides for the Orkestra installation:
+
+```yaml
+# .orkestra/values.yaml — Orkestra cluster configuration
+# Apply changes with: ork deploy --upgrade-orkestra
+#
+# controlCenter:
+#   ingress:
+#     enabled: true
+#     className: nginx
+#     hosts:
+#       - host: control.mycompany.com
+#         ...
+```
+
+`ork deploy` automatically passes this file to Helm via `--values` when `--values` is not explicitly set.
 
 ## Usage
 
@@ -117,9 +158,12 @@ data:
 info, _ := doktor.Detect(".")
 
 err := doktor.Init(info, doktor.GenerateOptions{
-    NoHA:     false,
-    NoSecure: false,
+    NoHA:       false,
+    NoSecure:   false,
+    AddIngress: true,  // force Ingress block even without detected frontend
 })
 ```
+
+The CLI flag `--add-ingress` maps directly to `GenerateOptions.AddIngress`.
 
 → Next: [04-bundle.md](04-bundle.md)

@@ -121,6 +121,7 @@ var doktorInitCmd = &cobra.Command{
 		clean, _ := cmd.Flags().GetBool("clean")
 		name, _ := cmd.Flags().GetString("name")
 		addIngress, _ := cmd.Flags().GetBool("add-ingress")
+		notifyMe, _ := cmd.Flags().GetBool("notify-me")
 
 		opts := doktor.GenerateOptions{
 			NoHA:       noHA,
@@ -128,6 +129,7 @@ var doktorInitCmd = &cobra.Command{
 			Clean:      clean,
 			Name:       name,
 			AddIngress: addIngress,
+			NotifyMe:   notifyMe,
 		}
 
 		if err := doktor.Init(info, opts); err != nil {
@@ -165,6 +167,8 @@ func init() {
 
 	doktorInitCmd.Flags().String("name", "", "App name (e.g. my-app → CR: my-app-orkestra, namespace: my-app-orkestra-ns)")
 	doktorInitCmd.Flags().Bool("add-ingress", false, "Include Ingress even when no frontend was auto-detected")
+	doktorInitCmd.Flags().Bool("notify-me", false, "Auto‑enable notifications using SMTP_*/SLACK_* from .env and your Git author")
+
 	_ = doktorInitCmd.MarkFlagRequired("name")
 
 	doktorCmd.AddCommand(doktorInitCmd)
