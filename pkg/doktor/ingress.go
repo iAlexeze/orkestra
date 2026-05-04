@@ -76,6 +76,12 @@ func KubectlAvailable() bool {
 	return err == nil
 }
 
+// HelmAvailable reports whether helm is present in PATH.
+func HelmAvailable() bool {
+	_, err := exec.LookPath("helm")
+	return err == nil
+}
+
 // ClusterReachable reports whether kubectl can reach the cluster configured
 // in the current kubeconfig (KUBECONFIG env, ~/.kube/config, or --kubeconfig
 // flag resolved by root.go). Times out after 5 seconds.

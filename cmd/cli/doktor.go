@@ -89,6 +89,16 @@ var doktorCmd = &cobra.Command{
 			fmt.Println("  DeletionProtection  enabled")
 		}
 
+		// Detect missing dependencies
+		fmt.Println()
+		fmt.Println("Missing dependencies:")
+		if !doktor.KubectlAvailable() {
+			fmt.Println("  kubectl   (will be installed during 'ork deploy')")
+		}
+		if !doktor.HelmAvailable() {
+			fmt.Println("  helm      (will be installed during 'ork deploy')")
+		}
+
 		fmt.Println()
 		fmt.Println("Run 'ork doktor init' to generate .orkestra/katalog.yaml")
 		if !noHA {

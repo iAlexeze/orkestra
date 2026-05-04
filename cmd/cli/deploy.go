@@ -184,6 +184,9 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 					return fmt.Errorf("saving komposer: %w", saveErr)
 				}
 
+				// Add project license
+				komposer.Metadata.License = info.License
+
 				// Merge all registered Katalogs into one. Orkestra sees the merged
 				// result, never the raw Komposer file. Any unreadable or malformed
 				// katalog file will cause ork kompose to fail here — before the
@@ -210,8 +213,10 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		fmt.Println("\nApplying to cluster...")
 
 		if !dryRun {
-			if !doktor.KubectlAvailable() {
-				return fmt.Errorf("kubectl not found in PATH")
+			// Ensure dependencies: kubectl and helm
+			if err := doktor.EnsureDependencies(); err != nil {
+				fmt.Printf("  ~ Could not install dependencies: %v\n", err)
+				fmt.Printf("  	%v\n", err)
 			}
 
 			// Auto-install ingress controller when the project has a frontend.

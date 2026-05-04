@@ -1,6 +1,7 @@
 package doktor
 
 import (
+	"bufio"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,6 +35,7 @@ type ProjectInfo struct {
 	AppName       string // derived from directory name
 	HasSMTP       bool   // if env has smtp vars
 	HasSlack      bool   // if env has slack vars
+	License       string // project license read from regular license files
 }
 
 // Detect examines dir and returns a ProjectInfo. Missing .env is not an error.
@@ -62,8 +64,35 @@ func Detect(dir string) (*ProjectInfo, error) {
 
 	info.Port = detectPort(info.EnvVars, info.Language)
 	info.HasFrontend = detectFrontend(dir, info.Language)
+	info.License = DetectLicense(dir)
 
 	return info, nil
+}
+
+func DetectLicense(dir string) string {
+	candidates := []string{
+		"LICENSE", "LICENSE.txt", "LICENSE.md",
+		"COPYING", "COPYING.txt",
+	}
+
+	for _, name := range candidates {
+		path := filepath.Join(dir, name)
+		if fileExists(path) {
+			f, err := os.Open(path)
+			if err != nil {
+				return ""
+			}
+			defer f.Close()
+
+			scanner := bufio.NewScanner(f)
+			if scanner.Scan() {
+				line := strings.TrimSpace(scanner.Text())
+				return normalizeLicenseName(line)
+			}
+		}
+	}
+
+	return ""
 }
 
 func detectLanguage(dir string) (Language, string) {
@@ -163,6 +192,25 @@ func shortGitCommit(dir string) string {
 		return ref[:7]
 	}
 	return ref
+}
+
+func normalizeLicenseName(line string) string {
+	line = strings.ToLower(line)
+
+	switch {
+	case strings.Contains(line, "mit"):
+		return "MIT"
+	case strings.Contains(line, "apache"):
+		return "Apache-2.0"
+	case strings.Contains(line, "gpl"):
+		return "GPL"
+	case strings.Contains(line, "bsd"):
+		return "BSD"
+	case strings.Contains(line, "mozilla"):
+		return "MPL"
+	}
+
+	return strings.TrimSpace(line)
 }
 
 func fileExists(path string) bool {
