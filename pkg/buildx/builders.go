@@ -29,7 +29,12 @@ func (DockerBuilder) Build(dir, image string, compose ComposeBuild, w io.Writer)
 		return wrapErr("docker compose build", cmd.Run())
 	}
 
-	cmd := exec.Command("docker", "build", "-t", image, dir)
+	args := []string{"build", "-t", image}
+	if compose.Dockerfile != "" {
+		args = append(args, "-f", compose.Dockerfile)
+	}
+	args = append(args, dir)
+	cmd := exec.Command("docker", args...)
 	cmd.Stdout = w
 	cmd.Stderr = w
 	return wrapErr("docker build", cmd.Run())
@@ -70,7 +75,12 @@ func (PodmanBuilder) Build(dir, image string, compose ComposeBuild, w io.Writer)
 		return wrapErr("podman-compose build", cmd.Run())
 	}
 
-	cmd := exec.Command("podman", "build", "-t", image, dir)
+	args := []string{"build", "-t", image}
+	if compose.Dockerfile != "" {
+		args = append(args, "-f", compose.Dockerfile)
+	}
+	args = append(args, dir)
+	cmd := exec.Command("podman", args...)
 	cmd.Stdout = w
 	cmd.Stderr = w
 	return wrapErr("podman build", cmd.Run())
@@ -103,7 +113,12 @@ func (BuildahBuilder) Build(dir, image string, compose ComposeBuild, w io.Writer
 		return fmt.Errorf("buildah does not support compose builds")
 	}
 
-	cmd := exec.Command("buildah", "build", "-t", image, dir)
+	args := []string{"build", "-t", image}
+	if compose.Dockerfile != "" {
+		args = append(args, "-f", compose.Dockerfile)
+	}
+	args = append(args, dir)
+	cmd := exec.Command("buildah", args...)
 	cmd.Stdout = w
 	cmd.Stderr = w
 	return wrapErr("buildah build", cmd.Run())

@@ -1,12 +1,8 @@
-# 05 — Docker and Cluster Operations
+# 05 — Cluster Operations
 
-The final files in the package handle external operations: building and pushing a Docker image, detecting cluster state, runtime health, persistent deploy state, and multi-project tracking.
+The files in this area handle external operations: detecting cluster state, runtime health, persistent deploy state, and multi-project tracking. Image building and pushing are handled by [`pkg/buildx`](../../buildx/README.md).
 
-## Docker operations
-
-`docker.go` wraps the Docker CLI. There is no Docker API dependency — it shells out to `docker`.
-
-### ImageTag
+## Image tag
 
 ```go
 image := doktor.ImageTag("ghcr.io/myorg", "my-app", "a3f5c2b")
@@ -15,19 +11,18 @@ image := doktor.ImageTag("ghcr.io/myorg", "my-app", "a3f5c2b")
 
 The tag is the git commit short SHA by default. `ork deploy --tag v1.2.0` overrides it. When there is no git repository, the tag falls back to `"latest"`.
 
-### Build
+## Build and push
+
+Image operations now live in `pkg/buildx`, which auto-selects Docker, Podman, or Buildah:
 
 ```go
-err := doktor.Build(".", "ghcr.io/myorg/my-app:a3f5c2b", os.Stdout)
-// runs: docker build -t ghcr.io/myorg/my-app:a3f5c2b .
+err := buildx.BuildImage(".", "ghcr.io/myorg/my-app:a3f5c2b",
+    buildx.ComposeBuild{Dockerfile: "Dockerfile.prod"}, os.Stdout)
+
+err = buildx.PushImage("ghcr.io/myorg/my-app:a3f5c2b", os.Stdout)
 ```
 
-### Push
-
-```go
-err := doktor.Push("ghcr.io/myorg/my-app:a3f5c2b", os.Stdout)
-// runs: docker push ghcr.io/myorg/my-app:a3f5c2b
-```
+See [`pkg/buildx`](../../buildx/README.md) for builder selection, compose-based builds, and the `--dockerfile` flag.
 
 ## Cluster connectivity
 

@@ -636,7 +636,7 @@ func (cc *ControlCenter) handleCRList(w http.ResponseWriter, r *http.Request, in
 
 	list, err := client.FetchCRList(instanceURL, crdName)
 	if err != nil {
-		cc.renderError(w, r, fmt.Sprintf("Could not load CR list for %s: %v", crdName, err))
+		cc.renderError(w, r, fmt.Sprintf("Could not load CR list for %s: \n%v", crdName, err))
 		return
 	}
 
@@ -658,7 +658,11 @@ func (cc *ControlCenter) handleCRDetail(w http.ResponseWriter, r *http.Request, 
 
 	detail, err := client.FetchCRDetail(instanceURL, crdName, namespace, name)
 	if err != nil {
-		cc.renderError(w, r, fmt.Sprintf("Could not load CR %s/%s: %v", namespace, name, err))
+		if namespace != "" {
+			cc.renderError(w, r, fmt.Sprintf("Could not load CR '%s/%s': \n%v", namespace, name, err))
+		} else {
+			cc.renderError(w, r, fmt.Sprintf("Could not load CR '%s': \n%v", name, err))
+		}
 		return
 	}
 

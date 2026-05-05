@@ -18,8 +18,6 @@ resources:
   statefulSets:
     - name: "{{ .metadata.name }}-db"
       image: "{{ index .inputs \"image\" }}"
-      replicas: 1
-      volumeClaims:
-        - name: data
-          size: "{{ index .inputs \"volumeSize\" }}"
-          mountPath: /data
+      replicas: "1"
+      storageSize: "{{ index .inputs \"volumeSize\" }}"
+      mountPath: /data

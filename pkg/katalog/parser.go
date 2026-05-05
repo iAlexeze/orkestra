@@ -183,6 +183,13 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 18 Validate Services
+	// -------------------------------------------------------------------------
+	if err := k.validateService(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }
 

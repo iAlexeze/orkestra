@@ -22,7 +22,6 @@ var ComposeFileVariants = []string{
 
 // ComposeFile is the parsed docker-compose.yaml.
 type ComposeFile struct {
-	Version  string                    `yaml:"version,omitempty"`
 	Services map[string]ComposeService `yaml:"services"`
 }
 
@@ -45,6 +44,30 @@ func (s ComposeService) imageString() string {
 		return str
 	}
 	return ""
+}
+
+// BuildContext extracts the build context directory and optional Dockerfile path
+// from the service's build: field. Returns ("", "") when build: is not set.
+//
+// String form: build: ./app  → context="./app", dockerfile=""
+// Map form:    build: {context: ./app, dockerfile: ./Dockerfile.prod}
+func (s ComposeService) BuildContext() (context, dockerfile string) {
+	if s.Build == nil {
+		return "", ""
+	}
+	switch v := s.Build.(type) {
+	case string:
+		return v, ""
+	case map[string]interface{}:
+		if ctx, ok := v["context"].(string); ok {
+			context = ctx
+		}
+		if df, ok := v["dockerfile"].(string); ok {
+			dockerfile = df
+		}
+		return context, dockerfile
+	}
+	return "", ""
 }
 
 // KnownMotif maps a detected infrastructure image to its Motif reference.

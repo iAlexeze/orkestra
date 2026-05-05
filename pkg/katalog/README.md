@@ -44,6 +44,17 @@ Each `CRDEntry` goes through several enrichment phases before it is considered r
 
 After this pipeline, `k.enabledCRDs` contains fully-prepared entries. All runtime code reads from this map — it is never mutated after boot.
 
+## Motif support
+
+The katalog package also handles **Motif** imports — reusable infrastructure templates (databases, caches, message brokers) that a Katalog can import instead of writing all stateful resource declarations by hand.
+
+| File | Role |
+|------|------|
+| `motif_imports.go` | `ResolveMotifImports` — expands `imports:` blocks into concrete resource declarations |
+| `motif_validate.go` | `ValidateMotif`, `ValidateMotifImports` — structural and semantic validation of Motif YAML |
+
+Motif YAML is loaded by `pkg/motif/loader.go` using `utils.StrictUnmarshal` (same strict decoder as Katalog/Komposer) and then validated by `motif_validate.go` before any import expansion runs.
+
 ## Developer documentation
 
 | I want to… | Go to |
@@ -53,3 +64,4 @@ After this pipeline, `k.enabledCRDs` contains fully-prepared entries. All runtim
 | Understand deletion protection | [docs/03-deletion-protection.md](docs/03-deletion-protection.md) |
 | Understand security defaults | [docs/04-security.md](docs/04-security.md) |
 | Understand built-in type handling | [docs/05-builtins.md](docs/05-builtins.md) |
+| Understand Motif validation and import expansion | [docs/06-motif-validation.md](docs/06-motif-validation.md) |

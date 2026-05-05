@@ -1,6 +1,10 @@
-# 06 — Adding a New Resource Type
+# 07 — Adding a New Resource Type
 
 This document walks through every file that must change to add a new resource type. The worked example is `run_ingress.go`. Every step is labelled so you can use the checklist at the bottom to track progress.
+
+**Recent additions you can use as further reference:**
+- `run_roles.go` + `pkg/orkestra-registry/roles/role.go` — namespaced Role (RBAC)
+- `run_rolebindings.go` + `pkg/orkestra-registry/rolebindings/rolebinding.go` — RoleBinding; demonstrates the immutable `roleRef` delete-recreate pattern in `Update`
 
 ## Overview of files to touch
 

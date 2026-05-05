@@ -859,6 +859,56 @@ func resolveListField(data map[string]interface{}, path string) []interface{} {
 	return result
 }
 
+func expandForEachRoles(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.RoleTemplateSource,
+) []orktypes.RoleTemplateSource {
+	if !anyHasForEach(len(srcs), func(i int) *orktypes.ForEachSpec { return srcs[i].ForEach }) {
+		return srcs
+	}
+	var result []orktypes.RoleTemplateSource
+	for _, src := range srcs {
+		if src.ForEach == nil {
+			result = append(result, src)
+			continue
+		}
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
+			expanded := src
+			expanded.ForEach = nil
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
+			result = append(result, expanded)
+		}
+	}
+	return result
+}
+
+func expandForEachRoleBindings(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.RoleBindingTemplateSource,
+) []orktypes.RoleBindingTemplateSource {
+	if !anyHasForEach(len(srcs), func(i int) *orktypes.ForEachSpec { return srcs[i].ForEach }) {
+		return srcs
+	}
+	var result []orktypes.RoleBindingTemplateSource
+	for _, src := range srcs {
+		if src.ForEach == nil {
+			result = append(result, src)
+			continue
+		}
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
+			expanded := src
+			expanded.ForEach = nil
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
+			result = append(result, expanded)
+		}
+	}
+	return result
+}
+
 // splitFieldPath splits a dot-notation path into segments.
 func splitFieldPath(path string) []string {
 	var parts []string

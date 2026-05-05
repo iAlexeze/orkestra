@@ -30,10 +30,17 @@ That is enough. `pkg/doktor` produces the rest.
 |------|---------------|
 | `detect.go` | Read the project directory — language, port, git commit, frontend |
 | `envfile.go` | Parse `.env`, split into secrets and config vars |
-| `generate.go` | Write `.orkestra/katalog.yaml` and `.orkestra/app.yaml` |
+| `generate.go` | Write `.orkestra/katalog.yaml` and `.orkestra/app.yaml`; `GenerateOptions.OutDir` enables per-app subdirectory output for multi-app projects |
 | `bundle.go` | Write `.orkestra/bundle/app-secrets.yaml` and `app-config.yaml` |
-| `docker.go` | `docker build` and `docker push` wrappers |
+| `compose.go` | Parse `docker-compose.yaml`; classify services as stateless (Deployments) or stateful (Motif-backed); extract build context and Dockerfile paths |
 | `ingress.go` | Detect ingress controller and Orkestra presence on the cluster |
+| `helm.go` | `helm install` / `helm upgrade` wrappers for the Orkestra chart |
+| `kind.go` | Create and manage a local `orkestra-playground` kind cluster for `--dev` |
+| `runtime.go` | `CheckRuntimeHealth`, `FetchRuntimeLogs`, `KatalogChanged`, `RestartOrkestra` |
+| `state.go` | `~/.orkestra/deploy/state.json` — per-machine deploy history, rollback support |
+| `komposer.go` | `~/.orkestra/deploy/komposer.yaml` — aggregate Katalog paths from all deployed projects |
+
+Image building and pushing moved to [`pkg/buildx`](../buildx/README.md) — builder auto-detection (Docker / Podman / Buildah), Dockerfile selection, and compose-based builds.
 
 ## The `.env` contract
 
@@ -55,6 +62,7 @@ Variables tagged `# ork:cfg` on the same line become a ConfigMap. All others bec
 |-----------|-------|
 | Understand project detection | [docs/01-detection.md](docs/01-detection.md) |
 | Understand `.env` parsing | [docs/02-envfile.md](docs/02-envfile.md) |
-| Understand Katalog generation | [docs/03-generation.md](docs/03-generation.md) |
+| Understand Katalog generation (incl. multi-app, compose, Role/RoleBinding) | [docs/03-generation.md](docs/03-generation.md) |
 | Understand bundle generation | [docs/04-bundle.md](docs/04-bundle.md) |
-| Understand Docker and cluster operations | [docs/05-deploy.md](docs/05-deploy.md) |
+| Understand cluster operations, health checks, deploy state | [docs/05-deploy.md](docs/05-deploy.md) |
+| Understand image building and builder selection | [`pkg/buildx`](../buildx/README.md) |

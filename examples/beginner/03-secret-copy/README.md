@@ -93,7 +93,7 @@ Wait one resync interval (15s), then check a copy:
 
 ```bash
 kubectl get secret database-credentials -n team-alpha \
-  -o jsonpath='{.data.password}' | base64 -d
+  -o jsonpath='{.data.password}' | base64 -d && echo
 # newpassword
 ```
 

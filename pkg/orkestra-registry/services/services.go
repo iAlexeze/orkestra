@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/konfig"
@@ -223,6 +224,20 @@ func buildService(owner domain.Object, spec ResolvedServiceSpec, namespace strin
 		svcType = corev1.ServiceTypeLoadBalancer
 	}
 
+	if spec.Headless {
+		svcType = corev1.ClusterIPNone
+	}
+
+	proto := corev1.ProtocolTCP
+	switch strings.ToUpper(spec.Protocol) {
+	case "UDP":
+		proto = corev1.ProtocolUDP
+	case "SCTP":
+		proto = corev1.ProtocolSCTP
+	case "", "TCP":
+		proto = corev1.ProtocolTCP
+	}
+
 	// Selector matches pods created by deployments with the same owner
 	spec.Selector["orkestra-owner"] = owner.GetName()
 
@@ -263,7 +278,7 @@ func buildService(owner domain.Object, spec ResolvedServiceSpec, namespace strin
 				{
 					Port:       spec.Port,
 					TargetPort: intstr.FromInt(int(spec.TargetPort)),
-					Protocol:   corev1.ProtocolTCP,
+					Protocol:   proto,
 				},
 			},
 		},

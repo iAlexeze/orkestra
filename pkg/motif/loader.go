@@ -14,9 +14,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/merger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"gopkg.in/yaml.v3"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 // Load loads a Motif from a local file path.
@@ -110,10 +111,10 @@ func resolveRef(ref, version string, oci bool) (cleanURL, resolvedVersion string
 
 func parse(data []byte) (*orktypes.Motif, error) {
 	var m orktypes.Motif
-	if err := yaml.Unmarshal(data, &m); err != nil {
+	if err := utils.StrictUnmarshal(data, &m); err != nil {
 		return nil, fmt.Errorf("parsing motif: %w", err)
 	}
-	if m.Kind != "Motif" {
+	if !konfig.IsMotifKind(m.Kind) {
 		return nil, fmt.Errorf("expected kind: Motif, got: %s", m.Kind)
 	}
 	if m.Metadata.Name == "" {

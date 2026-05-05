@@ -5,10 +5,11 @@ import (
 	"io"
 )
 
-// ComposeBuild describes whether the build should use docker-compose/podman-compose/etc.
+// ComposeBuild describes how to build a container image.
 type ComposeBuild struct {
 	UseCompose  bool   // true → use compose build
-	ComposeFile string // path to docker-compose.yaml
+	ComposeFile string // path to docker-compose.yaml (only when UseCompose)
+	Dockerfile  string // path to Dockerfile; empty → "Dockerfile" in the build dir
 }
 
 // Builder is the interface implemented by all container builders.

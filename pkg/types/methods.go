@@ -430,6 +430,47 @@ func (c *CRDEntry) HasAnyHPA() bool {
 	return false
 }
 
+// HasAnyServices reports whether this CRD defines any Services
+// in either OnCreate or OnReconcile phases.
+func (c *CRDEntry) HasAnyServices() bool {
+	if c.HasOnCreate() {
+		return c.OperatorBox.OnCreate.Services != nil
+	}
+	if c.HasOnReconcile() {
+		return c.OperatorBox.OnReconcile.Services != nil
+	}
+
+	return false
+}
+
+// IsValidServiceType reports whether the provided service type is valid.
+// Accepted values (case‑insensitive):
+//   - ClusterIP
+//   - NodePort
+//   - LoadBalancer
+func IsValidServiceType(t string) bool {
+	switch strings.ToLower(t) {
+	case "", "clusterip", "nodeport", "loadbalancer":
+		return true
+	default:
+		return false
+	}
+}
+
+// IsValidProtocol reports whether the provided protocol is valid.
+// Accepted values (case‑insensitive):
+//   - TCP
+//   - UDP
+//   - SCTP
+func IsValidProtocol(p string) bool {
+	switch strings.ToUpper(p) {
+	case "", "TCP", "UDP", "SCTP":
+		return true
+	default:
+		return false
+	}
+}
+
 // HasAnyDeployments reports whether this CRD defines any Deployments
 // in either OnCreate or OnReconcile phases.
 func (c *CRDEntry) HasAnyDeployments() bool {

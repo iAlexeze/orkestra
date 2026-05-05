@@ -12,7 +12,7 @@ The reconciler package is the execution engine of every Orkestra operator. It ta
 | `rollback.go` | Rollback subsystem — spec snapshotting, trigger evaluation, `onRollback` template execution, annotation lifecycle |
 | `run_template_reconcile.go` | Declarative pipeline: normalize → resolver → onCreate → onReconcile → providers |
 | `normalize.go` | `applyNormalize` — in-memory spec normalization before mutation/validation |
-| `run_*.go` | Per-resource-type runners (deployments, services, secrets, cronjobs, …) |
+| `run_*.go` | Per-resource-type runners (deployments, services, secrets, cronjobs, roles, rolebindings, …) |
 | `run_foreach.go` | `forEach:` expansion — expands declarations into N copies before runners see them |
 | `conditions.go` | `EvaluateWhen` wrappers and helpers |
 | `children.go` | Reads owned child resources into the resolver's `.children.*` data |

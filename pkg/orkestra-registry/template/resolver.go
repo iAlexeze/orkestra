@@ -761,6 +761,95 @@ func (r *Resolver) ResolveServiceAccountTemplate(src orktypes.ServiceAccountTemp
 	return resolved, nil
 }
 
+// ResolveRoleTemplate resolves all template expressions in a RoleTemplateSource.
+func (r *Resolver) ResolveRoleTemplate(src orktypes.RoleTemplateSource) (orktypes.RoleTemplateSource, error) {
+	resolved := orktypes.RoleTemplateSource{
+		Version:   src.Version,
+		Reconcile: src.Reconcile,
+	}
+
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("role.name: %w", err)
+	}
+
+	ns := src.Namespace
+	if ns == "" {
+		ns = "{{ .metadata.namespace }}"
+	}
+	if resolved.Namespace, err = r.Resolve(ns); err != nil {
+		return resolved, fmt.Errorf("role.namespace: %w", err)
+	}
+
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("role.labels: %w", err)
+	}
+
+	// Resolve resourceNames in each rule (apiGroups/resources/verbs are typically static)
+	for _, rule := range src.Rules {
+		resolvedRule := orktypes.PolicyRuleSpec{
+			APIGroups: rule.APIGroups,
+			Resources: rule.Resources,
+			Verbs:     rule.Verbs,
+		}
+		for _, rn := range rule.ResourceNames {
+			rv, resolveErr := r.Resolve(rn)
+			if resolveErr != nil {
+				return resolved, fmt.Errorf("role.rules.resourceNames: %w", resolveErr)
+			}
+			resolvedRule.ResourceNames = append(resolvedRule.ResourceNames, rv)
+		}
+		resolved.Rules = append(resolved.Rules, resolvedRule)
+	}
+
+	return resolved, nil
+}
+
+// ResolveRoleBindingTemplate resolves all template expressions in a RoleBindingTemplateSource.
+func (r *Resolver) ResolveRoleBindingTemplate(src orktypes.RoleBindingTemplateSource) (orktypes.RoleBindingTemplateSource, error) {
+	resolved := orktypes.RoleBindingTemplateSource{
+		Version:   src.Version,
+		Reconcile: src.Reconcile,
+	}
+
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("rolebinding.name: %w", err)
+	}
+
+	ns := src.Namespace
+	if ns == "" {
+		ns = "{{ .metadata.namespace }}"
+	}
+	if resolved.Namespace, err = r.Resolve(ns); err != nil {
+		return resolved, fmt.Errorf("rolebinding.namespace: %w", err)
+	}
+
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("rolebinding.labels: %w", err)
+	}
+
+	resolved.RoleRef.Kind = src.RoleRef.Kind
+	if resolved.RoleRef.Name, err = r.Resolve(src.RoleRef.Name); err != nil {
+		return resolved, fmt.Errorf("rolebinding.roleRef.name: %w", err)
+	}
+
+	for i, s := range src.Subjects {
+		rs := orktypes.SubjectSpec{Kind: s.Kind}
+		if rs.Name, err = r.Resolve(s.Name); err != nil {
+			return resolved, fmt.Errorf("rolebinding.subjects[%d].name: %w", i, err)
+		}
+		if rs.Namespace, err = r.Resolve(s.Namespace); err != nil {
+			return resolved, fmt.Errorf("rolebinding.subjects[%d].namespace: %w", i, err)
+		}
+		resolved.Subjects = append(resolved.Subjects, rs)
+	}
+
+	return resolved, nil
+}
+
 // ResolveIngressTemplate resolves all template expressions in an IngressTemplateSource.
 func (r *Resolver) ResolveIngressTemplate(src orktypes.IngressTemplateSource) (orktypes.IngressTemplateSource, error) {
 	resolved := orktypes.IngressTemplateSource{

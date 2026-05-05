@@ -18,6 +18,7 @@ type GenerateOptions struct {
 	AddIngress bool   // force-include Ingress even when no frontend was detected
 	NotifyMe   bool   // add notification block
 	UseCompose string // path to docker-compose.yaml (expand stateful services via Motifs)
+	OutDir     string // override .orkestra/ directory; empty = info.Dir/.orkestra
 }
 
 // Init generates .orkestra/katalog.yaml and .orkestra/app.yaml, creates the
@@ -28,9 +29,12 @@ func Init(info *ProjectInfo, opts GenerateOptions) error {
 		name = info.AppName
 	}
 
-	orkDir := filepath.Join(info.Dir, ".orkestra")
+	orkDir := opts.OutDir
+	if orkDir == "" {
+		orkDir = filepath.Join(info.Dir, ".orkestra")
+	}
 	if err := os.MkdirAll(orkDir, 0o755); err != nil {
-		return fmt.Errorf("creating .orkestra/: %w", err)
+		return fmt.Errorf("creating %s/: %w", orkDir, err)
 	}
 
 	// When --use-compose is set, read the compose file and inject stateful service
@@ -62,15 +66,6 @@ func Init(info *ProjectInfo, opts GenerateOptions) error {
 
 	if err := updateGitignore(info.Dir); err != nil {
 		return fmt.Errorf("updating .gitignore: %w", err)
-	}
-
-	// Write .orkestra/values.yaml only when it doesn't already exist so
-	// user edits are never overwritten on re-init.
-	valuesPath := filepath.Join(orkDir, "values.yaml")
-	if _, err := os.Stat(valuesPath); os.IsNotExist(err) {
-		if err := os.WriteFile(valuesPath, []byte(buildOrkestraValues(name, opts.NotifyMe)), 0o644); err != nil {
-			return fmt.Errorf("writing values.yaml: %w", err)
-		}
 	}
 
 	return nil
@@ -258,6 +253,29 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 	b.WriteString("            - name: \"{{ .metadata.name }}-sa\"\n")
 	b.WriteString("              namespace: \"{{ .metadata.name }}-ns\"\n")
 	b.WriteString(protectionLabels("              ", secure))
+	b.WriteString("\n")
+
+	// Role — grants the ServiceAccount access only to this app's Deployment
+	b.WriteString("          roles:\n")
+	b.WriteString("            - name: \"{{ .metadata.name }}-role\"\n")
+	b.WriteString("              namespace: \"{{ .metadata.name }}-ns\"\n")
+	b.WriteString("              rules:\n")
+	b.WriteString("                - apiGroups: [\"apps\"]\n")
+	b.WriteString("                  resources: [\"deployments\"]\n")
+	b.WriteString("                  verbs: [\"get\", \"list\", \"watch\", \"update\", \"patch\"]\n")
+	b.WriteString("                  resourceNames: [\"{{ .metadata.name }}\"]\n")
+	b.WriteString("\n")
+
+	// RoleBinding — binds the Role to the ServiceAccount
+	b.WriteString("          roleBindings:\n")
+	b.WriteString("            - name: \"{{ .metadata.name }}-rolebinding\"\n")
+	b.WriteString("              namespace: \"{{ .metadata.name }}-ns\"\n")
+	b.WriteString("              roleRef:\n")
+	b.WriteString("                name: \"{{ .metadata.name }}-role\"\n")
+	b.WriteString("              subjects:\n")
+	b.WriteString("                - kind: ServiceAccount\n")
+	b.WriteString("                  name: \"{{ .metadata.name }}-sa\"\n")
+	b.WriteString("                  namespace: \"{{ .metadata.name }}-ns\"\n")
 	b.WriteString("\n")
 
 	// Deployment — only when data.image is set

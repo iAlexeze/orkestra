@@ -107,6 +107,34 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			}
 		}
 
+		// Load init config (bridges doktor init → deploy).
+		initCfg, _ := buildx.LoadInitConfig(dir)
+
+		// ── Multi-app path ────────────────────────────────────────────────────────
+		if len(initCfg.Apps) > 0 {
+			err := deployMultiApp(deployContext{
+				dir:             dir,
+				registry:        registry,
+				tag:             tag,
+				dryRun:          dryRun,
+				noHA:            noHA,
+				noSecure:        noSecure,
+				clean:           clean,
+				values:          values,
+				orkestraVersion: orkestraVersion,
+				upgradeOrkestra: upgradeOrkestra,
+				info:            info,
+				state:           state,
+				komposer:        komposer,
+				clusterCtx:      doktor.CurrentContext(),
+				initCfg:         initCfg,
+			})
+			_ = buildx.CleanupInitConfig(dir)
+			return err
+		}
+
+		// ── Single-app path (legacy) ──────────────────────────────────────────────
+
 		// Show cluster context and currently deployed projects.
 		clusterCtx := doktor.CurrentContext()
 		deployed := komposer.DeployedProjects()
@@ -122,11 +150,11 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		if !dryRun {
 			start := time.Now()
 			var buildOut bytes.Buffer
-			composeBuild := buildx.ComposeBuild{
-				UseCompose:  info.UseCompose,
-				ComposeFile: info.ComposePath,
-			}
 
+			composeBuild := buildx.ComposeBuild{
+				UseCompose:  initCfg.UseCompose,
+				ComposeFile: initCfg.ComposeFile,
+			}
 			if err := buildx.BuildImage(dir, image, composeBuild, &buildOut); err != nil {
 				fmt.Print(buildOut.String())
 				return err
@@ -181,10 +209,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 
 		if fileExistsAtPath(katalogPath) || dryRun {
 			if !dryRun {
-				// Register this project in the global Komposer using its absolute
-				// local path — no git commit or GitHub access required. The merger
-				// reads katalog files directly from the filesystem, so file
-				// permission/syntax errors surface here before Orkestra sees anything.
 				komposer.RegisterKatalog(absKatalogPath)
 				state.ClusterContext = clusterCtx
 				komposer.Metadata.Name = clusterCtx
@@ -193,10 +217,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 					return fmt.Errorf("saving komposer: %w", saveErr)
 				}
 
-				// Merge all registered Katalogs into one. Orkestra sees the merged
-				// result, never the raw Komposer file. Any unreadable or malformed
-				// katalog file will cause ork kompose to fail here — before the
-				// bundle is applied to the cluster.
 				mergedPath, mergeErr := runKompose()
 				if mergeErr != nil {
 					return fmt.Errorf("merging katalogs: %w", mergeErr)
@@ -219,13 +239,10 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		fmt.Println("\nApplying to cluster...")
 
 		if !dryRun {
-			// Ensure dependencies: kubectl and helm
 			if err := doktor.EnsureDependencies(); err != nil {
 				fmt.Printf("  ~ Could not install dependencies: %v\n", err)
-				fmt.Printf("  	%v\n", err)
 			}
 
-			// Auto-install ingress controller when the project has a frontend.
 			if info.HasFrontend {
 				if err := ensureIngressController(); err != nil {
 					fmt.Printf("  ~ Could not install ingress controller: %v\n", err)
@@ -233,7 +250,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				}
 			}
 
-			// Auto-install metrics server when not available - useful with --dev
 			if err := ensureMetricsServer(); err != nil {
 				fmt.Printf("  ~ Could not install metrics server: %v\n", err)
 				fmt.Println("    Install manually: https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml")
@@ -272,9 +288,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				fmt.Printf("  ✓ %s applied\n", doktor.ApplicationFile)
 			}
 
-			// Notification secret — created when SMTP or Slack env vars are present.
-			// Mounted into the Orkestra runtime via runtime.extraEnvFrom so
-			// pkg/konfig reads SMTP_HOST, SLACK_WEBHOOK_URL, etc. as normal env vars.
 			if info.HasSMTP || info.HasSlack {
 				notifEnvMap := doktor.NotificationEnvVars(info.EnvVars)
 				secretYAML := doktor.BuildNotificationSecret(notifEnvMap)
@@ -295,7 +308,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				}
 			}
 
-			// Auto-use .orkestra/values.yaml when --values is not explicitly set.
 			resolvedValues := values
 			if resolvedValues == "" {
 				localValues := filepath.Join(dir, orkDir, "values.yaml")
@@ -332,7 +344,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				fmt.Println("  ✓ Orkestra already installed")
 			}
 
-			// Step 5 — Verify runtime health before touching workload state.
 			fmt.Print("\n  Checking runtime health...")
 			health := doktor.CheckRuntimeHealth()
 			if !health.Running {
@@ -358,14 +369,11 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				fmt.Println("  Katalog unchanged — Orkestra restart not required")
 			}
 
-			// Step 6 — Patch image in CR.
-			// Record previous image in state BEFORE patching so rollback is instant.
 			state.RecordDeploy(appName, ns, absKatalogPath, image)
 			if err := state.Save(); err != nil {
 				fmt.Printf("  ~ State save failed: %v\n", err)
 			}
 
-			// Also persist as annotation for kubectl introspection / backward compat.
 			if prevOut, err := exec.Command("kubectl", "get", "configmap", crName,
 				"-n", ns, "-o", `go-template={{index .data "image"}}`).Output(); err == nil {
 				if prev := strings.TrimSpace(string(prevOut)); prev != "" && prev != image {
@@ -383,7 +391,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			}
 			fmt.Printf("  ✓ Image: %s\n", image)
 
-			// Step 7 — Watch until ready.
 			fmt.Println("\nWaiting for deployment...")
 			if err := watchUntilReady(crName, ns, appName, state); err != nil {
 				fmt.Printf("  ~ could not confirm readiness: %v\n", err)
@@ -392,8 +399,293 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			fmt.Printf("  ~ dry-run: would apply %s and patch image to %s\n", bundleDir, image)
 		}
 
+		_ = buildx.CleanupInitConfig(dir)
 		return nil
 	},
+}
+
+// deployContext bundles all the parameters needed for both single and multi-app deploy.
+type deployContext struct {
+	dir             string
+	registry        string
+	tag             string
+	dryRun          bool
+	noHA            bool
+	noSecure        bool
+	clean           bool
+	values          string
+	orkestraVersion string
+	upgradeOrkestra bool
+	info            *doktor.ProjectInfo
+	state           *doktor.DeployState
+	komposer        *doktor.GlobalKomposer
+	clusterCtx      string
+	initCfg         buildx.InitConfig
+}
+
+// deployMultiApp builds, pushes, and deploys each app independently, then
+// deploys the combined Komposer so Orkestra manages all apps together.
+func deployMultiApp(dc deployContext) error {
+	fmt.Printf("\nCluster:  %s\n", dc.clusterCtx)
+	if deployed := dc.komposer.DeployedProjects(); len(deployed) > 0 {
+		fmt.Printf("Deployed: %s\n", strings.Join(deployed, ", "))
+	}
+
+	tag := dc.tag
+	if tag == "" {
+		tag = dc.info.GitCommit
+	}
+	if tag == "" {
+		tag = "latest"
+	}
+
+	type appDeploy struct {
+		entry       buildx.AppEntry
+		image       string
+		crName      string
+		ns          string
+		appName     string
+		bundleDir   string
+		katalogPath string
+		appInfo     *doktor.ProjectInfo
+	}
+
+	// Collect per-app metadata
+	var apps []appDeploy
+	for _, entry := range dc.initCfg.Apps {
+		appName := entry.Name
+		image := doktor.ImageTag(dc.registry, appName, tag)
+		crName := appName + orkSuffix
+		ns := crName + "-ns"
+		bundleDir := filepath.Join(dc.dir, orkDir, appName, "bundle")
+		katalogPath := filepath.Join(dc.dir, orkDir, appName, "katalog.yaml")
+
+		appInfo, _ := doktor.Detect(entry.Dir)
+		if appInfo == nil {
+			appInfo = &doktor.ProjectInfo{Dir: entry.Dir, AppName: appName}
+		}
+
+		apps = append(apps, appDeploy{
+			entry:       entry,
+			image:       image,
+			crName:      crName,
+			ns:          ns,
+			appName:     appName,
+			bundleDir:   bundleDir,
+			katalogPath: katalogPath,
+			appInfo:     appInfo,
+		})
+	}
+
+	// ── Step 1: Build + Push each app ────────────────────────────────────────
+	fmt.Printf("\nBuilding %d apps...\n", len(apps))
+	if !dc.dryRun {
+		for _, app := range apps {
+			fmt.Printf("\n  %s → %s\n", app.appName, app.image)
+			start := time.Now()
+			var buildOut bytes.Buffer
+
+			dockerfile := app.entry.Dockerfile
+			composeBuild := buildx.ComposeBuild{Dockerfile: dockerfile}
+
+			appDir := app.entry.Dir
+			if appDir == "" {
+				appDir = filepath.Join(dc.dir, app.appName)
+			}
+
+			if err := buildx.BuildImage(appDir, app.image, composeBuild, &buildOut); err != nil {
+				fmt.Print(buildOut.String())
+				return fmt.Errorf("building %s: %w", app.appName, err)
+			}
+			fmt.Printf("  ✓ Built %s (%ds)\n", app.appName, int(time.Since(start).Seconds()))
+
+			var pushOut bytes.Buffer
+			if err := buildx.PushImage(app.image, &pushOut); err != nil {
+				fmt.Print(pushOut.String())
+				return fmt.Errorf("pushing %s: %w", app.appName, err)
+			}
+			fmt.Printf("  ✓ Pushed %s\n", app.appName)
+		}
+	} else {
+		for _, app := range apps {
+			fmt.Printf("  ~ dry-run: would build and push %s → %s\n", app.appName, app.image)
+		}
+	}
+
+	// ── Step 2: Generate bundles + register katalogs ──────────────────────────
+	fmt.Println("\nGenerating bundles...")
+
+	if !dc.dryRun {
+		for _, app := range apps {
+			if err := doktor.GenerateBundle(app.appName, app.ns, app.appInfo.Secrets, app.appInfo.Config, app.bundleDir); err != nil {
+				return fmt.Errorf("generating bundle for %s: %w", app.appName, err)
+			}
+			if len(app.appInfo.Secrets) > 0 {
+				fmt.Printf("  ✓ %s-secrets  (%d variables)\n", app.appName, len(app.appInfo.Secrets))
+			}
+			if len(app.appInfo.Config) > 0 {
+				fmt.Printf("  ✓ %s-config   (%d variables)\n", app.appName, len(app.appInfo.Config))
+			}
+
+			absKatalogPath, _ := filepath.Abs(app.katalogPath)
+			if fileExistsAtPath(app.katalogPath) {
+				dc.komposer.RegisterKatalog(absKatalogPath)
+			}
+		}
+
+		dc.komposer.Metadata.Name = dc.clusterCtx
+		dc.state.ClusterContext = dc.clusterCtx
+		if saveErr := dc.komposer.Save(); saveErr != nil {
+			return fmt.Errorf("saving komposer: %w", saveErr)
+		}
+
+		mergedPath, mergeErr := runKompose()
+		if mergeErr != nil {
+			return fmt.Errorf("merging katalogs: %w", mergeErr)
+		}
+		fmt.Printf("  ✓ Komposer merged (%d projects)\n", len(dc.komposer.DeployedProjects()))
+
+		for _, app := range apps {
+			genArgs := []string{"generate", "bundle", "-k", mergedPath, "-w", app.ns, "-o", app.bundleDir}
+			genCmd := exec.Command("ork", genArgs...)
+			genCmd.Stdout = os.Stdout
+			genCmd.Stderr = os.Stderr
+			if err := genCmd.Run(); err != nil {
+				return fmt.Errorf("generating bundle for %s: %w", app.appName, err)
+			}
+		}
+		fmt.Println("  ✓ RBAC + Katalog ConfigMap + namespaces")
+	}
+
+	// ── Step 3: Apply bundles ─────────────────────────────────────────────────
+	fmt.Println("\nApplying to cluster...")
+
+	if !dc.dryRun {
+		if err := doktor.EnsureDependencies(); err != nil {
+			fmt.Printf("  ~ Could not install dependencies: %v\n", err)
+		}
+		if err := ensureMetricsServer(); err != nil {
+			fmt.Printf("  ~ Could not install metrics server: %v\n", err)
+		}
+
+		for _, app := range apps {
+			bundleFile := filepath.Join(app.bundleDir, doktor.BundleFile)
+			if fileExistsAtPath(bundleFile) {
+				applyBundle := exec.Command("kubectl", "apply", "-f", bundleFile)
+				applyBundle.Stdout = os.Stdout
+				applyBundle.Stderr = os.Stderr
+				if err := applyBundle.Run(); err != nil {
+					return fmt.Errorf("applying bundle for %s: %w", app.appName, err)
+				}
+			}
+			for _, f := range []string{doktor.AppConfigFile, doktor.AppSecretFile} {
+				path := filepath.Join(app.bundleDir, f)
+				if _, err := os.Stat(path); err == nil {
+					apply := exec.Command("kubectl", "apply", "-f", path)
+					apply.Stdout = os.Stdout
+					apply.Stderr = os.Stderr
+					if err := apply.Run(); err != nil {
+						return fmt.Errorf("applying %s for %s: %w", f, app.appName, err)
+					}
+				}
+			}
+			appFile := filepath.Join(dc.dir, orkDir, app.appName, doktor.ApplicationFile)
+			if fileExistsAtPath(appFile) {
+				applyApp := exec.Command("kubectl", "apply", "-f", appFile)
+				applyApp.Stdout = os.Stdout
+				applyApp.Stderr = os.Stderr
+				if err := applyApp.Run(); err != nil {
+					return fmt.Errorf("applying app.yaml for %s: %w", app.appName, err)
+				}
+			}
+		}
+		fmt.Println("  ✓ All bundles applied")
+
+		// Install Orkestra once
+		resolvedValues := dc.values
+		if resolvedValues == "" {
+			localValues := filepath.Join(dc.dir, orkDir, "values.yaml")
+			if fileExistsAtPath(localValues) {
+				resolvedValues = localValues
+			}
+		}
+
+		repoAdd := exec.Command("helm", "repo", "add", doktor.Orkestra, doktor.OrkestraChartRepo)
+		repoAdd.Stdout = os.Stdout
+		repoAdd.Stderr = os.Stderr
+		_ = repoAdd.Run()
+
+		if !doktor.OrkestraInstalled() || dc.upgradeOrkestra {
+			fmt.Println("  ⠸ Installing Orkestra...")
+			if err := doktor.InstallOrUpgradeOrkestra(dc.orkestraVersion, resolvedValues, dc.upgradeOrkestra); err != nil {
+				return err
+			}
+			fmt.Println("  ✓ Orkestra installed")
+		} else {
+			fmt.Println("  ✓ Orkestra already installed")
+		}
+
+		// Health check
+		fmt.Print("\n  Checking runtime health...")
+		health := doktor.CheckRuntimeHealth()
+		if !health.Running {
+			fmt.Println()
+			if tail, fetchErr := doktor.FetchRuntimeLogs(); fetchErr == nil && tail != "" {
+				fmt.Printf("\n--- Runtime log (last 10 lines) ---\n%s\n---\n\n", tail)
+			}
+			fmt.Printf("  ✗ Orkestra runtime is not healthy: %s\n", health.Reason)
+			return fmt.Errorf("orkestra runtime is not healthy")
+		}
+		fmt.Println(" ✓")
+
+		if doktor.KatalogChanged(dc.dir) {
+			fmt.Println("  Katalog changed — restarting Orkestra runtime")
+			if err := doktor.RestartOrkestra(); err != nil {
+				return fmt.Errorf("restarting Orkestra: %w", err)
+			}
+		}
+
+		// ── Step 4: Patch each CR + watch ────────────────────────────────────
+		fmt.Println("\nPatching images...")
+		for _, app := range apps {
+			absKatalogPath, _ := filepath.Abs(app.katalogPath)
+			dc.state.RecordDeploy(app.appName, app.ns, absKatalogPath, app.image)
+
+			if prevOut, err := exec.Command("kubectl", "get", "configmap", app.crName,
+				"-n", app.ns, "-o", `go-template={{index .data "image"}}`).Output(); err == nil {
+				if prev := strings.TrimSpace(string(prevOut)); prev != "" && prev != app.image {
+					_ = exec.Command("kubectl", "annotate", "configmap", app.crName,
+						"-n", app.ns, "orkestra.io/previous-image="+prev, "--overwrite").Run()
+				}
+			}
+
+			patchCmd := exec.Command("kubectl", "patch", "configmap", app.crName,
+				"-n", app.ns,
+				"--patch", fmt.Sprintf(`{"data":{"image":%q}}`, app.image),
+			)
+			if err := patchCmd.Run(); err != nil {
+				return fmt.Errorf("patching image for %s: %w", app.appName, err)
+			}
+			fmt.Printf("  ✓ %s → %s\n", app.appName, app.image)
+		}
+		if err := dc.state.Save(); err != nil {
+			fmt.Printf("  ~ State save failed: %v\n", err)
+		}
+
+		fmt.Println("\nWaiting for deployments...")
+		for _, app := range apps {
+			fmt.Printf("  Watching %s...\n", app.appName)
+			if err := watchUntilReady(app.crName, app.ns, app.appName, dc.state); err != nil {
+				fmt.Printf("  ~ %s: could not confirm readiness: %v\n", app.appName, err)
+			}
+		}
+	} else {
+		for _, app := range apps {
+			fmt.Printf("  ~ dry-run: would apply bundle and patch %s → %s\n", app.appName, app.image)
+		}
+	}
+
+	return nil
 }
 
 var openCmd = &cobra.Command{
