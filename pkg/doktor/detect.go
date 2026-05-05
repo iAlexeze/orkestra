@@ -22,37 +22,64 @@ const (
 
 // ProjectInfo holds everything ork doktor discovers about a project directory.
 type ProjectInfo struct {
-	Dir           string
-	HasDockerfile bool
-	GitCommit     string // short SHA, empty when not a git repo
-	Language      Language
-	LangMarker    string   // the file that triggered language detection
-	Port          string   // from PORT in .env, or language default
-	EnvVars       []EnvVar // all parsed .env variables
-	Secrets       []EnvVar // IsCfg == false
-	Config        []EnvVar // IsCfg == true
-	HasFrontend   bool
-	AppName       string // derived from directory name
-	HasSMTP       bool   // if env has smtp vars
-	HasSlack      bool   // if env has slack vars
-	License       string // project license read from regular license files
-	HasCompose    bool   // docker-compose.yaml found
-	UseCompose    bool   // user choice to use compose file
-	ComposePath   string // path to docker-compose.yaml
+	Dir            string
+	HasDockerfile  bool
+	DockerfilePath string
+	GitCommit      string // short SHA, empty when not a git repo
+	Language       Language
+	LangMarker     string   // the file that triggered language detection
+	Port           string   // from PORT in .env, or language default
+	EnvVars        []EnvVar // all parsed .env variables
+	Secrets        []EnvVar // IsCfg == false
+	Config         []EnvVar // IsCfg == true
+	HasFrontend    bool
+	AppName        string // derived from directory name
+	HasSMTP        bool   // if env has smtp vars
+	HasSlack       bool   // if env has slack vars
+	License        string // project license read from regular license files
+	HasCompose     bool   // docker-compose.yaml found
+	UseCompose     bool   // user choice to use compose file
+	ComposePath    string // path to docker-compose.yaml
 }
 
-// Detect examines dir and returns a ProjectInfo. Missing .env is not an error.
+// Detect scans a project directory and returns a populated ProjectInfo
+// describing everything ork doktor can infer about the application.
+//
+// Detection includes:
+//   - Dockerfile / Containerfile presence
+//   - Git commit (short SHA)
+//   - Primary programming language and marker file
+//   - .env parsing, including config vs secret variables
+//   - SMTP/Slack environment variable hints
+//   - Application port (from .env or language defaults)
+//   - Frontend detection via static dirs or JS frameworks
+//   - License detection from common license files
+//   - docker-compose.yaml discovery
+//
+// Missing .env files are not treated as errors. The function returns an error
+// only when parsing .env fails or when filesystem access is not possible.
 func Detect(dir string) (*ProjectInfo, error) {
 	info := &ProjectInfo{Dir: dir}
 	info.AppName = filepath.Base(dir)
 
-	info.HasDockerfile = fileExists(filepath.Join(dir, "Dockerfile"))
+	// Dockerfile Detection
+	dockerfileNames := []string{"Dockerfile", "Containerfile"}
+	for _, name := range dockerfileNames {
+		path := filepath.Join(dir, name)
+		if fileExists(path) {
+			info.HasDockerfile = true
+			info.DockerfilePath = path
+			break
+		}
+	}
 
+	// Git commit
 	info.GitCommit = shortGitCommit(dir)
 
+	// Language detection
 	info.Language, info.LangMarker = detectLanguage(dir)
 
-	// Parse .env if present.
+	// Parse .env if present
 	envPath := filepath.Join(dir, ".env")
 	if fileExists(envPath) {
 		vars, err := ParseEnvFile(envPath)
@@ -65,10 +92,16 @@ func Detect(dir string) (*ProjectInfo, error) {
 		info.HasSlack = HasSlack(vars)
 	}
 
+	// Port detection
 	info.Port = detectPort(info.EnvVars, info.Language)
+
+	// Frontend detection
 	info.HasFrontend = detectFrontend(dir, info.Language)
+
+	// License detection
 	info.License = DetectLicense(dir)
 
+	// Compose detection
 	if p := DetectComposeFile(dir); p != "" {
 		info.HasCompose = true
 		info.ComposePath = p
@@ -77,6 +110,10 @@ func Detect(dir string) (*ProjectInfo, error) {
 	return info, nil
 }
 
+// DetectLicense scans the project directory for common license files
+// (LICENSE, LICENSE.txt, LICENSE.md, COPYING, etc). It returns a normalized
+// SPDX-style license name based on the first line of the file. If no license
+// file is found or cannot be read, an empty string is returned.
 func DetectLicense(dir string) string {
 	candidates := []string{
 		"LICENSE", "LICENSE.txt", "LICENSE.md",
@@ -103,6 +140,11 @@ func DetectLicense(dir string) string {
 	return ""
 }
 
+// detectLanguage inspects well-known language marker files (go.mod,
+// package.json, pom.xml, requirements.txt, Gemfile, Cargo.toml) to determine
+// the primary programming language of the project. It returns both the detected
+// language and the marker file that triggered detection. If no marker is found,
+// LangUnknown is returned.
 func detectLanguage(dir string) (Language, string) {
 	checks := []struct {
 		file string
@@ -123,6 +165,9 @@ func detectLanguage(dir string) (Language, string) {
 	return LangUnknown, ""
 }
 
+// detectPort determines the application's port. It first checks for a PORT
+// variable in the parsed .env file. If not present, it falls back to
+// language-specific defaults (e.g., Go: 8080, Node: 3000, Python: 8000).
 func detectPort(vars []EnvVar, lang Language) string {
 	for _, v := range vars {
 		if v.Key == "PORT" {
@@ -148,6 +193,10 @@ func detectPort(vars []EnvVar, lang Language) string {
 	}
 }
 
+// detectFrontend reports whether the project appears to contain a frontend.
+// It checks for common static build directories (build/, dist/, public/) and,
+// for Node.js projects, scans package.json for known frontend frameworks such
+// as React, Vue, Angular, Next.js, Nuxt, or Svelte.
 func detectFrontend(dir string, lang Language) bool {
 	// Static build directories suggest a frontend is present.
 	for _, d := range []string{"build", "dist", "public"} {
@@ -162,6 +211,9 @@ func detectFrontend(dir string, lang Language) bool {
 	return false
 }
 
+// hasFrontendFramework inspects package.json and returns true if it contains
+// dependencies for well-known frontend frameworks (react, vue, angular, next,
+// nuxt, svelte). It returns false if the file cannot be read or no match is found.
 func hasFrontendFramework(pkgJSON string) bool {
 	data, err := os.ReadFile(pkgJSON)
 	if err != nil {
@@ -176,6 +228,10 @@ func hasFrontendFramework(pkgJSON string) bool {
 	return false
 }
 
+// shortGitCommit returns the short (7-character) Git commit SHA for the project
+// directory. It reads .git/HEAD and resolves symbolic refs when necessary.
+// If the directory is not a Git repository or the commit cannot be determined,
+// an empty string is returned.
 func shortGitCommit(dir string) string {
 	headPath := filepath.Join(dir, ".git", "HEAD")
 	data, err := os.ReadFile(headPath)
@@ -202,6 +258,9 @@ func shortGitCommit(dir string) string {
 	return ref
 }
 
+// normalizeLicenseName attempts to map the first line of a license file to a
+// standard SPDX identifier (MIT, Apache-2.0, GPL, BSD, MPL). If no known
+// pattern matches, the raw line (trimmed) is returned.
 func normalizeLicenseName(line string) string {
 	line = strings.ToLower(line)
 
@@ -221,11 +280,13 @@ func normalizeLicenseName(line string) string {
 	return strings.TrimSpace(line)
 }
 
+// fileExists reports whether the given path exists and is a regular file.
 func fileExists(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && !info.IsDir()
 }
 
+// dirExists reports whether the given path exists and is a directory.
 func dirExists(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()

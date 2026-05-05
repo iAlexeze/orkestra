@@ -15,6 +15,7 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/buildx"
 	"github.com/orkspace/orkestra/pkg/doktor"
+	"github.com/orkspace/orkestra/pkg/tunnel"
 	"github.com/spf13/cobra"
 )
 
@@ -44,6 +45,9 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		values, _ := cmd.Flags().GetString("values")
 		upgradeOrkestra, _ := cmd.Flags().GetBool("upgrade-orkestra")
 		dev, _ := cmd.Flags().GetBool("dev")
+		expose, _ := cmd.Flags().GetBool("expose")
+		tunnelProvider, _ := cmd.Flags().GetString("tunnel-provider")
+		tunnelToken, _ := cmd.Flags().GetString("tunnel-token")
 
 		dir, err := os.Getwd()
 		if err != nil {
@@ -87,15 +91,16 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			state = &doktor.DeployState{Projects: make(map[string]*doktor.ProjectState)}
 		}
 		komposer, _ := doktor.LoadGlobalKomposer()
-		komposer.Metadata.Description = "Orkestra Managed Deployment in " + state.ClusterContext
+		if state.ClusterContext == "" {
+			komposer.Metadata.Description = "Orkestra Managed Deployment in " + state.ClusterContext
+		} else {
+			komposer.Metadata.Description = "Orkestra Managed Deployment"
+		}
 
 		if !dryRun {
 			// Step 0 — Cluster connectivity.
 			// --dev spins up a local kind cluster; otherwise verify the current context.
 			if dev {
-				if !doktor.GoInstalled() {
-					return fmt.Errorf("Go is required to install kind — install from https://go.dev/dl/")
-				}
 				fmt.Printf("\n  Setting up kind cluster '%s'...\n", doktor.KindClusterName)
 				if err := doktor.EnsureKindCluster(doktor.KindClusterName); err != nil {
 					return fmt.Errorf("setting up kind cluster: %w", err)
@@ -123,6 +128,9 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				values:          values,
 				orkestraVersion: orkestraVersion,
 				upgradeOrkestra: upgradeOrkestra,
+				expose:          expose,
+				tunnelProvider:  tunnelProvider,
+				tunnelToken:     tunnelToken,
 				info:            info,
 				state:           state,
 				komposer:        komposer,
@@ -395,6 +403,10 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			if err := watchUntilReady(crName, ns, appName, state); err != nil {
 				fmt.Printf("  ~ could not confirm readiness: %v\n", err)
 			}
+
+			if expose {
+				exposeApp(cmd.Context(), appName, ns, tunnelProvider, tunnelToken)
+			}
 		} else {
 			fmt.Printf("  ~ dry-run: would apply %s and patch image to %s\n", bundleDir, image)
 		}
@@ -416,6 +428,9 @@ type deployContext struct {
 	values          string
 	orkestraVersion string
 	upgradeOrkestra bool
+	expose          bool
+	tunnelProvider  string
+	tunnelToken     string
 	info            *doktor.ProjectInfo
 	state           *doktor.DeployState
 	komposer        *doktor.GlobalKomposer
@@ -679,6 +694,12 @@ func deployMultiApp(dc deployContext) error {
 				fmt.Printf("  ~ %s: could not confirm readiness: %v\n", app.appName, err)
 			}
 		}
+
+		if dc.expose {
+			for _, app := range apps {
+				exposeApp(context.Background(), app.appName, app.ns, dc.tunnelProvider, dc.tunnelToken)
+			}
+		}
 	} else {
 		for _, app := range apps {
 			fmt.Printf("  ~ dry-run: would apply bundle and patch %s → %s\n", app.appName, app.image)
@@ -825,6 +846,9 @@ func init() {
 	deployCmd.Flags().String("orkestra-version", "", "Version of Orkestra operator to install")
 	deployCmd.Flags().String("values", "", "Path to Helm values.yaml for Orkestra installation")
 	deployCmd.Flags().Bool("dev", false, "Create a local kind cluster (orkestra-playground) for development")
+	deployCmd.Flags().Bool("expose", false, "Expose the deployed app via a public HTTPS tunnel (cloudflared or ngrok)")
+	deployCmd.Flags().String("tunnel-provider", "", "Tunnel provider: cloudflared (default) or ngrok")
+	deployCmd.Flags().String("tunnel-token", "", "Auth token for ngrok tunnels")
 
 	rollbackCmd.Flags().String("image", "", "Image to roll back to (default: previous deployed image)")
 
@@ -1047,4 +1071,20 @@ func openBrowser(url string) error {
 func fileExistsAtPath(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && !info.IsDir()
+}
+
+// exposeApp starts a tunnel for the given app and prints the public URL.
+func exposeApp(ctx context.Context, appName, ns, provider, token string) {
+	fmt.Printf("\n  Starting tunnel for %s...\n", appName)
+	url, err := tunnel.Expose(ctx, tunnel.ExposeOptions{
+		Provider:    provider,
+		Token:       token,
+		ServiceName: appName,
+		Namespace:   ns,
+	})
+	if err != nil {
+		fmt.Printf("  ~ tunnel: %v\n", err)
+		return
+	}
+	fmt.Printf("  ✓ App: %s\n", url)
 }

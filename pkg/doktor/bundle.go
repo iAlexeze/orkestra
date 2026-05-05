@@ -18,7 +18,7 @@ const (
 	OrkestraRuntime   = "orkestra-runtime"
 	OrkestraNamespace = "orkestra-system"
 	OrkestraChartRepo = "https://orkspace.github.io/orkestra"
-	OrkestraChartName = "orkestra/orkestra"
+	OrkestraChartName = "orkestra"
 )
 
 // GenerateBundle writes the app Secret and ConfigMap YAML files into outputDir.

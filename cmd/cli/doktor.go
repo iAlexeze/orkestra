@@ -45,10 +45,51 @@ var doktorCmd = &cobra.Command{
 			return fmt.Errorf("detection failed: %w", err)
 		}
 
+		// Missing Dockerfile + no compose build context → show language-aware error
+		if !info.HasDockerfile && !info.HasCompose {
+			if info.Language != doktor.LangUnknown {
+				tmpl := info.Language.DockerfileTemplate()
+				if tmpl != "" {
+					return fmt.Errorf(`
+──────────────────────────────────────────────
+❌ Cannot build application "%s"
+
+No Dockerfile or Compose build context was found.
+
+Detected language: %s  (%s)
+
+You must provide at least one of:
+  • Dockerfile
+  • Containerfile
+  • docker-compose build context
+
+Suggested starter Dockerfile:
+------------------------------------------------------------
+%s
+------------------------------------------------------------
+
+Docs: https://orkestra.dev/docs/build
+──────────────────────────────────────────────`, info.AppName, info.Language, info.LangMarker, tmpl)
+				}
+			}
+
+			// Unknown language fallback
+			return fmt.Errorf(`
+──────────────────────────────────────────────
+❌ Cannot build application "%s"
+
+No Dockerfile or Compose build context was found.
+
+Orkestra could not detect the language of this project.
+
+Please add a Dockerfile to the project root.
+──────────────────────────────────────────────`, info.AppName)
+		}
+
 		if info.HasDockerfile {
-			fmt.Println("  ✓ Dockerfile found")
+			fmt.Printf("  ✓ %s found\n", filepath.Base(info.DockerfilePath))
 		} else {
-			fmt.Println("  ✗ Dockerfile not found — add one to build an image")
+			fmt.Println("  ✗ No Dockerfile or Containerfile found — add one to build an image")
 		}
 
 		if info.GitCommit != "" {
