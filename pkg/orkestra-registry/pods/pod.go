@@ -189,6 +189,13 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string) ResolvedPodSpec {
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *corev1.Pod {
+	var pullSecrets []corev1.LocalObjectReference
+	for _, name := range spec.ImagePullSecrets {
+		pullSecrets = append(pullSecrets, corev1.LocalObjectReference{
+			Name: name,
+		})
+	}
+
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        spec.Name,
@@ -207,6 +214,7 @@ func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *core
 			},
 		},
 		Spec: corev1.PodSpec{
+			ImagePullSecrets:   pullSecrets,
 			ServiceAccountName: spec.ServiceAccountName,
 			NodeSelector:       spec.NodeSelector,
 			Containers: []corev1.Container{

@@ -11,6 +11,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"syscall"
 	"time"
 )
 
@@ -47,23 +49,37 @@ func (n *NgrokProvider) Authenticate(_ context.Context, token string) error {
 	return cmd.Run()
 }
 
-// Start launches ngrok as a background process.
+// Start launches ngrok as a detached background process.
+//
+// ngrok's stdout is redirected to a log file (not a pipe) so that our process
+// exiting doesn't deliver SIGPIPE to ngrok while it's still initializing.
 func (n *NgrokProvider) Start(ctx context.Context, localPort int) (string, int, error) {
+	logPath := ngrokLogPath(localPort)
+
+	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
+		return "", 0, fmt.Errorf("ngrok: log dir: %w", err)
+	}
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	if err != nil {
+		return "", 0, fmt.Errorf("ngrok: log file: %w", err)
+	}
+
 	cmd := exec.Command(
 		"ngrok", "http", fmt.Sprintf("%d", localPort),
 		"--log=stdout", "--log-format=json",
 	)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	cmd.Stdout = logFile
+	// cmd.Stderr = nil → /dev/null
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return "", 0, fmt.Errorf("ngrok: pipe: %w", err)
-	}
 	if err := cmd.Start(); err != nil {
+		logFile.Close()
 		return "", 0, fmt.Errorf("ngrok: start: %w", err)
 	}
+	logFile.Close()
 
 	urlCh := make(chan string, 1)
-	go scanNgrokURL(stdout, urlCh)
+	go tailNgrokLogForURL(logPath, urlCh)
 
 	timeout := time.NewTimer(20 * time.Second)
 	defer timeout.Stop()
@@ -91,23 +107,39 @@ func (n *NgrokProvider) Stop(pid int) error {
 	return proc.Kill()
 }
 
-// ngrokLogLine is the JSON format ngrok emits with --log-format=json.
-type ngrokLogLine struct {
-	URL string `json:"url"`
-	Msg string `json:"msg"`
+func ngrokLogPath(localPort int) string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".orkestra", fmt.Sprintf("ngrok-%d.log", localPort))
 }
 
-func scanNgrokURL(r io.Reader, urlCh chan<- string) {
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		var line ngrokLogLine
-		if err := json.Unmarshal(scanner.Bytes(), &line); err != nil {
+// tailNgrokLogForURL polls the log file for JSON lines with a "url" field.
+type ngrokLogLine struct {
+	URL string `json:"url"`
+}
+
+func tailNgrokLogForURL(logPath string, urlCh chan<- string) {
+	var offset int64
+	for {
+		f, err := os.Open(logPath)
+		if err != nil {
+			time.Sleep(100 * time.Millisecond)
 			continue
 		}
-		if line.URL != "" {
-			urlCh <- line.URL
-			go io.Copy(io.Discard, r)
-			return
+		_, _ = f.Seek(offset, io.SeekStart)
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			var line ngrokLogLine
+			if err := json.Unmarshal(scanner.Bytes(), &line); err != nil {
+				continue
+			}
+			if line.URL != "" {
+				f.Close()
+				urlCh <- line.URL
+				return
+			}
 		}
+		offset, _ = f.Seek(0, io.SeekCurrent)
+		f.Close()
+		time.Sleep(100 * time.Millisecond)
 	}
 }

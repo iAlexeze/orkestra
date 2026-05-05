@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	healthCheckTimeout   = 200 * time.Second
 	controlCenterDeploy  = "orkestra-cc"
 	runtimeLogDir        = "/tmp/orkestra"
 	runtimeLogPath       = "/tmp/orkestra/runtime.log"
@@ -28,7 +29,7 @@ type RuntimeStatus struct {
 // and has at least one ready replica. Pods in CrashLoopBackOff are treated
 // as not running and their pod name is included in Reason.
 func CheckRuntimeHealth() RuntimeStatus {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), healthCheckTimeout)
 	defer cancel()
 
 	// Verify the deployment exists.

@@ -242,6 +242,13 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 
 	replicas := spec.Replicas
 
+	var pullSecrets []corev1.LocalObjectReference
+	for _, name := range spec.ImagePullSecrets {
+		pullSecrets = append(pullSecrets, corev1.LocalObjectReference{
+			Name: name,
+		})
+	}
+
 	d := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        spec.Name,
@@ -271,6 +278,7 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 					Labels: spec.Labels,
 				},
 				Spec: corev1.PodSpec{
+					ImagePullSecrets:   pullSecrets,
 					ServiceAccountName: spec.ServiceAccountName,
 					NodeSelector:       spec.NodeSelector,
 					Containers: []corev1.Container{

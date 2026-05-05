@@ -330,6 +330,11 @@ type DeploymentTemplateSource struct {
 	// Dynamic: "{{ .spec.image }}"
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
+
 	// Replicas — number of pod replicas as a string.
 	// Static:  "3"
 	// Dynamic: "{{ .spec.replicas }}"
@@ -486,6 +491,11 @@ type ReplicaSetTemplateSource struct {
 	// Static:  "nginx:1.25"
 	// Dynamic: "{{ .spec.image }}"
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
 
 	// Replicas — number of pod replicas as a string.
 	// Static:  "3"
@@ -686,6 +696,11 @@ type PodTemplateSource struct {
 	// Static: "busybox:1.35" or Dynamic: "{{ .spec.image }}"
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
+
 	// Port — container port as a string.
 	// Static: "8080" or Dynamic: "{{ .spec.port }}"
 	Port string `yaml:"port" json:"port,omitempty" validate:"omitempty"`
@@ -789,6 +804,11 @@ type JobTemplateSource struct {
 	// Image — container image. Required.
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
+
 	// Command — container entrypoint command.
 	// Each element is resolved independently — template expressions are supported per element.
 	// e.g. ["sh", "-c", "echo cleaning up {{ .metadata.name }}"]
@@ -891,6 +911,11 @@ type CronJobTemplateSource struct {
 
 	// Image — container image. Required.
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
 
 	// Command — container entrypoint. Each element supports template expressions.
 	Command []string `yaml:"command" json:"command,omitempty" validate:"omitempty"`
@@ -1509,7 +1534,12 @@ type StatefulSetTemplateSource struct {
 	Namespace string `yaml:"namespace" json:"namespace,omitempty"`
 
 	// Image — container image. Required.
-	Image string `yaml:"image" json:"image,omitempty" validate:"required"`
+	Image string `yaml:"image" json:"image" validate:"omitempty"`
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
 
 	// Tag — image tag. Default: "latest".
 	Tag string `yaml:"tag" json:"tag,omitempty"`

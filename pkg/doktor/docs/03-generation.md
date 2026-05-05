@@ -19,8 +19,14 @@ type GenerateOptions struct {
     Name       string // override app name (default: directory basename)
     AddIngress bool   // force-include Ingress even when no frontend was detected
     NotifyMe   bool   // add notification block for Slack / email alerts
-    UseCompose string // path to docker-compose.yaml; injects stateful Motif imports
+    UseCompose string // path to docker-compose.yaml; injects stateful Motif imports (single-app)
     OutDir     string // write to this directory instead of info.Dir/.orkestra
+
+    // InjectStateful, when non-nil, overrides UseCompose-based stateful detection.
+    // The caller supplies an exact slice of StatefulService entries to inject.
+    // Used by the multi-app init path to pass each app only its own stateful deps.
+    // nil = fall back to UseCompose auto-detection; []StatefulService{} = inject nothing.
+    InjectStateful []StatefulService
 }
 ```
 
@@ -111,6 +117,24 @@ When `--use-compose` is set, `Init` reads the compose file and detects stateful 
 ```
 
 The corresponding `app.yaml` gains annotated keys for each detected service, pre-filled with sensible defaults derived from the compose file. Stateless services from compose (those without a known infrastructure image) are classified as Deployments in the main app.
+
+#### Multi-app: stateful service assignment
+
+In a multi-app project (multiple buildable services in the compose file), each stateful service must appear in exactly **one** katalog — it is a cluster-level Motif declaration and does not need to be repeated. The assignment follows these rules:
+
+1. `depends_on` wins: a stateful service is assigned to the **first** app in the list that declares it in `depends_on`. Later apps that also depend on the same service are skipped.
+2. If **no** app references a stateful service in `depends_on`, it is assigned to `appNames[0]` (first app) as a fallback.
+
+Given the compose file above (`app` depends on `postgres`, `frontend` does not):
+
+| App | Gets postgres motif? |
+|-----|---------------------|
+| `app` | ✓ — listed in `depends_on` |
+| `frontend` | ✗ — no `depends_on: postgres` |
+
+If three apps all had `depends_on: postgres`, only the first one in iteration order would receive the Motif import. The other two can still connect to postgres at runtime via the internal cluster DNS name — they just do not own its Motif declaration.
+
+The dependency assignment is computed by `StatefulDepsPerApp` in `compose.go` and passed to each `Init` call via `GenerateOptions.InjectStateful`. The `UseCompose` field is cleared for multi-app calls so `Init` does not re-parse the compose file and override the pre-filtered result.
 
 ## Status fields
 

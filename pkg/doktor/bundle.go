@@ -19,6 +19,10 @@ const (
 	OrkestraNamespace = "orkestra-system"
 	OrkestraChartRepo = "https://orkspace.github.io/orkestra"
 	OrkestraChartName = "orkestra"
+
+	// Tunnelling
+	OrkestraControlCenter     = "orkestra-cc"
+	OrkestraControlCenterPort = "8081"
 )
 
 // GenerateBundle writes the app Secret and ConfigMap YAML files into outputDir.

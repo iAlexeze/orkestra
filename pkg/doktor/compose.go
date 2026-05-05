@@ -156,6 +156,82 @@ func ParseCompose(path string) (*ComposeFile, error) {
 	return &cf, nil
 }
 
+// DependsOnNames returns the service names this service depends on.
+// Handles both the list form (depends_on: [a, b]) and the map/condition form
+// (depends_on: {a: {condition: service_healthy}}).
+func (s ComposeService) DependsOnNames() []string {
+	if s.DependsOn == nil {
+		return nil
+	}
+	switch v := s.DependsOn.(type) {
+	case []interface{}:
+		var names []string
+		for _, item := range v {
+			if name, ok := item.(string); ok {
+				names = append(names, name)
+			}
+		}
+		return names
+	case map[string]interface{}:
+		var names []string
+		for k := range v {
+			names = append(names, k)
+		}
+		return names
+	}
+	return nil
+}
+
+// StatefulDepsPerApp maps each buildable app name to the stateful services whose
+// Motif declaration belongs in that app's katalog.
+//
+// Each stateful service is declared exactly once — in the katalog of the first
+// app (in appNames order) that lists it in depends_on. If no app declares a
+// depends_on relationship with a given stateful service, it is assigned to
+// appNames[0] as a fallback so it still gets deployed exactly once.
+//
+// Example: three apps all depend on postgres and two depend on redis.
+// Result: postgres and redis each appear in one katalog only (the earliest app
+// in appNames that depends on each), not repeated across every depending app.
+func StatefulDepsPerApp(cf *ComposeFile, appNames []string, stateful []StatefulService) map[string][]StatefulService {
+	result := make(map[string][]StatefulService, len(appNames))
+
+	statefulByName := make(map[string]StatefulService, len(stateful))
+	for _, ss := range stateful {
+		statefulByName[ss.Name] = ss
+	}
+
+	// claimed tracks which stateful services have already been assigned to an app.
+	// Once claimed, later apps that also depend on the service are skipped —
+	// the Motif is a cluster-level resource and only needs one declaration.
+	claimed := make(map[string]bool)
+
+	for _, appName := range appNames {
+		svc, ok := cf.Services[appName]
+		if !ok {
+			continue
+		}
+		for _, dep := range svc.DependsOnNames() {
+			ss, isStateful := statefulByName[dep]
+			if isStateful && !claimed[dep] {
+				result[appName] = append(result[appName], ss)
+				claimed[dep] = true
+			}
+		}
+	}
+
+	// Any stateful service with no depends_on reference goes to the first app.
+	if len(appNames) > 0 {
+		for _, ss := range stateful {
+			if !claimed[ss.Name] {
+				result[appNames[0]] = append(result[appNames[0]], ss)
+			}
+		}
+	}
+
+	return result
+}
+
 // ClassifyServices separates compose services into stateless (Deployments)
 // and stateful (Motif-backed) based on known infrastructure images.
 func ClassifyServices(cf *ComposeFile) (stateless []string, stateful []StatefulService) {

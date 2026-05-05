@@ -19,6 +19,13 @@ type GenerateOptions struct {
 	NotifyMe   bool   // add notification block
 	UseCompose string // path to docker-compose.yaml (expand stateful services via Motifs)
 	OutDir     string // override .orkestra/ directory; empty = info.Dir/.orkestra
+
+	// InjectStateful, when non-nil, specifies exactly which stateful services
+	// to inject into this app's katalog and app.yaml. When set it takes
+	// precedence over the UseCompose-based auto-detection, allowing the caller
+	// to supply a pre-filtered, per-app slice derived from depends_on analysis.
+	// Use nil (not an empty slice) to fall back to UseCompose detection.
+	InjectStateful []StatefulService
 }
 
 // Init generates .orkestra/katalog.yaml and .orkestra/app.yaml, creates the
@@ -37,10 +44,15 @@ func Init(info *ProjectInfo, opts GenerateOptions) error {
 		return fmt.Errorf("creating %s/: %w", orkDir, err)
 	}
 
-	// When --use-compose is set, read the compose file and inject stateful service
-	// blocks into the generated Katalog and app.yaml.
+	// Resolve the stateful services to inject.
+	// InjectStateful (pre-filtered per-app slice) takes precedence over
+	// UseCompose-based auto-detection. The latter is used for single-app
+	// compose workflows; multi-app uses InjectStateful so each app only
+	// receives the stateful services it actually depends on.
 	var stateful []StatefulService
-	if opts.UseCompose != "" {
+	if opts.InjectStateful != nil {
+		stateful = opts.InjectStateful
+	} else if opts.UseCompose != "" {
 		cf, err := ParseCompose(opts.UseCompose)
 		if err != nil {
 			return fmt.Errorf("reading compose file: %w", err)

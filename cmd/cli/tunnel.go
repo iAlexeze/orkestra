@@ -5,127 +5,202 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/orkspace/orkestra/pkg/doktor"
 	"github.com/orkspace/orkestra/pkg/tunnel"
 	"github.com/spf13/cobra"
 )
 
+// controlCenterTunnelName is the canonical key used in the tunnel state map.
+const controlCenterTunnelName = "controlcenter"
+
 var tunnelCmd = &cobra.Command{
 	Use:   "tunnel",
-	Short: "Manage the Orkestra tunnel daemon",
-	Long: `Manage the public HTTPS tunnel started by ork deploy --expose.
+	Short: "Manage Orkestra tunnel daemons",
+	Long: `Manage the public HTTPS tunnels started by ork deploy --expose.
 
-  ork tunnel status    Show URL, provider, and uptime
-  ork tunnel stop      Stop the tunnel daemon
-  ork tunnel restart   Stop and start a fresh tunnel (new URL)`,
+  ork tunnel expose <app|controlcenter>   Start a tunnel for an app or Control Center
+  ork tunnel status                        Show all running tunnels
+  ork tunnel stop [name]                   Stop all tunnels, or just the named one
+  ork tunnel restart <name>                Stop and start a fresh tunnel (new URL)`,
+}
+
+var tunnelExposeCmd = &cobra.Command{
+	Use:   "expose <name>",
+	Short: "Start a public HTTPS tunnel for an app or the Control Center",
+	Long: `Start a background cloudflared (or ngrok) tunnel and print the public URL.
+
+  ork tunnel expose my-app           Expose a deployed app
+  ork tunnel expose controlcenter    Expose the Orkestra Control Center
+
+Note: exposing orkestra-runtime is not supported.`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		name := strings.ToLower(strings.TrimSpace(args[0]))
+		provider, _ := cmd.Flags().GetString("provider")
+		token, _ := cmd.Flags().GetString("token")
+
+		if name == "orkestra-runtime" || name == "runtime" {
+			fmt.Fprintln(os.Stderr, "  ✗ Exposing orkestra-runtime is not supported.")
+			fmt.Fprintln(os.Stderr, "    Use: ork tunnel expose controlcenter")
+			return fmt.Errorf("unsupported target")
+		}
+
+		var opts tunnel.ExposeOptions
+		if name == controlCenterTunnelName || name == "cc" || name == "control-center" {
+			opts = tunnel.ExposeOptions{
+				Name:        controlCenterTunnelName,
+				Provider:    provider,
+				Token:       token,
+				ServiceName: doktor.OrkestraControlCenter,
+				Namespace:   doktor.OrkestraNamespace,
+				ServicePort: doktor.OrkestraControlCenterPort,
+				PortForward: true,
+			}
+		} else {
+			ns, err := resolveAppNamespace(name)
+			if err != nil {
+				return err
+			}
+			opts = tunnel.ExposeOptions{
+				Name:        name,
+				Provider:    provider,
+				Token:       token,
+				ServiceName: name + "-orkestra-svc",
+				ServicePort: "8080",
+				Namespace:   ns,
+			}
+		}
+
+		fmt.Printf("  → Starting tunnel for %s...\n", opts.Name)
+		url, err := tunnel.Expose(cmd.Context(), opts)
+		if err != nil {
+			return fmt.Errorf("tunnel: %w", err)
+		}
+		fmt.Printf("  ✓ %s → %s\n", opts.Name, url)
+		return nil
+	},
 }
 
 var tunnelStatusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Show the current tunnel URL and status",
+	Short: "Show all running tunnels",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		state, err := tunnel.LoadState()
+		states, err := tunnel.LoadAllStates()
 		if err != nil {
 			return fmt.Errorf("reading tunnel state: %w", err)
 		}
-		if state == nil {
-			fmt.Println("  No tunnel running")
-			fmt.Println("  Start one with: ork deploy --expose")
-			return nil
-		}
-		if !state.IsAlive() {
-			fmt.Println("  Tunnel process is no longer running (stale state)")
-			fmt.Println("  Start a fresh tunnel with: ork deploy --expose")
-			_ = tunnel.RemoveState()
+		if len(states) == 0 {
+			fmt.Println("  No tunnels running")
+			fmt.Println("  Start one with: ork deploy --expose  or  ork tunnel expose <name>")
 			return nil
 		}
 
-		fmt.Printf("\n  Provider:   %s\n", state.Provider)
-		fmt.Printf("  URL:        %s\n", state.URL)
-		fmt.Printf("  Local:      http://localhost:%d\n", state.LocalPort)
-		fmt.Printf("  Uptime:     %s\n", state.Uptime())
-		fmt.Printf("  Status:     running\n\n")
+		fmt.Println()
+		alive := 0
+		for name, s := range states {
+			s.Name = name
+			if !s.IsAlive() {
+				fmt.Printf("  %-20s  stale (process gone)\n", name)
+				_ = tunnel.RemoveTunnelState(name)
+				continue
+			}
+			alive++
+			fmt.Printf("  %-20s  %s\n", name, s.URL)
+			fmt.Printf("    Provider:  %s\n", s.Provider)
+			fmt.Printf("    Local:     http://localhost:%d\n", s.LocalPort)
+			fmt.Printf("    Uptime:    %s\n", s.Uptime())
+		}
+		if alive == 0 {
+			fmt.Println("  All entries were stale — run ork tunnel expose <name> to start fresh")
+		}
+		fmt.Println()
 		return nil
 	},
 }
 
 var tunnelStopCmd = &cobra.Command{
-	Use:   "stop",
-	Short: "Stop the tunnel daemon",
+	Use:   "stop [name]",
+	Short: "Stop one or all tunnel daemons",
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		state, err := tunnel.LoadState()
+		states, err := tunnel.LoadAllStates()
 		if err != nil {
 			return fmt.Errorf("reading tunnel state: %w", err)
 		}
-		if state == nil {
-			fmt.Println("  No tunnel running")
+		if len(states) == 0 {
+			fmt.Println("  No tunnels running")
 			return nil
 		}
-		if err := state.Stop(); err != nil {
-			return fmt.Errorf("stopping tunnel: %w", err)
+
+		if len(args) == 1 {
+			name := args[0]
+			s, ok := states[name]
+			if !ok {
+				return fmt.Errorf("no tunnel named %q", name)
+			}
+			s.Name = name
+			if err := s.Stop(); err != nil {
+				return fmt.Errorf("stopping tunnel: %w", err)
+			}
+			fmt.Printf("  ✓ Stopped %s\n", name)
+			return nil
 		}
-		fmt.Println("  ✓ Tunnel stopped")
+
+		for name, s := range states {
+			s.Name = name
+			_ = s.Stop()
+		}
+		fmt.Println("  ✓ All tunnels stopped")
 		return nil
 	},
 }
 
 var tunnelRestartCmd = &cobra.Command{
-	Use:   "restart",
-	Short: "Stop the current tunnel and start a fresh one (new URL)",
+	Use:   "restart <name>",
+	Short: "Stop the named tunnel and start a fresh one (new URL)",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		name := strings.ToLower(args[0])
 		provider, _ := cmd.Flags().GetString("provider")
 		token, _ := cmd.Flags().GetString("token")
 
-		// Stop existing tunnel if any
-		if state, err := tunnel.LoadState(); err == nil && state != nil {
-			_ = state.Stop()
-			fmt.Println("  ✓ Stopped previous tunnel")
+		states, _ := tunnel.LoadAllStates()
+		if s, ok := states[name]; ok {
+			s.Name = name
+			_ = s.Stop()
+			fmt.Printf("  ✓ Stopped %s\n", name)
 		}
 
-		p, err := selectTunnelProvider(provider)
-		if err != nil {
-			return err
-		}
-
-		if token != "" {
-			if err := p.Authenticate(cmd.Context(), token); err != nil {
-				return err
-			}
-		}
-
-		fmt.Printf("  → Starting %s tunnel...\n", p.Name())
-		url, pid, err := p.Start(cmd.Context(), 80)
-		if err != nil {
-			return fmt.Errorf("starting tunnel: %w", err)
-		}
-
-		state := tunnel.State{
-			Provider:  p.Name(),
-			PID:       pid,
-			URL:       url,
-			LocalPort: 80,
-		}
-		if err := tunnel.SaveState(state); err != nil {
-			fmt.Fprintf(os.Stderr, "  ~ could not save tunnel state: %v\n", err)
-		}
-
-		fmt.Printf("  ✓ New URL: %s\n", url)
-		return nil
+		fmt.Printf("  → Starting fresh tunnel for %s...\n", name)
+		exposeArgs := []string{name}
+		_ = tunnelExposeCmd.Flags().Set("provider", provider)
+		_ = tunnelExposeCmd.Flags().Set("token", token)
+		return tunnelExposeCmd.RunE(cmd, exposeArgs)
 	},
 }
 
-// selectTunnelProvider returns a Provider by name or auto-selects.
-func selectTunnelProvider(name string) (tunnel.Provider, error) {
-	if name != "" {
-		return tunnel.SelectByName(name)
+// resolveAppNamespace looks up the namespace for an app from deploy state,
+// falling back to the conventional <app>-orkestra-ns pattern.
+func resolveAppNamespace(appName string) (string, error) {
+	state, err := doktor.LoadState()
+	if err == nil && state != nil {
+		if p, ok := state.Projects[appName]; ok && p.Namespace != "" {
+			return p.Namespace, nil
+		}
 	}
-	return tunnel.Select()
+	return appName + "-orkestra-ns", nil
 }
 
 func init() {
+	tunnelExposeCmd.Flags().String("provider", "", "Tunnel provider: cloudflared (default) or ngrok")
+	tunnelExposeCmd.Flags().String("token", "", "Auth token for ngrok")
+
 	tunnelRestartCmd.Flags().String("provider", "", "Tunnel provider: cloudflared (default) or ngrok")
 	tunnelRestartCmd.Flags().String("token", "", "Auth token for ngrok")
 
+	tunnelCmd.AddCommand(tunnelExposeCmd)
 	tunnelCmd.AddCommand(tunnelStatusCmd)
 	tunnelCmd.AddCommand(tunnelStopCmd)
 	tunnelCmd.AddCommand(tunnelRestartCmd)

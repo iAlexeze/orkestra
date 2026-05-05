@@ -1,7 +1,7 @@
 // pkg/tunnel/state.go
 //
-// Tunnel daemon state — persisted to ~/.orkestra/tunnel-state.json.
-// Written on Start, read by status/stop commands.
+// Multi-tunnel daemon state — persisted to ~/.orkestra/tunnel-state.json
+// as a map[name]State so multiple tunnels (per app, controlcenter) coexist.
 package tunnel
 
 import (
@@ -13,52 +13,71 @@ import (
 	"time"
 )
 
-// State records a running tunnel daemon.
+// State records one running tunnel daemon.
 type State struct {
-	Provider  string    `json:"provider"`
-	PID       int       `json:"pid"`
-	URL       string    `json:"url"`
-	LocalPort int       `json:"localPort"`
-	StartedAt time.Time `json:"startedAt"`
+	Name           string    `json:"name"`
+	Provider       string    `json:"provider"`
+	PID            int       `json:"pid"`
+	PortForwardPID int       `json:"portForwardPid,omitempty"`
+	URL            string    `json:"url"`
+	LocalPort      int       `json:"localPort"`
+	StartedAt      time.Time `json:"startedAt"`
 }
 
-// stateFile returns the path to the tunnel state file.
 func stateFile() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".orkestra", "tunnel-state.json")
 }
 
-// SaveState writes the tunnel state to disk.
-func SaveState(s State) error {
-	path := stateFile()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
+// SaveTunnelState writes or updates the named tunnel entry.
+func SaveTunnelState(name string, s State) error {
+	states, _ := loadRawStates()
+	if states == nil {
+		states = make(map[string]State)
 	}
-	data, err := json.MarshalIndent(s, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, data, 0o600)
+	s.Name = name
+	states[name] = s
+	return writeStates(states)
 }
 
-// LoadState reads the current tunnel state. Returns nil when no state file exists.
-func LoadState() (*State, error) {
-	data, err := os.ReadFile(stateFile())
+// LoadAllStates reads all persisted tunnel entries.
+func LoadAllStates() (map[string]State, error) {
+	return loadRawStates()
+}
+
+// LoadTunnelState returns the state for name, or nil when not found.
+func LoadTunnelState(name string) (*State, error) {
+	states, err := loadRawStates()
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
 		return nil, err
 	}
-	var s State
-	if err := json.Unmarshal(data, &s); err != nil {
-		return nil, fmt.Errorf("corrupt tunnel state: %w", err)
+	if s, ok := states[name]; ok {
+		s.Name = name
+		return &s, nil
 	}
-	return &s, nil
+	return nil, nil
 }
 
-// RemoveState deletes the state file.
-func RemoveState() error {
+// RemoveTunnelState removes one entry from the state map.
+// The file is deleted entirely when the map becomes empty.
+func RemoveTunnelState(name string) error {
+	states, _ := loadRawStates()
+	if states == nil {
+		return nil
+	}
+	delete(states, name)
+	if len(states) == 0 {
+		err := os.Remove(stateFile())
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	return writeStates(states)
+}
+
+// RemoveAllStates deletes the tunnel state file.
+func RemoveAllStates() error {
 	err := os.Remove(stateFile())
 	if os.IsNotExist(err) {
 		return nil
@@ -66,7 +85,34 @@ func RemoveState() error {
 	return err
 }
 
-// IsAlive reports whether the PID in state is still a running process.
+func loadRawStates() (map[string]State, error) {
+	data, err := os.ReadFile(stateFile())
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var states map[string]State
+	if err := json.Unmarshal(data, &states); err != nil {
+		return nil, fmt.Errorf("corrupt tunnel state: %w", err)
+	}
+	return states, nil
+}
+
+func writeStates(states map[string]State) error {
+	path := stateFile()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(states, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o600)
+}
+
+// IsAlive reports whether the tunnel process is still running.
 func (s *State) IsAlive() bool {
 	if s.PID <= 0 {
 		return false
@@ -75,19 +121,22 @@ func (s *State) IsAlive() bool {
 	if err != nil {
 		return false
 	}
-	// Signal 0 checks process existence without sending a signal.
 	return proc.Signal(syscall.Signal(0)) == nil
 }
 
-// Stop kills the daemon and removes the state file.
+// Stop kills the tunnel daemon (and any port-forward) and removes the state entry.
 func (s *State) Stop() error {
-	if s.PID > 0 {
-		proc, err := os.FindProcess(s.PID)
-		if err == nil {
+	if s.PortForwardPID > 0 {
+		if proc, err := os.FindProcess(s.PortForwardPID); err == nil {
 			_ = proc.Signal(syscall.SIGTERM)
 		}
 	}
-	return RemoveState()
+	if s.PID > 0 {
+		if proc, err := os.FindProcess(s.PID); err == nil {
+			_ = proc.Signal(syscall.SIGTERM)
+		}
+	}
+	return RemoveTunnelState(s.Name)
 }
 
 // Uptime returns a human-readable duration since the tunnel started.

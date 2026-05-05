@@ -377,8 +377,13 @@ func doktorInitMultiApp(baseDir string, cmd *cobra.Command, opts doktor.Generate
 
 	var apps []appSpec
 
+	// perAppStateful holds the pre-computed stateful-service assignments for
+	// each buildable app when initialising from a compose file. It is nil for
+	// the --app flag path (no compose file, no stateful services to inject).
+	var perAppStateful map[string][]doktor.StatefulService
+
 	if useCompose != "" {
-		// Derive apps from compose file's buildable services
+		// Derive apps from compose file's buildable services.
 		composePath := useCompose
 		if !filepath.IsAbs(composePath) {
 			composePath = filepath.Join(baseDir, composePath)
@@ -387,10 +392,18 @@ func doktorInitMultiApp(baseDir string, cmd *cobra.Command, opts doktor.Generate
 		if err != nil {
 			return fmt.Errorf("reading compose file: %w", err)
 		}
-		buildable, _ := doktor.ClassifyServices(cf)
+		buildable, allStateful := doktor.ClassifyServices(cf)
 		if len(buildable) == 0 {
 			return fmt.Errorf("no buildable services found in %s — add build: to services that need a Docker image", useCompose)
 		}
+
+		// Pre-compute which stateful services belong to each app.
+		// Uses depends_on relationships; falls back to the first app for any
+		// stateful service not referenced by any depends_on declaration.
+		if len(allStateful) > 0 {
+			perAppStateful = doktor.StatefulDepsPerApp(cf, buildable, allStateful)
+		}
+
 		for _, svcName := range buildable {
 			svc := cf.Services[svcName]
 			ctxRel, dockerfile := svc.BuildContext()
@@ -430,6 +443,14 @@ func doktorInitMultiApp(baseDir string, cmd *cobra.Command, opts doktor.Generate
 		appOpts := opts
 		appOpts.Name = app.name
 		appOpts.OutDir = appOrkDir
+
+		if perAppStateful != nil {
+			// Multi-app compose path: supply only the stateful services this
+			// specific app depends on. Clearing UseCompose prevents doktor.Init
+			// from re-parsing the compose file and injecting everything again.
+			appOpts.UseCompose = ""
+			appOpts.InjectStateful = perAppStateful[app.name] // nil = no stateful for this app
+		}
 
 		info, err := doktor.Detect(app.dir)
 		if err != nil {
@@ -480,6 +501,29 @@ func doktorInitMultiApp(baseDir string, cmd *cobra.Command, opts doktor.Generate
 	fmt.Println("Next steps:")
 	fmt.Println("  1. Review .orkestra/<app>/katalog.yaml for each app")
 	fmt.Println("  2. Fill in .orkestra/<app>/app.yaml for each app")
+
+	// When stateful services were wired to specific apps, tell the user exactly
+	// where to find and configure the dependency keys.
+	if len(perAppStateful) > 0 {
+		fmt.Println()
+		fmt.Println("  Stateful dependencies detected — configure in the app that owns each service:")
+		for _, app := range apps {
+			deps := perAppStateful[app.name]
+			if len(deps) == 0 {
+				continue
+			}
+			fmt.Printf("    .orkestra/%s/app.yaml\n", app.name)
+			for _, dep := range deps {
+				fmt.Printf("      ↳ %s  (e.g. %sImage, %sVolumeSize)\n",
+					dep.Motif.MotifRef,
+					dep.Motif.MotifRef,
+					dep.Motif.MotifRef,
+				)
+			}
+		}
+	}
+
+	fmt.Println()
 	fmt.Println("  3. Run 'ork deploy --registry <your-registry>'")
 	_ = projectName
 	return nil

@@ -60,30 +60,9 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			return fmt.Errorf("detection failed: %w", err)
 		}
 
-		// Resolve CR name from .orkestra/app.yaml (written by ork doktor init --name).
-		appYAML := filepath.Join(dir, orkDir, doktor.ApplicationFile)
-		crName, err := doktor.ReadCRName(appYAML)
-		if err != nil {
-			nameFlag, _ := cmd.Flags().GetString("name")
-			if nameFlag == "" {
-				return fmt.Errorf("run 'ork doktor init --name <app>' first, or pass --name here")
-			}
-			crName = nameFlag + orkSuffix
-		}
-		appName := strings.TrimSuffix(crName, orkSuffix)
-		ns := crName + "-ns"
-
-		if tag == "" {
-			tag = info.GitCommit
-		}
-		if tag == "" {
-			tag = "latest"
-		}
 		if registry == "" {
 			return fmt.Errorf("--registry is required (e.g. --registry ghcr.io/myorg)")
 		}
-
-		image := doktor.ImageTag(registry, appName, tag)
 
 		// Load persistent state and global Komposer (both non-fatal if missing).
 		state, err := doktor.LoadState()
@@ -116,6 +95,8 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		initCfg, _ := buildx.LoadInitConfig(dir)
 
 		// ── Multi-app path ────────────────────────────────────────────────────────
+		// --use-compose init writes Apps entries but never writes app.yaml, so the
+		// crName resolution below is skipped entirely for multi-app projects.
 		if len(initCfg.Apps) > 0 {
 			err := deployMultiApp(deployContext{
 				dir:             dir,
@@ -142,6 +123,28 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		}
 
 		// ── Single-app path (legacy) ──────────────────────────────────────────────
+
+		// Resolve CR name from .orkestra/app.yaml (written by ork doktor init --name).
+		appYAML := filepath.Join(dir, orkDir, doktor.ApplicationFile)
+		crName, err := doktor.ReadCRName(appYAML)
+		if err != nil {
+			nameFlag, _ := cmd.Flags().GetString("name")
+			if nameFlag == "" {
+				return fmt.Errorf("run 'ork doktor init --name <app>' first, or pass --name here")
+			}
+			crName = nameFlag + orkSuffix
+		}
+		appName := strings.TrimSuffix(crName, orkSuffix)
+		ns := crName + "-ns"
+
+		if tag == "" {
+			tag = info.GitCommit
+		}
+		if tag == "" {
+			tag = "latest"
+		}
+
+		image := doktor.ImageTag(registry, appName, tag)
 
 		// Show cluster context and currently deployed projects.
 		clusterCtx := doktor.CurrentContext()
@@ -229,6 +232,9 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				if mergeErr != nil {
 					return fmt.Errorf("merging katalogs: %w", mergeErr)
 				}
+				if err := doktor.DeduplicateKatalogGVKs(mergedPath); err != nil {
+					return fmt.Errorf("deduplicating katalog GVKs: %w", err)
+				}
 				effectiveKatalog := mergedPath
 				fmt.Printf("  ✓ Komposer merged (%d projects)\n", len(komposer.DeployedProjects()))
 
@@ -251,11 +257,9 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				fmt.Printf("  ~ Could not install dependencies: %v\n", err)
 			}
 
-			if info.HasFrontend {
-				if err := ensureIngressController(); err != nil {
-					fmt.Printf("  ~ Could not install ingress controller: %v\n", err)
-					fmt.Println("    Install manually: https://kubernetes.github.io/ingress-nginx/deploy/")
-				}
+			if err := ensureIngressController(); err != nil {
+				fmt.Printf("  ~ Could not install ingress controller: %v\n", err)
+				fmt.Println("    Install manually: https://kubernetes.github.io/ingress-nginx/deploy/")
 			}
 
 			if err := ensureMetricsServer(); err != nil {
@@ -406,6 +410,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 
 			if expose {
 				exposeApp(cmd.Context(), appName, ns, tunnelProvider, tunnelToken)
+				exposeControlCenter(cmd.Context(), tunnelProvider, tunnelToken)
 			}
 		} else {
 			fmt.Printf("  ~ dry-run: would apply %s and patch image to %s\n", bundleDir, image)
@@ -558,6 +563,9 @@ func deployMultiApp(dc deployContext) error {
 		if mergeErr != nil {
 			return fmt.Errorf("merging katalogs: %w", mergeErr)
 		}
+		if err := doktor.DeduplicateKatalogGVKs(mergedPath); err != nil {
+			return fmt.Errorf("deduplicating katalog GVKs: %w", err)
+		}
 		fmt.Printf("  ✓ Komposer merged (%d projects)\n", len(dc.komposer.DeployedProjects()))
 
 		for _, app := range apps {
@@ -699,6 +707,7 @@ func deployMultiApp(dc deployContext) error {
 			for _, app := range apps {
 				exposeApp(context.Background(), app.appName, app.ns, dc.tunnelProvider, dc.tunnelToken)
 			}
+			exposeControlCenter(context.Background(), dc.tunnelProvider, dc.tunnelToken)
 		}
 	} else {
 		for _, app := range apps {
@@ -917,8 +926,15 @@ func printReadySummary(crName, ns string, state *doktor.DeployState) {
 		return strings.TrimSpace(string(out))
 	}
 
+	// Load live tunnel URLs (best-effort — nil map is safe to read).
+	tunnels, _ := tunnel.LoadAllStates()
+	appName := strings.TrimSuffix(crName, orkSuffix)
+
 	fmt.Println()
-	if url := get("{.data.url}"); url != "" {
+	// App URL: prefer tunnel URL, fall back to ingress URL.
+	if ts, ok := tunnels[appName]; ok && ts.IsAlive() {
+		fmt.Printf("  App:    %s\n", ts.URL)
+	} else if url := get("{.data.url}"); url != "" {
 		fmt.Printf("  App:    %s\n", url)
 	}
 	fmt.Printf("  Status: Ready\n")
@@ -927,15 +943,20 @@ func printReadySummary(crName, ns string, state *doktor.DeployState) {
 	}
 	fmt.Println()
 
-	ccOut, _ := exec.Command("kubectl", "get", "configmap", crName,
-		"-n", ns, "-o", `go-template={{index .data "controlCenterHost"}}`).Output()
-	if ccHost := strings.TrimSpace(string(ccOut)); ccHost != "" {
-		fmt.Printf("  Control Center → https://%s\n", ccHost)
+	// Control Center URL: prefer tunnel URL, then static host, then port-forward hint.
+	if ts, ok := tunnels["controlcenter"]; ok && ts.IsAlive() {
+		fmt.Printf("  Control Center → %s\n", ts.URL)
 	} else {
-		fmt.Println("  Control Center → http://localhost:8081")
-		fmt.Printf("                   kubectl port-forward svc/orkestra-cc 8081:8081 -n %s &\n",
-			doktor.OrkestraNamespace)
-		fmt.Println("                   set controlCenterHost in .orkestra/app.yaml to expose externally")
+		ccOut, _ := exec.Command("kubectl", "get", "configmap", crName,
+			"-n", ns, "-o", `go-template={{index .data "controlCenterHost"}}`).Output()
+		if ccHost := strings.TrimSpace(string(ccOut)); ccHost != "" {
+			fmt.Printf("  Control Center → https://%s\n", ccHost)
+		} else {
+			fmt.Println("  Control Center → http://localhost:8081")
+			fmt.Printf("                   kubectl port-forward svc/orkestra-cc 8081:8081 -n %s &\n",
+				doktor.OrkestraNamespace)
+			fmt.Println("                   set controlCenterHost in .orkestra/app.yaml to expose externally")
+		}
 	}
 	fmt.Printf("  Logs          → kubectl logs -n %s -l ork.io/app=%s -f\n", ns, crName)
 
@@ -1019,6 +1040,7 @@ func ensureMetricsServer() error {
 	// Detect if metrics-server already exists
 	out, _ := exec.Command("kubectl", "get", "deployment", "-n", "kube-system", "metrics-server").CombinedOutput()
 	if strings.Contains(string(out), "metrics-server") {
+		fmt.Println("output: ", out)
 		return nil
 	}
 
@@ -1074,12 +1096,16 @@ func fileExistsAtPath(path string) bool {
 }
 
 // exposeApp starts a tunnel for the given app and prints the public URL.
+// It port-forwards to the app's K8s service (<appName>-orkestra-svc) so the
+// tunnel survives after the deploy command exits regardless of ingress setup.
 func exposeApp(ctx context.Context, appName, ns, provider, token string) {
 	fmt.Printf("\n  Starting tunnel for %s...\n", appName)
 	url, err := tunnel.Expose(ctx, tunnel.ExposeOptions{
+		Name:        appName,
 		Provider:    provider,
 		Token:       token,
-		ServiceName: appName,
+		ServiceName: appName + orkSuffix + "-svc",
+		ServicePort: "8080",
 		Namespace:   ns,
 	})
 	if err != nil {
@@ -1087,4 +1113,23 @@ func exposeApp(ctx context.Context, appName, ns, provider, token string) {
 		return
 	}
 	fmt.Printf("  ✓ App: %s\n", url)
+}
+
+// exposeControlCenter starts a tunnel for the Orkestra Control Center.
+func exposeControlCenter(ctx context.Context, provider, token string) {
+	fmt.Println("\n  Starting tunnel for controlcenter...")
+	url, err := tunnel.Expose(ctx, tunnel.ExposeOptions{
+		Name:        "controlcenter",
+		Provider:    provider,
+		Token:       token,
+		ServiceName: doktor.OrkestraControlCenter,
+		Namespace:   doktor.OrkestraNamespace,
+		ServicePort: doktor.OrkestraControlCenterPort,
+		PortForward: true,
+	})
+	if err != nil {
+		fmt.Printf("  ~ tunnel (controlcenter): %v\n", err)
+		return
+	}
+	fmt.Printf("  ✓ Control Center: %s\n", url)
 }
