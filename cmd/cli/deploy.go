@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/orkspace/orkestra/pkg/buildx"
 	"github.com/orkspace/orkestra/pkg/doktor"
 	"github.com/spf13/cobra"
 )
@@ -86,6 +87,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			state = &doktor.DeployState{Projects: make(map[string]*doktor.ProjectState)}
 		}
 		komposer, _ := doktor.LoadGlobalKomposer()
+		komposer.Metadata.Description = "Orkestra Managed Deployment in " + state.ClusterContext
 
 		if !dryRun {
 			// Step 0 — Cluster connectivity.
@@ -120,14 +122,19 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		if !dryRun {
 			start := time.Now()
 			var buildOut bytes.Buffer
-			if err := doktor.Build(dir, image, &buildOut); err != nil {
+			composeBuild := buildx.ComposeBuild{
+				UseCompose:  info.UseCompose,
+				ComposeFile: info.ComposePath,
+			}
+
+			if err := buildx.BuildImage(dir, image, composeBuild, &buildOut); err != nil {
 				fmt.Print(buildOut.String())
 				return err
 			}
 			fmt.Printf("  ✓ Built (%ds)\n", int(time.Since(start).Seconds()))
 
 			var pushOut bytes.Buffer
-			if err := doktor.Push(image, &pushOut); err != nil {
+			if err := buildx.PushImage(image, &pushOut); err != nil {
 				fmt.Print(pushOut.String())
 				return err
 			}

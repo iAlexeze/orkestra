@@ -22,7 +22,7 @@ type GlobalKomposer struct {
 	APIVersion string          `yaml:"apiVersion"`
 	Kind       string          `yaml:"kind"`
 	Metadata   KomposerMeta    `yaml:"metadata"`
-	Sources    KomposerSources `yaml:"sources"`
+	Imports    KomposerSources `yaml:"imports"`
 }
 
 type KomposerMeta struct {
@@ -71,7 +71,7 @@ func LoadGlobalKomposer() (*GlobalKomposer, error) {
 				Name:   clusterName,
 				Author: author.Raw,
 			},
-			Sources: KomposerSources{},
+			Imports: KomposerSources{},
 		}, nil
 	}
 	if err != nil {
@@ -84,12 +84,12 @@ func LoadGlobalKomposer() (*GlobalKomposer, error) {
 // RegisterKatalog adds katalogPath to the Komposer sources if not already present.
 // Returns true when the path was newly added.
 func (k *GlobalKomposer) RegisterKatalog(katalogPath string) bool {
-	for _, f := range k.Sources.Files {
+	for _, f := range k.Imports.Files {
 		if f == katalogPath {
 			return false
 		}
 	}
-	k.Sources.Files = append(k.Sources.Files, katalogPath)
+	k.Imports.Files = append(k.Imports.Files, katalogPath)
 	return true
 }
 
@@ -113,7 +113,7 @@ func (k *GlobalKomposer) Save() error {
 // Paths are expected to contain a .orkestra/ directory segment.
 func (k *GlobalKomposer) DeployedProjects() []string {
 	var names []string
-	for _, f := range k.Sources.Files {
+	for _, f := range k.Imports.Files {
 		parts := strings.Split(filepath.ToSlash(f), "/")
 		for i, p := range parts {
 			if p == ".orkestra" && i > 0 {
@@ -126,9 +126,10 @@ func (k *GlobalKomposer) DeployedProjects() []string {
 }
 
 type GitAuthor struct {
-	Name  string
-	Email string
-	Raw   string // "Name <email>"
+	Name     string
+	Email    string
+	Raw      string // "Name <email>"
+	Notfound bool
 }
 
 // LastCommitAuthor returns "Name <email>" from the most recent Git commit.
@@ -150,9 +151,14 @@ func LastCommitAuthor() (*GitAuthor, error) {
 	name := strings.TrimSpace(parts[0])
 	email := strings.TrimSpace(parts[1])
 
-	return &GitAuthor{
-		Name:  name,
-		Email: email,
-		Raw:   fmt.Sprintf("%s <%s>", name, email),
-	}, nil
+	author := GitAuthor{}
+	if name == "" && email == "" {
+		author.Notfound = true
+	}
+
+	author.Email = email
+	author.Name = name
+	author.Raw = fmt.Sprintf("%s <%s>", name, email)
+
+	return &author, nil
 }

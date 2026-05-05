@@ -5,6 +5,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/orkspace/orkestra/pkg/doktor"
 	"github.com/spf13/cobra"
@@ -64,6 +65,26 @@ var doktorCmd = &cobra.Command{
 			fmt.Println("  ~ .env not found — variables can be added later")
 		}
 
+		// docker-compose detection
+		composeFile := filepath.Base(info.ComposePath)
+		if info.HasCompose {
+			fmt.Printf("  ✓ (%s)\n", composeFile)
+			cf, cfErr := doktor.ParseCompose(info.ComposePath)
+			if cfErr == nil {
+				_, stateful := doktor.ClassifyServices(cf)
+				if len(stateful) > 0 {
+					fmt.Println()
+					fmt.Printf("💡 Infrastructure services detected in %s:\n", composeFile)
+					for _, s := range stateful {
+						fmt.Printf("    %s (%s) → %s Motif + %s\n",
+							s.Name, s.Image, s.Motif.MotifRef, s.Motif.AdminUI)
+					}
+					fmt.Println()
+					fmt.Printf("  Run 'ork doktor init --name <app> --use-compose %s' to include them\n", filepath.Base(info.ComposePath))
+				}
+			}
+		}
+
 		// SMTP/Slack hint — shown before the "Orkestra will create" section.
 		if info.HasSMTP || info.HasSlack {
 			fmt.Println()
@@ -78,6 +99,9 @@ var doktorCmd = &cobra.Command{
 
 		noHA, _ := cmd.Flags().GetBool("no-ha")
 		noSecure, _ := cmd.Flags().GetBool("no-secure")
+		if info.GitCommit == "" {
+			info.GitCommit = "latest"
+		}
 
 		fmt.Printf("  Deployment     image built from Dockerfile, tagged :%s\n", info.GitCommit)
 		if len(info.Secrets) > 0 {
@@ -100,16 +124,23 @@ var doktorCmd = &cobra.Command{
 
 		// Detect missing dependencies
 		fmt.Println()
+		missing := 0
 		fmt.Println("Missing dependencies:")
 		if !doktor.KubectlAvailable() {
 			fmt.Println("  kubectl   (will be installed during 'ork deploy')")
+			missing += 1
 		}
 		if !doktor.HelmAvailable() {
 			fmt.Println("  helm      (will be installed during 'ork deploy')")
+			missing += 1
+		}
+		if missing == 0 {
+			fmt.Print("  (none) ")
 		}
 
 		fmt.Println()
-		fmt.Println("Run 'ork doktor init' to generate .orkestra/katalog.yaml")
+		fmt.Println()
+		fmt.Println("Run 'ork doktor init --name <my-project>' to generate .orkestra/katalog.yaml")
 		if !noHA {
 			fmt.Println("Run with --no-ha to skip HPA and PDB (development mode)")
 		}
@@ -141,6 +172,7 @@ var doktorInitCmd = &cobra.Command{
 		name, _ := cmd.Flags().GetString("name")
 		addIngress, _ := cmd.Flags().GetBool("add-ingress")
 		notifyMe, _ := cmd.Flags().GetBool("notify-me")
+		useCompose, _ := cmd.Flags().GetString("use-compose")
 
 		opts := doktor.GenerateOptions{
 			NoHA:       noHA,
@@ -149,6 +181,7 @@ var doktorInitCmd = &cobra.Command{
 			Name:       name,
 			AddIngress: addIngress,
 			NotifyMe:   notifyMe,
+			UseCompose: useCompose,
 		}
 
 		if err := doktor.Init(info, opts); err != nil {
@@ -160,7 +193,7 @@ var doktorInitCmd = &cobra.Command{
 
 		fmt.Println()
 		fmt.Printf("App:       %s\n", name)
-		fmt.Printf("CR name:   %s\n", crName)
+		fmt.Printf("AppConfig: %s\n", crName)
 		fmt.Printf("Namespace: %s\n", ns)
 		fmt.Println()
 		fmt.Println("Generated .orkestra/katalog.yaml")
@@ -187,6 +220,7 @@ func init() {
 	doktorInitCmd.Flags().String("name", "", "App name (e.g. my-app → CR: my-app-orkestra, namespace: my-app-orkestra-ns)")
 	doktorInitCmd.Flags().Bool("add-ingress", false, "Include Ingress even when no frontend was auto-detected")
 	doktorInitCmd.Flags().Bool("notify-me", false, "Auto‑enable notifications using SMTP_*/SLACK_* from .env and your Git author")
+	doktorInitCmd.Flags().String("use-compose", "", "Path to docker-compose.yaml — deploys all services including databases via Motifs")
 
 	_ = doktorInitCmd.MarkFlagRequired("name")
 

@@ -36,6 +36,9 @@ type ProjectInfo struct {
 	HasSMTP       bool   // if env has smtp vars
 	HasSlack      bool   // if env has slack vars
 	License       string // project license read from regular license files
+	HasCompose    bool   // docker-compose.yaml found
+	UseCompose    bool   // user choice to use compose file
+	ComposePath   string // path to docker-compose.yaml
 }
 
 // Detect examines dir and returns a ProjectInfo. Missing .env is not an error.
@@ -65,6 +68,11 @@ func Detect(dir string) (*ProjectInfo, error) {
 	info.Port = detectPort(info.EnvVars, info.Language)
 	info.HasFrontend = detectFrontend(dir, info.Language)
 	info.License = DetectLicense(dir)
+
+	if p := DetectComposeFile(dir); p != "" {
+		info.HasCompose = true
+		info.ComposePath = p
+	}
 
 	return info, nil
 }

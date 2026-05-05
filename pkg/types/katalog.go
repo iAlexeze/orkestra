@@ -9,7 +9,7 @@ type KatalogFile struct {
 	Kind       string          `yaml:"kind"`
 	Metadata   KatalogMeta     `yaml:"metadata"`
 	Anchors    map[string]any  `yaml:"anchors,omitempty"`
-	Sources    *KatalogSources `yaml:"sources,omitempty"`
+	Imports    *KatalogSources `yaml:"imports,omitempty"`
 	Spec       KatalogSpec     `yaml:"spec"`
 	Security   KatalogSecurity `yaml:"security"`
 

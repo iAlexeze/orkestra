@@ -36,7 +36,7 @@ metadata:
 # A Komposer has its own sources — those sources will also be resolved.
 # Understand the upstream dependency tree before using this.
 
-sources:
+imports:
   registry:
     # ── Public OCI registry — shorthand ──────────────────────────────────────
     - url: ghcr.io/orkestra-sh/orkestra-registry/postgres@v14

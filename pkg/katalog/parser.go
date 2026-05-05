@@ -41,6 +41,11 @@ func (k *Katalog) KomposeRuntimeKatalog(kfg *konfig.Konfig, m *merger.Merger, pa
 		k.enabledCRDs[name] = entry
 	}
 
+	// Expand Motif imports declared in each operatorBox
+	if err := k.expandMotifImports(); err != nil {
+		return nil, err
+	}
+
 	// initialize conversion registry and admission registry
 	k.conversionRegistry = NewInMemoryConversionRegistry()
 	k.admissionRegistry = NewInMemoryAdmissionRegistry()

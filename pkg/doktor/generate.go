@@ -17,6 +17,7 @@ type GenerateOptions struct {
 	Name       string // override app name
 	AddIngress bool   // force-include Ingress even when no frontend was detected
 	NotifyMe   bool   // add notification block
+	UseCompose string // path to docker-compose.yaml (expand stateful services via Motifs)
 }
 
 // Init generates .orkestra/katalog.yaml and .orkestra/app.yaml, creates the
@@ -32,13 +33,30 @@ func Init(info *ProjectInfo, opts GenerateOptions) error {
 		return fmt.Errorf("creating .orkestra/: %w", err)
 	}
 
-	katalog := buildKatalog(name, info, opts)
-	if err := os.WriteFile(filepath.Join(orkDir, "katalog.yaml"), []byte(katalog), 0o644); err != nil {
+	// When --use-compose is set, read the compose file and inject stateful service
+	// blocks into the generated Katalog and app.yaml.
+	var stateful []StatefulService
+	if opts.UseCompose != "" {
+		cf, err := ParseCompose(opts.UseCompose)
+		if err != nil {
+			return fmt.Errorf("reading compose file: %w", err)
+		}
+		_, stateful = ClassifyServices(cf)
+	}
+
+	katalogContent := buildKatalog(name, info, opts)
+	if len(stateful) > 0 {
+		katalogContent = injectStatefulServices(katalogContent, name, stateful)
+	}
+	if err := os.WriteFile(filepath.Join(orkDir, "katalog.yaml"), []byte(katalogContent), 0o644); err != nil {
 		return fmt.Errorf("writing katalog.yaml: %w", err)
 	}
 
-	cr := buildCR(name, info, opts)
-	if err := os.WriteFile(filepath.Join(orkDir, ApplicationFile), []byte(cr), 0o644); err != nil {
+	crContent := buildCR(name, info, opts)
+	if len(stateful) > 0 {
+		crContent = injectStatefulAppYAML(crContent, stateful, info)
+	}
+	if err := os.WriteFile(filepath.Join(orkDir, ApplicationFile), []byte(crContent), 0o644); err != nil {
 		return fmt.Errorf("writing app.yaml: %w", err)
 	}
 
@@ -56,6 +74,107 @@ func Init(info *ProjectInfo, opts GenerateOptions) error {
 	}
 
 	return nil
+}
+
+// injectStatefulServices appends Motif import blocks for each stateful service
+// to the generated Katalog YAML string.
+func injectStatefulServices(katalogYAML, appName string, services []StatefulService) string {
+	if len(services) == 0 {
+		return katalogYAML
+	}
+
+	var b strings.Builder
+	b.WriteString(katalogYAML)
+	b.WriteString("\n        # Stateful services expanded from docker-compose.yaml\n")
+	b.WriteString("        imports:\n")
+	for _, s := range services {
+		ref := s.Motif.MotifRef
+		b.WriteString(fmt.Sprintf("          - motif: %s\n", ref))
+		b.WriteString("            with:\n")
+		switch ref {
+		case "postgres":
+			b.WriteString("              image: \"{{ .data.postgresImage }}\"\n")
+			b.WriteString(fmt.Sprintf("              passwordSecretName: %s-secrets\n", appName))
+			b.WriteString("              user: \"{{ .data.postgresUser }}\"\n")
+			b.WriteString("              volumeSize: \"{{ .data.postgresVolumeSize }}\"\n")
+			b.WriteString("              adminEmail: \"{{ .data.adminEmail }}\"\n")
+			b.WriteString("              adminPassword: \"{{ .data.adminPassword }}\"\n")
+		case "redis":
+			b.WriteString("              image: \"{{ .data.redisImage }}\"\n")
+			b.WriteString("              volumeSize: \"{{ .data.redisVolumeSize }}\"\n")
+		case "mysql":
+			b.WriteString("              image: \"{{ .data.mysqlImage }}\"\n")
+			b.WriteString(fmt.Sprintf("              passwordSecretName: %s-secrets\n", appName))
+			b.WriteString("              user: \"{{ .data.mysqlUser }}\"\n")
+			b.WriteString("              volumeSize: \"{{ .data.mysqlVolumeSize }}\"\n")
+		case "kafka":
+			b.WriteString("              image: \"{{ .data.kafkaImage }}\"\n")
+		case "rabbitmq":
+			b.WriteString("              image: \"{{ .data.rabbitmqImage }}\"\n")
+		case "mongodb":
+			b.WriteString("              image: \"{{ .data.mongoImage }}\"\n")
+			b.WriteString("              volumeSize: \"{{ .data.mongoVolumeSize }}\"\n")
+		default:
+			fmt.Fprintf(&b, "              image: \"{{ .data.%sImage }}\"\n", ref)
+		}
+	}
+	return b.String()
+}
+
+// injectStatefulAppYAML appends stateful service configuration keys to app.yaml.
+// Each key includes a simple, developer-friendly comment explaining its purpose.
+func injectStatefulAppYAML(appYAML string, services []StatefulService, info *ProjectInfo) string {
+	if len(services) == 0 {
+		return appYAML
+	}
+
+	author, _ := LastCommitAuthor()
+	if author.Notfound {
+		author.Email = "dev@orkestra.sh"
+		author.Name = "admin"
+	}
+
+	appUser := truncate(info.AppName+"_"+"user", 15)
+	appUser = cleanUp(appUser)
+
+	var b strings.Builder
+	b.WriteString(appYAML)
+
+	for _, s := range services {
+		fmt.Fprintf(&b, "\n  # ── %s (from %s) ────────────────────────────────────────\n",
+			strings.Title(s.Motif.MotifRef), filepath.Base(info.ComposePath))
+
+		switch s.Motif.MotifRef {
+
+		case "postgres":
+			fmt.Fprintf(&b, "  postgresImage: \"%s\"        # Container image for your database\n", s.Image)
+			b.WriteString("  postgresVolumeSize: \"10Gi\"          # Volume size for your database\n")
+			fmt.Fprintf(&b, "  postgresUser: \"%s\"               # Default database user\n", appUser)
+			fmt.Fprintf(&b, "  adminEmail: \"%s\"                # Admin email for database access\n", author.Email)
+			fmt.Fprintf(&b, "  adminPassword: \"%s\"             # Admin password (auto-generated)\n", author.Name)
+
+		case "redis":
+			fmt.Fprintf(&b, "  redisImage: \"%s\"           # Container image for Redis\n", s.Image)
+			b.WriteString("  redisVolumeSize: \"2Gi\"            # Volume size for Redis data\n")
+
+		case "mysql":
+			fmt.Fprintf(&b, "  mysqlImage: \"%s\"           # Container image for MySQL\n", s.Image)
+			b.WriteString("  mysqlVolumeSize: \"10Gi\"           # Volume size for your database\n")
+			fmt.Fprintf(&b, "  mysqlUser: \"%s\"                # Default database user\n", appUser)
+
+		case "kafka":
+			fmt.Fprintf(&b, "  kafkaImage: \"%s\"           # Container image for Kafka\n", s.Image)
+
+		case "rabbitmq":
+			fmt.Fprintf(&b, "  rabbitmqImage: \"%s\"        # Container image for RabbitMQ\n", s.Image)
+
+		case "mongodb":
+			fmt.Fprintf(&b, "  mongoImage: \"%s\"           # Container image for MongoDB\n", s.Image)
+			b.WriteString("  mongoVolumeSize: \"10Gi\"           # Volume size for MongoDB data\n")
+		}
+	}
+
+	return b.String()
 }
 
 // protectionLabels returns the YAML block for deletion-protection labels,
@@ -200,7 +319,7 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 		b.WriteString("                apiVersion: apps/v1\n")
 		b.WriteString("                kind: Deployment\n")
 		b.WriteString("                name: \"{{ .metadata.name }}\"\n")
-		b.WriteString("              minReplicas: \"{{ .data.minReplicas | default \\\"2\\\" }}\"\n")
+		b.WriteString("              minReplicas:  \"{{ .data.replicas | default \\\"" + replicas + "\\\" }}\"\n")
 		b.WriteString("              maxReplicas: \"{{ .data.maxReplicas | default \\\"10\\\" }}\"\n")
 		b.WriteString("              targetCPUUtilizationPercentage: \"70\"\n")
 		b.WriteString(protectionLabels("              ", secure))
@@ -264,19 +383,24 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 	return b.String()
 }
 
+// buildCR constructs the developer-facing ConfigMap that defines an app’s
+// deployment settings. This file becomes .orkestra/app.yaml and is the only
+// configuration a developer edits; ork deploy reads it and manages all
+// Kubernetes resources from it.
 func buildCR(name string, info *ProjectInfo, opts GenerateOptions) string {
 	crName := name + "-orkestra"
 	ns := name + "-orkestra-ns"
+
 	replicas := "2"
-	minReplicas := "2"
 	if opts.NoHA {
 		replicas = "1"
-		minReplicas = "1"
 	}
 
 	var b strings.Builder
+
 	b.WriteString("# This is the only Kubernetes object you manage.\n")
 	b.WriteString("# Run 'ork deploy' to apply — do not apply this file manually.\n\n")
+
 	b.WriteString("apiVersion: v1\n")
 	b.WriteString("kind: ConfigMap\n")
 	b.WriteString("metadata:\n")
@@ -287,21 +411,34 @@ func buildCR(name string, info *ProjectInfo, opts GenerateOptions) string {
 	if !opts.NoSecure {
 		b.WriteString("    " + deletionProtectionLabel + ": \"true\"\n")
 	}
+
 	b.WriteString("data:\n")
-	b.WriteString(fmt.Sprintf("  port: \"%s\"\n", info.Port))
-	b.WriteString(fmt.Sprintf("  replicas: \"%s\"\n", replicas))
+	b.WriteString("  # ork deploy updates this automatically — do not edit\n")
+	b.WriteString("  image: \"\"\n")
+	b.WriteString("  # ───────────────────────────────────────────────────────────────\n\n")
+
+	b.WriteString("  # Application port\n")
+	fmt.Fprintf(&b, "  port: \"%s\"\n\n", info.Port)
+
+	b.WriteString("  # How many copies of your app to run normally\n")
+	fmt.Fprintf(&b, "  replicas: \"%s\"\n\n", replicas)
+
+	b.WriteString("  # How much CPU and memory your app should get. Choose a profile:\n")
+	b.WriteString("  # docs.orkestra.sh/concepts/resource-profiles\n")
+	b.WriteString("  resourceProfile: \"burst\"\n\n")
+
 	if !opts.NoHA {
-		b.WriteString(fmt.Sprintf("  minReplicas: \"%s\"\n", minReplicas))
-		b.WriteString("  maxReplicas: \"10\"\n")
+		b.WriteString("  # Maximum copies of your app to run when traffic increases\n")
+		b.WriteString("  maxReplicas: \"10\"\n\n")
 	}
+
 	if info.HasFrontend || opts.AddIngress {
-		// host routes traffic to this specific app via the Ingress.
-		b.WriteString("  host: \"\"              # this app's public hostname (e.g. myapp.example.com)\n")
+		b.WriteString("  # This app's public hostname (e.g. myapp.example.com)\n")
+		b.WriteString("  host: \"\"\n\n")
 	}
-	// controlCenterHost is the Orkestra Control Center — the same URL for every app
-	// in this cluster. host (above) is per-app; controlCenterHost is per-cluster.
-	b.WriteString("  controlCenterHost: \"\"  # Orkestra Control Center hostname (e.g. control.mycompany.com)\n")
-	b.WriteString("  image: \"\"             # set by ork deploy — do not edit manually\n")
+
+	b.WriteString("  # Orkestra Control Center hostname (e.g. control.mycompany.com)\n")
+	b.WriteString("  controlCenterHost: \"\"\n\n")
 
 	return b.String()
 }

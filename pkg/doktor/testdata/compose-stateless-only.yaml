@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+
+  worker:
+    build: .
+    command: ./worker

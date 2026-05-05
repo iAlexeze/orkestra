@@ -4,17 +4,36 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var validateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "Validate Orkestra katalog configuration",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		katalogPaths, _ := cmd.Flags().GetStringSlice("katalog")
+		expanded := parseKatalogPaths(katalogPaths)
+
+		// If any path is a Motif, route to Motif validation
+		for _, path := range expanded {
+			kind, err := detectKindFromFile(path)
+			if err != nil {
+				return fmt.Errorf("reading %s: %w", path, err)
+			}
+
+			if konfig.IsMotifKind(kind) {
+				return validateMotifFile(path)
+			}
+		}
+
+		// Default: Katalog / Komposer validation
 		m, err := generateKatalog(cmd)
 		if err != nil {
 			return err
@@ -56,6 +75,40 @@ var validateCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+// detectKindFromFile peeks at a YAML file to read its kind field.
+func detectKindFromFile(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	var doc struct {
+		Kind string `yaml:"kind"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return "", err
+	}
+	return doc.Kind, nil
+}
+
+// validateMotifFile runs Motif-specific validation and prints results.
+func validateMotifFile(path string) error {
+	fmt.Println()
+	fmt.Printf("%s\n", utils.Bold("Validating Motif: "+path))
+	fmt.Println()
+
+	errs := katalog.ValidateMotif(path)
+	if len(errs) == 0 {
+		fmt.Printf("  ✓ %s is valid\n", path)
+		return nil
+	}
+
+	for _, e := range errs {
+		fmt.Printf("  ✗ %s\n", e.Error())
+	}
+	fmt.Println()
+	return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
 }
 
 func init() {

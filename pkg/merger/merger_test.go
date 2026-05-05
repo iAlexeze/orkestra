@@ -46,7 +46,7 @@ const komposerYAML = `apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: my-komposer
-sources:
+imports:
   files:
     - url: %s
 `
@@ -55,7 +55,7 @@ func TestKomposer_InheritsUpstreamSecurity(t *testing.T) {
 	dir := t.TempDir()
 	katalogPath := writeTempKatalog(t, dir, "upstream.yaml", upstreamKatalogYAML)
 
-	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: my-komposer\nsources:\n  files:\n    - url: " + katalogPath + "\n"
+	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: my-komposer\nimports:\n  files:\n    - url: " + katalogPath + "\n"
 	komposerPath := writeTempKatalog(t, dir, "komposer.yaml", komposer)
 
 	m := New(komposerPath)
@@ -73,7 +73,7 @@ func TestKomposer_InheritsUpstreamNotification(t *testing.T) {
 	dir := t.TempDir()
 	katalogPath := writeTempKatalog(t, dir, "upstream.yaml", upstreamKatalogYAML)
 
-	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: my-komposer\nsources:\n  files:\n    - url: " + katalogPath + "\n"
+	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: my-komposer\nimports:\n  files:\n    - url: " + katalogPath + "\n"
 	komposerPath := writeTempKatalog(t, dir, "komposer.yaml", komposer)
 
 	m := New(komposerPath)
@@ -94,7 +94,7 @@ func TestKomposer_InheritsUpstreamProviders(t *testing.T) {
 	dir := t.TempDir()
 	katalogPath := writeTempKatalog(t, dir, "upstream.yaml", upstreamKatalogYAML)
 
-	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: my-komposer\nsources:\n  files:\n    - url: " + katalogPath + "\n"
+	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: my-komposer\nimports:\n  files:\n    - url: " + katalogPath + "\n"
 	komposerPath := writeTempKatalog(t, dir, "komposer.yaml", komposer)
 
 	m := New(komposerPath)
@@ -115,7 +115,7 @@ func TestKomposer_OwnSecurityWinsOverUpstream(t *testing.T) {
 	dir := t.TempDir()
 	katalogPath := writeTempKatalog(t, dir, "upstream.yaml", upstreamKatalogYAML)
 
-	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: my-komposer\nsecurity:\n  serviceName: komposer-svc\nsources:\n  files:\n    - url: " + katalogPath + "\n"
+	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: my-komposer\nsecurity:\n  serviceName: komposer-svc\nimports:\n  files:\n    - url: " + katalogPath + "\n"
 	komposerPath := writeTempKatalog(t, dir, "komposer.yaml", komposer)
 
 	m := New(komposerPath)
@@ -133,7 +133,7 @@ func TestKomposer_OwnProvidersWinOverUpstream(t *testing.T) {
 	dir := t.TempDir()
 	katalogPath := writeTempKatalog(t, dir, "upstream.yaml", upstreamKatalogYAML)
 
-	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: my-komposer\nproviders:\n  - name: gcp\n    version: \"2.0\"\nsources:\n  files:\n    - url: " + katalogPath + "\n"
+	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: my-komposer\nproviders:\n  - name: gcp\n    version: \"2.0\"\nimports:\n  files:\n    - url: " + katalogPath + "\n"
 	komposerPath := writeTempKatalog(t, dir, "komposer.yaml", komposer)
 
 	m := New(komposerPath)
@@ -184,7 +184,7 @@ spec:
         group: example.io
 `)
 
-	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: multi-src\nsources:\n  files:\n    - url: " + src1 + "\n    - url: " + src2 + "\n"
+	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: multi-src\nimports:\n  files:\n    - url: " + src1 + "\n    - url: " + src2 + "\n"
 	komposerPath := writeTempKatalog(t, dir, "komposer.yaml", komposer)
 
 	m := New(komposerPath)
@@ -208,7 +208,7 @@ func TestKomposer_CRDsFromUpstreamKatalog(t *testing.T) {
 	dir := t.TempDir()
 	katalogPath := writeTempKatalog(t, dir, "upstream.yaml", upstreamKatalogYAML)
 
-	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: my-komposer\nsources:\n  files:\n    - url: " + katalogPath + "\n"
+	komposer := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: my-komposer\nimports:\n  files:\n    - url: " + katalogPath + "\n"
 	komposerPath := writeTempKatalog(t, dir, "komposer.yaml", komposer)
 
 	m := New(komposerPath)

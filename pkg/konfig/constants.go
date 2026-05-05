@@ -27,6 +27,7 @@ const (
 	kindKatalog   = "Katalog"
 	kindKonductor = "Konductor"
 	kindKomposer  = "Komposer"
+	kindMotif     = "Motif"
 
 	// LabelManaged is patched on every CR Orkestra manages.
 	// Used by ork reconcile, ork get, and ork events to scope

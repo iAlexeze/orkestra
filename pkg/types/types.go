@@ -1827,6 +1827,13 @@ type OperatorBoxConfig struct {
 	// Converted to ProviderBlocks in the Katalog loading step.
 	RawProviders map[string][]map[string]interface{} `yaml:"providers,omitempty" json:"providers,omitempty"`
 
+	// Imports declares Motif imports for this operatorBox.
+	// Each import references a Motif by OCI reference, file path, or short name,
+	// and binds its inputs via with:. Resources from imported Motifs are merged
+	// into OnReconcile at Katalog load time.
+	// Required inputs not provided in with: are a validation error.
+	Imports []MotifImport `yaml:"imports,omitempty" json:"imports,omitempty"`
+
 	// Cross declares cross-CRD observations.
 	// Read before any resource groups — results available as .cross.<as>.status.*
 	Cross []CrossCRDDeclaration `yaml:"cross,omitempty" json:"cross,omitempty"`

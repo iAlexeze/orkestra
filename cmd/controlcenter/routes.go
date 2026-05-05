@@ -51,6 +51,10 @@ func setupRoutes(cc *controlcenter.ControlCenter, version, commit, buildDate str
 	// Logout clears session cookie
 	mux.HandleFunc("/logout", auth.Logout)
 
+	// GitHub OAuth (only active when GITHUB_CLIENT_ID is set)
+	mux.HandleFunc("/auth/github", auth.GitHubBegin)
+	mux.HandleFunc("/auth/github/callback", auth.GitHubCallback)
+
 	/* -----------------------------------------------------------
 	   Protected Control Center routes
 	   ----------------------------------------------------------- */
