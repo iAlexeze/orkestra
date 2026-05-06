@@ -18,6 +18,7 @@ func (k *Katalog) KomposeRuntimeKatalog(kfg *konfig.Konfig, m *merger.Merger, pa
 	k.Security = m.ToSecurity()
 	k.Notification = m.ToNotification()
 	k.Providers = m.ToProviders()
+	k.projectInfo = m.ToProjectInfo()
 	k.enabledCRDs = m.Enabled()           // Enabled CRDs for all operations
 	k.metadata = m.APIMetadata().Metadata // Metadata for CLI and health endpoints
 	k.APIVersion = m.APIMetadata().APIVersion

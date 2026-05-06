@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
 const (
@@ -13,7 +15,7 @@ const (
 
 // NotificationEnvVars maps developer .env keys to Orkestra konfig env var names.
 // Only keys with non-empty values are included.
-func NotificationEnvVars(vars []EnvVar) map[string]string {
+func NotificationEnvVars(vars []orktypes.EnvVar) map[string]string {
 	mapping := map[string]string{
 		"SMTP_HOST":         "SMTP_HOST",
 		"SMTP_PORT":         "SMTP_PORT",
@@ -52,6 +54,7 @@ func BuildNotificationSecret(envMap map[string]string) string {
 	b.WriteString("  namespace: " + OrkestraNamespace + "\n")
 	b.WriteString("  labels:\n")
 	b.WriteString("    app.kubernetes.io/managed-by: orkestra\n")
+	b.WriteString("    " + deletionProtectionLabel + ": true\n")
 	b.WriteString("type: Opaque\n")
 	b.WriteString("stringData:\n")
 

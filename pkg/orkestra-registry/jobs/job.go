@@ -162,13 +162,6 @@ func buildJob(owner domain.Object, spec ResolvedJobSpec, namespace string) *batc
 		Args:    spec.Args,
 	}
 
-	var pullSecrets []corev1.LocalObjectReference
-	for _, name := range spec.ImagePullSecrets {
-		pullSecrets = append(pullSecrets, corev1.LocalObjectReference{
-			Name: name,
-		})
-	}
-
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,
@@ -197,7 +190,7 @@ func buildJob(owner domain.Object, spec ResolvedJobSpec, namespace string) *batc
 					Labels: spec.Labels,
 				},
 				Spec: corev1.PodSpec{
-					ImagePullSecrets: pullSecrets,
+					ImagePullSecrets: common.ToPullSecrets(spec.ImagePullSecrets),
 					RestartPolicy:    corev1.RestartPolicyOnFailure,
 					Containers:       []corev1.Container{container},
 				},

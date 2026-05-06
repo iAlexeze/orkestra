@@ -5,42 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
-
-// Language represents the primary language detected in the project.
-type Language string
-
-const (
-	LangGo      Language = "Go"
-	LangNode    Language = "Node.js"
-	LangJava    Language = "Java"
-	LangPython  Language = "Python"
-	LangRuby    Language = "Ruby"
-	LangRust    Language = "Rust"
-	LangUnknown Language = "Unknown"
-)
-
-// ProjectInfo holds everything ork doctor discovers about a project directory.
-type ProjectInfo struct {
-	Dir            string
-	HasDockerfile  bool
-	DockerfilePath string
-	GitCommit      string // short SHA, empty when not a git repo
-	Language       Language
-	LangMarker     string   // the file that triggered language detection
-	Port           string   // from PORT in .env, or language default
-	EnvVars        []EnvVar // all parsed .env variables
-	Secrets        []EnvVar // IsCfg == false
-	Config         []EnvVar // IsCfg == true
-	HasFrontend    bool
-	AppName        string // derived from directory name
-	HasSMTP        bool   // if env has smtp vars
-	HasSlack       bool   // if env has slack vars
-	License        string // project license read from regular license files
-	HasCompose     bool   // docker-compose.yaml found
-	UseCompose     bool   // user choice to use compose file
-	ComposePath    string // path to docker-compose.yaml
-}
 
 // Detect scans a project directory and returns a populated ProjectInfo
 // describing everything ork doctor can infer about the application.
@@ -58,9 +25,9 @@ type ProjectInfo struct {
 //
 // Missing .env files are not treated as errors. The function returns an error
 // only when parsing .env fails or when filesystem access is not possible.
-func Detect(dir string) (*ProjectInfo, error) {
-	info := &ProjectInfo{Dir: dir}
-	info.AppName = filepath.Base(dir)
+func Detect(dir string) (*orktypes.ProjectInfo, error) {
+	info := &orktypes.ProjectInfo{Dir: dir}
+	info.Name = filepath.Base(dir)
 
 	// Dockerfile Detection
 	dockerfileNames := []string{"Dockerfile", "Containerfile"}
@@ -145,30 +112,30 @@ func DetectLicense(dir string) string {
 // the primary programming language of the project. It returns both the detected
 // language and the marker file that triggered detection. If no marker is found,
 // LangUnknown is returned.
-func detectLanguage(dir string) (Language, string) {
+func detectLanguage(dir string) (orktypes.Language, string) {
 	checks := []struct {
 		file string
-		lang Language
+		lang orktypes.Language
 	}{
-		{"go.mod", LangGo},
-		{"package.json", LangNode},
-		{"pom.xml", LangJava},
-		{"requirements.txt", LangPython},
-		{"Gemfile", LangRuby},
-		{"Cargo.toml", LangRust},
+		{"go.mod", orktypes.LangGo},
+		{"package.json", orktypes.LangNode},
+		{"pom.xml", orktypes.LangJava},
+		{"requirements.txt", orktypes.LangPython},
+		{"Gemfile", orktypes.LangRuby},
+		{"Cargo.toml", orktypes.LangRust},
 	}
 	for _, c := range checks {
 		if fileExists(filepath.Join(dir, c.file)) {
 			return c.lang, c.file
 		}
 	}
-	return LangUnknown, ""
+	return orktypes.LangUnknown, ""
 }
 
 // detectPort determines the application's port. It first checks for a PORT
 // variable in the parsed .env file. If not present, it falls back to
 // language-specific defaults (e.g., Go: 8080, Node: 3000, Python: 8000).
-func detectPort(vars []EnvVar, lang Language) string {
+func detectPort(vars []orktypes.EnvVar, lang orktypes.Language) string {
 	for _, v := range vars {
 		if v.Key == "PORT" {
 			return v.Value
@@ -176,17 +143,17 @@ func detectPort(vars []EnvVar, lang Language) string {
 	}
 	// Language defaults when PORT not in .env.
 	switch lang {
-	case LangGo:
+	case orktypes.LangGo:
 		return "8080"
-	case LangNode:
+	case orktypes.LangNode:
 		return "3000"
-	case LangJava:
+	case orktypes.LangJava:
 		return "8080"
-	case LangPython:
+	case orktypes.LangPython:
 		return "8000"
-	case LangRuby:
+	case orktypes.LangRuby:
 		return "3000"
-	case LangRust:
+	case orktypes.LangRust:
 		return "8080"
 	default:
 		return "8080"
@@ -197,7 +164,7 @@ func detectPort(vars []EnvVar, lang Language) string {
 // It checks for common static build directories (build/, dist/, public/) and,
 // for Node.js projects, scans package.json for known frontend frameworks such
 // as React, Vue, Angular, Next.js, Nuxt, or Svelte.
-func detectFrontend(dir string, lang Language) bool {
+func detectFrontend(dir string, lang orktypes.Language) bool {
 	// Static build directories suggest a frontend is present.
 	for _, d := range []string{"build", "dist", "public"} {
 		if dirExists(filepath.Join(dir, d)) {
@@ -205,7 +172,7 @@ func detectFrontend(dir string, lang Language) bool {
 		}
 	}
 	// package.json with a known framework dependency.
-	if lang == LangNode && hasFrontendFramework(filepath.Join(dir, "package.json")) {
+	if lang == orktypes.LangNode && hasFrontendFramework(filepath.Join(dir, "package.json")) {
 		return true
 	}
 	return false

@@ -2,30 +2,24 @@ package doctor
 
 import (
 	"bufio"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"os"
 	"strings"
 )
 
 const configMapMarker = "ork:cfg"
 
-// EnvVar is a single variable parsed from a .env file.
-type EnvVar struct {
-	Key   string
-	Value string
-	IsCfg bool // true when line carries "# ork:cfg"
-}
-
 // ParseEnvFile reads a .env file and returns all non-blank, non-comment lines.
 // Variables tagged with "# ork:cfg" on the same line have IsCfg = true;
 // all others are treated as secrets.
-func ParseEnvFile(path string) ([]EnvVar, error) {
+func ParseEnvFile(path string) ([]orktypes.EnvVar, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	var vars []EnvVar
+	var vars []orktypes.EnvVar
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -60,13 +54,13 @@ func ParseEnvFile(path string) ([]EnvVar, error) {
 		if key == "" {
 			continue
 		}
-		vars = append(vars, EnvVar{Key: key, Value: value, IsCfg: isCfg})
+		vars = append(vars, orktypes.EnvVar{Key: key, Value: value, IsCfg: isCfg})
 	}
 	return vars, scanner.Err()
 }
 
 // SplitEnvVars partitions parsed variables into secrets and config vars.
-func SplitEnvVars(vars []EnvVar) (secrets, config []EnvVar) {
+func SplitEnvVars(vars []orktypes.EnvVar) (secrets, config []orktypes.EnvVar) {
 	for _, v := range vars {
 		if v.IsCfg {
 			config = append(config, v)
@@ -78,7 +72,7 @@ func SplitEnvVars(vars []EnvVar) (secrets, config []EnvVar) {
 }
 
 // HasSMTP returns true if any variable starts with "SMTP_".
-func HasSMTP(vars []EnvVar) bool {
+func HasSMTP(vars []orktypes.EnvVar) bool {
 	for _, v := range vars {
 		if strings.HasPrefix(strings.ToUpper(v.Key), "SMTP_") {
 			return true
@@ -88,7 +82,7 @@ func HasSMTP(vars []EnvVar) bool {
 }
 
 // HasSlack returns true if any variable starts with "SLACK_".
-func HasSlack(vars []EnvVar) bool {
+func HasSlack(vars []orktypes.EnvVar) bool {
 	for _, v := range vars {
 		if strings.HasPrefix(strings.ToUpper(v.Key), "SLACK_") {
 			return true
@@ -98,7 +92,7 @@ func HasSlack(vars []EnvVar) bool {
 }
 
 // GetEnvValue returns the value of an ENV var or false if not exists
-func GetEnvValue(vars []EnvVar, key string) (string, bool) {
+func GetEnvValue(vars []orktypes.EnvVar, key string) (string, bool) {
 	key = strings.ToUpper(key)
 	for _, v := range vars {
 		if strings.ToUpper(v.Key) == key {

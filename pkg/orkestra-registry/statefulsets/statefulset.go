@@ -188,13 +188,6 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 	}
 
 	replicas := spec.Replicas
-	var pullSecrets []corev1.LocalObjectReference
-	for _, name := range spec.ImagePullSecrets {
-		pullSecrets = append(pullSecrets, corev1.LocalObjectReference{
-			Name: name,
-		})
-	}
-
 	container := corev1.Container{
 		Name:  spec.Name,
 		Image: spec.Image,
@@ -275,7 +268,7 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 					Labels: spec.Labels,
 				},
 				Spec: corev1.PodSpec{
-					ImagePullSecrets:   pullSecrets,
+					ImagePullSecrets:   common.ToPullSecrets(spec.ImagePullSecrets),
 					ServiceAccountName: spec.ServiceAccountName,
 					NodeSelector:       spec.NodeSelector,
 					Containers:         []corev1.Container{container},

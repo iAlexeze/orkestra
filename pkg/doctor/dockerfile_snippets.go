@@ -1,10 +1,14 @@
 package doctor
 
-import "strings"
+import (
+	"strings"
+
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+)
 
 // DockerfileTemplate returns a starter Dockerfile snippet for the detected language.
 // If the language is unknown, it returns an empty string.
-func (l Language) DockerfileTemplate() string {
+func DockerfileTemplate(l orktypes.Language) string {
 	switch strings.ToLower(string(l)) {
 
 	case "go":

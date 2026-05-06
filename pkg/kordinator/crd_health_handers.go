@@ -468,10 +468,12 @@ type KatalogResponse struct {
 	StatusCounts       StatusCounts         `json:"statusCounts"`
 	Name               string               `json:"name,omitempty"`
 	Version            string               `json:"version,omitempty"`
+	CreatedBy          string               `json:"createdBy,omitempty"`
 	Author             string               `json:"author,omitempty"`
 	Description        string               `json:"description,omitempty"`
 	License            string               `json:"license,omitempty"`
 	RuntimeVersion     string               `json:"runtimeVersion,omitempty"`
+	ProjectInfo        orktypes.ProjectInfo `json:"projectInfo,omitempty"`
 }
 
 type CRDSummaryResponse struct {
@@ -664,8 +666,10 @@ func BuildKatalogHandler(
 			Name:               kat.Meta().Name,
 			Version:            kat.Meta().Version,
 			Author:             kat.Meta().Author,
+			CreatedBy:          kat.Meta().CreatedBy,
 			License:            kat.Meta().License,
 			Description:        kat.Meta().Description,
+			ProjectInfo:        kat.ProjectInfo(),
 			RuntimeVersion:     version.Short(),
 		})
 	}

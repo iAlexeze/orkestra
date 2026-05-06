@@ -16,6 +16,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/buildx"
 	"github.com/orkspace/orkestra/pkg/doctor"
 	"github.com/orkspace/orkestra/pkg/tunnel"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/spf13/cobra"
 )
 
@@ -436,7 +437,7 @@ type deployContext struct {
 	expose          bool
 	tunnelProvider  string
 	tunnelToken     string
-	info            *doctor.ProjectInfo
+	info            *orktypes.ProjectInfo
 	state           *doctor.DeployState
 	komposer        *doctor.GlobalKomposer
 	clusterCtx      string
@@ -467,7 +468,7 @@ func deployMultiApp(dc deployContext) error {
 		appName     string
 		bundleDir   string
 		katalogPath string
-		appInfo     *doctor.ProjectInfo
+		appInfo     *orktypes.ProjectInfo
 	}
 
 	// Collect per-app metadata
@@ -482,7 +483,7 @@ func deployMultiApp(dc deployContext) error {
 
 		appInfo, _ := doctor.Detect(entry.Dir)
 		if appInfo == nil {
-			appInfo = &doctor.ProjectInfo{Dir: entry.Dir, AppName: appName}
+			appInfo = &orktypes.ProjectInfo{Dir: entry.Dir, AppName: appName}
 		}
 
 		apps = append(apps, appDeploy{
@@ -735,7 +736,7 @@ var openCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			appName = info.AppName
+			appName = info.Name
 		}
 
 		crName := appName + orkSuffix
@@ -1045,47 +1046,88 @@ func ensureIngressController() error {
 	return nil
 }
 
-// ensureMetricsServer installs the Kubernetes metrics-server if it is not
-// already present on the cluster. Uses the kind-compatible manifest when the
-// current context is a kind cluster; otherwise installs via Helm.
+// ensureMetricsServer ensures the Kubernetes metrics-server is installed.
+//
+// It checks for the metrics-server deployment using `kubectl get -o json`
+// for unambiguous detection via exit status. If not present, it attempts
+// installation via Helm, using a kind-specific flag when needed.
+//
+// Any failure (check or install) is treated as non-fatal: the error is logged
+// and the user is instructed to install metrics-server manually.
 func ensureMetricsServer() error {
-	// Detect if metrics-server already exists
-	out, _ := exec.Command("kubectl", "get", "deployment", "-n", "kube-system", "metrics-server").CombinedOutput()
-	if strings.Contains(string(out), "metrics-server") {
-		fmt.Println("output: ", out)
-		return nil
+	const installURL = "https://github.com/kubernetes-sigs/metrics-server#installation"
+
+	// Check existence via exit code only
+	checkCmd := exec.Command(
+		"kubectl", "get", "deployment", "metrics-server",
+		"-n", "kube-system",
+		"-o", "json",
+	)
+
+	if err := checkCmd.Run(); err == nil {
+		return nil // already installed
 	}
 
 	fmt.Println("  → Installing metrics-server...")
 
-	// Detect if current context is kind
-	contextOut, _ := exec.Command("kubectl", "config", "current-context").Output()
-	isKind := strings.Contains(string(contextOut), "kind")
+	// Detect current context
+	ctxOut, err := exec.Command("kubectl", "config", "current-context").Output()
+	if err != nil {
+		fmt.Printf("  ⚠️  Could not determine current context: %v\n", err)
+		fmt.Printf("  👉 Please install metrics-server manually: %s\n", installURL)
+		return nil
+	}
+	isKind := strings.Contains(string(ctxOut), "kind")
 
-	// Both paths go through Helm so we can pass --kubelet-insecure-tls only
-	// where it is needed. The standard components.yaml does not include that
-	// flag and fails on kind because kubelet certs are not CA-signed there.
-	exec.Command("helm", "repo", "add", "metrics-server",
-		"https://kubernetes-sigs.github.io/metrics-server/").Run()
-	exec.Command("helm", "repo", "update").Run()
+	// Add/update Helm repo
+	if err := exec.Command(
+		"helm", "repo", "add", "metrics-server",
+		"https://kubernetes-sigs.github.io/metrics-server/",
+	).Run(); err != nil {
+		fmt.Printf("  ⚠️  Failed to add Helm repo: %v\n", err)
+		fmt.Printf("  👉 Please install manually: %s\n", installURL)
+		return nil
+	}
 
+	if err := exec.Command("helm", "repo", "update").Run(); err != nil {
+		fmt.Printf("  ⚠️  Failed to update Helm repos: %v\n", err)
+		fmt.Printf("  👉 Please install manually: %s\n", installURL)
+		return nil
+	}
+
+	// Build Helm args
 	args := []string{
 		"install", "metrics-server",
 		"metrics-server/metrics-server",
 		"--namespace", "kube-system",
 		"--wait", "--timeout=120s",
 	}
+
 	if isKind {
-		// kind kubelets use self-signed certs — skip TLS verification
 		args = append(args, "--set", "args={--kubelet-insecure-tls}")
 	}
-	cmd := exec.Command("helm", args...)
 
-	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
+	installCmd := exec.Command("helm", args...)
+	installCmd.Stdout = io.Discard
+	installCmd.Stderr = io.Discard
 
-	if err := cmd.Run(); err != nil {
-		return err
+	if err := installCmd.Run(); err != nil {
+		fmt.Printf("  ⚠️  Failed to install metrics-server: %v\n", err)
+		fmt.Printf("  👉 Please install manually: %s\n", installURL)
+		return nil
+	}
+
+	// Verify installation
+	verifyCmd := exec.Command(
+		"kubectl", "get", "deployment", "metrics-server",
+		"-n", "kube-system",
+		"-o", "json",
+	)
+
+	if err := verifyCmd.Run(); err != nil {
+		fmt.Println("  ⚠️  metrics-server installation could not be verified.")
+		fmt.Printf("  👉 Please check or install manually: %s\n", installURL)
+		return nil
 	}
 
 	fmt.Println("  ✓ Metrics server ready")

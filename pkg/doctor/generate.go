@@ -5,9 +5,22 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"gopkg.in/yaml.v3"
 )
 
 const deletionProtectionLabel = "orkestra.io/deletion-protection"
+
+var (
+	gitignoreEntries = []string{
+		".orkestra/bundle/",
+	}
+
+	dockerignoreEntries = []string{
+		".orkestra/bundle/",
+	}
+)
 
 // GenerateOptions controls which sections are included in the generated Katalog.
 type GenerateOptions struct {
@@ -30,10 +43,10 @@ type GenerateOptions struct {
 
 // Init generates .orkestra/katalog.yaml and .orkestra/app.yaml, creates the
 // .orkestra/ directory, and updates .gitignore to exclude the bundle directory.
-func Init(info *ProjectInfo, opts GenerateOptions) error {
+func Init(info *orktypes.ProjectInfo, opts GenerateOptions) error {
 	name := opts.Name
 	if name == "" {
-		name = info.AppName
+		name = info.Name
 	}
 
 	orkDir := opts.OutDir
@@ -78,6 +91,10 @@ func Init(info *ProjectInfo, opts GenerateOptions) error {
 
 	if err := updateGitignore(info.Dir); err != nil {
 		return fmt.Errorf("updating .gitignore: %w", err)
+	}
+
+	if err := updateDockerignore(info.Dir); err != nil {
+		return fmt.Errorf("updating .dockerignore: %w", err)
 	}
 
 	return nil
@@ -130,7 +147,7 @@ func injectStatefulServices(katalogYAML, appName string, services []StatefulServ
 
 // injectStatefulAppYAML appends stateful service configuration keys to app.yaml.
 // Each key includes a simple, developer-friendly comment explaining its purpose.
-func injectStatefulAppYAML(appYAML string, services []StatefulService, info *ProjectInfo) string {
+func injectStatefulAppYAML(appYAML string, services []StatefulService, info *orktypes.ProjectInfo) string {
 	if len(services) == 0 {
 		return appYAML
 	}
@@ -141,7 +158,7 @@ func injectStatefulAppYAML(appYAML string, services []StatefulService, info *Pro
 		author.Name = "admin"
 	}
 
-	appUser := truncate(info.AppName+"_"+"user", 15)
+	appUser := truncate(info.Name+"_"+"user", 15)
 	appUser = cleanUp(appUser)
 
 	var b strings.Builder
@@ -195,7 +212,7 @@ func protectionLabels(indent string, secure bool) string {
 		indent + "    value: \"true\"\n"
 }
 
-func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
+func buildKatalog(name string, info *orktypes.ProjectInfo, opts GenerateOptions) string {
 	ns := name + "-orkestra-ns"
 	secure := !opts.NoSecure
 	notifyME := opts.NotifyMe
@@ -209,11 +226,29 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 	b.WriteString("metadata:\n")
 	b.WriteString("  name: " + name + "\n")
 	b.WriteString("  version: latest\n")
+	b.WriteString("  createdBy: orkdoctor\n")
 	b.WriteString("  description: \"Orkestra")
 	if !opts.NoHA {
 		b.WriteString(" HA")
 	}
-	b.WriteString(" deployment for " + name + "\"\n\n")
+	b.WriteString(" deployment for " + name + "\"\n")
+
+	// Generate printable project info for the control center
+	printableInfo := info
+	printableInfo.SecretCount = len(info.Secrets)
+	printableInfo.ConfigCount = len(info.Config)
+
+	// Remove credentials
+	printableInfo.EnvVars = nil
+	printableInfo.Secrets = nil
+	printableInfo.Config = nil
+
+	piYAML, _ := yaml.Marshal(printableInfo)
+
+	// Now place it under metadata
+	b.WriteString("  projectInfo:\n")
+	b.WriteString(indent(string(piYAML), 4))
+	b.WriteString("\n")
 
 	if secure {
 		b.WriteString("security:\n")
@@ -271,6 +306,7 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 	b.WriteString("          roles:\n")
 	b.WriteString("            - name: \"{{ .metadata.name }}-role\"\n")
 	b.WriteString("              namespace: \"{{ .metadata.name }}-ns\"\n")
+	b.WriteString(protectionLabels("              ", secure))
 	b.WriteString("              rules:\n")
 	b.WriteString("                - apiGroups: [\"apps\"]\n")
 	b.WriteString("                  resources: [\"deployments\"]\n")
@@ -281,6 +317,7 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 	// RoleBinding — binds the Role to the ServiceAccount
 	b.WriteString("          roleBindings:\n")
 	b.WriteString("            - name: \"{{ .metadata.name }}-rolebinding\"\n")
+	b.WriteString(protectionLabels("              ", secure))
 	b.WriteString("              namespace: \"{{ .metadata.name }}-ns\"\n")
 	b.WriteString("              roleRef:\n")
 	b.WriteString("                name: \"{{ .metadata.name }}-role\"\n")
@@ -417,7 +454,7 @@ func buildKatalog(name string, info *ProjectInfo, opts GenerateOptions) string {
 // deployment settings. This file becomes .orkestra/app.yaml and is the only
 // configuration a developer edits; ork deploy reads it and manages all
 // Kubernetes resources from it.
-func buildCR(name string, info *ProjectInfo, opts GenerateOptions) string {
+func buildCR(name string, info *orktypes.ProjectInfo, opts GenerateOptions) string {
 	crName := name + "-orkestra"
 	ns := name + "-orkestra-ns"
 
@@ -543,62 +580,98 @@ runtime:
 ` + extraEnvFrom
 }
 
-// func updateGitignore(dir string) error {
-// 	giPath := filepath.Join(dir, ".gitignore")
-// 	entry := "\n# Added by ork doctor init\n.orkestra/bundle/\n"
-
-// 	data, err := os.ReadFile(giPath)
-// 	if err != nil && !os.IsNotExist(err) {
-// 		return err
-// 	}
-// 	if strings.Contains(string(data), ".orkestra/bundle/") {
-// 		return nil
-// 	}
-// 	f, err := os.OpenFile(giPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer f.Close()
-// 	_, err = f.WriteString(entry)
-// 	return err
-// }
-
+// updateGitignore ensures that the repository's .gitignore file contains
+// the required Orkestra ignore rules.
+//
+// Behavior:
+//   - Creates .gitignore if it does not exist.
+//   - Checks which required entries are already present anywhere in the file.
+//   - Appends only the missing entries, each on its own line.
+//   - Idempotent: repeated calls do not duplicate content.
+//   - Preserves all user-defined content and ordering.
+//   - Uses simple file append (no markers, no temporary files).
+//   - Works reliably on all platforms, including Windows.
+//
+// Required entries:
+//   - .orkestra/bundle/
 func updateGitignore(dir string) error {
 	giPath := filepath.Join(dir, ".gitignore")
 
-	required := []string{
-		".orkestra/bundle/",
-		".orkestra/init.ork",
-	}
-
-	// Read existing .gitignore (if any)
+	// Read existing content
 	data, err := os.ReadFile(giPath)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	existing := string(data)
+	content := string(data)
 
-	// Build the block to append
-	var toAppend []string
-	for _, entry := range required {
-		if !strings.Contains(existing, entry) {
-			toAppend = append(toAppend, entry)
+	// Check which entries are already present
+	var missing []string
+	for _, entry := range gitignoreEntries {
+		if !strings.Contains(content, entry) {
+			missing = append(missing, entry)
 		}
 	}
-
-	// Nothing to add
-	if len(toAppend) == 0 {
-		return nil
+	if len(missing) == 0 {
+		return nil // nothing to do
 	}
 
-	// Open for append or create
+	// Build entry to append
+	entry := "\n# Added by ork doctor init\n" + strings.Join(missing, "\n") + "\n"
+
+	// Append to file (create if missing)
 	f, err := os.OpenFile(giPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
+	_, err = f.WriteString(entry)
+	return err
+}
 
-	// Write header + missing entries
-	_, err = f.WriteString("\n# Added by ork doctor init\n" + strings.Join(toAppend, "\n") + "\n")
+// updateDockerignore ensures that the repository's .dockerignore file contains
+// the required Orkestra ignore rules.
+//
+// Behavior:
+//   - Creates .dockerignore if it does not exist.
+//   - Checks which required entries are already present anywhere in the file.
+//   - Appends only the missing entries, each on its own line.
+//   - Idempotent: repeated calls do not duplicate content.
+//   - Preserves all user-defined content and ordering.
+//   - Uses simple file append (no markers, no temporary files).
+//   - Works reliably on all platforms, including Windows.
+//
+// Required entries:
+//   - .orkestra/bundle/
+func updateDockerignore(dir string) error {
+	giPath := filepath.Join(dir, ".dockerignore")
+
+	// Read existing content
+	data, err := os.ReadFile(giPath)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	content := string(data)
+
+	// Check which entries are already present
+	var missing []string
+	for _, entry := range dockerignoreEntries {
+		if !strings.Contains(content, entry) {
+			missing = append(missing, entry)
+		}
+	}
+	if len(missing) == 0 {
+		return nil // nothing to do
+	}
+
+	// Build entry to append
+	entry := "\n# Added by ork doctor init\n" + strings.Join(missing, "\n") + "\n"
+
+	// Append to file (create if missing)
+	f, err := os.OpenFile(giPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.WriteString(entry)
 	return err
 }

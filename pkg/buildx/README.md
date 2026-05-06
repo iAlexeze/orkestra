@@ -8,7 +8,7 @@ The buildx package abstracts container image building and pushing across Docker,
 |------|------|
 | `buildx.go` | `Builder` interface, `BuildImage` / `PushImage` public API, builder selection |
 | `builders.go` | `DockerBuilder`, `PodmanBuilder`, `BuildahBuilder` — one struct per supported tool |
-| `compose_init.go` | `InitConfig`, `AppEntry` — persist `ork doctor init` settings to `.orkestra/.init.ork` for `ork deploy` to read |
+| `compose_init.go` | `InitConfig`, `AppEntry` — persist `ork doctor init` settings to `.orkestra/bundle/.init.ork` for `ork deploy` to read |
 
 ## Builder auto-selection
 

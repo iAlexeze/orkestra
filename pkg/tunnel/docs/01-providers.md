@@ -61,3 +61,6 @@ Auto-selection order:
 3. Cloudflared (fallback — it can install itself on demand)
 
 The `Expose` function calls `p.Install(ctx)` when `!p.Available()`, so a user who has never run `ork deploy --expose` before gets cloudflared downloaded and installed transparently.
+
+---
+Next -> [02-state.md](02-state.md)

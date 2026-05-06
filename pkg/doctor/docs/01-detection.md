@@ -82,7 +82,7 @@ if err != nil {
     return err
 }
 
-fmt.Println(info.AppName)   // "my-app"
+fmt.Println(info.Name)   // "my-app"
 fmt.Println(info.Language)  // "Go"
 fmt.Println(info.Port)      // "8080"
 fmt.Println(info.GitCommit) // "a3f5c2b"

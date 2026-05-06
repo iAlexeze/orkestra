@@ -10,6 +10,7 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/buildx"
 	"github.com/orkspace/orkestra/pkg/doctor"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/spf13/cobra"
 )
 
@@ -47,8 +48,8 @@ var doctorCmd = &cobra.Command{
 
 		// Missing Dockerfile + no compose build context → show language-aware error
 		if !info.HasDockerfile && !info.HasCompose {
-			if info.Language != doctor.LangUnknown {
-				tmpl := info.Language.DockerfileTemplate()
+			if info.Language != orktypes.LangUnknown {
+				tmpl := doctor.DockerfileTemplate(info.Language)
 				if tmpl != "" {
 					return fmt.Errorf(`
 ──────────────────────────────────────────────
@@ -69,7 +70,7 @@ Suggested starter Dockerfile:
 ------------------------------------------------------------
 
 Docs: https://orkestra.dev/docs/build
-──────────────────────────────────────────────`, info.AppName, info.Language, info.LangMarker, tmpl)
+──────────────────────────────────────────────`, info.Name, info.Language, info.LangMarker, tmpl)
 				}
 			}
 
@@ -83,7 +84,7 @@ No Dockerfile or Compose build context was found.
 Orkestra could not detect the language of this project.
 
 Please add a Dockerfile to the project root.
-──────────────────────────────────────────────`, info.AppName)
+──────────────────────────────────────────────`, info.Name)
 		}
 
 		var dockerfilePath string
@@ -100,7 +101,7 @@ Please add a Dockerfile to the project root.
 			fmt.Println("  ✗ Not a git repository — run 'git init'")
 		}
 
-		if info.Language != doctor.LangUnknown {
+		if info.Language != orktypes.LangUnknown {
 			fmt.Printf("  ✓ Language: %s  (%s)\n", info.Language, info.LangMarker)
 		} else {
 			fmt.Println("  ~ Language: unknown")
@@ -164,18 +165,18 @@ Please add a Dockerfile to the project root.
 
 		if len(info.Secrets) > 0 {
 			fmt.Printf("  %-22s %s-secrets (%d %s from .env)\n",
-				"Secret", info.AppName, len(info.Secrets), varTxt)
+				"Secret", info.Name, len(info.Secrets), varTxt)
 		}
 
 		if len(info.Config) > 0 {
 			fmt.Printf("  %-22s %s-config  (%d %s from .env # ork:cfg)\n",
-				"ConfigMap", info.AppName, len(info.Config), varTxt)
+				"ConfigMap", info.Name, len(info.Config), varTxt)
 		}
 
 		fmt.Printf("  %-22s port %s\n", "Service", info.Port)
 
 		if info.HasFrontend {
-			fmt.Printf("  %-22s %s.local      (frontend detected)\n", "Ingress", info.AppName)
+			fmt.Printf("  %-22s %s.local      (frontend detected)\n", "Ingress", info.Name)
 		}
 
 		if !noHA {
@@ -239,7 +240,7 @@ func doctorScanMultiApp(baseDir string, appNames []string, noHA, noSecure bool) 
 		} else {
 			fmt.Println("    ✗ Dockerfile not found")
 		}
-		if info.Language != doctor.LangUnknown {
+		if info.Language != orktypes.LangUnknown {
 			fmt.Printf("    ✓ Language: %s  (%s)\n", info.Language, info.LangMarker)
 		} else {
 			fmt.Println("    ~ Language: unknown")

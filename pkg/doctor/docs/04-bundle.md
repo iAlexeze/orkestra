@@ -67,8 +67,8 @@ For production secret rotation without re-deploying: edit the Kubernetes Secret 
 info, _ := doctor.Detect(".")
 
 err := doctor.GenerateBundle(
-    info.AppName,
-    info.AppName+"-ns",
+    info.Name,
+    info.Name+"-ns",
     info.Secrets,
     info.Config,
     ".orkestra/bundle",

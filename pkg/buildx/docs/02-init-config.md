@@ -4,7 +4,7 @@
 
 ## The file
 
-`.orkestra/.init.ork` is a simple key=value file written by `ork doctor init` and read by `ork deploy`. It is never committed (`.orkestra/bundle/` is gitignored, but `.init.ork` sits one level up at `.orkestra/`).
+`.orkestra/bundle/.init.ork` is a simple key=value file written by `ork doctor init` and read by `ork deploy`. It is never committed (`.orkestra/bundle/` is gitignored, but `.init.ork` sits one level up at `.orkestra/`).
 
 ```
 useCompose=false
@@ -34,7 +34,7 @@ type AppEntry struct {
     Dockerfile string // explicit Dockerfile path; empty = "Dockerfile" in Dir
 }
 
-// InitConfig is the full configuration persisted in .orkestra/.init.ork.
+// InitConfig is the full configuration persisted in .orkestra/bundle/.init.ork.
 type InitConfig struct {
     UseCompose  bool       // true → compose-based build
     ComposeFile string     // path to docker-compose.yaml (only when UseCompose)

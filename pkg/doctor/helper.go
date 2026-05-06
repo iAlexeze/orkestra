@@ -30,3 +30,17 @@ func cleanUp(s string) string {
 	s = strings.ReplaceAll(s, " ", "")
 	return s
 }
+
+// indent prefixes each non‑empty line in s with the given number of spaces.
+// Used for embedding marshalled YAML blocks inside larger YAML documents.
+// Keeps generated katalog output properly aligned and readable.
+func indent(s string, spaces int) string {
+	pad := strings.Repeat(" ", spaces)
+	lines := strings.Split(s, "\n")
+	for i := range lines {
+		if lines[i] != "" {
+			lines[i] = pad + lines[i]
+		}
+	}
+	return strings.Join(lines, "\n")
+}
