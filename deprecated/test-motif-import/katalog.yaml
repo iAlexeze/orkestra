@@ -1,0 +1,69 @@
+# Test katalog — imports deployment-stack motif via file: path.
+# Run from the repository root:
+#   ork validate --katalog unknown/test-motif-import/katalog.yaml
+#   ork generate bundle --katalog unknown/test-motif-import/katalog.yaml
+
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: test-motif-import
+  version: latest
+  createdBy: orkdoctor
+  description: "Test katalog for deployment-stack motif file: import"
+
+security:
+  deletionProtection:
+    enabled: false
+
+spec:
+  crds:
+    test-app:
+      apiTypes:
+        kind: ConfigMap
+      labelSelector:
+        ork.io/app: test-app-orkestra
+      allowedNamespaces: ["test-app-orkestra-ns"]
+
+      operatorBox:
+        imports:
+          - motif: ./pkg/motif/deployment-stack/motif.yaml
+            with:
+              name:      "{{ .metadata.name }}"
+              namespace: "{{ .metadata.namespace }}"
+              image:     "{{ .data.image }}"
+              port:      '{{ .data.port | default "8080" }}'
+              replicas:  '{{ .data.replicas | default "2" }}'
+              maxReplicas: '{{ .data.maxReplicas | default "10" }}'
+              resourceProfile: '{{ .data.resourceProfile | default "burst" }}'
+              host:      "{{ .data.host }}"
+
+        status:
+          fields:
+            - path: phase
+              value: "Pending"
+              when:
+                - field: data.image
+                  notExists: true
+
+            - path: phase
+              value: "Deploying"
+              when:
+                - field: data.image
+                  exists: true
+                - field: "{{ replicasReady .children.deployment }}"
+                  equals: "false"
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ replicasReady .children.deployment }}"
+                  equals: "true"
+
+            - path: url
+              value: "https://{{ .data.host }}"
+              when:
+                - field: data.host
+                  exists: true
+
+            - path: image
+              value: "{{ .data.image }}"

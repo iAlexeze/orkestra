@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-app-orkestra
+  namespace: test-app-orkestra-ns
+  labels:
+    ork.io/app: test-app-orkestra
+data:
+  image: "ghcr.io/myorg/myapp:latest"
+  port: "8080"
+  replicas: "2"
+  maxReplicas: "10"
+  resourceProfile: "burst"
+  # Uncomment to enable Ingress:
+  # host: "myapp.example.com"

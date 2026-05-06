@@ -476,6 +476,8 @@ func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.Generate
 	fmt.Println()
 
 	var initApps []buildx.AppEntry
+	// Cache augmented info per app so URL hints use the same resolved port.
+	appInfoCache := make(map[string]*orktypes.ProjectInfo, len(apps))
 
 	for _, app := range apps {
 		appOrkDir := filepath.Join(orkBaseDir, app.name)
@@ -506,6 +508,8 @@ func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.Generate
 			doctor.AugmentWithComposeService(info, svc, filepath.Dir(composePath))
 		}
 
+		appInfoCache[app.name] = info
+
 		if err := doctor.Init(info, appOpts); err != nil {
 			return fmt.Errorf("init %s: %w", app.name, err)
 		}
@@ -531,14 +535,12 @@ func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.Generate
 		return fmt.Errorf("writing init config: %w", err)
 	}
 
-	// Print internal URLs
+	// Print internal URLs — use cached augmented info so ports reflect compose ports:.
 	fmt.Println()
 	fmt.Println("Internal service URLs (set these in each app's .env before deploying):")
 	for _, app := range apps {
-		appDir := app.dir
-		info, _ := doctor.Detect(appDir)
 		port := "8080"
-		if info != nil {
+		if info := appInfoCache[app.name]; info != nil {
 			port = info.Port
 		}
 		svcName := app.name + "-orkestra-svc"
