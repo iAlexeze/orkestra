@@ -77,6 +77,38 @@ func Detect(dir string) (*orktypes.ProjectInfo, error) {
 	return info, nil
 }
 
+// AugmentWithComposeService overlays compose-derived port and env vars onto info.
+//
+// Port: if the service declares ports:, the container port (right-hand side of
+// the mapping) replaces info.Port — it is more authoritative than the .env PORT
+// or language default because it reflects the actual published container port.
+//
+// Env vars: only replaced when the service has env_file: or environment: entries.
+// The resolved set merges root .env → env_file → environment: in priority order
+// (see resolveServiceEnvVars). If neither source is present, info.EnvVars is
+// left as-is so that vars detected by Detect() are preserved.
+//
+// composeDir should be the directory containing the docker-compose.yaml file;
+// all relative env_file paths are resolved against it.
+func AugmentWithComposeService(info *orktypes.ProjectInfo, svc ComposeService, composeDir string) {
+	// Override port from compose ports: (more authoritative than .env PORT)
+	if p := svc.ContainerPort(); p != "" {
+		info.Port = p
+	}
+
+	// Only replace env vars when the service declares compose-specific env sources.
+	if svc.EnvFile == nil && svc.Environment == nil {
+		return
+	}
+	resolved := resolveServiceEnvVars(svc, composeDir)
+	if len(resolved) > 0 {
+		info.EnvVars = resolved
+		info.Secrets, info.Config = SplitEnvVars(resolved)
+		info.HasSMTP = HasSMTP(resolved)
+		info.HasSlack = HasSlack(resolved)
+	}
+}
+
 // DetectLicense scans the project directory for common license files
 // (LICENSE, LICENSE.txt, LICENSE.md, COPYING, etc). It returns a normalized
 // SPDX-style license name based on the first line of the file. If no license

@@ -7,8 +7,10 @@ package doctor
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"gopkg.in/yaml.v3"
 )
 
@@ -31,6 +33,7 @@ type ComposeService struct {
 	Build       interface{} `yaml:"build,omitempty"` // string or object
 	Ports       interface{} `yaml:"ports,omitempty"` // []string or []int
 	Environment interface{} `yaml:"environment,omitempty"`
+	EnvFile     interface{} `yaml:"env_file,omitempty"` // string or []string or [{path,required}]
 	Volumes     interface{} `yaml:"volumes,omitempty"`
 	DependsOn   interface{} `yaml:"depends_on,omitempty"`
 }
@@ -260,6 +263,152 @@ func DetectComposeFile(dir string) string {
 		}
 	}
 	return ""
+}
+
+// ContainerPort returns the container (right-hand) port from the first ports: entry.
+// Handles all compose port formats:
+//   - "8080"                  → "8080"
+//   - "3001:3000"             → "3000"
+//   - "127.0.0.1:8000:8080"  → "8080"
+//   - integer 8080            → "8080"
+//   - long form {target: 8080} → "8080"
+func (s ComposeService) ContainerPort() string {
+	if s.Ports == nil {
+		return ""
+	}
+	entries, ok := s.Ports.([]interface{})
+	if !ok || len(entries) == 0 {
+		return ""
+	}
+	return extractContainerPort(entries[0])
+}
+
+func extractContainerPort(entry interface{}) string {
+	switch v := entry.(type) {
+	case int:
+		return fmt.Sprintf("%d", v)
+	case string:
+		// "127.0.0.1:8080:8080" or "3000:3000" or "8080" — take rightmost segment
+		parts := strings.Split(v, ":")
+		return parts[len(parts)-1]
+	case map[string]interface{}:
+		if target, ok := v["target"]; ok {
+			return fmt.Sprintf("%v", target)
+		}
+	}
+	return ""
+}
+
+// EnvFileList returns the env_file paths declared on this service.
+// Handles string, []string, and long form [{path: "...", required: false}].
+func (s ComposeService) EnvFileList() []string {
+	if s.EnvFile == nil {
+		return nil
+	}
+	switch v := s.EnvFile.(type) {
+	case string:
+		return []string{v}
+	case []interface{}:
+		var result []string
+		for _, item := range v {
+			switch it := item.(type) {
+			case string:
+				result = append(result, it)
+			case map[string]interface{}:
+				if path, ok := it["path"].(string); ok {
+					result = append(result, path)
+				}
+			}
+		}
+		return result
+	}
+	return nil
+}
+
+// parseServiceEnvironment parses the environment: field into a flat key→value map.
+// Handles map form (KEY: value) and list form (- KEY=value or - KEY).
+func parseServiceEnvironment(env interface{}) map[string]string {
+	result := make(map[string]string)
+	if env == nil {
+		return result
+	}
+	switch v := env.(type) {
+	case map[string]interface{}:
+		for k, val := range v {
+			if val == nil {
+				result[k] = ""
+			} else {
+				result[k] = fmt.Sprintf("%v", val)
+			}
+		}
+	case []interface{}:
+		for _, item := range v {
+			if str, ok := item.(string); ok {
+				if idx := strings.IndexByte(str, '='); idx >= 0 {
+					result[str[:idx]] = str[idx+1:]
+				} else {
+					result[str] = ""
+				}
+			}
+		}
+	}
+	return result
+}
+
+// resolveServiceEnvVars merges env vars for a compose service in priority order:
+//  1. root .env in baseDir (lowest) — skipped if env_file: is declared
+//  2. each env_file entry (in order)
+//  3. environment: block (highest)
+//
+// IsCfg tagging from ParseEnvFile is preserved for all file-sourced vars.
+// environment: block vars inherit IsCfg from any already-loaded entry for the same key.
+func resolveServiceEnvVars(svc ComposeService, baseDir string) []orktypes.EnvVar {
+	merged := make(map[string]orktypes.EnvVar)
+
+	envFiles := svc.EnvFileList()
+
+	// Root .env is used as base only when no env_file: is declared.
+	if len(envFiles) == 0 {
+		rootPath := filepath.Join(baseDir, ".env")
+		if fileExists(rootPath) {
+			if vars, err := ParseEnvFile(rootPath); err == nil {
+				for _, v := range vars {
+					merged[v.Key] = v
+				}
+			}
+		}
+	}
+
+	// env_file entries override root .env, applied in order.
+	for _, ef := range envFiles {
+		if !filepath.IsAbs(ef) {
+			ef = filepath.Join(baseDir, ef)
+		}
+		if fileExists(ef) {
+			if vars, err := ParseEnvFile(ef); err == nil {
+				for _, v := range vars {
+					merged[v.Key] = v
+				}
+			}
+		}
+	}
+
+	// environment: block wins over all file sources.
+	// Preserve IsCfg from the already-loaded entry when overriding the value.
+	for k, val := range parseServiceEnvironment(svc.Environment) {
+		if existing, ok := merged[k]; ok {
+			existing.Value = val
+			merged[k] = existing
+		} else {
+			merged[k] = orktypes.EnvVar{Key: k, Value: val, IsCfg: false}
+		}
+	}
+
+	result := make([]orktypes.EnvVar, 0, len(merged))
+	for _, v := range merged {
+		result = append(result, v)
+	}
+	return result
 }
 
 // detectMotif returns the KnownMotif for an image if it matches, and true.

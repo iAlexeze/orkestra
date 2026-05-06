@@ -398,14 +398,21 @@ func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.Generate
 	// each buildable app when initialising from a compose file. It is nil for
 	// the --app flag path (no compose file, no stateful services to inject).
 	var perAppStateful map[string][]doctor.StatefulService
+	// perAppStateless holds the sibling-app depends_on relationships.
+	var perAppStateless map[string][]string
+
+	// cf and composePath are hoisted so the app loop can call AugmentWithComposeService.
+	var cf *doctor.ComposeFile
+	var composePath string
 
 	if useCompose != "" {
 		// Derive apps from compose file's buildable services.
-		composePath := useCompose
+		composePath = useCompose
 		if !filepath.IsAbs(composePath) {
 			composePath = filepath.Join(baseDir, composePath)
 		}
-		cf, err := doctor.ParseCompose(composePath)
+		var err error
+		cf, err = doctor.ParseCompose(composePath)
 		if err != nil {
 			return fmt.Errorf("reading compose file: %w", err)
 		}
@@ -419,6 +426,21 @@ func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.Generate
 		// stateful service not referenced by any depends_on declaration.
 		if len(allStateful) > 0 {
 			perAppStateful = doctor.StatefulDepsPerApp(cf, buildable, allStateful)
+		}
+
+		// Pre-compute stateless depends_on relationships between buildable services.
+		statelessSet := make(map[string]bool, len(buildable))
+		for _, s := range buildable {
+			statelessSet[s] = true
+		}
+		perAppStateless = make(map[string][]string)
+		for _, appName := range buildable {
+			svc := cf.Services[appName]
+			for _, dep := range svc.DependsOnNames() {
+				if statelessSet[dep] {
+					perAppStateless[appName] = append(perAppStateless[appName], dep)
+				}
+			}
 		}
 
 		for _, svcName := range buildable {
@@ -469,9 +491,19 @@ func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.Generate
 			appOpts.InjectStateful = perAppStateful[app.name] // nil = no stateful for this app
 		}
 
+		// Wire dep conditions into the deployment when: block.
+		appOpts.StatefulDeps = perAppStateful[app.name]
+		appOpts.StatelessDeps = perAppStateless[app.name]
+
 		info, err := doctor.Detect(app.dir)
 		if err != nil {
 			return fmt.Errorf("detecting %s: %w", app.name, err)
+		}
+
+		// Overlay compose-specific port and env vars (ports:, env_file:, environment:).
+		if cf != nil {
+			svc := cf.Services[app.name]
+			doctor.AugmentWithComposeService(info, svc, filepath.Dir(composePath))
 		}
 
 		if err := doctor.Init(info, appOpts); err != nil {

@@ -39,6 +39,14 @@ type GenerateOptions struct {
 	// to supply a pre-filtered, per-app slice derived from depends_on analysis.
 	// Use nil (not an empty slice) to fall back to UseCompose detection.
 	InjectStateful []StatefulService
+
+	// StatefulDeps lists stateful services (Motifs) this app must wait for
+	// before its Deployment is created. Emits when: conditions in onCreate.
+	StatefulDeps []StatefulService
+
+	// StatelessDeps lists sibling app names this app must wait for before
+	// its Deployment is created. Emits when: conditions in onCreate.
+	StatelessDeps []string
 }
 
 // Init generates .orkestra/katalog.yaml and .orkestra/app.yaml, creates the
@@ -356,7 +364,16 @@ func buildKatalog(name string, info *orktypes.ProjectInfo, opts GenerateOptions)
 	b.WriteString("              reconcile: true\n")
 	b.WriteString("              when:\n")
 	b.WriteString("                - field: data.image\n")
-	b.WriteString("                  exists: true\n\n")
+	b.WriteString("                  exists: true\n")
+	for _, dep := range opts.StatefulDeps {
+		b.WriteString("                - ref: " + dep.Name + "\n")
+		b.WriteString("                  condition: Ready\n")
+	}
+	for _, dep := range opts.StatelessDeps {
+		b.WriteString("                - ref: " + dep + "-orkestra\n")
+		b.WriteString("                  condition: Ready\n")
+	}
+	b.WriteString("\n")
 
 	// Service
 	b.WriteString("          services:\n")
