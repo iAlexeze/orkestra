@@ -153,6 +153,10 @@ func injectStatefulAppYAML(appYAML string, services []StatefulService, info *ork
 	}
 
 	author, _ := LastCommitAuthor()
+	if author == nil {
+		author = &GitAuthor{}
+	}
+
 	if author.Notfound {
 		author.Email = "dev@orkestra.sh"
 		author.Name = "admin"

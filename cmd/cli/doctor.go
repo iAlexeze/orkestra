@@ -160,6 +160,12 @@ Please add a Dockerfile to the project root.
 		if info.GitCommit == "" {
 			info.GitCommit = "latest"
 		}
+
+		// If docker compose is the context
+		if composeFile != "" && dockerfilePath == "" {
+			dockerfilePath = composeFile
+		}
+
 		fmt.Printf("  %-22s image built from %s, tagged :%s\n", "Deployment", dockerfilePath, info.GitCommit)
 		fmt.Printf("  %-22s with minimal RBAC to run your workloads\n", "Service Account")
 
