@@ -29,6 +29,6 @@ rbac.yaml
 bundle.yaml
 configmap.yaml
 DEPLOY.md
-# Added by ork doktor init
+# Added by ork doctor init
 .orkestra/bundle/
 .orkestra/

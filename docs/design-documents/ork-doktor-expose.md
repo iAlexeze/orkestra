@@ -1,4 +1,4 @@
-# ork doktor + ork deploy --expose — Design Document
+# ork doctor + ork deploy --expose — Design Document
 
 *Orkestra Project — April 2026*
 
@@ -8,7 +8,7 @@
 
 This document covers two related features:
 
-1. **`ork doktor` expansions** — notification detection, dependency auto-install,
+1. **`ork doctor` expansions** — notification detection, dependency auto-install,
    git/license metadata, kind cluster without requiring Go.
 
 2. **`ork deploy --expose`** — instant public URL for local and dev clusters
@@ -20,22 +20,22 @@ zero configuration as possible.
 
 ---
 
-## Part 1: ork doktor expansions
+## Part 1: ork doctor expansions
 
-### 1.1 Rename: doctor → doktor
+### 1.1 Rename: doctor → doctor
 
-All references to `ork doctor` become `ork doktor` (k-theme, consistent with
+All references to `ork doctor` become `ork doctor` (k-theme, consistent with
 Kubernetes, Katalog, Komposer, Kordinator). The old name is kept as a hidden
 alias for backward compatibility through v1.
 
 ```bash
-ork doktor              # replaces: ork doctor
-ork doktor init         # replaces: ork doctor init
+ork doctor              # replaces: ork doctor
+ork doctor init         # replaces: ork doctor init
 ```
 
 ### 1.2 Git metadata and license extraction
 
-`ork doktor init` reads two fields from the project before generating the Katalog:
+`ork doctor init` reads two fields from the project before generating the Katalog:
 
 **Author** — from git config `user.email`:
 ```bash
@@ -62,7 +62,7 @@ information the project already contains.
 
 ### 1.3 Notification detection and --notify-me
 
-`ork doktor` scans the `.env` file for notification credentials. When found,
+`ork doctor` scans the `.env` file for notification credentials. When found,
 it suggests the `--notify-me` flag at the end of its output:
 
 **Detected patterns:**
@@ -77,7 +77,7 @@ it suggests the `--notify-me` flag at the end of its output:
 ```
   ✓ Slack credentials found (SLACK_WEBHOOK_URL)
 
-💡 Run 'ork doktor init --notify-me' to get deployment alerts in Slack
+💡 Run 'ork doctor init --notify-me' to get deployment alerts in Slack
 ```
 
 **`--notify-me` behavior:**
@@ -130,7 +130,7 @@ resolve at runtime.
 
 ### 1.4 Dependency auto-install
 
-`ork doktor` checks for required tools and installs missing ones automatically.
+`ork doctor` checks for required tools and installs missing ones automatically.
 Each installation is shown as a status line.
 
 **Tool dependency matrix:**
@@ -155,7 +155,7 @@ developers who want a local cluster do not have Go installed.
 
 **`docker`** is explicitly not auto-installed. The developer's Docker setup
 involves credentials, daemon configuration, and potentially Desktop licensing.
-If docker is not found, `ork doktor` exits with a clear message:
+If docker is not found, `ork doctor` exits with a clear message:
 
 ```
   ✗ Docker not found — install Docker Desktop or Docker Engine first
@@ -478,7 +478,7 @@ developer     → local to production, no Kubernetes required
 
 The developer pack is the only pack that assumes no Kubernetes knowledge.
 It is the entry point for the third Orkestra audience. Every example uses
-`ork doktor`, `ork deploy`, and the ConfigMap-as-CRD pattern. No custom CRDs.
+`ork doctor`, `ork deploy`, and the ConfigMap-as-CRD pattern. No custom CRDs.
 No Go. No Helm charts written by the developer.
 
 ---
@@ -492,11 +492,11 @@ Installation
 
 New project
   cd my-app/
-  ork doktor
+  ork doctor
   # → detects language, port, .env, Slack credentials
   # → suggests --notify-me
 
-  ork doktor init --notify-me
+  ork doctor init --notify-me
   # → generates .orkestra/katalog.yaml with notification block
   # → generates .orkestra/cr.yaml
 
@@ -510,7 +510,7 @@ Local deploy
 
 Second project (same cluster)
   cd my-api/
-  ork doktor init
+  ork doctor init
   ork deploy --dev --expose
   # → detects existing kind cluster, skips creation
   # → registers my-api in ~/.orkestra/deploy/komposer.yaml
@@ -531,7 +531,7 @@ Production deploy
 
 ## Implementation order
 
-1. `ork doktor` rename with alias (30 min)
+1. `ork doctor` rename with alias (30 min)
 2. Git metadata extraction (1h)
 3. License extraction (1h)
 4. SMTP/Slack detection + `--notify-me` (3h)

@@ -55,7 +55,7 @@ This is the internal DNS name Orkestra assigns to every backend service.
 ## Step 2 — Examine
 
 ```bash
-ork doktor
+ork doctor
 ```
 
 ```
@@ -77,7 +77,7 @@ Orkestra will create:
 !!! note
     Orkestra detects the frontend automatically because the `public/` or `dist/`
     directory was found, or because `package.json` references a known framework.
-    For a plain nginx container, pass `--add-ingress` to `ork doktor init`
+    For a plain nginx container, pass `--add-ingress` to `ork doctor init`
     to include an Ingress regardless.
 
 ---
@@ -85,7 +85,7 @@ Orkestra will create:
 ## Step 3 — Init
 
 ```bash
-ork doktor init --name my-frontend --add-ingress
+ork doctor init --name my-frontend --add-ingress
 ```
 
 !!! tip

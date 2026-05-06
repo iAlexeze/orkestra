@@ -1,13 +1,13 @@
-package doktor_test
+package doctor_test
 
 import (
 	"testing"
 
-	"github.com/orkspace/orkestra/pkg/doktor"
+	"github.com/orkspace/orkestra/pkg/doctor"
 )
 
 func TestParseCompose_WithPostgres(t *testing.T) {
-	cf, err := doktor.ParseCompose("testdata/compose-with-postgres.yaml")
+	cf, err := doctor.ParseCompose("testdata/compose-with-postgres.yaml")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -23,19 +23,19 @@ func TestParseCompose_WithPostgres(t *testing.T) {
 }
 
 func TestParseCompose_NotFound(t *testing.T) {
-	_, err := doktor.ParseCompose("testdata/does-not-exist.yaml")
+	_, err := doctor.ParseCompose("testdata/does-not-exist.yaml")
 	if err == nil {
 		t.Fatal("expected error for missing file")
 	}
 }
 
 func TestClassifyServices_PostgresDetected(t *testing.T) {
-	cf, err := doktor.ParseCompose("testdata/compose-with-postgres.yaml")
+	cf, err := doctor.ParseCompose("testdata/compose-with-postgres.yaml")
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
 
-	stateless, stateful := doktor.ClassifyServices(cf)
+	stateless, stateful := doctor.ClassifyServices(cf)
 
 	if len(stateful) != 1 {
 		t.Fatalf("stateful count = %d, want 1", len(stateful))
@@ -56,24 +56,24 @@ func TestClassifyServices_PostgresDetected(t *testing.T) {
 }
 
 func TestClassifyServices_StatelessOnly(t *testing.T) {
-	cf, err := doktor.ParseCompose("testdata/compose-stateless-only.yaml")
+	cf, err := doctor.ParseCompose("testdata/compose-stateless-only.yaml")
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
 
-	_, stateful := doktor.ClassifyServices(cf)
+	_, stateful := doctor.ClassifyServices(cf)
 	if len(stateful) != 0 {
 		t.Errorf("stateful count = %d, want 0", len(stateful))
 	}
 }
 
 func TestClassifyServices_MultipleStateful(t *testing.T) {
-	cf, err := doktor.ParseCompose("testdata/compose-multi.yaml")
+	cf, err := doctor.ParseCompose("testdata/compose-multi.yaml")
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
 
-	_, stateful := doktor.ClassifyServices(cf)
+	_, stateful := doctor.ClassifyServices(cf)
 	if len(stateful) != 3 {
 		t.Fatalf("stateful count = %d, want 3 (postgres, redis, rabbitmq)", len(stateful))
 	}
@@ -90,7 +90,7 @@ func TestClassifyServices_MultipleStateful(t *testing.T) {
 }
 
 func TestDetectMotif_KafkaMultiSegment(t *testing.T) {
-	cf, err := doktor.ParseCompose("testdata/compose-multi.yaml")
+	cf, err := doctor.ParseCompose("testdata/compose-multi.yaml")
 	if err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
@@ -100,14 +100,14 @@ func TestDetectMotif_KafkaMultiSegment(t *testing.T) {
 
 func TestDetectComposeFile_Found(t *testing.T) {
 	// testdata/ has compose files
-	path := doktor.DetectComposeFile("testdata")
+	path := doctor.DetectComposeFile("testdata")
 	if path == "" {
 		t.Error("expected to find a compose file in testdata, got empty string")
 	}
 }
 
 func TestDetectComposeFile_NotFound(t *testing.T) {
-	path := doktor.DetectComposeFile(".")
+	path := doctor.DetectComposeFile(".")
 	if path != "" {
 		t.Errorf("expected no compose file in ., got %q", path)
 	}

@@ -1,10 +1,10 @@
-# 02 — InitConfig and the init.ork File
+# 02 — InitConfig and the .init.ork File
 
-`InitConfig` bridges the `ork doktor init` step to `ork deploy`. After init runs, deploy must know how to build each app — which directory, which Dockerfile, and whether to use compose. `init.ork` is the handshake file.
+`InitConfig` bridges the `ork doctor init` step to `ork deploy`. After init runs, deploy must know how to build each app — which directory, which Dockerfile, and whether to use compose. `.init.ork` is the handshake file.
 
 ## The file
 
-`.orkestra/init.ork` is a simple key=value file written by `ork doktor init` and read by `ork deploy`. It is never committed (`.orkestra/bundle/` is gitignored, but `init.ork` sits one level up at `.orkestra/`).
+`.orkestra/.init.ork` is a simple key=value file written by `ork doctor init` and read by `ork deploy`. It is never committed (`.orkestra/bundle/` is gitignored, but `.init.ork` sits one level up at `.orkestra/`).
 
 ```
 useCompose=false
@@ -34,7 +34,7 @@ type AppEntry struct {
     Dockerfile string // explicit Dockerfile path; empty = "Dockerfile" in Dir
 }
 
-// InitConfig is the full configuration persisted in .orkestra/init.ork.
+// InitConfig is the full configuration persisted in .orkestra/.init.ork.
 type InitConfig struct {
     UseCompose  bool       // true → compose-based build
     ComposeFile string     // path to docker-compose.yaml (only when UseCompose)
@@ -65,6 +65,6 @@ cfg, err := buildx.LoadInitConfig(projectDir)
 buildx.CleanupInitConfig(projectDir)
 ```
 
-`LoadInitConfig` returns an empty `InitConfig` (no error) when `init.ork` does not exist — this is the case when the user runs `ork deploy` without having run `ork doktor init` first (legacy flow).
+`LoadInitConfig` returns an empty `InitConfig` (no error) when `.init.ork` does not exist — this is the case when the user runs `ork deploy` without having run `ork doctor init` first (legacy flow).
 
 → Back to: [README.md](../README.md)

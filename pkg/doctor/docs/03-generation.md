@@ -30,7 +30,7 @@ type GenerateOptions struct {
 }
 ```
 
-`OutDir` is used by `ork doktor init --app app,frontend` to write each app's katalog into `.orkestra/<appname>/` rather than a shared `.orkestra/`.
+`OutDir` is used by `ork doctor init --app app,frontend` to write each app's katalog into `.orkestra/<appname>/` rather than a shared `.orkestra/`.
 
 ## What the Katalog contains
 
@@ -180,30 +180,30 @@ data:
 
 ## Multi-app projects
 
-`Init` supports multi-app projects via `OutDir`. When `--app app,frontend` is passed to `ork doktor init`, the CLI calls `Init` twice with different `Name` and `OutDir`:
+`Init` supports multi-app projects via `OutDir`. When `--app app,frontend` is passed to `ork doctor init`, the CLI calls `Init` twice with different `Name` and `OutDir`:
 
 ```go
 // for app/
-doktor.Init(appInfo, doktor.GenerateOptions{
+doctor.Init(appInfo, doctor.GenerateOptions{
     Name:   "app",
     OutDir: ".orkestra/app",
 })
 
 // for frontend/
-doktor.Init(frontendInfo, doktor.GenerateOptions{
+doctor.Init(frontendInfo, doctor.GenerateOptions{
     Name:   "frontend",
     OutDir: ".orkestra/frontend",
 })
 ```
 
-Each app gets its own `katalog.yaml` and `app.yaml`. The CLI also writes a shared `init.ork` via `buildx.WriteInitConfigFull` that records all app entries for `ork deploy` to consume.
+Each app gets its own `katalog.yaml` and `app.yaml`. The CLI also writes a shared `.init.ork` via `buildx.WriteInitConfigFull` that records all app entries for `ork deploy` to consume.
 
 ## Usage
 
 ```go
-info, _ := doktor.Detect(".")
+info, _ := doctor.Detect(".")
 
-err := doktor.Init(info, doktor.GenerateOptions{
+err := doctor.Init(info, doctor.GenerateOptions{
     NoHA:       false,
     NoSecure:   false,
     AddIngress: true,   // force Ingress block even without detected frontend

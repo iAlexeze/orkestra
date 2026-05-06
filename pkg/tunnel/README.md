@@ -26,9 +26,9 @@ url, err := tunnel.Expose(ctx, tunnel.ExposeOptions{
 // Expose the Control Center (always port-forwards, never uses ingress port 80)
 url, err := tunnel.Expose(ctx, tunnel.ExposeOptions{
     Name:        "controlcenter",
-    ServiceName: doktor.OrkestraControlCenter,   // "orkestra-cc"
-    Namespace:   doktor.OrkestraNamespace,
-    ServicePort: doktor.OrkestraControlCenterPort, // "8081"
+    ServiceName: doctor.OrkestraControlCenter,   // "orkestra-cc"
+    Namespace:   doctor.OrkestraNamespace,
+    ServicePort: doctor.OrkestraControlCenterPort, // "8081"
     PortForward: true,
 })
 ```

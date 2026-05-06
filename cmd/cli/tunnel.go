@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/orkspace/orkestra/pkg/doktor"
+	"github.com/orkspace/orkestra/pkg/doctor"
 	"github.com/orkspace/orkestra/pkg/tunnel"
 	"github.com/spf13/cobra"
 )
@@ -53,9 +53,9 @@ Note: exposing orkestra-runtime is not supported.`,
 				Name:        controlCenterTunnelName,
 				Provider:    provider,
 				Token:       token,
-				ServiceName: doktor.OrkestraControlCenter,
-				Namespace:   doktor.OrkestraNamespace,
-				ServicePort: doktor.OrkestraControlCenterPort,
+				ServiceName: doctor.OrkestraControlCenter,
+				Namespace:   doctor.OrkestraNamespace,
+				ServicePort: doctor.OrkestraControlCenterPort,
 				PortForward: true,
 			}
 		} else {
@@ -184,7 +184,7 @@ var tunnelRestartCmd = &cobra.Command{
 // resolveAppNamespace looks up the namespace for an app from deploy state,
 // falling back to the conventional <app>-orkestra-ns pattern.
 func resolveAppNamespace(appName string) (string, error) {
-	state, err := doktor.LoadState()
+	state, err := doctor.LoadState()
 	if err == nil && state != nil {
 		if p, ok := state.Projects[appName]; ok && p.Namespace != "" {
 			return p.Namespace, nil
@@ -205,4 +205,16 @@ func init() {
 	tunnelCmd.AddCommand(tunnelStopCmd)
 	tunnelCmd.AddCommand(tunnelRestartCmd)
 	rootCmd.AddCommand(tunnelCmd)
+
+	// Shadow global flags so they don't appear under `ork init`
+	tunnelCmd.Flags().Bool("debug", false, "")
+	tunnelCmd.Flags().String("kubeconfig", "", "")
+	tunnelCmd.Flags().StringSlice("katalog", nil, "")
+	tunnelCmd.Flags().Bool("verbose", false, "")
+
+	// Hide them from help output
+	tunnelCmd.Flags().MarkHidden("debug")
+	tunnelCmd.Flags().MarkHidden("kubeconfig")
+	tunnelCmd.Flags().MarkHidden("katalog")
+	tunnelCmd.Flags().MarkHidden("verbose")
 }

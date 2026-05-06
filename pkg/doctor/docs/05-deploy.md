@@ -5,7 +5,7 @@ The files in this area handle external operations: detecting cluster state, runt
 ## Image tag
 
 ```go
-image := doktor.ImageTag("ghcr.io/myorg", "my-app", "a3f5c2b")
+image := doctor.ImageTag("ghcr.io/myorg", "my-app", "a3f5c2b")
 // → "ghcr.io/myorg/my-app:a3f5c2b"
 ```
 
@@ -29,7 +29,7 @@ See [`pkg/buildx`](../../buildx/README.md) for builder selection, compose-based 
 ### ClusterReachable
 
 ```go
-if !doktor.ClusterReachable() {
+if !doctor.ClusterReachable() {
     // no cluster reachable on current kubeconfig context
 }
 ```
@@ -41,7 +41,7 @@ Runs `kubectl cluster-info --request-timeout=5s` with a 5-second context timeout
 ### KubectlAvailable
 
 ```go
-if !doktor.KubectlAvailable() {
+if !doctor.KubectlAvailable() {
     return fmt.Errorf("kubectl not found in PATH")
 }
 ```
@@ -49,7 +49,7 @@ if !doktor.KubectlAvailable() {
 ### GoInstalled
 
 ```go
-if !doktor.GoInstalled() {
+if !doctor.GoInstalled() {
     return fmt.Errorf("Go required to install kind")
 }
 ```
@@ -61,7 +61,7 @@ Required before attempting to install kind via `go install`.
 `kind.go` manages a local development cluster named `orkestra-playground`.
 
 ```go
-err := doktor.EnsureKindCluster(doktor.KindClusterName)
+err := doctor.EnsureKindCluster(doctor.KindClusterName)
 ```
 
 - Creates the cluster if it does not already exist.
@@ -73,8 +73,8 @@ err := doktor.EnsureKindCluster(doktor.KindClusterName)
 ## Orkestra installation
 
 ```go
-if !doktor.OrkestraInstalled() || upgradeOrkestra {
-    doktor.InstallOrUpgradeOrkestra(version, valuesFile, upgrade)
+if !doctor.OrkestraInstalled() || upgradeOrkestra {
+    doctor.InstallOrUpgradeOrkestra(version, valuesFile, upgrade)
 }
 ```
 
@@ -85,7 +85,7 @@ if !doktor.OrkestraInstalled() || upgradeOrkestra {
 `runtime.go` verifies the operator is healthy before patching any workload state.
 
 ```go
-health := doktor.CheckRuntimeHealth()
+health := doctor.CheckRuntimeHealth()
 // health.Running bool
 // health.Reason  string  — set when Running is false
 ```
@@ -100,8 +100,8 @@ When unhealthy, `FetchRuntimeLogs()` saves the last 100 lines to `/tmp/orkestra/
 ### Katalog change detection
 
 ```go
-if doktor.KatalogChanged(dir) {
-    doktor.RestartOrkestra()
+if doctor.KatalogChanged(dir) {
+    doctor.RestartOrkestra()
 }
 ```
 
@@ -112,7 +112,7 @@ if doktor.KatalogChanged(dir) {
 `DetectIngressController` probes for known ingress controller pods:
 
 ```go
-ic := doktor.DetectIngressController()
+ic := doctor.DetectIngressController()
 // IngressNginx | IngressTraefik | IngressNone
 ```
 
@@ -126,7 +126,7 @@ ic := doktor.DetectIngressController()
 `state.go` maintains `~/.orkestra/deploy/state.json` — the authoritative record of every deployed project on this machine.
 
 ```go
-state, _ := doktor.LoadState()
+state, _ := doctor.LoadState()
 state.RecordDeploy(appName, ns, katalogPath, newImage)  // captures previous image first
 state.Save()
 
@@ -142,7 +142,7 @@ prev := state.PreviousImage(appName)  // "" when no previous deploy
 `komposer.go` manages `~/.orkestra/deploy/komposer.yaml`, which aggregates Katalog paths from all projects deployed from this machine.
 
 ```go
-komposer, _ := doktor.LoadGlobalKomposer()
+komposer, _ := doctor.LoadGlobalKomposer()
 komposer.RegisterKatalog("/abs/path/to/.orkestra/katalog.yaml")
 komposer.Save()
 
@@ -158,9 +158,9 @@ names := komposer.DeployedProjects()  // ["my-app", "my-api"]
 ```
  0. Cluster check         → --dev: EnsureKindCluster / else: ClusterReachable()
     Show context          → CurrentContext() + komposer.DeployedProjects()
- 1. Build image           → doktor.Build(dir, image, w)
- 2. Push image            → doktor.Push(image, w)
- 3. Generate env bundle   → doktor.GenerateBundle(name, ns, secrets, config, bundleDir)
+ 1. Build image           → doctor.Build(dir, image, w)
+ 2. Push image            → doctor.Push(image, w)
+ 3. Generate env bundle   → doctor.GenerateBundle(name, ns, secrets, config, bundleDir)
  4. Generate Katalog bundle → ork generate bundle -k katalog.yaml -w <ns> -o bundle/
  5. Apply bundle          → kubectl apply -f bundle/bundle.yaml
  6. Apply env files       → kubectl apply -f bundle/app-config.yaml, app-secrets.yaml

@@ -253,10 +253,10 @@ Full Orkestra lifecycle. Drift correction. Deletion protection. Ordered
 shutdown. Health tracking. The platform engineer adds what they need on top of
 the Motif.
 
-### Developer path (ork doktor)
+### Developer path (ork doctor)
 
 ```yaml
-# ConfigMap as CRD — ork doktor generates this
+# ConfigMap as CRD — ork doctor generates this
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -268,13 +268,13 @@ data:
   postgresVolumeSize: "10Gi"
   postgresUser: "myusername"
 
-# ork doktor expands the Motif into the Katalog at generation time
+# ork doctor expands the Motif into the Katalog at generation time
 # The developer never sees the import — it becomes inline resources
 # in .orkestra/katalog.yaml
 ```
 
 The developer sees only `app.yaml`. The Motif expansion happens at
-`ork doktor init` time — the generated Katalog contains the expanded resources
+`ork doctor init` time — the generated Katalog contains the expanded resources
 directly, no runtime import. The developer path has no dependency on Motif
 resolution at reconcile time.
 
@@ -341,7 +341,7 @@ Error: import 'postgres:v16' is missing required input 'passwordSecretName'
 ## The composition story
 
 ```
-ork doktor reads docker-compose.yaml
+ork doctor reads docker-compose.yaml
   ↓ detects postgres:16
   ↓ fetches Motif from orkestra-services/postgres:v16
   ↓ expands inputs at generation time
@@ -359,7 +359,7 @@ Platform engineer writes PostgresCluster Katalog
 Community improves postgres Motif
   ↓ better health checks, shutdown handling
   ↓ both consumers benefit automatically
-  ↓ developer path: re-run ork doktor init to regenerate
+  ↓ developer path: re-run ork doctor init to regenerate
   ↓ platform path: update Motif version in with: block
 ```
 

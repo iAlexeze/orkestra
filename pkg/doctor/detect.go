@@ -1,4 +1,4 @@
-package doktor
+package doctor
 
 import (
 	"bufio"
@@ -20,7 +20,7 @@ const (
 	LangUnknown Language = "Unknown"
 )
 
-// ProjectInfo holds everything ork doktor discovers about a project directory.
+// ProjectInfo holds everything ork doctor discovers about a project directory.
 type ProjectInfo struct {
 	Dir            string
 	HasDockerfile  bool
@@ -43,7 +43,7 @@ type ProjectInfo struct {
 }
 
 // Detect scans a project directory and returns a populated ProjectInfo
-// describing everything ork doktor can infer about the application.
+// describing everything ork doctor can infer about the application.
 //
 // Detection includes:
 //   - Dockerfile / Containerfile presence

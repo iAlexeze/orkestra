@@ -52,7 +52,7 @@ Values are written as quoted strings. The name is `<app>-config`.
 
 ## Security model
 
-`.orkestra/bundle/` is added to `.gitignore` by `ork doktor init`. Generated secret files never enter source control.
+`.orkestra/bundle/` is added to `.gitignore` by `ork doctor init`. Generated secret files never enter source control.
 
 `ork deploy` regenerates the bundle from the local `.env` on every run. This means:
 - Adding a variable to `.env` and re-running `ork deploy` applies it to the cluster.
@@ -64,9 +64,9 @@ For production secret rotation without re-deploying: edit the Kubernetes Secret 
 ## Usage
 
 ```go
-info, _ := doktor.Detect(".")
+info, _ := doctor.Detect(".")
 
-err := doktor.GenerateBundle(
+err := doctor.GenerateBundle(
     info.AppName,
     info.AppName+"-ns",
     info.Secrets,

@@ -1,8 +1,8 @@
-// pkg/doktor/compose.go
+// pkg/doctor/compose.go
 //
 // Reads docker-compose.yaml and extracts service definitions.
 // Classifies services as stateless (Deployments) or stateful (Motif candidates).
-package doktor
+package doctor
 
 import (
 	"fmt"

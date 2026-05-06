@@ -5,7 +5,7 @@
 //
 // Two modes:
 //
-// Static (ork doktor init): inputs resolved from explicit with: bindings
+// Static (ork doctor init): inputs resolved from explicit with: bindings
 // at generation time. The expanded resources are inlined into the generated
 // Katalog. No runtime dependency on the Motif.
 //

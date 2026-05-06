@@ -1,4 +1,4 @@
-package doktor
+package doctor
 
 import "strings"
 

@@ -14,15 +14,15 @@ type AppEntry struct {
 	Dockerfile string // path to Dockerfile (absolute or relative); empty = "Dockerfile" in Dir
 }
 
-// InitConfig is the full configuration persisted in .orkestra/init.ork.
-// It bridges `ork doktor init` settings through to `ork deploy`.
+// InitConfig is the full configuration persisted in .orkestra/.init.ork.
+// It bridges `ork doctor init` settings through to `ork deploy`.
 type InitConfig struct {
 	UseCompose  bool       // true → compose-based build
 	ComposeFile string     // path to docker-compose.yaml (only when UseCompose)
 	Apps        []AppEntry // one entry per buildable app; empty = legacy single-app
 }
 
-// WriteInitConfig persists a single-app or compose config to .orkestra/init.ork.
+// WriteInitConfig persists a single-app or compose config to .orkestra/.init.ork.
 func WriteInitConfig(dir string, useCompose bool, composeFile string) error {
 	return WriteInitConfigFull(dir, InitConfig{
 		UseCompose:  useCompose,
@@ -30,17 +30,17 @@ func WriteInitConfig(dir string, useCompose bool, composeFile string) error {
 	})
 }
 
-// WriteInitConfigFull writes the full InitConfig to .orkestra/init.ork.
+// WriteInitConfigFull writes the full InitConfig to .orkestra/.init.ork.
 func WriteInitConfigFull(dir string, cfg InitConfig) error {
-	path := filepath.Join(dir, ".orkestra", "init.ork")
+	path := filepath.Join(dir, ".orkestra", ".init.ork")
 
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("init.ork: cannot create directory: %w", err)
+		return fmt.Errorf(".init.ork: cannot create directory: %w", err)
 	}
 
 	f, err := os.Create(path)
 	if err != nil {
-		return fmt.Errorf("init.ork: cannot write file: %w", err)
+		return fmt.Errorf(".init.ork: cannot write file: %w", err)
 	}
 	defer f.Close()
 
@@ -67,17 +67,17 @@ func WriteInitConfigFull(dir string, cfg InitConfig) error {
 	return nil
 }
 
-// LoadInitConfig reads .orkestra/init.ork and returns the full InitConfig.
+// LoadInitConfig reads .orkestra/.init.ork and returns the full InitConfig.
 // Returns an empty InitConfig (no error) when the file does not exist.
 func LoadInitConfig(dir string) (InitConfig, error) {
-	path := filepath.Join(dir, ".orkestra", "init.ork")
+	path := filepath.Join(dir, ".orkestra", ".init.ork")
 
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return InitConfig{}, nil
 		}
-		return InitConfig{}, fmt.Errorf("init.ork: %w", err)
+		return InitConfig{}, fmt.Errorf(".init.ork: %w", err)
 	}
 
 	raw := map[string]string{}
@@ -113,11 +113,11 @@ func LoadInitConfig(dir string) (InitConfig, error) {
 	return cfg, nil
 }
 
-// CleanupInitConfig removes .orkestra/init.ork after a successful deployment.
+// CleanupInitConfig removes .orkestra/.init.ork after a successful deployment.
 func CleanupInitConfig(dir string) error {
-	path := filepath.Join(dir, ".orkestra", "init.ork")
+	path := filepath.Join(dir, ".orkestra", ".init.ork")
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("init.ork: cleanup failed: %w", err)
+		return fmt.Errorf(".init.ork: cleanup failed: %w", err)
 	}
 	return nil
 }

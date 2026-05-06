@@ -19,26 +19,26 @@ A registry to push your image to (e.g. `ghcr.io/yourorg`).
 cd examples/developer/06-docker-compose-with-postgres
 
 cp .env.example .env
-ork doktor
+ork doctor
 ```
 
-Because there is a `docker-compose.yaml` in this example directory, `ork doktor`
+Because there is a `docker-compose.yaml` in this example directory, `ork doctor`
 will show the infrastructure services it detected:
 
 ```
   ✓ docker-compose.yaml
   💡 Infrastructure services detected in docker-compose.yaml:
       postgres (postgres:16) → postgres Motif + pgAdmin
-  Run 'ork doktor init --name my-app --use-compose docker-compose.yaml' to include them
+  Run 'ork doctor init --name my-app --use-compose docker-compose.yaml' to include them
 ```
 
 ## Step 2 — Generate the configuration
 
 ```bash
-ork doktor init --name my-app --use-compose ../docker-compose.yaml
+ork doctor init --name my-app --use-compose ../docker-compose.yaml
 ```
 
-`ork doktor init` generates three files:
+`ork doctor init` generates three files:
 
 - `.orkestra/katalog.yaml` — the complete Orkestra operator declaration,
   including a Motif import for postgres

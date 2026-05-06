@@ -16,7 +16,7 @@ once. The reuse is structural, not incidental.
 orkestra-services/postgres/motif.yaml   ← implemented once
 
     ↓ Developer path                        ↓ Platform engineer path
-    ork doktor reads it                     Registry wraps it with a CRD
+    ork doctor reads it                     Registry wraps it with a CRD
     ConfigMap-as-CRD                        PostgresCluster CRD
     app.yaml provides values                CR spec provides values
     kubectl apply (no Orkestra needed)      Orkestra manages full lifecycle
@@ -118,12 +118,12 @@ does not do is declare where the values come from. That is the consumer's job.
 
 ---
 
-## Consumer 1: ork doktor (developer path)
+## Consumer 1: ork doctor (developer path)
 
-ork doktor reads the motif and instantiates it with a ConfigMap-as-CRD.
+ork doctor reads the motif and instantiates it with a ConfigMap-as-CRD.
 The developer never sees the motif, the Katalog, or the StatefulSet.
 
-**What ork doktor generates from the postgres motif:**
+**What ork doctor generates from the postgres motif:**
 
 In `.orkestra/katalog.yaml`:
 
@@ -268,7 +268,7 @@ The binding values are template expressions evaluated in the context of the
 CRD (the CR being reconciled). The motif's template expressions reference
 `.spec.*` — these are resolved using the bindings as an intermediate layer.
 
-For the developer path, ork doktor resolves the bindings at generation time
+For the developer path, ork doctor resolves the bindings at generation time
 against the ConfigMap fields. The generated Katalog contains the expanded
 resources directly — no import at runtime. This means no Orkestra version
 dependency for the developer's stateful services.
@@ -320,7 +320,7 @@ direct (developer) and via operator (platform engineer).
 Developer
   docker-compose.yaml
        ↓
-  ork doktor --use-compose
+  ork doctor --use-compose
        ↓ reads motif from orkestra-services
        ↓ generates Katalog + app.yaml
        ↓ applies directly
@@ -341,9 +341,9 @@ Platform engineer (building)
 
 ---
 
-## ork doktor as platform engineer
+## ork doctor as platform engineer
 
-ork doktor does not expose the operator pattern. It *is* the operator pattern,
+ork doctor does not expose the operator pattern. It *is* the operator pattern,
 operating autonomously on behalf of the developer.
 
 A platform engineer who onboards a new service to their Kubernetes platform:
@@ -352,9 +352,9 @@ A platform engineer who onboards a new service to their Kubernetes platform:
 - Creates the ConfigMap CR interface (how the developer configures it)
 - Deploys and maintains it
 
-ork doktor does exactly this, automatically, for every developer who runs
-`ork doktor init`. The developer provides the docker-compose.yaml (their
-requirements). ork doktor designs the Katalog, creates the app.yaml interface,
+ork doctor does exactly this, automatically, for every developer who runs
+`ork doctor init`. The developer provides the docker-compose.yaml (their
+requirements). ork doctor designs the Katalog, creates the app.yaml interface,
 and manages the deployment.
 
 The developer is inside the operator pattern without knowing it. The ConfigMap
@@ -371,7 +371,7 @@ The pattern is identical. Only the vocabulary changes.
 
 1. Define the `motifs.yaml` schema — inputs, resources, status fields
 2. Implement `pkg/motifs/` — motifs loader, binding resolver, resource expander
-3. Implement `ork doktor --use-compose` with motifs import (developer path)
+3. Implement `ork doctor --use-compose` with motifs import (developer path)
 4. Implement `imports:` in Katalog loader (platform path)
 5. Ship `orkestra-services/postgres` with motifs, README, examples
 6. Developer example: `01-with-postgres` using `--use-compose`

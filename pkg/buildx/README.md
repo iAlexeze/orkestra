@@ -8,7 +8,7 @@ The buildx package abstracts container image building and pushing across Docker,
 |------|------|
 | `buildx.go` | `Builder` interface, `BuildImage` / `PushImage` public API, builder selection |
 | `builders.go` | `DockerBuilder`, `PodmanBuilder`, `BuildahBuilder` — one struct per supported tool |
-| `compose_init.go` | `InitConfig`, `AppEntry` — persist `ork doktor init` settings to `.orkestra/init.ork` for `ork deploy` to read |
+| `compose_init.go` | `InitConfig`, `AppEntry` — persist `ork doctor init` settings to `.orkestra/.init.ork` for `ork deploy` to read |
 
 ## Builder auto-selection
 
@@ -45,4 +45,4 @@ type ComposeBuild struct {
 | I want to… | Go to |
 |-----------|-------|
 | Understand builder selection and the Builder interface | [docs/01-builders.md](docs/01-builders.md) |
-| Understand InitConfig and the init.ork file format | [docs/02-init-config.md](docs/02-init-config.md) |
+| Understand InitConfig and the .init.ork file format | [docs/02-init-config.md](docs/02-init-config.md) |

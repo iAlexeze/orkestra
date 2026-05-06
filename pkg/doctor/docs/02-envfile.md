@@ -41,7 +41,7 @@ Without `# ork:cfg` the variable goes into a Kubernetes Secret (base64-encoded).
 ## SplitEnvVars
 
 ```go
-secrets, config := doktor.SplitEnvVars(vars)
+secrets, config := doctor.SplitEnvVars(vars)
 // secrets — IsCfg == false
 // config  — IsCfg == true
 ```
@@ -51,12 +51,12 @@ secrets, config := doktor.SplitEnvVars(vars)
 ## Usage
 
 ```go
-vars, err := doktor.ParseEnvFile(".env")
+vars, err := doctor.ParseEnvFile(".env")
 if err != nil {
     return err
 }
 
-secrets, config := doktor.SplitEnvVars(vars)
+secrets, config := doctor.SplitEnvVars(vars)
 fmt.Println(len(secrets), "secrets")
 fmt.Println(len(config),  "config vars")
 ```
@@ -65,6 +65,6 @@ fmt.Println(len(config),  "config vars")
 
 `ParseEnvFile` returns values as plain strings. They are never written to disk or sent anywhere by the parser itself.
 
-`GenerateBundle` (see [04-bundle.md](04-bundle.md)) is the only place values are serialised to disk — into a Secret (base64-encoded) and a ConfigMap (quoted string). The bundle directory is excluded from git via `.gitignore` — `.orkestra/bundle/` is added by `ork doktor init`.
+`GenerateBundle` (see [04-bundle.md](04-bundle.md)) is the only place values are serialised to disk — into a Secret (base64-encoded) and a ConfigMap (quoted string). The bundle directory is excluded from git via `.gitignore` — `.orkestra/bundle/` is added by `ork doctor init`.
 
 → Next: [03-generation.md](03-generation.md)

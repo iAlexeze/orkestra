@@ -1,4 +1,4 @@
-package doktor
+package doctor
 
 import (
 	"bytes"
@@ -25,25 +25,63 @@ type RuntimeStatus struct {
 	Reason  string // set when Running is false
 }
 
-// CheckRuntimeHealth reports whether the Orkestra runtime deployment is up
-// and has at least one ready replica. Pods in CrashLoopBackOff are treated
-// as not running and their pod name is included in Reason.
+// CheckRuntimeHealth waits up to healthCheckTimeout for the Orkestra runtime
+// deployment to have at least one ready replica. It polls every 2 seconds.
+// If pods are in CrashLoopBackOff, it returns immediately with the reason.
 func CheckRuntimeHealth() RuntimeStatus {
 	ctx, cancel := context.WithTimeout(context.Background(), healthCheckTimeout)
 	defer cancel()
 
-	// Verify the deployment exists.
-	nameOut, err := exec.CommandContext(ctx, "kubectl", "get", "deploy", OrkestraRuntime,
-		"-n", OrkestraNamespace, "--ignore-not-found", "-o", "name").Output()
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return RuntimeStatus{
+				Reason: fmt.Sprintf("timeout (%s) waiting for Orkestra runtime to become ready", healthCheckTimeout),
+			}
+
+		case <-ticker.C:
+			status := checkRuntimeOnce(ctx)
+			if status.Running {
+				return status
+			}
+
+			// If the reason is not "no ready replicas", it's a fatal condition.
+			if status.Reason != "no ready replicas" {
+				return status
+			}
+
+			// Otherwise: still waiting, continue polling.
+		}
+	}
+}
+
+// checkRuntimeOnce performs a single readiness check.
+// It returns Running=true only when readyReplicas > 0.
+func checkRuntimeOnce(ctx context.Context) RuntimeStatus {
+	// Check deployment exists
+	nameOut, err := exec.CommandContext(ctx,
+		"kubectl", "get", "deploy", OrkestraRuntime,
+		"-n", OrkestraNamespace, "--ignore-not-found", "-o", "name",
+	).Output()
+
 	if err != nil || len(bytes.TrimSpace(nameOut)) == 0 {
-		return RuntimeStatus{Reason: "deployment " + OrkestraRuntime + " not found in " + OrkestraNamespace}
+		return RuntimeStatus{
+			Reason: "deployment " + OrkestraRuntime + " not found in " + OrkestraNamespace,
+		}
 	}
 
-	// Check ready replicas — Kubernetes omits the field when zero.
-	readyOut, _ := exec.CommandContext(ctx, "kubectl", "get", "deploy", OrkestraRuntime,
-		"-n", OrkestraNamespace, "-o", `jsonpath={.status.readyReplicas}`).Output()
+	// Check ready replicas
+	readyOut, _ := exec.CommandContext(ctx,
+		"kubectl", "get", "deploy", OrkestraRuntime,
+		"-n", OrkestraNamespace, "-o", `jsonpath={.status.readyReplicas}`,
+	).Output()
+
 	ready := strings.TrimSpace(string(readyOut))
 	if ready == "" || ready == "0" {
+		// Check for CrashLoopBackOff
 		if reason := crashLoopReason(ctx); reason != "" {
 			return RuntimeStatus{Reason: reason}
 		}

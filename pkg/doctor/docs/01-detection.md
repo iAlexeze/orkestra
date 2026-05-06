@@ -1,6 +1,6 @@
 # 01 — Project Detection
 
-`Detect(dir string)` is the entry point for everything the doktor package does. It examines the project directory and returns a `*ProjectInfo` that all other functions consume.
+`Detect(dir string)` is the entry point for everything the doctor package does. It examines the project directory and returns a `*ProjectInfo` that all other functions consume.
 
 ## ProjectInfo
 
@@ -35,7 +35,7 @@ A missing `.env` is not an error — `EnvVars`, `Secrets`, and `Config` are simp
 | `Gemfile` | Ruby |
 | `Cargo.toml` | Rust |
 
-The first match wins. `LangMarker` records which file triggered the match — this is what `ork doktor` displays to the user:
+The first match wins. `LangMarker` records which file triggered the match — this is what `ork doctor` displays to the user:
 
 ```
 ✓ Language: Go  (go.mod)
@@ -77,7 +77,7 @@ ghcr.io/myorg/my-app:a3f5c2b
 ## Usage
 
 ```go
-info, err := doktor.Detect(".")
+info, err := doctor.Detect(".")
 if err != nil {
     return err
 }

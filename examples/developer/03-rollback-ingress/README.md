@@ -116,11 +116,11 @@ rollback will re-roll-forward to the image you just rolled back from.
 If `my-api` was initialised without `--add-ingress`, re-init:
 
 ```bash
-ork doktor init --name my-api --add-ingress
+ork doctor init --name my-api --add-ingress
 ```
 
 !!! note
-    Re-running `ork doktor init` regenerates `katalog.yaml` and `app.yaml`
+    Re-running `ork doctor init` regenerates `katalog.yaml` and `app.yaml`
     but will NOT overwrite `values.yaml` if it already exists.
 
 Open `.orkestra/app.yaml` and set a hostname:

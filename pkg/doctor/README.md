@@ -1,6 +1,6 @@
-# pkg/doktor
+# pkg/doctor
 
-The doktor package turns a project directory into a production-grade Kubernetes deployment — without the developer writing a single pod spec.
+The doctor package turns a project directory into a production-grade Kubernetes deployment — without the developer writing a single pod spec.
 
 It reads what the developer already has (`Dockerfile`, `.env`, `.git`) and produces everything Kubernetes needs: a Katalog, an application ConfigMap, and a bundle of Secrets and ConfigMaps derived from the environment file.
 
@@ -13,7 +13,7 @@ my-app/
   .git/             ← what version to deploy
 ```
 
-That is enough. `pkg/doktor` produces the rest.
+That is enough. `pkg/doctor` produces the rest.
 
 ## What the package produces
 

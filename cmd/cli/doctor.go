@@ -9,18 +9,18 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/pkg/buildx"
-	"github.com/orkspace/orkestra/pkg/doktor"
+	"github.com/orkspace/orkestra/pkg/doctor"
 	"github.com/spf13/cobra"
 )
 
-var doktorCmd = &cobra.Command{
-	Use:   "doktor",
+var doctorCmd = &cobra.Command{
+	Use:   "doctor",
 	Short: "Examine the project and show what Orkestra found",
 	Long: `Examine the current directory and report what Orkestra discovered.
 
-  ork doktor                       show project analysis
-  ork doktor --app app,frontend    show per-app analysis (multi-app project)
-  ork doktor init                  generate .orkestra/ katalog and app config`,
+  ork doctor                       show project analysis
+  ork doctor --app app,frontend    show per-app analysis (multi-app project)
+  ork doctor init                  generate .orkestra/ katalog and app config`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir, err := os.Getwd()
 		if err != nil {
@@ -33,21 +33,21 @@ var doktorCmd = &cobra.Command{
 
 		// Multi-app scan — either from --app flag or from compose buildable services
 		if appFlag != "" {
-			return doktorScanMultiApp(dir, strings.Split(appFlag, ","), noHA, noSecure)
+			return doctorScanMultiApp(dir, strings.Split(appFlag, ","), noHA, noSecure)
 		}
 
 		// Single-app scan (default)
 		fmt.Println("\nExamining project...")
 		fmt.Println()
 
-		info, err := doktor.Detect(dir)
+		info, err := doctor.Detect(dir)
 		if err != nil {
 			return fmt.Errorf("detection failed: %w", err)
 		}
 
 		// Missing Dockerfile + no compose build context → show language-aware error
 		if !info.HasDockerfile && !info.HasCompose {
-			if info.Language != doktor.LangUnknown {
+			if info.Language != doctor.LangUnknown {
 				tmpl := info.Language.DockerfileTemplate()
 				if tmpl != "" {
 					return fmt.Errorf(`
@@ -58,7 +58,7 @@ No Dockerfile or Compose build context was found.
 
 Detected language: %s  (%s)
 
-You must provide at least one of:
+Provide at least one of:
   • Dockerfile
   • Containerfile
   • docker-compose build context
@@ -86,8 +86,10 @@ Please add a Dockerfile to the project root.
 ──────────────────────────────────────────────`, info.AppName)
 		}
 
+		var dockerfilePath string
 		if info.HasDockerfile {
-			fmt.Printf("  ✓ %s found\n", filepath.Base(info.DockerfilePath))
+			dockerfilePath = filepath.Base(info.DockerfilePath)
+			fmt.Printf("  ✓ %s found\n", dockerfilePath)
 		} else {
 			fmt.Println("  ✗ No Dockerfile or Containerfile found — add one to build an image")
 		}
@@ -98,7 +100,7 @@ Please add a Dockerfile to the project root.
 			fmt.Println("  ✗ Not a git repository — run 'git init'")
 		}
 
-		if info.Language != doktor.LangUnknown {
+		if info.Language != doctor.LangUnknown {
 			fmt.Printf("  ✓ Language: %s  (%s)\n", info.Language, info.LangMarker)
 		} else {
 			fmt.Println("  ~ Language: unknown")
@@ -118,9 +120,9 @@ Please add a Dockerfile to the project root.
 		composeFile := filepath.Base(info.ComposePath)
 		if info.HasCompose {
 			fmt.Printf("  ✓ (%s)\n", composeFile)
-			cf, cfErr := doktor.ParseCompose(info.ComposePath)
+			cf, cfErr := doctor.ParseCompose(info.ComposePath)
 			if cfErr == nil {
-				buildable, stateful := doktor.ClassifyServices(cf)
+				buildable, stateful := doctor.ClassifyServices(cf)
 				if len(stateful) > 0 {
 					fmt.Println()
 					fmt.Printf("💡 Infrastructure services detected in %s:\n", composeFile)
@@ -133,7 +135,7 @@ Please add a Dockerfile to the project root.
 					fmt.Println()
 					fmt.Printf("💡 Buildable services in %s: %s\n", composeFile, strings.Join(buildable, ", "))
 					fmt.Println()
-					fmt.Printf("  Run 'ork doktor init --use-compose %s' to generate per-app config\n", filepath.Base(info.ComposePath))
+					fmt.Printf("  Run 'ork doctor init --use-compose %s' to generate per-app config\n", filepath.Base(info.ComposePath))
 					printInternalURLHints(dir, buildable, cf)
 				}
 			}
@@ -143,7 +145,7 @@ Please add a Dockerfile to the project root.
 		if info.HasSMTP || info.HasSlack {
 			fmt.Println()
 			fmt.Println("  ~ SMTP/Slack detected in .env")
-			fmt.Println("    Run 'ork doktor init --name <app> --notify-me' to wire notifications.")
+			fmt.Println("    Run 'ork doctor init --name <app> --notify-me' to wire notifications.")
 		}
 
 		fmt.Println()
@@ -157,33 +159,41 @@ Please add a Dockerfile to the project root.
 		if info.GitCommit == "" {
 			info.GitCommit = "latest"
 		}
-		fmt.Printf("  Deployment     image built from Dockerfile, tagged :%s\n", info.GitCommit)
+		fmt.Printf("  %-22s image built from %s, tagged :%s\n", "Deployment", dockerfilePath, info.GitCommit)
+		fmt.Printf("  %-22s with minimal RBAC to run your workloads\n", "Service Account")
+
 		if len(info.Secrets) > 0 {
-			fmt.Printf("  Secret         %s-secrets (%d %s from .env)\n", info.AppName, len(info.Secrets), varTxt)
-		}
-		if len(info.Config) > 0 {
-			fmt.Printf("  ConfigMap      %s-config  (%d %s from .env # ork:cfg)\n", info.AppName, len(info.Config), varTxt)
-		}
-		fmt.Printf("  Service        port %s\n", info.Port)
-		if info.HasFrontend {
-			fmt.Printf("  Ingress        %s.local      (frontend detected)\n", info.AppName)
-		}
-		if !noHA {
-			fmt.Println("  HPA            min 2 / max 10")
-			fmt.Println("  PDB            minAvailable: 1")
-		}
-		if !noSecure {
-			fmt.Println("  DeletionProtection  enabled")
+			fmt.Printf("  %-22s %s-secrets (%d %s from .env)\n",
+				"Secret", info.AppName, len(info.Secrets), varTxt)
 		}
 
+		if len(info.Config) > 0 {
+			fmt.Printf("  %-22s %s-config  (%d %s from .env # ork:cfg)\n",
+				"ConfigMap", info.AppName, len(info.Config), varTxt)
+		}
+
+		fmt.Printf("  %-22s port %s\n", "Service", info.Port)
+
+		if info.HasFrontend {
+			fmt.Printf("  %-22s %s.local      (frontend detected)\n", "Ingress", info.AppName)
+		}
+
+		if !noHA {
+			fmt.Printf("  %-22s min 2 / max 10\n", "HPA")
+			fmt.Printf("  %-22s minAvailable: 1 (if disruption happens)\n", "PDB")
+		}
+
+		if !noSecure {
+			fmt.Printf("  %-22s enabled\n", "DeletionProtection")
+		}
 		fmt.Println()
 		missing := 0
 		fmt.Println("Missing dependencies:")
-		if !doktor.KubectlAvailable() {
+		if !doctor.KubectlAvailable() {
 			fmt.Println("  kubectl   (will be installed during 'ork deploy')")
 			missing++
 		}
-		if !doktor.HelmAvailable() {
+		if !doctor.HelmAvailable() {
 			fmt.Println("  helm      (will be installed during 'ork deploy')")
 			missing++
 		}
@@ -193,7 +203,7 @@ Please add a Dockerfile to the project root.
 
 		fmt.Println()
 		fmt.Println()
-		fmt.Println("Run 'ork doktor init --name <my-project>' to generate .orkestra/katalog.yaml")
+		fmt.Println("Run 'ork doctor init --name <my-project>' to generate .orkestra/katalog.yaml")
 		if !noHA {
 			fmt.Println("Run with --no-ha to skip HPA and PDB (development mode)")
 		}
@@ -205,8 +215,8 @@ Please add a Dockerfile to the project root.
 	},
 }
 
-// doktorScanMultiApp scans each named subdirectory and prints per-app analysis.
-func doktorScanMultiApp(baseDir string, appNames []string, noHA, noSecure bool) error {
+// doctorScanMultiApp scans each named subdirectory and prints per-app analysis.
+func doctorScanMultiApp(baseDir string, appNames []string, noHA, noSecure bool) error {
 	fmt.Println("\nExamining project...")
 	fmt.Println()
 
@@ -217,7 +227,7 @@ func doktorScanMultiApp(baseDir string, appNames []string, noHA, noSecure bool) 
 		}
 		appDir := filepath.Join(baseDir, name)
 
-		info, err := doktor.Detect(appDir)
+		info, err := doctor.Detect(appDir)
 		if err != nil {
 			fmt.Printf("  %s: detection error: %v\n", name, err)
 			continue
@@ -229,7 +239,7 @@ func doktorScanMultiApp(baseDir string, appNames []string, noHA, noSecure bool) 
 		} else {
 			fmt.Println("    ✗ Dockerfile not found")
 		}
-		if info.Language != doktor.LangUnknown {
+		if info.Language != doctor.LangUnknown {
 			fmt.Printf("    ✓ Language: %s  (%s)\n", info.Language, info.LangMarker)
 		} else {
 			fmt.Println("    ~ Language: unknown")
@@ -247,7 +257,7 @@ func doktorScanMultiApp(baseDir string, appNames []string, noHA, noSecure bool) 
 	for _, name := range appNames {
 		name = strings.TrimSpace(name)
 		appDir := filepath.Join(baseDir, name)
-		info, err := doktor.Detect(appDir)
+		info, err := doctor.Detect(appDir)
 		port := "8080"
 		if err == nil {
 			port = info.Port
@@ -258,12 +268,12 @@ func doktorScanMultiApp(baseDir string, appNames []string, noHA, noSecure bool) 
 		fmt.Printf("  %-20s http://%s.%s.svc.cluster.local:%s\n", envVar, svcName, ns, port)
 	}
 	fmt.Println()
-	fmt.Printf("Run 'ork doktor init --app %s' to generate .orkestra/ config\n", strings.Join(appNames, ","))
+	fmt.Printf("Run 'ork doctor init --app %s' to generate .orkestra/ config\n", strings.Join(appNames, ","))
 	return nil
 }
 
 // printInternalURLHints prints the cluster-internal URLs for a set of compose services.
-func printInternalURLHints(baseDir string, serviceNames []string, cf *doktor.ComposeFile) {
+func printInternalURLHints(baseDir string, serviceNames []string, cf *doctor.ComposeFile) {
 	if len(serviceNames) == 0 {
 		return
 	}
@@ -290,7 +300,7 @@ func printInternalURLHints(baseDir string, serviceNames []string, cf *doktor.Com
 	}
 }
 
-var doktorInitCmd = &cobra.Command{
+var doctorInitCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Generate .orkestra/ katalog and app config",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -308,7 +318,7 @@ var doktorInitCmd = &cobra.Command{
 		useCompose, _ := cmd.Flags().GetString("use-compose")
 		appFlag, _ := cmd.Flags().GetString("app")
 
-		opts := doktor.GenerateOptions{
+		opts := doctor.GenerateOptions{
 			NoHA:       noHA,
 			NoSecure:   noSecure,
 			Clean:      clean,
@@ -319,7 +329,7 @@ var doktorInitCmd = &cobra.Command{
 
 		// ── Multi-app init (--app flag or --use-compose with multiple buildable services) ──
 		if appFlag != "" || useCompose != "" {
-			return doktorInitMultiApp(dir, cmd, opts, name, useCompose, appFlag)
+			return doctorInitMultiApp(dir, cmd, opts, name, useCompose, appFlag)
 		}
 
 		// ── Single-app init (legacy) ──
@@ -328,12 +338,12 @@ var doktorInitCmd = &cobra.Command{
 		}
 		opts.Name = name
 
-		info, err := doktor.Detect(dir)
+		info, err := doctor.Detect(dir)
 		if err != nil {
 			return fmt.Errorf("detection failed: %w", err)
 		}
 
-		if err := doktor.Init(info, opts); err != nil {
+		if err := doctor.Init(info, opts); err != nil {
 			return err
 		}
 
@@ -365,8 +375,8 @@ var doktorInitCmd = &cobra.Command{
 	},
 }
 
-// doktorInitMultiApp handles multi-app initialization from either --app or --use-compose.
-func doktorInitMultiApp(baseDir string, cmd *cobra.Command, opts doktor.GenerateOptions, projectName, useCompose, appFlag string) error {
+// doctorInitMultiApp handles multi-app initialization from either --app or --use-compose.
+func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.GenerateOptions, projectName, useCompose, appFlag string) error {
 	orkBaseDir := filepath.Join(baseDir, ".orkestra")
 
 	type appSpec struct {
@@ -380,7 +390,7 @@ func doktorInitMultiApp(baseDir string, cmd *cobra.Command, opts doktor.Generate
 	// perAppStateful holds the pre-computed stateful-service assignments for
 	// each buildable app when initialising from a compose file. It is nil for
 	// the --app flag path (no compose file, no stateful services to inject).
-	var perAppStateful map[string][]doktor.StatefulService
+	var perAppStateful map[string][]doctor.StatefulService
 
 	if useCompose != "" {
 		// Derive apps from compose file's buildable services.
@@ -388,11 +398,11 @@ func doktorInitMultiApp(baseDir string, cmd *cobra.Command, opts doktor.Generate
 		if !filepath.IsAbs(composePath) {
 			composePath = filepath.Join(baseDir, composePath)
 		}
-		cf, err := doktor.ParseCompose(composePath)
+		cf, err := doctor.ParseCompose(composePath)
 		if err != nil {
 			return fmt.Errorf("reading compose file: %w", err)
 		}
-		buildable, allStateful := doktor.ClassifyServices(cf)
+		buildable, allStateful := doctor.ClassifyServices(cf)
 		if len(buildable) == 0 {
 			return fmt.Errorf("no buildable services found in %s — add build: to services that need a Docker image", useCompose)
 		}
@@ -401,7 +411,7 @@ func doktorInitMultiApp(baseDir string, cmd *cobra.Command, opts doktor.Generate
 		// Uses depends_on relationships; falls back to the first app for any
 		// stateful service not referenced by any depends_on declaration.
 		if len(allStateful) > 0 {
-			perAppStateful = doktor.StatefulDepsPerApp(cf, buildable, allStateful)
+			perAppStateful = doctor.StatefulDepsPerApp(cf, buildable, allStateful)
 		}
 
 		for _, svcName := range buildable {
@@ -446,18 +456,18 @@ func doktorInitMultiApp(baseDir string, cmd *cobra.Command, opts doktor.Generate
 
 		if perAppStateful != nil {
 			// Multi-app compose path: supply only the stateful services this
-			// specific app depends on. Clearing UseCompose prevents doktor.Init
+			// specific app depends on. Clearing UseCompose prevents doctor.Init
 			// from re-parsing the compose file and injecting everything again.
 			appOpts.UseCompose = ""
 			appOpts.InjectStateful = perAppStateful[app.name] // nil = no stateful for this app
 		}
 
-		info, err := doktor.Detect(app.dir)
+		info, err := doctor.Detect(app.dir)
 		if err != nil {
 			return fmt.Errorf("detecting %s: %w", app.name, err)
 		}
 
-		if err := doktor.Init(info, appOpts); err != nil {
+		if err := doctor.Init(info, appOpts); err != nil {
 			return fmt.Errorf("init %s: %w", app.name, err)
 		}
 
@@ -487,7 +497,7 @@ func doktorInitMultiApp(baseDir string, cmd *cobra.Command, opts doktor.Generate
 	fmt.Println("Internal service URLs (set these in each app's .env before deploying):")
 	for _, app := range apps {
 		appDir := app.dir
-		info, _ := doktor.Detect(appDir)
+		info, _ := doctor.Detect(appDir)
 		port := "8080"
 		if info != nil {
 			port = info.Port
@@ -530,18 +540,30 @@ func doktorInitMultiApp(baseDir string, cmd *cobra.Command, opts doktor.Generate
 }
 
 func init() {
-	doktorCmd.PersistentFlags().Bool("no-ha", false, "Skip HPA and PDB (single replica)")
-	doktorCmd.PersistentFlags().Bool("no-secure", false, "Skip deletion protection and protection labels")
-	doktorCmd.PersistentFlags().Bool("clean", false, "Remove deletion protection webhook on operator shutdown")
+	doctorCmd.PersistentFlags().Bool("no-ha", false, "Skip HPA and PDB (single replica)")
+	doctorCmd.PersistentFlags().Bool("no-secure", false, "Skip deletion protection and protection labels")
+	doctorCmd.PersistentFlags().Bool("clean", false, "Remove deletion protection webhook on operator shutdown")
 
-	doktorCmd.Flags().String("app", "", "Comma-separated list of app subdirectories to scan (e.g. app,frontend)")
+	doctorCmd.Flags().String("app", "", "Comma-separated list of app subdirectories to scan (e.g. app,frontend)")
 
-	doktorInitCmd.Flags().String("name", "", "App name (single-app mode)")
-	doktorInitCmd.Flags().String("app", "", "Comma-separated list of app subdirectories (multi-app mode, e.g. app,frontend)")
-	doktorInitCmd.Flags().Bool("add-ingress", false, "Include Ingress even when no frontend was auto-detected")
-	doktorInitCmd.Flags().Bool("notify-me", false, "Auto-enable notifications using SMTP_*/SLACK_* from .env and your Git author")
-	doktorInitCmd.Flags().String("use-compose", "", "Path to docker-compose.yaml — deploy all buildable services as separate apps")
+	doctorInitCmd.Flags().String("name", "", "App name (single-app mode)")
+	doctorInitCmd.Flags().String("app", "", "Comma-separated list of app subdirectories (multi-app mode, e.g. app,frontend)")
+	doctorInitCmd.Flags().Bool("add-ingress", false, "Include Ingress even when no frontend was auto-detected")
+	doctorInitCmd.Flags().Bool("notify-me", false, "Auto-enable notifications using SMTP_*/SLACK_* from .env and your Git author")
+	doctorInitCmd.Flags().String("use-compose", "", "Path to docker-compose.yaml — deploy all buildable services as separate apps")
 
-	doktorCmd.AddCommand(doktorInitCmd)
-	rootCmd.AddCommand(doktorCmd)
+	doctorCmd.AddCommand(doctorInitCmd)
+	rootCmd.AddCommand(doctorCmd)
+
+	// Shadow global flags so they don't appear under `ork init`
+	doctorCmd.Flags().Bool("debug", false, "")
+	doctorCmd.Flags().String("kubeconfig", "", "")
+	doctorCmd.Flags().StringSlice("katalog", nil, "")
+	doctorCmd.Flags().Bool("verbose", false, "")
+
+	// Hide them from help output
+	doctorCmd.Flags().MarkHidden("debug")
+	doctorCmd.Flags().MarkHidden("kubeconfig")
+	doctorCmd.Flags().MarkHidden("katalog")
+	doctorCmd.Flags().MarkHidden("verbose")
 }
