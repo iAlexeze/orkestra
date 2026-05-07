@@ -1,0 +1,9 @@
+apiVersion: web.orkestra.io/v1alpha1
+kind: WebApp
+metadata:
+  name: my-webapp
+  namespace: default
+spec:
+  image: nginx:1.25
+  replicas: 3
+  port: 8080
