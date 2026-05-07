@@ -57,11 +57,11 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.3.9
-    created: "2026-05-07T14:10:26.421842102Z"
+    created: "2026-05-07T14:18:29.448370039Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
-    digest: cbffe7a680441d0c92f18680bf6d516352e5d712dc8388cba9b240f5e1106079
+    digest: 2e1ca66a93dde70763ae9f26cec4906fce94954dae772cec56cc726836c8059a
     home: https://github.com/orkspace/orkestra
     icon: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/logo.png
     keywords:
@@ -141,7 +141,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.3.8
-    created: "2026-05-07T14:10:26.420960458Z"
+    created: "2026-05-07T14:18:29.447454677Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -225,7 +225,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.3.7
-    created: "2026-05-07T14:10:26.420023802Z"
+    created: "2026-05-07T14:18:29.446444337Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -309,7 +309,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.3.6
-    created: "2026-05-07T14:10:26.417985313Z"
+    created: "2026-05-07T14:18:29.444469934Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -393,7 +393,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.3.5
-    created: "2026-05-07T14:10:26.41712526Z"
+    created: "2026-05-07T14:18:29.443579969Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -477,7 +477,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.3.4
-    created: "2026-05-07T14:10:26.416216826Z"
+    created: "2026-05-07T14:18:29.442703791Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -561,7 +561,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.3.3
-    created: "2026-05-07T14:10:26.41534482Z"
+    created: "2026-05-07T14:18:29.441761778Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -645,7 +645,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.3.2
-    created: "2026-05-07T14:10:26.414475539Z"
+    created: "2026-05-07T14:18:29.440855293Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -729,7 +729,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.3.1
-    created: "2026-05-07T14:10:26.413556866Z"
+    created: "2026-05-07T14:18:29.439973624Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -813,7 +813,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.3.0
-    created: "2026-05-07T14:10:26.412648412Z"
+    created: "2026-05-07T14:18:29.43907352Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -897,7 +897,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.2.9
-    created: "2026-05-07T14:10:26.410914952Z"
+    created: "2026-05-07T14:18:29.437518701Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -981,7 +981,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.2.8
-    created: "2026-05-07T14:10:26.410024281Z"
+    created: "2026-05-07T14:18:29.436504624Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -1065,7 +1065,7 @@ entries:
           url: https://raw.githubusercontent.com/orkspace/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.2.7
-    created: "2026-05-07T14:10:26.409115527Z"
+    created: "2026-05-07T14:18:29.435605052Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -1233,7 +1233,7 @@ entries:
           url: https://raw.githubusercontent.com/iAlexeze/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.2.5
-    created: "2026-05-07T14:10:26.408246266Z"
+    created: "2026-05-07T14:18:29.43472202Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -1317,7 +1317,7 @@ entries:
           url: https://raw.githubusercontent.com/iAlexeze/orkestra/main/docs/assets/metrics.png
     apiVersion: v2
     appVersion: 0.2.4
-    created: "2026-05-07T14:10:26.40737987Z"
+    created: "2026-05-07T14:18:29.433789596Z"
     description: Declarative Runtime for Kubernetes Operators. Deploy Orkestra and
       manage your CRDs declaratively with Katalog YAML files. Includes the Control
       Center for real-time observability of all managed CRDs.
@@ -2101,4 +2101,4 @@ entries:
     urls:
     - https://github.com/orkspace/orkestra/releases/download/orkestra-0.1.4/orkestra-0.1.4.tgz
     version: 0.1.4
-generated: "2026-05-07T14:10:26.40626954Z"
+generated: "2026-05-07T14:18:29.432703995Z"
