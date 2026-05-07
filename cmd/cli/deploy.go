@@ -239,7 +239,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				effectiveKatalog := mergedPath
 				fmt.Printf("  ✓ Komposer merged (%d projects)\n", len(komposer.DeployedProjects()))
 
-				genArgs := []string{"generate", "bundle", "-k", effectiveKatalog, "-w", ns, "-o", bundleDir}
+				genArgs := []string{"generate", "bundle", "-f", effectiveKatalog, "-w", ns, "-o", bundleDir}
 				genCmd := exec.Command("ork", genArgs...)
 				genCmd.Stdout = os.Stdout
 				genCmd.Stderr = os.Stderr
@@ -570,7 +570,7 @@ func deployMultiApp(dc deployContext) error {
 		fmt.Printf("  ✓ Komposer merged (%d projects)\n", len(dc.komposer.DeployedProjects()))
 
 		for _, app := range apps {
-			genArgs := []string{"generate", "bundle", "-k", mergedPath, "-w", app.ns, "-o", app.bundleDir}
+			genArgs := []string{"generate", "bundle", "-f", mergedPath, "-w", app.ns, "-o", app.bundleDir}
 			genCmd := exec.Command("ork", genArgs...)
 			genCmd.Stdout = os.Stdout
 			genCmd.Stderr = os.Stderr
@@ -1002,7 +1002,7 @@ func runKompose() (string, error) {
 		return "", err
 	}
 	mergedPath := filepath.Join(filepath.Dir(komposerPath), doctor.RuntimeKatalogPath)
-	if err := exec.Command("ork", "kompose", "-k", komposerPath, "-o", mergedPath).Run(); err != nil {
+	if err := exec.Command("ork", "kompose", "-f", komposerPath, "-o", mergedPath).Run(); err != nil {
 		return "", fmt.Errorf("ork kompose: %w", err)
 	}
 	return mergedPath, nil

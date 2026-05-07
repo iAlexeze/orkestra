@@ -366,12 +366,13 @@ func buildKatalog(name string, info *orktypes.ProjectInfo, opts GenerateOptions)
 	b.WriteString("                - field: data.image\n")
 	b.WriteString("                  exists: true\n")
 	for _, dep := range opts.StatefulDeps {
-		b.WriteString("                - ref: " + dep.Name + "\n")
-		b.WriteString("                  condition: Ready\n")
+		b.WriteString(fmt.Sprintf("                - field: \"{{ allReplicasReady .children.%s }}\"\n", dep.Name))
+		b.WriteString("                  equals: \"true\"\n")
 	}
 	for _, dep := range opts.StatelessDeps {
-		b.WriteString("                - ref: " + dep + "-orkestra\n")
-		b.WriteString("                  condition: Ready\n")
+		childName := dep + "-orkestra"
+		b.WriteString(fmt.Sprintf("                - field: \"{{ allReplicasReady .children.%s }}\"\n", childName))
+		b.WriteString("                  equals: \"true\"\n")
 	}
 	b.WriteString("\n")
 

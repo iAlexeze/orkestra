@@ -1,4 +1,4 @@
-apiVersion: orkestra.workspace.io/v1
+apiVersion: orkestra.orkspace.io/v1
 kind: Motif
 metadata:
   name: redis

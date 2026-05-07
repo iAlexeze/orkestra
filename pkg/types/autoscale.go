@@ -42,55 +42,55 @@ type AutoscaleSpec struct {
 	// Shorter intervals respond faster to load changes at the cost of
 	// more frequent evaluation overhead (negligible in practice).
 	// Default: 15s
-	Interval Duration `yaml:"interval,omitempty"`
+	Interval Duration `yaml:"interval,omitempty" json:"interval,omitempty"`
 
 	// Cooldown is the minimum time conditions must be continuously false
 	// before the baseline is restored. Prevents oscillation when metrics
 	// fluctuate around a threshold.
 	// Default: 2m
-	Cooldown Duration `yaml:"cooldown,omitempty"`
+	Cooldown Duration `yaml:"cooldown,omitempty" json:"cooldown,omitempty"`
 
 	// Conditions declares the trigger conditions. Both blocks must pass
 	// when both are declared (AND between blocks, OR within anyOf).
-	Conditions AutoscaleConditions `yaml:"conditions"`
+	Conditions AutoscaleConditions `yaml:"conditions" json:"conditions"`
 
 	// Do declares the override values applied when conditions are met.
 	// Fields omitted in Do are not changed — only declared fields are overridden.
-	Do AutoscaleAction `yaml:"do"`
+	Do AutoscaleAction `yaml:"do" json:"do"`
 
 	// A profile is:
 	// 	a named preset that expands into a complete autoscale configuration
 	// using computed heuristics tuned for a specific behavior pattern
-	Profile string `yaml:"profile,omitempty"`
+	Profile string `yaml:"profile,omitempty" json:"profile,omitempty"`
 }
 
 // AutoscaleConditions holds the condition blocks for autoscale evaluation.
 type AutoscaleConditions struct {
 	// AnyOf — OR semantics. At least one condition in this list must be true.
 	// Supports all Condition kinds: time, dayOfWeek, cron, and metric fields.
-	AnyOf []Condition `yaml:"anyOf,omitempty"`
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 
 	// When — AND semantics. All conditions in this list must be true.
 	// Supports: metric conditions (metrics.*, cross.<crd>.metrics.*).
-	When []Condition `yaml:"when,omitempty"`
+	When []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 }
 
 // TimeWindow declares a clock-based active window.
 type TimeWindow struct {
 	// After — active after this time (format: "HH:MM" in 24h).
-	After string `yaml:"after,omitempty"`
+	After string `yaml:"after,omitempty" json:"after,omitempty"`
 
 	// Before — active before this time (format: "HH:MM" in 24h).
-	Before string `yaml:"before,omitempty"`
+	Before string `yaml:"before,omitempty" json:"before,omitempty"`
 }
 
 // DayOfWeekCondition declares which days the condition is active.
 type DayOfWeekCondition struct {
 	// In — active on these days. Full English names: Monday, Tuesday, etc.
-	In []string `yaml:"in,omitempty"`
+	In []string `yaml:"in,omitempty" json:"in,omitempty"`
 
 	// NotIn — active on all days except these.
-	NotIn []string `yaml:"notIn,omitempty"`
+	NotIn []string `yaml:"notIn,omitempty" json:"notIn,omitempty"`
 }
 
 // AutoscaleAction declares the override values to apply when conditions are met.
@@ -98,14 +98,14 @@ type DayOfWeekCondition struct {
 // Unset fields retain their current value (baseline or previous override).
 type AutoscaleAction struct {
 	// Workers — number of concurrent reconcile goroutines.
-	Workers *int `yaml:"workers,omitempty"`
+	Workers *int `yaml:"workers,omitempty" json:"workers,omitempty"`
 
 	// QueueDepth — maximum queue depth before backpressure.
-	QueueDepth *int `yaml:"queueDepth,omitempty"`
+	QueueDepth *int `yaml:"queueDepth,omitempty" json:"queueDepth,omitempty"`
 
 	// Resync — resync interval override. How frequently all CRs are
 	// re-enqueued regardless of changes.
-	Resync *Duration `yaml:"resync,omitempty"`
+	Resync *Duration `yaml:"resync,omitempty" json:"resync,omitempty"`
 }
 
 // AutoscaleBaseline captures the CRD's declared configuration before any

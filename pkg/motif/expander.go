@@ -25,38 +25,90 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// ExpandedMotif holds the result of expanding a motif.
+type ExpandedMotif struct {
+	Resources *orktypes.HookTemplates
+	Status    *orktypes.StatusConfig
+	Admission *orktypes.Admission
+}
+
 // Expand instantiates a Motif with the given input bindings and returns
-// the resulting HookTemplates ready for use in an operatorBox.
+// the expanded resources, status, and admission configuration.
 //
 // bindings maps input name → resolved value. Required inputs missing from
 // bindings are a validation error. Unknown inputs in bindings are also an error.
 // Optional inputs not in bindings use their Motif-declared defaults.
 //
-// Expand replaces all {{ inputs.Name }} expressions in the Motif's resource
-// YAML with the resolved binding values before parsing into HookTemplates.
-func Expand(m *orktypes.Motif, bindings map[string]string) (*orktypes.HookTemplates, error) {
+// Expand replaces all `{{ .inputs.Name }}` and `{{ inputs.Name }}` expressions
+// in the YAML of resources, status, and admission with the resolved binding values.
+// Other template expressions (e.g., `{{ .children.* }}`) are left untouched
+// and will be evaluated at runtime by the reconciler.
+func Expand(m *orktypes.Motif, bindings map[string]string) (*ExpandedMotif, error) {
 	if err := validateBindings(m, bindings); err != nil {
 		return nil, err
 	}
 
 	resolved := resolveDefaults(m, bindings)
 
-	resourceYAML, err := yaml.Marshal(m.Resources)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling motif resources: %w", err)
+	// ---- Expand resources ----
+	var resources *orktypes.HookTemplates
+	if m.Resources != nil {
+		resourceYAML, err := yaml.Marshal(m.Resources)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling motif resources: %w", err)
+		}
+		rendered, err := renderInputs(string(resourceYAML), resolved)
+		if err != nil {
+			return nil, fmt.Errorf("rendering motif %q resources: %w", m.Metadata.Name, err)
+		}
+		var hookTemplates orktypes.HookTemplates
+		if err := yaml.Unmarshal([]byte(rendered), &hookTemplates); err != nil {
+			return nil, fmt.Errorf("parsing expanded motif %q resources: %w", m.Metadata.Name, err)
+		}
+		resources = &hookTemplates
 	}
 
-	rendered, err := renderInputs(string(resourceYAML), resolved)
-	if err != nil {
-		return nil, fmt.Errorf("rendering motif %q inputs: %w", m.Metadata.Name, err)
+	// ---- Expand status ----
+	var status *orktypes.StatusConfig
+	if m.Status != nil {
+		statusYAML, err := yaml.Marshal(m.Status)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling motif status: %w", err)
+		}
+		rendered, err := renderInputs(string(statusYAML), resolved)
+		if err != nil {
+			return nil, fmt.Errorf("rendering motif %q status: %w", m.Metadata.Name, err)
+		}
+		var statusConfig orktypes.StatusConfig
+		if err := yaml.Unmarshal([]byte(rendered), &statusConfig); err != nil {
+			return nil, fmt.Errorf("parsing expanded motif %q status: %w", m.Metadata.Name, err)
+		}
+		status = &statusConfig
 	}
 
-	var templates orktypes.HookTemplates
-	if err := yaml.Unmarshal([]byte(rendered), &templates); err != nil {
-		return nil, fmt.Errorf("parsing expanded motif %q: %w", m.Metadata.Name, err)
+	// ---- Expand admission (validation + mutation) ----
+	var admission *orktypes.Admission
+	if m.Admission != nil {
+		admissionYAML, err := yaml.Marshal(m.Admission)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling motif admission: %w", err)
+		}
+		rendered, err := renderInputs(string(admissionYAML), resolved)
+		if err != nil {
+			return nil, fmt.Errorf("rendering motif %q admission: %w", m.Metadata.Name, err)
+		}
+		var adm orktypes.Admission
+		if err := yaml.Unmarshal([]byte(rendered), &adm); err != nil {
+			return nil, fmt.Errorf("parsing expanded motif %q admission: %w", m.Metadata.Name, err)
+		}
+		admission = &adm
 	}
 
-	return &templates, nil
+	return &ExpandedMotif{
+		Resources: resources,
+		Status:    status,
+		Admission: admission,
+	}, nil
 }
 
 // validateBindings checks that all required inputs are provided and no
@@ -109,9 +161,26 @@ func resolveDefaults(m *orktypes.Motif, bindings map[string]string) map[string]s
 	return resolved
 }
 
+// renderInputs replaces `{{ .inputs.KEY }}` and `{{ inputs.KEY }}` with
+// the corresponding resolved value from the map. It does NOT evaluate any
+// other template expressions, leaving them for runtime evaluation.
+func renderInputs(resourceYAML string, resolved map[string]string) (string, error) {
+	result := resourceYAML
+	for key, val := range resolved {
+		patterns := []string{
+			fmt.Sprintf("{{ .inputs.%s }}", key),
+			fmt.Sprintf("{{ inputs.%s }}", key),
+		}
+		for _, pat := range patterns {
+			result = strings.ReplaceAll(result, pat, val)
+		}
+	}
+	return result, nil
+}
+
 // renderInputs replaces {{ inputs.Name }} expressions in the YAML string
 // with resolved values using Go's text/template.
-func renderInputs(resourceYAML string, resolved map[string]string) (string, error) {
+func oldRenderInputs(resourceYAML string, resolved map[string]string) (string, error) {
 	data := map[string]interface{}{
 		"inputs": resolved,
 	}

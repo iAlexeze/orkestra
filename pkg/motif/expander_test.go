@@ -25,8 +25,10 @@ func TestExpand_RequiredInputProvided(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(expanded.Deployments) != 1 {
-		t.Fatalf("deployments len = %d, want 1", len(expanded.Deployments))
+	if expanded.Resources != nil {
+		if len(expanded.Resources.Deployments) != 1 {
+			t.Fatalf("deployments len = %d, want 1", len(expanded.Resources.Deployments))
+		}
 	}
 }
 
@@ -40,8 +42,10 @@ func TestExpand_DefaultFilled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(expanded.Deployments) != 1 {
-		t.Fatalf("deployments len = %d, want 1", len(expanded.Deployments))
+	if expanded.Resources != nil {
+		if len(expanded.Resources.Deployments) != 1 {
+			t.Fatalf("deployments len = %d, want 1", len(expanded.Resources.Deployments))
+		}
 	}
 }
 

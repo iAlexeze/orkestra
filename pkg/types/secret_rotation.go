@@ -104,19 +104,19 @@ const (
 type TLSSpec struct {
 	// CommonName is the certificate's CN field.
 	//   commonName: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc"
-	CommonName string `yaml:"commonName"`
+	CommonName string `yaml:"commonName" json:"commonName"`
 
 	// DNSNames are the Subject Alternative Names.
 	// Template expressions supported per entry.
-	DNSNames []string `yaml:"dnsNames,omitempty"`
+	DNSNames []string `yaml:"dnsNames,omitempty" json:"dnsNames,omitempty"`
 
 	// ValidFor is the certificate validity period.
 	// Default: same as rotateAfter, or 1y if rotateAfter is not set.
 	// Must be >= rotateAfter to avoid immediate expiry on rotation.
-	ValidFor string `yaml:"validFor,omitempty"`
+	ValidFor string `yaml:"validFor,omitempty" json:"validFor,omitempty"`
 
 	// Organization is the cert's O field. Default: "orkestra"
-	Organization string `yaml:"organization,omitempty"`
+	Organization string `yaml:"organization,omitempty" json:"organization,omitempty"`
 }
 
 // ParseRotationDuration parses a human‑friendly rotation duration string.

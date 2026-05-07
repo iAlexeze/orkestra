@@ -11,50 +11,59 @@ package types
 //	kind: Motif
 //	metadata:
 //	  name: postgres
-//	  version: v16
 //	inputs:
 //	  - name: image
-//	    required: true
-//	    description: PostgreSQL image (e.g. postgres:16)
 //	  - name: volumeSize
-//	    default: "10Gi"
-//	resources:
-//	  statefulsets:
-//	    - name: "{{ .metadata.name }}-postgres"
-//	      image: "{{ inputs.image }}"
+//	resources: ...
+//	status: ...
+//	admission:
+//	  validation:
+//	    rules:
+//	      - field: spec.image
+//	        prefix: "myregistry.com/"
+//	        action: deny
+//	  mutation:
+//	    rules:
+//	      - field: spec.replicas
+//	        default: "2"
 type Motif struct {
-	APIVersion string         `yaml:"apiVersion"`
-	Kind       string         `yaml:"kind"`
-	Metadata   MotifMeta      `yaml:"metadata"`
-	Inputs     []MotifInput   `yaml:"inputs,omitempty"`
-	Resources  *HookTemplates `yaml:"resources,omitempty"`
-	Status     *StatusConfig  `yaml:"status,omitempty"`
+	APIVersion string         `yaml:"apiVersion" json:"apiVersion"`
+	Kind       string         `yaml:"kind" json:"kind"`
+	Metadata   MotifMeta      `yaml:"metadata" json:"metadata"`
+	Inputs     []MotifInput   `yaml:"inputs,omitempty" json:"inputs,omitempty"`
+	Resources  *HookTemplates `yaml:"resources,omitempty" json:"resources,omitempty"`
+	Status     *StatusConfig  `yaml:"status,omitempty" json:"status,omitempty"`
+	Admission  *Admission     `yaml:"admission,omitempty" json:"admission,omitempty"`
 }
 
 // MotifMeta holds Motif identity fields.
 type MotifMeta struct {
-	Name        string `yaml:"name"`
-	Version     string `yaml:"version,omitempty"`
-	Description string `yaml:"description,omitempty"`
-	Author      string `yaml:"author,omitempty"`
-	License     string `yaml:"license,omitempty"`
+	Name        string `yaml:"name" json:"name"`
+	Version     string `yaml:"version,omitempty" json:"version,omitempty"`
+	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+	Author      string `yaml:"author,omitempty" json:"author,omitempty"`
+	License     string `yaml:"license,omitempty" json:"license,omitempty"`
 }
 
 // MotifInput declares one input parameter for a Motif.
 type MotifInput struct {
 	// Name is the input identifier referenced in templates as inputs.Name.
-	Name string `yaml:"name"`
+	Name string `yaml:"name" json:"name"`
 
 	// Description explains what this input controls.
-	Description string `yaml:"description,omitempty"`
+	Description string `yaml:"description,omitempty" json:"description,omitempty"`
 
 	// Required — when true, the importing Katalog must provide this input
 	// in its with: block. Validation fails if required inputs are missing.
-	Required bool `yaml:"required,omitempty"`
+	Required bool `yaml:"required,omitempty" json:"required,omitempty"`
+
+	// Type hints at the expected type of the input value. Not currently enforced,
+	// but reserved for future type checking or schema generation.
+	Type string `yaml:"type,omitempty" json:"type,omitempty"`
 
 	// Default is the value used when the input is not provided in with:.
 	// Only valid when Required is false.
-	Default string `yaml:"default,omitempty"`
+	Default string `yaml:"default,omitempty" json:"default,omitempty"`
 }
 
 // MotifImport declares one Motif import inside an operatorBox.
@@ -91,24 +100,24 @@ type MotifImport struct {
 	//   OCI:   ghcr.io/orkspace/orkestra-registry/postgres@v16
 	//   Git:   https://github.com/myorg/postgres-motif@main
 	// @ shorthand encodes the version inline: url@version
-	Motif string `yaml:"motif"`
+	Motif string `yaml:"motif" json:"motif,omitempty"`
 
 	// Version — explicit version (tag, branch, or SHA).
 	// Ignored when @ shorthand is used in Motif.
 	// Defaults to "latest" for OCI, "main" for Git.
-	Version string `yaml:"version,omitempty"`
+	Version string `yaml:"version,omitempty" json:"version,omitempty"`
 
 	// OCI — when true, pull the Motif artifact via OCI/ORAS protocol.
 	// When false (default), pull via Git (GitHub raw URL, GitLab, or git clone).
-	OCI bool `yaml:"oci,omitempty"`
+	OCI bool `yaml:"oci,omitempty" json:"oci,omitempty"`
 
 	// Auth — optional credentials for the registry.
 	// Same auth model as RegistrySource.Auth — resolved from environment variables.
-	Auth *FileSourceAuth `yaml:"auth,omitempty"`
+	Auth *FileSourceAuth `yaml:"auth,omitempty" json:"auth,omitempty"`
 
 	// With binds the Motif's declared inputs to values.
 	// Values are template expressions evaluated in the CRD's reconcile context.
 	// Required inputs not provided here are a validation error.
 	// Optional inputs not provided use their Motif-declared defaults.
-	With map[string]string `yaml:"with,omitempty"`
+	With map[string]string `yaml:"with,omitempty" json:"with,omitempty"`
 }

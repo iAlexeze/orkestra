@@ -54,7 +54,7 @@ type RegistrySource struct {
 	//   https://github.com/myorg/registry@main
 	//
 	// When @ is present, Version field is ignored.
-	URL string `yaml:"url" validate:"required"`
+	URL string `yaml:"url" validate:"required" json:"url"`
 
 	// Version — the version, tag, branch, or SHA to pull.
 	//
@@ -63,7 +63,7 @@ type RegistrySource struct {
 	//
 	// Ignored when URL contains @.
 	// Defaults to "main" for Git, "latest" for OCI when not set.
-	Version string `yaml:"version,omitempty"`
+	Version string `yaml:"version,omitempty" json:"version,omitempty"`
 
 	// OCI — when true, pull the pattern as an OCI artifact.
 	// When false (default), pull via Git clone or raw file fetch.
@@ -71,7 +71,7 @@ type RegistrySource struct {
 	// OCI artifacts are pulled using the ORAS protocol.
 	// GitHub and GitLab URLs with oci: false use raw file HTTP — no clone needed.
 	// Other Git URLs with oci: false use git clone.
-	OCI bool `yaml:"oci,omitempty"`
+	OCI bool `yaml:"oci,omitempty" json:"oci,omitempty"`
 
 	// UseKomposer — when true, load komposer.yaml from the pulled pattern.
 	// When false (default), load katalog.yaml.
@@ -92,17 +92,17 @@ type RegistrySource struct {
 	// Komposer's own sources are also resolved. A Komposer that sources
 	// other Katalogs will pull those too. Understand the upstream
 	// dependency tree before enabling this.
-	UseKomposer bool `yaml:"useKomposer,omitempty"`
+	UseKomposer bool `yaml:"useKomposer,omitempty" json:"useKomposer,omitempty"`
 
 	// Auth — optional authentication for the registry.
 	// When empty, requests are unauthenticated.
 	// Auth credentials are resolved from environment variables — never literals.
-	Auth *FileSourceAuth `yaml:"auth,omitempty"`
+	Auth *FileSourceAuth `yaml:"auth,omitempty" json:"auth,omitempty"`
 
 	// Katalog — map of katalog names to their version references.
 	// Key: katalog name (directory name under registry/katalogs/).
 	// Value: version reference (branch, sha, or version tag).
-	Katalog map[string]RegistryRef `yaml:"katalog,omitempty"`
+	Katalog map[string]RegistryRef `yaml:"katalog,omitempty" json:"katalog,omitempty"`
 
 	// Future source types (not yet implemented):
 	// Hooks map[string]RegistryRef `yaml:"hooks,omitempty"`
@@ -126,15 +126,15 @@ type RegistrySource struct {
 type RegistryRef struct {
 	// Branch — track a branch (e.g. "main", "develop").
 	// The latest commit on the branch is fetched.
-	Branch string `yaml:"branch,omitempty"`
+	Branch string `yaml:"branch,omitempty" json:"branch,omitempty"`
 
 	// Version — pin to a release tag (e.g. "v1.2.0", "v2").
 	// Git tags are fetched — version is used as the tag name.
-	Version string `yaml:"version,omitempty"`
+	Version string `yaml:"version,omitempty" json:"version,omitempty"`
 
 	// SHA — pin to an exact commit hash.
 	// The full or partial SHA works (Git resolves partial SHAs).
-	SHA string `yaml:"sha,omitempty"`
+	SHA string `yaml:"sha,omitempty" json:"sha,omitempty"`
 }
 
 // Ref returns the effective git ref for this RegistryRef.
