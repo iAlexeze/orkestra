@@ -163,6 +163,17 @@ jobs:
           \`\`\`
           EOF
 
+
+            # Add this to release step when windows build isuse is resolved
+            # dist/orkcc_windows_amd64.tar.gz
+            # dist/orkcc_windows_amd64.tar.gz.asc
+            # dist/orkcc_windows_amd64.zip
+            # dist/orkcc_windows_amd64.zip.asc
+            # dist/ork_windows_amd64.tar.gz
+            # dist/ork_windows_amd64.tar.gz.asc
+            # dist/ork_windows_amd64.zip
+            # dist/ork_windows_amd64.zip.asc
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -179,10 +190,6 @@ jobs:
             dist/ork_darwin_amd64.tar.gz.asc
             dist/ork_darwin_arm64.tar.gz
             dist/ork_darwin_arm64.tar.gz.asc
-            # dist/ork_windows_amd64.tar.gz
-            # dist/ork_windows_amd64.tar.gz.asc
-            # dist/ork_windows_amd64.zip
-            # dist/ork_windows_amd64.zip.asc
             dist/orkcc_linux_amd64.tar.gz
             dist/orkcc_linux_amd64.tar.gz.asc
             dist/orkcc_linux_arm64.tar.gz
@@ -191,10 +198,6 @@ jobs:
             dist/orkcc_darwin_amd64.tar.gz.asc
             dist/orkcc_darwin_arm64.tar.gz
             dist/orkcc_darwin_arm64.tar.gz.asc
-            # dist/orkcc_windows_amd64.tar.gz
-            # dist/orkcc_windows_amd64.tar.gz.asc
-            # dist/orkcc_windows_amd64.zip
-            # dist/orkcc_windows_amd64.zip.asc
             dist/checksums.txt
             dist/${{ inputs.ork }}-public-key.asc
             dist/examples_beginner_${{ github.ref_name }}.tar.gz
