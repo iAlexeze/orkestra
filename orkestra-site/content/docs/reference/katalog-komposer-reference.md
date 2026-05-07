@@ -55,8 +55,8 @@ come from, then merges them into one runtime configuration. Inline
 You can run either directly:
 
 ```bash
-ork run --katalog katalog.yaml     # single Katalog — one or more CRDs
-ork run --katalog komposer.yaml    # Komposer — many sources merged
+ork run --file katalog.yaml     # single Katalog — one or more CRDs
+ork run --file komposer.yaml    # Komposer — many sources merged
 ```
 
 ---

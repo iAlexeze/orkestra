@@ -189,7 +189,7 @@ The consumer should be able to run:
 
 ```bash
 kubectl apply -f crd.yaml           # apply the crd
-ork run --katalog komposer.yaml     # run orkestra against the komposer (this is how consumers will use it)
+ork run --file komposer.yaml     # run orkestra against the komposer (this is how consumers will use it)
 
 kubectl apply -f cr.yaml            # apply the cr example
 
@@ -227,14 +227,14 @@ Run `ork validate` against your katalog before publishing. It checks:
 
 ```bash
 cd my-operator/v1.0.0
-ork validate --katalog katalog.yaml
+ork validate --file katalog.yaml
 ```
 
 Also test with the example CR:
 
 ```bash
 kubectl apply -f crd.yaml           # apply the crd
-ork run --katalog komposer.yaml     # run orkestra against the komposer (this is how consumers will use it)
+ork run --file komposer.yaml     # run orkestra against the komposer (this is how consumers will use it)
 
 kubectl apply -f cr.yaml            # apply the cr example
 

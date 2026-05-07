@@ -181,7 +181,7 @@ Everything else is converted automatically.
 
 ```bash
 kubectl apply -f crd.yaml
-ork run --katalog katalog.yaml
+ork run --file katalog.yaml
 ```
 
 That’s it.

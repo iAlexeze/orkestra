@@ -170,7 +170,7 @@ func deleteWebsite(ctx context.Context, obj *apiv1.Website) error {
 ### Step 4: Generate the runtime registry
 
 ```bash
-ork generate registry --katalog katalog.yaml
+ork generate registry --file katalog.yaml
 ```
 
 This produces `zz_generated_runtime_registry.go` which registers your hook function in `HookRegistry` keyed by GVK. The runtime reads this registry at startup.
@@ -300,7 +300,7 @@ Or use the informer cache from another CRD's informer if it is managed by the sa
 Hooks should be tested with a real cluster (kind or minikube is sufficient). The pattern:
 
 1. Apply the CRD: `kubectl apply -f crd.yaml`
-2. Start Orkestra with your Katalog: `ork run --katalog katalog.yaml`
+2. Start Orkestra with your Katalog: `ork run --file katalog.yaml`
 3. Apply a CR: `kubectl apply -f cr.yaml`
 4. Verify the reconcile: `kubectl get deployments`, `ork events website my-cr`
 5. Verify deletion: `kubectl delete -f cr.yaml`, confirm Deployment is gone

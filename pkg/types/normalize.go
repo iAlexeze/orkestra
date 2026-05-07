@@ -50,5 +50,5 @@ type NormalizeConfig struct {
 	//   "true"  → bool
 	//   "*/5 * * * *" → string
 	// Empty result ("") sets the field to empty string — not nil.
-	Spec map[string]string `yaml:"spec,omitempty"`
+	Spec map[string]string `yaml:"spec,omitempty" json:"spec,omitempty"`
 }

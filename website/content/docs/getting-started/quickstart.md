@@ -76,7 +76,7 @@ EOF
 ## 4. Start the operator
 
 ```bash
-ork run --katalog ./katalog.yaml
+ork run --file ./katalog.yaml
 ```
 
 Orkestra will:

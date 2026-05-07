@@ -3,7 +3,7 @@
 Generate the runtime registry file used by typed operators.
 
 ```bash
-ork generate registry --katalog <file> [flags]
+ork generate registry --file <file> [flags]
 ```
 
 This command produces:
@@ -20,7 +20,7 @@ It is required whenever you use **typed CRDs**, **Go hooks**, or **custom constr
 
 | Flag | Description |
 |------|-------------|
-| `-k, --katalog <file>` | One or more Katalog files (comma‑separated or repeated) |
+| `-k, --file <file>` | One or more Katalog files (comma‑separated or repeated) |
 | `--dry-run` | Print generated output without writing files |
 | `-o, --output <file>` | (Ignored — registry always writes to the runtime package) |
 | `-n, --namespace <name>` | Namespace (not used by registry generation) |
@@ -32,25 +32,25 @@ It is required whenever you use **typed CRDs**, **Go hooks**, or **custom constr
 Generate the registry from a single Katalog:
 
 ```bash
-ork generate registry --katalog katalog.yaml
+ork generate registry --file katalog.yaml
 ```
 
 Multiple Katalogs:
 
 ```bash
-ork generate registry --katalog a.yaml --katalog b.yaml
+ork generate registry --file a.yaml --file b.yaml
 ```
 
 Comma‑separated:
 
 ```bash
-ork generate registry --katalog a.yaml,b.yaml
+ork generate registry --file a.yaml,b.yaml
 ```
 
 Dry‑run:
 
 ```bash
-ork generate registry --katalog katalog.yaml --dry-run
+ork generate registry --file katalog.yaml --dry-run
 ```
 
 ---

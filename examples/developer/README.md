@@ -6,8 +6,8 @@ without writing operator code, managing Helm values, or configuring monitoring.
 Three commands cover everything:
 
 ```
-ork doktor          ← understand what Orkestra sees in your project
-ork doktor init     ← generate .orkestra/ config
+ork doctor          ← understand what Orkestra sees in your project
+ork doctor init     ← generate .orkestra/ config
 ork deploy          ← build, push, deploy, watch
 ```
 

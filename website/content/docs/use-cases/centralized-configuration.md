@@ -16,7 +16,7 @@ https://internal.company.com/platform/crds/standard-katalog.yaml
 **Every team consumes it:**
 
 ```bash
-ork run --katalog https://internal.company.com/platform/crds/standard-katalog.yaml
+ork run --file https://internal.company.com/platform/crds/standard-katalog.yaml
 ```
 
 :::note

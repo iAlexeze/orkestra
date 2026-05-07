@@ -13,7 +13,7 @@ If you are new to Orkestra, start with [Getting Started](../getting-started/inde
 
 ## Architecture overview
 
-Orkestra is a single Go binary. When `ork run --katalog katalog.yaml` is invoked, the following sequence happens:
+Orkestra is a single Go binary. When `ork run --file katalog.yaml` is invoked, the following sequence happens:
 
 ```
 ork run

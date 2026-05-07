@@ -3,7 +3,7 @@
 Resolve a `Komposer` file into a fully merged `Katalog`.
 
 ```
-ork kompose --katalog <komposer.yaml> [flags]
+ork kompose --file <komposer.yaml> [flags]
 ```
 
 `ork kompose` reads a `komposer.yaml`, validates that it is `kind: Komposer`, resolves all referenced sources, merges them into a single Katalog, validates the result, and prints or writes the merged output.
@@ -14,7 +14,7 @@ ork kompose --katalog <komposer.yaml> [flags]
 
 | Flag | Description |
 |------|-------------|
-| `-k, --katalog <file>` | Path to `komposer.yaml` (required, exactly one) |
+| `-k, --file <file>` | Path to `komposer.yaml` (required, exactly one) |
 | `-o, --output <file>` | Write merged katalog to file instead of stdout |
 
 ---
@@ -24,13 +24,13 @@ ork kompose --katalog <komposer.yaml> [flags]
 Merge a Komposer and print the merged Katalog:
 
 ```
-ork kompose --katalog komposer.yaml
+ork kompose --file komposer.yaml
 ```
 
 Write the merged Katalog to a file:
 
 ```
-ork kompose --katalog komposer.yaml --output merged.yaml
+ork kompose --file komposer.yaml --output merged.yaml
 ```
 
 ---
@@ -51,7 +51,7 @@ ork kompose --katalog komposer.yaml --output merged.yaml
 
 ## Notes
 
-- Exactly one `--katalog` file must be provided.
+- Exactly one `--file` file must be provided.
 - The merged Katalog is fully validated and ready for:
   - `ork validate`
   - `ork template`

@@ -207,6 +207,7 @@ func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *core
 			},
 		},
 		Spec: corev1.PodSpec{
+			ImagePullSecrets:   common.ToPullSecrets(spec.ImagePullSecrets),
 			ServiceAccountName: spec.ServiceAccountName,
 			NodeSelector:       spec.NodeSelector,
 			Containers: []corev1.Container{

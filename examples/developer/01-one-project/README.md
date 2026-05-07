@@ -5,8 +5,8 @@ No CRDs to write. No Helm charts. No `kubectl apply`.
 
 **What you learn:**
 
-- `ork doktor` — what Orkestra detects in your project
-- `ork doktor init` — generating the `.orkestra/` configuration
+- `ork doctor` — what Orkestra detects in your project
+- `ork doctor init` — generating the `.orkestra/` configuration
 - `ork deploy` — the full build → push → deploy → watch pipeline
 - Viewing your live deployment in the Orkestra Control Center
 
@@ -59,7 +59,7 @@ into it. `kubectl`, `helm`, and `kind` are installed automatically.
 ## Step 2 — Examine the project
 
 ```bash
-ork doktor
+ork doctor
 ```
 
 Example output:
@@ -86,18 +86,18 @@ Orkestra will create:
 Missing dependencies:
   (none)
 
-Run 'ork doktor init' to generate .orkestra/katalog.yaml
+Run 'ork doctor init' to generate .orkestra/katalog.yaml
 ```
 
 !!! note
-    No Dockerfile? Add one before continuing. `ork doktor` must find it.
+    No Dockerfile? Add one before continuing. `ork doctor` must find it.
 
 ---
 
 ## Step 3 — Generate the configuration
 
 ```bash
-ork doktor init --name my-api
+ork doctor init --name my-api
 ```
 
 This creates three files:

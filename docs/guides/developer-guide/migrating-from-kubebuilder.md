@@ -106,7 +106,7 @@ declarations replace the construction functions.
 **Validate it without a cluster:**
 
 ```bash
-ork validate --katalog website-katalog.yaml
+ork validate --file website-katalog.yaml
 ```
 
 ---
@@ -116,7 +116,7 @@ ork validate --katalog website-katalog.yaml
 Do not stop the Kubebuilder operator. Run Orkestra simultaneously:
 
 ```bash
-ork run --katalog website-katalog.yaml
+ork run --file website-katalog.yaml
 ```
 
 Both operators now reconcile the same CRDs. This is safe because both use

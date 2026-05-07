@@ -251,14 +251,14 @@ This works for any built‑in resource: Pod, Deployment, Secret, ConfigMap, Serv
 
 ```bash
 # Validate a Katalog
-ork validate --katalog katalog.yaml
+ork validate --file katalog.yaml
 
 # Preview the merged result
-ork template --katalog katalog.yaml --graph
-ork template --katalog katalog.yaml --json
+ork template --file katalog.yaml --graph
+ork template --file katalog.yaml --json
 
 # Run the operator
-ork run --katalog katalog.yaml
+ork run --file katalog.yaml
 
 # Check status
 ork status

@@ -8,7 +8,7 @@
 Generate Markdown documentation for all CRDs declared in a Katalog.
 
 ```bash
-ork generate docs --katalog <file> [flags]
+ork generate docs --file <file> [flags]
 ```
 
 The generated docs describe each CRD’s fields, validation rules, defaults, status fields, and relationships.
@@ -19,7 +19,7 @@ The generated docs describe each CRD’s fields, validation rules, defaults, sta
 
 | Flag | Description |
 |------|-------------|
-| `-k, --katalog <file>` | One or more Katalog files (comma‑separated or repeated) |
+| `-k, --file <file>` | One or more Katalog files (comma‑separated or repeated) |
 | `-o, --output <file>` | Write output to file (default: stdout) |
 | `-n, --namespace <name>` | Namespace for generated resources (default: `orkestra-system`) |
 | `--dry-run` | Print output without writing files |
@@ -31,19 +31,19 @@ The generated docs describe each CRD’s fields, validation rules, defaults, sta
 Generate documentation:
 
 ```bash
-ork generate docs --katalog katalog.yaml
+ork generate docs --file katalog.yaml
 ```
 
 Write to a file:
 
 ```bash
-ork generate docs --katalog katalog.yaml -o docs.md
+ork generate docs --file katalog.yaml -o docs.md
 ```
 
 Multiple Katalogs:
 
 ```bash
-ork generate docs --katalog a.yaml --katalog b.yaml
+ork generate docs --file a.yaml --file b.yaml
 ```
 
 ---

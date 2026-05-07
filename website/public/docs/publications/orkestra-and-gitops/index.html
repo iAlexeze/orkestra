@@ -1224,7 +1224,7 @@ template expressions — before they reach the cluster.</p>
 </span></span><span style="display:flex;"><span>      - <span style="color:#ff79c6">name</span>: Install ork
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">run</span>: curl -sSL https://raw.githubusercontent.com/orkestra-sh/orkestra/main/install.sh | bash
 </span></span><span style="display:flex;"><span>      - <span style="color:#ff79c6">name</span>: Validate
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">run</span>: ork validate --katalog operator-definitions/overlays/production/komposer.yaml
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">run</span>: ork validate --file operator-definitions/overlays/production/komposer.yaml
 </span></span></code></pre></div><p><code>ork validate</code> requires no cluster connection. It validates structure, enriches
 built-in kinds from the internal registry, detects dependency cycles, and checks
 that registry sources have the five required files. All of this runs in CI without

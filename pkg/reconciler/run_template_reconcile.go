@@ -154,6 +154,14 @@ func (r *GenericReconciler[PTR]) runResourceGroup(
 		expandForEachServiceAccounts(resolver, t.ServiceAccounts), update, guard); err != nil {
 		return err
 	}
+	if err := runRoles(ctx, kube, resolver, obj,
+		expandForEachRoles(resolver, t.Roles), update, guard); err != nil {
+		return err
+	}
+	if err := runRoleBindings(ctx, kube, resolver, obj,
+		expandForEachRoleBindings(resolver, t.RoleBindings), update, guard); err != nil {
+		return err
+	}
 	if err := runReplicaSets(ctx, kube, resolver, obj,
 		expandForEachReplicaSets(resolver, t.ReplicaSets), update, guard); err != nil {
 		return err

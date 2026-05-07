@@ -64,7 +64,7 @@ Steps:
    kind: Komposer
    sources: {}
    
-2. Run: ork validate --katalog ./test.yaml
+2. Run: ork validate --file ./test.yaml
 
 Expected: Validation fails with clear error
 Actual: Panics with "sources: unbound variable"
@@ -164,7 +164,7 @@ make test
 go test ./...
 
 # Run orkestra locally (with example)
-./ork run --katalog examples/website/website-katalog.yaml
+./ork run --file examples/website/website-katalog.yaml
 ```
 
 ### Project Structure

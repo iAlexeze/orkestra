@@ -176,7 +176,7 @@ So instead of asking you to write RBAC…
 It generates it.
 
 ```bash
-ork generate rbac --katalog katalog.yaml
+ork generate rbac --file katalog.yaml
 ```
 
 Result:

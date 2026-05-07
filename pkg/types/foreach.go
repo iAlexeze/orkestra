@@ -51,11 +51,11 @@ type ForEachSpec struct {
 	//   field: spec.regions  → {us-east-1: {replicas: 3}, eu-west-1: {replicas: 1}}
 	//   .item = map key ("us-east-1"), .value = map value ({replicas: 3})
 	//   .value.replicas = "3"
-	Field string `yaml:"field"`
+	Field string `yaml:"field" json:"field"`
 
 	// As is the name used to access the current item in template expressions.
 	// Default: "item" — {{ .item }}
 	// When set: both {{ .item }} and {{ .<as> }} work.
 	//   as: region → {{ .region }} and {{ .item }} both resolve to the current element
-	As string `yaml:"as,omitempty"`
+	As string `yaml:"as,omitempty" json:"as,omitempty"`
 }

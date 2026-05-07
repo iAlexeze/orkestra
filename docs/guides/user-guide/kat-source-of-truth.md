@@ -76,9 +76,9 @@ After this:
 
 ```
 1. Write the Katalog                         ~80 lines YAML
-2. ork generate crd --katalog katalog.yaml
-3. ork generate cr  --katalog katalog.yaml
-4. ork generate bundle --katalog katalog.yaml
+2. ork generate crd --file katalog.yaml
+3. ork generate cr  --file katalog.yaml
+4. ork generate bundle --file katalog.yaml
 5. kubectl apply -f crd.yaml
 6. kubectl apply -f bundle.yaml
 7. kubectl apply -f cr.yaml
@@ -195,7 +195,7 @@ With Katalog-driven generation, the schema is always in sync with actual
 usage. Every field the reconciler references is in the schema. Every required
 field has validation. Every optional field has its default documented.
 
-Run `ork generate crd --katalog katalog.yaml` in CI alongside `ork validate`
+Run `ork generate crd --file katalog.yaml` in CI alongside `ork validate`
 and the schema is always accurate.
 
 ---

@@ -8,7 +8,7 @@ metadata:
     Declarative state machine — Pending → Running/build → Running/test
     → Running/notify → Succeeded | Failed.
     No Go. No constructor. No hooks. Pure YAML.
-    Run with: ork run --katalog katalog.yaml
+    Run with: ork run --file katalog.yaml
 
 spec:
   crds:

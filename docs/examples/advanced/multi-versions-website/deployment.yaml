@@ -46,7 +46,7 @@ spec:
 
         args:
           - run
-          - --katalog
+          - --file
           - /katalogs/conversion-test-katalog.yaml
           # - /katalogs/website-admission-test-katalog.yaml
 

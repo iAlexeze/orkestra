@@ -31,3 +31,13 @@ func ResolveNamespace(owner domain.Object, namespace string) string {
 	}
 	return "default"
 }
+
+// ToPullSecrets converts a slice of string to a []corev1.LocalObjectReference
+// Acceptable as Pull secrets
+func ToPullSecrets(names []string) []corev1.LocalObjectReference {
+	out := make([]corev1.LocalObjectReference, len(names))
+	for i, n := range names {
+		out[i] = corev1.LocalObjectReference{Name: n}
+	}
+	return out
+}

@@ -13,9 +13,29 @@ func KomposerKind() string {
 	return kindKomposer
 }
 
+// MotifKind returns the kind string for a Motif document.
+func MotifKind() string {
+	return kindMotif
+}
+
+// KonduktorKind returns the kind string for a Konduktor document.
+func KonduktorKind() string {
+	return kindKonductor
+}
+
 // IsKatalogKind returns true if the given kind is a Katalog.
 func IsKatalogKind(kind string) bool {
 	return kind == kindKatalog
+}
+
+// IsKonduktorKind returns true if the given kind is a Konduktor.
+func IsKonduktorKind(kind string) bool {
+	return kind == kindKonductor
+}
+
+// IsMotifKind returns true if the given kind is a Motif.
+func IsMotifKind(kind string) bool {
+	return kind == kindMotif
 }
 
 // IsKomposerKind returns true if the given kind is a Komposer.

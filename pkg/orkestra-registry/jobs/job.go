@@ -41,6 +41,11 @@ type ResolvedJobSpec struct {
 
 	// Labels — applied to Job metadata.
 	Labels map[string]string
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string
 }
 
 // Create creates a Job if it does not already exist.
@@ -185,8 +190,9 @@ func buildJob(owner domain.Object, spec ResolvedJobSpec, namespace string) *batc
 					Labels: spec.Labels,
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyOnFailure,
-					Containers:    []corev1.Container{container},
+					ImagePullSecrets: common.ToPullSecrets(spec.ImagePullSecrets),
+					RestartPolicy:    corev1.RestartPolicyOnFailure,
+					Containers:       []corev1.Container{container},
 				},
 			},
 		},

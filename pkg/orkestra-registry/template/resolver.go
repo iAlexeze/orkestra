@@ -151,6 +151,9 @@ func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.
 	if resolved.Image, err = r.Resolve(src.Image); err != nil {
 		return resolved, fmt.Errorf("pod.image: %w", err)
 	}
+	if resolved.ImagePullSecrets, err = r.ResolveStringSlice(src.ImagePullSecrets); err != nil {
+		return resolved, fmt.Errorf("pod.imagePullSecrets: %w", err)
+	}
 	if resolved.Port, err = r.Resolve(src.Port); err != nil {
 		return resolved, fmt.Errorf("pod.port: %w", err)
 	}
@@ -190,6 +193,9 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 	}
 	if resolved.Image, err = r.Resolve(src.Image); err != nil {
 		return resolved, fmt.Errorf("deployment.image: %w", err)
+	}
+	if resolved.ImagePullSecrets, err = r.ResolveStringSlice(src.ImagePullSecrets); err != nil {
+		return resolved, fmt.Errorf("deployment.imagePullSecrets: %w", err)
 	}
 	if resolved.Replicas, err = r.Resolve(src.Replicas); err != nil {
 		return resolved, fmt.Errorf("deployment.replicas: %w", err)
@@ -292,6 +298,11 @@ func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSour
 	// Image
 	if resolved.Image, err = r.Resolve(src.Image); err != nil {
 		return resolved, fmt.Errorf("replicaset.image: %w", err)
+	}
+
+	// ImagePullSecrets
+	if resolved.ImagePullSecrets, err = r.ResolveStringSlice(src.ImagePullSecrets); err != nil {
+		return resolved, fmt.Errorf("replicaset.imagePullSecrets: %w", err)
 	}
 
 	// Replicas
@@ -405,6 +416,9 @@ func (r *Resolver) ResolveServiceTemplate(src orktypes.ServiceTemplateSource) (o
 	if resolved.Type, err = r.Resolve(src.Type); err != nil {
 		return resolved, fmt.Errorf("service.type: %w", err)
 	}
+	if resolved.Protocol, err = r.Resolve(src.Protocol); err != nil {
+		return resolved, fmt.Errorf("service.protocol: %w", err)
+	}
 	if resolved.Port, err = r.Resolve(src.Port); err != nil {
 		return resolved, fmt.Errorf("service.port: %w", err)
 	}
@@ -472,6 +486,9 @@ func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.
 	}
 	if resolved.Image, err = r.Resolve(src.Image); err != nil {
 		return resolved, fmt.Errorf("job.image: %w", err)
+	}
+	if resolved.ImagePullSecrets, err = r.ResolveStringSlice(src.ImagePullSecrets); err != nil {
+		return resolved, fmt.Errorf("job.imagePullSecrets: %w", err)
 	}
 
 	ns := src.Namespace
@@ -696,6 +713,9 @@ func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (o
 	if resolved.Image, err = r.Resolve(src.Image); err != nil {
 		return resolved, fmt.Errorf("cronjob.image: %w", err)
 	}
+	if resolved.ImagePullSecrets, err = r.ResolveStringSlice(src.ImagePullSecrets); err != nil {
+		return resolved, fmt.Errorf("cronjob.imagePullSecrets: %w", err)
+	}
 	if resolved.Schedule, err = r.Resolve(src.Schedule); err != nil {
 		return resolved, fmt.Errorf("cronjob.schedule: %w", err)
 	}
@@ -756,6 +776,95 @@ func (r *Resolver) ResolveServiceAccountTemplate(src orktypes.ServiceAccountTemp
 
 	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
 		return resolved, fmt.Errorf("serviceaccount.labels: %w", err)
+	}
+
+	return resolved, nil
+}
+
+// ResolveRoleTemplate resolves all template expressions in a RoleTemplateSource.
+func (r *Resolver) ResolveRoleTemplate(src orktypes.RoleTemplateSource) (orktypes.RoleTemplateSource, error) {
+	resolved := orktypes.RoleTemplateSource{
+		Version:   src.Version,
+		Reconcile: src.Reconcile,
+	}
+
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("role.name: %w", err)
+	}
+
+	ns := src.Namespace
+	if ns == "" {
+		ns = "{{ .metadata.namespace }}"
+	}
+	if resolved.Namespace, err = r.Resolve(ns); err != nil {
+		return resolved, fmt.Errorf("role.namespace: %w", err)
+	}
+
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("role.labels: %w", err)
+	}
+
+	// Resolve resourceNames in each rule (apiGroups/resources/verbs are typically static)
+	for _, rule := range src.Rules {
+		resolvedRule := orktypes.PolicyRuleSpec{
+			APIGroups: rule.APIGroups,
+			Resources: rule.Resources,
+			Verbs:     rule.Verbs,
+		}
+		for _, rn := range rule.ResourceNames {
+			rv, resolveErr := r.Resolve(rn)
+			if resolveErr != nil {
+				return resolved, fmt.Errorf("role.rules.resourceNames: %w", resolveErr)
+			}
+			resolvedRule.ResourceNames = append(resolvedRule.ResourceNames, rv)
+		}
+		resolved.Rules = append(resolved.Rules, resolvedRule)
+	}
+
+	return resolved, nil
+}
+
+// ResolveRoleBindingTemplate resolves all template expressions in a RoleBindingTemplateSource.
+func (r *Resolver) ResolveRoleBindingTemplate(src orktypes.RoleBindingTemplateSource) (orktypes.RoleBindingTemplateSource, error) {
+	resolved := orktypes.RoleBindingTemplateSource{
+		Version:   src.Version,
+		Reconcile: src.Reconcile,
+	}
+
+	var err error
+
+	if resolved.Name, err = r.Resolve(src.Name); err != nil {
+		return resolved, fmt.Errorf("rolebinding.name: %w", err)
+	}
+
+	ns := src.Namespace
+	if ns == "" {
+		ns = "{{ .metadata.namespace }}"
+	}
+	if resolved.Namespace, err = r.Resolve(ns); err != nil {
+		return resolved, fmt.Errorf("rolebinding.namespace: %w", err)
+	}
+
+	if resolved.Labels, err = r.ResolveLabels(src.Labels); err != nil {
+		return resolved, fmt.Errorf("rolebinding.labels: %w", err)
+	}
+
+	resolved.RoleRef.Kind = src.RoleRef.Kind
+	if resolved.RoleRef.Name, err = r.Resolve(src.RoleRef.Name); err != nil {
+		return resolved, fmt.Errorf("rolebinding.roleRef.name: %w", err)
+	}
+
+	for i, s := range src.Subjects {
+		rs := orktypes.SubjectSpec{Kind: s.Kind}
+		if rs.Name, err = r.Resolve(s.Name); err != nil {
+			return resolved, fmt.Errorf("rolebinding.subjects[%d].name: %w", i, err)
+		}
+		if rs.Namespace, err = r.Resolve(s.Namespace); err != nil {
+			return resolved, fmt.Errorf("rolebinding.subjects[%d].namespace: %w", i, err)
+		}
+		resolved.Subjects = append(resolved.Subjects, rs)
 	}
 
 	return resolved, nil
@@ -923,6 +1032,9 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 	}
 	if resolved.Image, err = r.Resolve(src.Image); err != nil {
 		return resolved, fmt.Errorf("statefulset.image: %w", err)
+	}
+	if resolved.ImagePullSecrets, err = r.ResolveStringSlice(src.ImagePullSecrets); err != nil {
+		return resolved, fmt.Errorf("statefulset.imagePullSecrets: %w", err)
 	}
 	if resolved.Tag, err = r.Resolve(src.Tag); err != nil {
 		return resolved, fmt.Errorf("statefulset.tag: %w", err)

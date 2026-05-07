@@ -50,7 +50,7 @@ spec:
 
           args:
             - run
-            - --katalog
+            - --file
             - /katalogs/katalog.yaml
 
           ports:

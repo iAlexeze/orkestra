@@ -16,7 +16,7 @@ CGO_ENABLED  = 0
 # Re-run whenever you change apiTypes fields in katalog.yaml.
 .PHONY: registry
 registry:
-	ork generate registry --katalog $(KATALOG)
+	ork generate registry --file $(KATALOG)
 
 # ── build ─────────────────────────────────────────────────────────────────────
 .PHONY: build

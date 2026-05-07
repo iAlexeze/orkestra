@@ -4,10 +4,10 @@ Canary operator behavior across clusters by pointing to different Katalog URLs.
 
 ```bash
 # 90% stable
-ork run --katalog https://config.company.com/stable/katalog.yaml
+ork run --file https://config.company.com/stable/katalog.yaml
 
 # 10% candidate
-ork run --katalog https://config.company.com/candidate/katalog.yaml
+ork run --file https://config.company.com/candidate/katalog.yaml
 ```
 
 :::note

@@ -12,7 +12,7 @@ metadata:
 # Orkestra merges all sources into one unified CRD entry list.
 # Sources are resolved in order. Later sources win on name conflict —
 # EXCEPT for spec.crds below, which always wins over everything.
-sources:
+imports:
   files:
     - ./website-katalog.yaml        # base website operator
     - ./namespace-katalog.yaml      # namespace governance

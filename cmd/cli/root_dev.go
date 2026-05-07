@@ -16,7 +16,7 @@ func init() {
 	rootCmd.PersistentFlags().String("kubeconfig", "", "Path to kubeconfig file")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Show full context")
 
-	// Mark --katalog required for commands that need a Katalog file.
+	// Mark --file required for commands that need a Katalog file.
 	// These variables only exist when built without -tags runtime, so this
 	// block must live here rather than in root.go.
 	for _, cmd := range []*cobra.Command{
@@ -27,6 +27,6 @@ func init() {
 		generateDashboardsCmd,
 		generateAllCmd,
 	} {
-		cobra.MarkFlagRequired(cmd.Flags(), "katalog")
+		cobra.MarkFlagRequired(cmd.Flags(), "file")
 	}
 }

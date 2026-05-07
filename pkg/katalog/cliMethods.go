@@ -22,6 +22,16 @@ func (k *Katalog) Meta() orktypes.KatalogMeta {
 	return k.metadata
 }
 
+// ProjectInfo returns the project information for use by control center
+// This is mostly helpful in actions performed by 'ork doctor'
+func (k *Katalog) ProjectInfo() orktypes.ProjectInfo {
+	if k.projectInfo == nil {
+		return orktypes.ProjectInfo{}
+	} else {
+		return *k.projectInfo
+	}
+}
+
 // Exists returns true if a CRD with the given name exists in the katalog.
 func (k *Katalog) Exists(name string) bool {
 	_, ok := k.Spec.CRDs[name]

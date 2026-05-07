@@ -74,7 +74,7 @@ kubectl get crds websites.demo.orkestra.io
 ### Step 2 — Start Orkestra
 
 ```bash
-ork run --katalog website-katalog.yaml
+ork run --file website-katalog.yaml
 ```
 
 Expected output:
@@ -202,14 +202,14 @@ kubectl get deployments
 ## Validate the Katalog
 
 ```bash
-ork validate --katalog website-katalog.yaml
+ork validate --file website-katalog.yaml
 # Success: Katalog is valid
 ```
 
 Preview what Orkestra will generate:
 
 ```bash
-ork template --katalog website-katalog.yaml --json
+ork template --file website-katalog.yaml --json
 ```
 
 !!! tip

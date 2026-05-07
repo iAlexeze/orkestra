@@ -126,7 +126,7 @@ Validation pulls patterns, checks the five required files, merges all sources,
 and surfaces every structural error before reconciliation begins.
 
 ```bash
-ork validate --katalog komposer.yaml
+ork validate --file komposer.yaml
 ```
 
 !!! tip

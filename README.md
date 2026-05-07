@@ -115,7 +115,7 @@ cd my-operator
 kubectl apply -f examples/beginner/01-hello-website/crd.yaml
 
 # Run the operator runtime
-ork run --katalog examples/beginner/01-hello-website/katalog.yaml
+ork run --file examples/beginner/01-hello-website/katalog.yaml
 
 # Apply a CustomResource
 kubectl apply -f examples/beginner/01-hello-website/cr.yaml

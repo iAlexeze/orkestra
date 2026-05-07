@@ -1015,9 +1015,9 @@ fully derivable.</p>
 8. Build, push image, deploy
 </code></pre><p>After this:</p>
 <pre tabindex="0"><code>1. Write the Katalog                         ~80 lines YAML
-2. ork generate crd --katalog katalog.yaml
-3. ork generate cr  --katalog katalog.yaml
-4. ork generate bundle --katalog katalog.yaml
+2. ork generate crd --file katalog.yaml
+3. ork generate cr  --file katalog.yaml
+4. ork generate bundle --file katalog.yaml
 5. kubectl apply -f crd.yaml
 6. kubectl apply -f bundle.yaml
 7. kubectl apply -f cr.yaml
@@ -1104,7 +1104,7 @@ shows nothing.</p>
 <p>With Katalog-driven generation, the schema is always in sync with actual
 usage. Every field the reconciler references is in the schema. Every required
 field has validation. Every optional field has its default documented.</p>
-<p>Run <code>ork generate crd --katalog katalog.yaml</code> in CI alongside <code>ork validate</code>
+<p>Run <code>ork generate crd --file katalog.yaml</code> in CI alongside <code>ork validate</code>
 and the schema is always accurate.</p>
 <hr>
 <h2 id="limitations">Limitations</h2>

@@ -3,7 +3,7 @@
 Render the merged, validated Katalog exactly as Orkestra will see it at runtime.
 
 ```bash
-ork template --katalog <path>
+ork template --file <path>
 ```
 
 ## Flags
@@ -20,9 +20,9 @@ ork template --katalog <path>
 ## Examples
 
 ```bash
-ork template --katalog ./katalog.yaml
-ork template --katalog ./katalog.yaml --json
-ork template --katalog ./komposer.yaml --graph
+ork template --file ./katalog.yaml
+ork template --file ./katalog.yaml --json
+ork template --file ./komposer.yaml --graph
 ```
 
 ---

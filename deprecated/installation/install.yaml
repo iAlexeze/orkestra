@@ -30,7 +30,7 @@ spec:
           imagePullPolicy: Always
           args:
             - run
-            - --katalog=/etc/orkestra/katalog.yaml
+            - --file=/etc/orkestra/katalog.yaml
           env:
             - name: ORKESTRA_PORT
               value: "8080"

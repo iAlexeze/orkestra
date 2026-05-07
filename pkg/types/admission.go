@@ -64,6 +64,12 @@ func (a ValidationAction) IsWarn() bool {
 	return EffectiveAction(a) == ValidationActionWarn
 }
 
+// Admission holds validation and mutation configuration for a CRD.
+type Admission struct {
+	Validation *ValidationConfig
+	Mutation   *MutationConfig
+}
+
 // ── ValidationRule ────────────────────────────────────────────────────────
 
 // ValidationRule declares one constraint on a CR field.

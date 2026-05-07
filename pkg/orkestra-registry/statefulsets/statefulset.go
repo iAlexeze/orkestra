@@ -188,7 +188,6 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 	}
 
 	replicas := spec.Replicas
-
 	container := corev1.Container{
 		Name:  spec.Name,
 		Image: spec.Image,
@@ -269,11 +268,21 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 					Labels: spec.Labels,
 				},
 				Spec: corev1.PodSpec{
+					ImagePullSecrets:   common.ToPullSecrets(spec.ImagePullSecrets),
 					ServiceAccountName: spec.ServiceAccountName,
 					NodeSelector:       spec.NodeSelector,
 					Containers:         []corev1.Container{container},
 				},
 			},
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
+			PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
+				WhenDeleted: appsv1.PersistentVolumeClaimRetentionPolicyType(spec.VolumeClaimRetentionPolicy.WhenDeleted),
+				WhenScaled:  appsv1.PersistentVolumeClaimRetentionPolicyType(spec.VolumeClaimRetentionPolicy.WhenScaled),
+			},
+			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+				Type: appsv1.OnDeleteStatefulSetStrategyType,
+			},
+			PodManagementPolicy: appsv1.ParallelPodManagement,
 		},
 	}
 

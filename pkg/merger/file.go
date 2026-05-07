@@ -69,10 +69,10 @@ func (m *Merger) loadKatalogFile(path string) (map[string]orktypes.CRDEntry, err
 // loadKatalog reads CRD definitions from a Katalog file.
 // Map keys are the CRD names; Name is injected from the key.
 func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string]orktypes.CRDEntry, error) {
-	// Guard — sources in a Katalog is a mistake
-	if doc.Sources != nil && (len(doc.Sources.Files) > 0 || len(doc.Sources.Helm) > 0) {
+	// Guard — imports in a Katalog is a mistake
+	if doc.Imports != nil && (len(doc.Imports.Files) > 0 || len(doc.Imports.Helm) > 0) {
 		return nil, fmt.Errorf(
-			"%q: kind Katalog cannot declare sources — "+
+			"%q: kind Katalog cannot declare imports — "+
 				"use kind: Komposer to compose multiple Katalogs",
 			path,
 		)
@@ -127,7 +127,7 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 
 // loadKomposer resolves sources from a Komposer file and merges all CRDs.
 func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[string]orktypes.CRDEntry, error) {
-	if doc.Sources == nil && len(doc.Spec.CRDs) == 0 {
+	if doc.Imports == nil && len(doc.Spec.CRDs) == 0 {
 		logger.Warn().
 			Str("path", path).
 			Msg("merger: Komposer has no sources and no inline CRDs — nothing to load")
@@ -146,11 +146,11 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 	var accProviders []orktypes.KatalogProviderRequirement
 
 	// ── Step 1: registry sources ─────────────────────────────────────────────
-	if doc.Sources != nil {
-		for i, regSrc := range doc.Sources.Registry {
+	if doc.Imports != nil {
+		for i, regSrc := range doc.Imports.Registry {
 			crds, err := m.loadRegistrySource(regSrc)
 			if err != nil {
-				return nil, fmt.Errorf("%q sources.registry[%d]: %w", path, i, err)
+				return nil, fmt.Errorf("%q imports.registry[%d]: %w", path, i, err)
 			}
 
 			for name, crd := range crds {
@@ -176,25 +176,25 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 	}
 
 	// ── Step 2: file sources ──────────────────────────────────────────────────
-	if doc.Sources != nil {
-		for _, fileSrc := range doc.Sources.Files {
+	if doc.Imports != nil {
+		for _, fileSrc := range doc.Imports.Files {
 
 			// Resolve environment variable in the URL if needed
 			resolved, err := resolveEnvVar(fileSrc.URL)
 			if err != nil {
-				return nil, fmt.Errorf("%q sources.files: %w", path, err)
+				return nil, fmt.Errorf("%q imports.files: %w", path, err)
 			}
 
 			// Resolve authentication credentials from environment variables
 			auth, err := fileSrc.Auth.Resolve()
 			if err != nil {
-				return nil, fmt.Errorf("%q sources.files[%q]: auth: %w", path, resolved, err)
+				return nil, fmt.Errorf("%q imports.files[%q]: auth: %w", path, resolved, err)
 			}
 
 			// Load the file — must be a Katalog, not another Komposer
 			crds, err := m.loadSourceFileWithAuth(path, resolved, auth)
 			if err != nil {
-				return nil, fmt.Errorf("%q sources.files[%q]: %w", path, resolved, err)
+				return nil, fmt.Errorf("%q imports.files[%q]: %w", path, resolved, err)
 			}
 
 			for name, crd := range crds {
@@ -214,10 +214,10 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 				Msg("merger: accumulated security, notification, and providers from file source")
 		}
 		// ── Step 3: helm sources ──────────────────────────────────────────────
-		for i, helmSrc := range doc.Sources.Helm {
+		for i, helmSrc := range doc.Imports.Helm {
 			crds, err := m.loadHelmSource(helmSrc)
 			if err != nil {
-				return nil, fmt.Errorf("%q sources.helm[%d]: %w", path, i, err)
+				return nil, fmt.Errorf("%q imports.helm[%d]: %w", path, i, err)
 			}
 
 			srcName := fmt.Sprintf("helm:%s/%s@%s", helmSrc.Repo, helmSrc.Chart, helmSrc.Version)

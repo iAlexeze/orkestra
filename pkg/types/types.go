@@ -16,7 +16,7 @@ import (
 // ── Registries ────────────────────────────────────────────────────────────────
 // Package-level registries — one set per Orkestra instance.
 // Populated by RegisterRuntimeObjects() in zz_generated_runtime_registry.go,
-// which is produced by `ork generate registry --katalog <path>`.
+// which is produced by `ork generate registry --file <path>`.
 // Keyed by schema.GroupVersionKind. Set during Katalog validation.
 //
 // User code never reads or writes these directly. Orkestra reads them during
@@ -330,6 +330,11 @@ type DeploymentTemplateSource struct {
 	// Dynamic: "{{ .spec.image }}"
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
+
 	// Replicas — number of pod replicas as a string.
 	// Static:  "3"
 	// Dynamic: "{{ .spec.replicas }}"
@@ -487,6 +492,11 @@ type ReplicaSetTemplateSource struct {
 	// Dynamic: "{{ .spec.image }}"
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
+
 	// Replicas — number of pod replicas as a string.
 	// Static:  "3"
 	// Dynamic: "{{ .spec.replicas }}"
@@ -591,6 +601,17 @@ type ServiceTemplateSource struct {
 	// Default: ClusterIP.
 	Type string `yaml:"type" json:"type,omitempty" validate:"omitempty"`
 
+	// Headless — when true, the Service is created without a clusterIP (clusterIP: None).
+	// Used primarily for StatefulSets to enable stable network identities and per‑pod DNS:
+	//   <podname>.<service>.<namespace>.svc.cluster.local
+	// Set this to true when the Service is meant to back a StatefulSet or provide
+	// direct pod‑to‑pod addressing rather than load‑balanced traffic.
+	Headless bool `yaml:"headless" json:"headless,omitempty" validate:"omitempty"`
+
+	// Protocol defines network protocols supported for things like container ports.
+	// "TCP", "UDP", "SCTP"
+	Protocol string `yaml:"protocol" json:"protocol,omitempty" validate:"omitempty"`
+
 	// Port — Service port as a string.
 	// Static: "80" or Dynamic: "{{ .spec.servicePort }}"
 	Port string `yaml:"port" json:"port" validate:"omitempty"`
@@ -674,6 +695,11 @@ type PodTemplateSource struct {
 	// Image — container image. Required.
 	// Static: "busybox:1.35" or Dynamic: "{{ .spec.image }}"
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
 
 	// Port — container port as a string.
 	// Static: "8080" or Dynamic: "{{ .spec.port }}"
@@ -778,6 +804,11 @@ type JobTemplateSource struct {
 	// Image — container image. Required.
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
+
 	// Command — container entrypoint command.
 	// Each element is resolved independently — template expressions are supported per element.
 	// e.g. ["sh", "-c", "echo cleaning up {{ .metadata.name }}"]
@@ -880,6 +911,11 @@ type CronJobTemplateSource struct {
 
 	// Image — container image. Required.
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
 
 	// Command — container entrypoint. Each element supports template expressions.
 	Command []string `yaml:"command" json:"command,omitempty" validate:"omitempty"`
@@ -1498,7 +1534,12 @@ type StatefulSetTemplateSource struct {
 	Namespace string `yaml:"namespace" json:"namespace,omitempty"`
 
 	// Image — container image. Required.
-	Image string `yaml:"image" json:"image,omitempty" validate:"required"`
+	Image string `yaml:"image" json:"image" validate:"omitempty"`
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
 
 	// Tag — image tag. Default: "latest".
 	Tag string `yaml:"tag" json:"tag,omitempty"`
@@ -1718,22 +1759,22 @@ type HookTemplates struct {
 	Timeout *Duration `yaml:"timeout,omitempty" json:"timeout,omitempty"`
 
 	// TODO with placeholer
-	Volumes                     []PlaceholderSource `yaml:"volumes" json:"volumes,omitempty" validate:"omitempty"`
-	VolumeMounts                []PlaceholderSource `yaml:"volumeMounts" json:"volumeMounts,omitempty" validate:"omitempty"`
-	Roles                       []PlaceholderSource `yaml:"roles" json:"roles,omitempty" validate:"omitempty"`
-	RoleBindings                []PlaceholderSource `yaml:"roleBindings" json:"roleBindings,omitempty" validate:"omitempty"`
-	ClusterRoles                []PlaceholderSource `yaml:"clusterRoles" json:"clusterRoles,omitempty" validate:"omitempty"`
-	ClusterRoleBindings         []PlaceholderSource `yaml:"clusterRoleBindings" json:"clusterRoleBindings,omitempty" validate:"omitempty"`
-	ServiceMonitors             []PlaceholderSource `yaml:"serviceMonitors" json:"serviceMonitors,omitempty" validate:"omitempty"`
-	PodSecurityPolicies         []PlaceholderSource `yaml:"podSecurityPolicies" json:"podSecurityPolicies,omitempty" validate:"omitempty"`
-	PriorityClasses             []PlaceholderSource `yaml:"priorityClasses" json:"priorityClasses,omitempty" validate:"omitempty"`
-	LimitRanges                 []PlaceholderSource `yaml:"limitRanges" json:"limitRanges,omitempty" validate:"omitempty"`
-	ResourceQuotas              []PlaceholderSource `yaml:"resourceQuotas" json:"resourceQuotas,omitempty" validate:"omitempty"`
-	RuntimeClasses              []PlaceholderSource `yaml:"runtimeClasses" json:"runtimeClasses,omitempty" validate:"omitempty"`
-	PriorityLevelConfigurations []PlaceholderSource `yaml:"priorityLevelConfigurations" json:"priorityLevelConfigurations,omitempty" validate:"omitempty"`
-	PodTemplates                []PlaceholderSource `yaml:"podTemplates" json:"podTemplates,omitempty" validate:"omitempty"`
-	DaemonSets                  []PlaceholderSource `yaml:"daemonSets" json:"daemonSets,omitempty" validate:"omitempty"`
-	NetworkPolicies             []PlaceholderSource `yaml:"networkPolicies" json:"networkPolicies,omitempty" validate:"omitempty"`
+	Volumes                     []PlaceholderSource         `yaml:"volumes" json:"volumes,omitempty" validate:"omitempty"`
+	VolumeMounts                []PlaceholderSource         `yaml:"volumeMounts" json:"volumeMounts,omitempty" validate:"omitempty"`
+	Roles                       []RoleTemplateSource        `yaml:"roles" json:"roles,omitempty" validate:"omitempty"`
+	RoleBindings                []RoleBindingTemplateSource `yaml:"roleBindings" json:"roleBindings,omitempty" validate:"omitempty"`
+	ClusterRoles                []PlaceholderSource         `yaml:"clusterRoles" json:"clusterRoles,omitempty" validate:"omitempty"`
+	ClusterRoleBindings         []PlaceholderSource         `yaml:"clusterRoleBindings" json:"clusterRoleBindings,omitempty" validate:"omitempty"`
+	ServiceMonitors             []PlaceholderSource         `yaml:"serviceMonitors" json:"serviceMonitors,omitempty" validate:"omitempty"`
+	PodSecurityPolicies         []PlaceholderSource         `yaml:"podSecurityPolicies" json:"podSecurityPolicies,omitempty" validate:"omitempty"`
+	PriorityClasses             []PlaceholderSource         `yaml:"priorityClasses" json:"priorityClasses,omitempty" validate:"omitempty"`
+	LimitRanges                 []PlaceholderSource         `yaml:"limitRanges" json:"limitRanges,omitempty" validate:"omitempty"`
+	ResourceQuotas              []PlaceholderSource         `yaml:"resourceQuotas" json:"resourceQuotas,omitempty" validate:"omitempty"`
+	RuntimeClasses              []PlaceholderSource         `yaml:"runtimeClasses" json:"runtimeClasses,omitempty" validate:"omitempty"`
+	PriorityLevelConfigurations []PlaceholderSource         `yaml:"priorityLevelConfigurations" json:"priorityLevelConfigurations,omitempty" validate:"omitempty"`
+	PodTemplates                []PlaceholderSource         `yaml:"podTemplates" json:"podTemplates,omitempty" validate:"omitempty"`
+	DaemonSets                  []PlaceholderSource         `yaml:"daemonSets" json:"daemonSets,omitempty" validate:"omitempty"`
+	NetworkPolicies             []PlaceholderSource         `yaml:"networkPolicies" json:"networkPolicies,omitempty" validate:"omitempty"`
 
 	// Storage
 	StorageClasses   []PlaceholderSource `yaml:"storageClasses" json:"storageClasses,omitempty" validate:"omitempty"`
@@ -1742,6 +1783,84 @@ type HookTemplates struct {
 	StorageBackups   []PlaceholderSource `yaml:"storageBackups" json:"storageBackups,omitempty" validate:"omitempty"`
 	StorageSnapshots []PlaceholderSource `yaml:"storageSnapshots" json:"storageSnapshots,omitempty" validate:"omitempty"`
 	StorageVolumes   []PlaceholderSource `yaml:"storageVolumes" json:"storageVolumes,omitempty" validate:"omitempty"`
+}
+
+// ── Role / RoleBinding ────────────────────────────────────────────────────────
+
+// PolicyRuleSpec declares one RBAC policy rule.
+// String values within slices support template expressions.
+type PolicyRuleSpec struct {
+	APIGroups     []string `yaml:"apiGroups" json:"apiGroups,omitempty"`
+	Resources     []string `yaml:"resources" json:"resources,omitempty"`
+	Verbs         []string `yaml:"verbs" json:"verbs,omitempty"`
+	ResourceNames []string `yaml:"resourceNames" json:"resourceNames,omitempty"`
+}
+
+// SubjectSpec declares one RBAC subject for a RoleBinding.
+// Name and Namespace support template expressions.
+type SubjectSpec struct {
+	Kind      string `yaml:"kind" json:"kind,omitempty"`
+	Name      string `yaml:"name" json:"name,omitempty"`
+	Namespace string `yaml:"namespace" json:"namespace,omitempty"`
+}
+
+// RoleRefSpec names the Role (or ClusterRole) being bound.
+// Name supports template expressions. Kind defaults to "Role".
+type RoleRefSpec struct {
+	Name string `yaml:"name" json:"name,omitempty"`
+	Kind string `yaml:"kind" json:"kind,omitempty"` // Role | ClusterRole; defaults to Role
+}
+
+// RoleTemplateSource declares one namespaced Role to be managed by Orkestra.
+//
+// Example:
+//
+//	onCreate:
+//	  roles:
+//	    - name: "{{ .metadata.name }}-role"
+//	      namespace: "{{ .metadata.name }}-ns"
+//	      rules:
+//	        - apiGroups: ["apps"]
+//	          resources: ["deployments"]
+//	          verbs: ["get", "list", "watch", "update", "patch"]
+//	          resourceNames: ["{{ .metadata.name }}"]
+type RoleTemplateSource struct {
+	Version    string           `yaml:"version" json:"version,omitempty"`
+	Name       string           `yaml:"name" json:"name,omitempty"`
+	Namespace  string           `yaml:"namespace" json:"namespace,omitempty"`
+	Labels     []ResourceLabel  `yaml:"labels" json:"labels,omitempty"`
+	Rules      []PolicyRuleSpec `yaml:"rules" json:"rules,omitempty"`
+	Conditions []Condition      `yaml:"when,omitempty" json:"when,omitempty"`
+	Reconcile  bool             `yaml:"reconcile" json:"reconcile,omitempty"`
+	ForEach    *ForEachSpec     `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+	AnyOf      []Condition      `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+}
+
+// RoleBindingTemplateSource declares one RoleBinding to be managed by Orkestra.
+//
+// Example:
+//
+//	onCreate:
+//	  roleBindings:
+//	    - name: "{{ .metadata.name }}-rolebinding"
+//	      namespace: "{{ .metadata.name }}-ns"
+//	      roleRef:
+//	        name: "{{ .metadata.name }}-role"
+//	      subjects:
+//	        - kind: ServiceAccount
+//	          name: "{{ .metadata.name }}-sa"
+//	          namespace: "{{ .metadata.name }}-ns"
+type RoleBindingTemplateSource struct {
+	Version    string          `yaml:"version" json:"version,omitempty"`
+	Name       string          `yaml:"name" json:"name,omitempty"`
+	Namespace  string          `yaml:"namespace" json:"namespace,omitempty"`
+	Labels     []ResourceLabel `yaml:"labels" json:"labels,omitempty"`
+	RoleRef    RoleRefSpec     `yaml:"roleRef" json:"roleRef,omitempty"`
+	Subjects   []SubjectSpec   `yaml:"subjects" json:"subjects,omitempty"`
+	Conditions []Condition     `yaml:"when,omitempty" json:"when,omitempty"`
+	Reconcile  bool            `yaml:"reconcile" json:"reconcile,omitempty"`
+	ForEach    *ForEachSpec    `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+	AnyOf      []Condition     `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }
 
 // Placeholder for resources yet to be added to orkestra internal registry
@@ -2216,11 +2335,18 @@ type CRDEntry struct {
 
 	// RemoveFinalizers -> testing
 	RemoveFinalizers bool `yaml:"removeFinalizers,omitempty" json:"removeFinalizers,omitempty"`
+
+	// Imports declares Motif imports for this operatorBox.
+	// Each import references a Motif by OCI reference, file path, or short name,
+	// and binds its inputs via with:. Resources from imported Motifs are merged
+	// into OnReconcile at Katalog load time.
+	// Required inputs not provided in with: are a validation error.
+	Imports []MotifImport `yaml:"imports,omitempty" json:"imports,omitempty"`
 }
 
 type ConversionVersionSpec struct {
-	Version string                 `json:"version"`
-	Spec    map[string]interface{} `json:"spec"`
+	Version string                 `json:"version" yaml:"version"`
+	Spec    map[string]interface{} `json:"spec" yaml:"spec"`
 }
 
 // EndpointsConfig controls which HTTP endpoints are exposed by the operator.

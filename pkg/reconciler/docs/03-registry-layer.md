@@ -20,12 +20,18 @@ pkg/orkestra-registry/
         configmap.go
     serviceaccounts/
         serviceaccount.go
+    roles/
+        role.go            — Create, Update, Delete, DeleteIfOwned, Resolve
+    rolebindings/
+        rolebinding.go     — Create, Update, Delete, DeleteIfOwned, Resolve
     jobs/
         types.go
         job.go
     cronjobs/
         cronjob.go
 ```
+
+> **Roles and RoleBindings** use `rbacv1` from `k8s.io/api/rbac/v1`. Their template source types (`RoleTemplateSource`, `RoleBindingTemplateSource`) live in `pkg/types/types.go` alongside all other source types. The `RoleBindingTemplateSource.RoleRef.Kind` defaults to `"Role"` — set it to `"ClusterRole"` to bind to a cluster-scoped role. RoleBinding's `Update` path handles the Kubernetes immutability constraint on `roleRef` by deleting and recreating the binding when the ref changes.
 
 ## The four functions every registry package exposes
 

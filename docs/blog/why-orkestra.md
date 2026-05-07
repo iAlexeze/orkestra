@@ -120,7 +120,7 @@ spec:
 You run:
 
 ```bash
-ork run --katalog katalog.yaml
+ork run --file katalog.yaml
 ```
 
 The `Website` CRD now has:

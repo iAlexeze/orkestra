@@ -1,0 +1,83 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Motif
+metadata:
+  name: redis
+  version: v7
+  description: >
+    Redis StatefulSet with optional PVC, headless Service, and Redis Commander
+    management UI. Works with redis:6 through redis:7.
+  author: orkspace
+  license: Apache-2.0
+
+inputs:
+  - name: image
+    description: Redis image (e.g. redis:7.2-alpine)
+    required: true
+
+  - name: volumeSize
+    description: PVC storage size (omit for ephemeral)
+    required: false
+
+  - name: replicas
+    description: Number of replicas
+    default: "1"
+
+  - name: resourceProfile
+    description: CPU/memory profile (burst, standard, optimized)
+    default: "burst"
+
+  - name: commanderImage
+    description: Redis Commander management UI image
+    default: "rediscommander/redis-commander:latest"
+
+resources:
+  statefulSets:
+    - name: "{{ .metadata.name }}-redis"
+      image: "{{ .inputs.image }}"
+      replicas: "{{ .inputs.replicas }}"
+      serviceName: "{{ .metadata.name }}-redis-headless"
+      port: 6379
+      # volumeClaims:
+      #   - name: data
+      #     size: "{{ .inputs.volumeSize }}"
+      #     mountPath: /data
+      #     when:
+      #       - field: inputs.volumeSize
+      #         exists: true
+      resourceProfile: "{{ .inputs.resourceProfile }}"
+      reconcile: true
+
+  services:
+    - name: "{{ .metadata.name }}-redis-headless"
+      headless: true
+      port: 6379
+      targetPort: 6379
+      reconcile: true
+    - name: "{{ .metadata.name }}-redis"
+      port: 6379
+      targetPort: 6379
+      reconcile: true
+    - name: "{{ .metadata.name }}-commander-svc"
+      port: 8081
+      targetPort: 8081
+      type: LoadBalancer
+      reconcile: true
+
+  deployments:
+    - name: "{{ .metadata.name }}-commander"
+      image: "{{ .inputs.commanderImage }}"
+      env:
+        REDIS_HOSTS:
+          value: "{{ .metadata.name }}-redis:6379"
+      port: 8081
+      resourceProfile: "{{ .inputs.resourceProfile }}"
+      reconcile: true
+
+status:
+  fields:
+    - path: redisReady
+      value: "{{ AllReplicasReady .children.statefulset }}"
+    - path: connectionString
+      value: "redis://{{ .metadata.name }}-redis.{{ .metadata.namespace }}.svc.cluster.local:6379"
+    - path: commanderUrl
+      value: "http://{{ .metadata.name }}-commander-svc.{{ .metadata.namespace }}.svc.cluster.local:8081"

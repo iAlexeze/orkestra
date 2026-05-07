@@ -8,21 +8,21 @@ weight: 90
 Validate a Katalog or Komposer. Resolves sources, merges, and runs the full validation pipeline.
 
 ```bash
-ork validate --katalog <path>
+ork validate --file <path>
 ```
 
 ## Flags
 
 | Flag | Description |
 |------|-------------|
-| `--katalog` | Path or URL to a Katalog or Komposer (repeatable) |
+| `--file` | Path or URL to a Katalog or Komposer (repeatable) |
 
 ## Examples
 
 ```bash
-ork validate --katalog ./katalog.yaml
-ork validate --katalog ./infra.yaml --katalog ./apps.yaml
-ork validate --katalog https://raw.github.com/.../katalog.yaml
+ork validate --file ./katalog.yaml
+ork validate --file ./infra.yaml --file ./apps.yaml
+ork validate --file https://raw.github.com/.../katalog.yaml
 ```
 
 Validation errors are specific and actionable.

@@ -326,7 +326,7 @@ sources:
 ```
 
 ```bash
-ork run --katalog komposer.yaml
+ork run --file komposer.yaml
 ```
 
 The runtime pulls missing patterns to cache, validates them, and starts the

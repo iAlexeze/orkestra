@@ -109,43 +109,63 @@ func (cc *ControlCenter) backgroundFetchLoop() {
 }
 
 func (cc *ControlCenter) fetchAllKatalogs() {
-	cc.mu.Lock()
+	// Snapshot instance URLs without holding the lock during network I/O.
+	// Holding a write lock across HTTP calls blocks all concurrent reads
+	// (CRD detail pages, snapshot API) for the full fetch duration, causing
+	// intermittent "pending / 0 reconciles" displays even when the runtime is healthy.
+	cc.mu.RLock()
+	urls := make([]string, 0, len(cc.instances))
+	for u := range cc.instances {
+		urls = append(urls, u)
+	}
+	cc.mu.RUnlock()
+
 	anyOK := false
 
-	for _, inst := range cc.instances {
-		inst.LastCheck = time.Now()
+	for _, u := range urls {
+		cc.mu.RLock()
+		inst, ok := cc.instances[u]
+		cc.mu.RUnlock()
+		if !ok {
+			continue // instance was removed between snapshot and now
+		}
 
+		now := time.Now()
 		kat, err := inst.Client.FetchKatalog()
-		if err != nil {
-			inst.Katalog = nil
-			inst.Status = "offline"
-			inst.Healthy = false
-			inst.LastError = err.Error()
 
-			log.Printf("WARN: fetch katalog from %s: %v", inst.URL, err)
-			continue
+		// Update only this instance under a brief write lock
+		cc.mu.Lock()
+		if inst, ok = cc.instances[u]; ok {
+			inst.LastCheck = now
+			if err != nil {
+				inst.Katalog = nil
+				inst.Status = "offline"
+				inst.Healthy = false
+				inst.LastError = err.Error()
+				log.Printf("WARN: fetch katalog from %s: %v", u, err)
+			} else {
+				inst.Katalog = kat
+				if kat.OrkReady {
+					inst.Status = "online"
+					inst.Healthy = true
+					inst.LastError = ""
+				} else {
+					inst.Status = "starting"
+					inst.Healthy = false
+					inst.LastError = ""
+				}
+				log.Printf("INFO: fetched katalog %q from %s (%d CRDs)",
+					kat.Name, u, len(kat.CRDs))
+			}
 		}
+		cc.mu.Unlock()
 
-		inst.Katalog = kat
-		anyOK = true
-
-		// Runtime health = OrkReady ONLY
-		if kat.OrkReady {
-			inst.Status = "online"
-			inst.Healthy = true
-			inst.LastError = ""
-		} else {
-			inst.Status = "starting"
-			inst.Healthy = false
-			inst.LastError = ""
+		if err == nil {
+			anyOK = true
 		}
-
-		log.Printf("INFO: fetched katalog %q from %s (%d CRDs)",
-			kat.Name, inst.URL, len(kat.CRDs))
 	}
 
 	cc.ready.Store(anyOK)
-	cc.mu.Unlock()
 	cc.notifySubscribers()
 }
 
@@ -616,7 +636,7 @@ func (cc *ControlCenter) handleCRList(w http.ResponseWriter, r *http.Request, in
 
 	list, err := client.FetchCRList(instanceURL, crdName)
 	if err != nil {
-		cc.renderError(w, r, fmt.Sprintf("Could not load CR list for %s: %v", crdName, err))
+		cc.renderError(w, r, fmt.Sprintf("Could not load CR list for %s: \n%v", crdName, err))
 		return
 	}
 
@@ -638,7 +658,11 @@ func (cc *ControlCenter) handleCRDetail(w http.ResponseWriter, r *http.Request, 
 
 	detail, err := client.FetchCRDetail(instanceURL, crdName, namespace, name)
 	if err != nil {
-		cc.renderError(w, r, fmt.Sprintf("Could not load CR %s/%s: %v", namespace, name, err))
+		if namespace != "" {
+			cc.renderError(w, r, fmt.Sprintf("Could not load CR '%s/%s': \n%v", namespace, name, err))
+		} else {
+			cc.renderError(w, r, fmt.Sprintf("Could not load CR '%s': \n%v", name, err))
+		}
 		return
 	}
 

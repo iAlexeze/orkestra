@@ -49,6 +49,12 @@ type Merger struct {
 	// providers holds the top-level provider requirements of the final katalog
 	providers []orktypes.KatalogProviderRequirement
 
+	// projects holds the merged projectInfo configuration of the final katalog
+	projects map[string]orktypes.ProjectInfo
+
+	// projectInfo holds the merged projectInfo configuration of the final katalog
+	projectInfo *orktypes.ProjectInfo
+
 	// merged tracks whether Merge() has been called
 	merged bool
 
@@ -66,7 +72,7 @@ type apiMetadata struct {
 }
 
 // New creates a Merger with the given entry point file paths or URLs.
-// Accepts one or more paths — the same as passing --katalog multiple times or comma separated.
+// Accepts one or more paths — the same as passing --file multiple times or comma separated.
 func New(paths ...string) *Merger {
 	return &Merger{entryPoints: paths}
 }
@@ -328,6 +334,13 @@ func (m *Merger) ToProviders() []orktypes.KatalogProviderRequirement {
 func (m *Merger) ToNotification() *orktypes.KatalogNotification {
 	m.mustBeMerged()
 	return m.notification
+}
+
+// ToProjectInfo returns merged project information of the merged result
+// This is used by KomposeRuntimeKatalog to populate Katalog.ProjectInfo.
+func (m *Merger) ToProjectInfo() *orktypes.ProjectInfo {
+	m.mustBeMerged()
+	return m.projectInfo
 }
 
 // APIMetadata returns the merged result as a KatalogMeta with apiversion and kind.

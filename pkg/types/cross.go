@@ -67,29 +67,29 @@ package types
 type CrossCRDDeclaration struct {
 	// Crd is the target CRD name (lowercase, matches the map key in spec.crds).
 	//   crd: database
-	Crd string `yaml:"crd"`
+	Crd string `yaml:"crd" json:"crd"`
 
 	// LabelSelector is a label key/value pair for label-based informer lookup.
 	// Mutually exclusive with Kind.
-	LabelSelector map[string]string `yaml:"labelSelector,omitempty"`
+	LabelSelector map[string]string `yaml:"labelSelector,omitempty" json:"labelSelector,omitempty"`
 
 	// Selector identifies which CR instance to observe.
-	Selector CrossSelector `yaml:"selector"`
+	Selector CrossSelector `yaml:"selector" json:"selector"`
 
 	// As is the key under .cross.* where the result is accessible.
 	//   as: database → .cross.database.status.phase
 	// Default: same as Crd.
-	As string `yaml:"as,omitempty"`
+	As string `yaml:"as,omitempty" json:"as,omitempty"`
 
 	// Strategy controls what happens when multiple CRs match the selector.
 	//   first (default) — use the first match
 	//   all             — put all matches in .cross.<as>[] (array)
-	Strategy string `yaml:"strategy,omitempty"`
+	Strategy string `yaml:"strategy,omitempty" json:"strategy,omitempty"`
 
 	// Source is the fallback for cross-binary or cross-cluster observation.
 	// When absent, the informer cache is used (zero API calls).
 	// When set, the endpoint is called when the informer is unavailable.
-	Source *CrossSource `yaml:"source,omitempty"`
+	Source *CrossSource `yaml:"source,omitempty" json:"source,omitempty"`
 }
 
 // CrossSelector identifies a CR in the target CRD.
@@ -98,16 +98,16 @@ type CrossCRDDeclaration struct {
 type CrossSelector struct {
 	// Name is the CR name to look up. Template expressions supported.
 	//   name: "{{ .metadata.name }}"    → same name as the current CR
-	Name string `yaml:"name,omitempty"`
+	Name string `yaml:"name,omitempty" json:"name,omitempty"`
 
 	// Namespace is the CR namespace. Template expressions supported.
 	// Default: same namespace as the current CR.
-	Namespace string `yaml:"namespace,omitempty"`
+	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty"`
 
 	// LabelSelector selects CRs by label — for 1:N or N:1 relationships.
 	//   labelSelector: "tenant={{ .spec.tenant }},env={{ .spec.environment }}"
 	// When set, Name and Namespace are ignored.
-	LabelSelector string `yaml:"labelSelector,omitempty"`
+	LabelSelector string `yaml:"labelSelector,omitempty" json:"labelSelector,omitempty"`
 }
 
 // CrossSource declares an HTTP fallback for cross-binary/cluster observation.
@@ -117,12 +117,12 @@ type CrossSource struct {
 	// Endpoint is the URL to call when the informer is unavailable.
 	// Template expressions supported.
 	//   endpoint: "http://database-operator:8080/katalog/database/cr/{{ .metadata.namespace }}/{{ .metadata.name }}"
-	Endpoint string `yaml:"endpoint"`
+	Endpoint string `yaml:"endpoint" json:"endpoint"`
 
 	// Token is a bearer token for the endpoint. $ENV_VAR syntax supported.
-	Token string `yaml:"token,omitempty"`
+	Token string `yaml:"token,omitempty" json:"token,omitempty"`
 
 	// CacheFor is how long to cache the result before calling again.
 	// Default: 30s — prevents hammering the endpoint on every resync.
-	CacheFor string `yaml:"cacheFor,omitempty"`
+	CacheFor string `yaml:"cacheFor,omitempty" json:"cacheFor,omitempty"`
 }

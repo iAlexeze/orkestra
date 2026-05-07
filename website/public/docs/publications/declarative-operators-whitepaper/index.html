@@ -1216,7 +1216,7 @@ should be reconciled. It is the unit of operator definition in Orkestra.</p>
 </span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">port</span>: <span style="color:#f1fa8c">&#34;80&#34;</span>
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">targetPort</span>: <span style="color:#f1fa8c">&#34;{{ .spec.port }}&#34;</span>
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
-</span></span></code></pre></div><p>This is a complete operator declaration. <code>ork run --katalog katalog.yaml</code>
+</span></span></code></pre></div><p>This is a complete operator declaration. <code>ork run --file katalog.yaml</code>
 starts the runtime. Every <code>Website</code> CR triggers a reconcile that creates
 and drift-corrects a Deployment and Service. Deletion cascades via owner
 references. Finalizers ensure cleanup completes before CR removal.</p>

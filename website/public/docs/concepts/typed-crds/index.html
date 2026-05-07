@@ -1063,11 +1063,11 @@ The <code>location</code> field tells Orkestra where your Go types live.</p>
 </span></span></code></pre></div><ol start="4">
 <li>Generate runtime registry:</li>
 </ol>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork generate registry --katalog katalogs/website.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork generate registry --file katalogs/website.yaml
 </span></span></code></pre></div><ol start="5">
 <li>Run the operator:</li>
 </ol>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>go run ./cmd/orkestra/ run --katalog katalogs/website.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>go run ./cmd/orkestra/ run --file katalogs/website.yaml
 </span></span></code></pre></div><p>!!! note
 Typed CRDs integrate seamlessly with declarative templates — you can mix both in the same operator.</p>
 <hr>

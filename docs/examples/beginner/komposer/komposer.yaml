@@ -6,7 +6,7 @@ metadata:
     Composes CRD definitions from multiple sources into one runtime.
     Demonstrates files, Helm charts, and inline overrides together.
 
-sources:
+imports:
   # ── File sources ───────────────────────────────────────────────────────
   # Each file is a standalone Katalog. The merger loads them all
   # and deduplicates by CRD name.

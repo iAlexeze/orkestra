@@ -28,43 +28,43 @@ package types
 type Condition struct {
 	// Field — dot-notation path to a field in the CR object or a runtime metric.
 	// e.g. "spec.environment", "metrics.queueDepth", "cross.managed-database.metrics.queueDepth"
-	Field string `yaml:"field" validate:"required"`
+	Field string `yaml:"field" validate:"required" json:"field"`
 
 	// Operator — how to compare the field value.
 	// See ConditionOperator constants below.
-	Operator ConditionOperator `yaml:"operator,omitempty"`
+	Operator ConditionOperator `yaml:"operator,omitempty" json:"operator,omitempty"`
 
 	// Value — the value to compare against.
 	// Not used for exists/notExists operators.
 	// Supports template expressions: "{{ .metadata.name }}-prod"
-	Value string `yaml:"value,omitempty"`
+	Value string `yaml:"value,omitempty" json:"value,omitempty"`
 
 	// Equals is a shorthand for operator: equals.
-	Equals string `yaml:"equals,omitempty"`
+	Equals string `yaml:"equals,omitempty" json:"equals,omitempty"`
 
 	// NotEquals is a shorthand for operator: notEquals.
-	NotEquals string `yaml:"notEquals,omitempty"`
+	NotEquals string `yaml:"notEquals,omitempty" json:"notEquals,omitempty"`
 
 	// Contains is a shorthand for operator: contains.
-	Contains string `yaml:"contains,omitempty"`
+	Contains string `yaml:"contains,omitempty" json:"contains,omitempty"`
 
 	// Prefix is a shorthand for operator: prefix.
-	Prefix string `yaml:"prefix,omitempty"`
+	Prefix string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
 
 	// Suffix is a shorthand for operator: suffix.
-	Suffix string `yaml:"suffix,omitempty"`
+	Suffix string `yaml:"suffix,omitempty" json:"suffix,omitempty"`
 
 	// Exists is a shorthand for operator: exists.
 	// When true, the condition passes when the field is present and non-empty.
-	Exists *bool `yaml:"exists,omitempty"`
+	Exists *bool `yaml:"exists,omitempty" json:"exists,omitempty"`
 
 	// NotExists is a shorthand for operator: notExists.
 	// When true, the condition passes when the field is absent or empty.
-	NotExists *bool `yaml:"notExists,omitempty"`
+	NotExists *bool `yaml:"notExists,omitempty" json:"notExists,omitempty"`
 
 	// Numeric shorthands
-	GreaterThan string `yaml:"greaterThan,omitempty"`
-	LessThan    string `yaml:"lessThan,omitempty"`
+	GreaterThan string `yaml:"greaterThan,omitempty" json:"greaterThan,omitempty"`
+	LessThan    string `yaml:"lessThan,omitempty" json:"lessThan,omitempty"`
 
 	// ── Time-based fields (anyOf in autoscale conditions) ────────────────────
 
@@ -74,26 +74,26 @@ type Condition struct {
 	//     - time:
 	//         after: "08:00"
 	//         before: "20:00"
-	Time *TimeWindow `yaml:"time,omitempty"`
+	Time *TimeWindow `yaml:"time,omitempty" json:"time,omitempty"`
 
 	// DayOfWeek — active on the specified days of the week.
 	//   anyOf:
 	//     - dayOfWeek:
 	//         in: [Monday, Tuesday, Wednesday, Thursday, Friday]
-	DayOfWeek *DayOfWeekCondition `yaml:"dayOfWeek,omitempty"`
+	DayOfWeek *DayOfWeekCondition `yaml:"dayOfWeek,omitempty" json:"dayOfWeek,omitempty"`
 
 	// Cron — a standard cron expression (5-field) that defines when the
 	// window opens. Duration defines how long the window stays open.
 	// Without Duration, the window closes after one evaluation interval.
-	Cron string `yaml:"cron,omitempty"`
+	Cron string `yaml:"cron,omitempty" json:"cron,omitempty"`
 
 	// Duration — how long a cron-opened window remains active.
-	Duration Duration `yaml:"duration,omitempty"`
+	Duration Duration `yaml:"duration,omitempty" json:"duration,omitempty"`
 
 	// ── Notification ─────────────────────────────────────────────────────────
 
 	// Notify declares teams to alert when this condition is true.
-	Notify *NotifyBlock `yaml:"notify,omitempty"`
+	Notify *NotifyBlock `yaml:"notify,omitempty" json:"notify,omitempty"`
 
 	// ── Cross-binary metric fallback ─────────────────────────────────────────
 
@@ -107,18 +107,18 @@ type Condition struct {
 	//       greaterThan: "500"
 	//       source:
 	//         endpoint: "http://database-operator:8080/katalog/managed-database"
-	Source *CrossSource `yaml:"source,omitempty"`
+	Source *CrossSource `yaml:"source,omitempty" json:"source,omitempty"`
 }
 
 // NotifyBlock declares notification targets and an optional message override
 // for a specific condition.
 type NotifyBlock struct {
 	// Teams is the list of team names (from notification.teams) to alert.
-	Teams []string `yaml:"teams"`
+	Teams []string `yaml:"teams" json:"teams"`
 	// Message is a Go template expression for the notification body.
 	// Overrides the team's own message template.
 	// When empty, uses the team's configured message or the system default.
-	Message string `yaml:"message,omitempty"`
+	Message string `yaml:"message,omitempty" json:"message,omitempty"`
 }
 
 // ConditionOperator defines how a condition's field is compared to its value.

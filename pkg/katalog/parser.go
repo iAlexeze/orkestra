@@ -18,6 +18,7 @@ func (k *Katalog) KomposeRuntimeKatalog(kfg *konfig.Konfig, m *merger.Merger, pa
 	k.Security = m.ToSecurity()
 	k.Notification = m.ToNotification()
 	k.Providers = m.ToProviders()
+	k.projectInfo = m.ToProjectInfo()
 	k.enabledCRDs = m.Enabled()           // Enabled CRDs for all operations
 	k.metadata = m.APIMetadata().Metadata // Metadata for CLI and health endpoints
 	k.APIVersion = m.APIMetadata().APIVersion
@@ -39,6 +40,11 @@ func (k *Katalog) KomposeRuntimeKatalog(kfg *konfig.Konfig, m *merger.Merger, pa
 		}
 		entry.EnrichmentOutcome = outcome
 		k.enabledCRDs[name] = entry
+	}
+
+	// Expand Motif imports declared in each operatorBox
+	if err := k.expandMotifImports(); err != nil {
+		return nil, err
 	}
 
 	// initialize conversion registry and admission registry
@@ -175,6 +181,13 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	// 17 Validate Status Types
 	// -------------------------------------------------------------------------
 	if err := k.validateStatusTypes(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 18 Validate Services
+	// -------------------------------------------------------------------------
+	if err := k.validateService(); err != nil {
 		return nil, err
 	}
 

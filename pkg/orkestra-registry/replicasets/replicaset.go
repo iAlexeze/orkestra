@@ -232,6 +232,12 @@ func buildReplicaSet(owner domain.Object, spec ResolvedReplicaSetSpec, namespace
 		Msg("replicaset.buildReplicaSet")
 
 	replicas := spec.Replicas
+	var pullSecrets []corev1.LocalObjectReference
+	for _, name := range spec.ImagePullSecrets {
+		pullSecrets = append(pullSecrets, corev1.LocalObjectReference{
+			Name: name,
+		})
+	}
 
 	rs := &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -262,6 +268,7 @@ func buildReplicaSet(owner domain.Object, spec ResolvedReplicaSetSpec, namespace
 					Labels: spec.Labels,
 				},
 				Spec: corev1.PodSpec{
+					ImagePullSecrets:   pullSecrets,
 					ServiceAccountName: spec.ServiceAccountName,
 					NodeSelector:       spec.NodeSelector,
 					Containers: []corev1.Container{

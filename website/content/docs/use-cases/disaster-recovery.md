@@ -7,7 +7,7 @@ description: "A cluster can be fully restored from a Katalog."
 A cluster can be fully restored from a Katalog.
 
 ```bash
-ork run --katalog https://git.company.com/platform/crds/prod-katalog.yaml
+ork run --file https://git.company.com/platform/crds/prod-katalog.yaml
 ```
 
 :::tip

@@ -1,22 +1,22 @@
-# ork doktor
+# ork doctor
 
 Examine the current directory and report everything Orkestra detected about it.
 Run this before your first deploy to verify Orkestra can see your project correctly.
 
 ```bash
-ork doktor [flags]
-ork doktor init --name <app> [flags]
+ork doctor [flags]
+ork doctor init --name <app> [flags]
 ```
 
 ---
 
-## ork doktor
+## ork doctor
 
 Scans the current directory and prints a summary: language, port, `.env` variables,
 what Kubernetes resources Orkestra will create, and which CLI tools are missing.
 
 ```bash
-ork doktor
+ork doctor
 ```
 
 ### What it checks
@@ -54,7 +54,7 @@ Examining project...
       4 secrets (default)
 
   ~ SMTP/Slack detected in .env
-    Run 'ork doktor init --name my-api --notify-me' to wire notifications.
+    Run 'ork doctor init --name my-api --notify-me' to wire notifications.
 
 Orkestra will create:
   Deployment     image built from Dockerfile, tagged :a3f9c12
@@ -68,18 +68,18 @@ Orkestra will create:
 Missing dependencies:
   (none)
 
-Run 'ork doktor init' to generate .orkestra/katalog.yaml
+Run 'ork doctor init' to generate .orkestra/katalog.yaml
 ```
 
 ---
 
-## ork doktor init
+## ork doctor init
 
 Generate the `.orkestra/` configuration directory for a project. Creates three files
 and extends `.gitignore` to exclude the build output.
 
 ```bash
-ork doktor init --name <app> [flags]
+ork doctor init --name <app> [flags]
 ```
 
 `--name` is required. It determines the CR name (`<name>-orkestra`), namespace
@@ -109,7 +109,7 @@ cluster manifests and should not be committed.
 
 ### --notify-me
 
-When `--notify-me` is set, `ork doktor init` does three things:
+When `--notify-me` is set, `ork doctor init` does three things:
 
 1. Adds a `notification:` block to `katalog.yaml` with a `developer` team built
    from your Git author email and any Slack channel from `.env`:
@@ -169,7 +169,7 @@ data:
 
 ## Next steps
 
-After `ork doktor init`:
+After `ork doctor init`:
 
 1. Review `.orkestra/katalog.yaml` — it is generated but editable
 2. Fill in `.orkestra/app.yaml` — replicas, host, controlCenterHost

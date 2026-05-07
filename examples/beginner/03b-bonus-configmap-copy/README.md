@@ -48,7 +48,7 @@ kubectl apply -f crd.yaml
 ### 3. Start the operator
 
 ```bash
-ork run --katalog katalog.yaml
+ork run --file katalog.yaml
 ```
 
 ### 4. Apply the CR
@@ -76,7 +76,7 @@ The owner is the `ConfigMapDistribution` CR — deletion of the CR triggers garb
 
 ### 7. Test sync (source change propagation)
 
-Update the source ConfigMap:
+Update the source ConfigMap from loglevel 'info' to 'debug':
 
 ```bash
 kubectl patch configmap app-config -n platform \
@@ -86,7 +86,7 @@ kubectl patch configmap app-config -n platform \
 Wait one resync interval (15s), then check a copy:
 
 ```bash
-kubectl get configmap app-config -n team-alpha -o jsonpath='{.data.logLevel}'
+kubectl get configmap app-config -n team-alpha -o jsonpath='{.data.logLevel}' && echo
 # debug
 ```
 

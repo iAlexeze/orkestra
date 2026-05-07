@@ -39,6 +39,9 @@ func (cc *ControlCenter) renderTemplate(w http.ResponseWriter, name string, data
 func (cc *ControlCenter) renderError(w http.ResponseWriter, _ *http.Request, message string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusInternalServerError)
+
+	message = strings.ReplaceAll(message, "\n", "<br>")
+
 	fmt.Fprintf(w, `<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">

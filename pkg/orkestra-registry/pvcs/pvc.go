@@ -184,6 +184,7 @@ func buildPVC(owner domain.Object, spec ResolvedPVCSpec, ns string) *corev1.Pers
 			AccessModes: accessModes,
 			VolumeMode:  &volumeMode,
 			VolumeName:  spec.VolumeName,
+			// DataSourceRef: ,
 			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: storageQty,

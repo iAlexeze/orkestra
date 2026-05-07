@@ -46,7 +46,7 @@ spec:
 
 ```bash
 kubectl apply -f website-crd.yaml
-ork run --katalog website-katalog.yaml
+ork run --file website-katalog.yaml
 ```
 
 A Deployment and a Service are created for every `Website` CR. Owner
@@ -155,7 +155,7 @@ https://internal.company.com/platform/crds/standard-katalog.yaml
 **Every team consumes it:**
 
 ```bash
-ork run --katalog https://internal.company.com/platform/crds/standard-katalog.yaml
+ork run --file https://internal.company.com/platform/crds/standard-katalog.yaml
 ```
 
 Changes to the Katalog propagate to every cluster that consumes it on
@@ -277,10 +277,10 @@ clusters and measure the difference.
 
 ```bash
 # 90% of clusters — stable
-ork run --katalog https://config.company.com/stable/katalog.yaml
+ork run --file https://config.company.com/stable/katalog.yaml
 
 # 10% of clusters — candidate
-ork run --katalog https://config.company.com/candidate/katalog.yaml
+ork run --file https://config.company.com/candidate/katalog.yaml
 ```
 
 Compare error rates, reconcile latency, and resource usage between the
@@ -298,7 +298,7 @@ same file and the same operators start with the same configuration.
 
 ```bash
 # Restore on a new cluster
-ork run --katalog https://git.company.com/platform/crds/prod-katalog.yaml
+ork run --file https://git.company.com/platform/crds/prod-katalog.yaml
 ```
 
 No binary rebuild. No configuration migration. The Katalog is the
@@ -312,7 +312,7 @@ Katalogs are files. Files work offline.
 
 ```bash
 # Downloaded to disk before the air-gap
-ork run --katalog /etc/orkestra/crds/production-katalog.yaml
+ork run --file /etc/orkestra/crds/production-katalog.yaml
 ```
 
 For organisations in air-gapped environments — government, finance,
@@ -450,7 +450,7 @@ Every use case above shares the same shape:
 ```
 Declare what you want in a Katalog or Komposer
          ↓
-ork run --katalog <path>
+ork run --file <path>
          ↓
 Orkestra manages the lifecycle
 ```

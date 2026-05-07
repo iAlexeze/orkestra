@@ -142,7 +142,7 @@ func (m *k8sManager) EnsureCertificate(ctx context.Context, spec CertificateSpec
 			Namespace: spec.Namespace,
 			Labels:    secretLabels,
 			Annotations: map[string]string{
-				"orkestra.workspace.io/generated-at": time.Now().UTC().Format(time.RFC3339),
+				"orkestra.orkspace.io/generated-at": time.Now().UTC().Format(time.RFC3339),
 			},
 		},
 		Type: corev1.SecretTypeTLS,

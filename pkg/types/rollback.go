@@ -47,20 +47,20 @@ type RollbackBlock struct {
 	// Both fields are optional — set one or both.
 	// When both are set: triggers when ConsecutiveFailures failures
 	// occur AND those failures all happened within WithinDuration.
-	Trigger RollbackTrigger `yaml:"trigger"`
+	Trigger RollbackTrigger `yaml:"trigger" json:"trigger"`
 
 	// OnRollback declares the resource groups to apply when rollback is active.
 	// Uses the same grammar as OnReconcile — deployments, services, configMaps, etc.
 	// Templates may reference .previous.spec.*, .previous.metadata.*, etc.
 	// which are hydrated from the previous-spec annotation.
-	OnRollback *HookTemplates `yaml:"onRollback,omitempty"`
+	OnRollback *HookTemplates `yaml:"onRollback,omitempty" json:"onRollback,omitempty"`
 }
 
 // RollbackTrigger declares the conditions that activate rollback.
 type RollbackTrigger struct {
 	// ConsecutiveFailures is the number of consecutive reconcile failures
 	// that triggers rollback. Default: 3.
-	ConsecutiveFailures int `yaml:"consecutiveFailures,omitempty"`
+	ConsecutiveFailures int `yaml:"consecutiveFailures,omitempty" json:"consecutiveFailures,omitempty"`
 
 	// WithinDuration is the time window within which ConsecutiveFailures
 	// must occur for rollback to trigger.
@@ -68,7 +68,7 @@ type RollbackTrigger struct {
 	// regardless of how long ago the first failure occurred.
 	// When set: only triggers if all failures occurred within this window.
 	// Example: 3 failures within 5m = trigger; 3 failures over 2 hours = no trigger.
-	WithinDuration *Duration `yaml:"withinDuration,omitempty"`
+	WithinDuration *Duration `yaml:"withinDuration,omitempty" json:"withinDuration,omitempty"`
 }
 
 // RollbackPhase represents the reconciler's rollback state machine.

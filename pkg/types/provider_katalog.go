@@ -69,12 +69,12 @@ type KatalogProviderRequirement struct {
 	// Name is the YAML block key used under operatorBox.providers.
 	// Must match the Name() return value of the registered Provider.
 	// e.g. "aws", "mongodb", "stripe"
-	Name string `yaml:"name"`
+	Name string `yaml:"name" json:"name"`
 
 	// Required controls whether `ork validate` hard-fails on missing registration.
 	// true  → validation error if not registered (operator will not function correctly)
 	// false → validation warning only (provider blocks are skipped at runtime)
-	Required bool `yaml:"required"`
+	Required bool `yaml:"required" json:"required"`
 
 	// Auth holds the provider credentials. Values support $ENV_VAR expansion —
 	// use "$MY_SECRET" and Orkestra will substitute os.Getenv("MY_SECRET") at startup.
@@ -88,17 +88,19 @@ type KatalogProviderRequirement struct {
 	// MongoDB example:
 	//   auth:
 	//     mongoUri: "$MONGODB_URL"
-	Auth map[string]string `yaml:"auth,omitempty"`
+	Auth map[string]string `yaml:"auth,omitempty" json:"auth,omitempty"`
 
 	// Version is the expected provider library version.
 	// Used by `ork provider install` to pull the correct OCI artifact.
 	// Optional — if absent, the latest version is used.
-	Version string `yaml:"version,omitempty"`
+	Version string `yaml:"version,omitempty" json:"version,omitempty"`
 
 	// Library is the OCI artifact reference for this provider.
 	// e.g. "oci://registry.orkestra.io/providers/aws:1.8.0"
 	// Used by `ork provider install`. Optional for locally registered providers.
-	Library string `yaml:"library,omitempty"`
+	//
+	// Future
+	Library string `yaml:"library,omitempty" json:"library,omitempty"`
 }
 
 // ResolvedAuth returns a copy of Auth with all $ENV_VAR values substituted.
@@ -182,8 +184,8 @@ type RawProviderDeclaration struct {
 	// Conditions are the when: conditions from this declaration (AND semantics).
 	// Evaluated by Orkestra before calling the provider — declarations
 	// whose conditions fail are removed from the list before dispatch.
-	Conditions []Condition `yaml:"when,omitempty"`
+	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 
 	// AnyOf holds OR conditions — at least one must pass.
-	AnyOf []Condition `yaml:"anyOf,omitempty"`
+	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 }

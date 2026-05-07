@@ -43,28 +43,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 )
 
 const (
 	listOptionsLimit = 1
 	fetchTimeout     = 3 * time.Second
-)
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GVRs for all resource types Orkestra manages as children.
-// Defined here (not imported from reconciler) to avoid import cycles.
-// These mirror the GVR vars in pkg/reconciler/run_children.go.
-// ─────────────────────────────────────────────────────────────────────────────
-var (
-	crDeploymentGVR     = schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}
-	crServiceGVR        = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "services"}
-	crSecretGVR         = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "secrets"}
-	crConfigMapGVR      = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "configmaps"}
-	crJobGVR            = schema.GroupVersionResource{Group: "batch", Version: "v1", Resource: "jobs"}
-	crCronJobGVR        = schema.GroupVersionResource{Group: "batch", Version: "v1", Resource: "cronjobs"}
-	crServiceAccountGVR = schema.GroupVersionResource{Group: "", Version: "v1", Resource: "serviceaccounts"}
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -443,7 +427,6 @@ func buildCRDetail(objMap map[string]interface{}, children map[string]interface{
 }
 
 // rawToMap and metaField delegate to pkg/utils — single canonical implementation.
-
 func rawToMap(raw interface{}) (map[string]interface{}, error) {
 	return utils.RawToMap(raw)
 }

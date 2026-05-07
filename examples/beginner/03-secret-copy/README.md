@@ -53,7 +53,7 @@ kubectl apply -f crd.yaml
 ### 3. Start the operator
 
 ```bash
-ork run --katalog katalog.yaml
+ork run --file katalog.yaml
 ```
 
 ### 4. Apply the CR
@@ -93,7 +93,7 @@ Wait one resync interval (15s), then check a copy:
 
 ```bash
 kubectl get secret database-credentials -n team-alpha \
-  -o jsonpath='{.data.password}' | base64 -d
+  -o jsonpath='{.data.password}' | base64 -d && echo
 # newpassword
 ```
 

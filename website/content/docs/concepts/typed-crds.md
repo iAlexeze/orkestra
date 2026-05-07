@@ -144,13 +144,13 @@ apiTypes:
 4. Generate runtime registry:
 
 ```bash
-ork generate registry --katalog katalogs/website.yaml
+ork generate registry --file katalogs/website.yaml
 ```
 
 5. Run the operator:
 
 ```bash
-go run ./cmd/orkestra/ run --katalog katalogs/website.yaml
+go run ./cmd/orkestra/ run --file katalogs/website.yaml
 ```
 
 !!! note

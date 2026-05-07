@@ -3,7 +3,7 @@
 Generate a complete Orkestra installation bundle containing RBAC and a ConfigMap embedding your Katalog.
 
 ```bash
-ork generate bundle --katalog <file> [flags]
+ork generate bundle --file <file> [flags]
 ```
 
 The bundle is self‑contained and ready to apply directly to a Kubernetes cluster.  
@@ -15,7 +15,7 @@ It includes the minimal RBAC required for your CRDs and a ConfigMap containing y
 
 | Flag | Description |
 |------|-------------|
-| `-k, --katalog <file>` | One or more Katalog files (required) |
+| `-k, --file <file>` | One or more Katalog files (required) |
 | `-o, --output <file>` | Write output to file (default: stdout) |
 | `-n, --namespace <name>` | Namespace for generated resources (default: `orkestra-system`) |
 | `--dry-run` | Print output without writing files |
@@ -27,25 +27,25 @@ It includes the minimal RBAC required for your CRDs and a ConfigMap containing y
 Generate a bundle:
 
 ```bash
-ork generate bundle --katalog katalog.yaml
+ork generate bundle --file katalog.yaml
 ```
 
 Write to a file:
 
 ```bash
-ork generate bundle --katalog katalog.yaml -o bundle.yaml
+ork generate bundle --file katalog.yaml -o bundle.yaml
 ```
 
 Custom namespace:
 
 ```bash
-ork generate bundle --katalog katalog.yaml --namespace production
+ork generate bundle --file katalog.yaml --namespace production
 ```
 
 Multiple Katalogs:
 
 ```bash
-ork generate bundle --katalog a.yaml --katalog b.yaml
+ork generate bundle --file a.yaml --file b.yaml
 ```
 
 ---

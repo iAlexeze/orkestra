@@ -64,6 +64,11 @@ type ResolvedCronJobSpec struct {
 
 	// Labels — applied to CronJob and pod metadata.
 	Labels map[string]string
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string
 }
 
 // Create creates a CronJob if it does not already exist.
@@ -365,7 +370,8 @@ func buildCronJob(owner domain.Object, spec ResolvedCronJobSpec, namespace strin
 							Labels: spec.Labels,
 						},
 						Spec: corev1.PodSpec{
-							RestartPolicy: corev1.RestartPolicyOnFailure,
+							ImagePullSecrets: common.ToPullSecrets(spec.ImagePullSecrets),
+							RestartPolicy:    corev1.RestartPolicyOnFailure,
 							Containers: []corev1.Container{
 								{
 									Name:    spec.Name,
