@@ -57,7 +57,7 @@ for production: you know exactly what you pulled.
 ### 1. Preview the merged configuration
 
 ```bash
-ork template --katalog komposer.yaml
+ork template --file komposer.yaml
 ```
 
 Expected:
@@ -73,9 +73,9 @@ Rendered CRDs:
 
 ```bash
 # To see a more detailed output:
-ork template --katalog komposer.yaml --json | jq
+ork template --file komposer.yaml --json | jq
 # or
-ork template --katalog komposer.yaml --yaml
+ork template --file komposer.yaml --yaml
 
 ```
 
@@ -85,7 +85,7 @@ without pulling anything or touching a cluster.
 ### 2. Validate
 
 ```bash
-ork validate --katalog komposer.yaml
+ork validate --file komposer.yaml
 ```
 
 Expected:
@@ -225,7 +225,7 @@ team-platform/
 ```
 
 The `komposer.yaml` is the production artifact. It pins every external source
-to a version. The CI pipeline runs `ork validate --katalog komposer.yaml` on
+to a version. The CI pipeline runs `ork validate --file komposer.yaml` on
 every pull request. No cluster needed for validation. Orkestra action provides easy E2E for your operator. Check it out here.
 
 ---

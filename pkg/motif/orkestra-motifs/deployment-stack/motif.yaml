@@ -53,74 +53,79 @@ inputs:
 
 resources:
 
+
+  namespaces:
+    - name: ${{ .inputs.namespace }}
+      reconcile: true
+
   serviceAccounts:
-    - name: '{{ index .inputs "name" }}-sa'
-      namespace: '{{ index .inputs "namespace" }}'
+    - name: '{{ .inputs.name }}-sa'
+      namespace: '{{ .inputs.namespace }}'
       reconcile: true
 
   roles:
-    - name: '{{ index .inputs "name" }}-role'
-      namespace: '{{ index .inputs "namespace" }}'
+    - name: '{{ .inputs.name }}-role'
+      namespace: '{{ .inputs.namespace }}'
       reconcile: true
       rules:
         - apiGroups: ["apps"]
           resources: ["deployments"]
           verbs: ["get", "list", "watch", "update", "patch"]
           resourceNames:
-            - '{{ index .inputs "name" }}'
+            - '{{ .inputs.name }}'
 
   roleBindings:
-    - name: '{{ index .inputs "name" }}-rolebinding'
-      namespace: '{{ index .inputs "namespace" }}'
+    - name: '{{ .inputs.name }}-rolebinding'
+      namespace: '{{ .inputs.namespace }}'
       reconcile: true
       roleRef:
-        name: '{{ index .inputs "name" }}-role'
+        name: '{{ .inputs.name }}-role'
       subjects:
         - kind: ServiceAccount
-          name: '{{ index .inputs "name" }}-sa'
-          namespace: '{{ index .inputs "namespace" }}'
+          name: '{{ .inputs.name }}-sa'
+          namespace: '{{ .inputs.namespace }}'
 
   deployments:
-    - name: '{{ index .inputs "name" }}'
-      namespace: '{{ index .inputs "namespace" }}'
-      image: '{{ index .inputs "image" }}'
-      replicas: '{{ index .inputs "replicas" }}'
-      port: '{{ index .inputs "port" }}'
-      serviceAccountName: '{{ index .inputs "name" }}-sa'
-      resourceProfile: '{{ index .inputs "resourceProfile" }}'
+    - name: '{{ .inputs.name }}'
+      namespace: '{{ .inputs.namespace }}'
+      image: '{{ .inputs.image }}'
+      replicas: '{{ .inputs.replicas }}'
+      port: '{{ .inputs.port }}'
+      serviceAccountName: '{{ .inputs.name }}-sa'
+      resourceProfile: '{{ .inputs.resourceProfile }}'
       reconcile: true
       when:
         - field: data.image
           exists: true
 
   services:
-    - name: '{{ index .inputs "name" }}-svc'
-      namespace: '{{ index .inputs "namespace" }}'
-      port: '{{ index .inputs "port" }}'
-      targetPort: '{{ index .inputs "port" }}'
+    - name: '{{ .inputs.name }}-svc'
+      namespace: '{{ .inputs.namespace }}'
+      port: '{{ .inputs.port }}'
+      targetPort: '{{ .inputs.port }}'
       reconcile: true
 
   ingresses:
-    - name: '{{ index .inputs "name" }}-ingress'
-      namespace: '{{ index .inputs "namespace" }}'
-      host: '{{ index .inputs "host" }}'
-      serviceName: '{{ index .inputs "name" }}-svc'
-      servicePort: '{{ index .inputs "port" }}'
-      ingressClass: '{{ index .inputs "ingressClass" }}'
+    - name: '{{ .inputs.name }}-ingress'
+      namespace: '{{ .inputs.namespace }}'
+      host: '{{ .inputs.host }}'
+      serviceName: '{{ .inputs.name }}-svc'
+      servicePort: '{{ .inputs.port }}'
+      ingressClass: '{{ .inputs.ingressClass }}'
       reconcile: true
       when:
         - field: data.host
           exists: true
 
   hpa:
-    - name: '{{ index .inputs "name" }}-hpa'
-      namespace: '{{ index .inputs "namespace" }}'
+    - name: '{{ .inputs.name }}-hpa'
+      namespace: '{{ .inputs.namespace }}'
       scaleTargetRef:
         apiVersion: apps/v1
         kind: Deployment
-        name: '{{ index .inputs "name" }}'
-      minReplicas: '{{ index .inputs "replicas" }}'
-      maxReplicas: '{{ index .inputs "maxReplicas" }}'
+        name: '{{ .inputs.name }}'
+      minReplicas: '{{ .inputs.replicas }}'
+      maxReplicas: '{{ .inputs.maxReplicas }}'
       targetCPUUtilizationPercentage: "70"
       reconcile: true
       when:
@@ -128,8 +133,8 @@ resources:
           exists: true
 
   pdb:
-    - name: '{{ index .inputs "name" }}-pdb'
-      namespace: '{{ index .inputs "namespace" }}'
+    - name: '{{ .inputs.name }}-pdb'
+      namespace: '{{ .inputs.namespace }}'
       minAvailable: "1"
       reconcile: true
       when:

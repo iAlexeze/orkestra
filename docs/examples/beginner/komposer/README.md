@@ -68,14 +68,14 @@ Komposer/
 ### Validate the merged result
 
 ```bash
-ork validate --katalog komposer.yaml
+ork validate --file komposer.yaml
 # Success: Katalog is valid
 ```
 
 ### Preview all CRDs after merging and applying overrides
 
 ```bash
-ork template --katalog komposer.yaml
+ork template --file komposer.yaml
 ```
 
 Expected output:
@@ -91,7 +91,7 @@ Rendered CRDs:
 ### JSON output — inspect the final merged state
 
 ```bash
-ork template --katalog komposer.yaml --json | jq '.[].name'
+ork template --file komposer.yaml --json | jq '.[].name'
 # "website"
 # "platformnamespace"
 # "database"
@@ -101,7 +101,7 @@ ork template --katalog komposer.yaml --json | jq '.[].name'
 Verify the inline override:
 
 ```bash
-ork template --katalog komposer.yaml --json \
+ork template --file komposer.yaml --json \
   | jq '.[] | select(.name == "database") | .workers'
 # 4
 ```
@@ -109,7 +109,7 @@ ork template --katalog komposer.yaml --json \
 ### Visualize the dependency graph
 
 ```bash
-ork template --katalog komposer.yaml --graph
+ork template --file komposer.yaml --graph
 ```
 
 Example output:
@@ -139,7 +139,7 @@ kubectl apply -f ../platform-namespace/platform-namespace-crd.yaml
 ### Step 2 — Start Orkestra with the Komposer
 
 ```bash
-ork run --katalog komposer.yaml
+ork run --file komposer.yaml
 ```
 
 Orkestra will:
@@ -231,7 +231,7 @@ sources:
 If any CRD uses compiled Go types (`apiTypes.location` set), generate the runtime registry:
 
 ```bash
-ork generate registry --katalog komposer.yaml
+ork generate registry --file komposer.yaml
 ```
 
 !!! note

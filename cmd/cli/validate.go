@@ -18,7 +18,7 @@ var validateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "Validate Orkestra katalog configuration",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		katalogPaths, _ := cmd.Flags().GetStringSlice("katalog")
+		katalogPaths, _ := cmd.Flags().GetStringSlice("file")
 		expanded := parseKatalogPaths(katalogPaths)
 
 		// If any path is a Motif, route to Motif validation
@@ -114,7 +114,7 @@ func validateMotifFile(path string) error {
 func init() {
 	rootCmd.AddCommand(validateCmd)
 
-	validateCmd.Flags().StringSliceP("katalog", "k", nil, "Path to katalog.yaml")
+	validateCmd.Flags().StringSliceP("file", "f", nil, "Path to katalog.yaml or komposer.yaml (can be specified multiple times or as comma-separated)")
 
 	// Shadow global flags so they don't appear under `ork validate`
 	validateCmd.Flags().Bool("debug", false, "")

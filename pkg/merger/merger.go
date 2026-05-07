@@ -72,7 +72,7 @@ type apiMetadata struct {
 }
 
 // New creates a Merger with the given entry point file paths or URLs.
-// Accepts one or more paths — the same as passing --katalog multiple times or comma separated.
+// Accepts one or more paths — the same as passing --file multiple times or comma separated.
 func New(paths ...string) *Merger {
 	return &Merger{entryPoints: paths}
 }

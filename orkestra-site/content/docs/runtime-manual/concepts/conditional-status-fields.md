@@ -297,7 +297,7 @@ The declarative state machine can be tested without a running cluster:
 kubectl apply -f examples/phases/crd.yaml
 
 # Start Orkestra locally
-ork run --katalog examples/phases/katalog.yaml
+ork run --file examples/phases/katalog.yaml
 
 # Apply both CRs (success and failure paths)
 kubectl apply -f examples/phases/cr.yaml

@@ -33,7 +33,7 @@ When you add a note to `kubernetes.go`, `kube_replica.go`, `kube_container.go`,
    or manually:
    ```bash
    kubectl apply -f pkg/note/fixture/crd.yaml
-   ork bundle --katalog pkg/note/fixture/katalog.yaml | kubectl apply -f -
+   ork bundle --file pkg/note/fixture/katalog.yaml | kubectl apply -f -
    helm install orkestra ./charts/orkestra --namespace default --wait
    kubectl apply -f pkg/note/fixture/cr.yaml
    kubectl get noteprobe my-probe -o yaml -w

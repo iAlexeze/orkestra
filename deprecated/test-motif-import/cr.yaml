@@ -6,7 +6,7 @@ metadata:
   labels:
     ork.io/app: test-app-orkestra
 data:
-  image: "ghcr.io/myorg/myapp:latest"
+  image: "ghcr.io/orkspace/ork-developer/multi-region-app:1.0.0"
   port: "8080"
   replicas: "2"
   maxReplicas: "10"

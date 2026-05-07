@@ -1,7 +1,7 @@
 # Test katalog — imports deployment-stack motif via file: path.
 # Run from the repository root:
-#   ork validate --katalog unknown/test-motif-import/katalog.yaml
-#   ork generate bundle --katalog unknown/test-motif-import/katalog.yaml
+#   ork validate --file unknown/test-motif-import/katalog.yaml
+#   ork generate bundle --file unknown/test-motif-import/katalog.yaml
 
 apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
@@ -26,15 +26,15 @@ spec:
 
       operatorBox:
         imports:
-          - motif: ./pkg/motif/deployment-stack/motif.yaml
+          - motif: ./pkg/motif/orkestra-motifs/deployment-stack/motif.yaml
             with:
               name:      "{{ .metadata.name }}"
               namespace: "{{ .metadata.namespace }}"
               image:     "{{ .data.image }}"
-              port:      '{{ .data.port | default "8080" }}'
-              replicas:  '{{ .data.replicas | default "2" }}'
-              maxReplicas: '{{ .data.maxReplicas | default "10" }}'
-              resourceProfile: '{{ .data.resourceProfile | default "burst" }}'
+              port:      "{{ .data.port }}"
+              replicas:  "{{ .data.replicas }}"
+              maxReplicas: "{{ .data.maxReplicas }}"
+              resourceProfile: "{{ .data.resourceProfile }}"
               host:      "{{ .data.host }}"
 
         status:

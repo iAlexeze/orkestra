@@ -121,10 +121,10 @@ human artifact. You write it, review it, version it, share it.
 
 ```bash
 # Validate without a cluster — catches errors before they reach production
-ork validate --katalog katalog.yaml
+ork validate --file katalog.yaml
 
 # In CI — exits non-zero on any configuration error
-ork validate --katalog komposer.yaml
+ork validate --file komposer.yaml
 ```
 
 A Katalog file lives in Git. It is diffable. A pull request that changes a

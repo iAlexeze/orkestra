@@ -957,7 +957,7 @@
 
       <div class="docs-body prose">
         <p>Validate a Katalog or Komposer. Resolves sources, merges, and runs the full validation pipeline.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate --katalog &lt;path&gt;
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate --file &lt;path&gt;
 </span></span></code></pre></div><h2 id="flags">Flags</h2>
 <table>
   <thead>
@@ -968,15 +968,15 @@
   </thead>
   <tbody>
       <tr>
-          <td><code>--katalog</code></td>
+          <td><code>--file</code></td>
           <td>Path or URL to a Katalog or Komposer (repeatable)</td>
       </tr>
   </tbody>
 </table>
 <h2 id="examples">Examples</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate --katalog ./katalog.yaml
-</span></span><span style="display:flex;"><span>ork validate --katalog ./infra.yaml --katalog ./apps.yaml
-</span></span><span style="display:flex;"><span>ork validate --katalog https://raw.github.com/.../katalog.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate --file ./katalog.yaml
+</span></span><span style="display:flex;"><span>ork validate --file ./infra.yaml --file ./apps.yaml
+</span></span><span style="display:flex;"><span>ork validate --file https://raw.github.com/.../katalog.yaml
 </span></span></code></pre></div><p>Validation errors are specific and actionable.</p>
 <hr>
 <h2 id="related-documentation">Related Documentation</h2>

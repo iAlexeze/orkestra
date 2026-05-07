@@ -987,7 +987,7 @@ my-operator/
 
 ```bash
 kubectl apply -f examples/website/website-crd.yaml
-ork run --katalog examples/website/website-katalog.yaml
+ork run --file examples/website/website-katalog.yaml
 ```
 
 ### Typed project
@@ -1015,7 +1015,7 @@ my-operator/
 **Start with:**
 
 ```bash
-go run ./cmd/orkestra/ run --katalog examples/website/website-katalog.yaml
+go run ./cmd/orkestra/ run --file examples/website/website-katalog.yaml
 ```
 
 ---
@@ -1025,29 +1025,29 @@ go run ./cmd/orkestra/ run --katalog examples/website/website-katalog.yaml
 Validate a Katalog or Komposer. Resolves all sources, merges, and runs the full validation pipeline. Exits non-zero on any error.
 
 ```bash
-ork validate --katalog <path> [--katalog <path>...]
+ork validate --file <path> [--file <path>...]
 ```
 
 **Flags:**
 
 | Flag | Description |
 |------|-------------|
-| `--katalog` | Path or URL to a Katalog or Komposer (repeatable) |
+| `--file` | Path or URL to a Katalog or Komposer (repeatable) |
 
 **Examples:**
 
 ```bash
 # Single file
-ork validate --katalog ./katalog.yaml
+ork validate --file ./katalog.yaml
 
 # Multiple entry points — merged before validation
-ork validate --katalog ./infra.yaml --katalog ./apps.yaml
+ork validate --file ./infra.yaml --file ./apps.yaml
 
 # Remote
-ork validate --katalog https://raw.github.com/myorg/crds/main/katalog.yaml
+ork validate --file https://raw.github.com/myorg/crds/main/katalog.yaml
 
 # Environment variable
-ork validate --katalog $KATALOG_PATH
+ork validate --file $KATALOG_PATH
 ```
 
 **Success:**
@@ -1090,14 +1090,14 @@ duplicate GVK detected: demo.orkestra.io/v1alpha1, Kind=Website
 Render and print the merged, validated Katalog. Shows the post-merge, post-validation state with all defaults applied — exactly as Orkestra will see it at runtime.
 
 ```bash
-ork template --katalog <path> [flags]
+ork template --file <path> [flags]
 ```
 
 **Flags:**
 
 | Flag | Description |
 |------|-------------|
-| `--katalog` | Path or URL to a Katalog or Komposer (repeatable) |
+| `--file` | Path or URL to a Katalog or Komposer (repeatable) |
 | `--json` | Output CRDs as JSON |
 | `--yaml` | Output CRDs as YAML |
 | `--graph` | Show ASCII dependency graph |
@@ -1108,7 +1108,7 @@ ork template --katalog <path> [flags]
 Shows which CRDs are declared and their dependency relationships.
 
 ```bash
-ork template --katalog ./katalog.yaml
+ork template --file ./katalog.yaml
 ```
 
 ```
@@ -1127,7 +1127,7 @@ Rendered CRDs:
 Shows every field after defaults are applied. Useful for verifying that modes are set correctly, finalizers are inherited, and overrides took effect.
 
 ```bash
-ork template --katalog ./katalog.yaml --json
+ork template --file ./katalog.yaml --json
 ```
 
 ```json
@@ -1155,7 +1155,7 @@ ork template --katalog ./katalog.yaml --json
 Same content as `--json` in YAML format.
 
 ```bash
-ork template --katalog ./katalog.yaml --yaml
+ork template --file ./katalog.yaml --yaml
 ```
 
 ```yaml
@@ -1181,7 +1181,7 @@ ork template --katalog ./katalog.yaml --yaml
 ASCII tree showing which CRDs depend on which. Useful for understanding startup order before running.
 
 ```bash
-ork template --katalog ./katalog.yaml --graph
+ork template --file ./katalog.yaml --graph
 ```
 
 ```
@@ -1202,7 +1202,7 @@ CRDs with no dependencies appear at the root. Indented entries are what the pare
 Every field for every CRD in human-readable format.
 
 ```bash
-ork template --katalog ./katalog.yaml --verbose
+ork template --file ./katalog.yaml --verbose
 ```
 
 ```
@@ -1228,7 +1228,7 @@ CRD: website
 `ork template` works with Komposers. All sources are resolved and merged before printing. What you see is the final merged state.
 
 ```bash
-ork template --katalog ./komposer.yaml --graph
+ork template --file ./komposer.yaml --graph
 ```
 
 ```
@@ -1246,14 +1246,14 @@ cache       ← from Helm chart
 Generate `zz_generated_runtime_registry.go` from the Katalog. Only needed when your operator uses typed CRDs, Go hooks, or custom constructors. Dynamic template operators do not need this step.
 
 ```bash
-ork generate registry --katalog <path> [flags]
+ork generate registry --file <path> [flags]
 ```
 
 **Flags:**
 
 | Flag | Description |
 |------|-------------|
-| `--katalog` | Path or URL to a Katalog or Komposer (repeatable) |
+| `--file` | Path or URL to a Katalog or Komposer (repeatable) |
 | `--dry-run` | Print generated output to stdout without writing files |
 
 **When you need it:**
@@ -1269,16 +1269,16 @@ ork generate registry --katalog <path> [flags]
 
 ```bash
 # Generate from a single Katalog
-ork generate registry --katalog ./katalog.yaml
+ork generate registry --file ./katalog.yaml
 
 # Preview without writing — use in CI to verify registry is up to date
-ork generate registry --katalog ./katalog.yaml --dry-run
+ork generate registry --file ./katalog.yaml --dry-run
 
 # Generate from a Komposer
-ork generate registry --katalog ./komposer.yaml
+ork generate registry --file ./komposer.yaml
 
 # Multiple sources
-ork generate registry --katalog ./infra.yaml --katalog ./apps.yaml
+ork generate registry --file ./infra.yaml --file ./apps.yaml
 ```
 
 **What it generates:**
@@ -1316,14 +1316,14 @@ nothing to generate — all CRDs use declarative templates
 Start the Orkestra operator runtime.
 
 ```bash
-ork run --katalog <path> [flags]
+ork run --file <path> [flags]
 ```
 
 **Flags:**
 
 | Flag | Description |
 |------|-------------|
-| `--katalog` | Path or URL to a Katalog or Komposer (repeatable) |
+| `--file` | Path or URL to a Katalog or Komposer (repeatable) |
 
 The merger runs first — if merging or validation fails, the runtime never starts. Fail fast before any reconcilers start.
 
@@ -1331,19 +1331,19 @@ The merger runs first — if merging or validation fails, the runtime never star
 
 ```bash
 # Single Katalog
-ork run --katalog ./katalog.yaml
+ork run --file ./katalog.yaml
 
 # Komposer
-ork run --katalog ./komposer.yaml
+ork run --file ./komposer.yaml
 
 # Multiple entry points
-ork run --katalog ./infra.yaml --katalog ./apps.yaml
+ork run --file ./infra.yaml --file ./apps.yaml
 
 # Remote
-ork run --katalog https://config.company.com/crds/production-katalog.yaml
+ork run --file https://config.company.com/crds/production-katalog.yaml
 
 # Environment variable
-ork run --katalog $KATALOG_PATH
+ork run --file $KATALOG_PATH
 ```
 
 **What happens after starting:**
@@ -1539,14 +1539,14 @@ ork init my-operator && cd my-operator
 
 # 2. Edit examples/website/website-katalog.yaml with your CRD
 # 3. Validate before running
-ork validate --katalog examples/website/website-katalog.yaml
+ork validate --file examples/website/website-katalog.yaml
 
 # 4. Preview what will run
-ork template --katalog examples/website/website-katalog.yaml --graph
+ork template --file examples/website/website-katalog.yaml --graph
 
 # 5. Apply CRD and run
 kubectl apply -f examples/website/website-crd.yaml
-ork run --katalog examples/website/website-katalog.yaml
+ork run --file examples/website/website-katalog.yaml
 
 # 6. Monitor
 ork status -w
@@ -1560,42 +1560,42 @@ ork init my-operator --typed && cd my-operator
 
 # 2. Write your Katalog with reconciler.hooks declared
 # 3. Validate
-ork validate --katalog katalogs/my-katalog.yaml
+ork validate --file katalogs/my-katalog.yaml
 
 # 4. Generate runtime registry
-ork generate registry --katalog katalogs/my-katalog.yaml
+ork generate registry --file katalogs/my-katalog.yaml
 
 # 5. Install dependencies
 go mod tidy
 
 # 6. Run
-go run ./cmd/orkestra/ --katalog katalogs/my-katalog.yaml
+go run ./cmd/orkestra/ --file katalogs/my-katalog.yaml
 ```
 
 ### Komposer with multiple sources
 
 ```bash
 # 1. Validate the composed result
-ork validate --katalog ./komposer.yaml
+ork validate --file ./komposer.yaml
 
 # 2. See what sources contributed and final state
-ork template --katalog ./komposer.yaml --json | jq '.[].name'
+ork template --file ./komposer.yaml --json | jq '.[].name'
 
 # 3. Verify the dependency graph
-ork template --katalog ./komposer.yaml --graph
+ork template --file ./komposer.yaml --graph
 
 # 4. Run
-ork run --katalog ./komposer.yaml
+ork run --file ./komposer.yaml
 ```
 
 ### CI pipeline
 
 ```bash
 # Validate in CI — fail fast before deploying
-ork validate --katalog ./katalog.yaml
+ork validate --file ./katalog.yaml
 
 # Verify generated registry is up to date (for typed operators)
-ork generate registry --katalog ./katalog.yaml --dry-run
+ork generate registry --file ./katalog.yaml --dry-run
 ```
 
 ---

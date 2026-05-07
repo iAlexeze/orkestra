@@ -83,7 +83,7 @@ If the CRD is missing, Orkestra will wait until it appears.
 ### Step 2 — Start Orkestra
 
 ```bash
-ork run --katalog website-katalog.yaml
+ork run --file website-katalog.yaml
 ```
 
 Expected output:
@@ -216,14 +216,14 @@ Owner references ensure Kubernetes garbage collection removes all generated reso
 ## Validate the Katalog
 
 ```bash
-ork validate --katalog website-katalog.yaml
+ork validate --file website-katalog.yaml
 # Success: Katalog is valid
 ```
 
 Preview what Orkestra will generate:
 
 ```bash
-ork template --katalog website-katalog.yaml --json
+ork template --file website-katalog.yaml --json
 ```
 
 {{< callout type="tip" >}}

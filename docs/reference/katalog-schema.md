@@ -127,7 +127,7 @@ apiTypes:
 ```
 
 !!! tip "Built-in kind enrichment"
-    Run `ork validate --katalog katalog.yaml` to see what Orkestra resolves
+    Run `ork validate --file katalog.yaml` to see what Orkestra resolves
     for a kind-only declaration:
 
 Response:

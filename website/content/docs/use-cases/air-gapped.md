@@ -7,7 +7,7 @@ description: "Katalogs work offline."
 Katalogs work offline.
 
 ```bash
-ork run --katalog /etc/orkestra/crds/production-katalog.yaml
+ork run --file /etc/orkestra/crds/production-katalog.yaml
 ```
 
 :::note

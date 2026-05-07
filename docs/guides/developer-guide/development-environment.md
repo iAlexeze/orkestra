@@ -114,7 +114,7 @@ Orkestra can run outside the cluster and connect to your local Kubernetes contex
 
 ```
 ./bin/orkestra-runtime \
-  --katalog ./examples/katalog.yaml --debug
+  --file ./examples/katalog.yaml --debug
 ```
 
 This starts:
@@ -135,7 +135,7 @@ You can now apply CRDs and CRs to your local cluster and observe reconciliation.
 During development, you may want to reload katalogs without restarting the runtime.
 
 ```
-ork template --katalog katalog.yaml --graph
+ork template --file katalog.yaml --graph
 ```
 
 Orkestra does not automatically reload katalogs at runtime, but the CLI provides fast validation and preview tools.
@@ -147,7 +147,7 @@ Orkestra does not automatically reload katalogs at runtime, but the CLI provides
 Typed CRDs, Go hooks, and custom constructors require runtime generation:
 
 ```
-ork generate registry --katalog katalog.yaml
+ork generate registry --file katalog.yaml
 go mod tidy
 ```
 

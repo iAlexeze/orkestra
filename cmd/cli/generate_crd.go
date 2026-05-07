@@ -15,13 +15,13 @@
 //
 // Usage:
 //
-//	ork generate crd --katalog katalog.yaml -o crd.yaml
-//	ork generate cr  --katalog katalog.yaml -o cr.yaml
+//	ork generate crd --file katalog.yaml -o crd.yaml
+//	ork generate cr  --file katalog.yaml -o cr.yaml
 //
 // Multiple CRDs in one Katalog:
 //
-//	ork generate crd --katalog katalog.yaml --crd pipeline -o pipeline-crd.yaml
-//	ork generate cr  --katalog katalog.yaml --crd pipeline -o pipeline-cr.yaml
+//	ork generate crd --file katalog.yaml --crd pipeline -o pipeline-crd.yaml
+//	ork generate cr  --file katalog.yaml --crd pipeline -o pipeline-cr.yaml
 
 //go:build !runtime
 
@@ -55,13 +55,13 @@ The Katalog is the single source of truth. The generated CRD includes:
 
 Examples:
   # Single CRD Katalog
-  ork generate crd --katalog katalog.yaml -o crd.yaml
+  ork generate crd --file katalog.yaml -o crd.yaml
 
   # Multi-CRD Katalog — generate for one specific CRD
-  ork generate crd --katalog katalog.yaml --crd pipeline -o pipeline-crd.yaml
+  ork generate crd --file katalog.yaml --crd pipeline -o pipeline-crd.yaml
 
   # Multi-CRD — generate all (outputs pipeline-crd.yaml, website-crd.yaml, ...)
-  ork generate crd --katalog katalog.yaml --all -o ./crds/`,
+  ork generate crd --file katalog.yaml --all -o ./crds/`,
 	RunE: runGenerateCRD,
 }
 
@@ -77,21 +77,21 @@ The generated CR includes:
   - Comments explaining each field (--annotate flag)
 
 Examples:
-  ork generate cr --katalog katalog.yaml -o cr.yaml
-  ork generate cr --katalog katalog.yaml --crd pipeline -o pipeline-cr.yaml`,
+  ork generate cr --file katalog.yaml -o cr.yaml
+  ork generate cr --file katalog.yaml --crd pipeline -o pipeline-cr.yaml`,
 	RunE: runGenerateCR,
 }
 
 func init() {
 	// crd flags
-	generateCRDCmd.Flags().StringSliceP("katalog", "k", nil, "Path(s) to Katalog YAML file(s)")
+	generateCRDCmd.Flags().StringSliceP("file", "f", nil, "Path(s) to Katalog YAML file(s)")
 	generateCRDCmd.Flags().StringP("output", "o", "", "Output file or directory (default: stdout)")
 	generateCRDCmd.Flags().String("crd", "", "CRD name to generate (default: first CRD)")
 	generateCRDCmd.Flags().Bool("all", false, "Generate CRDs for all CRDs in the Katalog")
 	generateCRDCmd.MarkFlagRequired("katalog")
 
 	// cr flags
-	generateCRCmd.Flags().StringSliceP("katalog", "k", nil, "Path(s) to Katalog YAML file(s)")
+	generateCRCmd.Flags().StringSliceP("file", "f", nil, "Path(s) to Katalog YAML file(s)")
 	generateCRCmd.Flags().StringP("output", "o", "", "Output file (default: stdout)")
 	generateCRCmd.Flags().String("crd", "", "CRD name to generate CR for (default: first CRD)")
 	generateCRCmd.MarkFlagRequired("katalog")
@@ -155,7 +155,7 @@ func runGenerateCRD(cmd *cobra.Command, _ []string) error {
 }
 
 func runGenerateCR(cmd *cobra.Command, _ []string) error {
-	katalogPaths, _ := cmd.Flags().GetStringSlice("katalog")
+	katalogPaths, _ := cmd.Flags().GetStringSlice("file")
 	output, _ := cmd.Flags().GetString("output")
 	crdName, _ := cmd.Flags().GetString("crd")
 

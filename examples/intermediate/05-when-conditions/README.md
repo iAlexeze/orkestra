@@ -30,7 +30,7 @@ is set on all resources, this is handled automatically.
 
 ```bash
 kubectl apply -f crd.yaml
-ork run --katalog katalog.yaml
+ork run --file katalog.yaml
 kubectl apply -f cr-free.yaml
 ```
 

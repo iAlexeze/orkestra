@@ -96,7 +96,7 @@ func initProject(name, pack string, refresh bool) error {
 	fmt.Printf("  ls examples/%s/\n", pack)
 	fmt.Println()
 	fmt.Println("To run any example:")
-	fmt.Printf("  ork run --katalog examples/%s/<example>/katalog.yaml\n", pack)
+	fmt.Printf("  ork run --file examples/%s/<example>/katalog.yaml\n", pack)
 	fmt.Println()
 	fmt.Println("Control Center:")
 	fmt.Printf("  ork control start    # opens localhost:8081\n\n")

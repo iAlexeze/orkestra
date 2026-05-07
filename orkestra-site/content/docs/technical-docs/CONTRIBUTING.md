@@ -57,7 +57,7 @@ go test ./...
 kubectl apply -f examples/website/website-crd.yaml
 
 # Run Orkestra with the example Katalog
-go run ./cmd/ork/main.go run --katalog examples/website/website-katalog.yaml
+go run ./cmd/ork/main.go run --file examples/website/website-katalog.yaml
 
 # Apply a CR in another terminal
 kubectl apply -f examples/website/website-cr.yaml
@@ -94,7 +94,7 @@ make generate
 After modifying a Katalog with `apiTypes.location` set, regenerate the runtime registry:
 
 ```bash
-go run ./cmd/ork/main.go generate registry --katalog katalog.yaml
+go run ./cmd/ork/main.go generate registry --file katalog.yaml
 ```
 
 ---
@@ -300,7 +300,7 @@ my-pattern/
     README.md       documentation
 ```
 
-Run `ork validate --katalog katalog.yaml` inside the directory before opening a PR. The CI pipeline runs this check on every PR.
+Run `ork validate --file katalog.yaml` inside the directory before opening a PR. The CI pipeline runs this check on every PR.
 
 See [Publishing a Pattern](../runtime-manual/concepts/registry-sources/publishing-a-pattern.md) for the complete guide.
 

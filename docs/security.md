@@ -52,7 +52,7 @@ This is a structural guarantee — the commands are removed at compile time, not
 Orkestra never auto-creates `ServiceAccount`, `ClusterRole`, or `ClusterRoleBinding` resources. You generate them from your Katalog, review the output, commit it, and apply it explicitly:
 
 ```bash
-ork generate bundle --katalog my-katalog.yaml -o bundle.yaml
+ork generate bundle --file my-katalog.yaml -o bundle.yaml
 kubectl apply -f bundle.yaml
 ```
 
@@ -81,7 +81,7 @@ Only the CRDs you declare, only the resources they produce, only the verbs they 
 ### Rerun after Katalog changes
 
 ```bash
-ork generate bundle --katalog my-katalog.yaml -o bundle.yaml
+ork generate bundle --file my-katalog.yaml -o bundle.yaml
 ```
 
 Run this whenever you add a new CRD or resource type. The output diffs cleanly in GitOps workflows.

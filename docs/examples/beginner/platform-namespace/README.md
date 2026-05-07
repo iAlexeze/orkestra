@@ -93,7 +93,7 @@ kubectl apply -f platform-namespace-crd.yaml
 ### Step 2 — Start Orkestra
 
 ```bash
-ork run --katalog platform-namespace-katalog.yaml
+ork run --file platform-namespace-katalog.yaml
 ```
 
 !!! note

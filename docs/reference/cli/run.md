@@ -3,7 +3,7 @@
 Start the Orkestra operator runtime.
 
 ```bash
-ork run --katalog <path>
+ork run --file <path>
 ```
 
 Merges and validates before starting workers.

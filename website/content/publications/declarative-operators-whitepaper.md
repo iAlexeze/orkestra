@@ -153,7 +153,7 @@ spec:
               reconcile: true
 ```
 
-This is a complete operator declaration. `ork run --katalog katalog.yaml`
+This is a complete operator declaration. `ork run --file katalog.yaml`
 starts the runtime. Every `Website` CR triggers a reconcile that creates
 and drift-corrects a Deployment and Service. Deletion cascades via owner
 references. Finalizers ensure cleanup completes before CR removal.

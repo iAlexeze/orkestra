@@ -111,7 +111,7 @@ Show what would change in a running operator if the Katalog were updated. Like
 `kubectl diff` for operator configuration.
 
 ```bash
-ork diff --katalog ./katalog-v2.yaml
+ork diff --file ./katalog-v2.yaml
 # ~ website: workers 2 → 4
 # ~ website: resync 15s → 30s
 # + logging (new CRD)
@@ -124,7 +124,7 @@ Deeper Katalog analysis beyond `ork validate`. Catches patterns that are valid
 but likely wrong:
 
 ```bash
-ork lint --katalog katalog.yaml
+ork lint --file katalog.yaml
 # WARN website: reconcile: true on all resources — consider onReconcile for drift
 # WARN database: workers: 1 — single worker will serialise all reconciles
 # WARN platform: resync: 1s — very short interval across 500+ CRDs

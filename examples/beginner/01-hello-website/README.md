@@ -41,7 +41,7 @@ kubectl get crd websites.demo.orkestra.io
 ## Step 2 — Validate the Katalog
 
 ```bash
-ork validate --katalog katalog.yaml
+ork validate --file katalog.yaml
 ```
 
 Expected output:
@@ -58,7 +58,7 @@ Expected output:
 ## Step 3 — Start the operator
 
 ```bash
-ork run --katalog katalog.yaml
+ork run --file katalog.yaml
 ```
 
 You will see the health server start and the informer sync:

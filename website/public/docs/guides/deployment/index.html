@@ -1014,7 +1014,7 @@ Works with <a href="https://kind.sigs.k8s.io/">kind</a>, <a href="https://miniku
 </span></span><span style="display:flex;"><span>kubectl apply -f examples/website/website-crd.yaml
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># Run</span>
-</span></span><span style="display:flex;"><span>ork run --katalog examples/website/website-katalog.yaml
+</span></span><span style="display:flex;"><span>ork run --file examples/website/website-katalog.yaml
 </span></span></code></pre></div><p>Use this path for development, demos, and validating a Katalog before
 deploying it to a cluster.</p>
 <hr>
@@ -1167,15 +1167,15 @@ correctly after merging.</p>
 </span></span></code></pre></div><p>After merging, <code>project</code> starts first. <code>application</code> waits.</p>
 <h3 id="preview-the-merged-result-before-deploying">Preview the merged result before deploying</h3>
 <p>Always validate and preview before applying:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate --katalog komposer.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate --file komposer.yaml
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>ork template --katalog komposer.yaml --graph
+</span></span><span style="display:flex;"><span>ork template --file komposer.yaml --graph
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># Dependency Graph:</span>
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># project</span>
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># application</span>
 </span></span><span style="display:flex;"><span><span style="color:#6272a4">#   └─ project</span>
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>ork template --katalog komposer.yaml --json | jq <span style="color:#f1fa8c">&#39;.[].name&#39;</span>
+</span></span><span style="display:flex;"><span>ork template --file komposer.yaml --json | jq <span style="color:#f1fa8c">&#39;.[].name&#39;</span>
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># &#34;project&#34;</span>
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># &#34;application&#34;</span>
 </span></span></code></pre></div><hr>
@@ -1278,7 +1278,7 @@ Use Kubernetes Secrets and inject via <code>extraEnvFrom</code>:</p>
 </ul>
 <p><strong>Katalog</strong></p>
 <ul>
-<li><input disabled="" type="checkbox"> Validated with <code>ork validate --katalog &lt;path&gt;</code></li>
+<li><input disabled="" type="checkbox"> Validated with <code>ork validate --file &lt;path&gt;</code></li>
 <li><input disabled="" type="checkbox"> Dependency graph reviewed with <code>ork template --graph</code></li>
 <li><input disabled="" type="checkbox"> Remote source URLs verified and accessible from the cluster</li>
 <li><input disabled="" type="checkbox"> Auth credentials injected via Kubernetes Secrets (not hardcoded)</li>

@@ -262,7 +262,7 @@ template expressions — before they reach the cluster.</p>
 </span></span><span style="display:flex;"><span>      - <span style="color:#ff79c6">name</span>: Install ork
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">run</span>: curl -sSL https://raw.githubusercontent.com/orkestra-sh/orkestra/main/install.sh | bash
 </span></span><span style="display:flex;"><span>      - <span style="color:#ff79c6">name</span>: Validate
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">run</span>: ork validate --katalog operator-definitions/overlays/production/komposer.yaml
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">run</span>: ork validate --file operator-definitions/overlays/production/komposer.yaml
 </span></span></code></pre></div><hr>
 <h2 id="4-argocd-health-checks">4. ArgoCD health checks</h2>
 <p>Since Orkestra writes a standard <code>Ready</code> condition to every managed CR after

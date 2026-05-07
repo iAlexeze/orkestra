@@ -20,7 +20,7 @@ Packs are cached locally for fast repeated use and offline initialization.
 | `--clear-cache` | Clear all cached example packs |
 | `--refresh-cache` | Force re-download of the selected pack |
 
-Global flags (`--kubeconfig`, `--katalog`, `--debug`, `--verbose`) are intentionally hidden for this command.
+Global flags (`--kubeconfig`, `--file`, `--debug`, `--verbose`) are intentionally hidden for this command.
 
 ---
 
@@ -99,7 +99,7 @@ Inside the project:
 ```
 cd my-operator
 kubectl apply -f examples/<pack>/01-hello-website/crd.yaml
-ork run --katalog examples/<pack>/01-hello-website/katalog.yaml
+ork run --file examples/<pack>/01-hello-website/katalog.yaml
 kubectl apply -f examples/<pack>/01-hello-website/cr.yaml
 ```
 

@@ -276,7 +276,7 @@ crds:
 Then generate the runtime registry:
 
 ```bash
-ork generate registry --katalog katalogs/website.yaml
+ork generate registry --file katalogs/website.yaml
 go mod tidy
 ```
 

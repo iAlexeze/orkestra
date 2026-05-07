@@ -31,7 +31,7 @@ pattern to be trustworthy.
 
 {{< callout type="tip" title="Building your own pattern" >}}
 If you are publishing your own registry pattern, run
-`ork validate --katalog katalog.yaml` inside the pattern directory before
+`ork validate --file katalog.yaml` inside the pattern directory before
 pushing. Orkestra validates structure as part of that command and will
 surface missing or empty files before they reach consumers.
 {{< /callout >}}

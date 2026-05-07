@@ -274,6 +274,15 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 					Containers:         []corev1.Container{container},
 				},
 			},
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{},
+			PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
+				WhenDeleted: appsv1.PersistentVolumeClaimRetentionPolicyType(spec.VolumeClaimRetentionPolicy.WhenDeleted),
+				WhenScaled:  appsv1.PersistentVolumeClaimRetentionPolicyType(spec.VolumeClaimRetentionPolicy.WhenScaled),
+			},
+			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+				Type: appsv1.OnDeleteStatefulSetStrategyType,
+			},
+			PodManagementPolicy: appsv1.ParallelPodManagement,
 		},
 	}
 

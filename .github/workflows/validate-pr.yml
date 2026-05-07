@@ -87,7 +87,7 @@ jobs:
       - name: Generate and apply bundle
         run: |
           $HOME/.orkestra/bin/ork bundle \
-            --katalog pkg/note/fixture/katalog.yaml | kubectl apply -f -
+            --file pkg/note/fixture/katalog.yaml | kubectl apply -f -
 
       - name: Install Orkestra via Helm
         run: |
@@ -151,7 +151,7 @@ jobs:
       - name: Generate and apply bundle
         run: |
           $HOME/.orkestra/bin/ork bundle \
-            --katalog pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
+            --file pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
 
       - name: Install Orkestra via Helm
         run: |

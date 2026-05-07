@@ -115,17 +115,14 @@ func renderInputs(resourceYAML string, resolved map[string]string) (string, erro
 	data := map[string]interface{}{
 		"inputs": resolved,
 	}
-
-	tmpl, err := template.New("motif").
-		Option("missingkey=error").
-		Parse(resourceYAML)
+	tmpl, err := template.New("motif").Option("missingkey=error").Parse(resourceYAML)
 	if err != nil {
-		return "", fmt.Errorf("parsing motif template: %w", err)
+		return "", err
 	}
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
-		return "", fmt.Errorf("executing motif template: %w", err)
+		return "", err
 	}
 
 	return buf.String(), nil

@@ -140,14 +140,14 @@ crds:
 ### Step 3: Generate Runtime Registry
 
 ```bash
-ork generate registry --katalog katalogs/website.yaml
+ork generate registry --file katalogs/website.yaml
 go mod tidy
 ```
 
 ### Step 4: Run Orkestra
 
 ```bash
-go run ./cmd/orkestra/ run --katalog katalogs/website.yaml
+go run ./cmd/orkestra/ run --file katalogs/website.yaml
 ```
 
 Now every `Website` CR will be validated against the external API before reconciliation.

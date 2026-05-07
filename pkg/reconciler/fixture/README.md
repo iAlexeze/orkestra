@@ -60,7 +60,7 @@ To iterate manually without tearing down the cluster:
 scripts/setup-kind.sh orkestra-reconciler-fixture
 
 kubectl apply -f pkg/reconciler/fixture/crd.yaml
-ork bundle --katalog pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
+ork bundle --file pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
 
 helm install orkestra charts/orkestra --namespace default
 

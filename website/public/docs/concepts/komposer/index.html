@@ -1100,7 +1100,7 @@ at startup — they never appear as literal values in the Komposer YAML.</p>
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">fromEnv</span>: PLATFORM_KATALOG_TOKEN
 </span></span></code></pre></div><p>Set the environment variable before running:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">export</span> <span style="color:#8be9fd;font-style:italic">PLATFORM_KATALOG_TOKEN</span><span style="color:#ff79c6">=</span>your-token-here
-</span></span><span style="display:flex;"><span>ork run --katalog komposer.yaml
+</span></span><span style="display:flex;"><span>ork run --file komposer.yaml
 </span></span></code></pre></div><p>In a Kubernetes deployment, inject it from a Secret:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># Helm values</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">extraEnvFrom</span>:
@@ -1119,7 +1119,7 @@ The token needs <code>repo</code> scope for private repository access.</p>
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: github
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">fromEnv</span>: GITHUB_TOKEN
 </span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">export</span> <span style="color:#8be9fd;font-style:italic">GITHUB_TOKEN</span><span style="color:#ff79c6">=</span>ghp_xxxxxxxxxxxx
-</span></span><span style="display:flex;"><span>ork run --katalog komposer.yaml
+</span></span><span style="display:flex;"><span>ork run --file komposer.yaml
 </span></span></code></pre></div><p><code>github</code> and <code>bearer</code> produce the same <code>Authorization: Bearer</code> header.
 Use <code>github</code> when the token is a GitHub PAT — it makes the intent clear
 to anyone reading the Komposer.</p>
@@ -1134,7 +1134,7 @@ to anyone reading the Komposer.</p>
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">passwordFromEnv</span>: ARTIFACTORY_PASSWORD
 </span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">export</span> <span style="color:#8be9fd;font-style:italic">ARTIFACTORY_USER</span><span style="color:#ff79c6">=</span>svc-orkestra
 </span></span><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">export</span> <span style="color:#8be9fd;font-style:italic">ARTIFACTORY_PASSWORD</span><span style="color:#ff79c6">=</span>xxxx
-</span></span><span style="display:flex;"><span>ork run --katalog komposer.yaml
+</span></span><span style="display:flex;"><span>ork run --file komposer.yaml
 </span></span></code></pre></div><h3 id="mixing-auth-types">Mixing auth types</h3>
 <p>Multiple sources with different auth requirements in one Komposer:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
@@ -1276,22 +1276,22 @@ override mechanism.</p>
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">enabled</span>: <span style="color:#ff79c6">false</span>
 </span></span></code></pre></div><hr>
 <h2 id="cli-commands">CLI commands</h2>
-<p>All CLI commands that accept <code>--katalog</code> also accept a Komposer path.
+<p>All CLI commands that accept <code>--file</code> also accept a Komposer path.
 The merger handles both transparently.</p>
 <h3 id="ork-validate"><code>ork validate</code></h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate --katalog ./komposer.yaml
-</span></span><span style="display:flex;"><span>ork validate --katalog ./infra.yaml --katalog ./apps.yaml
-</span></span><span style="display:flex;"><span>ork validate --katalog <span style="color:#8be9fd;font-style:italic">$KATALOG_PATH</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate --file ./komposer.yaml
+</span></span><span style="display:flex;"><span>ork validate --file ./infra.yaml --file ./apps.yaml
+</span></span><span style="display:flex;"><span>ork validate --file <span style="color:#8be9fd;font-style:italic">$KATALOG_PATH</span>
 </span></span></code></pre></div><h3 id="ork-template"><code>ork template</code></h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork template --katalog ./komposer.yaml
-</span></span><span style="display:flex;"><span>ork template --katalog ./komposer.yaml --graph
-</span></span><span style="display:flex;"><span>ork template --katalog ./komposer.yaml --json
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork template --file ./komposer.yaml
+</span></span><span style="display:flex;"><span>ork template --file ./komposer.yaml --graph
+</span></span><span style="display:flex;"><span>ork template --file ./komposer.yaml --json
 </span></span></code></pre></div><h3 id="ork-generate-runtime"><code>ork generate registry</code></h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork generate registry --katalog ./komposer.yaml
-</span></span><span style="display:flex;"><span>ork generate registry --katalog ./komposer.yaml --dry-run
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork generate registry --file ./komposer.yaml
+</span></span><span style="display:flex;"><span>ork generate registry --file ./komposer.yaml --dry-run
 </span></span></code></pre></div><h3 id="ork-run"><code>ork run</code></h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run --katalog ./komposer.yaml
-</span></span><span style="display:flex;"><span>ork run --katalog ./infra.yaml --katalog ./apps.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run --file ./komposer.yaml
+</span></span><span style="display:flex;"><span>ork run --file ./infra.yaml --file ./apps.yaml
 </span></span></code></pre></div><hr>
 <h2 id="complete-examples">Complete examples</h2>
 <h3 id="single-katalog--no-komposer-needed">Single Katalog — no Komposer needed</h3>
@@ -1318,7 +1318,7 @@ are composing definitions from multiple sources.</p>
 </span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">replicas</span>: <span style="color:#f1fa8c">&#34;{{ .spec.replicas }}&#34;</span>
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
-</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run --katalog ./katalog.yaml
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run --file ./katalog.yaml
 </span></span></code></pre></div><h3 id="multi-team-composition">Multi-team composition</h3>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># komposer.yaml</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
@@ -1348,9 +1348,9 @@ are composing definitions from multiple sources.</p>
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">hooks</span>:
 </span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">location</span>: github.com/myorg/hooks
 </span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">function</span>: ApplicationHooks
-</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork template --katalog ./komposer.yaml --graph
-</span></span><span style="display:flex;"><span>ork validate --katalog ./komposer.yaml
-</span></span><span style="display:flex;"><span>ork run --katalog ./komposer.yaml
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork template --file ./komposer.yaml --graph
+</span></span><span style="display:flex;"><span>ork validate --file ./komposer.yaml
+</span></span><span style="display:flex;"><span>ork run --file ./komposer.yaml
 </span></span></code></pre></div><h3 id="enterprise--private-sources-with-mixed-auth">Enterprise — private sources with mixed auth</h3>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># enterprise-komposer.yaml</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
@@ -1411,8 +1411,8 @@ are composing definitions from multiple sources.</p>
 </span></span></span><span style="display:flex;"><span><span style="color:#f1fa8c"></span>  --from-literal<span style="color:#ff79c6">=</span><span style="color:#8be9fd;font-style:italic">ARTIFACTORY_PASSWORD</span><span style="color:#ff79c6">=</span>zzzz
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># Validate before deploying</span>
-</span></span><span style="display:flex;"><span>ork validate --katalog enterprise-komposer.yaml
-</span></span><span style="display:flex;"><span>ork template --katalog enterprise-komposer.yaml --graph
+</span></span><span style="display:flex;"><span>ork validate --file enterprise-komposer.yaml
+</span></span><span style="display:flex;"><span>ork template --file enterprise-komposer.yaml --graph
 </span></span></code></pre></div><h3 id="helm-chart--local-katalog--inline-override">Helm chart + local Katalog + inline override</h3>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># production-komposer.yaml</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1

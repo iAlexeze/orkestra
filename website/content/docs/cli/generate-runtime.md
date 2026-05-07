@@ -7,7 +7,7 @@ description: "Generate runtime registry for typed CRDs, Go hooks, and custom con
 Generate runtime registry for typed CRDs, Go hooks, and custom constructors.
 
 ```bash
-ork generate registry --katalog <path>
+ork generate registry --file <path>
 ```
 
 ## Flags

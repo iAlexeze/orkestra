@@ -254,7 +254,7 @@ All of this happens automatically on every reconcile.
 If a template isn't resolving as expected, use debug mode:
 
 ```bash
-ork run --katalog my-katalog.yaml --debug
+ork run --file my-katalog.yaml --debug
 ```
 
 You'll see:

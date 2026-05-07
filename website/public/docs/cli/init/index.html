@@ -988,7 +988,7 @@
   README.md
 </code></pre><p>Start immediately:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl apply -f examples/website/website-crd.yaml
-</span></span><span style="display:flex;"><span>ork run --katalog examples/website/website-katalog.yaml
+</span></span><span style="display:flex;"><span>ork run --file examples/website/website-katalog.yaml
 </span></span></code></pre></div><hr>
 <h2 id="typed-project">Typed Project</h2>
 <p>For operators using typed CRDs, Go hooks, or custom reconcilers.</p>
@@ -998,7 +998,7 @@ pkg/runtime/
 pkg/hooks/
 go.mod
 </code></pre><p>Run:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>go run ./cmd/orkestra/ run --katalog examples/website/website-katalog.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>go run ./cmd/orkestra/ run --file examples/website/website-katalog.yaml
 </span></span></code></pre></div><hr>
 <h2 id="related-documentation">Related Documentation</h2>
 <ul>

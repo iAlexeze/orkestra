@@ -44,7 +44,7 @@ That's a complete operator. Apply it, and Orkestra registers the `Website` CRD, 
 ## Try it
 
 ```bash
-ork run --katalog ./katalog.yaml
+ork run --file ./katalog.yaml
 ```
 
 See the [Getting Started guide](/docs/getting-started/) to build your first operator in under 10 minutes.

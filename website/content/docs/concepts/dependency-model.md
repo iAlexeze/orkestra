@@ -171,7 +171,7 @@ This ensures dependents stop before their dependencies. No broken references.
 You can see the dependency graph with:
 
 ```bash
-ork template --katalog my-katalog.yaml --graph
+ork template --file my-katalog.yaml --graph
 ```
 
 Output:

@@ -92,7 +92,7 @@ jobs:
       - name: Install ork
         run: curl -sSL https://raw.githubusercontent.com/orkestra-sh/orkestra/main/install.sh | bash
       - name: Validate
-        run: ork validate --katalog operator-definitions/overlays/production/komposer.yaml
+        run: ork validate --file operator-definitions/overlays/production/komposer.yaml
 ```
 
 ---

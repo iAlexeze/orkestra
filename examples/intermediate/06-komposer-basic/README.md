@@ -13,8 +13,8 @@ built-in kind governance alongside custom CRDs.
 
 ## What is new
 
-**Komposer** — instead of running `ork run --katalog`, you run
-`ork run --katalog komposer.yaml`. The Komposer reads both source Katalogs,
+**Komposer** — instead of running `ork run --file`, you run
+`ork run --file komposer.yaml`. The Komposer reads both source Katalogs,
 merges their CRD entries, applies your overrides, and produces a single unified
 configuration that Orkestra runs.
 
@@ -44,10 +44,10 @@ kubectl apply -f crd.yaml
 Before running, see what the Komposer produces:
 
 ```bash
-ork template --katalog komposer.yaml --yaml
+ork template --file komposer.yaml --yaml
 
 # Use --json to view template result in JSON format
-ork template --katalog komposer.yaml --json
+ork template --file komposer.yaml --json
 ```
 
 You will see both CRD entries — `website` with `workers: 4` and `resync: 15s`
@@ -56,7 +56,7 @@ You will see both CRD entries — `website` with `workers: 4` and `resync: 15s`
 ### 3. Validate
 
 ```bash
-ork validate --katalog komposer.yaml
+ork validate --file komposer.yaml
 ```
 
 Expected:
@@ -75,7 +75,7 @@ Expected:
 ### 4. Start the operator
 
 ```bash
-ork run --katalog komposer.yaml
+ork run --file komposer.yaml
 ```
 
 > [!TIP]

@@ -961,7 +961,7 @@ Git, it becomes a GitOps artifact — versioned, reviewed, and auditable.</p>
 <p><strong>Platform teams publish standard configurations:</strong></p>
 <pre tabindex="0"><code>https://internal.company.com/platform/crds/standard-katalog.yaml
 </code></pre><p><strong>Every team consumes it:</strong></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run --katalog https://internal.company.com/platform/crds/standard-katalog.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run --file https://internal.company.com/platform/crds/standard-katalog.yaml
 </span></span></code></pre></div><p>:::note
 Changes to the Katalog propagate to every cluster that consumes it on
 the next Orkestra restart. No binary rebuilds. No deployments. One file

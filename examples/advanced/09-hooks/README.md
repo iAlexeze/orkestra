@@ -44,7 +44,7 @@ make registry
 This executes:
 
 ```bash
-ork generate registry --katalog katalog.yaml
+ork generate registry --file katalog.yaml
 ```
 
 It creates (or updates) two files:

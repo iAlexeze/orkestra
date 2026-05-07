@@ -56,10 +56,10 @@ type mergerOut struct {
 }
 
 func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
-	katalogPaths, _ := cmd.Flags().GetStringSlice("katalog")
+	katalogPaths, _ := cmd.Flags().GetStringSlice("file")
 
 	if len(katalogPaths) == 0 {
-		return nil, fmt.Errorf("--katalog is required (can be specified multiple times or as comma-separated values)")
+		return nil, fmt.Errorf("--file is required (can be specified multiple times or as comma-separated values)")
 	}
 
 	expanded := parseKatalogPaths(katalogPaths)
@@ -172,9 +172,9 @@ including conditional webhook permissions when validation, mutation, or
 conversion rules are present.
 
 Example:
-  ork generate rbac --katalog ./website-katalog.yaml
-  ork generate rbac --katalog a.yaml --katalog b.yaml
-  ork generate rbac --katalog a.yaml,b.yaml`,
+  ork generate rbac --file ./website-katalog.yaml
+  ork generate rbac --file a.yaml --file b.yaml
+  ork generate rbac --file a.yaml,b.yaml`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		out, err := generateKatalog(cmd)
 		if err != nil {
@@ -219,7 +219,7 @@ Example:
 		// Get the katalog file path directly, don't validate
 		katalogPath, _ := cmd.Flags().GetString("katalog")
 		if katalogPath == "" {
-			return fmt.Errorf("--katalog is required")
+			return fmt.Errorf("--file is required")
 		}
 
 		namespace, _ := cmd.Flags().GetString("namespace")
@@ -249,15 +249,15 @@ var generateBundleCmd = &cobra.Command{
 The bundle is self-contained and ready to apply with kubectl.
 
 Examples:
-  ork generate bundle --katalog my-katalog.yaml
-  ork generate bundle --katalog my-katalog.yaml -o bundle.yaml
-  ork generate bundle --katalog my-katalog.yaml -o bundle/
-  ork generate bundle --katalog my-katalog.yaml --namespace custom-ns`,
+  ork generate bundle --file my-katalog.yaml
+  ork generate bundle --file my-katalog.yaml -o bundle.yaml
+  ork generate bundle --file my-katalog.yaml -o bundle/
+  ork generate bundle --file my-katalog.yaml --namespace custom-ns`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get the katalog paths as a slice
-		katalogPaths, _ := cmd.Flags().GetStringSlice("katalog")
+		katalogPaths, _ := cmd.Flags().GetStringSlice("file")
 		if len(katalogPaths) == 0 {
-			return fmt.Errorf("--katalog is required")
+			return fmt.Errorf("--file is required")
 		}
 
 		// Use the first path for ConfigMap
@@ -307,13 +307,13 @@ func init() {
 	generateCmd.AddCommand(generateConfigMapCmd)
 	generateCmd.AddCommand(generateBundleCmd)
 
-	// Register --katalog flag for commands that need it
-	generateConfigMapCmd.Flags().StringP("katalog", "k", "", "Path to katalog.yaml or komposer.yaml")
+	// Register --file flag for commands that need it
+	generateConfigMapCmd.Flags().StringP("file", "f", "", "Path to katalog.yaml or komposer.yaml")
 
 	// For bundle, use StringSliceP to be compatible with generateKatalog
-	generateBundleCmd.Flags().StringSliceP("katalog", "k", []string{}, "Path to katalog.yaml")
+	generateBundleCmd.Flags().StringSliceP("file", "f", []string{}, "Path to katalog.yaml")
 
-	generateRbacCmd.Flags().StringSliceP("katalog", "k", []string{}, "Path to katalog.yaml (can be specified multiple times or as comma-separated)")
+	generateRbacCmd.Flags().StringSliceP("file", "f", []string{}, "Path to katalog.yaml (can be specified multiple times or as comma-separated)")
 
 	// Add shared flags
 	for _, cmd := range []*cobra.Command{

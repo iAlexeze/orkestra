@@ -138,7 +138,7 @@ lists, err := discoveryClient.ServerPreferredResources()
     in cluster discovery — ensure the CRD is installed and apiTypes is complete
     ```
 
-    Always run `ork validate --katalog katalog.yaml` to surface enrichment
+    Always run `ork validate --file katalog.yaml` to surface enrichment
     failures before deploying.
 
 ---
@@ -249,7 +249,7 @@ The `Katalog` is passed to:
 ## ork validate
 
 ```bash
-ork validate --katalog katalog.yaml
+ork validate --file katalog.yaml
 ```
 
 Runs the full Katalog loading sequence but does not start the runtime. Outputs:

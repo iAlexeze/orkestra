@@ -1192,7 +1192,7 @@
 <hr>
 <h2 id="debugging-templates">Debugging Templates</h2>
 <p>If a template isn&rsquo;t resolving as expected, use debug mode:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run --katalog my-katalog.yaml --debug
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run --file my-katalog.yaml --debug
 </span></span></code></pre></div><p>You&rsquo;ll see:</p>
 <pre tabindex="0"><code>DEBUG resolved template: image=&#34;{{ .spec.image }}&#34; → &#34;nginx:1.25&#34;
 DEBUG resolved template: replicas=&#34;{{ .spec.replicas }}&#34; → &#34;3&#34;

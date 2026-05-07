@@ -211,7 +211,7 @@ test-fixture-note:
 	@echo "── Note fixture test ──────────────────────────────────────────"
 	@bash scripts/setup-kind.sh $(FIXTURE_NOTE_CLUSTER)
 	@kubectl apply -f pkg/note/fixture/crd.yaml
-	@ork generate bundle --katalog pkg/note/fixture/katalog.yaml | kubectl apply -f -
+	@ork generate bundle --file pkg/note/fixture/katalog.yaml | kubectl apply -f -
 	@helm install orkestra $(HELM_CHART) --namespace default --wait --timeout 120s
 	@kubectl apply -f pkg/note/fixture/cr.yaml
 	@kubectl wait reconcilerprobe/my-probe --for=jsonpath='{.status.phase}'=Ready \
@@ -225,7 +225,7 @@ test-fixture-reconciler:
 	@echo "── Reconciler fixture test ────────────────────────────────────"
 	@bash scripts/setup-kind.sh $(FIXTURE_RECONCILER_CLUSTER)
 	@kubectl apply -f pkg/reconciler/fixture/crd.yaml
-	@ork generate bundle --katalog pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
+	@ork generate bundle --file pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
 	@helm install orkestra $(HELM_CHART) --namespace default --wait --timeout 120s
 	@kubectl apply -f pkg/reconciler/fixture/cr.yaml
 	@kubectl wait reconcilerprobe/probe --for=jsonpath='{.status.tier}'=premium \
