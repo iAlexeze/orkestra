@@ -22,6 +22,36 @@ const (
 	ColorGray      = "\033[90m"
 )
 
+func Colorize(color, text string) string {
+	return color + text + ColorReset
+}
+
+func Red(text string) string       { return Colorize(ColorRed, text) }
+func Green(text string) string     { return Colorize(ColorGreen, text) }
+func Yellow(text string) string    { return Colorize(ColorYellow, text) }
+func Blue(text string) string      { return Colorize(ColorBlue, text) }
+func Magenta(text string) string   { return Colorize(ColorMagenta, text) }
+func Cyan(text string) string      { return Colorize(ColorCyan, text) }
+func Gray(text string) string      { return Colorize(ColorGray, text) }
+func Bold(text string) string      { return Colorize(ColorBold, text) }
+func Dim(text string) string       { return Colorize(ColorDim, text) }
+func Underline(text string) string { return Colorize(ColorUnderline, text) }
+
+// Reset removes all styling from the given text.
+func Reset(text string) string { return Colorize(ColorReset, text) }
+
+// SuccessMark returns a green checkmark symbol for successful operations.
+func SuccessMark() string { return Green("✓") }
+
+// FailureMark returns a red cross symbol for failed operations.
+func FailureMark() string { return Red("✗") }
+
+// WarningMark returns a yellow warning symbol for non-fatal issues.
+func WarningMark() string { return Yellow("⚠") }
+
+// InfoMark returns a cyan arrow symbol for informational messages.
+func InfoMark() string { return Cyan("→") }
+
 var OrkestraLogo = `
    ____             _           _
   / __ \___  ____ _(_)___ _____(_)___  ____

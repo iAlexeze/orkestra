@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/orkspace/orkestra/pkg/spinner"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 const (
@@ -44,18 +45,18 @@ func EnsureKindCluster(name string) error {
 	if err := create.Run(); err != nil {
 		return fmt.Errorf("kind create cluster: %w", err)
 	}
-	fmt.Printf("  ✓ Cluster '%s' ready\n", name)
+	fmt.Printf("  %s Cluster '%s' ready\n", utils.SuccessMark(), name)
 
 	// After creation, wait for nodes to be ready
 	spin := spinner.Start("   → Waiting for nodes to be ready...")
-	defer spin.WithFailure() // ensures failure message if error occurs
+	defer spin.Failure() // ensures failure message if error occurs
 
 	if err := waitForNodesReady(5 * time.Minute); err != nil {
-		spin.WithFailure()
+		spin.Failure()
 		return err
 	}
-	spin.WithSuccess()
-	fmt.Printf("  ✓ Nodes ready\n")
+	spin.Success()
+	fmt.Printf("  %s Nodes ready\n", utils.SuccessMark())
 	return useKindContext(name)
 }
 

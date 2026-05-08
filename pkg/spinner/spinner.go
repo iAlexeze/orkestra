@@ -1,4 +1,3 @@
-// pkg/spinner/spinner.go
 package spinner
 
 import (
@@ -6,115 +5,120 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
-// frames is the animation sequence used for the spinner.
 var frames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
-// Spinner provides an animated progress indicator on the terminal.
+// Spinner animates a terminal progress indicator with a message.
 type Spinner struct {
-	message string        // current message to display
-	stop    chan struct{} // closed when spinner should stop
-	stopped bool          // true after Stop() is called
-	mu      sync.Mutex
+	message   string
+	stop      chan struct{}
+	mu        sync.Mutex
+	running   bool // animation active
+	finalized bool // ✓ or ✗ already printed
 }
 
-// Start begins a new spinner with the given message.
-// If stdout is not a terminal, Start prints the message and returns a no‑op spinner.
-func Start(message string) *Spinner {
-	// Check if we are writing to a terminal (TTY)
+// Start begins the spinner; on non‑TTY it prints once and finalizes.
+func Start(msg string) *Spinner {
 	if !isTerminal() {
-		fmt.Println(message)
-		return &Spinner{stopped: true}
+		fmt.Println(msg)
+		return &Spinner{finalized: true}
 	}
 
 	s := &Spinner{
-		message: message,
+		message: msg,
 		stop:    make(chan struct{}),
+		running: true,
 	}
+
 	go s.run()
 	return s
 }
 
-// run is the goroutine that updates the spinner animation.
+// run updates the spinner frame until stopped.
 func (s *Spinner) run() {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
-	idx := 0
+	i := 0
 	for {
 		select {
 		case <-ticker.C:
-			// Overwrite current line with spinning frame + message
-			fmt.Printf("\r\x1b[K%s %s", frames[idx], s.getMessage())
-			idx = (idx + 1) % len(frames)
+			s.mu.Lock()
+			if !s.running {
+				s.mu.Unlock()
+				return
+			}
+			msg := s.message
+			s.mu.Unlock()
+
+			fmt.Printf("\r\x1b[K%s %s", frames[i], msg)
+			i = (i + 1) % len(frames)
+
 		case <-s.stop:
-			// Clear the line before exiting
-			fmt.Print("\r\x1b[K")
 			return
 		}
 	}
 }
 
-// getMessage safely returns the current message.
-func (s *Spinner) getMessage() string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.message
-}
-
-// UpdateMessage changes the message displayed while the spinner is running.
-func (s *Spinner) UpdateMessage(message string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.message = message
-}
-
-// Stop terminates the spinner and clears its line.
+// Stop halts animation and clears the line.
 func (s *Spinner) Stop() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.stopped {
+
+	if !s.running {
 		return
 	}
-	s.stopped = true
+
+	s.running = false
 	close(s.stop)
+	fmt.Print("\r\x1b[K")
 }
 
-// WithSuccess stops the spinner and prints a success checkmark with the final message.
-// It also restores the line.
-func (s *Spinner) WithSuccess() {
-	s.Stop()
-	if !s.stopped { // if we were already stopped, nothing to do
+// Success prints a green ✓ and finalizes the spinner.
+func (s *Spinner) Success() {
+	s.mu.Lock()
+	if s.finalized {
+		s.mu.Unlock()
 		return
 	}
-	if isTerminal() {
-		fmt.Printf("\r\x1b[K ✓ %s\n", s.getMessage())
-	} else {
-		fmt.Printf("✓ %s\n", s.getMessage())
-	}
+	s.finalized = true
+	msg := s.message
+	s.mu.Unlock()
+
+	s.Stop()
+	fmt.Printf("  %s %s\n", utils.SuccessMark(), msg)
 }
 
-// WithFailure stops the spinner and prints a failure cross with the final message.
-func (s *Spinner) WithFailure() {
-	s.Stop()
-	if !s.stopped {
+// Failure prints a red ✗ and finalizes the spinner.
+func (s *Spinner) Failure() {
+	s.mu.Lock()
+	if s.finalized {
+		s.mu.Unlock()
 		return
 	}
-	if isTerminal() {
-		fmt.Printf("\r\x1b[K❌ %s\n", s.getMessage())
-	} else {
-		fmt.Printf("❌ %s\n", s.getMessage())
-	}
+	s.finalized = true
+	msg := s.message
+	s.mu.Unlock()
+
+	s.Stop()
+	fmt.Printf("  %s %s\n", utils.FailureMark(), msg)
 }
 
-// isTerminal reports whether stdout is a terminal (TTY).
+// Update changes the spinner's message while running.
+func (s *Spinner) Update(msg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.message = msg
+}
+
+// isTerminal reports whether stdout is a TTY.
 func isTerminal() bool {
 	info, err := os.Stdout.Stat()
 	if err != nil {
 		return false
 	}
-	// On Unix, mode & ModeCharDevice != 0 indicates a terminal.
-	// On Windows, we could use a more robust check, but for simplicity we keep this.
 	return (info.Mode() & os.ModeCharDevice) != 0
 }

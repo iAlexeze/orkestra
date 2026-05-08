@@ -19,7 +19,7 @@ const (
 // DetectIngressController tries to identify which ingress controller is
 // installed on the current cluster. Returns IngressNone when kubectl is not
 // available or when no known controller is found.
-func DetectIngressController() IngressController {
+func detectIngressController() IngressController {
 	out, err := exec.Command("kubectl", "get", "pods", "--all-namespaces",
 		"-l", "app.kubernetes.io/name=ingress-nginx",
 		"--no-headers", "-o", "name").Output()
