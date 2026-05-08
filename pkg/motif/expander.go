@@ -32,6 +32,21 @@ type ExpandedMotif struct {
 	Admission *orktypes.Admission
 }
 
+// HasResources returns true when the motif produced resource templates.
+func (e *ExpandedMotif) HasResources() bool {
+	return e.Resources != nil
+}
+
+// HasStatus reports whether the motif defines status fields or conditions.
+func (e *ExpandedMotif) HasStatus() bool {
+	return e.Status != nil
+}
+
+// HasAdmission reports whether the motif includes admission rules.
+func (e *ExpandedMotif) HasAdmission() bool {
+	return e.Admission != nil
+}
+
 // Expand instantiates a Motif with the given input bindings and returns
 // the expanded resources, status, and admission configuration.
 //

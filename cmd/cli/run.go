@@ -48,6 +48,8 @@ var runCmd = &cobra.Command{
 			Int("enabled", m.EnabledCount()).
 			Msg("katalogs merged")
 
+		// This is where the actual operator starts.
+		// The --dev logic will be injected via a wrapper in run_dev.go.
 		internal.Konduct(kfg, m, ctx)
 		return nil
 	},
