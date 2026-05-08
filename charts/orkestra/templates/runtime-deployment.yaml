@@ -51,7 +51,7 @@ spec:
 
           args:
             - run
-            - --katalog
+            - --file
             - {{ .Values.runtime.katalog.mountPath }}/{{ .Values.runtime.katalog.configMapKey }}
 
           env:

@@ -63,16 +63,16 @@ func (k *Katalog) loadAndExpandImport(imp *orktypes.MotifImport) (*motif.Expande
 // (appending rules, preserving order, and merging condition flags sensibly).
 func (k *Katalog) mergeExpandedMotif(entry *orktypes.CRDEntry, expanded *motif.ExpandedMotif) error {
 	// Merge resources into operatorBox.OnReconcile
-	if expanded.Resources != nil {
-		if entry.OperatorBox.OnReconcile == nil {
+	if expanded.HasResources() {
+		if !entry.HasOnReconcile() {
 			entry.OperatorBox.OnReconcile = &orktypes.HookTemplates{}
 		}
 		motif.MergeHookTemplates(entry.OperatorBox.OnReconcile, expanded.Resources)
 	}
 
 	// Merge status fields
-	if expanded.Status != nil && expanded.Status.HasFields() {
-		if entry.OperatorBox.Status == nil {
+	if expanded.HasStatus() {
+		if !entry.HasStatusFields() {
 			entry.OperatorBox.Status = &orktypes.StatusConfig{}
 		}
 		entry.OperatorBox.Status.Fields = append(entry.OperatorBox.Status.Fields, expanded.Status.Fields...)
@@ -82,20 +82,21 @@ func (k *Katalog) mergeExpandedMotif(entry *orktypes.CRDEntry, expanded *motif.E
 	}
 
 	// Merge admission (validation + mutation) rules – these are at CRD level, not operatorBox
-	if expanded.Admission != nil {
-		if entry.Validation == nil {
-			entry.Validation = &orktypes.ValidationConfig{}
-		}
-		if entry.Mutation == nil {
-			entry.Mutation = &orktypes.MutationConfig{}
-		}
-		if expanded.Admission.Validation != nil {
+	if expanded.HasAdmission() {
+		// Merge validation rules
+		if expanded.Admission.HasValidationRules() {
+			if entry.Validation == nil {
+				entry.Validation = &orktypes.ValidationConfig{}
+			}
 			entry.Validation.Rules = append(entry.Validation.Rules, expanded.Admission.Validation.Rules...)
 		}
-		if expanded.Admission.Mutation != nil {
+		// Merge mutation rules
+		if expanded.Admission.HasMutationRules() {
+			if entry.Mutation == nil {
+				entry.Mutation = &orktypes.MutationConfig{}
+			}
 			entry.Mutation.Rules = append(entry.Mutation.Rules, expanded.Admission.Mutation.Rules...)
 		}
-		// (MutateFirst...TODO if necessary)
 	}
 
 	return nil

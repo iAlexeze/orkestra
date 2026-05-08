@@ -98,7 +98,7 @@ Choose the path that matches your setup.
 Runs Orkestra directly against your current kubeconfig. No cluster deployment needed.
 
 ```bash
-ork run -k examples/multi-region-map/katalog.yaml
+ork run -f examples/multi-region-map/katalog.yaml
 ```
 
 ### Option B — Helm deployment (recommended for shared clusters)
@@ -109,7 +109,7 @@ ServiceAccount, and Katalog ConfigMap for this example:
 ```bash
 # Full bundle — RBAC + ServiceAccount + ConfigMap
 ork generate bundle \
-  -k examples/multi-region-map/katalog.yaml \
+  -f examples/multi-region-map/katalog.yaml \
   -o /tmp/multi-region-bundle.yaml
 
 kubectl apply -f /tmp/multi-region-bundle.yaml
@@ -120,12 +120,12 @@ Or generate each piece separately:
 ```bash
 # ConfigMap only — if RBAC is already applied
 ork generate configmap \
-  -k examples/multi-region-map/katalog.yaml \
+  -f examples/multi-region-map/katalog.yaml \
   -o /tmp/multi-region-configmap.yaml
 
 # RBAC only
 ork generate bundle --rbac \
-  -k examples/multi-region-map/katalog.yaml \
+  -f examples/multi-region-map/katalog.yaml \
   -o /tmp/multi-region-rbac.yaml
 ```
 

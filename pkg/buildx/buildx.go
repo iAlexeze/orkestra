@@ -3,6 +3,8 @@ package buildx
 import (
 	"fmt"
 	"io"
+
+	"github.com/orkspace/orkestra/pkg/spinner"
 )
 
 // ComposeBuild describes how to build a container image.
@@ -66,7 +68,17 @@ func BuildImage(dir, image string, compose ComposeBuild, w io.Writer) error {
 	}
 
 	fmt.Fprintf(w, "  → Using %s builder\n", b.Name())
-	return b.Build(dir, image, compose, w)
+
+	spin := spinner.Start("   → Building image " + image)
+
+	err = b.Build(dir, image, compose, w)
+	if err != nil {
+		spin.Failure()
+		return err
+	}
+
+	spin.Success()
+	return nil
 }
 
 // PushImage pushes an image using the first available builder.
@@ -77,7 +89,17 @@ func PushImage(image string, w io.Writer) error {
 	}
 
 	fmt.Fprintf(w, "  → Using %s builder\n", b.Name())
-	return b.Push(image, w)
+
+	spin := spinner.Start("   → Pushing image " + image)
+
+	err = b.Push(image, w)
+	if err != nil {
+		spin.Failure()
+		return err
+	}
+
+	spin.Success()
+	return nil
 }
 
 //

@@ -317,7 +317,7 @@ repository contains Katalogs — some of which import Motifs from
 
 ## Validation
 
-`ork validate -k katalog.yaml` validates all imported Motifs at static analysis
+`ork validate -f katalog.yaml` validates all imported Motifs at static analysis
 time:
 
 - All required inputs in each `with:` block are provided

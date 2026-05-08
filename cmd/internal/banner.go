@@ -10,77 +10,83 @@ import (
 
 func printBanner(kfg *orkestraKfg, konductor string) {
 	// Logo
-	fmt.Print(utils.ColorCyan)
-	fmt.Println(utils.Center(utils.OrkestraLogo))
-	fmt.Print(utils.ColorReset)
+	fmt.Println(utils.Cyan(utils.Center(utils.OrkestraLogo)))
 
 	fmt.Println("====================================================")
-	fmt.Printf("%s        Orkestra Runtime%s (%s)\n", utils.ColorMagenta, utils.ColorReset, version.Version)
-	fmt.Printf("        Namespace: %s\n", kfg.konfig.Cluster().Namespace)
-	fmt.Printf("        Environment: %s%s%s\n", utils.ColorBlue, kfg.konfig.Ork().Environment, utils.ColorReset)
-	fmt.Printf("        Listening on: %s:%s%s\n", utils.ColorGreen, kfg.konfig.Health().Port, utils.ColorReset)
+	fmt.Printf("%s Orkestra Runtime%s (%s)\n",
+		utils.Magenta(""), utils.Reset(""), version.Version)
+
+	fmt.Printf("        Namespace: %s\n", utils.Cyan(kfg.konfig.Cluster().Namespace))
+	fmt.Printf("        Environment: %s\n", utils.Blue(kfg.konfig.Ork().Environment))
+	fmt.Printf("        Listening on: %s:%s\n",
+		utils.Green(kfg.konfig.Health().Port), utils.Reset(""))
 
 	if konductor != "" {
-		fmt.Printf("        Konductor: %s%s%s\n", utils.ColorYellow, konductor, utils.ColorReset)
+		fmt.Printf("        Konductor: %s\n", utils.Yellow(konductor))
 	} else {
-		fmt.Printf("        Konductor: %sPENDING%s\n", utils.ColorRed, utils.ColorReset)
+		fmt.Printf("        Konductor: %s\n", utils.Red("PENDING"))
 	}
 
 	fmt.Println("====================================================")
 
 	// Endpoints
 	fmt.Println("Orkestra Endpoints:")
-	fmt.Printf("- Startup:   %s/startup%s\n", utils.ColorGreen, utils.ColorReset)
-	fmt.Printf("- Health:   %s/health%s\n", utils.ColorGreen, utils.ColorReset)
-	fmt.Printf("- Ready:    %s/ready%s\n", utils.ColorGreen, utils.ColorReset)
-	fmt.Printf("- Metrics:  %s/metrics%s\n", utils.ColorGreen, utils.ColorReset)
-
+	fmt.Printf("- Startup:   %s\n", utils.Green("/startup"))
+	fmt.Printf("- Health:    %s\n", utils.Green("/health"))
+	fmt.Printf("- Ready:     %s\n", utils.Green("/ready"))
+	fmt.Printf("- Metrics:   %s\n", utils.Green("/metrics"))
 	fmt.Println()
-	// ENABLE_ADMISSION_WEBHOOK=true
-	if kfg.katalog.HasMutationRules() || kfg.katalog.HasValidationRules() || kfg.katalog.IsDeletionProtectionEnabled() {
+
+	// Webhooks
+	if kfg.katalog.HasMutationRules() ||
+		kfg.katalog.HasValidationRules() ||
+		kfg.katalog.IsDeletionProtectionEnabled() {
+
 		fmt.Println("Webhook Endpoints:")
+
 		if kfg.katalog.HasMutationRules() {
-			fmt.Printf("- Muatation:  %s/mutate%s\n", utils.ColorGreen, utils.ColorReset)
+			fmt.Printf("- Mutation:  %s\n", utils.Green("/mutate"))
 		}
 		if kfg.katalog.HasValidationRules() {
-			fmt.Printf("- Validation:  %s/validate%s\n", utils.ColorGreen, utils.ColorReset)
+			fmt.Printf("- Validation: %s\n", utils.Green("/validate"))
 		}
-		if kfg.katalog.IsDeletionProtectionEnabled() && kfg.katalog.DeletionProtectionGVRs() != nil {
-			fmt.Printf("- Deletion Protection: %s/deletion-protection%s\n", utils.ColorGreen, utils.ColorReset)
-			fmt.Printf("- Deletion Protection Failure Policy: %s%s%s\n", utils.ColorCyan, kfg.katalog.DeletionProtectionFailurePolicy(), utils.ColorReset)
+		if kfg.katalog.IsDeletionProtectionEnabled() {
+			fmt.Printf("- Deletion Protection: %s\n", utils.Green("/deletion-protection"))
+			fmt.Printf("- Failure Policy: %s\n",
+				utils.Cyan(kfg.katalog.DeletionProtectionFailurePolicy()))
 		}
-
-		if kfg.katalog.IsNamespaceProtectionEnabled() && kfg.katalog.NamespaceProtectionGVRs() != nil {
-			fmt.Printf("- Namespace Protection: %s/namespace-protection%s\n", utils.ColorGreen, utils.ColorReset)
-			fmt.Printf("- Namespace Protection Failure Policy: %s%s%s\n", utils.ColorCyan, kfg.katalog.NamespaceProtectionFailurePolicy(), utils.ColorReset)
+		if kfg.katalog.IsNamespaceProtectionEnabled() {
+			fmt.Printf("- Namespace Protection: %s\n", utils.Green("/namespace-protection"))
+			fmt.Printf("- Failure Policy: %s\n",
+				utils.Cyan(kfg.katalog.NamespaceProtectionFailurePolicy()))
 		}
-
-		// ENABLE_CONVERSION=true
 		if kfg.katalog.HasConversionPaths() {
-			fmt.Printf("- Conversion: %s/convert%s\n", utils.ColorGreen, utils.ColorReset)
+			fmt.Printf("- Conversion: %s\n", utils.Green("/convert"))
 		}
 
-		// Registration configuration
 		fmt.Println("Webhook Configuration:")
-		fmt.Printf("- Service Name: %s%s%s\n", utils.ColorCyan, kfg.katalog.WebhooksServiceName(), utils.ColorReset)
-		fmt.Printf("- Service Namespace: %s%s%s\n", utils.ColorCyan, kfg.konfig.Cluster().Namespace, utils.ColorReset)
-		fmt.Printf("- General Failure Policy: %s%s%s\n", utils.ColorCyan, kfg.katalog.WebhooksFailurePolicy(), utils.ColorReset)
-
+		fmt.Printf("- Service Name: %s\n", utils.Cyan(kfg.katalog.WebhooksServiceName()))
+		fmt.Printf("- Service Namespace: %s\n", utils.Cyan(kfg.konfig.Cluster().Namespace))
+		fmt.Printf("- General Failure Policy: %s\n",
+			utils.Cyan(kfg.katalog.WebhooksFailurePolicy()))
 		fmt.Println()
 	}
 
-	fmt.Println()
 	fmt.Println("Katalog Endpoints:")
-	fmt.Printf("- Katalog:  %s/katalog%s\n", utils.ColorGreen, utils.ColorReset)
+	fmt.Printf("- Katalog:  %s\n", utils.Green("/katalog"))
+
 	for _, crd := range kfg.katalog.Enabled() {
 		if !crd.IsEnabledAllEndpoints() {
 			continue
 		}
+		kind := utils.Cyan(crd.APITypes.Kind)
+		name := strings.ToLower(crd.Name)
+
 		if crd.IsInfoEnabled() {
-			fmt.Printf("  - %s%s%s (%s):  %s/katalog/%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, crd.Name, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
+			fmt.Printf("  - %s (%s): %s\n", kind, crd.Name, utils.Green("/katalog/"+name))
 		}
 		if crd.IsHealthEnabled() {
-			fmt.Printf("  - %s%s%s (%s):  %s/katalog/%s/health%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset, crd.Name, utils.ColorGreen, strings.ToLower(crd.Name), utils.ColorReset)
+			fmt.Printf("  - %s (%s): %s\n", kind, crd.Name, utils.Green("/katalog/"+name+"/health"))
 		}
 	}
 	fmt.Println("====================================================")
@@ -88,12 +94,14 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 	// Komponents
 	fmt.Println("Komponents:")
 	for _, c := range *kfg.komp {
-		if c.Started() {
-			fmt.Printf("- %-20s %sAVAILABLE%s\n", c.Name(), utils.ColorGreen, utils.ColorReset)
-		} else if c.Name() == "orkestra dependency kordinator" {
-			fmt.Printf("- %-20s %sSTARTING%s\n", c.Name(), utils.ColorBlue, utils.ColorReset)
-		} else {
-			fmt.Printf("- %-20s %sUNAVAILABLE%s\n", c.Name(), utils.ColorRed, utils.ColorReset)
+		name := fmt.Sprintf("- %-20s", c.Name())
+		switch {
+		case c.Started():
+			fmt.Printf("%s %s\n", name, utils.Green("AVAILABLE"))
+		case c.Name() == "orkestra dependency kordinator":
+			fmt.Printf("%s %s\n", name, utils.Blue("STARTING"))
+		default:
+			fmt.Printf("%s %s\n", name, utils.Red("UNAVAILABLE"))
 		}
 	}
 	fmt.Println("====================================================")
@@ -101,57 +109,51 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 	// CRDs
 	fmt.Println("CRDs:")
 	for _, crd := range kfg.katalog.Enabled() {
-		fmt.Printf("- %s%s%s\n", utils.ColorCyan, crd.APITypes.Kind, utils.ColorReset)
+		fmt.Printf("- %s\n", utils.Cyan(crd.APITypes.Kind))
 
-		fmt.Printf("  %sName:%s          %s\n", utils.ColorYellow, utils.ColorReset, crd.Name)
-		fmt.Printf("  %sGroup:%s         %s\n", utils.ColorYellow, utils.ColorReset, crd.APITypes.Group)
-		fmt.Printf("  %sVersion:%s       %s\n", utils.ColorYellow, utils.ColorReset, crd.APITypes.Version)
-
-		fmt.Printf("  %sEnabled:%s       %s\n", utils.ColorYellow, utils.ColorReset,
-			map[bool]string{true: "Yes", false: "No"}[crd.IsEnabled()],
-		)
+		fmt.Printf("  Name:          %s\n", utils.Yellow(crd.Name))
+		fmt.Printf("  Group:         %s\n", utils.Yellow(crd.APITypes.Group))
+		fmt.Printf("  Version:       %s\n", utils.Yellow(crd.APITypes.Version))
+		fmt.Printf("  Enabled:       %s\n",
+			utils.Green(map[bool]string{true: "Yes", false: "No"}[crd.IsEnabled()]))
 
 		if crd.Namespace != "" {
-			fmt.Printf("  %sNamespace:%s     %s\n", utils.ColorYellow, utils.ColorReset, crd.Namespace)
+			fmt.Printf("  Namespace:     %s\n", utils.Yellow(crd.Namespace))
 		}
 
-		fmt.Printf("  %sNamespaced:%s    %v\n", utils.ColorYellow, utils.ColorReset,
-			map[bool]string{true: "Yes", false: "No"}[crd.IsNamespaced()])
+		fmt.Printf("  Namespaced:    %s\n",
+			utils.Green(map[bool]string{true: "Yes", false: "No"}[crd.IsNamespaced()]))
 
-		// Workers
 		if crd.Workers > 0 {
-			fmt.Printf("  %sWorkers:%s       %d\n", utils.ColorYellow, utils.ColorReset, crd.Workers)
+			fmt.Printf("  Workers:       %d\n", crd.Workers)
 		} else {
-			fmt.Printf("  %sWorkers:%s       %d (default)\n", utils.ColorYellow, utils.ColorReset, kfg.konfig.Cluster().DefaultWorkers)
+			fmt.Printf("  Workers:       %d (default)\n", kfg.konfig.Cluster().DefaultWorkers)
 		}
 
-		// Queue depth
 		if crd.Queue.MaxQueueDepth > 0 {
-			fmt.Printf("  %sMaxQueueDepth:%s %v\n", utils.ColorYellow, utils.ColorReset, crd.Queue.MaxQueueDepth)
+			fmt.Printf("  MaxQueueDepth: %d\n", crd.Queue.MaxQueueDepth)
 		} else {
-			fmt.Printf("  %sMaxQueueDepth:%s %v (default)\n",
-				utils.ColorYellow, utils.ColorReset, kfg.konfig.Katalog().DefaultMaxQueueDepth)
+			fmt.Printf("  MaxQueueDepth: %d (default)\n",
+				kfg.konfig.Katalog().DefaultMaxQueueDepth)
 		}
 
-		// Resync
 		if crd.Resync != 0 {
-			fmt.Printf("  %sResync:%s        %s\n", utils.ColorYellow, utils.ColorReset, crd.Resync.String())
+			fmt.Printf("  Resync:        %s\n", crd.Resync.String())
 		} else {
-			fmt.Printf("  %sResync:%s        %s (default)\n",
-				utils.ColorYellow, utils.ColorReset, kfg.konfig.Cluster().DefaultResync)
+			fmt.Printf("  Resync:        %s (default)\n",
+				kfg.konfig.Cluster().DefaultResync)
 		}
 
-		// DependsOn
 		if len(crd.DependsOn) > 0 {
-			fmt.Printf("  %sDependsOn:%s     %s\n",
-				utils.ColorYellow, utils.ColorReset, strings.Join(crd.DependsOn.Names(), ", "))
+			fmt.Printf("  DependsOn:     %s\n",
+				utils.Yellow(strings.Join(crd.DependsOn.Names(), ", ")))
 		} else {
-			fmt.Printf("  %sDependsOn:%s     No dependencies\n", utils.ColorYellow, utils.ColorReset)
+			fmt.Printf("  DependsOn:     No dependencies\n")
 		}
 
 		fmt.Println()
 	}
 	fmt.Println("====================================================")
 
-	fmt.Printf("%sOrkestra is konducting your CRDs...%s\n", utils.ColorMagenta, utils.ColorReset)
+	fmt.Println(utils.Magenta("Orkestra is konducting your CRDs..."))
 }

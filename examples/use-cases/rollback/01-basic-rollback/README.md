@@ -34,7 +34,7 @@ kubectl apply -f crd.yaml
 ## Step 2 — Start the operator
 
 ```bash
-ork run -k katalog.yaml
+ork run -f katalog.yaml
 ```
 
 ---

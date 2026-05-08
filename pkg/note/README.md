@@ -81,7 +81,7 @@ Then verify it against a live cluster:
 
 ```bash
 kubectl apply -f pkg/note/fixture/crd.yaml
-ork run -k pkg/note/fixture/katalog.yaml   # keep running in one terminal
+ork run -f pkg/note/fixture/katalog.yaml   # keep running in one terminal
 
 kubectl apply -f pkg/note/fixture/cr.yaml
 kubectl get noteprobe my-probe -o yaml -w  # watch until phase: Ready

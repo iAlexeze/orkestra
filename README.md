@@ -60,7 +60,7 @@ spec:
 
 ```bash
 # Run
-ork run -k katalog.yaml
+ork run -f katalog.yaml
 kubectl apply -f website.yaml
 ```
 

@@ -1,3 +1,14 @@
+// run.go — Production runtime entrypoint.
+//
+// This command has one responsibility: run Orkestra.
+// It performs exactly three tasks:
+//  1. Load all provided katalog files.
+//  2. Merge them into a single resolved Katalog.
+//  3. Start the Orkestra runtime using the merged result.
+//
+// All development‑only behavior (cluster checks, dependency setup,
+// Kind provisioning, extra flags) lives in run_dev.go and is excluded
+// from production builds via build tags.
 package cli
 
 import (
@@ -48,6 +59,8 @@ var runCmd = &cobra.Command{
 			Int("enabled", m.EnabledCount()).
 			Msg("katalogs merged")
 
+		// This is where the actual operator starts.
+		// The --dev logic will be injected via a wrapper in run_dev.go.
 		internal.Konduct(kfg, m, ctx)
 		return nil
 	},

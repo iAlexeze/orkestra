@@ -352,6 +352,11 @@ func (c *CRDEntry) HasAnyHooks() bool {
 	return c.HasOnCreate() || c.HasOnReconcile() || c.HasOnDelete()
 }
 
+// HasStatusFields reports whether this CRD declares any status fields.
+func (c *CRDEntry) HasStatusFields() bool {
+	return c.OperatorBox.Status != nil && c.OperatorBox.Status.HasFields()
+}
+
 // AllRestrictedNamespaces returns a list of restricted namespaces for this crd
 func (c *CRDEntry) AllRestrictedNamespaces() RestrictedNamespaces {
 	return c.RestrictedNamespaces

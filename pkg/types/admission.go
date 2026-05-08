@@ -70,6 +70,26 @@ type Admission struct {
 	Mutation   *MutationConfig
 }
 
+// Returns true when either validation or mutation rules are declared.
+func (a *Admission) HasValidationOrMutationRules() bool {
+	return a.HasValidationRules() || a.HasMutationRules()
+}
+
+// Separate helpers for hasMutationRules and hasValidationRules
+func (a *Admission) HasMutationRules() bool {
+	if a.Mutation == nil {
+		return false
+	}
+	return len(a.Mutation.Rules) > 0
+}
+
+func (a *Admission) HasValidationRules() bool {
+	if a.Validation == nil {
+		return false
+	}
+	return len(a.Validation.Rules) > 0
+}
+
 // ── ValidationRule ────────────────────────────────────────────────────────
 
 // ValidationRule declares one constraint on a CR field.

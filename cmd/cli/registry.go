@@ -179,7 +179,7 @@ var registryPullCmd = &cobra.Command{
 
 func printPullSuggestions(ref *registry.Ref, cacheDir string) {
 	fmt.Printf("\nTo use this pattern:\n")
-	fmt.Printf("  ork run -k %s\n", filepath.Join(cacheDir, registry.FileKatalog))
+	fmt.Printf("  ork run -f %s\n", filepath.Join(cacheDir, registry.FileKatalog))
 	fmt.Printf("\nOr reference in a Komposer:\n")
 	fmt.Printf("  sources:\n")
 	fmt.Printf("    registry:\n")

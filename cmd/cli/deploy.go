@@ -17,6 +17,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/doctor"
 	"github.com/orkspace/orkestra/pkg/tunnel"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -46,6 +47,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		values, _ := cmd.Flags().GetString("values")
 		upgradeOrkestra, _ := cmd.Flags().GetBool("upgrade-orkestra")
 		dev, _ := cmd.Flags().GetBool("dev")
+		enableMetrics, _ := cmd.Flags().GetBool("enable-metrics")
 		expose, _ := cmd.Flags().GetBool("expose")
 		tunnelProvider, _ := cmd.Flags().GetString("tunnel-provider")
 		tunnelToken, _ := cmd.Flags().GetString("tunnel-token")
@@ -171,14 +173,14 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				fmt.Print(buildOut.String())
 				return err
 			}
-			fmt.Printf("  ✓ Built (%ds)\n", int(time.Since(start).Seconds()))
+			fmt.Printf("  %s Built (%ds)\n", utils.SuccessMark(), int(time.Since(start).Seconds()))
 
 			var pushOut bytes.Buffer
 			if err := buildx.PushImage(image, &pushOut); err != nil {
 				fmt.Print(pushOut.String())
 				return err
 			}
-			fmt.Println("  ✓ Pushed")
+			fmt.Printf("  %s Pushed", utils.SuccessMark())
 		} else {
 			fmt.Println("  ~ dry-run: skipping docker build and push")
 		}
@@ -203,10 +205,10 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		}
 
 		if len(info.Secrets) > 0 {
-			fmt.Printf("  ✓ %s-secrets  (%d variables from .env)\n", appName, len(info.Secrets))
+			fmt.Printf("  %s %s-secrets  (%d variables from .env)\n", utils.SuccessMark(), appName, len(info.Secrets))
 		}
 		if len(info.Config) > 0 {
-			fmt.Printf("  ✓ %s-config   (%d variables from .env)\n", appName, len(info.Config))
+			fmt.Printf("  %s %s-config   (%d variables from .env)\n", utils.SuccessMark(), appName, len(info.Config))
 		}
 
 		// Auto-generate katalog if not present yet.
@@ -216,7 +218,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 					return fmt.Errorf("generating katalog: %w", err)
 				}
 			}
-			fmt.Println("  ✓ katalog.yaml generated")
+			fmt.Printf("  %s katalog.yaml generated", utils.SuccessMark())
 		}
 
 		if fileExistsAtPath(katalogPath) || dryRun {
@@ -237,7 +239,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 					return fmt.Errorf("deduplicating katalog GVKs: %w", err)
 				}
 				effectiveKatalog := mergedPath
-				fmt.Printf("  ✓ Komposer merged (%d projects)\n", len(komposer.DeployedProjects()))
+				fmt.Printf("  %s Komposer merged (%d projects)\n", utils.SuccessMark(), len(komposer.DeployedProjects()))
 
 				genArgs := []string{"generate", "bundle", "-f", effectiveKatalog, "-w", ns, "-o", bundleDir}
 				genCmd := exec.Command("ork", genArgs...)
@@ -247,7 +249,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 					return fmt.Errorf("generating bundle: %w", err)
 				}
 			}
-			fmt.Println("  ✓ RBAC + Katalog ConfigMap + namespace")
+			fmt.Printf("  %s RBAC + Katalog ConfigMap + namespace", utils.SuccessMark())
 		}
 
 		// Step 4 — Apply bundle
@@ -258,14 +260,16 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				fmt.Printf("  ~ Could not install dependencies: %v\n", err)
 			}
 
-			if err := ensureIngressController(); err != nil {
+			if err := doctor.EnsureIngressController(); err != nil {
 				fmt.Printf("  ~ Could not install ingress controller: %v\n", err)
 				fmt.Println("    Install manually: https://kubernetes.github.io/ingress-nginx/deploy/")
 			}
 
-			if err := ensureMetricsServer(); err != nil {
-				fmt.Printf("  ~ Could not install metrics server: %v\n", err)
-				fmt.Println("    Install manually: https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml")
+			if enableMetrics {
+				if err := doctor.EnsureMetricsServer(); err != nil {
+					fmt.Printf("  ~ Could not install metrics server: %v\n", err)
+					fmt.Println("    Install manually: https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml")
+				}
 			}
 
 			bundleFile := filepath.Join(bundleDir, doctor.BundleFile)
@@ -275,7 +279,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			if err := applyBundle.Run(); err != nil {
 				return fmt.Errorf("applying bundle: %w", err)
 			}
-			fmt.Println("  ✓ Bundle applied")
+			fmt.Printf("  %s Bundle applied", utils.SuccessMark())
 
 			for _, f := range []string{doctor.AppConfigFile, doctor.AppSecretFile} {
 				path := filepath.Join(bundleDir, f)
@@ -286,7 +290,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 					if err := apply.Run(); err != nil {
 						return fmt.Errorf("applying %s: %w", f, err)
 					}
-					fmt.Printf("  ✓ %s applied\n", f)
+					fmt.Printf("  %s %s applied\n", utils.SuccessMark(), f)
 				}
 			}
 
@@ -298,7 +302,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				if err := applyApp.Run(); err != nil {
 					return fmt.Errorf("applying application file (%s): %w", doctor.ApplicationFile, err)
 				}
-				fmt.Printf("  ✓ %s applied\n", doctor.ApplicationFile)
+				fmt.Printf("  %s %s applied\n", utils.SuccessMark(), doctor.ApplicationFile)
 			}
 
 			if info.HasSMTP || info.HasSlack {
@@ -315,7 +319,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 						if err := applySecret.Run(); err != nil {
 							fmt.Printf("  ~ Could not apply notification secret: %v\n", err)
 						} else {
-							fmt.Printf("  ✓ orkestra-notification Secret applied\n")
+							fmt.Printf("  %s orkestra-notification Secret applied\n", utils.SuccessMark())
 						}
 					}
 				}
@@ -352,9 +356,9 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				); err != nil {
 					return err
 				}
-				fmt.Println("  ✓ Orkestra installed")
+				fmt.Printf("  %s Orkestra installed", utils.SuccessMark())
 			} else {
-				fmt.Println("  ✓ Orkestra already installed")
+				fmt.Printf("  %s Orkestra already installed", utils.SuccessMark())
 			}
 
 			fmt.Print("\n  Checking runtime health...")
@@ -365,13 +369,13 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				if fetchErr == nil && tail != "" {
 					fmt.Printf("\n--- Runtime log (last 10 lines) ---\n%s\n---\n\n", tail)
 				}
-				fmt.Printf("  ✗ Orkestra runtime is not healthy: %s\n", health.Reason)
+				fmt.Printf("  %s Orkestra runtime is not healthy: %s\n", utils.FailureMark(), health.Reason)
 				fmt.Printf("    Full logs:           %s\n", "/tmp/orkestra/runtime.log")
 				fmt.Printf("    Control Center logs: %s\n", "/tmp/orkestra/controlcenter.log")
 				fmt.Println("    Fix the operator before deploying workloads.")
 				return fmt.Errorf("orkestra runtime is not healthy")
 			}
-			fmt.Println(" ✓")
+			fmt.Printf(" %s", utils.SuccessMark())
 
 			if doctor.KatalogChanged(dir) {
 				fmt.Println("  Katalog changed — restarting Orkestra runtime")
@@ -402,7 +406,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			if err := patchCmd.Run(); err != nil {
 				return fmt.Errorf("patching image in CR: %w", err)
 			}
-			fmt.Printf("  ✓ Image: %s\n", image)
+			fmt.Printf("  %s Image: %s\n", utils.SuccessMark(), image)
 
 			fmt.Println("\nWaiting for deployment...")
 			if err := watchUntilReady(crName, ns, appName, state); err != nil {
@@ -518,14 +522,14 @@ func deployMultiApp(dc deployContext) error {
 				fmt.Print(buildOut.String())
 				return fmt.Errorf("building %s: %w", app.appName, err)
 			}
-			fmt.Printf("  ✓ Built %s (%ds)\n", app.appName, int(time.Since(start).Seconds()))
+			fmt.Printf("  %s Built %s (%ds)\n", utils.SuccessMark(), app.appName, int(time.Since(start).Seconds()))
 
 			var pushOut bytes.Buffer
 			if err := buildx.PushImage(app.image, &pushOut); err != nil {
 				fmt.Print(pushOut.String())
 				return fmt.Errorf("pushing %s: %w", app.appName, err)
 			}
-			fmt.Printf("  ✓ Pushed %s\n", app.appName)
+			fmt.Printf("  %s Pushed %s\n", utils.SuccessMark(), app.appName)
 		}
 	} else {
 		for _, app := range apps {
@@ -542,10 +546,10 @@ func deployMultiApp(dc deployContext) error {
 				return fmt.Errorf("generating bundle for %s: %w", app.appName, err)
 			}
 			if len(app.appInfo.Secrets) > 0 {
-				fmt.Printf("  ✓ %s-secrets  (%d variables)\n", app.appName, len(app.appInfo.Secrets))
+				fmt.Printf("  %s %s-secrets  (%d variables)\n", utils.SuccessMark(), app.appName, len(app.appInfo.Secrets))
 			}
 			if len(app.appInfo.Config) > 0 {
-				fmt.Printf("  ✓ %s-config   (%d variables)\n", app.appName, len(app.appInfo.Config))
+				fmt.Printf("  %s %s-config   (%d variables)\n", utils.SuccessMark(), app.appName, len(app.appInfo.Config))
 			}
 
 			absKatalogPath, _ := filepath.Abs(app.katalogPath)
@@ -567,7 +571,7 @@ func deployMultiApp(dc deployContext) error {
 		if err := doctor.DeduplicateKatalogGVKs(mergedPath); err != nil {
 			return fmt.Errorf("deduplicating katalog GVKs: %w", err)
 		}
-		fmt.Printf("  ✓ Komposer merged (%d projects)\n", len(dc.komposer.DeployedProjects()))
+		fmt.Printf("  %s Komposer merged (%d projects)\n", utils.SuccessMark(), len(dc.komposer.DeployedProjects()))
 
 		for _, app := range apps {
 			genArgs := []string{"generate", "bundle", "-f", mergedPath, "-w", app.ns, "-o", app.bundleDir}
@@ -578,7 +582,7 @@ func deployMultiApp(dc deployContext) error {
 				return fmt.Errorf("generating bundle for %s: %w", app.appName, err)
 			}
 		}
-		fmt.Println("  ✓ RBAC + Katalog ConfigMap + namespaces")
+		fmt.Printf("  %s RBAC + Katalog ConfigMap + namespaces", utils.SuccessMark())
 	}
 
 	// ── Step 3: Apply bundles ─────────────────────────────────────────────────
@@ -588,7 +592,7 @@ func deployMultiApp(dc deployContext) error {
 		if err := doctor.EnsureDependencies(); err != nil {
 			fmt.Printf("  ~ Could not install dependencies: %v\n", err)
 		}
-		if err := ensureMetricsServer(); err != nil {
+		if err := doctor.EnsureMetricsServer(); err != nil {
 			fmt.Printf("  ~ Could not install metrics server: %v\n", err)
 		}
 
@@ -623,7 +627,7 @@ func deployMultiApp(dc deployContext) error {
 				}
 			}
 		}
-		fmt.Println("  ✓ All bundles applied")
+		fmt.Printf("  %s All bundles applied", utils.SuccessMark())
 
 		// Install Orkestra once
 		resolvedValues := dc.values
@@ -644,9 +648,9 @@ func deployMultiApp(dc deployContext) error {
 			if err := doctor.InstallOrUpgradeOrkestra(dc.orkestraVersion, resolvedValues, dc.upgradeOrkestra); err != nil {
 				return err
 			}
-			fmt.Println("  ✓ Orkestra installed")
+			fmt.Printf("  %s Orkestra installed", utils.SuccessMark())
 		} else {
-			fmt.Println("  ✓ Orkestra already installed")
+			fmt.Printf("  %s Orkestra already installed", utils.SuccessMark())
 		}
 
 		// Health check
@@ -657,10 +661,10 @@ func deployMultiApp(dc deployContext) error {
 			if tail, fetchErr := doctor.FetchRuntimeLogs(); fetchErr == nil && tail != "" {
 				fmt.Printf("\n--- Runtime log (last 10 lines) ---\n%s\n---\n\n", tail)
 			}
-			fmt.Printf("  ✗ Orkestra runtime is not healthy: %s\n", health.Reason)
+			fmt.Printf("  %s Orkestra runtime is not healthy: %s\n", utils.FailureMark(), health.Reason)
 			return fmt.Errorf("orkestra runtime is not healthy")
 		}
-		fmt.Println(" ✓")
+		fmt.Printf(" %s", utils.SuccessMark())
 
 		if doctor.KatalogChanged(dc.dir) {
 			fmt.Println("  Katalog changed — restarting Orkestra runtime")
@@ -690,7 +694,7 @@ func deployMultiApp(dc deployContext) error {
 			if err := patchCmd.Run(); err != nil {
 				return fmt.Errorf("patching image for %s: %w", app.appName, err)
 			}
-			fmt.Printf("  ✓ %s → %s\n", app.appName, app.image)
+			fmt.Printf("  %s %s → %s\n", utils.SuccessMark(), app.appName, app.image)
 		}
 		if err := dc.state.Save(); err != nil {
 			fmt.Printf("  ~ State save failed: %v\n", err)
@@ -834,7 +838,7 @@ No rebuild or push required — the image is stored in ~/.orkestra/deploy/state.
 		if err := patch.Run(); err != nil {
 			return fmt.Errorf("patching image: %w", err)
 		}
-		fmt.Printf("  ✓ Image set to %s\n", targetImage)
+		fmt.Printf("  %s Image set to %s\n", utils.SuccessMark(), targetImage)
 
 		fmt.Println("\nWaiting for rollback...")
 		if err := watchUntilReady(crName, ns, appName, nil); err != nil {
@@ -856,6 +860,7 @@ func init() {
 	deployCmd.Flags().String("orkestra-version", "", "Version of Orkestra operator to install")
 	deployCmd.Flags().String("values", "", "Path to Helm values.yaml for Orkestra installation")
 	deployCmd.Flags().Bool("dev", false, "Create a local kind cluster (orkestra-playground) for development")
+	deployCmd.Flags().Bool("enable-metrics", false, "Install metrics server to the cluster")
 	deployCmd.Flags().Bool("expose", false, "Expose the deployed app via a public HTTPS tunnel (cloudflared or ngrok)")
 	deployCmd.Flags().String("tunnel-provider", "", "Tunnel provider: cloudflared (default) or ngrok")
 	deployCmd.Flags().String("tunnel-token", "", "Auth token for ngrok tunnels")
@@ -925,7 +930,7 @@ func watchUntilReady(crName, ns, appName string, state *doctor.DeployState) erro
 			crName, crName, ns)
 	}
 
-	fmt.Printf("\r  ✓ Deployment ready        \n")
+	fmt.Printf("\r  %s Deployment ready        \n", utils.SuccessMark())
 	printReadySummary(crName, ns, state)
 	return nil
 }
@@ -1008,132 +1013,6 @@ func runKompose() (string, error) {
 	return mergedPath, nil
 }
 
-// ensureIngressController installs nginx-ingress if no ingress controller is
-// found on the current cluster. Uses the kind-specific manifest when the
-// current context is a kind cluster; otherwise installs via Helm.
-func ensureIngressController() error {
-	if doctor.DetectIngressController() != doctor.IngressNone {
-		return nil
-	}
-
-	fmt.Println("  → Installing ingress controller (nginx)...")
-
-	contextOut, _ := exec.Command("kubectl", "config", "current-context").Output()
-	isKind := strings.Contains(string(contextOut), "kind")
-
-	var cmd *exec.Cmd
-	if isKind {
-		cmd = exec.Command("kubectl", "apply", "-f",
-			"https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml")
-	} else {
-		exec.Command("helm", "repo", "add", "ingress-nginx",
-			"https://kubernetes.github.io/ingress-nginx").Run()
-		exec.Command("helm", "repo", "update").Run()
-		cmd = exec.Command("helm", "install", "ingress-nginx",
-			"ingress-nginx/ingress-nginx",
-			"--namespace", "ingress-nginx",
-			"--create-namespace",
-			"--wait", "--timeout=120s",
-		)
-	}
-	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
-
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	fmt.Println("  ✓ Ingress controller ready")
-	return nil
-}
-
-// ensureMetricsServer ensures the Kubernetes metrics-server is installed.
-//
-// It checks for the metrics-server deployment using `kubectl get -o json`
-// for unambiguous detection via exit status. If not present, it attempts
-// installation via Helm, using a kind-specific flag when needed.
-//
-// Any failure (check or install) is treated as non-fatal: the error is logged
-// and the user is instructed to install metrics-server manually.
-func ensureMetricsServer() error {
-	const installURL = "https://github.com/kubernetes-sigs/metrics-server#installation"
-
-	// Check existence via exit code only
-	checkCmd := exec.Command(
-		"kubectl", "get", "deployment", "metrics-server",
-		"-n", "kube-system",
-		"-o", "json",
-	)
-
-	if err := checkCmd.Run(); err == nil {
-		return nil // already installed
-	}
-
-	fmt.Println("  → Installing metrics-server...")
-
-	// Detect current context
-	ctxOut, err := exec.Command("kubectl", "config", "current-context").Output()
-	if err != nil {
-		fmt.Printf("  ⚠️  Could not determine current context: %v\n", err)
-		fmt.Printf("  👉 Please install metrics-server manually: %s\n", installURL)
-		return nil
-	}
-	isKind := strings.Contains(string(ctxOut), "kind")
-
-	// Add/update Helm repo
-	if err := exec.Command(
-		"helm", "repo", "add", "metrics-server",
-		"https://kubernetes-sigs.github.io/metrics-server/",
-	).Run(); err != nil {
-		fmt.Printf("  ⚠️  Failed to add Helm repo: %v\n", err)
-		fmt.Printf("  👉 Please install manually: %s\n", installURL)
-		return nil
-	}
-
-	if err := exec.Command("helm", "repo", "update").Run(); err != nil {
-		fmt.Printf("  ⚠️  Failed to update Helm repos: %v\n", err)
-		fmt.Printf("  👉 Please install manually: %s\n", installURL)
-		return nil
-	}
-
-	// Build Helm args
-	args := []string{
-		"install", "metrics-server",
-		"metrics-server/metrics-server",
-		"--namespace", "kube-system",
-		"--wait", "--timeout=120s",
-	}
-
-	if isKind {
-		args = append(args, "--set", "args={--kubelet-insecure-tls}")
-	}
-
-	installCmd := exec.Command("helm", args...)
-	installCmd.Stdout = io.Discard
-	installCmd.Stderr = io.Discard
-
-	if err := installCmd.Run(); err != nil {
-		fmt.Printf("  ⚠️  Failed to install metrics-server: %v\n", err)
-		fmt.Printf("  👉 Please install manually: %s\n", installURL)
-		return nil
-	}
-
-	// Verify installation
-	verifyCmd := exec.Command(
-		"kubectl", "get", "deployment", "metrics-server",
-		"-n", "kube-system",
-		"-o", "json",
-	)
-
-	if err := verifyCmd.Run(); err != nil {
-		fmt.Println("  ⚠️  metrics-server installation could not be verified.")
-		fmt.Printf("  👉 Please check or install manually: %s\n", installURL)
-		return nil
-	}
-
-	fmt.Println("  ✓ Metrics server ready")
-	return nil
-}
-
 func openBrowser(url string) error {
 	for _, prog := range []string{"xdg-open", "open", "start"} {
 		if _, err := exec.LookPath(prog); err == nil {
@@ -1166,7 +1045,7 @@ func exposeApp(ctx context.Context, appName, ns, provider, token string) {
 		fmt.Printf("  ~ tunnel: %v\n", err)
 		return
 	}
-	fmt.Printf("  ✓ App: %s\n", url)
+	fmt.Printf("  %s App: %s\n", utils.SuccessMark(), url)
 }
 
 // exposeControlCenter starts a tunnel for the Orkestra Control Center.
@@ -1185,5 +1064,5 @@ func exposeControlCenter(ctx context.Context, provider, token string) {
 		fmt.Printf("  ~ tunnel (controlcenter): %v\n", err)
 		return
 	}
-	fmt.Printf("  ✓ Control Center: %s\n", url)
+	fmt.Printf("  %s Control Center: %s\n", utils.SuccessMark(), url)
 }
