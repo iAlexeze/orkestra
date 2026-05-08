@@ -201,7 +201,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
     if err != nil {
         return err
     }
-    if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+    if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
         return nil // not ours
     }
     return kube.Clientset().NetworkingV1().Ingresses(namespace).Delete(ctx, name, metav1.DeleteOptions{})
@@ -232,8 +232,8 @@ func Resolve(src orktypes.IngressTemplateSource, ownerName string) ResolvedIngre
         spec.Annotations[a.Key] = a.Value
     }
     // System labels — always added
-    spec.Labels[konfig.LabelManaged]       = konfig.LabelManagedValue
-    spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+    spec.Labels[labels.Managed]       = labels.ManagedValue
+    spec.Labels[labels.OrkestraOwner] = ownerName
     return spec
 }
 

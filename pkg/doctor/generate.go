@@ -6,11 +6,16 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/orkspace/orkestra/pkg/labels"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"gopkg.in/yaml.v3"
 )
 
-const deletionProtectionLabel = "orkestra.io/deletion-protection"
+const (
+	deletionProtectionLabel = labels.DeletionProtectionLabel
+	createdBy               = labels.LabelCreatedBy
+	orkdoctor               = labels.CreatedByOrkDoctor
+)
 
 var (
 	gitignoreEntries = []string{
@@ -213,15 +218,18 @@ func injectStatefulAppYAML(appYAML string, services []StatefulService, info *ork
 	return b.String()
 }
 
-// protectionLabels returns the YAML block for deletion-protection labels,
+// protectionLabels returns the YAML block for deletion‑protection labels,
 // indented to the given depth. Returns empty string when secure is false.
 func protectionLabels(indent string, secure bool) string {
 	if !secure {
 		return ""
 	}
+
 	return indent + "labels:\n" +
 		indent + "  - key: " + deletionProtectionLabel + "\n" +
-		indent + "    value: \"true\"\n"
+		indent + "    value: \"true\"\n" +
+		indent + "  - key: " + createdBy + "\n" +
+		indent + "    value: \"" + orkdoctor + "\"\n"
 }
 
 func buildKatalog(name string, info *orktypes.ProjectInfo, opts GenerateOptions) string {
@@ -500,6 +508,7 @@ func buildCR(name string, info *orktypes.ProjectInfo, opts GenerateOptions) stri
 	b.WriteString("    ork.io/app: " + crName + "\n")
 	if !opts.NoSecure {
 		b.WriteString("    " + deletionProtectionLabel + ": \"true\"\n")
+		b.WriteString("    " + createdBy + ":" + orkdoctor + "\n")
 	}
 
 	b.WriteString("data:\n")

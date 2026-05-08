@@ -7,8 +7,8 @@ import (
 	"strconv"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -167,7 +167,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 		}
 		return err
 	}
-	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
 		return nil
 	}
 	return kube.Clientset().NetworkingV1().Ingresses(namespace).
@@ -213,8 +213,8 @@ func Resolve(src orktypes.IngressTemplateSource, ownerName string) ResolvedIngre
 	}
 
 	// System labels
-	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
-	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	if src.TLS != nil && src.TLS.Enabled {
 		secretName := src.TLS.SecretName

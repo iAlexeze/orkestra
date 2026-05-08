@@ -2,6 +2,8 @@ package konfig
 
 import (
 	"time"
+
+	"github.com/orkspace/orkestra/pkg/labels"
 )
 
 type Konfig struct {
@@ -226,7 +228,7 @@ func (k *Konfig) Katalog() *katalogKonfig {
 
 // Finalizers return a list of default finalizers
 func (k *Konfig) Finalizers() []string {
-	return []string{FinalizerOrkestra}
+	return []string{labels.FinalizerOrkestra}
 }
 
 // Security returns the unified security configuration.

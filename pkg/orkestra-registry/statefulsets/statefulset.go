@@ -7,8 +7,8 @@ import (
 	"strconv"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -116,7 +116,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient, owner domai
 		}
 		return err
 	}
-	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
 		return nil
 	}
 	return kube.Clientset().AppsV1().StatefulSets(ns).Delete(ctx, name, metav1.DeleteOptions{})
@@ -167,8 +167,8 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 		spec.Annotations[a.Key] = a.Value
 	}
 
-	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
-	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -260,7 +260,7 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 			ServiceName: spec.ServiceName,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					konfig.LabelOrkestraOwner: owner.GetName(),
+					labels.OrkestraOwner: owner.GetName(),
 				},
 			},
 			Template: corev1.PodTemplateSpec{
