@@ -48,6 +48,8 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 	}
 
 	// Self-protection: block deletion of the deletion-protection webhook itself.
+	// First test towards sel-protection, didn't work.
+	// Now uses the housekeeper
 	if req.Kind.Kind == "ValidatingWebhookConfiguration" &&
 		req.Name == deletionProtectionWebhookConfigName {
 

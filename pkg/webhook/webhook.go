@@ -49,6 +49,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/health"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/utils"
 	"k8s.io/client-go/kubernetes"
@@ -139,13 +140,12 @@ func NewWebhookServer(kubeClient kubernetes.Interface, kat *katalog.Katalog, kfg
 	admissionFailurePolicy := admissionv1FailurePolicyType(kat.WebhooksFailurePolicy())
 
 	hookReg := WebhookRegistrationOptions{
-		FailurePolicy:            admissionFailurePolicy,
-		Port:                     kfg.HTTPSPortInt32(),
-		ServiceName:              kat.WebhooksServiceName(),
-		ServiceNamespace:         kfg.Cluster().Namespace,
-		TLSCertFile:              kfg.Security().Webhooks.TLSCert,
-		OrkestraResourceLabels:   kfg.OrkestraResourceLabels(),
-		OrkestraResourceSelector: kfg.OrkestraResourceSelector(),
+		FailurePolicy:          admissionFailurePolicy,
+		Port:                   kfg.HTTPSPortInt32(),
+		ServiceName:            kat.WebhooksServiceName(),
+		ServiceNamespace:       kfg.Cluster().Namespace,
+		TLSCertFile:            kfg.Security().Webhooks.TLSCert,
+		OrkestraResourceLabels: labels.OrkestraResourceLabels(),
 	}
 
 	convWindow := kat.ConversionWindow()

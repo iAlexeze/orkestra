@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -56,7 +57,7 @@ func renderConfigMapBytes(inputFile, namespace string) ([]byte, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      defaultConfigMapName,
 			Namespace: namespace,
-			Labels:    konfig.OrkestraBaseLabels(),
+			Labels:    labels.OrkestraBaseLabels(),
 		},
 		Data: map[string]string{
 			defaultConfigMapKey: string(raw),

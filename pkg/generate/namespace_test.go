@@ -44,9 +44,8 @@ func countOccurrences(s, sub string) int {
 // ── RBAC standalone ──────────────────────────────────────────────────────────
 
 func TestRBAC_ContainsNamespaceFirst(t *testing.T) {
-	kfg := newKfg(t)
 
-	output, err := generate.RBAC(kfg, nil, testNamespace, "")
+	output, err := generate.RBAC(nil, testNamespace, "")
 	if err != nil {
 		t.Fatalf("RBAC: %v", err)
 	}
@@ -66,9 +65,7 @@ func TestRBAC_ContainsNamespaceFirst(t *testing.T) {
 }
 
 func TestRBAC_ContainsExpectedResources(t *testing.T) {
-	kfg := newKfg(t)
-
-	output, err := generate.RBAC(kfg, nil, testNamespace, "")
+	output, err := generate.RBAC(nil, testNamespace, "")
 	if err != nil {
 		t.Fatalf("RBAC: %v", err)
 	}
@@ -88,9 +85,8 @@ func TestRBAC_ContainsExpectedResources(t *testing.T) {
 }
 
 func TestRBAC_NamespaceAppearsOnce(t *testing.T) {
-	kfg := newKfg(t)
 
-	output, err := generate.RBAC(kfg, []rbacv1.PolicyRule{}, testNamespace, "")
+	output, err := generate.RBAC([]rbacv1.PolicyRule{}, testNamespace, "")
 	if err != nil {
 		t.Fatalf("RBAC: %v", err)
 	}
@@ -140,10 +136,10 @@ func TestConfigMap_NamespaceAppearsOnce(t *testing.T) {
 // ── Bundle ───────────────────────────────────────────────────────────────────
 
 func TestRenderBundle_NamespaceAppearsOnce(t *testing.T) {
-	kfg := newKfg(t)
+
 	katalogPath := writeTempKatalog(t)
 
-	bundle, err := generate.RenderBundle(kfg, nil, katalogPath, testNamespace, "")
+	bundle, err := generate.RenderBundle(nil, katalogPath, testNamespace, "")
 	if err != nil {
 		t.Fatalf("RenderBundle: %v", err)
 	}
@@ -154,10 +150,10 @@ func TestRenderBundle_NamespaceAppearsOnce(t *testing.T) {
 }
 
 func TestRenderBundle_ContainsAllResources(t *testing.T) {
-	kfg := newKfg(t)
+
 	katalogPath := writeTempKatalog(t)
 
-	bundle, err := generate.RenderBundle(kfg, []rbacv1.PolicyRule{}, katalogPath, testNamespace, "")
+	bundle, err := generate.RenderBundle([]rbacv1.PolicyRule{}, katalogPath, testNamespace, "")
 	if err != nil {
 		t.Fatalf("RenderBundle: %v", err)
 	}
@@ -177,10 +173,10 @@ func TestRenderBundle_ContainsAllResources(t *testing.T) {
 }
 
 func TestRenderBundle_NamespaceBeforeEverythingElse(t *testing.T) {
-	kfg := newKfg(t)
+
 	katalogPath := writeTempKatalog(t)
 
-	bundle, err := generate.RenderBundle(kfg, nil, katalogPath, testNamespace, "")
+	bundle, err := generate.RenderBundle(nil, katalogPath, testNamespace, "")
 	if err != nil {
 		t.Fatalf("RenderBundle: %v", err)
 	}
@@ -198,11 +194,11 @@ func TestRenderBundle_NamespaceBeforeEverythingElse(t *testing.T) {
 // provided, both namespaces appear exactly once and there are no double ---
 // separators (regression for the reconcile→MODIFIED loop fix).
 func TestRenderBundle_WorkloadNamespace(t *testing.T) {
-	kfg := newKfg(t)
+
 	katalogPath := writeTempKatalog(t)
 	workloadNS := "myapp-orkestra-ns"
 
-	bundle, err := generate.RenderBundle(kfg, nil, katalogPath, testNamespace, workloadNS)
+	bundle, err := generate.RenderBundle(nil, katalogPath, testNamespace, workloadNS)
 	if err != nil {
 		t.Fatalf("RenderBundle: %v", err)
 	}
@@ -224,11 +220,11 @@ func TestRenderBundle_WorkloadNamespace(t *testing.T) {
 // TestRenderBundle_NoDoubleDocSeparators checks that every --- appears exactly
 // once between documents, regardless of whether a workload namespace is used.
 func TestRenderBundle_NoDoubleDocSeparators(t *testing.T) {
-	kfg := newKfg(t)
+
 	katalogPath := writeTempKatalog(t)
 
 	for _, workloadNS := range []string{"", "myapp-orkestra-ns"} {
-		bundle, err := generate.RenderBundle(kfg, nil, katalogPath, testNamespace, workloadNS)
+		bundle, err := generate.RenderBundle(nil, katalogPath, testNamespace, workloadNS)
 		if err != nil {
 			t.Fatalf("RenderBundle (workloadNS=%q): %v", workloadNS, err)
 		}

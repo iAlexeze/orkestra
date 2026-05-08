@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/orkspace/orkestra/pkg/spinner"
 )
 
 const (
@@ -29,6 +31,8 @@ type RuntimeStatus struct {
 // deployment to have at least one ready replica. It polls every 2 seconds.
 // If pods are in CrashLoopBackOff, it returns immediately with the reason.
 func CheckRuntimeHealth() RuntimeStatus {
+	spin := spinner.Start("  → Checking Orkestra runtime health...")
+
 	ctx, cancel := context.WithTimeout(context.Background(), healthCheckTimeout)
 	defer cancel()
 
@@ -38,22 +42,26 @@ func CheckRuntimeHealth() RuntimeStatus {
 	for {
 		select {
 		case <-ctx.Done():
+			spin.Failure()
 			return RuntimeStatus{
 				Reason: fmt.Sprintf("timeout (%s) waiting for Orkestra runtime to become ready", healthCheckTimeout),
 			}
 
 		case <-ticker.C:
 			status := checkRuntimeOnce(ctx)
+
 			if status.Running {
+				spin.Success()
 				return status
 			}
 
-			// If the reason is not "no ready replicas", it's a fatal condition.
+			// Fatal condition → stop immediately
 			if status.Reason != "no ready replicas" {
+				spin.Failure()
 				return status
 			}
 
-			// Otherwise: still waiting, continue polling.
+			// Otherwise: still waiting, continue polling
 		}
 	}
 }

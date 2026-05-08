@@ -348,6 +348,7 @@ func buildKatalog(name string, info *orktypes.ProjectInfo, opts GenerateOptions)
 	b.WriteString("            - name: \"{{ .metadata.name }}\"\n")
 	b.WriteString("              namespace: \"{{ .metadata.name }}-ns\"\n")
 	b.WriteString("              image: \"{{ .data.image }}\"\n")
+	b.WriteString("              port: \"{{ .data.port | default \\\"" + info.Port + "\\\" }}\"\n")
 	b.WriteString("              replicas: \"{{ .data.replicas | default \\\"" + replicas + "\\\" }}\"\n")
 	b.WriteString("              serviceAccountName: \"{{ .metadata.name }}-sa\"\n")
 	if len(info.Secrets) > 0 || len(info.Config) > 0 {

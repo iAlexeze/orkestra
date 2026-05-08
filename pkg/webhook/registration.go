@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/utils"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
@@ -40,13 +41,12 @@ const (
 
 // WebhookRegistrationOptions holds the configuration for webhook registration.
 type WebhookRegistrationOptions struct {
-	ServiceName              string
-	ServiceNamespace         string
-	Port                     int32
-	FailurePolicy            admissionv1.FailurePolicyType
-	TLSCertFile              string
-	OrkestraResourceLabels   map[string]string
-	OrkestraResourceSelector *metav1.LabelSelector
+	ServiceName            string
+	ServiceNamespace       string
+	Port                   int32
+	FailurePolicy          admissionv1.FailurePolicyType
+	TLSCertFile            string
+	OrkestraResourceLabels map[string]string
 }
 
 // WebhookCleanupOptions selects which webhook configurations to remove.
@@ -285,7 +285,7 @@ func registerDeletionProtectionWebhook(
 				},
 				CABundle: caBundle,
 			},
-			ObjectSelector:          opts.OrkestraResourceSelector,
+			ObjectSelector:          labels.DeletionProtectionSelector(),
 			Rules:                   buildDeletionProtectionRules(orkestraGVRs),
 			FailurePolicy:           failurePolicyPtr(admissionv1.Fail),
 			MatchPolicy:             matchPolicyPtr(admissionv1.Exact),

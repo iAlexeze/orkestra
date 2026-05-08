@@ -2,8 +2,6 @@ package konfig
 
 import (
 	"time"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Konfig struct {
@@ -268,27 +266,6 @@ func (k *Konfig) HTTPSPort() string {
 // HTTPSPortInt32 returns the HTTPS port as int32 (8443) used in webhook client configs.
 func (k *Konfig) HTTPSPortInt32() int32 {
 	return httpsPortInt32
-}
-
-// OrkestraResourceSelector returns the internal label selector for orkestra control plane resources
-func (k *Konfig) OrkestraResourceSelector() *metav1.LabelSelector {
-	return orkestraResourceSelector
-}
-
-// OrkestraBaseLabels returns a copy of the standard Orkestra control-plane labels.
-// It can be called without a Konfig instance — useful in generators and CLI commands
-// that do not load the full operator configuration.
-func OrkestraBaseLabels() map[string]string {
-	out := make(map[string]string, len(orkestraResourceLabels))
-	for k, v := range orkestraResourceLabels {
-		out[k] = v
-	}
-	return out
-}
-
-// OrkestraResourceLabels returns the internal labels for orkestra control plane resources
-func (k *Konfig) OrkestraResourceLabels() map[string]string {
-	return orkestraResourceLabels
 }
 
 // DefaultInternalTLSName returns the default name for Orkestra's internal TLS secret.

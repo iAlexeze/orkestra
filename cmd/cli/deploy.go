@@ -15,6 +15,7 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/buildx"
 	"github.com/orkspace/orkestra/pkg/doctor"
+	"github.com/orkspace/orkestra/pkg/spinner"
 	"github.com/orkspace/orkestra/pkg/tunnel"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
@@ -361,7 +362,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				fmt.Printf("  %s Orkestra already installed", utils.SuccessMark())
 			}
 
-			fmt.Print("\n  Checking runtime health...")
+			// Check runtime health
 			health := doctor.CheckRuntimeHealth()
 			if !health.Running {
 				fmt.Println()
@@ -375,7 +376,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				fmt.Println("    Fix the operator before deploying workloads.")
 				return fmt.Errorf("orkestra runtime is not healthy")
 			}
-			fmt.Printf(" %s", utils.SuccessMark())
 
 			if doctor.KatalogChanged(dir) {
 				fmt.Println("  Katalog changed — restarting Orkestra runtime")
@@ -654,7 +654,7 @@ func deployMultiApp(dc deployContext) error {
 		}
 
 		// Health check
-		fmt.Print("\n  Checking runtime health...")
+		// Check runtime health
 		health := doctor.CheckRuntimeHealth()
 		if !health.Running {
 			fmt.Println()
@@ -894,7 +894,7 @@ func watchUntilReady(crName, ns, appName string, state *doctor.DeployState) erro
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	fmt.Printf("  ⠸ Waiting for rollout...")
+	spin := spinner.Start("  → Waiting for rollout...")
 
 	cmd := exec.CommandContext(ctx,
 		"kubectl", "rollout", "status",
@@ -906,7 +906,7 @@ func watchUntilReady(crName, ns, appName string, state *doctor.DeployState) erro
 	cmd.Stderr = io.Discard
 
 	if err := cmd.Run(); err != nil {
-		fmt.Println()
+		spin.Failure()
 
 		// Fetch recent pod logs to help the developer diagnose the failure.
 		logOut, logErr := exec.Command("kubectl", "logs",
@@ -926,11 +926,13 @@ func watchUntilReady(crName, ns, appName string, state *doctor.DeployState) erro
 		if ctx.Err() == context.DeadlineExceeded {
 			return fmt.Errorf("timed out waiting for %s — check: kubectl get pods -n %s", crName, ns)
 		}
+
 		return fmt.Errorf("rollout failed for %s — check: kubectl describe deployment %s -n %s",
 			crName, crName, ns)
 	}
 
-	fmt.Printf("\r  %s Deployment ready        \n", utils.SuccessMark())
+	spin.Success()
+
 	printReadySummary(crName, ns, state)
 	return nil
 }
@@ -976,7 +978,7 @@ func printReadySummary(crName, ns string, state *doctor.DeployState) {
 			fmt.Println("                   set controlCenterHost in .orkestra/app.yaml to expose externally")
 		}
 	}
-	fmt.Printf("  Logs          → kubectl logs -n %s -l ork.io/app=%s -f\n", ns, crName)
+	fmt.Printf("  Logs          → kubectl logs -n %s deploy/%s -f\n", ns, crName)
 
 	// Print internal service URLs for every deployed project so developers can
 	// wire them together (e.g. FRONTEND_URL=http://my-frontend-orkestra-svc...).

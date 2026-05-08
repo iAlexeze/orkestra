@@ -196,7 +196,7 @@ Example:
 
 		rules := k.GenerateRBACRules()
 
-		output, err := generate.RBAC(kfg, rules, namespace, outputFile)
+		output, err := generate.RBAC(rules, namespace, outputFile)
 		if err != nil {
 			return fmt.Errorf("generate rbac: %w", err)
 		}
@@ -284,7 +284,7 @@ Examples:
 
 		rules := k.GenerateRBACRules()
 
-		bundle, err := generate.RenderBundle(kfg, rules, katalogPath, namespace, workloadNamespace)
+		bundle, err := generate.RenderBundle(rules, katalogPath, namespace, workloadNamespace)
 		if err != nil {
 			return fmt.Errorf("generate bundle: %w", err)
 		}

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/orkspace/orkestra/pkg/konfig"
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
@@ -13,7 +12,6 @@ import (
 // The Namespace appears exactly once at the top regardless of how many components
 // are combined, so the output is safe to pipe directly into kubectl apply.
 func RenderBundle(
-	kfg *konfig.Konfig,
 	rules []rbacv1.PolicyRule,
 	inputFile, namespace, workloadNamespace string,
 ) (string, error) {
@@ -28,7 +26,7 @@ func RenderBundle(
 		return "", fmt.Errorf("render task namespace: %w", err)
 	}
 
-	rbacBytes, err := renderRBAC(kfg, rules, namespace)
+	rbacBytes, err := renderRBAC(rules, namespace)
 	if err != nil {
 		return "", fmt.Errorf("render rbac: %w", err)
 	}
