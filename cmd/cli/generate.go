@@ -213,8 +213,8 @@ that embeds the file under data:<filename>. Useful for injecting Katalogs
 into the in-cluster Orkestra runtime.
 
 Example:
-  ork generate configmap -k katalog.yaml
-  ork generate configmap -k komposer.yaml -n orkestra-system -o out.yaml`,
+  ork generate configmap -f katalog.yaml
+  ork generate configmap -f komposer.yaml -n orkestra-system -o out.yaml`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Get the katalog file path directly, don't validate
 		katalogPath, _ := cmd.Flags().GetString("katalog")

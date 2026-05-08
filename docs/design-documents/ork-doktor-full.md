@@ -443,7 +443,7 @@ For when Orkestra has already been removed from the cluster and the developer
 wants to verify nothing was left behind.
 
 ```bash
-ork cleanup -k .orkestra/katalog.yaml
+ork cleanup -f .orkestra/katalog.yaml
 ```
 
 **What it searches for and removes:**
@@ -841,7 +841,7 @@ Production
   → identical commands, real cluster
 
 Clean up
-  ork cleanup -k .orkestra/katalog.yaml
+  ork cleanup -f .orkestra/katalog.yaml
   → finalizers removed
   → webhooks removed
   → RBAC removed
@@ -883,7 +883,7 @@ Output:
 - `app.yaml` replacing `cr.yaml`
 - Scoped RBAC for generated deployments
 - `cleanupOnShutdown` finalizer removal
-- `ork cleanup -k katalog.yaml`
+- `ork cleanup -f katalog.yaml`
 - `ork deploy --expose` with cloudflared (default) and ngrok (fallback)
 - `ork tunnel status / stop / restart`
 - Developer example pack (5 examples)

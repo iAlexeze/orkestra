@@ -123,7 +123,7 @@ ORKESTRA_REGISTRY=oci://myregistry.internal/patterns \
 
 Validates the directory structure before pushing:
 - `katalog.yaml` and `pattern.yaml` must exist and be valid
-- `ork validate -k katalog.yaml` is run automatically
+- `ork validate -f katalog.yaml` is run automatically
 - Fails fast with a clear error if validation fails
 
 Pushes atomically — all files or none.
@@ -170,7 +170,7 @@ Pulling postgres:v14...
   ✓ Cached at ~/.orkestra/registry/ghcr.io/orkspace/orkestra-registry/postgres/v14/
 
 To use this pattern:
-  ork run -k ~/.orkestra/registry/.../postgres/v14/katalog.yaml
+  ork run -f ~/.orkestra/registry/.../postgres/v14/katalog.yaml
 
 Or reference in a Komposer:
   sources:
