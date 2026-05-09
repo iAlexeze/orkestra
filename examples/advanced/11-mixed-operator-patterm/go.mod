@@ -3,13 +3,11 @@ module github.com/orkspace/orkestra-mixed-operator-pattern
 go 1.26.2
 
 require (
-	github.com/orkspace/orkestra v0.4.0
+	github.com/orkspace/orkestra v0.4.1
 	k8s.io/api v0.35.2
 	k8s.io/apimachinery v0.36.0
 	k8s.io/client-go v0.35.2
 )
-
-replace github.com/orkspace/orkestra => ../../../
 
 require (
 	cel.dev/expr v0.25.1 // indirect
