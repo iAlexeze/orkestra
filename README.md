@@ -573,7 +573,6 @@ With `deletionProtection` enabled, Orkestra registers a validating webhook that 
 > [!important]
 > Features in development
 
----
 ### Automatic rollbacks
 
 Orkestra provides two rollback models: zero‑config recovery and custom rollback templates. Both approaches restore the last known good spec after repeated reconcile failures. Rollback is declarative and idempotent; no additional controllers or resource types are introduced.
@@ -593,7 +592,7 @@ When enabled, Orkestra:
 
 - captures the previous spec before applying a new one  
 - tracks consecutive failures  
-- rolls back automatically after the threshold is reached  
+- rolls back automatically after the threshold is reached  (3 consecutive failures in 10 minutes)
 - blocks normal reconciliation until the spec is corrected  
 
 This is the simplest and safest rollback path.
