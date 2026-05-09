@@ -592,7 +592,7 @@ When enabled, Orkestra:
 
 - captures the previous spec before applying a new one  
 - tracks consecutive failures  
-- rolls back automatically after the threshold is reached  (3 consecutive failures in 10 minutes)
+- rolls back automatically after the threshold is reached  _`(3 consecutive failures in 10 minutes)`_
 - blocks normal reconciliation until the spec is corrected  
 
 This is the simplest and safest rollback path.
