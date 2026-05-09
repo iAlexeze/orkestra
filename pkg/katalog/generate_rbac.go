@@ -190,29 +190,29 @@ func (k *Katalog) WebhookResources() []string {
 //
 // Resolution priority (explicit always wins):
 //
-//   1. Full explicit GVR:
-//        - group + version + plural are all provided
-//        → use them directly.
+//  1. Full explicit GVR:
+//     - group + version + plural are all provided
+//     → use them directly.
 //
-//   2. Explicit group + version (plural omitted)
-//        → infer plural as strings.ToLower(kind) + "s".
+//  2. Explicit group + version (plural omitted)
+//     → infer plural as strings.ToLower(kind) + "s".
 //
-//   3. APIVersion + plural:
-//        - apiVersion: "group/version"
-//        - plural provided
-//        → parse apiVersion and use provided plural.
+//  3. APIVersion + plural:
+//     - apiVersion: "group/version"
+//     - plural provided
+//     → parse apiVersion and use provided plural.
 //
-//   4. APIVersion only:
-//        - apiVersion: "group/version"
-//        - plural omitted
-//        → parse apiVersion and infer plural as strings.ToLower(kind) + "s".
+//  4. APIVersion only:
+//     - apiVersion: "group/version"
+//     - plural omitted
+//     → parse apiVersion and infer plural as strings.ToLower(kind) + "s".
 //
-//   5. Built‑in Kubernetes resource:
-//        - kind matches Orkestra's built‑in registry
-//        → use GVRForBuiltIn(kind).
+//  5. Built‑in Kubernetes resource:
+//     - kind matches Orkestra's built‑in registry
+//     → use GVRForBuiltIn(kind).
 //
-//   6. Otherwise:
-//        → resolution fails and (GVR{}, false) is returned.
+//  6. Otherwise:
+//     → resolution fails and (GVR{}, false) is returned.
 //
 // This ensures:
 //   - Explicit declarations always override inference.
@@ -220,67 +220,67 @@ func (k *Katalog) WebhookResources() []string {
 //   - Built‑ins remain simple (kind‑only).
 //   - RBAC generation remains deterministic and zero‑footprint safe.
 func (k *Katalog) ResolveGVR(r orktypes.ManagedResource) (schema.GroupVersionResource, bool) {
-    // ───────────────────────────────────────────────
-    // 1. Full explicit GVR: group + version + plural
-    // ───────────────────────────────────────────────
-    if r.Group != "" && r.Version != "" && r.Plural != "" {
-        return schema.GroupVersionResource{
-            Group:    r.Group,
-            Version:  r.Version,
-            Resource: r.Plural,
-        }, true
-    }
+	// ───────────────────────────────────────────────
+	// 1. Full explicit GVR: group + version + plural
+	// ───────────────────────────────────────────────
+	if r.Group != "" && r.Version != "" && r.Plural != "" {
+		return schema.GroupVersionResource{
+			Group:    r.Group,
+			Version:  r.Version,
+			Resource: r.Plural,
+		}, true
+	}
 
-    // ───────────────────────────────────────────────
-    // 2. Explicit group + version, infer plural
-    // ───────────────────────────────────────────────
-    if r.Group != "" && r.Version != "" {
-        return schema.GroupVersionResource{
-            Group:    r.Group,
-            Version:  r.Version,
-            Resource: strings.ToLower(r.Kind) + "s",
-        }, true
-    }
+	// ───────────────────────────────────────────────
+	// 2. Explicit group + version, infer plural
+	// ───────────────────────────────────────────────
+	if r.Group != "" && r.Version != "" {
+		return schema.GroupVersionResource{
+			Group:    r.Group,
+			Version:  r.Version,
+			Resource: strings.ToLower(r.Kind) + "s",
+		}, true
+	}
 
-    // ───────────────────────────────────────────────
-    // 3. APIVersion + plural
-    // ───────────────────────────────────────────────
-    if r.APIVersion != "" && r.Plural != "" {
-        gv, err := schema.ParseGroupVersion(r.APIVersion)
-        if err != nil {
-            return schema.GroupVersionResource{}, false
-        }
-        return schema.GroupVersionResource{
-            Group:    gv.Group,
-            Version:  gv.Version,
-            Resource: r.Plural,
-        }, true
-    }
+	// ───────────────────────────────────────────────
+	// 3. APIVersion + plural
+	// ───────────────────────────────────────────────
+	if r.APIVersion != "" && r.Plural != "" {
+		gv, err := schema.ParseGroupVersion(r.APIVersion)
+		if err != nil {
+			return schema.GroupVersionResource{}, false
+		}
+		return schema.GroupVersionResource{
+			Group:    gv.Group,
+			Version:  gv.Version,
+			Resource: r.Plural,
+		}, true
+	}
 
-    // ───────────────────────────────────────────────
-    // 4. APIVersion only, infer plural
-    // ───────────────────────────────────────────────
-    if r.APIVersion != "" {
-        gv, err := schema.ParseGroupVersion(r.APIVersion)
-        if err != nil {
-            return schema.GroupVersionResource{}, false
-        }
-        return schema.GroupVersionResource{
-            Group:    gv.Group,
-            Version:  gv.Version,
-            Resource: strings.ToLower(r.Kind) + "s",
-        }, true
-    }
+	// ───────────────────────────────────────────────
+	// 4. APIVersion only, infer plural
+	// ───────────────────────────────────────────────
+	if r.APIVersion != "" {
+		gv, err := schema.ParseGroupVersion(r.APIVersion)
+		if err != nil {
+			return schema.GroupVersionResource{}, false
+		}
+		return schema.GroupVersionResource{
+			Group:    gv.Group,
+			Version:  gv.Version,
+			Resource: strings.ToLower(r.Kind) + "s",
+		}, true
+	}
 
-    // ───────────────────────────────────────────────
-    // 5. Built‑in resource
-    // ───────────────────────────────────────────────
-    if gvr, ok := GVRForBuiltIn(r.Kind); ok {
-        return gvr, true
-    }
+	// ───────────────────────────────────────────────
+	// 5. Built‑in resource
+	// ───────────────────────────────────────────────
+	if gvr, ok := GVRForBuiltIn(r.Kind); ok {
+		return gvr, true
+	}
 
-    // ───────────────────────────────────────────────
-    // 6. Could not resolve
-    // ───────────────────────────────────────────────
-    return schema.GroupVersionResource{}, false
+	// ───────────────────────────────────────────────
+	// 6. Could not resolve
+	// ───────────────────────────────────────────────
+	return schema.GroupVersionResource{}, false
 }
