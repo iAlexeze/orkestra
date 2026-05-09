@@ -2,18 +2,6 @@
 
 > **Chart version:** 0.4.0 | **App version:** 0.4.0
 
-
-
-
-
-
-
-
-
-
-
-
-
 Deploy Orkestra — the declarative Kubernetes operator runtime — along with its Control Center for multi‑instance observability.
 
 ---
@@ -32,7 +20,7 @@ Deploy Orkestra — the declarative Kubernetes operator runtime — along with i
 1. **Install the Orkestra CLI**
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
+curl -sSL https://get.orkestra.sh | bash
 ```
 
 2. **Create a minimal Katalog** (save as `katalog.yaml`)
