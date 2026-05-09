@@ -95,7 +95,7 @@ Every CRD declared in a Katalog becomes a complete, isolated operator:
 | **Health API** | `/katalog/{crd}/health`, `/katalog/{crd}/cr`, `/metrics`. |
 | **Prometheus metrics** | Reconcile totals, queue depth, error rate — all per CRD. |
 
-Fifteen CRDs. One process. [~47 MB](https://cc.orkestra.sh).
+<!-- Fifteen CRDs. One process. [~47 MB](https://cc.orkestra.sh). -->
 
 ---
 ## Getting started
@@ -316,7 +316,7 @@ conversion:
         schedule: "{{ cronFromMap .spec.schedule }}"
 ```
 
-**In production:** [100,000+ conversions](https://cc.orkestra.sh). 0 failures. ~ 2ms average latency.
+<!-- **In production:** [100,000+ conversions](https://cc.orkestra.sh). 0 failures. ~ 2ms average latency. -->
 
 **Option 2 — Internal normalization (no webhook)**
 
