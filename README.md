@@ -61,7 +61,7 @@ spec:
 > [!TIP]
 > This assumes you have a website CRD installed in your cluster. If not, generate one from your Katalog:
 > ```bash
-> ork generate crd -k katalog.yaml -o my-website-crd.yaml
+> ork generate crd -f katalog.yaml -o my-website-crd.yaml
 > kubectl apply -f my-website-crd.yaml
 > ```
 
@@ -74,7 +74,7 @@ The entire flow from zero to running is **four steps**:
 ### Step 1 – Generate a bundle
 
 ```bash
-ork generate bundle --katalog katalog.yaml -o bundle.yaml
+ork generate bundle -f katalog.yaml -o bundle.yaml
 ```
 
 This produces a single YAML file containing:
@@ -490,7 +490,7 @@ kubectl logs -n orkestra-system deployment/orkestra-runtime | grep -i katalog
 Regenerate the bundle and re‑apply:
 
 ```bash
-ork generate bundle --katalog katalog.yaml -o bundle.yaml
+ork generate bundle -f katalog.yaml -o bundle.yaml
 kubectl apply -f bundle.yaml
 ```
 
