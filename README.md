@@ -94,6 +94,7 @@ Every CRD declared in a Katalog becomes a complete, isolated operator:
 | **Status** | `Ready` condition + declarative status fields after every reconcile. |
 | **Health API** | `/katalog/{crd}/health`, `/katalog/{crd}/cr`, `/metrics`. |
 | **Prometheus metrics** | Reconcile totals, queue depth, error rate — all per CRD. |
+| **Control Center** | Realtime visibility per CRD. |
 
 <!-- Fifteen CRDs. One process. [~47 MB](https://cc.orkestra.sh). -->
 
