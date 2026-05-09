@@ -545,8 +545,90 @@ One command starts the entire platform.
 
 ---
 
-## Providers
+## Security
 
+Deletion protection, namespace protection, admission webhooks, and conversion webhooks all share one certificate. One block. No separate TLS setup.
+
+```yaml
+security:
+  deletionProtection:
+    enabled: true             # protects your CRDs and Orkestra deployment from kubectl delete
+    cleanupOnShutdown: true   # Tells orkestra to cleanup deletionProtection webhooks and certs on shutdown
+  
+  namespaceProtection:
+    enabled: true             # Orkestra blocks creation of custom resources in restrictedNamespaces at apply time and creation of child resources at reconcile time. One declaration. Two enforcement points.
+
+  webhooks:
+    admission:
+      enabled: true        # intercepts kubectl apply at the API server
+    failurePolicy: Fail
+
+  conversion:
+    enabled: true          # serves /convert for multi-version CRDs
+```
+
+With `deletionProtection` enabled, Orkestra registers a validating webhook that rejects `DELETE` requests to delete protected CRDs as well as Orkestra deployment, service or ingress. No separate webhook server. The same process that runs your operators handles it.
+
+---
+> [!important]
+> Features in development
+
+---
+### Automatic rollbacks
+
+Orkestra provides two rollback models: zero‑config recovery and custom rollback templates. Both approaches restore the last known good spec after repeated reconcile failures. Rollback is declarative and idempotent; no additional controllers or resource types are introduced.
+
+#### Zero‑config rollback
+
+A single field enables automatic recovery. When the operator encounters consecutive reconcile failures, Orkestra enters a rollback phase and reapplies the previous desired state. The rollback templates are derived from the existing reconcile declarations; no onRollback block is required.
+
+```yaml
+operatorBox:
+  default: true
+
+  rollBackOnError: true
+```
+
+When enabled, Orkestra:
+
+- captures the previous spec before applying a new one  
+- tracks consecutive failures  
+- rolls back automatically after the threshold is reached  
+- blocks normal reconciliation until the spec is corrected  
+
+This is the simplest and safest rollback path.
+
+#### Custom rollback
+
+For operators that require explicit rollback behavior, a custom rollback block can be declared. This allows full control over which resources are restored and how the previous spec is applied.
+
+```yaml
+operatorBox:
+  rollback:
+    trigger:
+      consecutiveFailures: 3
+      withinDuration: 5m
+
+    onRollback:
+      deployments:
+        - name: "{{ .metadata.name }}"
+          image: myorg/stable-deployment:v1
+          replicas: "{{ .previous.spec.replicas }}"
+          reconcile: true
+```
+
+Custom rollback provides:
+
+- explicit control over rollback templates  
+- conditional triggers  
+- access to `.previous.spec.*` for restoring prior values  
+- full integration with the existing reconcile pipeline  
+
+Rollback is not transactional undo. It is re‑declaration of the last known good state. Existing Update functions handle idempotent re‑application.
+
+---
+
+### Providers
 Declare infrastructure dependencies at the Katalog level. Orkestra registers only the providers listed here — per-CRD blocks for anything else are silently skipped.
 
 ```yaml
@@ -579,32 +661,6 @@ operatorBox:
           name: "{{ .spec.dbUser }}"
           database: "{{ .metadata.name }}"
 ```
-
----
-
-## Security
-
-Deletion protection, namespace protection, admission webhooks, and conversion webhooks all share one certificate. One block. No separate TLS setup.
-
-```yaml
-security:
-  deletionProtection:
-    enabled: true             # protects your CRDs and Orkestra deployment from kubectl delete
-    cleanupOnShutdown: true   # Tells orkestra to cleanup deletionProtection webhooks and certs on shutdown
-  
-  namespaceProtection:
-    enabled: true             # Orkestra blocks creation of custom resources in restrictedNamespaces at apply time and creation of child resources at reconcile time. One declaration. Two enforcement points.
-
-  webhooks:
-    admission:
-      enabled: true        # intercepts kubectl apply at the API server
-    failurePolicy: Fail
-
-  conversion:
-    enabled: true          # serves /convert for multi-version CRDs
-```
-
-With `deletionProtection` enabled, Orkestra registers a validating webhook that rejects `DELETE` requests to delete protected CRDs as well as Orkestra deployment, service or ingress. No separate webhook server. The same process that runs your operators handles it.
 
 <!-- ---
 
