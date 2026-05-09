@@ -126,18 +126,30 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 	metrics.RecordDeletionProtectionBlocked("orkestra-" + req.Resource.Resource)
 	ws.protectionStats.RecordBlocked()
 
+	kind := req.Kind.Kind
+	name := req.Name
+	ns := req.Namespace
+
+	footer := "\n\nTo remove protection:\n" +
+		"- Set security.deletionProtection.enabled: false in the Katalog.\n" +
+		"- Redeploy Orkestra.\n" +
+		"- Retry the deletion."
+
+	var header string
+	if ns == "" || kind == "Namespace" {
+		header = fmt.Sprintf("The %s %q is protected from deletion.", kind, name)
+	} else {
+		header = fmt.Sprintf("The %s %q in namespace %q is protected from deletion.", kind, name, ns)
+	}
+
+	message := "\n\n[Orkestra Security] " + header + footer
+
 	ws.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
 		UID:     req.UID,
 		Allowed: false,
 		Status: &AdmissionStatus{
-			Message: fmt.Sprintf(
-				"\n\n[Orkestra Security] The Orkestra %s %q is protected from deletion.\n\n"+
-					"To disable:\n"+
-					"- Set security.deletionProtection.enabled: false in the Katalog first.\n"+
-					"- Redeploy Orkestra, then delete the resource.\n\n",
-				req.Resource.Resource, req.Name,
-			),
-			Code: 403,
+			Message: message,
+			Code:    403,
 		},
 	})
 }

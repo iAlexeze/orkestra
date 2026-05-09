@@ -62,7 +62,7 @@ The standard `ork` CLI does not know about your Go types. Validate it to see the
 expected error:
 
 ```bash
-ork validate -k katalog.yaml
+ork validate -f katalog.yaml
 ```
 
 Output:
@@ -108,7 +108,7 @@ Now you have a custom `./ork` binary that knows your CRD type.
 ## Step 5 — Validate with your own binary
 
 ```bash
-./ork validate -k katalog.yaml
+./ork validate -f katalog.yaml
 ```
 
 It should pass without errors. The debug output (from the generated registry)
@@ -118,25 +118,23 @@ will confirm that `ObjectRegistry` is populated.
 
 ## Step 6 — Run locally in Kind
 
-Create a Kind cluster (if not already):
+>[!IMPORTANT]
+> `ork run` with `--dev` flag spins up a local kind cluster, and deploys orkestra.
+> Skip if you already have a cluster running.
+
+Run your custom operator:
 
 ```bash
-kind create cluster --name ork-typed
+./ork run -f katalog.yaml --dev
 ```
+
+In another terminal, apply the custom resource:
 
 Apply the CRD:
 
 ```bash
 kubectl apply -f crd.yaml
 ```
-
-Run your custom operator:
-
-```bash
-./ork run -k katalog.yaml
-```
-
-In another terminal, apply the custom resource:
 
 ```bash
 kubectl apply -f cr.yaml
@@ -168,7 +166,7 @@ make release IMAGE=yourregistry/your-operator:v1.0.0
 ### Generate the Orkestra bundle
 
 ```bash
-./ork generate bundle -k katalog.yaml -o bundle.yaml
+./ork generate bundle -f katalog.yaml -o bundle.yaml
 ```
 
 This creates a single YAML with Namespace, ServiceAccount, ClusterRole,
@@ -239,7 +237,7 @@ Katalog handles it without a line of Go.
 Stop the local operator with `Ctrl+C`, then:
 
 ```bash
-kind delete cluster --name ork-typed
+kind delete cluster --name orkestra-playground
 ```
 
 For the production deployment:

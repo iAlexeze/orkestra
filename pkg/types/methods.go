@@ -96,6 +96,44 @@ func (c *CRDEntry) WithConstructorDecl() bool {
 	return c.OperatorBox.ConstructorDecl != nil && c.OperatorBox.ConstructorDecl.Location != ""
 }
 
+// WithHookManagedResources reports whether this CRD has hooks that declare
+// managed resources for RBAC generation.
+func (c *CRDEntry) WithHookManagedResources() bool {
+	return c.WithHooksDecl() &&
+		len(c.OperatorBox.Hooks.Resources) > 0
+}
+
+// WithConstructorManagedResources reports whether this CRD has a constructor
+// that declares managed resources for RBAC generation.
+func (c *CRDEntry) WithConstructorManagedResources() bool {
+	return c.WithConstructorDecl() &&
+		len(c.OperatorBox.ConstructorDecl.Resources) > 0
+}
+
+// WithAnyManagedResources reports whether hooks or constructor declare resources.
+func (c *CRDEntry) WithAnyManagedResources() bool {
+	return c.WithHookManagedResources() || c.WithConstructorManagedResources()
+}
+
+// HookManagedResources returns the list of managed resources declared under
+// the hooks block. Returns nil if hooks are not declared or no resources exist.
+func (c *CRDEntry) HookManagedResources() []ManagedResource {
+	if !c.WithHooksDecl() {
+		return nil
+	}
+	return c.OperatorBox.Hooks.Resources
+}
+
+// ConstructorManagedResources returns the list of managed resources declared
+// under the constructor block. Returns nil if constructor is not declared or
+// no resources exist.
+func (c *CRDEntry) ConstructorManagedResources() []ManagedResource {
+	if !c.WithConstructorDecl() {
+		return nil
+	}
+	return c.OperatorBox.ConstructorDecl.Resources
+}
+
 // HasTemplates reports whether this CRD declares any declarative hook templates.
 // Used by `ork generate` to determine whether to emit generated runtime hooks.
 func (c *CRDEntry) HasTemplates() bool {

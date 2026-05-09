@@ -309,6 +309,9 @@ kubectl get validatingwebhookconfiguration orkestra-admission-validation
 
 kubectl get mutatingwebhookconfiguration orkestra-admission-mutation
 # Error from server (NotFound): ... — removed automatically
+
+kubectl get secret orkestra-tls -n orkestra-system
+# Error from server (NotFound): ... — removed automatically
 ```
 
 ### Cleanup CR

@@ -16,11 +16,24 @@ in-cluster deployment with `kubectl apply`.
 
 Orkestra enforces the same declared rules at two points:
 
-**Admission time** (`ENABLE_ADMISSION_WEBHOOK=true`) — synchronously during `kubectl apply`.
-A `deny` rule rejects the request before the object is stored. The user sees
-the error immediately in their terminal.
+1. **Admission time** (`admission.enabled: true`) — synchronously during `kubectl apply`.
 
-**Reconcile time** (always) — on every reconcile cycle. Catches CRs that
+In the [katalog.yaml](katalog.yaml), admission is enabled like this:
+
+```yaml
+security:
+  webhooks:
+    admission:
+      enabled: true
+    cleanupOnShutdown: true
+```
+
+- `admission.enabled: true` tells Orkestra to register the admission webhook.
+- `cleanupOnShutdown: true` tells Orkestra to remove webhook configurations and certificates when Orkestra shuts down.
+
+A `deny` rule rejects the request before the object is stored. The user sees the error immediately in their terminal.
+
+2. **Reconcile time** (always) — on every reconcile cycle. Catches CRs that
 existed before the rules were added, and provides enforcement even when
 webhooks are disabled.
 
@@ -42,40 +55,40 @@ before the validating webhook. This means:
 
 ## Step 1 — Deploy Orkestra in-cluster
 
-```bash
-# Install the CRD
-kubectl apply -f crd.yaml
-```
+- Apply the CRD  
+  ```bash
+  kubectl apply -f crd.yaml
+  ```
 
-```bash
-# Create the 'orkestra-system' namespace
-kubectl apply -f ../../installation/namespace.yaml
-```
+- Generate the bundle  
+  ```bash
+  ork generate bundle -f katalog.yaml -o bundle.yaml
+  ```
 
-### Apply the Katalog ConfigMap
-```bash
-kubectl apply -f orkestra-configmap.yaml
-```
+- Apply the bundle  
+  ```bash
+  kubectl apply -f bundle.yaml
+  ```
 
-### Generate TLS certs for the webhook server.
-For this example, generate self-signed ones:
+- Add the Helm repo  
+  ```bash
+  helm repo add orkestra https://orkspace.github.io/orkestra
+  ```
 
-```bash
-# Generate certs (development only — use cert-manager in production)
-chmod +x ../../installation/generate-certs.sh && \
-../../installation/generate-certs.sh
+- Install Orkestra  
+  ```bash
+  helm install orkestra orkestra/orkestra --namespace orkestra-system --create-namespace
+  ```
 
-# This creates a secret 'orkestra-tls' with certificates for webhook support
-```
+- Wait for Orkestra to be ready  
+  ```bash
+  kubectl wait --for=condition=available deployment/orkestra \
+    -n orkestra-system --timeout=120s
+  ```
 
-### Deploy Orkestra
-```bash
-kubectl apply -f ../../installation/install-webhook-support.yaml
+Webhook certificates are generated and rotated automatically by Orkestra.
 
-# Wait for it to be ready
-kubectl wait --for=condition=available deployment/orkestra \
-  -n orkestra-system --timeout=60s
-```
+> You can provide your own certificate by adding `TLS_CERT` and `TLS_KEY` to the Orkestra values.yaml file.
 
 You should see the following endpoints as part of orkestra's startup
 
@@ -177,7 +190,7 @@ metadata:
 spec:
   image: myorg/nginx:1.25
   replicas: 1
-  port: 8080
+  port: "8080"
   # environment not declared → warn rule fires
 EOF
 ```
@@ -187,16 +200,6 @@ EOF
 Warning: orkestra: field "spec.environment": declare spec.environment for better observability
 website.demo.orkestra.io/warn-site created
 ```
-
-**Mutation** applied `environment: development` as the default. The warn rule
-then fired on the original (pre-mutation) object at admission time because it
-checks before mutation? No — at admission time, mutation runs before validation.
-The default is applied, so the warn rule actually does not fire for this CR
-because `spec.environment` is now set to `development`.
-
-The warn rule fires for CRs where `spec.environment` is genuinely absent and
-no default exists — useful when `default` is deliberately not set for a field
-you want to encourage but not require.
 
 ---
 
@@ -215,6 +218,34 @@ curl localhost:8080/katalog/website | jq '{
 
 ## Cleanup
 
+`cleanupOnShutdown: true` removes both webhook configurations, the TLS Secret, and all other security resources automatically when Orkestra stops:
+
+```bash
+helm uninstall orkestra -n orkestra-system
+```
+
+After uninstall:
+* Logs:
+```json
+{"level":"info","config":"orkestra-admission-validation","time":1777697002,"message":"webhook: ValidatingWebhookConfiguration unregistered"}
+{"level":"info","config":"orkestra-admission-mutation","time":1777697002,"message":"webhook: MutatingWebhookConfiguration unregistered"}
+{"level":"info","namespace":"orkestra-system","time":1777697002,"message":"tls secret removed on shutdown"}
+{"level":"warn","time":1777697002,"message":"webhook server: offline"}
+```
+
+* Verify:
+```bash
+kubectl get validatingwebhookconfiguration orkestra-admission-validation
+# Error from server (NotFound): ... — removed automatically
+
+kubectl get mutatingwebhookconfiguration orkestra-admission-mutation
+# Error from server (NotFound): ... — removed automatically
+
+kubectl get secret orkestra-tls -n orkestra-system
+# Error from server (NotFound): ... — removed automatically
+```
+
+### Cleanup CR
 ```bash
 chmod +x cleanup.sh && ./cleanup.sh
 ```

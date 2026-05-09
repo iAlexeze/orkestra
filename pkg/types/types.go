@@ -2018,6 +2018,9 @@ type HookDeclaration struct {
 	// Alias — Go import alias. Optional, auto-derived from Location if omitted.
 	// e.g. "projecthooks"
 	Alias string `yaml:"alias" json:"alias,omitempty" validate:"omitempty"`
+
+	// Resources — Kubernetes resource types this hook manages (used for RBAC generation).
+	Resources []ManagedResource `json:"resources,omitempty" yaml:"resources,omitempty"`
 }
 
 // ConstructorDeclaration declares where a custom reconciler constructor lives.
@@ -2033,6 +2036,57 @@ type ConstructorDeclaration struct {
 
 	// Alias — Go import alias. Optional, auto-derived from Location if omitted.
 	Alias string `yaml:"alias" json:"alias,omitempty" validate:"omitempty"`
+
+	// Resources — Kubernetes resource types this constructor manages (used for RBAC generation).
+	Resources []ManagedResource `json:"resources,omitempty" yaml:"resources,omitempty"`
+}
+
+// ManagedResource describes a Kubernetes resource type that a typed extension
+// (either a hook or a constructor) will manage.
+//
+// Orkestra uses this information to generate RBAC rules for the operator
+// ServiceAccount. Each declared resource results in permissions to
+// get/list/watch/create/update/patch/delete that resource type.
+//
+// For built‑in Kubernetes resources, Kind alone is sufficient because Orkestra
+// resolves the full GroupVersionResource from its internal registry.
+//
+// For custom resources or non‑core API groups, APIVersion and/or explicit
+// group/version/plural may be provided.
+//
+// Example (in katalog.yaml):
+//
+//	hooks:
+//	  resources:
+//	    - kind: StatefulSet
+//	    - kind: Service
+//	    - kind: CronJob
+//	    - kind: Widget
+//	      group: widgets.example.com
+//	      version: v1alpha1
+//	      plural: widgets
+type ManagedResource struct {
+	// Kind is the Kubernetes Kind of the resource (e.g. "StatefulSet",
+	// "Service", "CronJob"). This is the primary identifier and is required.
+	Kind string `json:"kind,omitempty" yaml:"kind,omitempty"`
+
+	// APIVersion is optional and only needed when the Kind cannot be resolved
+	// from Orkestra's built‑in registry. Example: "apps/v1", "batch/v1",
+	// "widgets.example.com/v1alpha1".
+	APIVersion string `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
+
+	// Group is optional and used for custom resources or non‑core API groups
+	// when you want to fully specify the GroupVersionResource explicitly.
+	// Example: "widgets.example.com".
+	Group string `json:"group,omitempty" yaml:"group,omitempty"`
+
+	// Version is optional and used together with Group for custom resources.
+	// Example: "v1alpha1".
+	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+
+	// Plural is optional and used when the plural name cannot be inferred
+	// from Orkestra's built‑in registry or CRD metadata. Example: "widgets".
+	Plural string `json:"plural,omitempty" yaml:"plural,omitempty"`
 }
 
 // ── DependsOn types ───────────────────────────────────────────────────────────
