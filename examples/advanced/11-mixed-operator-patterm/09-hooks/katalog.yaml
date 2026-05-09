@@ -22,7 +22,7 @@ spec:
         # responses into *apiv1.Database rather than *unstructured.Unstructured.
         # Required when hooks need type-safe struct access.
         # After setting this, run: ork generate registry --file katalog.yaml
-        location: github.com/orkspace/orkestra-hooks-demo/api/v1alpha1
+        location: github.com/orkspace/orkestra-mixed-operator-pattern/09-hooks/api/v1alpha1
         alias: demov1alpha1
 
       workers: 3
@@ -34,7 +34,7 @@ spec:
         # Hooks run INSTEAD OF declarative templates when OnReconcile is defined.
         # The hook calls OrkestraRegistry directly for Kubernetes resources.
         hooks:
-          location: github.com/orkspace/orkestra-hooks-demo/hooks
+          location: github.com/orkspace/orkestra-mixed-operator-pattern/09-hooks/hooks
           function: DatabaseHooks
           alias: dbhooks
           resources:          # A list of resources managed by this hook (required for RBAC)

@@ -315,6 +315,8 @@ func init() {
 
 	generateRbacCmd.Flags().StringSliceP("file", "f", []string{}, "Path to katalog.yaml (can be specified multiple times or as comma-separated)")
 
+	generateRegistryCmd.Flags().StringP("dirs", "d", "", "Comma-separated list of project directories to generate registries for")
+
 	// Add shared flags
 	for _, cmd := range []*cobra.Command{
 		generateRegistryCmd,
