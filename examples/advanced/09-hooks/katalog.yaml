@@ -37,6 +37,10 @@ spec:
           location: github.com/orkspace/orkestra-hooks-demo/hooks
           function: DatabaseHooks
           alias: dbhooks
+          resources:          # A list of resources managed by this hook (requiredfor RBAS)
+            - kind: StatefulSet
+            - kind: Service
+            - kind: CronJob
 
         # Status Layer 1 (Ready condition) is always automatic.
         # Layer 2 fields are still written after the hook completes.

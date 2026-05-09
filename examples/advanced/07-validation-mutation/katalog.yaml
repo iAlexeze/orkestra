@@ -9,6 +9,12 @@ metadata:
     Rules run at admission time (when ENABLE_ADMISSION_WEBHOOK=true) and at
     reconcile time on every cycle.
 
+security:
+  webhooks:
+    admission: 
+      enabled: true
+    cleanupOnShutdown: true
+
 spec:
   crds:
     website:
@@ -60,9 +66,6 @@ spec:
 
           - field: spec.port
             default: "8080"        # if port not declared, default to 8080
-
-          - field: spec.environment
-            default: "development" # if environment not declared, default to development
 
       # ── Reconciler ────────────────────────────────────────────────────
       operatorBox:

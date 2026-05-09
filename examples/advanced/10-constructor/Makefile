@@ -6,10 +6,15 @@ KATALOG     ?= katalog.yaml
 IMAGE_REPO  ?= myorg/my-operator
 IMAGE_TAG   ?= latest
 IMAGE       ?= $(IMAGE_REPO):$(IMAGE_TAG)
+BUILD_TAGS	?=
 
 GOOS        ?= linux
 GOARCH      ?= amd64
 CGO_ENABLED  = 0
+
+ORK_LDFLAGS := -X github.com/orkspace/orkestra/pkg/version.Version=$(GIT_VERSION) \
+               -X github.com/orkspace/orkestra/pkg/version.Commit=$(GIT_COMMIT) \
+               -X github.com/orkspace/orkestra/pkg/version.Date=$(GIT_DATE)
 
 # ── registry ──────────────────────────────────────────────────────────────────
 # Generates pkg/runtime/zz_generated_runtime_registry.go.
@@ -22,8 +27,11 @@ registry:
 .PHONY: build
 build:
 	@mkdir -p $(OUTPUT_DIR)
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) \
-		go build -o $(OUTPUT_DIR)/$(BINARY_NAME) ./cmd/orkestra
+	go mod tidy
+	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+		-tags "$(BUILD_TAGS)" \
+		-ldflags "$(ORK_LDFLAGS)" \
+		-o $(OUTPUT_DIR)/$(BINARY_NAME) ./cmd/orkestra
 	@echo "✅ $(OUTPUT_DIR)/$(BINARY_NAME)"
 
 # ── validate ──────────────────────────────────────────────────────────────────
@@ -33,7 +41,8 @@ validate:
 
 # ── docker / push / release ───────────────────────────────────────────────────
 .PHONY: docker
-docker: build
+docker:
+	$(MAKE) build BUILD_TAGS=runtime
 	@cp $(OUTPUT_DIR)/$(BINARY_NAME) ./$(BINARY_NAME)
 	docker build -t $(IMAGE) .
 	@rm -f ./$(BINARY_NAME)

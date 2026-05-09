@@ -10,3 +10,4 @@ spec:
   image: docker.io/nginx:1.25   # ← NOT from myorg/ — will be denied
   replicas: 2
   port: "8080"
+  environment: staging

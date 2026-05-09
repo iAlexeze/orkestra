@@ -39,6 +39,14 @@ spec:
         constructor:
           location: github.com/orkspace/orkestra-constructor-demo/reconciler
           function: NewPipelineReconciler
+          # 
+          # (Required for RBAC)
+          # Define the resources managed by this reconciler
+          resources:
+            - kind: Job           # For built-ins, only kind is required
+              group: batch
+              version: v1
+              plural: jobs
 
         # Note: onCreate, onReconcile, onDelete, hooks, and status.fields
         # are all ignored when reconciler.default is false. The constructor

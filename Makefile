@@ -126,13 +126,6 @@ docker-cc: orkcc-linux
 
 # ── Docker Push ───────────────────────────────────────────────────────────────
 
-KIND_CLUSTER ?= orkestra-playground
-
-docker-load: docker
-	@echo "Loading image into kind cluster: $(KIND_CLUSTER)"
-	kind load docker-image $(ORK_IMAGE) --name $(KIND_CLUSTER)
-	@echo "✔ Image loaded into kind cluster: $(KIND_CLUSTER)"
-
 docker-push:
 	@echo "Pushing Docker image: $(ORK_IMAGE)"
 	docker push $(ORK_IMAGE)
@@ -145,6 +138,31 @@ docker-push:
 
 docker-release: docker docker-cc docker-push
 	@echo "✔ Docker release complete: $(ORK_IMAGE)"
+
+# ── Runtime Reload (local dev) ────────────────────────────────────────────────
+
+KIND_CLUSTER ?= orkestra-playground
+RUNTIME_DEPLOYMENT ?= orkestra-runtime
+RUNTIME_CONTAINER_NAME ?= orkestra
+RUNTIME_NAMESPACE  ?= orkestra-system
+
+runtime-reload: docker
+	@echo "Generating unique tag..."
+	$(eval RUNTIME_TAG := $(shell date +%s))
+	@echo "Tag: $(RUNTIME_TAG)"
+
+	@echo "Retagging image..."
+	docker tag $(ORK_IMAGE) $(ORK_IMAGE)-$(RUNTIME_TAG)
+
+	@echo "Loading image into kind cluster: $(KIND_CLUSTER)"
+	kind load docker-image $(ORK_IMAGE)-$(RUNTIME_TAG) --name $(KIND_CLUSTER)
+	@echo "✔ Image loaded"
+
+	@echo "Updating deployment $(RUNTIME_DEPLOYMENT) in namespace $(RUNTIME_NAMESPACE)..."
+	kubectl -n $(RUNTIME_NAMESPACE) set image deploy/$(RUNTIME_DEPLOYMENT) \
+        $(RUNTIME_CONTAINER_NAME)=$(ORK_IMAGE)-$(RUNTIME_TAG)
+
+	@echo "✔ Runtime updated to image: $(ORK_IMAGE)-$(RUNTIME_TAG)"
 
 # ── Primary targets ───────────────────────────────────────────────────────────
 

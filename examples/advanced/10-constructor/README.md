@@ -121,7 +121,7 @@ Both files are marked `DO NOT EDIT` – they are regenerated whenever you change
 First, see the expected error with the standard `ork` CLI:
 
 ```bash
-ork validate -k katalog.yaml
+ork validate -f katalog.yaml
 # error: no reconciler constructor registered for Kind=Pipeline
 ```
 
@@ -136,7 +136,7 @@ cp ~/.orkestra/bin/ork ./ork
 Validate with your binary:
 
 ```bash
-./ork validate -k katalog.yaml   # passes
+./ork validate -f katalog.yaml   # passes
 ```
 
 ---
@@ -144,9 +144,9 @@ Validate with your binary:
 ## Step 3 – Run locally
 
 ```bash
-kind create cluster --name ork-pipeline
+./ork run -f katalog.yaml --dev     # creates a local kind cluster
+
 kubectl apply -f crd.yaml
-./ork run -k katalog.yaml
 ```
 
 In another terminal:
@@ -164,18 +164,24 @@ You’ll see the state machine step through `build` → `test` → `notify`.
 ## Step 4 – Deploy to a cluster
 
 ```bash
+# Generate Bundle
+./ork generate bundle -f katalog.yaml -o bundle.yaml
+
+# Build and push your custom image
 make release IMAGE=yourregistry/pipeline-operator:v1
 
-./ork generate bundle -k katalog.yaml -o bundle.yaml
-
+# Apply bundle
 kubectl apply -f bundle.yaml
 
+# Deploy orkestra
 helm repo add orkestra https://orkspace.github.io/orkestra
 helm install orkestra orkestra/orkestra \
   --set runtime.image.repository=yourregistry/pipeline-operator \
   --set runtime.image.tag=v1 \
   --namespace orkestra-system \
   --wait --timeout 120s
+
+# Apply if not done already
 kubectl apply -f crd.yaml
 kubectl apply -f cr.yaml
 ```
@@ -185,9 +191,9 @@ kubectl apply -f cr.yaml
 ## Cleanup
 
 ```bash
-kind delete cluster --name ork-pipeline
 helm uninstall orkestra -n orkestra-system
 kubectl delete -f bundle.yaml
+kind delete cluster --name orkestra-playground
 ```
 
 ---
