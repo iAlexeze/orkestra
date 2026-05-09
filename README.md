@@ -116,7 +116,7 @@ cd my-operator
 kubectl apply -f examples/beginner/01-hello-website/crd.yaml
 
 # Run the operator runtime
-ork run --file examples/beginner/01-hello-website/katalog.yaml
+ork run -f examples/beginner/01-hello-website/katalog.yaml
 
 # Apply a CustomResource
 kubectl apply -f examples/beginner/01-hello-website/cr.yaml
@@ -143,6 +143,7 @@ helm install orkestra orkestra/orkestra \
 ```
 
 The same Katalog you ran locally is what runs in production.
+> See [four steps to production](https://orkspace.github.io/orkestra).
 
 ---
 
