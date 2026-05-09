@@ -529,6 +529,12 @@ sources:
   files:
     - ./katalogs/website.yaml
     - ./katalogs/pipeline.yaml
+  helm:
+    - repo: ghcr.io/orkspace/registry/platform
+      chart: platform-example
+      version: 0.1.0
+      valueFiles:
+        - values/overrides.yaml
 spec:
   crds:
     postgres:
@@ -600,7 +606,7 @@ security:
 
 With `deletionProtection` enabled, Orkestra registers a validating webhook that rejects `DELETE` requests to delete protected CRDs as well as Orkestra deployment, service or ingress. No separate webhook server. The same process that runs your operators handles it.
 
----
+<!-- ---
 
 ## In production
 
@@ -610,7 +616,7 @@ With `deletionProtection` enabled, Orkestra registers a validating webhook that 
 | Active operatorBox:es | 3 Katalogs, 113 workers |
 | Reconcile error rate | **0.0%** |
 | Conversion failures | **0** |
-| Memory (15 CRDs) | ~47 MB |
+| Memory (15 CRDs) | ~47 MB | -->
 
 ---
 
