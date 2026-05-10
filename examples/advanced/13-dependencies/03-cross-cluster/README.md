@@ -1,4 +1,4 @@
-# 12 — Dependencies · 03: Cross Cluster
+# 13 — Dependencies · 03: Cross Cluster
 
 Database lives in **cluster-a** (infrastructure cluster). App lives in **cluster-b** (application cluster) and will not start until Database in cluster-a is healthy — across a real network boundary.
 

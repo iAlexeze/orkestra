@@ -85,8 +85,17 @@ spec:
 
         status:
           fields:
+            # ── Initial state ───────────────────────────────────────────
+            - path: phase
+              value: "Pending"
+              when:
+                - field: cross.database.status.endpoint
+                  equals: ""
             - path: phase
               value: "Running"
+              when:
+                - field: cross.database.status.phase
+                  equals: "Running"
             - path: dbEndpoint
               value: "{{ .cross.database.status.endpoint }}"
 
@@ -102,3 +111,4 @@ spec:
           services:
             - port: "80"
               targetPort: "8080"
+              reconcile: true

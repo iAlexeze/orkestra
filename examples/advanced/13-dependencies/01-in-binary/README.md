@@ -1,10 +1,10 @@
-# 12 — Dependencies · 01: In Binary
+# 13 — Dependencies · 01: In Binary
 
 `App` will not start reconciling until `Database` is healthy. No init containers, no polling loops, no Go code — just a single line in the Katalog.
 
 **What you learn:** `dependsOn`, the three `dependsOn` YAML formats, the `healthy` vs `started` conditions, how the `cross:` block reads the dependency's status for injection, and how Orkestra enforces ordering at the controller level.
 
-**Builds on:** [13-01 — Cross Operator In Binary](../../13-cross-operator/01-in-binary/README.md)
+<!-- **Builds on:** [13-01 — Cross Operator In Binary](../../13-cross-operator/01-in-binary/README.md) -->
 
 ---
 
@@ -68,13 +68,13 @@ kubectl apply -f crd.yaml
 
 ---
 
-## Step 3 — Install Orkestra
+## Step 3 — Run Orkestra and Control Center
 
 ```bash
-helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
-  --namespace orkestra-system \
-  --wait --timeout 120s
+ork run -f katalog.yaml
+
+# Another terminal
+ork contro start
 ```
 
 ---
@@ -90,10 +90,13 @@ kubectl get app my-database
 
 ```
 NAME          IMAGE                DB ENDPOINT   PHASE     AGE
-my-database   nginx:stable-alpine  <none>        Pending   5s
+my-database   nginx:stable-alpine  <none>                   5s
 ```
 
-App is pending — Database does not exist yet. Orkestra skips its reconcile without error.
+No phase written for App — Database does not exist yet. Orkestra skips its reconcile without error.
+
+Check the control center on http://localhost:8081, you will see "Dependency Issue" for App.
+Select App and scroll down to see why under `"Dependencies"`
 
 ---
 
@@ -119,6 +122,8 @@ app.deps.orkestra.io/my-database     nginx:stable-alpine  my-database.default.sv
 
 Once Database reaches `Running`, Orkestra starts App's reconcile automatically. App picks up the endpoint from the cross block and injects it into its Deployment.
 
+Check the control center and see App become healthy and the phase `Running`.
+
 ---
 
 ## Step 6 — Verify the injected env
@@ -129,7 +134,10 @@ kubectl get deployment my-database-deployment -o jsonpath='{.spec.template.spec.
 
 ```json
 [
-  { "name": "DB_HOST", "value": "my-database.default.svc:5432" }
+  { 
+    "name": "DB_HOST",
+    "value": "my-database.default.svc:5432"
+  }
 ]
 ```
 
@@ -137,14 +145,14 @@ kubectl get deployment my-database-deployment -o jsonpath='{.spec.template.spec.
 
 ## Step 7 — Simulate a dependency restart
 
-Delete Database and watch App's behaviour:
+Delete Database CRD and watch App's behaviour:
 
 ```bash
-kubectl delete database my-database
-kubectl get app my-database
+kubectl delete crd databases.deps.orkestra.io
 ```
+Check the control center.
 
-Orkestra detects that the dependency is gone and puts App back into `Pending`. Re-apply Database and App resumes within one resync cycle.
+Orkestra detects that the dependency is gone and puts App back into `Dependency Issue`. Re-apply Database `(crd.yaml)` and App resumes within one resync cycle.
 
 ---
 
@@ -152,5 +160,4 @@ Orkestra detects that the dependency is gone and puts App back into `Pending`. R
 
 ```bash
 chmod +x cleanup.sh && ./cleanup.sh
-helm uninstall orkestra -n orkestra-system
 ```
