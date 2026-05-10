@@ -385,11 +385,6 @@ func (c *CRDEntry) HasOnDelete() bool {
 	return c.OperatorBox.OnDelete != nil
 }
 
-// HasAnyHooks reports whether this CRD declares any onCreate, onReconcile, or onDelete hooks.
-func (c *CRDEntry) HasAnyHooks() bool {
-	return c.HasOnCreate() || c.HasOnReconcile() || c.HasOnDelete()
-}
-
 // HasStatusFields reports whether this CRD declares any status fields.
 func (c *CRDEntry) HasStatusFields() bool {
 	return c.OperatorBox.Status != nil && c.OperatorBox.Status.HasFields()
@@ -425,67 +420,6 @@ func (c *CRDEntry) HasRestrictedNamespaces() bool {
 	return len(c.RestrictedNamespaces) > 0
 }
 
-// HasAnySecrets reports whether this CRD defines any secrets
-// in either OnCreate or OnReconcile phases.
-func (c *CRDEntry) HasAnySecrets() bool {
-	if c.HasOnCreate() {
-		return len(c.OperatorBox.OnCreate.Secrets) > 0
-	}
-	if c.HasOnReconcile() {
-		return len(c.OperatorBox.OnReconcile.Secrets) > 0
-	}
-
-	return false
-}
-
-// HasAnyTLSSecrets reports whether any secret in either phase
-// defines a TLS configuration.
-func (c *CRDEntry) HasAnyTLSSecrets() bool {
-	if c.HasOnCreate() {
-		for _, s := range c.OperatorBox.OnCreate.Secrets {
-			if s.TLS != nil {
-				return true
-			}
-		}
-	}
-
-	if c.HasOnReconcile() {
-		for _, s := range c.OperatorBox.OnReconcile.Secrets {
-			if s.TLS != nil {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-// HasAnyHPA reports whether this CRD defines any HPA defined
-// in either OnCreate or OnReconcile phases.
-func (c *CRDEntry) HasAnyHPA() bool {
-	if c.HasOnCreate() {
-		return c.OperatorBox.OnCreate.HorizontalPodAutoscalers != nil
-	}
-	if c.HasOnReconcile() {
-		return c.OperatorBox.OnReconcile.HorizontalPodAutoscalers != nil
-	}
-
-	return false
-}
-
-// HasAnyServices reports whether this CRD defines any Services
-// in either OnCreate or OnReconcile phases.
-func (c *CRDEntry) HasAnyServices() bool {
-	if c.HasOnCreate() {
-		return c.OperatorBox.OnCreate.Services != nil
-	}
-	if c.HasOnReconcile() {
-		return c.OperatorBox.OnReconcile.Services != nil
-	}
-
-	return false
-}
-
 // IsValidServiceType reports whether the provided service type is valid.
 // Accepted values (case‑insensitive):
 //   - ClusterIP
@@ -512,109 +446,4 @@ func IsValidProtocol(p string) bool {
 	default:
 		return false
 	}
-}
-
-// HasAnyDeployments reports whether this CRD defines any Deployments
-// in either OnCreate or OnReconcile phases.
-func (c *CRDEntry) HasAnyDeployments() bool {
-	if c.HasOnCreate() {
-		return c.OperatorBox.OnCreate.Deployments != nil
-	}
-	if c.HasOnReconcile() {
-		return c.OperatorBox.OnReconcile.Deployments != nil
-	}
-
-	return false
-}
-
-// HasAnyStatefulSets reports whether this CRD defines any StatefulSets
-// in either OnCreate or OnReconcile phases.
-func (c *CRDEntry) HasAnyStatefulSets() bool {
-	if c.HasOnCreate() {
-		return c.OperatorBox.OnCreate.StatefulSets != nil
-	}
-	if c.HasOnReconcile() {
-		return c.OperatorBox.OnReconcile.StatefulSets != nil
-	}
-
-	return false
-}
-
-// HasAnyReplicaSets reports whether this CRD defines any ReplicaSets
-// in either OnCreate or OnReconcile phases.
-func (c *CRDEntry) HasAnyReplicaSets() bool {
-	if c.HasOnCreate() {
-		return c.OperatorBox.OnCreate.ReplicaSets != nil
-	}
-	if c.HasOnReconcile() {
-		return c.OperatorBox.OnReconcile.ReplicaSets != nil
-	}
-
-	return false
-}
-
-// NeedsResourceDecl reports whether this CRD defines any workload resources
-// (Deployments, StatefulSets, or ReplicaSets) in either OnCreate or OnReconcile.
-func (c *CRDEntry) NeedsResourceDecl() bool {
-	return c.HasAnyDeployments() ||
-		c.HasAnyReplicaSets() ||
-		c.HasAnyStatefulSets()
-}
-
-// ResourceDecl returns the first ResourceRequirements defined for this CRD.
-// It checks OnCreate first, then OnReconcile, and searches Deployments,
-// StatefulSets, and ReplicaSets in that order. Returns nil if none exist.
-func (c *CRDEntry) ResourceDecl() *ResourceRequirements {
-	// OnCreate phase takes precedence
-	if c.HasOnCreate() {
-		if req := findResourceDeclInPhase(c.OperatorBox.OnCreate); req != nil {
-			return req
-		}
-	}
-
-	// OnReconcile fallback
-	if c.HasOnReconcile() {
-		if req := findResourceDeclInPhase(c.OperatorBox.OnReconcile); req != nil {
-			return req
-		}
-	}
-
-	return nil
-}
-
-// findResourceDeclInPhase searches Deployments, StatefulSets, and ReplicaSets
-// inside a single OperatorPhase and returns the first non-nil ResourceRequirements.
-func findResourceDeclInPhase(tmpl *HookTemplates) *ResourceRequirements {
-	if tmpl == nil {
-		return nil
-	}
-
-	// Deployments
-	if tmpl.Deployments != nil {
-		for _, d := range tmpl.Deployments {
-			if d.Resources != nil {
-				return d.Resources
-			}
-		}
-	}
-
-	// StatefulSets
-	if tmpl.StatefulSets != nil {
-		for _, s := range tmpl.StatefulSets {
-			if s.Resources != nil {
-				return s.Resources
-			}
-		}
-	}
-
-	// ReplicaSets
-	if tmpl.ReplicaSets != nil {
-		for _, r := range tmpl.ReplicaSets {
-			if r.Resources != nil {
-				return r.Resources
-			}
-		}
-	}
-
-	return nil
 }

@@ -24,6 +24,11 @@ type ResolvedRoleBindingSpec struct {
 	Labels    map[string]string
 	RoleRef   rbacv1.RoleRef
 	Subjects  []rbacv1.Subject
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string
 }
 
 // Create creates a RoleBinding if it does not already exist.
@@ -35,6 +40,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	_, err := kube.Clientset().RbacV1().RoleBindings(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -68,6 +76,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // RoleRef is immutable in Kubernetes — if it changed the binding is deleted and recreated.
 func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedRoleBindingSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	existing, err := kube.Clientset().RbacV1().RoleBindings(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
@@ -105,6 +116,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Delete deletes the RoleBinding if it exists.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedRoleBindingSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	err := kube.Clientset().RbacV1().RoleBindings(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {

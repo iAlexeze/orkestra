@@ -55,7 +55,7 @@
 //  Supported: s (seconds), m (minutes), h (hours), d (days), y (years)
 //  Examples: 30s, 5m, 12h, 90d, 1y, 365d
 //  Note: d and y are extensions beyond Go's time.ParseDuration (which stops at h).
-//  ParseRotationDuration handles d and y by converting to hours.
+//  ParseTimeDuration handles d and y by converting to hours.
 //
 // ── Webhook certificate support ───────────────────────────────────────────
 //
@@ -119,7 +119,7 @@ type TLSSpec struct {
 	Organization string `yaml:"organization,omitempty" json:"organization,omitempty"`
 }
 
-// ParseRotationDuration parses a human‑friendly rotation duration string.
+// ParseTimeDuration parses a human‑friendly rotation duration string.
 //
 // It extends Go's time.ParseDuration by adding long‑term units:
 //
@@ -142,7 +142,7 @@ type TLSSpec struct {
 //   - Only "mo" is accepted for months to avoid collision with Go's "m" (minutes).
 //   - Fractional values are supported (e.g., "1.5mo").
 //   - Falls back to time.ParseDuration for standard units.
-func ParseRotationDuration(s string) (time.Duration, error) {
+func ParseTimeDuration(s string) (time.Duration, error) {
 	if s == "" {
 		return 0, fmt.Errorf("empty duration")
 	}
@@ -203,7 +203,7 @@ func NeedsRotation(generatedAt, rotateAfter string) bool {
 		return true
 	}
 
-	threshold, err := ParseRotationDuration(rotateAfter)
+	threshold, err := ParseTimeDuration(rotateAfter)
 	if err != nil {
 		return false // invalid duration — do not rotate unexpectedly
 	}

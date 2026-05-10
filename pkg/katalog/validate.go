@@ -448,7 +448,7 @@ func (k *Katalog) validateNamespaceProtection() error {
 // across all enabled CRDs. It is fail-fast: the first invalid duration
 // returns an error immediately.
 //
-// Supported units (extended by ParseRotationDuration):
+// Supported units (extended by ParseTimeDuration):
 //
 //	d   = days (24h)
 //	w   = weeks (7d)
@@ -460,16 +460,24 @@ func (k *Katalog) validateTimeDuration() error {
 			continue
 		}
 
+		// Validate all declared sleep durations (discovered by pkg/types)
+		for _, e := range crd.CollectSleepEntries() {
+			if _, err := orktypes.ParseTimeDuration(e.Duration); err != nil {
+				return durationError(name, e.ResourceName, "sleep", e.Duration, err)
+			}
+		}
+
+		// Validate secret durations (rotateAfter, TLS.validFor)
 		if crd.HasOnCreate() {
 			for _, s := range crd.OperatorBox.OnCreate.Secrets {
 				if s.RotateAfter != "" {
-					if _, err := orktypes.ParseRotationDuration(s.RotateAfter); err != nil {
+					if _, err := orktypes.ParseTimeDuration(s.RotateAfter); err != nil {
 						return durationError(name, s.Name, "rotateAfter", s.RotateAfter, err)
 					}
 				}
 				// Check per-secret TLS presence
 				if s.TLS != nil && s.TLS.ValidFor != "" {
-					if _, err := orktypes.ParseRotationDuration(s.TLS.ValidFor); err != nil {
+					if _, err := orktypes.ParseTimeDuration(s.TLS.ValidFor); err != nil {
 						return durationError(name, s.Name, "validFor", s.TLS.ValidFor, err)
 					}
 				}
@@ -479,13 +487,13 @@ func (k *Katalog) validateTimeDuration() error {
 		if crd.HasOnReconcile() {
 			for _, s := range crd.OperatorBox.OnReconcile.Secrets {
 				if s.RotateAfter != "" {
-					if _, err := orktypes.ParseRotationDuration(s.RotateAfter); err != nil {
+					if _, err := orktypes.ParseTimeDuration(s.RotateAfter); err != nil {
 						return durationError(name, s.Name, "rotateAfter", s.RotateAfter, err)
 					}
 				}
 				// Check per-secret TLS presence
 				if s.TLS != nil && s.TLS.ValidFor != "" {
-					if _, err := orktypes.ParseRotationDuration(s.TLS.ValidFor); err != nil {
+					if _, err := orktypes.ParseTimeDuration(s.TLS.ValidFor); err != nil {
 						return durationError(name, s.Name, "validFor", s.TLS.ValidFor, err)
 					}
 				}

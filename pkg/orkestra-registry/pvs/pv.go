@@ -9,6 +9,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -19,6 +20,9 @@ import (
 // Create creates a PersistentVolume if it does not already exist.
 // PVs are cluster-scoped — owner references are set as labels only.
 func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPVSpec) error {
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 	_, err := kube.Clientset().CoreV1().PersistentVolumes().Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("pv.Create: checking existence of %q: %w", spec.Name, err)
@@ -40,6 +44,10 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 
 // Update reconciles an existing PV. Capacity and reclaim policy are patched on drift.
 func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPVSpec) error {
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
+
 	existing, err := kube.Clientset().CoreV1().PersistentVolumes().Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {

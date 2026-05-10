@@ -152,6 +152,6 @@ in the Control Center.
 - `tls:` block (cert generation) — 🔲 Designed, not yet implemented
 - `webhooks.createCerts: true` — 🔲 Designed, not yet implemented
 
-The type definitions (`TLSSpec`, `ParseRotationDuration`, `NeedsRotation`)
+The type definitions (`TLSSpec`, `ParseTimeDuration`, `NeedsRotation`)
 are in `pkg/types/secret_rotation.go`. Implementation in `run_secrets.go`
 follows the same check-before-act pattern as `once: true`.

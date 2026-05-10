@@ -439,6 +439,11 @@ type DeploymentTemplateSource struct {
 	// Useful for Git-backed pipelines where build/test commands must run inside
 	// a checked-out repository path.
 	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── ReplicaSet ────────────────────────────────────────────────────────────────
@@ -570,6 +575,11 @@ type ReplicaSetTemplateSource struct {
 
 	// WorkingDirectory sets the container's working directory (container.WorkingDir).
 	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -667,6 +677,11 @@ type ServiceTemplateSource struct {
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── Pod ───────────────────────────────────────────────────────────────────────
@@ -770,6 +785,11 @@ type PodTemplateSource struct {
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── Job ───────────────────────────────────────────────────────────────────────
@@ -882,6 +902,11 @@ type JobTemplateSource struct {
 	// Useful for Git-backed pipelines where build/test commands must run inside
 	// a checked-out repository path.
 	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── CronJob ───────────────────────────────────────────────────────────────────
@@ -989,6 +1014,11 @@ type CronJobTemplateSource struct {
 	// Useful for Git-backed pipelines where build/test commands must run inside
 	// a checked-out repository path.
 	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── ConfigMap ─────────────────────────────────────────────────────────────────
@@ -1071,6 +1101,11 @@ type ConfigMapTemplateSource struct {
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── Secret ─────────────────────────────────────────────────────────────────────
@@ -1208,6 +1243,11 @@ type SecretTemplateSource struct {
 	//           - "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
 	//         validFor: 1y
 	TLS *TLSSpec `yaml:"tls,omitempty" json:"tls,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── ServiceAccount ────────────────────────────────────────────────────────────
@@ -1274,6 +1314,11 @@ type ServiceAccountTemplateSource struct {
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── Namespace ────────────────────────────────────────────────────────────
@@ -1337,6 +1382,11 @@ type NamespaceTemplateSource struct {
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── Ingress ───────────────────────────────────────────────────────────────────
@@ -1401,6 +1451,11 @@ type IngressTemplateSource struct {
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // IngressTLSSpec configures TLS for an Ingress resource.
@@ -1420,6 +1475,11 @@ type IngressTLSSpec struct {
 
 	// ValidFor — certificate validity duration (e.g. "1y", "90d"). Default: "1y".
 	ValidFor string `yaml:"validFor" json:"validFor,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── HorizontalPodAutoscaler ───────────────────────────────────────────────────
@@ -1474,6 +1534,11 @@ type HPATemplateSource struct {
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── PodDisruptionBudget ───────────────────────────────────────────────────────
@@ -1521,6 +1586,11 @@ type PDBTemplateSource struct {
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // StatefulSetTemplateSource declares one StatefulSet to be managed by Orkestra.
@@ -1598,6 +1668,11 @@ type StatefulSetTemplateSource struct {
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // PVCTemplateSource declares one PersistentVolumeClaim to be managed by Orkestra.
@@ -1632,6 +1707,11 @@ type PVCTemplateSource struct {
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // PVTemplateSource declares one PersistentVolume to be managed by Orkestra.
@@ -1667,122 +1747,11 @@ type PVTemplateSource struct {
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
-}
 
-// ── HookTemplates ─────────────────────────────────────────────────────────────
-// Declares the complete set of resources Orkestra manages at each lifecycle event.
-// All resource type slices are optional — omit any type you do not need.
-// Resources not declared in HookTemplates are never created, updated, or deleted
-// by Orkestra — they are invisible to the reconciler.
-//
-// All resources created via hook templates receive owner references pointing to
-// the CR. This means Kubernetes garbage collection handles deletion automatically
-// when the CR is deleted — no onDelete declaration is needed for cleanup in most cases.
-//
-// Lifecycle events:
-//
-//	onCreate
-//	  Runs on every reconcile. Create calls are idempotent — if the resource
-//	  already exists it is skipped without error.
-//	  Declare all long-lived child resources here.
-//	  Resources are created in the order declared within each type slice.
-//
-//	onReconcile
-//	  Runs on every reconcile, after onCreate.
-//	  Use for drift correction — re-applies desired state when child resources
-//	  have been manually modified, scaled, or deleted outside of Orkestra.
-//	  Omit entirely if onCreate alone is sufficient (no drift correction needed).
-//
-//	onDelete
-//	  Runs when the CR has a DeletionTimestamp set, before Orkestra removes finalizers.
-//	  Use only for resources that need explicit cleanup beyond owner references:
-//	    - External resources not in Kubernetes (cloud provider APIs, DNS records, etc.)
-//	    - Jobs that must complete successfully before the CR can be considered deleted
-//	    - Notification or archival tasks that must run before deletion is finalized
-type HookTemplates struct {
-	Deployments              []DeploymentTemplateSource     `yaml:"deployments" json:"deployments,omitempty" validate:"omitempty"`
-	ReplicaSets              []ReplicaSetTemplateSource     `yaml:"replicaSets" json:"replicaSets,omitempty" validate:"omitempty"`
-	Services                 []ServiceTemplateSource        `yaml:"services" json:"services,omitempty" validate:"omitempty"`
-	Pods                     []PodTemplateSource            `yaml:"pods" json:"pods,omitempty" validate:"omitempty"`
-	Jobs                     []JobTemplateSource            `yaml:"jobs" json:"jobs,omitempty" validate:"omitempty"`
-	CronJobs                 []CronJobTemplateSource        `yaml:"cronJobs" json:"cronJobs,omitempty" validate:"omitempty"`
-	Secrets                  []SecretTemplateSource         `yaml:"secrets" json:"secrets,omitempty" validate:"omitempty"`
-	ConfigMaps               []ConfigMapTemplateSource      `yaml:"configMaps" json:"configMaps,omitempty" validate:"omitempty"`
-	ServiceAccounts          []ServiceAccountTemplateSource `yaml:"serviceAccounts" json:"serviceAccounts,omitempty" validate:"omitempty"`
-	StatefulSets             []StatefulSetTemplateSource    `yaml:"statefulSets" json:"statefulSets,omitempty" validate:"omitempty"`
-	Ingresses                []IngressTemplateSource        `yaml:"ingresses" json:"ingresses,omitempty" validate:"omitempty"`
-	PersistentVolumes        []PVTemplateSource             `yaml:"persistentVolumes" json:"persistentVolumes,omitempty" validate:"omitempty"`
-	PersistentVolumeClaims   []PVCTemplateSource            `yaml:"persistentVolumeClaims" json:"persistentVolumeClaims,omitempty" validate:"omitempty"`
-	HorizontalPodAutoscalers []HPATemplateSource            `yaml:"hpa" json:"hpa,omitempty" validate:"omitempty"`
-	PodDisruptionBudgets     []PDBTemplateSource            `yaml:"pdb" json:"pdb,omitempty" validate:"omitempty"`
-	Namespaces               []NamespaceTemplateSource      `yaml:"namespaces" json:"namespaces,omitempty" validate:"omitempty"`
-
-	// External declares HTTP calls to make before resource creation.
-	// Results available as .external.<n>.status, .body, .error
-	External []ExternalCallSpec `yaml:"external,omitempty" json:"external,omitempty"`
-
-	// Git declares optional Git-backed reconcile behaviour for this CRD.
-	//
-	// When configured, Orkestra:
-	//   - Maintains a local working copy of the repository.
-	//   - Periodically checks the target branch for new commits.
-	//   - Enqueues reconciles for all CRs of this type when the branch tip changes.
-	//
-	// This enables declarative, in-cluster CI/CD pipelines where Git acts
-	// as the source of pipeline logic and the CRs provide parameters.
-	//
-	// When omitted, reconcile behaviour is unchanged and no Git traffic
-	// is generated for this CRD.
-	Git *GitHookSpec `yaml:"git,omitempty" json:"git,omitempty"`
-
-	// Docker declares optional Docker-backed reconcile behaviour for this CRD.
-	//
-	// When configured
-	//	- Builds and optionally pushes a docker image
-	Docker *DockerHookSpec `yaml:"docker,omitempty" json:"docker,omitempty"`
-
-	// Ordered controls whether deletion happens sequentially with verification.
-	// true  — delete groups in order, verify each is gone before proceeding
-	// false — delete all resources via owner references (default, parallel)
-	Ordered bool `yaml:"ordered,omitempty" json:"ordered,omitempty"`
-
-	// Groups declares sequential deletion stages for ordered deletes.
-	// Each element is a full HookTemplates block whose resources are deleted
-	// as a unit. Orkestra deletes stage N, waits until all resources are gone,
-	// then deletes stage N+1. Omit when Ordered is false.
-	// When Ordered is true and Groups is empty, the flat resource fields above
-	// (Jobs, Deployments, …) are treated as a single implicit group.
-	Groups []HookTemplates `yaml:"groups,omitempty" json:"groups,omitempty"`
-
-	// Timeout is the maximum time to wait for each deletion group to complete.
-	// Defaults to 5m when Ordered is true. Ignored when Ordered is false.
-	Timeout *Duration `yaml:"timeout,omitempty" json:"timeout,omitempty"`
-
-	// TODO with placeholer
-	Volumes                     []PlaceholderSource         `yaml:"volumes" json:"volumes,omitempty" validate:"omitempty"`
-	VolumeMounts                []PlaceholderSource         `yaml:"volumeMounts" json:"volumeMounts,omitempty" validate:"omitempty"`
-	Roles                       []RoleTemplateSource        `yaml:"roles" json:"roles,omitempty" validate:"omitempty"`
-	RoleBindings                []RoleBindingTemplateSource `yaml:"roleBindings" json:"roleBindings,omitempty" validate:"omitempty"`
-	ClusterRoles                []PlaceholderSource         `yaml:"clusterRoles" json:"clusterRoles,omitempty" validate:"omitempty"`
-	ClusterRoleBindings         []PlaceholderSource         `yaml:"clusterRoleBindings" json:"clusterRoleBindings,omitempty" validate:"omitempty"`
-	ServiceMonitors             []PlaceholderSource         `yaml:"serviceMonitors" json:"serviceMonitors,omitempty" validate:"omitempty"`
-	PodSecurityPolicies         []PlaceholderSource         `yaml:"podSecurityPolicies" json:"podSecurityPolicies,omitempty" validate:"omitempty"`
-	PriorityClasses             []PlaceholderSource         `yaml:"priorityClasses" json:"priorityClasses,omitempty" validate:"omitempty"`
-	LimitRanges                 []PlaceholderSource         `yaml:"limitRanges" json:"limitRanges,omitempty" validate:"omitempty"`
-	ResourceQuotas              []PlaceholderSource         `yaml:"resourceQuotas" json:"resourceQuotas,omitempty" validate:"omitempty"`
-	RuntimeClasses              []PlaceholderSource         `yaml:"runtimeClasses" json:"runtimeClasses,omitempty" validate:"omitempty"`
-	PriorityLevelConfigurations []PlaceholderSource         `yaml:"priorityLevelConfigurations" json:"priorityLevelConfigurations,omitempty" validate:"omitempty"`
-	PodTemplates                []PlaceholderSource         `yaml:"podTemplates" json:"podTemplates,omitempty" validate:"omitempty"`
-	DaemonSets                  []PlaceholderSource         `yaml:"daemonSets" json:"daemonSets,omitempty" validate:"omitempty"`
-	NetworkPolicies             []PlaceholderSource         `yaml:"networkPolicies" json:"networkPolicies,omitempty" validate:"omitempty"`
-
-	// Storage
-	StorageClasses   []PlaceholderSource `yaml:"storageClasses" json:"storageClasses,omitempty" validate:"omitempty"`
-	StorageLocations []PlaceholderSource `yaml:"storageLocations" json:"storageLocations,omitempty" validate:"omitempty"`
-	StoragePools     []PlaceholderSource `yaml:"storagePools" json:"storagePools,omitempty" validate:"omitempty"`
-	StorageBackups   []PlaceholderSource `yaml:"storageBackups" json:"storageBackups,omitempty" validate:"omitempty"`
-	StorageSnapshots []PlaceholderSource `yaml:"storageSnapshots" json:"storageSnapshots,omitempty" validate:"omitempty"`
-	StorageVolumes   []PlaceholderSource `yaml:"storageVolumes" json:"storageVolumes,omitempty" validate:"omitempty"`
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── Role / RoleBinding ────────────────────────────────────────────────────────
@@ -1834,6 +1803,11 @@ type RoleTemplateSource struct {
 	Reconcile  bool             `yaml:"reconcile" json:"reconcile,omitempty"`
 	ForEach    *ForEachSpec     `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 	AnyOf      []Condition      `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // RoleBindingTemplateSource declares one RoleBinding to be managed by Orkestra.
@@ -1861,6 +1835,127 @@ type RoleBindingTemplateSource struct {
 	Reconcile  bool            `yaml:"reconcile" json:"reconcile,omitempty"`
 	ForEach    *ForEachSpec    `yaml:"forEach,omitempty" json:"forEach,omitempty"`
 	AnyOf      []Condition     `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
+}
+
+// ── HookTemplates ─────────────────────────────────────────────────────────────
+// Declares the complete set of resources Orkestra manages at each lifecycle event.
+// All resource type slices are optional — omit any type you do not need.
+// Resources not declared in HookTemplates are never created, updated, or deleted
+// by Orkestra — they are invisible to the reconciler.
+//
+// All resources created via hook templates receive owner references pointing to
+// the CR. This means Kubernetes garbage collection handles deletion automatically
+// when the CR is deleted — no onDelete declaration is needed for cleanup in most cases.
+//
+// Lifecycle events:
+//
+//	onCreate
+//	  Runs on every reconcile. Create calls are idempotent — if the resource
+//	  already exists it is skipped without error.
+//	  Declare all long-lived child resources here.
+//	  Resources are created in the order declared within each type slice.
+//
+//	onReconcile
+//	  Runs on every reconcile, after onCreate.
+//	  Use for drift correction — re-applies desired state when child resources
+//	  have been manually modified, scaled, or deleted outside of Orkestra.
+//	  Omit entirely if onCreate alone is sufficient (no drift correction needed).
+//
+//	onDelete
+//	  Runs when the CR has a DeletionTimestamp set, before Orkestra removes finalizers.
+//	  Use only for resources that need explicit cleanup beyond owner references:
+//	    - External resources not in Kubernetes (cloud provider APIs, DNS records, etc.)
+//	    - Jobs that must complete successfully before the CR can be considered deleted
+//	    - Notification or archival tasks that must run before deletion is finalized
+type HookTemplates struct {
+	Deployments              []DeploymentTemplateSource     `yaml:"deployments" json:"deployments,omitempty" validate:"omitempty"`
+	ReplicaSets              []ReplicaSetTemplateSource     `yaml:"replicaSets" json:"replicaSets,omitempty" validate:"omitempty"`
+	Services                 []ServiceTemplateSource        `yaml:"services" json:"services,omitempty" validate:"omitempty"`
+	Pods                     []PodTemplateSource            `yaml:"pods" json:"pods,omitempty" validate:"omitempty"`
+	Jobs                     []JobTemplateSource            `yaml:"jobs" json:"jobs,omitempty" validate:"omitempty"`
+	CronJobs                 []CronJobTemplateSource        `yaml:"cronJobs" json:"cronJobs,omitempty" validate:"omitempty"`
+	Secrets                  []SecretTemplateSource         `yaml:"secrets" json:"secrets,omitempty" validate:"omitempty"`
+	ConfigMaps               []ConfigMapTemplateSource      `yaml:"configMaps" json:"configMaps,omitempty" validate:"omitempty"`
+	ServiceAccounts          []ServiceAccountTemplateSource `yaml:"serviceAccounts" json:"serviceAccounts,omitempty" validate:"omitempty"`
+	StatefulSets             []StatefulSetTemplateSource    `yaml:"statefulSets" json:"statefulSets,omitempty" validate:"omitempty"`
+	Ingresses                []IngressTemplateSource        `yaml:"ingresses" json:"ingresses,omitempty" validate:"omitempty"`
+	PersistentVolumes        []PVTemplateSource             `yaml:"persistentVolumes" json:"persistentVolumes,omitempty" validate:"omitempty"`
+	PersistentVolumeClaims   []PVCTemplateSource            `yaml:"persistentVolumeClaims" json:"persistentVolumeClaims,omitempty" validate:"omitempty"`
+	HorizontalPodAutoscalers []HPATemplateSource            `yaml:"hpa" json:"hpa,omitempty" validate:"omitempty"`
+	PodDisruptionBudgets     []PDBTemplateSource            `yaml:"pdb" json:"pdb,omitempty" validate:"omitempty"`
+	Namespaces               []NamespaceTemplateSource      `yaml:"namespaces" json:"namespaces,omitempty" validate:"omitempty"`
+	Roles                    []RoleTemplateSource           `yaml:"roles" json:"roles,omitempty" validate:"omitempty"`
+	RoleBindings             []RoleBindingTemplateSource    `yaml:"roleBindings" json:"roleBindings,omitempty" validate:"omitempty"`
+
+	// External declares HTTP calls to make before resource creation.
+	// Results available as .external.<n>.status, .body, .error
+	External []ExternalCallSpec `yaml:"external,omitempty" json:"external,omitempty"`
+
+	// Git declares optional Git-backed reconcile behaviour for this CRD.
+	//
+	// When configured, Orkestra:
+	//   - Maintains a local working copy of the repository.
+	//   - Periodically checks the target branch for new commits.
+	//   - Enqueues reconciles for all CRs of this type when the branch tip changes.
+	//
+	// This enables declarative, in-cluster CI/CD pipelines where Git acts
+	// as the source of pipeline logic and the CRs provide parameters.
+	//
+	// When omitted, reconcile behaviour is unchanged and no Git traffic
+	// is generated for this CRD.
+	Git *GitHookSpec `yaml:"git,omitempty" json:"git,omitempty"`
+
+	// Docker declares optional Docker-backed reconcile behaviour for this CRD.
+	//
+	// When configured
+	//	- Builds and optionally pushes a docker image
+	Docker *DockerHookSpec `yaml:"docker,omitempty" json:"docker,omitempty"`
+
+	// Ordered controls whether deletion happens sequentially with verification.
+	// true  — delete groups in order, verify each is gone before proceeding
+	// false — delete all resources via owner references (default, parallel)
+	Ordered bool `yaml:"ordered,omitempty" json:"ordered,omitempty"`
+
+	// Groups declares sequential deletion stages for ordered deletes.
+	// Each element is a full HookTemplates block whose resources are deleted
+	// as a unit. Orkestra deletes stage N, waits until all resources are gone,
+	// then deletes stage N+1. Omit when Ordered is false.
+	// When Ordered is true and Groups is empty, the flat resource fields above
+	// (Jobs, Deployments, …) are treated as a single implicit group.
+	Groups []HookTemplates `yaml:"groups,omitempty" json:"groups,omitempty"`
+
+	// Timeout is the maximum time to wait for each deletion group to complete.
+	// Defaults to 5m when Ordered is true. Ignored when Ordered is false.
+	Timeout *Duration `yaml:"timeout,omitempty" json:"timeout,omitempty"`
+
+	// TODO with placeholer
+	Volumes                     []PlaceholderSource `yaml:"volumes" json:"volumes,omitempty" validate:"omitempty"`
+	VolumeMounts                []PlaceholderSource `yaml:"volumeMounts" json:"volumeMounts,omitempty" validate:"omitempty"`
+	ClusterRoles                []PlaceholderSource `yaml:"clusterRoles" json:"clusterRoles,omitempty" validate:"omitempty"`
+	ClusterRoleBindings         []PlaceholderSource `yaml:"clusterRoleBindings" json:"clusterRoleBindings,omitempty" validate:"omitempty"`
+	ServiceMonitors             []PlaceholderSource `yaml:"serviceMonitors" json:"serviceMonitors,omitempty" validate:"omitempty"`
+	PodSecurityPolicies         []PlaceholderSource `yaml:"podSecurityPolicies" json:"podSecurityPolicies,omitempty" validate:"omitempty"`
+	PriorityClasses             []PlaceholderSource `yaml:"priorityClasses" json:"priorityClasses,omitempty" validate:"omitempty"`
+	LimitRanges                 []PlaceholderSource `yaml:"limitRanges" json:"limitRanges,omitempty" validate:"omitempty"`
+	ResourceQuotas              []PlaceholderSource `yaml:"resourceQuotas" json:"resourceQuotas,omitempty" validate:"omitempty"`
+	RuntimeClasses              []PlaceholderSource `yaml:"runtimeClasses" json:"runtimeClasses,omitempty" validate:"omitempty"`
+	PriorityLevelConfigurations []PlaceholderSource `yaml:"priorityLevelConfigurations" json:"priorityLevelConfigurations,omitempty" validate:"omitempty"`
+	PodTemplates                []PlaceholderSource `yaml:"podTemplates" json:"podTemplates,omitempty" validate:"omitempty"`
+	DaemonSets                  []PlaceholderSource `yaml:"daemonSets" json:"daemonSets,omitempty" validate:"omitempty"`
+	NetworkPolicies             []PlaceholderSource `yaml:"networkPolicies" json:"networkPolicies,omitempty" validate:"omitempty"`
+
+	// Storage
+	StorageClasses   []PlaceholderSource `yaml:"storageClasses" json:"storageClasses,omitempty" validate:"omitempty"`
+	StorageLocations []PlaceholderSource `yaml:"storageLocations" json:"storageLocations,omitempty" validate:"omitempty"`
+	StoragePools     []PlaceholderSource `yaml:"storagePools" json:"storagePools,omitempty" validate:"omitempty"`
+	StorageBackups   []PlaceholderSource `yaml:"storageBackups" json:"storageBackups,omitempty" validate:"omitempty"`
+	StorageSnapshots []PlaceholderSource `yaml:"storageSnapshots" json:"storageSnapshots,omitempty" validate:"omitempty"`
+	StorageVolumes   []PlaceholderSource `yaml:"storageVolumes" json:"storageVolumes,omitempty" validate:"omitempty"`
 }
 
 // Placeholder for resources yet to be added to orkestra internal registry

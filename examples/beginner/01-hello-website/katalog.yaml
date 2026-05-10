@@ -26,6 +26,7 @@ spec:
         onCreate:
           deployments:
             - image: "{{ .spec.image }}"
+              sleep: 5xx
               # name defaults to: <cr-name>-deployment
               # namespace defaults to: <cr-namespace>
               # replicas defaults to: 1
