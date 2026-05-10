@@ -32,4 +32,9 @@ type ResolvedHPASpec struct {
 	// Labels applied to HPA metadata.
 	// Orkestra always adds: managed-by=orkestra, orkestra-owner=<cr-name>
 	Labels map[string]string
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string
 }

@@ -47,36 +47,41 @@ import orktypes "github.com/orkspace/orkestra/pkg/types"
 //	        - production
 type ConfigMapTemplateSource struct {
 	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version" validate:"omitempty"`
+	Version string
 
 	// Name — ConfigMap name.
 	// Default: "{{ .metadata.name }}-config"
-	Name string `yaml:"name" validate:"omitempty"`
+	Name string
 
 	// Namespace — primary target namespace.
 	// Default: "{{ .metadata.namespace }}"
-	Namespace string `yaml:"namespace" validate:"omitempty"`
+	Namespace string
 
 	// ToNamespaces — create one copy in each listed namespace.
 	// Each element supports template expressions.
-	ToNamespaces []string `yaml:"toNamespaces" validate:"omitempty"`
+	ToNamespaces []string
 
 	// FromConfigMap — name of an existing ConfigMap to copy data from.
 	// Orkestra reads this at reconcile time — copies stay in sync with the source.
-	FromConfigMap string `yaml:"fromConfigMap" validate:"omitempty"`
+	FromConfigMap string
 
 	// FromNamespace — namespace where FromConfigMap lives.
 	// Default: same namespace as the CR.
-	FromNamespace string `yaml:"fromNamespace" validate:"omitempty"`
+	FromNamespace string
 
 	// Data — static key-value entries.
 	// When FromConfigMap is also set, these entries override matching keys from the source.
-	Data map[string]string `yaml:"data" validate:"omitempty"`
+	Data map[string]string
 
 	// Labels — applied to all created ConfigMap copies.
-	Labels []orktypes.ResourceLabel `yaml:"labels" validate:"omitempty"`
+	Labels []orktypes.ResourceLabel
 
 	// Reconcile: true — sync on every reconcile.
 	// When true, if the source ConfigMap changes, all copies are updated automatically.
-	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+	Reconcile bool
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string
 }

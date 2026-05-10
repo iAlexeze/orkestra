@@ -42,6 +42,11 @@ type ResolvedStatefulSetSpec struct {
 	ImagePullSecrets []string
 
 	VolumeClaimRetentionPolicy VolumeClaimRetentionPolicy
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string
 }
 
 // VolumeClaimRetentionPolicy describes the policy used for PVCs

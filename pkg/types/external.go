@@ -88,6 +88,11 @@ type ExternalCallSpec struct {
 	// The result is not injected when skipped.
 	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ExternalCallResult is the result of one HTTP call, injected into the resolver

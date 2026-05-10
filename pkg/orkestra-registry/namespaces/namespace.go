@@ -9,6 +9,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +27,11 @@ type ResolvedNamespaceSpec struct {
 	// Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
 	// optional
 	Finalizers []string
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string
 }
 
 // Create creates a Namespace if it does not already exist.
@@ -38,6 +44,10 @@ type ResolvedNamespaceSpec struct {
 func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedNamespaceSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("namespace.Create: invalid spec: %w", err)
+	}
+
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
 	}
 
 	_, err := kube.Clientset().CoreV1().Namespaces().Get(ctx, spec.Name, metav1.GetOptions{})
@@ -70,6 +80,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // For most cases owner references handle cleanup automatically —
 // only use this when explicit cleanup control is needed.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedNamespaceSpec) error {
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	err := kube.Clientset().CoreV1().Namespaces().Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {

@@ -23,29 +23,32 @@ import (
 
 // Create creates a StatefulSet owned by the CR if it does not already exist.
 func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
-	ns := common.ResolveNamespace(owner, spec.Namespace)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
-	_, err := kube.Clientset().AppsV1().StatefulSets(ns).Get(ctx, spec.Name, metav1.GetOptions{})
+	_, err := kube.Clientset().AppsV1().StatefulSets(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("statefulset.Create: checking existence of %q: %w", spec.Name, err)
 	}
 	if err == nil {
 		logger.Debug().
 			Str("statefulset", spec.Name).
-			Str("namespace", ns).
+			Str("namespace", namespace).
 			Msg("statefulset already exists — skipping create")
 		return nil
 	}
 
-	sts := buildStatefulSet(owner, spec, ns)
-	_, err = kube.Clientset().AppsV1().StatefulSets(ns).Create(ctx, sts, metav1.CreateOptions{})
+	sts := buildStatefulSet(owner, spec, namespace)
+	_, err = kube.Clientset().AppsV1().StatefulSets(namespace).Create(ctx, sts, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("statefulset.Create: creating %q in %q: %w", spec.Name, ns, err)
+		return fmt.Errorf("statefulset.Create: creating %q in %q: %w", spec.Name, namespace, err)
 	}
 
 	logger.Info().
 		Str("statefulset", spec.Name).
-		Str("namespace", ns).
+		Str("namespace", namespace).
 		Str("owner", owner.GetName()).
 		Msg("statefulset created")
 	return nil
@@ -54,9 +57,12 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Update reconciles an existing StatefulSet to match the resolved spec.
 // Patches replicas and image when drift is detected.
 func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
-	ns := common.ResolveNamespace(owner, spec.Namespace)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
-	existing, err := kube.Clientset().AppsV1().StatefulSets(ns).Get(ctx, spec.Name, metav1.GetOptions{})
+	existing, err := kube.Clientset().AppsV1().StatefulSets(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return Create(ctx, kube, owner, spec)
@@ -64,7 +70,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return fmt.Errorf("statefulset.Update: getting %q: %w", spec.Name, err)
 	}
 
-	desired := buildStatefulSet(owner, spec, ns)
+	desired := buildStatefulSet(owner, spec, namespace)
 	drifted := false
 	updated := existing.DeepCopy()
 
@@ -83,20 +89,23 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return nil
 	}
 
-	_, err = kube.Clientset().AppsV1().StatefulSets(ns).Update(ctx, updated, metav1.UpdateOptions{})
+	_, err = kube.Clientset().AppsV1().StatefulSets(namespace).Update(ctx, updated, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("statefulset.Update: updating %q: %w", spec.Name, err)
 	}
 
-	logger.Info().Str("statefulset", spec.Name).Str("namespace", ns).Msg("statefulset updated")
+	logger.Info().Str("statefulset", spec.Name).Str("namespace", namespace).Msg("statefulset updated")
 	return nil
 }
 
 // Delete deletes the StatefulSet if it exists.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
-	ns := common.ResolveNamespace(owner, spec.Namespace)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
-	err := kube.Clientset().AppsV1().StatefulSets(ns).Delete(ctx, spec.Name, metav1.DeleteOptions{})
+	err := kube.Clientset().AppsV1().StatefulSets(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
@@ -108,8 +117,8 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the StatefulSet only if it is owned by the given CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, name, ns string) error {
-	existing, err := kube.Clientset().AppsV1().StatefulSets(ns).Get(ctx, name, metav1.GetOptions{})
+func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, name, namespace string) error {
+	existing, err := kube.Clientset().AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
@@ -119,7 +128,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient, owner domai
 	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
 		return nil
 	}
-	return kube.Clientset().AppsV1().StatefulSets(ns).Delete(ctx, name, metav1.DeleteOptions{})
+	return kube.Clientset().AppsV1().StatefulSets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 }
 
 // Resolve builds a ResolvedStatefulSetSpec from a StatefulSetTemplateSource.

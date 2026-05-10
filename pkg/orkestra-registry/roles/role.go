@@ -23,6 +23,11 @@ type ResolvedRoleSpec struct {
 	Namespace string
 	Labels    map[string]string
 	Rules     []rbacv1.PolicyRule
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string
 }
 
 // Create creates a Role if it does not already exist.
@@ -34,6 +39,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	_, err := kube.Clientset().RbacV1().Roles(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -66,6 +74,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Update applies the desired rules to an existing Role.
 func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedRoleSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	existing, err := kube.Clientset().RbacV1().Roles(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
@@ -95,6 +106,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Delete deletes the Role if it exists.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedRoleSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	err := kube.Clientset().RbacV1().Roles(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {

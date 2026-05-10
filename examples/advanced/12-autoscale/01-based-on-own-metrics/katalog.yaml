@@ -46,3 +46,4 @@ spec:
               reconcile: true
           services:
             - port: "8080"
+              reconcile: true

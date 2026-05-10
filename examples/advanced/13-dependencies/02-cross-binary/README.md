@@ -1,4 +1,4 @@
-# 12 — Dependencies · 02: Cross Binary
+# 13 — Dependencies · 02: Cross Binary
 
 Same `dependsOn: database: healthy` ordering as `01-in-binary`, but Database runs in a **separate Orkestra deployment** in a hardened namespace. App's Orkestra resolves the dependency condition through the Database Orkestra's HTTP health API.
 
