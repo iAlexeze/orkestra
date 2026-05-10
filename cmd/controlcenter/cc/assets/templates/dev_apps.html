@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Applications – Orkestra</title>
+  <link rel="icon" type="image/png" href="/controlcenter/assets/static/logo.png">
+  <link rel="stylesheet" href="/controlcenter/assets/static/css/style.css">
+  <script>(function(){var t=localStorage.getItem('cc-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body class="cc-root">
+
+  <!-- Sidebar -->
+  <aside class="cc-sidebar" id="cc-sidebar">
+    <div class="cc-sidebar-logo">
+      <div class="cc-sidebar-logo-row">
+        <a href="/controlcenter">
+          <img src="/controlcenter/assets/static/logo.png" alt="Orkestra" width="32" height="32">
+          <span>Orkestra CC</span>
+        </a>
+        <button class="cc-sidebar-toggle" id="cc-sidebar-toggle" title="Collapse sidebar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+            <path d="M9 18l-6-6 6-6" opacity="0.4"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <nav class="cc-sidebar-nav">
+      <a href="/controlcenter" class="cc-nav-item">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        All Katalogs
+      </a>
+      <div class="cc-nav-section">Your Apps</div>
+      <a href="/controlcenter/katalog/{{ .KatalogName }}" class="cc-nav-item active">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/></svg>
+        Applications
+      </a>
+    </nav>
+    <div class="cc-sidebar-footer">
+      <span class="cc-refresh-dot" id="sse-dot" title="Live connection"></span>
+      <span class="cc-refresh-label">Live</span>
+      {{ if .RuntimeVersion }}<span class="cc-version-label">runtime {{ .RuntimeVersion }}</span>{{ end }}
+    </div>
+  </aside>
+  <div class="cc-sidebar-overlay" id="cc-overlay"></div>
+
+  <main class="cc-main">
+    <div class="cc-navbar">
+      <button class="cc-mobile-toggle" id="cc-mobile-toggle">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <nav class="cc-breadcrumb">
+        <a href="/controlcenter">Control Panel</a>
+        <span class="sep">›</span>
+        <span class="current">Your Applications</span>
+      </nav>
+      <div class="cc-navbar-right">
+        <button class="cc-theme-toggle" id="cc-theme-toggle" title="Toggle theme">
+          <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="cc-page">
+
+      <!-- Header -->
+      <div class="cc-info-card mb-6">
+        <div class="cc-info-card-head">
+          <div class="cc-flex-1">
+            <div class="flex items-center gap-3 mb-2" style="flex-wrap:wrap">
+              <h2 style="font-size:18px;font-weight:700;color:var(--text-primary);margin:0">Your Applications</h2>
+              <span class="cc-badge cc-badge-healthy">
+                <span class="cc-status-dot healthy"></span>
+                managed by Orkestra
+              </span>
+            </div>
+            <p style="font-size:13px;color:var(--text-secondary);margin:0">
+              {{ len .Apps }} app{{ if ne (len .Apps) 1 }}s{{ end }} deployed via <code style="font-size:11px;background:var(--bg-3);padding:1px 5px;border-radius:3px">ork doctor deploy</code>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {{ if eq (len .Apps) 0 }}
+      <div class="cc-alert cc-alert-warn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="cc-icon-shrink">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <div>
+          <div class="cc-alert-title">No applications deployed yet</div>
+          <div class="cc-alert-text">Run <code>ork doctor deploy --registry &lt;your-registry&gt;</code> to deploy your first app.</div>
+        </div>
+      </div>
+      {{ else }}
+
+      <!-- App Cards Grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">
+        {{ range .Apps }}
+        <div class="cc-info-card" style="padding:20px">
+          <!-- App name + language badge -->
+          <div class="flex items-center gap-2 mb-3" style="flex-wrap:wrap">
+            <h3 style="font-size:16px;font-weight:700;color:var(--text-primary);margin:0;flex:1">{{ .Name }}</h3>
+            {{ if .Language }}
+            <span class="cc-badge cc-badge-pending" style="font-size:11px">{{ .Language }}</span>
+            {{ end }}
+          </div>
+
+          <!-- Namespace (muted) -->
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;display:flex;align-items:center;gap:5px">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            {{ .Namespace }}
+          </div>
+
+          <!-- Image tag -->
+          {{ if .ImageTag }}
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;display:flex;align-items:center;gap:5px;font-family:monospace">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            :{{ .ImageTag }}
+          </div>
+          {{ end }}
+
+          <!-- Internal service URL -->
+          {{ if .ServiceURL }}
+          <div style="background:var(--bg-3);border-radius:6px;padding:8px 10px;margin-bottom:12px">
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Internal URL</div>
+            <code style="font-size:11px;color:var(--text-secondary);word-break:break-all">{{ .ServiceURL }}</code>
+          </div>
+          {{ end }}
+
+          <!-- Redeploy hint -->
+          <div style="font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
+            Redeploy: <code style="font-size:10px;background:var(--bg-3);padding:1px 5px;border-radius:3px">ork doctor deploy --registry &lt;registry&gt;</code>
+          </div>
+        </div>
+        {{ end }}
+      </div>
+      {{ end }}
+
+    </div><!-- .cc-page -->
+  </main>
+
+  <script src="/controlcenter/assets/static/js/main.js"></script>
+</body>
+</html>

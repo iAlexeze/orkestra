@@ -189,11 +189,12 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 		Name:        src.Name,
 		Image:       src.Image,
 		Namespace:   src.Namespace,
-		Resources:   src.Resources,
+		Resources:   common.ResolveResources(src.Resources, src.ResourceProfile),
 		Labels:      make(map[string]string),
 		Annotations: make(map[string]string),
 		Env:         make(map[string]orktypes.EnvVarSource),
 		EnvFrom:     src.EnvFrom,
+		Sleep:       src.Sleep,
 	}
 
 	// Default name

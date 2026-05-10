@@ -127,6 +127,24 @@ type ProjectInfo struct {
 	ConfigCount int `yaml:"configCount,omitempty" json:"configCount,omitempty"`
 }
 
+// HasSecrets reports whether ork doctor discovered any secret
+// environment variables in the project (.env where IsCfg == false).
+func (p *ProjectInfo) HasSecrets() bool {
+	return len(p.Secrets) > 0
+}
+
+// HasConfig reports whether ork doctor discovered any config
+// environment variables in the project (.env where IsCfg == true).
+func (p *ProjectInfo) HasConfig() bool {
+	return len(p.Config) > 0
+}
+
+// HasCreds reports whether the project contains *either* secrets or config.
+// Useful for high‑level checks (e.g., does this project need a ConfigMap or Secret?).
+func (p *ProjectInfo) HasCreds() bool {
+	return p.HasSecrets() || p.HasConfig()
+}
+
 // KatalogMeta holds identifying metadata for a Katalog.
 type KatalogMeta struct {
 	// Name is the required unique identifier of the Katalog.
@@ -187,7 +205,7 @@ type KatalogMeta struct {
 	// developer intent, project structure, and local context travel with the
 	// Katalog — enabling richer automation, better defaults, and a more intuitive
 	// experience across the entire lifecycle.
-	ProjectInfo ProjectInfo `yaml:"projectInfo,omitempty" json:"projectInfo,omitempty"`
+	// ProjectInfo ProjectInfo `yaml:"projectInfo,omitempty" json:"projectInfo,omitempty"`
 
 	// Projects holds the aggregated ProjectInfo entries for every application
 	// participating in this Komposer workspace. Each entry represents the

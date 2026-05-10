@@ -287,6 +287,7 @@ func Resolve(src orktypes.CronJobTemplateSource, ownerName string) ResolvedCronJ
 		Command:   src.Command,
 		Args:      src.Args,
 		Labels:    make(map[string]string),
+		Sleep:     src.Sleep,
 	}
 
 	if spec.Name == "" {

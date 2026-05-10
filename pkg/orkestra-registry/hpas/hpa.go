@@ -176,6 +176,7 @@ func Resolve(src orktypes.HPATemplateSource, ownerName string) ResolvedHPASpec {
 		MinReplicas:    1,
 		MaxReplicas:    1,
 		Labels:         make(map[string]string),
+		Sleep:          src.Sleep,
 	}
 
 	if spec.Name == "" {

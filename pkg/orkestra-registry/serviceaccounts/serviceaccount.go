@@ -136,6 +136,7 @@ func Resolve(src orktypes.ServiceAccountTemplateSource, ownerName string) Resolv
 		Name:      src.Name,
 		Namespace: src.Namespace,
 		Labels:    make(map[string]string),
+		Sleep:     src.Sleep,
 	}
 
 	if spec.Name == "" {

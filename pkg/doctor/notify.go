@@ -54,7 +54,7 @@ func BuildNotificationSecret(envMap map[string]string) string {
 	b.WriteString("  namespace: " + OrkestraNamespace + "\n")
 	b.WriteString("  labels:\n")
 	b.WriteString("    app.kubernetes.io/managed-by: orkestra\n")
-	b.WriteString("    " + deletionProtectionLabel + ": true\n")
+	b.WriteString("    " + deletionProtectionLabel + ": \"true\"\n")
 	b.WriteString("type: Opaque\n")
 	b.WriteString("stringData:\n")
 

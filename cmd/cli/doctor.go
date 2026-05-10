@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/orkspace/orkestra/pkg/buildx"
 	"github.com/orkspace/orkestra/pkg/doctor"
@@ -350,7 +351,7 @@ var doctorInitCmd = &cobra.Command{
 			return fmt.Errorf("detection failed: %w", err)
 		}
 
-		if err := doctor.Init(info, opts); err != nil {
+		if err := doctor.InitDeveloper(info, opts); err != nil {
 			return err
 		}
 
@@ -359,23 +360,16 @@ var doctorInitCmd = &cobra.Command{
 			return fmt.Errorf("writing init config: %v", err)
 		}
 
-		crName := name + "-orkestra"
-		ns := name + "-orkestra-ns"
-
 		fmt.Println()
 		fmt.Printf("App:       %s\n", name)
-		fmt.Printf("AppConfig: %s\n", crName)
-		fmt.Printf("Namespace: %s\n", ns)
+		fmt.Printf("Namespace: %s-ns\n", name)
 		fmt.Println()
-		fmt.Println("Generated .orkestra/katalog.yaml")
+		fmt.Println("Generated .orkestra/motif.yaml")
 		fmt.Println("Generated .orkestra/app.yaml")
-		if addIngress && !info.HasFrontend {
-			fmt.Println("  (Ingress included via --add-ingress)")
-		}
 		fmt.Println()
 		fmt.Println("Next steps:")
-		fmt.Println("  1. Review .orkestra/katalog.yaml  (edit freely)")
-		fmt.Println("  2. Fill in .orkestra/app.yaml      (replicas, host, controlCenterHost, etc.)")
+		fmt.Println("  1. Review .orkestra/motif.yaml  (resource template — edit freely)")
+		fmt.Println("  2. Fill in .orkestra/app.yaml    (port, replicas, etc.)")
 		fmt.Println("  3. Run 'ork deploy --registry <your-registry>'")
 
 		return nil
@@ -580,6 +574,100 @@ func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.Generate
 	return nil
 }
 
+// doctorDeployCmd is `ork doctor deploy` — the developer-path deploy command.
+// It runs the same flow as `ork deploy` but is discoverable as a subcommand of
+// `ork doctor`, making it natural for developers who start with `ork doctor init`.
+var doctorDeployCmd = &cobra.Command{
+	Use:   "deploy",
+	Short: "Build, push, and deploy the current project (developer path)",
+	Long: `Build the Docker image, push it, write the central developer katalog,
+generate the bundle, apply it to the cluster, and patch the ConfigMap CR.
+
+  ork doctor deploy --registry docker.io/myorg
+  ork doctor deploy --registry docker.io/myorg --dev
+  ork doctor deploy --registry docker.io/myorg --dry-run`,
+	RunE: deployCmd.RunE,
+}
+
+// doctorStatusCmd is `ork doctor status` — prints the current deploy state.
+var doctorStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Show current deploy state (cluster, katalog, apps)",
+	Long: `Read ~/.orkestra/deploy/state.json and print a concise summary of
+what is deployed, which cluster it targets, and whether the central katalog
+has changed since the last deploy.
+
+  ork doctor status`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		state, err := doctor.LoadState()
+		if err != nil {
+			return fmt.Errorf("reading state: %w", err)
+		}
+
+		deployDir, err := doctor.StateDir()
+		if err != nil {
+			return fmt.Errorf("resolving deploy dir: %w", err)
+		}
+
+		// Cluster context
+		clusterCtx := state.ClusterContext
+		if clusterCtx == "" {
+			clusterCtx = doctor.CurrentContext()
+		}
+		fmt.Printf("Cluster:  %s\n", clusterCtx)
+
+		// Katalog path + changed/unchanged status
+		katalogPath := filepath.Join(deployDir, "katalog.yaml")
+		katalogChanged := doctor.CentralKatalogChanged(state, deployDir)
+		changeLabel := "unchanged"
+		if katalogChanged {
+			changeLabel = "changed"
+		}
+		home, _ := os.UserHomeDir()
+		displayPath := katalogPath
+		if home != "" {
+			displayPath = strings.Replace(katalogPath, home, "~", 1)
+		}
+		fmt.Printf("Katalog:  %s  (%s)\n", displayPath, changeLabel)
+
+		// Apps
+		fmt.Printf("\nApps (%d):\n", len(state.Projects))
+		for _, name := range state.DeployedAppNames() {
+			p := state.Projects[name]
+			relTime := relativeTime(p.DeployedAt)
+			fmt.Printf("  %-20s %-25s %-50s deployed %s\n",
+				p.Name, p.Namespace, p.CurrentImage, relTime)
+		}
+
+		// Orkestra runtime health
+		fmt.Println()
+		health := doctor.CheckRuntimeHealth()
+		if health.Running {
+			fmt.Println("Orkestra:  running")
+		} else {
+			fmt.Printf("Orkestra:  not healthy (%s)\n", health.Reason)
+		}
+
+		return nil
+	},
+}
+
+// relativeTime formats a time.Time as a human-friendly relative string ("2h ago", "5m ago").
+func relativeTime(t time.Time) string {
+	if t.IsZero() {
+		return "unknown"
+	}
+	d := time.Since(t)
+	switch {
+	case d < time.Minute:
+		return fmt.Sprintf("%ds ago", int(d.Seconds()))
+	case d < time.Hour:
+		return fmt.Sprintf("%dm ago", int(d.Minutes()))
+	default:
+		return fmt.Sprintf("%dh ago", int(d.Hours()))
+	}
+}
+
 func init() {
 	doctorCmd.PersistentFlags().Bool("no-ha", false, "Skip HPA and PDB (single replica)")
 	doctorCmd.PersistentFlags().Bool("no-secure", false, "Skip deletion protection and protection labels")
@@ -593,7 +681,22 @@ func init() {
 	doctorInitCmd.Flags().Bool("notify-me", false, "Auto-enable notifications using SMTP_*/SLACK_* from .env and your Git author")
 	doctorInitCmd.Flags().String("use-compose", "", "Path to docker-compose.yaml — deploy all buildable services as separate apps")
 
+	doctorDeployCmd.Flags().StringP("registry", "r", "", "Container registry (e.g. docker.io/myorg)")
+	doctorDeployCmd.Flags().StringP("tag", "t", "", "Image tag (default: git commit SHA)")
+	doctorDeployCmd.Flags().String("name", "", "App name override (default: read from .orkestra/app.yaml)")
+	doctorDeployCmd.Flags().Bool("dry-run", false, "Show what would be applied without making changes")
+	doctorDeployCmd.Flags().Bool("upgrade-orkestra", false, "Upgrade Orkestra to latest version before deployment")
+	doctorDeployCmd.Flags().String("orkestra-version", "", "Version of Orkestra operator to install")
+	doctorDeployCmd.Flags().String("values", "", "Path to Helm values.yaml for Orkestra installation")
+	doctorDeployCmd.Flags().Bool("dev", false, "Create a local kind cluster (orkestra-playground) for development")
+	doctorDeployCmd.Flags().Bool("enable-metrics", false, "Install metrics server to the cluster")
+	doctorDeployCmd.Flags().Bool("expose", false, "Expose the app via a public HTTPS tunnel")
+	doctorDeployCmd.Flags().String("tunnel-provider", "", "Tunnel provider: cloudflared (default) or ngrok")
+	doctorDeployCmd.Flags().String("tunnel-token", "", "Auth token for ngrok tunnels")
+
 	doctorCmd.AddCommand(doctorInitCmd)
+	doctorCmd.AddCommand(doctorDeployCmd)
+	doctorCmd.AddCommand(doctorStatusCmd)
 	rootCmd.AddCommand(doctorCmd)
 
 	// Shadow global flags so they don't appear under `ork init`

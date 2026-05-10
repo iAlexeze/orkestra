@@ -196,6 +196,7 @@ func Resolve(src orktypes.IngressTemplateSource, ownerName string) ResolvedIngre
 		IngressClass: src.IngressClass,
 		Labels:       make(map[string]string),
 		Annotations:  make(map[string]string),
+		Sleep:        src.Sleep,
 	}
 
 	if spec.Name == "" {

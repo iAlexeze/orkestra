@@ -155,6 +155,7 @@ func Resolve(src orktypes.RoleTemplateSource, ownerName string) ResolvedRoleSpec
 		Name:      src.Name,
 		Namespace: src.Namespace,
 		Labels:    make(map[string]string),
+		Sleep:     src.Sleep,
 	}
 
 	if spec.Name == "" {

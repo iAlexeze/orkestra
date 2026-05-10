@@ -185,8 +185,9 @@ func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.
 // directly to deployments.Resolve().
 func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSource) (orktypes.DeploymentTemplateSource, error) {
 	resolved := orktypes.DeploymentTemplateSource{
-		Version:   src.Version,
-		Resources: src.Resources, // static — not resolved
+		Version:         src.Version,
+		Resources:       src.Resources,       // static — not resolved
+		ResourceProfile: src.ResourceProfile, // static — passed through for Resolve()
 	}
 
 	var err error
@@ -290,8 +291,9 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 // directly to replicasets.Resolve().
 func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSource) (orktypes.ReplicaSetTemplateSource, error) {
 	resolved := orktypes.ReplicaSetTemplateSource{
-		Version:   src.Version,
-		Resources: src.Resources, // static — not resolved
+		Version:         src.Version,
+		Resources:       src.Resources,       // static — not resolved
+		ResourceProfile: src.ResourceProfile, // static — passed through for Resolve()
 	}
 
 	var err error
@@ -1069,8 +1071,9 @@ func (r *Resolver) ResolvePDBTemplate(src orktypes.PDBTemplateSource) (orktypes.
 // ResolveStatefulSetTemplate resolves all template expressions in a StatefulSetTemplateSource.
 func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSource) (orktypes.StatefulSetTemplateSource, error) {
 	resolved := orktypes.StatefulSetTemplateSource{
-		Version:   src.Version,
-		Resources: src.Resources,
+		Version:         src.Version,
+		Resources:       src.Resources,
+		ResourceProfile: src.ResourceProfile, // static — passed through for Resolve()
 	}
 
 	var err error

@@ -1,6 +1,8 @@
 package doctor
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -13,6 +15,10 @@ import (
 type DeployState struct {
 	ClusterContext string                   `json:"clusterContext"`
 	Projects       map[string]*ProjectState `json:"projects"`
+	// KatalogHash is the SHA-256 of the last central developer katalog written.
+	// Used to detect changes without relying on git, since the katalog lives
+	// outside the project repo and is never committed.
+	KatalogHash string `json:"katalogHash,omitempty"`
 }
 
 // ProjectState tracks one deployed project.
@@ -23,6 +29,17 @@ type ProjectState struct {
 	PreviousImage string    `json:"previousImage,omitempty"`
 	KatalogPath   string    `json:"katalogPath"`
 	DeployedAt    time.Time `json:"deployedAt"`
+
+	// Developer path — persisted so the central katalog can be rebuilt on re-deploy.
+	AppData       map[string]string `json:"appData,omitempty"`
+	Port          string            `json:"port,omitempty"`
+	Language      string            `json:"language,omitempty"`
+	GitCommit     string            `json:"gitCommit,omitempty"`
+	HasDockerfile bool              `json:"hasDockerfile,omitempty"`
+	SecretCount   int               `json:"secretCount,omitempty"`
+	ConfigCount   int               `json:"configCount,omitempty"`
+	HasSecrets    bool              `json:"hasSecrets,omitempty"`
+	HasConfig     bool              `json:"hasConfig,omitempty"`
 }
 
 // StateDir returns ~/.orkestra/deploy/
@@ -102,6 +119,22 @@ func (s *DeployState) PreviousImage(appName string) string {
 	return ""
 }
 
+// DeployedAppNames returns a sorted list of app names recorded in state.
+func (s *DeployState) DeployedAppNames() []string {
+	names := make([]string, 0, len(s.Projects))
+	for name := range s.Projects {
+		names = append(names, name)
+	}
+	for i := 0; i < len(names); i++ {
+		for j := i + 1; j < len(names); j++ {
+			if names[i] > names[j] {
+				names[i], names[j] = names[j], names[i]
+			}
+		}
+	}
+	return names
+}
+
 // CurrentContext returns the active kubectl context name.
 func CurrentContext() string {
 	out, err := exec.Command("kubectl", "config", "current-context").Output()
@@ -109,4 +142,25 @@ func CurrentContext() string {
 		return "unknown"
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// CentralKatalogChanged reads ~/.orkestra/deploy/katalog.yaml, hashes it, and
+// compares with the hash stored in state. Returns true when the katalog is new
+// or has changed since the last deploy. Persists the new hash to state so the
+// next call returns false unless the content changes again.
+//
+// This replaces the git-diff-based KatalogChanged for the developer path, since
+// the central katalog lives outside the project repo and is never committed.
+func CentralKatalogChanged(state *DeployState, deployDir string) bool {
+	data, err := os.ReadFile(filepath.Join(deployDir, "katalog.yaml"))
+	if err != nil {
+		return true // assume changed if we can't read it
+	}
+	h := sha256.Sum256(data)
+	newHash := hex.EncodeToString(h[:])
+	if state.KatalogHash == newHash {
+		return false
+	}
+	state.KatalogHash = newHash
+	return true
 }

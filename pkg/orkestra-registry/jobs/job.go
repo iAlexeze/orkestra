@@ -141,6 +141,7 @@ func Resolve(src orktypes.JobTemplateSource, backoffLimit int, ownerName string)
 		Args:         src.Args,
 		BackoffLimit: backoffLimit,
 		Labels:       make(map[string]string),
+		Sleep:        src.Sleep,
 	}
 
 	if spec.Name == "" {

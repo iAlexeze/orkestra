@@ -176,6 +176,7 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string) ResolvedPodSpec {
 	spec.Image = src.Image
 	spec.Namespace = src.Namespace
 	spec.Resources = src.Resources
+	spec.Sleep = src.Sleep
 
 	if src.Port != "" {
 		spec.Port = common.ParsePort(src.Port)

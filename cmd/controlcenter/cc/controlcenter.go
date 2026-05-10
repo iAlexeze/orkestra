@@ -575,6 +575,12 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 
 	kat := inst.Katalog
 
+	// Developer path: render a simplified app-focused view.
+	if kat.CreatedBy == "orkdoctor" {
+		cc.renderDevApps(w, r, kat)
+		return
+	}
+
 	// Sort CRDs by name for consistent display
 	sortedCRDs := make([]CRDSummary, len(kat.CRDs))
 	copy(sortedCRDs, kat.CRDs)
@@ -599,6 +605,42 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 		DegradedReason:     kat.DegradedReason,
 		StatusCounts:       kat.StatusCounts,
 		RuntimeVersion:     kat.RuntimeVersion,
+	})
+}
+
+// renderDevApps renders the developer-path view for a katalog created by ork doctor.
+func (cc *ControlCenter) renderDevApps(w http.ResponseWriter, _ *http.Request, kat *KatalogResponse) {
+	var apps []DevAppSummary
+	for _, proj := range kat.Projects {
+		imageTag := proj.CurrentImage
+		if idx := strings.LastIndex(imageTag, ":"); idx >= 0 {
+			imageTag = imageTag[idx+1:]
+		}
+		port := proj.Port
+		if port == "" {
+			port = "8080"
+		}
+		svcURL := ""
+		if proj.Name != "" && proj.Namespace != "" {
+			svcURL = fmt.Sprintf("http://%s-svc.%s.svc.cluster.local:%s", proj.Name, proj.Namespace, port)
+		}
+		apps = append(apps, DevAppSummary{
+			Name:         proj.Name,
+			Namespace:    proj.Namespace,
+			Port:         port,
+			Language:     proj.Language,
+			CurrentImage: proj.CurrentImage,
+			ImageTag:     imageTag,
+			ServiceURL:   svcURL,
+		})
+	}
+	// Sort apps by name for stable output.
+	sort.Slice(apps, func(i, j int) bool { return apps[i].Name < apps[j].Name })
+
+	cc.renderTemplate(w, "dev_apps.html", DevAppsData{
+		KatalogName:    kat.Name,
+		Apps:           apps,
+		RuntimeVersion: kat.RuntimeVersion,
 	})
 }
 

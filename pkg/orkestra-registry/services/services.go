@@ -184,6 +184,7 @@ func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServi
 	}
 
 	spec.Namespace = src.Namespace
+	spec.Sleep = src.Sleep
 
 	spec.Type = src.Type
 	if spec.Type == "" {

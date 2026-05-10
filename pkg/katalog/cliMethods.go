@@ -32,6 +32,12 @@ func (k *Katalog) ProjectInfo() orktypes.ProjectInfo {
 	}
 }
 
+// Projects returns the map of all project infos from the katalog metadata.
+// Populated by the developer path (createdBy: orkdoctor) via ork doctor deploy.
+func (k *Katalog) Projects() map[string]orktypes.ProjectInfo {
+	return k.metadata.Projects
+}
+
 // Exists returns true if a CRD with the given name exists in the katalog.
 func (k *Katalog) Exists(name string) bool {
 	_, ok := k.Spec.CRDs[name]

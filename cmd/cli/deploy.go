@@ -68,16 +68,10 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			return fmt.Errorf("--registry is required (e.g. --registry ghcr.io/myorg)")
 		}
 
-		// Load persistent state and global Komposer (both non-fatal if missing).
+		// Load persistent state (non-fatal if missing).
 		state, err := doctor.LoadState()
 		if err != nil {
 			state = &doctor.DeployState{Projects: make(map[string]*doctor.ProjectState)}
-		}
-		komposer, _ := doctor.LoadGlobalKomposer()
-		if state.ClusterContext == "" {
-			komposer.Metadata.Description = "Orkestra Managed Deployment in " + state.ClusterContext
-		} else {
-			komposer.Metadata.Description = "Orkestra Managed Deployment"
 		}
 
 		if !dryRun {
@@ -102,6 +96,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		// --use-compose init writes Apps entries but never writes app.yaml, so the
 		// crName resolution below is skipped entirely for multi-app projects.
 		if len(initCfg.Apps) > 0 {
+			komposer, _ := doctor.LoadGlobalKomposer()
 			err := deployMultiApp(deployContext{
 				dir:             dir,
 				registry:        registry,
@@ -152,9 +147,8 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 
 		// Show cluster context and currently deployed projects.
 		clusterCtx := doctor.CurrentContext()
-		deployed := komposer.DeployedProjects()
 		fmt.Printf("\nCluster:  %s\n", clusterCtx)
-		if len(deployed) > 0 {
+		if deployed := state.DeployedAppNames(); len(deployed) > 0 {
 			fmt.Printf("Deployed: %s\n", strings.Join(deployed, ", "))
 		}
 
@@ -186,24 +180,10 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			fmt.Println("  ~ dry-run: skipping docker build and push")
 		}
 
-		// Step 3 — Generate bundle
+		// Step 3 — Resolve motif + generate bundle from central Katalog
 		fmt.Println("\nGenerating bundle...")
 
-		initOpts := doctor.GenerateOptions{
-			NoHA:     noHA,
-			NoSecure: noSecure,
-			Clean:    clean,
-		}
-
 		bundleDir := filepath.Join(dir, orkDir, "bundle")
-		katalogPath := filepath.Join(dir, orkDir, "katalog.yaml")
-		absKatalogPath, _ := filepath.Abs(katalogPath)
-
-		if !dryRun {
-			if err := doctor.GenerateBundle(appName, ns, info.Secrets, info.Config, bundleDir); err != nil {
-				return err
-			}
-		}
 
 		if len(info.Secrets) > 0 {
 			fmt.Printf("  %s %s-secrets  (%d variables from .env)\n", utils.SuccessMark(), appName, len(info.Secrets))
@@ -212,45 +192,24 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			fmt.Printf("  %s %s-config   (%d variables from .env)\n", utils.SuccessMark(), appName, len(info.Config))
 		}
 
-		// Auto-generate katalog if not present yet.
-		if !fileExistsAtPath(katalogPath) {
-			if !dryRun {
-				if err := doctor.Init(info, initOpts); err != nil {
-					return fmt.Errorf("generating katalog: %w", err)
-				}
-			}
-			fmt.Printf("  %s katalog.yaml generated", utils.SuccessMark())
-		}
-
-		if fileExistsAtPath(katalogPath) || dryRun {
-			if !dryRun {
-				komposer.RegisterKatalog(absKatalogPath)
-				state.ClusterContext = clusterCtx
-				komposer.Metadata.Name = clusterCtx
-				komposer.Metadata.License = info.License
-				if saveErr := komposer.Save(); saveErr != nil {
-					return fmt.Errorf("saving komposer: %w", saveErr)
-				}
-
-				mergedPath, mergeErr := runKompose()
-				if mergeErr != nil {
-					return fmt.Errorf("merging katalogs: %w", mergeErr)
-				}
-				if err := doctor.DeduplicateKatalogGVKs(mergedPath); err != nil {
-					return fmt.Errorf("deduplicating katalog GVKs: %w", err)
-				}
-				effectiveKatalog := mergedPath
-				fmt.Printf("  %s Komposer merged (%d projects)\n", utils.SuccessMark(), len(komposer.DeployedProjects()))
-
-				genArgs := []string{"generate", "bundle", "-f", effectiveKatalog, "-w", ns, "-o", bundleDir}
-				genCmd := exec.Command("ork", genArgs...)
-				genCmd.Stdout = os.Stdout
-				genCmd.Stderr = os.Stderr
-				if err := genCmd.Run(); err != nil {
-					return fmt.Errorf("generating bundle: %w", err)
-				}
-			}
-			fmt.Printf("  %s RBAC + Katalog ConfigMap + namespace", utils.SuccessMark())
+		if err := deployDeveloperPath(devPathArgs{
+			dir:       dir,
+			appName:   appName,
+			ns:        ns,
+			image:     image,
+			port:      info.Port,
+			language:  string(info.Language),
+			bundleDir: bundleDir,
+			secrets:   info.Secrets,
+			config:    info.Config,
+			dryRun:    dryRun,
+			opts: doctor.GenerateOptions{
+				NoHA:     noHA,
+				NoSecure: noSecure,
+				Clean:    clean,
+			},
+		}); err != nil {
+			return err
 		}
 
 		// Step 4 — Apply bundle
@@ -280,7 +239,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			if err := applyBundle.Run(); err != nil {
 				return fmt.Errorf("applying bundle: %w", err)
 			}
-			fmt.Printf("  %s Bundle applied", utils.SuccessMark())
+			fmt.Printf("  %s Bundle applied ", utils.SuccessMark())
 
 			for _, f := range []string{doctor.AppConfigFile, doctor.AppSecretFile} {
 				path := filepath.Join(bundleDir, f)
@@ -326,12 +285,24 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				}
 			}
 
-			resolvedValues := values
-			if resolvedValues == "" {
+			var helmValues []string
+			if values != "" {
+				helmValues = append(helmValues, values)
+			} else {
 				localValues := filepath.Join(dir, orkDir, "values.yaml")
 				if fileExistsAtPath(localValues) {
-					resolvedValues = localValues
+					helmValues = append(helmValues, localValues)
 					fmt.Printf("  Using values: %s\n", localValues)
+				}
+			}
+
+			// If the developer set controlCenterHost in app.yaml, enable CC ingress.
+			appData, _ := doctor.ReadAppYAMLData(filepath.Join(dir, orkDir, doctor.ApplicationFile))
+			if ccHost := appData["controlCenterHost"]; ccHost != "" {
+				if ccValuesFile, err := doctor.BuildControlCenterValues(ccHost); err == nil {
+					defer os.Remove(ccValuesFile)
+					helmValues = append(helmValues, ccValuesFile)
+					fmt.Printf("  Control Center ingress: %s\n", ccHost)
 				}
 			}
 
@@ -353,7 +324,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			if !doctor.OrkestraInstalled() || upgradeOrkestra {
 				fmt.Println("  ⠸ Installing Orkestra...")
 				if err := doctor.InstallOrUpgradeOrkestra(
-					orkestraVersion, resolvedValues, upgradeOrkestra,
+					orkestraVersion, helmValues, upgradeOrkestra,
 				); err != nil {
 					return err
 				}
@@ -377,7 +348,8 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				return fmt.Errorf("orkestra runtime is not healthy")
 			}
 
-			if doctor.KatalogChanged(dir) {
+			deployDir, _ := doctor.StateDir()
+			if doctor.CentralKatalogChanged(state, deployDir) {
 				fmt.Println("  Katalog changed — restarting Orkestra runtime")
 				if err := doctor.RestartOrkestra(); err != nil {
 					return fmt.Errorf("restarting Orkestra: %w", err)
@@ -386,7 +358,7 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				fmt.Println("  Katalog unchanged — Orkestra restart not required")
 			}
 
-			state.RecordDeploy(appName, ns, absKatalogPath, image)
+			state.RecordDeploy(appName, ns, filepath.Join(deployDir, "katalog.yaml"), image)
 			if err := state.Save(); err != nil {
 				fmt.Printf("  ~ State save failed: %v\n", err)
 			}
@@ -630,11 +602,13 @@ func deployMultiApp(dc deployContext) error {
 		fmt.Printf("  %s All bundles applied", utils.SuccessMark())
 
 		// Install Orkestra once
-		resolvedValues := dc.values
-		if resolvedValues == "" {
+		var helmValues []string
+		if dc.values != "" {
+			helmValues = append(helmValues, dc.values)
+		} else {
 			localValues := filepath.Join(dc.dir, orkDir, "values.yaml")
 			if fileExistsAtPath(localValues) {
-				resolvedValues = localValues
+				helmValues = append(helmValues, localValues)
 			}
 		}
 
@@ -645,7 +619,7 @@ func deployMultiApp(dc deployContext) error {
 
 		if !doctor.OrkestraInstalled() || dc.upgradeOrkestra {
 			fmt.Println("  ⠸ Installing Orkestra...")
-			if err := doctor.InstallOrUpgradeOrkestra(dc.orkestraVersion, resolvedValues, dc.upgradeOrkestra); err != nil {
+			if err := doctor.InstallOrUpgradeOrkestra(dc.orkestraVersion, helmValues, dc.upgradeOrkestra); err != nil {
 				return err
 			}
 			fmt.Printf("  %s Orkestra installed", utils.SuccessMark())
@@ -891,16 +865,47 @@ func init() {
 // appName is the bare project name (without -orkestra suffix) used for state
 // lookup. state may be nil (e.g. when called from rollbackCmd).
 func watchUntilReady(crName, ns, appName string, state *doctor.DeployState) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+	// Total budget: 2 min waiting for Orkestra to create the Deployment +
+	// 5 min for the rollout itself. Orkestra's default resync is 30 s so a
+	// new app can take 30–60 s before its Deployment object appears.
+	const deploymentAppearTimeout = 2 * time.Minute
+	const rolloutTimeout = 5 * time.Minute
 
 	spin := spinner.Start("  → Waiting for rollout...")
 
-	cmd := exec.CommandContext(ctx,
+	// Phase 1: poll until the Deployment exists. kubectl rollout status exits
+	// immediately with a non-zero code when the object is missing, so we must
+	// not call it before Orkestra has reconciled the ConfigMap CR.
+	appearCtx, appearCancel := context.WithTimeout(context.Background(), deploymentAppearTimeout)
+	defer appearCancel()
+
+	for {
+		check := exec.CommandContext(appearCtx,
+			"kubectl", "get", "deployment", crName, "-n", ns)
+		check.Stdout = io.Discard
+		check.Stderr = io.Discard
+		if check.Run() == nil {
+			break // Deployment exists
+		}
+		if appearCtx.Err() != nil {
+			spin.Failure()
+			return fmt.Errorf(
+				"timed out waiting for Deployment %s to appear in %s — Orkestra may still be starting\n"+
+					"    check: kubectl get deployment %s -n %s",
+				crName, ns, crName, ns)
+		}
+		time.Sleep(5 * time.Second)
+	}
+
+	// Phase 2: standard rollout watch now that the Deployment exists.
+	rollCtx, rollCancel := context.WithTimeout(context.Background(), rolloutTimeout)
+	defer rollCancel()
+
+	cmd := exec.CommandContext(rollCtx,
 		"kubectl", "rollout", "status",
 		"deployment/"+crName,
 		"-n", ns,
-		"--timeout=5m",
+		fmt.Sprintf("--timeout=%s", rolloutTimeout),
 	)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
@@ -908,31 +913,25 @@ func watchUntilReady(crName, ns, appName string, state *doctor.DeployState) erro
 	if err := cmd.Run(); err != nil {
 		spin.Failure()
 
-		// Fetch recent pod logs to help the developer diagnose the failure.
 		logOut, logErr := exec.Command("kubectl", "logs",
-			"deployment/"+crName, "-n", ns,
-			"--tail=20",
-		).CombinedOutput()
+			"deployment/"+crName, "-n", ns, "--tail=20").CombinedOutput()
 		if logErr == nil && len(bytes.TrimSpace(logOut)) > 0 {
 			fmt.Printf("\n--- %s logs (last 20 lines) ---\n%s\n---\n", crName, string(logOut))
 		}
 
-		// Rollback hint — only when this is not the first deploy.
 		if state != nil && state.PreviousImage(appName) != "" {
 			fmt.Printf("\n  A previous good image is available.\n")
 			fmt.Printf("  Roll back with: ork deploy rollback\n")
 		}
 
-		if ctx.Err() == context.DeadlineExceeded {
+		if rollCtx.Err() == context.DeadlineExceeded {
 			return fmt.Errorf("timed out waiting for %s — check: kubectl get pods -n %s", crName, ns)
 		}
-
 		return fmt.Errorf("rollout failed for %s — check: kubectl describe deployment %s -n %s",
 			crName, crName, ns)
 	}
 
 	spin.Success()
-
 	printReadySummary(crName, ns, state)
 	return nil
 }
@@ -1028,6 +1027,135 @@ func openBrowser(url string) error {
 func fileExistsAtPath(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && !info.IsDir()
+}
+
+// devPathArgs bundles parameters for deployDeveloperPath.
+type devPathArgs struct {
+	dir       string
+	appName   string
+	ns        string
+	image     string
+	port      string
+	language  string
+	bundleDir string
+	secrets   []orktypes.EnvVar
+	config    []orktypes.EnvVar
+	dryRun    bool
+	opts      doctor.GenerateOptions
+}
+
+// deployDeveloperPath implements the developer deploy flow:
+//  1. Verify .orkestra/motif.yaml exists
+//  2. Collect all deployed app namespaces (current + previously deployed) for allowedNamespaces
+//  3. Write ~/.orkestra/deploy/katalog.yaml with ONE platform CRD — resources
+//     from motif.yaml embedded directly in operatorBox.onReconcile (no file imports)
+//  4. Generate bundle (RBAC + ConfigMap) from the self-contained central katalog
+func deployDeveloperPath(a devPathArgs) error {
+	motifPath := filepath.Join(a.dir, orkDir, "motif.yaml")
+	if !fileExistsAtPath(motifPath) {
+		return fmt.Errorf(".orkestra/motif.yaml not found — run 'ork doctor init --name %s' first", a.appName)
+	}
+
+	fmt.Println("\nUsing developer path...")
+
+	deployDir, err := doctor.StateDir()
+	if err != nil {
+		return fmt.Errorf("resolving deploy dir: %w", err)
+	}
+
+	if !a.dryRun {
+		if err := os.MkdirAll(deployDir, 0o755); err != nil {
+			return fmt.Errorf("creating deploy dir: %w", err)
+		}
+
+		// Build the apps list: current app first, then all previously deployed apps.
+		// We resolve metadata (name, namespace) here — the Katalog gets concrete resource
+		// entries per app so Orkestra manages them independently without cross-app collision.
+		apps := []doctor.AppDeployInfo{{
+			Name:      a.appName,
+			Namespace: a.ns,
+			Port:      a.port,
+			Language:  a.language,
+			Image:     a.image,
+		}}
+		state, _ := doctor.LoadState()
+		if state != nil {
+			for name, p := range state.Projects {
+				if name != a.appName && p.Namespace != "" {
+					apps = append(apps, doctor.AppDeployInfo{
+						Name:      name,
+						Namespace: p.Namespace,
+						Port:      p.Port,
+						Language:  p.Language,
+						Image:     p.CurrentImage,
+					})
+				}
+			}
+		}
+
+		// Generate the central katalog with per-app concrete resources.
+		if err := doctor.GenerateDeveloperKatalog(deployDir, motifPath, apps, a.opts); err != nil {
+			return fmt.Errorf("generating developer katalog: %w", err)
+		}
+		fmt.Printf("  %s Developer katalog updated\n", utils.SuccessMark())
+
+		// Persist port/language to state for future re-deploys.
+		if state != nil {
+			if p := state.Projects[a.appName]; p != nil {
+				p.Port = a.port
+				p.Language = a.language
+			} else {
+				state.Projects[a.appName] = &doctor.ProjectState{
+					Name:      a.appName,
+					Namespace: a.ns,
+					Port:      a.port,
+					Language:  a.language,
+				}
+			}
+			// state.Save() is called by the caller after RecordDeploy — no double save needed.
+		}
+
+		// Validate the generated katalog.
+		validateCmd := exec.Command("ork", "validate", "-f", filepath.Join(deployDir, "katalog.yaml"))
+		if out, err := validateCmd.CombinedOutput(); err != nil {
+			fmt.Printf("  ~ katalog validation warning: %s\n", strings.TrimSpace(string(out)))
+		}
+
+		// Ensure each app's namespace exists. Namespaces are infrastructure —
+		// we create them directly via kubectl (idempotent, no bundle dependency).
+		for _, app := range apps {
+			nsYAML := fmt.Sprintf("apiVersion: v1\nkind: Namespace\nmetadata:\n  name: %s\n", app.Namespace)
+			nsCmd := exec.Command("kubectl", "apply", "-f", "-")
+			nsCmd.Stdin = strings.NewReader(nsYAML)
+			nsCmd.Stdout = os.Stdout
+			nsCmd.Stderr = os.Stderr
+			if err := nsCmd.Run(); err != nil {
+				fmt.Printf("  ~ could not ensure namespace %s: %v\n", app.Namespace, err)
+			}
+		}
+
+		// Generate env Secret/ConfigMap for the current app.
+		if err := os.MkdirAll(a.bundleDir, 0o755); err != nil {
+			return fmt.Errorf("creating bundle dir: %w", err)
+		}
+		if err := doctor.GenerateBundle(a.appName, a.ns, a.secrets, a.config, a.bundleDir); err != nil {
+			return fmt.Errorf("generating env bundle: %w", err)
+		}
+
+		// Generate the RBAC + Katalog ConfigMap bundle from the central katalog.
+		centralKatalogPath := filepath.Join(deployDir, "katalog.yaml")
+		genCmd := exec.Command("ork", "generate", "bundle", "-f", centralKatalogPath, "-w", a.ns, "-o", a.bundleDir)
+		genCmd.Stdout = os.Stdout
+		genCmd.Stderr = os.Stderr
+		if err := genCmd.Run(); err != nil {
+			return fmt.Errorf("generating bundle: %w", err)
+		}
+		fmt.Printf("  %s RBAC + Katalog ConfigMap\n", utils.SuccessMark())
+	} else {
+		fmt.Printf("  ~ dry-run: would generate %s/katalog.yaml and bundle\n", deployDir)
+	}
+
+	return nil
 }
 
 // exposeApp starts a tunnel for the given app and prints the public URL.

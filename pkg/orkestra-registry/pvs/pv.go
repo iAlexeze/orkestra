@@ -127,6 +127,7 @@ func Resolve(src orktypes.PVTemplateSource, ownerName string) ResolvedPVSpec {
 		CSIDriver:        src.CSIDriver,
 		CSIVolumeHandle:  src.CSIVolumeHandle,
 		Labels:           make(map[string]string),
+		Sleep:            src.Sleep,
 	}
 
 	if len(spec.AccessModes) == 0 {

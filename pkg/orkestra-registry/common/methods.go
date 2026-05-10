@@ -2,6 +2,7 @@ package common
 
 import (
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -30,6 +31,23 @@ func ResolveNamespace(owner domain.Object, namespace string) string {
 		return owner.GetNamespace()
 	}
 	return "default"
+}
+
+// ResolveResources returns explicit resource requirements when set, or expands
+// a named profile. Returns nil when neither is declared.
+func ResolveResources(explicit *orktypes.ResourceRequirements, profile string) *orktypes.ResourceRequirements {
+	if explicit != nil {
+		return explicit
+	}
+	if profile == "" {
+		return nil
+	}
+	r, err := ExpandResourceProfile(profile)
+	if err != nil {
+		logger.Warn().Str("profile", profile).Err(err).Msg("unknown resourceProfile — skipping")
+		return nil
+	}
+	return r
 }
 
 // ToPullSecrets converts a slice of string to a []corev1.LocalObjectReference

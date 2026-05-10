@@ -83,21 +83,51 @@ type RBACRule struct {
 
 // KatalogResponse is the response from the /katalog endpoint
 type KatalogResponse struct {
-	Total              int          `json:"total"`
-	TotalEnabled       int          `json:"totalEnabled"`
-	Healthy            bool         `json:"healthy"`
-	Status             int          `json:"status"`
-	OrkReady           bool         `json:"OrkReady"`
-	DeletionProtection bool         `json:"deletionProtection"`
-	CRDs               []CRDSummary `json:"crds"`
-	Name               string       `json:"name,omitempty"`
-	Version            string       `json:"version,omitempty"`
-	Author             string       `json:"author,omitempty"`
-	Description        string       `json:"description,omitempty"`
-	DegradedReason     string       `json:"degradedReason,omitempty"`
-	StatusCounts       StatusCounts `json:"statusCounts"`
-	License            string       `json:"license,omitempty"`
-	RuntimeVersion     string       `json:"runtimeVersion,omitempty"`
+	Total              int                           `json:"total"`
+	TotalEnabled       int                           `json:"totalEnabled"`
+	Healthy            bool                          `json:"healthy"`
+	Status             int                           `json:"status"`
+	OrkReady           bool                          `json:"OrkReady"`
+	DeletionProtection bool                          `json:"deletionProtection"`
+	CRDs               []CRDSummary                  `json:"crds"`
+	Name               string                        `json:"name,omitempty"`
+	Version            string                        `json:"version,omitempty"`
+	Author             string                        `json:"author,omitempty"`
+	Description        string                        `json:"description,omitempty"`
+	DegradedReason     string                        `json:"degradedReason,omitempty"`
+	StatusCounts       StatusCounts                  `json:"statusCounts"`
+	License            string                        `json:"license,omitempty"`
+	RuntimeVersion     string                        `json:"runtimeVersion,omitempty"`
+	CreatedBy          string                        `json:"createdBy,omitempty"`
+	Projects           map[string]ProjectInfoSummary `json:"projects,omitempty"`
+}
+
+// ProjectInfoSummary is a lightweight per-app summary carried in KatalogResponse.Projects.
+type ProjectInfoSummary struct {
+	Name         string `json:"name"`
+	Namespace    string `json:"namespace"`
+	Port         string `json:"port,omitempty"`
+	Language     string `json:"language,omitempty"`
+	CurrentImage string `json:"currentImage,omitempty"`
+}
+
+// DevAppsData is passed to the developer-view template.
+type DevAppsData struct {
+	KatalogName    string
+	Apps           []DevAppSummary
+	CCVersion      string
+	RuntimeVersion string
+}
+
+// DevAppSummary holds display data for one app in the developer view.
+type DevAppSummary struct {
+	Name         string
+	Namespace    string
+	Port         string
+	Language     string
+	CurrentImage string
+	ImageTag     string // last part after ":"
+	ServiceURL   string // internal cluster URL
 }
 
 // CRDSummary is a summary of a CRD

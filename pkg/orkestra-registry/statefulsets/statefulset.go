@@ -146,7 +146,8 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 		Annotations:  make(map[string]string),
 		Env:          src.Env,
 		EnvFrom:      src.EnvFrom,
-		Resources:    src.Resources,
+		Resources:    common.ResolveResources(src.Resources, src.ResourceProfile),
+		Sleep:        src.Sleep,
 	}
 
 	if spec.Name == "" {

@@ -288,6 +288,7 @@ func Resolve(src orktypes.SecretTemplateSource, ownerName string) ResolvedSecret
 		Type:          src.Type,
 		StringData:    src.Data, // declared as strings in YAML
 		Labels:        make(map[string]string),
+		Sleep:         src.Sleep,
 	}
 
 	if spec.Name == "" {
