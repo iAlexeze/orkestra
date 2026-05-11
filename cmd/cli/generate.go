@@ -338,7 +338,7 @@ func init() {
 		cmd.Flags().Bool("dry-run", false, "Print generated output to stdout without writing files")
 		cmd.Flags().StringP("output", "o", "", "Write generated output to file")
 		cmd.Flags().StringP("namespace", "n", defaultNamespace(), "Namespace for the ServiceAccount")
-		cmd.Flags().StringP("workload-namespace", "w", "", "Namespace for the Deployment Workloads. Used by 'ork deploy'")
+		cmd.Flags().StringP("workload-namespace", "w", "", "Namespace for the Deployment Workloads. Used by 'ork doctor deploy'")
 	}
 
 	// Shadow global flags so they don't appear under `ork generate`

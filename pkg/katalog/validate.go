@@ -456,18 +456,25 @@ func (k *Katalog) validateNamespaceProtection() error {
 //	y   = years (365d)
 func (k *Katalog) validateTimeDuration() error {
 	for name, crd := range k.enabledCRDs {
-		if !crd.HasAnyHooks() || !crd.HasAnySecrets() {
+		if !crd.HasAnyHooks() {
 			continue
 		}
 
-		// Validate all declared sleep durations (discovered by pkg/types)
+		// Validate sleep durations across all resource types.
+		// Skip template expressions — those are resolved at runtime.
 		for _, e := range crd.CollectSleepEntries() {
+			if strings.Contains(e.Duration, "{{") {
+				continue
+			}
 			if _, err := orktypes.ParseTimeDuration(e.Duration); err != nil {
 				return durationError(name, e.ResourceName, "sleep", e.Duration, err)
 			}
 		}
 
 		// Validate secret durations (rotateAfter, TLS.validFor)
+		if !crd.HasAnySecrets() {
+			continue
+		}
 		if crd.HasOnCreate() {
 			for _, s := range crd.OperatorBox.OnCreate.Secrets {
 				if s.RotateAfter != "" {

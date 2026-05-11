@@ -9,7 +9,7 @@ knowledge required.
 |---|---|
 | Docker | https://docs.docker.com/get-docker/ |
 | `ork` | `curl -sSL https://get.orkestra.sh \| sh` |
-| A cluster | Existing cluster **or** use `ork deploy --dev` to create one |
+| A cluster | Existing cluster **or** use `ork doctor deploy --dev` to create one |
 
 A registry to push your image to (e.g. `ghcr.io/yourorg`).
 
@@ -68,12 +68,12 @@ stack.
 
 **With an existing cluster:**
 ```bash
-ork deploy --registry ghcr.io/yourorg
+ork doctor deploy --registry ghcr.io/yourorg
 ```
 
 **With a local kind cluster (created automatically):**
 ```bash
-ork deploy --registry ghcr.io/yourorg --dev
+ork doctor deploy --registry ghcr.io/yourorg --dev
 ```
 
 Orkestra:

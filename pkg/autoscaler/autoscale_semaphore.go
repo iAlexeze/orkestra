@@ -163,5 +163,9 @@ func (s *ResizableSemaphore) IdlePercent() float64 {
 	if s.cap == 0 {
 		return 0
 	}
-	return 100 - s.BusyPercent()
+	idle := s.cap - s.current
+	if idle < 0 {
+		idle = 0
+	}
+	return float64(idle) / float64(s.cap) * 100
 }

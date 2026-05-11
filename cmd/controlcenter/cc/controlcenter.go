@@ -293,10 +293,13 @@ func (cc *ControlCenter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		cc.handleDocsLanding(w, r)
 
 	case strings.HasPrefix(path, "/docs/"):
-		// /docs/{katalog}/{crd}
+		// /docs/{katalog}           → developer docs or operator CRD list
+		// /docs/{katalog}/{crd}     → CRD docs page
 		parts := strings.SplitN(strings.TrimPrefix(path, "/docs/"), "/", 2)
 		if len(parts) == 2 {
 			cc.handleCRDDocs(w, r, parts[0], parts[1])
+		} else if len(parts) == 1 && parts[0] != "" {
+			cc.handleKatalogDocs(w, r, parts[0])
 		} else {
 			cc.handleDocsLanding(w, r)
 		}
@@ -330,6 +333,10 @@ func (cc *ControlCenter) routeKatalog(w http.ResponseWriter, r *http.Request, pa
 	katalogName := parts[1]
 
 	switch {
+	// /katalog/{name}/app/{appName}  — developer path
+	case len(parts) == 4 && parts[2] == "app":
+		cc.handleDevAppDetail(w, r, katalogName, parts[3])
+
 	// /katalog/{name}/crd/{crd}/cr[/...]
 	case len(parts) >= 5 && parts[2] == "crd" && parts[4] == "cr":
 		crdName := parts[3]
@@ -519,7 +526,8 @@ func (cc *ControlCenter) handleIndex(w http.ResponseWriter, _ *http.Request) {
 	})
 
 	var summaries []KatalogSummary
-	totalCRDs, totalWorkers, totalResources, healthyKatalogs := 0, 0, 0, 0
+	totalCRDs, totalWorkers, totalResources, totalApps, healthyKatalogs := 0, 0, 0, 0, 0
+	hasOperatorKatalogs := false
 
 	for _, inst := range insts {
 		kat := inst.Katalog
@@ -529,19 +537,27 @@ func (cc *ControlCenter) handleIndex(w http.ResponseWriter, _ *http.Request) {
 				healthyCRDs++
 			}
 		}
-		summaries = append(summaries, KatalogSummary{
+		summary := KatalogSummary{
 			Name:           kat.Name,
 			Description:    kat.Description,
 			Version:        kat.Version,
 			Healthy:        kat.Healthy,
+			CreatedBy:      kat.CreatedBy,
+			AppCount:       len(kat.Projects),
 			TotalCRDs:      len(kat.CRDs),
 			HealthyCRDs:    healthyCRDs,
 			TotalWorkers:   sumWorkers(kat.CRDs),
 			TotalResources: sumResources(kat.CRDs),
-		})
-		totalCRDs += len(kat.CRDs)
-		totalWorkers += sumWorkers(kat.CRDs)
-		totalResources += sumResources(kat.CRDs)
+		}
+		summaries = append(summaries, summary)
+		if kat.CreatedBy == "orkdoctor" {
+			totalApps += len(kat.Projects)
+		} else {
+			hasOperatorKatalogs = true
+			totalCRDs += len(kat.CRDs)
+			totalWorkers += sumWorkers(kat.CRDs)
+			totalResources += sumResources(kat.CRDs)
+		}
 		if kat.Healthy {
 			healthyKatalogs++
 		}
@@ -551,10 +567,12 @@ func (cc *ControlCenter) handleIndex(w http.ResponseWriter, _ *http.Request) {
 		Katalogs:             summaries,
 		TotalKatalogs:        len(summaries),
 		HealthyKatalogs:      healthyKatalogs,
+		TotalApps:            totalApps,
 		TotalCRDs:            totalCRDs,
 		TotalWorkers:         totalWorkers,
 		TotalResources:       totalResources,
 		AnyHealthy:           len(summaries) > 0,
+		HasOperatorKatalogs:  hasOperatorKatalogs,
 		OrkestraURLs:         strings.Join(cc.urls, ", "),
 		CCVersion:            ccversion.Short(),
 		EnableRuntimeManager: cc.config.EnableRuntimeManager,
@@ -574,6 +592,12 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 	}
 
 	kat := inst.Katalog
+
+	// Developer path: render a simplified app-focused view.
+	if kat.CreatedBy == "orkdoctor" {
+		cc.renderDevApps(w, r, kat)
+		return
+	}
 
 	// Sort CRDs by name for consistent display
 	sortedCRDs := make([]CRDSummary, len(kat.CRDs))
@@ -599,6 +623,82 @@ func (cc *ControlCenter) handleKatalogPanel(w http.ResponseWriter, r *http.Reque
 		DegradedReason:     kat.DegradedReason,
 		StatusCounts:       kat.StatusCounts,
 		RuntimeVersion:     kat.RuntimeVersion,
+	})
+}
+
+// buildDevAppSummary converts a ProjectInfoSummary into a DevAppSummary.
+func buildDevAppSummary(proj ProjectInfoSummary) DevAppSummary {
+	imageTag := proj.CurrentImage
+	if idx := strings.LastIndex(imageTag, ":"); idx >= 0 {
+		imageTag = imageTag[idx+1:]
+	}
+	port := proj.Port
+	if port == "" {
+		port = "8080"
+	}
+	svcURL := ""
+	if proj.Name != "" && proj.Namespace != "" {
+		svcURL = fmt.Sprintf("http://%s-svc.%s.svc.cluster.local:%s", proj.Name, proj.Namespace, port)
+	}
+	return DevAppSummary{
+		Name:          proj.Name,
+		Namespace:     proj.Namespace,
+		Port:          port,
+		Language:      proj.Language,
+		CurrentImage:  proj.CurrentImage,
+		ImageTag:      imageTag,
+		ServiceURL:    svcURL,
+		GitCommit:     proj.GitCommit,
+		License:       proj.License,
+		HasDockerfile: proj.HasDockerfile,
+		HasFrontend:   proj.HasFrontend,
+		HasSMTP:       proj.HasSMTP,
+		HasSlack:      proj.HasSlack,
+		HasCompose:    proj.HasCompose,
+		SecretCount:   proj.SecretCount,
+		ConfigCount:   proj.ConfigCount,
+	}
+}
+
+// renderDevApps renders the developer-path view for a katalog created by ork doctor.
+func (cc *ControlCenter) renderDevApps(w http.ResponseWriter, _ *http.Request, kat *KatalogResponse) {
+	var apps []DevAppSummary
+	for _, proj := range kat.Projects {
+		s := buildDevAppSummary(proj)
+		if s.Name != "" {
+			apps = append(apps, s)
+		}
+	}
+	// Sort apps by name for stable output.
+	sort.Slice(apps, func(i, j int) bool { return apps[i].Name < apps[j].Name })
+
+	cc.renderTemplate(w, "dev_apps.html", DevAppsData{
+		KatalogName:    kat.Name,
+		Apps:           apps,
+		RuntimeVersion: kat.RuntimeVersion,
+	})
+}
+
+// handleDevAppDetail renders /katalog/{katalog}/app/{appName} for developer katalogs.
+func (cc *ControlCenter) handleDevAppDetail(w http.ResponseWriter, r *http.Request, katalogName, appName string) {
+	inst, ok := cc.instanceByKatalogName(katalogName)
+	if !ok {
+		cc.handleNotFound(w, r)
+		return
+	}
+	if inst.Katalog.CreatedBy != "orkdoctor" {
+		cc.handleNotFound(w, r)
+		return
+	}
+	proj, ok := inst.Katalog.Projects[appName]
+	if !ok {
+		cc.handleNotFound(w, r)
+		return
+	}
+	cc.renderTemplate(w, "dev_app_detail.html", DevAppDetailData{
+		KatalogName:    katalogName,
+		App:            buildDevAppSummary(proj),
+		RuntimeVersion: inst.Katalog.RuntimeVersion,
 	})
 }
 

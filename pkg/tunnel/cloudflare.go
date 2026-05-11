@@ -119,7 +119,9 @@ func (c *CloudflaredProvider) Stop(pid int) error {
 // instance writes to its own file.
 func cloudflaredLogPath(localPort int) string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".orkestra", fmt.Sprintf("cloudflared-%d.log", localPort))
+	dir := filepath.Join(home, ".orkestra", "doctor", "cloudflare")
+	_ = os.MkdirAll(dir, 0o755)
+	return filepath.Join(dir, fmt.Sprintf("cloudflared-%d.log", localPort))
 }
 
 // tailLogForURL polls a log file and sends the tunnel URL only after cloudflared

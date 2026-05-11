@@ -47,6 +47,9 @@ type ResolvedJobSpec struct {
 	// If specified, these secrets will be passed to individual puller implementations for them to use.
 	ImagePullSecrets []string
 
+	// Resources — CPU and memory requests/limits. nil means no limits set.
+	Resources *orktypes.ResourceRequirements
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).
@@ -141,6 +144,8 @@ func Resolve(src orktypes.JobTemplateSource, backoffLimit int, ownerName string)
 		Args:         src.Args,
 		BackoffLimit: backoffLimit,
 		Labels:       make(map[string]string),
+		Resources:    common.ResolveResources(src.Resources),
+		Sleep:        src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -171,6 +176,9 @@ func buildJob(owner domain.Object, spec ResolvedJobSpec, namespace string) *batc
 		Image:   spec.Image,
 		Command: spec.Command,
 		Args:    spec.Args,
+	}
+	if spec.Resources != nil {
+		container.Resources = common.BuildResourceRequirements(spec.Resources)
 	}
 
 	job := &batchv1.Job{

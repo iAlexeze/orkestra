@@ -1,6 +1,6 @@
 // pkg/tunnel/state.go
 //
-// Multi-tunnel daemon state — persisted to ~/.orkestra/tunnel-state.json
+// Multi-tunnel daemon state — persisted to ~/.orkestra/doctor/tunnel/tunnel-state.json
 // as a map[name]State so multiple tunnels (per app, controlcenter) coexist.
 package tunnel
 
@@ -26,7 +26,9 @@ type State struct {
 
 func stateFile() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".orkestra", "tunnel-state.json")
+	dir := filepath.Join(home, ".orkestra", "doctor", "tunnel")
+	_ = os.MkdirAll(dir, 0o755)
+	return filepath.Join(dir, "tunnel-state.json")
 }
 
 // SaveTunnelState writes or updates the named tunnel entry.

@@ -141,6 +141,7 @@ func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.
 	resolved := orktypes.PodTemplateSource{
 		Version:   src.Version,
 		Resources: src.Resources, // static — not resolved
+		Probes:    src.Probes,    // static — passed through
 	}
 
 	var err error
@@ -187,6 +188,7 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 	resolved := orktypes.DeploymentTemplateSource{
 		Version:   src.Version,
 		Resources: src.Resources, // static — not resolved
+		Probes:    src.Probes,    // static — passed through
 	}
 
 	var err error
@@ -292,6 +294,7 @@ func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSour
 	resolved := orktypes.ReplicaSetTemplateSource{
 		Version:   src.Version,
 		Resources: src.Resources, // static — not resolved
+		Probes:    src.Probes,    // static — passed through
 	}
 
 	var err error
@@ -494,6 +497,7 @@ func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.
 	resolved := orktypes.JobTemplateSource{
 		Version:      src.Version,
 		BackoffLimit: src.BackoffLimit,
+		Resources:    src.Resources,
 	}
 
 	var err error
@@ -728,7 +732,8 @@ func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource
 // ResolveCronJobTemplate resolves all template expressions in a CronJobTemplateSource.
 func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (orktypes.CronJobTemplateSource, error) {
 	resolved := orktypes.CronJobTemplateSource{
-		Version: src.Version,
+		Version:   src.Version,
+		Resources: src.Resources,
 	}
 
 	var err error
@@ -1071,6 +1076,7 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 	resolved := orktypes.StatefulSetTemplateSource{
 		Version:   src.Version,
 		Resources: src.Resources,
+		Probes:    src.Probes, // static — passed through
 	}
 
 	var err error
@@ -1096,14 +1102,21 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 	if resolved.ServiceName, err = r.Resolve(src.ServiceName); err != nil {
 		return resolved, fmt.Errorf("statefulset.serviceName: %w", err)
 	}
-	if resolved.StorageClass, err = r.Resolve(src.StorageClass); err != nil {
-		return resolved, fmt.Errorf("statefulset.storageClass: %w", err)
-	}
-	if resolved.StorageSize, err = r.Resolve(src.StorageSize); err != nil {
-		return resolved, fmt.Errorf("statefulset.storageSize: %w", err)
-	}
-	if resolved.MountPath, err = r.Resolve(src.MountPath); err != nil {
-		return resolved, fmt.Errorf("statefulset.mountPath: %w", err)
+	for i, vct := range src.VolumeClaimTemplates {
+		rv := orktypes.VolumeClaimTemplateSource{AccessModes: vct.AccessModes}
+		if rv.Name, err = r.Resolve(vct.Name); err != nil {
+			return resolved, fmt.Errorf("statefulset.volumeClaimTemplates[%d].name: %w", i, err)
+		}
+		if rv.StorageClass, err = r.Resolve(vct.StorageClass); err != nil {
+			return resolved, fmt.Errorf("statefulset.volumeClaimTemplates[%d].storageClass: %w", i, err)
+		}
+		if rv.StorageSize, err = r.Resolve(vct.StorageSize); err != nil {
+			return resolved, fmt.Errorf("statefulset.volumeClaimTemplates[%d].storageSize: %w", i, err)
+		}
+		if rv.MountPath, err = r.Resolve(vct.MountPath); err != nil {
+			return resolved, fmt.Errorf("statefulset.volumeClaimTemplates[%d].mountPath: %w", i, err)
+		}
+		resolved.VolumeClaimTemplates = append(resolved.VolumeClaimTemplates, rv)
 	}
 	if resolved.Sleep, err = r.Resolve(src.Sleep); err != nil {
 		return resolved, fmt.Errorf("statefulset.sleep: %w", err)

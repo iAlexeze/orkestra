@@ -176,6 +176,7 @@ func Resolve(src orktypes.PDBTemplateSource, ownerName string) ResolvedPDBSpec {
 		MaxUnavailable: src.MaxUnavailable,
 		Selector:       make(map[string]string),
 		Labels:         make(map[string]string),
+		Sleep:          src.Sleep,
 	}
 
 	if spec.Name == "" {

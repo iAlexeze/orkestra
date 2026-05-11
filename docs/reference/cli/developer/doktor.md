@@ -30,7 +30,7 @@ ork doctor
 | `.env` variables | Parsed from `.env`; lines tagged `# ork:cfg` become ConfigMap entries, all others become Secrets |
 | Frontend detection | `build/`, `dist/`, or `public/` directories; or `package.json` with React, Vue, Angular, Next, Nuxt, or Svelte |
 | SMTP / Slack | Prefixes `SMTP_` or `SLACK_` in `.env` — triggers a `--notify-me` hint |
-| Missing tools | `kubectl` and `helm` availability — both are auto-installed by `ork deploy` |
+| Missing tools | `kubectl` and `helm` availability — both are auto-installed by `ork doctor deploy` |
 
 ### Flags
 
@@ -162,7 +162,7 @@ data:
   maxReplicas: "10"
   host: ""                    # public hostname for Ingress (leave empty if not needed)
   controlCenterHost: ""       # Orkestra Control Center hostname
-  image: ""                   # set automatically by ork deploy — do not edit
+  image: ""                   # set automatically by ork doctor deploy — do not edit
 ```
 
 ---
@@ -173,8 +173,8 @@ After `ork doctor init`:
 
 1. Review `.orkestra/katalog.yaml` — it is generated but editable
 2. Fill in `.orkestra/app.yaml` — replicas, host, controlCenterHost
-3. Run [`ork deploy`](./deploy.md) to build, push, and deploy
+3. Run [`ork doctor deploy`](./deploy.md) to build, push, and deploy
 
 ---
 
-**← CLI Reference** [index](../index.md) | **Next →** [ork deploy](./deploy.md)
+**← CLI Reference** [index](../index.md) | **Next →** [ork doctor deploy](./deploy.md)

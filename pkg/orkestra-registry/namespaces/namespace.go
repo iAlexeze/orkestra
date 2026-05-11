@@ -130,6 +130,7 @@ func Resolve(src orktypes.NamespaceTemplateSource, ownerName string) ResolvedNam
 		Name:       src.Name,
 		Labels:     make(map[string]string),
 		Finalizers: src.Finalizers,
+		Sleep:      src.Sleep,
 	}
 
 	if spec.Name == "" {

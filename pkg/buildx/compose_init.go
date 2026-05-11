@@ -15,7 +15,7 @@ type AppEntry struct {
 }
 
 // InitConfig is the full configuration persisted in .orkestra/bundle/.init.ork.
-// It bridges `ork doctor init` settings through to `ork deploy`.
+// It bridges `ork doctor init` settings through to `ork doctor deploy`.
 type InitConfig struct {
 	UseCompose  bool       // true → compose-based build
 	ComposeFile string     // path to docker-compose.yaml (only when UseCompose)

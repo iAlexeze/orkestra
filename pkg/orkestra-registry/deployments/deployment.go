@@ -89,6 +89,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	drifted := false
 	updated := existing.DeepCopy()
 
+	// Replicas
 	if existing.Spec.Replicas == nil || *existing.Spec.Replicas != spec.Replicas {
 		replicas := spec.Replicas
 		updated.Spec.Replicas = &replicas
@@ -99,6 +100,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 			Msg("deployment replicas drifted")
 	}
 
+	// Image
 	if len(existing.Spec.Template.Spec.Containers) > 0 &&
 		existing.Spec.Template.Spec.Containers[0].Image != spec.Image {
 		updated.Spec.Template.Spec.Containers[0].Image = spec.Image
@@ -107,6 +109,22 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 			Str("deployment", spec.Name).
 			Str("desired", spec.Image).
 			Msg("deployment image drifted")
+	}
+
+	// Resources
+	if spec.Resources != nil {
+		desiredRes := common.BuildResourceRequirements(spec.Resources)
+		var existingRes corev1.ResourceRequirements
+		if len(existing.Spec.Template.Spec.Containers) > 0 {
+			existingRes = existing.Spec.Template.Spec.Containers[0].Resources
+		}
+		if !common.ResourceRequirementsEqual(existingRes, desiredRes) {
+			updated.Spec.Template.Spec.Containers[0].Resources = desiredRes
+			drifted = true
+			logger.Info().
+				Str("deployment", spec.Name).
+				Msg("deployment resources drifted")
+		}
 	}
 
 	if !drifted {
@@ -189,11 +207,13 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 		Name:        src.Name,
 		Image:       src.Image,
 		Namespace:   src.Namespace,
-		Resources:   src.Resources,
+		Resources:   common.ResolveResources(src.Resources),
 		Labels:      make(map[string]string),
 		Annotations: make(map[string]string),
 		Env:         make(map[string]orktypes.EnvVarSource),
 		EnvFrom:     src.EnvFrom,
+		Probes:      src.Probes,
+		Sleep:       src.Sleep,
 	}
 
 	// Default name
@@ -305,6 +325,9 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 	if spec.Resources != nil {
 		d.Spec.Template.Spec.Containers[0].Resources = common.BuildResourceRequirements(spec.Resources)
 	}
+
+	// Probes
+	common.ApplyProbes(&d.Spec.Template.Spec.Containers[0], spec.Probes, spec.Port)
 
 	// Env
 	if len(spec.Env) > 0 {

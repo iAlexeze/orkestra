@@ -8,7 +8,7 @@ The buildx package abstracts container image building and pushing across Docker,
 |------|------|
 | `buildx.go` | `Builder` interface, `BuildImage` / `PushImage` public API, builder selection |
 | `builders.go` | `DockerBuilder`, `PodmanBuilder`, `BuildahBuilder` — one struct per supported tool |
-| `compose_init.go` | `InitConfig`, `AppEntry` — persist `ork doctor init` settings to `.orkestra/bundle/.init.ork` for `ork deploy` to read |
+| `compose_init.go` | `InitConfig`, `AppEntry` — persist `ork doctor init` settings to `.orkestra/bundle/.init.ork` for `ork doctor deploy` to read |
 
 ## Builder auto-selection
 
@@ -18,7 +18,7 @@ The buildx package abstracts container image building and pushing across Docker,
 AllBuilders = [DockerBuilder, PodmanBuilder, BuildahBuilder]
 ```
 
-The user never selects a builder — the first available tool wins. This makes the same `ork deploy` command work in Docker Desktop, Podman Machine, and CI environments that only have Buildah.
+The user never selects a builder — the first available tool wins. This makes the same `ork doctor deploy` command work in Docker Desktop, Podman Machine, and CI environments that only have Buildah.
 
 ## Public API
 

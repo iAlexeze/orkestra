@@ -58,7 +58,8 @@ resources:
             name: "{{ inputs.passwordSecretName }}"
             key: POSTGRES_PASSWORD
       reconcile: true
-      resourceProfile: "{{ .inputs.resourceProfile }}"
+      resources:
+        profile: "{{ .inputs.resourceProfile }}"
 
   services:
     - name: "{{ .metadata.name }}-postgres-headless"

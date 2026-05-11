@@ -275,6 +275,7 @@ func Resolve(src orktypes.ConfigMapTemplateSource, ownerName string) ResolvedCon
 		FromConfigMap: src.FromConfigMap,
 		FromNamespace: src.FromNamespace,
 		Labels:        make(map[string]string),
+		Sleep:         src.Sleep,
 	}
 
 	if spec.Name == "" {

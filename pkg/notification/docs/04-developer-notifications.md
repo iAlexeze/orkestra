@@ -31,7 +31,7 @@ operatorBox:
               message: >
                 {{ .metadata.name }} is deploying but replicas are not ready yet.
                 Check logs: kubectl logs -n {{ .metadata.namespace }} -l ork.io/app={{ .metadata.name }} --tail=50
-                | Roll back if stuck: ork deploy rollback
+                | Roll back if stuck: ork doctor deploy rollback
 ```
 
 The `replicasReady .children.deployment` check evaluates to `"false"` whenever the
@@ -79,7 +79,7 @@ SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS / SMTP_FROM
 SLACK_WEBHOOK_URL
 ```
 
-`ork deploy` creates and applies this Secret automatically when `.env` contains
+`ork doctor deploy` creates and applies this Secret automatically when `.env` contains
 `SMTP_*` or `SLACK_*` variables.
 
 ---
@@ -95,7 +95,7 @@ To: alex@example.com
 
 my-api is deploying but replicas are not ready yet.
 Check logs: kubectl logs -n my-api-orkestra-ns -l ork.io/app=my-api --tail=50
-Roll back if stuck: ork deploy rollback
+Roll back if stuck: ork doctor deploy rollback
 ```
 
 **Slack** (when SLACK_WEBHOOK_URL is configured):
@@ -103,7 +103,7 @@ Roll back if stuck: ork deploy rollback
 ```
 my-api is deploying but replicas are not ready yet.
 Check logs: kubectl logs -n my-api-orkestra-ns -l ork.io/app=my-api --tail=50
-Roll back if stuck: ork deploy rollback
+Roll back if stuck: ork doctor deploy rollback
 
 [Katalog: my-api]  [Team: developer]
 ```

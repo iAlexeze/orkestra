@@ -9,7 +9,7 @@ image := doctor.ImageTag("ghcr.io/myorg", "my-app", "a3f5c2b")
 // → "ghcr.io/myorg/my-app:a3f5c2b"
 ```
 
-The tag is the git commit short SHA by default. `ork deploy --tag v1.2.0` overrides it. When there is no git repository, the tag falls back to `"latest"`.
+The tag is the git commit short SHA by default. `ork doctor deploy --tag v1.2.0` overrides it. When there is no git repository, the tag falls back to `"latest"`.
 
 ## Build and push
 
@@ -36,7 +36,7 @@ if !doctor.ClusterReachable() {
 
 Runs `kubectl cluster-info --request-timeout=5s` with a 5-second context timeout. Returns false when kubectl is missing, the kubeconfig is invalid, or the API server is unreachable.
 
-`ork deploy` calls this before any cluster operations. When the check fails and `--dev` was not passed, the user is told to use `--dev`.
+`ork doctor deploy` calls this before any cluster operations. When the check fails and `--dev` was not passed, the user is told to use `--dev`.
 
 ### KubectlAvailable
 
@@ -68,7 +68,7 @@ err := doctor.EnsureKindCluster(doctor.KindClusterName)
 - Switches kubectl to the kind context (`kind-orkestra-playground`).
 - Installs kind via `go install sigs.k8s.io/kind@v0.31.0` if not found in PATH or GOBIN.
 
-`ork deploy --dev` calls `GoInstalled()` first; if Go is absent it returns an error with install instructions before attempting anything else.
+`ork doctor deploy --dev` calls `GoInstalled()` first; if Go is absent it returns an error with install instructions before attempting anything else.
 
 ## Orkestra installation
 
@@ -78,7 +78,7 @@ if !doctor.OrkestraInstalled() || upgradeOrkestra {
 }
 ```
 
-`helm.go` runs `helm install` or `helm upgrade --install` against `https://orkspace.github.io/orkestra`. `ork deploy` auto-detects `.orkestra/values.yaml` and passes it via `--values` when the `--values` flag is not set explicitly.
+`helm.go` runs `helm install` or `helm upgrade --install` against `https://orkspace.github.io/orkestra`. `ork doctor deploy` auto-detects `.orkestra/values.yaml` and passes it via `--values` when the `--values` flag is not set explicitly.
 
 ## Runtime health
 
@@ -116,7 +116,7 @@ ic := doctor.DetectIngressController()
 // IngressNginx | IngressTraefik | IngressNone
 ```
 
-`ork deploy` calls `ensureIngressController()` automatically when the project has a frontend (`HasFrontend == true`). It:
+`ork doctor deploy` calls `ensureIngressController()` automatically when the project has a frontend (`HasFrontend == true`). It:
 1. Calls `DetectIngressController()` — returns early if already present.
 2. Detects a kind context and applies the kind-specific nginx manifest.
 3. Otherwise installs via `helm install ingress-nginx ingress-nginx/ingress-nginx`.
@@ -149,11 +149,11 @@ komposer.Save()
 names := komposer.DeployedProjects()  // ["my-app", "my-api"]
 ```
 
-`ork deploy` registers the current project's Katalog path on every deploy and then attempts to run `ork kompose` to merge all Katalogs into a single `~/.orkestra/deploy/merged-katalog.yaml` that Orkestra can watch. This step is non-fatal — if `ork kompose` is not yet available, a warning is printed and the deploy continues normally.
+`ork doctor deploy` registers the current project's Katalog path on every deploy and then attempts to run `ork kompose` to merge all Katalogs into a single `~/.orkestra/deploy/merged-katalog.yaml` that Orkestra can watch. This step is non-fatal — if `ork kompose` is not yet available, a warning is printed and the deploy continues normally.
 
 ## The full deploy sequence
 
-`ork deploy` orchestrates everything in order:
+`ork doctor deploy` orchestrates everything in order:
 
 ```
  0. Cluster check         → --dev: EnsureKindCluster / else: ClusterReachable()
@@ -181,15 +181,15 @@ Steps 1–16 are skipped with `--dry-run`.
 ## Rollback
 
 ```bash
-ork deploy rollback              # restore previous image from state.json
-ork deploy rollback --image ghcr.io/myorg/app:a1b2c3d   # explicit image
+ork doctor deploy rollback              # restore previous image from state.json
+ork doctor deploy rollback --image ghcr.io/myorg/app:a1b2c3d   # explicit image
 ```
 
 Rollback reads `~/.orkestra/deploy/state.json` first and falls back to the `orkestra.io/previous-image` annotation on the ConfigMap for backward compatibility. It swaps `currentImage` ↔ `previousImage` in state before patching, so a second rollback call re-rolls-forward.
 
 ## Control Center URL
 
-After a successful deploy, `ork deploy` prints:
+After a successful deploy, `ork doctor deploy` prints:
 
 ```
   Control Center → https://control.mycompany.com

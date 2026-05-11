@@ -108,6 +108,20 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 			Msg("replicaset image drifted")
 	}
 
+	// Resources drift
+	if spec.Resources != nil {
+		desiredRes := common.BuildResourceRequirements(spec.Resources)
+		var existingRes corev1.ResourceRequirements
+		if len(existing.Spec.Template.Spec.Containers) > 0 {
+			existingRes = existing.Spec.Template.Spec.Containers[0].Resources
+		}
+		if !common.ResourceRequirementsEqual(existingRes, desiredRes) {
+			updated.Spec.Template.Spec.Containers[0].Resources = desiredRes
+			drifted = true
+			logger.Info().Str("replicaset", spec.Name).Msg("replicaset resources drifted")
+		}
+	}
+
 	if !drifted {
 		logger.Debug().
 			Str("replicaset", spec.Name).
@@ -183,11 +197,13 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, staticReplicas int, ownerNam
 		Name:        src.Name,
 		Image:       src.Image,
 		Namespace:   src.Namespace,
-		Resources:   src.Resources,
+		Resources:   common.ResolveResources(src.Resources),
 		Labels:      make(map[string]string),
 		Annotations: make(map[string]string),
 		Env:         make(map[string]orktypes.EnvVarSource),
 		EnvFrom:     src.EnvFrom,
+		Probes:      src.Probes,
+		Sleep:       src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -300,6 +316,8 @@ func buildReplicaSet(owner domain.Object, spec ResolvedReplicaSetSpec, namespace
 	if spec.Resources != nil {
 		rs.Spec.Template.Spec.Containers[0].Resources = common.BuildResourceRequirements(spec.Resources)
 	}
+
+	common.ApplyProbes(&rs.Spec.Template.Spec.Containers[0], spec.Probes, spec.Port)
 
 	if len(spec.Env) > 0 {
 		rs.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{}

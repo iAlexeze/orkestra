@@ -6,7 +6,33 @@ import (
 	"os/exec"
 )
 
-func InstallOrUpgradeOrkestra(version, values string, upgrade bool) error {
+// BuildControlCenterValues generates a temporary Helm values file that enables
+// the Control Center ingress. Call only when controlCenterHost is non-empty.
+// The caller is responsible for removing the returned file.
+func BuildControlCenterValues(host string) (string, error) {
+	content := fmt.Sprintf(`controlCenter:
+  ingress:
+    enabled: true
+    hosts:
+      - host: %s
+        paths:
+          - path: /
+            pathType: Prefix
+`, host)
+	tmp, err := os.CreateTemp("", "orkestra-cc-values-*.yaml")
+	if err != nil {
+		return "", err
+	}
+	if _, err := tmp.WriteString(content); err != nil {
+		tmp.Close()
+		os.Remove(tmp.Name())
+		return "", err
+	}
+	tmp.Close()
+	return tmp.Name(), nil
+}
+
+func InstallOrUpgradeOrkestra(version string, valueFiles []string, upgrade bool) error {
 	// Always add repo (idempotent)
 	repoAdd := exec.Command("helm", "repo", "add", Orkestra, OrkestraChartRepo)
 	repoAdd.Stdout = os.Stdout
@@ -42,8 +68,10 @@ func InstallOrUpgradeOrkestra(version, values string, upgrade bool) error {
 		args = append(args, "--version", version)
 	}
 
-	if values != "" {
-		args = append(args, "-f", values)
+	for _, f := range valueFiles {
+		if f != "" {
+			args = append(args, "-f", f)
+		}
 	}
 
 	// Run Helm

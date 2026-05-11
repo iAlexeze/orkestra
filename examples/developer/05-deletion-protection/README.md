@@ -84,7 +84,7 @@ security:
 Redeploy so Orkestra picks up the change:
 
 ```bash
-ork deploy --registry ghcr.io/myorg
+ork doctor deploy --registry ghcr.io/myorg
 ```
 
 Watch the Orkestra logs confirm the webhook is removed:
@@ -123,7 +123,7 @@ cycle just to clean up a test deploy. Use `--no-secure`:
 
 ```bash
 ork doctor init --name my-api --no-secure
-ork deploy --registry ghcr.io/myorg --no-secure
+ork doctor deploy --registry ghcr.io/myorg --no-secure
 ```
 
 `--no-secure` skips deletion protection labels and the webhook entirely.

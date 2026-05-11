@@ -209,7 +209,11 @@ func (m SelectorMap) String() string {
 // Values are static Kubernetes quantity strings — template expressions
 // are not supported here.
 // e.g. requests: {cpu: "100m", memory: "128Mi"}
+//
+// Profile is mutually exclusive with Requests and Limits. When Profile is set,
+// it expands into a complete ResourceRequirements at reconcile time.
 type ResourceRequirements struct {
+	Profile  string            `yaml:"profile,omitempty" json:"profile,omitempty" validate:"omitempty"`
 	Requests map[string]string `yaml:"requests" json:"requests,omitempty" validate:"omitempty"`
 	Limits   map[string]string `yaml:"limits" json:"limits,omitempty" validate:"omitempty"`
 }
@@ -276,6 +280,62 @@ type ConfigMapKeyRef struct {
 //   Set  → pins to a specific OrkestraRegistry release tag for stability.
 //   e.g. version: v1.2.0
 
+// ── Probes ────────────────────────────────────────────────────────────────────
+
+// ProbeConfig configures a single Kubernetes probe (startup, liveness, or readiness).
+// Supports HTTP GET and TCP socket checks, with timing driven by named profiles or
+// explicit field overrides.
+//
+// Examples:
+//
+//	probes:
+//	  startup:
+//	    type: http
+//	    path: /health
+//	    profile: slow-start
+//	  liveness:
+//	    type: http
+//	    path: /health
+//	    profile: standard
+//	  readiness:
+//	    type: http
+//	    path: /ready
+//	    profile: standard
+//
+//	probes:
+//	  liveness:
+//	    type: tcp
+//	    profile: standard
+type ProbeConfig struct {
+	// Type — probe mechanism. "http" uses an HTTP GET, "tcp" opens a TCP socket.
+	// When path is set and type is omitted, http is assumed.
+	Type string `yaml:"type,omitempty" json:"type,omitempty"`
+
+	// Path — HTTP GET path. Required when type is "http".
+	Path string `yaml:"path,omitempty" json:"path,omitempty"`
+
+	// Port — override port for the probe. Defaults to the container's declared port.
+	Port int32 `yaml:"port,omitempty" json:"port,omitempty"`
+
+	// Profile — timing profile name. Allowed values: fast, standard, patient, slow-start.
+	// Defaults to "standard" when omitted.
+	Profile string `yaml:"profile,omitempty" json:"profile,omitempty"`
+
+	// Explicit timing overrides — use when profiles are not granular enough.
+	InitialDelaySeconds *int32 `yaml:"initialDelaySeconds,omitempty" json:"initialDelaySeconds,omitempty"`
+	PeriodSeconds       *int32 `yaml:"periodSeconds,omitempty" json:"periodSeconds,omitempty"`
+	FailureThreshold    *int32 `yaml:"failureThreshold,omitempty" json:"failureThreshold,omitempty"`
+	SuccessThreshold    *int32 `yaml:"successThreshold,omitempty" json:"successThreshold,omitempty"`
+	TimeoutSeconds      *int32 `yaml:"timeoutSeconds,omitempty" json:"timeoutSeconds,omitempty"`
+}
+
+// ProbesConfig groups startup, liveness, and readiness probe declarations.
+type ProbesConfig struct {
+	Startup   *ProbeConfig `yaml:"startup,omitempty" json:"startup,omitempty"`
+	Liveness  *ProbeConfig `yaml:"liveness,omitempty" json:"liveness,omitempty"`
+	Readiness *ProbeConfig `yaml:"readiness,omitempty" json:"readiness,omitempty"`
+}
+
 // ── Deployment ────────────────────────────────────────────────────────────────
 
 // DeploymentTemplateSource declares one Deployment to be managed by Orkestra.
@@ -293,7 +353,8 @@ type ConfigMapKeyRef struct {
 //	    - image: nginx:1.25
 //	      replicas: "3"
 //	      port: "8080"
-//		  resourceProfile: burst		# Use orkestra's burst resource configuration
+//	      resources:
+//	        profile: burst      # Use orkestra's burst resource configuration
 //
 // Full example — dynamic values from the CR:
 //
@@ -361,18 +422,9 @@ type DeploymentTemplateSource struct {
 	Annotations []ResourceLabel `yaml:"annotations" json:"annotations,omitempty" validate:"omitempty"`
 
 	// Resources — CPU and memory requests/limits for the primary container.
-	// Values are static Kubernetes quantity strings.
-	// Template expressions are not supported in resource quantities.
+	// Set resources.profile for a named preset, or resources.requests/limits for
+	// explicit values. Profile and explicit values are mutually exclusive.
 	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
-
-	// ResourceProfile — semantic CPU/memory preset for the primary container.
-	// Profiles expand into a complete ResourceRequirements struct during katalog
-	// enrichment. Allowed values: tiny, small, medium, large, burst, steady,
-	// compute-heavy, memory-heavy.
-	//
-	// When resourceProfile is set, manual resources.requests/limits must not be
-	// provided. Profiles are atomic and fully define resource behavior.
-	ResourceProfile string `yaml:"resourceProfile" json:"resourceProfile,omitempty" validate:"omitempty"`
 
 	// Env — environment variables for the primary container.
 	// Keys are env var names. Values support template expressions.
@@ -439,6 +491,9 @@ type DeploymentTemplateSource struct {
 	// Useful for Git-backed pipelines where build/test commands must run inside
 	// a checked-out repository path.
 	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
+
+	// Probes — startup, liveness, and readiness probe configuration.
+	Probes *ProbesConfig `yaml:"probes,omitempty" json:"probes,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
@@ -528,18 +583,9 @@ type ReplicaSetTemplateSource struct {
 	Annotations []ResourceLabel `yaml:"annotations" json:"annotations,omitempty" validate:"omitempty"`
 
 	// Resources — CPU and memory requests/limits for the primary container.
-	// Values are static Kubernetes quantity strings.
-	// Template expressions are not supported in resource quantities.
+	// Set resources.profile for a named preset, or resources.requests/limits for
+	// explicit values. Profile and explicit values are mutually exclusive.
 	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
-
-	// ResourceProfile — semantic CPU/memory preset for the primary container.
-	// Profiles expand into a complete ResourceRequirements struct during katalog
-	// enrichment. Allowed values: tiny, small, medium, large, burst, steady,
-	// compute-heavy, memory-heavy.
-	//
-	// When resourceProfile is set, manual resources.requests/limits must not be
-	// provided. Profiles are atomic and fully define resource behavior.
-	ResourceProfile string `yaml:"resourceProfile" json:"resourceProfile,omitempty" validate:"omitempty"`
 
 	// Env — environment variables for the primary container.
 	// Keys are env var names. Values support template expressions.
@@ -575,6 +621,9 @@ type ReplicaSetTemplateSource struct {
 
 	// WorkingDirectory sets the container's working directory (container.WorkingDir).
 	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
+
+	// Probes — startup, liveness, and readiness probe configuration.
+	Probes *ProbesConfig `yaml:"probes,omitempty" json:"probes,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
@@ -730,17 +779,10 @@ type PodTemplateSource struct {
 	// Annotations — applied to Pod metadata. Values support template expressions.
 	Annotations []ResourceLabel `yaml:"annotations" json:"annotations,omitempty" validate:"omitempty"`
 
-	// Resources — static CPU and memory requests/limits.
+	// Resources — CPU and memory requests/limits for the primary container.
+	// Set resources.profile for a named preset, or resources.requests/limits for
+	// explicit values. Profile and explicit values are mutually exclusive.
 	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
-
-	// ResourceProfile — semantic CPU/memory preset for the primary container.
-	// Profiles expand into a complete ResourceRequirements struct during katalog
-	// enrichment. Allowed values: tiny, small, medium, large, burst, steady,
-	// compute-heavy, memory-heavy.
-	//
-	// When resourceProfile is set, manual resources.requests/limits must not be
-	// provided. Profiles are atomic and fully define resource behavior.
-	ResourceProfile string `yaml:"resourceProfile" json:"resourceProfile,omitempty" validate:"omitempty"`
 
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
@@ -785,6 +827,9 @@ type PodTemplateSource struct {
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Probes — startup, liveness, and readiness probe configuration.
+	Probes *ProbesConfig `yaml:"probes,omitempty" json:"probes,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
@@ -903,6 +948,11 @@ type JobTemplateSource struct {
 	// a checked-out repository path.
 	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
 
+	// Resources — CPU and memory requests/limits for the container.
+	// Set resources.profile for a named preset, or resources.requests/limits for
+	// explicit values. Profile and explicit values are mutually exclusive.
+	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).
@@ -1000,6 +1050,11 @@ type CronJobTemplateSource struct {
 	FailedJobsHistoryLimit     string `yaml:"failedJobsHistoryLimit,omitempty" json:"failedJobsHistoryLimit,omitempty"`
 	ConcurrencyPolicy          string `yaml:"concurrencyPolicy,omitempty" json:"concurrencyPolicy,omitempty"`
 	StartingDeadlineSeconds    string `yaml:"startingDeadlineSeconds,omitempty" json:"startingDeadlineSeconds,omitempty"`
+
+	// Resources — CPU and memory requests/limits for the container.
+	// Set resources.profile for a named preset, or resources.requests/limits for
+	// explicit values. Profile and explicit values are mutually exclusive.
+	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
 
 	// ForEach declares dynamic expansion over a list field.
 	// When set, one source declaration becomes N declarations — one per list element.
@@ -1594,6 +1649,25 @@ type PDBTemplateSource struct {
 }
 
 // StatefulSetTemplateSource declares one StatefulSet to be managed by Orkestra.
+// VolumeClaimTemplateSource declares one PersistentVolumeClaim template for a StatefulSet.
+// Each StatefulSet pod receives its own PVC created from this template.
+type VolumeClaimTemplateSource struct {
+	// Name — PVC template name. Default: "data".
+	Name string `yaml:"name" json:"name,omitempty"`
+
+	// StorageClass — storage class to provision from. Required.
+	StorageClass string `yaml:"storageClass" json:"storageClass"`
+
+	// StorageSize — requested storage size (e.g. "10Gi"). Required.
+	StorageSize string `yaml:"storageSize" json:"storageSize"`
+
+	// MountPath — path inside the container to mount this volume. Default: "/data".
+	MountPath string `yaml:"mountPath" json:"mountPath,omitempty"`
+
+	// AccessModes — defaults to ["ReadWriteOnce"].
+	AccessModes []string `yaml:"accessModes" json:"accessModes,omitempty"`
+}
+
 type StatefulSetTemplateSource struct {
 	Version string `yaml:"version" json:"version,omitempty"`
 
@@ -1624,14 +1698,8 @@ type StatefulSetTemplateSource struct {
 	// Default: same as Name.
 	ServiceName string `yaml:"serviceName" json:"serviceName,omitempty"`
 
-	// StorageClass — storage class for auto-generated VolumeClaimTemplates.
-	StorageClass string `yaml:"storageClass" json:"storageClass,omitempty"`
-
-	// StorageSize — size of each volume claim (e.g. "10Gi"). Required when StorageClass is set.
-	StorageSize string `yaml:"storageSize" json:"storageSize,omitempty"`
-
-	// MountPath — mount path for the storage volume inside the container. Default: "/data".
-	MountPath string `yaml:"mountPath" json:"mountPath,omitempty"`
+	// VolumeClaimTemplates — one or more PVC templates; each pod gets its own volume per entry.
+	VolumeClaimTemplates []VolumeClaimTemplateSource `yaml:"volumeClaimTemplates" json:"volumeClaimTemplates,omitempty"`
 
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
@@ -1651,23 +1719,17 @@ type StatefulSetTemplateSource struct {
 	EnvFrom     []EnvFromSource         `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
 
 	// Resources — CPU and memory requests/limits for the primary container.
-	// Values are static Kubernetes quantity strings.
-	// Template expressions are not supported in resource quantities.
+	// Set resources.profile for a named preset, or resources.requests/limits for
+	// explicit values. Profile and explicit values are mutually exclusive.
 	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
-
-	// ResourceProfile — semantic CPU/memory preset for the primary container.
-	// Profiles expand into a complete ResourceRequirements struct during katalog
-	// enrichment. Allowed values: tiny, small, medium, large, burst, steady,
-	// compute-heavy, memory-heavy.
-	//
-	// When resourceProfile is set, manual resources.requests/limits must not be
-	// provided. Profiles are atomic and fully define resource behavior.
-	ResourceProfile string `yaml:"resourceProfile" json:"resourceProfile,omitempty" validate:"omitempty"`
 
 	Reconcile  bool         `yaml:"reconcile" json:"reconcile,omitempty"`
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// Probes — startup, liveness, and readiness probe configuration.
+	Probes *ProbesConfig `yaml:"probes,omitempty" json:"probes,omitempty"`
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.

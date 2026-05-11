@@ -30,7 +30,7 @@ when:
       teams: [developer]
       message: "{{ .metadata.name }} is deploying but replicas are not ready yet.
         Check logs: kubectl logs -n {{ .metadata.namespace }} -l ork.io/app={{ .metadata.name }} --tail=50
-        | Roll back if stuck: ork deploy rollback"
+        | Roll back if stuck: ork doctor deploy rollback"
 ```
 
 The `developer` team reference is a no-op until you configure it.
@@ -123,7 +123,7 @@ This mounts the Secret into the Orkestra runtime as env vars.
 ## Step 4 — Deploy
 
 ```bash
-ork deploy --registry ghcr.io/myorg
+ork doctor deploy --registry ghcr.io/myorg
 ```
 
 After applying the bundle, watch for:
@@ -156,7 +156,7 @@ Deploy a broken image (same as in example 03):
 # In main.go, add at the top of main():
 //   panic("testing notification")
 git add . && git commit -m "trigger notification test"
-ork deploy --registry ghcr.io/myorg
+ork doctor deploy --registry ghcr.io/myorg
 ```
 
 Within 15 minutes of the replicas failing to become ready, you will receive:
@@ -169,7 +169,7 @@ Subject: [orkestra] replicasReady condition triggered
 
 my-api is deploying but replicas are not ready yet.
 Check logs: kubectl logs -n my-api-orkestra-ns -l ork.io/app=my-api --tail=50
-Roll back if stuck: ork deploy rollback
+Roll back if stuck: ork doctor deploy rollback
 ```
 
 **Slack:**
@@ -177,7 +177,7 @@ Roll back if stuck: ork deploy rollback
 ```
 my-api is deploying but replicas are not ready yet.
 Check logs: kubectl logs -n my-api-orkestra-ns -l ork.io/app=my-api --tail=50
-Roll back if stuck: ork deploy rollback
+Roll back if stuck: ork doctor deploy rollback
 
 [Katalog: my-api]  [Team: developer]
 ```
@@ -190,7 +190,7 @@ while the condition stays true. On Orkestra restart, the clock resets.
 ## Step 6 — Roll back and verify silence
 
 ```bash
-ork deploy rollback
+ork doctor deploy rollback
 ```
 
 Once replicas become ready, `replicasReady` evaluates to `true` — the condition is

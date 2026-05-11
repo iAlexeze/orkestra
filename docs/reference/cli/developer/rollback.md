@@ -1,10 +1,10 @@
-# ork deploy rollback
+# ork doctor deploy rollback
 
 Instantly restore the previous deployed image by patching the ConfigMap CR.
 No Docker build, no push, no bundle regeneration.
 
 ```bash
-ork deploy rollback [app-name] [flags]
+ork doctor deploy rollback [app-name] [flags]
 ```
 
 ---
@@ -22,7 +22,7 @@ ork deploy rollback [app-name] [flags]
 ### Roll back to the previous image
 
 ```bash
-ork deploy rollback
+ork doctor deploy rollback
 ```
 
 Reads the previous image from `~/.orkestra/deploy/state.json`, patches the
@@ -31,13 +31,13 @@ ConfigMap CR, and watches the rollout.
 ### Roll back a specific app from outside its directory
 
 ```bash
-ork deploy rollback my-api
+ork doctor deploy rollback my-api
 ```
 
 ### Roll back to a specific image
 
 ```bash
-ork deploy rollback --image ghcr.io/myorg/my-api:d1e2f30
+ork doctor deploy rollback --image ghcr.io/myorg/my-api:d1e2f30
 ```
 
 Bypasses all state lookups and patches directly to the given image.
@@ -62,7 +62,7 @@ no previous image found for my-api — use --image to specify
 ## State swap
 
 Before patching the cluster, rollback swaps `currentImage` and `previousImage` in
-state.json. This means a second `ork deploy rollback` immediately after the first will
+state.json. This means a second `ork doctor deploy rollback` immediately after the first will
 re-roll-forward — each rollback is reversible.
 
 The annotation is updated with the same swap logic so both sources stay consistent.
@@ -71,7 +71,7 @@ The annotation is updated with the same swap logic so both sources stay consiste
 
 ## Watch behaviour
 
-After patching, rollback watches the rollout with the same logic as `ork deploy`:
+After patching, rollback watches the rollout with the same logic as `ork doctor deploy`:
 
 ```bash
 kubectl rollout status deployment/<cr-name> -n <namespace> --timeout=5m
@@ -87,19 +87,19 @@ previous image just failed).
 
 | Situation | Recommended action |
 |-----------|-------------------|
-| Replicas stuck in `Deploying` for more than a few minutes | `ork deploy rollback` |
-| Pod crash loop after a deploy | `ork deploy rollback` |
-| Orkestra sends a deployment-not-ready notification | `ork deploy rollback` |
-| Bad config pushed with the image | Fix `.env` or `app.yaml`, then `ork deploy` |
+| Replicas stuck in `Deploying` for more than a few minutes | `ork doctor deploy rollback` |
+| Pod crash loop after a deploy | `ork doctor deploy rollback` |
+| Orkestra sends a deployment-not-ready notification | `ork doctor deploy rollback` |
+| Bad config pushed with the image | Fix `.env` or `app.yaml`, then `ork doctor deploy` |
 | First deploy that has never succeeded | Fix the Dockerfile or config — no previous image exists |
 
 ---
 
 ## Related
 
-- `ork deploy` records state before every patch — [deploy docs](./deploy.md)
+- `ork doctor deploy` records state before every patch — [deploy docs](./deploy.md)
 - Notifications that suggest rollback — [notification docs](../../../notification/docs/04-developer-notifications.md)
 
 ---
 
-**← Previous** [ork deploy](./deploy.md) | **Back to index →** [Developer CLI](./__index.md)
+**← Previous** [ork doctor deploy](./deploy.md) | **Back to index →** [Developer CLI](./__index.md)

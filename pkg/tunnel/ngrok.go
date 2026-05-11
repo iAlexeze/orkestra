@@ -31,7 +31,7 @@ func (n *NgrokProvider) Install(_ context.Context) error {
 	return fmt.Errorf(
 		"ngrok is not installed\n" +
 			"  Install: https://ngrok.com/download\n" +
-			"  Then run: ork deploy --expose --tunnel-provider ngrok",
+			"  Then run: ork doctor deploy --expose --tunnel-provider ngrok",
 	)
 }
 
@@ -40,7 +40,7 @@ func (n *NgrokProvider) Authenticate(_ context.Context, token string) error {
 	if token == "" {
 		return fmt.Errorf(
 			"ngrok auth token required — get yours at https://dashboard.ngrok.com/get-started/your-authtoken\n" +
-				"  Then run: ork deploy --expose --tunnel-provider ngrok --tunnel-token <token>",
+				"  Then run: ork doctor deploy --expose --tunnel-provider ngrok --tunnel-token <token>",
 		)
 	}
 	cmd := exec.Command("ngrok", "config", "add-authtoken", token)

@@ -87,6 +87,7 @@ Every CRD declared in a Katalog becomes a complete, isolated operator:
 | **Workqueue** | Per-CRD. Rate-limited. Deduplicated. Isolated from every other CRD. |
 | **Worker pool** | Configurable. A panic in one CRD does not affect any other. |
 | **Drift correction** | `reconcile: true` — desired state is enforced on every cycle. |
+| **Safe reconcile** | Failures in one operatroBox is contained, logged and does not affect the runtime or other CRDs. |
 | **Owner references** | Child resources deleted when the CR is deleted. |
 | **Finalizers** | CRs protected from dirty deletion automatically. |
 | **Events** | Every reconcile is a traceable Kubernetes event. |

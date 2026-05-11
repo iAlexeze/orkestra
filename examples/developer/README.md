@@ -8,7 +8,7 @@ Three commands cover everything:
 ```
 ork doctor          ← understand what Orkestra sees in your project
 ork doctor init     ← generate .orkestra/ config
-ork deploy          ← build, push, deploy, watch
+ork doctor deploy          ← build, push, deploy, watch
 ```
 
 ---
@@ -52,12 +52,12 @@ Example 02 adds a minimal nginx frontend from `frontend/`.
 | Docker | Yes | Build and push images |
 | A container registry | Yes | Pass via `--registry` (e.g. `ghcr.io/myorg`) |
 | Go | Only for `--dev` | Needed to install `kind` — see note below |
-| `kubectl` | Auto-installed | `ork deploy` installs it if missing |
-| `helm` | Auto-installed | `ork deploy` installs it if missing |
+| `kubectl` | Auto-installed | `ork doctor deploy` installs it if missing |
+| `helm` | Auto-installed | `ork doctor deploy` installs it if missing |
 
 !!! note "About Go and --dev"
-    If you don't have a Kubernetes cluster, `ork deploy --dev` creates a local
-    `kind` cluster called `orkestra-playground`. `ork deploy` installs `kind`
+    If you don't have a Kubernetes cluster, `ork doctor deploy --dev` creates a local
+    `kind` cluster called `orkestra-playground`. `ork doctor deploy` installs `kind`
     automatically — but `kind` requires Go. Install Go from https://go.dev/dl/
     before using `--dev`. Everything else (`kubectl`, `helm`, `kind`) is
     handled for you.
@@ -76,16 +76,16 @@ Check that your current context points to the right cluster:
 kubectl config current-context
 ```
 
-If it does, continue. `ork deploy` will deploy to that cluster.
+If it does, continue. `ork doctor deploy` will deploy to that cluster.
 
 **Option B — Let Orkestra create a local cluster (--dev)**
 
 ```bash
 # Requires Go — see Dependencies above
-ork deploy --registry <registry> --dev
+ork doctor deploy --registry <registry> --dev
 ```
 
-`ork deploy --dev` creates a `kind` cluster named `orkestra-playground` on the
+`ork doctor deploy --dev` creates a `kind` cluster named `orkestra-playground` on the
 first run and reuses it on subsequent runs. Kind and all cluster tooling are
 installed automatically.
 

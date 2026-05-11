@@ -65,6 +65,9 @@ type ResolvedCronJobSpec struct {
 	// Labels — applied to CronJob and pod metadata.
 	Labels map[string]string
 
+	// Resources — CPU and memory requests/limits. nil means no limits set.
+	Resources *orktypes.ResourceRequirements
+
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
 	// for pulling any of the images used by this PodSpec.
 	// If specified, these secrets will be passed to individual puller implementations for them to use.
@@ -205,6 +208,14 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 			container.Args = spec.Args
 			drifted = true
 		}
+		if spec.Resources != nil {
+			desiredRes := common.BuildResourceRequirements(spec.Resources)
+			if !common.ResourceRequirementsEqual(container.Resources, desiredRes) {
+				container.Resources = desiredRes
+				drifted = true
+				logger.Info().Str("cronjob", spec.Name).Msg("cronjob resources drifted")
+			}
+		}
 	}
 
 	if !drifted {
@@ -287,6 +298,8 @@ func Resolve(src orktypes.CronJobTemplateSource, ownerName string) ResolvedCronJ
 		Command:   src.Command,
 		Args:      src.Args,
 		Labels:    make(map[string]string),
+		Resources: common.ResolveResources(src.Resources),
+		Sleep:     src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -387,12 +400,7 @@ func buildCronJob(owner domain.Object, spec ResolvedCronJobSpec, namespace strin
 							ImagePullSecrets: common.ToPullSecrets(spec.ImagePullSecrets),
 							RestartPolicy:    corev1.RestartPolicyOnFailure,
 							Containers: []corev1.Container{
-								{
-									Name:    spec.Name,
-									Image:   spec.Image,
-									Command: spec.Command,
-									Args:    spec.Args,
-								},
+								buildContainer(spec),
 							},
 						},
 					},
@@ -402,6 +410,19 @@ func buildCronJob(owner domain.Object, spec ResolvedCronJobSpec, namespace strin
 	}
 
 	return cj
+}
+
+func buildContainer(spec ResolvedCronJobSpec) corev1.Container {
+	c := corev1.Container{
+		Name:    spec.Name,
+		Image:   spec.Image,
+		Command: spec.Command,
+		Args:    spec.Args,
+	}
+	if spec.Resources != nil {
+		c.Resources = common.BuildResourceRequirements(spec.Resources)
+	}
+	return c
 }
 
 func validateSpec(spec ResolvedCronJobSpec) error {

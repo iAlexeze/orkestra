@@ -171,7 +171,7 @@ data:
 ```
 
 The developer changes `postgresVolumeSize: "20Gi"` before first deploy. They
-run `ork deploy`. Postgres is running. pgAdmin is accessible. They never wrote
+run `ork doctor deploy`. Postgres is running. pgAdmin is accessible. They never wrote
 a StatefulSet.
 
 **Application of resources:** Direct `kubectl apply`. No Orkestra operator
@@ -358,7 +358,7 @@ requirements). ork doctor designs the Katalog, creates the app.yaml interface,
 and manages the deployment.
 
 The developer is inside the operator pattern without knowing it. The ConfigMap
-is their CR. app.yaml is their CR spec. `ork deploy` is their `kubectl apply`.
+is their CR. app.yaml is their CR spec. `ork doctor deploy` is their `kubectl apply`.
 The Control Center is their operator dashboard.
 
 The pattern is identical. Only the vocabulary changes.

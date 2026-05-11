@@ -18,7 +18,7 @@ const controlCenterTunnelName = "controlcenter"
 var tunnelCmd = &cobra.Command{
 	Use:   "tunnel",
 	Short: "Manage Orkestra tunnel daemons",
-	Long: `Manage the public HTTPS tunnels started by ork deploy --expose.
+	Long: `Manage the public HTTPS tunnels started by ork doctor deploy --expose.
 
   ork tunnel expose <app|controlcenter>   Start a tunnel for an app or Control Center
   ork tunnel status                        Show all running tunnels
@@ -59,16 +59,21 @@ Note: exposing orkestra-runtime is not supported.`,
 				PortForward: true,
 			}
 		} else {
-			ns, err := resolveAppNamespace(name)
+			ns, port, err := resolveAppNamespaceAndPort(name)
 			if err != nil {
 				return err
+			}
+			if ns == "" {
+				fmt.Fprintf(os.Stderr, "  ✗ App %q is not deployed. Run 'ork doctor deploy' first.\n", name)
+				fmt.Fprintf(os.Stderr, "    To see deployed apps: ork doctor status\n")
+				return fmt.Errorf("app not deployed: %s", name)
 			}
 			opts = tunnel.ExposeOptions{
 				Name:        name,
 				Provider:    provider,
 				Token:       token,
-				ServiceName: name + "-orkestra-svc",
-				ServicePort: "8080",
+				ServiceName: name + "-svc",
+				ServicePort: port,
 				Namespace:   ns,
 			}
 		}
@@ -93,7 +98,7 @@ var tunnelStatusCmd = &cobra.Command{
 		}
 		if len(states) == 0 {
 			fmt.Println("  No tunnels running")
-			fmt.Println("  Start one with: ork deploy --expose  or  ork tunnel expose <name>")
+			fmt.Println("  Start one with: ork doctor deploy --expose  or  ork tunnel expose <name>")
 			return nil
 		}
 
@@ -181,16 +186,23 @@ var tunnelRestartCmd = &cobra.Command{
 	},
 }
 
-// resolveAppNamespace looks up the namespace for an app from deploy state,
-// falling back to the conventional <app>-orkestra-ns pattern.
-func resolveAppNamespace(appName string) (string, error) {
-	state, err := doctor.LoadState()
-	if err == nil && state != nil {
-		if p, ok := state.Projects[appName]; ok && p.Namespace != "" {
-			return p.Namespace, nil
-		}
+// resolveAppNamespaceAndPort looks up the namespace and port for an app from
+// deploy state. Returns an empty ns when the app is not in state (not deployed).
+func resolveAppNamespaceAndPort(appName string) (ns, port string, err error) {
+	state, loadErr := doctor.LoadState()
+	if loadErr != nil || state == nil {
+		return "", "", nil
 	}
-	return appName + "-orkestra-ns", nil
+	p, ok := state.Projects[appName]
+	if !ok {
+		return "", "", nil
+	}
+	ns = p.Namespace
+	port = p.Port
+	if port == "" {
+		port = "8080"
+	}
+	return ns, port, nil
 }
 
 func init() {

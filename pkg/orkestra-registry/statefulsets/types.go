@@ -3,6 +3,15 @@ package statefulsets
 
 import orktypes "github.com/orkspace/orkestra/pkg/types"
 
+// ResolvedVolumeClaimTemplate is one resolved PVC template for a StatefulSet.
+type ResolvedVolumeClaimTemplate struct {
+	Name         string
+	StorageClass string
+	StorageSize  string
+	MountPath    string
+	AccessModes  []string
+}
+
 // ResolvedStatefulSetSpec is the fully resolved StatefulSet specification.
 type ResolvedStatefulSetSpec struct {
 	Name        string
@@ -12,10 +21,8 @@ type ResolvedStatefulSetSpec struct {
 	Port        int32
 	ServiceName string
 
-	// Storage — set when StorageClass is declared.
-	StorageClass string
-	StorageSize  string
-	MountPath    string
+	// VolumeClaimTemplates — resolved PVC templates (may be multiple).
+	VolumeClaimTemplates []ResolvedVolumeClaimTemplate
 
 	Labels      map[string]string
 	Annotations map[string]string
@@ -42,6 +49,9 @@ type ResolvedStatefulSetSpec struct {
 	ImagePullSecrets []string
 
 	VolumeClaimRetentionPolicy VolumeClaimRetentionPolicy
+
+	// Probes — startup, liveness, and readiness probe configuration.
+	Probes *orktypes.ProbesConfig
 
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.

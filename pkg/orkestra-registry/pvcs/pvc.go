@@ -129,6 +129,7 @@ func Resolve(src orktypes.PVCTemplateSource, ownerName string) ResolvedPVCSpec {
 		VolumeMode:       src.VolumeMode,
 		VolumeName:       src.VolumeName,
 		Labels:           make(map[string]string),
+		Sleep:            src.Sleep,
 	}
 
 	if len(spec.AccessModes) == 0 {

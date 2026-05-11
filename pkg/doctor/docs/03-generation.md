@@ -50,7 +50,7 @@ The Role is scoped to the app's namespace and allows only `get`, `list`, `watch`
 
 ### Resources created when `data.image` is set
 
-The Deployment, HPA, and PDB all carry `when: - field: data.image / exists: true`. Until `ork deploy` patches the image field, these resources are not created — the namespace, service account, role, and role binding exist but the workload is idle.
+The Deployment, HPA, and PDB all carry `when: - field: data.image / exists: true`. Until `ork doctor deploy` patches the image field, these resources are not created — the namespace, service account, role, and role binding exist but the workload is idle.
 
 | Resource | onCreate | Condition |
 |----------|----------|-----------|
@@ -171,12 +171,12 @@ data:
   maxReplicas: "10"
   host: ""              # this app's public hostname (e.g. myapp.example.com)
   controlCenterHost: "" # Orkestra Control Center hostname (e.g. control.mycompany.com)
-  image: ""             # set by ork deploy — do not edit manually
+  image: ""             # set by ork doctor deploy — do not edit manually
 ```
 
-`ork deploy` patches the `image` field. Everything else is developer-managed.
+`ork doctor deploy` patches the `image` field. Everything else is developer-managed.
 
-`controlCenterHost` is cluster-wide — the same value for all apps in the cluster. When empty, `ork deploy` shows the internal svc URL `http://orkestra-cc.orkestra-system.svc.cluster.local:8081`.
+`controlCenterHost` is cluster-wide — the same value for all apps in the cluster. When empty, `ork doctor deploy` shows the internal svc URL `http://orkestra-cc.orkestra-system.svc.cluster.local:8081`.
 
 ## Multi-app projects
 
@@ -196,7 +196,7 @@ doctor.Init(frontendInfo, doctor.GenerateOptions{
 })
 ```
 
-Each app gets its own `katalog.yaml` and `app.yaml`. The CLI also writes a shared `.init.ork` via `buildx.WriteInitConfigFull` that records all app entries for `ork deploy` to consume.
+Each app gets its own `katalog.yaml` and `app.yaml`. The CLI also writes a shared `.init.ork` via `buildx.WriteInitConfigFull` that records all app entries for `ork doctor deploy` to consume.
 
 ## Usage
 

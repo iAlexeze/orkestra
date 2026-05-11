@@ -125,6 +125,34 @@ type ProjectInfo struct {
 
 	// ConfigCount is the number of config variables (derived).
 	ConfigCount int `yaml:"configCount,omitempty" json:"configCount,omitempty"`
+
+	// Namespace is the Kubernetes namespace this project is deployed into.
+	// Written by ork doctor at deploy time so the Control Center can
+	// display the internal service URL without an additional API call.
+	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty"`
+
+	// CurrentImage is the fully-qualified image reference that was last
+	// deployed for this project (e.g. docker.io/myorg/app:abc123).
+	// Written by ork doctor after a successful deploy.
+	CurrentImage string `yaml:"currentImage,omitempty" json:"currentImage,omitempty"`
+}
+
+// HasSecrets reports whether ork doctor discovered any secret
+// environment variables in the project (.env where IsCfg == false).
+func (p *ProjectInfo) HasSecrets() bool {
+	return len(p.Secrets) > 0
+}
+
+// HasConfig reports whether ork doctor discovered any config
+// environment variables in the project (.env where IsCfg == true).
+func (p *ProjectInfo) HasConfig() bool {
+	return len(p.Config) > 0
+}
+
+// HasCreds reports whether the project contains *either* secrets or config.
+// Useful for high‑level checks (e.g., does this project need a ConfigMap or Secret?).
+func (p *ProjectInfo) HasCreds() bool {
+	return p.HasSecrets() || p.HasConfig()
 }
 
 // KatalogMeta holds identifying metadata for a Katalog.
@@ -187,7 +215,7 @@ type KatalogMeta struct {
 	// developer intent, project structure, and local context travel with the
 	// Katalog — enabling richer automation, better defaults, and a more intuitive
 	// experience across the entire lifecycle.
-	ProjectInfo ProjectInfo `yaml:"projectInfo,omitempty" json:"projectInfo,omitempty"`
+	// ProjectInfo ProjectInfo `yaml:"projectInfo,omitempty" json:"projectInfo,omitempty"`
 
 	// Projects holds the aggregated ProjectInfo entries for every application
 	// participating in this Komposer workspace. Each entry represents the

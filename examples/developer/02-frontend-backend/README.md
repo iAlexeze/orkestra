@@ -98,7 +98,7 @@ ork doctor init --name my-frontend --add-ingress
 ## Step 4 — Deploy the frontend
 
 ```bash
-ork deploy --registry ghcr.io/myorg
+ork doctor deploy --registry ghcr.io/myorg
 # Add --dev if you used it in example 01
 ```
 
