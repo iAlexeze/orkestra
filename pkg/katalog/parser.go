@@ -143,6 +143,13 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
+	// 11a. Validate Probe Profiles
+	// -------------------------------------------------------------------------
+	if err := k.validateProbeProfiles(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
 	// 12. Validate Autoscale Metrics Type
 	// -------------------------------------------------------------------------
 	if err := k.validateAutoscalerMetrics(); err != nil {

@@ -84,6 +84,19 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		drifted = true
 	}
 
+	if spec.Resources != nil {
+		desiredRes := common.BuildResourceRequirements(spec.Resources)
+		var existingRes corev1.ResourceRequirements
+		if len(existing.Spec.Template.Spec.Containers) > 0 {
+			existingRes = existing.Spec.Template.Spec.Containers[0].Resources
+		}
+		if !common.ResourceRequirementsEqual(existingRes, desiredRes) {
+			updated.Spec.Template.Spec.Containers[0].Resources = desiredRes
+			drifted = true
+			logger.Info().Str("statefulset", spec.Name).Msg("statefulset resources drifted")
+		}
+	}
+
 	if !drifted {
 		logger.Debug().Str("statefulset", spec.Name).Msg("statefulset in sync — no update needed")
 		return nil
@@ -134,20 +147,35 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient, owner domai
 // Resolve builds a ResolvedStatefulSetSpec from a StatefulSetTemplateSource.
 func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedStatefulSetSpec {
 	spec := ResolvedStatefulSetSpec{
-		Name:         src.Name,
-		Namespace:    src.Namespace,
-		Image:        src.Image,
-		ServiceName:  src.ServiceName,
-		StorageClass: src.StorageClass,
-		StorageSize:  src.StorageSize,
-		MountPath:    src.MountPath,
-		Replicas:     1,
-		Labels:       make(map[string]string),
-		Annotations:  make(map[string]string),
-		Env:          src.Env,
-		EnvFrom:      src.EnvFrom,
-		Resources:    common.ResolveResources(src.Resources, src.ResourceProfile),
-		Sleep:        src.Sleep,
+		Name:        src.Name,
+		Namespace:   src.Namespace,
+		Image:       src.Image,
+		ServiceName: src.ServiceName,
+		Replicas:    1,
+		Labels:      make(map[string]string),
+		Annotations: make(map[string]string),
+		Env:         src.Env,
+		EnvFrom:     src.EnvFrom,
+		Resources:   common.ResolveResources(src.Resources),
+		Probes:      src.Probes,
+		Sleep:       src.Sleep,
+	}
+
+	for _, vct := range src.VolumeClaimTemplates {
+		resolved := ResolvedVolumeClaimTemplate{
+			Name:         vct.Name,
+			StorageClass: vct.StorageClass,
+			StorageSize:  vct.StorageSize,
+			MountPath:    vct.MountPath,
+			AccessModes:  vct.AccessModes,
+		}
+		if resolved.Name == "" {
+			resolved.Name = "data"
+		}
+		if resolved.MountPath == "" {
+			resolved.MountPath = "/data"
+		}
+		spec.VolumeClaimTemplates = append(spec.VolumeClaimTemplates, resolved)
 	}
 
 	if spec.Name == "" {
@@ -155,9 +183,6 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 	}
 	if spec.ServiceName == "" {
 		spec.ServiceName = spec.Name
-	}
-	if spec.MountPath == "" {
-		spec.MountPath = "/data"
 	}
 
 	if src.Tag != "" {
@@ -185,6 +210,26 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
+func resolveAccessModes(modes []string) []corev1.PersistentVolumeAccessMode {
+	if len(modes) == 0 {
+		return []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
+	}
+	out := make([]corev1.PersistentVolumeAccessMode, 0, len(modes))
+	for _, m := range modes {
+		switch m {
+		case "ReadWriteMany":
+			out = append(out, corev1.ReadWriteMany)
+		case "ReadOnlyMany":
+			out = append(out, corev1.ReadOnlyMany)
+		case "ReadWriteOncePod":
+			out = append(out, corev1.ReadWriteOncePod)
+		default:
+			out = append(out, corev1.ReadWriteOnce)
+		}
+	}
+	return out
+}
+
 func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns string) *appsv1.StatefulSet {
 	apiVersion := ""
 	kind := ""
@@ -210,6 +255,8 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 	if spec.Resources != nil {
 		container.Resources = common.BuildResourceRequirements(spec.Resources)
 	}
+
+	common.ApplyProbes(&container, spec.Probes, spec.Port)
 
 	for k, v := range spec.Env {
 		ev := corev1.EnvVar{Name: k}
@@ -296,28 +343,33 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 		},
 	}
 
-	// Add VolumeClaimTemplate when storage is declared.
-	if spec.StorageClass != "" && spec.StorageSize != "" {
-		storageQty := resource.MustParse(spec.StorageSize)
-		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-			Name:      "data",
-			MountPath: spec.MountPath,
-		})
-		sts.Spec.Template.Spec.Containers[0].VolumeMounts = container.VolumeMounts
-		sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
-			{
-				ObjectMeta: metav1.ObjectMeta{Name: "data"},
-				Spec: corev1.PersistentVolumeClaimSpec{
-					AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-					StorageClassName: &spec.StorageClass,
-					Resources: corev1.VolumeResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceStorage: storageQty,
-						},
+	for _, vct := range spec.VolumeClaimTemplates {
+		storageQty := resource.MustParse(vct.StorageSize)
+		name := vct.Name
+		if name == "" {
+			name = "data"
+		}
+		mountPath := vct.MountPath
+		if mountPath == "" {
+			mountPath = "/data"
+		}
+		accessModes := resolveAccessModes(vct.AccessModes)
+		sts.Spec.Template.Spec.Containers[0].VolumeMounts = append(
+			sts.Spec.Template.Spec.Containers[0].VolumeMounts,
+			corev1.VolumeMount{Name: name, MountPath: mountPath},
+		)
+		sts.Spec.VolumeClaimTemplates = append(sts.Spec.VolumeClaimTemplates, corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{Name: name},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes:      accessModes,
+				StorageClassName: &vct.StorageClass,
+				Resources: corev1.VolumeResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: storageQty,
 					},
 				},
 			},
-		}
+		})
 	}
 
 	return sts

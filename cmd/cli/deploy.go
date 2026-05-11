@@ -34,9 +34,9 @@ var deployCmd = &cobra.Command{
 	Long: `Build the Docker image, push it, generate the Orkestra bundle, apply it
 to the cluster, and patch the CR to trigger a rolling deploy.
 
-  ork deploy --registry ghcr.io/myorg
-  ork deploy --registry ghcr.io/myorg --tag v1.2.0
-  ork deploy --registry ghcr.io/myorg --dry-run`,
+  ork doctor deploy --registry ghcr.io/myorg
+  ork doctor deploy --registry ghcr.io/myorg --tag v1.2.0
+  ork doctor deploy --registry ghcr.io/myorg --dry-run`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		registry, _ := cmd.Flags().GetString("registry")
 		tag, _ := cmd.Flags().GetString("tag")
@@ -89,8 +89,8 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 			}
 		}
 
-		// Load init config (bridges doctor init → deploy).
-		initCfg, _ := buildx.LoadInitConfig(dir)
+		// Load init config from state.
+		initCfg := loadInitCfgFromState(state, dir)
 
 		// ── Multi-app path ────────────────────────────────────────────────────────
 		// --use-compose init writes Apps entries but never writes app.yaml, so the
@@ -117,7 +117,6 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 				clusterCtx:      doctor.CurrentContext(),
 				initCfg:         initCfg,
 			})
-			_ = buildx.CleanupInitConfig(dir)
 			return err
 		}
 
@@ -740,8 +739,8 @@ var rollbackCmd = &cobra.Command{
 	Long: `Restore the previous image instantly by patching the ConfigMap.
 No rebuild or push required — the image is stored in ~/.orkestra/deploy/state.json.
 
-  ork deploy rollback                       # restore previous image
-  ork deploy rollback --image ghcr.io/x:v1  # restore a specific image`,
+  ork doctor deploy rollback                       # restore previous image
+  ork doctor deploy rollback --image ghcr.io/x:v1  # restore a specific image`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		targetImage, _ := cmd.Flags().GetString("image")
@@ -921,7 +920,7 @@ func watchUntilReady(crName, ns, appName string, state *doctor.DeployState) erro
 
 		if state != nil && state.PreviousImage(appName) != "" {
 			fmt.Printf("\n  A previous good image is available.\n")
-			fmt.Printf("  Roll back with: ork deploy rollback\n")
+			fmt.Printf("  Roll back with: ork doctor deploy rollback\n")
 		}
 
 		if rollCtx.Err() == context.DeadlineExceeded {
@@ -1029,6 +1028,32 @@ func fileExistsAtPath(path string) bool {
 	return err == nil && !info.IsDir()
 }
 
+// loadInitCfgFromState reads init settings (useCompose, apps) from state.json,
+// avoiding the need for .orkestra/bundle/.init.ork on re-deploy.
+// Returns an empty InitConfig when the state has no matching entry.
+func loadInitCfgFromState(state *doctor.DeployState, dir string) buildx.InitConfig {
+	if state == nil {
+		return buildx.InitConfig{}
+	}
+	// Look for any project whose Dir matches this directory.
+	for _, p := range state.Projects {
+		if p.Dir == dir {
+			cfg := buildx.InitConfig{
+				UseCompose:  p.UseCompose,
+				ComposeFile: p.ComposeFile,
+			}
+			// Reconstruct Apps from DirApps if present.
+			if names, ok := state.DirApps[dir]; ok {
+				for _, name := range names {
+					cfg.Apps = append(cfg.Apps, buildx.AppEntry{Name: name, Dir: dir})
+				}
+			}
+			return cfg
+		}
+	}
+	return buildx.InitConfig{}
+}
+
 // devPathArgs bundles parameters for deployDeveloperPath.
 type devPathArgs struct {
 	dir       string
@@ -1045,15 +1070,24 @@ type devPathArgs struct {
 }
 
 // deployDeveloperPath implements the developer deploy flow:
-//  1. Verify .orkestra/motif.yaml exists
+//  1. Load the motif template from ~/.orkestra/apps/<appname>/motif.yaml
 //  2. Collect all deployed app namespaces (current + previously deployed) for allowedNamespaces
 //  3. Write ~/.orkestra/deploy/katalog.yaml with ONE platform CRD — resources
-//     from motif.yaml embedded directly in operatorBox.onReconcile (no file imports)
+//     embedded directly in operatorBox.onReconcile (no file imports)
 //  4. Generate bundle (RBAC + ConfigMap) from the self-contained central katalog
 func deployDeveloperPath(a devPathArgs) error {
-	motifPath := filepath.Join(a.dir, orkDir, "motif.yaml")
+	motifPath, err := doctor.MotifPath(a.appName)
+	if err != nil {
+		return fmt.Errorf("resolving motif path: %w", err)
+	}
+	// Legacy fallback: accept motif.yaml from .orkestra/ if the global one is missing.
 	if !fileExistsAtPath(motifPath) {
-		return fmt.Errorf(".orkestra/motif.yaml not found — run 'ork doctor init --name %s' first", a.appName)
+		legacyPath := filepath.Join(a.dir, orkDir, "motif.yaml")
+		if fileExistsAtPath(legacyPath) {
+			motifPath = legacyPath
+		} else {
+			return fmt.Errorf("motif not found — run 'ork doctor init --name %s' first", a.appName)
+		}
 	}
 
 	fmt.Println("\nUsing developer path...")
@@ -1093,8 +1127,12 @@ func deployDeveloperPath(a devPathArgs) error {
 			}
 		}
 
-		// Generate the central katalog with per-app concrete resources.
-		if err := doctor.GenerateDeveloperKatalog(deployDir, motifPath, apps, a.opts); err != nil {
+		// Read the motif template content and generate the central katalog.
+		motifContent, err := os.ReadFile(motifPath)
+		if err != nil {
+			return fmt.Errorf("reading motif template: %w", err)
+		}
+		if err := doctor.GenerateDeveloperKatalog(deployDir, string(motifContent), apps, a.opts); err != nil {
 			return fmt.Errorf("generating developer katalog: %w", err)
 		}
 		fmt.Printf("  %s Developer katalog updated\n", utils.SuccessMark())

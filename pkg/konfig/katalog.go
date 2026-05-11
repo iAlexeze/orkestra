@@ -43,10 +43,18 @@ func IsKomposerKind(kind string) bool {
 	return kind == kindKomposer
 }
 
-// IsValidDocumentKind returns true if the kind is either Katalog or Komposer.
-// Used by parseKatalogDoc to accept both kinds before dispatching.
+// IsValidDocumentKind reports whether the given kind is one of the supported
+// Orkestra document kinds.
 func IsValidDocumentKind(kind string) bool {
-	return kind == kindKatalog || kind == kindKomposer
+	return kind == kindKatalog ||
+		kind == kindKomposer ||
+		kind == kindMotif
+}
+
+// ValidKindsString returns a comma‑separated list of all supported document kinds.
+// Useful for error messages and CLI diagnostics.
+func ValidKindsString() string {
+	return "Katalog, Komposer, Motif"
 }
 
 // IsValidApiVersion returns true if the given apiVersion is a supported version.

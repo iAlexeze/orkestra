@@ -18,6 +18,8 @@ type KatalogSummary struct {
 	Description    string
 	Version        string
 	Healthy        bool
+	CreatedBy      string
+	AppCount       int
 	TotalCRDs      int
 	HealthyCRDs    int
 	TotalWorkers   int
@@ -49,10 +51,12 @@ type IndexData struct {
 	Katalogs             []KatalogSummary
 	TotalKatalogs        int
 	HealthyKatalogs      int
+	TotalApps            int
 	TotalCRDs            int
 	TotalWorkers         int
 	TotalResources       int
 	AnyHealthy           bool
+	HasOperatorKatalogs  bool
 	OrkestraURLs         string
 	EnableRuntimeManager bool
 	CCVersion            string
@@ -102,13 +106,23 @@ type KatalogResponse struct {
 	Projects           map[string]ProjectInfoSummary `json:"projects,omitempty"`
 }
 
-// ProjectInfoSummary is a lightweight per-app summary carried in KatalogResponse.Projects.
+// ProjectInfoSummary is the CC-side view of one app in KatalogResponse.Projects.
+// Fields mirror orktypes.ProjectInfo — add here when the runtime starts sending more.
 type ProjectInfoSummary struct {
-	Name         string `json:"name"`
-	Namespace    string `json:"namespace"`
-	Port         string `json:"port,omitempty"`
-	Language     string `json:"language,omitempty"`
-	CurrentImage string `json:"currentImage,omitempty"`
+	Name          string `json:"name"`
+	Namespace     string `json:"namespace"`
+	Port          string `json:"port,omitempty"`
+	Language      string `json:"language,omitempty"`
+	CurrentImage  string `json:"currentImage,omitempty"`
+	GitCommit     string `json:"gitCommit,omitempty"`
+	License       string `json:"license,omitempty"`
+	HasDockerfile bool   `json:"hasDockerfile,omitempty"`
+	HasFrontend   bool   `json:"hasFrontend,omitempty"`
+	HasSMTP       bool   `json:"hasSMTP,omitempty"`
+	HasSlack      bool   `json:"hasSlack,omitempty"`
+	HasCompose    bool   `json:"hasCompose,omitempty"`
+	SecretCount   int    `json:"secretCount,omitempty"`
+	ConfigCount   int    `json:"configCount,omitempty"`
 }
 
 // DevAppsData is passed to the developer-view template.
@@ -121,13 +135,29 @@ type DevAppsData struct {
 
 // DevAppSummary holds display data for one app in the developer view.
 type DevAppSummary struct {
-	Name         string
-	Namespace    string
-	Port         string
-	Language     string
-	CurrentImage string
-	ImageTag     string // last part after ":"
-	ServiceURL   string // internal cluster URL
+	Name          string
+	Namespace     string
+	Port          string
+	Language      string
+	CurrentImage  string
+	ImageTag      string
+	ServiceURL    string
+	GitCommit     string
+	License       string
+	HasDockerfile bool
+	HasFrontend   bool
+	HasSMTP       bool
+	HasSlack      bool
+	HasCompose    bool
+	SecretCount   int
+	ConfigCount   int
+}
+
+// DevAppDetailData is passed to the app detail template.
+type DevAppDetailData struct {
+	KatalogName    string
+	App            DevAppSummary
+	RuntimeVersion string
 }
 
 // CRDSummary is a summary of a CRD

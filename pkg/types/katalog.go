@@ -125,6 +125,16 @@ type ProjectInfo struct {
 
 	// ConfigCount is the number of config variables (derived).
 	ConfigCount int `yaml:"configCount,omitempty" json:"configCount,omitempty"`
+
+	// Namespace is the Kubernetes namespace this project is deployed into.
+	// Written by ork doctor at deploy time so the Control Center can
+	// display the internal service URL without an additional API call.
+	Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty"`
+
+	// CurrentImage is the fully-qualified image reference that was last
+	// deployed for this project (e.g. docker.io/myorg/app:abc123).
+	// Written by ork doctor after a successful deploy.
+	CurrentImage string `yaml:"currentImage,omitempty" json:"currentImage,omitempty"`
 }
 
 // HasSecrets reports whether ork doctor discovered any secret

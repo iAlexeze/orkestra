@@ -53,6 +53,9 @@ type ResolvedDeploymentSpec struct {
 	// If specified, these secrets will be passed to individual puller implementations for them to use.
 	ImagePullSecrets []string
 
+	// Probes — startup, liveness, and readiness probe configuration.
+	Probes *orktypes.ProbesConfig
+
 	// Sleep injects an artificial delay into the reconcile of this resource.
 	// Useful for autoscale testing, latency simulation, and chaos engineering.
 	// Accepts extended duration units (s, m, h, d, w, mo, y).

@@ -83,13 +83,27 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return fmt.Errorf("pod.Update: getting pod %q: %w", spec.Name, err)
 	}
 
+	needsRecreate := false
 	if len(existing.Spec.Containers) > 0 && existing.Spec.Containers[0].Image != spec.Image {
 		logger.Info().
 			Str("pod", spec.Name).
 			Str("current", existing.Spec.Containers[0].Image).
 			Str("desired", spec.Image).
 			Msg("pod image drifted — deleting and recreating")
-
+		needsRecreate = true
+	}
+	if !needsRecreate && spec.Resources != nil {
+		desiredRes := common.BuildResourceRequirements(spec.Resources)
+		var existingRes corev1.ResourceRequirements
+		if len(existing.Spec.Containers) > 0 {
+			existingRes = existing.Spec.Containers[0].Resources
+		}
+		if !common.ResourceRequirementsEqual(existingRes, desiredRes) {
+			logger.Info().Str("pod", spec.Name).Msg("pod resources drifted — deleting and recreating")
+			needsRecreate = true
+		}
+	}
+	if needsRecreate {
 		if err := Delete(ctx, kube, owner, spec); err != nil {
 			return err
 		}
@@ -176,6 +190,7 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string) ResolvedPodSpec {
 	spec.Image = src.Image
 	spec.Namespace = src.Namespace
 	spec.Resources = src.Resources
+	spec.Probes = src.Probes
 	spec.Sleep = src.Sleep
 
 	if src.Port != "" {
@@ -238,6 +253,8 @@ func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *core
 	if spec.Resources != nil {
 		pod.Spec.Containers[0].Resources = common.BuildResourceRequirements(spec.Resources)
 	}
+
+	common.ApplyProbes(&pod.Spec.Containers[0], spec.Probes, int32(spec.Port))
 
 	return pod
 }

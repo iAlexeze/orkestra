@@ -33,3 +33,6 @@ node_modules/
 # Added by ork doctor init
 .orkestra/bundle/
 .orkestra/
+
+# Local ork-registry (published as OCI artifacts)
+ork-registry/

@@ -68,7 +68,7 @@ When `HasFrontend` is true, the generator includes an Ingress in the Katalog and
 
 `shortGitCommit` reads `.git/HEAD` directly — no `git` binary required. It follows symbolic refs (`ref: refs/heads/main`) to the commit SHA and returns the first 7 characters. Returns `""` for detached HEAD with a short SHA and for non-git directories.
 
-The short SHA is used as the default image tag in `ork deploy`:
+The short SHA is used as the default image tag in `ork doctor deploy`:
 
 ```
 ghcr.io/myorg/my-app:a3f5c2b

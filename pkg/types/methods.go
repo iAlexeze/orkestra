@@ -335,16 +335,6 @@ func (c *CRDEntry) AutoScaleProfile() string {
 	return c.OperatorBox.Autoscale.Profile
 }
 
-// HasResourceProfile reports whether this crd defined autoscale profile
-func (c *CRDEntry) HasResourceProfile() bool {
-	return c.OperatorBox.Autoscale != nil && c.OperatorBox.Autoscale.Profile != ""
-}
-
-// ResourceProfile returns the string value of the autoscale profile
-func (c *CRDEntry) ResourceProfile() string {
-	return c.OperatorBox.Autoscale.Profile
-}
-
 // UpdateCRDCaBundle reports whether this CRD declares an updateCRD field
 // Used to update the crd when certificate is autogenerted by orkestra
 func (c *CRDEntry) UpdateCRDCaBundle() bool {

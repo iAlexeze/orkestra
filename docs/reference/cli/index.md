@@ -14,8 +14,8 @@ Commands for deploying your own project to Kubernetes — no operator knowledge 
 | Command | Description |
 |---------|-------------|
 | [`ork doctor`](./developer/doctor.md) | Examine the project and generate `.orkestra/` configuration |
-| [`ork deploy`](./developer/deploy.md) | Build, push, and deploy to the cluster |
-| [`ork deploy rollback`](./developer/rollback.md) | Instantly restore the previous image |
+| [`ork doctor deploy`](./developer/deploy.md) | Build, push, and deploy to the cluster |
+| [`ork doctor deploy rollback`](./developer/rollback.md) | Instantly restore the previous image |
 
 → [Developer CLI overview](./developer/__index.md)
 

@@ -6,7 +6,7 @@ Then expose your app at a real public URL using `--add-ingress`.
 **What you learn:**
 
 - How deploy state is recorded before every push
-- `ork deploy rollback` — instant image restore, no rebuild
+- `ork doctor deploy rollback` — instant image restore, no rebuild
 - Exposing an app publicly with `--add-ingress` and a hostname
 
 !!! note
@@ -32,7 +32,7 @@ Commit and deploy:
 ```bash
 cd my-api
 git add . && git commit -m "intentional break"
-ork deploy --registry ghcr.io/myorg
+ork doctor deploy --registry ghcr.io/myorg
 ```
 
 Watch the deploy proceed normally through build and push.
@@ -48,7 +48,7 @@ goroutine 1 [running]:
 ---
 
   A previous good image is available.
-  Roll back with: ork deploy rollback
+  Roll back with: ork doctor deploy rollback
 
   ~ could not confirm readiness: timed out waiting for my-api-orkestra
 ```
@@ -58,7 +58,7 @@ goroutine 1 [running]:
 ### Step 2 — Roll back
 
 ```bash
-ork deploy rollback
+ork doctor deploy rollback
 ```
 
 Output:
@@ -101,10 +101,10 @@ Revert the change:
 
 ```bash
 git revert HEAD --no-edit
-ork deploy --registry ghcr.io/myorg
+ork doctor deploy --registry ghcr.io/myorg
 ```
 
-Rollback is reversible too — `ork deploy rollback` immediately after a successful
+Rollback is reversible too — `ork doctor deploy rollback` immediately after a successful
 rollback will re-roll-forward to the image you just rolled back from.
 
 ---
@@ -133,10 +133,10 @@ data:
 Deploy:
 
 ```bash
-ork deploy --registry ghcr.io/myorg
+ork doctor deploy --registry ghcr.io/myorg
 ```
 
-`ork deploy` detects the frontend/ingress and installs an nginx ingress controller
+`ork doctor deploy` detects the frontend/ingress and installs an nginx ingress controller
 automatically if one is not already present.
 
 !!! note "kind cluster"

@@ -28,6 +28,20 @@ var validateCmd = &cobra.Command{
 				return fmt.Errorf("reading %s: %w", path, err)
 			}
 
+			// Validate document type
+			if !konfig.IsValidDocumentKind(kind) {
+				if kind == "" {
+					return fmt.Errorf(
+						"not an Orkestra document — expected a 'kind' field (allowed kinds: %s)",
+						konfig.ValidKindsString(),
+					)
+				}
+				return fmt.Errorf(
+					"invalid Orkestra document kind %q (allowed kinds: %s)",
+					kind, konfig.ValidKindsString(),
+				)
+			}
+
 			if konfig.IsMotifKind(kind) {
 				return validateMotifFile(path)
 			}

@@ -1,6 +1,6 @@
 # pkg/tunnel
 
-The tunnel package exposes local Kubernetes services to the public internet without touching DNS, firewalls, or cloud infrastructure. It is used by `ork deploy --expose` and `ork tunnel expose` to make an Orkestra app or the Control Center reachable from outside the cluster.
+The tunnel package exposes local Kubernetes services to the public internet without touching DNS, firewalls, or cloud infrastructure. It is used by `ork doctor deploy --expose` and `ork tunnel expose` to make an Orkestra app or the Control Center reachable from outside the cluster.
 
 ## What lives here
 

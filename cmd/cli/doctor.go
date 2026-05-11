@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/buildx"
 	"github.com/orkspace/orkestra/pkg/doctor"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/spf13/cobra"
@@ -198,11 +197,11 @@ Please add a Dockerfile to the project root.
 		missing := 0
 		fmt.Println("Missing dependencies:")
 		if !doctor.KubectlAvailable() {
-			fmt.Println("  kubectl   (will be installed during 'ork deploy')")
+			fmt.Println("  kubectl   (will be installed during 'ork doctor deploy')")
 			missing++
 		}
 		if !doctor.HelmAvailable() {
-			fmt.Println("  helm      (will be installed during 'ork deploy')")
+			fmt.Println("  helm      (will be installed during 'ork doctor deploy')")
 			missing++
 		}
 		if missing == 0 {
@@ -342,7 +341,7 @@ var doctorInitCmd = &cobra.Command{
 
 		// ── Single-app init (legacy) ──
 		if name == "" {
-			return fmt.Errorf("--name is required")
+			name = filepath.Base(dir)
 		}
 		opts.Name = name
 
@@ -351,26 +350,38 @@ var doctorInitCmd = &cobra.Command{
 			return fmt.Errorf("detection failed: %w", err)
 		}
 
-		if err := doctor.InitDeveloper(info, opts); err != nil {
+		motifContent, err := doctor.InitDeveloper(info, opts)
+		if err != nil {
 			return err
 		}
 
-		shouldUseCompose := useCompose != ""
-		if err := buildx.WriteInitConfig(dir, shouldUseCompose, useCompose); err != nil {
-			return fmt.Errorf("writing init config: %v", err)
+		// Store the motif in ~/.orkestra/apps/<name>/ — outside the project tree.
+		if err := doctor.SaveMotif(name, motifContent); err != nil {
+			return fmt.Errorf("saving motif: %w", err)
 		}
+
+		// Persist init settings to state so ork doctor deploy never needs .init.ork.
+		state, _ := doctor.LoadState()
+		if state == nil {
+			state = &doctor.DeployState{Projects: make(map[string]*doctor.ProjectState)}
+		}
+		if state.Projects[name] == nil {
+			state.Projects[name] = &doctor.ProjectState{Name: name}
+		}
+		state.Projects[name].Dir = dir
+		state.Projects[name].UseCompose = useCompose != ""
+		state.Projects[name].ComposeFile = useCompose
+		_ = state.Save()
 
 		fmt.Println()
 		fmt.Printf("App:       %s\n", name)
 		fmt.Printf("Namespace: %s-ns\n", name)
 		fmt.Println()
-		fmt.Println("Generated .orkestra/motif.yaml")
 		fmt.Println("Generated .orkestra/app.yaml")
 		fmt.Println()
 		fmt.Println("Next steps:")
-		fmt.Println("  1. Review .orkestra/motif.yaml  (resource template — edit freely)")
-		fmt.Println("  2. Fill in .orkestra/app.yaml    (port, replicas, etc.)")
-		fmt.Println("  3. Run 'ork deploy --registry <your-registry>'")
+		fmt.Println("  1. Fill in .orkestra/app.yaml    (port, replicas, etc.)")
+		fmt.Println("  2. Run 'ork doctor deploy --registry <your-registry>'")
 
 		return nil
 	},
@@ -469,7 +480,8 @@ func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.Generate
 	fmt.Println("Generating multi-app config...")
 	fmt.Println()
 
-	var initApps []buildx.AppEntry
+	type initApp struct{ Name, Dir, Dockerfile string }
+	var initApps []initApp
 	// Cache augmented info per app so URL hints use the same resolved port.
 	appInfoCache := make(map[string]*orktypes.ProjectInfo, len(apps))
 
@@ -481,10 +493,10 @@ func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.Generate
 
 		if perAppStateful != nil {
 			// Multi-app compose path: supply only the stateful services this
-			// specific app depends on. Clearing UseCompose prevents doctor.Init
-			// from re-parsing the compose file and injecting everything again.
+			// specific app depends on. Clearing UseCompose prevents re-parsing
+			// the compose file and injecting everything again.
 			appOpts.UseCompose = ""
-			appOpts.InjectStateful = perAppStateful[app.name] // nil = no stateful for this app
+			appOpts.InjectStateful = perAppStateful[app.name]
 		}
 
 		// Wire dep conditions into the deployment when: block.
@@ -504,31 +516,47 @@ func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.Generate
 
 		appInfoCache[app.name] = info
 
-		if err := doctor.Init(info, appOpts); err != nil {
+		motifContent, err := doctor.InitDeveloper(info, appOpts)
+		if err != nil {
 			return fmt.Errorf("init %s: %w", app.name, err)
 		}
 
+		if err := doctor.SaveMotif(app.name, motifContent); err != nil {
+			return fmt.Errorf("saving motif for %s: %w", app.name, err)
+		}
+
 		fmt.Printf("  %s:\n", app.name)
-		fmt.Printf("    Generated .orkestra/%s/katalog.yaml\n", app.name)
 		fmt.Printf("    Generated .orkestra/%s/app.yaml\n", app.name)
 
-		initApps = append(initApps, buildx.AppEntry{
+		initApps = append(initApps, initApp{
 			Name:       app.name,
 			Dir:        app.dir,
 			Dockerfile: app.dockerfile,
 		})
 	}
 
-	// Persist init config
-	cfg := buildx.InitConfig{
-		UseCompose:  useCompose != "",
-		ComposeFile: useCompose,
-		Apps:        initApps,
+	// Persist init config to state
+	state, _ := doctor.LoadState()
+	if state == nil {
+		state = &doctor.DeployState{Projects: make(map[string]*doctor.ProjectState)}
 	}
-	if err := buildx.WriteInitConfigFull(baseDir, cfg); err != nil {
-		return fmt.Errorf("writing init config: %w", err)
+	if state.DirApps == nil {
+		state.DirApps = make(map[string][]string)
 	}
-
+	appNames := make([]string, len(initApps))
+	for i, a := range initApps {
+		appNames[i] = a.Name
+		if state.Projects[a.Name] == nil {
+			state.Projects[a.Name] = &doctor.ProjectState{Name: a.Name}
+		}
+		state.Projects[a.Name].Dir = a.Dir
+		state.Projects[a.Name].UseCompose = useCompose != ""
+		state.Projects[a.Name].ComposeFile = useCompose
+	}
+	state.DirApps[baseDir] = appNames
+	if err := state.Save(); err != nil {
+		return fmt.Errorf("saving state: %w", err)
+	}
 	// Print internal URLs — use cached augmented info so ports reflect compose ports:.
 	fmt.Println()
 	fmt.Println("Internal service URLs (set these in each app's .env before deploying):")
@@ -544,8 +572,7 @@ func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.Generate
 	}
 	fmt.Println()
 	fmt.Println("Next steps:")
-	fmt.Println("  1. Review .orkestra/<app>/katalog.yaml for each app")
-	fmt.Println("  2. Fill in .orkestra/<app>/app.yaml for each app")
+	fmt.Println("  1. Fill in .orkestra/<app>/app.yaml for each app")
 
 	// When stateful services were wired to specific apps, tell the user exactly
 	// where to find and configure the dependency keys.
@@ -569,13 +596,13 @@ func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.Generate
 	}
 
 	fmt.Println()
-	fmt.Println("  3. Run 'ork deploy --registry <your-registry>'")
+	fmt.Println("  3. Run 'ork doctor deploy --registry <your-registry>'")
 	_ = projectName
 	return nil
 }
 
 // doctorDeployCmd is `ork doctor deploy` — the developer-path deploy command.
-// It runs the same flow as `ork deploy` but is discoverable as a subcommand of
+// It runs the same flow as `ork doctor deploy` but is discoverable as a subcommand of
 // `ork doctor`, making it natural for developers who start with `ork doctor init`.
 var doctorDeployCmd = &cobra.Command{
 	Use:   "deploy",

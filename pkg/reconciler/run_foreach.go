@@ -675,9 +675,14 @@ func expandForEachStatefulSets(
 			expanded.Replicas, _ = ir.Resolve(src.Replicas)
 			expanded.Port, _ = ir.Resolve(src.Port)
 			expanded.ServiceName, _ = ir.Resolve(src.ServiceName)
-			expanded.StorageClass, _ = ir.Resolve(src.StorageClass)
-			expanded.StorageSize, _ = ir.Resolve(src.StorageSize)
-			expanded.MountPath, _ = ir.Resolve(src.MountPath)
+			for i, vct := range src.VolumeClaimTemplates {
+				rv := src.VolumeClaimTemplates[i]
+				rv.StorageClass, _ = ir.Resolve(vct.StorageClass)
+				rv.StorageSize, _ = ir.Resolve(vct.StorageSize)
+				rv.MountPath, _ = ir.Resolve(vct.MountPath)
+				rv.Name, _ = ir.Resolve(vct.Name)
+				expanded.VolumeClaimTemplates[i] = rv
+			}
 
 			if len(src.Labels) > 0 {
 				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))

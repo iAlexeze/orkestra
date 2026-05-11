@@ -29,7 +29,7 @@ The daemon must outlive the CLI process that launched it. See [05 — Process Su
 
 **Authenticate** is a no-op for cloudflared. Quick tunnels are anonymous.
 
-**Why cloudflared is the default**: zero friction for local development. A developer can run `ork deploy --expose` on a fresh machine and get a working public URL without signing up anywhere.
+**Why cloudflared is the default**: zero friction for local development. A developer can run `ork doctor deploy --expose` on a fresh machine and get a working public URL without signing up anywhere.
 
 **Log file**: `~/.orkestra/cloudflared-<port>.log`. Each tunnel instance writes to its own file keyed by local port so concurrent tunnels never intermix output.
 
@@ -60,7 +60,7 @@ Auto-selection order:
 2. Ngrok (if binary found in PATH)
 3. Cloudflared (fallback — it can install itself on demand)
 
-The `Expose` function calls `p.Install(ctx)` when `!p.Available()`, so a user who has never run `ork deploy --expose` before gets cloudflared downloaded and installed transparently.
+The `Expose` function calls `p.Install(ctx)` when `!p.Available()`, so a user who has never run `ork doctor deploy --expose` before gets cloudflared downloaded and installed transparently.
 
 ---
 Next -> [02-state.md](02-state.md)

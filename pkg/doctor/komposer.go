@@ -16,7 +16,7 @@ const (
 	RuntimeKatalogPath = "__runtime_katalog_do_not_edit.yml"
 )
 
-// GlobalKomposer is the structure of ~/.orkestra/deploy/komposer.yaml.
+// GlobalKomposer is the structure of ~/.orkestra/doctor/deploy/komposer.yaml.
 // It aggregates Katalog paths from all deployed projects on this machine.
 type GlobalKomposer struct {
 	APIVersion string          `yaml:"apiVersion"`
@@ -37,7 +37,7 @@ type KomposerSources struct {
 	Files []string `yaml:"files,omitempty"`
 }
 
-// GlobalKomposerPath returns ~/.orkestra/deploy/komposer.yaml.
+// GlobalKomposerPath returns ~/.orkestra/doctor/deploy/komposer.yaml.
 func GlobalKomposerPath() (string, error) {
 	dir, err := StateDir()
 	if err != nil {

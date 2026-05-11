@@ -1,10 +1,10 @@
 # 02 — InitConfig and the .init.ork File
 
-`InitConfig` bridges the `ork doctor init` step to `ork deploy`. After init runs, deploy must know how to build each app — which directory, which Dockerfile, and whether to use compose. `.init.ork` is the handshake file.
+`InitConfig` bridges the `ork doctor init` step to `ork doctor deploy`. After init runs, deploy must know how to build each app — which directory, which Dockerfile, and whether to use compose. `.init.ork` is the handshake file.
 
 ## The file
 
-`.orkestra/bundle/.init.ork` is a simple key=value file written by `ork doctor init` and read by `ork deploy`. It is never committed (`.orkestra/bundle/` is gitignored, but `.init.ork` sits one level up at `.orkestra/`).
+`.orkestra/bundle/.init.ork` is a simple key=value file written by `ork doctor init` and read by `ork doctor deploy`. It is never committed (`.orkestra/bundle/` is gitignored, but `.init.ork` sits one level up at `.orkestra/`).
 
 ```
 useCompose=false
@@ -42,7 +42,7 @@ type InitConfig struct {
 }
 ```
 
-`Apps` is empty for the single-app (legacy) path. `ork deploy` checks `len(initCfg.Apps) > 0` to choose between single-app and multi-app deploy flows.
+`Apps` is empty for the single-app (legacy) path. `ork doctor deploy` checks `len(initCfg.Apps) > 0` to choose between single-app and multi-app deploy flows.
 
 ## API
 
@@ -65,6 +65,6 @@ cfg, err := buildx.LoadInitConfig(projectDir)
 buildx.CleanupInitConfig(projectDir)
 ```
 
-`LoadInitConfig` returns an empty `InitConfig` (no error) when `.init.ork` does not exist — this is the case when the user runs `ork deploy` without having run `ork doctor init` first (legacy flow).
+`LoadInitConfig` returns an empty `InitConfig` (no error) when `.init.ork` does not exist — this is the case when the user runs `ork doctor deploy` without having run `ork doctor init` first (legacy flow).
 
 → Back to: [README.md](../README.md)

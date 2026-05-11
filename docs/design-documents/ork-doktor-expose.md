@@ -1,4 +1,4 @@
-# ork doctor + ork deploy --expose — Design Document
+# ork doctor + ork doctor deploy --expose — Design Document
 
 *Orkestra Project — April 2026*
 
@@ -11,7 +11,7 @@ This document covers two related features:
 1. **`ork doctor` expansions** — notification detection, dependency auto-install,
    git/license metadata, kind cluster without requiring Go.
 
-2. **`ork deploy --expose`** — instant public URL for local and dev clusters
+2. **`ork doctor deploy --expose`** — instant public URL for local and dev clusters
    via a managed tunnel daemon.
 
 Both features serve the same goal: a developer with a Dockerfile and a `.env`
@@ -148,7 +148,7 @@ Each installation is shown as a status line.
 no sudo required. Binaries go to `~/.orkestra/bin/`. The deploy commands add
 this directory to their child process PATH automatically.
 
-**`kind`** is also a static binary. `ork deploy --dev` downloads it to
+**`kind`** is also a static binary. `ork doctor deploy --dev` downloads it to
 `~/.orkestra/bin/kind`. **Go is not required.** The earlier design required
 `go install kind` — this is replaced with a direct binary download. Most
 developers who want a local cluster do not have Go installed.
@@ -178,7 +178,7 @@ If not available and HPA is in the Katalog:
 **`ingress-nginx`** is installed when `host:` is set in `.orkestra/cr.yaml`.
 Already documented in the previous design — included here for completeness.
 
-**Installation output** during `ork deploy`:
+**Installation output** during `ork doctor deploy`:
 
 ```
 Checking dependencies...
@@ -191,10 +191,10 @@ Checking dependencies...
   ✓ Metrics server ready
 ```
 
-### 1.5 `ork deploy --dev` — kind cluster without Go
+### 1.5 `ork doctor deploy --dev` — kind cluster without Go
 
 ```bash
-ork deploy --dev --registry ghcr.io/myorg
+ork doctor deploy --dev --registry ghcr.io/myorg
 ```
 
 When `--dev` is specified:
@@ -206,7 +206,7 @@ When `--dev` is specified:
 5. Set kubectl context to `kind-orkestra-dev`
 6. Continue with normal deploy flow
 
-The kind cluster creation is one-time. Subsequent `ork deploy --dev` calls
+The kind cluster creation is one-time. Subsequent `ork doctor deploy --dev` calls
 detect the existing cluster and skip creation.
 
 ```
@@ -219,11 +219,11 @@ from `https://github.com/kubernetes-sigs/kind/releases/` directly.
 
 ---
 
-## Part 2: ork deploy --expose
+## Part 2: ork doctor deploy --expose
 
 ### 2.1 Goal
 
-After `ork deploy`, the application is running in the cluster. On a local kind
+After `ork doctor deploy`, the application is running in the cluster. On a local kind
 cluster, it is only accessible via localhost port-forwarding. On a remote
 cluster with no public Ingress IP, the same problem exists.
 
@@ -231,7 +231,7 @@ cluster with no public Ingress IP, the same problem exists.
 pointing at the application. The URL survives the deploy command's exit.
 
 ```bash
-ork deploy --dev --expose
+ork doctor deploy --dev --expose
 #   ✓ App live at https://abc123.ngrok.io
 #   ✓ Tunnel: running (ork tunnel stop to end)
 ```
@@ -250,7 +250,7 @@ what is installed:
 
 The developer can override with `--tunnel-provider`:
 ```bash
-ork deploy --expose --tunnel-provider ngrok
+ork doctor deploy --expose --tunnel-provider ngrok
 ```
 
 **Cloudflare Tunnel (default):**
@@ -269,13 +269,13 @@ Stable URL possible with paid account (out of scope for v1).
 
 ### 2.3 Tunnel as a background daemon
 
-The tunnel must outlive the `ork deploy` command. It runs as a detached
+The tunnel must outlive the `ork doctor deploy` command. It runs as a detached
 background process.
 
 **Daemon lifecycle:**
 
 ```
-ork deploy --expose
+ork doctor deploy --expose
   ↓
 Start tunnel daemon (detached process)
 Write PID + URL to ~/.orkestra/tunnel-state.json
@@ -300,7 +300,7 @@ ork tunnel stop       → kills daemon, removes state file
 }
 ```
 
-`ork deploy --expose` checks for an existing running daemon before starting
+`ork doctor deploy --expose` checks for an existing running daemon before starting
 a new one:
 - If running and pointing at the same local port → print existing URL, skip start
 - If running but stale (PID dead) → clean up and start fresh
@@ -314,18 +314,18 @@ The tunnel forwards to the ingress controller's local port. Detection order:
 2. Port-forward if NodePort is not available: `kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8080:80` → use 8080
 3. Direct service port-forward if no ingress: `kubectl port-forward -n <ns> svc/<name>-svc <localPort>:<port>`
 
-For kind clusters, the NodePort is the most reliable path. `ork deploy --dev`
+For kind clusters, the NodePort is the most reliable path. `ork doctor deploy --dev`
 creates the kind cluster with the ingress controller already configured to
 expose NodePort 80.
 
 ### 2.5 CLI commands
 
-**`ork deploy --expose`** — start tunnel as part of deploy:
+**`ork doctor deploy --expose`** — start tunnel as part of deploy:
 ```bash
-ork deploy --registry ghcr.io/myorg --expose
-ork deploy --dev --expose                         # kind + tunnel
-ork deploy --dev --expose --tunnel-provider ngrok # explicit provider
-ork deploy --dev --expose --tunnel-token $NGROK_TOKEN  # non-interactive
+ork doctor deploy --registry ghcr.io/myorg --expose
+ork doctor deploy --dev --expose                         # kind + tunnel
+ork doctor deploy --dev --expose --tunnel-provider ngrok # explicit provider
+ork doctor deploy --dev --expose --tunnel-token $NGROK_TOKEN  # non-interactive
 ```
 
 **`ork tunnel status`** — show current tunnel state:
@@ -478,7 +478,7 @@ developer     → local to production, no Kubernetes required
 
 The developer pack is the only pack that assumes no Kubernetes knowledge.
 It is the entry point for the third Orkestra audience. Every example uses
-`ork doctor`, `ork deploy`, and the ConfigMap-as-CRD pattern. No custom CRDs.
+`ork doctor`, `ork doctor deploy`, and the ConfigMap-as-CRD pattern. No custom CRDs.
 No Go. No Helm charts written by the developer.
 
 ---
@@ -501,7 +501,7 @@ New project
   # → generates .orkestra/cr.yaml
 
 Local deploy
-  ork deploy --dev --expose
+  ork doctor deploy --dev --expose
   # → downloads kind if needed, creates cluster
   # → builds image, deploys to kind cluster
   # → installs metrics-server, ingress-nginx automatically
@@ -511,7 +511,7 @@ Local deploy
 Second project (same cluster)
   cd my-api/
   ork doctor init
-  ork deploy --dev --expose
+  ork doctor deploy --dev --expose
   # → detects existing kind cluster, skips creation
   # → registers my-api in ~/.orkestra/deploy/komposer.yaml
   # → Orkestra picks up new CRD, no restart
@@ -519,11 +519,11 @@ Second project (same cluster)
 
 Something goes wrong
   # Slack: "my-app: error rate 12% — reconcile failing"
-  ork deploy rollback
+  ork doctor deploy rollback
   # → previous image restored, rolling update, 2/2 pods ready
 
 Production deploy
-  ork deploy --registry ghcr.io/myorg
+  ork doctor deploy --registry ghcr.io/myorg
   # → same commands, same experience, real cluster
 ```
 
@@ -544,7 +544,7 @@ Production deploy
 11. ngrok provider (2h)
 12. Tunnel daemon + state file (3h)
 13. `ork tunnel` subcommands (2h)
-14. `ork deploy --expose` integration (2h)
+14. `ork doctor deploy --expose` integration (2h)
 15. Developer example pack (4h)
 
 Total: ~28h focused work.

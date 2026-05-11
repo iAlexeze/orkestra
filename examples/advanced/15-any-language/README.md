@@ -7,7 +7,7 @@ This directory contains three language examples that produce identical `katalog.
 ## Prerequisites
 
 - Orkestra CLI installed (`ork`)
-- `kubectl` configured for a cluster (or use `ork deploy --dev` to create a Kind cluster)
+- `kubectl` configured for a cluster (or use `ork doctor deploy --dev` to create a Kind cluster)
 - For each language:
   - **Python**: `python3` and `pyyaml` (`pip install pyyaml`)
   - **Go**: `go` and `gopkg.in/yaml.v3` (fetched automatically)

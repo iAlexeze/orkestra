@@ -16,12 +16,11 @@
       <div class="cc-sidebar-logo-row">
         <a href="/controlcenter">
           <img src="/controlcenter/assets/static/logo.png" alt="Orkestra" width="32" height="32">
-          <span>Orkestra CC</span>
+          <span>Orkestra</span>
         </a>
         <button class="cc-sidebar-toggle" id="cc-sidebar-toggle" title="Collapse sidebar">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M15 18l-6-6 6-6"/>
-            <path d="M9 18l-6-6 6-6" opacity="0.4"/>
+            <path d="M15 18l-6-6 6-6"/><path d="M9 18l-6-6 6-6" opacity="0.4"/>
           </svg>
         </button>
       </div>
@@ -31,10 +30,14 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         All Katalogs
       </a>
-      <div class="cc-nav-section">Your Apps</div>
+      <div class="cc-nav-section">{{ .KatalogName }}</div>
       <a href="/controlcenter/katalog/{{ .KatalogName }}" class="cc-nav-item active">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/></svg>
         Applications
+      </a>
+      <a href="/controlcenter/docs/{{ .KatalogName }}" class="cc-nav-item">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Docs
       </a>
     </nav>
     <div class="cc-sidebar-footer">
@@ -53,9 +56,9 @@
         </svg>
       </button>
       <nav class="cc-breadcrumb">
-        <a href="/controlcenter">Control Panel</a>
+        <a href="/controlcenter">Home</a>
         <span class="sep">›</span>
-        <span class="current">Your Applications</span>
+        <span class="current">Applications</span>
       </nav>
       <div class="cc-navbar-right">
         <button class="cc-theme-toggle" id="cc-theme-toggle" title="Toggle theme">
@@ -72,14 +75,14 @@
         <div class="cc-info-card-head">
           <div class="cc-flex-1">
             <div class="flex items-center gap-3 mb-2" style="flex-wrap:wrap">
-              <h2 style="font-size:18px;font-weight:700;color:var(--text-primary);margin:0">Your Applications</h2>
+              <h2 style="font-size:18px;font-weight:700;color:var(--text-primary);margin:0">Applications</h2>
               <span class="cc-badge cc-badge-healthy">
                 <span class="cc-status-dot healthy"></span>
-                managed by Orkestra
+                Deployed
               </span>
             </div>
             <p style="font-size:13px;color:var(--text-secondary);margin:0">
-              {{ len .Apps }} app{{ if ne (len .Apps) 1 }}s{{ end }} deployed via <code style="font-size:11px;background:var(--bg-3);padding:1px 5px;border-radius:3px">ork doctor deploy</code>
+              {{ len .Apps }} app{{ if ne (len .Apps) 1 }}s{{ end }} managed via <code style="font-size:11px;background:var(--bg-3);padding:1px 5px;border-radius:3px">ork doctor deploy</code>
             </p>
           </div>
         </div>
@@ -92,57 +95,61 @@
         </svg>
         <div>
           <div class="cc-alert-title">No applications deployed yet</div>
-          <div class="cc-alert-text">Run <code>ork doctor deploy --registry &lt;your-registry&gt;</code> to deploy your first app.</div>
+          <div class="cc-alert-text">Run <code>ork doctor deploy</code> from your project directory to deploy your first app.</div>
         </div>
       </div>
       {{ else }}
 
-      <!-- App Cards Grid -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
         {{ range .Apps }}
-        <div class="cc-info-card" style="padding:20px">
-          <!-- App name + language badge -->
-          <div class="flex items-center gap-2 mb-3" style="flex-wrap:wrap">
-            <h3 style="font-size:16px;font-weight:700;color:var(--text-primary);margin:0;flex:1">{{ .Name }}</h3>
-            {{ if .Language }}
-            <span class="cc-badge cc-badge-pending" style="font-size:11px">{{ .Language }}</span>
+        <a href="/controlcenter/katalog/{{ $.KatalogName }}/app/{{ .Name }}" style="text-decoration:none;color:inherit;display:block">
+          <div class="cc-info-card" style="padding:20px;cursor:pointer;transition:border-color 0.15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor=''">
+
+            <!-- Name + language -->
+            <div class="flex items-center gap-2 mb-3" style="flex-wrap:wrap">
+              <h3 style="font-size:15px;font-weight:700;color:var(--text-primary);margin:0;flex:1">{{ .Name }}</h3>
+              {{ if .Language }}
+              <span class="cc-badge cc-badge-pending" style="font-size:11px">{{ .Language }}</span>
+              {{ end }}
+            </div>
+
+            <!-- Namespace -->
+            {{ if .Namespace }}
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:5px">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              {{ .Namespace }}
+            </div>
             {{ end }}
-          </div>
 
-          <!-- Namespace (muted) -->
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;display:flex;align-items:center;gap:5px">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            {{ .Namespace }}
-          </div>
+            <!-- Image tag -->
+            {{ if .ImageTag }}
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;display:flex;align-items:center;gap:5px;font-family:monospace">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              :{{ .ImageTag }}
+            </div>
+            {{ end }}
 
-          <!-- Image tag -->
-          {{ if .ImageTag }}
-          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;display:flex;align-items:center;gap:5px;font-family:monospace">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-            :{{ .ImageTag }}
-          </div>
-          {{ end }}
+            <!-- Service URL -->
+            {{ if .ServiceURL }}
+            <div style="background:var(--bg-3);border-radius:6px;padding:8px 10px;margin-bottom:10px">
+              <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Internal URL</div>
+              <code style="font-size:11px;color:var(--text-secondary);word-break:break-all">{{ .ServiceURL }}</code>
+            </div>
+            {{ end }}
 
-          <!-- Internal service URL -->
-          {{ if .ServiceURL }}
-          <div style="background:var(--bg-3);border-radius:6px;padding:8px 10px;margin-bottom:12px">
-            <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Internal URL</div>
-            <code style="font-size:11px;color:var(--text-secondary);word-break:break-all">{{ .ServiceURL }}</code>
+            <div style="font-size:11px;color:var(--accent);display:flex;align-items:center;gap:4px;margin-top:4px">
+              View details
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
           </div>
-          {{ end }}
-
-          <!-- Redeploy hint -->
-          <div style="font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
-            Redeploy: <code style="font-size:10px;background:var(--bg-3);padding:1px 5px;border-radius:3px">ork doctor deploy --registry &lt;registry&gt;</code>
-          </div>
-        </div>
+        </a>
         {{ end }}
       </div>
       {{ end }}
 
-    </div><!-- .cc-page -->
+    </div>
   </main>
 
-  <script src="/controlcenter/assets/static/js/main.js"></script>
+  <script src="/controlcenter/assets/static/js/controlcenter.js"></script>
 </body>
 </html>

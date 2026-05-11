@@ -12,7 +12,7 @@ layer, with honest phasing based on what can ship clean versus what needs its
 own release.
 
 - Part 1: Core `ork doctor` expansions (v1.1)
-- Part 2: `ork deploy --expose` — public URL via tunnel daemon (v1.1)
+- Part 2: `ork doctor deploy --expose` — public URL via tunnel daemon (v1.1)
 - Part 3: Cleanup — `cleanupOnShutdown` and `ork cleanup` (v1.1)
 - Part 4: RBAC scoped to the application namespace (v1.1)
 - Part 5: `--use-compose` — docker-compose as input (v1.2)
@@ -120,7 +120,7 @@ ready. The 15-minute interval prevents spam when an issue persists.
 
 ### 1.4 Dependency auto-install
 
-`ork doctor` and `ork deploy` check for required tools and install missing
+`ork doctor` and `ork doctor deploy` check for required tools and install missing
 ones automatically. Every installation is a static binary download to
 `~/.orkestra/bin/` — no package manager, no sudo required. The deploy
 commands prepend `~/.orkestra/bin/` to their child process PATH.
@@ -157,7 +157,7 @@ local cluster do not have Go installed.
 clusters, uses the kind-specific manifest. For all other clusters, uses the
 standard Helm chart.
 
-**Installation output during `ork deploy`:**
+**Installation output during `ork doctor deploy`:**
 ```
 Checking dependencies...
   ✓ docker 27.1.0
@@ -180,7 +180,7 @@ controls in plain language, not Kubernetes vocabulary.
 ```yaml
 # app.yaml — your application configuration
 # Apply once: kubectl apply -f .orkestra/app.yaml
-# ork deploy updates the image field automatically.
+# ork doctor deploy updates the image field automatically.
 
 apiVersion: v1
 kind: ConfigMap
@@ -204,7 +204,7 @@ data:
   # Example: myapp.example.com
   host: ""
 
-  # Set by ork deploy — do not edit manually
+  # Set by ork doctor deploy — do not edit manually
   image: ""
 ```
 
@@ -259,10 +259,10 @@ This is separate from the Orkestra operator's own RBAC (ClusterRole, etc.).
 The application's service account can read only its own ConfigMap and Secret —
 nothing more, nothing outside its namespace.
 
-### 1.7 ork deploy --dev — kind cluster
+### 1.7 ork doctor deploy --dev — kind cluster
 
 ```bash
-ork deploy --dev --registry ghcr.io/myorg
+ork doctor deploy --dev --registry ghcr.io/myorg
 ```
 
 Lifecycle:
@@ -276,23 +276,23 @@ Lifecycle:
   ✓ Cluster ready: kind-orkestra-dev
 ```
 
-The cluster is created once. All subsequent `ork deploy --dev` calls detect
+The cluster is created once. All subsequent `ork doctor deploy --dev` calls detect
 the existing cluster and skip creation. Multiple projects deploy to the same
 kind cluster via the global Komposer.
 
 ---
 
-## Part 2: ork deploy --expose
+## Part 2: ork doctor deploy --expose
 
 ### 2.1 Goal
 
-After `ork deploy`, the application runs in the cluster. On a local kind
+After `ork doctor deploy`, the application runs in the cluster. On a local kind
 cluster it is only accessible on localhost. `--expose` starts a background
 tunnel daemon that creates a public HTTPS URL. The URL survives the deploy
 command's exit and persists until explicitly stopped.
 
 ```bash
-ork deploy --dev --expose
+ork doctor deploy --dev --expose
 #   ✓ App live at https://abc123.trycloudflare.com
 #   Tunnel running — ork tunnel stop to end
 ```
@@ -311,14 +311,14 @@ three seconds. ngrok is the fallback when cloudflared is not available or
 explicitly requested.
 
 ```bash
-ork deploy --expose                             # cloudflared by default
-ork deploy --expose --tunnel-provider ngrok    # explicit
-ork deploy --expose --tunnel-token $NGROK_TOKEN # non-interactive CI
+ork doctor deploy --expose                             # cloudflared by default
+ork doctor deploy --expose --tunnel-provider ngrok    # explicit
+ork doctor deploy --expose --tunnel-token $NGROK_TOKEN # non-interactive CI
 ```
 
 ### 2.3 Tunnel as a background daemon
 
-The tunnel runs detached — it outlives the `ork deploy` command.
+The tunnel runs detached — it outlives the `ork doctor deploy` command.
 
 **State file: `~/.orkestra/tunnel-state.json`**
 ```json
@@ -331,7 +331,7 @@ The tunnel runs detached — it outlives the `ork deploy` command.
 }
 ```
 
-`ork deploy --expose` checks for an existing daemon before starting:
+`ork doctor deploy --expose` checks for an existing daemon before starting:
 - Running, same port → print existing URL, skip start
 - Running but PID dead (stale) → clean up, start fresh
 - Not running → start new daemon
@@ -516,7 +516,7 @@ deploys all stateless services as Deployments.
 
 ```bash
 ork doctor init --use-compose docker-compose.yaml
-ork deploy --use-compose docker-compose.yaml --registry ghcr.io/myorg
+ork doctor deploy --use-compose docker-compose.yaml --registry ghcr.io/myorg
 ```
 
 The fast path (Dockerfile + `.env`) remains the default. `--use-compose` is
@@ -740,7 +740,7 @@ When compose has multiple services, `app.yaml` grows to cover all of them:
 ```
 
 The developer sees their entire stack's configuration in one file. They change
-`postgresImage: "postgres:17"` and run `ork deploy` — Orkestra updates the
+`postgresImage: "postgres:17"` and run `ork doctor deploy` — Orkestra updates the
 StatefulSet.
 
 ---
@@ -807,7 +807,7 @@ Prepare
   → .gitignore updated      (.orkestra/bundle/ added)
 
 Deploy locally
-  ork deploy --dev --expose
+  ork doctor deploy --dev --expose
   → kind binary downloaded (~/.orkestra/bin/kind)
   → kind-orkestra-dev cluster created
   → kubectl and helm downloaded if needed
@@ -824,20 +824,20 @@ Share
 
 Something fails
   → Slack: "my-app: 2/2 pods not ready — CrashLoopBackOff"
-  ork deploy rollback
+  ork doctor deploy rollback
   → previous image restored, 2/2 pods ready
 
 Second project, same cluster
   cd my-api/
   ork doctor init
-  ork deploy --dev --expose
+  ork doctor deploy --dev --expose
   → existing kind cluster detected, reused
   → registered in ~/.orkestra/deploy/komposer.yaml
   → Orkestra picks up new CRD without restart
   → https://xyz789.trycloudflare.com
 
 Production
-  ork deploy --registry ghcr.io/myorg
+  ork doctor deploy --registry ghcr.io/myorg
   → identical commands, real cluster
 
 Clean up
@@ -857,7 +857,7 @@ ork doctor init --use-compose docker-compose.yaml --notify-me
 → generates katalog with StatefulSets for postgres and redis
 → generates app.yaml with postgresVolumeSize: "10Gi"
 
-ork deploy --dev --expose
+ork doctor deploy --dev --expose
 → all services deployed
 → pgAdmin + RedisInsight deployed and exposed
 
@@ -884,7 +884,7 @@ Output:
 - Scoped RBAC for generated deployments
 - `cleanupOnShutdown` finalizer removal
 - `ork cleanup -f katalog.yaml`
-- `ork deploy --expose` with cloudflared (default) and ngrok (fallback)
+- `ork doctor deploy --expose` with cloudflared (default) and ngrok (fallback)
 - `ork tunnel status / stop / restart`
 - Developer example pack (5 examples)
 

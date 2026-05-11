@@ -1,6 +1,6 @@
 // pkg/tunnel/expose.go
 //
-// High-level Expose function used by `ork deploy --expose` and
+// High-level Expose function used by `ork doctor deploy --expose` and
 // `ork tunnel expose`. Detects the local port, starts the tunnel,
 // and persists state under a named key.
 package tunnel
@@ -178,11 +178,16 @@ func startPortForward(tunnelName, serviceName, namespace, servicePort string) (i
 	}
 	pid := cmd.Process.Pid
 
-	// Poll until the local port is ready (up to 8 seconds).
-	deadline := time.Now().Add(8 * time.Second)
+	addrStr := fmt.Sprintf("127.0.0.1:%d", localPort)
+	portAlive := func() bool {
+		return cmd.Process.Signal(syscall.Signal(0)) == nil
+	}
+
+	// Phase 1: wait for the port-forward to bind the local port (up to 10s).
+	deadline := time.Now().Add(10 * time.Second)
+	bound := false
 	for time.Now().Before(deadline) {
-		// Detect early exit (pod not running, service has no endpoints, etc.)
-		if err := cmd.Process.Signal(syscall.Signal(0)); err != nil {
+		if !portAlive() {
 			return 0, 0, fmt.Errorf(
 				"kubectl port-forward for svc/%s in %s exited — is the pod running?\n"+
 					"  Check: kubectl get pods -n %s",
@@ -190,20 +195,49 @@ func startPortForward(tunnelName, serviceName, namespace, servicePort string) (i
 			)
 		}
 		if isTCPListening(localPort) {
-			return localPort, pid, nil
+			bound = true
+			break
 		}
 		time.Sleep(150 * time.Millisecond)
 	}
-
-	// Port-forward is still alive but port isn't bound yet — return and let
-	// cloudflared wait for the origin to become available.
-	if err := cmd.Process.Signal(syscall.Signal(0)); err != nil {
-		return 0, 0, fmt.Errorf(
-			"kubectl port-forward for svc/%s in %s exited — is the pod running?\n"+
-				"  Check: kubectl get pods -n %s",
-			serviceName, namespace, namespace,
-		)
+	if !bound {
+		if !portAlive() {
+			return 0, 0, fmt.Errorf(
+				"kubectl port-forward for svc/%s in %s exited — is the pod running?\n"+
+					"  Check: kubectl get pods -n %s",
+				serviceName, namespace, namespace,
+			)
+		}
+		// Port-forward is alive but port still not bound — continue anyway.
+		return localPort, pid, nil
 	}
+
+	// Phase 2: warm-probe — verify the port-forward path reaches a live backend.
+	// kubectl port-forward accepts TCP connections immediately after binding, but
+	// closes them right away when the pod is not yet ready. A read timeout means
+	// the connection stayed open → backend is live and ready for cloudflared.
+	warmDeadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(warmDeadline) {
+		if !portAlive() {
+			break
+		}
+		conn, err := net.DialTimeout("tcp", addrStr, 500*time.Millisecond)
+		if err != nil {
+			time.Sleep(300 * time.Millisecond)
+			continue
+		}
+		conn.SetDeadline(time.Now().Add(300 * time.Millisecond))
+		buf := make([]byte, 1)
+		_, readErr := conn.Read(buf)
+		conn.Close()
+		// A timeout means the connection stayed open — backend is live.
+		if netErr, ok := readErr.(net.Error); ok && netErr.Timeout() {
+			return localPort, pid, nil
+		}
+		// Connection was closed by kubectl — backend not ready yet. Retry.
+		time.Sleep(300 * time.Millisecond)
+	}
+
 	return localPort, pid, nil
 }
 

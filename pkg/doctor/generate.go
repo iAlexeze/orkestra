@@ -18,13 +18,8 @@ const (
 )
 
 var (
-	gitignoreEntries = []string{
-		".orkestra/bundle/",
-	}
-
-	dockerignoreEntries = []string{
-		".orkestra/bundle/",
-	}
+	gitignoreEntries    = []string{}
+	dockerignoreEntries = []string{}
 )
 
 // GenerateOptions controls which sections are included in the generated Katalog.
@@ -113,14 +108,20 @@ func Init(info *orktypes.ProjectInfo, opts GenerateOptions) error {
 	return nil
 }
 
-// InitDeveloper generates the developer-path artifacts for a project:
-//   - .orkestra/motif.yaml  — fully-templated resource blueprint
-//   - .orkestra/app.yaml    — developer-style ConfigMap CR (ork.io/platform: developer)
+// InitDeveloper generates the developer-path artifacts for a project.
+// The only file written to the project directory is .orkestra/app.yaml —
+// the one file a developer is expected to edit.
 //
-// Unlike Init (operator path), no katalog.yaml is generated here. The central
-// Katalog at ~/.orkestra/deploy/katalog.yaml is maintained by ork deploy as apps
-// are registered.
-func InitDeveloper(info *orktypes.ProjectInfo, opts GenerateOptions) error {
+// Stateful services (databases, caches, queues) are injected automatically
+// from opts.InjectStateful or discovered via opts.UseCompose.
+//
+// The motif template (resource blueprint) is returned as a string so the
+// caller can persist it to ~/.orkestra/apps/<name>/motif.yaml — outside
+// the project tree and invisible to the developer.
+//
+// No katalog.yaml is generated. The central Katalog at
+// ~/.orkestra/deploy/katalog.yaml is managed by ork doctor deploy.
+func InitDeveloper(info *orktypes.ProjectInfo, opts GenerateOptions) (motifContent string, err error) {
 	name := opts.Name
 	if name == "" {
 		name = info.Name
@@ -131,34 +132,52 @@ func InitDeveloper(info *orktypes.ProjectInfo, opts GenerateOptions) error {
 		orkDir = filepath.Join(info.Dir, ".orkestra")
 	}
 	if err := os.MkdirAll(orkDir, 0o755); err != nil {
-		return fmt.Errorf("creating %s/: %w", orkDir, err)
+		return "", fmt.Errorf("creating %s/: %w", orkDir, err)
 	}
 
-	// motif.yaml — the app's resource template
-	motifContent := buildAppMotifTemplate(info, opts)
-	if err := os.WriteFile(filepath.Join(orkDir, "motif.yaml"), []byte(motifContent), 0o644); err != nil {
-		return fmt.Errorf("writing motif.yaml: %w", err)
+	// Resolve stateful services to inject (same logic as Init).
+	var stateful []StatefulService
+	if opts.InjectStateful != nil {
+		stateful = opts.InjectStateful
+	} else if opts.UseCompose != "" {
+		cf, err := ParseCompose(opts.UseCompose)
+		if err != nil {
+			return "", fmt.Errorf("reading compose file: %w", err)
+		}
+		_, stateful = ClassifyServices(cf)
 	}
 
-	// app.yaml — developer-style ConfigMap (no -orkestra suffix, ork.io/platform label)
+	// Build motif template and inject stateful blocks.
+	motif := buildAppMotifTemplate(info, opts)
+	if len(stateful) > 0 {
+		motif = injectStatefulServices(motif, name, stateful)
+	}
+
+	// Build app.yaml CR and inject stateful config keys.
 	crContent := buildDeveloperCR(name, info, opts)
+	if len(stateful) > 0 {
+		crContent = injectStatefulAppYAML(crContent, stateful, info)
+	}
+
+	// app.yaml — the only file the developer sees or edits
 	if err := os.WriteFile(filepath.Join(orkDir, ApplicationFile), []byte(crContent), 0o644); err != nil {
-		return fmt.Errorf("writing app.yaml: %w", err)
+		return "", fmt.Errorf("writing app.yaml: %w", err)
 	}
 
 	if err := updateGitignore(info.Dir); err != nil {
-		return fmt.Errorf("updating .gitignore: %w", err)
+		return "", fmt.Errorf("updating .gitignore: %w", err)
 	}
 	if err := updateDockerignore(info.Dir); err != nil {
-		return fmt.Errorf("updating .dockerignore: %w", err)
+		return "", fmt.Errorf("updating .dockerignore: %w", err)
 	}
 
-	return nil
+	// Return the motif template — caller stores it in ~/.orkestra/apps/<name>/
+	return motif, nil
 }
 
 // buildDeveloperCR builds the developer-style ConfigMap CR. Labels include
 // ork.io/platform: developer (CRD watch selector) and ork.io/app: <name>
-// so individual apps can be identified. Image is left empty — ork deploy patches it.
+// so individual apps can be identified. Image is left empty — ork doctor deploy patches it.
 func buildDeveloperCR(name string, info *orktypes.ProjectInfo, opts GenerateOptions) string {
 	replicas := "2"
 	if opts.NoHA {
@@ -183,7 +202,7 @@ func buildDeveloperCR(name string, info *orktypes.ProjectInfo, opts GenerateOpti
 	}
 
 	b.WriteString("data:\n")
-	b.WriteString("  # ork deploy updates this automatically — do not edit\n")
+	b.WriteString("  # ork doctor deploy updates this automatically — do not edit\n")
 	b.WriteString("  image: \"\"\n")
 	b.WriteString("  # ───────────────────────────────────────────────────────────────\n\n")
 
@@ -222,37 +241,37 @@ func injectStatefulServices(katalogYAML, appName string, services []StatefulServ
 
 	var b strings.Builder
 	b.WriteString(katalogYAML)
-	b.WriteString("\n        # Stateful services expanded from docker-compose.yaml\n")
-	b.WriteString("        imports:\n")
+	b.WriteString("\n  imports:\n")
 	for _, s := range services {
 		ref := s.Motif.MotifRef
-		b.WriteString(fmt.Sprintf("          - motif: %s\n", ref))
-		b.WriteString("            with:\n")
+		b.WriteString(fmt.Sprintf("    - motif: %s\n", ref))
+		b.WriteString("      with:\n")
 		switch ref {
 		case "postgres":
-			b.WriteString("              image: \"{{ .data.postgresImage }}\"\n")
-			b.WriteString(fmt.Sprintf("              passwordSecretName: %s-secrets\n", appName))
-			b.WriteString("              user: \"{{ .data.postgresUser }}\"\n")
-			b.WriteString("              volumeSize: \"{{ .data.postgresVolumeSize }}\"\n")
-			b.WriteString("              adminEmail: \"{{ .data.adminEmail }}\"\n")
-			b.WriteString("              adminPassword: \"{{ .data.adminPassword }}\"\n")
+			b.WriteString("        image: \"{{ .data.postgresImage }}\"\n")
+			b.WriteString(fmt.Sprintf("        passwordSecretName: %s-secrets\n", appName))
+			b.WriteString("        user: \"{{ .data.postgresUser }}\"\n")
+			b.WriteString("        volumeSize: \"{{ .data.postgresVolumeSize }}\"\n")
+			b.WriteString("        adminEmail: \"{{ .data.adminEmail }}\"\n")
+			b.WriteString("        adminPassword: \"{{ .data.adminPassword }}\"\n")
 		case "redis":
-			b.WriteString("              image: \"{{ .data.redisImage }}\"\n")
-			b.WriteString("              volumeSize: \"{{ .data.redisVolumeSize }}\"\n")
+			b.WriteString("        image: \"{{ .data.redisImage }}\"\n")
+			b.WriteString("        volumeSize: \"{{ .data.redisVolumeSize }}\"\n")
 		case "mysql":
-			b.WriteString("              image: \"{{ .data.mysqlImage }}\"\n")
-			b.WriteString(fmt.Sprintf("              passwordSecretName: %s-secrets\n", appName))
-			b.WriteString("              user: \"{{ .data.mysqlUser }}\"\n")
-			b.WriteString("              volumeSize: \"{{ .data.mysqlVolumeSize }}\"\n")
+			b.WriteString("        image: \"{{ .data.mysqlImage }}\"\n")
+			b.WriteString(fmt.Sprintf("        passwordSecretName: %s-secrets\n", appName))
+			b.WriteString("        user: \"{{ .data.mysqlUser }}\"\n")
+			b.WriteString("        volumeSize: \"{{ .data.mysqlVolumeSize }}\"\n")
 		case "kafka":
-			b.WriteString("              image: \"{{ .data.kafkaImage }}\"\n")
+			b.WriteString("        image: \"{{ .data.kafkaImage }}\"\n")
+			b.WriteString("        volumeSize: \"{{ .data.kafkaVolumeSize }}\"\n")
 		case "rabbitmq":
-			b.WriteString("              image: \"{{ .data.rabbitmqImage }}\"\n")
+			b.WriteString("        image: \"{{ .data.rabbitmqImage }}\"\n")
 		case "mongodb":
-			b.WriteString("              image: \"{{ .data.mongoImage }}\"\n")
-			b.WriteString("              volumeSize: \"{{ .data.mongoVolumeSize }}\"\n")
+			b.WriteString("        image: \"{{ .data.mongoImage }}\"\n")
+			b.WriteString("        volumeSize: \"{{ .data.mongoVolumeSize }}\"\n")
 		default:
-			fmt.Fprintf(&b, "              image: \"{{ .data.%sImage }}\"\n", ref)
+			fmt.Fprintf(&b, "        image: \"{{ .data.%sImage }}\"\n", ref)
 		}
 	}
 	return b.String()
@@ -304,6 +323,7 @@ func injectStatefulAppYAML(appYAML string, services []StatefulService, info *ork
 
 		case "kafka":
 			fmt.Fprintf(&b, "  kafkaImage: \"%s\"           # Container image for Kafka\n", s.Image)
+			b.WriteString("  kafkaVolumeSize: \"20Gi\"          # Volume size for Kafka log storage\n")
 
 		case "rabbitmq":
 			fmt.Fprintf(&b, "  rabbitmqImage: \"%s\"        # Container image for RabbitMQ\n", s.Image)
@@ -474,7 +494,8 @@ func buildKatalog(name string, info *orktypes.ProjectInfo, opts GenerateOptions)
 			b.WriteString("                - configMapRef: " + name + "-config\n")
 		}
 	}
-	b.WriteString("              resourceProfile: \"{{ .data.resourceProfile | default \\\"burst\\\" }}\"\n")
+	b.WriteString("              resources:\n")
+	b.WriteString("                profile: \"{{ .data.resourceProfile | default \\\"burst\\\" }}\"\n")
 	b.WriteString(protectionLabels("              ", secure))
 	b.WriteString("              reconcile: true\n")
 	b.WriteString("              when:\n")
@@ -564,7 +585,7 @@ func buildKatalog(name string, info *orktypes.ProjectInfo, opts GenerateOptions)
 	b.WriteString("                    teams: [developer]\n")
 	b.WriteString("                    message: \"{{ .metadata.name }} is deploying but replicas are not ready yet.")
 	b.WriteString(" Check logs: kubectl logs -n {{ .metadata.namespace }} -l ork.io/app={{ .metadata.name }} --tail=50")
-	b.WriteString(" | Roll back if stuck: ork deploy rollback\"\n")
+	b.WriteString(" | Roll back if stuck: ork doctor deploy rollback\"\n")
 	b.WriteString("\n")
 
 	b.WriteString("            - path: phase\n")
@@ -589,7 +610,7 @@ func buildKatalog(name string, info *orktypes.ProjectInfo, opts GenerateOptions)
 
 // buildCR constructs the developer-facing ConfigMap that defines an app’s
 // deployment settings. This file becomes .orkestra/app.yaml and is the only
-// configuration a developer edits; ork deploy reads it and manages all
+// configuration a developer edits; ork doctor deploy reads it and manages all
 // Kubernetes resources from it.
 func buildCR(name string, info *orktypes.ProjectInfo, opts GenerateOptions) string {
 	crName := name + "-orkestra"
@@ -603,7 +624,7 @@ func buildCR(name string, info *orktypes.ProjectInfo, opts GenerateOptions) stri
 	var b strings.Builder
 
 	b.WriteString("# This is the only Kubernetes object you manage.\n")
-	b.WriteString("# Run 'ork deploy' to apply — do not apply this file manually.\n\n")
+	b.WriteString("# Run 'ork doctor deploy' to apply — do not apply this file manually.\n\n")
 
 	b.WriteString("apiVersion: v1\n")
 	b.WriteString("kind: ConfigMap\n")
@@ -618,7 +639,7 @@ func buildCR(name string, info *orktypes.ProjectInfo, opts GenerateOptions) stri
 	}
 
 	b.WriteString("data:\n")
-	b.WriteString("  # ork deploy updates this automatically — do not edit\n")
+	b.WriteString("  # ork doctor deploy updates this automatically — do not edit\n")
 	b.WriteString("  image: \"\"\n")
 	b.WriteString("  # ───────────────────────────────────────────────────────────────\n\n")
 
@@ -648,23 +669,18 @@ func buildCR(name string, info *orktypes.ProjectInfo, opts GenerateOptions) stri
 	return b.String()
 }
 
-// GenerateAppMotif writes .orkestra/motif.yaml — the app's resource template
-// for the developer path. The file contains {{ .metadata.name }}, {{ .spec.image }}
-// etc. that are fully resolved at ork deploy time via motif.ResolveAll.
-//
-// The developer Katalog at ~/.orkestra/deploy/katalog.yaml imports this file
-// (after resolution) rather than per-app katalog.yaml files. No status fields
-// are generated here — the Control Center reads resources directly from the cluster.
-func GenerateAppMotif(dir string, info *orktypes.ProjectInfo, opts GenerateOptions) error {
-	orkDir := opts.OutDir
-	if orkDir == "" {
-		orkDir = filepath.Join(dir, ".orkestra")
+// SaveMotif writes the motif template for appName to
+// ~/.orkestra/apps/<appName>/motif.yaml — outside the project directory
+// so it is never visible to the developer.
+func SaveMotif(appName, content string) error {
+	motifPath, err := MotifPath(appName)
+	if err != nil {
+		return err
 	}
-	if err := os.MkdirAll(orkDir, 0o755); err != nil {
-		return fmt.Errorf("creating %s/: %w", orkDir, err)
+	if err := os.MkdirAll(filepath.Dir(motifPath), 0o755); err != nil {
+		return fmt.Errorf("creating motif dir: %w", err)
 	}
-	content := buildAppMotifTemplate(info, opts)
-	return os.WriteFile(filepath.Join(orkDir, "motif.yaml"), []byte(content), 0o644)
+	return os.WriteFile(motifPath, []byte(content), 0o644)
 }
 
 // buildAppMotifTemplate returns a motif.yaml template string for the given app.
@@ -736,7 +752,8 @@ func buildAppMotifTemplate(info *orktypes.ProjectInfo, opts GenerateOptions) str
 			b.WriteString("        - configMapRef: \"{{ .metadata.name }}-config\"\n")
 		}
 	}
-	b.WriteString("      resourceProfile: \"{{ .data.resourceProfile | default \\\"burst\\\" }}\"\n")
+	b.WriteString("      resources:\n")
+	b.WriteString("        profile: \"{{ .data.resourceProfile | default \\\"burst\\\" }}\"\n")
 	b.WriteString("      reconcile: true\n")
 	b.WriteString("      when:\n")
 	b.WriteString("        - field: data.image\n")
@@ -817,11 +834,11 @@ type AppDeployInfo struct {
 // central Katalog for the developer path.
 //
 // It produces ONE 'platform' CRD entry that manages ALL deployed developer apps.
-// The motif template resources are read from motifPath and, for each app in apps,
-// the metadata placeholders ({{ .metadata.name }}, {{ .metadata.namespace }}) are
-// substituted with the concrete appName/namespace known at deploy time. The data
-// placeholders ({{ .data.image }}, {{ .data.port }}, etc.) are kept as-is so
-// Orkestra evaluates them at runtime from the triggering ConfigMap CR.
+// The motif template resources come from motifTemplate (a motif YAML string) and,
+// for each app in apps, the metadata placeholders ({{ .metadata.name }},
+// {{ .metadata.namespace }}) are substituted with the concrete values known at
+// deploy time. The data placeholders ({{ .data.image }}, {{ .data.port }}, etc.)
+// are kept as-is so Orkestra evaluates them at runtime from the ConfigMap CR.
 //
 // Resolving metadata up-front ensures each app gets its own independently managed
 // set of resources — Orkestra reconciles each ConfigMap CR in its own namespace
@@ -829,18 +846,14 @@ type AppDeployInfo struct {
 //
 // No imports or file-path references are emitted — the bundle ConfigMap is
 // fully self-contained and the runtime pod needs no filesystem access.
-func GenerateDeveloperKatalog(deployDir, motifPath string, apps []AppDeployInfo, opts GenerateOptions) error {
+func GenerateDeveloperKatalog(deployDir, motifTemplate string, apps []AppDeployInfo, opts GenerateOptions) error {
 	if len(apps) == 0 {
 		return fmt.Errorf("at least one app is required")
 	}
 
-	// ── Load motif resources block ──────────────────────────────────────────
-	motifRaw, err := os.ReadFile(motifPath)
-	if err != nil {
-		return fmt.Errorf("reading motif template %s: %w", motifPath, err)
-	}
+	// ── Parse motif resources block ─────────────────────────────────────────
 	var rawMotif map[string]interface{}
-	if err := yaml.Unmarshal(motifRaw, &rawMotif); err != nil {
+	if err := yaml.Unmarshal([]byte(motifTemplate), &rawMotif); err != nil {
 		return fmt.Errorf("parsing motif template: %w", err)
 	}
 	resourcesRaw, ok := rawMotif["resources"]
@@ -989,7 +1002,7 @@ func buildOrkestraValues(name string, notifyMe bool) string {
 	if notifyMe {
 		extraEnvFrom = `
 # ── Notifications ─────────────────────────────────────────────────────────────
-# orkestra-notification Secret is created by ork deploy when SMTP/Slack env
+# orkestra-notification Secret is created by ork doctor deploy when SMTP/Slack env
 # vars are present. It injects credentials into the Orkestra runtime so
 # pkg/konfig reads them as normal env vars.
 runtime:
@@ -1000,10 +1013,10 @@ runtime:
 	}
 	_ = name
 	return `# .orkestra/values.yaml — Orkestra cluster configuration
-# Apply changes with: ork deploy --upgrade-orkestra
+# Apply changes with: ork doctor deploy --upgrade-orkestra
 #
 # ── Control Center ────────────────────────────────────────────────────────────
-# Expose the Control Center externally so 'ork deploy' can show its URL.
+# Expose the Control Center externally so 'ork doctor deploy' can show its URL.
 # After enabling, set controlCenterHost in .orkestra/app.yaml to the same host.
 #
 # controlCenter:

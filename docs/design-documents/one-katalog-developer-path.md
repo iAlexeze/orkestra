@@ -389,19 +389,29 @@ When `metadata.createdBy: orkdoctor` is set, the Control Center switches to a
 developer view for that Katalog. No operator terms. No CRD. No reconciler. Just
 applications.
 
-**Home — "Your Applications":**
+**Landing page — Katalog card:**
+Developer katalogs show `Applications: N` and `Managed by: ork doctor` instead
+of the operator CRD/worker/resource counts. The "View Panel" button becomes
+"View Apps". Developer katalog CRDs and workers are excluded from the global
+operator stat totals.
+
+**App view — "Your Applications":**
 One card per entry in `metadata.projects`. Each card shows the app name,
 language badge, image tag, and internal cluster URL. Nothing else.
 
 **App card:**
 ```
 app                                   [python]
-docker.io/myorg/app:abc123
+:abc123
 http://app-svc.app-ns.svc.cluster.local:8080
 ```
 
 The URL is computed from `projects.<name>.port` and `projects.<name>.namespace`.
 No API call needed — the data is in the Katalog response.
+
+`metadata.projects` is `map[string]ProjectInfo`. The fields written by
+`ork doctor deploy` are: `name`, `language`, `port`, `namespace`,
+`currentImage`. All are defined on `ProjectInfo` in `pkg/types`.
 
 **Route:** `/katalog/<katalog-name>` → branches on `createdBy == "orkdoctor"`
 → renders `dev_apps.html` instead of the standard `katalog.html`.

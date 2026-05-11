@@ -86,13 +86,25 @@ var knownMotifs = []KnownMotif{
 	{
 		Image:       "confluentinc/cp-kafka",
 		MotifRef:    "kafka",
-		AppYAMLKeys: []string{"kafkaImage"},
+		AppYAMLKeys: []string{"kafkaImage", "kafkaVolumeSize"},
 		AdminUI:     "Kafka UI",
 	},
 	{
 		Image:       "bitnami/kafka",
 		MotifRef:    "kafka",
-		AppYAMLKeys: []string{"kafkaImage"},
+		AppYAMLKeys: []string{"kafkaImage", "kafkaVolumeSize"},
+		AdminUI:     "Kafka UI",
+	},
+	{
+		Image:       "apache/kafka",
+		MotifRef:    "kafka",
+		AppYAMLKeys: []string{"kafkaImage", "kafkaVolumeSize"},
+		AdminUI:     "Kafka UI",
+	},
+	{
+		Image:       "kafka",
+		MotifRef:    "kafka",
+		AppYAMLKeys: []string{"kafkaImage", "kafkaVolumeSize"},
 		AdminUI:     "Kafka UI",
 	},
 	{

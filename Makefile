@@ -164,6 +164,31 @@ runtime-reload: docker
 
 	@echo "✔ Runtime updated to image: $(ORK_IMAGE)-$(RUNTIME_TAG)"
 
+CONTROL_CENTER_DEPLOYMENT ?= orkestra-cc
+CONTROL_CENTER_CONTAINER_NAME ?= controlcenter
+CONTROL_CENTER_NAMESPACE ?= orkestra-system
+
+controlcenter-reload: docker-cc
+	@echo "Generating unique tag..."
+	$(eval CC_TAG := $(shell date +%s))
+	@echo "Tag: $(CC_TAG)"
+
+	@echo "Retagging image..."
+	docker tag $(ORK_CC_IMAGE) $(ORK_CC_IMAGE)-$(CC_TAG)
+
+	@echo "Loading image into kind cluster: $(KIND_CLUSTER)"
+	kind load docker-image $(ORK_CC_IMAGE)-$(CC_TAG) --name $(KIND_CLUSTER)
+	@echo "✔ Image loaded"
+
+	@echo "Updating deployment $(CONTROL_CENTER_DEPLOYMENT) in namespace $(CONTROL_CENTER_NAMESPACE)..."
+	kubectl -n $(CONTROL_CENTER_NAMESPACE) set image deploy/$(CONTROL_CENTER_DEPLOYMENT) \
+        $(CONTROL_CENTER_CONTAINER_NAME)=$(ORK_CC_IMAGE)-$(CC_TAG)
+
+	@echo "✔ Control Center updated to image: $(ORK_CC_IMAGE)-$(CC_TAG)"
+
+orkestra-reload: runtime-reload controlcenter-reload
+	@echo "✔ Orkestra runtime and Control Center reloaded successfully"
+
 # ── Primary targets ───────────────────────────────────────────────────────────
 
 # Default: vet + unit tests. Fast, no external dependencies.

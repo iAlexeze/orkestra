@@ -36,12 +36,14 @@
                </svg>
                All Katalogs
             </a>
+            {{ if .HasOperatorKatalogs }}
             <a href="/controlcenter/metrics" class="cc-nav-item">
                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
                </svg>
                Metrics
             </a>
+            {{ end }}
             {{ if .EnableRuntimeManager }}
             <a href="#" id="sidebarRuntimesBtn" class="cc-nav-item">
                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -51,6 +53,7 @@
                Manage Runtimes
             </a>
             {{ end }}
+            {{ if .HasOperatorKatalogs }}
             <a href="/controlcenter/docs" class="cc-nav-item">
                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -61,6 +64,7 @@
                </svg>
                Documentation
             </a>
+            {{ end }}
          </nav>
          <div class="cc-sidebar-footer">
             <span class="cc-refresh-dot" id="sse-dot" title="Live connection"></span>
@@ -114,21 +118,34 @@
                   <div class="cc-stat-value" data-live="totalKatalogs">{{ .TotalKatalogs }}</div>
                   <div class="cc-stat-sub" data-live="healthyKatalogs">{{ .HealthyKatalogs }} healthy</div>
                </div>
+               {{ if gt .TotalApps 0 }}
                <div class="cc-stat-card">
-                  <div class="cc-stat-label">Total CRDs</div>
+                  <div class="cc-stat-label">Applications</div>
+                  <div class="cc-stat-value">{{ .TotalApps }}</div>
+                  <div class="cc-stat-sub">via ork doctor</div>
+               </div>
+               {{ end }}
+               {{ if gt .TotalCRDs 0 }}
+               <div class="cc-stat-card">
+                  <div class="cc-stat-label">CRDs</div>
                   <div class="cc-stat-value" data-live="totalCRDs">{{ .TotalCRDs }}</div>
-                  <div class="cc-stat-sub">Across all Katalogs</div>
+                  <div class="cc-stat-sub">Operator resources</div>
                </div>
+               {{ end }}
+               {{ if gt .TotalWorkers 0 }}
                <div class="cc-stat-card">
-                  <div class="cc-stat-label">Total Workers</div>
+                  <div class="cc-stat-label">Workers</div>
                   <div class="cc-stat-value" data-live="totalWorkers">{{ .TotalWorkers }}</div>
-                  <div class="cc-stat-sub">All reconcilers combined</div>
+                  <div class="cc-stat-sub">Reconcilers running</div>
                </div>
+               {{ end }}
+               {{ if gt .TotalResources 0 }}
                <div class="cc-stat-card">
                   <div class="cc-stat-label">Live Resources</div>
                   <div class="cc-stat-value" data-live="totalResources">{{ .TotalResources }}</div>
                   <div class="cc-stat-sub">CRs in cache</div>
                </div>
+               {{ end }}
             </div>
             <!-- Katalog cards -->
             {{ if gt (len .Katalogs) 0 }}
@@ -158,6 +175,16 @@
                   </div>
                   <div class="cc-card-footer">
                      <div class="cc-card-meta mb-3">
+                        {{ if eq .CreatedBy "orkdoctor" }}
+                        <div class="cc-card-row">
+                           <span class="cc-card-row-label">Applications</span>
+                           <span class="cc-card-row-value">{{ .AppCount }}</span>
+                        </div>
+                        <div class="cc-card-row">
+                           <span class="cc-card-row-label">Managed by</span>
+                           <span class="cc-card-row-value" style="font-family:monospace;font-size:11px">ork doctor</span>
+                        </div>
+                        {{ else }}
                         <div class="cc-card-row">
                            <span class="cc-card-row-label">CRDs</span>
                            <span class="cc-card-row-value" data-live="totalCRDs">{{ .TotalCRDs }} <span class="text-muted">({{ .HealthyCRDs }} healthy)</span></span>
@@ -170,9 +197,10 @@
                            <span class="cc-card-row-label">Resources</span>
                            <span class="cc-card-row-value" data-live="totalResources">{{ .TotalResources }}</span>
                         </div>
+                        {{ end }}
                      </div>
                      <a href="/controlcenter/katalog/{{ .Name }}" class="cc-btn cc-btn-primary w-full" style="justify-content:center">
-                        View Panel
+                        {{ if eq .CreatedBy "orkdoctor" }}View Apps{{ else }}View Panel{{ end }}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                            <path d="M5 12h14M12 5l7 7-7 7"/>
                         </svg>

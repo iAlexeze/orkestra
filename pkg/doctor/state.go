@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// DeployState is the contents of ~/.orkestra/deploy/state.json.
+// DeployState is the contents of ~/.orkestra/doctor/deploy/state.json.
 type DeployState struct {
 	ClusterContext string                   `json:"clusterContext"`
 	Projects       map[string]*ProjectState `json:"projects"`
@@ -19,6 +19,10 @@ type DeployState struct {
 	// Used to detect changes without relying on git, since the katalog lives
 	// outside the project repo and is never committed.
 	KatalogHash string `json:"katalogHash,omitempty"`
+	// DirApps maps an absolute project directory to the ordered list of app names
+	// it manages. Used by multi-app compose projects so ork doctor deploy can reconstruct
+	// the full app list without reading .init.ork.
+	DirApps map[string][]string `json:"dirApps,omitempty"`
 }
 
 // ProjectState tracks one deployed project.
@@ -40,15 +44,21 @@ type ProjectState struct {
 	ConfigCount   int               `json:"configCount,omitempty"`
 	HasSecrets    bool              `json:"hasSecrets,omitempty"`
 	HasConfig     bool              `json:"hasConfig,omitempty"`
+
+	// Init settings — replaces .orkestra/bundle/.init.ork.
+	// Written by ork doctor init, read by ork doctor deploy.
+	Dir         string `json:"dir,omitempty"`         // absolute project directory
+	UseCompose  bool   `json:"useCompose,omitempty"`  // true when initialised from a compose file
+	ComposeFile string `json:"composeFile,omitempty"` // path to docker-compose.yaml
 }
 
-// StateDir returns ~/.orkestra/deploy/
+// StateDir returns ~/.orkestra/doctor/deploy/
 func StateDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".orkestra", "deploy"), nil
+	return filepath.Join(home, ".orkestra", "doctor", "deploy"), nil
 }
 
 // LoadState reads the state file. Returns an empty state if not found.
@@ -135,6 +145,26 @@ func (s *DeployState) DeployedAppNames() []string {
 	return names
 }
 
+// MotifDir returns ~/.orkestra/apps/ — where per-app motif templates are stored.
+// Motifs live here rather than in the project directory so developers never see them.
+func MotifDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".orkestra", "apps"), nil
+}
+
+// MotifPath returns the path to the motif template for a given app name.
+// ~/.orkestra/apps/<appname>/motif.yaml
+func MotifPath(appName string) (string, error) {
+	base, err := MotifDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, appName, "motif.yaml"), nil
+}
+
 // CurrentContext returns the active kubectl context name.
 func CurrentContext() string {
 	out, err := exec.Command("kubectl", "config", "current-context").Output()
@@ -144,7 +174,7 @@ func CurrentContext() string {
 	return strings.TrimSpace(string(out))
 }
 
-// CentralKatalogChanged reads ~/.orkestra/deploy/katalog.yaml, hashes it, and
+// CentralKatalogChanged reads ~/.orkestra/doctor/deploy/katalog.yaml, hashes it, and
 // compares with the hash stored in state. Returns true when the katalog is new
 // or has changed since the last deploy. Persists the new hash to state so the
 // next call returns false unless the content changes again.

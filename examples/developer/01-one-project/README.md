@@ -7,7 +7,7 @@ No CRDs to write. No Helm charts. No `kubectl apply`.
 
 - `ork doctor` — what Orkestra detects in your project
 - `ork doctor init` — generating the `.orkestra/` configuration
-- `ork deploy` — the full build → push → deploy → watch pipeline
+- `ork doctor deploy` — the full build → push → deploy → watch pipeline
 - Viewing your live deployment in the Orkestra Control Center
 
 ---
@@ -48,7 +48,7 @@ kubectl config current-context
 You don't need a cluster yet. Jump to Step 4 and add `--dev`:
 
 ```bash
-ork deploy --registry <registry> --dev
+ork doctor deploy --registry <registry> --dev
 ```
 
 Orkestra creates a local `kind` cluster called `orkestra-playground` and deploys
@@ -116,7 +116,7 @@ data:
   port: "8080"
   replicas: "2"
   controlCenterHost: ""   # leave empty for local access
-  image: ""               # set automatically by ork deploy
+  image: ""               # set automatically by ork doctor deploy
 ```
 
 !!! tip
@@ -128,10 +128,10 @@ data:
 ## Step 4 — Deploy
 
 ```bash
-ork deploy --registry ghcr.io/myorg
+ork doctor deploy --registry ghcr.io/myorg
 
 # Or, if you don't have a cluster yet:
-ork deploy --registry ghcr.io/myorg --dev
+ork doctor deploy --registry ghcr.io/myorg --dev
 ```
 
 !!! note

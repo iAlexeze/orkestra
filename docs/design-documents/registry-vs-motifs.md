@@ -11,7 +11,7 @@
 | **Unit** | Operator pattern (Katalog) | Infrastructure deployment (StatefulSet + Service) |
 | **Audience** | Platform engineers | Developers |
 | **Consumer knows** | CRDs, operators, Kubernetes | Docker, docker-compose |
-| **Mechanism** | Komposer sources → `ork registry pull` | `ork deploy --use-compose` |
+| **Mechanism** | Komposer sources → `ork registry pull` | `ork doctor deploy --use-compose` |
 | **Complexity** | Embraced | Hidden |
 | **CRD required** | Yes | No |
 | **Reconciliation** | Yes — Orkestra manages lifecycle | No — applied once, Kubernetes manages |
@@ -66,7 +66,7 @@ ork doctor init --use-compose docker-compose.yaml
 # imports postgres manifest from orkestra-motifs
 # adds postgresImage + postgresVolumeSize to app.yaml
 
-ork deploy --dev --expose
+ork doctor deploy --dev --expose
 # postgres StatefulSet applied
 # pgAdmin deployed
 # both URLs printed
@@ -104,7 +104,7 @@ understanding the operatorbox model, CRD lifecycle, and Orkestra's declarative
 layer.
 
 The motifs repository operates through direct application. A developer runs
-`ork deploy` and the StatefulSet is applied with `kubectl apply`. Kubernetes
+`ork doctor deploy` and the StatefulSet is applied with `kubectl apply`. Kubernetes
 manages it from that point. No Orkestra reconciliation. No finalizers. No
 custom CRD. Just a postgres pod running in a namespace.
 
@@ -180,7 +180,7 @@ Orkestra reconciles the PostgresCluster CR and manages the full lifecycle.
   # password auto-generated — see my-app-secrets in cluster
 ```
 
-The developer changes the image version or volume size. `ork deploy` applies
+The developer changes the image version or volume size. `ork doctor deploy` applies
 the change. No CR. No operator. No reconciliation loop.
 
 ---

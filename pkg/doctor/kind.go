@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	// KindClusterName is the default kind cluster created by `ork deploy --dev`.
+	// KindClusterName is the default kind cluster created by `ork doctor deploy --dev`.
 	KindClusterName = "orkestra-playground"
 	kindVersion     = "v0.27.0"
 )

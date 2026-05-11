@@ -1,95 +1,66 @@
 // Resource Profile Validation
 //
-// Resource profiles are computed presets. When a profile is declared, it must be
-// the *only* resource input. Profiles expand into a complete
-// ResourceRequirements struct during katalog enrichment, so mixing them with
-// manual fields creates ambiguity.
+// Resource profiles are computed presets. When a profile is declared under
+// resources.profile, it must be the *only* resource input. Profiles expand
+// into a complete ResourceRequirements struct during katalog enrichment, so
+// mixing them with manual fields creates ambiguity.
+//
+// Validation uses the same visitor pattern as probe profile validation:
+// CollectResourceProfileEntries iterates every hook phase and resource,
+// surfacing entries where resources.profile is non-empty.
 //
 // Validation enforces:
 //
 // 1. Profile-only usage:
-//    `resources.profile` cannot appear alongside requests or limits.
+//    resources.profile cannot appear alongside requests or limits.
 //
 // 2. Known profile names:
 //    Allowed: tiny, small, medium, large, burst, steady, compute-heavy,
 //    memory-heavy.
 //
-// 3. No partial overrides:
-//    Users cannot override parts of a profile (e.g., adding requests.cpu).
-//
-// 4. Expansion safety:
-//    The generated ResourceRequirements must contain valid requests and limits.
-//
-// 5. No cross-field mixing:
-//    Profiles cannot be combined with container-level overrides.
-//
-// Profiles are atomic and predictable. If a profile is set, it fully defines
-// resource behavior for that operator.
+// 3. Template expressions:
+//    Profile values containing "{{" are skipped at load time and validated
+//    at reconcile time instead.
 
 package katalog
 
 import (
 	"fmt"
 	"strings"
-
-	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// validateResourceProfile ensures that resources.profile is used correctly.
-// Runs before profile expansion. Profiles must be the only resource input.
-func (k *Katalog) validateResourceProfile() error {
-	for name, crd := range k.enabledCRDs {
-		// No resources block → nothing to validate
-		if !crd.HasAnyHooks() {
-			continue
-		}
-
-		// No Deployments, Replicasets, StatefulSet → nothing to validate
-		if !crd.NeedsResourceDecl() {
-			continue
-		}
-
-		// No profile declared → nothing to validate
-		if !crd.HasResourceProfile() {
-			continue
-		}
-
-		spec := crd.ResourceDecl()
-		profile := crd.ResourceProfile()
-
-		// Rule 1: profile cannot be combined with manual resource fields
-		if !resourceIsProfileOnly(spec) {
-			return fmt.Errorf(
-				"resources.profile %q cannot be combined with manual resource fields; "+
-					"remove requests/limits when using a profile",
-				profile,
-			)
-		}
-
-		// Rule 2: profile must be recognized
-		if !isValidResourceProfile(profile) {
-			return fmt.Errorf("unknown resource profile: %q", profile)
-		}
-
-		// Save updated CRD
-		k.enabledCRDs[name] = crd
-	}
-	return nil
+// isTemplateExpr reports whether s contains a Go template expression.
+// Template expressions are resolved at runtime and should not be validated statically.
+func isTemplateExpr(s string) bool {
+	return strings.Contains(s, "{{")
 }
 
-// resourceIsProfileOnly returns true when the user has declared ONLY a profile
-// and no manual resource fields.
-func resourceIsProfileOnly(spec *orktypes.ResourceRequirements) bool {
-	if spec == nil {
-		return true
+// validateResourceProfile ensures that resources.profile is used correctly
+// across all template resources in every hook phase.
+// Uses the visitor pattern via CollectResourceProfileEntries.
+func (k *Katalog) validateResourceProfile() error {
+	for crdName, crd := range k.enabledCRDs {
+		for _, e := range crd.CollectResourceProfileEntries() {
+			if isTemplateExpr(e.Profile) {
+				continue // resolved at runtime, skip static check
+			}
+			if !isValidResourceProfile(e.Profile) {
+				return fmt.Errorf(
+					"crd %q: %s %q (phase %s) has unknown resources.profile %q — "+
+						"allowed: tiny, small, medium, large, burst, steady, compute-heavy, memory-heavy",
+					crdName, e.Resource, e.ResourceName, e.Phase, e.Profile,
+				)
+			}
+			if e.Mixed {
+				return fmt.Errorf(
+					"crd %q: %s %q (phase %s) declares both resources.profile (%q) and "+
+						"explicit requests/limits — use one or the other, not both",
+					crdName, e.Resource, e.ResourceName, e.Phase, e.Profile,
+				)
+			}
+		}
 	}
-
-	// Any manual field invalidates profile usage
-	if len(spec.Requests) > 0 || len(spec.Limits) > 0 {
-		return false
-	}
-
-	return true
+	return nil
 }
 
 // isValidResourceProfile returns true if the profile name is one of the supported presets.
@@ -107,4 +78,32 @@ func isValidResourceProfile(p string) bool {
 	default:
 		return false
 	}
+}
+
+// validateProbeProfiles checks that all probe profile names declared across all
+// CRD hooks are recognized values. Unknown profiles fail fast at load time before
+// any reconcile loop runs — same guarantee as resource profile validation.
+func (k *Katalog) validateProbeProfiles() error {
+	for crdName, crd := range k.enabledCRDs {
+		for _, e := range crd.CollectProbeProfileEntries() {
+			if isTemplateExpr(e.Profile) {
+				continue // resolved at runtime, skip static check
+			}
+			if !isValidProbeProfile(e.Profile) {
+				return fmt.Errorf(
+					"crd %q: %s probe in %s %q (phase %s) has unknown probe profile %q — "+
+						"allowed: fast, standard, patient, slow-start",
+					crdName, e.ProbeType, e.Resource, e.ResourceName, e.Phase, e.Profile,
+				)
+			}
+			if e.Mixed {
+				return fmt.Errorf(
+					"crd %q: %s probe in %s %q (phase %s) declares both a profile (%q) and "+
+						"explicit timing fields — use one or the other, not both",
+					crdName, e.ProbeType, e.Resource, e.ResourceName, e.Phase, e.Profile,
+				)
+			}
+		}
+	}
+	return nil
 }
