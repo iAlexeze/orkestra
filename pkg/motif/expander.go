@@ -27,14 +27,17 @@ import (
 
 // ExpandedMotif holds the result of expanding a motif.
 type ExpandedMotif struct {
-	Resources *orktypes.HookTemplates
-	Status    *orktypes.StatusConfig
-	Admission *orktypes.Admission
+	// OnCreate contains resources from resources.onCreate: — merged into the CRD's OnCreate phase.
+	OnCreate *orktypes.HookTemplates
+	// OnReconcile contains resources from the flat resources: fields — merged into OnReconcile.
+	OnReconcile *orktypes.HookTemplates
+	Status      *orktypes.StatusConfig
+	Admission   *orktypes.Admission
 }
 
-// HasResources returns true when the motif produced resource templates.
+// HasResources returns true when the motif produced any resource templates.
 func (e *ExpandedMotif) HasResources() bool {
-	return e.Resources != nil
+	return e.OnCreate != nil || e.OnReconcile != nil
 }
 
 // HasStatus reports whether the motif defines status fields or conditions.
@@ -66,7 +69,7 @@ func Expand(m *orktypes.Motif, bindings map[string]string) (*ExpandedMotif, erro
 	resolved := resolveDefaults(m, bindings)
 
 	// ---- Expand resources ----
-	var resources *orktypes.HookTemplates
+	var onCreate, onReconcile *orktypes.HookTemplates
 	if m.Resources != nil {
 		resourceYAML, err := yaml.Marshal(m.Resources)
 		if err != nil {
@@ -76,11 +79,17 @@ func Expand(m *orktypes.Motif, bindings map[string]string) (*ExpandedMotif, erro
 		if err != nil {
 			return nil, fmt.Errorf("rendering motif %q resources: %w", m.Metadata.Name, err)
 		}
-		var hookTemplates orktypes.HookTemplates
-		if err := yaml.Unmarshal([]byte(rendered), &hookTemplates); err != nil {
+		var mr orktypes.MotifResources
+		if err := yaml.Unmarshal([]byte(rendered), &mr); err != nil {
 			return nil, fmt.Errorf("parsing expanded motif %q resources: %w", m.Metadata.Name, err)
 		}
-		resources = &hookTemplates
+		if mr.OnCreate != nil {
+			onCreate = mr.OnCreate
+		}
+		inline := mr.HookTemplates
+		if !inline.IsEmpty() {
+			onReconcile = &inline
+		}
 	}
 
 	// ---- Expand status ----
@@ -120,9 +129,10 @@ func Expand(m *orktypes.Motif, bindings map[string]string) (*ExpandedMotif, erro
 	}
 
 	return &ExpandedMotif{
-		Resources: resources,
-		Status:    status,
-		Admission: admission,
+		OnCreate:    onCreate,
+		OnReconcile: onReconcile,
+		Status:      status,
+		Admission:   admission,
 	}, nil
 }
 

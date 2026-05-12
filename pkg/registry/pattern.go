@@ -1,18 +1,12 @@
 // pkg/registry/pattern.go
 //
-// Pattern is the atomic unit of the Orkestra Registry.
-// A pattern directory contains:
+// Generic pattern layer for the Orkestra registry.
 //
-//	katalog.yaml  — operator declaration (required)
-//	crd.yaml      — CRD schema (required)
-//	README.md     — human documentation (optional)
-//	cr.yaml       — example CR (optional)
+// Every Orkestra pattern file carries a kind: field. This package reads that
+// field to determine the pattern's media type, required/optional files, and
+// which registry to push to — without a separate code path per kind.
 //
-// Pattern metadata is derived entirely from katalog.yaml:
-//   - name, version, description, author, tags from metadata
-//   - required providers from spec.providers
-//
-// No separate pattern.yaml is required or allowed.
+// To add a new pattern kind: add one entry to patternSpecs. Nothing else changes.
 package registry
 
 import (
@@ -23,142 +17,155 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	// MediaType is the OCI artifact media type for Orkestra patterns.
-	MediaType = "application/vnd.orkestra.pattern.v1+tar+gzip"
-
-	// FileKatalog is the required operator declaration file.
-	FileKatalog = "katalog.yaml"
-
-	// FileCRD is the required CRD schema file.
-	FileCRD = "crd.yaml"
-
-	// FileReadme is the human documentation file.
-	FileReadme = "README.md"
-
-	// FileCR is the example CR file.
-	FileCR = "cr.yaml"
-)
-
-// PatternMeta holds metadata derived from the Katalog.
-type PatternMeta struct {
-	Name        string           `yaml:"name"`
-	Version     string           `yaml:"version"`
-	Description string           `yaml:"description"`
-	Author      string           `yaml:"author,omitempty"`
-	License     string           `yaml:"license,omitempty"`
-	Tags        []string         `yaml:"tags,omitempty"`
-	Requires    PatternRequires  `yaml:"requires,omitempty"`
-	Changelog   []ChangelogEntry `yaml:"changelog,omitempty"` // reserved for future use
+// patternSpecs is the registry of known pattern kinds.
+// Add new kinds here — no other changes required.
+var patternSpecs = map[PatternKind]*PatternSpec{
+	KatalogKind: {
+		Kind:          KatalogKind,
+		MediaType:     "application/vnd.orkestra.pattern.v1+tar+gzip",
+		PrimaryFile:   FileKatalog,
+		RequiredFiles: []string{FileKatalog, FileCRD},
+		OptionalFiles: []string{FileReadme, FileCR},
+	},
+	MotifKind: {
+		Kind:          MotifKind,
+		MediaType:     "application/vnd.orkestra.motif.v1+tar+gzip",
+		PrimaryFile:   FileMotif,
+		RequiredFiles: []string{FileMotif},
+		OptionalFiles: []string{FileReadme, "example/"},
+	},
 }
 
-// PatternRequires declares external dependencies.
-type PatternRequires struct {
-	Providers []string `yaml:"providers,omitempty"`
-}
-
-// ChangelogEntry represents one version entry in the changelog.
-type ChangelogEntry struct {
-	Version string `yaml:"version"`
-	Notes   string `yaml:"notes"`
-}
-
-// PatternIndex is the top-level index stored at registry/index:latest.
-type PatternIndex struct {
-	UpdatedAt string         `json:"updatedAt"`
-	Patterns  []PatternEntry `json:"patterns"`
-}
-
-// PatternEntry is one row in the pattern index.
-type PatternEntry struct {
-	Name          string   `json:"name"`
-	LatestVersion string   `json:"latestVersion"`
-	Description   string   `json:"description"`
-	Tags          []string `json:"tags"`
-	Author        string   `json:"author,omitempty"`
-}
-
-// ValidateDirectory checks that dir contains a valid pattern.
-// Returns metadata (from katalog.yaml) and the list of files to include.
-func ValidateDirectory(dir string) (*PatternMeta, []string, error) {
-	required := []string{FileKatalog, FileCRD}
-	for _, f := range required {
-		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
-			return nil, nil, fmt.Errorf("required file missing: %s", f)
+// DetectKind reads the primary YAML file in dir and returns the pattern kind.
+// Tries katalog.yaml first, then motif.yaml.
+func DetectKind(dir string) (PatternKind, *PatternSpec, error) {
+	candidates := []string{FileKatalog, FileMotif}
+	for _, name := range candidates {
+		path := filepath.Join(dir, name)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		var header struct {
+			Kind string `yaml:"kind"`
+		}
+		if err := yaml.Unmarshal(data, &header); err != nil {
+			return UnknownKind, nil, fmt.Errorf("reading %s: %w", name, err)
+		}
+		kind := PatternKind(header.Kind)
+		if spec, ok := patternSpecs[kind]; ok {
+			return kind, spec, nil
 		}
 	}
+	return UnknownKind, nil, fmt.Errorf(
+		"no recognized Orkestra pattern in %s (expected %s with kind: Katalog, or motif.yaml with kind: Motif)",
+		dir, FileKatalog,
+	)
+}
 
-	meta, err := deriveMetadataFromKatalog(filepath.Join(dir, FileKatalog))
+// SpecFor returns the PatternSpec for a given kind.
+func SpecFor(kind PatternKind) (*PatternSpec, error) {
+	spec, ok := patternSpecs[kind]
+	if !ok {
+		return nil, fmt.Errorf("unknown pattern kind: %q", kind)
+	}
+	return spec, nil
+}
+
+// ValidatePatternDirectory validates that dir contains a well-formed pattern
+// of the auto-detected kind. Returns the kind, spec, and the list of files to include.
+func ValidatePatternDirectory(dir string) (PatternKind, *PatternSpec, []string, error) {
+	kind, spec, err := DetectKind(dir)
 	if err != nil {
-		return nil, nil, fmt.Errorf("parsing katalog.yaml: %w", err)
+		return UnknownKind, nil, nil, err
 	}
 
-	files := []string{FileKatalog, FileCRD}
-	optional := []string{FileReadme, FileCR}
-	for _, f := range optional {
+	var files []string
+	for _, f := range spec.RequiredFiles {
+		if _, err := os.Stat(filepath.Join(dir, f)); os.IsNotExist(err) {
+			return kind, spec, nil, fmt.Errorf("%s pattern missing required file: %s", kind, f)
+		}
+		files = append(files, f)
+	}
+	for _, f := range spec.OptionalFiles {
 		if _, err := os.Stat(filepath.Join(dir, f)); err == nil {
 			files = append(files, f)
 		}
 	}
-	return meta, files, nil
+
+	return kind, spec, files, nil
 }
 
-// deriveMetadataFromKatalog reads katalog.yaml and builds PatternMeta.
-func deriveMetadataFromKatalog(path string) (*PatternMeta, error) {
+// LoadPatternMeta reads name/version/description from the primary file.
+// Works for both Katalog (katalog.yaml) and Motif (motif.yaml).
+func LoadPatternMeta(dir string, spec *PatternSpec) (*PatternMeta, error) {
+	path := filepath.Join(dir, spec.PrimaryFile)
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading %s: %w", spec.PrimaryFile, err)
 	}
-	var katalog struct {
+	var raw struct {
+		Kind     string `yaml:"kind"`
 		Metadata struct {
 			Name        string   `yaml:"name"`
 			Version     string   `yaml:"version"`
-			Author      string   `yaml:"author"`
 			Description string   `yaml:"description"`
+			Author      string   `yaml:"author"`
+			License     string   `yaml:"license"`
 			Tags        []string `yaml:"tags"`
 		} `yaml:"metadata"`
-		Spec struct {
-			Providers []struct {
-				Name     string `yaml:"name"`
-				Required bool   `yaml:"required"`
-			} `yaml:"providers"`
-		} `yaml:"spec"`
 	}
-	if err := yaml.Unmarshal(data, &katalog); err != nil {
-		return nil, err
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return nil, fmt.Errorf("parsing %s: %w", spec.PrimaryFile, err)
 	}
-	if katalog.Metadata.Name == "" {
-		return nil, fmt.Errorf("metadata.name is required")
+	if raw.Metadata.Name == "" {
+		return nil, fmt.Errorf("%s: metadata.name is required", spec.PrimaryFile)
 	}
 	meta := &PatternMeta{
-		Name:        katalog.Metadata.Name,
-		Version:     katalog.Metadata.Version,
-		Description: katalog.Metadata.Description,
-		Author:      katalog.Metadata.Author,
-		Tags:        katalog.Metadata.Tags,
+		Kind:        PatternKind(raw.Kind),
+		Name:        raw.Metadata.Name,
+		Version:     raw.Metadata.Version,
+		Description: raw.Metadata.Description,
+		Author:      raw.Metadata.Author,
+		License:     raw.Metadata.License,
+		Tags:        raw.Metadata.Tags,
 	}
-	// Collect required providers
-	var providers []string
-	for _, p := range katalog.Spec.Providers {
-		if p.Required {
-			providers = append(providers, p.Name)
-		}
-	}
-	if len(providers) > 0 {
-		meta.Requires.Providers = providers
-	}
-	// Apply defaults
 	if meta.Version == "" {
 		meta.Version = "latest"
 	}
 	if meta.Description == "" {
-		meta.Description = fmt.Sprintf("Pattern for %s", meta.Name)
+		meta.Description = fmt.Sprintf("%s %s", kind(spec.Kind), meta.Name)
 	}
 	return meta, nil
 }
 
-// LoadPatternMeta returns pattern metadata for a directory (convenience wrapper).
-func LoadPatternMeta(dir string) (*PatternMeta, error) {
-	meta, _, err := ValidateDirectory(dir)
-	return meta, err
+// kind returns a display string for a PatternKind.
+func kind(k PatternKind) string {
+	switch k {
+	case KatalogKind:
+		return "Pattern"
+	case MotifKind:
+		return "Motif"
+	default:
+		return "Pattern"
+	}
+}
+
+// mediaTypeForPatternFile returns the OCI layer media type for a file within
+// a specific pattern kind.
+func mediaTypeForPatternFile(name string, k PatternKind) string {
+	switch name {
+	case FileKatalog:
+		return "application/vnd.orkestra.katalog.v1+yaml"
+	case FileCRD:
+		return "application/vnd.kubernetes.crd.v1+yaml"
+	case FileCR:
+		return "application/vnd.kubernetes.cr.v1+yaml"
+	case FileReadme:
+		return "text/markdown"
+	case FileMotif:
+		return "application/vnd.orkestra.motif.v1+yaml"
+	default:
+		return "application/octet-stream"
+	}
 }

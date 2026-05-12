@@ -450,3 +450,46 @@ func detectMotif(image string) (KnownMotif, bool) {
 	}
 	return KnownMotif{}, false
 }
+
+// ParseBuildContext resolves the build: field for a service to absolute paths.
+// Returns the build context directory and the Dockerfile path.
+//
+//	build: ./frontend          → context=<projectDir>/frontend, dockerfile=<context>/Dockerfile
+//	build: {context: ./api, dockerfile: Dockerfile.prod}
+//	                           → context=<projectDir>/api, dockerfile=<context>/Dockerfile.prod
+//	build: nil                 → "", "" (service has no build: — uses a pre-built image)
+func ParseBuildContext(svc ComposeService, projectDir string) (buildCtx, dockerfile string) {
+	rawCtx, rawDF := svc.BuildContext()
+	if rawCtx == "" && rawDF == "" {
+		return "", ""
+	}
+
+	if rawCtx == "" {
+		rawCtx = "."
+	}
+
+	if filepath.IsAbs(rawCtx) {
+		buildCtx = rawCtx
+	} else {
+		buildCtx = filepath.Join(projectDir, rawCtx)
+	}
+
+	if rawDF == "" {
+		dockerfile = filepath.Join(buildCtx, "Dockerfile")
+	} else if filepath.IsAbs(rawDF) {
+		dockerfile = rawDF
+	} else {
+		dockerfile = filepath.Join(buildCtx, rawDF)
+	}
+
+	return buildCtx, dockerfile
+}
+
+// ServiceEnvVars is the public alias for resolveServiceEnvVars.
+// Returns merged env vars for a single compose service in priority order:
+//  1. root .env in projectDir (lowest priority)
+//  2. each env_file entry (in declaration order)
+//  3. environment: block (highest priority)
+func ServiceEnvVars(svc ComposeService, projectDir string) []orktypes.EnvVar {
+	return resolveServiceEnvVars(svc, projectDir)
+}

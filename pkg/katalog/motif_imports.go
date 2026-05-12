@@ -62,12 +62,19 @@ func (k *Katalog) loadAndExpandImport(imp *orktypes.MotifImport) (*motif.Expande
 // expanded motif into the target CRD entry. It respects the existing fields
 // (appending rules, preserving order, and merging condition flags sensibly).
 func (k *Katalog) mergeExpandedMotif(entry *orktypes.CRDEntry, expanded *motif.ExpandedMotif) error {
-	// Merge resources into operatorBox.OnReconcile
-	if expanded.HasResources() {
+	// resources.onCreate: → CRD onCreate (update=false, preserves once: true guard)
+	if expanded.OnCreate != nil {
+		if !entry.HasOnCreate() {
+			entry.OperatorBox.OnCreate = &orktypes.HookTemplates{}
+		}
+		motif.MergeHookTemplates(entry.OperatorBox.OnCreate, expanded.OnCreate)
+	}
+	// resources flat fields → CRD onReconcile (drift correction)
+	if expanded.OnReconcile != nil {
 		if !entry.HasOnReconcile() {
 			entry.OperatorBox.OnReconcile = &orktypes.HookTemplates{}
 		}
-		motif.MergeHookTemplates(entry.OperatorBox.OnReconcile, expanded.Resources)
+		motif.MergeHookTemplates(entry.OperatorBox.OnReconcile, expanded.OnReconcile)
 	}
 
 	// Merge status fields

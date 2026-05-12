@@ -370,7 +370,10 @@ var doctorInitCmd = &cobra.Command{
 		}
 		state.Projects[name].Dir = dir
 		state.Projects[name].UseCompose = useCompose != ""
-		state.Projects[name].ComposeFile = useCompose
+		if useCompose != "" {
+			absCompose, _ := filepath.Abs(useCompose)
+			state.Projects[name].ComposeFile = absCompose
+		}
 		_ = state.Save()
 
 		fmt.Println()
@@ -551,7 +554,7 @@ func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.Generate
 		}
 		state.Projects[a.Name].Dir = a.Dir
 		state.Projects[a.Name].UseCompose = useCompose != ""
-		state.Projects[a.Name].ComposeFile = useCompose
+		state.Projects[a.Name].ComposeFile = composePath // already absolute
 	}
 	state.DirApps[baseDir] = appNames
 	if err := state.Save(); err != nil {
@@ -586,11 +589,8 @@ func doctorInitMultiApp(baseDir string, cmd *cobra.Command, opts doctor.Generate
 			}
 			fmt.Printf("    .orkestra/%s/app.yaml\n", app.name)
 			for _, dep := range deps {
-				fmt.Printf("      ↳ %s  (e.g. %sImage, %sVolumeSize)\n",
-					dep.Motif.MotifRef,
-					dep.Motif.MotifRef,
-					dep.Motif.MotifRef,
-				)
+				hint := strings.Join(dep.Motif.AppYAMLKeys, ", ")
+				fmt.Printf("      ↳ %s  (e.g. %s)\n", dep.Motif.MotifRef, hint)
 			}
 		}
 	}

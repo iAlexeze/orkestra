@@ -1,11 +1,19 @@
 // pkg/motif/loader.go
 //
 // Loads a Motif from a file path or registry reference.
-// Resolution follows the same semantics as RegistrySource in a Komposer —
-// if you know how to pull a pattern, you already know how to pull a Motif.
 //
-// The Orkestra registry houses both patterns and motifs. Each Motif is a
-// standalone OCI artifact or Git repo with motif.yaml at its root.
+// Resolution mirrors RegistrySource in a Komposer exactly — the same four
+// reference forms are supported:
+//
+//	motif: postgres                                            # bare name → default motif registry (OCI)
+//	motif: oci://ghcr.io/orkspace/orkestra-motifs/postgres:v0.1.0   # oci:// prefix → OCI
+//	motif: ghcr.io/orkspace/orkestra-motifs/postgres@v0.1.0          # full OCI ref with oci: true
+//	motif: https://github.com/myorg/postgres-motif@main              # git URL
+//	motif: ./motifs/postgres/motif.yaml                              # file path
+//
+// Bare names and oci:// prefixes are auto-detected so oci: true is not required
+// for those forms. For full OCI refs (host with dots), oci: true is still required
+// — same as RegistrySource.
 package motif
 
 import (
@@ -16,6 +24,7 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/registry"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 )
@@ -31,52 +40,57 @@ func Load(path string) (*orktypes.Motif, error) {
 }
 
 // LoadImport resolves and loads a Motif from a MotifImport declaration.
-// Supports file paths, OCI artifacts, and Git registries — the same
-// resolution semantics as RegistrySource in a Komposer.
 //
-// File path (developer path):
-//
-//	imp.Motif = "./postgres/motif.yaml"
-//
-// OCI artifact — motif.yaml at artifact root:
-//
-//	imp.Motif = "ghcr.io/orkspace/orkestra-registry/postgres@v16"
-//	imp.OCI   = true
-//
-// Git registry — motif.yaml at repo root (standalone Motif repo):
-//
-//	imp.Motif = "https://github.com/myorg/postgres-motif@main"
-//
-// Pattern with bundled Motif (pattern includes both katalog.yaml and motif.yaml):
-//
-//	imp.Motif = "ghcr.io/orkspace/orkestra-registry/postgres@v16"
-//	imp.OCI   = true
+// Resolution order:
+//  1. File path (starts with ./, ../, /, or ends with .yaml/.yml)
+//  2. oci:// prefix → OCI pull (auto-detected, oci: field not required)
+//  3. Bare name (no scheme, no dots in registry host) → resolved against the
+//     default motif registry (ORKESTRA_MOTIFS_REGISTRY or ghcr.io/orkspace/orkestra-motifs)
+//  4. Full OCI ref + oci: true → OCI pull (komposer-compatible form)
+//  5. Git URL (https://, http://, git@) → git pull
 func LoadImport(imp *orktypes.MotifImport) (*orktypes.Motif, error) {
-	ref := imp.Motif
+	ref := strings.TrimSpace(imp.Motif)
 
 	// File path — relative, absolute, or ends with .yaml/.yml
 	if isFilePath(ref) {
 		return Load(ref)
 	}
 
-	// Registry pull — parse url@version shorthand (mirrors RegistrySource.ResolvedURL)
-	cleanURL, version := resolveRef(ref, imp.Version, imp.OCI)
+	oci := imp.OCI
 
-	// Resolve auth credentials from environment variables (same as merger auth)
-	auth, err := imp.Auth.Resolve()
-	if err != nil {
-		return nil, fmt.Errorf("motif %q: auth: %w", ref, err)
+	// oci:// prefix → always OCI, strip prefix before further parsing.
+	if strings.HasPrefix(ref, "oci://") {
+		oci = true
+		ref = strings.TrimPrefix(ref, "oci://")
 	}
 
-	// Pull to temp directory — dedicated Motif pull fetches only motif.yaml for Git
-	// repos; OCI pull fetches the full artifact (motif.yaml must be at the root)
-	tmpDir, cleanup, err := merger.PullMotifToDir(cleanURL, version, imp.OCI, auth)
+	// Bare name — no scheme, no dots in the host segment → resolve against
+	// the default motif registry and pull via OCI.
+	// e.g. "postgres" or "postgres:v0.1.0"
+	if !oci && !isGitURL(ref) && !looksLikeFullRef(ref) {
+		resolved, err := registry.ResolveForKind(ref, registry.MotifKind)
+		if err != nil {
+			return nil, fmt.Errorf("motif %q: resolving reference: %w", imp.Motif, err)
+		}
+		ref = resolved.Full // e.g. "ghcr.io/orkspace/orkestra-motifs/postgres:v0.1.0"
+		oci = true
+	}
+
+	// Parse cleanURL and version.
+	// Supports both OCI's :tag syntax and the @version shorthand used by RegistrySource.
+	cleanURL, version := resolveMotifRef(ref, imp.Version, oci)
+
+	auth, err := imp.Auth.Resolve()
+	if err != nil {
+		return nil, fmt.Errorf("motif %q: auth: %w", imp.Motif, err)
+	}
+
+	tmpDir, cleanup, err := merger.PullMotifToDir(cleanURL, version, oci, auth)
 	if err != nil {
 		return nil, fmt.Errorf("motif %q@%s: pull failed: %w", cleanURL, version, err)
 	}
 	defer cleanup()
 
-	// Motif artifacts contain motif.yaml at the root
 	data, err := os.ReadFile(filepath.Join(tmpDir, "motif.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("motif %q@%s: motif.yaml not found in artifact: %w", cleanURL, version, err)
@@ -93,12 +107,47 @@ func isFilePath(ref string) bool {
 	return strings.HasSuffix(ref, ".yaml") || strings.HasSuffix(ref, ".yml")
 }
 
-// resolveRef parses a Motif ref into (cleanURL, version).
-// Mirrors RegistrySource.ResolvedURL exactly.
-func resolveRef(ref, version string, oci bool) (cleanURL, resolvedVersion string) {
+// isGitURL reports whether ref is a Git remote URL.
+func isGitURL(ref string) bool {
+	return strings.HasPrefix(ref, "https://") ||
+		strings.HasPrefix(ref, "http://") ||
+		strings.HasPrefix(ref, "git@")
+}
+
+// looksLikeFullRef reports whether ref already contains a registry hostname
+// (has a dot or colon before the first slash, or is localhost).
+// Mirrors the logic in registry.looksLikeFull.
+func looksLikeFullRef(ref string) bool {
+	slashIdx := strings.Index(ref, "/")
+	if slashIdx < 0 {
+		return false
+	}
+	host := ref[:slashIdx]
+	return strings.Contains(host, ".") || strings.Contains(host, ":") || host == "localhost"
+}
+
+// resolveMotifRef returns the (cleanURL, version) pair ready for PullMotifToDir.
+//
+// Precedence:
+//  1. @version shorthand in ref  — "ghcr.io/.../postgres@v14"
+//  2. :tag at the end of an OCI ref — "ghcr.io/.../postgres:v14"
+//  3. Explicit imp.Version field
+//  4. Default: "latest" for OCI, "main" for Git
+func resolveMotifRef(ref, version string, oci bool) (cleanURL, resolvedVersion string) {
+	// @ shorthand (komposer style) — takes precedence over everything.
 	if idx := strings.LastIndex(ref, "@"); idx != -1 {
 		return ref[:idx], ref[idx+1:]
 	}
+
+	// For OCI refs, a colon after the last slash is the image tag.
+	// e.g. "ghcr.io/orkspace/orkestra-motifs/postgres:v0.1.0"
+	if oci {
+		if colonIdx := strings.LastIndex(ref, ":"); colonIdx > strings.LastIndex(ref, "/") {
+			return ref[:colonIdx], ref[colonIdx+1:]
+		}
+	}
+
+	// Explicit version field or defaults.
 	cleanURL = ref
 	if version != "" {
 		return cleanURL, version

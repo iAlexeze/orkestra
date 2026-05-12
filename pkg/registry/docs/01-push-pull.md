@@ -24,19 +24,23 @@ The progress callback fires once per file before any network I/O begins (sizes a
 
 ### Annotations
 
-Every pattern manifest carries a standard set of OCI annotations derived from the pattern metadata:
+Every manifest carries standard OCI annotations derived from `ArtifactMeta` (read from the primary YAML file):
 
 | Annotation | Source |
 |-----------|--------|
-| `org.opencontainers.image.title` | `PatternMeta.Name` |
-| `org.opencontainers.image.version` | `PatternMeta.Version` |
-| `org.opencontainers.image.description` | `PatternMeta.Description` |
-| `org.opencontainers.image.authors` | `PatternMeta.Author` |
+| `org.opencontainers.image.title` | `ArtifactMeta.Name` |
+| `org.opencontainers.image.version` | `ArtifactMeta.Version` |
+| `org.opencontainers.image.description` | `ArtifactMeta.Description` |
+| `org.opencontainers.image.authors` | `ArtifactMeta.Author` |
 | `org.opencontainers.image.created` | time of push |
-| `io.orkestra.pattern.name` | `PatternMeta.Name` |
-| `io.orkestra.pattern.tags` | comma-separated `PatternMeta.Tags` |
+| `io.orkestra.artifact.kind` | `ArtifactMeta.Kind` (`Katalog` or `Motif`) |
+| `io.orkestra.artifact.name` | `ArtifactMeta.Name` |
+| `io.orkestra.artifact.version` | `ArtifactMeta.Version` |
+| `io.orkestra.artifact.author` | `ArtifactMeta.Author` |
+| `io.orkestra.artifact.license` | `ArtifactMeta.License` |
+| `io.orkestra.artifact.tags` | comma-separated `ArtifactMeta.Tags` |
 
-`Info` reads these annotations to reconstruct `PatternMeta` without downloading the pattern files.
+`Info` reads these annotations to reconstruct metadata without downloading any artifact files. `annotationsToMeta` also reads the legacy `io.orkestra.pattern.*` keys so artifacts pushed before the generic artifact layer continue to work.
 
 ### Index update
 

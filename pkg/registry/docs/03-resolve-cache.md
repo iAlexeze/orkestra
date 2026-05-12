@@ -78,4 +78,4 @@ if ref.IsCached() {
 
 `client.Pull(ctx, ref, true)` re-pulls even when the cache is warm. The CLI exposes this as `ork registry pull postgres:v14 --refresh`.
 
-→ Next: [04-patterns.md](04-patterns.md)
+→ Next: [04-artifacts.md](04-artifacts.md)

@@ -7,7 +7,7 @@
 //
 //  1. Full OCI reference (starts with "oci://") — used as-is
 //  2. ORKESTRA_REGISTRY env var + "/name:version"
-//  3. Default: ghcr.io/orkspace/orkestra-registry/name:version
+//  3. Default: ghcr.io/orkspace/orkestra-registry/patterns/katalogs/name:version
 //
 // The "oci://" prefix is stripped before passing to ORAS — it is a user-facing
 // convention to signal "this is an OCI reference", not part of the actual URL.
@@ -20,40 +20,24 @@ import (
 	"strings"
 )
 
-const (
-	// DefaultRegistry is the official Orkestra pattern registry.
-	DefaultRegistry = "ghcr.io/orkspace/orkestra-registry/patterns"
-
-	// EnvRegistry is the environment variable for overriding the registry.
-	EnvRegistry = "ORKESTRA_REGISTRY"
-
-	// CacheDir is the local cache directory for pulled patterns.
-	// Resolved relative to the user's home directory.
-	CacheDir = ".orkestra/registry"
-)
-
 // Ref holds a resolved OCI reference.
 type Ref struct {
 	// Registry is the hostname (e.g. "ghcr.io").
 	Registry string
-
 	// Repository is the full repository path without the registry
 	// (e.g. "orkspace/orkestra-registry/postgres").
 	Repository string
-
 	// Tag is the version tag (e.g. "v14").
 	Tag string
-
 	// Full is the complete reference without the oci:// prefix.
-	// Suitable for passing directly to ORAS.
 	Full string
 }
 
 // Resolve converts a user-supplied reference to a fully qualified OCI Ref.
 //
-//	"postgres:v14"                          → ghcr.io/orkspace/orkestra-registry/postgres:v14
-//	"oci://ghcr.io/myorg/patterns/redis:v7" → ghcr.io/myorg/patterns/redis:v7
-//	"myorg/redis:v7" (with ORKESTRA_REGISTRY set) → resolved against env
+//	"postgres:v14"                                           → ghcr.io/orkspace/orkestra-registry/patterns/katalogs/postgres:v14
+//	"oci://ghcr.io/myorg/patterns/katalogs/redis:v7"        → ghcr.io/myorg/patterns/katalogs/redis:v7
+//	"myorg/redis:v7" (with ORKESTRA_REGISTRY set)           → resolved against env
 func Resolve(input string) (*Ref, error) {
 	input = strings.TrimSpace(input)
 	if input == "" {
@@ -148,4 +132,35 @@ func (r *Ref) String() string {
 func (r *Ref) ShortName() string {
 	parts := strings.Split(r.Repository, "/")
 	return parts[len(parts)-1] + ":" + r.Tag
+}
+
+// ResolveForKind resolves a reference against the correct default registry
+// for the given pattern kind. A full OCI reference (contains a dot in the host)
+// or an oci:// prefix is used as-is regardless of kind.
+func ResolveForKind(input string, k PatternKind) (*Ref, error) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return nil, fmt.Errorf("empty reference")
+	}
+	raw := strings.TrimPrefix(input, "oci://")
+	if looksLikeFull(raw) {
+		return parseRef(raw)
+	}
+
+	var base string
+	switch k {
+	case MotifKind:
+		base = os.Getenv(EnvMotifRegistry)
+		if base == "" {
+			base = DefaultMotifRegistry
+		}
+	default:
+		base = os.Getenv(EnvPatternRegistry)
+		if base == "" {
+			base = DefaultPatternRegistry
+		}
+	}
+	base = strings.TrimPrefix(base, "oci://")
+	base = strings.TrimSuffix(base, "/")
+	return parseRef(base + "/" + raw)
 }
