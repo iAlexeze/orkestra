@@ -27,22 +27,37 @@ package types
 //	      - field: spec.replicas
 //	        default: "2"
 type Motif struct {
-	APIVersion string         `yaml:"apiVersion" json:"apiVersion"`
-	Kind       string         `yaml:"kind" json:"kind"`
-	Metadata   MotifMeta      `yaml:"metadata" json:"metadata"`
-	Inputs     []MotifInput   `yaml:"inputs,omitempty" json:"inputs,omitempty"`
-	Resources  *HookTemplates `yaml:"resources,omitempty" json:"resources,omitempty"`
-	Status     *StatusConfig  `yaml:"status,omitempty" json:"status,omitempty"`
-	Admission  *Admission     `yaml:"admission,omitempty" json:"admission,omitempty"`
+	APIVersion string          `yaml:"apiVersion" json:"apiVersion"`
+	Kind       string          `yaml:"kind" json:"kind"`
+	Metadata   MotifMeta       `yaml:"metadata" json:"metadata"`
+	Inputs     []MotifInput    `yaml:"inputs,omitempty" json:"inputs,omitempty"`
+	Resources  *MotifResources `yaml:"resources,omitempty" json:"resources,omitempty"`
+	Status     *StatusConfig   `yaml:"status,omitempty" json:"status,omitempty"`
+	Admission  *Admission      `yaml:"admission,omitempty" json:"admission,omitempty"`
+}
+
+// MotifResources groups the resources a Motif contributes to a CRD entry.
+// Resources declared directly under resources: are merged into onReconcile.
+// Resources declared under resources.onCreate: are merged into onCreate,
+// making them immune to the update=true path (correct for once: true secrets).
+type MotifResources struct {
+	// OnCreate groups resources that must only be processed during creation —
+	// never updated on subsequent reconciles. Secrets with once: true belong here.
+	OnCreate *HookTemplates `yaml:"onCreate,omitempty" json:"onCreate,omitempty"`
+
+	// All remaining HookTemplates fields are promoted to the resources: level
+	// and merged into the CRD's onReconcile phase.
+	HookTemplates `yaml:",inline"`
 }
 
 // MotifMeta holds Motif identity fields.
 type MotifMeta struct {
-	Name        string `yaml:"name" json:"name"`
-	Version     string `yaml:"version,omitempty" json:"version,omitempty"`
-	Description string `yaml:"description,omitempty" json:"description,omitempty"`
-	Author      string `yaml:"author,omitempty" json:"author,omitempty"`
-	License     string `yaml:"license,omitempty" json:"license,omitempty"`
+	Name        string   `yaml:"name" json:"name"`
+	Version     string   `yaml:"version,omitempty" json:"version,omitempty"`
+	Description string   `yaml:"description,omitempty" json:"description,omitempty"`
+	Author      string   `yaml:"author,omitempty" json:"author,omitempty"`
+	License     string   `yaml:"license,omitempty" json:"license,omitempty"`
+	Tags        []string `yaml:"tags,omitempty" json:"tags,omitempty"`
 }
 
 // MotifInput declares one input parameter for a Motif.

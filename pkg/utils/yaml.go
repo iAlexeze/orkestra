@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"os"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -100,4 +102,46 @@ func getLineFromData(data []byte, lineNum int) string {
 		return strings.TrimSpace(lines[lineNum-1])
 	}
 	return ""
+}
+
+// FormatYAMLFile reads path, parses into a yaml.Node and writes it back
+// with consistent indentation and preserved comments/order.
+func FormatYAMLFile(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", path, err)
+	}
+
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		return fmt.Errorf("parse %s: %w", path, err)
+	}
+
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(&root); err != nil {
+		_ = enc.Close()
+		return fmt.Errorf("encode %s: %w", path, err)
+	}
+	if err := enc.Close(); err != nil {
+		return fmt.Errorf("close encoder: %w", err)
+	}
+
+	if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+	return nil
+}
+
+// WriteFileAndFormat writes data to path and then formats the YAML file.
+// It preserves a simple, consistent workflow: write -> format -> return error if any.
+func WriteFileAndFormat(path string, data []byte, perm os.FileMode) error {
+	if err := os.WriteFile(path, data, perm); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+	if err := FormatYAMLFile(path); err != nil {
+		return fmt.Errorf("format %s: %w", path, err)
+	}
+	return nil
 }

@@ -1,5 +1,30 @@
 package types
 
+// IsEmpty reports whether this HookTemplates has no resource declarations.
+func (h HookTemplates) IsEmpty() bool {
+	return len(h.Deployments) == 0 &&
+		len(h.ReplicaSets) == 0 &&
+		len(h.StatefulSets) == 0 &&
+		len(h.Services) == 0 &&
+		len(h.Pods) == 0 &&
+		len(h.Jobs) == 0 &&
+		len(h.CronJobs) == 0 &&
+		len(h.Secrets) == 0 &&
+		len(h.ConfigMaps) == 0 &&
+		len(h.ServiceAccounts) == 0 &&
+		len(h.Ingresses) == 0 &&
+		len(h.PersistentVolumes) == 0 &&
+		len(h.PersistentVolumeClaims) == 0 &&
+		len(h.HorizontalPodAutoscalers) == 0 &&
+		len(h.PodDisruptionBudgets) == 0 &&
+		len(h.Namespaces) == 0 &&
+		len(h.Roles) == 0 &&
+		len(h.RoleBindings) == 0 &&
+		len(h.External) == 0 &&
+		h.Git == nil &&
+		h.Docker == nil
+}
+
 // HasAnyHooks reports whether this CRD declares any onCreate, onReconcile, or onDelete hooks.
 func (c *CRDEntry) HasAnyHooks() bool {
 	return c.HasOnCreate() || c.HasOnReconcile() || c.HasOnDelete()

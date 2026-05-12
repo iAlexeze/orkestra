@@ -170,7 +170,7 @@ func (m *Merger) pullOCIPattern(url, version, tmpDir string, auth *utils.FileAut
 		return fmt.Errorf("OCI pull %q: %w", ref, err)
 	}
 
-	logger.Info().
+	logger.Debug().
 		Str("ref", ref).
 		Str("dst", tmpDir).
 		Msg("registry: OCI artifact pulled successfully")

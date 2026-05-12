@@ -670,8 +670,8 @@ func buildCR(name string, info *orktypes.ProjectInfo, opts GenerateOptions) stri
 }
 
 // SaveMotif writes the motif template for appName to
-// ~/.orkestra/apps/<appName>/motif.yaml — outside the project directory
-// so it is never visible to the developer.
+// ~/.orkestra/doctor/init/apps/<appName>/motif.yaml — outside the project
+// directory so it is never visible to the developer.
 func SaveMotif(appName, content string) error {
 	motifPath, err := MotifPath(appName)
 	if err != nil {
@@ -1060,8 +1060,7 @@ runtime:
 //   - Uses simple file append (no markers, no temporary files).
 //   - Works reliably on all platforms, including Windows.
 //
-// Required entries:
-//   - .orkestra/bundle/
+// Required entries: none currently (bundle lives in ~/.orkestra, not the project tree).
 func updateGitignore(dir string) error {
 	giPath := filepath.Join(dir, ".gitignore")
 
@@ -1108,8 +1107,7 @@ func updateGitignore(dir string) error {
 //   - Uses simple file append (no markers, no temporary files).
 //   - Works reliably on all platforms, including Windows.
 //
-// Required entries:
-//   - .orkestra/bundle/
+// Required entries: none currently (bundle lives in ~/.orkestra, not the project tree).
 func updateDockerignore(dir string) error {
 	giPath := filepath.Join(dir, ".dockerignore")
 

@@ -19,5 +19,8 @@ resources:
     - name: "{{ .metadata.name }}-db"
       image: "{{ index .inputs \"image\" }}"
       replicas: "1"
-      storageSize: "{{ index .inputs \"volumeSize\" }}"
-      mountPath: /data
+      volumeClaimTemplates:
+        - name: data
+          storageSize: "{{ index .inputs \"volumeSize\" }}"
+          storageClass: standard
+          mountPath: /data

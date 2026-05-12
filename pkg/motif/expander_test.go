@@ -25,10 +25,11 @@ func TestExpand_RequiredInputProvided(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if expanded.Resources != nil {
-		if len(expanded.Resources.Deployments) != 1 {
-			t.Fatalf("deployments len = %d, want 1", len(expanded.Resources.Deployments))
-		}
+	if expanded.OnReconcile == nil {
+		t.Fatal("expected OnReconcile to be non-nil")
+	}
+	if len(expanded.OnReconcile.Deployments) != 1 {
+		t.Fatalf("deployments len = %d, want 1", len(expanded.OnReconcile.Deployments))
 	}
 }
 
@@ -42,10 +43,11 @@ func TestExpand_DefaultFilled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if expanded.Resources != nil {
-		if len(expanded.Resources.Deployments) != 1 {
-			t.Fatalf("deployments len = %d, want 1", len(expanded.Resources.Deployments))
-		}
+	if expanded.OnReconcile == nil {
+		t.Fatal("expected OnReconcile to be non-nil")
+	}
+	if len(expanded.OnReconcile.Deployments) != 1 {
+		t.Fatalf("deployments len = %d, want 1", len(expanded.OnReconcile.Deployments))
 	}
 }
 

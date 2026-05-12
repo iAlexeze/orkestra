@@ -182,7 +182,10 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 		// Step 3 — Resolve motif + generate bundle from central Katalog
 		fmt.Println("\nGenerating bundle...")
 
-		bundleDir := filepath.Join(dir, orkDir, "bundle")
+		bundleDir, err := doctor.AppBundleDir(appName)
+		if err != nil {
+			return fmt.Errorf("resolving bundle dir: %w", err)
+		}
 
 		if len(info.Secrets) > 0 {
 			fmt.Printf("  %s %s-secrets  (%d variables from .env)\n", utils.SuccessMark(), appName, len(info.Secrets))
@@ -453,7 +456,10 @@ func deployMultiApp(dc deployContext) error {
 		image := doctor.ImageTag(dc.registry, appName, tag)
 		crName := appName + orkSuffix
 		ns := crName + "-ns"
-		bundleDir := filepath.Join(dc.dir, orkDir, appName, "bundle")
+		bundleDir, err := doctor.AppBundleDir(appName)
+		if err != nil {
+			return fmt.Errorf("resolving bundle dir for %s: %w", appName, err)
+		}
 		katalogPath := filepath.Join(dc.dir, orkDir, appName, "katalog.yaml")
 
 		appInfo, _ := doctor.Detect(entry.Dir)
@@ -1070,7 +1076,7 @@ type devPathArgs struct {
 }
 
 // deployDeveloperPath implements the developer deploy flow:
-//  1. Load the motif template from ~/.orkestra/apps/<appname>/motif.yaml
+//  1. Load the motif template from ~/.orkestra/doctor/init/apps/<appname>/motif.yaml
 //  2. Collect all deployed app namespaces (current + previously deployed) for allowedNamespaces
 //  3. Write ~/.orkestra/deploy/katalog.yaml with ONE platform CRD — resources
 //     embedded directly in operatorBox.onReconcile (no file imports)

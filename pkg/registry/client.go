@@ -1,6 +1,6 @@
 // pkg/registry/client.go
 //
-// ORAS-based OCI client for pushing and pulling Orkestra patterns.
+// ORAS-based OCI client for pushing and pulling Orkestra artifacts.
 //
 // Authentication uses ~/.docker/config.json via oras.land/oras-go/v2.
 // No separate login step — docker login ghcr.io is sufficient.
@@ -8,7 +8,7 @@
 // Push: validates the directory, reads each file, pushes as OCI layers.
 // Pull: fetches the manifest, extracts layers to the cache directory.
 // Info: fetches the manifest only, reads annotations.
-// List: fetches the index artifact from the registry root.
+// List: fetches the index pattern from the registry root.
 package registry
 
 import (
@@ -34,7 +34,6 @@ import (
 
 // Client wraps ORAS for Orkestra pattern operations.
 type Client struct {
-	// credStore loads credentials from ~/.docker/config.json.
 	credStore credentials.Store
 }
 
@@ -49,20 +48,21 @@ func NewClient() (*Client, error) {
 	return &Client{credStore: store}, nil
 }
 
-// Push validates the directory and pushes all pattern files to the registry.
-// Returns the manifest digest on success.
+// Push validates the directory, auto-detects the pattern kind, and pushes all
+// files to the registry. Returns the manifest digest on success.
 func (c *Client) Push(ctx context.Context, ref *Ref, dir string, progress func(file string, size int64)) (string, error) {
-	// Validate first — fail before any network call
-	meta, files, err := ValidateDirectory(dir)
+	patternKind, spec, files, err := ValidatePatternDirectory(dir)
 	if err != nil {
 		return "", fmt.Errorf("validation failed: %w", err)
 	}
-	_ = meta // used for annotations below
 
-	// Use an in-memory store so nothing is written back to dir.
+	meta, err := LoadPatternMeta(dir, spec)
+	if err != nil {
+		return "", fmt.Errorf("reading metadata: %w", err)
+	}
+
 	store := memory.New()
 
-	// Read each file and push it into the memory store as a blob.
 	var descs []ocispec.Descriptor
 	for _, f := range files {
 		path := filepath.Join(dir, f)
@@ -73,7 +73,7 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, progress func(f
 		if progress != nil {
 			progress(f, int64(len(data)))
 		}
-		desc := content.NewDescriptorFromBytes(mediaTypeForFile(f), data)
+		desc := content.NewDescriptorFromBytes(mediaTypeForPatternFile(f, patternKind), data)
 		desc.Annotations = map[string]string{
 			"org.opencontainers.image.title": f,
 		}
@@ -83,9 +83,8 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, progress func(f
 		descs = append(descs, desc)
 	}
 
-	// Pack into a manifest with annotations from pattern.yaml
-	annotations := metaToAnnotations(meta, ref)
-	manifestDesc, err := oras.Pack(ctx, store, MediaType, descs, oras.PackOptions{
+	annotations := artifactMetaToAnnotations(meta, ref)
+	manifestDesc, err := oras.Pack(ctx, store, spec.MediaType, descs, oras.PackOptions{
 		PackImageManifest:   true,
 		ManifestAnnotations: annotations,
 	})
@@ -93,12 +92,10 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, progress func(f
 		return "", fmt.Errorf("packing manifest: %w", err)
 	}
 
-	// Tag the manifest in the local store so oras.Copy can resolve it by name.
 	if err := store.Tag(ctx, manifestDesc, ref.Tag); err != nil {
 		return "", fmt.Errorf("tagging manifest: %w", err)
 	}
 
-	// Push to the remote repository
 	repo, err := c.remoteRepo(ref)
 	if err != nil {
 		return "", err
@@ -108,23 +105,22 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, progress func(f
 		return "", fmt.Errorf("pushing: %w", err)
 	}
 
-	// Update the shared index so ork registry list reflects the new pattern.
 	entry := PatternEntry{
 		Name:          meta.Name,
 		LatestVersion: meta.Version,
 		Description:   meta.Description,
 		Tags:          meta.Tags,
 		Author:        meta.Author,
+		Kind:          string(patternKind),
 	}
 	if err := c.updateIndex(ctx, ref, entry); err != nil {
-		// Non-fatal: push succeeded; index update failure is best-effort.
 		fmt.Fprintf(os.Stderr, "warning: index update failed: %v\n", err)
 	}
 
 	return manifestDesc.Digest.String(), nil
 }
 
-// Pull fetches a pattern from the registry into the local cache.
+// Pull fetches an pattern from the registry into the local cache.
 // Returns the cache directory path.
 func (c *Client) Pull(ctx context.Context, ref *Ref, refresh bool) (string, error) {
 	cacheDir, err := ref.CachePath()
@@ -132,7 +128,6 @@ func (c *Client) Pull(ctx context.Context, ref *Ref, refresh bool) (string, erro
 		return "", err
 	}
 
-	// Serve from cache unless refresh is requested
 	if !refresh && ref.IsCached() {
 		return cacheDir, nil
 	}
@@ -141,7 +136,6 @@ func (c *Client) Pull(ctx context.Context, ref *Ref, refresh bool) (string, erro
 		return "", fmt.Errorf("creating cache dir: %w", err)
 	}
 
-	// Pull into the cache directory
 	store, err := file.New(cacheDir)
 	if err != nil {
 		return "", fmt.Errorf("creating file store: %w", err)
@@ -154,21 +148,11 @@ func (c *Client) Pull(ctx context.Context, ref *Ref, refresh bool) (string, erro
 	}
 
 	if _, err := oras.Copy(ctx, repo, ref.Tag, store, ref.Tag, oras.DefaultCopyOptions); err != nil {
-		// Clean up partial cache on failure
 		os.RemoveAll(cacheDir)
 		return "", fmt.Errorf("pulling: %w", err)
 	}
 
 	return cacheDir, nil
-}
-
-// PatternInfo holds the metadata returned by Info.
-type PatternInfo struct {
-	Ref      *Ref
-	Digest   string
-	Size     int64
-	PushedAt time.Time
-	Meta     *PatternMeta
 }
 
 // Info fetches manifest metadata without downloading the pattern files.
@@ -183,7 +167,6 @@ func (c *Client) Info(ctx context.Context, ref *Ref) (*PatternInfo, error) {
 		return nil, fmt.Errorf("fetching manifest: %w", err)
 	}
 
-	// Read annotations from the manifest
 	rc, err := repo.Fetch(ctx, desc)
 	if err != nil {
 		return nil, fmt.Errorf("reading manifest: %w", err)
@@ -215,11 +198,11 @@ func (c *Client) Info(ctx context.Context, ref *Ref) (*PatternInfo, error) {
 	return info, nil
 }
 
-// List fetches the pattern index from the registry index artifact.
-// Returns an empty index (not an error) when no patterns have been pushed yet.
+// List fetches the pattern index from the given registry URL.
+// Returns an empty index (not an error) when no artifacts have been pushed yet.
 func (c *Client) List(ctx context.Context, registryURL string) (*PatternIndex, error) {
 	if registryURL == "" {
-		registryURL = DefaultRegistry
+		registryURL = DefaultPatternRegistry
 	}
 	clean := strings.TrimSuffix(strings.TrimPrefix(registryURL, "oci://"), "/")
 	idxRef, err := parseRef(clean + "/index:latest")
@@ -228,7 +211,6 @@ func (c *Client) List(ctx context.Context, registryURL string) (*PatternIndex, e
 	}
 	index, err := c.fetchIndex(ctx, idxRef)
 	if err != nil {
-		// Index doesn't exist yet — return empty, not an error.
 		return &PatternIndex{UpdatedAt: time.Now().UTC().Format(time.RFC3339)}, nil
 	}
 	return index, nil
@@ -236,11 +218,6 @@ func (c *Client) List(ctx context.Context, registryURL string) (*PatternIndex, e
 
 // ── Index management ──────────────────────────────────────────────────────────
 
-const indexMediaType = "application/vnd.orkestra.index.v1+json"
-
-// indexRef derives the index repository ref from a pattern ref.
-// "ghcr.io/orkspace/orkestra-registry/patterns/website:v1"
-// →  "ghcr.io/orkspace/orkestra-registry/patterns/index:latest"
 func indexRefFrom(ref *Ref) (*Ref, error) {
 	lastSlash := strings.LastIndex(ref.Repository, "/")
 	if lastSlash < 0 {
@@ -250,14 +227,12 @@ func indexRefFrom(ref *Ref) (*Ref, error) {
 	return parseRef(ref.Registry + "/" + namespace + "/index:latest")
 }
 
-// fetchIndex pulls the index JSON from the registry.
 func (c *Client) fetchIndex(ctx context.Context, idxRef *Ref) (*PatternIndex, error) {
 	repo, err := c.remoteRepo(idxRef)
 	if err != nil {
 		return nil, err
 	}
 
-	// Pull to a temp directory.
 	tmp, err := os.MkdirTemp("", "ork-index-*")
 	if err != nil {
 		return nil, err
@@ -286,7 +261,6 @@ func (c *Client) fetchIndex(ctx context.Context, idxRef *Ref) (*PatternIndex, er
 	return &index, nil
 }
 
-// pushIndex writes the index JSON to the registry as an OCI artifact.
 func (c *Client) pushIndex(ctx context.Context, idxRef *Ref, index *PatternIndex) error {
 	data, err := json.Marshal(index)
 	if err != nil {
@@ -300,8 +274,6 @@ func (c *Client) pushIndex(ctx context.Context, idxRef *Ref, index *PatternIndex
 		return fmt.Errorf("staging index blob: %w", err)
 	}
 
-	// Also stage as a named file so file-based pulls extract it as index.json.
-	// We encode the descriptor's filename in the title annotation.
 	blob.Annotations = map[string]string{
 		"org.opencontainers.image.title": "index.json",
 	}
@@ -328,7 +300,6 @@ func (c *Client) pushIndex(ctx context.Context, idxRef *Ref, index *PatternIndex
 	return nil
 }
 
-// updateIndex fetches the existing index (if any), upserts the entry, and pushes.
 func (c *Client) updateIndex(ctx context.Context, ref *Ref, entry PatternEntry) error {
 	idxRef, err := indexRefFrom(ref)
 	if err != nil {
@@ -337,19 +308,19 @@ func (c *Client) updateIndex(ctx context.Context, ref *Ref, entry PatternEntry) 
 
 	index, err := c.fetchIndex(ctx, idxRef)
 	if err != nil {
-		index = &PatternIndex{} // first push — start fresh
+		index = &PatternIndex{}
 	}
 
 	found := false
-	for i, p := range index.Patterns {
-		if p.Name == entry.Name {
-			index.Patterns[i] = entry
+	for i, e := range index.Entries {
+		if e.Name == entry.Name {
+			index.Entries[i] = entry
 			found = true
 			break
 		}
 	}
 	if !found {
-		index.Patterns = append(index.Patterns, entry)
+		index.Entries = append(index.Entries, entry)
 	}
 	index.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
 
@@ -370,29 +341,14 @@ func (c *Client) remoteRepo(ref *Ref) (*remote.Repository, error) {
 	return repo, nil
 }
 
-// mediaTypeForFile returns the OCI media type for a pattern file.
-func mediaTypeForFile(name string) string {
-	switch name {
-	case FileKatalog:
-		return "application/vnd.orkestra.katalog.v1+yaml"
-	case FileCRD:
-		return "application/vnd.kubernetes.crd.v1+yaml"
-	case FileCR:
-		return "application/vnd.kubernetes.cr.v1+yaml"
-	case FileReadme:
-		return "text/markdown"
-	default:
-		return "application/octet-stream"
-	}
-}
-
-// metaToAnnotations converts PatternMeta to OCI manifest annotations.
-func metaToAnnotations(meta *PatternMeta, ref *Ref) map[string]string {
+// artifactMetaToAnnotations converts PatternMeta to OCI manifest annotations.
+func artifactMetaToAnnotations(meta *PatternMeta, ref *Ref) map[string]string {
 	ann := map[string]string{
 		"org.opencontainers.image.created":     time.Now().UTC().Format(time.RFC3339),
 		"org.opencontainers.image.title":       meta.Name,
 		"org.opencontainers.image.version":     meta.Version,
 		"org.opencontainers.image.description": meta.Description,
+		"io.orkestra.pattern.kind":             string(meta.Kind),
 		"io.orkestra.pattern.name":             meta.Name,
 		"io.orkestra.pattern.version":          meta.Version,
 		"io.orkestra.pattern.author":           meta.Author,
@@ -405,18 +361,39 @@ func metaToAnnotations(meta *PatternMeta, ref *Ref) map[string]string {
 	return ann
 }
 
-// annotationsToMeta reconstructs PatternMeta from OCI annotations.
+// annotationsToMeta reconstructs PatternMeta from OCI manifest annotations.
+// Reads both current "io.orkestra.pattern.*" and legacy "io.orkestra.pattern.*" keys.
 func annotationsToMeta(ann map[string]string) *PatternMeta {
 	tags := []string{}
+	name := ann["io.orkestra.pattern.name"]
+	if name == "" {
+		name = ann["io.orkestra.pattern.name"]
+	}
+	version := ann["io.orkestra.pattern.version"]
+	if version == "" {
+		version = ann["io.orkestra.pattern.version"]
+	}
+	author := ann["io.orkestra.pattern.author"]
+	if author == "" {
+		author = ann["io.orkestra.pattern.author"]
+	}
+	license := ann["io.orkestra.pattern.license"]
+	if license == "" {
+		license = ann["io.orkestra.pattern.license"]
+	}
+	kindStr := ann["io.orkestra.pattern.kind"]
 	if t := ann["io.orkestra.pattern.tags"]; t != "" {
+		tags = strings.Split(t, ",")
+	} else if t := ann["io.orkestra.pattern.tags"]; t != "" {
 		tags = strings.Split(t, ",")
 	}
 	return &PatternMeta{
-		Name:        ann["io.orkestra.pattern.name"],
-		Version:     ann["io.orkestra.pattern.version"],
+		Kind:        PatternKind(kindStr),
+		Name:        name,
+		Version:     version,
 		Description: ann["org.opencontainers.image.description"],
-		Author:      ann["io.orkestra.pattern.author"],
-		License:     ann["io.orkestra.pattern.license"],
+		Author:      author,
+		License:     license,
 		Tags:        tags,
 	}
 }

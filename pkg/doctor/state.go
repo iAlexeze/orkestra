@@ -145,24 +145,44 @@ func (s *DeployState) DeployedAppNames() []string {
 	return names
 }
 
-// MotifDir returns ~/.orkestra/apps/ — where per-app motif templates are stored.
-// Motifs live here rather than in the project directory so developers never see them.
-func MotifDir() (string, error) {
+// InitAppsDir returns ~/.orkestra/doctor/init/apps/ — where per-app motif
+// templates and bundles are stored. Lives outside the project tree so
+// developers never see it.
+func InitAppsDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".orkestra", "apps"), nil
+	return filepath.Join(home, ".orkestra", "doctor", "init", "apps"), nil
 }
 
-// MotifPath returns the path to the motif template for a given app name.
-// ~/.orkestra/apps/<appname>/motif.yaml
-func MotifPath(appName string) (string, error) {
-	base, err := MotifDir()
+// MotifDir returns the per-app motif root: ~/.orkestra/doctor/init/apps/<appname>/
+func MotifDir(appName string) (string, error) {
+	base, err := InitAppsDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(base, appName, "motif.yaml"), nil
+	return filepath.Join(base, appName), nil
+}
+
+// MotifPath returns the path to the motif template for a given app name.
+// ~/.orkestra/doctor/init/apps/<appname>/motif.yaml
+func MotifPath(appName string) (string, error) {
+	dir, err := MotifDir(appName)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "motif.yaml"), nil
+}
+
+// AppBundleDir returns ~/.orkestra/doctor/init/apps/<appname>/bundle/ —
+// where generated secrets and configmaps for the app are stored.
+func AppBundleDir(appName string) (string, error) {
+	dir, err := MotifDir(appName)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "bundle"), nil
 }
 
 // CurrentContext returns the active kubectl context name.
