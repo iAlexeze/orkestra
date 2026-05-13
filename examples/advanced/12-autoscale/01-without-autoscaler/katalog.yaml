@@ -1,12 +1,13 @@
 apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
-  name: autoscale-own-metrics
+  name: without-autoscaler
+  author: orkspace
+  version: 0.1.0
   description: >
-    Autoscaling based on the CRD's own queue depth.
-    When the Ingestor's reconcile queue exceeds 80 items, Orkestra
-    scales workers from 2 to 8 and tightens the resync interval.
-    Baseline is restored after a 2-minute cooldown.
+    Same Ingestor pattern but without the autoscaler enabled.
+    Useful for demonstrating baseline behaviour before autoscaling
+    is introduced.
 
 spec:
   crds:
@@ -21,18 +22,6 @@ spec:
       resync: 60s
 
       operatorBox:
-        autoscale:
-          interval: 15s
-          cooldown: 2m
-          conditions:
-            when:
-              - field: metrics.queueDepth
-                greaterThan: "80"
-          do:
-            workers: 8
-            queueDepth: 500
-            resync: 10s
-
         status:
           fields:
             - path: phase

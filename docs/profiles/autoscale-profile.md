@@ -3,7 +3,14 @@
 
 An autoscale profile is a named preset that expands into a complete `operatorBox.autoscale` block at Katalog load time.
 
-Autoscale profiles are relative. They use the CRD's declared `workers` and `queue.maxQueueDepth` as a **baseline** and derive thresholds, overrides, and timing from it. The same profile behaves differently for a low-throughput operator with 2 workers than for a high-throughput operator with 20.
+Profiles are **relative**. They use the CRD’s declared `workers` and `queue.maxQueueDepth` as a **baseline**, then compute:
+
+- **override workers**  
+- **override queueDepth**  
+- **thresholds** (as a % of the override queueDepth)  
+- **interval + cooldown**  
+
+The same profile behaves differently for an operator with 2 workers than for one with 20.
 
 ---
 
@@ -11,17 +18,49 @@ Autoscale profiles are relative. They use the CRD's declared `workers` and `queu
 
 | Profile | Trigger | Workers Override | Queue Override | Interval | Cooldown |
 |---|---|---|---|---|---|
-| `burst` | queueDepth > baseline × 3 | baseline × 4 | baseline × 10 | 5s | 30s |
-| `steady` | queueDepth > baseline × 1.5 AND workers busy > 70% | baseline × 2 | baseline × 3 | 30s | 2m |
+| `burst` | queueDepth > 60% of override queueDepth | baseline × 4 | baseline × 10 | 5s | 30s |
+| `steady` | queueDepth > 40% of override queueDepth AND workersBusy > 70% | baseline × 2 | baseline × 3 | 30s | 2m |
 | `batch` | cron window 23:00 → 02:00 | baseline × 3 | baseline × 8 | 60s | 5m |
 | `latency-sensitive` | P95 reconcile > 200ms | ⌈baseline × 2.5⌉ | — | 15s | 1m |
-| `cost-optimized` | workers idle > 60% | max(1, baseline × 0.5) | baseline × 0.5 | 30s | 10m |
+| `cost-optimized` | workersIdle > 60% AND queueDepth > 80% of override queueDepth | max(1, baseline × 0.5) | baseline × 0.5 | 30s | 10m |
+
+---
+
+## How profiles compute values
+
+Given:
+
+- baseline workers = `W`
+- baseline queueDepth = `Q`
+- maxQueueDepth = `M`
+- profile multipliers = `WorkerMultiplier`, `QueueMultiplier`
+- threshold percentage = `QueueThresholdPct`
+
+Profiles compute:
+
+### **1. Override queueDepth**
+```
+overrideQueueDepth = Q × QueueMultiplier
+```
+
+### **2. Threshold**
+```
+threshold = overrideQueueDepth × QueueThresholdPct
+```
+
+### **3. Override workers**
+```
+overrideWorkers = W × WorkerMultiplier
+```
+
+### **4. Interval + Cooldown**
+Taken directly from the profile.
+
+This ensures scaling happens **before** hitting the effective queue limit.
 
 ---
 
 ## Usage
-
-Set `profile` inside the `autoscale:` block under `operatorBox:`:
 
 ```yaml
 operatorBox:
@@ -32,20 +71,31 @@ operatorBox:
     profile: steady
 ```
 
-The profile expands using `workers: 4` and `maxQueueDepth: 100` as the baseline.
+For `steady`, with baseline:
 
-For `steady`, that produces:
+- workers = 4  
+- queueDepth = 100  
 
-- Trigger: queueDepth > 150 AND workersBusyPercent > 70
-- Override: workers → 8, queueDepth → 300
-- Interval: 30s, Cooldown: 2m
+The profile expands to:
+
+- override workers = 4 × 2 = **8**
+- override queueDepth = 100 × 3 = **300**
+- threshold = 300 × 0.40 = **120**
+- interval = 30s  
+- cooldown = 2m  
+
+Trigger:
+
+```
+queueDepth > 120 AND workersBusyPercent > 70
+```
 
 ---
 
 ## Rules
 
 **Profile or explicit — not both.**  
-A `profile:` cannot coexist with manual `autoscale` fields (`interval:`, `cooldown:`, `conditions:`, `do:`) on the same CRD. Use one or the other.
+A `profile:` cannot coexist with manual autoscale fields (`interval:`, `cooldown:`, `conditions:`, `do:`).
 
 ```yaml
 # Valid — profile only
@@ -79,37 +129,33 @@ An unrecognized profile name is a Katalog load error.
 ### `burst`
 *React instantly to spikes.*
 
-Short intervals, aggressive overrides. Intended for operators that see sudden flood events — mass ingestion, fan-out operations, event storms.
+Aggressive scaling, short interval, short cooldown.
 
 ```
-trigger:  queueDepth > workers × 3
+trigger:  queueDepth > 60% of override queueDepth
 override: workers × 4, queueDepth × 10
 timing:   interval 5s, cooldown 30s
 ```
-
-Reverts quickly once the queue drains. Use when bursts are short-lived.
 
 ---
 
 ### `steady`
 *Smooth, predictable scaling.*
 
-Two-condition trigger prevents scaling on noise — both queue depth and worker saturation must rise together. Moderate overrides. Long cooldown.
+Requires both queue pressure and worker saturation.
 
 ```
-trigger:  queueDepth > baseline × 1.5 AND workersBusyPercent > 70
+trigger:  queueDepth > 40% of override queueDepth AND workersBusyPercent > 70
 override: workers × 2, queueDepth × 3
 timing:   interval 30s, cooldown 2m
 ```
-
-Good default for operators that serve consistent API load.
 
 ---
 
 ### `batch`
 *Scale for a nightly processing window.*
 
-Time-triggered via cron. Activates at 23:00, stays active for 3 hours, then reverts. No metric conditions.
+Time-triggered only.
 
 ```
 trigger:  cron "0 23 * * *", duration 3h
@@ -117,14 +163,12 @@ override: workers × 3, queueDepth × 8
 timing:   interval 60s, cooldown 5m
 ```
 
-Use for ETL operators, nightly report generators, scheduled cleanup jobs.
-
 ---
 
 ### `latency-sensitive`
 *Keep reconcile latency low.*
 
-Triggers on P95 reconcile duration — not queue depth. Adds workers before the queue even builds. Only modifies worker count, not queue.
+Triggered by P95 latency, not queue depth.
 
 ```
 trigger:  reconcileDurationP95Ms > 200
@@ -132,37 +176,27 @@ override: workers × 2.5 (ceiling)
 timing:   interval 15s, cooldown 1m
 ```
 
-Use for operators where response time matters more than throughput — admission controllers, cert rotators, DNS operators.
-
 ---
 
 ### `cost-optimized`
 *Minimize resource usage during low activity.*
 
-Inverted logic — triggers when workers are mostly idle. Reduces both workers and queue depth. Long cooldown prevents flapping.
+Triggers when idle and queue is low.
 
 ```
-trigger:  workersIdlePercent > 60
+trigger:  workersIdlePercent > 60 AND queueDepth > 80% of override queueDepth
 override: max(1, workers × 0.5), queueDepth × 0.5
 timing:   interval 30s, cooldown 10m
 ```
-
-Use for operators that see highly variable load and you want to conserve resources during quiet periods.
 
 ---
 
 ## Choosing a profile
 
-Ask these questions:
+1. **Sudden spikes?** → `burst`  
+2. **Consistent load?** → `steady`  
+3. **Nightly batch window?** → `batch`  
+4. **Latency matters?** → `latency-sensitive`  
+5. **Save resources?** → `cost-optimized`  
 
-1. **Does this operator see sudden spikes?** → `burst`
-2. **Does this operator run a scheduled nightly job?** → `batch`
-3. **Does reconcile latency matter more than throughput?** → `latency-sensitive`
-4. **Is the load consistent and predictable?** → `steady`
-5. **Is the load low and I want to minimize footprint?** → `cost-optimized`
-
-If none fit cleanly, write the autoscale block manually. Profiles are shortcuts, not constraints.
-
----
-
-**Next →** [Probe Profile](./probe-profile.md)
+If none fit, write the autoscale block manually.

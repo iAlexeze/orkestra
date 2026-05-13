@@ -6,7 +6,8 @@
 //
 // Profiles are computed presets. They:
 //   - validate the profile name
-//   - compute thresholds and overrides from baseline values
+//   - compute thresholds relative to maxQueueDepth
+//   - compute worker/queue overrides from baseline values
 //   - apply default interval/cooldown values
 //   - fail fast on unknown profiles
 //
@@ -24,6 +25,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
@@ -42,24 +44,24 @@ const (
 // AutoscaleSpec using the CRD's declared baseline values.
 //
 // This runs BEFORE merge, so the runtime only ever sees a fully-formed spec.
-func ApplyAutoscalerProfile(profile string, baseline orktypes.AutoscaleBaseline) (*orktypes.AutoscaleSpec, error) {
-	switch AutoscaleProfile(strings.ToLower(profile)) {
+func ApplyAutoscalerProfile(profile string, b orktypes.AutoscaleBaseline) (*orktypes.AutoscaleSpec, error) {
+	p := AutoscaleProfile(strings.ToLower(profile))
+	cfg, ok := profileConfig[p]
+	if !ok {
+		return nil, fmt.Errorf("unknown autoscale profile: %q", profile)
+	}
 
+	switch p {
 	case AutoscaleBurst:
-		return expandBurst(baseline), nil
-
+		return expandBurst(b, cfg), nil
 	case AutoscaleSteady:
-		return expandSteady(baseline), nil
-
+		return expandSteady(b, cfg), nil
 	case AutoscaleBatch:
-		return expandBatch(baseline), nil
-
+		return expandBatch(b, cfg), nil
 	case AutoscaleLatencySensitive:
-		return expandLatencySensitive(baseline), nil
-
+		return expandLatencySensitive(b, cfg), nil
 	case AutoscaleCostOptimized:
-		return expandCostOptimized(baseline), nil
-
+		return expandCostOptimized(b, cfg), nil
 	default:
 		return nil, fmt.Errorf("unknown autoscale profile: %q", profile)
 	}
@@ -72,20 +74,23 @@ func ApplyAutoscalerProfile(profile string, baseline orktypes.AutoscaleBaseline)
 //
 // Goal: React instantly to spikes.
 // Strategy:
+//   - threshold = pct(maxQueueDepth)
+//   - workers   = baseline * multiplier
+//   - queue     = baseline * multiplier
 //   - very short interval + cooldown
-//   - threshold = queueDepth * 3
-//   - workers = baseline * 4
-//   - queueDepth = baseline * 10
+//
+// Threshold is computed relative to maxQueueDepth so scaling happens BEFORE
+// items are dropped.
 //
 
-func expandBurst(b orktypes.AutoscaleBaseline) *orktypes.AutoscaleSpec {
-	threshold := int(float64(b.QueueDepth) * 3.0)
-	workers := int(float64(b.Workers) * 4.0)
-	queue := int(float64(b.QueueDepth) * 10.0)
+func expandBurst(b orktypes.AutoscaleBaseline, cfg ProfileConfig) *orktypes.AutoscaleSpec {
+	threshold := int(float64(b.MaxQueueDepth) * cfg.QueueThresholdPct)
+	workers := int(float64(b.Workers) * cfg.WorkerMultiplier)
+	queue := int(float64(b.MaxQueueDepth) * cfg.QueueMultiplier)
 
 	return &orktypes.AutoscaleSpec{
-		Interval: orktypes.Duration{Duration: 5 * 1e9},  // 5s
-		Cooldown: orktypes.Duration{Duration: 30 * 1e9}, // 30s
+		Interval: orktypes.Duration{Duration: cfg.Interval},
+		Cooldown: orktypes.Duration{Duration: cfg.Cooldown},
 		Conditions: orktypes.AutoscaleConditions{
 			When: []orktypes.Condition{
 				{
@@ -108,20 +113,20 @@ func expandBurst(b orktypes.AutoscaleBaseline) *orktypes.AutoscaleSpec {
 //
 // Goal: Smooth, predictable scaling.
 // Strategy:
+//   - threshold = pct(maxQueueDepth)
+//   - workers   = baseline * multiplier
+//   - queue     = baseline * multiplier
 //   - moderate interval + cooldown
-//   - threshold = queueDepth * 1.5
-//   - workers = baseline * 2
-//   - queueDepth = baseline * 3
 //
 
-func expandSteady(b orktypes.AutoscaleBaseline) *orktypes.AutoscaleSpec {
-	threshold := int(float64(b.QueueDepth) * 1.5)
-	workers := int(float64(b.Workers) * 2.0)
-	queue := int(float64(b.QueueDepth) * 3.0)
+func expandSteady(b orktypes.AutoscaleBaseline, cfg ProfileConfig) *orktypes.AutoscaleSpec {
+	threshold := int(float64(b.MaxQueueDepth) * cfg.QueueThresholdPct)
+	workers := int(float64(b.Workers) * cfg.WorkerMultiplier)
+	queue := int(float64(b.MaxQueueDepth) * cfg.QueueMultiplier)
 
 	return &orktypes.AutoscaleSpec{
-		Interval: orktypes.Duration{Duration: 30 * 1e9},  // 30s
-		Cooldown: orktypes.Duration{Duration: 120 * 1e9}, // 2m
+		Interval: orktypes.Duration{Duration: cfg.Interval},
+		Cooldown: orktypes.Duration{Duration: cfg.Cooldown},
 		Conditions: orktypes.AutoscaleConditions{
 			When: []orktypes.Condition{
 				{
@@ -149,23 +154,25 @@ func expandSteady(b orktypes.AutoscaleBaseline) *orktypes.AutoscaleSpec {
 // Goal: Scale during scheduled batch windows.
 // Strategy:
 //   - cron window 23:00 → 02:00
-//   - workers = baseline * 3
-//   - queueDepth = baseline * 8
+//   - workers = baseline * multiplier
+//   - queue   = baseline * multiplier
 //   - long cooldown
 //
+// QueueThresholdPct is unused for batch profiles.
+//
 
-func expandBatch(b orktypes.AutoscaleBaseline) *orktypes.AutoscaleSpec {
-	workers := int(float64(b.Workers) * 3.0)
-	queue := int(float64(b.QueueDepth) * 8.0)
+func expandBatch(b orktypes.AutoscaleBaseline, cfg ProfileConfig) *orktypes.AutoscaleSpec {
+	workers := int(float64(b.Workers) * cfg.WorkerMultiplier)
+	queue := int(float64(b.MaxQueueDepth) * cfg.QueueMultiplier)
 
 	return &orktypes.AutoscaleSpec{
-		Interval: orktypes.Duration{Duration: 60 * 1e9},  // 60s
-		Cooldown: orktypes.Duration{Duration: 300 * 1e9}, // 5m
+		Interval: orktypes.Duration{Duration: cfg.Interval},
+		Cooldown: orktypes.Duration{Duration: cfg.Cooldown},
 		Conditions: orktypes.AutoscaleConditions{
 			AnyOf: []orktypes.Condition{
 				{
 					Cron:     "0 23 * * *",
-					Duration: orktypes.Duration{Duration: 3 * 3600 * 1e9}, // 3h
+					Duration: orktypes.Duration{Duration: 3 * time.Hour},
 				},
 			},
 		},
@@ -183,16 +190,16 @@ func expandBatch(b orktypes.AutoscaleBaseline) *orktypes.AutoscaleSpec {
 //
 // Goal: Keep reconcile latency low.
 // Strategy:
-//   - threshold = 200ms P95
-//   - workers = ceil(baseline * 2.5)
+//   - threshold = 200ms P95 (queue threshold unused)
+//   - workers   = ceil(baseline * multiplier)
 //
 
-func expandLatencySensitive(b orktypes.AutoscaleBaseline) *orktypes.AutoscaleSpec {
-	workers := int(math.Ceil(float64(b.Workers) * 2.5))
+func expandLatencySensitive(b orktypes.AutoscaleBaseline, cfg ProfileConfig) *orktypes.AutoscaleSpec {
+	workers := int(math.Ceil(float64(b.Workers) * cfg.WorkerMultiplier))
 
 	return &orktypes.AutoscaleSpec{
-		Interval: orktypes.Duration{Duration: 15 * 1e9}, // 15s
-		Cooldown: orktypes.Duration{Duration: 60 * 1e9}, // 1m
+		Interval: orktypes.Duration{Duration: cfg.Interval},
+		Cooldown: orktypes.Duration{Duration: cfg.Cooldown},
 		Conditions: orktypes.AutoscaleConditions{
 			When: []orktypes.Condition{
 				{
@@ -214,23 +221,29 @@ func expandLatencySensitive(b orktypes.AutoscaleBaseline) *orktypes.AutoscaleSpe
 //
 // Goal: Minimize resource usage.
 // Strategy:
-//   - workers = max(1, baseline * 0.5)
-//   - queueDepth = baseline * 0.5
+//   - threshold = pct(maxQueueDepth)
+//   - workers   = max(1, baseline * multiplier)
+//   - queue     = baseline * multiplier
 //   - idlePercent > 60
 //
 
-func expandCostOptimized(b orktypes.AutoscaleBaseline) *orktypes.AutoscaleSpec {
-	workers := int(math.Max(1, float64(b.Workers)*0.5))
-	queue := int(float64(b.QueueDepth) * 0.5)
+func expandCostOptimized(b orktypes.AutoscaleBaseline, cfg ProfileConfig) *orktypes.AutoscaleSpec {
+	workers := int(math.Max(1, float64(b.Workers)*cfg.WorkerMultiplier))
+	queue := int(float64(b.MaxQueueDepth) * cfg.QueueMultiplier)
+	threshold := int(float64(b.MaxQueueDepth) * cfg.QueueThresholdPct)
 
 	return &orktypes.AutoscaleSpec{
-		Interval: orktypes.Duration{Duration: 30 * 1e9},  // 30s
-		Cooldown: orktypes.Duration{Duration: 600 * 1e9}, // 10m
+		Interval: orktypes.Duration{Duration: cfg.Interval},
+		Cooldown: orktypes.Duration{Duration: cfg.Cooldown},
 		Conditions: orktypes.AutoscaleConditions{
 			When: []orktypes.Condition{
 				{
 					Field:       "metrics.workersIdlePercent",
 					GreaterThan: "60",
+				},
+				{
+					Field:       "metrics.queueDepth",
+					GreaterThan: fmt.Sprintf("%d", threshold),
 				},
 			},
 		},

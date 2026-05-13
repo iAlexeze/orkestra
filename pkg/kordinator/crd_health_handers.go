@@ -305,6 +305,44 @@ func BuildCRDInfoHandler(
 			autoMetrics = nil
 		}
 
+		// When autoscaler is enabled, use WorkerInfo as the authoritative source
+		// for all worker and queue fields — the legacy health counters only track
+		// the initial configured pool and go negative when extra workers spawn.
+		wi := h.GetWorkerInfo()
+		workers := v.workers
+		workersActive := h.GetActiveWorkers()
+		workersIdle := h.GetIdleWorkers()
+		workersProcessing := h.GetProcessingWorkers()
+		workersSource := v.workersSource
+		queueDepth := h.QueueDepth(crd.GVK().String())
+		maxQueueDepth := v.maxQueueDepth
+		maxQueueDepthSource := v.maxQueueDepthSource
+		resync := v.resync
+		resyncSource := v.resyncSource
+
+		autoscalerSource := "autoscaler"
+		if wi != nil {
+			// workers — wi is always authoritative: legacy counters go negative when
+			// autoscale spawns extra goroutines beyond the initial configured pool.
+			workers = wi.Configured
+			workersActive = int32(wi.Effective)
+			workersIdle = int32(wi.Idle)
+			workersProcessing = int32(wi.InFlight)
+			queueDepth = int(wi.QueueDepth)
+
+			// queue limit and resync — only override when autoscaler is actively
+			// applying an override. Baseline values come from resolveCRDDisplayValues
+			// which includes the konfig default fallback (e.g. 100 queue depth).
+			if wi.OverrideActive {
+				maxQueueDepth = int(wi.QueueDepthEffective)
+				resync = wi.ResyncEffective
+
+				maxQueueDepthSource = autoscalerSource
+				resyncSource = autoscalerSource
+				workersSource = autoscalerSource
+			}
+		}
+
 		response := CRDInfoResponse{
 			Name:                crd.Name,
 			Description:         crd.Description,
@@ -314,17 +352,17 @@ func BuildCRDInfoHandler(
 			Namespaced:          crd.IsNamespaced(),
 			Namespace:           crd.Namespace,
 			DependsOn:           crd.DependsOn.Names(),
-			Workers:             v.workers,
-			WorkersActive:       h.GetActiveWorkers(),
-			WorkersIdle:         h.GetIdleWorkers(),
-			WorkersProcessing:   h.GetProcessingWorkers(),
+			Workers:             workers,
+			WorkersActive:       workersActive,
+			WorkersIdle:         workersIdle,
+			WorkersProcessing:   workersProcessing,
 			WorkerDetails:       h.GetWorkerStates(),
-			WorkersSource:       v.workersSource,
-			Resync:              v.resync,
-			ResyncSource:        v.resyncSource,
-			QueueDepth:          h.QueueDepth(crd.GVK().String()),
-			MaxQueueDepth:       v.maxQueueDepth,
-			MaxQueueDepthSource: v.maxQueueDepthSource,
+			WorkersSource:       workersSource,
+			Resync:              resync,
+			ResyncSource:        resyncSource,
+			QueueDepth:          queueDepth,
+			MaxQueueDepth:       maxQueueDepth,
+			MaxQueueDepthSource: maxQueueDepthSource,
 			ResourceCount:       v.resourceCount,
 			TotalReconciles:     h.TotalReconciles(),
 			OperatorBox:         operatorBoxInfoStruct(crd),
@@ -334,7 +372,7 @@ func BuildCRDInfoHandler(
 			ErrorRate:           h.ErrorRatePercent(),
 			RBAC:                rbacInfo,
 			AutoscalerEnabled:   crd.AutoscaleEnabled(),
-			AutoscalerWorkers:   h.GetWorkerInfo(),
+			AutoscalerWorkers:   wi,
 			Metrics:             autoMetrics,
 		}
 
@@ -843,14 +881,14 @@ func resolveCRDDisplayValues(
 	resyncSource := "configured"
 	if crd.Resync == 0 {
 		resyncSource = "default"
-		resync = kfg.Cluster().DefaultResync.String()
+		resync = kfg.Katalog().DefaultResync.String()
 	}
 
 	// Workers
 	workers := crd.Workers
 	workersSource := "configured"
 	if crd.Workers == 0 {
-		workers = kfg.Cluster().DefaultWorkers
+		workers = kfg.Katalog().DefaultWorkers
 		workersSource = "default"
 	}
 

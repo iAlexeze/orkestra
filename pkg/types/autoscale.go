@@ -111,9 +111,9 @@ type AutoscaleAction struct {
 // AutoscaleBaseline captures the CRD's declared configuration before any
 // autoscale override is applied. Always restored when conditions are false.
 type AutoscaleBaseline struct {
-	Workers    int
-	QueueDepth int
-	Resync     time.Duration
+	Workers       int
+	MaxQueueDepth int
+	Resync        time.Duration
 }
 
 // AutoscaleState tracks the runtime state of the autoscaler for one operatorbox.

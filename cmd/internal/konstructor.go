@@ -294,7 +294,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	for _, crd := range kat.Enabled() {
 		crd := crd
 		gvk := crd.GVK().String()
-		crd.Workers = crd.SetWorkers(kfg.Cluster().DefaultWorkers)
+		crd.Workers = crd.SetWorkers(kfg.Katalog().DefaultWorkers)
 
 		object, _ := crd.GetRuntimeObjects()
 
@@ -549,9 +549,9 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		defaultWq,
 		crdHealthMap,
 		orkHealth,
-		kfg.Cluster().DefaultWorkers,
+		kfg.Katalog().DefaultWorkers,
 		katalog.NewDependencyGraph(kat),
-		kfg.Cluster().ShutdownTimeout,
+		kfg.Katalog().ShutdownTimeout,
 	)
 
 	// ── 7. Komponent list ─────────────────────────────────────────────────────
@@ -577,7 +577,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// On OS signal (SIGTERM/SIGINT) or fatal error, calls Stop() in reverse.
 	// Graceful shutdown: drains queues before stopping workers.
 	o := ork.NewOrkestra(
-		kfg.Cluster().ShutdownGracePeriod,
+		kfg.Katalog().ShutdownGracePeriod,
 		kfg.Ork().LogLevel,
 	)
 	o.Register(komponents)

@@ -95,7 +95,7 @@ func SharedInformerFactory(
 		defaultWq:        defaultWq,
 		namespace:        kfg.Cluster().Namespace,
 		scheme:           scheme,
-		defaultResync:    kfg.Cluster().DefaultResync,
+		defaultResync:    kfg.Katalog().DefaultResync,
 		informers:        make(map[string]*InformerEntry),
 		missing:          make(map[string]*InformerEntry),
 		ready:            make(chan struct{}),

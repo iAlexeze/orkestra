@@ -451,7 +451,7 @@ type autoMetricsExporter interface {
 // workerInfoProvider is a local interface for reading a live WorkerInfo snapshot
 // from a reconciler. Used to populate the /katalog/{crd} handler response.
 type workerInfoProvider interface {
-	WorkerInfo(configuredWorkers, configuredQueueDepth int) *ork_autoscaler.WorkerInfo
+	WorkerInfo(configuredResync string, configuredWorkers, configuredQueueDepth int) *ork_autoscaler.WorkerInfo
 }
 
 // rollbackNotifierSetter is a local interface for injecting CRDHealth rollback
@@ -534,7 +534,7 @@ func (k *DependencyKordinator) startCRDWorkers(ctx context.Context, gvk string, 
 	// live concurrency metrics without importing the reconciler package.
 	if wip, ok := rec.(workerInfoProvider); ok {
 		k.crdHealthMap[gvk].SetWorkerInfoFn(func() *ork_autoscaler.WorkerInfo {
-			info := wip.WorkerInfo(workers, entry.CRD.Queue.MaxQueueDepth)
+			info := wip.WorkerInfo(entry.CRD.Resync.String(), workers, entry.CRD.Queue.MaxQueueDepth)
 			return info
 		})
 	}

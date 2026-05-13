@@ -244,7 +244,7 @@ func (a *Autoscaler) applyOverride() {
 // restoreBaseline restores the CRD's declared configuration.
 func (a *Autoscaler) restoreBaseline() {
 	a.target.ResizeWorkers(a.baseline.Workers)
-	a.target.SetQueueDepthLimit(a.baseline.QueueDepth)
+	a.target.SetQueueDepthLimit(a.baseline.MaxQueueDepth)
 	// Pass 0 for resync: the informer's built-in resync handles the baseline
 	// cadence. 0 idles the autoscaler resync goroutine so it does not add a
 	// redundant second trigger on top of the informer's own period.
@@ -256,7 +256,7 @@ func (a *Autoscaler) restoreBaseline() {
 	logger.Info().
 		Str("crd", a.crdKind).
 		Int("workers", a.baseline.Workers).
-		Int("queueDepth", a.baseline.QueueDepth).
+		Int("queueDepth", a.baseline.MaxQueueDepth).
 		Dur("resync", a.baseline.Resync).
 		Msg("autoscaler: baseline restored")
 }

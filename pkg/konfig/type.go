@@ -35,12 +35,6 @@ type clusterKonfig struct {
 	MasterURL      string
 	Name           string
 	Namespace      string `validate:"required"`
-
-	// Worload specific
-	DefaultResync       time.Duration
-	DefaultWorkers      int
-	ShutdownTimeout     time.Duration
-	ShutdownGracePeriod time.Duration
 }
 
 type registryConfig struct {
@@ -139,6 +133,10 @@ type katalogKonfig struct {
 	Paths                   []string // Comma separated Paths to CRD katalog YAML file
 	DefaultMaxQueueDepth    int
 	DefaultDegradeThreshold int `validate:"required"`
+	DefaultResync           time.Duration
+	DefaultWorkers          int
+	ShutdownTimeout         time.Duration
+	ShutdownGracePeriod     time.Duration
 }
 
 type konductorElection struct {

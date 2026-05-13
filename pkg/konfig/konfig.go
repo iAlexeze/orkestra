@@ -25,12 +25,6 @@ func Init(filenames ...string) (*Konfig, error) {
 			MasterURL: GetStrEnv("MASTER_URL", ""),
 			Name:      GetStrEnv("CLUSTER_NAME", "orkestra-cluster"),
 			Namespace: ns,
-
-			// Workload
-			DefaultResync:       GetDurEnvSeconds("DEFAULT_RESYNC", 15),
-			DefaultWorkers:      GetIntEnv("DEFAULT_WORKERS", 3),
-			ShutdownTimeout:     GetDurEnvSeconds("SHUTDOWN_TIMEOUT", 30),
-			ShutdownGracePeriod: GetDurEnvSeconds("SHUTDOWN_GRACE_PERIOD", 60),
 		},
 		// ── Unified security configuration ───────────────────────────────────
 		// ENV vars populate SecurityConfig as defaults.
@@ -126,6 +120,10 @@ func Init(filenames ...string) (*Konfig, error) {
 			DefaultMaxQueueDepth:    GetIntEnv("MAX_QUEUE_DEPTH", 100),
 			DefaultDegradeThreshold: GetIntEnv("DEGRADE_THRESHOLD", 5),
 			Paths:                   GetStrSliceEnv("KATALOG_PATH", []string{}),
+			DefaultResync:           GetDurEnvSeconds("DEFAULT_RESYNC", 15),
+			DefaultWorkers:          GetIntEnv("DEFAULT_WORKERS", 3),
+			ShutdownTimeout:         GetDurEnvSeconds("SHUTDOWN_TIMEOUT", 30),
+			ShutdownGracePeriod:     GetDurEnvSeconds("SHUTDOWN_GRACE_PERIOD", 60),
 		},
 	}
 

@@ -2,6 +2,8 @@ apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: autoscale-sibling
+  author: orkspace
+  version: 0.1.0
   description: >
     Cross-CRD autoscaling — two approaches in one binary.
 
@@ -50,17 +52,22 @@ spec:
             - port: "8080"
 
     # ── Processor ────────────────────────────────────────────────────────────
-    # Profile-based autoscale. Declare profile: burst and Orkestra does the rest.
+    # Profile-based autoscale. Declare profile: burst and Orkestra computes the
+    # full autoscale spec at katalog load time.
     #
-    # burst profile expands to:
-    #   workers:    baseline × 4   (2 → 8)
-    #   queueDepth: baseline × 10  (100 → 1000)
-    #   interval:   5s
-    #   cooldown:   30s
-    #   trigger:    metrics.queueDepth > threshold (computed from baseline)
+    # burst profile expands using baseline:
+    #   workers:    baseline × 4
+    #   queueDepth: baseline × 10
     #
-    # Cannot be combined with interval/cooldown/conditions/do —
-    # the profile owns those fields entirely.
+    # threshold is computed as:
+    #   threshold = overrideQueueDepth × 0.60
+    #
+    # timing:
+    #   interval: 5s
+    #   cooldown: 30s
+    #
+    # Cannot be combined with interval/cooldown/conditions/do — the profile owns
+    # the entire autoscale block.
     processor:
       apiTypes:
         group: autoscale.orkestra.io
@@ -79,10 +86,10 @@ spec:
           fields:
             - path: phase
               value: "Running"
-            - path: autoscaleActive
-              value: "{{ .metrics.autoscaleActive }}"
-            - path: workers
-              value: "{{ .metrics.workers }}"
+            # - path: autoscaleActive
+            #   value: "{{ .metrics.autoscaleActive }}"
+            # - path: workers
+            #   value: "{{ .metrics.workers }}"
 
         onCreate:
           deployments:
@@ -108,13 +115,19 @@ spec:
       resync: 60s
 
       operatorBox:
+        # cross:
+        #   - crd: loader
+        #     selector:
+        #       name: "{{ .metadata.name }}"
+        #       namespace: "{{ .metadata.namespace }}"
+        #     as: loader
         autoscale:
           interval: 30s
           cooldown: 5m
           conditions:
             when:
               - field: cross.loader.metrics.queueDepth
-                greaterThan: "150"
+                greaterThan: "75"
           do:
             workers: 4
             resync: 15s
@@ -123,8 +136,8 @@ spec:
           fields:
             - path: phase
               value: "Running"
-            - path: autoscaleActive
-              value: "{{ .metrics.autoscaleActive }}"
+            # - path: autoscaleActive
+            #   value: "{{ .metrics.autoscaleActive }}"
 
         onCreate:
           configMaps:
