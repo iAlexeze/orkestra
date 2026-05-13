@@ -298,12 +298,10 @@ func BuildCRDInfoHandler(
 		// Generate RBAC info for this CRD
 		rbacInfo := generateRBACInfo(crd, v)
 
-		autoMetrics := make(map[string]interface{})
-		if crd.AutoscaleEnabled() {
-			autoMetrics = h.GetAutoMetrics()
-		} else {
-			autoMetrics = nil
-		}
+		// Always expose live metrics so any CRD can be observed via cross.*.metrics.*
+		// by a sibling in a different binary — the observed CRD does not need to
+		// declare autoscale: itself. AutoMetrics is initialised for every reconciler.
+		autoMetrics := h.GetAutoMetrics()
 
 		// When autoscaler is enabled, use WorkerInfo as the authoritative source
 		// for all worker and queue fields — the legacy health counters only track

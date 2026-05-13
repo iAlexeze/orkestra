@@ -484,11 +484,22 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 		r.clearFailureHistory(obj.GetNamespace() + "/" + obj.GetName())
 	}
 
+	// Inject live runtime metrics into the resolver so status.fields templates
+	// can reference .metrics.queueDepth, .metrics.workers, .metrics.autoscaleActive, etc.
+	metricsMap := r.autoMetrics.AsMap()
+	if r.autoscaler != nil {
+		if snap := r.autoscaler.Snapshot(); snap != nil {
+			metricsMap["autoscaleActive"] = snap.OverrideActive
+		}
+	} else {
+		metricsMap["autoscaleActive"] = false
+	}
+	resolver = resolver.WithMetrics(metricsMap)
+
 	// Always patch status — best-effort, never fails reconcile.
 	// Called with the outcome so Ready condition reflects reality.
 	// Must run before the error return so Ready=False is written on failure.
-	// r.updatedPatchStatus(ctx, obj, err)
-	r.patchStatusWithChildren(ctx, obj, resolver, err) // Layer 3: read children only on success — no point reading
+	r.patchStatusWithChildren(ctx, obj, resolver, err)
 
 	if err != nil {
 		logger.FromContext(ctx).Error().Err(err).

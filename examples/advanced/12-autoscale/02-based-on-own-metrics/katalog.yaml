@@ -39,6 +39,10 @@ spec:
           fields:
             - path: phase
               value: "Running"
+            - path: autoscaleActive
+              value: "{{ .metrics.autoscaleActive }}"
+            - path: workers
+              value: "{{ .metrics.workers }}"
 
         onCreate:
           deployments:

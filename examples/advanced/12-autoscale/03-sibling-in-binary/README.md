@@ -151,7 +151,6 @@ Observe:
 - Once queue hits **75+ for 30s**, Auditor autoscaler activates  
 - Auditor workers scale **1 → 4**  
 - Auditor resync tightens **60s → 15s**  
-- Loader begins dropping items once queue hits its limit (75)  
 - Processor remains unaffected  
 
 This demonstrates **cross‑CRD autoscaling** using sibling metrics.

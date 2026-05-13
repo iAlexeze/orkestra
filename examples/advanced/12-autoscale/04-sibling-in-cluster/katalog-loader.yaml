@@ -1,24 +1,27 @@
 apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
-  name: without-autoscaler
+  name: loader-autoscale-sibling-in-cluster
   author: orkspace
   version: 0.1.0
   description: >
-    Same Ingestor pattern but without the autoscaler enabled.
-    Useful for demonstrating baseline behaviour before autoscaling
-    is introduced.
+    Cross-binary autoscaling within the same cluster.
+
+    Loader runs in loader-system under its own Orkestra deployment.
+    Processor runs in processor-system under a separate Orkestra deployment.
 
 spec:
   crds:
-    ingestor:
+    # ── Loader (loader-system deployment) ─────────────────────────────────────
+    # Fixed concurrency — this is the load source, not the scaling target.
+    loader:
       apiTypes:
         group: autoscale.orkestra.io
         version: v1alpha1
-        kind: Ingestor
-        plural: ingestors
+        kind: Loader
+        plural: loaders
 
-      workers: 2
+      workers: 3
       resync: 60s
 
       operatorBox:
@@ -26,10 +29,6 @@ spec:
           fields:
             - path: phase
               value: "Running"
-            - path: autoscaleActive
-              value: "{{ .metrics.autoscaleActive }}"
-            - path: workers
-              value: "{{ .metrics.workers }}"
 
         onCreate:
           deployments:
@@ -39,4 +38,3 @@ spec:
               reconcile: true
           services:
             - port: "8080"
-              reconcile: true

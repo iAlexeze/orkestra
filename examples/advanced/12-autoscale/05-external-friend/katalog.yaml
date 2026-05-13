@@ -59,7 +59,7 @@ spec:
     # ── Worker (cluster-b) ────────────────────────────────────────────────────
     # Autoscales based on Feeder's queue depth in cluster-a.
     # source.endpoint crosses the cluster boundary — responses are cached
-    # for 20 s to tolerate transient network latency.
+    # for 20s to tolerate transient network latency.
     worker:
       apiTypes:
         group: autoscale.orkestra.io
@@ -79,7 +79,7 @@ spec:
               - field: cross.feeder.metrics.queueDepth
                 greaterThan: "200"
                 source:
-                  endpoint: "http://$FEEDER_ORKESTRA_URL/katalog/feeder/metrics"
+                  endpoint: "http://$FEEDER_ORKESTRA_URL/katalog/feeder"
                   cacheFor: 20s
           do:
             workers: 10

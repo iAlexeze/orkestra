@@ -10,8 +10,8 @@ metadata:
     Loader produces work. Two downstream CRDs consume it:
 
     Processor  — uses profile: burst. The profile expands into a complete
-                 autoscale config (4× workers, 10× queue depth, 5 s evaluation,
-                 30 s cooldown). Orkestra derives the trigger from the profile's
+                 autoscale config (4x workers, 10x queue depth, 5s evaluation,
+                 30s cooldown). Orkestra derives the trigger from the profile's
                  heuristics. You declare intent; Orkestra computes the parameters.
 
     Auditor    — uses explicit conditions. Watches Loader's live queue depth
@@ -86,10 +86,10 @@ spec:
           fields:
             - path: phase
               value: "Running"
-            # - path: autoscaleActive
-            #   value: "{{ .metrics.autoscaleActive }}"
-            # - path: workers
-            #   value: "{{ .metrics.workers }}"
+            - path: autoscaleActive
+              value: "{{ .metrics.autoscaleActive }}"
+            - path: workers
+              value: "{{ .metrics.workers }}"
 
         onCreate:
           deployments:
@@ -115,12 +115,6 @@ spec:
       resync: 60s
 
       operatorBox:
-        # cross:
-        #   - crd: loader
-        #     selector:
-        #       name: "{{ .metadata.name }}"
-        #       namespace: "{{ .metadata.namespace }}"
-        #     as: loader
         autoscale:
           interval: 30s
           cooldown: 5m
@@ -136,8 +130,10 @@ spec:
           fields:
             - path: phase
               value: "Running"
-            # - path: autoscaleActive
-            #   value: "{{ .metrics.autoscaleActive }}"
+            - path: autoscaleActive
+              value: "{{ .metrics.autoscaleActive }}"
+            - path: workers
+              value: "{{ .metrics.workers }}"
 
         onCreate:
           configMaps:

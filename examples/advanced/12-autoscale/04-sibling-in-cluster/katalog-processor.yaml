@@ -1,58 +1,23 @@
 apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
-  name: autoscale-sibling-in-cluster
+  name: processor-autoscale-sibling-in-cluster
+  author: orkspace
+  version: 0.1.0
   description: >
     Cross-binary autoscaling within the same cluster.
-
-    Loader runs in loader-system under its own Orkestra deployment.
-    Processor runs in processor-system under a separate Orkestra deployment.
 
     Processor autoscales based on Loader's live queue depth — but because
     they are in different processes, Processor uses source.endpoint to fetch
     the metric from Loader's Orkestra REST API instead of reading the
     informer cache directly.
 
-    Responses are cached for 10 s to avoid hammering on every evaluation
-    interval. The autoscale interval is 20 s, so each evaluation reads a
+    Responses are cached for 10s to avoid hammering on every evaluation
+    interval. The autoscale interval is 20s, so each evaluation reads a
     cached value at most twice stale — acceptable for burst-response scaling.
-
-    Deploy order:
-      1. kubectl apply -f katalog.yaml -n loader-system
-      2. kubectl apply -f katalog.yaml -n processor-system
-
-    Trigger load:
-      make load   # creates 100 Loader CRs to fill the queue
 
 spec:
   crds:
-    # ── Loader (loader-system deployment) ─────────────────────────────────────
-    # Fixed concurrency — this is the load source, not the scaling target.
-    loader:
-      apiTypes:
-        group: autoscale.orkestra.io
-        version: v1alpha1
-        kind: Loader
-        plural: loaders
-
-      workers: 3
-      resync: 60s
-
-      operatorBox:
-        status:
-          fields:
-            - path: phase
-              value: "Running"
-
-        onCreate:
-          deployments:
-            - image: "{{ .spec.image }}"
-              replicas: "{{ .spec.replicas }}"
-              port: 8080
-              reconcile: true
-          services:
-            - port: "8080"
-
     # ── Processor (processor-system deployment) ───────────────────────────────
     # Autoscales based on Loader's queue depth fetched via HTTP API.
     # source.endpoint is required because Loader is in a different process.
@@ -73,9 +38,10 @@ spec:
           conditions:
             when:
               - field: cross.loader.metrics.queueDepth
-                greaterThan: "100"
+                greaterThan: "60"
                 source:
-                  endpoint: "http://orkestra.loader-system:8080/katalog/loader/metrics"
+                  # endpoint: "http://orkestra-runtime.loader-system:8080/katalog/loader"  # > if running in a pod
+                  endpoint: "http://localhost:8080/katalog/loader"
                   cacheFor: 10s
           do:
             workers: 8
@@ -90,6 +56,10 @@ spec:
               value: "{{ .metrics.autoscaleActive }}"
             - path: workers
               value: "{{ .metrics.workers }}"
+            - path: loaderPhase
+              value: "{{ .cross.loader.status.phase }}"
+            - path: loaderDeploymentReady
+              value: "{{ .cross.loader.children.deployment.ready }}"
 
         onCreate:
           deployments:

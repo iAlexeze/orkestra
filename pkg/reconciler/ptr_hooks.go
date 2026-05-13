@@ -7,7 +7,7 @@
 // GenericReconciler uses the type parameter name PTR rather than the
 // conventional T to make the pointer expectation visible at every call site.
 // Kubernetes informers store and return pointer values: when you create an
-// informer for Database objects, every item retrieved from its cache is a
+// informer for Database objects for example, every item retrieved from its cache is a
 // *Database. The reconciler type-asserts the raw interface{} value from the
 // cache with raw.(PTR), which succeeds only when PTR is a pointer type.
 //

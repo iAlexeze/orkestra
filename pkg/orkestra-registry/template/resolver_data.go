@@ -13,7 +13,8 @@
 //  3. resolver.WithItem(val, as)    — adds .item / .<as> for forEach loops
 //  4. resolver.WithExternal(map)    — adds .external.<name>.status / .body
 //  5. resolver.WithCross(map)       — adds .cross.<kind>.status.*
-//  6. resolver.WithPrevious(map)    — adds .previous.* (rollback path only)
+//  6. resolver.WithMetrics(map)     — adds .metrics.queueDepth / .workers / .autoscaleActive …
+//  7. resolver.WithPrevious(map)    — adds .previous.* (rollback path only)
 //
 // Each extension is a shallow copy of the previous resolver's data map
 // with one new top-level key added. The template engine sees the full
@@ -34,6 +35,8 @@ package template
 //	.children.*  — child resources, after WithChildren is called
 //	.external.*  — HTTP call results, after WithExternal is called
 //	.cross.*     — cross-CRD observations, after WithCross is called
+//	.metrics.*   — live operatorbox runtime metrics, after WithMetrics is called
+//	.health.*   — live operatorbox runtime health metrics, after WithHealth is called
 //	.item        — current forEach item, after WithItem is called
 //	.previous.*  — last successfully reconciled spec, after WithPrevious is called (rollback path only)
 //
@@ -316,6 +319,71 @@ func (r *Resolver) WithPrevious(previous map[string]interface{}) *Resolver {
 		ownerName:      r.ownerName,
 		ownerNamespace: r.ownerNamespace,
 	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WithMetrics — live operatorbox runtime metrics injection
+// ─────────────────────────────────────────────────────────────────────────────
+
+// WithMetrics returns a new Resolver with live operatorbox runtime metrics
+// injected under the "metrics" key. Makes the following available in templates:
+//
+//	{{ .metrics.queueDepth }}             — current workqueue depth
+//	{{ .metrics.workers }}                — current effective worker count
+//	{{ .metrics.autoscaleActive }}        — "true"/"false" — override active
+//	{{ .metrics.workersBusyPercent }}     — worker utilisation %
+//	{{ .metrics.workersIdlePercent }}     — idle worker %
+//	{{ .metrics.errorRatePercent }}       — reconcile error rate %
+//	{{ .metrics.reconcileDurationP95Ms }} — P95 reconcile latency (ms)
+//
+// Useful in status.fields to surface live runtime state into CR status.
+func (r *Resolver) WithMetrics(metrics map[string]interface{}) *Resolver {
+	if len(metrics) == 0 {
+		return r
+	}
+	newData := r.shallowCopy()
+	newData["metrics"] = metrics
+	return &Resolver{
+		data:           newData,
+		ownerName:      r.ownerName,
+		ownerNamespace: r.ownerNamespace,
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WithHealth — live operatorbox runtime health injection
+// ─────────────────────────────────────────────────────────────────────────────
+
+// WithHealth returns a new Resolver with live operatorbox runtime health
+// injected under the "health" key. Makes the following available in templates:
+//
+//   {{ .health.healthy }}                 — boolean: overall health
+//   {{ .health.state }}                   — "healthy" / "degraded" / "error"
+//   {{ .health.started }}                 — runtime started flag
+//   {{ .health.pending }}                 — pending startup
+//   {{ .health.startedAt }}               — RFC3339 timestamp
+//   {{ .health.uptime }}                  — human‑readable uptime
+//   {{ .health.queueDepth }}              — current queue depth
+//   {{ .health.errorRate }}               — reconcile error rate
+//   {{ .health.consecutiveFails }}        — consecutive reconcile failures
+//   {{ .health.totalReconciles }}         — total reconciles since start
+//   {{ .health.resourceCount }}           — number of managed CRs
+//   {{ .health.lastError }}               — last reconcile error (string)
+//   {{ .health.lastReconcile }}           — timestamp of last reconcile
+//   {{ .health.hasUnhealthyDependencies }}— dependency health flag
+//
+// Useful in status.fields to surface live runtime health into CR status.
+func (r *Resolver) WithHealth(health map[string]interface{}) *Resolver {
+    if len(health) == 0 {
+        return r
+    }
+    newData := r.shallowCopy()
+    newData["health"] = health
+    return &Resolver{
+        data:           newData,
+        ownerName:      r.ownerName,
+        ownerNamespace: r.ownerNamespace,
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
