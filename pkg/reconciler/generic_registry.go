@@ -31,9 +31,3 @@ type KatalogRegistry interface {
 	// key and value. Returns nil, false when no CRD matches.
 	GetInformerByLabel(key, value string) (cache.SharedIndexInformer, bool)
 }
-
-// HealthProvider is the minimal interface GenericReconciler needs
-// to expose CRD health to templates without importing kordinator.
-type HealthProvider interface {
-	HealthAsMap() map[string]interface{}
-}
