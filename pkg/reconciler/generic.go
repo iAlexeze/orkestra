@@ -61,12 +61,13 @@ import (
 // because the informer cache always holds the correct underlying concrete type.
 // See pkg/reconciler/ptr_hooks.go for the full design rationale.
 type GenericReconciler[PTR domain.Object] struct {
-	katalogRegistry  *kordinator.ResourceKatalog
-	providerRegistry orktypes.ProviderRegistry
-	providerStats    providerStatsRecorder
-	informer         cache.SharedIndexInformer
-	event            *event.Event
-	kube             *kubeclient.Kubeclient
+	katalogRegistry   *kordinator.ResourceKatalog
+	crdHealthRegistry map[string]*kordinator.CRDHealth
+	providerRegistry  orktypes.ProviderRegistry
+	providerStats     providerStatsRecorder
+	informer          cache.SharedIndexInformer
+	event             *event.Event
+	kube              *kubeclient.Kubeclient
 	// hooks holds type-erased, domain.Object-parameterized callbacks built at
 	// construction time from the user's ReconcileHooks[PTR]. Stored as
 	// ObjectHooks rather than ReconcileHooks[PTR] so the reconciler remains
@@ -134,6 +135,7 @@ func NewGenericReconciler[PTR domain.Object](
 	anyHooks domain.AnyReconcileHooks,
 	newObj func() PTR,
 	katalogRegistry *kordinator.ResourceKatalog,
+	crdHealthRegistry map[string]*kordinator.CRDHealth,
 	providerRegistry orktypes.ProviderRegistry,
 	providerStats providerStatsRecorder,
 ) *GenericReconciler[PTR] {
@@ -164,26 +166,27 @@ func NewGenericReconciler[PTR domain.Object](
 	autoMet := autoscaler.NewAutoMetrics(sem)
 
 	r := &GenericReconciler[PTR]{
-		katalogRegistry:  katalogRegistry,
-		providerRegistry: providerRegistry,
-		providerStats:    providerStats,
-		crd:              crd,
-		operatorBox:      crd.OperatorBox,
-		informer:         informer,
-		event:            ev,
-		kube:             kube,
-		hooks:            hooks,
-		newObj:           newObj,
-		workerSem:        sem,
-		autoMetrics:      autoMet,
-		rollbackHistory:  make(map[string]*rollbackFailureHistory),
+		katalogRegistry:   katalogRegistry,
+		crdHealthRegistry: crdHealthRegistry,
+		providerRegistry:  providerRegistry,
+		providerStats:     providerStats,
+		crd:               crd,
+		operatorBox:       crd.OperatorBox,
+		informer:          informer,
+		event:             ev,
+		kube:              kube,
+		hooks:             hooks,
+		newObj:            newObj,
+		workerSem:         sem,
+		autoMetrics:       autoMet,
+		rollbackHistory:   make(map[string]*rollbackFailureHistory),
 	}
 
 	if crd.AutoscaleEnabled() {
 		baseline := orktypes.AutoscaleBaseline{
-			Workers:    workers,
-			QueueDepth: crd.Queue.MaxQueueDepth,
-			Resync:     crd.Resync,
+			Workers:       workers,
+			MaxQueueDepth: crd.Queue.MaxQueueDepth,
+			Resync:        crd.Resync,
 		}
 		r.autoscaler = autoscaler.NewAutoscaler(
 			crd.APITypes.Kind,
@@ -484,11 +487,33 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 		r.clearFailureHistory(obj.GetNamespace() + "/" + obj.GetName())
 	}
 
+	// Inject live runtime metrics into the resolver so status.fields templates
+	// can reference .metrics.queueDepth, .metrics.workers, .metrics.autoscaleActive, etc.
+	metricsMap := r.autoMetrics.AsMap()
+	if r.autoscaler != nil {
+		if snap := r.autoscaler.Snapshot(); snap != nil {
+			metricsMap["autoscaleActive"] = snap.OverrideActive
+		}
+	} else {
+		metricsMap["autoscaleActive"] = false
+	}
+	resolver = resolver.WithMetrics(metricsMap)
+
+	// Inject live runtime health into the resolver so status.fields templates
+	// can reference .health.healthy, .health.state, .health.uptime,
+	// .health.totalReconciles, .health.lastError, etc.
+	//
+	// This surfaces the operatorbox health endpoint directly into templates,
+	// enabling CR status fields to show live reconcile health, uptime,
+	// dependency health, and error information without any API calls.
+	if h, ok := r.crdHealthRegistry[r.crd.GVK().String()]; ok {
+		resolver = resolver.WithHealth(h.HealthAsMap())
+	}
+
 	// Always patch status — best-effort, never fails reconcile.
 	// Called with the outcome so Ready condition reflects reality.
 	// Must run before the error return so Ready=False is written on failure.
-	// r.updatedPatchStatus(ctx, obj, err)
-	r.patchStatusWithChildren(ctx, obj, resolver, err) // Layer 3: read children only on success — no point reading
+	r.patchStatusWithChildren(ctx, obj, resolver, err)
 
 	if err != nil {
 		logger.FromContext(ctx).Error().Err(err).

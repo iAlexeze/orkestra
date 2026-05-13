@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -63,6 +64,15 @@ func (c *CRDEntry) SetWorkers(def int) int {
 		return def
 	}
 	return c.Workers
+}
+
+// SetResync resolves the resync period for this CRD. If a per‑CRD non‑zero value is
+// set, it is used; otherwise the global default resync is applied.
+func (c *CRDEntry) SetResync(def time.Duration) time.Duration {
+	if c.Resync != 0 {
+		return c.Resync
+	}
+	return def
 }
 
 // IsDynamic determines whether this CRD should operate in dynamic mode.

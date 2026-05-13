@@ -224,6 +224,9 @@ type AutoscalerWorkersInfo struct {
 	QueueDepth           int64   `json:"queueDepth"`
 	QueueDepthConfigured int     `json:"queueDepthConfigured"`
 	QueueDepthEffective  int     `json:"queueDepthEffective"`
+	Resync               string  `json:"resync"`
+	ResyncEffective      string  `json:"resyncEffective"`
+	ResyncConfigured     string  `json:"resyncConfigured"`
 	BusyPercent          float64 `json:"busyPercent"`
 }
 

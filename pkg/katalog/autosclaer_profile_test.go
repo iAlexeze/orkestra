@@ -10,9 +10,9 @@ import (
 
 func baseline(workers, queue int, resync time.Duration) orktypes.AutoscaleBaseline {
 	return orktypes.AutoscaleBaseline{
-		Workers:    workers,
-		QueueDepth: queue,
-		Resync:     resync,
+		Workers:       workers,
+		MaxQueueDepth: queue,
+		Resync:        resync,
 	}
 }
 

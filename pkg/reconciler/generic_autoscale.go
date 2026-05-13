@@ -101,7 +101,7 @@ func (r *GenericReconciler[PTR]) GetAutoMetrics() *autoscaler.AutoMetrics {
 
 // WorkerInfo returns a live WorkerInfo snapshot for the /katalog/{crd} endpoint.
 // configuredWorkers and configuredQueueDepth come from the CRD entry at startup.
-func (r *GenericReconciler[PTR]) WorkerInfo(configuredWorkers, configuredQueueDepth int) *autoscaler.WorkerInfo {
+func (r *GenericReconciler[PTR]) WorkerInfo(configuredResync string, configuredWorkers, configuredQueueDepth int) *autoscaler.WorkerInfo {
 	maxWorkers := configuredWorkers
 	if r.autoscaler != nil {
 		if snap := r.autoscaler.Snapshot(); snap != nil && snap.EffectiveWorkers > maxWorkers {
@@ -113,6 +113,7 @@ func (r *GenericReconciler[PTR]) WorkerInfo(configuredWorkers, configuredQueueDe
 		r.autoMetrics,
 		configuredWorkers,
 		configuredQueueDepth,
+		configuredResync,
 		maxWorkers,
 		r.autoscaler != nil,
 		r.autoscaler.Snapshot(),

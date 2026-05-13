@@ -309,7 +309,9 @@ func (r *GenericReconciler[PTR]) readCross(
 					Msg("cross: no CRD matched label selector in registry")
 			}
 		}
-		// Path 1b: name-based informer lookup (existing, unchanged)
+
+		notFoundInBianry := false
+		// Path 1b: name-based informer lookup
 		if decl.Crd != "" && r.katalogRegistry != nil {
 			inf, found := r.katalogRegistry.GetInformerByName(decl.Crd)
 			if found {
@@ -322,13 +324,10 @@ func (r *GenericReconciler[PTR]) readCross(
 				result[as] = data
 				continue
 			}
-			log.Warn().
-				Str("crd", decl.Crd).
-				Str("as", as).
-				Bool("registry_nil", registryNil).
-				Msg("cross: no CRD matched name in registry")
+			notFoundInBianry = true
 		}
 
+		notFoundCrossBinary := false
 		// Path 2: HTTP endpoint fallback.
 		// For cross-binary or cross-cluster. Uses Orkestra's CR detail endpoint.
 		if decl.Source != nil && decl.Source.Endpoint != "" {
@@ -344,10 +343,19 @@ func (r *GenericReconciler[PTR]) readCross(
 					Msg("cross: read via HTTP endpoint")
 				continue
 			}
+			notFoundCrossBinary = true
 			log.Warn().
 				Str("crd", decl.Crd).
 				Str("endpoint", endpointURL).
 				Msg("cross: HTTP endpoint returned nil")
+		}
+
+		if notFoundInBianry && notFoundCrossBinary {
+			log.Warn().
+				Str("crd", decl.Crd).
+				Str("as", as).
+				Bool("registry_nil", registryNil).
+				Msg("cross: no CRD matched name in registry")
 		}
 
 		// Path 3: not found.

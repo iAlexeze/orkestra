@@ -2,14 +2,16 @@ apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: autoscale-sibling
+  author: orkspace
+  version: 0.1.0
   description: >
     Cross-CRD autoscaling — two approaches in one binary.
 
     Loader produces work. Two downstream CRDs consume it:
 
     Processor  — uses profile: burst. The profile expands into a complete
-                 autoscale config (4× workers, 10× queue depth, 5 s evaluation,
-                 30 s cooldown). Orkestra derives the trigger from the profile's
+                 autoscale config (4x workers, 10x queue depth, 5s evaluation,
+                 30s cooldown). Orkestra derives the trigger from the profile's
                  heuristics. You declare intent; Orkestra computes the parameters.
 
     Auditor    — uses explicit conditions. Watches Loader's live queue depth
@@ -50,17 +52,22 @@ spec:
             - port: "8080"
 
     # ── Processor ────────────────────────────────────────────────────────────
-    # Profile-based autoscale. Declare profile: burst and Orkestra does the rest.
+    # Profile-based autoscale. Declare profile: burst and Orkestra computes the
+    # full autoscale spec at katalog load time.
     #
-    # burst profile expands to:
-    #   workers:    baseline × 4   (2 → 8)
-    #   queueDepth: baseline × 10  (100 → 1000)
-    #   interval:   5s
-    #   cooldown:   30s
-    #   trigger:    metrics.queueDepth > threshold (computed from baseline)
+    # burst profile expands using baseline:
+    #   workers:    baseline × 4
+    #   queueDepth: baseline × 10
     #
-    # Cannot be combined with interval/cooldown/conditions/do —
-    # the profile owns those fields entirely.
+    # threshold is computed as:
+    #   threshold = overrideQueueDepth × 0.60
+    #
+    # timing:
+    #   interval: 5s
+    #   cooldown: 30s
+    #
+    # Cannot be combined with interval/cooldown/conditions/do — the profile owns
+    # the entire autoscale block.
     processor:
       apiTypes:
         group: autoscale.orkestra.io
@@ -114,7 +121,7 @@ spec:
           conditions:
             when:
               - field: cross.loader.metrics.queueDepth
-                greaterThan: "150"
+                greaterThan: "75"
           do:
             workers: 4
             resync: 15s
@@ -125,6 +132,8 @@ spec:
               value: "Running"
             - path: autoscaleActive
               value: "{{ .metrics.autoscaleActive }}"
+            - path: workers
+              value: "{{ .metrics.workers }}"
 
         onCreate:
           configMaps:

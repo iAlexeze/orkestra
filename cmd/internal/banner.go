@@ -127,7 +127,7 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 		if crd.Workers > 0 {
 			fmt.Printf("  Workers:       %d\n", crd.Workers)
 		} else {
-			fmt.Printf("  Workers:       %d (default)\n", kfg.konfig.Cluster().DefaultWorkers)
+			fmt.Printf("  Workers:       %d (default)\n", kfg.konfig.Katalog().DefaultWorkers)
 		}
 
 		if crd.Queue.MaxQueueDepth > 0 {
@@ -141,7 +141,7 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 			fmt.Printf("  Resync:        %s\n", crd.Resync.String())
 		} else {
 			fmt.Printf("  Resync:        %s (default)\n",
-				kfg.konfig.Cluster().DefaultResync)
+				kfg.konfig.Katalog().DefaultResync)
 		}
 
 		if len(crd.DependsOn) > 0 {

@@ -110,19 +110,42 @@ type CrossSelector struct {
 	LabelSelector string `yaml:"labelSelector,omitempty" json:"labelSelector,omitempty"`
 }
 
-// CrossSource declares an HTTP fallback for cross-binary/cluster observation.
+// CrossSource declares how to fetch cross-binary/cluster data for a CRD.
+// If Endpoint is provided, it is used as-is (raw HTTP fetch).
+// If Host is provided, Orkestra constructs the URL based on Type.
+//
+// Supported Type values:
+//   - "info"    → /katalog/<crd>/cr/<ns>/<name>
+//   - "metrics" → /katalog/<crd>
+//   - "health"  → /katalog/<crd>/health
+//   - "events"  → /katalog/<crd>/cr/<ns>/<name>/events
+//
 // The endpoint must return the same JSON shape as the informer cache path —
 // i.e., the Orkestra CR detail endpoint format.
+// Namespace is optional; defaults to the CR's namespace when omitted.
 type CrossSource struct {
-	// Endpoint is the URL to call when the informer is unavailable.
-	// Template expressions supported.
-	//   endpoint: "http://database-operator:8080/katalog/database/cr/{{ .metadata.namespace }}/{{ .metadata.name }}"
-	Endpoint string `yaml:"endpoint" json:"endpoint"`
+    // Endpoint is a fully-qualified URL. If set, Orkestra uses it directly
+    // and ignores Host/Type/Namespace. Template expressions supported.
+    Endpoint string `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
 
-	// Token is a bearer token for the endpoint. $ENV_VAR syntax supported.
-	Token string `yaml:"token,omitempty" json:"token,omitempty"`
+    // Host is the base URL of a remote Orkestra runtime, e.g.:
+    //   http://orkestra-runtime.loader-system:8080
+    // Combined with Type to build the final URL.
+    Host string `yaml:"host,omitempty" json:"host,omitempty"`
 
-	// CacheFor is how long to cache the result before calling again.
-	// Default: 30s — prevents hammering the endpoint on every resync.
-	CacheFor string `yaml:"cacheFor,omitempty" json:"cacheFor,omitempty"`
+    // Type selects which Orkestra-native endpoint to call.
+    // One of: "info", "metrics", "health", "events".
+    // Default: "info".
+    Type string `yaml:"type,omitempty" json:"type,omitempty"`
+
+    // Namespace overrides the CR namespace when building info/events URLs.
+    // Optional — defaults to the CR's own namespace.
+    Namespace string `yaml:"namespace,omitempty" json:"namespace,omitempty"`
+
+    // Token is a bearer token for the endpoint. $ENV_VAR syntax supported.
+    Token string `yaml:"token,omitempty" json:"token,omitempty"`
+
+    // CacheFor controls how long to cache the result before calling again.
+    // Default: 30s — prevents hammering the endpoint on every evaluation.
+    CacheFor string `yaml:"cacheFor,omitempty" json:"cacheFor,omitempty"`
 }
