@@ -5,10 +5,11 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -29,6 +30,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	_, err := kube.Clientset().CoreV1().Services(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -67,6 +71,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	existing, err := kube.Clientset().CoreV1().Services(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
@@ -117,6 +124,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Delete deletes the Service if it exists.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedServiceSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	err := kube.Clientset().CoreV1().Services(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -152,7 +162,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 		return err
 	}
 	// Only delete if we own it
-	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
 		return nil
 	}
 	return kube.Clientset().CoreV1().Services(namespace).
@@ -174,6 +184,7 @@ func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServi
 	}
 
 	spec.Namespace = src.Namespace
+	spec.Sleep = src.Sleep
 
 	spec.Type = src.Type
 	if spec.Type == "" {
@@ -206,8 +217,8 @@ func Resolve(src orktypes.ServiceTemplateSource, ownerName string) ResolvedServi
 	}
 
 	// System labels
-	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
-	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -221,6 +232,20 @@ func buildService(owner domain.Object, spec ResolvedServiceSpec, namespace strin
 		svcType = corev1.ServiceTypeNodePort
 	case "LoadBalancer":
 		svcType = corev1.ServiceTypeLoadBalancer
+	}
+
+	if spec.Headless {
+		svcType = corev1.ClusterIPNone
+	}
+
+	proto := corev1.ProtocolTCP
+	switch strings.ToUpper(spec.Protocol) {
+	case "UDP":
+		proto = corev1.ProtocolUDP
+	case "SCTP":
+		proto = corev1.ProtocolSCTP
+	case "", "TCP":
+		proto = corev1.ProtocolTCP
 	}
 
 	// Selector matches pods created by deployments with the same owner
@@ -263,7 +288,7 @@ func buildService(owner domain.Object, spec ResolvedServiceSpec, namespace strin
 				{
 					Port:       spec.Port,
 					TargetPort: intstr.FromInt(int(spec.TargetPort)),
-					Protocol:   corev1.ProtocolTCP,
+					Protocol:   proto,
 				},
 			},
 		},

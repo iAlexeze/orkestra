@@ -22,7 +22,7 @@ func NewControlCenterKonfig() *ControlCenterKonfig {
 
 // Handle user defined variables
 func handleEnvVars() *ControlCenterKonfig {
-	port := getStrEnv("PORT", "8090")
+	port := getStrEnv("PORT", "8081")
 	ignoreDefault := getBoolEnv("IGNORE_DEFAULT", false)
 	runtimeManager := getBoolEnv("ENABLE_RUNTIME_MANAGER", true)
 	loglevel := getStrEnv("LOG_LEVEL", "info")

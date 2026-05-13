@@ -24,7 +24,7 @@ ork control start [flags]
 
 | Flag | Description |
 |------|-------------|
-| `-p, --port <port>` | Port to run the Control Center on (default: `8090`) |
+| `-p, --port <port>` | Port to run the Control Center on (default: `8081`) |
 | `-u, --urls <list>` | Comma‑separated list of Orkestra runtime URLs (default: `http://localhost:8080`) |
 | `--refresh <duration>` | Auto‑refresh interval for fetching Katalogs (default: `10s`) |
 | `--log-level <level>` | Log level (`debug`, `info`, `warn`, `error`) |

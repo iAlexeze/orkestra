@@ -46,6 +46,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/orkspace/orkestra/pkg/konfig"
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
@@ -55,7 +56,7 @@ import (
 )
 
 // DefaultTLSSecretName is the Secret name used for Orkestra's auto-generated TLS bundle.
-const DefaultTLSSecretName = "orkestra-internal-tls"
+var DefaultTLSSecretName = konfig.DefaultInternalTLSName()
 
 // CertificateSpec describes the TLS certificate Orkestra should generate and store.
 type CertificateSpec struct {
@@ -141,7 +142,7 @@ func (m *k8sManager) EnsureCertificate(ctx context.Context, spec CertificateSpec
 			Namespace: spec.Namespace,
 			Labels:    secretLabels,
 			Annotations: map[string]string{
-				"orkestra.workspace.io/generated-at": time.Now().UTC().Format(time.RFC3339),
+				"orkestra.orkspace.io/generated-at": time.Now().UTC().Format(time.RFC3339),
 			},
 		},
 		Type: corev1.SecretTypeTLS,

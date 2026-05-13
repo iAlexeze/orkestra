@@ -52,7 +52,7 @@ operatorBox:
 After declaring a constructor, run:
 
 ```bash
-ork generate registry --katalog <path>
+ork generate registry --file <path>
 ```
 
 to generate the runtime registry wiring.

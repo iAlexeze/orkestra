@@ -66,118 +66,6 @@ func (k *Katalog) validateGVKUniqueness() error {
 }
 
 // -----------------------------------------------------------------------------
-// Validation: Reconciler Mode
-// -----------------------------------------------------------------------------
-
-// validateReconcilerMode determines the mode (dynamic/typed) for each CRD and
-// performs consistency checks for hooks and constructor declarations.
-//
-// Rules:
-//   - If mode is empty: default to typed when APITypes.Location is set,
-//     otherwise default to dynamic.
-//   - If mode is typed: APITypes.Location must be set.
-//   - If hooks are declared (WithHooksDecl): APITypes.Location must be set,
-//     and Hooks.Location + Hooks.Function are required.
-//   - If constructor is declared (WithConstructorDecl): APITypes.Location must
-//     be set, and ConstructorDecl.Location + ConstructorDecl.Function are required.
-//
-// The method modifies crd.Mode in place for CRDs that defaulted.
-func (k *Katalog) validateReconcilerMode() error {
-	for name, crd := range k.enabledCRDs {
-		mode := crd.Mode
-
-		// ── Default mode if not explicitly set ──────────────────────────────
-		switch mode {
-		case "":
-			if crd.APITypes.Location != "" {
-				crd.Mode = orktypes.CRDModeTyped
-				logger.Debug().
-					Str("crd", name).
-					Msg("reconciler mode defaulted to 'typed' because apiTypes.location is set")
-			} else {
-				crd.Mode = orktypes.CRDModeDynamic
-				logger.Debug().
-					Str("crd", name).
-					Msg("reconciler mode defaulted to 'dynamic'")
-			}
-		case orktypes.CRDModeDynamic, orktypes.CRDModeTyped:
-			// Valid – fine
-		default:
-			return fmt.Errorf(
-				"CRD %q: reconciler mode %q is not supported — use %q or %q",
-				name, mode,
-				orktypes.CRDModeDynamic,
-				orktypes.CRDModeTyped,
-			)
-		}
-
-		// ── Mutual exclusivity: hooks and constructor cannot both be declared ──
-		if crd.WithHooksDecl() && crd.WithConstructorDecl() {
-			return fmt.Errorf(
-				"CRD %q: cannot declare both 'hooks' and 'constructor' – choose one",
-				name,
-			)
-		}
-
-		// ── Common requirement for typed mode ──────────────────────────────
-		if crd.Mode == orktypes.CRDModeTyped && crd.APITypes.Location == "" {
-			return fmt.Errorf(
-				"CRD %q: mode is 'typed' but apiTypes.location is missing",
-				name,
-			)
-		}
-		// ── Hooks declaration validation ──────────────────────────────────
-		if crd.WithHooksDecl() {
-			if crd.APITypes.Location == "" {
-				return fmt.Errorf(
-					"CRD %q: hooks declared but apiTypes.location is missing (typed hooks require typed CRD)",
-					name,
-				)
-			}
-			if crd.OperatorBox.Hooks.Location == "" {
-				return fmt.Errorf(
-					"CRD %q: hooks.location is required",
-					name,
-				)
-			}
-			if crd.OperatorBox.Hooks.Function == "" {
-				return fmt.Errorf(
-					"CRD %q: hooks.function is required",
-					name,
-				)
-			}
-			// (Alias is optional)
-		}
-
-		// ── Constructor declaration validation ────────────────────────────
-		if crd.WithConstructorDecl() {
-			if crd.APITypes.Location == "" {
-				return fmt.Errorf(
-					"CRD %q: constructor declared but apiTypes.location is missing (typed constructor requires typed CRD)",
-					name,
-				)
-			}
-			if crd.OperatorBox.ConstructorDecl.Location == "" {
-				return fmt.Errorf(
-					"CRD %q: constructor.location is required",
-					name,
-				)
-			}
-			if crd.OperatorBox.ConstructorDecl.Function == "" {
-				return fmt.Errorf(
-					"CRD %q: constructor.function is required",
-					name,
-				)
-			}
-			// (Alias is optional)
-		}
-
-		k.enabledCRDs[name] = crd
-	}
-	return nil
-}
-
-// -----------------------------------------------------------------------------
 // Validation: dependsOn existence + cycle detection
 // -----------------------------------------------------------------------------
 
@@ -338,12 +226,22 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 
 		// Handle Resync
 		if crd.Resync == 0 {
-			crd.Resync = kfg.Cluster().DefaultResync
+			crd.Resync = crd.SetResync(kfg.Katalog().DefaultResync)
 		}
 
 		// Handle Workers
 		if crd.Workers == 0 {
-			crd.Workers = kfg.Cluster().DefaultWorkers
+			crd.Workers = crd.SetWorkers(kfg.Katalog().DefaultWorkers)
+		}
+
+		// Handle QueueDepth
+		if crd.Queue.MaxQueueDepth == 0 {
+			crd.Queue.MaxQueueDepth = crd.SetMaxQueueDepth(kfg.Katalog().DefaultMaxQueueDepth)
+		}
+
+		// Handle QueueDegradeThreshold
+		if crd.Queue.DegradeThreshold == 0 {
+			crd.Queue.DegradeThreshold = crd.SetMaxQueueDepth(kfg.Katalog().DefaultDegradeThreshold)
 		}
 
 		// Handle Notifications
@@ -560,7 +458,7 @@ func (k *Katalog) validateNamespaceProtection() error {
 // across all enabled CRDs. It is fail-fast: the first invalid duration
 // returns an error immediately.
 //
-// Supported units (extended by ParseRotationDuration):
+// Supported units (extended by ParseTimeDuration):
 //
 //	d   = days (24h)
 //	w   = weeks (7d)
@@ -568,20 +466,35 @@ func (k *Katalog) validateNamespaceProtection() error {
 //	y   = years (365d)
 func (k *Katalog) validateTimeDuration() error {
 	for name, crd := range k.enabledCRDs {
-		if !crd.HasAnyHooks() || !crd.HasAnySecrets() {
+		if !crd.HasAnyHooks() {
 			continue
 		}
 
+		// Validate sleep durations across all resource types.
+		// Skip template expressions — those are resolved at runtime.
+		for _, e := range crd.CollectSleepEntries() {
+			if strings.Contains(e.Duration, "{{") {
+				continue
+			}
+			if _, err := orktypes.ParseTimeDuration(e.Duration); err != nil {
+				return durationError(name, e.ResourceName, "sleep", e.Duration, err)
+			}
+		}
+
+		// Validate secret durations (rotateAfter, TLS.validFor)
+		if !crd.HasAnySecrets() {
+			continue
+		}
 		if crd.HasOnCreate() {
 			for _, s := range crd.OperatorBox.OnCreate.Secrets {
 				if s.RotateAfter != "" {
-					if _, err := orktypes.ParseRotationDuration(s.RotateAfter); err != nil {
+					if _, err := orktypes.ParseTimeDuration(s.RotateAfter); err != nil {
 						return durationError(name, s.Name, "rotateAfter", s.RotateAfter, err)
 					}
 				}
 				// Check per-secret TLS presence
 				if s.TLS != nil && s.TLS.ValidFor != "" {
-					if _, err := orktypes.ParseRotationDuration(s.TLS.ValidFor); err != nil {
+					if _, err := orktypes.ParseTimeDuration(s.TLS.ValidFor); err != nil {
 						return durationError(name, s.Name, "validFor", s.TLS.ValidFor, err)
 					}
 				}
@@ -591,13 +504,13 @@ func (k *Katalog) validateTimeDuration() error {
 		if crd.HasOnReconcile() {
 			for _, s := range crd.OperatorBox.OnReconcile.Secrets {
 				if s.RotateAfter != "" {
-					if _, err := orktypes.ParseRotationDuration(s.RotateAfter); err != nil {
+					if _, err := orktypes.ParseTimeDuration(s.RotateAfter); err != nil {
 						return durationError(name, s.Name, "rotateAfter", s.RotateAfter, err)
 					}
 				}
 				// Check per-secret TLS presence
 				if s.TLS != nil && s.TLS.ValidFor != "" {
-					if _, err := orktypes.ParseRotationDuration(s.TLS.ValidFor); err != nil {
+					if _, err := orktypes.ParseTimeDuration(s.TLS.ValidFor); err != nil {
 						return durationError(name, s.Name, "validFor", s.TLS.ValidFor, err)
 					}
 				}
@@ -737,17 +650,35 @@ func (k *Katalog) validateStatusTypes() error {
 	return nil
 }
 
-// validateNotifyTeams checks that teams declared under notify actually exist in this katalog context
-// func (k *Katalog) validateNotifyTeams() error {
-// 	for name, crd := range k.enabledCRDs {
-// 		if !crd.IsNotificationEnabled() {
-// 			continue	// no-op
-// 		}
+// validateTeams ensures that a team referenced under a notify: block
+// (in onCreate, onReconcile, or rollback) was actually declared in
+// notification.teams within this Katalog.
+//
+// This is a static validation step used by ork validate and ork run
+// (the same validator is invoked in both paths). It prevents typos,
+// misconfigured team names, or references to teams that do not exist
+// in the platform-level notification configuration.
+//
+// Behavior:
+//   - If the katalog has no notification block → no-op (notifications disabled)
+//   - If the katalog has no teams declared → no-op (nothing to validate against)
+//   - If teamName is not found in notification.teams → return an error
+//
+// This keeps notify: ["teamA", "teamB"] aligned with the declared
+// notification.teams map and ensures that runtime dispatch never
+// attempts to send to an undefined team.
+func (k *Katalog) validateTeams() error {
+	if !k.HasNotification() {
+		return nil
+	}
+	if !k.HasTeams() {
+		return nil
+	}
 
-// 		if crd.OperatorBox != nil {
-// 			if crd.HasAnyHooks() {
-
-// 			}
-// 	}
-// 	return nil
-// }
+	for name, _ := range k.enabledCRDs {
+		if _, ok := k.Notification.Teams[name]; !ok {
+			return fmt.Errorf("%s team not found", name)
+		}
+	}
+	return nil
+}

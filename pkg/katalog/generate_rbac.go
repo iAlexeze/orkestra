@@ -1,6 +1,12 @@
 package katalog
 
-import rbacv1 "k8s.io/api/rbac/v1"
+import (
+	"strings"
+
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+)
 
 // Standard verbs for managed resources.
 var defaultVerbs = []string{
@@ -30,14 +36,16 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 	// Admission webhook RBAC (conditional)
 	// ───────────────────────────────────────────────
 	if k.NeedsCertificates() {
-		rules = append(rules, rbacv1.PolicyRule{
-			APIGroups: []string{"admissionregistration.k8s.io"},
-			Resources: []string{
-				"validatingwebhookconfigurations",
-				"mutatingwebhookconfigurations",
-			},
-			Verbs: defaultVerbs,
-		})
+		webhookResources := k.WebhookResources()
+
+		if len(webhookResources) > 0 {
+			rules = append(rules, rbacv1.PolicyRule{
+				APIGroups: []string{"admissionregistration.k8s.io"},
+				Resources: webhookResources,
+				Verbs:     defaultVerbs,
+			})
+		}
+
 		// ───────────────────────────────────────────────
 		// Needs permission to create and manage secret
 		// ───────────────────────────────────────────────
@@ -67,7 +75,9 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 	// ───────────────────────────────────────────────
 	for _, crd := range k.Enabled() {
 		if crd.APITypes.Group == "" || crd.APITypes.Plural == "" {
-			continue
+			if !crd.IsBuiltInType() {
+				continue
+			}
 		}
 
 		// Main resource
@@ -96,6 +106,44 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 	}
 
 	// ───────────────────────────────────────────────
+	// Typed‑mode RBAC (hooks or constructor)
+	// ───────────────────────────────────────────────
+	for _, crd := range k.Enabled() {
+
+		// Hooks-managed resources
+		if crd.WithHookManagedResources() {
+			for _, r := range crd.HookManagedResources() {
+				gvr, ok := k.ResolveGVR(r)
+				if !ok {
+					// optional: skip or log
+					continue
+				}
+				rules = append(rules, rbacv1.PolicyRule{
+					APIGroups: []string{gvr.Group},
+					Resources: []string{gvr.Resource},
+					Verbs:     defaultVerbs,
+				})
+			}
+		}
+
+		// Constructor-managed resources
+		if crd.WithConstructorManagedResources() {
+			for _, r := range crd.ConstructorManagedResources() {
+				gvr, ok := k.ResolveGVR(r)
+				if !ok {
+					// optional: skip or log
+					continue
+				}
+				rules = append(rules, rbacv1.PolicyRule{
+					APIGroups: []string{gvr.Group},
+					Resources: []string{gvr.Resource},
+					Verbs:     defaultVerbs,
+				})
+			}
+		}
+	}
+
+	// ───────────────────────────────────────────────
 	// Table‑driven Kubernetes resource RBAC
 	// ───────────────────────────────────────────────
 	for key, rule := range rbacRules {
@@ -109,4 +157,130 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 	}
 
 	return rules
+}
+
+// WebhookResources returns the list of admission webhook resources that Orkestra
+// needs to manage when webhooks/certificates are required.
+//
+// Rules:
+//   - validatingwebhookconfigurations is required for deletion protection,
+//     namespace protection, or any validation rules.
+//   - mutatingwebhookconfigurations is required only when mutation rules exist.
+//   - conversion webhooks are handled separately and do not require these resources.
+func (k *Katalog) WebhookResources() []string {
+	var resources []string
+
+	// validatingwebhookconfigurations is needed for:
+	// - deletion protection
+	// - namespace protection
+	// - validation rules (HasValidationRules)
+	if k.IsDeletionProtectionEnabled() || k.IsNamespaceProtectionEnabled() || k.HasValidationRules() {
+		resources = append(resources, "validatingwebhookconfigurations")
+	}
+
+	// mutatingwebhookconfigurations is only needed when mutation rules exist
+	if k.HasMutationRules() {
+		resources = append(resources, "mutatingwebhookconfigurations")
+	}
+
+	return resources
+}
+
+// ResolveGVR resolves a ManagedResource into a concrete GroupVersionResource.
+//
+// Resolution priority (explicit always wins):
+//
+//  1. Full explicit GVR:
+//     - group + version + plural are all provided
+//     → use them directly.
+//
+//  2. Explicit group + version (plural omitted)
+//     → infer plural as strings.ToLower(kind) + "s".
+//
+//  3. APIVersion + plural:
+//     - apiVersion: "group/version"
+//     - plural provided
+//     → parse apiVersion and use provided plural.
+//
+//  4. APIVersion only:
+//     - apiVersion: "group/version"
+//     - plural omitted
+//     → parse apiVersion and infer plural as strings.ToLower(kind) + "s".
+//
+//  5. Built‑in Kubernetes resource:
+//     - kind matches Orkestra's built‑in registry
+//     → use GVRForBuiltIn(kind).
+//
+//  6. Otherwise:
+//     → resolution fails and (GVR{}, false) is returned.
+//
+// This ensures:
+//   - Explicit declarations always override inference.
+//   - Custom resources can be fully specified without guessing.
+//   - Built‑ins remain simple (kind‑only).
+//   - RBAC generation remains deterministic and zero‑footprint safe.
+func (k *Katalog) ResolveGVR(r orktypes.ManagedResource) (schema.GroupVersionResource, bool) {
+	// ───────────────────────────────────────────────
+	// 1. Full explicit GVR: group + version + plural
+	// ───────────────────────────────────────────────
+	if r.Group != "" && r.Version != "" && r.Plural != "" {
+		return schema.GroupVersionResource{
+			Group:    r.Group,
+			Version:  r.Version,
+			Resource: r.Plural,
+		}, true
+	}
+
+	// ───────────────────────────────────────────────
+	// 2. Explicit group + version, infer plural
+	// ───────────────────────────────────────────────
+	if r.Group != "" && r.Version != "" {
+		return schema.GroupVersionResource{
+			Group:    r.Group,
+			Version:  r.Version,
+			Resource: strings.ToLower(r.Kind) + "s",
+		}, true
+	}
+
+	// ───────────────────────────────────────────────
+	// 3. APIVersion + plural
+	// ───────────────────────────────────────────────
+	if r.APIVersion != "" && r.Plural != "" {
+		gv, err := schema.ParseGroupVersion(r.APIVersion)
+		if err != nil {
+			return schema.GroupVersionResource{}, false
+		}
+		return schema.GroupVersionResource{
+			Group:    gv.Group,
+			Version:  gv.Version,
+			Resource: r.Plural,
+		}, true
+	}
+
+	// ───────────────────────────────────────────────
+	// 4. APIVersion only, infer plural
+	// ───────────────────────────────────────────────
+	if r.APIVersion != "" {
+		gv, err := schema.ParseGroupVersion(r.APIVersion)
+		if err != nil {
+			return schema.GroupVersionResource{}, false
+		}
+		return schema.GroupVersionResource{
+			Group:    gv.Group,
+			Version:  gv.Version,
+			Resource: strings.ToLower(r.Kind) + "s",
+		}, true
+	}
+
+	// ───────────────────────────────────────────────
+	// 5. Built‑in resource
+	// ───────────────────────────────────────────────
+	if gvr, ok := GVRForBuiltIn(r.Kind); ok {
+		return gvr, true
+	}
+
+	// ───────────────────────────────────────────────
+	// 6. Could not resolve
+	// ───────────────────────────────────────────────
+	return schema.GroupVersionResource{}, false
 }

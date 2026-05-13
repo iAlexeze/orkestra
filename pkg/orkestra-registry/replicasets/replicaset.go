@@ -7,8 +7,8 @@ import (
 	"strconv"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -27,6 +27,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	_, err := kube.Clientset().AppsV1().ReplicaSets(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -64,6 +67,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	existing, err := kube.Clientset().AppsV1().ReplicaSets(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
@@ -102,6 +108,20 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 			Msg("replicaset image drifted")
 	}
 
+	// Resources drift
+	if spec.Resources != nil {
+		desiredRes := common.BuildResourceRequirements(spec.Resources)
+		var existingRes corev1.ResourceRequirements
+		if len(existing.Spec.Template.Spec.Containers) > 0 {
+			existingRes = existing.Spec.Template.Spec.Containers[0].Resources
+		}
+		if !common.ResourceRequirementsEqual(existingRes, desiredRes) {
+			updated.Spec.Template.Spec.Containers[0].Resources = desiredRes
+			drifted = true
+			logger.Info().Str("replicaset", spec.Name).Msg("replicaset resources drifted")
+		}
+	}
+
 	if !drifted {
 		logger.Debug().
 			Str("replicaset", spec.Name).
@@ -125,6 +145,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Delete deletes the ReplicaSet if it exists.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedReplicaSetSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	err := kube.Clientset().AppsV1().ReplicaSets(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -160,7 +183,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 		return err
 	}
 
-	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
 		return nil
 	}
 
@@ -174,11 +197,13 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, staticReplicas int, ownerNam
 		Name:        src.Name,
 		Image:       src.Image,
 		Namespace:   src.Namespace,
-		Resources:   src.Resources,
+		Resources:   common.ResolveResources(src.Resources),
 		Labels:      make(map[string]string),
 		Annotations: make(map[string]string),
 		Env:         make(map[string]orktypes.EnvVarSource),
 		EnvFrom:     src.EnvFrom,
+		Probes:      src.Probes,
+		Sleep:       src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -209,13 +234,16 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, staticReplicas int, ownerNam
 	for _, a := range src.Annotations {
 		spec.Annotations[a.Key] = a.Value
 	}
+	for _, a := range src.NodeSelector {
+		spec.NodeSelector[a] = a
+	}
 
 	for k, v := range src.Env {
 		spec.Env[k] = v
 	}
 
-	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
-	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -229,6 +257,12 @@ func buildReplicaSet(owner domain.Object, spec ResolvedReplicaSetSpec, namespace
 		Msg("replicaset.buildReplicaSet")
 
 	replicas := spec.Replicas
+	var pullSecrets []corev1.LocalObjectReference
+	for _, name := range spec.ImagePullSecrets {
+		pullSecrets = append(pullSecrets, corev1.LocalObjectReference{
+			Name: name,
+		})
+	}
 
 	rs := &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -259,6 +293,9 @@ func buildReplicaSet(owner domain.Object, spec ResolvedReplicaSetSpec, namespace
 					Labels: spec.Labels,
 				},
 				Spec: corev1.PodSpec{
+					ImagePullSecrets:   pullSecrets,
+					ServiceAccountName: spec.ServiceAccountName,
+					NodeSelector:       spec.NodeSelector,
 					Containers: []corev1.Container{
 						{
 							Name:  spec.Name,
@@ -279,6 +316,8 @@ func buildReplicaSet(owner domain.Object, spec ResolvedReplicaSetSpec, namespace
 	if spec.Resources != nil {
 		rs.Spec.Template.Spec.Containers[0].Resources = common.BuildResourceRequirements(spec.Resources)
 	}
+
+	common.ApplyProbes(&rs.Spec.Template.Spec.Containers[0], spec.Probes, spec.Port)
 
 	if len(spec.Env) > 0 {
 		rs.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{}

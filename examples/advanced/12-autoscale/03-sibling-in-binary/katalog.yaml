@@ -1,0 +1,142 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: autoscale-sibling
+  author: orkspace
+  version: 0.1.0
+  description: >
+    Cross-CRD autoscaling — two approaches in one binary.
+
+    Loader produces work. Two downstream CRDs consume it:
+
+    Processor  — uses profile: burst. The profile expands into a complete
+                 autoscale config (4x workers, 10x queue depth, 5s evaluation,
+                 30s cooldown). Orkestra derives the trigger from the profile's
+                 heuristics. You declare intent; Orkestra computes the parameters.
+
+    Auditor    — uses explicit conditions. Watches Loader's live queue depth
+                 via cross.loader.metrics.queueDepth and applies its own
+                 manual do: block. You control every parameter directly.
+
+    Together they show the two autoscale styles: profile (preset, concise)
+    and explicit (custom, full control).
+
+spec:
+  crds:
+    # ── Loader ────────────────────────────────────────────────────────────────
+    # Produces work for Processor and Auditor to consume.
+    # Fixed concurrency — no autoscale on the producer itself.
+    loader:
+      apiTypes:
+        group: autoscale.orkestra.io
+        version: v1alpha1
+        kind: Loader
+        plural: loaders
+
+      workers: 3
+      resync: 60s
+
+      operatorBox:
+        status:
+          fields:
+            - path: phase
+              value: "Running"
+
+        onCreate:
+          deployments:
+            - image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: 8080
+              reconcile: true
+          services:
+            - port: "8080"
+
+    # ── Processor ────────────────────────────────────────────────────────────
+    # Profile-based autoscale. Declare profile: burst and Orkestra computes the
+    # full autoscale spec at katalog load time.
+    #
+    # burst profile expands using baseline:
+    #   workers:    baseline × 4
+    #   queueDepth: baseline × 10
+    #
+    # threshold is computed as:
+    #   threshold = overrideQueueDepth × 0.60
+    #
+    # timing:
+    #   interval: 5s
+    #   cooldown: 30s
+    #
+    # Cannot be combined with interval/cooldown/conditions/do — the profile owns
+    # the entire autoscale block.
+    processor:
+      apiTypes:
+        group: autoscale.orkestra.io
+        version: v1alpha1
+        kind: Processor
+        plural: processors
+
+      workers: 2
+      resync: 30s
+
+      operatorBox:
+        autoscale:
+          profile: burst
+
+        status:
+          fields:
+            - path: phase
+              value: "Running"
+            - path: autoscaleActive
+              value: "{{ .metrics.autoscaleActive }}"
+            - path: workers
+              value: "{{ .metrics.workers }}"
+
+        onCreate:
+          deployments:
+            - image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: 9090
+              reconcile: true
+          services:
+            - port: "9090"
+
+    # ── Auditor ───────────────────────────────────────────────────────────────
+    # Explicit autoscale. Watches Loader's queue depth directly via the
+    # cross.<crd>.metrics.* field path — reads from the sibling CRD's live
+    # metrics without any network call (same binary, same runtime).
+    auditor:
+      apiTypes:
+        group: autoscale.orkestra.io
+        version: v1alpha1
+        kind: Auditor
+        plural: auditors
+
+      workers: 1
+      resync: 60s
+
+      operatorBox:
+        autoscale:
+          interval: 30s
+          cooldown: 5m
+          conditions:
+            when:
+              - field: cross.loader.metrics.queueDepth
+                greaterThan: "75"
+          do:
+            workers: 4
+            resync: 15s
+
+        status:
+          fields:
+            - path: phase
+              value: "Running"
+            - path: autoscaleActive
+              value: "{{ .metrics.autoscaleActive }}"
+            - path: workers
+              value: "{{ .metrics.workers }}"
+
+        onCreate:
+          configMaps:
+            - name: "{{ .metadata.name }}-audit-config"
+              data:
+                AUDIT_MODE: "{{ .spec.auditMode }}"

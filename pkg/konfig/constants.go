@@ -1,9 +1,5 @@
 package konfig
 
-import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
 const (
 	// Ork
 	Orkestra    = "OrKestra"
@@ -27,30 +23,15 @@ const (
 	kindKatalog   = "Katalog"
 	kindKonductor = "Konductor"
 	kindKomposer  = "Komposer"
-
-	// LabelManaged is patched on every CR Orkestra manages.
-	// Used by ork reconcile, ork get, and ork events to scope
-	// their operations to exactly what this operator instance manages.
-	LabelManaged       = "orkestra.orkspace.io/managed"
-	LabelManagedValue  = "true"
-	LabelOrkestraOwner = "orkestra-owner"
-
-	// Annotations
-
-	// AnnotationManagedBy identifies which Orkestra operator instance
-	// is managing this CR. Useful when multiple Orkestra operators
-	// run in the same cluster managing different CRD sets.
-	AnnotationManagedBy = "orkestra.orkspace.io/managed-by"
-
-	// AnnotationManagedSince records when Orkestra first took ownership.
-	AnnotationManagedSince = "orkestra.orkspace.io/managed-since"
-
-	// Finalizers
-	FinalizerOrkestra = "orkestra.orkspace.io/finalizer"
+	kindMotif     = "Motif"
 
 	// HTTPS Port
 	httpsPort      = ":8443"
 	httpsPortInt32 = 8443
+
+	// Secrets
+	defaultInternalTLSSecretName = "orkestra-internal-tls"
+	defaultWorkloadSecretName    = "orkestra-tls"
 )
 
 var (
@@ -58,21 +39,3 @@ var (
 		"orkestra.orkspace.io/v1",
 	}
 )
-
-// orkestraResourceLabels defines the labels applied to every Orkestra control-plane
-// resource (Deployment, Service, ServiceAccount, ClusterRole, ClusterRoleBinding,
-// webhook configurations, and the TLS Secret). The deletion-protection label is
-// included so the admission webhook's objectSelector matches exactly these
-// resources — it fires only for objects already carrying the label.
-var orkestraResourceLabels = map[string]string{
-	"app.kubernetes.io/name":          "orkestra",
-	"app.kubernetes.io/tag":           "orkestra-internal",
-	"orkestra.io/deletion-protection": "true",
-}
-
-// Label selector shared by all Orkestra-managed Kubernetes resources.
-// Narrows the webhook to only the operator's own deployment, service, ingress,
-// and admission webhook configurations (validation + mutation).
-var orkestraResourceSelector = &metav1.LabelSelector{
-	MatchLabels: orkestraResourceLabels,
-}

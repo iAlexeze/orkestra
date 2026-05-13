@@ -22,22 +22,22 @@ brew install ork
 ### Linux / macOS (curl)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
+curl -sSL https://get.orkestra.sh | bash
 ```
 
 ### Options
 
 ```bash
 # Review before running
-curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh -o install.sh
+curl -sSL https://get.orkestra.sh -o install.sh
 less install.sh
 bash install.sh
 
 # Pin to a specific version
-curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | ORK_VERSION=v0.1.1 bash
+curl -sSL https://get.orkestra.sh | ORK_VERSION=v0.1.1 bash
 
 # Install to a custom directory
-curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
+curl -sSL https://get.orkestra.sh | ORK_INSTALL_DIR=~/.local/bin bash
 ```
 
 ### Verify the binary (recommended)
@@ -90,7 +90,7 @@ ork init my-operator && cd my-operator
 kubectl apply -f examples/website/website-crd.yaml
 
 # Run
-ork run --katalog examples/website/website-katalog.yaml
+ork run --file examples/website/website-katalog.yaml
 ```
 
 Use this path for development, demos, and validating a Katalog before
@@ -310,15 +310,15 @@ After merging, `project` starts first. `application` waits.
 Always validate and preview before applying:
 
 ```bash
-ork validate --katalog komposer.yaml
+ork validate --file komposer.yaml
 
-ork template --katalog komposer.yaml --graph
+ork template --file komposer.yaml --graph
 # Dependency Graph:
 # project
 # application
 #   └─ project
 
-ork template --katalog komposer.yaml --json | jq '.[].name'
+ork template --file komposer.yaml --json | jq '.[].name'
 # "project"
 # "application"
 ```
@@ -472,7 +472,7 @@ Before running Orkestra in production:
 - [ ] `config.logLevel: warn` or `error` (not `debug` in production)
 
 **Katalog**
-- [ ] Validated with `ork validate --katalog <path>`
+- [ ] Validated with `ork validate --file <path>`
 - [ ] Dependency graph reviewed with `ork template --graph`
 - [ ] Remote source URLs verified and accessible from the cluster
 - [ ] Auth credentials injected via Kubernetes Secrets (not hardcoded)

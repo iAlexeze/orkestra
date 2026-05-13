@@ -1,0 +1,187 @@
+# .github/workflows/validate-pr.yml
+name: Validate Pull Request
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate-notes:
+    name: Validate generated notes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run note generator
+        run: make generate-notes
+
+      - name: Check for uncommitted changes (catalog_generated.go)
+        run: |
+          if ! git diff --quiet pkg/note/catalog_generated.go; then
+            echo "❌ pkg/note/catalog_generated.go is out of date."
+            echo "Run 'make generate-notes' locally and commit the changes."
+            exit 1
+          else
+            echo "✅ Note catalog is up-to-date."
+          fi
+
+  validate-code:
+    name: Run static checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run unit tests (no cluster required)
+        run: make test-unit
+
+  # ── Fixture: note family ────────────────────────────────────────────────────
+  # Runs only when the note package or its fixture changes.
+  # Exercises every kubernetes-family note against a real API server.
+  fixture-note:
+    name: Fixture — note (kind cluster)
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.changed_files, 'pkg/note/')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build ork
+        run: make ork
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: orkestra-note-fixture
+
+      - name: Apply CRD
+        run: kubectl apply -f pkg/note/fixture/crd.yaml
+
+      - name: Generate and apply bundle
+        run: |
+          $HOME/.orkestra/bin/ork bundle \
+            --file pkg/note/fixture/katalog.yaml | kubectl apply -f -
+
+      - name: Install Orkestra via Helm
+        run: |
+          helm install orkestra ./charts/orkestra \
+            --namespace default \
+            --wait --timeout 120s
+
+      - name: Apply CR
+        run: kubectl apply -f pkg/note/fixture/cr.yaml
+
+      - name: Wait for status
+        run: |
+          kubectl wait noteprobe/my-probe \
+            --for=jsonpath='{.status.phase}'=Ready \
+            --timeout=120s
+
+      - name: Assert note fields populated
+        run: |
+          kubectl get noteprobe my-probe -o yaml | tee /tmp/probe.yaml
+          # Fail if phase is empty — means status is not being written
+          PHASE=$(kubectl get noteprobe my-probe -o jsonpath='{.status.phase}')
+          [ -n "$PHASE" ] || (echo "❌ status.phase is empty"; exit 1)
+          echo "✅ Note fixture passed — phase: $PHASE"
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          echo "=== ReconcilerProbe ===" && kubectl get noteprobe my-probe -o yaml || true
+          echo "=== Operator logs ===" && kubectl logs -l app.kubernetes.io/name=orkestra --tail=100 || true
+
+  # ── Fixture: reconciler run_* ───────────────────────────────────────────────
+  # Runs only when the reconciler package or its fixture changes.
+  # Exercises every run_* resource type in a single reconcile cycle.
+  fixture-reconciler:
+    name: Fixture — reconciler run_* (kind cluster)
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.changed_files, 'pkg/reconciler/')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build ork
+        run: make ork
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: orkestra-reconciler-fixture
+
+      - name: Apply CRD
+        run: kubectl apply -f pkg/reconciler/fixture/crd.yaml
+
+      - name: Generate and apply bundle
+        run: |
+          $HOME/.orkestra/bin/ork bundle \
+            --file pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
+
+      - name: Install Orkestra via Helm
+        run: |
+          helm install orkestra ./charts/orkestra \
+            --namespace default \
+            --wait --timeout 120s
+
+      - name: Apply CR
+        run: kubectl apply -f pkg/reconciler/fixture/cr.yaml
+
+      - name: Wait for status
+        run: |
+          kubectl wait reconcilerprobe/probe \
+            --for=jsonpath='{.status.tier}'=premium \
+            --timeout=120s
+
+      - name: Assert all run_* resources created
+        run: |
+          kubectl get deployment   probe-app       || (echo "❌ probe-app deployment missing";    exit 1)
+          kubectl get deployment   probe-premium   || (echo "❌ probe-premium deployment missing"; exit 1)
+          kubectl get service      probe-svc       || (echo "❌ probe-svc service missing";       exit 1)
+          kubectl get configmap    probe-config    || (echo "❌ probe-config configmap missing";  exit 1)
+          kubectl get secret       probe-creds     || (echo "❌ probe-creds secret missing";      exit 1)
+          kubectl get serviceaccount probe-sa      || (echo "❌ probe-sa serviceaccount missing"; exit 1)
+          kubectl get cronjob      probe-cron      || (echo "❌ probe-cron cronjob missing";      exit 1)
+          echo "✅ Reconciler fixture passed — all run_* resources present"
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          echo "=== ReconcilerProbe ===" && kubectl get reconcilerprobe probe -o yaml || true
+          echo "=== All resources in default ===" && kubectl get all || true
+          echo "=== Operator logs ===" && kubectl logs -l app.kubernetes.io/name=orkestra --tail=100 || true

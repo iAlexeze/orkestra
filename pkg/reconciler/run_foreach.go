@@ -675,9 +675,14 @@ func expandForEachStatefulSets(
 			expanded.Replicas, _ = ir.Resolve(src.Replicas)
 			expanded.Port, _ = ir.Resolve(src.Port)
 			expanded.ServiceName, _ = ir.Resolve(src.ServiceName)
-			expanded.StorageClass, _ = ir.Resolve(src.StorageClass)
-			expanded.StorageSize, _ = ir.Resolve(src.StorageSize)
-			expanded.MountPath, _ = ir.Resolve(src.MountPath)
+			for i, vct := range src.VolumeClaimTemplates {
+				rv := src.VolumeClaimTemplates[i]
+				rv.StorageClass, _ = ir.Resolve(vct.StorageClass)
+				rv.StorageSize, _ = ir.Resolve(vct.StorageSize)
+				rv.MountPath, _ = ir.Resolve(vct.MountPath)
+				rv.Name, _ = ir.Resolve(vct.Name)
+				expanded.VolumeClaimTemplates[i] = rv
+			}
 
 			if len(src.Labels) > 0 {
 				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
@@ -776,6 +781,56 @@ func expandForEachPVs(
 	return result
 }
 
+func expandForEachRoles(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.RoleTemplateSource,
+) []orktypes.RoleTemplateSource {
+	if !anyHasForEach(len(srcs), func(i int) *orktypes.ForEachSpec { return srcs[i].ForEach }) {
+		return srcs
+	}
+	var result []orktypes.RoleTemplateSource
+	for _, src := range srcs {
+		if src.ForEach == nil {
+			result = append(result, src)
+			continue
+		}
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
+			expanded := src
+			expanded.ForEach = nil
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
+			result = append(result, expanded)
+		}
+	}
+	return result
+}
+
+func expandForEachRoleBindings(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.RoleBindingTemplateSource,
+) []orktypes.RoleBindingTemplateSource {
+	if !anyHasForEach(len(srcs), func(i int) *orktypes.ForEachSpec { return srcs[i].ForEach }) {
+		return srcs
+	}
+	var result []orktypes.RoleBindingTemplateSource
+	for _, src := range srcs {
+		if src.ForEach == nil {
+			result = append(result, src)
+			continue
+		}
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
+			expanded := src
+			expanded.ForEach = nil
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
+			result = append(result, expanded)
+		}
+	}
+	return result
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -847,16 +902,6 @@ func itemResolver(base *orktmpl.Resolver, fi forEachItem, as string, index int) 
 		return base.WithItemAndValue(fi.key, fi.value, as, index)
 	}
 	return base.WithItem(fi.key, as, index)
-}
-
-// resolveListField is kept for backward compatibility with any callers outside this file.
-func resolveListField(data map[string]interface{}, path string) []interface{} {
-	items := resolveForEachItems(data, path)
-	result := make([]interface{}, len(items))
-	for i, fi := range items {
-		result[i] = fi.key
-	}
-	return result
 }
 
 // splitFieldPath splits a dot-notation path into segments.

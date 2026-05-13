@@ -35,7 +35,7 @@ type TLSBundle struct {
 func GenerateTLSBundle(commonName string, dnsNames []string, validFor string) (*TLSBundle, error) {
 	validity := 365 * 24 * time.Hour // default: 1 year
 	if validFor != "" {
-		if d, err := orktypes.ParseRotationDuration(validFor); err == nil {
+		if d, err := orktypes.ParseTimeDuration(validFor); err == nil {
 			validity = d
 		}
 	}

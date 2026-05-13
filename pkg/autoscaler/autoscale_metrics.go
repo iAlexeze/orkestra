@@ -182,6 +182,7 @@ func IsMetricField(field string) bool {
 func (m *AutoMetrics) AsMap() map[string]interface{} {
 	return map[string]interface{}{
 		"queueDepth":             m.queueDepth.Load(),
+		"workers":                m.workerSem.Capacity(),
 		"workersBusyPercent":     m.workerSem.BusyPercent(),
 		"workersIdlePercent":     m.workerSem.IdlePercent(),
 		"reconcileDurationP95Ms": m.p95.p95Milliseconds(),

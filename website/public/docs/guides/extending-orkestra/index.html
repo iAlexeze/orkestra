@@ -982,7 +982,7 @@ You only add Go code when you <em>need</em> typed access or complex custom logic
 </span></span></code></pre></div><p>This is a complete operator entry.</p>
 <ul>
 <li>Apply the CRD to your cluster</li>
-<li>Run <code>ork run --katalog katalog.yaml</code></li>
+<li>Run <code>ork run --file katalog.yaml</code></li>
 <li>Orkestra begins managing <code>MyResource</code> immediately</li>
 </ul>
 <p>Everything else — typed Go structs, hooks, constructors — is optional.</p>
@@ -1162,7 +1162,7 @@ Use them only when declarative templates or hooks cannot express your logic.
 </span></span></code></pre></div><hr>
 <h2 id="step-4--generate-runtime-wiring-typed--hooks-only">Step 4 — Generate runtime registry (Typed + Hooks Only)</h2>
 <p>Dynamic CRDs skip this step.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork generate registry --katalog katalog.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork generate registry --file katalog.yaml
 </span></span><span style="display:flex;"><span>go mod tidy
 </span></span></code></pre></div><p>What gets generated:</p>
 <table>
@@ -1194,9 +1194,9 @@ Use them only when declarative templates or hooks cannot express your logic.
 <hr>
 <h2 id="step-5--apply-the-crd-and-run">Step 5 — Apply the CRD and Run</h2>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl apply -f myresource-crd.yaml
-</span></span><span style="display:flex;"><span>ork validate --katalog katalog.yaml
-</span></span><span style="display:flex;"><span>ork template --katalog katalog.yaml --graph
-</span></span><span style="display:flex;"><span>ork run --katalog katalog.yaml
+</span></span><span style="display:flex;"><span>ork validate --file katalog.yaml
+</span></span><span style="display:flex;"><span>ork template --file katalog.yaml --graph
+</span></span><span style="display:flex;"><span>ork run --file katalog.yaml
 </span></span></code></pre></div><p>Create a CR:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl apply -f myresource-cr.yaml
 </span></span></code></pre></div><p>Check health:</p>

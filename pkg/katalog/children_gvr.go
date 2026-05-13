@@ -34,6 +34,7 @@ var (
 	ClusterRoleBindingGVR      = gvrOrPanic("clusterrolebinding")
 	NamespaceGVR               = gvrOrPanic("namespace")
 	NodeGVR                    = gvrOrPanic("node")
+	EndpointSliceGVR           = gvrOrPanic("endpointslice")
 )
 
 // gvrOrPanic is a small helper for static initialization.

@@ -1,0 +1,42 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: without-autoscaler
+  author: orkspace
+  version: 0.1.0
+  description: >
+    Same Ingestor pattern but without the autoscaler enabled.
+    Useful for demonstrating baseline behaviour before autoscaling
+    is introduced.
+
+spec:
+  crds:
+    ingestor:
+      apiTypes:
+        group: autoscale.orkestra.io
+        version: v1alpha1
+        kind: Ingestor
+        plural: ingestors
+
+      workers: 2
+      resync: 60s
+
+      operatorBox:
+        status:
+          fields:
+            - path: phase
+              value: "Running"
+            - path: autoscaleActive
+              value: "{{ .metrics.autoscaleActive }}"
+            - path: workers
+              value: "{{ .metrics.workers }}"
+
+        onCreate:
+          deployments:
+            - image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: 8080
+              reconcile: true
+          services:
+            - port: "8080"
+              reconcile: true

@@ -261,8 +261,14 @@ func noteExists(obj interface{}) bool {
 	if obj == nil {
 		return false
 	}
-	_, ok := obj.(map[string]interface{})
-	return ok
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return false
+	}
+	if v, _ := m["_placeholder"].(bool); v {
+		return false
+	}
+	return true
 }
 
 //   "phase":              notePhase,
@@ -280,7 +286,6 @@ func noteExists(obj interface{}) bool {
 // Safer than navigating .children.deployment.status.phase directly —
 // no template error when status or phase is missing.
 //
-//	{{ phase .children.deployment }}
 //	{{ if eq (phase .children.job) "Succeeded" }}
 func notePhase(obj interface{}) string {
 	status := noteStatus(obj)

@@ -1,0 +1,9 @@
+apiVersion: rollback.orkestra.io/v1alpha1
+kind: WebApp
+metadata:
+  name: my-app
+  namespace: default
+spec:
+  image: nginx:this-tag-does-not-exist   # bad image — will fail to pull, triggering rollback
+  replicas: 1
+  port: 8080

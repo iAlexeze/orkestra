@@ -65,10 +65,20 @@ func (f *Factory) getOrCreate(
 
 	inf := cache.NewSharedIndexInformer(lw, obj, resync, cache.Indexers{})
 
+	// Ensure GVK is normalized for all CRDs
 	inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    func(obj interface{}) { f.handleEvent(obj) },
-		UpdateFunc: func(_, newObj interface{}) { f.handleEvent(newObj) },
-		DeleteFunc: func(obj interface{}) { f.handleEvent(obj) },
+		AddFunc: func(obj interface{}) {
+			normalizeInformerObject(obj, gvk)
+			f.handleEvent(obj)
+		},
+		UpdateFunc: func(_, newObj interface{}) {
+			normalizeInformerObject(newObj, gvk)
+			f.handleEvent(newObj)
+		},
+		DeleteFunc: func(obj interface{}) {
+			normalizeInformerObject(obj, gvk)
+			f.handleEvent(obj)
+		},
 	})
 
 	// Check if CRD exists

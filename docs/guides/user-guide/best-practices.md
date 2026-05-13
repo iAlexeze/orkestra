@@ -231,7 +231,7 @@ services:
 Always test templates with debug mode before running.
 
 ```bash
-ork run --katalog katalog.yaml --debug
+ork run --file katalog.yaml --debug
 ```
 
 Look for resolved values:
@@ -418,7 +418,7 @@ This shows you live health, workers, queue depth, and resource counts across all
 Always validate your Katalog before running.
 
 ```bash
-ork validate --katalog katalog.yaml
+ork validate --file katalog.yaml
 ```
 
 This catches:
@@ -432,8 +432,8 @@ This catches:
 Preview what Orkestra will do.
 
 ```bash
-ork template --katalog katalog.yaml --graph
-ork template --katalog katalog.yaml --json
+ork template --file katalog.yaml --graph
+ork template --file katalog.yaml --json
 ```
 
 ### Test Missing CRD Scenarios
@@ -442,7 +442,7 @@ Test that your operator behaves correctly when CRDs aren't installed yet.
 
 ```bash
 # Start Orkestra without CRD
-ork run --katalog katalog.yaml
+ork run --file katalog.yaml
 
 # Later, install CRD
 kubectl apply -f crd.yaml
@@ -460,7 +460,7 @@ Test that dependents wait for dependencies.
 kubectl apply -f dependent-crd.yaml
 
 # Start Orkestra — dependent should be degraded
-ork run --katalog katalog.yaml
+ork run --file katalog.yaml
 curl localhost:8080/katalog/dependent/health  # Should be 503
 
 # Install dependency
@@ -475,10 +475,10 @@ If you use Komposer, test that sources merge correctly.
 
 ```bash
 # Validate the Komposer
-ork validate --katalog komposer.yaml
+ork validate --file komposer.yaml
 
 # Preview the merged result
-ork template --katalog komposer.yaml --json
+ork template --file komposer.yaml --json
 ```
 
 ---
@@ -608,7 +608,7 @@ Always test that your operator shuts down cleanly.
 
 ```bash
 # Start operator
-ork run --katalog katalog.yaml &
+ork run --file katalog.yaml &
 ORK_PID=$!
 
 # Wait a few seconds

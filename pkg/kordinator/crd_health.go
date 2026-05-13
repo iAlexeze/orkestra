@@ -2,6 +2,7 @@
 package kordinator
 
 import (
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -529,4 +530,86 @@ func (h *CRDHealth) GetDependencyStatuses() map[string]DependencyStatus {
 		result[k] = v
 	}
 	return result
+}
+
+// StateAndStatus returns the reconciler's derived health state and the
+// corresponding HTTP status code used by the /health endpoint.
+//
+// State is one of:
+//
+//	"not started", "pending", "degraded", "healthy"
+//
+// Status is either:
+//
+//	200 — healthy or pending
+//	503 — degraded or not started
+func (h *CRDHealth) StateAndStatus() (string, int) {
+	if h == nil {
+		return "not started", http.StatusServiceUnavailable
+	}
+
+	isStarted := h.Started()
+	isPending := h.Pending()
+	isHealthy := h.IsHealthy()
+
+	switch {
+	case !isStarted && !isPending:
+		return "not started", http.StatusServiceUnavailable
+	case isPending:
+		return "pending", http.StatusOK
+	case isStarted && !isHealthy:
+		return "degraded", http.StatusServiceUnavailable
+	case isHealthy:
+		return "healthy", http.StatusOK
+	default:
+		return "pending", http.StatusOK
+	}
+}
+
+// HealthAsMap returns a snapshot of this CRD's health as a plain map, suitable
+// for injection into the template resolver under the "health" key.
+//
+// Available in conditions status.fields templates as:
+//
+//		{{ .health.healthy }}            — bool: reconciler is healthy
+//	 {{ .health.state }}              — string: "healthy" / "degraded" / "pending" / "not started"
+//	 {{ .health.status }}             — int: HTTP status code representing health state
+//		{{ .health.started }}            — bool: reconciler has started
+//		{{ .health.pending }}            — bool: reconciler is pending
+//		{{ .health.degraded }}           — bool: reconciler is degraded
+//		{{ .health.totalReconciles }}    — int64: total reconcile attempts
+//		{{ .health.failedReconciles }}   — int64: total failed reconciles
+//		{{ .health.consecutiveFails }}   — int64: current consecutive failure streak
+//		{{ .health.errorRatePercent }}   — float64: error rate as percentage
+//		{{ .health.lastReconcile }}      — string: RFC3339 timestamp of last reconcile
+//		{{ .health.uptime }}             — string: how long the reconciler has been running
+//		{{ .health.lastError }}          — string: most recent error message (empty if none)
+//		{{ .health.rollbackActive }}     — bool: rollback is currently blocking reconcile
+//		{{ .health.rollbackTotal }}      — int64: total rollback triggers since startup
+//		{{ .health.hasUnhealthyDeps }}   — bool: any dependency is unsatisfied
+func (h *CRDHealth) HealthAsMap() map[string]interface{} {
+	if h == nil {
+		return map[string]interface{}{}
+	}
+
+	state, status := h.StateAndStatus()
+
+	return map[string]interface{}{
+		"healthy":          h.IsHealthy(),
+		"state":            state,
+		"status":           status,
+		"started":          h.started.Load(),
+		"pending":          h.pending.Load(),
+		"degraded":         h.degraded.Load(),
+		"totalReconciles":  h.totalReconciles.Load(),
+		"failedReconciles": h.failedReconciles.Load(),
+		"consecutiveFails": h.consecutiveFails.Load(),
+		"errorRatePercent": h.ErrorRatePercent(),
+		"lastReconcile":    h.LastReconcile(),
+		"uptime":           h.Uptime(),
+		"lastError":        h.LastError(),
+		"rollbackActive":   h.rollbackActive.Load(),
+		"rollbackTotal":    h.rollbackTotal.Load(),
+		"hasUnhealthyDeps": h.hasUnhealthyDeps.Load(),
+	}
 }

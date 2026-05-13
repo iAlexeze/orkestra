@@ -3,7 +3,7 @@ set -euo pipefail
 
 OWNER="orkspace"
 REPO="orkestra"
-OLDER_THAN_HOURS="${1:-24}"   # optional first argument, default 1 hour
+OLDER_THAN_HOURS="${1:-2}"   # optional first argument, default 2 hours
 
 now=$(date +%s)
 

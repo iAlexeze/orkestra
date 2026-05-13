@@ -119,7 +119,7 @@ cd my-operator
 kubectl apply -f examples/beginner/01-hello-website/crd.yaml
 
 # Start the operator locally
-ork run --katalog examples/beginner/01-hello-website/katalog.yaml
+ork run --file examples/beginner/01-hello-website/katalog.yaml
 
 # In another terminal — apply a CR
 kubectl apply -f examples/beginner/01-hello-website/cr.yaml
@@ -130,7 +130,7 @@ kubectl get deployments
 
 # Open the Control Center
 ork control start
-# → localhost:8090
+# → localhost:8081
 ```
 
 The Control Center shows the operator's health, the CR's status, its child

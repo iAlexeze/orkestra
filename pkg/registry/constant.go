@@ -1,0 +1,53 @@
+package registry
+
+const (
+	KatalogKind PatternKind = "Katalog" // Katalog-based operator pattern
+	MotifKind   PatternKind = "Motif"   // Reusable resource primitive
+	UnknownKind PatternKind = ""
+
+	// MediaType is the OCI pattern media type for Orkestra patterns.
+	MediaType = "application/vnd.orkestra.pattern.v1+tar+gzip"
+
+	// indexMediaType is the OCI media type for the shared registry index.
+	indexMediaType = "application/vnd.orkestra.index.v1+json"
+
+	// FileKatalog is the required operator declaration file.
+	FileKatalog = "katalog.yaml"
+
+	// FileMotif is the required motif declaration file.
+	FileMotif = "motif.yaml"
+
+	// FileCRD is the required CRD schema file.
+	FileCRD = "crd.yaml"
+
+	// FileReadme is the human documentation file.
+	FileReadme = "README.md"
+
+	// FileCR is the example CR file.
+	FileCR = "cr.yaml"
+
+	// DefaultKatalogRegistry is the official OCI path for Katalog patterns.
+	DefaultKatalogRegistry = "ghcr.io/orkspace/orkestra-registry/patterns/katalogs"
+
+	// DefaultMotifRegistry is the official OCI path for Motif patterns.
+	DefaultMotifRegistry = "ghcr.io/orkspace/orkestra-registry/patterns/motifs"
+
+	// DefaultPatternRegistry is an alias for DefaultKatalogRegistry.
+	DefaultPatternRegistry = DefaultKatalogRegistry
+
+	// DefaultRegistry is an alias for DefaultKatalogRegistry.
+	DefaultRegistry = DefaultKatalogRegistry
+
+	// EnvPatternRegistry overrides the default katalog registry path.
+	EnvPatternRegistry = "ORKESTRA_REGISTRY"
+
+	// EnvMotifRegistry overrides the default motif registry path.
+	EnvMotifRegistry = "ORKESTRA_MOTIFS_REGISTRY"
+
+	// EnvRegistry is an alias for EnvPatternRegistry.
+	EnvRegistry = EnvPatternRegistry
+
+	// CacheDir is the local cache directory for pulled artifacts.
+	// Resolved relative to the user's home directory.
+	CacheDir = ".orkestra/registry"
+)

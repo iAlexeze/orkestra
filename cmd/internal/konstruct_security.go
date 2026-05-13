@@ -28,6 +28,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,10 +63,15 @@ func ensureSecurity(
 	// it ourselves. Apply the full orkestra resource label set (including
 	// orkestra.io/deletion-protection) so the webhook intercepts any attempt to
 	// delete this namespace.
-	if err := ensureNamespaceLabeled(ctx, kube, namespace, kfg.OrkestraResourceLabels()); err != nil {
-		logger.Warn().Err(err).
-			Str("namespace", namespace).
-			Msg("security: failed to label orkestra namespace — deletion protection will not cover it")
+	// This only makes sense when security.deletionProtection.enabled is true
+	// Gating it silences the permissions errors because kat.GenerateRBACRules()
+	// does not create namespace permissions if deletionProtection.enabled is false.
+	if kat.IsDeletionProtectionEnabled() {
+		if err := ensureNamespaceLabeled(ctx, kube, namespace, labels.OrkestraResourceLabels()); err != nil {
+			logger.Warn().Err(err).
+				Str("namespace", namespace).
+				Msg("security: failed to label orkestra namespace — deletion protection will not cover it")
+		}
 	}
 
 	// ── TLS certificate management ────────────────────────────────────────
@@ -100,7 +106,7 @@ func ensureSecurity(
 		Namespace:   namespace,
 		SecretName:  certmanager.DefaultTLSSecretName,
 		ValidFor:    defaultCertValidFor,
-		BaseLabels:  kfg.OrkestraResourceLabels(),
+		BaseLabels:  labels.OrkestraResourceLabels(),
 	})
 	if err != nil {
 		logger.Fatal().Err(err).Msg("security: failed to ensure TLS secret")

@@ -16,7 +16,7 @@ import (
 // ── Registries ────────────────────────────────────────────────────────────────
 // Package-level registries — one set per Orkestra instance.
 // Populated by RegisterRuntimeObjects() in zz_generated_runtime_registry.go,
-// which is produced by `ork generate registry --katalog <path>`.
+// which is produced by `ork generate registry --file <path>`.
 // Keyed by schema.GroupVersionKind. Set during Katalog validation.
 //
 // User code never reads or writes these directly. Orkestra reads them during
@@ -117,7 +117,7 @@ type APITypes struct {
 	Version string `yaml:"version" json:"version" validate:"required"`
 
 	// Kind — resource Kind. Required in all modes.
-	// e.g. "Project"
+	// e.g. "Platform"
 	Kind string `yaml:"kind" json:"kind" validate:"required"`
 
 	// Plural — lowercase plural resource name. Required in all modes.
@@ -209,7 +209,11 @@ func (m SelectorMap) String() string {
 // Values are static Kubernetes quantity strings — template expressions
 // are not supported here.
 // e.g. requests: {cpu: "100m", memory: "128Mi"}
+//
+// Profile is mutually exclusive with Requests and Limits. When Profile is set,
+// it expands into a complete ResourceRequirements at reconcile time.
 type ResourceRequirements struct {
+	Profile  string            `yaml:"profile,omitempty" json:"profile,omitempty" validate:"omitempty"`
 	Requests map[string]string `yaml:"requests" json:"requests,omitempty" validate:"omitempty"`
 	Limits   map[string]string `yaml:"limits" json:"limits,omitempty" validate:"omitempty"`
 }
@@ -276,6 +280,62 @@ type ConfigMapKeyRef struct {
 //   Set  → pins to a specific OrkestraRegistry release tag for stability.
 //   e.g. version: v1.2.0
 
+// ── Probes ────────────────────────────────────────────────────────────────────
+
+// ProbeConfig configures a single Kubernetes probe (startup, liveness, or readiness).
+// Supports HTTP GET and TCP socket checks, with timing driven by named profiles or
+// explicit field overrides.
+//
+// Examples:
+//
+//	probes:
+//	  startup:
+//	    type: http
+//	    path: /health
+//	    profile: slow-start
+//	  liveness:
+//	    type: http
+//	    path: /health
+//	    profile: standard
+//	  readiness:
+//	    type: http
+//	    path: /ready
+//	    profile: standard
+//
+//	probes:
+//	  liveness:
+//	    type: tcp
+//	    profile: standard
+type ProbeConfig struct {
+	// Type — probe mechanism. "http" uses an HTTP GET, "tcp" opens a TCP socket.
+	// When path is set and type is omitted, http is assumed.
+	Type string `yaml:"type,omitempty" json:"type,omitempty"`
+
+	// Path — HTTP GET path. Required when type is "http".
+	Path string `yaml:"path,omitempty" json:"path,omitempty"`
+
+	// Port — override port for the probe. Defaults to the container's declared port.
+	Port int32 `yaml:"port,omitempty" json:"port,omitempty"`
+
+	// Profile — timing profile name. Allowed values: fast, standard, patient, slow-start.
+	// Defaults to "standard" when omitted.
+	Profile string `yaml:"profile,omitempty" json:"profile,omitempty"`
+
+	// Explicit timing overrides — use when profiles are not granular enough.
+	InitialDelaySeconds *int32 `yaml:"initialDelaySeconds,omitempty" json:"initialDelaySeconds,omitempty"`
+	PeriodSeconds       *int32 `yaml:"periodSeconds,omitempty" json:"periodSeconds,omitempty"`
+	FailureThreshold    *int32 `yaml:"failureThreshold,omitempty" json:"failureThreshold,omitempty"`
+	SuccessThreshold    *int32 `yaml:"successThreshold,omitempty" json:"successThreshold,omitempty"`
+	TimeoutSeconds      *int32 `yaml:"timeoutSeconds,omitempty" json:"timeoutSeconds,omitempty"`
+}
+
+// ProbesConfig groups startup, liveness, and readiness probe declarations.
+type ProbesConfig struct {
+	Startup   *ProbeConfig `yaml:"startup,omitempty" json:"startup,omitempty"`
+	Liveness  *ProbeConfig `yaml:"liveness,omitempty" json:"liveness,omitempty"`
+	Readiness *ProbeConfig `yaml:"readiness,omitempty" json:"readiness,omitempty"`
+}
+
 // ── Deployment ────────────────────────────────────────────────────────────────
 
 // DeploymentTemplateSource declares one Deployment to be managed by Orkestra.
@@ -293,6 +353,8 @@ type ConfigMapKeyRef struct {
 //	    - image: nginx:1.25
 //	      replicas: "3"
 //	      port: "8080"
+//	      resources:
+//	        profile: burst      # Use orkestra's burst resource configuration
 //
 // Full example — dynamic values from the CR:
 //
@@ -329,6 +391,11 @@ type DeploymentTemplateSource struct {
 	// Dynamic: "{{ .spec.image }}"
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
+
 	// Replicas — number of pod replicas as a string.
 	// Static:  "3"
 	// Dynamic: "{{ .spec.replicas }}"
@@ -355,8 +422,8 @@ type DeploymentTemplateSource struct {
 	Annotations []ResourceLabel `yaml:"annotations" json:"annotations,omitempty" validate:"omitempty"`
 
 	// Resources — CPU and memory requests/limits for the primary container.
-	// Values are static Kubernetes quantity strings.
-	// Template expressions are not supported in resource quantities.
+	// Set resources.profile for a named preset, or resources.requests/limits for
+	// explicit values. Profile and explicit values are mutually exclusive.
 	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
 
 	// Env — environment variables for the primary container.
@@ -371,6 +438,18 @@ type DeploymentTemplateSource struct {
 	Env map[string]EnvVarSource `yaml:"env" json:"env,omitempty"`
 
 	EnvFrom []EnvFromSource `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
+
+	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must match a node's labels for the pod to be scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// +optional
+	// +mapType=atomic
+	NodeSelector map[string]string `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
+
+	// ServiceAccountName is the name of the ServiceAccount to use to run this pod.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+	// +optional
+	ServiceAccountName string `yaml:"serviceAccountName,omitempty" json:"serviceAccountName,omitempty"`
 
 	// Reconcile: true — also apply this declaration as drift correction on every
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
@@ -412,6 +491,14 @@ type DeploymentTemplateSource struct {
 	// Useful for Git-backed pipelines where build/test commands must run inside
 	// a checked-out repository path.
 	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
+
+	// Probes — startup, liveness, and readiness probe configuration.
+	Probes *ProbesConfig `yaml:"probes,omitempty" json:"probes,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── ReplicaSet ────────────────────────────────────────────────────────────────
@@ -465,6 +552,11 @@ type ReplicaSetTemplateSource struct {
 	// Dynamic: "{{ .spec.image }}"
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
+
 	// Replicas — number of pod replicas as a string.
 	// Static:  "3"
 	// Dynamic: "{{ .spec.replicas }}"
@@ -491,8 +583,8 @@ type ReplicaSetTemplateSource struct {
 	Annotations []ResourceLabel `yaml:"annotations" json:"annotations,omitempty" validate:"omitempty"`
 
 	// Resources — CPU and memory requests/limits for the primary container.
-	// Values are static Kubernetes quantity strings.
-	// Template expressions are not supported in resource quantities.
+	// Set resources.profile for a named preset, or resources.requests/limits for
+	// explicit values. Profile and explicit values are mutually exclusive.
 	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
 
 	// Env — environment variables for the primary container.
@@ -500,6 +592,18 @@ type ReplicaSetTemplateSource struct {
 	Env map[string]EnvVarSource `yaml:"env" json:"env,omitempty"`
 
 	EnvFrom []EnvFromSource `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
+
+	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must match a node's labels for the pod to be scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// +optional
+	// +mapType=atomic
+	NodeSelector map[string]string `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
+
+	// ServiceAccountName is the name of the ServiceAccount to use to run this pod.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+	// +optional
+	ServiceAccountName string `yaml:"serviceAccountName,omitempty" json:"serviceAccountName,omitempty"`
 
 	// Reconcile: true — also apply this declaration as drift correction on every
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
@@ -517,6 +621,14 @@ type ReplicaSetTemplateSource struct {
 
 	// WorkingDirectory sets the container's working directory (container.WorkingDir).
 	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
+
+	// Probes — startup, liveness, and readiness probe configuration.
+	Probes *ProbesConfig `yaml:"probes,omitempty" json:"probes,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -547,6 +659,17 @@ type ServiceTemplateSource struct {
 	// Accepted values: ClusterIP, NodePort, LoadBalancer.
 	// Default: ClusterIP.
 	Type string `yaml:"type" json:"type,omitempty" validate:"omitempty"`
+
+	// Headless — when true, the Service is created without a clusterIP (clusterIP: None).
+	// Used primarily for StatefulSets to enable stable network identities and per‑pod DNS:
+	//   <podname>.<service>.<namespace>.svc.cluster.local
+	// Set this to true when the Service is meant to back a StatefulSet or provide
+	// direct pod‑to‑pod addressing rather than load‑balanced traffic.
+	Headless bool `yaml:"headless" json:"headless,omitempty" validate:"omitempty"`
+
+	// Protocol defines network protocols supported for things like container ports.
+	// "TCP", "UDP", "SCTP"
+	Protocol string `yaml:"protocol" json:"protocol,omitempty" validate:"omitempty"`
 
 	// Port — Service port as a string.
 	// Static: "80" or Dynamic: "{{ .spec.servicePort }}"
@@ -603,6 +726,11 @@ type ServiceTemplateSource struct {
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── Pod ───────────────────────────────────────────────────────────────────────
@@ -632,6 +760,11 @@ type PodTemplateSource struct {
 	// Static: "busybox:1.35" or Dynamic: "{{ .spec.image }}"
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
+
 	// Port — container port as a string.
 	// Static: "8080" or Dynamic: "{{ .spec.port }}"
 	Port string `yaml:"port" json:"port,omitempty" validate:"omitempty"`
@@ -646,8 +779,22 @@ type PodTemplateSource struct {
 	// Annotations — applied to Pod metadata. Values support template expressions.
 	Annotations []ResourceLabel `yaml:"annotations" json:"annotations,omitempty" validate:"omitempty"`
 
-	// Resources — static CPU and memory requests/limits.
+	// Resources — CPU and memory requests/limits for the primary container.
+	// Set resources.profile for a named preset, or resources.requests/limits for
+	// explicit values. Profile and explicit values are mutually exclusive.
 	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
+
+	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must match a node's labels for the pod to be scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// +optional
+	// +mapType=atomic
+	NodeSelector map[string]string `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
+
+	// ServiceAccountName is the name of the ServiceAccount to use to run this pod.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+	// +optional
+	ServiceAccountName string `yaml:"serviceAccountName,omitempty" json:"serviceAccountName,omitempty"`
 
 	// Conditions declares the set of runtime predicates that must all evaluate to
 	// true for this resource template to be applied during reconciliation.
@@ -680,6 +827,14 @@ type PodTemplateSource struct {
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Probes — startup, liveness, and readiness probe configuration.
+	Probes *ProbesConfig `yaml:"probes,omitempty" json:"probes,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── Job ───────────────────────────────────────────────────────────────────────
@@ -714,6 +869,11 @@ type JobTemplateSource struct {
 	// Image — container image. Required.
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
+
 	// Command — container entrypoint command.
 	// Each element is resolved independently — template expressions are supported per element.
 	// e.g. ["sh", "-c", "echo cleaning up {{ .metadata.name }}"]
@@ -733,6 +893,18 @@ type JobTemplateSource struct {
 
 	// Labels — applied to Job metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty" validate:"omitempty"`
+
+	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must match a node's labels for the pod to be scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// +optional
+	// +mapType=atomic
+	NodeSelector map[string]string `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
+
+	// ServiceAccountName is the name of the ServiceAccount to use to run this pod.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+	// +optional
+	ServiceAccountName string `yaml:"serviceAccountName,omitempty" json:"serviceAccountName,omitempty"`
 
 	// Conditions declares the set of runtime predicates that must all evaluate to
 	// true for this resource template to be applied during reconciliation.
@@ -775,6 +947,16 @@ type JobTemplateSource struct {
 	// Useful for Git-backed pipelines where build/test commands must run inside
 	// a checked-out repository path.
 	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
+
+	// Resources — CPU and memory requests/limits for the container.
+	// Set resources.profile for a named preset, or resources.requests/limits for
+	// explicit values. Profile and explicit values are mutually exclusive.
+	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── CronJob ───────────────────────────────────────────────────────────────────
@@ -805,6 +987,11 @@ type CronJobTemplateSource struct {
 	// Image — container image. Required.
 	Image string `yaml:"image" json:"image" validate:"omitempty"`
 
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
+
 	// Command — container entrypoint. Each element supports template expressions.
 	Command []string `yaml:"command" json:"command,omitempty" validate:"omitempty"`
 
@@ -817,6 +1004,18 @@ type CronJobTemplateSource struct {
 
 	// Labels — applied to CronJob metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels" json:"labels,omitempty" validate:"omitempty"`
+
+	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must match a node's labels for the pod to be scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// +optional
+	// +mapType=atomic
+	NodeSelector map[string]string `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
+
+	// ServiceAccountName is the name of the ServiceAccount to use to run this pod.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+	// +optional
+	ServiceAccountName string `yaml:"serviceAccountName,omitempty" json:"serviceAccountName,omitempty"`
 
 	// Reconcile: true — also apply this declaration as drift correction on every
 	// reconcile. Equivalent to declaring the same entry under both onCreate and
@@ -852,6 +1051,11 @@ type CronJobTemplateSource struct {
 	ConcurrencyPolicy          string `yaml:"concurrencyPolicy,omitempty" json:"concurrencyPolicy,omitempty"`
 	StartingDeadlineSeconds    string `yaml:"startingDeadlineSeconds,omitempty" json:"startingDeadlineSeconds,omitempty"`
 
+	// Resources — CPU and memory requests/limits for the container.
+	// Set resources.profile for a named preset, or resources.requests/limits for
+	// explicit values. Profile and explicit values are mutually exclusive.
+	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
+
 	// ForEach declares dynamic expansion over a list field.
 	// When set, one source declaration becomes N declarations — one per list element.
 	// .item and .<as> are available in template expressions within this declaration.
@@ -865,6 +1069,11 @@ type CronJobTemplateSource struct {
 	// Useful for Git-backed pipelines where build/test commands must run inside
 	// a checked-out repository path.
 	WorkingDirectory string `yaml:"workingDirectory,omitempty" json:"workingDirectory,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── ConfigMap ─────────────────────────────────────────────────────────────────
@@ -947,6 +1156,11 @@ type ConfigMapTemplateSource struct {
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── Secret ─────────────────────────────────────────────────────────────────────
@@ -1084,6 +1298,11 @@ type SecretTemplateSource struct {
 	//           - "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
 	//         validFor: 1y
 	TLS *TLSSpec `yaml:"tls,omitempty" json:"tls,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── ServiceAccount ────────────────────────────────────────────────────────────
@@ -1150,6 +1369,11 @@ type ServiceAccountTemplateSource struct {
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── Namespace ────────────────────────────────────────────────────────────
@@ -1213,6 +1437,11 @@ type NamespaceTemplateSource struct {
 	// AnyOf holds OR conditions — at least one must pass for this resource to be created.
 	// Works alongside the existing Conditions (when:) field which uses AND semantics.
 	AnyOf []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── Ingress ───────────────────────────────────────────────────────────────────
@@ -1277,6 +1506,11 @@ type IngressTemplateSource struct {
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // IngressTLSSpec configures TLS for an Ingress resource.
@@ -1296,6 +1530,11 @@ type IngressTLSSpec struct {
 
 	// ValidFor — certificate validity duration (e.g. "1y", "90d"). Default: "1y".
 	ValidFor string `yaml:"validFor" json:"validFor,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── HorizontalPodAutoscaler ───────────────────────────────────────────────────
@@ -1350,6 +1589,11 @@ type HPATemplateSource struct {
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── PodDisruptionBudget ───────────────────────────────────────────────────────
@@ -1397,9 +1641,33 @@ type PDBTemplateSource struct {
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // StatefulSetTemplateSource declares one StatefulSet to be managed by Orkestra.
+// VolumeClaimTemplateSource declares one PersistentVolumeClaim template for a StatefulSet.
+// Each StatefulSet pod receives its own PVC created from this template.
+type VolumeClaimTemplateSource struct {
+	// Name — PVC template name. Default: "data".
+	Name string `yaml:"name" json:"name,omitempty"`
+
+	// StorageClass — storage class to provision from. Required.
+	StorageClass string `yaml:"storageClass" json:"storageClass"`
+
+	// StorageSize — requested storage size (e.g. "10Gi"). Required.
+	StorageSize string `yaml:"storageSize" json:"storageSize"`
+
+	// MountPath — path inside the container to mount this volume. Default: "/data".
+	MountPath string `yaml:"mountPath" json:"mountPath,omitempty"`
+
+	// AccessModes — defaults to ["ReadWriteOnce"].
+	AccessModes []string `yaml:"accessModes" json:"accessModes,omitempty"`
+}
+
 type StatefulSetTemplateSource struct {
 	Version string `yaml:"version" json:"version,omitempty"`
 
@@ -1410,7 +1678,12 @@ type StatefulSetTemplateSource struct {
 	Namespace string `yaml:"namespace" json:"namespace,omitempty"`
 
 	// Image — container image. Required.
-	Image string `yaml:"image" json:"image,omitempty" validate:"required"`
+	Image string `yaml:"image" json:"image" validate:"omitempty"`
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string `yaml:"imagePullSecrets" json:"imagePullSecrets" validate:"omitempty"`
 
 	// Tag — image tag. Default: "latest".
 	Tag string `yaml:"tag" json:"tag,omitempty"`
@@ -1425,25 +1698,43 @@ type StatefulSetTemplateSource struct {
 	// Default: same as Name.
 	ServiceName string `yaml:"serviceName" json:"serviceName,omitempty"`
 
-	// StorageClass — storage class for auto-generated VolumeClaimTemplates.
-	StorageClass string `yaml:"storageClass" json:"storageClass,omitempty"`
+	// VolumeClaimTemplates — one or more PVC templates; each pod gets its own volume per entry.
+	VolumeClaimTemplates []VolumeClaimTemplateSource `yaml:"volumeClaimTemplates" json:"volumeClaimTemplates,omitempty"`
 
-	// StorageSize — size of each volume claim (e.g. "10Gi"). Required when StorageClass is set.
-	StorageSize string `yaml:"storageSize" json:"storageSize,omitempty"`
+	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must match a node's labels for the pod to be scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// +optional
+	// +mapType=atomic
+	NodeSelector map[string]string `yaml:"nodeSelector,omitempty" json:"nodeSelector,omitempty"`
 
-	// MountPath — mount path for the storage volume inside the container. Default: "/data".
-	MountPath string `yaml:"mountPath" json:"mountPath,omitempty"`
+	// ServiceAccountName is the name of the ServiceAccount to use to run this pod.
+	// More info: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+	// +optional
+	ServiceAccountName string `yaml:"serviceAccountName,omitempty" json:"serviceAccountName,omitempty"`
 
 	Labels      []ResourceLabel         `yaml:"labels" json:"labels,omitempty"`
 	Annotations []ResourceLabel         `yaml:"annotations" json:"annotations,omitempty"`
 	Env         map[string]EnvVarSource `yaml:"env" json:"env,omitempty"`
 	EnvFrom     []EnvFromSource         `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
-	Resources   *ResourceRequirements   `yaml:"resources" json:"resources,omitempty"`
+
+	// Resources — CPU and memory requests/limits for the primary container.
+	// Set resources.profile for a named preset, or resources.requests/limits for
+	// explicit values. Profile and explicit values are mutually exclusive.
+	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
 
 	Reconcile  bool         `yaml:"reconcile" json:"reconcile,omitempty"`
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// Probes — startup, liveness, and readiness probe configuration.
+	Probes *ProbesConfig `yaml:"probes,omitempty" json:"probes,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // PVCTemplateSource declares one PersistentVolumeClaim to be managed by Orkestra.
@@ -1478,6 +1769,11 @@ type PVCTemplateSource struct {
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // PVTemplateSource declares one PersistentVolume to be managed by Orkestra.
@@ -1513,6 +1809,99 @@ type PVTemplateSource struct {
 	Conditions []Condition  `yaml:"when,omitempty" json:"when,omitempty"`
 	AnyOf      []Condition  `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
 	ForEach    *ForEachSpec `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
+}
+
+// ── Role / RoleBinding ────────────────────────────────────────────────────────
+
+// PolicyRuleSpec declares one RBAC policy rule.
+// String values within slices support template expressions.
+type PolicyRuleSpec struct {
+	APIGroups     []string `yaml:"apiGroups" json:"apiGroups,omitempty"`
+	Resources     []string `yaml:"resources" json:"resources,omitempty"`
+	Verbs         []string `yaml:"verbs" json:"verbs,omitempty"`
+	ResourceNames []string `yaml:"resourceNames" json:"resourceNames,omitempty"`
+}
+
+// SubjectSpec declares one RBAC subject for a RoleBinding.
+// Name and Namespace support template expressions.
+type SubjectSpec struct {
+	Kind      string `yaml:"kind" json:"kind,omitempty"`
+	Name      string `yaml:"name" json:"name,omitempty"`
+	Namespace string `yaml:"namespace" json:"namespace,omitempty"`
+}
+
+// RoleRefSpec names the Role (or ClusterRole) being bound.
+// Name supports template expressions. Kind defaults to "Role".
+type RoleRefSpec struct {
+	Name string `yaml:"name" json:"name,omitempty"`
+	Kind string `yaml:"kind" json:"kind,omitempty"` // Role | ClusterRole; defaults to Role
+}
+
+// RoleTemplateSource declares one namespaced Role to be managed by Orkestra.
+//
+// Example:
+//
+//	onCreate:
+//	  roles:
+//	    - name: "{{ .metadata.name }}-role"
+//	      namespace: "{{ .metadata.name }}-ns"
+//	      rules:
+//	        - apiGroups: ["apps"]
+//	          resources: ["deployments"]
+//	          verbs: ["get", "list", "watch", "update", "patch"]
+//	          resourceNames: ["{{ .metadata.name }}"]
+type RoleTemplateSource struct {
+	Version    string           `yaml:"version" json:"version,omitempty"`
+	Name       string           `yaml:"name" json:"name,omitempty"`
+	Namespace  string           `yaml:"namespace" json:"namespace,omitempty"`
+	Labels     []ResourceLabel  `yaml:"labels" json:"labels,omitempty"`
+	Rules      []PolicyRuleSpec `yaml:"rules" json:"rules,omitempty"`
+	Conditions []Condition      `yaml:"when,omitempty" json:"when,omitempty"`
+	Reconcile  bool             `yaml:"reconcile" json:"reconcile,omitempty"`
+	ForEach    *ForEachSpec     `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+	AnyOf      []Condition      `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
+}
+
+// RoleBindingTemplateSource declares one RoleBinding to be managed by Orkestra.
+//
+// Example:
+//
+//	onCreate:
+//	  roleBindings:
+//	    - name: "{{ .metadata.name }}-rolebinding"
+//	      namespace: "{{ .metadata.name }}-ns"
+//	      roleRef:
+//	        name: "{{ .metadata.name }}-role"
+//	      subjects:
+//	        - kind: ServiceAccount
+//	          name: "{{ .metadata.name }}-sa"
+//	          namespace: "{{ .metadata.name }}-ns"
+type RoleBindingTemplateSource struct {
+	Version    string          `yaml:"version" json:"version,omitempty"`
+	Name       string          `yaml:"name" json:"name,omitempty"`
+	Namespace  string          `yaml:"namespace" json:"namespace,omitempty"`
+	Labels     []ResourceLabel `yaml:"labels" json:"labels,omitempty"`
+	RoleRef    RoleRefSpec     `yaml:"roleRef" json:"roleRef,omitempty"`
+	Subjects   []SubjectSpec   `yaml:"subjects" json:"subjects,omitempty"`
+	Conditions []Condition     `yaml:"when,omitempty" json:"when,omitempty"`
+	Reconcile  bool            `yaml:"reconcile" json:"reconcile,omitempty"`
+	ForEach    *ForEachSpec    `yaml:"forEach,omitempty" json:"forEach,omitempty"`
+	AnyOf      []Condition     `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ── HookTemplates ─────────────────────────────────────────────────────────────
@@ -1562,6 +1951,8 @@ type HookTemplates struct {
 	HorizontalPodAutoscalers []HPATemplateSource            `yaml:"hpa" json:"hpa,omitempty" validate:"omitempty"`
 	PodDisruptionBudgets     []PDBTemplateSource            `yaml:"pdb" json:"pdb,omitempty" validate:"omitempty"`
 	Namespaces               []NamespaceTemplateSource      `yaml:"namespaces" json:"namespaces,omitempty" validate:"omitempty"`
+	Roles                    []RoleTemplateSource           `yaml:"roles" json:"roles,omitempty" validate:"omitempty"`
+	RoleBindings             []RoleBindingTemplateSource    `yaml:"roleBindings" json:"roleBindings,omitempty" validate:"omitempty"`
 
 	// External declares HTTP calls to make before resource creation.
 	// Results available as .external.<n>.status, .body, .error
@@ -1607,8 +1998,6 @@ type HookTemplates struct {
 	// TODO with placeholer
 	Volumes                     []PlaceholderSource `yaml:"volumes" json:"volumes,omitempty" validate:"omitempty"`
 	VolumeMounts                []PlaceholderSource `yaml:"volumeMounts" json:"volumeMounts,omitempty" validate:"omitempty"`
-	Roles                       []PlaceholderSource `yaml:"roles" json:"roles,omitempty" validate:"omitempty"`
-	RoleBindings                []PlaceholderSource `yaml:"roleBindings" json:"roleBindings,omitempty" validate:"omitempty"`
 	ClusterRoles                []PlaceholderSource `yaml:"clusterRoles" json:"clusterRoles,omitempty" validate:"omitempty"`
 	ClusterRoleBindings         []PlaceholderSource `yaml:"clusterRoleBindings" json:"clusterRoleBindings,omitempty" validate:"omitempty"`
 	ServiceMonitors             []PlaceholderSource `yaml:"serviceMonitors" json:"serviceMonitors,omitempty" validate:"omitempty"`
@@ -1730,6 +2119,33 @@ type OperatorBoxConfig struct {
 	// nil → no rollback; failures are retried indefinitely.
 	Rollback *RollbackBlock `yaml:"rollback,omitempty" json:"rollback,omitempty"`
 
+	// RollBackOnError is a zero-config rollback shorthand.
+	//
+	// When true, Orkestra automatically rolls back to the previous spec whenever
+	// the default trigger threshold is reached (3 consecutive failures), without
+	// requiring a separate rollback: block.
+	//
+	// The rollback templates are derived from all resource declarations that have
+	// reconcile: true in onCreate: and onReconcile:. Those same templates are
+	// re-applied using the previous spec as the base context — .spec.* resolves
+	// to the previous spec values, so no .previous.spec.* references are needed.
+	//
+	// Resources with once: true are excluded — they are never regenerated by rollback.
+	//
+	// Combine with an explicit rollback.trigger to adjust the threshold without
+	// redeclaring the rollback templates:
+	//
+	//	operatorBox:
+	//	  rollBackOnError: true
+	//	  rollback:
+	//	    trigger:
+	//	      consecutiveFailures: 5
+	//	      withinDuration: 10m
+	//
+	// Declare rollback.onRollback alongside rollBackOnError: true to override the
+	// derived templates for specific resources while keeping the shorthand trigger.
+	RollBackOnError bool `yaml:"rollBackOnError,omitempty" json:"rollBackOnError,omitempty"`
+
 	// When is an optional list of conditions that must all pass before
 	// this field is written. If absent or empty, the field is always written.
 	//
@@ -1759,6 +2175,9 @@ type HookDeclaration struct {
 	// Alias — Go import alias. Optional, auto-derived from Location if omitted.
 	// e.g. "projecthooks"
 	Alias string `yaml:"alias" json:"alias,omitempty" validate:"omitempty"`
+
+	// Resources — Kubernetes resource types this hook manages (used for RBAC generation).
+	Resources []ManagedResource `json:"resources,omitempty" yaml:"resources,omitempty"`
 }
 
 // ConstructorDeclaration declares where a custom reconciler constructor lives.
@@ -1774,6 +2193,57 @@ type ConstructorDeclaration struct {
 
 	// Alias — Go import alias. Optional, auto-derived from Location if omitted.
 	Alias string `yaml:"alias" json:"alias,omitempty" validate:"omitempty"`
+
+	// Resources — Kubernetes resource types this constructor manages (used for RBAC generation).
+	Resources []ManagedResource `json:"resources,omitempty" yaml:"resources,omitempty"`
+}
+
+// ManagedResource describes a Kubernetes resource type that a typed extension
+// (either a hook or a constructor) will manage.
+//
+// Orkestra uses this information to generate RBAC rules for the operator
+// ServiceAccount. Each declared resource results in permissions to
+// get/list/watch/create/update/patch/delete that resource type.
+//
+// For built‑in Kubernetes resources, Kind alone is sufficient because Orkestra
+// resolves the full GroupVersionResource from its internal registry.
+//
+// For custom resources or non‑core API groups, APIVersion and/or explicit
+// group/version/plural may be provided.
+//
+// Example (in katalog.yaml):
+//
+//	hooks:
+//	  resources:
+//	    - kind: StatefulSet
+//	    - kind: Service
+//	    - kind: CronJob
+//	    - kind: Widget
+//	      group: widgets.example.com
+//	      version: v1alpha1
+//	      plural: widgets
+type ManagedResource struct {
+	// Kind is the Kubernetes Kind of the resource (e.g. "StatefulSet",
+	// "Service", "CronJob"). This is the primary identifier and is required.
+	Kind string `json:"kind,omitempty" yaml:"kind,omitempty"`
+
+	// APIVersion is optional and only needed when the Kind cannot be resolved
+	// from Orkestra's built‑in registry. Example: "apps/v1", "batch/v1",
+	// "widgets.example.com/v1alpha1".
+	APIVersion string `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty"`
+
+	// Group is optional and used for custom resources or non‑core API groups
+	// when you want to fully specify the GroupVersionResource explicitly.
+	// Example: "widgets.example.com".
+	Group string `json:"group,omitempty" yaml:"group,omitempty"`
+
+	// Version is optional and used together with Group for custom resources.
+	// Example: "v1alpha1".
+	Version string `json:"version,omitempty" yaml:"version,omitempty"`
+
+	// Plural is optional and used when the plural name cannot be inferred
+	// from Orkestra's built‑in registry or CRD metadata. Example: "widgets".
+	Plural string `json:"plural,omitempty" yaml:"plural,omitempty"`
 }
 
 // ── DependsOn types ───────────────────────────────────────────────────────────
@@ -2076,11 +2546,18 @@ type CRDEntry struct {
 
 	// RemoveFinalizers -> testing
 	RemoveFinalizers bool `yaml:"removeFinalizers,omitempty" json:"removeFinalizers,omitempty"`
+
+	// Imports declares Motif imports for this operatorBox.
+	// Each import references a Motif by OCI reference, file path, or short name,
+	// and binds its inputs via with:. Resources from imported Motifs are merged
+	// into OnReconcile at Katalog load time.
+	// Required inputs not provided in with: are a validation error.
+	Imports []MotifImport `yaml:"imports,omitempty" json:"imports,omitempty"`
 }
 
 type ConversionVersionSpec struct {
-	Version string                 `json:"version"`
-	Spec    map[string]interface{} `json:"spec"`
+	Version string                 `json:"version" yaml:"version"`
+	Spec    map[string]interface{} `json:"spec" yaml:"spec"`
 }
 
 // EndpointsConfig controls which HTTP endpoints are exposed by the operator.

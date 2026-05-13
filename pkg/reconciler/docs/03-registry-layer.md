@@ -20,12 +20,18 @@ pkg/orkestra-registry/
         configmap.go
     serviceaccounts/
         serviceaccount.go
+    roles/
+        role.go            — Create, Update, Delete, DeleteIfOwned, Resolve
+    rolebindings/
+        rolebinding.go     — Create, Update, Delete, DeleteIfOwned, Resolve
     jobs/
         types.go
         job.go
     cronjobs/
         cronjob.go
 ```
+
+> **Roles and RoleBindings** use `rbacv1` from `k8s.io/api/rbac/v1`. Their template source types (`RoleTemplateSource`, `RoleBindingTemplateSource`) live in `pkg/types/types.go` alongside all other source types. The `RoleBindingTemplateSource.RoleRef.Kind` defaults to `"Role"` — set it to `"ClusterRole"` to bind to a cluster-scoped role. RoleBinding's `Update` path handles the Kubernetes immutability constraint on `roleRef` by deleting and recreating the binding when the ref changes.
 
 ## The four functions every registry package exposes
 
@@ -81,7 +87,7 @@ if errors.IsNotFound(err) {
 if err != nil {
     return err
 }
-if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
     return nil // not ours — do not touch
 }
 return kube.Clientset().NetworkingV1().Ingresses(ns).Delete(ctx, name, metav1.DeleteOptions{})
@@ -98,8 +104,8 @@ func Resolve(src orktypes.XxxTemplateSource, ownerName string) ResolvedXxxSpec
 Always injects the two mandatory Orkestra system labels:
 
 ```go
-spec.Labels[konfig.LabelManaged]      = konfig.LabelManagedValue
-spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+spec.Labels[labels.Managed]      = labels.ManagedValue
+spec.Labels[labels.OrkestraOwner] = ownerName
 ```
 
 ## The owner reference

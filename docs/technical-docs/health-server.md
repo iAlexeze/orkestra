@@ -195,7 +195,7 @@ All are not a replacement for Prometheus — they reset on restart. They serve t
 
 | Variable | Default | Effect |
 |---|---|---|
-| `ORK_PORT` | `8080` | HTTP server port |
+| `ORKESTRA_PORT` | `8080` | HTTP server port |
 | `ENABLE_CONVERSION` | `false` | Start HTTPS server and serve `/convert` |
 | `ENABLE_ADMISSION_WEBHOOK` | `false` | Serve `/validate` and `/mutate`, register webhook configs |
 | `TLS_CERT` | — | Path to TLS certificate (required when conversion or webhooks enabled) |

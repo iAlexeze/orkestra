@@ -103,9 +103,13 @@ The `expandForEach*` call happens **before** the runner is invoked. Every runner
 ```
 runResourceGroup()
    │
+   ├── expandForEachNamespaces           → runNamespaces
    ├── expandForEachSecrets              → runSecrets
    ├── expandForEachConfigMaps           → runConfigMaps
    ├── expandForEachServiceAccounts      → runServiceAccounts
+   ├── expandForEachRoles                → runRoles          ← scoped to a namespace
+   ├── expandForEachRoleBindings         → runRoleBindings   ← binds Role to ServiceAccount
+   ├── expandForEachReplicaSets          → runReplicaSets
    ├── expandForEachDeployments          → runDeployments
    ├── expandForEachServices             → runServices
    ├── expandForEachJobs                 → runJobs
@@ -117,6 +121,8 @@ runResourceGroup()
    ├── expandForEachHPAs                 → runHPAs
    └── expandForEachPDBs                 → runPDBs
 ```
+
+Ordering matters for RBAC: ServiceAccounts come before Roles, and Roles before RoleBindings — a binding cannot reference a role that does not yet exist. The ordering in `runResourceGroup` guarantees this without coordination logic in the runners.
 
 ## The update flag
 

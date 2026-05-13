@@ -1,3 +1,5 @@
+//go:build !runtime
+
 package cli
 
 import (
@@ -5,12 +7,76 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
 
+	"github.com/orkspace/orkestra/examples"
 	"github.com/orkspace/orkestra/pkg/utils"
 )
+
+//
+// ──────────────────────────────────────────────────────────────────────────────
+//  Embedded Pack Extraction (default path — no network required)
+// ──────────────────────────────────────────────────────────────────────────────
+
+func extractEmbeddedPack(root, pack string) error {
+	p, ok := Packs[pack]
+	if !ok {
+		return fmt.Errorf("unknown pack %q — run `ork init --list-packs` to see available packs", pack)
+	}
+	srcPath := p.Path
+
+	targetDir := filepath.Join(root, "examples", pack)
+
+	if err := fs.WalkDir(examples.FS, srcPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		rel, err := filepath.Rel(srcPath, path)
+		if err != nil {
+			return err
+		}
+
+		dst := filepath.Join(targetDir, rel)
+
+		if d.IsDir() {
+			return os.MkdirAll(dst, 0755)
+		}
+
+		if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+			return err
+		}
+
+		data, err := examples.FS.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		return os.WriteFile(dst, data, 0644)
+	}); err != nil {
+		return err
+	}
+
+	// Copy shared files (Makefile, setup-kind.sh, load.sh) into the pack root.
+	// These are at the examples/ embed root, not inside any pack directory.
+	sharedFiles := map[string]os.FileMode{
+		"Makefile":      0644,
+		"setup-kind.sh": 0755,
+		"load.sh":       0755,
+	}
+	for name, mode := range sharedFiles {
+		data, err := examples.FS.ReadFile(name)
+		if err != nil {
+			continue // shared file absent in this build — non-fatal
+		}
+		_ = os.WriteFile(filepath.Join(targetDir, name), data, mode)
+	}
+
+	return nil
+}
 
 //
 // ──────────────────────────────────────────────────────────────────────────────

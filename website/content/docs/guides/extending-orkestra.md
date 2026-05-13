@@ -38,7 +38,7 @@ spec:
 This is a complete operator entry.
 
 - Apply the CRD to your cluster  
-- Run `ork run --katalog katalog.yaml`  
+- Run `ork run --file katalog.yaml`  
 - Orkestra begins managing `MyResource` immediately  
 
 Everything else — typed Go structs, hooks, constructors — is optional.
@@ -272,7 +272,7 @@ controller-gen object paths=./api/types/myresource/...
 Dynamic CRDs skip this step.
 
 ```bash
-ork generate registry --katalog katalog.yaml
+ork generate registry --file katalog.yaml
 go mod tidy
 ```
 
@@ -291,9 +291,9 @@ What gets generated:
 
 ```bash
 kubectl apply -f myresource-crd.yaml
-ork validate --katalog katalog.yaml
-ork template --katalog katalog.yaml --graph
-ork run --katalog katalog.yaml
+ork validate --file katalog.yaml
+ork template --file katalog.yaml --graph
+ork run --file katalog.yaml
 ```
 
 Create a CR:

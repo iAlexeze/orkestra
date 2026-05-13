@@ -14,10 +14,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/utils"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
@@ -27,8 +29,8 @@ import (
 )
 
 const (
-	validatingWebhookConfigName          = "orkestra-validation"
-	mutatingWebhookConfigName            = "orkestra-mutation"
+	validatingWebhookConfigName          = "orkestra-admission-validation"
+	mutatingWebhookConfigName            = "orkestra-admission-mutation"
 	deletionProtectionWebhookConfigName  = "orkestra-deletion-protection"
 	namespaceProtectionWebhookConfigName = "orkestra-namespace-protection"
 
@@ -39,19 +41,24 @@ const (
 
 // WebhookRegistrationOptions holds the configuration for webhook registration.
 type WebhookRegistrationOptions struct {
-	ServiceName              string
-	ServiceNamespace         string
-	Port                     int32
-	FailurePolicy            admissionv1.FailurePolicyType
-	TLSCertFile              string
-	OrkestraResourceLabels   map[string]string
-	OrkestraResourceSelector *metav1.LabelSelector
+	ServiceName            string
+	ServiceNamespace       string
+	Port                   int32
+	FailurePolicy          admissionv1.FailurePolicyType
+	TLSCertFile            string
+	OrkestraResourceLabels map[string]string
 }
 
 // WebhookCleanupOptions selects which webhook configurations to remove.
 type WebhookCleanupOptions struct {
 	mutating   bool
 	validating bool
+}
+
+// CleanupAllWebhooks returns a WebhookCleanupOptions that removes both
+// ValidatingWebhookConfiguration and MutatingWebhookConfiguration.
+func CleanupAllWebhooks() WebhookCleanupOptions {
+	return WebhookCleanupOptions{mutating: true, validating: true}
 }
 
 // admissionRegistryReader is the subset of katalog.AdmissionRegistry used here.
@@ -278,7 +285,7 @@ func registerDeletionProtectionWebhook(
 				},
 				CABundle: caBundle,
 			},
-			ObjectSelector:          opts.OrkestraResourceSelector,
+			ObjectSelector:          labels.DeletionProtectionSelector(),
 			Rules:                   buildDeletionProtectionRules(orkestraGVRs),
 			FailurePolicy:           failurePolicyPtr(admissionv1.Fail),
 			MatchPolicy:             matchPolicyPtr(admissionv1.Exact),
@@ -399,6 +406,9 @@ func buildDeletionProtectionRules(gvrs []katalog.GVREntry) []admissionv1.RuleWit
 }
 
 // applyWebhookConfig creates or updates a ValidatingWebhookConfiguration.
+// The update is skipped when the existing configuration already matches the
+// desired state — this prevents the reconcile-modify-MODIFIED-reconcile loop
+// that would otherwise occur because every Update fires a Watch MODIFIED event.
 func applyWebhookConfig(ctx context.Context, client kubernetes.Interface, cfg *admissionv1.ValidatingWebhookConfiguration) error {
 	existing, err := client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(ctx, cfg.Name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
@@ -418,12 +428,17 @@ func applyWebhookConfig(ctx context.Context, client kubernetes.Interface, cfg *a
 	if err != nil {
 		return err
 	}
+	if validatingWebhookConfigEqual(existing, cfg) {
+		return nil
+	}
 	cfg.ResourceVersion = existing.ResourceVersion
 	_, err = client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Update(ctx, cfg, metav1.UpdateOptions{})
 	return err
 }
 
 // applyMutatingWebhookConfig creates or updates a MutatingWebhookConfiguration.
+// The update is skipped when the existing configuration already matches the
+// desired state — same idempotency guarantee as applyWebhookConfig.
 func applyMutatingWebhookConfig(ctx context.Context, client kubernetes.Interface, cfg *admissionv1.MutatingWebhookConfiguration) error {
 	existing, err := client.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(ctx, cfg.Name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
@@ -433,9 +448,27 @@ func applyMutatingWebhookConfig(ctx context.Context, client kubernetes.Interface
 	if err != nil {
 		return err
 	}
+	if mutatingWebhookConfigEqual(existing, cfg) {
+		return nil
+	}
 	cfg.ResourceVersion = existing.ResourceVersion
 	_, err = client.AdmissionregistrationV1().MutatingWebhookConfigurations().Update(ctx, cfg, metav1.UpdateOptions{})
 	return err
+}
+
+// validatingWebhookConfigEqual returns true when the existing configuration
+// already reflects the desired state (labels and webhook definitions match).
+// Only the fields Orkestra controls are compared — Kubernetes-managed metadata
+// like resourceVersion and managedFields are intentionally excluded.
+func validatingWebhookConfigEqual(existing, desired *admissionv1.ValidatingWebhookConfiguration) bool {
+	return reflect.DeepEqual(existing.Labels, desired.Labels) &&
+		reflect.DeepEqual(existing.Webhooks, desired.Webhooks)
+}
+
+// mutatingWebhookConfigEqual is the MutatingWebhookConfiguration counterpart.
+func mutatingWebhookConfigEqual(existing, desired *admissionv1.MutatingWebhookConfiguration) bool {
+	return reflect.DeepEqual(existing.Labels, desired.Labels) &&
+		reflect.DeepEqual(existing.Webhooks, desired.Webhooks)
 }
 
 func cleanupValidatingWebhook(ctx context.Context, client kubernetes.Interface, cfgName string) error {

@@ -7,8 +7,8 @@ import (
 	"reflect"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -40,6 +40,11 @@ type ResolvedConfigMapSpec struct {
 
 	// Labels — applied to ConfigMap metadata.
 	Labels map[string]string
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string
 }
 
 // Create creates a ConfigMap if it does not already exist.
@@ -51,6 +56,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	_, err := kube.Clientset().CoreV1().ConfigMaps(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -94,6 +102,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	existing, err := kube.Clientset().CoreV1().ConfigMaps(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
@@ -139,6 +150,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Delete deletes the ConfigMap if it exists.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedConfigMapSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	err := kube.Clientset().CoreV1().ConfigMaps(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -237,8 +251,14 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 		}
 		return err
 	}
+
+	// Skip deletion if created by orkdoctor
+	if existing.Labels[labels.LabelCreatedBy] == labels.CreatedByOrkDoctor {
+		return nil
+	}
+
 	// Only delete if we own it
-	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
 		return nil
 	}
 	return kube.Clientset().CoreV1().ConfigMaps(namespace).
@@ -255,6 +275,7 @@ func Resolve(src orktypes.ConfigMapTemplateSource, ownerName string) ResolvedCon
 		FromConfigMap: src.FromConfigMap,
 		FromNamespace: src.FromNamespace,
 		Labels:        make(map[string]string),
+		Sleep:         src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -265,8 +286,8 @@ func Resolve(src orktypes.ConfigMapTemplateSource, ownerName string) ResolvedCon
 		spec.Labels[l.Key] = l.Value
 	}
 
-	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
-	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }

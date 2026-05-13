@@ -27,7 +27,7 @@ informer cache (in-memory)
         ▼
 per-CRD work queue
         │
-        │  ← Tier 3: reconciler CheckNamespace (existing, unchanged)
+        │  ← Tier 3: reconciler CheckNamespace
         │        Safety net for race conditions during startup,
         │        before the filter map is fully populated.
         │        Defense in depth — not the primary gate.

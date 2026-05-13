@@ -221,6 +221,56 @@ This is a safe state — the CR is not deleted, its child resources are not dele
 
 ---
 
+## Production binary: minimal surface, maximal trust
+
+Orkestra’s development CLI includes every command: `init`, `generate`, `validate`, `template`, `diff`, `upgrade`, `controlcenter`, and `run`.  
+The production runtime is built with a **build tag** (`-tags runtime`) that excludes all commands except `run` (and `version` for diagnostics).
+
+### What is removed in production
+
+- `ork init` – scaffolding new operators  
+- `ork generate` – generating CRDs, bundles, registry, documentation  
+- `ork validate` – offline Katalog validation  
+- `ork template` – rendering resource templates  
+- `ork diff` – comparing Katalogs  
+- `ork upgrade` – self‑upgrade logic  
+- `ork controlcenter` – local development UI  
+
+The resulting binary contains **only** `ork run`, `ork version`, and the shared runtime packages (reconciler, informers, webhook server, metrics, health endpoints).
+
+### Why this strengthens trust
+
+1. **Reduced attack surface**  
+   - No code for generating and writing files, or parsing user‑supplied templates exists in the runtime.  
+   - An attacker who compromises the container cannot run `ork init` to write arbitrary files or `ork generate` to modify cluster state outside the intended reconciliation loop.
+
+2. **Smaller binary, fewer dependencies**  
+   - The production binary is stripped of all development‑only libraries (e.g., YAML generators).  
+   - Binary size drops from ~60 MB to ~20 MB, reducing memory footprint and image pull time.
+
+3. **Prevents accidental misuse**  
+   - An operator cannot be accidentally started in development mode inside the cluster.  
+   - The only supported entrypoint is `ork run` (or the container’s default `ENTRYPOINT ["/usr/local/bin/ork"]`).
+
+4. **Build‑time guarantee**  
+   - Exclusion is enforced at compile time using Go build constraints.  
+   - No runtime configuration can re‑enable the excluded commands – they are simply not linked.
+
+### Effect on failure model
+
+The failure guarantees documented above (leader election, panic recovery, graceful shutdown, etc.) **remain unchanged** – the runtime engine is identical. The only difference is that the production binary cannot execute any command that would bypass the normal reconciliation lifecycle. This makes the system more predictable and harder to subvert.
+
+### Verification
+
+```bash
+# Check which commands are present in the runtime image
+docker run --rm ghcr.io/orkspace/orkestra:latest ork --help
+
+# The output should show only "run" and "version"
+```
+
+---
+
 ## CRD health states
 
 Each CRD has one of four health states, reported by `/katalog/{crd}/health` and `ork status`:

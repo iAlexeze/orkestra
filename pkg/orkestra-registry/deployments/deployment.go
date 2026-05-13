@@ -7,8 +7,8 @@ import (
 	"strconv"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -28,6 +28,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	_, err := kube.Clientset().AppsV1().Deployments(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -66,6 +69,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	existing, err := kube.Clientset().AppsV1().Deployments(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
@@ -83,6 +89,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	drifted := false
 	updated := existing.DeepCopy()
 
+	// Replicas
 	if existing.Spec.Replicas == nil || *existing.Spec.Replicas != spec.Replicas {
 		replicas := spec.Replicas
 		updated.Spec.Replicas = &replicas
@@ -93,6 +100,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 			Msg("deployment replicas drifted")
 	}
 
+	// Image
 	if len(existing.Spec.Template.Spec.Containers) > 0 &&
 		existing.Spec.Template.Spec.Containers[0].Image != spec.Image {
 		updated.Spec.Template.Spec.Containers[0].Image = spec.Image
@@ -101,6 +109,22 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 			Str("deployment", spec.Name).
 			Str("desired", spec.Image).
 			Msg("deployment image drifted")
+	}
+
+	// Resources
+	if spec.Resources != nil {
+		desiredRes := common.BuildResourceRequirements(spec.Resources)
+		var existingRes corev1.ResourceRequirements
+		if len(existing.Spec.Template.Spec.Containers) > 0 {
+			existingRes = existing.Spec.Template.Spec.Containers[0].Resources
+		}
+		if !common.ResourceRequirementsEqual(existingRes, desiredRes) {
+			updated.Spec.Template.Spec.Containers[0].Resources = desiredRes
+			drifted = true
+			logger.Info().
+				Str("deployment", spec.Name).
+				Msg("deployment resources drifted")
+		}
 	}
 
 	if !drifted {
@@ -128,6 +152,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // for explicit cleanup declared in onDelete templates.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedDeploymentSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	err := kube.Clientset().AppsV1().Deployments(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -163,7 +190,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 		return err
 	}
 	// Only delete if we own it
-	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
 		return nil
 	}
 	return kube.Clientset().AppsV1().Deployments(namespace).
@@ -180,11 +207,13 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 		Name:        src.Name,
 		Image:       src.Image,
 		Namespace:   src.Namespace,
-		Resources:   src.Resources,
+		Resources:   common.ResolveResources(src.Resources),
 		Labels:      make(map[string]string),
 		Annotations: make(map[string]string),
 		Env:         make(map[string]orktypes.EnvVarSource),
 		EnvFrom:     src.EnvFrom,
+		Probes:      src.Probes,
+		Sleep:       src.Sleep,
 	}
 
 	// Default name
@@ -225,8 +254,8 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 	}
 
 	// Orkestra system labels — always added
-	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
-	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -271,6 +300,9 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 					Labels: spec.Labels,
 				},
 				Spec: corev1.PodSpec{
+					ImagePullSecrets:   common.ToPullSecrets(spec.ImagePullSecrets),
+					ServiceAccountName: spec.ServiceAccountName,
+					NodeSelector:       spec.NodeSelector,
 					Containers: []corev1.Container{
 						{
 							Name:  spec.Name,
@@ -293,6 +325,9 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 	if spec.Resources != nil {
 		d.Spec.Template.Spec.Containers[0].Resources = common.BuildResourceRequirements(spec.Resources)
 	}
+
+	// Probes
+	common.ApplyProbes(&d.Spec.Template.Spec.Containers[0], spec.Probes, spec.Port)
 
 	// Env
 	if len(spec.Env) > 0 {

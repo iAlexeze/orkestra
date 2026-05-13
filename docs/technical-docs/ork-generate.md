@@ -20,7 +20,7 @@ If you run `ork run` with a typed-mode CRD and the generated file is missing or 
 
 ```
 error: no object factory for demo.orkestra.io/v1alpha1, Kind=Website
-  — run: ork generate registry --katalog katalog.yaml
+  — run: ork generate registry --file katalog.yaml
 ```
 
 ---
@@ -81,11 +81,11 @@ func init() {
 ## Usage
 
 ```bash
-ork generate registry --katalog katalog.yaml
+ork generate registry --file katalog.yaml
 
 # Options
 ork generate registry \
-  --katalog komposer.yaml \    # Katalog or Komposer
+  --file komposer.yaml \    # Katalog or Komposer
   --output  ./cmd/ork/         # directory to write the file
   --package main               # package name in the generated file
 ```
@@ -112,7 +112,7 @@ The generated file is idempotent — running it multiple times produces the same
 !!! tip "Add to your Makefile"
     ```makefile
     generate:
-        go run ./cmd/ork/main.go generate registry --katalog katalog.yaml
+        go run ./cmd/ork/main.go generate registry --file katalog.yaml
         go build ./...
     ```
     Run `make generate` before `go build` whenever the Katalog changes.

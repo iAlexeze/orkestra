@@ -173,7 +173,7 @@ Set the environment variable before running:
 
 ```bash
 export PLATFORM_KATALOG_TOKEN=your-token-here
-ork run --katalog komposer.yaml
+ork run --file komposer.yaml
 ```
 
 In a Kubernetes deployment, inject it from a Secret:
@@ -207,7 +207,7 @@ sources:
 
 ```bash
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxx
-ork run --katalog komposer.yaml
+ork run --file komposer.yaml
 ```
 
 `github` and `bearer` produce the same `Authorization: Bearer` header.
@@ -231,7 +231,7 @@ sources:
 ```bash
 export ARTIFACTORY_USER=svc-orkestra
 export ARTIFACTORY_PASSWORD=xxxx
-ork run --katalog komposer.yaml
+ork run --file komposer.yaml
 ```
 
 ### Mixing auth types
@@ -435,37 +435,37 @@ spec:
 
 ## CLI commands
 
-All CLI commands that accept `--katalog` also accept a Komposer path.
+All CLI commands that accept `--file` also accept a Komposer path.
 The merger handles both transparently.
 
 ### `ork validate`
 
 ```bash
-ork validate --katalog ./komposer.yaml
-ork validate --katalog ./infra.yaml --katalog ./apps.yaml
-ork validate --katalog $KATALOG_PATH
+ork validate --file ./komposer.yaml
+ork validate --file ./infra.yaml --file ./apps.yaml
+ork validate --file $KATALOG_PATH
 ```
 
 ### `ork template`
 
 ```bash
-ork template --katalog ./komposer.yaml
-ork template --katalog ./komposer.yaml --graph
-ork template --katalog ./komposer.yaml --json
+ork template --file ./komposer.yaml
+ork template --file ./komposer.yaml --graph
+ork template --file ./komposer.yaml --json
 ```
 
 ### `ork generate registry`
 
 ```bash
-ork generate registry --katalog ./komposer.yaml
-ork generate registry --katalog ./komposer.yaml --dry-run
+ork generate registry --file ./komposer.yaml
+ork generate registry --file ./komposer.yaml --dry-run
 ```
 
 ### `ork run`
 
 ```bash
-ork run --katalog ./komposer.yaml
-ork run --katalog ./infra.yaml --katalog ./apps.yaml
+ork run --file ./komposer.yaml
+ork run --file ./infra.yaml --file ./apps.yaml
 ```
 
 ---
@@ -502,7 +502,7 @@ spec:
 ```
 
 ```bash
-ork run --katalog ./katalog.yaml
+ork run --file ./katalog.yaml
 ```
 
 ### Multi-team composition
@@ -539,9 +539,9 @@ spec:
 ```
 
 ```bash
-ork template --katalog ./komposer.yaml --graph
-ork validate --katalog ./komposer.yaml
-ork run --katalog ./komposer.yaml
+ork template --file ./komposer.yaml --graph
+ork validate --file ./komposer.yaml
+ork run --file ./komposer.yaml
 ```
 
 ### Enterprise — private sources with mixed auth
@@ -609,8 +609,8 @@ kubectl create secret generic orkestra-katalog-creds \
   --from-literal=ARTIFACTORY_PASSWORD=zzzz
 
 # Validate before deploying
-ork validate --katalog enterprise-komposer.yaml
-ork template --katalog enterprise-komposer.yaml --graph
+ork validate --file enterprise-komposer.yaml
+ork template --file enterprise-komposer.yaml --graph
 ```
 
 ### Helm chart + local Katalog + inline override

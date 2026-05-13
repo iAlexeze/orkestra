@@ -185,18 +185,18 @@ var ResourceChecks = map[string]ResourceCheck{
 	"roles": {
 		Get: func(crd CRDEntry) bool {
 			rc := crd.OperatorBox
-			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PlaceholderSource { return t.Roles }) ||
-				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PlaceholderSource { return t.Roles }) ||
-				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PlaceholderSource { return t.Roles })
+			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []RoleTemplateSource { return t.Roles }) ||
+				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []RoleTemplateSource { return t.Roles }) ||
+				usesTemplates(rc.OnDelete, func(t *HookTemplates) []RoleTemplateSource { return t.Roles })
 		},
 	},
 
 	"rolebindings": {
 		Get: func(crd CRDEntry) bool {
 			rc := crd.OperatorBox
-			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []PlaceholderSource { return t.RoleBindings }) ||
-				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []PlaceholderSource { return t.RoleBindings }) ||
-				usesTemplates(rc.OnDelete, func(t *HookTemplates) []PlaceholderSource { return t.RoleBindings })
+			return usesTemplates(rc.OnCreate, func(t *HookTemplates) []RoleBindingTemplateSource { return t.RoleBindings }) ||
+				usesTemplates(rc.OnReconcile, func(t *HookTemplates) []RoleBindingTemplateSource { return t.RoleBindings }) ||
+				usesTemplates(rc.OnDelete, func(t *HookTemplates) []RoleBindingTemplateSource { return t.RoleBindings })
 		},
 	},
 

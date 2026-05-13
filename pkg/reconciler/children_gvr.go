@@ -31,4 +31,5 @@ var (
 	clusterRoleGVR        = kat.ClusterRoleGVR
 	clusterRoleBindingGVR = kat.ClusterRoleBindingGVR
 	nodeGVR               = kat.NodeGVR
+	endpointSliceGVR      = kat.EndpointSliceGVR
 )

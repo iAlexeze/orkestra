@@ -3,7 +3,7 @@
 Generate a minimal ClusterRole for all CRDs declared in a Katalog.
 
 ```bash
-ork generate rbac --katalog <file> [flags]
+ork generate rbac --file <file> [flags]
 ```
 
 The generated RBAC contains only the permissions required by the CRDs in the merged Katalog, including conditional webhook permissions when validation, mutation, or conversion rules are present.
@@ -14,7 +14,7 @@ The generated RBAC contains only the permissions required by the CRDs in the mer
 
 | Flag | Description |
 |------|-------------|
-| `-k, --katalog <file>` | One or more Katalog files (comma‑separated or repeated) |
+| `-k, --file <file>` | One or more Katalog files (comma‑separated or repeated) |
 | `-o, --output <file>` | Write output to file (default: stdout) |
 | `-n, --namespace <name>` | Namespace for the ServiceAccount (default: `orkestra-system`) |
 | `--dry-run` | Print output without writing files |
@@ -26,25 +26,25 @@ The generated RBAC contains only the permissions required by the CRDs in the mer
 Generate RBAC from a single Katalog:
 
 ```bash
-ork generate rbac --katalog katalog.yaml
+ork generate rbac --file katalog.yaml
 ```
 
 Multiple Katalogs:
 
 ```bash
-ork generate rbac --katalog a.yaml --katalog b.yaml
+ork generate rbac --file a.yaml --file b.yaml
 ```
 
 Comma‑separated:
 
 ```bash
-ork generate rbac --katalog a.yaml,b.yaml
+ork generate rbac --file a.yaml,b.yaml
 ```
 
 Write to file:
 
 ```bash
-ork generate rbac --katalog katalog.yaml -o rbac.yaml
+ork generate rbac --file katalog.yaml -o rbac.yaml
 ```
 
 ---

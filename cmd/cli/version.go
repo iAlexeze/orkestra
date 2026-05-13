@@ -1,4 +1,3 @@
-// cmd/cli/version.go
 package cli
 
 import (
@@ -14,6 +13,7 @@ var versionCmd = &cobra.Command{
 	Short: "Show Orkestra version",
 	Run: func(cmd *cobra.Command, args []string) {
 		verbose, _ := cmd.Flags().GetBool("verbose")
+		short, _ := cmd.Flags().GetBool("short")
 
 		if verbose {
 			fmt.Println(utils.OrkestraLogoCLI)
@@ -21,6 +21,11 @@ var versionCmd = &cobra.Command{
 			fmt.Printf("%-12s %s\n", "Version:", version.Short())
 			fmt.Printf("%-12s %s\n", "Commit:", version.Commit)
 			fmt.Printf("%-12s %s\n", "Built:", version.Date)
+			return
+		}
+
+		if short {
+			fmt.Println("ork", version.Short())
 			return
 		}
 
@@ -35,6 +40,7 @@ var versionCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
+	versionCmd.Flags().BoolP("short", "s", false, "Show short version for Orkestra")
 
 	// Shadow global flags so they don't appear under `ork version`
 	versionCmd.Flags().Bool("debug", false, "")

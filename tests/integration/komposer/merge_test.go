@@ -19,9 +19,9 @@ metadata:
   name: test-katalog
 spec:
   crds:
-    - name: website
+    website:
       enabled: true
-    - name: database
+    database:
       enabled: true
 `
 
@@ -31,34 +31,10 @@ metadata:
   name: test-disabled-katalog
 spec:
   crds:
-    - name: website
+    website:
       enabled: false
-    - name: cache
+    cache:
       enabled: true
-`
-
-const komposerWithFileSourceYAML = `apiVersion: orkestra.orkspace.io/v1
-kind: Komposer
-metadata:
-  name: test-komposer
-sources:
-  files:
-    - url: %s
-spec:
-  crds: []
-`
-
-const komposerWithInlineOverrideYAML = `apiVersion: orkestra.orkspace.io/v1
-kind: Komposer
-metadata:
-  name: override-komposer
-sources:
-  files:
-    - url: %s
-spec:
-  crds:
-    - name: website
-      enabled: false
 `
 
 func writeTemp(t *testing.T, content string) string {
@@ -127,7 +103,7 @@ metadata:
   name: katalog-a
 spec:
   crds:
-    - name: alpha
+    alpha:
       enabled: true
 `)
 	b := writeTemp(t, `apiVersion: orkestra.orkspace.io/v1
@@ -136,7 +112,7 @@ metadata:
   name: katalog-b
 spec:
   crds:
-    - name: beta
+    beta:
       enabled: true
 `)
 	m := merger.New(a, b)
@@ -155,7 +131,7 @@ metadata:
   name: katalog-a
 spec:
   crds:
-    - name: website
+    website:
       enabled: true
 `)
 	b := writeTemp(t, `apiVersion: orkestra.orkspace.io/v1
@@ -164,7 +140,7 @@ metadata:
   name: katalog-b
 spec:
   crds:
-    - name: website
+    website:
       enabled: true
 `)
 	m := merger.New(a, b)
@@ -180,10 +156,10 @@ metadata:
   name: source-katalog
 spec:
   crds:
-    - name: sourced-crd
+    sourced-crd:
       enabled: true
 `)
-	komposerContent := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: test-komposer\nsources:\n  files:\n    - url: " + katalogPath + "\nspec:\n  crds: []\n"
+	komposerContent := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: test-komposer\nsources:\n  files:\n    - url: " + katalogPath + "\nspec:\n  crds: {}\n"
 	komposerPath := writeTemp(t, komposerContent)
 
 	m := merger.New(komposerPath)
@@ -205,7 +181,7 @@ metadata:
   name: katalog-a
 spec:
   crds:
-    - name: alpha
+    alpha:
       enabled: true
 `)
 	b := writeTemp(t, `apiVersion: orkestra.orkspace.io/v1
@@ -214,7 +190,7 @@ metadata:
   name: katalog-b
 spec:
   crds:
-    - name: beta
+    beta:
       enabled: true
 `)
 	m := merger.New(a).Add(b)

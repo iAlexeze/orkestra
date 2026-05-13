@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -65,6 +66,15 @@ func (c *CRDEntry) SetWorkers(def int) int {
 	return c.Workers
 }
 
+// SetResync resolves the resync period for this CRD. If a per‑CRD non‑zero value is
+// set, it is used; otherwise the global default resync is applied.
+func (c *CRDEntry) SetResync(def time.Duration) time.Duration {
+	if c.Resync != 0 {
+		return c.Resync
+	}
+	return def
+}
+
 // IsDynamic determines whether this CRD should operate in dynamic mode.
 // Resolution order (first match wins):
 //  1. mode: dynamic explicitly declared → true
@@ -94,6 +104,44 @@ func (c *CRDEntry) WithHooksDecl() bool {
 // emit a ReconcilerRegistry entry for this CRD.
 func (c *CRDEntry) WithConstructorDecl() bool {
 	return c.OperatorBox.ConstructorDecl != nil && c.OperatorBox.ConstructorDecl.Location != ""
+}
+
+// WithHookManagedResources reports whether this CRD has hooks that declare
+// managed resources for RBAC generation.
+func (c *CRDEntry) WithHookManagedResources() bool {
+	return c.WithHooksDecl() &&
+		len(c.OperatorBox.Hooks.Resources) > 0
+}
+
+// WithConstructorManagedResources reports whether this CRD has a constructor
+// that declares managed resources for RBAC generation.
+func (c *CRDEntry) WithConstructorManagedResources() bool {
+	return c.WithConstructorDecl() &&
+		len(c.OperatorBox.ConstructorDecl.Resources) > 0
+}
+
+// WithAnyManagedResources reports whether hooks or constructor declare resources.
+func (c *CRDEntry) WithAnyManagedResources() bool {
+	return c.WithHookManagedResources() || c.WithConstructorManagedResources()
+}
+
+// HookManagedResources returns the list of managed resources declared under
+// the hooks block. Returns nil if hooks are not declared or no resources exist.
+func (c *CRDEntry) HookManagedResources() []ManagedResource {
+	if !c.WithHooksDecl() {
+		return nil
+	}
+	return c.OperatorBox.Hooks.Resources
+}
+
+// ConstructorManagedResources returns the list of managed resources declared
+// under the constructor block. Returns nil if constructor is not declared or
+// no resources exist.
+func (c *CRDEntry) ConstructorManagedResources() []ManagedResource {
+	if !c.WithConstructorDecl() {
+		return nil
+	}
+	return c.OperatorBox.ConstructorDecl.Resources
 }
 
 // HasTemplates reports whether this CRD declares any declarative hook templates.
@@ -217,7 +265,7 @@ func (c *CRDEntry) GetDependencies() []string {
 // Used to decide whether to create the endpoints and/or populate the admission block in the health response.
 // Even when ENABLE_ADMISSION_WEBHOOK=true
 func (c *CRDEntry) HasValidationOrMutationRules() bool {
-	return len(c.Validation.Rules) > 0 || len(c.Mutation.Rules) > 0
+	return c.HasValidationRules() || c.HasMutationRules()
 }
 
 // Separate helpers for hasMutationRules and hasValidationRules
@@ -245,9 +293,10 @@ func (c *CRDEntry) AutoscaleEnabled() bool {
 	return c.OperatorBox.Autoscale != nil
 }
 
-// HasRollbackRules reports whether this CRD declares a rollback block.
+// HasRollbackRules reports whether this CRD has any rollback behavior configured —
+// either via an explicit rollback: block or the rollBackOnError: true shorthand.
 func (c *CRDEntry) HasRollbackRules() bool {
-	return c.OperatorBox.Rollback != nil
+	return c.OperatorBox.Rollback != nil || c.OperatorBox.RollBackOnError
 }
 
 // NotificationEnabled reports whether this CRD declares the notification block
@@ -336,9 +385,9 @@ func (c *CRDEntry) HasOnDelete() bool {
 	return c.OperatorBox.OnDelete != nil
 }
 
-// HasAnyHooks reports whether this CRD declares any onCreate, onReconcile, or onDelete hooks.
-func (c *CRDEntry) HasAnyHooks() bool {
-	return c.HasOnCreate() || c.HasOnReconcile() || c.HasOnDelete()
+// HasStatusFields reports whether this CRD declares any status fields.
+func (c *CRDEntry) HasStatusFields() bool {
+	return c.OperatorBox.Status != nil && c.OperatorBox.Status.HasFields()
 }
 
 // AllRestrictedNamespaces returns a list of restricted namespaces for this crd
@@ -371,50 +420,30 @@ func (c *CRDEntry) HasRestrictedNamespaces() bool {
 	return len(c.RestrictedNamespaces) > 0
 }
 
-// HasAnySecrets reports whether this CRD defines any secrets
-// in either OnCreate or OnReconcile phases.
-func (c *CRDEntry) HasAnySecrets() bool {
-	if c.HasOnCreate() {
-		return len(c.OperatorBox.OnCreate.Secrets) > 0
+// IsValidServiceType reports whether the provided service type is valid.
+// Accepted values (case‑insensitive):
+//   - ClusterIP
+//   - NodePort
+//   - LoadBalancer
+func IsValidServiceType(t string) bool {
+	switch strings.ToLower(t) {
+	case "", "clusterip", "nodeport", "loadbalancer":
+		return true
+	default:
+		return false
 	}
-	if c.HasOnReconcile() {
-		return len(c.OperatorBox.OnReconcile.Secrets) > 0
-	}
-
-	return false
 }
 
-// HasAnyTLSSecrets reports whether any secret in either phase
-// defines a TLS configuration.
-func (c *CRDEntry) HasAnyTLSSecrets() bool {
-	if c.HasOnCreate() {
-		for _, s := range c.OperatorBox.OnCreate.Secrets {
-			if s.TLS != nil {
-				return true
-			}
-		}
+// IsValidProtocol reports whether the provided protocol is valid.
+// Accepted values (case‑insensitive):
+//   - TCP
+//   - UDP
+//   - SCTP
+func IsValidProtocol(p string) bool {
+	switch strings.ToUpper(p) {
+	case "", "TCP", "UDP", "SCTP":
+		return true
+	default:
+		return false
 	}
-
-	if c.HasOnReconcile() {
-		for _, s := range c.OperatorBox.OnReconcile.Secrets {
-			if s.TLS != nil {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-// HasAnyHPA reports whether this CRD defines any HPA defined
-// in either OnCreate or OnReconcile phases.
-func (c *CRDEntry) HasAnyHPA() bool {
-	if c.HasOnCreate() {
-		return c.OperatorBox.OnCreate.HorizontalPodAutoscalers != nil
-	}
-	if c.HasOnReconcile() {
-		return c.OperatorBox.OnReconcile.HorizontalPodAutoscalers != nil
-	}
-
-	return false
 }

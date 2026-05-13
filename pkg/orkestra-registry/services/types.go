@@ -15,6 +15,17 @@ type ResolvedServiceSpec struct {
 	// Default: ClusterIP.
 	Type string
 
+	// Headless — when true, the Service is created without a clusterIP (clusterIP: None).
+	// Used primarily for StatefulSets to enable stable network identities and per‑pod DNS:
+	//   <podname>.<service>.<namespace>.svc.cluster.local
+	// Set this to true when the Service is meant to back a StatefulSet or provide
+	// direct pod‑to‑pod addressing rather than load‑balanced traffic.
+	Headless bool
+
+	// Protocol defines network protocols supported for things like container ports.
+	// "TCP", "UDP", "SCTP"
+	Protocol string
+
 	// Port — Service port.
 	Port int32
 
@@ -27,4 +38,9 @@ type ResolvedServiceSpec struct {
 
 	// Selector —> service selector to route traffic to pods.
 	Selector map[string]string
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string
 }

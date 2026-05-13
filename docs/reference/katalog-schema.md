@@ -127,7 +127,7 @@ apiTypes:
 ```
 
 !!! tip "Built-in kind enrichment"
-    Run `ork validate --katalog katalog.yaml` to see what Orkestra resolves
+    Run `ork validate --file katalog.yaml` to see what Orkestra resolves
     for a kind-only declaration:
 
 Response:
@@ -528,7 +528,7 @@ Global security policy. All sub-blocks are optional and inactive when not declar
 
 ### `spec.security.deletionProtection`
 
-Protects CRDs and Orkestra's own resources from accidental deletion via a `ValidatingWebhookConfiguration` (`orkestra-delete-protection`).
+Protects CRDs and Orkestra's own resources from accidental deletion via a `ValidatingWebhookConfiguration` (`orkestra-deletion-protection`).
 
 | Field | Type | Default | Description |
 |---|---|---|---|

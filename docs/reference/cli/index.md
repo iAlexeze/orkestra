@@ -7,7 +7,21 @@ Select a command to view its full documentation.
 
 ---
 
-## Commands Overview
+## Developer CLI
+
+Commands for deploying your own project to Kubernetes — no operator knowledge required.
+
+| Command | Description |
+|---------|-------------|
+| [`ork doctor`](./developer/doctor.md) | Examine the project and generate `.orkestra/` configuration |
+| [`ork doctor deploy`](./developer/deploy.md) | Build, push, and deploy to the cluster |
+| [`ork doctor deploy rollback`](./developer/rollback.md) | Instantly restore the previous image |
+
+→ [Developer CLI overview](./developer/__index.md)
+
+---
+
+## Operator Commands Overview
 
 | Command | Description |
 |--------|-------------|

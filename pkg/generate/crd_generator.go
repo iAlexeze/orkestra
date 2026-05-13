@@ -20,7 +20,7 @@
 //
 // CLI:
 //
-//	ork generate crd --katalog katalog.yaml -o crd.yaml
+//	ork generate crd --file katalog.yaml -o crd.yaml
 package generate
 
 import (

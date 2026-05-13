@@ -1,0 +1,28 @@
+# Cloudflare Worker — get.orkestra.sh
+#
+# Required placeholders — replace before first deploy:
+#   <CLOUDFLARE_ACCOUNT_ID>  Your Cloudflare account ID
+#                            (Dashboard → top-right menu → Account ID)
+#
+# The account_id below is overridden in CI by the CLOUDFLARE_ACCOUNT_ID secret
+# passed to wrangler-action. You can leave the placeholder here and let CI
+# inject it, or set it directly if this is a private repo.
+
+name            = "orkestra-installer"
+main            = "index.js"
+compatibility_date = "2025-01-01"
+
+# ── Environment variables ─────────────────────────────────────────────────────
+# CACHE_TTL: edge cache TTL in seconds. Raise for a stable release branch;
+# lower during active development to see updates sooner.
+
+[vars]
+CACHE_TTL = 300
+
+# ── Routes ───────────────────────────────────────────────────────────────────
+# Uncomment and fill in after adding get.orkestra.sh as a custom domain
+# on your Cloudflare account. The zone must be managed by Cloudflare.
+#
+# [[routes]]
+# pattern = "get.orkestra.sh/*"
+# zone_name = "orkestra.sh"

@@ -2,8 +2,6 @@
 package katalog
 
 import (
-	// "fmt"
-
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
@@ -20,6 +18,7 @@ func (k *Katalog) KomposeRuntimeKatalog(kfg *konfig.Konfig, m *merger.Merger, pa
 	k.Security = m.ToSecurity()
 	k.Notification = m.ToNotification()
 	k.Providers = m.ToProviders()
+	k.projectInfo = m.ToProjectInfo()
 	k.enabledCRDs = m.Enabled()           // Enabled CRDs for all operations
 	k.metadata = m.APIMetadata().Metadata // Metadata for CLI and health endpoints
 	k.APIVersion = m.APIMetadata().APIVersion
@@ -33,14 +32,19 @@ func (k *Katalog) KomposeRuntimeKatalog(kfg *konfig.Konfig, m *merger.Merger, pa
 	// Enrich enabled CRDs
 	// Switching from slice to map — must copy back since map values are not addressable
 	for name, entry := range k.enabledCRDs {
-		logger.Debug().Str("name", name).
-			Msgf("enriching %s", name)
+		// logger.Debug().Str("name", name).
+		// 	Msgf("enriching %s", name)
 		outcome, err := EnrichCRDEntry(&entry)
 		if err != nil {
 			return nil, err
 		}
 		entry.EnrichmentOutcome = outcome
 		k.enabledCRDs[name] = entry
+	}
+
+	// Expand Motif imports declared in each operatorBox
+	if err := k.expandMotifImports(); err != nil {
+		return nil, err
 	}
 
 	// initialize conversion registry and admission registry
@@ -103,7 +107,6 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	// 6. Add Reconcilers		// ReconcilerRegistry → Constructor
 	// -------------------------------------------------------------------------
 	if err := k.addReconcilers(); err != nil {
-		logger.Error().Err(err).Msg("failed to add reconcilers")
 		return nil, err
 	}
 	// -------------------------------------------------------------------------
@@ -133,44 +136,65 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 11. Validate Autoscale Metrics Type
+	// 11. Validate Resource Profile
+	// -------------------------------------------------------------------------
+	if err := k.validateResourceProfile(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 11a. Validate Probe Profiles
+	// -------------------------------------------------------------------------
+	if err := k.validateProbeProfiles(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 12. Validate Autoscale Metrics Type
 	// -------------------------------------------------------------------------
 	if err := k.validateAutoscalerMetrics(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 12. Validate Namespace protection
+	// 13. Validate Namespace protection
 	// -------------------------------------------------------------------------
 	if err := k.validateNamespaceProtection(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 13. Validate Time Duration
+	// 14. Validate Time Duration
 	// -------------------------------------------------------------------------
 	if err := k.validateTimeDuration(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 14. Validate HPA Reference
+	// 15. Validate HPA Reference
 	// -------------------------------------------------------------------------
 	if err := k.validateHPAReference(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 15. Validate Notify Teams
+	// 16. Validate Notify Teams
 	// -------------------------------------------------------------------------
-	// if err := k.validateNotifyTeams(); err != nil {
-	// 	return nil, err
-	// }
+	if err := k.validateTeams(); err != nil {
+		return nil, err
+	}
 
 	// -------------------------------------------------------------------------
-	// 16 Validate Status Types
+	// 17 Validate Status Types
 	// -------------------------------------------------------------------------
 	if err := k.validateStatusTypes(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 18 Validate Services
+	// -------------------------------------------------------------------------
+	if err := k.validateService(); err != nil {
 		return nil, err
 	}
 
@@ -181,6 +205,9 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 func (k *Katalog) DebugKatalogInformation() {
 	// [DEBUG] Contents of k.Security
 	logger.Debug().Interface("katalog security", k.Security).Msg("katalog security")
+
+	// [DEBUG] Contents of k.Notiication
+	logger.Debug().Interface("katalog notification", k.Notification).Msg("katalog notification")
 
 	// [DEBUG] Contents of k.Providers
 	logger.Debug().Interface("katalog providers", k.Providers).Msg("katalog providers")

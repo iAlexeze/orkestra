@@ -35,17 +35,17 @@ brew install ork
 ### Linux / macOS (curl)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
+curl -sSL https://get.orkestra.sh | bash
 ```
 
 ### Options
 
 ```bash
 # Pin to a specific version
-curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | ORK_VERSION=v1.0.0 bash
+curl -sSL https://get.orkestra.sh | ORK_VERSION=v1.0.0 bash
 
 # Install to a custom directory
-curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | ORK_INSTALL_DIR=~/.local/bin bash
+curl -sSL https://get.orkestra.sh | ORK_INSTALL_DIR=~/.local/bin bash
 ```
 
 ### Verify the binary (recommended)
@@ -132,7 +132,7 @@ install CRDs — it manages the resources that CRs create.
 ### Step 3 — Start Orkestra
 
 ```bash
-ork run --katalog examples/website/website-katalog.yaml
+ork run --file examples/website/website-katalog.yaml
 ```
 
 Orkestra starts, registers its informer for `Website` CRs, and waits. You
@@ -240,10 +240,10 @@ kubectl delete -f examples/website/website-crd.yaml
 | Command | Description |
 |---------|-------------|
 | `ork init <name>` | Scaffold a new operator project |
-| `ork validate --katalog <path>` | Validate a Katalog or Komposer |
-| `ork template --katalog <path>` | Preview merged, validated state |
-| `ork template --katalog <path> --graph` | Show dependency graph |
-| `ork run --katalog <path>` | Start the operator runtime |
+| `ork validate --file <path>` | Validate a Katalog or Komposer |
+| `ork template --file <path>` | Preview merged, validated state |
+| `ork template --file <path> --graph` | Show dependency graph |
+| `ork run --file <path>` | Start the operator runtime |
 | `ork status` | Show live health of all managed CRDs |
 | `ork get <crd>` | List CRs of a given type |
 | `ork describe <crd> <name>` | Describe a specific CR |
@@ -260,7 +260,7 @@ Check that the CRD is installed and the `apiTypes` block in the Katalog
 matches the group, version, kind, and plural exactly. Run:
 
 ```bash
-ork validate --katalog <path>
+ork validate --file <path>
 ```
 
 **Orkestra starts but no resources are created**
@@ -280,7 +280,7 @@ ork status
 ```
 
 !!! tip "katalog validation"
-    Run `ork validate --katalog <path>` before `ork run` to catch
+    Run `ork validate --file <path>` before `ork run` to catch
     configuration errors before they surface at runtime. It checks
     apiTypes, enriches built-in Kinds, and validates the dependency graph.
 

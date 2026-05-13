@@ -73,12 +73,30 @@ jobs:
 
       - name: Build Linux binaries (if cache miss)
         if: steps.cache-binaries.outputs.cache-hit != 'true'
+        env:
+          ORK: "ork"
+          ORKCC: "orkcc"
         run: |
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o ork-amd64 ./cmd/orkestra
-          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o ork-arm64 ./cmd/orkestra
-          cd ./cmd/controlcenter
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o orkcc-amd64 .
-          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o orkcc-arm64 .
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          RUNTIME_LDFLAGS="-X github.com/orkspace/orkestra/pkg/version.Version=${{ github.ref_name }} -X github.com/orkspace/orkestra/pkg/version.Commit=${{ github.sha }} -X github.com/orkspace/orkestra/pkg/version.Date=$DATE"
+          CC_LDFLAGS="-X github.com/orkspace/orkestra-cc/version.Version=${{ github.ref_name }} -X github.com/orkspace/orkestra-cc/version.Commit=${{ github.sha }} -X github.com/orkspace/orkestra-cc/version.Date=$DATE"
+
+          for arch in amd64 arm64; do
+            echo "Building $ORK-$arch"
+            GOOS=linux GOARCH=$arch CGO_ENABLED=0 go build \
+              -tags runtime \
+              -trimpath \
+              -ldflags="-s -w $RUNTIME_LDFLAGS" \
+              -o $ORK-$arch ./cmd/orkestra
+
+            echo "Building $ORKCC-$arch"
+            cd ./cmd/controlcenter
+            GOOS=linux GOARCH=$arch CGO_ENABLED=0 go build \
+              -trimpath \
+              -ldflags="-s -w $CC_LDFLAGS" \
+              -o $ORKCC-$arch .
+            cd ../..
+          done
 
       - name: Build and push runtime image
         id: push-runtime

@@ -1,0 +1,78 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: rollback-with-trigger
+  author: orkspace
+  version: 0.1.0
+  description: >
+    rollBackOnError: true with a custom trigger threshold.
+    5 consecutive failures within a 10-minute window trigger rollback.
+    Deployment, Service, and ConfigMap are all rolled back automatically.
+    No onRollback: block. No .previous.spec.* syntax.
+
+spec:
+  crds:
+    apiserver:
+      apiTypes:
+        group: rollback.orkestra.io
+        version: v1alpha1
+        kind: ApiServer
+        plural: apiservers
+      workers: 2
+      resync: 15s
+
+      operatorBox:
+        default: true
+
+        # Shorthand with a custom trigger.
+        # rollBackOnError: true derives the rollback templates from reconcile:true
+        # resources. The explicit rollback.trigger overrides the default threshold.
+        rollBackOnError: true
+        rollback:
+          trigger:
+            consecutiveFailures: 5      # wait for 5 failures before rolling back
+            withinDuration: 10m         # only if all 5 happen within 10 minutes
+                                        # — avoids rollback on transient cluster blips
+
+        status:
+          fields:
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ allReplicasReady.children.deployment }}"
+                  equals: "true"
+
+            - path: image
+              value: "{{ containerImage .children.deployment }}"
+
+            - path: replicas
+              value: "{{ readyReplicas .children.deployment }}"
+
+            - path: configVersion
+              value: "{{ .spec.configData }}"
+
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: "{{ .spec.port }}"
+              reconcile: true   # rolled back automatically
+
+          services:
+            - name: "{{ .metadata.name }}-svc"
+              port: "80"
+              targetPort: "{{ .spec.port }}"
+              reconcile: true   # rolled back automatically
+
+          configMaps:
+            - name: "{{ .metadata.name }}-config"
+              data:
+                config: "{{ .spec.configData }}"
+              reconcile: true   # rolled back automatically — config reverts with the rest

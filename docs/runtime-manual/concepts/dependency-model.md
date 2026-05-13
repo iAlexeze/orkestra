@@ -194,7 +194,7 @@ Error:
 dependency cycle detected involving a → b → a
 ```
 
-Fix your dependencies before running. Use `ork validate --katalog katalog.yaml` to catch cycles before applying to a cluster.
+Fix your dependencies before running. Use `ork validate --file katalog.yaml` to catch cycles before applying to a cluster.
 
 ---
 
@@ -216,7 +216,7 @@ Dependents stop before their dependencies. This ensures no running reconciler ho
 Preview the dependency graph before running:
 
 ```bash
-ork template --katalog my-katalog.yaml --graph
+ork template --file my-katalog.yaml --graph
 ```
 
 Output:
@@ -231,7 +231,7 @@ application
 For a three-tier system:
 
 ```bash
-ork template --katalog platform.yaml --graph
+ork template --file platform.yaml --graph
 ```
 
 ```

@@ -48,15 +48,15 @@ type KatalogNotification struct {
 	// Enabled gates all notification dispatch. Default: true when the
 	// notification: block is declared. Set false to silence all channels
 	// without removing the configuration.
-	Enabled *bool `yaml:"enabled,omitempty"`
+	Enabled *bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
 
 	// Defaults defines global notification behavior applied when a team does
 	// not specify its own override.
-	Defaults *NotificationDefaults `yaml:"defaults,omitempty"`
+	Defaults *NotificationDefaults `yaml:"defaults,omitempty" json:"defaults,omitempty"`
 
 	// Teams declares named notification targets. Conditions and rollback blocks
 	// reference teams by name via notify: ["platform", "oncall"].
-	Teams map[string]*NotificationTeam `yaml:"teams,omitempty"`
+	Teams map[string]*NotificationTeam `yaml:"teams,omitempty" json:"teams,omitempty"`
 }
 
 // NotificationDefaults defines global defaults applied when a team does not
@@ -64,38 +64,38 @@ type KatalogNotification struct {
 type NotificationDefaults struct {
 	// Interval is the minimum time between notifications for the same
 	// condition+team pair while the condition remains true. Default: 15m.
-	Interval Duration `yaml:"interval,omitempty"`
+	Interval Duration `yaml:"interval,omitempty" json:"interval,omitempty"`
 
 	// SlackWebhookUrl is the global default Slack incoming webhook URL.
 	// Used when a team declares slack: channels but no slackWebhookUrl.
 	// Can be overridden per team.
-	SlackWebhookUrl string `yaml:"slackWebhookUrl,omitempty"`
+	SlackWebhookUrl string `yaml:"slackWebhookUrl,omitempty" json:"slackWebhookUrl,omitempty"`
 }
 
 // NotificationTeam defines channels and behavior for one named notification target.
 type NotificationTeam struct {
 	// Email is the list of email recipients. SMTP config comes from pkg/konfig
 	// env vars (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM).
-	Email []string `yaml:"email,omitempty"`
+	Email []string `yaml:"email,omitempty" json:"email,omitempty"`
 
 	// Slack is the list of Slack channels to notify (e.g. "#platform-alerts").
 	// Requires SlackWebhookUrl (team or global default) to be configured.
-	Slack []string `yaml:"slack,omitempty"`
+	Slack []string `yaml:"slack,omitempty" json:"slack,omitempty"`
 
 	// SlackWebhookUrl is the incoming webhook URL for this team's Slack workspace.
 	// Overrides notification.defaults.slackWebhookUrl for this team.
 	// Required when Slack is non-empty and no global default is set.
-	SlackWebhookUrl string `yaml:"slackWebhookUrl,omitempty"`
+	SlackWebhookUrl string `yaml:"slackWebhookUrl,omitempty" json:"slackWebhookUrl,omitempty"`
 
 	// Interval overrides the global default for this team. Zero duration falls
 	// back to notification.defaults.interval or the built-in default of 15m.
-	Interval Duration `yaml:"interval,omitempty"`
+	Interval Duration `yaml:"interval,omitempty" json:"interval,omitempty"`
 
 	// Message is a Go template expression evaluated against the full resolver
 	// data (.spec.*, .metadata.*, .status.*, .children.*, metrics.*).
 	// When empty, Orkestra uses a default message format:
 	//   "[orkestra] {katalogName}/{crdKind} {crName}: {condition.Field} {op} {value}"
-	Message string `yaml:"message,omitempty"`
+	Message string `yaml:"message,omitempty" json:"message,omitempty"`
 }
 
 // IsEnabled returns true when notifications are configured and not explicitly disabled.

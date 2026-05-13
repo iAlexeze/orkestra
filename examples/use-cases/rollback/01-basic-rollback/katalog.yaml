@@ -1,0 +1,73 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: basic-rollback
+  author: orkspace
+  version: 0.1.0
+  description: >
+    rollBackOnError: true — zero-config failure recovery.
+    When reconcile fails 3 times consecutively, Orkestra automatically
+    re-applies the last known good spec. No rollback: block needed.
+
+spec:
+  crds:
+    webapp:
+      apiTypes:
+        group: rollback.orkestra.io
+        version: v1alpha1
+        kind: WebApp
+        plural: webapps
+      workers: 2
+      resync: 15s
+
+      operatorBox:
+        default: true
+
+        # One line. That's it.
+        # Orkestra will roll back to the previous spec after 3 consecutive failures.
+        # The rollback templates are derived automatically from the reconcile:true
+        # declarations below — no onRollback: block, no .previous.spec.* syntax.
+        rollBackOnError: true
+
+        status:
+          fields:
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+
+            - path: phase
+              value: "RolledBack"
+              when:
+                - field: status.phase
+                  equals: "RolledBack"
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ allReplicasReady.children.deployment }}"
+                  equals: "true"
+
+            - path: allReady
+              value: "{{ allReplicasReady .children.deployment }}"
+
+            - path: image
+              value: "{{ containerImage .children.deployment }}"
+
+            - path: replicas
+              value: "{{ readyReplicas .children.deployment }}"
+
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: "{{ .spec.port }}"
+              reconcile: true   # included in derived rollback — re-applied against previous spec on failure
+
+          services:
+            - name: "{{ .metadata.name }}-svc"
+              port: "80"
+              targetPort: "{{ .spec.port }}"
+              reconcile: true   # also included

@@ -171,7 +171,7 @@ When a leader is elected, it prints a banner so you know which pod is in charge.
 This piece starts and stops everything else. It's not a component itself — it's the conductor.
 
 ```bash
-ork run --katalog my-katalog.yaml
+ork run --file my-katalog.yaml
 ```
 
 When you run this command:

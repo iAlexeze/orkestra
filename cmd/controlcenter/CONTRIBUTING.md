@@ -106,16 +106,16 @@ When modifying HTML templates:
 
 ```bash
 # Terminal 1 – Orkestra Runtime 1
-export ORK_PORT=8080
-ork run -k katalog1.yaml
+export ORKESTRA_PORT=8080
+ork run -f katalog1.yaml
 
 # Terminal 2 – Orkestra Runtime 2
-export ORK_PORT=8081
-ork run -k katalog2.yaml
+export ORKESTRA_PORT=8081
+ork run -f katalog2.yaml
 
 # Terminal 3 – Control Center
 cd controlcenter
-go run main.go -u "http://localhost:8080,http://localhost:8081" -p 8090
+go run main.go -u "http://localhost:8080,http://localhost:8081" -p 8081
 ```
 
 ### Debug Mode
@@ -125,7 +125,7 @@ go run main.go -u "http://localhost:8080,http://localhost:8081" -p 8090
 ./orkcc -u "http://localhost:8080" -log-level debug
 
 # Check cached instances
-curl http://localhost:8090/controlcenter/debug/instances
+curl http://localhost:8081/controlcenter/debug/instances
 ```
 
 ## Pull Request Process

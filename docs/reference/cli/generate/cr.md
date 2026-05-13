@@ -3,7 +3,7 @@
 Generate an example CustomResource (CR) from a Katalog.
 
 ```bash
-ork generate cr --katalog <file> [flags]
+ork generate cr --file <file> [flags]
 ```
 
 The generated CR is derived entirely from the CRD entry declared in the Katalog.  
@@ -15,7 +15,7 @@ It includes required fields, optional fields with defaults, and typed placeholde
 
 | Flag | Description |
 |------|-------------|
-| `-k, --katalog <file>` | Path(s) to Katalog YAML file(s) (required) |
+| `-k, --file <file>` | Path(s) to Katalog YAML file(s) (required) |
 | `-o, --output <file>` | Write output to file (default: stdout) |
 | `--crd <name>` | Generate CR for a specific CRD (default: first CRD) |
 
@@ -26,13 +26,13 @@ It includes required fields, optional fields with defaults, and typed placeholde
 Generate an example CR:
 
 ```bash
-ork generate cr --katalog katalog.yaml -o cr.yaml
+ork generate cr --file katalog.yaml -o cr.yaml
 ```
 
 Generate CR for a specific CRD:
 
 ```bash
-ork generate cr --katalog katalog.yaml --crd pipeline -o pipeline-cr.yaml
+ork generate cr --file katalog.yaml --crd pipeline -o pipeline-cr.yaml
 ```
 
 ---
@@ -56,7 +56,7 @@ ork generate cr --katalog katalog.yaml --crd pipeline -o pipeline-cr.yaml
 
 ## Notes
 
-- Multiple `--katalog` values may be provided, including comma‑separated lists.
+- Multiple `--file` values may be provided, including comma‑separated lists.
 - Output includes a header with:
   - CRD kind  
   - source katalog path  

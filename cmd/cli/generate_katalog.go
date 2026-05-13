@@ -14,6 +14,9 @@
 //	--add-security          — namespace + deletion protection block
 //	--add-notification      — notification / alerting block
 //	--add-provider <cloud>  — providers block for aws | azure | gcp
+
+//go:build !runtime
+
 package cli
 
 import (
@@ -36,7 +39,7 @@ Reconcile mode (choose at most one):
   --add-hook          Typed mode: includes a commented 'hooks' declaration.
   --add-constructor   Typed mode: includes a commented 'constructor' declaration.
   --typed             Typed mode: includes both 'hooks' and 'constructor' commented.
-                      A warning is printed — you must uncomment exactly one.
+                      A warning is printed — uncomment exactly one.
 
 Optional sections (may be combined with any mode):
   --add-security        Namespace and deletion-protection block.

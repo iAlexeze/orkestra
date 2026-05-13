@@ -20,13 +20,15 @@ var (
 // Structs
 // -----------------------------------------------------------------------------
 type Katalog struct {
-	APIVersion       string                                `yaml:"apiVersion"`
-	Kind             string                                `yaml:"kind"`
-	Spec             orktypes.KatalogSpec                  `yaml:"spec"`
-	Security         orktypes.KatalogSecurity              `yaml:"security"`
-	Notification     *orktypes.KatalogNotification         `yaml:"notification,omitempty"`
-	Providers        []orktypes.KatalogProviderRequirement `yaml:"providers,omitempty"`
-	KomposerMetadata orktypes.KatalogMeta                  `yaml:"metadata"`
+	APIVersion   string                                `yaml:"apiVersion"`
+	Kind         string                                `yaml:"kind"`
+	Spec         orktypes.KatalogSpec                  `yaml:"spec"`
+	Security     orktypes.KatalogSecurity              `yaml:"security"`
+	Notification *orktypes.KatalogNotification         `yaml:"notification,omitempty"`
+	Providers    []orktypes.KatalogProviderRequirement `yaml:"providers,omitempty"`
+	projectInfo  *orktypes.ProjectInfo                 `yaml:"projectInfo,omitempty"`
+
+	KomposerMetadata orktypes.KatalogMeta `yaml:"metadata"`
 
 	// Internal — enabledCRDs is enriched and validated; Spec.CRDs holds all (including disabled)
 	metadata           orktypes.KatalogMeta         `yaml:"-" json:"-"`

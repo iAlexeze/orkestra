@@ -104,7 +104,7 @@ controlCenter:
 helm repo add orkestra https://charts.orkestra.sh
 helm install ork orkestra/orkestra \
   --set controlCenter.enabled=true \
-  --set controlCenter.config.port=8090 \
+  --set controlCenter.config.port=8081 \
   --set controlCenter.config.refreshInterval=10s \
   --set controlCenter.config.orkestraURLs="{http://orkestra-runtime-1:8080,http://orkestra-runtime-2:8080}" \
 ```
@@ -147,7 +147,7 @@ controlCenter:
     orkestraURLs:
       - http://orkestra-runtime-1:8080
       - http://orkestra-runtime-2:8080
-    port: 8090
+    port: 8081
     refreshInterval: 10s
     logLevel: info
 

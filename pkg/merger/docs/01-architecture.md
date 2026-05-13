@@ -5,7 +5,7 @@
 ```
 CLI / konstructOrkestra
     │
-    │  one or more file paths (--katalog flags or comma-separated)
+    │  one or more file paths (--file flags or comma-separated)
     ▼
 merger.New(paths...)
     │

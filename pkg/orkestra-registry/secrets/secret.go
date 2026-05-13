@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -31,11 +31,11 @@ type ResolvedSecretSpec struct {
 	StringData map[string]string
 
 	// Data
-	Data map[string][]byte `yaml:"data" validate:"omitempty"`
+	Data map[string][]byte
 
 	// Type — Kubernetes Secret type.
 	// Default: "Opaque"
-	Type string `yaml:"type" validate:"omitempty"`
+	Type string
 
 	// FromSecret — name of a source Secret to copy from.
 	// When set, copies all keys from the source into the target.
@@ -51,6 +51,11 @@ type ResolvedSecretSpec struct {
 
 	// Annotations — applied to Secret metadata.
 	Annotations map[string]string
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string
 }
 
 // Create creates a Secret in the target namespace if it does not already exist.
@@ -63,6 +68,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	_, err := kube.Clientset().CoreV1().Secrets(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -107,6 +115,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	existing, err := kube.Clientset().CoreV1().Secrets(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
@@ -155,6 +166,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Delete deletes the Secret if it exists.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedSecretSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	err := kube.Clientset().CoreV1().Secrets(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -256,7 +270,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 		return err
 	}
 	// Only delete if we own it
-	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
 		return nil
 	}
 	return kube.Clientset().CoreV1().Secrets(namespace).
@@ -274,6 +288,7 @@ func Resolve(src orktypes.SecretTemplateSource, ownerName string) ResolvedSecret
 		Type:          src.Type,
 		StringData:    src.Data, // declared as strings in YAML
 		Labels:        make(map[string]string),
+		Sleep:         src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -288,8 +303,8 @@ func Resolve(src orktypes.SecretTemplateSource, ownerName string) ResolvedSecret
 	}
 
 	// System labels
-	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
-	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }

@@ -19,11 +19,11 @@ Notes work in both `value:` and `field:` positions:
 ```yaml
 # value: field
 - path: ready
-  value: "{{ replicasReady .children.deployment }}"
+  value: "{{ allReplicasReady.children.deployment }}"
 
 # field: condition (template syntax)
 when:
-  - field: "{{ replicasReady .children.deployment }}"
+  - field: "{{ allReplicasReady.children.deployment }}"
     equals: "true"
 ```
 

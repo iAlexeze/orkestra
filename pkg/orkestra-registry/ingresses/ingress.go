@@ -7,8 +7,8 @@ import (
 	"strconv"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -27,6 +27,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	_, err := kube.Clientset().NetworkingV1().Ingresses(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -65,6 +68,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	existing, err := kube.Clientset().NetworkingV1().Ingresses(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
@@ -133,6 +139,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Delete deletes the Ingress if it exists.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedIngressSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	err := kube.Clientset().NetworkingV1().Ingresses(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -167,7 +176,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 		}
 		return err
 	}
-	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
 		return nil
 	}
 	return kube.Clientset().NetworkingV1().Ingresses(namespace).
@@ -187,6 +196,7 @@ func Resolve(src orktypes.IngressTemplateSource, ownerName string) ResolvedIngre
 		IngressClass: src.IngressClass,
 		Labels:       make(map[string]string),
 		Annotations:  make(map[string]string),
+		Sleep:        src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -213,8 +223,8 @@ func Resolve(src orktypes.IngressTemplateSource, ownerName string) ResolvedIngre
 	}
 
 	// System labels
-	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
-	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	if src.TLS != nil && src.TLS.Enabled {
 		secretName := src.TLS.SecretName

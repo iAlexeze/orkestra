@@ -208,10 +208,10 @@ func TestCRDHealth_LastReconcile_AfterSuccess(t *testing.T) {
 
 func TestCRDHealth_WorkersActive(t *testing.T) {
 	h := kordinator.NewCRDHealth("test")
-	assert.Equal(t, 0, h.GetActiveWorkers())
+	assert.Equal(t, int32(0), h.GetActiveWorkers())
 
-	// h.SetActiveWorkers(3)
-	assert.Equal(t, 3, h.GetActiveWorkers())
+	h.SetTotalWorkers(3)
+	assert.Equal(t, int32(3), h.GetActiveWorkers())
 }
 
 // ── QueueDepth ────────────────────────────────────────────────────────────────

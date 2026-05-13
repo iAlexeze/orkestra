@@ -135,8 +135,8 @@ spec:
 ```
 
 ```bash
-ork validate --katalog komposer.yaml
-ork run --katalog komposer.yaml
+ork validate --file komposer.yaml
+ork run --file komposer.yaml
 ```
 
 !!! tip

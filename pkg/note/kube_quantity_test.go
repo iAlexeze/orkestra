@@ -102,7 +102,7 @@ func TestNoteSubtractQuantity(t *testing.T) {
 	}{
 		{"CPU milli subtract", "300m", "100m", "200m", false},
 		{"CPU whole minus milli", "1", "500m", "500m", false},
-		{"Memory Gi minus Mi", "1536Mi", "512Mi", "1024Mi", false},
+		{"Memory Gi minus Mi", "1536Mi", "512Mi", "1Gi", false},
 		{"Negative result", "100m", "200m", "-100m", false},
 		{"Memory Ti minus Gi", "1Ti", "1Gi", "1023Gi", false},
 		{"Invalid a", "invalid", "100m", "", true},

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
@@ -15,19 +16,16 @@ const (
 	defaultConfigMapKey  = "katalog.yaml"
 )
 
-func ConfigMap(inputFile, namespace, outputFile string) error {
+func ConfigMap(inputFile, namespace, outputFile string) ([]byte, error) {
 	if namespace == "" {
 		namespace = konfig.GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system")
 	}
 	out, err := renderNamespaceAndConfigMap(inputFile, namespace)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if outputFile != "" {
-		return os.WriteFile(outputFile, out, 0644)
-	}
-	fmt.Println(string(out))
-	return nil
+
+	return out, nil
 }
 
 // renderNamespaceAndConfigMap is the full standalone output: Namespace + ConfigMap.
@@ -59,7 +57,7 @@ func renderConfigMapBytes(inputFile, namespace string) ([]byte, error) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      defaultConfigMapName,
 			Namespace: namespace,
-			Labels:    konfig.OrkestraBaseLabels(),
+			Labels:    labels.OrkestraBaseLabels(),
 		},
 		Data: map[string]string{
 			defaultConfigMapKey: string(raw),

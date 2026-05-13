@@ -40,47 +40,52 @@ import orktypes "github.com/orkspace/orkestra/pkg/types"
 // All copies are owned by the CR — deleted automatically when the CR is deleted.
 type SecretTemplateSource struct {
 	// Version — OrkestraRegistry implementation version. Omit for latest.
-	Version string `yaml:"version" validate:"omitempty"`
+	Version string
 
 	// Name — Secret name in the target namespace.
 	// Default: "{{ .metadata.name }}-secret"
-	Name string `yaml:"name" validate:"omitempty"`
+	Name string
 
 	// Namespace — primary target namespace.
 	// Default: "{{ .metadata.namespace }}"
 	// When ToNamespaces is set, this field is ignored.
-	Namespace string `yaml:"namespace" validate:"omitempty"`
+	Namespace string
 
 	// ToNamespaces — create one copy of this Secret in each listed namespace.
 	// Each element supports template expressions.
 	// e.g. ["{{ .metadata.namespace }}", "monitoring", "staging"]
 	// When set, Namespace is ignored — ToNamespaces controls all target namespaces.
-	ToNamespaces []string `yaml:"toNamespaces" validate:"omitempty"`
+	ToNamespaces []string
 
 	// FromSecret — name of an existing Secret to copy data from.
 	// When set, Orkestra reads this Secret at reconcile time and copies its data.
 	// This means the copy stays in sync — if the source changes, the copy updates.
 	// Omit to use static Data entries instead.
-	FromSecret string `yaml:"fromSecret" validate:"omitempty"`
+	FromSecret string
 
 	// FromNamespace — namespace where FromSecret lives.
 	// Default: same namespace as the CR.
-	FromNamespace string `yaml:"fromNamespace" validate:"omitempty"`
+	FromNamespace string
 
 	// Data — static key-value Secret entries (string values).
 	// Kubernetes encodes them to base64 automatically.
 	// When FromSecret is also set, these entries override matching keys from the source.
-	Data map[string]string `yaml:"data" validate:"omitempty"`
+	Data map[string]string
 
 	// Type — Kubernetes Secret type.
 	// Default: Opaque.
 	// e.g. "kubernetes.io/tls", "kubernetes.io/dockerconfigjson"
-	Type string `yaml:"type" validate:"omitempty"`
+	Type string
 
 	// Labels — applied to all created Secret copies.
-	Labels []orktypes.ResourceLabel `yaml:"labels" validate:"omitempty"`
+	Labels []orktypes.ResourceLabel
 
 	// Reconcile: true — also sync on every reconcile (drift correction).
 	// When true, if the source Secret changes, all copies are updated automatically.
-	Reconcile bool `yaml:"reconcile" validate:"omitempty"`
+	Reconcile bool
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string
 }

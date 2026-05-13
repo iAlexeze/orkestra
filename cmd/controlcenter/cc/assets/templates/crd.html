@@ -137,7 +137,7 @@
         <div class="cc-stat-card">
           <div class="cc-stat-label">Queue</div>
           <div class="cc-stat-value font-mono">{{ .CRD.QueueDepth }}</div>
-          <div class="cc-stat-sub">Max: {{ .CRD.MaxQueueDepth }}</div>
+          <div class="cc-stat-sub">Limit: {{ .CRD.MaxQueueDepth }}</div>
         </div>
         <div class="cc-stat-card">
           <div class="cc-stat-label">Reconciles</div>
@@ -165,10 +165,13 @@
 
         <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
           <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">
-            {{ .CRD.WorkersProcessing }} of {{ .CRD.Workers }} workers actively processing
+            {{ .CRD.WorkersProcessing }} of {{ .CRD.WorkersActive }} workers actively processing
+            {{ if ne .CRD.WorkersActive .CRD.Workers }}<span style="font-style:italic">(scaled from {{ .CRD.Workers }})</span>{{ end }}
           </div>
           <div class="cc-progress-bar-wrap" style="height:8px;margin-bottom:16px">
-            <div class="cc-progress-bar started" style="width:{{ div (mul .CRD.WorkersProcessing 100) .CRD.Workers }}%"></div>
+            {{ if gt .CRD.WorkersActive 0 }}
+            <div class="cc-progress-bar started" style="width:{{ div (mul .CRD.WorkersProcessing 100) .CRD.WorkersActive }}%"></div>
+            {{ end }}
           </div>
 
           <div class="cc-worker-grid" id="workerGrid">
@@ -231,7 +234,7 @@
       </div>
 
       <!-- Autoscaler Info — only shown when autoscale is declared -->
-      {{ if .CRD.AutoscalerEnabled }}
+      {{ if and .CRD.AutoscalerEnabled .CRD.AutoscalerWorkers }}
       {{ $aw := .CRD.AutoscalerWorkers }}
       <div class="cc-section">
         <div class="cc-section-header">
@@ -275,25 +278,109 @@
         </div>
 
         <!-- Expanded autoscale config — hidden by default -->
-        <div id="autoscalerDetail" class="hidden" style="margin-top:8px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;font-size:13px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-            <div>
-              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">Capacity</div>
+        <div id="autoscalerDetail" class="hidden" 
+            style="margin-top:8px;background:var(--bg-surface);border:1px solid var(--border);
+                    border-radius:var(--radius);padding:20px;font-size:13px">
+
+          <!-- Card grid -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+
+            <!-- Workers Card -->
+            <div style="background:var(--bg-elevated);border:1px solid var(--border);
+                        border-radius:var(--radius);padding:16px">
+              <div style="display:flex;align-items:center;gap:6px;
+                          font-size:11px;font-weight:600;text-transform:uppercase;
+                          letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">
+                👷 Workers
+              </div>
               <table style="width:100%;border-collapse:collapse">
-                <tr><td style="color:var(--text-muted);padding:3px 0">Configured</td><td style="text-align:right;font-weight:500">{{ $aw.Configured }} workers</td></tr>
-                {{ if $aw.OverrideActive }}<tr><td style="color:var(--color-started);padding:3px 0">Override</td><td style="text-align:right;font-weight:500;color:var(--color-started)">{{ $aw.OverrideWorkers }} workers</td></tr>{{ end }}
-                <tr><td style="color:var(--text-muted);padding:3px 0">Max (pool)</td><td style="text-align:right;font-weight:500">{{ $aw.Max }}</td></tr>
+                <tr>
+                  <td style="color:var(--text-muted);padding:3px 0">Now</td>
+                  <td style="text-align:right;font-weight:500">
+                    {{ $aw.OverrideWorkers }}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="color:var(--text-muted);padding:3px 0">Baseline</td>
+                  <td style="text-align:right;font-weight:500">
+                    {{ $aw.Configured }}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="color:var(--text-muted);padding:3px 0">Max</td>
+                  <td style="text-align:right;font-weight:500">
+                    {{ $aw.Max }}
+                  </td>
+                </tr>
               </table>
             </div>
-            <div>
-              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">Queue</div>
+
+            <!-- Queue Card -->
+            <div style="background:var(--bg-elevated);border:1px solid var(--border);
+                        border-radius:var(--radius);padding:16px">
+              <div style="display:flex;align-items:center;gap:6px;
+                          font-size:11px;font-weight:600;text-transform:uppercase;
+                          letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">
+                📥 Queue
+              </div>
               <table style="width:100%;border-collapse:collapse">
-                <tr><td style="color:var(--text-muted);padding:3px 0">Depth now</td><td style="text-align:right;font-weight:500">{{ $aw.QueueDepth }}</td></tr>
-                <tr><td style="color:var(--text-muted);padding:3px 0">Configured limit</td><td style="text-align:right;font-weight:500">{{ if gt $aw.QueueDepthConfigured 0 }}{{ $aw.QueueDepthConfigured }}{{ else }}∞{{ end }}</td></tr>
-                {{ if $aw.OverrideActive }}<tr><td style="color:var(--color-started);padding:3px 0">Effective limit</td><td style="text-align:right;font-weight:500;color:var(--color-started)">{{ $aw.QueueDepthEffective }}</td></tr>{{ end }}
+                <tr>
+                  <td style="color:var(--text-muted);padding:3px 0">Depth</td>
+                  <td style="text-align:right;font-weight:500">
+                    {{ $aw.QueueDepth }}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="color:var(--text-muted);padding:3px 0">Limit</td>
+                  <td style="text-align:right;font-weight:500">
+                    {{ if gt .CRD.MaxQueueDepth 0 }}{{ .CRD.MaxQueueDepth }}{{ else }}∞{{ end }}
+                  </td>
+                </tr>
+                {{ if $aw.OverrideActive }}
+                <tr>
+                  <td style="color:var(--color-started);padding:3px 0">Override</td>
+                  <td style="text-align:right;font-weight:500;color:var(--color-started)">
+                    {{ $aw.QueueDepthEffective }}
+                  </td>
+                </tr>
+                {{ end }}
               </table>
             </div>
+
+            <!-- Resync Card -->
+            <div style="background:var(--bg-elevated);border:1px solid var(--border);
+                        border-radius:var(--radius);padding:16px">
+              <div style="display:flex;align-items:center;gap:6px;
+                          font-size:11px;font-weight:600;text-transform:uppercase;
+                          letter-spacing:0.05em;color:var(--text-muted);margin-bottom:8px">
+                🔁 Resync
+              </div>
+              <table style="width:100%;border-collapse:collapse">
+                <tr>
+                  <td style="color:var(--text-muted);padding:3px 0">Now</td>
+                  <td style="text-align:right;font-weight:500">
+                    {{ $aw.ResyncEffective }}
+                  </td>
+                </tr>
+                <tr>
+                  <td style="color:var(--text-muted);padding:3px 0">Baseline</td>
+                  <td style="text-align:right;font-weight:500">
+                    {{ $aw.ResyncConfigured }}
+                  </td>
+                </tr>
+                {{ if $aw.OverrideActive }}
+                <tr>
+                  <td style="color:var(--color-started);padding:3px 0">Override</td>
+                  <td style="text-align:right;font-weight:500;color:var(--color-started)">
+                    {{ $aw.ResyncEffective }}
+                  </td>
+                </tr>
+                {{ end }}
+              </table>
+            </div>
+
           </div>
+        </div>
         </div>
       </div>
       {{ end }}
@@ -350,7 +437,10 @@
         <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
           <div class="flex items-center justify-between mb-2">
             <span style="font-size:12px;color:var(--text-muted)">Queue Depth</span>
-            <span class="font-mono" style="font-size:13px;color:var(--text-primary)">{{ .CRD.QueueDepth }} / {{ .CRD.MaxQueueDepth }}</span>
+            <span class="font-mono" style="font-size:13px;color:var(--text-primary)">
+              {{ .CRD.QueueDepth }} / {{ .CRD.MaxQueueDepth }}
+              {{ if gt $queuePercent 0 }}<span style="color:var(--text-muted);font-size:11px;margin-left:4px">({{ $queuePercent }}%)</span>{{ end }}
+            </span>
           </div>
           <div class="cc-progress-bar-wrap" style="height:10px">
             <div class="cc-progress-bar{{ if gt $queuePercent 80 }} degraded{{ else if gt $queuePercent 50 }} pending{{ end }}"
@@ -482,7 +572,7 @@
               </div>
               <div>
                 <div style="color:var(--text-muted);font-size:11px">Webhook</div>
-                <div style="font-size:13px;font-weight:500;margin-top:4px">orkestra-delete-protection</div>
+                <div style="font-size:13px;font-weight:500;margin-top:4px">orkestra-deletion-protection</div>
                 <div style="font-size:11px;color:var(--text-muted);margin-top:2px">failurePolicy: Fail</div>
               </div>
             </div>

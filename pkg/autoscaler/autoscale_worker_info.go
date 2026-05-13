@@ -61,6 +61,12 @@ type WorkerInfo struct {
 
 	// BusyPercent is InFlight/Effective as a percentage. Useful for UI gauges.
 	BusyPercent float64 `json:"busyPercent"`
+
+	// ResyncEffective is the current resync interval (baseline or override).
+	ResyncEffective string `json:"resyncEffective"`
+
+	// ResyncConfigured is the baseline resync from the CRD entry.
+	ResyncConfigured string `json:"resyncConfigured"`
 }
 
 // BuildWorkerInfo constructs the WorkerInfo from the live operatorbox state.
@@ -70,6 +76,7 @@ func BuildWorkerInfo(
 	metrics *AutoMetrics,
 	configured int,
 	configuredQueueDepth int,
+	configuredResync string,
 	maxWorkers int,
 	autoscalerEnabled bool,
 	autoscalerState *autoscalerStateSnapshot,
@@ -91,6 +98,8 @@ func BuildWorkerInfo(
 		Max:                  maxWorkers,
 		AutoscalerEnabled:    autoscalerEnabled,
 		QueueDepth:           queueDepth,
+		ResyncConfigured:     configuredResync,
+		ResyncEffective:      configuredResync, // updated below if override active
 		QueueDepthConfigured: configuredQueueDepth,
 		QueueDepthEffective:  configuredQueueDepth, // updated below if override active
 		BusyPercent:          sem.BusyPercent(),
@@ -100,6 +109,7 @@ func BuildWorkerInfo(
 		info.OverrideActive = true
 		info.OverrideWorkers = autoscalerState.EffectiveWorkers
 		info.QueueDepthEffective = autoscalerState.EffectiveQueueDepth
+		info.ResyncEffective = autoscalerState.EffectiveResync
 	}
 
 	return info
@@ -111,6 +121,7 @@ type autoscalerStateSnapshot struct {
 	OverrideActive      bool
 	EffectiveWorkers    int
 	EffectiveQueueDepth int
+	EffectiveResync     string
 }
 
 // Snapshot returns a point-in-time snapshot of the Autoscaler's state.
@@ -120,7 +131,8 @@ func (a *Autoscaler) Snapshot() *autoscalerStateSnapshot {
 		return nil
 	}
 	workers := a.baseline.Workers
-	qdepth := a.baseline.QueueDepth
+	qdepth := a.baseline.MaxQueueDepth
+	resync := a.baseline.Resync
 	overrideActive := a.state.OverrideActive
 
 	if overrideActive {
@@ -130,11 +142,15 @@ func (a *Autoscaler) Snapshot() *autoscalerStateSnapshot {
 		if a.spec.Do.QueueDepth != nil {
 			qdepth = *a.spec.Do.QueueDepth
 		}
+		if a.spec.Do.Resync != nil {
+			resync = a.spec.Do.Resync.Duration
+		}
 	}
 
 	return &autoscalerStateSnapshot{
 		OverrideActive:      overrideActive,
 		EffectiveWorkers:    workers,
 		EffectiveQueueDepth: qdepth,
+		EffectiveResync:     resync.String(),
 	}
 }

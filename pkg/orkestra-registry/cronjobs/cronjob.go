@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -64,6 +64,19 @@ type ResolvedCronJobSpec struct {
 
 	// Labels — applied to CronJob and pod metadata.
 	Labels map[string]string
+
+	// Resources — CPU and memory requests/limits. nil means no limits set.
+	Resources *orktypes.ResourceRequirements
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use
+	// for pulling any of the images used by this PodSpec.
+	// If specified, these secrets will be passed to individual puller implementations for them to use.
+	ImagePullSecrets []string
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string
 }
 
 // Create creates a CronJob if it does not already exist.
@@ -75,6 +88,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	_, err := kube.Clientset().BatchV1().CronJobs(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -113,6 +129,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	existing, err := kube.Clientset().BatchV1().CronJobs(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
@@ -189,6 +208,14 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 			container.Args = spec.Args
 			drifted = true
 		}
+		if spec.Resources != nil {
+			desiredRes := common.BuildResourceRequirements(spec.Resources)
+			if !common.ResourceRequirementsEqual(container.Resources, desiredRes) {
+				container.Resources = desiredRes
+				drifted = true
+				logger.Info().Str("cronjob", spec.Name).Msg("cronjob resources drifted")
+			}
+		}
 	}
 
 	if !drifted {
@@ -215,6 +242,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Delete deletes the CronJob if it exists.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedCronJobSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	err := kube.Clientset().BatchV1().CronJobs(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -249,7 +279,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 		}
 		return fmt.Errorf("cronjob.DeleteIfOwned: getting %q: %w", name, err)
 	}
-	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
 		return nil
 	}
 	return kube.Clientset().BatchV1().CronJobs(namespace).
@@ -268,6 +298,8 @@ func Resolve(src orktypes.CronJobTemplateSource, ownerName string) ResolvedCronJ
 		Command:   src.Command,
 		Args:      src.Args,
 		Labels:    make(map[string]string),
+		Resources: common.ResolveResources(src.Resources),
+		Sleep:     src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -323,8 +355,8 @@ func Resolve(src orktypes.CronJobTemplateSource, ownerName string) ResolvedCronJ
 		spec.Labels[l.Key] = l.Value
 	}
 
-	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
-	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -365,14 +397,10 @@ func buildCronJob(owner domain.Object, spec ResolvedCronJobSpec, namespace strin
 							Labels: spec.Labels,
 						},
 						Spec: corev1.PodSpec{
-							RestartPolicy: corev1.RestartPolicyOnFailure,
+							ImagePullSecrets: common.ToPullSecrets(spec.ImagePullSecrets),
+							RestartPolicy:    corev1.RestartPolicyOnFailure,
 							Containers: []corev1.Container{
-								{
-									Name:    spec.Name,
-									Image:   spec.Image,
-									Command: spec.Command,
-									Args:    spec.Args,
-								},
+								buildContainer(spec),
 							},
 						},
 					},
@@ -382,6 +410,19 @@ func buildCronJob(owner domain.Object, spec ResolvedCronJobSpec, namespace strin
 	}
 
 	return cj
+}
+
+func buildContainer(spec ResolvedCronJobSpec) corev1.Container {
+	c := corev1.Container{
+		Name:    spec.Name,
+		Image:   spec.Image,
+		Command: spec.Command,
+		Args:    spec.Args,
+	}
+	if spec.Resources != nil {
+		c.Resources = common.BuildResourceRequirements(spec.Resources)
+	}
+	return c
 }
 
 func validateSpec(spec ResolvedCronJobSpec) error {

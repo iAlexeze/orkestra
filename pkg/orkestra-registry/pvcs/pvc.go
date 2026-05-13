@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -21,33 +21,39 @@ import (
 
 // Create creates a PVC owned by the CR if it does not already exist.
 func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPVCSpec) error {
-	ns := common.ResolveNamespace(owner, spec.Namespace)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
-	_, err := kube.Clientset().CoreV1().PersistentVolumeClaims(ns).Get(ctx, spec.Name, metav1.GetOptions{})
+	_, err := kube.Clientset().CoreV1().PersistentVolumeClaims(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("pvc.Create: checking existence of %q: %w", spec.Name, err)
 	}
 	if err == nil {
-		logger.Debug().Str("pvc", spec.Name).Str("namespace", ns).Msg("pvc already exists — skipping create")
+		logger.Debug().Str("pvc", spec.Name).Str("namespace", namespace).Msg("pvc already exists — skipping create")
 		return nil
 	}
 
-	pvc := buildPVC(owner, spec, ns)
-	_, err = kube.Clientset().CoreV1().PersistentVolumeClaims(ns).Create(ctx, pvc, metav1.CreateOptions{})
+	pvc := buildPVC(owner, spec, namespace)
+	_, err = kube.Clientset().CoreV1().PersistentVolumeClaims(namespace).Create(ctx, pvc, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("pvc.Create: creating %q in %q: %w", spec.Name, ns, err)
+		return fmt.Errorf("pvc.Create: creating %q in %q: %w", spec.Name, namespace, err)
 	}
 
-	logger.Info().Str("pvc", spec.Name).Str("namespace", ns).Str("owner", owner.GetName()).Msg("pvc created")
+	logger.Info().Str("pvc", spec.Name).Str("namespace", namespace).Str("owner", owner.GetName()).Msg("pvc created")
 	return nil
 }
 
 // Update reconciles a PVC. PVC spec is largely immutable after creation;
 // only labels are patched on drift.
 func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPVCSpec) error {
-	ns := common.ResolveNamespace(owner, spec.Namespace)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
-	existing, err := kube.Clientset().CoreV1().PersistentVolumeClaims(ns).Get(ctx, spec.Name, metav1.GetOptions{})
+	existing, err := kube.Clientset().CoreV1().PersistentVolumeClaims(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return Create(ctx, kube, owner, spec)
@@ -70,20 +76,23 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return nil
 	}
 
-	_, err = kube.Clientset().CoreV1().PersistentVolumeClaims(ns).Update(ctx, updated, metav1.UpdateOptions{})
+	_, err = kube.Clientset().CoreV1().PersistentVolumeClaims(namespace).Update(ctx, updated, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("pvc.Update: updating %q: %w", spec.Name, err)
 	}
 
-	logger.Info().Str("pvc", spec.Name).Str("namespace", ns).Msg("pvc updated")
+	logger.Info().Str("pvc", spec.Name).Str("namespace", namespace).Msg("pvc updated")
 	return nil
 }
 
 // Delete deletes the PVC if it exists.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPVCSpec) error {
-	ns := common.ResolveNamespace(owner, spec.Namespace)
+	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
-	err := kube.Clientset().CoreV1().PersistentVolumeClaims(ns).Delete(ctx, spec.Name, metav1.DeleteOptions{})
+	err := kube.Clientset().CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
@@ -95,18 +104,18 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the PVC only if it is owned by the given CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, name, ns string) error {
-	existing, err := kube.Clientset().CoreV1().PersistentVolumeClaims(ns).Get(ctx, name, metav1.GetOptions{})
+func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, name, namespace string) error {
+	existing, err := kube.Clientset().CoreV1().PersistentVolumeClaims(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
-	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
 		return nil
 	}
-	return kube.Clientset().CoreV1().PersistentVolumeClaims(ns).Delete(ctx, name, metav1.DeleteOptions{})
+	return kube.Clientset().CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 }
 
 // Resolve builds a ResolvedPVCSpec from a PVCTemplateSource.
@@ -120,6 +129,7 @@ func Resolve(src orktypes.PVCTemplateSource, ownerName string) ResolvedPVCSpec {
 		VolumeMode:       src.VolumeMode,
 		VolumeName:       src.VolumeName,
 		Labels:           make(map[string]string),
+		Sleep:            src.Sleep,
 	}
 
 	if len(spec.AccessModes) == 0 {
@@ -132,8 +142,8 @@ func Resolve(src orktypes.PVCTemplateSource, ownerName string) ResolvedPVCSpec {
 	for _, l := range src.Labels {
 		spec.Labels[l.Key] = l.Value
 	}
-	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
-	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -184,6 +194,7 @@ func buildPVC(owner domain.Object, spec ResolvedPVCSpec, ns string) *corev1.Pers
 			AccessModes: accessModes,
 			VolumeMode:  &volumeMode,
 			VolumeName:  spec.VolumeName,
+			// DataSourceRef: ,
 			Resources: corev1.VolumeResourceRequirements{
 				Requests: corev1.ResourceList{
 					corev1.ResourceStorage: storageQty,

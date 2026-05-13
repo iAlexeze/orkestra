@@ -82,6 +82,7 @@ func (c *Client) FetchCRDDetail(name string) (*CRDDetail, error) {
 		ResyncSource:             info.ResyncSource,
 		QueueDepth:               info.QueueDepth,
 		MaxQueueDepth:            info.MaxQueueDepth,
+		MaxQueueDepthSource:      info.MaxQueueDepthSource,
 		ResourceCount:            info.ResourceCount,
 		TotalReconciles:          info.TotalReconciles,
 		OperatorBox:              info.OperatorBox,
@@ -156,7 +157,11 @@ func (c *Client) FetchCRDetail(instanceURL, crdName, namespace, name string) (*C
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("CR %q not found in namespace %q", name, namespace)
+		if namespace != "" {
+			return nil, fmt.Errorf("CR %q not found in namespace %q", name, namespace)
+		} else {
+			return nil, fmt.Errorf("CR %q not found", name)
+		}
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("CR detail: HTTP %d", resp.StatusCode)

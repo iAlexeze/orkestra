@@ -64,6 +64,32 @@ func (a ValidationAction) IsWarn() bool {
 	return EffectiveAction(a) == ValidationActionWarn
 }
 
+// Admission holds validation and mutation configuration for a CRD.
+type Admission struct {
+	Validation *ValidationConfig
+	Mutation   *MutationConfig
+}
+
+// Returns true when either validation or mutation rules are declared.
+func (a *Admission) HasValidationOrMutationRules() bool {
+	return a.HasValidationRules() || a.HasMutationRules()
+}
+
+// Separate helpers for hasMutationRules and hasValidationRules
+func (a *Admission) HasMutationRules() bool {
+	if a.Mutation == nil {
+		return false
+	}
+	return len(a.Mutation.Rules) > 0
+}
+
+func (a *Admission) HasValidationRules() bool {
+	if a.Validation == nil {
+		return false
+	}
+	return len(a.Validation.Rules) > 0
+}
+
 // ── ValidationRule ────────────────────────────────────────────────────────
 
 // ValidationRule declares one constraint on a CR field.
@@ -119,7 +145,7 @@ type ValidationRule struct {
 	// Explicit operator form — use when no shorthand covers the comparison.
 	Operator  ConditionOperator `yaml:"operator,omitempty" json:"operator,omitempty"`
 	Value     string            `yaml:"value,omitempty" json:"value,omitempty"`
-	ValueType string            `yaml:"valueType,omitempty"` // "string", "int", "bool"
+	ValueType string            `yaml:"valueType,omitempty"` // "string", "int" or "integer", "float" or "number", "bool" or "boolean"
 }
 
 // ValidationConfig holds all validation rules for a CRD.

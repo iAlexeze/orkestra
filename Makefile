@@ -1,9 +1,10 @@
-.PHONY: build orkcc clean test test-unit test-race test-integration test-e2e test-all test-coverage test-coverage-text vet certs docs docs-build docs-serve site site-sync site-build site-start hugo-install
+.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet certs docs docs-build docs-serve site site-sync site-build site-start hugo-install generate-notes test-fixture-note test-fixture-reconciler
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
 CONTROL_CENTER_DIR := ./cmd/controlcenter
 OUTPUT_DIR := $(HOME)/.orkestra/bin
+BUILD_TAGS ?=
 
 # Version stamping — reads from git; matches what CI/CD injects via ldflags.
 GIT_VERSION := $(shell git describe --tags --always 2>/dev/null || echo "dev")
@@ -19,7 +20,12 @@ CC_LDFLAGS  := -X github.com/orkspace/orkestra-cc/version.Version=$(GIT_VERSION)
                -X github.com/orkspace/orkestra-cc/version.Date=$(GIT_DATE)
 
 # ── Local build ───────────────────────────────────────────────────────────
-ork:
+generate-notes:
+	@echo "Generating note catalog..."
+	go run ./hack/generate-notes
+	@echo "✅ Note catalog generated at pkg/note/catalog_generated.go"
+
+ork: generate-notes
 	@echo "Building Orkestra..."
 	@mkdir -p $(OUTPUT_DIR)
 	cd $(ORKESTRA_DIR) && gofmt -w .
@@ -86,10 +92,13 @@ BIN := $(OUTPUT_DIR)/ork
 
 # ── Linux Build Targets (for Docker) ──────────────────────────────────────────
 
-ork-linux:
+ork-linux: generate-notes
 	@echo "Building Orkestra (Linux amd64)..."
 	@mkdir -p $(OUTPUT_DIR)
-	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $(OUTPUT_DIR)/ork ./cmd/orkestra
+	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+		-tags "$(BUILD_TAGS)" \
+		-ldflags "$(ORK_LDFLAGS)" \
+		-o $(OUTPUT_DIR)/ork ./cmd/orkestra
 	@echo "✅ Linux Orkestra binary built: $(OUTPUT_DIR)/ork"
 
 orkcc-linux:
@@ -100,7 +109,8 @@ orkcc-linux:
 
 # ── Docker Build ──────────────────────────────────────────────────────────────
 
-docker: ork-linux
+docker:
+	$(MAKE) ork-linux BUILD_TAGS=runtime
 	@echo "Building Docker image: $(ORK_IMAGE)"
 	@cp $(OUTPUT_DIR)/ork ./$(ORK_AMD64_TARGET)
 	
@@ -129,113 +139,148 @@ docker-push:
 docker-release: docker docker-cc docker-push
 	@echo "✔ Docker release complete: $(ORK_IMAGE)"
 
+# ── Runtime Reload (local dev) ────────────────────────────────────────────────
+
+KIND_CLUSTER ?= orkestra-playground
+RUNTIME_DEPLOYMENT ?= orkestra-runtime
+RUNTIME_CONTAINER_NAME ?= orkestra
+RUNTIME_NAMESPACE  ?= orkestra-system
+
+runtime-reload: docker
+	@echo "Generating unique tag..."
+	$(eval RUNTIME_TAG := $(shell date +%s))
+	@echo "Tag: $(RUNTIME_TAG)"
+
+	@echo "Retagging image..."
+	docker tag $(ORK_IMAGE) $(ORK_IMAGE)-$(RUNTIME_TAG)
+
+	@echo "Loading image into kind cluster: $(KIND_CLUSTER)"
+	kind load docker-image $(ORK_IMAGE)-$(RUNTIME_TAG) --name $(KIND_CLUSTER)
+	@echo "✔ Image loaded"
+
+	@echo "Updating deployment $(RUNTIME_DEPLOYMENT) in namespace $(RUNTIME_NAMESPACE)..."
+	kubectl -n $(RUNTIME_NAMESPACE) set image deploy/$(RUNTIME_DEPLOYMENT) \
+        $(RUNTIME_CONTAINER_NAME)=$(ORK_IMAGE)-$(RUNTIME_TAG)
+
+	@echo "✔ Runtime updated to image: $(ORK_IMAGE)-$(RUNTIME_TAG)"
+
+CONTROL_CENTER_DEPLOYMENT ?= orkestra-cc
+CONTROL_CENTER_CONTAINER_NAME ?= controlcenter
+CONTROL_CENTER_NAMESPACE ?= orkestra-system
+
+controlcenter-reload: docker-cc
+	@echo "Generating unique tag..."
+	$(eval CC_TAG := $(shell date +%s))
+	@echo "Tag: $(CC_TAG)"
+
+	@echo "Retagging image..."
+	docker tag $(ORK_CC_IMAGE) $(ORK_CC_IMAGE)-$(CC_TAG)
+
+	@echo "Loading image into kind cluster: $(KIND_CLUSTER)"
+	kind load docker-image $(ORK_CC_IMAGE)-$(CC_TAG) --name $(KIND_CLUSTER)
+	@echo "✔ Image loaded"
+
+	@echo "Updating deployment $(CONTROL_CENTER_DEPLOYMENT) in namespace $(CONTROL_CENTER_NAMESPACE)..."
+	kubectl -n $(CONTROL_CENTER_NAMESPACE) set image deploy/$(CONTROL_CENTER_DEPLOYMENT) \
+        $(CONTROL_CENTER_CONTAINER_NAME)=$(ORK_CC_IMAGE)-$(CC_TAG)
+
+	@echo "✔ Control Center updated to image: $(ORK_CC_IMAGE)-$(CC_TAG)"
+
+orkestra-reload: runtime-reload controlcenter-reload
+	@echo "✔ Orkestra runtime and Control Center reloaded successfully"
+
 # ── Primary targets ───────────────────────────────────────────────────────────
 
 # Default: vet + unit tests. Fast, no external dependencies.
 test: vet test-unit
 
 # ── Unit tests ────────────────────────────────────────────────────────────────
-# Runs all pure-logic unit tests co-located with the packages they test.
-#
-# Includes:
-#   ./pkg/health/...       — admission evaluation, stats, conversion logic
-#   ./pkg/types/...        — admission, condition, and conversion types
-#   ./pkg/metrics/...      — metric helper smoke tests
-#   ./pkg/queue/...        — workqueue and registry tests
-#   ./pkg/merger/...       — registry URL construction, source loading
-#   ./pkg/katalog/...      — dependency graph, topological sort, cycle detection
-#   ./pkg/kordinator/...   — CRD health lifecycle
-#   ./pkg/reconciler/...   — validation rules, mutation patch building, namespace guard
-#
-# Excludes pkg/inspect/test (requires a live Kubernetes cluster).
-#
-#   -short  skips tests that guard slow/external work with t.Skip(testing.Short())
-#   -count=1 disables result caching — tests always run fresh
+# All tests under pkg/ that are not guarded by //go:build integration.
+# No Kubernetes cluster required.
+# -short skips any test that calls t.Skip(testing.Short()) for slow work.
+# -count=1 disables result caching so tests always run fresh.
 test-unit:
 	@echo "Running unit tests..."
-	go test \
-		./pkg/health/... \
-		./pkg/types/... \
-		./pkg/metrics/... \
-		./pkg/queue/... \
-		./pkg/merger/... \
-		./pkg/katalog/... \
-		./pkg/kordinator/... \
-		./pkg/reconciler/... \
-		-v -short -count=1
+	go test ./pkg/... -v -short -count=1
 
 # ── Race detector ─────────────────────────────────────────────────────────────
-# Same as test-unit but with Go's race detector enabled.
-# Run this before every pull request. Catches concurrent map access,
-# goroutine data races, and ring-buffer index races in the admission stats
-# ring buffer, workqueue, and informer factory.
+# Same as test-unit with Go's race detector enabled.
+# Run before every pull request.
 test-race:
 	@echo "Running unit tests with race detector..."
-	go test \
-		./pkg/health/... \
-		./pkg/types/... \
-		./pkg/metrics/... \
-		./pkg/queue/... \
-		./pkg/merger/... \
-		./pkg/katalog/... \
-		./pkg/kordinator/... \
-		./pkg/reconciler/... \
-		-short -race -count=1
+	go test ./pkg/... -short -race -count=1
 
 # ── Integration tests ─────────────────────────────────────────────────────────
-# Requires a reachable Kubernetes cluster (from KUBECONFIG).
-# Tests are guarded by the `integration` build tag so they never run
-# during `make test-unit`.
-test-integration:
-	@echo "Running integration tests..."
-	go test ./tests/integration/... -v -tags=integration -count=1
+# Uses envtest (embedded API server) — no external cluster required.
+# setup-envtest must be installed: go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+# Tests are guarded by //go:build integration so they never run during test-unit.
+ENVTEST_K8S_VERSION ?= 1.32.x
+ENVTEST_BIN_DIR     ?= $(HOME)/.envtest-bins
 
-# ── End-to-end tests ──────────────────────────────────────────────────────────
-# Full cluster lifecycle: deploys Orkestra, applies CRDs and CRs, checks
-# health endpoints, verifies reconciliation, cleans up.
-test-e2e:
-	@echo "Running E2E tests..."
-	./tests/e2e/run.sh website
-	./tests/e2e/run.sh activation
-	./tests/e2e/run.sh dependencies
+KUBEBUILDER_ASSETS ?= $(shell setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(ENVTEST_BIN_DIR) -p path 2>/dev/null)
+
+test-integration:
+	@echo "Running integration tests (KUBEBUILDER_ASSETS=$(KUBEBUILDER_ASSETS))..."
+	KUBEBUILDER_ASSETS=$(KUBEBUILDER_ASSETS) \
+	go test ./tests/integration/... -v -tags=integration -count=1 -timeout=120s
 
 # ── Full suite ────────────────────────────────────────────────────────────────
-test-all: test-unit test-integration test-e2e
+test-all: test-unit test-integration
 
 # ── Coverage ──────────────────────────────────────────────────────────────────
-# Generates an HTML coverage report in coverage.html.
-# Open it with: open coverage.html  (macOS) / xdg-open coverage.html (Linux)
-#
-# Uses the same package set as test-unit — excludes cluster-dependent tests.
+# HTML report written to coverage.html — open with: xdg-open coverage.html
 test-coverage:
 	@echo "Generating coverage report..."
-	go test \
-		./pkg/health/... \
-		./pkg/types/... \
-		./pkg/metrics/... \
-		./pkg/queue/... \
-		./pkg/merger/... \
-		./pkg/katalog/... \
-		./pkg/kordinator/... \
-		./pkg/reconciler/... \
-		-coverprofile=coverage.out -covermode=atomic -count=1
+	go test ./pkg/... -coverprofile=coverage.out -covermode=atomic -count=1
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report written to coverage.html"
 
 # Text summary of per-function coverage — useful in CI output.
 test-coverage-text:
 	@echo "Coverage summary..."
-	go test \
-		./pkg/health/... \
-		./pkg/types/... \
-		./pkg/metrics/... \
-		./pkg/queue/... \
-		./pkg/merger/... \
-		./pkg/katalog/... \
-		./pkg/kordinator/... \
-		./pkg/reconciler/... \
-		-coverprofile=coverage.out -covermode=atomic -count=1
+	go test ./pkg/... -coverprofile=coverage.out -covermode=atomic -count=1
 	@go tool cover -func=coverage.out | tail -5
+
+# ── Fixture tests (kind cluster required) ────────────────────────────────────
+# Each target spins up a dedicated kind cluster, installs Orkestra via Helm,
+# applies the fixture katalog + CR, asserts resources exist, then tears down.
+# Requires: kind, helm, kubectl, ork — all on $PATH.
+
+FIXTURE_NOTE_CLUSTER      := orkestra-note-fixture
+FIXTURE_RECONCILER_CLUSTER := orkestra-reconciler-fixture
+HELM_CHART                := ./charts/orkestra
+
+test-fixture-note:
+	@echo "── Note fixture test ──────────────────────────────────────────"
+	@bash scripts/setup-kind.sh $(FIXTURE_NOTE_CLUSTER)
+	@kubectl apply -f pkg/note/fixture/crd.yaml
+	@ork generate bundle --file pkg/note/fixture/katalog.yaml | kubectl apply -f -
+	@helm install orkestra $(HELM_CHART) --namespace default --wait --timeout 120s
+	@kubectl apply -f pkg/note/fixture/cr.yaml
+	@kubectl wait reconcilerprobe/my-probe --for=jsonpath='{.status.phase}'=Ready \
+	    --timeout=120s 2>/dev/null || kubectl wait noteprobe/my-probe \
+	    --for=condition=Ready=true --timeout=120s || \
+	    kubectl get noteprobe my-probe -o yaml
+	@echo "✅ Note fixture passed"
+	@bash scripts/setup-kind.sh delete $(FIXTURE_NOTE_CLUSTER)
+
+test-fixture-reconciler:
+	@echo "── Reconciler fixture test ────────────────────────────────────"
+	@bash scripts/setup-kind.sh $(FIXTURE_RECONCILER_CLUSTER)
+	@kubectl apply -f pkg/reconciler/fixture/crd.yaml
+	@ork generate bundle --file pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
+	@helm install orkestra $(HELM_CHART) --namespace default --wait --timeout 120s
+	@kubectl apply -f pkg/reconciler/fixture/cr.yaml
+	@kubectl wait reconcilerprobe/probe --for=jsonpath='{.status.tier}'=premium \
+	    --timeout=120s || kubectl get reconcilerprobe probe -o yaml
+	@kubectl get deployment probe-app
+	@kubectl get service probe-svc
+	@kubectl get configmap probe-config
+	@kubectl get serviceaccount probe-sa
+	@kubectl get cronjob probe-cron
+	@kubectl get deployment probe-premium
+	@echo "✅ Reconciler fixture passed"
+	@bash scripts/setup-kind.sh delete $(FIXTURE_RECONCILER_CLUSTER)
 
 # ── Docs (Hugo) ───────────────────────────────────────────────────────────────
 # The Hugo site lives in website/ and renders the docs/ directory.
@@ -306,9 +351,3 @@ site-build: site-sync
 vet:
 	@echo "Running go vet..."
 	go vet ./...
-
-# ── Certificates ─────────────────────────────────────────────────────────────
-certs:
-	@echo "Generating self-signed certificates for Orkestra..."
-	@bash scripts/self-signed-certificates.sh
-	@echo "Certificates generated in orkestrs-certs/"

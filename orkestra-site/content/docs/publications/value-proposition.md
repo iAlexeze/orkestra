@@ -301,7 +301,7 @@ under ideal conditions [5]. Orkestra's in-process evaluation is 4-10x faster.
 | First working operator | 3-6 weeks [4] | < 1 hour |
 | Adding a new resource type | 1-2 days | Minutes (one Katalog line) |
 | Adding CRD version | 3-5 days | Minutes (conversion paths declared) |
-| Production deployment | 1-2 days (Helm chart, RBAC) | `ork run --katalog k.yaml` |
+| Production deployment | 1-2 days (Helm chart, RBAC) | `ork run --file k.yaml` |
 | Adding governance policy | 1 week (webhook server) | One validation rule in Katalog |
 
 ### 3.4 Operational surface reduction

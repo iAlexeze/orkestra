@@ -49,6 +49,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/health"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/utils"
 	"k8s.io/client-go/kubernetes"
@@ -139,13 +140,12 @@ func NewWebhookServer(kubeClient kubernetes.Interface, kat *katalog.Katalog, kfg
 	admissionFailurePolicy := admissionv1FailurePolicyType(kat.WebhooksFailurePolicy())
 
 	hookReg := WebhookRegistrationOptions{
-		FailurePolicy:            admissionFailurePolicy,
-		Port:                     kfg.HTTPSPortInt32(),
-		ServiceName:              kat.WebhooksServiceName(),
-		ServiceNamespace:         kfg.Cluster().Namespace,
-		TLSCertFile:              kfg.Security().Webhooks.TLSCert,
-		OrkestraResourceLabels:   kfg.OrkestraResourceLabels(),
-		OrkestraResourceSelector: kfg.OrkestraResourceSelector(),
+		FailurePolicy:          admissionFailurePolicy,
+		Port:                   kfg.HTTPSPortInt32(),
+		ServiceName:            kat.WebhooksServiceName(),
+		ServiceNamespace:       kfg.Cluster().Namespace,
+		TLSCertFile:            kfg.Security().Webhooks.TLSCert,
+		OrkestraResourceLabels: labels.OrkestraResourceLabels(),
 	}
 
 	convWindow := kat.ConversionWindow()
@@ -377,10 +377,10 @@ func (ws *WebhookServer) Start(ctx context.Context) error {
 		}()
 	}
 
-	// Start the webhook controller to keep configurations in sync.
+	// Start the housekeeper to keep webhook configurations in sync.
 	if kat.IsWebhookControllerEnabled() {
-		if err := ws.webhookController(ws.ctx); err != nil {
-			logger.Error().Err(err).Msg("webhook controller failed to start")
+		if err := ws.housekeeper(ws.ctx); err != nil {
+			logger.Error().Err(err).Msg("housekeeper failed to start")
 		}
 	}
 
@@ -404,13 +404,13 @@ func (ws *WebhookServer) Shutdown(ctx context.Context) {
 
 	kat := ws.katalog
 
-	// Best-effort admission webhook cleanup.
+	// Cleanup admission webhook.
 	cleanupOpts := WebhookCleanupOptions{}
 	if kat.HasMutationRules() {
-		cleanupOpts.mutating = kat.DeletionProtectionCleanupOnShutdown()
+		cleanupOpts.mutating = kat.WebhookCleanupOnShutdown()
 	}
 	if kat.HasValidationRules() {
-		cleanupOpts.validating = kat.DeletionProtectionCleanupOnShutdown()
+		cleanupOpts.validating = kat.WebhookCleanupOnShutdown()
 	}
 	if err := UnregisterAdmissionWebhooks(ctx, ws.kubeClient, cleanupOpts); err != nil {
 		logger.Error().Err(err).Msg("webhook cleanup error")
@@ -435,9 +435,14 @@ func (ws *WebhookServer) Shutdown(ctx context.Context) {
 	}
 
 	// Cleanup the TLS secret when auto-generated certs and cleanup is enabled.
-	if ws.certMgr != nil && kat.DeletionProtectionCleanupOnShutdown() && ws.konfig != nil {
+	shouldCleanupTLS :=
+		kat.WebhookCleanupOnShutdown() ||
+			kat.NamespaceProtectionCleanupOnShutdown() ||
+			kat.DeletionProtectionCleanupOnShutdown()
+
+	if ws.certMgr != nil && shouldCleanupTLS && ws.konfig != nil {
 		ns := ws.konfig.Cluster().Namespace
-		if err := ws.certMgr.DeleteCertificateAndSecret(ctx, ns, "orkestra-tls"); err != nil {
+		if err := ws.certMgr.DeleteCertificateAndSecret(ctx, ns, konfig.DefaultInternalTLSName()); err != nil {
 			logger.Error().Err(err).Msg("tls secret cleanup error")
 		} else {
 			logger.Info().Str("namespace", ns).Msg("tls secret removed on shutdown")

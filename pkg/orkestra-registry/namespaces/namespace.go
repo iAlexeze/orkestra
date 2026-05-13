@@ -6,11 +6,11 @@ import (
 	"fmt"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"github.com/orkspace/orkestra/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +27,11 @@ type ResolvedNamespaceSpec struct {
 	// Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
 	// optional
 	Finalizers []string
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string
 }
 
 // Create creates a Namespace if it does not already exist.
@@ -39,6 +44,10 @@ type ResolvedNamespaceSpec struct {
 func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedNamespaceSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("namespace.Create: invalid spec: %w", err)
+	}
+
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
 	}
 
 	_, err := kube.Clientset().CoreV1().Namespaces().Get(ctx, spec.Name, metav1.GetOptions{})
@@ -71,6 +80,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // For most cases owner references handle cleanup automatically —
 // only use this when explicit cleanup control is needed.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedNamespaceSpec) error {
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	err := kube.Clientset().CoreV1().Namespaces().Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -104,7 +116,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 		return err
 	}
 	// Only delete if we own it
-	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
 		return nil
 	}
 	return kube.Clientset().CoreV1().Namespaces().
@@ -118,6 +130,7 @@ func Resolve(src orktypes.NamespaceTemplateSource, ownerName string) ResolvedNam
 		Name:       src.Name,
 		Labels:     make(map[string]string),
 		Finalizers: src.Finalizers,
+		Sleep:      src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -128,29 +141,26 @@ func Resolve(src orktypes.NamespaceTemplateSource, ownerName string) ResolvedNam
 		spec.Labels[l.Key] = l.Value
 	}
 
-	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
-	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-func buildNamespace(owner domain.Object, spec ResolvedNamespaceSpec) *corev1.Namespace {
+func buildNamespace(_ domain.Object, spec ResolvedNamespaceSpec) *corev1.Namespace {
 	return &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   spec.Name,
 			Labels: spec.Labels,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         owner.GetObjectKind().GroupVersionKind().GroupVersion().String(),
-					Kind:               owner.GetObjectKind().GroupVersionKind().Kind,
-					Name:               owner.GetName(),
-					UID:                owner.GetUID(),
-					Controller:         utils.BoolPtr(true),
-					BlockOwnerDeletion: utils.BoolPtr(true),
-				},
-			},
+
+			// TODO: Cleanup doesn't work yet
+			// No OwnerReference: Namespaces are cluster-scoped; a namespace-scoped CR
+			// cannot be a GC owner of a cluster-scoped resource. Setting one causes the
+			// GC to treat the namespace as orphaned (owner not found at cluster level)
+			// and delete it immediately. Ownership is tracked via the LabelOrkestraOwner
+			// label; cleanup is performed explicitly by deleteOwnedNamespaces on delete.
 		},
 	}
 }

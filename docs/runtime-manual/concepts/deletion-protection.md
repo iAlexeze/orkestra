@@ -39,8 +39,8 @@ The deletion‑protection webhook uses an `objectSelector` to match these labels
 
 Orkestra’s admission surface consists of:
 
-- ValidatingWebhookConfiguration (`orkestra-validation`)
-- MutatingWebhookConfiguration (`orkestra-mutation`)
+- ValidatingWebhookConfiguration (`orkestra-admission-validation`)
+- MutatingWebhookConfiguration (`orkestra-admission-mutation`)
 
 These webhook configurations are also labeled as Orkestra‑owned.  
 Deletion protection prevents these admission webhooks from being deleted, ensuring that Orkestra’s validation and mutation logic cannot be disabled by removing their webhook configurations.
@@ -122,9 +122,9 @@ Below is the conceptual model of how Orkestra maintains a resilient admission su
          ┌──────────────────────────────────────────────────────────────────────────┐
          │                         Webhook Configurations                           │
          │──────────────────────────────────────────────────────────────────────────│
-         │ 1. ValidatingWebhookConfiguration (orkestra-validation)                  │
-         │ 2. MutatingWebhookConfiguration (orkestra-mutation)                      │
-         │ 3. ValidatingWebhookConfiguration (orkestra-delete-protection)           │
+         │ 1. ValidatingWebhookConfiguration (orkestra-admission-validation)                  │
+         │ 2. MutatingWebhookConfiguration (orkestra-admission-mutation)                      │
+         │ 3. ValidatingWebhookConfiguration (orkestra-deletion-protection)           │
          │                                                                          │
          │ All carry labels:                                                        │
          │   app.kubernetes.io/name=orkestra                                        │

@@ -38,8 +38,9 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// validateAutoscaleProfile ensures that autoscale.profile is used correctly.
-// Runs before profile expansion. Profiles must be the only autoscale input.
+// validateAutoscaleProfile ensures that autoscale.profile is used correctly,
+// then expands the named profile into a complete AutoscaleSpec so the runtime
+// only ever sees a fully-formed spec (never a bare profile name).
 func (k *Katalog) validateAutoscaleProfile() error {
 	for name, crd := range k.enabledCRDs {
 		spec := crd.OperatorBox.Autoscale
@@ -66,9 +67,22 @@ func (k *Katalog) validateAutoscaleProfile() error {
 		}
 
 		// Rule 2: profile must be recognized
-		if !isValidProfile(profile) {
+		if !isValidAutoscaleProfile(profile) {
 			return fmt.Errorf("unknown autoscale profile: %q", profile)
 		}
+
+		// Expand the profile into a fully-formed AutoscaleSpec using the CRD's
+		// declared workers and queue depth as the baseline.
+		baseline := orktypes.AutoscaleBaseline{
+			Workers:       crd.Workers,
+			MaxQueueDepth: crd.Queue.MaxQueueDepth,
+			Resync:        crd.Resync,
+		}
+		expanded, err := ApplyAutoscalerProfile(profile, baseline)
+		if err != nil {
+			return fmt.Errorf("autoscale.profile %q expansion failed: %w", profile, err)
+		}
+		crd.OperatorBox.Autoscale = expanded
 
 		k.enabledCRDs[name] = crd
 	}
@@ -93,14 +107,14 @@ func autoscaleIsProfileOnly(spec *orktypes.AutoscaleSpec) bool {
 	return true
 }
 
-// isValidProfile returns true if the profile name is one of the supported presets.
-func isValidProfile(p string) bool {
+// isValidAutoscaleProfile returns true if the profile name is one of the supported presets.
+func isValidAutoscaleProfile(p string) bool {
 	switch p {
-	case string(Burst),
-		string(Steady),
-		string(Batch),
-		string(LatencySensitive),
-		string(CostOptimized):
+	case string(AutoscaleBurst),
+		string(AutoscaleSteady),
+		string(AutoscaleBatch),
+		string(AutoscaleLatencySensitive),
+		string(AutoscaleCostOptimized):
 		return true
 	default:
 		return false

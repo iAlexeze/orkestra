@@ -1094,7 +1094,7 @@ in the Control Center.</p>
 <li><code>tls:</code> block (cert generation) — 🔲 Designed, not yet implemented</li>
 <li><code>webhooks.createCerts: true</code> — 🔲 Designed, not yet implemented</li>
 </ul>
-<p>The type definitions (<code>TLSSpec</code>, <code>ParseRotationDuration</code>, <code>NeedsRotation</code>)
+<p>The type definitions (<code>TLSSpec</code>, <code>ParseTimeDuration</code>, <code>NeedsRotation</code>)
 are in <code>pkg/types/secret_rotation.go</code>. Implementation in <code>run_secrets.go</code>
 follows the same check-before-act pattern as <code>once: true</code>.</p>
 

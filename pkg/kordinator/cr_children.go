@@ -180,7 +180,7 @@ func fetchChildKind(
 //     a. orkestra.io/phase annotation → use it (Orkestra writes here for statusless CRDs)
 //     b. No annotation → ready on existence
 //  2. Non-statusless: check status.conditions[type=Ready]
-func extractParentReady(objMap map[string]interface{}, parentKind string) (ready bool, reason, message string) {
+func deprecatedExtractParentReady(objMap map[string]interface{}, parentKind string) (ready bool, reason, message string) {
 	m := katalog.BuiltInMeta(parentKind)
 	statusless := m.Statusless || m.SkipStatusSubresource
 

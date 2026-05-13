@@ -7,7 +7,7 @@
 Generate Grafana dashboards for all CRDs declared in a Katalog.
 
 ```bash
-ork generate dashboards --katalog <file> [flags]
+ork generate dashboards --file <file> [flags]
 ```
 
 The generated dashboards follow Orkestra’s standard layout conventions and include panels for status, phases, conditions, and resource‑specific metrics.
@@ -18,7 +18,7 @@ The generated dashboards follow Orkestra’s standard layout conventions and inc
 
 | Flag | Description |
 |------|-------------|
-| `-k, --katalog <file>` | One or more Katalog files (comma‑separated or repeated) |
+| `-k, --file <file>` | One or more Katalog files (comma‑separated or repeated) |
 | `-o, --output <file>` | Write output to file (default: stdout) |
 | `-n, --namespace <name>` | Namespace for generated resources (default: `orkestra-system`) |
 | `--dry-run` | Print output without writing files |
@@ -30,19 +30,19 @@ The generated dashboards follow Orkestra’s standard layout conventions and inc
 Generate dashboards:
 
 ```bash
-ork generate dashboards --katalog katalog.yaml
+ork generate dashboards --file katalog.yaml
 ```
 
 Write to a file:
 
 ```bash
-ork generate dashboards --katalog katalog.yaml -o dashboards.json
+ork generate dashboards --file katalog.yaml -o dashboards.json
 ```
 
 Multiple Katalogs:
 
 ```bash
-ork generate dashboards --katalog a.yaml --katalog b.yaml
+ork generate dashboards --file a.yaml --file b.yaml
 ```
 
 ---

@@ -1,6 +1,10 @@
-# 06 — Adding a New Resource Type
+# 07 — Adding a New Resource Type
 
 This document walks through every file that must change to add a new resource type. The worked example is `run_ingress.go`. Every step is labelled so you can use the checklist at the bottom to track progress.
+
+**Recent additions you can use as further reference:**
+- `run_roles.go` + `pkg/orkestra-registry/roles/role.go` — namespaced Role (RBAC)
+- `run_rolebindings.go` + `pkg/orkestra-registry/rolebindings/rolebinding.go` — RoleBinding; demonstrates the immutable `roleRef` delete-recreate pattern in `Update`
 
 ## Overview of files to touch
 
@@ -197,7 +201,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
     if err != nil {
         return err
     }
-    if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+    if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
         return nil // not ours
     }
     return kube.Clientset().NetworkingV1().Ingresses(namespace).Delete(ctx, name, metav1.DeleteOptions{})
@@ -228,8 +232,8 @@ func Resolve(src orktypes.IngressTemplateSource, ownerName string) ResolvedIngre
         spec.Annotations[a.Key] = a.Value
     }
     // System labels — always added
-    spec.Labels[konfig.LabelManaged]       = konfig.LabelManagedValue
-    spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+    spec.Labels[labels.Managed]       = labels.ManagedValue
+    spec.Labels[labels.OrkestraOwner] = ownerName
     return spec
 }
 

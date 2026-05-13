@@ -6,8 +6,8 @@
 
 | Configuration | Created when |
 |--------------|--------------|
-| `orkestra-validation` (`ValidatingWebhookConfiguration`) | `HasValidationRules()` |
-| `orkestra-mutation` (`MutatingWebhookConfiguration`) | `HasMutationRules()` |
+| `orkestra-admission-validation` (`ValidatingWebhookConfiguration`) | `HasValidationRules()` |
+| `orkestra-admission-mutation` (`MutatingWebhookConfiguration`) | `HasMutationRules()` |
 | `orkestra-deletion-protection` (`ValidatingWebhookConfiguration`) | `IsDeletionProtectionEnabled()` |
 | `orkestra-namespace-protection` (`ValidatingWebhookConfiguration`) | `IsNamespaceProtectionEnabled()` |
 
@@ -45,10 +45,10 @@ By default, webhook configurations persist across pod restarts. Set `cleanupOnSh
 
 ## Webhook controller
 
-`controller.go` runs a reconciliation loop that keeps webhook configurations in sync with the Katalog, independent of pod lifecycle.
+`housekeeper.go` runs a reconciliation loop that keeps webhook configurations in sync with the Katalog, independent of pod lifecycle.
 
 ```
-webhookController(ctx)
+housekeeper(ctx)
   goroutine:
     for {
       reconcileAdmissionWebhooks()

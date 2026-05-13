@@ -39,12 +39,12 @@ That's a complete operator. Apply it, and Orkestra registers the `Website` CRD, 
 - **Dependency ordering** — `dependsOn` between CRDs, startup sequencing guaranteed
 - **Drift correction** — `reconcile: true` on any resource keeps it in sync
 - **Status propagation** — template expressions written automatically to `.status`
-- **Control Center** — live dashboard on port 8090, built into the runtime
+- **Control Center** — live dashboard on port 8081, built into the runtime
 
 ## Try it
 
 ```bash
-ork run --katalog ./katalog.yaml
+ork run --file ./katalog.yaml
 ```
 
 See the [Getting Started guide](/docs/getting-started/) to build your first operator in under 10 minutes.

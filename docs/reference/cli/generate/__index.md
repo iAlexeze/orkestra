@@ -35,7 +35,7 @@ Most `generate` subcommands support:
 
 | Flag | Description |
 |------|-------------|
-| `-k, --katalog <file>` | One or more Katalog files (comma‑separated or repeated) |
+| `-k, --file <file>` | One or more Katalog files (comma‑separated or repeated) |
 | `-o, --output <path>` | Write output to file or directory |
 | `-n, --namespace <name>` | Namespace for generated manifests (default: `orkestra-system`) |
 | `--dry-run` | Print output to stdout without writing files |

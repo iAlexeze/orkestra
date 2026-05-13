@@ -80,16 +80,6 @@ func PrintInfo(msg string) {
 	fmt.Printf("%s%s%s\n", ColorGray, msg, ColorReset)
 }
 
-// Bold wraps text in bold ANSI codes.
-func Bold(s string) string {
-	return ColorBold + s + ColorReset
-}
-
-// Cyan wraps text in cyan ANSI codes.
-func Cyan(s string) string {
-	return ColorCyan + s + ColorReset
-}
-
 // HumanAge returns a human-readable age string from a Kubernetes timestamp.
 // Format matches kubectl: 5s, 2m, 3h, 4d, 2w
 func HumanAge(t metav1.Time) string {

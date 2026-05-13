@@ -2,9 +2,8 @@ package generate
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/labels"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,25 +15,22 @@ const (
 	orkcc = "orkestra-cc"
 )
 
-func RBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace, outputFile string) error {
-	out, err := renderNamespaceAndRBAC(kfg, rules, namespace)
+func RBAC(rules []rbacv1.PolicyRule, namespace, outputFile string) ([]byte, error) {
+	out, err := renderNamespaceAndRBAC(rules, namespace)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if outputFile != "" {
-		return os.WriteFile(outputFile, out, 0644)
-	}
-	fmt.Println(string(out))
-	return nil
+
+	return out, nil
 }
 
 // renderNamespaceAndRBAC is the full standalone output: Namespace + ServiceAccounts + ClusterRole + ClusterRoleBinding.
-func renderNamespaceAndRBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace string) ([]byte, error) {
+func renderNamespaceAndRBAC(rules []rbacv1.PolicyRule, namespace string) ([]byte, error) {
 	nsBytes, err := renderNamespace(namespace)
 	if err != nil {
 		return nil, err
 	}
-	rbacBytes, err := renderRBAC(kfg, rules, namespace)
+	rbacBytes, err := renderRBAC(rules, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +47,7 @@ func renderNamespace(namespace string) ([]byte, error) {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   namespace,
-			Labels: konfig.OrkestraBaseLabels(),
+			Labels: labels.OrkestraBaseLabels(),
 		},
 	}
 	return yaml.Marshal(ns)
@@ -60,7 +56,7 @@ func renderNamespace(namespace string) ([]byte, error) {
 // renderRBAC marshals ServiceAccounts, ClusterRole, and ClusterRoleBinding only.
 // The Namespace is intentionally excluded — callers prepend it via renderNamespace
 // so that bundle assembly can include it exactly once.
-func renderRBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace string) ([]byte, error) {
+func renderRBAC(rules []rbacv1.PolicyRule, namespace string) ([]byte, error) {
 	var serviceAccounts []corev1.ServiceAccount
 	for _, name := range []string{ork, orkcc} {
 		sa := corev1.ServiceAccount{
@@ -71,7 +67,7 @@ func renderRBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace string)
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: namespace,
-				Labels:    kfg.OrkestraResourceLabels(),
+				Labels:    labels.OrkestraResourceLabels(),
 			},
 		}
 		serviceAccounts = append(serviceAccounts, sa)
@@ -84,7 +80,7 @@ func renderRBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace string)
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   ork,
-			Labels: kfg.OrkestraResourceLabels(),
+			Labels: labels.OrkestraResourceLabels(),
 		},
 		Rules: rules,
 	}
@@ -96,7 +92,7 @@ func renderRBAC(kfg *konfig.Konfig, rules []rbacv1.PolicyRule, namespace string)
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   ork,
-			Labels: kfg.OrkestraResourceLabels(),
+			Labels: labels.OrkestraResourceLabels(),
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",

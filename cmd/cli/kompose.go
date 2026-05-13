@@ -1,3 +1,5 @@
+//go:build !runtime
+
 package cli
 
 import (
@@ -17,10 +19,10 @@ var komposeCmd = &cobra.Command{
 and emits a fully merged Katalog suitable for use with Orkestra runtime.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		outFile, _ := cmd.Flags().GetString("output")
-		katalogPaths, _ := cmd.Flags().GetStringSlice("katalog")
+		katalogPaths, _ := cmd.Flags().GetStringSlice("file")
 
 		if len(katalogPaths) != 1 {
-			return fmt.Errorf("kompose expects exactly one --katalog file")
+			return fmt.Errorf("kompose expects exactly one --file file")
 		}
 		komposerPath := katalogPaths[0]
 
@@ -53,6 +55,13 @@ and emits a fully merged Katalog suitable for use with Orkestra runtime.`,
 		kat.APIVersion = doc.APIVersion
 		kat.Kind = konfig.KatalogKind()
 		kat.KomposerMetadata = doc.Metadata
+
+		// Populate all top-level fields from the merged result — the merger
+		// accumulates security, notification, and providers from every source
+		// Katalog additively, then lets the Komposer's own declarations win.
+		kat.Security = out.m.ToSecurity()
+		kat.Notification = out.m.ToNotification()
+		kat.Providers = out.m.ToProviders()
 
 		// Step 3: validate merged katalog
 		validKat, err := out.kat.ValidateConfig(kfg)
@@ -92,7 +101,7 @@ func init() {
 	rootCmd.AddCommand(komposeCmd)
 
 	komposeCmd.Flags().StringP("output", "o", "", "Write merged katalog to file")
-	komposeCmd.Flags().StringSliceP("katalog", "k", nil, "Path to komposer.yaml")
+	komposeCmd.Flags().StringSliceP("file", "f", nil, "Path to komposer.yaml")
 
 	// Shadow global flags so they don't appear under `ork kompose`
 	komposeCmd.Flags().Bool("debug", false, "")

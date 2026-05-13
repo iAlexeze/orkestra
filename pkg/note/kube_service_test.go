@@ -224,6 +224,49 @@ func TestNoteEndpointsReady(t *testing.T) {
 				},
 			},
 		}, true},
+		// EndpointSlice format (discovery.k8s.io/v1)
+		{"endpointslice no endpoints key", map[string]interface{}{
+			"kind": "EndpointSlice",
+		}, false},
+		{"endpointslice empty endpoints", map[string]interface{}{
+			"endpoints": []interface{}{},
+		}, false},
+		{"endpointslice endpoint not ready", map[string]interface{}{
+			"endpoints": []interface{}{
+				map[string]interface{}{
+					"addresses":  []interface{}{"10.0.0.1"},
+					"conditions": map[string]interface{}{"ready": false},
+				},
+			},
+		}, false},
+		{"endpointslice endpoint ready but no addresses", map[string]interface{}{
+			"endpoints": []interface{}{
+				map[string]interface{}{
+					"addresses":  []interface{}{},
+					"conditions": map[string]interface{}{"ready": true},
+				},
+			},
+		}, false},
+		{"endpointslice one ready endpoint", map[string]interface{}{
+			"endpoints": []interface{}{
+				map[string]interface{}{
+					"addresses":  []interface{}{"10.0.0.1"},
+					"conditions": map[string]interface{}{"ready": true},
+				},
+			},
+		}, true},
+		{"endpointslice mixed ready/not-ready, one ready", map[string]interface{}{
+			"endpoints": []interface{}{
+				map[string]interface{}{
+					"addresses":  []interface{}{"10.0.0.2"},
+					"conditions": map[string]interface{}{"ready": false},
+				},
+				map[string]interface{}{
+					"addresses":  []interface{}{"10.0.0.3"},
+					"conditions": map[string]interface{}{"ready": true},
+				},
+			},
+		}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

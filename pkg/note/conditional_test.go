@@ -2,6 +2,7 @@
 package note
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -75,7 +76,7 @@ func TestNoteDefault(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := noteDefault(tt.val, tt.def)
-			if got != tt.want {
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("noteDefault(%v, %v) = %v, want %v", tt.val, tt.def, got, tt.want)
 			}
 		})

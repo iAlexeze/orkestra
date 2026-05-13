@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -26,6 +26,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	_, err := kube.Clientset().CoreV1().Pods(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -64,6 +67,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	existing, err := kube.Clientset().CoreV1().Pods(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil {
@@ -77,13 +83,27 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 		return fmt.Errorf("pod.Update: getting pod %q: %w", spec.Name, err)
 	}
 
+	needsRecreate := false
 	if len(existing.Spec.Containers) > 0 && existing.Spec.Containers[0].Image != spec.Image {
 		logger.Info().
 			Str("pod", spec.Name).
 			Str("current", existing.Spec.Containers[0].Image).
 			Str("desired", spec.Image).
 			Msg("pod image drifted — deleting and recreating")
-
+		needsRecreate = true
+	}
+	if !needsRecreate && spec.Resources != nil {
+		desiredRes := common.BuildResourceRequirements(spec.Resources)
+		var existingRes corev1.ResourceRequirements
+		if len(existing.Spec.Containers) > 0 {
+			existingRes = existing.Spec.Containers[0].Resources
+		}
+		if !common.ResourceRequirementsEqual(existingRes, desiredRes) {
+			logger.Info().Str("pod", spec.Name).Msg("pod resources drifted — deleting and recreating")
+			needsRecreate = true
+		}
+	}
+	if needsRecreate {
 		if err := Delete(ctx, kube, owner, spec); err != nil {
 			return err
 		}
@@ -103,6 +123,9 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // only use this when you need explicit cleanup control in onDelete.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPodSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	err := kube.Clientset().CoreV1().Pods(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -138,7 +161,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 		return err
 	}
 	// Only delete if we own it
-	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
 		return nil
 	}
 	return kube.Clientset().CoreV1().Pods(namespace).
@@ -167,6 +190,8 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string) ResolvedPodSpec {
 	spec.Image = src.Image
 	spec.Namespace = src.Namespace
 	spec.Resources = src.Resources
+	spec.Probes = src.Probes
+	spec.Sleep = src.Sleep
 
 	if src.Port != "" {
 		spec.Port = common.ParsePort(src.Port)
@@ -180,8 +205,8 @@ func Resolve(src orktypes.PodTemplateSource, ownerName string) ResolvedPodSpec {
 	}
 
 	// System labels — always present
-	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
-	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }
@@ -207,6 +232,9 @@ func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *core
 			},
 		},
 		Spec: corev1.PodSpec{
+			ImagePullSecrets:   common.ToPullSecrets(spec.ImagePullSecrets),
+			ServiceAccountName: spec.ServiceAccountName,
+			NodeSelector:       spec.NodeSelector,
 			Containers: []corev1.Container{
 				{
 					Name:  spec.Name,
@@ -225,6 +253,8 @@ func buildPod(owner domain.Object, spec ResolvedPodSpec, namespace string) *core
 	if spec.Resources != nil {
 		pod.Spec.Containers[0].Resources = common.BuildResourceRequirements(spec.Resources)
 	}
+
+	common.ApplyProbes(&pod.Spec.Containers[0], spec.Probes, int32(spec.Port))
 
 	return pod
 }

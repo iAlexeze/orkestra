@@ -156,7 +156,7 @@ func TestNoteUpdatedReplicas(t *testing.T) {
 	}
 }
 
-func TestNoteReplicasReady(t *testing.T) {
+func TestNoteAllReplicasReady(t *testing.T) {
 	tests := []struct {
 		name   string
 		obj    interface{}
@@ -210,9 +210,84 @@ func TestNoteReplicasReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := noteReplicasReady(tt.obj)
+			got := noteAllReplicasReady(tt.obj)
 			if got != tt.wanted {
-				t.Errorf("noteReplicasReady() = %v, want %v", got, tt.wanted)
+				t.Errorf("noteAllReplicasReady() = %v, want %v", got, tt.wanted)
+			}
+		})
+	}
+}
+
+func TestNoteRolloutComplete(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want bool
+	}{
+		{
+			name: "rollout complete — updated == desired",
+			obj: map[string]interface{}{
+				"spec": map[string]interface{}{
+					"replicas": int64(3),
+				},
+				"status": map[string]interface{}{
+					"updatedReplicas": int64(3),
+				},
+			},
+			want: true,
+		},
+		{
+			name: "rollout incomplete — updated < desired",
+			obj: map[string]interface{}{
+				"spec": map[string]interface{}{
+					"replicas": int64(3),
+				},
+				"status": map[string]interface{}{
+					"updatedReplicas": int64(2),
+				},
+			},
+			want: false,
+		},
+		{
+			name: "missing spec.replicas (defaults to 1)",
+			obj: map[string]interface{}{
+				"status": map[string]interface{}{
+					"updatedReplicas": int64(1),
+				},
+			},
+			want: true,
+		},
+		{
+			name: "missing status.updatedReplicas (defaults to 0)",
+			obj: map[string]interface{}{
+				"spec": map[string]interface{}{
+					"replicas": int64(3),
+				},
+			},
+			want: false,
+		},
+		{
+			name: "scale to zero — desired=0, updated=0",
+			obj: map[string]interface{}{
+				"spec": map[string]interface{}{
+					"replicas": int64(0),
+				},
+				"status": map[string]interface{}{
+					"updatedReplicas": int64(0),
+				},
+			},
+			want: true,
+		},
+		{
+			name: "nil object",
+			obj:  nil,
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteRolloutComplete(tt.obj); got != tt.want {
+				t.Errorf("noteRolloutComplete() = %v, want %v", got, tt.want)
 			}
 		})
 	}

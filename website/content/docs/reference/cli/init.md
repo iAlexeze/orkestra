@@ -37,7 +37,7 @@ Start immediately:
 
 ```bash
 kubectl apply -f examples/website/website-crd.yaml
-ork run --katalog examples/website/website-katalog.yaml
+ork run --file examples/website/website-katalog.yaml
 ```
 
 ---
@@ -58,7 +58,7 @@ go.mod
 Run:
 
 ```bash
-go run ./cmd/orkestra/ run --katalog examples/website/website-katalog.yaml
+go run ./cmd/orkestra/ run --file examples/website/website-katalog.yaml
 ```
 
 ---

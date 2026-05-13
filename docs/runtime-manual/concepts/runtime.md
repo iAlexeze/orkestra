@@ -31,7 +31,7 @@ All operators — dynamic or typed — share the same Runtime.
 When you run:
 
 ```bash
-ork run --katalog <path>
+ork run --file <path>
 ```
 
 the Runtime performs the following steps:

@@ -11,9 +11,9 @@ import (
 )
 
 func TestCycleDetection_TwoNodeCycle(t *testing.T) {
-	k := katalog.NewKatalogForTest([]orktypes.CRDEntry{
-		{Name: "a", DependsOn: []string{"b"}},
-		{Name: "b", DependsOn: []string{"a"}},
+	k := katalog.NewKatalogForTest(map[string]orktypes.CRDEntry{
+		"a": {Name: "a", DependsOn: orktypes.DependsOnMap{"b": {}}},
+		"b": {Name: "b", DependsOn: orktypes.DependsOnMap{"a": {}}},
 	})
 	if err := katalog.DetectCyclesForTest(k); err == nil {
 		t.Error("expected cycle error for a ↔ b")
@@ -21,10 +21,10 @@ func TestCycleDetection_TwoNodeCycle(t *testing.T) {
 }
 
 func TestCycleDetection_ThreeNodeCycle(t *testing.T) {
-	k := katalog.NewKatalogForTest([]orktypes.CRDEntry{
-		{Name: "a", DependsOn: []string{"c"}},
-		{Name: "b", DependsOn: []string{"a"}},
-		{Name: "c", DependsOn: []string{"b"}},
+	k := katalog.NewKatalogForTest(map[string]orktypes.CRDEntry{
+		"a": {Name: "a", DependsOn: orktypes.DependsOnMap{"c": {}}},
+		"b": {Name: "b", DependsOn: orktypes.DependsOnMap{"a": {}}},
+		"c": {Name: "c", DependsOn: orktypes.DependsOnMap{"b": {}}},
 	})
 	if err := katalog.DetectCyclesForTest(k); err == nil {
 		t.Error("expected cycle error for a → c → b → a")
@@ -32,8 +32,8 @@ func TestCycleDetection_ThreeNodeCycle(t *testing.T) {
 }
 
 func TestCycleDetection_SelfLoop(t *testing.T) {
-	k := katalog.NewKatalogForTest([]orktypes.CRDEntry{
-		{Name: "a", DependsOn: []string{"a"}},
+	k := katalog.NewKatalogForTest(map[string]orktypes.CRDEntry{
+		"a": {Name: "a", DependsOn: orktypes.DependsOnMap{"a": {}}},
 	})
 	if err := katalog.DetectCyclesForTest(k); err == nil {
 		t.Error("expected cycle error for self-loop")
@@ -41,10 +41,10 @@ func TestCycleDetection_SelfLoop(t *testing.T) {
 }
 
 func TestCycleDetection_AcyclicGraph_NoError(t *testing.T) {
-	k := katalog.NewKatalogForTest([]orktypes.CRDEntry{
-		{Name: "db"},
-		{Name: "cache"},
-		{Name: "app", DependsOn: []string{"db", "cache"}},
+	k := katalog.NewKatalogForTest(map[string]orktypes.CRDEntry{
+		"db":    {Name: "db"},
+		"cache": {Name: "cache"},
+		"app":   {Name: "app", DependsOn: orktypes.DependsOnMap{"db": {}, "cache": {}}},
 	})
 	if err := katalog.DetectCyclesForTest(k); err != nil {
 		t.Errorf("acyclic graph must not produce cycle error: %v", err)
@@ -52,7 +52,7 @@ func TestCycleDetection_AcyclicGraph_NoError(t *testing.T) {
 }
 
 func TestCycleDetection_EmptyGraph_NoError(t *testing.T) {
-	k := katalog.NewKatalogForTest([]orktypes.CRDEntry{})
+	k := katalog.NewKatalogForTest(map[string]orktypes.CRDEntry{})
 	if err := katalog.DetectCyclesForTest(k); err != nil {
 		t.Errorf("empty graph must not produce cycle error: %v", err)
 	}

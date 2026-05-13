@@ -144,17 +144,17 @@ jobs:
 
       - name: Validate Website example
         run: |
-          ./bin/ork validate --katalog examples/website/website-katalog.yaml
+          ./bin/ork validate --file examples/website/website-katalog.yaml
           echo "✅ Website example valid"
 
       - name: Validate Platform Namespace example
         run: |
-          ./bin/ork validate --katalog examples/platform-namespace/platform-namespace-katalog.yaml
+          ./bin/ork validate --file examples/platform-namespace/platform-namespace-katalog.yaml
           echo "✅ Platform Namespace example valid"
 
       - name: Validate Meta Katalog example
         run: |
-          ./bin/ork validate --katalog examples/komposer/komposer.yaml
+          ./bin/ork validate --file examples/komposer/komposer.yaml
           echo "✅ Meta Katalog example valid"
 
       - name: Write summary

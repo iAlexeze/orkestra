@@ -31,7 +31,7 @@ spec:
             value: "true"
           - name: ENABLE_ADMISSION_WEBHOOK
             value: "false"
-          - name: ORK_PORT
+          - name: ORKESTRA_PORT
             value: "8080"
           - name: ORKESTRA_NAMESPACE
             valueFrom:
@@ -46,7 +46,7 @@ spec:
 
         args:
           - run
-          - --katalog
+          - --file
           - /katalogs/conversion-test-katalog.yaml
           # - /katalogs/website-admission-test-katalog.yaml
 

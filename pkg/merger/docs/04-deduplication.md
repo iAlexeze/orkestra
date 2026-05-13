@@ -24,7 +24,7 @@ Inline over inline is impossible — Go map keys are unique, so the same name ca
 
 ### 2. Across entry-point files (`seen`)
 
-`Merge()` maintains a `seen map[string]string` across all entry-point files. If two entry points (both passed as `--katalog` flags) declare the same CRD name, the merge fails.
+`Merge()` maintains a `seen map[string]string` across all entry-point files. If two entry points (both passed as `--file` flags) declare the same CRD name, the merge fails.
 
 ## Error messages
 

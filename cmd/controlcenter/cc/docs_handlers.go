@@ -100,6 +100,40 @@ func (cc *ControlCenter) handleDocsLanding(w http.ResponseWriter, r *http.Reques
 	})
 }
 
+// DevDocsData is the view-model for the developer katalog docs page.
+type DevDocsData struct {
+	KatalogName    string
+	Apps           []DevAppSummary
+	RuntimeVersion string
+}
+
+// handleKatalogDocs dispatches /controlcenter/docs/{katalog}.
+// Developer katalogs (createdBy == "orkdoctor") get a developer-friendly docs page.
+// Operator katalogs fall back to the docs landing.
+func (cc *ControlCenter) handleKatalogDocs(w http.ResponseWriter, r *http.Request, katalogName string) {
+	inst, ok := cc.instanceByKatalogName(katalogName)
+	if !ok {
+		cc.handleDocsLanding(w, r)
+		return
+	}
+	if inst.Katalog.CreatedBy != "orkdoctor" {
+		cc.handleDocsLanding(w, r)
+		return
+	}
+
+	var apps []DevAppSummary
+	for _, proj := range inst.Katalog.Projects {
+		apps = append(apps, buildDevAppSummary(proj))
+	}
+	sort.Slice(apps, func(i, j int) bool { return apps[i].Name < apps[j].Name })
+
+	cc.renderTemplate(w, "dev_docs.html", DevDocsData{
+		KatalogName:    katalogName,
+		Apps:           apps,
+		RuntimeVersion: inst.Katalog.RuntimeVersion,
+	})
+}
+
 // handleCRDDocs renders /controlcenter/docs/{katalog}/{crd}.
 func (cc *ControlCenter) handleCRDDocs(w http.ResponseWriter, r *http.Request, katalogName, crdName string) {
 	inst, ok := cc.instanceByKatalogName(katalogName)

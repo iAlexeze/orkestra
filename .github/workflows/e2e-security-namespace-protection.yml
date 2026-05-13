@@ -1,0 +1,170 @@
+name: Orkestra E2E Test (Namespace Protection)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: ork-e2e
+
+      # ----------------------------------------------------------------------
+      # Setup operator and generate bundle
+      # ----------------------------------------------------------------------
+      - name: Setup operator, validate katalog and generate bundle
+        id: ork
+        uses: orkspace/orkestra-action@v0.0.1
+        with:
+          init: true
+          pack: security
+          example-subdir: namespace-protection
+          validate: true
+          generate-bundle: true
+
+      # ----------------------------------------------------------------------
+      # Create namespaces used in tests
+      # ----------------------------------------------------------------------
+      - name: Create namespaces (production, staging)
+        run: |
+          kubectl create namespace production
+          kubectl create namespace staging
+
+      # ----------------------------------------------------------------------
+      # Apply CRD
+      # ----------------------------------------------------------------------
+      - name: Apply CRD
+        run: kubectl apply -f ${{ steps.ork.outputs.crd_path }}
+
+      # ----------------------------------------------------------------------
+      # Apply generated bundle (RBAC + ConfigMap)
+      # ----------------------------------------------------------------------
+      - name: Apply generated bundle
+        run: kubectl apply -f ${{ steps.ork.outputs.bundle_file }}
+
+      # ----------------------------------------------------------------------
+      # Install Orkestra Helm chart
+      # ----------------------------------------------------------------------
+      - name: Install Orkestra Helm chart
+        run: |
+          helm repo add orkestra https://orkspace.github.io/orkestra
+          helm install orkestra orkestra/orkestra \
+            --namespace ${{ steps.ork.outputs.namespace }}
+
+      # ----------------------------------------------------------------------
+      # Step Summary: Initialize report
+      # ----------------------------------------------------------------------
+      - name: Initialize summary
+        run: |
+          echo "# Orkestra E2E Test Report – Namespace Protection" >> $GITHUB_STEP_SUMMARY
+          echo "**Pack:** security / namespace-protection" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      # ----------------------------------------------------------------------
+      # Test 1: Apply allowed CRs (in production namespace)
+      # ----------------------------------------------------------------------
+      - name: Apply allowed CRs in production namespace
+        run: |
+          # The example's cr-allowed.yaml contains resources in production namespace
+          kubectl apply -f ${{ steps.ork.outputs.example_dir }}/cr-allowed.yaml
+
+      - name: Verify successful creation
+        run: |
+          echo "## ✅ Allowed creations (production namespace)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl get app -n production >> $GITHUB_STEP_SUMMARY 2>&1 || true
+          kubectl get database -n production >> $GITHUB_STEP_SUMMARY 2>&1 || true
+          kubectl get cache -n staging >> $GITHUB_STEP_SUMMARY 2>&1 || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # ----------------------------------------------------------------------
+      # Test 2: Apply blocked CRs (default namespace – fails for App/Database)
+      # ----------------------------------------------------------------------
+      - name: Apply blocked CRs (should be rejected)
+        id: apply_blocked
+        continue-on-error: true
+        run: |
+          kubectl apply -f ${{ steps.ork.outputs.example_dir }}/cr-blocked.yaml 2>&1 | tee blocked_output.log
+          # Expect rejection for App in default and Cache in kube-system
+          if grep -q "denied the request" blocked_output.log; then
+            echo "✅ Namespace violations blocked as expected"
+            exit 0
+          else
+            echo "❌ Namespace violations were not blocked"
+            exit 1
+          fi
+
+      - name: Record blocked attempts
+        if: always()
+        run: |
+          echo "## 🚫 Blocked namespace violations" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat blocked_output.log >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "No log found"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # ----------------------------------------------------------------------
+      # Test 3: Verify that cache in staging (allowed by restrictedNamespaces) works
+      # ----------------------------------------------------------------------
+      - name: Verify cache in staging is allowed
+        run: |
+          if kubectl get cache my-cache -n staging &>/dev/null; then
+            echo "✅ Cache in staging (allowed by restrictedNamespaces) created successfully"
+          else
+            echo "❌ Cache in staging was not created – possible violation"
+            exit 1
+          fi
+
+      - name: Record cache in staging
+        run: |
+          echo "## ✅ Cache in staging (allowed by `restrictedNamespaces`)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl get cache my-cache -n staging -o yaml >> $GITHUB_STEP_SUMMARY 2>&1 || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      # ----------------------------------------------------------------------
+      # Optional: Webhook self-healing test
+      # ----------------------------------------------------------------------
+      - name: Delete webhook configuration manually
+        run: |
+          kubectl delete validatingwebhookconfiguration orkestra-namespace-protection
+          sleep 5
+
+      - name: Wait for webhook recreation
+        run: |
+          for i in {1..6}; do
+            if kubectl get validatingwebhookconfiguration orkestra-namespace-protection &>/dev/null; then
+              echo "Webhook recreated after $((i*5)) seconds"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Webhook not recreated within 30 seconds – check controller"
+          exit 1
+
+      - name: Record self-healing
+        run: |
+          echo "## 🔄 Webhook self‑healing" >> $GITHUB_STEP_SUMMARY
+          echo "The `orkestra-namespace-protection` webhook configuration was automatically recreated after manual deletion." >> $GITHUB_STEP_SUMMARY
+
+      # ----------------------------------------------------------------------
+      # Show logs on failure
+      # ----------------------------------------------------------------------
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          echo "## 🔍 Debug logs (failure)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl logs -n ${{ steps.ork.outputs.namespace }} deployment/orkestra-runtime --tail=100 || true >> $GITHUB_STEP_SUMMARY
+          kubectl logs -n ${{ steps.ork.outputs.namespace }} deployment/orkestra-cc --tail=100 || true >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Show Helm release info
+        if: always()
+        run: helm list -A

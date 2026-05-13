@@ -3,7 +3,7 @@ package konfig
 import (
 	"time"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/orkspace/orkestra/pkg/labels"
 )
 
 type Konfig struct {
@@ -15,10 +15,6 @@ type Konfig struct {
 	security     SecurityConfig
 	notification NotificationConfig
 	registry     registryConfig
-}
-
-func (k *Konfig) WebhookConfig() {
-	panic("unimplemented")
 }
 
 type orkKonfig struct {
@@ -39,12 +35,6 @@ type clusterKonfig struct {
 	MasterURL      string
 	Name           string
 	Namespace      string `validate:"required"`
-
-	// Worload specific
-	DefaultResync       time.Duration
-	DefaultWorkers      int
-	ShutdownTimeout     time.Duration
-	ShutdownGracePeriod time.Duration
 }
 
 type registryConfig struct {
@@ -143,6 +133,10 @@ type katalogKonfig struct {
 	Paths                   []string // Comma separated Paths to CRD katalog YAML file
 	DefaultMaxQueueDepth    int
 	DefaultDegradeThreshold int `validate:"required"`
+	DefaultResync           time.Duration
+	DefaultWorkers          int
+	ShutdownTimeout         time.Duration
+	ShutdownGracePeriod     time.Duration
 }
 
 type konductorElection struct {
@@ -232,7 +226,7 @@ func (k *Konfig) Katalog() *katalogKonfig {
 
 // Finalizers return a list of default finalizers
 func (k *Konfig) Finalizers() []string {
-	return []string{FinalizerOrkestra}
+	return []string{labels.FinalizerOrkestra}
 }
 
 // Security returns the unified security configuration.
@@ -274,23 +268,13 @@ func (k *Konfig) HTTPSPortInt32() int32 {
 	return httpsPortInt32
 }
 
-// OrkestraResourceSelector returns the internal label selector for orkestra control plane resources
-func (k *Konfig) OrkestraResourceSelector() *metav1.LabelSelector {
-	return orkestraResourceSelector
+// DefaultInternalTLSName returns the default name for Orkestra's internal TLS secret.
+func DefaultInternalTLSName() string {
+	return defaultInternalTLSSecretName
 }
 
-// OrkestraBaseLabels returns a copy of the standard Orkestra control-plane labels.
-// It can be called without a Konfig instance — useful in generators and CLI commands
-// that do not load the full operator configuration.
-func OrkestraBaseLabels() map[string]string {
-	out := make(map[string]string, len(orkestraResourceLabels))
-	for k, v := range orkestraResourceLabels {
-		out[k] = v
-	}
-	return out
-}
-
-// OrkestraResourceLabels returns the internal labels for orkestra control plane resources
-func (k *Konfig) OrkestraResourceLabels() map[string]string {
-	return orkestraResourceLabels
+// DefaultWorkloadSecretName returns the base name used for generated workload secrets.
+// The caller appends the CR's name to form the final secret name.
+func DefaultWorkloadSecretName() string {
+	return defaultWorkloadSecretName
 }

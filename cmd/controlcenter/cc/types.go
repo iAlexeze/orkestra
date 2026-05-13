@@ -18,6 +18,8 @@ type KatalogSummary struct {
 	Description    string
 	Version        string
 	Healthy        bool
+	CreatedBy      string
+	AppCount       int
 	TotalCRDs      int
 	HealthyCRDs    int
 	TotalWorkers   int
@@ -49,10 +51,12 @@ type IndexData struct {
 	Katalogs             []KatalogSummary
 	TotalKatalogs        int
 	HealthyKatalogs      int
+	TotalApps            int
 	TotalCRDs            int
 	TotalWorkers         int
 	TotalResources       int
 	AnyHealthy           bool
+	HasOperatorKatalogs  bool
 	OrkestraURLs         string
 	EnableRuntimeManager bool
 	CCVersion            string
@@ -83,21 +87,77 @@ type RBACRule struct {
 
 // KatalogResponse is the response from the /katalog endpoint
 type KatalogResponse struct {
-	Total              int          `json:"total"`
-	TotalEnabled       int          `json:"totalEnabled"`
-	Healthy            bool         `json:"healthy"`
-	Status             int          `json:"status"`
-	OrkReady           bool         `json:"OrkReady"`
-	DeletionProtection bool         `json:"deletionProtection"`
-	CRDs               []CRDSummary `json:"crds"`
-	Name               string       `json:"name,omitempty"`
-	Version            string       `json:"version,omitempty"`
-	Author             string       `json:"author,omitempty"`
-	Description        string       `json:"description,omitempty"`
-	DegradedReason     string       `json:"degradedReason,omitempty"`
-	StatusCounts       StatusCounts `json:"statusCounts"`
-	License            string       `json:"license,omitempty"`
-	RuntimeVersion     string       `json:"runtimeVersion,omitempty"`
+	Total              int                           `json:"total"`
+	TotalEnabled       int                           `json:"totalEnabled"`
+	Healthy            bool                          `json:"healthy"`
+	Status             int                           `json:"status"`
+	OrkReady           bool                          `json:"OrkReady"`
+	DeletionProtection bool                          `json:"deletionProtection"`
+	CRDs               []CRDSummary                  `json:"crds"`
+	Name               string                        `json:"name,omitempty"`
+	Version            string                        `json:"version,omitempty"`
+	Author             string                        `json:"author,omitempty"`
+	Description        string                        `json:"description,omitempty"`
+	DegradedReason     string                        `json:"degradedReason,omitempty"`
+	StatusCounts       StatusCounts                  `json:"statusCounts"`
+	License            string                        `json:"license,omitempty"`
+	RuntimeVersion     string                        `json:"runtimeVersion,omitempty"`
+	CreatedBy          string                        `json:"createdBy,omitempty"`
+	Projects           map[string]ProjectInfoSummary `json:"projects,omitempty"`
+}
+
+// ProjectInfoSummary is the CC-side view of one app in KatalogResponse.Projects.
+// Fields mirror orktypes.ProjectInfo — add here when the runtime starts sending more.
+type ProjectInfoSummary struct {
+	Name          string `json:"name"`
+	Namespace     string `json:"namespace"`
+	Port          string `json:"port,omitempty"`
+	Language      string `json:"language,omitempty"`
+	CurrentImage  string `json:"currentImage,omitempty"`
+	GitCommit     string `json:"gitCommit,omitempty"`
+	License       string `json:"license,omitempty"`
+	HasDockerfile bool   `json:"hasDockerfile,omitempty"`
+	HasFrontend   bool   `json:"hasFrontend,omitempty"`
+	HasSMTP       bool   `json:"hasSMTP,omitempty"`
+	HasSlack      bool   `json:"hasSlack,omitempty"`
+	HasCompose    bool   `json:"hasCompose,omitempty"`
+	SecretCount   int    `json:"secretCount,omitempty"`
+	ConfigCount   int    `json:"configCount,omitempty"`
+}
+
+// DevAppsData is passed to the developer-view template.
+type DevAppsData struct {
+	KatalogName    string
+	Apps           []DevAppSummary
+	CCVersion      string
+	RuntimeVersion string
+}
+
+// DevAppSummary holds display data for one app in the developer view.
+type DevAppSummary struct {
+	Name          string
+	Namespace     string
+	Port          string
+	Language      string
+	CurrentImage  string
+	ImageTag      string
+	ServiceURL    string
+	GitCommit     string
+	License       string
+	HasDockerfile bool
+	HasFrontend   bool
+	HasSMTP       bool
+	HasSlack      bool
+	HasCompose    bool
+	SecretCount   int
+	ConfigCount   int
+}
+
+// DevAppDetailData is passed to the app detail template.
+type DevAppDetailData struct {
+	KatalogName    string
+	App            DevAppSummary
+	RuntimeVersion string
 }
 
 // CRDSummary is a summary of a CRD
@@ -164,6 +224,9 @@ type AutoscalerWorkersInfo struct {
 	QueueDepth           int64   `json:"queueDepth"`
 	QueueDepthConfigured int     `json:"queueDepthConfigured"`
 	QueueDepthEffective  int     `json:"queueDepthEffective"`
+	Resync               string  `json:"resync"`
+	ResyncEffective      string  `json:"resyncEffective"`
+	ResyncConfigured     string  `json:"resyncConfigured"`
 	BusyPercent          float64 `json:"busyPercent"`
 }
 

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/konfig"
+	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -20,12 +20,12 @@ func (r *GenericReconciler[PTR]) ensureManagedLabel(ctx context.Context, obj PTR
 	}
 
 	// Already present?
-	if v, ok := labels[konfig.LabelManaged]; ok && v == konfig.LabelManagedValue {
+	if v, ok := labels[orklabels.Managed]; ok && v == orklabels.ManagedValue {
 		return nil
 	}
 
 	// Add/overwrite the managed label
-	labels[konfig.LabelManaged] = konfig.LabelManagedValue
+	labels[orklabels.Managed] = orklabels.ManagedValue
 
 	return r.kube.PatchLabels(ctx, obj, r.crd.GVR(), labels)
 }
@@ -40,14 +40,14 @@ func (r *GenericReconciler[PTR]) ensureManagedAnnotations(ctx context.Context, o
 	changed := false
 
 	// Ensure managed-by annotation
-	if v, ok := ann[konfig.AnnotationManagedBy]; !ok || v == "" {
-		ann[konfig.AnnotationManagedBy] = operator
+	if v, ok := ann[orklabels.AnnotationManagedBy]; !ok || v == "" {
+		ann[orklabels.AnnotationManagedBy] = operator
 		changed = true
 	}
 
 	// Ensure managed-since annotation
-	if v, ok := ann[konfig.AnnotationManagedSince]; !ok || v == "" {
-		ann[konfig.AnnotationManagedSince] = time.Now().UTC().Format(time.RFC3339)
+	if v, ok := ann[orklabels.AnnotationManagedSince]; !ok || v == "" {
+		ann[orklabels.AnnotationManagedSince] = time.Now().UTC().Format(time.RFC3339)
 		changed = true
 	}
 

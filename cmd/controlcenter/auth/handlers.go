@@ -31,7 +31,9 @@ func applyDefaults() {
 }
 
 func LoginPage(w http.ResponseWriter, r *http.Request) {
-	loginTpl.Execute(w, nil)
+	loginTpl.Execute(w, map[string]interface{}{
+		"GitHubEnabled": GitHubEnabled(),
+	})
 }
 
 func LoginPost(w http.ResponseWriter, r *http.Request) {

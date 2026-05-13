@@ -15,7 +15,7 @@
 
   <p>
     <a href="https://orkestra.readthedocs.io">Docs</a> ·
-    <a href="https://orkestra.readthedocs.io/en/latest/getting-started">Quick Start</a> ·
+    <a href="https://docs.orkestra.sh/getting-started">Quick Start</a> ·
     <a href="https://github.com/orkspace/orkestra/discussions">Discussions</a>
   </p>
 </div>
@@ -60,7 +60,7 @@ spec:
 
 ```bash
 # Run
-ork run -k katalog.yaml
+ork run -f katalog.yaml
 kubectl apply -f website.yaml
 ```
 
@@ -70,7 +70,7 @@ Orkestra creates the Deployment and Service, sets owner references, writes statu
 ```bash
 ork control start
 
-# → localhost:8090
+# → localhost:8081
 ```
 
 **Your CRD is enough. The rest is just a Katalog.**
@@ -87,6 +87,7 @@ Every CRD declared in a Katalog becomes a complete, isolated operator:
 | **Workqueue** | Per-CRD. Rate-limited. Deduplicated. Isolated from every other CRD. |
 | **Worker pool** | Configurable. A panic in one CRD does not affect any other. |
 | **Drift correction** | `reconcile: true` — desired state is enforced on every cycle. |
+| **Safe reconcile** | Failures in one operatroBox is contained, logged and does not affect the runtime or other CRDs. |
 | **Owner references** | Child resources deleted when the CR is deleted. |
 | **Finalizers** | CRs protected from dirty deletion automatically. |
 | **Events** | Every reconcile is a traceable Kubernetes event. |
@@ -94,8 +95,9 @@ Every CRD declared in a Katalog becomes a complete, isolated operator:
 | **Status** | `Ready` condition + declarative status fields after every reconcile. |
 | **Health API** | `/katalog/{crd}/health`, `/katalog/{crd}/cr`, `/metrics`. |
 | **Prometheus metrics** | Reconcile totals, queue depth, error rate — all per CRD. |
+| **Control Center** | Realtime visibility per CRD. |
 
-Fifteen CRDs. One process. ~47 MB.
+<!-- Fifteen CRDs. One process. [~47 MB](https://cc.orkestra.sh). -->
 
 ---
 ## Getting started
@@ -105,7 +107,7 @@ Fifteen CRDs. One process. ~47 MB.
 brew install orkspace/tap/ork orkspace/tap/orkcc
 
 # Install (Linux)
-curl -sSL https://raw.githubusercontent.com/orkspace/orkestra/main/install.sh | bash
+curl -sSL https://get.orkestra.sh | bash
 
 # Initialize an operator
 ork init my-operator
@@ -115,7 +117,7 @@ cd my-operator
 kubectl apply -f examples/beginner/01-hello-website/crd.yaml
 
 # Run the operator runtime
-ork run --katalog examples/beginner/01-hello-website/katalog.yaml
+ork run -f examples/beginner/01-hello-website/katalog.yaml
 
 # Apply a CustomResource
 kubectl apply -f examples/beginner/01-hello-website/cr.yaml
@@ -129,7 +131,7 @@ In another terminal, run:
 ```bash
 ork control start
 
-# → localhost:8090
+# → localhost:8081
 ```
 
 For production, deploy with Helm:
@@ -142,6 +144,7 @@ helm install orkestra orkestra/orkestra \
 ```
 
 The same Katalog you ran locally is what runs in production.
+> See [four steps to production](https://orkspace.github.io/orkestra).
 
 ---
 
@@ -186,7 +189,7 @@ spec:
       workers: 8   # production override — everything else from the registry
 ```
 
-Full documentation: [Orkestra Registry](https://orkestra.readthedocs.io/en/latest/orkestra-registry/)
+Full documentation: [Orkestra Registry](https://docs.orkestra.sh/orkestra-registry/)
 
 ---
 ## Operator Autoscaler
@@ -245,7 +248,7 @@ mutation:
       default: "8080"
 ```
 
-With `ENABLE_ADMISSION_WEBHOOK=true`, these intercept `kubectl apply` synchronously at the API server. Without it, they run on every reconcile. One declaration. Two enforcement points.
+With `ENABLE_ADMISSION_WEBHOOK=true`, or `security.webhooks.admission.enabled=true` these intercept `kubectl apply` synchronously at the API server. Without it, they run on every reconcile. One declaration. Two enforcement points.
 
 ---
 
@@ -316,7 +319,7 @@ conversion:
         schedule: "{{ cronFromMap .spec.schedule }}"
 ```
 
-**In production:** 11,279 conversions. 0 failures. 0.59 ms average latency.
+<!-- **In production:** [100,000+ conversions](https://cc.orkestra.sh). 0 failures. ~ 2ms average latency. -->
 
 **Option 2 — Internal normalization (no webhook)**
 
@@ -325,12 +328,7 @@ For simple or single-direction schema evolution, `normalize:` canonicalizes fiel
 ```yaml
 normalize:
   spec:
-    schedule: >
-      {{ if typeMap .spec.schedule }}
-        {{ cronFromMap .spec.schedule }}
-      {{ else }}
-        {{ .spec.schedule }}
-      {{ end }}
+    chedule: "{{ cronFromAny .spec.schedule }}"  # orkestra note 'cronFromAny'
 ```
 
 Runs before `onCreate`/`onReconcile`. The CR is patched with the normalized value before any resources are created.
@@ -534,6 +532,12 @@ sources:
   files:
     - ./katalogs/website.yaml
     - ./katalogs/pipeline.yaml
+  helm:
+    - repo: ghcr.io/orkspace/registry/platform
+      chart: platform-example
+      version: 0.1.0
+      valueFiles:
+        - values/overrides.yaml
 spec:
   crds:
     postgres:
@@ -544,8 +548,89 @@ One command starts the entire platform.
 
 ---
 
-## Providers
+## Security
 
+Deletion protection, namespace protection, admission webhooks, and conversion webhooks all share one certificate. One block. No separate TLS setup.
+
+```yaml
+security:
+  deletionProtection:
+    enabled: true             # protects your CRDs and Orkestra deployment from kubectl delete
+    cleanupOnShutdown: true   # Tells orkestra to cleanup deletionProtection webhooks and certs on shutdown
+  
+  namespaceProtection:
+    enabled: true             # Orkestra blocks creation of custom resources in restrictedNamespaces at apply time and creation of child resources at reconcile time. One declaration. Two enforcement points.
+
+  webhooks:
+    admission:
+      enabled: true        # intercepts kubectl apply at the API server
+    failurePolicy: Fail
+
+  conversion:
+    enabled: true          # serves /convert for multi-version CRDs
+```
+
+With `deletionProtection` enabled, Orkestra registers a validating webhook that rejects `DELETE` requests to delete protected CRDs as well as Orkestra deployment, service or ingress. No separate webhook server. The same process that runs your operators handles it.
+
+---
+> [!important]
+> Features in development
+
+### Automatic rollbacks
+
+Orkestra provides two rollback models: zero‑config recovery and custom rollback templates. Both approaches restore the last known good spec after repeated reconcile failures. Rollback is declarative and idempotent; no additional controllers or resource types are introduced.
+
+#### Zero‑config rollback
+
+A single field enables automatic recovery. When the operator encounters consecutive reconcile failures, Orkestra enters a rollback phase and reapplies the previous desired state. The rollback templates are derived from the existing reconcile declarations; no onRollback block is required.
+
+```yaml
+operatorBox:
+  default: true
+
+  rollBackOnError: true
+```
+
+When enabled, Orkestra:
+
+- captures the previous spec before applying a new one  
+- tracks consecutive failures  
+- rolls back automatically after the threshold is reached  _`(3 consecutive failures in 10 minutes)`_
+- blocks normal reconciliation until the spec is corrected  
+
+This is the simplest and safest rollback path.
+
+#### Custom rollback
+
+For operators that require explicit rollback behavior, a custom rollback block can be declared. This allows full control over which resources are restored and how the previous spec is applied.
+
+```yaml
+operatorBox:
+  rollback:
+    trigger:
+      consecutiveFailures: 3
+      withinDuration: 5m
+
+    onRollback:
+      deployments:
+        - name: "{{ .metadata.name }}"
+          image: myorg/stable-deployment:v1
+          replicas: "{{ .previous.spec.replicas }}"
+          reconcile: true
+```
+
+Custom rollback provides:
+
+- explicit control over rollback templates  
+- conditional triggers  
+- access to `.previous.spec.*` for restoring prior values  
+- full integration with the existing reconcile pipeline  
+
+Rollback is not transactional undo. It is re‑declaration of the last known good state. Existing Update functions handle idempotent re‑application.
+
+---
+
+### Providers
 Declare infrastructure dependencies at the Katalog level. Orkestra registers only the providers listed here — per-CRD blocks for anything else are silently skipped.
 
 ```yaml
@@ -579,33 +664,7 @@ operatorBox:
           database: "{{ .metadata.name }}"
 ```
 
----
-
-## Security
-
-Deletion protection, RBAC, admission webhooks, and conversion webhooks all share one certificate. One block. No separate TLS setup.
-
-```yaml
-security:
-  deletionProtection:
-    enabled: true             # protects your CRDs and Orkestra deployment from kubectl delete
-  
-  rbac:
-    enabled: true             # Orkestra generates and applies the minimum permissions required to run your operators
-    cleanupOnShutdown: true   # Tells orkestra to cleanup rbac on shutdown
-
-  webhooks:
-    admission:
-      enabled: true        # intercepts kubectl apply at the API server
-    failurePolicy: Fail
-
-  conversion:
-    enabled: true          # serves /convert for multi-version CRDs
-```
-
-With `deletionProtection` enabled, Orkestra registers a validating webhook that rejects `DELETE` requests to delete protected CRDs as well as Orkestra deployment, service or ingress. No separate webhook server. The same process that runs your operators handles it.
-
----
+<!-- ---
 
 ## In production
 
@@ -615,7 +674,7 @@ With `deletionProtection` enabled, Orkestra registers a validating webhook that 
 | Active operatorBox:es | 3 Katalogs, 113 workers |
 | Reconcile error rate | **0.0%** |
 | Conversion failures | **0** |
-| Memory (15 CRDs) | ~47 MB |
+| Memory (15 CRDs) | ~47 MB | -->
 
 ---
 
@@ -623,11 +682,11 @@ With `deletionProtection` enabled, Orkestra registers a validating webhook that 
 
 | | |
 |---|---|
-| [Getting Started](https://orkestra.readthedocs.io/en/latest/getting-started) | First operator in under an hour |
-| [Katalog Reference](https://orkestra.readthedocs.io/en/latest/reference/katalog-schema) | Complete field reference |
+| [Getting Started](https://docs.orkestra.sh/getting-started) | First operator in under an hour |
+| [Katalog Reference](https://docs.orkestra.sh/reference/katalog-schema) | Complete field reference |
 | [Examples](./examples/) | Beginner → advanced, all verified |
-| [Concepts](https://orkestra.readthedocs.io/en/latest/concepts) | Architecture and mental model |
-| [Papers](https://orkestra.readthedocs.io/en/latest/papers) | The case for declarative operators |
+| [Concepts](https://docs.orkestra.sh/concepts) | Architecture and mental model |
+| [Papers](https://docs.orkestra.sh/papers) | The case for declarative operators |
 
 ---
 

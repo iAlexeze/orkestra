@@ -2,6 +2,7 @@
 package note
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -97,25 +98,6 @@ func TestNoteGetBoolOr(t *testing.T) {
 	}
 }
 
-// deepEqual compares two values, with special handling for slices.
 func deepEqual(a, b interface{}) bool {
-	// quick path for same type equality
-	if a == b {
-		return true
-	}
-	// compare slices (as returned by []interface{})
-	as, okA := a.([]interface{})
-	bs, okB := b.([]interface{})
-	if okA && okB {
-		if len(as) != len(bs) {
-			return false
-		}
-		for i := range as {
-			if as[i] != bs[i] {
-				return false
-			}
-		}
-		return true
-	}
-	return false
+	return reflect.DeepEqual(a, b)
 }

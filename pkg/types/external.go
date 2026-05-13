@@ -44,37 +44,37 @@ package types
 type ExternalCallSpec struct {
 	// Name is the identifier used to access the result in template expressions.
 	//   name: health-check → {{ .external.health-check.status }}
-	Name string `yaml:"name"`
+	Name string `yaml:"name" json:"name"`
 
 	// URL is the endpoint to call. Template expressions are supported.
 	//   url: "{{ .spec.serviceUrl }}/health"
 	//   url: "https://api.example.com/resources/{{ .metadata.name }}"
-	URL string `yaml:"url"`
+	URL string `yaml:"url" json:"url"`
 
 	// Method is the HTTP method. Default: GET.
-	Method string `yaml:"method,omitempty"`
+	Method string `yaml:"method,omitempty" json:"method,omitempty"`
 
 	// Body is the request body for POST/PUT/PATCH requests.
 	// Template expressions supported.
 	//   body: '{"name": "{{ .metadata.name }}"}'
-	Body string `yaml:"body,omitempty"`
+	Body string `yaml:"body,omitempty" json:"body,omitempty"`
 
 	// Token is a bearer token for Authorization header.
 	// Use $ENV_VAR syntax to reference environment variables:
 	//   token: "$API_TOKEN"
-	Token string `yaml:"token,omitempty"`
+	Token string `yaml:"token,omitempty" json:"token,omitempty"`
 
 	// Headers are additional HTTP headers to include.
-	Headers map[string]string `yaml:"headers,omitempty"`
+	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
 
 	// Timeout is the maximum duration for this call.
 	// Default: 10s. Format: "5s", "1m", "500ms"
-	Timeout string `yaml:"timeout,omitempty"`
+	Timeout string `yaml:"timeout,omitempty" json:"timeout,omitempty"`
 
 	// ExpectedStatus is the HTTP status code that signals success.
 	// Default: any 2xx status.
 	// When set to 200, any non-200 response is treated as a failure.
-	ExpectedStatus int `yaml:"expectedStatus,omitempty"`
+	ExpectedStatus int `yaml:"expectedStatus,omitempty" json:"expectedStatus,omitempty"`
 
 	// ContinueOnError controls whether a failed call halts reconciliation.
 	// false (default): a call failure returns an error, halting the reconcile.
@@ -82,12 +82,17 @@ type ExternalCallSpec struct {
 	//
 	// Use true for optional calls: notifications, metrics, feature flags.
 	// Use false (default) for required calls: health checks, dependency readiness.
-	ContinueOnError bool `yaml:"continueOnError,omitempty"`
+	ContinueOnError bool `yaml:"continueOnError,omitempty" json:"continueOnError,omitempty"`
 
 	// When conditions gate this call — if conditions fail, the call is skipped.
 	// The result is not injected when skipped.
-	Conditions []Condition `yaml:"when,omitempty"`
-	AnyOf      []Condition `yaml:"anyOf,omitempty"`
+	Conditions []Condition `yaml:"when,omitempty" json:"when,omitempty"`
+	AnyOf      []Condition `yaml:"anyOf,omitempty" json:"anyOf,omitempty"`
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string `json:"sleep,omitempty" yaml:"sleep,omitempty"`
 }
 
 // ExternalCallResult is the result of one HTTP call, injected into the resolver
@@ -95,20 +100,20 @@ type ExternalCallSpec struct {
 type ExternalCallResult struct {
 	// Status is the HTTP status code as a string ("200", "404", "503").
 	// Empty string when the call failed before receiving a response.
-	Status string `json:"status"`
+	Status string `json:"status" yaml:"status"`
 
 	// Body is the first 4096 bytes of the response body.
 	// Truncated to avoid unbounded memory use.
-	Body string `json:"body"`
+	Body string `json:"body" yaml:"body"`
 
 	// Error is the error message when the call failed.
 	// Empty on success.
-	Error string `json:"error"`
+	Error string `json:"error" yaml:"error"`
 
 	// Called is "true" when the call was made, "false" when skipped (conditions failed).
-	Called string `json:"called"`
+	Called string `json:"called" yaml:"called"`
 
 	// Additional values for metrics
-	StatusCode      int     `json:"statusCode"`
-	DurationSeconds float64 `json:"durationSeconds"`
+	StatusCode      int     `json:"statusCode" yaml:"statusCode"`
+	DurationSeconds float64 `json:"durationSeconds" yaml:"durationSeconds"`
 }

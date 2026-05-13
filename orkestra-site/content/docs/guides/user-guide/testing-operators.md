@@ -158,7 +158,7 @@ echo "Testing: Website CRD → Deployment + Service"
 kubectl apply -f examples/website/website-crd.yaml
 
 # Start Orkestra
-/tmp/ork run --katalog examples/website/website-katalog.yaml &
+/tmp/ork run --file examples/website/website-katalog.yaml &
 ORK_PID=$!
 sleep 5
 

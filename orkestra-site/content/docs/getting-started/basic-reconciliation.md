@@ -166,17 +166,17 @@ Katalogs define reconciliation behavior.
 Run:
 
 ```
-ork run --katalog katalog.yaml
+ork run --file katalog.yaml
 ```
 
 Or, if using the Komposer:
 
 ```
-ork run --katalog komposer.yaml
+ork run --file komposer.yaml
 ```
 
 {{< callout type="note" >}}
-Both katalogs and komposers are passed using the `--katalog` flag.  
+Both katalogs and komposers are passed using the `--file` flag.  
 This is by design, as a Komposer is simply a declarative bundle of katalogs.
 {{< /callout >}}
 

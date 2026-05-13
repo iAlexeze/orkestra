@@ -29,8 +29,8 @@ import (
 	"fmt"
 	"time"
 
+	apiv1 "github.com/orkspace/orkestra-constructor-demo/api/v1alpha1"
 	"github.com/orkspace/orkestra/domain"
-	apiv1 "github.com/orkspace/orkestra/examples/advanced/10-constructor/v1aplha"
 	"github.com/orkspace/orkestra/pkg/event"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	orkjobs "github.com/orkspace/orkestra/pkg/orkestra-registry/jobs"

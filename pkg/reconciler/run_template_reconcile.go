@@ -154,6 +154,14 @@ func (r *GenericReconciler[PTR]) runResourceGroup(
 		expandForEachServiceAccounts(resolver, t.ServiceAccounts), update, guard); err != nil {
 		return err
 	}
+	if err := runRoles(ctx, kube, resolver, obj,
+		expandForEachRoles(resolver, t.Roles), update, guard); err != nil {
+		return err
+	}
+	if err := runRoleBindings(ctx, kube, resolver, obj,
+		expandForEachRoleBindings(resolver, t.RoleBindings), update, guard); err != nil {
+		return err
+	}
 	if err := runReplicaSets(ctx, kube, resolver, obj,
 		expandForEachReplicaSets(resolver, t.ReplicaSets), update, guard); err != nil {
 		return err
@@ -212,11 +220,14 @@ func (r *GenericReconciler[PTR]) runTemplateOnDelete(ctx context.Context, resolv
 
 	if t := r.operatorBox.OnDelete; t != nil {
 		if t.Ordered {
-			return r.runOrderedDelete(ctx, kube, resolver, obj, t, guard)
-		}
-		if err := runJobs(ctx, kube, resolver, obj,
-			expandForEachJobs(resolver, t.Jobs), guard); err != nil {
-			return err
+			if err := r.runOrderedDelete(ctx, kube, resolver, obj, t, guard); err != nil {
+				return err
+			}
+		} else {
+			if err := runJobs(ctx, kube, resolver, obj,
+				expandForEachJobs(resolver, t.Jobs), guard); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -227,8 +238,8 @@ func (r *GenericReconciler[PTR]) runTemplateOnDelete(ctx context.Context, resolv
 		}
 	}
 
-	// Namespaces are cluster-scoped resources — Kubernetes GC does not honor
-	// owner references from namespace-scoped owners, so we delete them explicitly.
+	// Namespaces are cluster-scoped and cannot have namespace-scoped owners, so GC
+	// never cleans them up. Always run explicit cleanup regardless of ordered/unordered path.
 	if err := deleteOwnedNamespaces(ctx, kube, resolver, obj, r.operatorBox); err != nil {
 		return fmt.Errorf("namespace cleanup: %w", err)
 	}
@@ -298,7 +309,9 @@ func (r *GenericReconciler[PTR]) readCross(
 					Msg("cross: no CRD matched label selector in registry")
 			}
 		}
-		// Path 1b: name-based informer lookup (existing, unchanged)
+
+		notFoundInBianry := false
+		// Path 1b: name-based informer lookup
 		if decl.Crd != "" && r.katalogRegistry != nil {
 			inf, found := r.katalogRegistry.GetInformerByName(decl.Crd)
 			if found {
@@ -311,13 +324,10 @@ func (r *GenericReconciler[PTR]) readCross(
 				result[as] = data
 				continue
 			}
-			log.Warn().
-				Str("crd", decl.Crd).
-				Str("as", as).
-				Bool("registry_nil", registryNil).
-				Msg("cross: no CRD matched name in registry")
+			notFoundInBianry = true
 		}
 
+		notFoundCrossBinary := false
 		// Path 2: HTTP endpoint fallback.
 		// For cross-binary or cross-cluster. Uses Orkestra's CR detail endpoint.
 		if decl.Source != nil && decl.Source.Endpoint != "" {
@@ -333,10 +343,19 @@ func (r *GenericReconciler[PTR]) readCross(
 					Msg("cross: read via HTTP endpoint")
 				continue
 			}
+			notFoundCrossBinary = true
 			log.Warn().
 				Str("crd", decl.Crd).
 				Str("endpoint", endpointURL).
 				Msg("cross: HTTP endpoint returned nil")
+		}
+
+		if notFoundInBianry && notFoundCrossBinary {
+			log.Warn().
+				Str("crd", decl.Crd).
+				Str("as", as).
+				Bool("registry_nil", registryNil).
+				Msg("cross: no CRD matched name in registry")
 		}
 
 		// Path 3: not found.

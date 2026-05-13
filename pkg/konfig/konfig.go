@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
 func Init(filenames ...string) (*Konfig, error) {
 	// load .env files for tesing...
 	_ = godotenv.Load(filenames...)
+	ns := resolveNamespace()
 
 	kfg := &Konfig{
 		ork: orkKonfig{
@@ -22,13 +24,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			// KubekonfigPath:   GetStrEnv("KUBEKONFIG", ""),
 			MasterURL: GetStrEnv("MASTER_URL", ""),
 			Name:      GetStrEnv("CLUSTER_NAME", "orkestra-cluster"),
-			Namespace: GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system"),
-
-			// Workload
-			DefaultResync:       GetDurEnvSeconds("DEFAULT_RESYNC", 15),
-			DefaultWorkers:      GetIntEnv("DEFAULT_WORKERS", 3),
-			ShutdownTimeout:     GetDurEnvSeconds("SHUTDOWN_TIMEOUT", 30),
-			ShutdownGracePeriod: GetDurEnvSeconds("SHUTDOWN_GRACE_PERIOD", 60),
+			Namespace: ns,
 		},
 		// ── Unified security configuration ───────────────────────────────────
 		// ENV vars populate SecurityConfig as defaults.
@@ -110,12 +106,12 @@ func Init(filenames ...string) (*Konfig, error) {
 			RegistryURL: GetStrEnv("ORK_REGISTRY", ""),
 		},
 		healthServer: healthServer{
-			Port:         GetStrEnv("ORK_PORT", "8080"),
+			Port:         GetStrEnv("ORKESTRA_PORT", "8080"),
 			ReadTimeout:  GetDurEnvSeconds("SRV_READ_TIMEOUT", 5),
 			WriteTimeout: GetDurEnvSeconds("SRV_WRITE_TIMEOUT", 20),
 		},
 		konductor: konductorElection{
-			Namespace:     GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system"),
+			Namespace:     ns,
 			LeaseDuration: GetDurEnvSeconds("LEASE_DURATION", 60),
 			RenewDeadline: GetDurEnvSeconds("RENEW_DEADLINE", 40),
 			RetryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),
@@ -124,6 +120,10 @@ func Init(filenames ...string) (*Konfig, error) {
 			DefaultMaxQueueDepth:    GetIntEnv("MAX_QUEUE_DEPTH", 100),
 			DefaultDegradeThreshold: GetIntEnv("DEGRADE_THRESHOLD", 5),
 			Paths:                   GetStrSliceEnv("KATALOG_PATH", []string{}),
+			DefaultResync:           GetDurEnvSeconds("DEFAULT_RESYNC", 15),
+			DefaultWorkers:          GetIntEnv("DEFAULT_WORKERS", 3),
+			ShutdownTimeout:         GetDurEnvSeconds("SHUTDOWN_TIMEOUT", 30),
+			ShutdownGracePeriod:     GetDurEnvSeconds("SHUTDOWN_GRACE_PERIOD", 60),
 		},
 	}
 
@@ -181,4 +181,18 @@ func GetIntEnv(key string, def int) int {
 		return valInt
 	}
 	return def
+}
+
+// resolveNamespace resolves the namespace for use by all internal orkestra resources
+func resolveNamespace() string {
+	// Resolve namespace
+	if os.Getenv("ORKESTRA_NAMESPACE") == "" {
+		// Set namespace to default if running outside a pod
+		// This is helpful for quick testing using an 'always available' namespace
+		if !utils.IsRunningInCluster() {
+			return "default"
+		}
+	}
+
+	return GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system")
 }

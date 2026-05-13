@@ -13,7 +13,8 @@
 //  3. resolver.WithItem(val, as)    — adds .item / .<as> for forEach loops
 //  4. resolver.WithExternal(map)    — adds .external.<name>.status / .body
 //  5. resolver.WithCross(map)       — adds .cross.<kind>.status.*
-//  6. resolver.WithPrevious(map)    — adds .previous.* (rollback path only)
+//  6. resolver.WithMetrics(map)     — adds .metrics.queueDepth / .workers / .autoscaleActive …
+//  7. resolver.WithPrevious(map)    — adds .previous.* (rollback path only)
 //
 // Each extension is a shallow copy of the previous resolver's data map
 // with one new top-level key added. The template engine sees the full
@@ -34,6 +35,8 @@ package template
 //	.children.*  — child resources, after WithChildren is called
 //	.external.*  — HTTP call results, after WithExternal is called
 //	.cross.*     — cross-CRD observations, after WithCross is called
+//	.metrics.*   — live operatorbox runtime metrics, after WithMetrics is called
+//	.health.*   — live operatorbox runtime health metrics, after WithHealth is called
 //	.item        — current forEach item, after WithItem is called
 //	.previous.*  — last successfully reconciled spec, after WithPrevious is called (rollback path only)
 //
@@ -127,19 +130,19 @@ func (r *Resolver) WithItemAndValue(key interface{}, value interface{}, as strin
 // Each call result is keyed by the call's name from the Katalog:
 //
 //	external:
-//	  - name: health-check
+//	  - name: healthCheck
 //	    url: "{{ .spec.serviceUrl }}/health"
 //
 // Results accessible in subsequent template expressions and when: conditions:
 //
-//	{{ .external.health-check.status }}    → HTTP status code as string
-//	{{ .external.health-check.body }}      → response body (first 4KB)
-//	{{ .external.health-check.error }}     → error message if call failed
+//	{{ .external.healthCheck.status }}    → HTTP status code as string
+//	{{ .external.healthCheck.body }}      → response body (first 4KB)
+//	{{ .external.healthCheck.error }}     → error message if call failed
 //
 // Resource declarations that follow in runTemplateReconcile can gate on these:
 //
 //	when:
-//	  - field: external.health-check.status
+//	  - field: external.healthCheck.status
 //	    equals: "200"
 func (r *Resolver) WithExternal(results map[string]interface{}) *Resolver {
 	if len(results) == 0 {
@@ -267,6 +270,27 @@ func (r *Resolver) WithDocker(data map[string]interface{}) *Resolver {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// WithSpecOverride — derived rollback context
+// ─────────────────────────────────────────────────────────────────────────────
+
+// WithSpecOverride returns a new Resolver with the spec key replaced by the
+// provided map. Used by the rollBackOnError: true path to run derived rollback
+// templates against the previous spec without requiring .previous.spec.* syntax.
+//
+// The caller's templates use {{ .spec.image }} as written — during a derived
+// rollback run, that expression resolves to the previous spec's image value.
+// All other keys (.metadata, .status, .external, .cross) remain current.
+func (r *Resolver) WithSpecOverride(spec map[string]interface{}) *Resolver {
+	newData := r.shallowCopy()
+	newData["spec"] = spec
+	return &Resolver{
+		data:           newData,
+		ownerName:      r.ownerName,
+		ownerNamespace: r.ownerNamespace,
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // WithPrevious — rollback context injection
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -290,6 +314,71 @@ func (r *Resolver) WithPrevious(previous map[string]interface{}) *Resolver {
 	}
 	newData := r.shallowCopy()
 	newData["previous"] = previous
+	return &Resolver{
+		data:           newData,
+		ownerName:      r.ownerName,
+		ownerNamespace: r.ownerNamespace,
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WithMetrics — live operatorbox runtime metrics injection
+// ─────────────────────────────────────────────────────────────────────────────
+
+// WithMetrics returns a new Resolver with live operatorbox runtime metrics
+// injected under the "metrics" key. Makes the following available in templates:
+//
+//	{{ .metrics.queueDepth }}             — current workqueue depth
+//	{{ .metrics.workers }}                — current effective worker count
+//	{{ .metrics.autoscaleActive }}        — "true"/"false" — override active
+//	{{ .metrics.workersBusyPercent }}     — worker utilisation %
+//	{{ .metrics.workersIdlePercent }}     — idle worker %
+//	{{ .metrics.errorRatePercent }}       — reconcile error rate %
+//	{{ .metrics.reconcileDurationP95Ms }} — P95 reconcile latency (ms)
+//
+// Useful in status.fields to surface live runtime state into CR status.
+func (r *Resolver) WithMetrics(metrics map[string]interface{}) *Resolver {
+	if len(metrics) == 0 {
+		return r
+	}
+	newData := r.shallowCopy()
+	newData["metrics"] = metrics
+	return &Resolver{
+		data:           newData,
+		ownerName:      r.ownerName,
+		ownerNamespace: r.ownerNamespace,
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WithHealth — live operatorbox runtime health injection
+// ─────────────────────────────────────────────────────────────────────────────
+
+// WithHealth returns a new Resolver with live operatorbox runtime health
+// injected under the "health" key. Makes the following available in templates:
+//
+//	{{ .health.healthy }}                 — boolean: overall health
+//	{{ .health.state }}                   — "healthy" / "degraded" / "error"
+//	{{ .health.started }}                 — runtime started flag
+//	{{ .health.pending }}                 — pending startup
+//	{{ .health.startedAt }}               — RFC3339 timestamp
+//	{{ .health.uptime }}                  — human‑readable uptime
+//	{{ .health.queueDepth }}              — current queue depth
+//	{{ .health.errorRate }}               — reconcile error rate
+//	{{ .health.consecutiveFails }}        — consecutive reconcile failures
+//	{{ .health.totalReconciles }}         — total reconciles since start
+//	{{ .health.resourceCount }}           — number of managed CRs
+//	{{ .health.lastError }}               — last reconcile error (string)
+//	{{ .health.lastReconcile }}           — timestamp of last reconcile
+//	{{ .health.hasUnhealthyDependencies }}— dependency health flag
+//
+// Useful in status.fields to surface live runtime health into CR status.
+func (r *Resolver) WithHealth(health map[string]interface{}) *Resolver {
+	if len(health) == 0 {
+		return r
+	}
+	newData := r.shallowCopy()
+	newData["health"] = health
 	return &Resolver{
 		data:           newData,
 		ownerName:      r.ownerName,

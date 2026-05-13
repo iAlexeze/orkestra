@@ -1,0 +1,10 @@
+apiVersion: rollback.orkestra.io/v1alpha1
+kind: ApiServer
+metadata:
+  name: my-api
+  namespace: default
+spec:
+  image: nginx:this-tag-does-not-exist   # bad image — causes repeated pull failures
+  replicas: 2
+  port: 8080
+  configData: "v2-broken-config"         # this config change also gets rolled back

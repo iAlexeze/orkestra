@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/orkspace/orkestra/domain"
-	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -27,6 +27,11 @@ type ResolvedServiceAccountSpec struct {
 
 	// Labels — applied to ServiceAccount metadata.
 	Labels map[string]string
+
+	// Sleep injects an artificial delay into the reconcile of this resource.
+	// Useful for autoscale testing, latency simulation, and chaos engineering.
+	// Accepts extended duration units (s, m, h, d, w, mo, y).
+	Sleep string
 }
 
 // Create creates a ServiceAccount if it does not already exist.
@@ -42,6 +47,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	}
 
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	_, err := kube.Clientset().CoreV1().ServiceAccounts(namespace).Get(ctx, spec.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -76,6 +84,9 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // only use this when explicit cleanup control is needed.
 func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedServiceAccountSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
+	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
+		return err
+	}
 
 	err := kube.Clientset().CoreV1().ServiceAccounts(namespace).Delete(ctx, spec.Name, metav1.DeleteOptions{})
 	if err != nil {
@@ -111,7 +122,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 		return err
 	}
 	// Only delete if we own it
-	if existing.Labels[konfig.LabelOrkestraOwner] != owner.GetName() {
+	if existing.Labels[labels.OrkestraOwner] != owner.GetName() {
 		return nil
 	}
 	return kube.Clientset().CoreV1().ServiceAccounts(namespace).
@@ -125,6 +136,7 @@ func Resolve(src orktypes.ServiceAccountTemplateSource, ownerName string) Resolv
 		Name:      src.Name,
 		Namespace: src.Namespace,
 		Labels:    make(map[string]string),
+		Sleep:     src.Sleep,
 	}
 
 	if spec.Name == "" {
@@ -135,8 +147,8 @@ func Resolve(src orktypes.ServiceAccountTemplateSource, ownerName string) Resolv
 		spec.Labels[l.Key] = l.Value
 	}
 
-	spec.Labels[konfig.LabelManaged] = konfig.LabelManagedValue
-	spec.Labels[konfig.LabelOrkestraOwner] = ownerName
+	spec.Labels[labels.Managed] = labels.ManagedValue
+	spec.Labels[labels.OrkestraOwner] = ownerName
 
 	return spec
 }

@@ -117,6 +117,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/queue"
 	"github.com/orkspace/orkestra/pkg/reconciler"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/orkspace/orkestra/pkg/webhook"
 	"k8s.io/client-go/tools/cache"
 )
@@ -183,7 +184,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 
 	var tlsCert, tlsKey string
 	var certMgr certmanager.Manager
-	if kat.NeedsCertificates() {
+	if utils.IsRunningInCluster() {
 		tlsCert, tlsKey, certMgr, err = ensureSecurity(ctx, kfg, kat, kube)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("security setup failed")
@@ -287,13 +288,23 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// enabling cross-CRD observation with zero API server calls.
 	ktrlRegistry := kordinator.NewKordinatorRegistry()
 
+	// ── 4e. CRD health map ────────────────────────────────────────────────────
+	// One CRDHealth per CRD — shared between the DependencyKordinator
+	// (which updates it on each reconcile) and the HTTP health routes
+	// (which read it on each request). All three reference the same pointers.
+	crdHealthMap := make(map[string]*kordinator.CRDHealth)
+	for _, crd := range kat.Enabled() {
+		gvk := crd.GVK().String()
+		crdHealthMap[gvk] = kordinator.NewCRDHealth(crd.Name)
+	}
+
 	logger.Debug().Msg("wiring CRDs into kordinator registry...")
 
 	finalizers := kfg.Finalizers()
 	for _, crd := range kat.Enabled() {
 		crd := crd
 		gvk := crd.GVK().String()
-		crd.Workers = crd.SetWorkers(kfg.Cluster().DefaultWorkers)
+		crd.Workers = crd.SetWorkers(kfg.Katalog().DefaultWorkers)
 
 		object, _ := crd.GetRuntimeObjects()
 
@@ -407,6 +418,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 						return objCopy.DeepCopyObject().(domain.Object)
 					},
 					ktrlRegistry,     // cross-CRD informer lookup via GetInformerByName
+					crdHealthMap,     // cross-CRD health map via HealthProvider
 					providerRegistry, // aws:, mongodb:, etc. block dispatch
 					pStats,           // per-CRD provider error rate tracking
 				)
@@ -431,17 +443,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		logger.Debug().Str("gvk", gvk).Msg("CRD registered")
 	}
 
-	// ── 5a. CRD health map ────────────────────────────────────────────────────
-	// One CRDHealth per CRD — shared between the DependencyKordinator
-	// (which updates it on each reconcile) and the HTTP health routes
-	// (which read it on each request). All three reference the same pointers.
-	crdHealthMap := make(map[string]*kordinator.CRDHealth)
-	for _, crd := range kat.Enabled() {
-		gvk := crd.GVK().String()
-		crdHealthMap[gvk] = kordinator.NewCRDHealth(crd.Name)
-	}
-
-	// ── 5b. HTTP routes ───────────────────────────────────────────────────────
+	// ── 5. HTTP routes ───────────────────────────────────────────────────────
 	// All routes registered before hs.Start() — the mux is shared.
 	//
 	// Per-CRD routes:
@@ -548,9 +550,9 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		defaultWq,
 		crdHealthMap,
 		orkHealth,
-		kfg.Cluster().DefaultWorkers,
+		kfg.Katalog().DefaultWorkers,
 		katalog.NewDependencyGraph(kat),
-		kfg.Cluster().ShutdownTimeout,
+		kfg.Katalog().ShutdownTimeout,
 	)
 
 	// ── 7. Komponent list ─────────────────────────────────────────────────────
@@ -576,7 +578,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// On OS signal (SIGTERM/SIGINT) or fatal error, calls Stop() in reverse.
 	// Graceful shutdown: drains queues before stopping workers.
 	o := ork.NewOrkestra(
-		kfg.Cluster().ShutdownGracePeriod,
+		kfg.Katalog().ShutdownGracePeriod,
 		kfg.Ork().LogLevel,
 	)
 	o.Register(komponents)

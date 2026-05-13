@@ -1,8 +1,8 @@
 # Integration Tests
 
-Integration tests verify multi-package behaviour across the Orkestra system. They use
-real file I/O, real in-process dependency graphs, and real validation pipelines — but
-do **not** require a live Kubernetes cluster.
+Integration tests verify behaviour that requires either real file I/O and
+multi-package coordination, or a real Kubernetes API server. Unit tests
+(`make test-unit`) never cover these paths.
 
 ## Running
 
@@ -10,104 +10,126 @@ do **not** require a live Kubernetes cluster.
 make test-integration
 ```
 
-This is equivalent to:
+`setup-envtest` must be installed once:
 
 ```bash
-go test ./tests/integration/... -v -tags=integration -count=1
+go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 ```
 
-The `integration` build tag keeps these tests out of `make test-unit`. They run
-independently so CI can separate fast unit feedback from slower multi-package checks.
+The Makefile calls `setup-envtest` automatically to locate (or download) the
+right API-server binaries before running the tests.
+
+## Two kinds of integration test
+
+### 1. File-based — no cluster required
+
+These tests use real temp files, real dependency graphs, or real validation
+pipelines. `envtest` is not involved.
+
+| Package | What it covers |
+|---------|----------------|
+| `activation/` | CRD health lifecycle — appears, disappears, reappears |
+| `dependency/` | Topological sort and cycle detection across the katalog graph |
+| `komposer/` | Merger loading Katalog/Komposer files, source composition, field accumulation |
+| `reconciler/` | Validation rule pipelines for deployment, service, and secret CRDs |
+
+### 2. Envtest-based — embedded API server
+
+These tests spin up a real in-process Kubernetes API server (`sigs.k8s.io/controller-runtime/pkg/envtest`)
+and exercise behaviour that only makes sense against a real watch stream or
+a real API patch endpoint.
+
+| Package | What it covers |
+|---------|----------------|
+| `kubeclient/` | `PatchFinalizers`, `PatchLabels`, `PatchStatus` — merge-patch semantics against a real API server |
+| `informer/` | Namespace filter wiring — verifies that blocked-namespace events are dropped from the queue before being enqueued, using a real Watch stream |
+
+`KUBEBUILDER_ASSETS` must point to a directory containing `kube-apiserver`
+and `etcd` binaries. `make test-integration` sets this automatically via
+`setup-envtest`.
 
 ## Structure
 
 ```
 tests/integration/
-├── activation/          CRD health lifecycle — appears, disappears, reappears
-├── dependency/          Topological sort and cycle detection across the katalog graph
-├── komposer/            Merger loading Katalog/Komposer files, source composition, dedup
-└── reconciler/          Validation rule pipelines for deployment, service, and secret CRDs
+├── activation/       file-based
+├── dependency/       file-based
+├── komposer/         file-based
+├── reconciler/       file-based
+├── kubeclient/       envtest — kubeclient patch operations
+├── informer/         envtest — namespace filter + queue wiring
+├── testenv/          shared envtest lifecycle (Start / Stop)
+└── README.md
 ```
 
-Each subdirectory is its own `package *_test` with the `//go:build integration` tag at
-the top of every file.
+`tests/fixtures/crds/` — CRD manifests installed into envtest for tests that
+create custom resources (`Probe` CRD used by kubeclient and informer tests).
 
-## What counts as an integration test here
+## CRD fixtures
+
+```
+tests/fixtures/crds/
+├── probe-crd.yaml    integration.orkestra.io/v1 Probe — used by kubeclient + informer tests
+├── orkapp-crd.yaml
+└── website-crd.yaml
+```
+
+## What counts as an integration test
 
 | Criterion | Integration | Unit |
 |-----------|-------------|------|
 | Spans multiple packages | Yes | No — stays in one package |
-| Writes real temp files | Yes (komposer/) | No |
-| Requires live Kubernetes | No | No |
+| Writes real temp files | Yes (file-based) | No |
+| Requires an API server | Yes (envtest-based) | No |
+| Requires a live remote cluster | No | No |
 | Requires network | No | No |
 
-If a test needs a live cluster (watching informers, applying CRs, checking health
-endpoints) it belongs in `tests/e2e/`, not here.
+Tests that need a live remote cluster (cloud provisioning, real ingress, DNS)
+belong in `tests/e2e/`.
 
 ## Writing a new integration test
 
-1. Pick the right subdirectory — or create one if the domain is new.
-2. Add `//go:build integration` as the **first line** (before the package declaration).
-3. Use `package <dir>_test` (black-box — import via the public API).
-4. Avoid global state that leaks between tests. Use `t.Cleanup` to remove temp files.
-5. Call `t.Helper()` on shared helper functions so failure lines point to the caller.
+### File-based
 
-### Example
+1. Pick the right subdirectory — or create one for a new domain.
+2. Add `//go:build integration` as the **first line** (before `package`).
+3. Use `package <dir>_test` — black-box; import via the public API.
+4. Avoid global state that leaks between tests. Use `t.Cleanup` for temp files.
+5. Call `t.Helper()` on shared helpers so failure lines point to the caller.
 
-```go
-//go:build integration
+### Envtest-based
 
-package komposer_test
-
-import (
-    "os"
-    "testing"
-    "github.com/orkspace/orkestra/pkg/merger"
-)
-
-func TestMerger_LoadsKatalogFromFile(t *testing.T) {
-    f, _ := os.CreateTemp("", "*.yaml")
-    f.WriteString(`apiVersion: orkestra.orkspace.io/v1
-kind: Katalog
-metadata:
-  name: my-katalog
-spec:
-  crds:
-    - name: website
-      enabled: true
-`)
-    f.Close()
-    t.Cleanup(func() { os.Remove(f.Name()) })
-
-    m := merger.New(f.Name())
-    if err := m.Merge(); err != nil {
-        t.Fatalf("Merge() error: %v", err)
-    }
-    if m.Count() != 1 {
-        t.Errorf("expected 1 CRD, got %d", m.Count())
-    }
-}
-```
+1. Create `tests/integration/<name>/suite_test.go` with a `TestMain` that calls
+   `testenv.Start(crdPaths)` and `testenv.Stop()`.
+2. Point `crdPaths` to `../../fixtures/crds` (relative to the test package dir).
+3. Access the API server via `testEnv.Dynamic` (dynamic client) or
+   `testEnv.Config` (REST config for custom clients).
+4. Use `kubeclient.NewForTesting(testCfg, testEnv.Dynamic, scheme)` to build a
+   `Kubeclient` without going through `Start()`.
+5. Use `informer.SharedInformerFactory(nil, testCfg, ...)` with
+   `ForListerWatcher` for informer tests. Pass an example object with its GVK
+   set (`obj.SetGroupVersionKind(gvk)`) — the scheme reads Kind from
+   unstructured objects directly.
 
 ## Test helpers and test exports
 
-Some integration tests need access to unexported internals. The pattern used in
-this project is a `test_exports.go` file inside the target package:
+Some tests need access to unexported internals. Add a `test_exports.go` file
+inside the target package (no build tag — compiled into all builds, but tiny):
 
 ```go
-// pkg/katalog/test_exports.go
-package katalog
+// pkg/kubeclient/test_exports.go
+package kubeclient
 
-func NewKatalogForTest(crds []orktypes.CRDEntry) *Katalog { ... }
-func DetectCyclesForTest(k *Katalog) error { ... }
+func NewForTesting(cfg *rest.Config, dyn dynamic.Interface, s *runtime.Scheme) *Kubeclient {
+    return &Kubeclient{restConfig: cfg, dynamic: dyn, scheme: s}
+}
 ```
 
-This file is compiled into **all** builds (not just tests) but is tiny and adds no
-runtime overhead. It follows the same pattern as `pkg/merger/test_exports.go` and
+Existing examples: `pkg/kubeclient/test_exports.go`, `pkg/merger/test_exports.go`,
 `pkg/health/test_exports.go`.
 
 ## CI
 
-Integration tests run in the `test-integration` job after unit tests pass. They do not
-require cluster credentials. The `//go:build integration` tag ensures they are never
-accidentally included in the unit test run.
+Integration tests run in a separate job after unit tests pass. `setup-envtest`
+is installed as part of the CI setup step. The `//go:build integration` tag
+ensures these tests are never accidentally included in `make test-unit`.

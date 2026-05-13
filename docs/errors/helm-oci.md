@@ -126,7 +126,7 @@ helm:
 Then run:
 
 ```
-ork template --katalog komposer.yaml
+ork template --file komposer.yaml
 ```
 
 You should see:
