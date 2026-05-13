@@ -154,7 +154,7 @@ func (a *Autoscaler) buildConditionData() map[string]interface{} {
 	all := append(a.spec.Conditions.AnyOf, a.spec.Conditions.When...)
 	for _, cond := range all {
 		// Cross-metric resolution
-		if IsCrossMetricField(cond.Field) {
+		if orktypes.IsCrossMetricField(cond.Field) {
 			val := ResolveCrossMetric(GlobalCrossMetricsRegistry, cond.Field, cond.Source)
 			if val != "" {
 				injectCrossMetricValue(data, cond.Field, val)

@@ -37,15 +37,32 @@ spec:
           - crd: loader
             selector:
               name: my-loader
+              namespace: default
             source:
-              endpoint: "http://localhost:8080/katalog/loader/cr/default/my-loader"
-            as: loaderInfo
+              host: "http://localhost:8080"
+              type: cr
 
-          # Monitor the operator itself
+              # Or replace host and type with endpoint
+              # endpoint: "http://localhost:8080/katalog/loader/cr/default/my-loader"
+            as: loaderCRInfo
+
+          # Monitor the operator health and itself
           - crd: loader
             source:
-              endpoint: "http://localhost:8080/katalog/loader/health"
+              host: "http://localhost:8080"
+              type: health
+              cacheFor: 30s
+
+              # Or replace host and type with endpoint
+              # endpoint: "http://localhost:8080/katalog/loader/health"
             as: loaderHealth
+
+          - crd: loader
+            source:
+              host: "http://localhost:8080"
+              cacheFor: 30s
+            as: loaderCRDInfo
+
         autoscale:
           interval: 20s
           cooldown: 3m
@@ -54,8 +71,8 @@ spec:
               - field: cross.loader.metrics.queueDepth
                 greaterThan: "60"
                 source:
-                  # endpoint: "http://orkestra-runtime.loader-system:8080/katalog/loader"  # > if running in a pod
-                  endpoint: "http://localhost:8080/katalog/loader"
+                  # host: "http://orkestra-runtime.loader-system:8080"  # > if running in a pod
+                  host: "http://localhost:8080"
                   cacheFor: 10s
           do:
             workers: 8
@@ -75,9 +92,11 @@ spec:
             - path: state
               value: "{{ .health.state }}"
             - path: loaderQueueDepth
-              value: "{{ .cross.loaderInfo.metrics.queueDepth }}"
+              value: "{{ .cross.loaderCRDInfo.metrics.queueDepth }}"
+            - path: queueDepth
+              value: "{{ .metrics.queueDepth }}"
             - path: loaderState
-              value: "{{ .cross.loaderInfo.status.phase }}"
+              value: "{{ .cross.loaderCRInfo.status.phase }}"
             - path: loaderHealthy
               value: "{{ .cross.loaderHealth.healthy }}"
             - path: loaderLastError
@@ -85,7 +104,7 @@ spec:
             - path: loaderPhase
               value: "{{ .cross.loaderHealth.state }}"
             - path: loaderDeploymentReady
-              value: "{{ .cross.loaderInfo.children.deployment.ready }}"
+              value: "{{ .cross.loaderCRInfo.children.deployment.ready }}"
 
         onCreate:
           deployments:

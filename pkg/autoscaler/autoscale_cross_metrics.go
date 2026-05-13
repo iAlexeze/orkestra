@@ -85,7 +85,7 @@ func (r *CrossMetricsRegistry) Get(crd string) *AutoMetrics {
 //     field names as AutoMetrics.AsMap().
 //
 // Returns "" when neither path finds a value.
-func ResolveCrossMetric(registry *CrossMetricsRegistry, field string, source *orktypes.CrossSource) string {
+func OldResolveCrossMetric(registry *CrossMetricsRegistry, field string, source *orktypes.CrossSource) string {
 	// Expected: cross.<crd>.metrics.<metric>
 	// e.g.     cross.managed-database.metrics.queueDepth
 	if registry == nil && source == nil {
@@ -112,6 +112,48 @@ func ResolveCrossMetric(registry *CrossMetricsRegistry, field string, source *or
 	// Path 2: HTTP endpoint fallback (cross-binary)
 	if source != nil && source.Endpoint != "" {
 		return fetchCrossMetricHTTP(source.Endpoint, source.Token, metricName)
+	}
+
+	return ""
+}
+
+func ResolveCrossMetric(
+	registry *CrossMetricsRegistry,
+	field string,
+	source *orktypes.CrossSource,
+) string {
+	// Parse the cross.<crd>.metrics.<field> structure
+	cf := orktypes.ParseCrossField(field)
+	metricsType := orktypes.MetricsType().String()
+	if cf == nil || cf.Category != metricsType {
+		return ""
+	}
+
+	metricField := metricsType + "." + cf.Field
+
+	// Path 1: in-process registry (zero-hop, same-binary)
+	if registry != nil {
+		if m := registry.Get(cf.CRD); m != nil {
+			return m.Get(metricField)
+		}
+	}
+
+	// Path 2: ONCOP remote fetch (cross-binary/cluster)
+	if source != nil {
+		// Raw endpoint takes precedence
+		if source.Endpoint != "" {
+			return fetchCrossMetricHTTP(source.Endpoint, source.Token, cf.Field)
+		}
+
+		// ONCOP host-based URL inference
+		if source.Host != "" {
+			url := orktypes.BuildONCOPURL(orktypes.CrossCRDDeclaration{
+				Source:   source,
+				Crd:      cf.CRD,
+				Selector: orktypes.CrossSelector{Namespace: cf.Namespace},
+			})
+			return fetchCrossMetricHTTP(url, source.Token, cf.Field)
+		}
 	}
 
 	return ""
@@ -172,10 +214,4 @@ func fetchCrossMetricHTTP(endpoint, token, metricName string) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
-}
-
-// IsCrossMetricField returns true when the field path refers to another
-// operatorbox's runtime metrics via the cross.*.metrics.* namespace.
-func IsCrossMetricField(field string) bool {
-	return strings.HasPrefix(field, "cross.") && strings.Contains(field, ".metrics.")
 }
