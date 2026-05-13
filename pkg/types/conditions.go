@@ -106,7 +106,13 @@ type Condition struct {
 	//     - field: cross.managed-database.metrics.queueDepth
 	//       greaterThan: "500"
 	//       source:
-	//         endpoint: "http://database-operator:8080/katalog/managed-database"
+	//         host: "http://orkestra-database-operator:8080"
+	// 		   crd: managed-database
+	//   when:
+	//     - field: cross.managed-database.metrics.queueDepth
+	//       greaterThan: "500"
+	//       source:
+	//         endpoint: "http://non-orkestra-database-operator:8080/katalog/managed-database"
 	Source *CrossSource `yaml:"source,omitempty" json:"source,omitempty"`
 }
 

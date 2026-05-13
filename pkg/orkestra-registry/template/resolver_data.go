@@ -130,19 +130,19 @@ func (r *Resolver) WithItemAndValue(key interface{}, value interface{}, as strin
 // Each call result is keyed by the call's name from the Katalog:
 //
 //	external:
-//	  - name: health-check
+//	  - name: healthCheck
 //	    url: "{{ .spec.serviceUrl }}/health"
 //
 // Results accessible in subsequent template expressions and when: conditions:
 //
-//	{{ .external.health-check.status }}    → HTTP status code as string
-//	{{ .external.health-check.body }}      → response body (first 4KB)
-//	{{ .external.health-check.error }}     → error message if call failed
+//	{{ .external.healthCheck.status }}    → HTTP status code as string
+//	{{ .external.healthCheck.body }}      → response body (first 4KB)
+//	{{ .external.healthCheck.error }}     → error message if call failed
 //
 // Resource declarations that follow in runTemplateReconcile can gate on these:
 //
 //	when:
-//	  - field: external.health-check.status
+//	  - field: external.healthCheck.status
 //	    equals: "200"
 func (r *Resolver) WithExternal(results map[string]interface{}) *Resolver {
 	if len(results) == 0 {
@@ -357,33 +357,33 @@ func (r *Resolver) WithMetrics(metrics map[string]interface{}) *Resolver {
 // WithHealth returns a new Resolver with live operatorbox runtime health
 // injected under the "health" key. Makes the following available in templates:
 //
-//   {{ .health.healthy }}                 — boolean: overall health
-//   {{ .health.state }}                   — "healthy" / "degraded" / "error"
-//   {{ .health.started }}                 — runtime started flag
-//   {{ .health.pending }}                 — pending startup
-//   {{ .health.startedAt }}               — RFC3339 timestamp
-//   {{ .health.uptime }}                  — human‑readable uptime
-//   {{ .health.queueDepth }}              — current queue depth
-//   {{ .health.errorRate }}               — reconcile error rate
-//   {{ .health.consecutiveFails }}        — consecutive reconcile failures
-//   {{ .health.totalReconciles }}         — total reconciles since start
-//   {{ .health.resourceCount }}           — number of managed CRs
-//   {{ .health.lastError }}               — last reconcile error (string)
-//   {{ .health.lastReconcile }}           — timestamp of last reconcile
-//   {{ .health.hasUnhealthyDependencies }}— dependency health flag
+//	{{ .health.healthy }}                 — boolean: overall health
+//	{{ .health.state }}                   — "healthy" / "degraded" / "error"
+//	{{ .health.started }}                 — runtime started flag
+//	{{ .health.pending }}                 — pending startup
+//	{{ .health.startedAt }}               — RFC3339 timestamp
+//	{{ .health.uptime }}                  — human‑readable uptime
+//	{{ .health.queueDepth }}              — current queue depth
+//	{{ .health.errorRate }}               — reconcile error rate
+//	{{ .health.consecutiveFails }}        — consecutive reconcile failures
+//	{{ .health.totalReconciles }}         — total reconciles since start
+//	{{ .health.resourceCount }}           — number of managed CRs
+//	{{ .health.lastError }}               — last reconcile error (string)
+//	{{ .health.lastReconcile }}           — timestamp of last reconcile
+//	{{ .health.hasUnhealthyDependencies }}— dependency health flag
 //
 // Useful in status.fields to surface live runtime health into CR status.
 func (r *Resolver) WithHealth(health map[string]interface{}) *Resolver {
-    if len(health) == 0 {
-        return r
-    }
-    newData := r.shallowCopy()
-    newData["health"] = health
-    return &Resolver{
-        data:           newData,
-        ownerName:      r.ownerName,
-        ownerNamespace: r.ownerNamespace,
-    }
+	if len(health) == 0 {
+		return r
+	}
+	newData := r.shallowCopy()
+	newData["health"] = health
+	return &Resolver{
+		data:           newData,
+		ownerName:      r.ownerName,
+		ownerNamespace: r.ownerNamespace,
+	}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -288,6 +288,16 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// enabling cross-CRD observation with zero API server calls.
 	ktrlRegistry := kordinator.NewKordinatorRegistry()
 
+	// ── 4e. CRD health map ────────────────────────────────────────────────────
+	// One CRDHealth per CRD — shared between the DependencyKordinator
+	// (which updates it on each reconcile) and the HTTP health routes
+	// (which read it on each request). All three reference the same pointers.
+	crdHealthMap := make(map[string]*kordinator.CRDHealth)
+	for _, crd := range kat.Enabled() {
+		gvk := crd.GVK().String()
+		crdHealthMap[gvk] = kordinator.NewCRDHealth(crd.Name)
+	}
+
 	logger.Debug().Msg("wiring CRDs into kordinator registry...")
 
 	finalizers := kfg.Finalizers()
@@ -408,6 +418,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 						return objCopy.DeepCopyObject().(domain.Object)
 					},
 					ktrlRegistry,     // cross-CRD informer lookup via GetInformerByName
+					crdHealthMap,     // cross-CRD health map via HealthProvider
 					providerRegistry, // aws:, mongodb:, etc. block dispatch
 					pStats,           // per-CRD provider error rate tracking
 				)
@@ -432,17 +443,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		logger.Debug().Str("gvk", gvk).Msg("CRD registered")
 	}
 
-	// ── 5a. CRD health map ────────────────────────────────────────────────────
-	// One CRDHealth per CRD — shared between the DependencyKordinator
-	// (which updates it on each reconcile) and the HTTP health routes
-	// (which read it on each request). All three reference the same pointers.
-	crdHealthMap := make(map[string]*kordinator.CRDHealth)
-	for _, crd := range kat.Enabled() {
-		gvk := crd.GVK().String()
-		crdHealthMap[gvk] = kordinator.NewCRDHealth(crd.Name)
-	}
-
-	// ── 5b. HTTP routes ───────────────────────────────────────────────────────
+	// ── 5. HTTP routes ───────────────────────────────────────────────────────
 	// All routes registered before hs.Start() — the mux is shared.
 	//
 	// Per-CRD routes:

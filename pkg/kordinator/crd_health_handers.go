@@ -23,6 +23,7 @@ import (
 type CRDHealthResponse struct {
 	Name                     string                      `json:"name"`
 	State                    string                      `json:"state"` // "not started", "pending", "started", "healthy", "degraded"
+	Status                   int                         `json:"status"`
 	Healthy                  bool                        `json:"healthy"`
 	Started                  bool                        `json:"started"`
 	Pending                  bool                        `json:"pending"`
@@ -65,39 +66,16 @@ func BuildCRDHealthHandler(
 	h *CRDHealth,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		isStarted := h.Started()
-		isPending := h.Pending()
-		isHealthy := h.IsHealthy()
-
-		var httpStatus int
-		var state string
-
-		switch {
-		case !isStarted && !isPending:
-			httpStatus = http.StatusServiceUnavailable
-			state = "not started"
-		case isPending:
-			httpStatus = http.StatusOK
-			state = "pending"
-		case isStarted && !isHealthy:
-			httpStatus = http.StatusServiceUnavailable
-			state = "degraded"
-		case isHealthy:
-			httpStatus = http.StatusOK
-			state = "healthy"
-		default:
-			httpStatus = http.StatusOK
-			state = "pending"
-		}
-
+		state, status := h.StateAndStatus()
 		v := resolveCRDDisplayValues(crd, kfg, inf)
 
 		response := CRDHealthResponse{
 			Name:                     crd.Name,
 			State:                    state,
-			Healthy:                  isHealthy,
-			Started:                  isStarted,
-			Pending:                  isPending,
+			Status:                   status,
+			Healthy:                  h.IsHealthy(),
+			Started:                  h.Started(),
+			Pending:                  h.Pending(),
 			StartedAt:                h.StartedAt(),
 			Uptime:                   h.Uptime(),
 			QueueDepth:               h.QueueDepth(crd.GVK().String()),
@@ -112,7 +90,7 @@ func BuildCRDHealthHandler(
 			Missing:                  h.IsMissing(),
 		}
 
-		utils.WriteJSON(w, httpStatus, response)
+		utils.WriteJSON(w, status, response)
 	}
 }
 

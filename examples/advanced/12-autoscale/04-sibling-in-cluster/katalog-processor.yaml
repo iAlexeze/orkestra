@@ -32,6 +32,20 @@ spec:
       resync: 30s
 
       operatorBox:
+        cross:
+          # Monitors a particular Loader CR called 'my-loader'
+          - crd: loader
+            selector:
+              name: my-loader
+            source:
+              endpoint: "http://localhost:8080/katalog/loader/cr/default/my-loader"
+            as: loaderInfo
+
+          # Monitor the operator itself
+          - crd: loader
+            source:
+              endpoint: "http://localhost:8080/katalog/loader/health"
+            as: loaderHealth
         autoscale:
           interval: 20s
           cooldown: 3m
@@ -56,10 +70,22 @@ spec:
               value: "{{ .metrics.autoscaleActive }}"
             - path: workers
               value: "{{ .metrics.workers }}"
+            - path: lastError
+              value: "{{ .health.lastError }}"
+            - path: state
+              value: "{{ .health.state }}"
+            - path: loaderQueueDepth
+              value: "{{ .cross.loaderInfo.metrics.queueDepth }}"
+            - path: loaderState
+              value: "{{ .cross.loaderInfo.status.phase }}"
+            - path: loaderHealthy
+              value: "{{ .cross.loaderHealth.healthy }}"
+            - path: loaderLastError
+              value: "{{ .cross.loaderHealth.lastError }}"
             - path: loaderPhase
-              value: "{{ .cross.loader.status.phase }}"
+              value: "{{ .cross.loaderHealth.state }}"
             - path: loaderDeploymentReady
-              value: "{{ .cross.loader.children.deployment.ready }}"
+              value: "{{ .cross.loaderInfo.children.deployment.ready }}"
 
         onCreate:
           deployments:
