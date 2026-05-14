@@ -466,7 +466,7 @@ func (k *Katalog) validateNamespaceProtection() error {
 //	y   = years (365d)
 func (k *Katalog) validateTimeDuration() error {
 	for name, crd := range k.enabledCRDs {
-		if !crd.HasAnyHooks() {
+		if !crd.HasAnyHookTemplates() {
 			continue
 		}
 
@@ -538,7 +538,7 @@ func durationError(crdName, secretName, field, value string, err error) error {
 // Fail-fast: the first invalid reference returns an error immediately.
 func (k *Katalog) validateHPAReference() error {
 	for crdName, crd := range k.enabledCRDs {
-		if !crd.HasAnyHooks() || !crd.HasAnyHPA() {
+		if !crd.HasAnyHookTemplates() || !crd.HasAnyHPA() {
 			continue
 		}
 

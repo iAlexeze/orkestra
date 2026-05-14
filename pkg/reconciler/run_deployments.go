@@ -87,13 +87,7 @@ func runDeployments(
 			return fmt.Errorf("deployments[%d]: %w", i, err)
 		}
 
-		staticReplicas := 1
-		if resolved.Replicas != "" {
-			fmt.Sscanf(resolved.Replicas, "%d", &staticReplicas)
-		}
-
-		// 3. Build registry spec and apply
-		spec := orkdeploy.Resolve(resolved, staticReplicas, resolver.OwnerName())
+		spec := orkdeploy.Resolve(resolved, resolver.OwnerName())
 
 		if update {
 			if err := orkdeploy.Update(ctx, kube, owner, spec); err != nil {

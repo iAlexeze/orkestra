@@ -185,16 +185,23 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	// -------------------------------------------------------------------------
-	// 17 Validate Status Types
+	// 17. Validate Status Types
 	// -------------------------------------------------------------------------
 	if err := k.validateStatusTypes(); err != nil {
 		return nil, err
 	}
 
 	// -------------------------------------------------------------------------
-	// 18 Validate Services
+	// 18. Validate Services
 	// -------------------------------------------------------------------------
 	if err := k.validateService(); err != nil {
+		return nil, err
+	}
+
+	// -------------------------------------------------------------------------
+	// 19. Validate CustomResources
+	// -------------------------------------------------------------------------
+	if err := k.validateCustomResources(); err != nil {
 		return nil, err
 	}
 

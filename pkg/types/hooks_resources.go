@@ -33,7 +33,7 @@ func (t CronJobTemplateSource) GetResources() *ResourceRequirements     { return
 // this CRD across OnCreate, OnReconcile, and OnDelete.
 // Only entries with a non-empty Profile string are returned.
 func (c *CRDEntry) CollectResourceProfileEntries() []ResourceProfileEntry {
-	if !c.HasAnyHooks() {
+	if !c.HasAnyHookTemplates() {
 		return nil
 	}
 

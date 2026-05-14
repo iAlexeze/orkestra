@@ -241,13 +241,13 @@ func TestHasOnDelete_True(t *testing.T) {
 
 func TestHasAnyHooks_None(t *testing.T) {
 	c := emptyCRD()
-	assert.False(t, c.HasAnyHooks())
+	assert.False(t, c.HasAnyHookTemplates())
 }
 
 func TestHasAnyHooks_OnCreateOnly(t *testing.T) {
 	c := emptyCRD()
 	c.OperatorBox.OnCreate = &orktypes.HookTemplates{}
-	assert.True(t, c.HasAnyHooks())
+	assert.True(t, c.HasAnyHookTemplates())
 }
 
 // ── HasTemplates ─────────────────────────────────────────────────────────────

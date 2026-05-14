@@ -41,6 +41,13 @@ func noteCoalesce(vals ...interface{}) interface{} {
 	return nil
 }
 
+// func noteDefault(dflt, val interface{}) interface{} {
+// 	if noteEmpty(val) {
+// 		return dflt
+// 	}
+// 	return val
+// }
+
 // noteDefault returns val if non-empty, otherwise returns def.
 //
 //	{{ default .spec.replicas 2 }}     →  2 if spec.replicas is absent or zero

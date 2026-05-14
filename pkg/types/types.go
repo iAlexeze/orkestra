@@ -1953,6 +1953,7 @@ type HookTemplates struct {
 	Namespaces               []NamespaceTemplateSource      `yaml:"namespaces" json:"namespaces,omitempty" validate:"omitempty"`
 	Roles                    []RoleTemplateSource           `yaml:"roles" json:"roles,omitempty" validate:"omitempty"`
 	RoleBindings             []RoleBindingTemplateSource    `yaml:"roleBindings" json:"roleBindings,omitempty" validate:"omitempty"`
+	CustomResource           []CustomResourceTemplateSource `yaml:"custom" json:"custom,omitempty" validate:"omitempty"`
 
 	// External declares HTTP calls to make before resource creation.
 	// Results available as .external.<n>.status, .body, .error

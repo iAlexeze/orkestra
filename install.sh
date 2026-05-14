@@ -6,7 +6,7 @@
 #
 # Environment variables:
 #   ORK_VERSION         — pin a specific version tag (default: latest release)
-#   ORK_INSTALL_DIR     — install directory (default: /usr/local/bin)
+#   ORK_INSTALL_DIR     — install directory (default: ~/.orkestra/bin)
 #   ORK_SKIP_CC         — skip Control Center binary (default: false)
 #   ORK_SKIP_COMPLETION — skip shell completion setup (default: false)
 #
@@ -14,14 +14,14 @@
 # 2. If it should be skippable, add a case entry in component_skipped().
 # That is the only change needed — download URL, checksum, and extraction
 # all follow the same convention automatically.
-# 
+#
 
 set -euo pipefail
 
 # Config
 
 REPO="orkspace/orkestra"
-INSTALL_DIR="${ORK_INSTALL_DIR:-/usr/local/bin}"
+INSTALL_DIR="${ORK_INSTALL_DIR:-${HOME}/.orkestra/bin}"
 VERSION="${ORK_VERSION:-}"
 SKIP_CC="${ORK_SKIP_CC:-false}"
 SKIP_COMPLETION="${ORK_SKIP_COMPLETION:-false}"
@@ -66,7 +66,7 @@ check_deps() {
     done
 }
 
-# Platform detection 
+# Platform detection
 
 detect_platform() {
     local os arch
@@ -86,7 +86,7 @@ detect_platform() {
     echo "${os}_${arch}"
 }
 
-# Version resolution 
+# Version resolution
 
 resolve_version() {
     if [[ -n "${VERSION}" ]]; then
@@ -108,7 +108,7 @@ resolve_version() {
     echo "${tag}"
 }
 
-# Component skip rules 
+# Component skip rules
 # Returns 0 (true) when the binary should be skipped.
 # Add a case entry here when a new binary needs a skip flag.
 
@@ -120,7 +120,7 @@ component_skipped() {
     esac
 }
 
-# Checksum verification 
+# Checksum verification
 # Uses -c (POSIX short form) which works on GNU coreutils, BusyBox, and macOS.
 # --check is GNU-only and fails on BusyBox (Alpine/CI containers).
 
@@ -139,7 +139,7 @@ verify_checksum() {
     fi
 }
 
-# Single component installer 
+# Single component installer
 
 install_component() {
     local binary="$1"
@@ -157,10 +157,6 @@ install_component() {
 
     local tmp_dir
     tmp_dir=$(mktemp -d)
-    # Always clean up temp dir, even on error.
-    # Double-quoted so ${tmp_dir} is captured at trap-set time, not at RETURN time.
-    # Single quotes would cause "unbound variable" under set -u when the trap fires
-    # in the calling scope after the local variable goes out of scope.
     # shellcheck disable=SC2064
     trap "rm -rf '${tmp_dir}'" RETURN
 
@@ -185,17 +181,48 @@ install_component() {
         fatal "Expected binary '${binary}' not found in archive"
     fi
 
-    info "Installing ${binary} to ${INSTALL_DIR}..."
-    if [[ ! -w "${INSTALL_DIR}" ]]; then
-        sudo install -m 755 "${src}" "${INSTALL_DIR}/${binary}"
-    else
-        install -m 755 "${src}" "${INSTALL_DIR}/${binary}"
-    fi
+    mkdir -p "${INSTALL_DIR}"
+    install -m 755 "${src}" "${INSTALL_DIR}/${binary}"
 
     success "${binary} ${version} installed to ${INSTALL_DIR}/${binary}"
 }
 
-# Shell completion 
+# PATH setup
+# Adds INSTALL_DIR to PATH in the user's shell profile if not already present.
+
+setup_path() {
+    local export_line="export PATH=\"${INSTALL_DIR}:\$PATH\""
+
+    # Detect which profile file to update
+    local profile_file
+    local shell_name
+    shell_name=$(basename "${SHELL:-bash}")
+
+    case "${shell_name}" in
+        zsh)  profile_file="${ZDOTDIR:-${HOME}}/.zshrc" ;;
+        fish) profile_file="${HOME}/.config/fish/config.fish"
+              export_line="set -gx PATH \"${INSTALL_DIR}\" \$PATH" ;;
+        *)    profile_file="${HOME}/.bashrc" ;;
+    esac
+
+    # Check if already in PATH or profile
+    if echo "${PATH}" | tr ':' '\n' | grep -qxF "${INSTALL_DIR}"; then
+        return 0
+    fi
+
+    if [[ -f "${profile_file}" ]] && grep -qF "${INSTALL_DIR}" "${profile_file}"; then
+        return 0
+    fi
+
+    echo "" >> "${profile_file}"
+    echo "# Orkestra CLI" >> "${profile_file}"
+    echo "${export_line}" >> "${profile_file}"
+
+    info "Added ${INSTALL_DIR} to PATH in ${profile_file}"
+    warn "Restart your shell or run: export PATH=\"${INSTALL_DIR}:\$PATH\""
+}
+
+# Shell completion
 
 install_completion() {
     if [[ "${SKIP_COMPLETION}" == "true" ]]; then
@@ -208,26 +235,24 @@ install_completion() {
 
     case "${shell_name}" in
         bash)
-            # Standard bash-completion drop-in directory (works with and without oh-my-bash)
             local dir="${HOME}/.bash_completion.d"
             mkdir -p "${dir}"
             info "Installing bash completion → ${dir}/ork"
-            ork completion bash > "${dir}/ork"
+            "${INSTALL_DIR}/ork" completion bash > "${dir}/ork" 2>/dev/null || true
             echo "  Source with: source ${dir}/ork  (or restart your shell)"
             ;;
         zsh)
-            # Prefer XDG / user fpath over hard-coding oh-my-zsh paths.
             local dir="${HOME}/.zsh/completions"
             mkdir -p "${dir}"
             info "Installing zsh completion → ${dir}/_ork"
-            ork completion zsh > "${dir}/_ork"
+            "${INSTALL_DIR}/ork" completion zsh > "${dir}/_ork" 2>/dev/null || true
             echo "  Add to ~/.zshrc if not present: fpath=(${dir} \$fpath)"
             ;;
         fish)
             local dir="${HOME}/.config/fish/completions"
             mkdir -p "${dir}"
             info "Installing fish completion → ${dir}/ork.fish"
-            ork completion fish > "${dir}/ork.fish"
+            "${INSTALL_DIR}/ork" completion fish > "${dir}/ork.fish" 2>/dev/null || true
             ;;
         *)
             warn "Shell '${shell_name}' not recognised — skipping completion."
@@ -239,7 +264,7 @@ install_completion() {
     success "Shell completion installed for ${shell_name}"
 }
 
-# Post-install summary 
+# Post-install summary
 
 print_summary() {
     local version="$1"
@@ -251,18 +276,17 @@ print_summary() {
         if component_skipped "${binary}"; then
             continue
         fi
-        if command -v "${binary}" >/dev/null 2>&1; then
-            echo -e "  ${GREEN}✓${RESET}  ${binary}  $(${binary} version 2>/dev/null | head -1 || true)"
-        else
-            warn "${binary} not found in PATH — add ${INSTALL_DIR} to your PATH"
+        local bin_path="${INSTALL_DIR}/${binary}"
+        if [[ -x "${bin_path}" ]]; then
+            echo -e "  ${GREEN}✓${RESET}  ${bin_path}"
         fi
     done
 
     echo
     echo -e "  ${BOLD}Get started:${RESET}"
     echo -e "    ork init my-operator             Scaffold a new operator"
-    echo -e "    ork validate -k katalog.yaml     Validate a Katalog"
-    echo -e "    ork run -k katalog.yaml           Start the operator runtime"
+    echo -e "    ork validate -f katalog.yaml     Validate a Katalog"
+    echo -e "    ork run -f katalog.yaml           Start the operator runtime"
     echo -e "    ork registry push name:v1 ./dir  Push a pattern to the registry"
     echo
     echo -e "  ${BOLD}Control Center:${RESET}"
@@ -273,7 +297,7 @@ print_summary() {
     echo
 }
 
-# Main 
+# Main
 
 main() {
     check_deps
@@ -283,12 +307,14 @@ main() {
     version=$(resolve_version)
 
     info "Platform: ${platform}  Version: ${version}"
+    info "Install directory: ${INSTALL_DIR}"
     echo
 
     for binary in "${BINARIES[@]}"; do
         install_component "${binary}" "${platform}" "${version}"
     done
 
+    setup_path
     install_completion
 
     print_summary "${version}"
