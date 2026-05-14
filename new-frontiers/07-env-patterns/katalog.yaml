@@ -33,22 +33,25 @@ spec:
               image: "{{ .spec.image }}"
               replicas: "{{ getIntOr .spec.replicas 2 }}"
               env:
-                REGION:
+                - name: REGION
                   value: "{{ .spec.region }}"
-                APP_ENV:
+                - name: APP_ENV
                   value: "{{ getStringOr (mapGet .spec.env \"APP_ENV\") \"prod\" }}"
-                DB_USER:
-                  secretKeyRef:
-                    name: "{{ .spec.database.secretName }}"
-                    key: "{{ .spec.database.userKey }}"
-                DB_PASSWORD:
-                  secretKeyRef:
-                    name: "{{ .spec.database.secretName }}"
-                    key: "{{ .spec.database.passwordKey }}"
-                FEATURE_FLAGS:
-                  configMapKeyRef:
-                    name: "{{ .spec.config.configMapName }}"
-                    key: "{{ .spec.config.flagsKey }}"
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .spec.database.secretName }}"
+                      key: "{{ .spec.database.userKey }}"
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .spec.database.secretName }}"
+                      key: "{{ .spec.database.passwordKey }}"
+                - name: FEATURE_FLAGS
+                  valueFrom:
+                    configMapKeyRef:
+                      name: "{{ .spec.config.configMapName }}"
+                      key: "{{ .spec.config.flagsKey }}"
               envFrom:
                 - configMapRef: "{{ .spec.envFrom.configMapRef }}"
                 - secretRef: "{{ .spec.envFrom.secretRef }}"

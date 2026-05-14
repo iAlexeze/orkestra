@@ -167,7 +167,7 @@ func detectLanguage(dir string) (orktypes.Language, string) {
 // detectPort determines the application's port. It first checks for a PORT
 // variable in the parsed .env file. If not present, it falls back to
 // language-specific defaults (e.g., Go: 8080, Node: 3000, Python: 8000).
-func detectPort(vars []orktypes.EnvVar, lang orktypes.Language) string {
+func detectPort(vars []orktypes.DotEnvVar, lang orktypes.Language) string {
 	for _, v := range vars {
 		if v.Key == "PORT" {
 			return v.Value

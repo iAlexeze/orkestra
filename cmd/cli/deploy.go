@@ -1069,8 +1069,8 @@ type devPathArgs struct {
 	port      string
 	language  string
 	bundleDir string
-	secrets   []orktypes.EnvVar
-	config    []orktypes.EnvVar
+	secrets   []orktypes.DotEnvVar
+	config    []orktypes.DotEnvVar
 	dryRun    bool
 	opts      doctor.GenerateOptions
 }

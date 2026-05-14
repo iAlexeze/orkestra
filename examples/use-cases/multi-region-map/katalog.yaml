@@ -50,10 +50,11 @@ spec:
               port: "{{ .spec.port }}"
               reconcile: true
               env:
-                API_KEY:
-                  secretKeyRef:
-                    name: "{{ .metadata.name }}"
-                    key: apiKey
+                - name: API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .metadata.name }}"
+                      key: apiKey
 
     multi-region-app:
       apiTypes:
@@ -86,9 +87,9 @@ spec:
               replicas: "{{ or .value.replicas .spec.defaultReplicas }}"
               port: "{{ or .value.port .spec.defaultPort }}"
               env:
-                REGION:
+                - name: REGION
                   value: "{{ .item }}"
-                PORT:
+                - name: PORT
                   value: "{{ or .value.port .spec.defaultPort }}"
               labels:
                 - key: app

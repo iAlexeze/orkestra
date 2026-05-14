@@ -249,9 +249,10 @@ func BuildCRDetailHandler(
 			return
 		}
 
-		// Read child resources from the API server.
-		// This is the same set of children ReadChildren uses in the reconciler.
-		children := readChildrenForEndpoint(r.Context(), kube, objMap)
+		// Read child resources — only queries types declared in the Katalog's
+		// templates. Results are served from a 30-second in-memory cache to
+		// avoid firing concurrent LISTs on every UI poll.
+		children := readChildrenForEndpoint(r.Context(), kube, objMap, rc)
 
 		// Build the events endpoint URL for this CR
 		eventsPath := buildEventsPath(crd, namespace, name)
@@ -267,8 +268,9 @@ func BuildCRDetailAndEventsHandler(
 	crd orktypes.CRDEntry,
 	inf cache.SharedIndexInformer,
 	kube *kubeclient.Kubeclient,
+	rc orktypes.OperatorBoxConfig,
 ) http.HandlerFunc {
-	detail := BuildCRDetailHandler(crd, inf, kube, orktypes.OperatorBoxConfig{})
+	detail := BuildCRDetailHandler(crd, inf, kube, rc)
 	events := BuildCREventsHandler(crd, kube)
 
 	return func(w http.ResponseWriter, r *http.Request) {

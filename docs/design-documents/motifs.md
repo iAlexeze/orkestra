@@ -95,12 +95,13 @@ resources:
           size: "{{ inputs.volumeSize }}"
           mountPath: /var/lib/postgresql/data
       env:
-        POSTGRES_USER:
+        - name: POSTGRES_USER
           value: "{{ inputs.user }}"
-        POSTGRES_PASSWORD:
-          secretKeyRef:
-            name: "{{ inputs.passwordSecretName }}"
-            key: POSTGRES_PASSWORD
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: "{{ inputs.passwordSecretName }}"
+              key: POSTGRES_PASSWORD
       reconcile: true
 
   services:
@@ -116,9 +117,9 @@ resources:
     - name: "{{ .metadata.name }}-pgadmin"
       image: "dpage/pgadmin4:latest"
       env:
-        PGADMIN_DEFAULT_EMAIL:
+        - name: PGADMIN_DEFAULT_EMAIL
           value: "{{ inputs.adminEmail }}"
-        PGADMIN_DEFAULT_PASSWORD:
+        - name: PGADMIN_DEFAULT_PASSWORD
           value: "{{ inputs.adminPassword }}"
       reconcile: true
 

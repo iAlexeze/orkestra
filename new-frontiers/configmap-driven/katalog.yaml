@@ -56,16 +56,17 @@ spec:
               port: 8080
               reconcile: true
 
-              # env is a map[string]EnvVarSource
               env:
-                USERNAME:
-                  secretKeyRef:
-                    name: "{{ .metadata.name }}-credentials"
-                    key: username
-                PASSWORD:
-                  secretKeyRef:
-                    name: "{{ .metadata.name }}-credentials"
-                    key: password
+                - name: USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .metadata.name }}-credentials"
+                      key: username
+                - name: PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .metadata.name }}-credentials"
+                      key: password
 
               # envFrom is a list of EnvFromSource (secretRef / configMapRef)
               # This imports ALL keys from the Secret into the container.
@@ -83,10 +84,11 @@ spec:
               port: 80
               reconcile: true
               env:
-                REGION:
-                  configMapKeyRef:
-                    name: "{{ .metadata.name }}-new"
-                    key: region
+                - name: REGION
+                  valueFrom:
+                    configMapKeyRef:
+                      name: "{{ .metadata.name }}-new"
+                      key: region
               envFrom:
                 - configMapRef: "{{ .metadata.name }}-new"
 

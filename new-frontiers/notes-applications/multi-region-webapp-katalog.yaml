@@ -44,11 +44,11 @@ spec:
                 field: spec.regions
                 as: item
               env:
-                REGION:
+                - name: REGION
                   value: "{{ .item }}"
-                APP_ENV:
+                - name: APP_ENV
                   value: "{{ mapGet .spec.env \"APP_ENV\" }}"
-                DEBUG:
+                - name: DEBUG
                   value: "{{ getBoolOr (mapGet .spec.env \"DEBUG\") false }}"
 
           configMaps:

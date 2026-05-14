@@ -105,7 +105,7 @@ spec:
               replicas: "{{ .spec.replicas }}"
               port: 8080
               env:
-                DB_HOST:
+                - name: DB_HOST
                   value: "{{ .cross.database.status.endpoint }}"
               reconcile: true
           services:

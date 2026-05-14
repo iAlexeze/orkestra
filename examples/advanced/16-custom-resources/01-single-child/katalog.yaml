@@ -82,9 +82,9 @@ spec:
               port: 8443
               reconcile: true
               env:
-                VAULT_WORKSPACE:
+                - name: VAULT_WORKSPACE
                   value: "{{ .spec.workspaceName }}"
-                VAULT_ENCRYPTION:
+                - name: VAULT_ENCRYPTION
                   value: "{{ .spec.encryption }}"
           services:
             - port: "8443"

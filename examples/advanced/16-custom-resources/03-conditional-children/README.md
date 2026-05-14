@@ -80,7 +80,7 @@ kubectl apply -f crd-searchindex.yaml
 ### 2. Start the operator
 
 ```bash
-ork run -f katalog.yaml --dev
+ork run -f katalog.yaml 
 ```
 
 ### 3. Apply the dev environment (no children)

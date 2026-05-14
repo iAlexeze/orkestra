@@ -353,8 +353,8 @@ operatorBox:
       - name: "{{ .metadata.name }}"
         image: "{{ .spec.image }}"
         env:
-          DB_HOST:
-            value: "{{ get .cross.db "status" "endpoint" }}"
+          - name: DB_HOST
+            value: "{{ get .cross.db \"status\" \"endpoint\" }}"
         when:
           - field: "{{ phase .cross.db }}"
             equals: Ready
@@ -449,18 +449,21 @@ operatorBox:
       - name: "{{ .metadata.name }}"
         image: "{{ .spec.image }}"
         env:
-          USERNAME:
-            secretKeyRef:
-              name: "{{ .metadata.name }}-creds"
-              key: username
-          PASSWORD:
-            secretKeyRef:
-              name: "{{ .metadata.name }}-creds"
-              key: password
-          REGION:
-            configMapKeyRef:
-              name: "{{ .metadata.name }}-cfg"
-              key: region
+          - name: USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: "{{ .metadata.name }}-creds"
+                key: username
+          - name: PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "{{ .metadata.name }}-creds"
+                key: password
+          - name: REGION
+            valueFrom:
+              configMapKeyRef:
+                name: "{{ .metadata.name }}-cfg"
+                key: region
 
         # Or make all envs available to deployment
         envFrom:

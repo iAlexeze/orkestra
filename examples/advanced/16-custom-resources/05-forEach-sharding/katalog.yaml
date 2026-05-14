@@ -80,9 +80,9 @@ spec:
               port: 6380
               reconcile: true
               env:
-                SHARD_NAME:
+                - name: SHARD_NAME
                   value: "{{ .spec.shardName }}"
-                SHARD_REGION:
+                - name: SHARD_REGION
                   value: "{{ .spec.region }}"
           services:
             - port: "6380"

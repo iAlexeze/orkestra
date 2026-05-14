@@ -633,12 +633,13 @@ statefulsets:
       name: pgdata
       size: "{{ .spec.postgresVolumeSize }}"
     env:
-      POSTGRES_USER:
+      - name: POSTGRES_USER
         value: "{{ .spec.postgresUser }}"
-      POSTGRES_PASSWORD:
-        secretRef:
-          name: my-app-secrets
-          key: POSTGRES_PASSWORD
+      - name: POSTGRES_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: my-app-secrets
+            key: POSTGRES_PASSWORD
     reconcile: true
 ```
 

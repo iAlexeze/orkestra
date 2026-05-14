@@ -210,7 +210,6 @@ func Resolve(src orktypes.DeploymentTemplateSource, ownerName string) ResolvedDe
 		Resources:   common.ResolveResources(src.Resources),
 		Labels:      make(map[string]string),
 		Annotations: make(map[string]string),
-		Env:         make(map[string]orktypes.EnvVarSource),
 		EnvFrom:     src.EnvFrom,
 		Probes:      src.Probes,
 		Sleep:       src.Sleep,
@@ -236,10 +235,7 @@ func Resolve(src orktypes.DeploymentTemplateSource, ownerName string) ResolvedDe
 		spec.Annotations[a.Key] = a.Value
 	}
 
-	// Copy Env map
-	for k, v := range src.Env {
-		spec.Env[k] = v
-	}
+	spec.Env = []orktypes.EnvVar(src.Env)
 
 	// Orkestra system labels — always added
 	spec.Labels[labels.Managed] = labels.ManagedValue
@@ -319,68 +315,49 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 
 	// Env
 	if len(spec.Env) > 0 {
-		d.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{}
-		for k, src := range spec.Env {
-			ev := corev1.EnvVar{Name: k}
-
-			switch {
-			case src.SecretKeyRef != nil:
-				ev.ValueFrom = &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: src.SecretKeyRef.Name,
-						},
-						Key: src.SecretKeyRef.Key,
-					},
+		d.Spec.Template.Spec.Containers[0].Env = make([]corev1.EnvVar, 0, len(spec.Env))
+		for _, ev := range spec.Env {
+			kev := corev1.EnvVar{Name: ev.Name}
+			if ev.ValueFrom != nil {
+				kev.ValueFrom = &corev1.EnvVarSource{}
+				if ev.ValueFrom.SecretKeyRef != nil {
+					kev.ValueFrom.SecretKeyRef = &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: ev.ValueFrom.SecretKeyRef.Name},
+						Key:                  ev.ValueFrom.SecretKeyRef.Key,
+					}
 				}
-
-			case src.ConfigMapKeyRef != nil:
-				ev.ValueFrom = &corev1.EnvVarSource{
-					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: src.ConfigMapKeyRef.Name,
-						},
-						Key: src.ConfigMapKeyRef.Key,
-					},
+				if ev.ValueFrom.ConfigMapKeyRef != nil {
+					kev.ValueFrom.ConfigMapKeyRef = &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: ev.ValueFrom.ConfigMapKeyRef.Name},
+						Key:                  ev.ValueFrom.ConfigMapKeyRef.Key,
+					}
 				}
-
-			default:
-				ev.Value = src.Value
+			} else {
+				kev.Value = ev.Value
 			}
-
-			d.Spec.Template.Spec.Containers[0].Env = append(
-				d.Spec.Template.Spec.Containers[0].Env, ev)
+			d.Spec.Template.Spec.Containers[0].Env = append(d.Spec.Template.Spec.Containers[0].Env, kev)
 		}
 	}
 
 	// EnvFrom
-	if len(spec.EnvFrom) > 0 {
-		d.Spec.Template.Spec.Containers[0].EnvFrom = []corev1.EnvFromSource{}
-		for _, src := range spec.EnvFrom {
-			if src.ConfigMapRef != "" {
-				d.Spec.Template.Spec.Containers[0].EnvFrom = append(
-					d.Spec.Template.Spec.Containers[0].EnvFrom,
-					corev1.EnvFromSource{
-						ConfigMapRef: &corev1.ConfigMapEnvSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: src.ConfigMapRef,
-							},
-						},
+	if spec.EnvFrom != nil {
+		for _, name := range spec.EnvFrom.SecretRef {
+			d.Spec.Template.Spec.Containers[0].EnvFrom = append(
+				d.Spec.Template.Spec.Containers[0].EnvFrom,
+				corev1.EnvFromSource{
+					SecretRef: &corev1.SecretEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{Name: name},
 					},
-				)
-			}
-			if src.SecretRef != "" {
-				d.Spec.Template.Spec.Containers[0].EnvFrom = append(
-					d.Spec.Template.Spec.Containers[0].EnvFrom,
-					corev1.EnvFromSource{
-						SecretRef: &corev1.SecretEnvSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: src.SecretRef,
-							},
-						},
+				})
+		}
+		for _, name := range spec.EnvFrom.ConfigMapRef {
+			d.Spec.Template.Spec.Containers[0].EnvFrom = append(
+				d.Spec.Template.Spec.Containers[0].EnvFrom,
+				corev1.EnvFromSource{
+					ConfigMapRef: &corev1.ConfigMapEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{Name: name},
 					},
-				)
-			}
+				})
 		}
 	}
 
@@ -394,12 +371,6 @@ func validateSpec(spec ResolvedDeploymentSpec) error {
 	}
 	if spec.Image == "" {
 		missing = append(missing, "image")
-	}
-	if spec.Env == nil {
-		spec.Env = map[string]orktypes.EnvVarSource{}
-	}
-	if spec.EnvFrom == nil {
-		spec.EnvFrom = []orktypes.EnvFromSource{}
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("missing required fields: %v", missing)

@@ -102,9 +102,9 @@ spec:
               port: 9000
               reconcile: true
               env:
-                MINIO_ROOT_USER:
+                - name: MINIO_ROOT_USER
                   value: admin
-                MINIO_ROOT_PASSWORD:
+                - name: MINIO_ROOT_PASSWORD
                   value: minioadmin
           services:
             - port: "9000"
@@ -132,9 +132,9 @@ spec:
               port: 9200
               reconcile: true
               env:
-                OPENSEARCH_JAVA_OPTS:
+                - name: OPENSEARCH_JAVA_OPTS
                   value: "-Xms{{ .spec.heapSize }} -Xmx{{ .spec.heapSize }}"
-                discovery.type:
+                - name: discovery.type
                   value: single-node
           services:
             - port: "9200"

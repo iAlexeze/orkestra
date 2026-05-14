@@ -86,7 +86,7 @@ kubectl apply -f crd-secretvault.yaml
 ### 2. Start the operator
 
 ```bash
-ork run -f katalog.yaml --dev
+ork run -f katalog.yaml 
 ```
 
 Leave this running in a terminal. You should see startup logs confirming both controllers are ready.

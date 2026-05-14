@@ -91,9 +91,9 @@ spec:
               replicas: 2
               workingDirectory: ""
               env:
-                REGION:
+                - name: REGION
                   value: "{{ .spec.region }}"
-                COMMIT:
+                - name: COMMIT
                   value: "{{ .git.commit }}"
               when:
                 - field: spec.deploy.enabled

@@ -505,7 +505,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			)
 			hs.Register(
 				"/katalog/"+crdName+"/cr/",
-				kordinator.BuildCRDetailAndEventsHandler(crd, inf, kube),
+				kordinator.BuildCRDetailAndEventsHandler(crd, inf, kube, crd.OperatorBox),
 			)
 		}
 

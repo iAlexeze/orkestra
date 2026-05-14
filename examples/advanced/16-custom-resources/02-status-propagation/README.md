@@ -53,7 +53,7 @@ Use the `index` function for dynamic key lookup:
 status:
   fields:
     - path: connectorPhase
-      value: '{{ (index .children.custom (printf "%s-connector" .metadata.name)).status.phase }}'
+      value: '{{ (index .children.customs (printf "%s-connector" .metadata.name)).status.phase }}'
 ```
 
 This pattern works regardless of what the parent CR is named at runtime.
@@ -82,7 +82,7 @@ kubectl apply -f crd-connector.yaml
 ### 2. Start the operator
 
 ```bash
-ork run -f katalog.yaml --dev
+ork run -f katalog.yaml
 ```
 
 ### 3. Apply the DataPipeline CR
@@ -117,7 +117,12 @@ status:
 ### 6. Inspect the child Connector
 
 ```bash
-kubectl get connector my-pipeline-connector -n default -o yaml | grep -A 5 "^status:"
+kubectl get connector my-pipeline-connector -n default -o yaml | grep -A 10 "^status:"
+```
+
+```yaml
+status:
+  phase: Running
 ```
 
 ---

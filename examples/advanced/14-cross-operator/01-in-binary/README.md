@@ -28,7 +28,7 @@ The Consumer's Deployment then receives the endpoint as an environment variable:
 
 ```yaml
 env:
-  PRODUCER_HOST:
+  - name: PRODUCER_HOST
     value: "{{ .cross.producer.status.endpoint }}"
 ```
 

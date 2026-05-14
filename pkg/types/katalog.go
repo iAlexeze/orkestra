@@ -51,8 +51,8 @@ const (
 	LangUnknown Language = "Unknown"
 )
 
-// EnvVar is a single variable parsed from a .env file.
-type EnvVar struct {
+// DotEnvVar is a single variable parsed from a .env file.
+type DotEnvVar struct {
 	Key   string
 	Value string
 	IsCfg bool // true when line carries "# ork:cfg"
@@ -91,13 +91,13 @@ type ProjectInfo struct {
 	Port string `yaml:"port,omitempty" json:"port,omitempty"`
 
 	// EnvVars contains all parsed .env variables.
-	EnvVars []EnvVar `yaml:"-" json:"-"`
+	EnvVars []DotEnvVar `yaml:"-" json:"-"`
 
 	// Secrets contains all env vars classified as secrets (IsCfg == false).
-	Secrets []EnvVar `yaml:"-" json:"-"`
+	Secrets []DotEnvVar `yaml:"-" json:"-"`
 
 	// Config contains all env vars classified as config (IsCfg == true).
-	Config []EnvVar `yaml:"-" json:"-"`
+	Config []DotEnvVar `yaml:"-" json:"-"`
 
 	// HasFrontend indicates whether a frontend was detected in the project.
 	HasFrontend bool `yaml:"hasFrontend,omitempty" json:"hasFrontend,omitempty"`
