@@ -53,12 +53,21 @@ func ReadChildren(
 	// We only read resources that are declared — not all resources in the namespace.
 	templates := mergeTemplates(operatorBox)
 
-	// ── Deployments ───────────────────────────────────────────────────────
-	if len(templates.Deployments) > 0 {
-		dNames := deploymentNames(resolver, templates.Deployments)
-		m := readResourceGroup(ctx, kube, obj, resolver, deploymentGVR, dNames)
-		children["deployments"] = m
-		children["deployment"] = firstValue(m) // singular shorthand
+	// ── StatefulSets ───────────────────────────────────────────────────────
+	if len(templates.StatefulSets) > 0 {
+		dNames := statefulSetNames(resolver, templates.StatefulSets)
+		m := readResourceGroup(ctx, kube, obj, resolver, statefulSetGVR, dNames)
+		children["statefulsets"] = m
+		children["statefulset"] = firstValue(m)
+	}
+
+	// ── CustomResources ───────────────────────────────────────────────────────
+	// Each entry has its own APIVersion/Kind, so GVR is resolved per entry via
+	// RESTMapper rather than using a single shared GVR.
+	if len(templates.CustomResource) > 0 {
+		m := readCustomResourceGroup(ctx, kube, obj, resolver, templates.CustomResource)
+		children["customs"] = m
+		children["custom"] = firstValue(m)
 	}
 
 	// ── Services ──────────────────────────────────────────────────────────
@@ -135,6 +144,76 @@ func ReadChildren(
 	}
 
 	return children
+}
+
+// readCustomResourceGroup reads each custom resource entry using its own GVR resolved
+// via the RESTMapper. Unlike built-in types, custom resources may have different
+// APIVersions/Kinds within the same list, so GVR must be resolved per entry.
+func readCustomResourceGroup(
+	ctx context.Context,
+	kube *kubeclient.Kubeclient,
+	obj domain.Object,
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.CustomResourceTemplateSource,
+) map[string]interface{} {
+	result := map[string]interface{}{}
+
+	expanded := expandForEachCustomResources(resolver, srcs)
+	for i := range expanded {
+		src := &expanded[i]
+
+		name, err := resolver.Resolve(src.Metadata.Name)
+		if err != nil || name == "" {
+			continue
+		}
+
+		gvr, err := src.ResolveGVR(kube.Mapper())
+		if err != nil {
+			logger.FromContext(ctx).Debug().
+				Str("resource", name).
+				Str("gvk", src.GVKString()).
+				Err(err).
+				Msg("children: failed to resolve GVR for custom resource — omitted from status context")
+			continue
+		}
+
+		ns, _ := resolver.Resolve(src.Metadata.Namespace)
+		if ns == "" {
+			ns = obj.GetNamespace()
+		}
+
+		// hasStatus: false → skip this resource entirely (no status to propagate).
+		// hasStatus: true or nil → read and include status.
+		if src.HasStatus != nil && !*src.HasStatus {
+			continue
+		}
+
+		var u *unstructured.Unstructured
+		if src.IsNamespaced() && ns != "" {
+			u, err = kube.DynamicClient().Resource(gvr).Namespace(ns).Get(ctx, name, metav1.GetOptions{})
+		} else {
+			u, err = kube.DynamicClient().Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+		}
+
+		if err != nil {
+			if !strings.Contains(err.Error(), "not found") {
+				logger.FromContext(ctx).Debug().
+					Str("resource", fmt.Sprintf("%s/%s", ns, name)).
+					Str("gvr", gvr.String()).
+					Err(err).
+					Msg("children: custom resource read failed — omitted from status context")
+			}
+			continue
+		}
+
+		o := u.Object
+		if s, ok := o["status"]; !ok || s == nil {
+			o["status"] = map[string]interface{}{}
+		}
+		result[name] = o
+	}
+
+	return result
 }
 
 // readEndpointSlicesForServices lists the EndpointSlice for each declared Service
@@ -292,6 +371,7 @@ func mergeTemplates(operatorBox orktypes.OperatorBoxConfig) orktypes.HookTemplat
 		t.LimitRanges = append(t.LimitRanges, operatorBox.OnCreate.LimitRanges...)
 		t.ResourceQuotas = append(t.ResourceQuotas, operatorBox.OnCreate.ResourceQuotas...)
 		t.PriorityClasses = append(t.PriorityClasses, operatorBox.OnCreate.PriorityClasses...)
+		t.CustomResource = append(t.CustomResource, operatorBox.OnCreate.CustomResource...)
 	}
 	if operatorBox.OnReconcile != nil {
 		t.Deployments = append(t.Deployments, operatorBox.OnReconcile.Deployments...)
@@ -318,6 +398,7 @@ func mergeTemplates(operatorBox orktypes.OperatorBoxConfig) orktypes.HookTemplat
 		t.LimitRanges = append(t.LimitRanges, operatorBox.OnReconcile.LimitRanges...)
 		t.ResourceQuotas = append(t.ResourceQuotas, operatorBox.OnReconcile.ResourceQuotas...)
 		t.PriorityClasses = append(t.PriorityClasses, operatorBox.OnReconcile.PriorityClasses...)
+		t.CustomResource = append(t.CustomResource, operatorBox.OnReconcile.CustomResource...)
 	}
 	return t
 }
@@ -343,6 +424,28 @@ func deploymentNames(resolver *orktmpl.Resolver, srcs []orktypes.DeploymentTempl
 	names := make([]resolvedChildName, 0, len(expanded))
 	for _, s := range expanded {
 		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+func statefulSetNames(resolver *orktmpl.Resolver, srcs []orktypes.StatefulSetTemplateSource) []resolvedChildName {
+	expanded := expandForEachStatefulSets(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
+		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+func customResourceNames(resolver *orktmpl.Resolver, srcs []orktypes.CustomResourceTemplateSource) []resolvedChildName {
+	expanded := expandForEachCustomResources(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
+		if n, ok := resolveName(resolver, s.Metadata.Name, s.Metadata.Namespace); ok {
 			names = append(names, n)
 		}
 	}

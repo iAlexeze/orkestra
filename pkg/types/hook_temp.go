@@ -136,4 +136,7 @@ func (h *HookTemplates) VisitResources(fn func(res interface{})) {
 	for _, x := range h.PriorityLevelConfigurations {
 		fn(x)
 	}
+	for _, x := range h.CustomResource {
+		fn(x)
+	}
 }

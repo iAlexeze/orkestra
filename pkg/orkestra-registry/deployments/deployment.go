@@ -202,7 +202,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 // Use pkg/orkestra-registry/template.Resolver to evaluate expressions first.
 //
 // The resolver already evaluated template expressions — here we just merge.
-func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerName string) ResolvedDeploymentSpec {
+func Resolve(src orktypes.DeploymentTemplateSource, ownerName string) ResolvedDeploymentSpec {
 	spec := ResolvedDeploymentSpec{
 		Name:        src.Name,
 		Image:       src.Image,
@@ -216,23 +216,11 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 		Sleep:       src.Sleep,
 	}
 
-	// Default name
 	if spec.Name == "" {
 		spec.Name = ownerName + "-deployment"
 	}
 
-	// Replicas — prefer dynamic resolved string, fall back to static int
-	if src.Replicas != "" {
-		if r, err := strconv.ParseInt(src.Replicas, 10, 32); err == nil {
-			spec.Replicas = int32(r)
-		}
-	}
-	if spec.Replicas == 0 && staticReplicas > 0 {
-		spec.Replicas = int32(staticReplicas)
-	}
-	if spec.Replicas == 0 {
-		spec.Replicas = 1 // default
-	}
+	spec.Replicas = common.ParseReplicas(src.Replicas)
 
 	// Port — prefer dynamic resolved string, fall back to static int
 	if src.Port != "" {

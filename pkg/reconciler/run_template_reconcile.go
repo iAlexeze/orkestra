@@ -162,6 +162,10 @@ func (r *GenericReconciler[PTR]) runResourceGroup(
 		expandForEachRoleBindings(resolver, t.RoleBindings), update, guard); err != nil {
 		return err
 	}
+	if err := runCustomResources(ctx, kube, resolver, obj,
+		expandForEachCustomResources(resolver, t.CustomResource), update, guard); err != nil {
+		return err
+	}
 	if err := runReplicaSets(ctx, kube, resolver, obj,
 		expandForEachReplicaSets(resolver, t.ReplicaSets), update, guard); err != nil {
 		return err
@@ -328,26 +332,56 @@ func (r *GenericReconciler[PTR]) readCross(
 		}
 
 		notFoundCrossBinary := false
-		// Path 2: HTTP endpoint fallback.
 		// For cross-binary or cross-cluster. Uses Orkestra's CR detail endpoint.
-		if decl.Source != nil && decl.Source.Endpoint != "" {
-			endpointURL, _ := resolver.Resolve(decl.Source.Endpoint)
-			token := expandEnv(decl.Source.Token)
-			data := fetchCrossViaHTTP(ctx, endpointURL, token)
-			if data != nil {
-				result[as] = data
-				log.Debug().
+		// Path 2: HTTP fallback (raw endpoint OR ONCOP host-based URL inference)
+		if decl.Source != nil {
+
+			// 2a: Raw endpoint takes precedence (non-Orkestra operators)
+			if decl.Source.Endpoint != "" {
+				endpointURL, _ := resolver.Resolve(decl.Source.Endpoint)
+				token := expandEnv(decl.Source.Token)
+
+				data := fetchCrossViaHTTP(ctx, endpointURL, token)
+				if data != nil {
+					result[as] = data
+					log.Debug().
+						Str("crd", decl.Crd).
+						Str("as", as).
+						Str("endpoint", endpointURL).
+						Msg("cross: read via raw HTTP endpoint")
+					continue
+				}
+
+				notFoundCrossBinary = true
+				log.Warn().
 					Str("crd", decl.Crd).
-					Str("as", as).
 					Str("endpoint", endpointURL).
-					Msg("cross: read via HTTP endpoint")
-				continue
+					Msg("cross: raw HTTP endpoint returned nil")
 			}
-			notFoundCrossBinary = true
-			log.Warn().
-				Str("crd", decl.Crd).
-				Str("endpoint", endpointURL).
-				Msg("cross: HTTP endpoint returned nil")
+
+			// 2b: ONCOP host-based URL inference (Orkestra-native operators)
+			if decl.Source.Host != "" {
+				// Build ONCOP URL from host + type + crd + ns + name
+				url := orktypes.BuildONCOPURL(decl)
+
+				token := expandEnv(decl.Source.Token)
+				data := fetchCrossViaHTTP(ctx, url, token)
+				if data != nil {
+					result[as] = data
+					log.Debug().
+						Str("crd", decl.Crd).
+						Str("as", as).
+						Str("endpoint", url).
+						Msg("cross: read via ONCOP host")
+					continue
+				}
+
+				notFoundCrossBinary = true
+				log.Warn().
+					Str("crd", decl.Crd).
+					Str("endpoint", url).
+					Msg("cross: ONCOP endpoint returned nil")
+			}
 		}
 
 		if notFoundInBianry && notFoundCrossBinary {

@@ -192,7 +192,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 }
 
 // Resolve builds a ResolvedReplicaSetSpec from a ReplicaSetTemplateSource.
-func Resolve(src orktypes.ReplicaSetTemplateSource, staticReplicas int, ownerName string) ResolvedReplicaSetSpec {
+func Resolve(src orktypes.ReplicaSetTemplateSource, ownerName string) ResolvedReplicaSetSpec {
 	spec := ResolvedReplicaSetSpec{
 		Name:        src.Name,
 		Image:       src.Image,
@@ -210,17 +210,7 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, staticReplicas int, ownerNam
 		spec.Name = ownerName + "-replicaset"
 	}
 
-	if src.Replicas != "" {
-		if r, err := strconv.ParseInt(src.Replicas, 10, 32); err == nil {
-			spec.Replicas = int32(r)
-		}
-	}
-	if spec.Replicas == 0 && staticReplicas > 0 {
-		spec.Replicas = int32(staticReplicas)
-	}
-	if spec.Replicas == 0 {
-		spec.Replicas = 1
-	}
+	spec.Replicas = common.ParseReplicas(src.Replicas)
 
 	if src.Port != "" {
 		if p, err := strconv.ParseInt(src.Port, 10, 32); err == nil {

@@ -29,7 +29,7 @@ type namer interface {
 // OnCreate, OnReconcile and OnDelete. This is the canonical discovery method
 // callers should use for validation, diagnostics, or runtime wiring.
 func (c *CRDEntry) CollectSleepEntries() []SleepEntry {
-	if !c.HasAnyHooks() {
+	if !c.HasAnyHookTemplates() {
 		return nil
 	}
 
@@ -144,6 +144,9 @@ func (t HPATemplateSource) GetSleep() string       { return t.Sleep }
 func (t PDBTemplateSource) GetSleep() string       { return t.Sleep }
 func (t NamespaceTemplateSource) GetSleep() string { return t.Sleep }
 
+// Custom Resource
+func (t CustomResourceTemplateSource) GetSleep() string { return t.Sleep }
+
 // P L A C E H O L D E R S
 // func (t PlaceholderSource) GetSleep() string            { return t.Sleep }
 
@@ -192,6 +195,9 @@ func (t PVCTemplateSource) GetName() string            { return t.Name }
 func (t HPATemplateSource) GetName() string            { return t.Name }
 func (t PDBTemplateSource) GetName() string            { return t.Name }
 func (t NamespaceTemplateSource) GetName() string      { return t.Name }
+
+// Custom Resource
+func (t CustomResourceTemplateSource) GetName() string { return t.Sleep }
 
 // P L A C E H O L D E R S
 // func (t PlaceholderSource) GetName() string            { return t.Name }

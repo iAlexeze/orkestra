@@ -61,6 +61,12 @@ func NewResolver(ctx context.Context, obj domain.Object) (*Resolver, error) {
 		"error":          "",
 	}
 
+	// Inject empty inputs map so any unexpanded {{ .inputs.* }} motif expressions
+	// that survive motif expansion return "" instead of nil-pointer-panicking.
+	if _, ok := data["inputs"]; !ok {
+		data["inputs"] = map[string]interface{}{}
+	}
+
 	return &Resolver{
 		data:           data,
 		ownerName:      obj.GetName(),
