@@ -151,7 +151,7 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 		Namespace:   src.Namespace,
 		Image:       src.Image,
 		ServiceName: src.ServiceName,
-		Replicas:    1,
+		Replicas:    common.ParseReplicas(src.Replicas),
 		Labels:      make(map[string]string),
 		Annotations: make(map[string]string),
 		Env:         src.Env,
@@ -187,9 +187,6 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 
 	if src.Tag != "" {
 		spec.Image = src.Image + ":" + src.Tag
-	}
-	if r, err := strconv.ParseInt(src.Replicas, 10, 32); err == nil && r > 0 {
-		spec.Replicas = int32(r)
 	}
 	if p, err := strconv.ParseInt(src.Port, 10, 32); err == nil {
 		spec.Port = int32(p)

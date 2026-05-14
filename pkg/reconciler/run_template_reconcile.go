@@ -162,6 +162,10 @@ func (r *GenericReconciler[PTR]) runResourceGroup(
 		expandForEachRoleBindings(resolver, t.RoleBindings), update, guard); err != nil {
 		return err
 	}
+	if err := runCustomResources(ctx, kube, resolver, obj,
+		expandForEachCustomResources(resolver, t.CustomResource), update, guard); err != nil {
+		return err
+	}
 	if err := runReplicaSets(ctx, kube, resolver, obj,
 		expandForEachReplicaSets(resolver, t.ReplicaSets), update, guard); err != nil {
 		return err

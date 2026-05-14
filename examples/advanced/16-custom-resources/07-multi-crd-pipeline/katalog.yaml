@@ -1,0 +1,90 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: autoscale-sibling
+  author: orkspace
+  version: 0.1.0
+  description: >
+    Pipeline orchestrates three autoscale CRDs (Loader, Processor, Auditor)
+    by creating them declaratively via onCreate.custom.
+
+spec:
+  crds:
+    pipeline:
+      apiTypes:
+        group: cicd.orkestra.io
+        version: v1alpha1
+        kind: Pipeline
+        plural: pipelines
+      imports:
+        - motif: ./pipeline-motif.yaml
+          with:
+            processorImage: python:3.12
+            auditMode: Strict
+            replicas: 3
+
+    # ── Loader ────────────────────────────────────────────────────────────────
+    loader:
+      apiTypes:
+        group: autoscale.orkestra.io
+        version: v1alpha1
+        kind: Loader
+        plural: loaders
+      workers: 3
+      resync: 60s
+      operatorBox:
+        status:
+          fields:
+            - path: phase
+              value: "Running"
+        onCreate:
+          deployments:
+            - image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: 8080
+              reconcile: true
+          services:
+            - port: "8080"
+
+    # ── Processor ────────────────────────────────────────────────────────────
+    processor:
+      apiTypes:
+        group: autoscale.orkestra.io
+        version: v1alpha1
+        kind: Processor
+        plural: processors
+      workers: 2
+      resync: 30s
+      operatorBox:
+        status:
+          fields:
+            - path: phase
+              value: "Running"
+        onCreate:
+          deployments:
+            - image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: 9090
+              reconcile: true
+          services:
+            - port: "9090"
+
+    # ── Auditor ────────────────────────────────────────────────────────────
+    auditor:
+      apiTypes:
+        group: autoscale.orkestra.io
+        version: v1alpha1
+        kind: Auditor
+        plural: auditors
+      workers: 1
+      resync: 60s
+      operatorBox:
+        status:
+          fields:
+            - path: phase
+              value: "Running"
+        onCreate:
+          configMaps:
+            - name: "{{ .metadata.name }}-audit-config"
+              data:
+                AUDIT_MODE: "{{ .spec.auditMode }}"
