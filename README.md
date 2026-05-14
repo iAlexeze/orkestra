@@ -132,6 +132,7 @@ In another terminal, run:
 ork control start
 
 # → localhost:8081
+# username:password → orkestra
 ```
 
 For production, deploy with Helm:

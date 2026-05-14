@@ -154,8 +154,7 @@ All examples:
 - A running Kubernetes cluster (`kind create cluster` works for every example here)
 - `kubectl` configured
 
-Advanced examples with admission webhooks additionally require:
-- `ENABLE_ADMISSION_WEBHOOK=true` when starting the operator
+Advanced typed examples require:
 - Go 1.22+ for hook and constructor examples
 
 ---
