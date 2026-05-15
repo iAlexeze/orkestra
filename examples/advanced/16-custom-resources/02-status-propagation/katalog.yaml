@@ -14,11 +14,7 @@ spec:
 
     # ── DataPipeline ───────────────────────────────────────────────────────────
     datapipeline:
-      apiTypes:
-        group: data.example.io
-        version: v1alpha1
-        kind: DataPipeline
-        plural: datapipelines
+      crdFile: ./crd-datapipeline.yaml
       workers: 2
       resync: 30s
       operatorBox:
@@ -61,11 +57,7 @@ spec:
 
     # ── Connector ─────────────────────────────────────────────────────────────
     connector:
-      apiTypes:
-        group: data.example.io
-        version: v1alpha1
-        kind: Connector
-        plural: connectors
+      crdFile: ./crd-connector.yaml
       workers: 2
       resync: 30s
       operatorBox:

@@ -33,6 +33,7 @@ type Katalog struct {
 	// Internal — enabledCRDs is enriched and validated; Spec.CRDs holds all (including disabled)
 	metadata           orktypes.KatalogMeta         `yaml:"-" json:"-"`
 	enabledCRDs        map[string]orktypes.CRDEntry `yaml:"-" json:"-"`
+	katalogDir         string                       `yaml:"-" json:"-"`
 	conversionRegistry *InMemoryConversionRegistry
 	admissionRegistry  *InMemoryAdmissionRegistry
 

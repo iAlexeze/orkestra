@@ -160,7 +160,10 @@ func (k *Katalog) setGroupVersionKind() error {
 		}
 
 		if crd.GroupVersionKind.Empty() {
-			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.group, apiTypes.version, apiTypes.kind", name)
+			if crd.CRDFile != "" {
+				return fmt.Errorf("CRD '%s': could not determine group/version/kind from crdFile %q", name, crd.CRDFile)
+			}
+			return fmt.Errorf("CRD '%s': missing required fields: apiTypes.group, apiTypes.version, apiTypes.kind (or declare crdFile: to read these from the CRD YAML)", name)
 		}
 
 		if crd.GroupVersion.Empty() {

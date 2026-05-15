@@ -2,8 +2,9 @@
 package katalog
 
 import (
+	"fmt"
+
 	"github.com/orkspace/orkestra/pkg/konfig"
-	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
@@ -24,16 +25,22 @@ func (k *Katalog) KomposeRuntimeKatalog(kfg *konfig.Konfig, m *merger.Merger, pa
 	k.APIVersion = m.APIMetadata().APIVersion
 	k.Kind = m.APIMetadata().Kind
 	k.konfig = kfg
+	k.katalogDir = m.FirstEntryDir()
 
 	// Debug
 	// comment after use
 	// k.DebugKatalogInformation()
 
-	// Enrich enabled CRDs
-	// Switching from slice to map — must copy back since map values are not addressable
 	for name, entry := range k.enabledCRDs {
-		// logger.Debug().Str("name", name).
-		// 	Msgf("enriching %s", name)
+		// Populate APITypes from crdFile before enrichment so isFullySpecified sees
+		// the correct values. crdFile is the source of truth — overwrites any apiTypes.
+		if entry.CRDFile != "" {
+			if err := populateAPITypesFromCRDFile(&entry, k.katalogDir); err != nil {
+				return nil, fmt.Errorf("CRD %q: %w", name, err)
+			}
+		}
+
+		// Enrich enabled CRDs
 		outcome, err := EnrichCRDEntry(&entry)
 		if err != nil {
 			return nil, err
@@ -206,25 +213,4 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 	}
 
 	return k, nil
-}
-
-// Debug katalog information from merger
-func (k *Katalog) DebugKatalogInformation() {
-	// [DEBUG] Contents of k.Security
-	logger.Debug().Interface("katalog security", k.Security).Msg("katalog security")
-
-	// [DEBUG] Contents of k.Notiication
-	logger.Debug().Interface("katalog notification", k.Notification).Msg("katalog notification")
-
-	// [DEBUG] Contents of k.Providers
-	logger.Debug().Interface("katalog providers", k.Providers).Msg("katalog providers")
-
-	// [DEBUG] Contents of k.Spec
-	logger.Debug().Interface("katalog spec", k.Spec).Msg("katalog spec")
-
-	// [DEBUG] Contents of k.enabledCRDs
-	logger.Debug().Interface("katalog enabledCRDs", k.enabledCRDs).Msg("katalog enabledCRDs")
-
-	// [DEBUG] Contents of k.metadata
-	logger.Debug().Interface("katalog metadata", k.metadata).Msg("katalog metadata")
 }

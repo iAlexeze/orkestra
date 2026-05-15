@@ -41,8 +41,26 @@ This Katalog tells Orkestra:
 - Do not create any resources yet  
 
 !!! tip
-    Every CRD entry must define `apiTypes` and a `reconciler`.  
-    Everything else is optional and added only when needed.
+    Every CRD entry must define either `apiTypes` or `crdFile:` (which populates `apiTypes`
+    automatically from the CRD YAML), plus a `reconciler`. Everything else is optional.
+
+!!! note "crdFile shorthand (dev mode)"
+    If you are running locally with `ork run`, you can omit `apiTypes` entirely and declare
+    `crdFile:` instead. Orkestra reads `group`, `version`, `kind`, and `plural` directly
+    from the CRD YAML, and auto-applies the CRD before starting:
+
+    ```yaml
+    spec:
+      crds:
+        myapp:
+          crdFile: ./crd.yaml   # apiTypes populated from this file; CRD applied automatically
+          operatorBox:
+            default: true
+    ```
+
+    This only works with `ork run` (dev mode). For Helm-deployed Orkestra, declare
+    `apiTypes:` explicitly and install the CRD with `kubectl apply -f crd.yaml` before
+    deploying.
 
 ---
 

@@ -39,11 +39,7 @@ metadata:
 spec:
   crds:
     website:
-      apiTypes:
-        group: demo.orkestra.io
-        version: v1alpha1
-        kind: Website
-        plural: websites
+      crdFile: website-crd.yaml
       operatorBox:               # isolated environment for this operator in the runtime
         onCreate:
           deployments:
@@ -58,10 +54,12 @@ spec:
               reconcile: true
 ```
 
+That's the whole operator.
+
 ```bash
 # Run
 ork run -f katalog.yaml
-kubectl apply -f website.yaml
+kubectl apply -f website-cr.yaml
 ```
 
 Orkestra creates the Deployment and Service, sets owner references, writes status, emits events, corrects drift, exposes metrics and a control center — without a single line of Go.
@@ -522,33 +520,119 @@ operatorBox:
 
 ## Composition
 
-Pull Katalogs from files, Helm, Git, or OCI registries:
+Composition works in three layers: **Motifs → Katalogs → Komposer**.
+
+---
+
+### Layer 1 — Motif: reusable infrastructure template
+
+A Motif is a parameterized package of child resource declarations. Write it once, import it from any Katalog.
 
 ```yaml
+# db-motif.yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: Motif
+metadata:
+  name: managed-database
+  version: 0.1.0
+
+inputs:
+  - name: engine
+    default: postgres
+  - namespace: namespace
+    required: true
+  - name: storage
+    default: "10Gi"
+
+resources:
+  custom:
+    - apiVersion: storage.example.io/v1alpha1
+      kind: DatabaseCluster
+      metadata:
+        name: "{{ .metadata.name }}-db"
+        namespace: "{{ .inputs.namespace }}"
+      spec:
+        engine: "{{ .inputs.engine }}"
+        storage: "{{ .inputs.storage }}"
+
+  configMaps:
+    - name: "{{ .metadata.name }}-config"
+        namespace: "{{ .inputs.namespace }}"
+      data:
+        ENGINE: "{{ .inputs.engine }}"
+        STORAGE: "{{ .inputs.storage }}"
+```
+
+---
+
+### Layer 2 — Katalog: import the Motif
+
+A Katalog declares a CRD and imports Motifs for its child resource patterns. The motif's
+`custom:` block is expanded into the Katalog's `onReconcile` at parse time — no duplication,
+no copy-paste.
+
+```yaml
+# app-katalog.yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: app-operator
+
+spec:
+  crds:
+    app:
+      crdFile: ./crd-app.yaml
+      imports:
+        - motif: ./db-motif.yaml
+          with:
+            engine: postgres
+            storage: "20Gi"
+            namespace: "{{ .metadata.namespace }}"
+      operatorBox:
+        onCreate:
+          deployments:
+            - image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              reconcile: true
+```
+
+---
+
+### Layer 3 — Komposer: compose Katalogs into one runtime
+
+A Komposer pulls Katalogs from files, Helm, or OCI registries and runs them in a single
+Orkestra instance. Override any field without touching the source Katalog.
+
+```yaml
+# komposer.yaml
 apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform
-sources:
+
+imports:
+  files:
+    - ./app-katalog.yaml
+    - ./pipeline-katalog.yaml
   registry:
     - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
       oci: true
-  files:
-    - ./katalogs/website.yaml
-    - ./katalogs/pipeline.yaml
   helm:
     - repo: ghcr.io/orkspace/registry/platform
       chart: platform-example
       version: 0.1.0
-      valueFiles:
-        - values/overrides.yaml
+
 spec:
   crds:
-    postgres:
-      workers: 8
+    app:
+      workers: 8        # override — all other fields inherited from app-katalog.yaml
 ```
 
-One command starts the entire platform.
+One command runs the full platform:
+
+```bash
+ork run -f komposer.yaml
+```
 
 ---
 

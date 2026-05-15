@@ -108,6 +108,25 @@ Don't specify `group`, `version`, or `plural` for built‑in resources. Orkestra
     plural: pods
 ```
 
+### Use crdFile in Dev Workflows
+
+When running locally with `ork run`, declare `crdFile:` instead of an `apiTypes:` block
+for custom CRDs. Orkestra reads the API group, version, kind, and plural directly from the
+CRD YAML and auto-applies the CRD before starting — no separate `kubectl apply -f crd.yaml`
+step needed.
+
+```yaml
+# Good — self-contained for ork run
+spec:
+  crds:
+    myapp:
+      crdFile: ./crd.yaml
+      operatorBox:
+        # ...
+```
+
+For Helm-deployed Orkestra, keep `apiTypes:` explicit — `crdFile` auto-apply is dev-only.
+
 ### Name CRDs Clearly
 
 Use lowercase kebab‑case for CRD names. These appear in URLs and logs.

@@ -13,12 +13,7 @@ metadata:
 spec:
   crds:
     ingestor:
-      apiTypes:
-        group: autoscale.orkestra.io
-        version: v1alpha1
-        kind: Ingestor
-        plural: ingestors
-
+      crdFile: ./crd.yaml
       workers: 2
       resync: 60s
 

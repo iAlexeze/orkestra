@@ -16,11 +16,7 @@ spec:
     # The "parent" CRD. When a Workspace is created, its operatorBox declares
     # a SecretVault child CR via onCreate.custom.
     workspace:
-      apiTypes:
-        group: platform.example.io
-        version: v1alpha1
-        kind: Workspace
-        plural: workspaces
+      crdFile: ./crd-workspace.yaml
       workers: 2
       resync: 60s
       operatorBox:
@@ -61,11 +57,7 @@ spec:
     # not know it was created by a Workspace. The owner reference set by Orkestra
     # ensures it is deleted when the parent Workspace is deleted.
     secretvault:
-      apiTypes:
-        group: platform.example.io
-        version: v1alpha1
-        kind: SecretVault
-        plural: secretvaults
+      crdFile: ./crd-secretvault.yaml
       workers: 2
       resync: 60s
       operatorBox:

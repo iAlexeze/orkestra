@@ -19,12 +19,7 @@ spec:
     # Writes its connection string into status.endpoint once the StatefulSet
     # is ready so App can read it.
     database:
-      apiTypes:
-        group: deps.orkestra.io
-        version: v1alpha1
-        kind: Database
-        plural: databases
-
+      crdFile: ./crd.yaml
       workers: 2
       resync: 30s
 
@@ -63,12 +58,7 @@ spec:
     #     database:
     #       condition: healthy
     app:
-      apiTypes:
-        group: deps.orkestra.io
-        version: v1alpha1
-        kind: App
-        plural: apps
-
+      crdFile: ./crd.yaml
       workers: 3
       resync: 30s
 
