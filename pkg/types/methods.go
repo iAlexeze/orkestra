@@ -299,6 +299,12 @@ func (c *CRDEntry) HasRollbackRules() bool {
 	return c.OperatorBox.Rollback != nil || c.OperatorBox.RollBackOnError
 }
 
+// HasCRDFile reports whether this CRDEntry declares a CRD file
+// to be auto-applied before the operator starts.
+func (c *CRDEntry) HasCRDFile() bool {
+	return c != nil && c.CRDFile != ""
+}
+
 // NotificationEnabled reports whether this CRD declares the notification block
 // Enabled by default
 func (c *CRDEntry) IsNotificationEnabled() bool {

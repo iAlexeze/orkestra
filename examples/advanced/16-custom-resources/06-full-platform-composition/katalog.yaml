@@ -20,11 +20,7 @@ spec:
     #
     # Small preset: lean development platform.
     platform:
-      apiTypes:
-        group: infra.example.io
-        version: v1alpha1
-        kind: Platform
-        plural: platforms
+      crdFile: ./crd-platform.yaml
       workers: 2
       resync: 60s
       # Import the motif. The 'with' block provides sizing-specific values.
@@ -56,11 +52,7 @@ spec:
 
     # ── MessageQueue ───────────────────────────────────────────────────────────
     messagequeue:
-      apiTypes:
-        group: infra.example.io
-        version: v1alpha1
-        kind: MessageQueue
-        plural: messagequeues
+      crdFile: ./crd-messagequeue.yaml
       workers: 3
       resync: 60s
       operatorBox:
@@ -82,11 +74,7 @@ spec:
 
     # ── ObjectStore ────────────────────────────────────────────────────────────
     objectstore:
-      apiTypes:
-        group: infra.example.io
-        version: v1alpha1
-        kind: ObjectStore
-        plural: objectstores
+      crdFile: ./crd-objectstore.yaml
       workers: 1
       resync: 60s
       operatorBox:
@@ -113,11 +101,7 @@ spec:
 
     # ── SearchCluster ──────────────────────────────────────────────────────────
     searchcluster:
-      apiTypes:
-        group: infra.example.io
-        version: v1alpha1
-        kind: SearchCluster
-        plural: searchclusters
+      crdFile: ./crd-searchcluster.yaml
       workers: 1
       resync: 60s
       operatorBox:

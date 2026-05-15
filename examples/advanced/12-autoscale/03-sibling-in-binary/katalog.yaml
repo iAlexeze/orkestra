@@ -27,12 +27,7 @@ spec:
     # Produces work for Processor and Auditor to consume.
     # Fixed concurrency — no autoscale on the producer itself.
     loader:
-      apiTypes:
-        group: autoscale.orkestra.io
-        version: v1alpha1
-        kind: Loader
-        plural: loaders
-
+      crdFile: ./crd-loader.yaml
       workers: 3
       resync: 60s
 
@@ -69,12 +64,7 @@ spec:
     # Cannot be combined with interval/cooldown/conditions/do — the profile owns
     # the entire autoscale block.
     processor:
-      apiTypes:
-        group: autoscale.orkestra.io
-        version: v1alpha1
-        kind: Processor
-        plural: processors
-
+      crdFile: ./crd-processor.yaml
       workers: 2
       resync: 30s
 
@@ -105,12 +95,7 @@ spec:
     # cross.<crd>.metrics.* field path — reads from the sibling CRD's live
     # metrics without any network call (same binary, same runtime).
     auditor:
-      apiTypes:
-        group: autoscale.orkestra.io
-        version: v1alpha1
-        kind: Auditor
-        plural: auditors
-
+      crdFile: ./crd-auditor.yaml
       workers: 1
       resync: 60s
 

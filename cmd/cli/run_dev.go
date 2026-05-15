@@ -3,9 +3,16 @@
 package cli
 
 import (
+	"context"
 	"fmt"
+	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/orkspace/orkestra/pkg/doctor"
+	"github.com/orkspace/orkestra/pkg/logger"
+	"github.com/orkspace/orkestra/pkg/merger"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -43,6 +50,54 @@ func init() {
 			return fmt.Errorf("cluster not reachable\n")
 		}
 
+		// Apply declared crdFile paths before handing off to the runtime.
+		// In-cluster check is inside — this is a no-op in production.
+		paths, _ := cmd.Flags().GetStringSlice("file")
+		if len(paths) > 0 {
+			m := merger.New(paths...)
+			if err := m.Merge(); err == nil {
+				applyCRDFilesIfNeeded(cmd.Context(), paths[0], m)
+			}
+		}
+
 		return originalRunE(cmd, args)
+	}
+}
+
+// applyCRDFilesIfNeeded applies any crdFile declarations via kubectl before the
+// operator starts. Only runs outside the cluster (dev mode). In production,
+// CRDs must be pre-applied by the platform operator.
+func applyCRDFilesIfNeeded(ctx context.Context, katalogPath string, m *merger.Merger) {
+	if utils.IsRunningInCluster() {
+		return
+	}
+
+	katalogDir := filepath.Dir(katalogPath)
+
+	for crdName, entry := range m.All() {
+		if entry.CRDFile == "" {
+			continue
+		}
+
+		path := entry.CRDFile
+		if !filepath.IsAbs(path) && !strings.HasPrefix(path, "http") {
+			path = filepath.Join(katalogDir, path)
+		}
+
+		out, err := exec.CommandContext(ctx, "kubectl", "apply", "-f", path).CombinedOutput()
+		if err != nil {
+			// Best effort — CRD may already exist at the correct version.
+			logger.Warn().
+				Str("crd", crdName).
+				Str("path", path).
+				Str("output", strings.TrimSpace(string(out))).
+				Err(err).
+				Msg("crdFile pre-apply failed (continuing)")
+		} else {
+			logger.Info().
+				Str("crd", crdName).
+				Str("path", path).
+				Msg("crdFile applied")
+		}
 	}
 }

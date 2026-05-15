@@ -11,11 +11,7 @@ metadata:
 spec:
   crds:
     pipeline:
-      apiTypes:
-        group: cicd.orkestra.io
-        version: v1alpha1
-        kind: Pipeline
-        plural: pipelines
+      crdFile: ./crd-pipeline.yaml
       imports:
         - motif: ./pipeline-motif.yaml
           with:
@@ -25,11 +21,7 @@ spec:
 
     # ── Loader ────────────────────────────────────────────────────────────────
     loader:
-      apiTypes:
-        group: autoscale.orkestra.io
-        version: v1alpha1
-        kind: Loader
-        plural: loaders
+      crdFile: ./crd-loader.yaml
       workers: 3
       resync: 60s
       operatorBox:
@@ -48,11 +40,7 @@ spec:
 
     # ── Processor ────────────────────────────────────────────────────────────
     processor:
-      apiTypes:
-        group: autoscale.orkestra.io
-        version: v1alpha1
-        kind: Processor
-        plural: processors
+      crdFile: ./crd-processor.yaml
       workers: 2
       resync: 30s
       operatorBox:
@@ -71,11 +59,7 @@ spec:
 
     # ── Auditor ────────────────────────────────────────────────────────────
     auditor:
-      apiTypes:
-        group: autoscale.orkestra.io
-        version: v1alpha1
-        kind: Auditor
-        plural: auditors
+      crdFile: ./crd-auditor.yaml
       workers: 1
       resync: 60s
       operatorBox:

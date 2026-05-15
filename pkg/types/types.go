@@ -2397,6 +2397,17 @@ type CRDEntry struct {
 	// See APITypes for full field documentation.
 	APITypes APITypes `yaml:"apiTypes" json:"apiTypes" validate:"required"`
 
+	// CRDFile is the path to the CRD YAML file to apply before operator start.
+	// Supports relative (resolved from katalog file location), absolute, or
+	// remote (https://…) paths.
+	//
+	// Only applied when running outside the cluster (dev mode via ork run).
+	// In production, CRDs must be pre-applied by the platform operator.
+	//
+	// During ork validate, the file is read and its group/kind are checked
+	// against apiTypes to catch mismatches before deployment.
+	CRDFile string `yaml:"crdFile,omitempty" json:"crdFile,omitempty"`
+
 	// ── Runtime objects ───────────────────────────────────────────────────────
 	// Set by addRuntimeObjects() during Katalog validation. Never set from YAML.
 	//

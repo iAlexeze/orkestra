@@ -11,11 +11,7 @@ metadata:
 spec:
   crds:
     website:
-      apiTypes:
-        group: demo.orkestra.io
-        version: v1alpha1
-        kind: Website
-        plural: websites
+      crdFile: ./crd.yaml
       resync: 5s
 
       operatorBox:

@@ -128,7 +128,7 @@ func validateMotifFile(path string) error {
 func init() {
 	rootCmd.AddCommand(validateCmd)
 
-	validateCmd.Flags().StringSliceP("file", "f", nil, "Path to katalog.yaml or komposer.yaml (can be specified multiple times or as comma-separated)")
+	validateCmd.Flags().StringSliceP("file", "f", nil, "Path to katalog.yaml or komposer.yaml (repeatable or comma-separated)")
 
 	// Shadow global flags so they don't appear under `ork validate`
 	validateCmd.Flags().Bool("debug", false, "")

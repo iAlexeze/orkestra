@@ -14,6 +14,7 @@ package merger
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -137,6 +138,9 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 	if override.APITypes.Kind != "" {
 		result.APITypes = override.APITypes
 	}
+	if override.CRDFile != "" {
+		result.CRDFile = override.CRDFile
+	}
 
 	// ── Enabled ───────────────────────────────────────────────────────────
 	// Only override if explicitly set to false — zero value (true) means
@@ -164,11 +168,6 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 	if override.Namespace != "" {
 		result.Namespace = override.Namespace
 	}
-
-	// ── Critical ──────────────────────────────────────────────────────────
-	// if override.IsCritical() {
-	// 	result.Critical = override.Critical
-	// }
 
 	// ── Dependencies ──────────────────────────────────────────────────────
 	// Override replaces entirely if declared — partial dependency override
@@ -347,6 +346,15 @@ func (m *Merger) ToProjectInfo() *orktypes.ProjectInfo {
 func (m *Merger) APIMetadata() apiMetadata {
 	m.mustBeMerged()
 	return m.apiMetadata
+}
+
+// FirstEntryDir returns the directory of the first entry point path.
+// Used by the Katalog parser to resolve relative crdFile paths.
+func (m *Merger) FirstEntryDir() string {
+	if len(m.entryPoints) == 0 {
+		return ""
+	}
+	return filepath.Dir(m.entryPoints[0])
 }
 
 func (m *Merger) SetRegistryURL(url string) {

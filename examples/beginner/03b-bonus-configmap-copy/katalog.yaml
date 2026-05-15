@@ -12,11 +12,7 @@ metadata:
 spec:
   crds:
     configmap-distribution:
-      apiTypes:
-        group: demo.orkestra.io
-        version: v1alpha1
-        kind: ConfigMapDistribution
-        plural: configmapdistributions
+      crdFile: ./crd.yaml
       namespaced: false             # Default: (true)
 
       operatorBox:
