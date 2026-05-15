@@ -76,11 +76,11 @@ When all three children have `hasStatus: true`, the Platform status block can ag
 status:
   fields:
     - path: mqPhase
-      value: '{{ (index .children.custom (printf "%s-mq" .metadata.name)).status.phase }}'
+      value: '{{ (index .children.customs (printf "%s-mq" .metadata.name)).status.phase }}'
     - path: storePhase
-      value: '{{ (index .children.custom (printf "%s-store" .metadata.name)).status.phase }}'
+      value: '{{ (index .children.customs (printf "%s-store" .metadata.name)).status.phase }}'
     - path: searchPhase
-      value: '{{ (index .children.custom (printf "%s-search" .metadata.name)).status.phase }}'
+      value: '{{ (index .children.customs (printf "%s-search" .metadata.name)).status.phase }}'
 ```
 
 A single `kubectl get platform dev-platform` tells you the health of the entire stack.
@@ -145,7 +145,7 @@ searchcluster.infra.example.io/dev-platform-search 1       1g         Running   
 ### 4. Check the aggregated Platform status
 
 ```bash
-kubectl get platform dev-platform -n default -o yaml | grep -A 10 "^status:"
+kubectl get platform dev-platform -n default -o yaml | grep -A 12 "^status:"
 ```
 
 Expected:

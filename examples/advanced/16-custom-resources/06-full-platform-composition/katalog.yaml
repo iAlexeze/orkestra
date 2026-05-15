@@ -48,11 +48,11 @@ spec:
             - path: phase
               value: "Ready"
             - path: mqPhase
-              value: '{{ (index .children.custom (printf "%s-mq" .metadata.name)).status.phase }}'
+              value: '{{ (index .children.customs (printf "%s-mq" .metadata.name)).status.phase }}'
             - path: storePhase
-              value: '{{ (index .children.custom (printf "%s-store" .metadata.name)).status.phase }}'
+              value: '{{ (index .children.customs (printf "%s-store" .metadata.name)).status.phase }}'
             - path: searchPhase
-              value: '{{ (index .children.custom (printf "%s-search" .metadata.name)).status.phase }}'
+              value: '{{ (index .children.customs (printf "%s-search" .metadata.name)).status.phase }}'
 
     # ── MessageQueue ───────────────────────────────────────────────────────────
     messagequeue:
@@ -61,7 +61,7 @@ spec:
         version: v1alpha1
         kind: MessageQueue
         plural: messagequeues
-      workers: 1
+      workers: 3
       resync: 60s
       operatorBox:
         status:
@@ -78,6 +78,7 @@ spec:
               reconcile: true
           services:
             - port: "5672"
+              reconcile: true
 
     # ── ObjectStore ────────────────────────────────────────────────────────────
     objectstore:
@@ -108,6 +109,7 @@ spec:
                   value: minioadmin
           services:
             - port: "9000"
+              reconcile: true
 
     # ── SearchCluster ──────────────────────────────────────────────────────────
     searchcluster:
@@ -138,3 +140,4 @@ spec:
                   value: single-node
           services:
             - port: "9200"
+              reconcile: true

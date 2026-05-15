@@ -84,7 +84,7 @@ jobs:
       - name: Validate with custom binary (should pass)
         run: |
           cd ${{ steps.ork.outputs.operator_dir }}
-          ./~/.orkestra/bin/ork validate -k ${{ steps.ork.outputs.katalog_path }}
+          ~/.orkestra/bin/ork validate -f ${{ steps.ork.outputs.katalog_path }}
 
       # ----------------------------------------------------------------------
       # Build and push Docker image using custom binary

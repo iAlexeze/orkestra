@@ -47,7 +47,7 @@ Each sub-folder's `README.md` explains the concepts introduced, shows the key YA
 
 ## Key Concepts
 
-### `onCreate.custom` / `onUpdate.custom`
+### `onCreate.custom` / `onReconcile.custom`
 
 Declares child CRs to create when a parent CR is reconciled. Each entry is a full CR manifest with Go-template expressions resolved from the parent:
 

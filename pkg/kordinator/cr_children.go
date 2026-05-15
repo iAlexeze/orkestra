@@ -1,35 +1,6 @@
 // pkg/kordinator/cr_children.go
 //
 // Child resource fetching and readiness for the CR detail endpoint.
-//
-// Fixes vs original:
-//
-// Fix 1 — Multiple children per kind.
-//
-//	map[string]ChildSummary only held one child per kind (last-writer-wins).
-//	Two Deployments (payments-service-with-secret, with-configmap) collapsed
-//	into one. Now returns map[string]interface{} where the value is either a
-//	single ChildSummary (when one child) or []ChildSummary (when multiple).
-//	Backward-compatible with the UI: single children still serialize as objects.
-//
-// Fix 2 — Parent CR readiness uses builtInRegistry directly.
-//
-//	crd.IsStatuslessType() had a GVK string format mismatch —
-//	k8s uses "/v1, Kind=ConfigMap", registry used "v1/ConfigMap".
-//	extractParentReady now calls katalog.BuiltInMeta(parentKind) by plain
-//	Kind string — no format dependency.
-//
-// Fix 3 — Annotation-based readiness for statusless CRDs.
-//
-//	ConfigMap has no /status subresource so Orkestra writes phase to annotations.
-//	extractParentReady reads orkestra.io/phase annotation when the CR is statusless.
-//
-// Fix 4 — Dynamic GVR filtering + TTL cache.
-//
-//	readChildrenForEndpoint previously queried all 22 known child GVR types on
-//	every HTTP request. Now it only queries the types declared in the Katalog's
-//	onCreate/onReconcile templates (using the OperatorBoxConfig). Results are
-//	cached for childrenCacheTTL per CR so repeated UI polls reuse in-memory data.
 package kordinator
 
 import (
@@ -194,8 +165,8 @@ func InvalidateChildrenCache(namespace, name string) {
 // declared in the OperatorBoxConfig's onCreate/onReconcile templates.
 // When no config is provided (empty templates), all known GVRs are returned
 // so Katalogs using Go hooks still show their children.
-func relevantGVRsFromConfig(rc orktypes.OperatorBoxConfig) []childGVREntry {
-	needed := relevantKeys(rc)
+func relevantGVRsFromConfig(box orktypes.OperatorBoxConfig) []childGVREntry {
+	needed := relevantKeys(box)
 	if len(needed) == 0 {
 		return knownChildGVRs
 	}
@@ -210,7 +181,7 @@ func relevantGVRsFromConfig(rc orktypes.OperatorBoxConfig) []childGVREntry {
 
 // relevantKeys extracts the set of child resource type keys declared in
 // the OperatorBoxConfig's onCreate/onReconcile templates.
-func relevantKeys(rc orktypes.OperatorBoxConfig) map[string]bool {
+func relevantKeys(box orktypes.OperatorBoxConfig) map[string]bool {
 	needed := map[string]bool{}
 	addKeys := func(t *orktypes.HookTemplates) {
 		if t == nil {
@@ -265,15 +236,15 @@ func relevantKeys(rc orktypes.OperatorBoxConfig) map[string]bool {
 			needed["rolebinding"] = true
 		}
 	}
-	addKeys(rc.OnCreate)
-	addKeys(rc.OnReconcile)
+	addKeys(box.OnCreate)
+	addKeys(box.OnReconcile)
 	return needed
 }
 
 // mergeCustomResourceSrcs collects all custom resource template entries from
 // both onCreate and onReconcile, deduplicating by APIVersion+Kind so each
 // unique GVR is only queried once.
-func mergeCustomResourceSrcs(rc orktypes.OperatorBoxConfig) []orktypes.CustomResourceTemplateSource {
+func mergeCustomResourceSrcs(box orktypes.OperatorBoxConfig) []orktypes.CustomResourceTemplateSource {
 	type key struct{ apiVersion, kind string }
 	seen := map[key]bool{}
 	var out []orktypes.CustomResourceTemplateSource
@@ -293,8 +264,8 @@ func mergeCustomResourceSrcs(rc orktypes.OperatorBoxConfig) []orktypes.CustomRes
 			out = append(out, src)
 		}
 	}
-	add(rc.OnCreate)
-	add(rc.OnReconcile)
+	add(box.OnCreate)
+	add(box.OnReconcile)
 	return out
 }
 
@@ -392,66 +363,6 @@ func fetchChildKind(
 		})
 	}
 	return result
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Parent CR readiness — extractParentReady
-// ─────────────────────────────────────────────────────────────────────────────
-
-// extractParentReady determines readiness for the parent CR.
-// Uses katalog.BuiltInMeta(parentKind) directly to avoid the GVK string
-// format mismatch in crd.IsStatuslessType().
-//
-// Resolution order:
-//  1. Statusless (ConfigMap, Secret, etc.):
-//     a. orkestra.io/phase annotation → use it (Orkestra writes here for statusless CRDs)
-//     b. No annotation → ready on existence
-//  2. Non-statusless: check status.conditions[type=Ready]
-func deprecatedExtractParentReady(objMap map[string]interface{}, parentKind string) (ready bool, reason, message string) {
-	m := katalog.BuiltInMeta(parentKind)
-	statusless := m.Statusless || m.SkipStatusSubresource
-
-	if statusless {
-		meta, _ := objMap["metadata"].(map[string]interface{})
-		annotations, _ := meta["annotations"].(map[string]interface{})
-		if phase, ok := annotations["orkestra.io/phase"].(string); ok {
-			switch phase {
-			case "Ready", "Succeeded":
-				return true, phase, ""
-			case "Failed", "Degraded", "Error":
-				return false, phase, ""
-			default:
-				return true, phase, "" // Running, Pending, unknown → optimistic
-			}
-		}
-		// No phase annotation yet — first reconcile not complete or CR just created.
-		// Return true: the CR exists, which is the correct "ready" semantic for
-		// statusless types. The phase annotation will appear after the first reconcile.
-		return true, "Exists", ""
-	}
-
-	// Standard path: look for Ready condition in status
-	status, _ := objMap["status"].(map[string]interface{})
-	conditionsRaw, _ := status["conditions"].([]interface{})
-	var conditions []interface{} = conditionsRaw
-	for _, c := range conditions {
-		cond, ok := c.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		if cond["type"] == "Ready" {
-			ready = cond["status"] == "True"
-			reason = fmt.Sprint(cond["reason"])
-			message = fmt.Sprint(cond["message"])
-			if message == "<nil>" {
-				message = ""
-			}
-			return ready, reason, message
-		}
-	}
-
-	// No Ready condition — first reconcile not yet complete
-	return false, "Pending", ""
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
