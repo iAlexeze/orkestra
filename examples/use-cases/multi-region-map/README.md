@@ -60,9 +60,9 @@ deployments:
     replicas: "{{ or .value.replicas .spec.defaultReplicas }}"
     port: "{{ or .value.port .spec.defaultPort }}"
     env:
-      REGION:
+      - name: REGION
         value: "{{ .item }}"
-      PORT:
+      - name: PORT
         value: "{{ or .value.port .spec.defaultPort }}"
     forEach:
       field: spec.regions

@@ -541,7 +541,7 @@ func deployMultiApp(dc deployContext) error {
 			return fmt.Errorf("saving komposer: %w", saveErr)
 		}
 
-		mergedPath, mergeErr := runKompose()
+		mergedPath, mergeErr := runTemplate()
 		if mergeErr != nil {
 			return fmt.Errorf("merging katalogs: %w", mergeErr)
 		}
@@ -1005,16 +1005,16 @@ func printReadySummary(crName, ns string, state *doctor.DeployState) {
 	}
 }
 
-// runKompose runs ork kompose to produce ~/.orkestra/deploy/merged-katalog.yaml
+// runTemplate runs ork template to produce ~/.orkestra/deploy/merged-katalog.yaml
 // from all registered Katalogs. Returns the path to the merged file.
-func runKompose() (string, error) {
+func runTemplate() (string, error) {
 	komposerPath, err := doctor.GlobalKomposerPath()
 	if err != nil {
 		return "", err
 	}
 	mergedPath := filepath.Join(filepath.Dir(komposerPath), doctor.RuntimeKatalogPath)
-	if err := exec.Command("ork", "kompose", "-f", komposerPath, "-o", mergedPath).Run(); err != nil {
-		return "", fmt.Errorf("ork kompose: %w", err)
+	if err := exec.Command("ork", "template", "-f", komposerPath, "-o", mergedPath).Run(); err != nil {
+		return "", fmt.Errorf("ork template: %w", err)
 	}
 	return mergedPath, nil
 }
@@ -1069,8 +1069,8 @@ type devPathArgs struct {
 	port      string
 	language  string
 	bundleDir string
-	secrets   []orktypes.EnvVar
-	config    []orktypes.EnvVar
+	secrets   []orktypes.DotEnvVar
+	config    []orktypes.DotEnvVar
 	dryRun    bool
 	opts      doctor.GenerateOptions
 }

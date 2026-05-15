@@ -40,7 +40,7 @@ func expandForEachCustomResources(resolver *orktmpl.Resolver, srcs []orktypes.Cu
 				expanded.Kind = v
 			}
 
-			// Metadata
+			// Metadata — resolve all fields into meta before assigning
 			meta := src.Metadata // copy
 			if v, _ := ir.Resolve(meta.Name); v != "" {
 				meta.Name = v
@@ -49,28 +49,24 @@ func expandForEachCustomResources(resolver *orktmpl.Resolver, srcs []orktypes.Cu
 				meta.Namespace = v
 			}
 
-			// Resolve Labels
-			if len(src.Metadata.Labels) > 0 {
-				expanded.Metadata.Labels = make([]orktypes.ResourceLabel, 0, len(src.Metadata.Labels))
-				for _, l := range src.Metadata.Labels {
+			// Resolve Labels into meta directly so the assignment below picks them up
+			if len(meta.Labels) > 0 {
+				resolved := make([]orktypes.ResourceLabel, 0, len(meta.Labels))
+				for _, l := range meta.Labels {
 					resolvedVal, _ := ir.Resolve(l.Value)
-					expanded.Metadata.Labels = append(expanded.Metadata.Labels, orktypes.ResourceLabel{
-						Key:   l.Key,
-						Value: resolvedVal,
-					})
+					resolved = append(resolved, orktypes.ResourceLabel{Key: l.Key, Value: resolvedVal})
 				}
+				meta.Labels = resolved
 			}
 
-			// Resolve Annotations
-			if len(src.Metadata.Annotations) > 0 {
-				expanded.Metadata.Annotations = make([]orktypes.ResourceLabel, 0, len(src.Metadata.Annotations))
-				for _, a := range src.Metadata.Annotations {
+			// Resolve Annotations into meta directly
+			if len(meta.Annotations) > 0 {
+				resolved := make([]orktypes.ResourceLabel, 0, len(meta.Annotations))
+				for _, a := range meta.Annotations {
 					resolvedVal, _ := ir.Resolve(a.Value)
-					expanded.Metadata.Annotations = append(expanded.Metadata.Annotations, orktypes.ResourceLabel{
-						Key:   a.Key,
-						Value: resolvedVal,
-					})
+					resolved = append(resolved, orktypes.ResourceLabel{Key: a.Key, Value: resolvedVal})
 				}
+				meta.Annotations = resolved
 			}
 
 			expanded.Metadata = meta

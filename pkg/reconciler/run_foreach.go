@@ -122,12 +122,12 @@ func expandForEachDeployments(
 			expanded.Port, _ = ir.Resolve(src.Port)
 			expanded.Namespace, _ = ir.Resolve(src.Namespace)
 
-			// Resolve Env map values
+			// Resolve Env values
 			if len(src.Env) > 0 {
-				expanded.Env = make(map[string]orktypes.EnvVarSource, len(src.Env))
-				for k, v := range src.Env {
+				expanded.Env = make(orktypes.EnvVarList, 0, len(src.Env))
+				for _, v := range src.Env {
 					resolvedVal, _ := ir.Resolve(v.Value)
-					expanded.Env[k] = orktypes.EnvVarSource{Value: resolvedVal}
+					expanded.Env = append(expanded.Env, orktypes.EnvVar{Name: v.Name, Value: resolvedVal})
 				}
 			}
 
@@ -198,12 +198,12 @@ func expandForEachReplicaSets(
 			expanded.Port, _ = ir.Resolve(src.Port)
 			expanded.Namespace, _ = ir.Resolve(src.Namespace)
 
-			// Resolve Env map values
+			// Resolve Env values
 			if len(src.Env) > 0 {
-				expanded.Env = make(map[string]orktypes.EnvVarSource, len(src.Env))
-				for k, v := range src.Env {
+				expanded.Env = make(orktypes.EnvVarList, 0, len(src.Env))
+				for _, v := range src.Env {
 					resolvedVal, _ := ir.Resolve(v.Value)
-					expanded.Env[k] = orktypes.EnvVarSource{Value: resolvedVal}
+					expanded.Env = append(expanded.Env, orktypes.EnvVar{Name: v.Name, Value: resolvedVal})
 				}
 			}
 

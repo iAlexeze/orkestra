@@ -1,7 +1,7 @@
-# **CHANGELOG — `onCreate.custom` / `onUpdate.custom`: Operator Composition via Custom Resources**
+# **CHANGELOG — `onCreate.custom` / `onReconcile.custom`: Operator Composition via Custom Resources**
 
-### **Added — Custom Resource lifecycle hooks (`onCreate.custom` / `onUpdate.custom`)**
-Introduced first-class support for composing operators by creating and managing arbitrary Kubernetes Custom Resources from within Orkestra hook declarations. An operator can now declare a `custom` block under `onCreate` or `onUpdate` to create, update, and conditionally clean up any CRD-backed resource — enabling true operator-to-operator composition without bespoke integrations.
+### **Added — Custom Resource lifecycle hooks (`onCreate.custom` / `onReconcile.custom`)**
+Introduced first-class support for composing operators by creating and managing arbitrary Kubernetes Custom Resources from within Orkestra hook declarations. An operator can now declare a `custom` block under `onCreate` or `onReconcile` to create, update, and conditionally clean up any CRD-backed resource — enabling true operator-to-operator composition without bespoke integrations.
 
 Key components:
 

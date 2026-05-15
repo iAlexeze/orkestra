@@ -39,7 +39,6 @@ The runtime binary is compiled with the `runtime` build tag, which strips every 
 | `ork init` | ✓ | — |
 | `ork template` | ✓ | — |
 | `ork diff` | ✓ | — |
-| `ork kompose` | ✓ | — |
 
 **Why this matters:** a compromised container cannot use the binary to generate RBAC bundles, enumerate registered CRDs, scaffold new operators, extract Katalog definitions, or exfiltrate configuration. The production binary knows only how to run. There is no code generation surface to exploit.
 

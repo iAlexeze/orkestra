@@ -6,7 +6,7 @@ metadata:
     Single-version CronJob operator. Accepts both cron string and structured
     schedule formats. normalize.spec collapses all inputs into a canonical cron
     string before any reconcile logic runs. No typeOf branching needed anywhere.
-    No webhooks. No multi-version CRD. Run with: ork run -k katalog-no-webhook.yaml
+    No webhooks. No multi-version CRD. Run with: ork run -f katalog-no-webhook.yaml
 
 security:
   deletionProtection:

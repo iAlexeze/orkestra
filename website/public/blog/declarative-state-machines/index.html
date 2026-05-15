@@ -226,7 +226,7 @@
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">value</span>: <span style="color:#f1fa8c">&#34;Running&#34;</span>
 </span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">path</span>: endpoint
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">value</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}.{{ .metadata.namespace }}.svc&#34;</span>
-</span></span></code></pre></div><p>The <code>onCreate</code>, <code>onUpdate</code>, and <code>onDelete</code> hooks define the state transitions. The <code>status.fields</code> declarations define what gets written after each successful transition.</p>
+</span></span></code></pre></div><p>The <code>onCreate</code>, <code>onReconcile</code>, and <code>onDelete</code> hooks define the state transitions. The <code>status.fields</code> declarations define what gets written after each successful transition.</p>
 <h2 id="why-it-matters">Why it matters</h2>
 <p>When your state machine is in YAML:</p>
 <ol>

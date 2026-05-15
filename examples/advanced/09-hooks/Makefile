@@ -37,7 +37,7 @@ build:
 # ── validate ──────────────────────────────────────────────────────────────────
 .PHONY: validate
 validate:
-	$(OUTPUT_DIR)/$(BINARY_NAME) validate -k $(KATALOG)
+	$(OUTPUT_DIR)/$(BINARY_NAME) validate -f $(KATALOG)
 
 # ── docker / push / release ───────────────────────────────────────────────────
 .PHONY: docker

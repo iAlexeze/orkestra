@@ -11,6 +11,7 @@ import (
 	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/orkestra-registry/common"
+	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -211,21 +212,42 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 			Str("namespace", namespace).
 			Msg("custom resource in sync — no update needed")
 	} else {
-		// Prepare updated object: merge desired spec into existing object
+		// Prepare updated object: merge desired spec into existing object.
+		// Use direct map assignment (not SetNestedField) to avoid DeepCopyJSONValue
+		// panicking on non-JSON-safe types (int, int64) produced by YAML unmarshalling.
 		updated := existing.DeepCopy()
-		// Overwrite spec
-		if err := unstructured.SetNestedField(updated.Object, desired.Object["spec"], "spec"); err != nil {
-			return fmt.Errorf("custom.Update: setting spec on updated object: %w", err)
+		if desired.Object["spec"] != nil {
+			updated.Object["spec"] = orktmpl.ToJSONSafe(desired.Object["spec"])
 		}
 		// Merge other top-level fields from desired (conservative: overwrite)
 		for k, v := range desired.Object {
 			if k == "apiVersion" || k == "kind" || k == "metadata" || k == "spec" || k == "status" {
 				continue
 			}
-			updated.Object[k] = v
+			updated.Object[k] = orktmpl.ToJSONSafe(v)
 		}
 
 		_, err = resourceIfc.Update(ctx, updated, metav1.UpdateOptions{})
+		if errors.IsConflict(err) {
+			// Another controller updated the object between our Get and Update.
+			// Re-fetch and retry once — the next reconcile cycle will catch any
+			// remaining drift.
+			latest, getErr := resourceIfc.Get(ctx, name, metav1.GetOptions{})
+			if getErr != nil {
+				return fmt.Errorf("custom.Update: refreshing %q after conflict: %w", name, getErr)
+			}
+			updated = latest.DeepCopy()
+			if desired.Object["spec"] != nil {
+				updated.Object["spec"] = orktmpl.ToJSONSafe(desired.Object["spec"])
+			}
+			for k, v := range desired.Object {
+				if k == "apiVersion" || k == "kind" || k == "metadata" || k == "spec" || k == "status" {
+					continue
+				}
+				updated.Object[k] = orktmpl.ToJSONSafe(v)
+			}
+			_, err = resourceIfc.Update(ctx, updated, metav1.UpdateOptions{})
+		}
 		if err != nil {
 			return fmt.Errorf("custom.Update: updating %q: %w", name, err)
 		}

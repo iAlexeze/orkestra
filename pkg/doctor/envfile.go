@@ -12,14 +12,14 @@ const configMapMarker = "ork:cfg"
 // ParseEnvFile reads a .env file and returns all non-blank, non-comment lines.
 // Variables tagged with "# ork:cfg" on the same line have IsCfg = true;
 // all others are treated as secrets.
-func ParseEnvFile(path string) ([]orktypes.EnvVar, error) {
+func ParseEnvFile(path string) ([]orktypes.DotEnvVar, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	var vars []orktypes.EnvVar
+	var vars []orktypes.DotEnvVar
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -54,13 +54,13 @@ func ParseEnvFile(path string) ([]orktypes.EnvVar, error) {
 		if key == "" {
 			continue
 		}
-		vars = append(vars, orktypes.EnvVar{Key: key, Value: value, IsCfg: isCfg})
+		vars = append(vars, orktypes.DotEnvVar{Key: key, Value: value, IsCfg: isCfg})
 	}
 	return vars, scanner.Err()
 }
 
 // SplitEnvVars partitions parsed variables into secrets and config vars.
-func SplitEnvVars(vars []orktypes.EnvVar) (secrets, config []orktypes.EnvVar) {
+func SplitEnvVars(vars []orktypes.DotEnvVar) (secrets, config []orktypes.DotEnvVar) {
 	for _, v := range vars {
 		if v.IsCfg {
 			config = append(config, v)
@@ -72,7 +72,7 @@ func SplitEnvVars(vars []orktypes.EnvVar) (secrets, config []orktypes.EnvVar) {
 }
 
 // HasSMTP returns true if any variable starts with "SMTP_".
-func HasSMTP(vars []orktypes.EnvVar) bool {
+func HasSMTP(vars []orktypes.DotEnvVar) bool {
 	for _, v := range vars {
 		if strings.HasPrefix(strings.ToUpper(v.Key), "SMTP_") {
 			return true
@@ -82,7 +82,7 @@ func HasSMTP(vars []orktypes.EnvVar) bool {
 }
 
 // HasSlack returns true if any variable starts with "SLACK_".
-func HasSlack(vars []orktypes.EnvVar) bool {
+func HasSlack(vars []orktypes.DotEnvVar) bool {
 	for _, v := range vars {
 		if strings.HasPrefix(strings.ToUpper(v.Key), "SLACK_") {
 			return true
@@ -92,7 +92,7 @@ func HasSlack(vars []orktypes.EnvVar) bool {
 }
 
 // GetEnvValue returns the value of an ENV var or false if not exists
-func GetEnvValue(vars []orktypes.EnvVar, key string) (string, bool) {
+func GetEnvValue(vars []orktypes.DotEnvVar, key string) (string, bool) {
 	key = strings.ToUpper(key)
 	for _, v := range vars {
 		if strings.ToUpper(v.Key) == key {

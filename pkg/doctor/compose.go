@@ -374,8 +374,8 @@ func parseServiceEnvironment(env interface{}) map[string]string {
 //
 // IsCfg tagging from ParseEnvFile is preserved for all file-sourced vars.
 // environment: block vars inherit IsCfg from any already-loaded entry for the same key.
-func resolveServiceEnvVars(svc ComposeService, baseDir string) []orktypes.EnvVar {
-	merged := make(map[string]orktypes.EnvVar)
+func resolveServiceEnvVars(svc ComposeService, baseDir string) []orktypes.DotEnvVar {
+	merged := make(map[string]orktypes.DotEnvVar)
 
 	envFiles := svc.EnvFileList()
 
@@ -412,11 +412,11 @@ func resolveServiceEnvVars(svc ComposeService, baseDir string) []orktypes.EnvVar
 			existing.Value = val
 			merged[k] = existing
 		} else {
-			merged[k] = orktypes.EnvVar{Key: k, Value: val, IsCfg: false}
+			merged[k] = orktypes.DotEnvVar{Key: k, Value: val, IsCfg: false}
 		}
 	}
 
-	result := make([]orktypes.EnvVar, 0, len(merged))
+	result := make([]orktypes.DotEnvVar, 0, len(merged))
 	for _, v := range merged {
 		result = append(result, v)
 	}
@@ -490,6 +490,6 @@ func ParseBuildContext(svc ComposeService, projectDir string) (buildCtx, dockerf
 //  1. root .env in projectDir (lowest priority)
 //  2. each env_file entry (in declaration order)
 //  3. environment: block (highest priority)
-func ServiceEnvVars(svc ComposeService, projectDir string) []orktypes.EnvVar {
+func ServiceEnvVars(svc ComposeService, projectDir string) []orktypes.DotEnvVar {
 	return resolveServiceEnvVars(svc, projectDir)
 }

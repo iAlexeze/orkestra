@@ -118,10 +118,11 @@ spec:
               serviceAccountName: "{{ .metadata.name }}-sa"
               reconcile: true
               env:
-                PORT:
-                  configMapKeyRef:
-                    name: "{{ .metadata.name }}-config"
-                    key: PORT
+                - name: PORT
+                  valueFrom:
+                    configMapKeyRef:
+                      name: "{{ .metadata.name }}-config"
+                      key: PORT
 
           # ── Conditional resource (when:) ─────────────────────────────────
           # run_deployments.go + conditions.go

@@ -218,18 +218,36 @@ type ResourceRequirements struct {
 	Limits   map[string]string `yaml:"limits" json:"limits,omitempty" validate:"omitempty"`
 }
 
-// EnvVarSource represents a single environment variable value source.
-// Only one of Value, SecretKeyRef, or ConfigMapKeyRef should be set.
-// Values are static strings — template expressions are not supported.
-type EnvVarSource struct {
-	Value           string           `yaml:"value,omitempty" json:"value,omitempty"`
+// EnvVar is a single container environment variable in Kubernetes-native format.
+type EnvVar struct {
+	Name      string     `yaml:"name" json:"name"`
+	Value     string     `yaml:"value,omitempty" json:"value,omitempty"`
+	ValueFrom *ValueFrom `yaml:"valueFrom,omitempty" json:"valueFrom,omitempty"`
+}
+
+// EnvVarList is a []EnvVar with a custom YAML unmarshaller that detects the
+// legacy map format (KEY:\n  value: VAL) and returns a clear migration error.
+type EnvVarList []EnvVar
+
+func (l *EnvVarList) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.MappingNode {
+		return fmt.Errorf("env must be a list, not a map — each item needs: {name: KEY, value: VAL} or {name: KEY, valueFrom: {...}}")
+	}
+	type plain []EnvVar
+	return value.Decode((*plain)(l))
+}
+
+// ValueFrom holds the source of an environment variable value.
+// At most one field should be set.
+type ValueFrom struct {
 	SecretKeyRef    *SecretKeyRef    `yaml:"secretKeyRef,omitempty" json:"secretKeyRef,omitempty"`
 	ConfigMapKeyRef *ConfigMapKeyRef `yaml:"configMapKeyRef,omitempty" json:"configMapKeyRef,omitempty"`
 }
 
-type EnvFromSource struct {
-	ConfigMapRef string `yaml:"configMapRef,omitempty" json:"configMapRef,omitempty"`
-	SecretRef    string `yaml:"secretRef,omitempty" json:"secretRef,omitempty"`
+// EnvFrom groups environment sources by type.
+type EnvFrom struct {
+	SecretRef    []string `yaml:"secretRef,omitempty" json:"secretRef,omitempty"`
+	ConfigMapRef []string `yaml:"configMapRef,omitempty" json:"configMapRef,omitempty"`
 }
 
 // SecretKeyRef selects a key from a Kubernetes Secret.
@@ -426,18 +444,12 @@ type DeploymentTemplateSource struct {
 	// explicit values. Profile and explicit values are mutually exclusive.
 	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
 
-	// Env — environment variables for the primary container.
-	// Keys are env var names. Values support template expressions.
-	// Example:
-	//   env:
-	//     REGION: "{{ .item }}"
-	//     DB_HOST: "{{ .cross.db.status.endpoint }}"
-	//
+	// Env — environment variables for the primary container, in Kubernetes-native list format.
+	// Each entry has a name and either a value or a valueFrom source.
 	// If omitted, no environment variables are added.
-	// Env map[string]string `yaml:"env" json:"env,omitempty" validate:"omitempty"`
-	Env map[string]EnvVarSource `yaml:"env" json:"env,omitempty"`
+	Env EnvVarList `yaml:"env" json:"env,omitempty"`
 
-	EnvFrom []EnvFromSource `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
+	EnvFrom *EnvFrom `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
 
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
@@ -587,11 +599,10 @@ type ReplicaSetTemplateSource struct {
 	// explicit values. Profile and explicit values are mutually exclusive.
 	Resources *ResourceRequirements `yaml:"resources" json:"resources,omitempty" validate:"omitempty"`
 
-	// Env — environment variables for the primary container.
-	// Keys are env var names. Values support template expressions.
-	Env map[string]EnvVarSource `yaml:"env" json:"env,omitempty"`
+	// Env — environment variables for the primary container, in Kubernetes-native list format.
+	Env EnvVarList `yaml:"env" json:"env,omitempty"`
 
-	EnvFrom []EnvFromSource `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
+	EnvFrom *EnvFrom `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
 
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
@@ -1713,10 +1724,10 @@ type StatefulSetTemplateSource struct {
 	// +optional
 	ServiceAccountName string `yaml:"serviceAccountName,omitempty" json:"serviceAccountName,omitempty"`
 
-	Labels      []ResourceLabel         `yaml:"labels" json:"labels,omitempty"`
-	Annotations []ResourceLabel         `yaml:"annotations" json:"annotations,omitempty"`
-	Env         map[string]EnvVarSource `yaml:"env" json:"env,omitempty"`
-	EnvFrom     []EnvFromSource         `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
+	Labels      []ResourceLabel `yaml:"labels" json:"labels,omitempty"`
+	Annotations []ResourceLabel `yaml:"annotations" json:"annotations,omitempty"`
+	Env         EnvVarList      `yaml:"env" json:"env,omitempty"`
+	EnvFrom     *EnvFrom        `yaml:"envFrom,omitempty" json:"envFrom,omitempty"`
 
 	// Resources — CPU and memory requests/limits for the primary container.
 	// Set resources.profile for a named preset, or resources.requests/limits for

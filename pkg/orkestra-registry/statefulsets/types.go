@@ -27,8 +27,8 @@ type ResolvedStatefulSetSpec struct {
 	Labels      map[string]string
 	Annotations map[string]string
 
-	Env       map[string]orktypes.EnvVarSource
-	EnvFrom   []orktypes.EnvFromSource
+	Env       []orktypes.EnvVar
+	EnvFrom   *orktypes.EnvFrom
 	Resources *orktypes.ResourceRequirements
 
 	// NodeSelector is a selector which must be true for the pod to fit on a node.

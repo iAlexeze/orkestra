@@ -42,7 +42,7 @@ ork version
 Always validate before applying:
 
 ```bash
-ork validate -k katalog.yaml
+ork validate -f katalog.yaml
 ```
 
 Expected output:

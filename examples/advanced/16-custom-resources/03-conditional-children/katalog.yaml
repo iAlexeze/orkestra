@@ -122,9 +122,9 @@ spec:
               port: 9200
               reconcile: true
               env:
-                OPENSEARCH_INDEX:
+                - name: OPENSEARCH_INDEX
                   value: "{{ .spec.indexName }}"
-                discovery.type:
+                - name: discovery.type
                   value: single-node
           services:
             - port: "9200"

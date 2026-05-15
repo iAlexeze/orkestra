@@ -48,11 +48,11 @@ spec:
             - path: phase
               value: "Ready"
             - path: mqPhase
-              value: '{{ (index .children.custom (printf "%s-mq" .metadata.name)).status.phase }}'
+              value: '{{ (index .children.customs (printf "%s-mq" .metadata.name)).status.phase }}'
             - path: storePhase
-              value: '{{ (index .children.custom (printf "%s-store" .metadata.name)).status.phase }}'
+              value: '{{ (index .children.customs (printf "%s-store" .metadata.name)).status.phase }}'
             - path: searchPhase
-              value: '{{ (index .children.custom (printf "%s-search" .metadata.name)).status.phase }}'
+              value: '{{ (index .children.customs (printf "%s-search" .metadata.name)).status.phase }}'
 
     # ── MessageQueue ───────────────────────────────────────────────────────────
     messagequeue:
@@ -61,7 +61,7 @@ spec:
         version: v1alpha1
         kind: MessageQueue
         plural: messagequeues
-      workers: 1
+      workers: 3
       resync: 60s
       operatorBox:
         status:
@@ -78,6 +78,7 @@ spec:
               reconcile: true
           services:
             - port: "5672"
+              reconcile: true
 
     # ── ObjectStore ────────────────────────────────────────────────────────────
     objectstore:
@@ -102,12 +103,13 @@ spec:
               port: 9000
               reconcile: true
               env:
-                MINIO_ROOT_USER:
+                - name: MINIO_ROOT_USER
                   value: admin
-                MINIO_ROOT_PASSWORD:
+                - name: MINIO_ROOT_PASSWORD
                   value: minioadmin
           services:
             - port: "9000"
+              reconcile: true
 
     # ── SearchCluster ──────────────────────────────────────────────────────────
     searchcluster:
@@ -132,9 +134,10 @@ spec:
               port: 9200
               reconcile: true
               env:
-                OPENSEARCH_JAVA_OPTS:
+                - name: OPENSEARCH_JAVA_OPTS
                   value: "-Xms{{ .spec.heapSize }} -Xmx{{ .spec.heapSize }}"
-                discovery.type:
+                - name: discovery.type
                   value: single-node
           services:
             - port: "9200"
+              reconcile: true

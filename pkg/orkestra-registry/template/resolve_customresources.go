@@ -2,6 +2,9 @@ package template
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
@@ -116,9 +119,13 @@ func (r *Resolver) resolveValueTemplates(v any) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		// If resolver returns empty string, keep original (consistent with other resolvers)
 		if res == "" {
 			return vv, nil
+		}
+		// When a template expression was resolved, try to coerce the result to a
+		// native type so integer/boolean CRD fields pass API server validation.
+		if strings.Contains(vv, "{{") {
+			return tryCoerceString(res), nil
 		}
 		return res, nil
 
@@ -156,5 +163,57 @@ func (r *Resolver) resolveValueTemplates(v any) (any, error) {
 			return out, nil
 		}
 		return v, nil
+	}
+}
+
+// tryCoerceString attempts to parse a resolved template string as a native Go
+// type so that integer/boolean CRD fields pass Kubernetes API server validation.
+// Only called when the original value contained a template expression ("{{").
+// Returns float64 for integers and floats (JSON-safe), bool for booleans,
+// and the original string for everything else.
+func tryCoerceString(s string) any {
+	if i, err := strconv.ParseInt(s, 10, 64); err == nil {
+		return float64(i)
+	}
+	if f, err := strconv.ParseFloat(s, 64); err == nil {
+		return f
+	}
+	if b, err := strconv.ParseBool(s); err == nil {
+		return b
+	}
+	return s
+}
+
+// ToJSONSafe recursively converts Go values to JSON-safe types.
+// YAML unmarshalling produces int/int64 for integers, but k8s DeepCopyJSONValue
+// only handles float64. This normalises the tree before any SetNestedField call.
+func ToJSONSafe(v any) any {
+	switch vv := v.(type) {
+	case int:
+		return float64(vv)
+	case int32:
+		return float64(vv)
+	case int64:
+		return float64(vv)
+	case uint:
+		return float64(vv)
+	case uint32:
+		return float64(vv)
+	case uint64:
+		return float64(vv)
+	case map[string]any:
+		out := make(map[string]any, len(vv))
+		for k, val := range vv {
+			out[k] = ToJSONSafe(val)
+		}
+		return out
+	case []any:
+		out := make([]any, len(vv))
+		for i, e := range vv {
+			out[i] = ToJSONSafe(e)
+		}
+		return out
+	default:
+		return vv
 	}
 }

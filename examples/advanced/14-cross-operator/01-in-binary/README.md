@@ -28,7 +28,7 @@ The Consumer's Deployment then receives the endpoint as an environment variable:
 
 ```yaml
 env:
-  PRODUCER_HOST:
+  - name: PRODUCER_HOST
     value: "{{ .cross.producer.status.endpoint }}"
 ```
 
@@ -39,7 +39,7 @@ Both CRDs live in the same Katalog, the same binary, the same process.
 ## Step 1 — Validate the Katalog
 
 ```bash
-ork validate -k katalog.yaml
+ork validate -f katalog.yaml
 ```
 
 Expected:

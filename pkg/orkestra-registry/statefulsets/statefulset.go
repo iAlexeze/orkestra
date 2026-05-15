@@ -255,41 +255,43 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 
 	common.ApplyProbes(&container, spec.Probes, spec.Port)
 
-	for k, v := range spec.Env {
-		ev := corev1.EnvVar{Name: k}
-		if v.Value != "" {
-			ev.Value = v.Value
-		} else if v.SecretKeyRef != nil {
-			ev.ValueFrom = &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: v.SecretKeyRef.Name},
-					Key:                  v.SecretKeyRef.Key,
-				},
+	for _, ev := range spec.Env {
+		kev := corev1.EnvVar{Name: ev.Name}
+		if ev.ValueFrom != nil {
+			kev.ValueFrom = &corev1.EnvVarSource{}
+			if ev.ValueFrom.SecretKeyRef != nil {
+				kev.ValueFrom.SecretKeyRef = &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: ev.ValueFrom.SecretKeyRef.Name},
+					Key:                  ev.ValueFrom.SecretKeyRef.Key,
+				}
 			}
-		} else if v.ConfigMapKeyRef != nil {
-			ev.ValueFrom = &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: v.ConfigMapKeyRef.Name},
-					Key:                  v.ConfigMapKeyRef.Key,
-				},
+			if ev.ValueFrom.ConfigMapKeyRef != nil {
+				kev.ValueFrom.ConfigMapKeyRef = &corev1.ConfigMapKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: ev.ValueFrom.ConfigMapKeyRef.Name},
+					Key:                  ev.ValueFrom.ConfigMapKeyRef.Key,
+				}
 			}
+		} else {
+			kev.Value = ev.Value
 		}
-		container.Env = append(container.Env, ev)
+		container.Env = append(container.Env, kev)
 	}
 
-	for _, ef := range spec.EnvFrom {
-		var src corev1.EnvFromSource
-		if ef.SecretRef != "" {
-			src.SecretRef = &corev1.SecretEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: ef.SecretRef},
-			}
+	if spec.EnvFrom != nil {
+		for _, name := range spec.EnvFrom.SecretRef {
+			container.EnvFrom = append(container.EnvFrom, corev1.EnvFromSource{
+				SecretRef: &corev1.SecretEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: name},
+				},
+			})
 		}
-		if ef.ConfigMapRef != "" {
-			src.ConfigMapRef = &corev1.ConfigMapEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: ef.ConfigMapRef},
-			}
+		for _, name := range spec.EnvFrom.ConfigMapRef {
+			container.EnvFrom = append(container.EnvFrom, corev1.EnvFromSource{
+				ConfigMapRef: &corev1.ConfigMapEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: name},
+				},
+			})
 		}
-		container.EnvFrom = append(container.EnvFrom, src)
 	}
 
 	sts := &appsv1.StatefulSet{

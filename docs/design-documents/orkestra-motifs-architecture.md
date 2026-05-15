@@ -70,12 +70,13 @@ motif:
             size: "{{ .spec.volumeSize }}"
             mountPath: /var/lib/postgresql/data
         env:
-          POSTGRES_USER:
+          - name: POSTGRES_USER
             value: "{{ .spec.postgresUser }}"
-          POSTGRES_PASSWORD:
-            secretKeyRef:
-              name: "{{ .spec.passwordSecretRef }}"
-              key: POSTGRES_PASSWORD
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "{{ .spec.passwordSecretRef }}"
+                key: POSTGRES_PASSWORD
         reconcile: true
 
     services:
@@ -92,9 +93,9 @@ motif:
       - name: "{{ .metadata.name }}-pgadmin"
         image: "dpage/pgadmin4:latest"
         env:
-          PGADMIN_DEFAULT_EMAIL:
+          - name: PGADMIN_DEFAULT_EMAIL
             value: "{{ .spec.adminEmail }}"
-          PGADMIN_DEFAULT_PASSWORD:
+          - name: PGADMIN_DEFAULT_PASSWORD
             value: "{{ .spec.adminPassword }}"
         reconcile: true
 
