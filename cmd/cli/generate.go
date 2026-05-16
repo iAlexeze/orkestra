@@ -32,8 +32,8 @@ var generateCmd = &cobra.Command{
 	Short: "Generate Orkestra components",
 }
 
-// parseKatalogPaths handles comma-separated values and returns a slice of paths
-func parseKatalogPaths(paths []string) []string {
+// parseFilePaths handles comma-separated values and returns a slice of paths
+func parseFilePaths(paths []string) []string {
 	var expanded []string
 	for _, p := range paths {
 		// Split by comma and trim spaces
@@ -62,7 +62,7 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 		return nil, fmt.Errorf("--file is required (can be specified multiple times or as comma-separated values)")
 	}
 
-	expanded := parseKatalogPaths(katalogPaths)
+	expanded := parseFilePaths(katalogPaths)
 
 	m := merger.New(expanded...)
 	if err := m.Merge(); err != nil {

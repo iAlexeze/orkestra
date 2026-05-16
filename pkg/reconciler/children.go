@@ -42,7 +42,7 @@ import (
 // Status patching proceeds with whatever children were successfully read.
 func ReadChildren(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	obj domain.Object,
 	resolver *orktmpl.Resolver,
 	operatorBox orktypes.OperatorBoxConfig,
@@ -151,7 +151,7 @@ func ReadChildren(
 // APIVersions/Kinds within the same list, so GVR must be resolved per entry.
 func readCustomResourceGroup(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	obj domain.Object,
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.CustomResourceTemplateSource,
@@ -221,7 +221,7 @@ func readCustomResourceGroup(
 // so templates can reference {{ .children.endpointslice }} for single-service katalogs.
 func readEndpointSlicesForServices(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	obj domain.Object,
 	svcNames []resolvedChildName,
 ) map[string]interface{} {
@@ -256,7 +256,7 @@ func readEndpointSlicesForServices(
 // Missing resources are omitted silently — they may not exist yet on the first reconcile.
 func readResourceGroup(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	obj domain.Object,
 	resolver *orktmpl.Resolver,
 	gvr schema.GroupVersionResource,

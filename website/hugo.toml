@@ -34,16 +34,16 @@ enableGitInfo = true
     url = "/docs/"
     weight = 1
   [[menu.main]]
-    name = "Publications"
-    url = "/publications/"
+    name = "Reference"
+    url = "/docs/reference/"
     weight = 2
-  [[menu.main]]
-    name = "Use Cases"
-    url = "/docs/use-cases/"
-    weight = 3
   [[menu.main]]
     name = "Blog"
     url = "/blog/"
+    weight = 3
+  [[menu.main]]
+    name = "Publications"
+    url = "/publications/"
     weight = 4
 [caches]
   [caches.images]

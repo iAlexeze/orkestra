@@ -1,8 +1,9 @@
 ---
 title: "Runtime"
-weight: 50
-description: "The Orkestra Runtime is the engine that executes Katalogs and Komposers."
+weight: 46
 ---
+
+# Runtime
 
 The Orkestra Runtime is the engine that executes Katalogs and Komposers.  
 It handles CRD activation, dependency ordering, reconciliation, drift correction, metrics, and health endpoints.
@@ -23,8 +24,9 @@ This page explains how the runtime behaves at startup, during reconcile, and dur
    - Expose health endpoints  
    - Emit activation metrics  
 
-!!! note
-    Missing CRDs do not block startup — Orkestra activates them when they appear.
+{{< callout type="note" >}}
+Missing CRDs do not block startup — Orkestra activates them when they appear.
+{{< /callout >}}
 
 ---
 
@@ -58,8 +60,9 @@ Then on every reconcile:
 - Differences are patched  
 - Manual changes are corrected  
 
-!!! caution
-    Drift correction is intentional — Orkestra enforces the declared state.
+{{< callout type="caution" >}}
+Drift correction is intentional — Orkestra enforces the declared state.
+{{< /callout >}}
 
 ---
 
@@ -85,8 +88,9 @@ GET /katalog/{crd}
 GET /katalog/{crd}/health
 ```
 
-!!! tip
-    These endpoints are identical for every operator — no custom wiring required.
+{{< callout type="tip" >}}
+These endpoints are identical for every operator — no custom wiring required.
+{{< /callout >}}
 
 ---
 

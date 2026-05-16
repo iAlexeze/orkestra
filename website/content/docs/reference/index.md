@@ -1,8 +1,9 @@
 ---
 title: "Reference"
-weight: 3
-description: "This section provides detailed technical reference for the Orkestra runtime, its API, configuration schemas, and metrics..."
+weight: 37
 ---
+
+# Reference
 
 This section provides detailed technical reference for the Orkestra runtime, its API, configuration schemas, and metrics.
 
@@ -21,7 +22,7 @@ The Orkestra operator exposes a small, stable HTTP API for inspecting CRDs, thei
 | `GET /ready` | Readiness probe (200 when all reconcilers started) |
 | `GET /metrics` | Prometheus metrics endpoint |
 
-See the [Katalog API Reference](./katalog-api.md) for full details.
+See the [Katalog API Reference](./katalog-api/) for full details.
 
 ---
 
@@ -36,7 +37,7 @@ The Orkestra Runtime is the engine that executes Katalogs and Komposers.
 | **Drift Correction** | Resources with `reconcile: true` are corrected on every reconcile. |
 | **Shutdown** | Stop workers, stop informers, shut down CRDs in reverse dependency order. |
 
-See the [Runtime Reference](./runtime.md) for full details.
+See the [Runtime Reference](./runtime/) for full details.
 
 ---
 
@@ -56,7 +57,7 @@ Orkestra exposes Prometheus metrics for every CRD and the conversion webhook.
 | `orkestra_conversion_requests_total` | Counter | Conversion requests by direction |
 | `orkestra_conversion_duration_seconds` | Histogram | Conversion latency |
 
-All metrics include a `crd` label for per‑CRD granularity. See the [Metrics Reference](./metrics.md) for full details.
+All metrics include a `crd` label for per‑CRD granularity. See the [Metrics Reference](./metrics/) for full details.
 
 ---
 
@@ -64,19 +65,19 @@ All metrics include a `crd` label for per‑CRD granularity. See the [Metrics Re
 
 | Document | Description |
 |----------|-------------|
-| [Katalog Schema](./katalog-schema.md) | Complete field reference for Katalog YAML |
-| [Komposer Schema](./komposer-schema.md) | Complete field reference for Komposer YAML |
-| [Registry Schema](./registry-schema.md) | Artifact format for OCI‑published patterns |
+| [Katalog Schema](./katalog-schema/) | Complete field reference for Katalog YAML |
+| [Komposer Schema](./komposer-schema/) | Complete field reference for Komposer YAML |
+| [Registry Schema](./registry-schema/) | Artifact format for OCI‑published patterns |
 
 ---
 
 ## Related Documents
 
-- [Katalog API Reference](./katalog-api.md) — detailed endpoint documentation
-- [Metrics Reference](./metrics.md) — all metrics with labels and examples
-- [Runtime Reference](./runtime.md) — startup, reconciliation, and shutdown flow
-- [Katalog and Komposer Reference](./katalog-komposer-reference.md) — complete schema reference for both
+- [Katalog API Reference](./katalog-api/) — detailed endpoint documentation
+- [Metrics Reference](./metrics/) — all metrics with labels and examples
+- [Runtime Reference](./runtime/) — startup, reconciliation, and shutdown flow
+- [Katalog and Komposer Reference](./katalog-komposer-reference/) — complete schema reference for both
 
 ---
 
-**All reference documents assume familiarity with the core concepts. If you are new to Orkestra, start with the [Guides](../getting-started/index.md) or [Concepts](../runtime-manual/concepts/katalog.md).** 🎼
+**All reference documents assume familiarity with the core concepts. If you are new to Orkestra, start with the [Getting Started](../getting-started/) guide.** 🎼

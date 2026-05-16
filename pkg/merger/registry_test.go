@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/orkspace/orkestra/pkg/merger"
@@ -130,130 +129,52 @@ func TestSourceFile_UseKomposer_IsKomposer(t *testing.T) {
 	}
 }
 
-// ── RequiredFiles ─────────────────────────────────────────────────────────────
-
-func TestRequiredFiles_ContainsAll(t *testing.T) {
-	expected := []string{"crd.yaml", "katalog.yaml", "komposer.yaml", "cr.yaml", "README.md"}
-	if len(orktypes.RequiredFiles) != len(expected) {
-		t.Errorf("expected %d required files, got %d", len(expected), len(orktypes.RequiredFiles))
-	}
-	for _, f := range expected {
-		found := false
-		for _, r := range orktypes.RequiredFiles {
-			if r == f {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("required file %q not in RequiredFiles", f)
-		}
-	}
-}
-
 // ── validatePatternStructure ──────────────────────────────────────────────────
 
-func TestValidatePatternStructure_AllPresent_NoError(t *testing.T) {
+// Katalog pattern: only katalog.yaml is required.
+func TestValidatePatternStructure_KatalogOnly_NoError(t *testing.T) {
 	dir := t.TempDir()
-	for _, f := range orktypes.RequiredFiles {
-		if err := os.WriteFile(filepath.Join(dir, f), []byte("content"), 0644); err != nil {
-			t.Fatalf("writing %s: %v", f, err)
-		}
-	}
-	if err := merger.ExportedValidatePatternStructure(dir, "test-url", "main"); err != nil {
-		t.Errorf("all files present should pass: %v", err)
+	writeFile(t, dir, "katalog.yaml", "kind: Katalog\n")
+	if err := merger.ExportedValidatePatternStructure(dir, "test-url", "v1.0.0"); err != nil {
+		t.Errorf("katalog.yaml alone should be sufficient: %v", err)
 	}
 }
 
-func TestValidatePatternStructure_MissingFile_Error(t *testing.T) {
+// Katalog pattern with all optional files present.
+func TestValidatePatternStructure_KatalogWithOptionals_NoError(t *testing.T) {
 	dir := t.TempDir()
-	for _, f := range orktypes.RequiredFiles {
-		if f == "cr.yaml" {
-			continue
-		}
-		os.WriteFile(filepath.Join(dir, f), []byte("content"), 0644)
-	}
-	err := merger.ExportedValidatePatternStructure(dir, "test-url", "main")
-	if err == nil {
-		t.Fatal("expected error for missing cr.yaml")
-	}
-	if !strings.Contains(err.Error(), "cr.yaml") {
-		t.Errorf("error should mention cr.yaml: %q", err)
+	writeFile(t, dir, "katalog.yaml", "kind: Katalog\n")
+	writeFile(t, dir, "crd.yaml", "content")
+	writeFile(t, dir, "cr.yaml", "content")
+	writeFile(t, dir, "README.md", "content")
+	if err := merger.ExportedValidatePatternStructure(dir, "test-url", "v1.0.0"); err != nil {
+		t.Errorf("katalog with all optional files should pass: %v", err)
 	}
 }
 
-func TestValidatePatternStructure_EmptyFile_Error(t *testing.T) {
+// Motif pattern: only motif.yaml is required.
+func TestValidatePatternStructure_MotifOnly_NoError(t *testing.T) {
 	dir := t.TempDir()
-	for _, f := range orktypes.RequiredFiles {
-		content := []byte("content")
-		if f == "README.md" {
-			content = []byte{}
-		}
-		os.WriteFile(filepath.Join(dir, f), content, 0644)
-	}
-	err := merger.ExportedValidatePatternStructure(dir, "test-url", "main")
-	if err == nil {
-		t.Fatal("expected error for empty README.md")
-	}
-	if !strings.Contains(err.Error(), "README.md") {
-		t.Errorf("error should mention README.md: %q", err)
-	}
-	if !strings.Contains(err.Error(), "empty") {
-		t.Errorf("error should say 'empty': %q", err)
+	writeFile(t, dir, "motif.yaml", "kind: Motif\n")
+	if err := merger.ExportedValidatePatternStructure(dir, "test-url", "v1.0.0"); err != nil {
+		t.Errorf("motif.yaml alone should be sufficient: %v", err)
 	}
 }
 
-func TestValidatePatternStructure_MultipleViolations_AllReported(t *testing.T) {
+// No recognised pattern file → error.
+func TestValidatePatternStructure_NoPatternFile_Error(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "crd.yaml"), []byte("content"), 0644)
-
-	err := merger.ExportedValidatePatternStructure(dir, "test-url", "main")
-	if err == nil {
-		t.Fatal("expected error")
-	}
-	for _, f := range []string{"katalog.yaml", "komposer.yaml", "cr.yaml", "README.md"} {
-		if !strings.Contains(err.Error(), f) {
-			t.Errorf("error should mention missing %q: %q", f, err)
-		}
+	writeFile(t, dir, "crd.yaml", "content")
+	writeFile(t, dir, "README.md", "content")
+	if err := merger.ExportedValidatePatternStructure(dir, "test-url", "v1.0.0"); err == nil {
+		t.Fatal("expected error when no katalog.yaml or motif.yaml present")
 	}
 }
 
-// ── Deprecated catalog-map registry protocol ──────────────────────────────────
-
-func TestLoadRegistrySource_NoRegistryURL_Error(t *testing.T) {
-	os.Unsetenv("ORK_REGISTRY")
-
-	m := merger.New()
-
-	src := orktypes.RegistrySource{
-		Katalog: map[string]orktypes.RegistryRef{
-			"website": {Branch: "main"},
-		},
-	}
-
-	_, err := merger.ExportedLoadRegistrySource(m, src)
-	if err == nil {
-		t.Error("expected error when no registry URL is configured")
-	}
-	if !strings.Contains(err.Error(), "ORK_REGISTRY") {
-		t.Errorf("error should mention ORK_REGISTRY, got: %q", err.Error())
-	}
-}
-
-func TestLoadRegistrySource_EmptyKatalogMap_NoError(t *testing.T) {
-	m := merger.New()
-	m.SetRegistryURL("https://github.com/example/registry")
-
-	src := orktypes.RegistrySource{
-		Katalog: map[string]orktypes.RegistryRef{},
-	}
-
-	crds, err := merger.ExportedLoadRegistrySource(m, src)
-	if err != nil {
-		t.Fatalf("empty katalog map should not error: %v", err)
-	}
-	if len(crds) != 0 {
-		t.Errorf("expected 0 CRDs, got %d", len(crds))
+func writeFile(t *testing.T, dir, name, content string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0644); err != nil {
+		t.Fatalf("writing %s: %v", name, err)
 	}
 }
 

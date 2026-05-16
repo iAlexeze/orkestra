@@ -47,7 +47,7 @@ import (
 //   - rotateAfter is not set
 //   - Secret does not exist
 //   - Generated-at annotation is missing or unparseable → regenerate to be safe
-func secretNeedsRotation(ctx context.Context, kube *kubeclient.Kubeclient, namespace, name, rotateAfter string) (bool, error) {
+func secretNeedsRotation(ctx context.Context, kube kubeclient.KubeClient, namespace, name, rotateAfter string) (bool, error) {
 	if rotateAfter == "" {
 		return false, nil
 	}
@@ -77,7 +77,7 @@ func secretNeedsRotation(ctx context.Context, kube *kubeclient.Kubeclient, names
 
 // annotateSecret writes the generated-at and rotate-after annotations onto
 // an existing Secret. Used when a Secret exists but was created without annotations.
-func annotateSecret(ctx context.Context, kube *kubeclient.Kubeclient, namespace, name, rotateAfter string) error {
+func annotateSecret(ctx context.Context, kube kubeclient.KubeClient, namespace, name, rotateAfter string) error {
 	secret, err := kube.Clientset().CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{
 		ResourceVersion: "0",
 	})
@@ -96,7 +96,7 @@ func annotateSecret(ctx context.Context, kube *kubeclient.Kubeclient, namespace,
 // deleteSecretForRotation deletes a Secret so it can be recreated with fresh values.
 // Called when secretNeedsRotation returns true. The next create call in run_secrets.go
 // then generates new credentials and annotates with the current time.
-func deleteSecretForRotation(ctx context.Context, kube *kubeclient.Kubeclient, namespace, name string) error {
+func deleteSecretForRotation(ctx context.Context, kube kubeclient.KubeClient, namespace, name string) error {
 	err := kube.Clientset().CoreV1().Secrets(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil && !isNotFoundErr(err) {
 		return fmt.Errorf("deleting secret %s/%s for rotation: %w", namespace, name, err)
@@ -119,7 +119,7 @@ func generationAnnotations(rotateAfter string) map[string]string {
 // The Secret name defaults to "owner.GetName()-orkestra-tls" when src.Name resolves to "".
 func createTLSSecret(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	owner domain.Object,
 	name, namespace, rotateAfter string,
 	bundle *certmanager.TLSBundle,

@@ -1,8 +1,9 @@
 ---
 title: "ork validate"
-weight: 50
-description: "Validate a Katalog or Komposer. Resolves sources, merges, and runs the full validation pipeline."
+weight: 35
 ---
+
+# ork validate
 
 Validate a Katalog or Komposer. Resolves sources, merges, and runs the full validation pipeline.
 
@@ -30,6 +31,6 @@ Validation errors are specific and actionable.
 
 ## Related Documentation
 
-- [ork template](./template.md)
-- [Komposer Schema](../komposer-schema.md)
-- [Katalog Schema](../katalog-schema.md)
+- [ork template](./template/)
+- [Komposer Schema](../komposer-schema/)
+- [Katalog Schema](../katalog-schema/)

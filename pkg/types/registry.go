@@ -42,7 +42,7 @@ import "strings"
 //       usernameFromEnv: REGISTRY_USER
 //       passwordFromEnv: REGISTRY_PASSWORD
 
-// RegistrySource is one entry in sources.registry.
+// RegistrySource is one entry in imports.registry.
 type RegistrySource struct {
 	// URL — the registry URL.
 	//
@@ -198,19 +198,4 @@ func (r RegistrySource) SourceFile() string {
 		return "komposer.yaml"
 	}
 	return "katalog.yaml"
-}
-
-// RequiredFiles lists the five files every valid registry pattern must contain.
-// Validated after pull — fail fast if any are missing or empty.
-//
-// These five files define the standard pattern structure. Enforcing their
-// presence at pull time means every pattern in the ecosystem is documented,
-// testable, and consistent. A registry entry without a README, a CRD, or
-// an example CR is not ready for distribution.
-var RequiredFiles = []string{
-	"crd.yaml",
-	"katalog.yaml",
-	"komposer.yaml",
-	"cr.yaml",
-	"README.md",
 }

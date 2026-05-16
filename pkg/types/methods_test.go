@@ -119,13 +119,13 @@ func TestDefaultReconcile_ExplicitFalse(t *testing.T) {
 
 func TestDefaultQueue_NilDefaultsFalse(t *testing.T) {
 	c := emptyCRD()
-	assert.False(t, c.DefaultQueue())
+	assert.False(t, c.SharedQueue())
 }
 
 func TestDefaultQueue_ExplicitTrue(t *testing.T) {
 	c := emptyCRD()
-	c.Queue.Default = boolp(true)
-	assert.True(t, c.DefaultQueue())
+	c.Queue.Shared = boolp(true)
+	assert.True(t, c.SharedQueue())
 }
 
 // ── IsHealthEnabled / IsInfoEnabled / IsEnabledAllEndpoints ──────────────────

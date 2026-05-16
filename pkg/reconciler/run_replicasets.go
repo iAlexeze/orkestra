@@ -23,7 +23,7 @@ import (
 // without a separate onReconcile declaration.
 func runReplicaSets(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.ReplicaSetTemplateSource,

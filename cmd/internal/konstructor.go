@@ -320,7 +320,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			LabelSelector: labelSelector,
 			FieldSelector: fieldSelector,
 		}
-		if crd.DefaultQueue() {
+		if crd.SharedQueue() {
 			opts.Wq = nil // use the shared default queue
 		} else {
 			opts.Wq = wq

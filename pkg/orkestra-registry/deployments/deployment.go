@@ -22,7 +22,7 @@ import (
 // Create creates a Deployment owned by the CR if it does not already exist.
 // Idempotent — if the Deployment exists, does nothing and returns nil.
 // Sets owner reference so the Deployment is garbage collected when the CR is deleted.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedDeploymentSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedDeploymentSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("deployment.Create: invalid spec: %w", err)
 	}
@@ -63,7 +63,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Update reconciles an existing Deployment to match the resolved spec.
 // Handles drift — if replicas or image have changed, patches the Deployment.
 // If the Deployment does not exist, creates it.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedDeploymentSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedDeploymentSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("deployment.Update: invalid spec: %w", err)
 	}
@@ -150,7 +150,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Delete deletes the Deployment if it exists.
 // For most cases owner references handle cascade deletion — use this only
 // for explicit cleanup declared in onDelete templates.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedDeploymentSpec) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedDeploymentSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -178,7 +178,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the Deployment if it exists and is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().AppsV1().Deployments(namespace).

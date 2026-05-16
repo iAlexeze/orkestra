@@ -105,6 +105,71 @@ func readAPITypesFromCRDFile(path string) (*orktypes.APITypes, error) {
 	}, nil
 }
 
+// ResolveCRDFiles reads the katalog YAML at path, resolves every crdFile
+// reference to inline apiTypes, removes the crdFile key, and returns the
+// rewritten YAML. The result is safe to embed in a bundle ConfigMap — the
+// Orkestra runtime receives concrete apiTypes and never needs to read the file.
+func ResolveCRDFiles(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", path, err)
+	}
+
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return nil, fmt.Errorf("parsing %s: %w", path, err)
+	}
+
+	spec, _ := raw["spec"].(map[string]interface{})
+	if spec == nil {
+		return data, nil
+	}
+	crds, _ := spec["crds"].(map[string]interface{})
+	if crds == nil {
+		return data, nil
+	}
+
+	dir := filepath.Dir(path)
+	for name, val := range crds {
+		entry, ok := val.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		crdFile, _ := entry["crdFile"].(string)
+		if crdFile == "" {
+			continue
+		}
+
+		absPath := crdFile
+		if !filepath.IsAbs(crdFile) && !strings.HasPrefix(crdFile, "http") {
+			absPath = filepath.Join(dir, crdFile)
+		}
+
+		apiTypes, err := readAPITypesFromCRDFile(absPath)
+		if err != nil {
+			return nil, fmt.Errorf("CRD %q: %w", name, err)
+		}
+
+		entry["apiTypes"] = map[string]interface{}{
+			"group":   apiTypes.Group,
+			"version": apiTypes.Version,
+			"kind":    apiTypes.Kind,
+			"plural":  apiTypes.Plural,
+		}
+		delete(entry, "crdFile")
+		crds[name] = entry
+	}
+
+	spec["crds"] = crds
+	raw["spec"] = spec
+
+	out, err := yaml.Marshal(raw)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling resolved katalog: %w", err)
+	}
+	return out, nil
+}
+
 // selectCRDVersion picks the version name from the CRD's version list.
 // Priority: storage: true → served: true → first in list.
 func selectCRDVersion(versions []struct {

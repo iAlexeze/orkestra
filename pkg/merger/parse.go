@@ -24,6 +24,20 @@ func parseKatalogDoc(doc []byte, source string) (*orktypes.KatalogFile, error) {
 		return nil, nil
 	}
 
+	// Detect list-format CRDs before full parsing — gives a clear error instead of
+	// a raw YAML unmarshal failure. spec.crds must be a map, not a sequence:
+	//   spec.crds:             ← correct (map)
+	//     myresource: {}
+	//   spec.crds:             ← wrong (list)
+	//     - name: myresource
+	if looksLikeCRDList(doc) {
+		return nil, fmt.Errorf(
+			"%q: spec.crds must be a map (name: {}) not a list (- name:).\n"+
+				"  See: https://docs.orkestra.sh/reference/katalog#spec-crds",
+			source,
+		)
+	}
+
 	var katalog orktypes.KatalogFile
 	if err := utils.StrictUnmarshal(doc, &katalog); err != nil {
 		return nil, fmt.Errorf("parsing %q: %w", source, err)
@@ -38,7 +52,10 @@ func parseKatalogDoc(doc []byte, source string) (*orktypes.KatalogFile, error) {
 	// apiVersion must match a supported version — hard error with guidance.
 	if !konfig.IsValidApiVersion(katalog.APIVersion) {
 		return nil, fmt.Errorf(
-			"%q: unsupported apiVersion %q — supported: %v",
+			"%q: unsupported apiVersion %q\n"+
+				"  Supported: %v\n"+
+				"  This usually means the pattern was built for a different version of Orkestra.\n"+
+				"  Check the upstream pattern's katalog.yaml or update Orkestra.",
 			source, katalog.APIVersion, konfig.ApiVersions(),
 		)
 	}
@@ -49,6 +66,21 @@ func parseKatalogDoc(doc []byte, source string) (*orktypes.KatalogFile, error) {
 	}
 
 	return &katalog, nil
+}
+
+// looksLikeCRDList detects the common mistake of writing spec.crds as a YAML
+// list instead of a map. Checks for "- name:" immediately after "crds:" with
+// optional whitespace — good enough to catch the pattern without full parsing.
+func looksLikeCRDList(doc []byte) bool {
+	s := string(doc)
+	idx := strings.Index(s, "crds:")
+	if idx < 0 {
+		return false
+	}
+	// Look at the content after "crds:" — if the next non-blank line starts
+	// with "- " it is a list entry.
+	after := strings.TrimLeft(s[idx+5:], " \t\r\n")
+	return strings.HasPrefix(after, "- ")
 }
 
 // containsValidKind is a fast string check before committing to a full YAML parse.

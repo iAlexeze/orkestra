@@ -1,8 +1,9 @@
 ---
 title: "Validation Schema"
-weight: 4
-description: "Complete schema reference for `reconciler.validation` in a Katalog CRD entry."
+weight: 63
 ---
+
+# Validation Schema
 
 Complete schema reference for `reconciler.validation` in a Katalog CRD entry.
 
@@ -59,10 +60,11 @@ operatorBox:
 | `operator` | string | no | — | Explicit operator (see table). Used when no shorthand applies. |
 | `value` | string | no | — | Comparison value for the explicit operator form. Not used for `exists`/`notExists`. |
 
-!!! note "Shorthands and operator are mutually exclusive"
-    When a shorthand is set (`prefix`, `max`, etc.), the `operator` and `value`
-    fields are ignored. Use shorthands for common cases. Use `operator` + `value`
-    for operators not covered by a shorthand.
+{{< callout type="note" title="Shorthands and operator are mutually exclusive" >}}
+When a shorthand is set (`prefix`, `max`, etc.), the `operator` and `value`
+fields are ignored. Use shorthands for common cases. Use `operator` + `value`
+for operators not covered by a shorthand.
+{{< /callout >}}
 
 ---
 

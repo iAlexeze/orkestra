@@ -9,6 +9,7 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
+	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -16,12 +17,24 @@ import (
 
 var validateCmd = &cobra.Command{
 	Use:   "validate",
-	Short: "Validate Orkestra katalog configuration",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		katalogPaths, _ := cmd.Flags().GetStringSlice("file")
-		expanded := parseKatalogPaths(katalogPaths)
+	Short: "Validate an Orkestra document (Katalog, Komposer, Motif, E2E)",
+	Long: `Validates any Orkestra document and reports errors.
 
-		// If any path is a Motif, route to Motif validation
+The document kind is detected automatically from the 'kind' field:
+  Katalog   — operator definition with CRD declarations
+  Komposer  — multi-source katalog composer
+  Motif     — reusable operator pattern
+  E2E       — declarative end-to-end test spec
+
+Examples:
+  ork validate -f katalog.yaml
+  ork validate -f e2e.yaml
+  ork validate -f motif.yaml`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		paths, _ := cmd.Flags().GetStringSlice("file")
+		expanded := parseFilePaths(paths)
+
+		var docKind string
 		for _, path := range expanded {
 			kind, err := detectKindFromFile(path)
 			if err != nil {
@@ -45,9 +58,15 @@ var validateCmd = &cobra.Command{
 			if konfig.IsMotifKind(kind) {
 				return validateMotifFile(path)
 			}
+
+			if konfig.IsE2EKind(kind) {
+				return validateE2EFile(path)
+			}
+
+			docKind = kind
 		}
 
-		// Default: Katalog / Komposer validation
+		// Default path: Katalog / Komposer validation
 		m, err := generateKatalog(cmd)
 		if err != nil {
 			return err
@@ -59,8 +78,13 @@ var validateCmd = &cobra.Command{
 			return err
 		}
 
+		kindLabel := "Katalog"
+		if konfig.IsKomposerKind(docKind) {
+			kindLabel = "Komposer"
+		}
+
 		fmt.Println()
-		fmt.Println(utils.Bold("Validating Katalog..."))
+		fmt.Println(utils.Bold("Validating " + kindLabel + "..."))
 		fmt.Println()
 
 		_, err = k.ValidateConfig(kfg)
@@ -106,20 +130,104 @@ func detectKindFromFile(path string) (string, error) {
 	return doc.Kind, nil
 }
 
+// validateE2EFile validates an E2E spec file and prints a summary.
+func validateE2EFile(path string) error {
+	fmt.Println()
+	fmt.Println(utils.Bold("Validating E2E..."))
+	fmt.Println()
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("reading %s: %w", path, err)
+	}
+
+	var e2e orktypes.E2E
+	if err := yaml.Unmarshal(data, &e2e); err != nil {
+		return fmt.Errorf("parsing %s: %w", path, err)
+	}
+
+	var errs []string
+
+	if e2e.Metadata.Name == "" {
+		errs = append(errs, "metadata.name is required")
+	}
+	if e2e.Spec.Katalog == "" && e2e.Spec.Init == nil {
+		errs = append(errs, "spec.katalog is required (or spec.init for example packs)")
+	}
+	if e2e.Spec.CRD == "" && e2e.Spec.Init == nil {
+		errs = append(errs, "spec.crd is required (or spec.init for example packs)")
+	}
+	if e2e.Spec.CR == "" && e2e.Spec.Init == nil {
+		errs = append(errs, "spec.cr is required (or spec.init for example packs)")
+	}
+	if len(e2e.Spec.Expect) == 0 {
+		errs = append(errs, "spec.expect must contain at least one expectation")
+	}
+	for i, exp := range e2e.Spec.Expect {
+		if exp.Name == "" {
+			errs = append(errs, fmt.Sprintf("spec.expect[%d].name is required", i))
+		}
+		if exp.After != "cr-applied" && exp.After != "cr-deleted" {
+			errs = append(errs, fmt.Sprintf("spec.expect[%d].after must be cr-applied or cr-deleted (got %q)", i, exp.After))
+		}
+		if len(exp.Resources) == 0 && len(exp.Commands) == 0 {
+			errs = append(errs, fmt.Sprintf("spec.expect[%d] (%q): must have at least one resource or command check", i, exp.Name))
+		}
+	}
+
+	if len(errs) > 0 {
+		for _, e := range errs {
+			fmt.Printf("  %s✗%s %s\n", utils.ColorRed, utils.ColorReset, e)
+		}
+		fmt.Println()
+		return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
+	}
+
+	icon := utils.HealthIcon("ready")
+	fmt.Printf("%s %s\n", icon, utils.Bold(e2e.Metadata.Name))
+	if e2e.Metadata.Description != "" {
+		fmt.Printf("    %s%s%s\n", utils.ColorGray, e2e.Metadata.Description, utils.ColorReset)
+	}
+	fmt.Printf("    %skatolog : %s\n    crd     : %s\n    cr      : %s%s\n",
+		utils.ColorGray,
+		e2e.Spec.Katalog, e2e.Spec.CRD, e2e.Spec.CR,
+		utils.ColorReset,
+	)
+	if len(e2e.Spec.Setup) > 0 {
+		fmt.Printf("    %ssetup   : %s%s\n", utils.ColorGray, strings.Join(e2e.Spec.Setup, ", "), utils.ColorReset)
+	}
+	fmt.Println()
+	for _, exp := range e2e.Spec.Expect {
+		to := exp.Timeout
+		if to == "" {
+			to = "60s"
+		}
+		fmt.Printf("    %s%-40s after: %-12s timeout: %s%s\n",
+			utils.ColorGray, exp.Name, exp.After, to, utils.ColorReset)
+	}
+	fmt.Println()
+	fmt.Println(strings.Repeat("─", 60))
+	fmt.Printf("%d expectation(s) valid\n", len(e2e.Spec.Expect))
+
+	return nil
+}
+
 // validateMotifFile runs Motif-specific validation and prints results.
 func validateMotifFile(path string) error {
 	fmt.Println()
-	fmt.Printf("%s\n", utils.Bold("Validating Motif: "+path))
+	fmt.Println(utils.Bold("Validating Motif..."))
 	fmt.Println()
 
 	errs := katalog.ValidateMotif(path)
 	if len(errs) == 0 {
-		fmt.Printf("  ✓ %s is valid\n", path)
+		icon := utils.HealthIcon("ready")
+		fmt.Printf("%s %s\n", icon, utils.Bold(path))
+		fmt.Printf("    %svalid%s\n", utils.ColorGray, utils.ColorReset)
 		return nil
 	}
 
 	for _, e := range errs {
-		fmt.Printf("  ✗ %s\n", e.Error())
+		fmt.Printf("  %s✗%s %s\n", utils.ColorRed, utils.ColorReset, e.Error())
 	}
 	fmt.Println()
 	return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
@@ -128,7 +236,7 @@ func validateMotifFile(path string) error {
 func init() {
 	rootCmd.AddCommand(validateCmd)
 
-	validateCmd.Flags().StringSliceP("file", "f", nil, "Path to katalog.yaml or komposer.yaml (repeatable or comma-separated)")
+	validateCmd.Flags().StringSliceP("file", "f", nil, "Path to an Orkestra document (repeatable or comma-separated)")
 
 	// Shadow global flags so they don't appear under `ork validate`
 	validateCmd.Flags().Bool("debug", false, "")

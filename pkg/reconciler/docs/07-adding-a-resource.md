@@ -127,7 +127,7 @@ import (
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Create(ctx context.Context, kube *kubeclient.Kubeclient,
+func Create(ctx context.Context, kube kubeclient.KubeClient,
     owner domain.Object, spec ResolvedIngressSpec) error {
 
     ns := resolveNamespace(owner, spec)
@@ -150,7 +150,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient,
     return nil
 }
 
-func Update(ctx context.Context, kube *kubeclient.Kubeclient,
+func Update(ctx context.Context, kube kubeclient.KubeClient,
     owner domain.Object, spec ResolvedIngressSpec) error {
 
     ns := resolveNamespace(owner, spec)
@@ -191,7 +191,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient,
     return nil
 }
 
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
     owner domain.Object, name, namespace string) error {
 
     existing, err := kube.Clientset().NetworkingV1().Ingresses(namespace).Get(ctx, name, metav1.GetOptions{})
@@ -360,7 +360,7 @@ import (
 
 func runIngresses(
     ctx context.Context,
-    kube *kubeclient.Kubeclient,
+    kube kubeclient.KubeClient,
     resolver *orktmpl.Resolver,
     owner domain.Object,
     srcs []orktypes.IngressTemplateSource,

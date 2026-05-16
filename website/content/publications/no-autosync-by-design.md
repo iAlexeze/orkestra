@@ -108,10 +108,10 @@ Because none of those things are the problem it is trying to solve.
 
 ## 4. Purity of Input
 
-A single Orkestra instance can compose multiple sources:
+A single Orkestra instance can compose multiple imports:
 
 ```yaml
-sources:
+imports:
   files:
     - https://raw.github.com/myorg/public-baseline/main/katalog.yaml
 
@@ -209,7 +209,7 @@ Not triggered by a Git push.
 
 ## 7. What Would Auto-Sync Break?
 
-If Orkestra auto-synced sources:
+If Orkestra auto-synced imports:
 
 ### 7.1 Non-deterministic runtime
 

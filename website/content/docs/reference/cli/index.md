@@ -1,8 +1,9 @@
 ---
 title: "Orkestra CLI Reference"
-weight: 3
-description: "The `ork` CLI manages the full lifecycle of an Orkestra operator — scaffolding, validation, templating, code generation,..."
+weight: 27
 ---
+
+# Orkestra CLI Reference
 
 The `ork` CLI manages the full lifecycle of an Orkestra operator — scaffolding, validation, templating, code generation, runtime execution, and live inspection.
 
@@ -11,21 +12,34 @@ Select a command to view its full documentation.
 
 ---
 
-## Commands Overview
+## Developer CLI
+
+Commands for deploying your own project to Kubernetes — no operator knowledge required.
+
+| Command | Description |
+|---------|-------------|
+| [`ork doctor`](./developer/doctor/) | Examine the project and generate `.orkestra/` configuration |
+| [`ork doctor deploy`](./developer/deploy/) | Build, push, and deploy to the cluster |
+| [`ork doctor deploy rollback`](./developer/rollback/) | Instantly restore the previous image |
+
+→ [Developer CLI overview](./developer/__index/)
+
+---
+
+## Operator Commands Overview
 
 | Command | Description |
 |--------|-------------|
-| [`ork init`](./init.md) | Scaffold a new operator project (dynamic or typed) |
-| [`ork validate`](./validate.md) | Validate and merge Katalogs or Komposers |
-| [`ork template`](./template.md) | Render the merged, post‑validation Katalog |
-| [`ork generate registry`](./generate-runtime.md) | Generate runtime registry for typed CRDs and hooks |
-| [`ork run`](./run.md) | Start the operator runtime |
-| [`ork status`](./status.md) | Show health and reconcile statistics |
-| [`ork get`](./get.md) | List CRs of a given CRD |
-| [`ork describe`](./describe.md) | Show spec, status, and events for a CR |
-| [`ork reconcile`](./reconcile.md) | Trigger reconciliation for one or all CRs |
-| [`ork events`](./events.md) | Show Kubernetes events for a CRD or CR |
-| [`ork version`](./version.md) | Print version and build information |
+| [`ork init`](./init/) | Scaffold a new operator project (dynamic or typed) |
+| [`ork validate`](./validate/) | Validate and merge Katalogs or Komposers |
+| [`ork plan`](./plan/) | Show what would change if the local Katalog were applied |
+| [`ork simulate`](./simulate/) | Simulate operator reconciliation in memory — no cluster needed |
+| [`ork e2e`](./e2e/) | Run declarative end-to-end tests against a real cluster |
+| [`ork template`](./template/) | Render the merged, post‑validation Katalog |
+| [`ork generate registry`](./generate-runtime/) | Generate runtime registry for typed CRDs and hooks |
+| [`ork run`](./run/) | Start the operator runtime |
+| [`ork reconcile`](./reconcile/) | Trigger reconciliation for one or all CRs |
+| [`ork version`](./version/) | Print version and build information |
 
 ---
 
@@ -49,6 +63,6 @@ Select a command to view its full documentation.
 ---
 ## Related Documentation
 
-- [Katalog Schema](../katalog-schema.md)
-- [Komposer Schema](../komposer-schema.md)
-- [Operator Runtime](../runtime.md)
+- [Katalog Schema](../katalog-schema/)
+- [Komposer Schema](../komposer-schema/)
+- [Operator Runtime](../runtime/)

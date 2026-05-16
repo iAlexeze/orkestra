@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/orkspace/orkestra/pkg/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/merger"
 	"github.com/orkspace/orkestra/pkg/registry"
@@ -19,6 +20,8 @@ import (
 var (
 	registryPushForce      bool
 	registryPushUpdateMeta bool
+	registryPushE2EFile    string
+	registryPushNoE2E      bool
 )
 
 var registryPushCmd = &cobra.Command{
@@ -147,6 +150,28 @@ var registryPushCmd = &cobra.Command{
 			fmt.Printf("  %s %-20s (%s)\n", utils.ColorGreen+"✓"+utils.ColorReset, f, formatSize(info.Size()))
 		}
 
+		// E2E gate: run e2e.yaml before pushing if it exists (Katalog only).
+		// Skip with --force or --no-e2e.
+		if patternKind == registry.KatalogKind && !registryPushForce && !registryPushNoE2E {
+			e2eFile := registryPushE2EFile
+			if e2eFile == "" {
+				e2eFile = filepath.Join(dir, registry.FileE2E)
+			} else if !filepath.IsAbs(e2eFile) {
+				e2eFile = filepath.Join(dir, e2eFile)
+			}
+			if _, err := os.Stat(e2eFile); err == nil {
+				fmt.Printf("\nRunning E2E gate (%s)...\n", registry.FileE2E)
+				runner, err := e2e.New(e2eFile, "", false)
+				if err != nil {
+					return fmt.Errorf("e2e gate: %w\n\nUse --force or --no-e2e to skip", err)
+				}
+				if err := runner.Run(cmd.Context()); err != nil {
+					return fmt.Errorf("e2e gate failed: %w\n\nFix the test or use --force to push anyway", err)
+				}
+				fmt.Printf("  %s E2E passed\n", utils.ColorGreen+"✓"+utils.ColorReset)
+			}
+		}
+
 		client, err := registry.NewClient()
 		if err != nil {
 			return fmt.Errorf("initializing client: %w", err)
@@ -187,7 +212,7 @@ var registryPushCmd = &cobra.Command{
 			fmt.Printf("  imports:\n")
 			fmt.Printf("    - motif: %s\n", ref.String())
 		} else {
-			fmt.Printf("  sources:\n")
+			fmt.Printf("  imports:\n")
 			fmt.Printf("    registry:\n")
 			fmt.Printf("      - url: %s\n", ref.String())
 		}

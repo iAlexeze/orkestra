@@ -6,6 +6,7 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/konfig"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // -----------------------------------------------------------------------------
@@ -57,6 +58,17 @@ func (k *Katalog) AllCRDs() map[string]orktypes.CRDEntry {
 
 func (k *Katalog) Metadata() orktypes.KatalogMeta {
 	return k.metadata
+}
+
+// CRDEntry returns the enabled CRD entry for the given name.
+func (k *Katalog) CRDEntry(name string) (orktypes.CRDEntry, bool) {
+	entry, ok := k.enabledCRDs[name]
+	return entry, ok
+}
+
+// Scheme builds and returns a runtime.Scheme with all Katalog types registered.
+func (k *Katalog) Scheme() (*runtime.Scheme, error) {
+	return NewSchemeRegistry(k)
 }
 
 // Empty katalog for testing

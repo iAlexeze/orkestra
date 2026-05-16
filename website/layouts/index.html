@@ -1,12 +1,12 @@
 {{ define "main" }}
 
-<!-- ===== ACTIVE DEVELOPMENT BANNER ===== -->
+<!-- ===== V1 LAUNCH BANNER ===== -->
 <div class="dev-banner" role="alert">
   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    <polyline points="20 6 9 17 4 12"/>
   </svg>
-  <span>Orkestra is actively under development — APIs may change before v1.0.</span>
-  <a href="{{ .Site.Params.github }}/discussions" target="_blank" rel="noopener noreferrer">Follow progress →</a>
+  <span>Orkestra v1.0 is live — zero-code Kubernetes operators, production-ready.</span>
+  <a href="{{ .Site.Params.github }}/releases" target="_blank" rel="noopener noreferrer">See what's new →</a>
 </div>
 
 <!-- ===== HERO ===== -->
@@ -55,7 +55,7 @@
         <div class="code-panel active" id="panel-yaml">
           <div class="code-panel-header">
             <span class="code-filename">hello-website/katalog.yaml</span>
-            <span class="code-lines badge-green">Complete operator · 15 lines</span>
+            <span class="code-lines badge-green">Complete operator · 10 lines</span>
           </div>
           <pre class="code-block"><code class="language-yaml"><span class="token-key">apiVersion:</span> <span class="token-string">orkestra.orkspace.io/v1</span>
 <span class="token-key">kind:</span> <span class="token-string">Katalog</span>
@@ -68,11 +68,7 @@
 <span class="token-key">spec:</span>
   <span class="token-key">crds:</span>
     <span class="token-key">website:</span>
-      <span class="token-key">apiTypes:</span>
-        <span class="token-key">group:</span> <span class="token-string">demo.orkestra.io</span>
-        <span class="token-key">version:</span> <span class="token-string">v1alpha1</span>
-        <span class="token-key">kind:</span> <span class="token-string">Website</span>
-        <span class="token-key">plural:</span> <span class="token-string">websites</span>
+      <span class="token-key">crdFile: my-website.yaml</span>
       <span class="token-key">operatorBox:</span>
         <span class="token-key">default:</span> <span class="token-bool">true</span>
         <span class="token-key">onCreate:</span>

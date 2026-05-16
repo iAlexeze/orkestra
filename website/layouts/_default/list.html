@@ -28,7 +28,7 @@
             {{ with .Description }}
             <span class="docs-index-item-desc">{{ . }}</span>
             {{ else }}{{ with .Summary }}
-            <span class="docs-index-item-desc">{{ . | truncate 100 }}</span>
+            <span class="docs-index-item-desc">{{ . | plainify | truncate 120 }}</span>
             {{ end }}{{ end }}
           </div>
           <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">

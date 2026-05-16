@@ -239,7 +239,7 @@ apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform-komposer
-sources:
+imports:
   files:
     - ./katalogs/website.yaml
     - https://platform.myorg.io/crds/database.yaml

@@ -1,8 +1,9 @@
 ---
 title: "Writing Your First Komposer"
-weight: 2
-description: ""
+weight: 11
 ---
+
+# Writing Your First Komposer
 
 A **Komposer** tells Orkestra *where* to load katalogs from.  
 While a Katalog defines **what** your operator does, the Komposer defines **where those katalogs come from**.
@@ -16,9 +17,10 @@ Komposers support multiple source types:
 - Multiple sources merged together  
 - Inline overrides  
 
-!!! note
-    Komposers do not perform reconciliation.  
-    They only load katalogs and merge them into a final, resolved state.
+{{< callout type="note" >}}
+Komposers do not perform reconciliation.  
+They only load katalogs and merge them into a final, resolved state.
+{{< /callout >}}
 
 ---
 
@@ -32,7 +34,7 @@ kind: Komposer
 metadata:
   name: my-first-komposer
 
-sources:
+imports:
   files:
     - ./my-katalog.yaml
 ```
@@ -43,9 +45,10 @@ This Komposer tells Orkestra:
 - Use it exactly as written  
 - No overrides, no merging, no registry lookups  
 
-!!! tip
-    This is the recommended starting point.  
-    Always begin with a single-file Komposer to validate your katalog.
+{{< callout type="tip" >}}
+This is the recommended starting point.  
+Always begin with a single-file Komposer to validate your katalog.
+{{< /callout >}}
 
 ---
 
@@ -54,16 +57,17 @@ This Komposer tells Orkestra:
 You can load multiple katalogs from multiple files:
 
 ```yaml
-sources:
+imports:
   files:
     - ./katalogs/app.yaml
     - ./katalogs/database.yaml
     - ./katalogs/cache.yaml
 ```
 
-!!! note
-    When multiple katalogs define the same CRD, Orkestra merges them in order.  
-    Later entries override earlier ones.
+{{< callout type="note" >}}
+When multiple katalogs define the same CRD, Orkestra merges them in order.  
+Later entries override earlier ones.
+{{< /callout >}}
 
 ---
 
@@ -72,14 +76,15 @@ sources:
 You can load katalogs directly from a URL:
 
 ```yaml
-sources:
+imports:
   files:
     - https://example.com/katalogs/webapp.yaml
 ```
 
-!!! caution
-    Remote URLs must return raw YAML.  
-    HTML pages, redirects, or GitHub “blob” URLs will fail.
+{{< callout type="caution" >}}
+Remote URLs must return raw YAML.  
+HTML pages, redirects, or GitHub “blob” URLs will fail.
+{{< /callout >}}
 
 ---
 
@@ -88,16 +93,17 @@ sources:
 Komposers can load katalogs packaged inside Helm charts:
 
 ```yaml
-sources:
+imports:
   helm:
     - repo: https://charts.myorg.io
       chart: platform-katalogs
       version: 1.2.0
 ```
 
-!!! note
-    Orkestra extracts only katalog files from the chart.  
-    Other chart templates are ignored.
+{{< callout type="note" >}}
+Orkestra extracts only katalog files from the chart.  
+Other chart templates are ignored.
+{{< /callout >}}
 
 ---
 
@@ -107,7 +113,7 @@ Komposers can pull katalogs from Git repositories.
 This is the most powerful and common source type.
 
 ```yaml
-sources:
+imports:
   registry:
     - url: https://github.com/myorg/orkestra-registry
       katalog:
@@ -123,8 +129,9 @@ This tells Orkestra:
 - Load the katalog named `webapp` from the `main` branch  
 - Load the katalog named `database` from tag `v1.0.3`  
 
-!!! tip
-    If you omit `url`, Orkestra uses the `ORK_REGISTRY` environment variable as the default registry.
+{{< callout type="tip" >}}
+If you omit `url`, Orkestra uses the `ORK_REGISTRY` environment variable as the default registry.
+{{< /callout >}}
 
 ---
 
@@ -133,7 +140,7 @@ This tells Orkestra:
 Private GitHub or GitLab registries require authentication:
 
 ```yaml
-sources:
+imports:
   registry:
     - url: https://github.com/myorg/private-registry
       auth:
@@ -144,18 +151,19 @@ sources:
           branch: main
 ```
 
-!!! warning
-    Never hardcode tokens in your Komposer.  
-    Always load them from environment variables.
+{{< callout type="warning" >}}
+Never hardcode tokens in your Komposer.  
+Always load them from environment variables.
+{{< /callout >}}
 
 ---
 
 ## Mixing Multiple Source Types
 
-Komposers can combine any number of sources:
+Komposers can combine any number of imports:
 
 ```yaml
-sources:
+imports:
   files:
     - ./local/base.yaml
 
@@ -171,9 +179,10 @@ sources:
           branch: main
 ```
 
-!!! note
-    Sources are merged in the order they appear.  
-    Later sources override earlier ones.
+{{< callout type="note" >}}
+Sources are merged in the order they appear.  
+Later sources override earlier ones.
+{{< /callout >}}
 
 ---
 
@@ -184,7 +193,7 @@ You can override katalog fields directly inside the Komposer:
 ```yaml
 spec:
   crds:
-    - name: webapp
+    webapp:
       workers: 4
       operatorBox:
         default: true
@@ -192,8 +201,9 @@ spec:
 
 Inline overrides apply **after** all sources are merged.
 
-!!! tip
-    Use inline overrides for environment‑specific settings such as worker counts, namespaces, or resource limits.
+{{< callout type="tip" >}}
+Use inline overrides for environment‑specific settings such as worker counts, namespaces, or resource limits.
+{{< /callout >}}
 
 ---
 
@@ -207,7 +217,7 @@ kind: Komposer
 metadata:
   name: platform-komposer
 
-sources:
+imports:
   files:
     - ./local/base.yaml
 
@@ -226,7 +236,7 @@ sources:
 
 spec:
   crds:
-    - name: webapp
+    webapp:
       workers: 6
       operatorBox:
         default: true

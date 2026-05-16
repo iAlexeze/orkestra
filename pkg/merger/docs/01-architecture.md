@@ -22,10 +22,10 @@ merger.New(paths...)
 │    │     m.providers as side-effects    │
 │    │                                    │
 │    └── kind: Komposer → loadKomposer    │
-│          resolves sources in order:     │
-│          1. registry sources            │
-│          2. file sources                │
-│          3. helm sources                │
+│          resolves imports in order:     │
+│          1. registry imports            │
+│          2. file imports                │
+│          3. helm imports                │
 │          4. inline spec.crds            │
 │          accumulates top-level fields   │
 │          from each source               │
@@ -33,7 +33,7 @@ merger.New(paths...)
     │
     │  duplicate check across entry-point files
     ▼
-m.result  (map[string]CRDEntry, all sources merged)
+m.result  (map[string]CRDEntry, all imports merged)
 m.security / m.notification / m.providers (accumulated)
 
     │
@@ -50,5 +50,5 @@ m.Enabled()        → map[string]CRDEntry  (enabled only)
 
 - `Merge()` is called exactly once. All `To*` and query methods panic if called before it.
 - The merger is not thread-safe during `Merge()`. After it returns, reads from `Enabled`, `All`, `Get` are safe without synchronisation because the result map is never mutated.
-- A Komposer may not reference another Komposer as a source — only Katalog kind is valid inside `sources:`. This prevents unbounded recursion.
-- CRD names must be globally unique across all sources. A duplicate is always an error; it is never silently resolved.
+- A Komposer may not reference another Komposer as an import — only Katalog kind is valid inside `imports:`. This prevents unbounded recursion.
+- CRD names must be globally unique across all imports. A duplicate is always an error; it is never silently resolved.

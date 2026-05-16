@@ -1,3 +1,47 @@
+# **CHANGELOG — simulate, validate, e2e, ork-action, CRD-driven inference**
+
+### **Added — `ork simulate` (in-memory operator simulation)**
+
+New command that runs the full operator reconcile loop against a fake in-memory cluster — no Kubernetes required. Give it a Katalog and a CR and it shows exactly which resources are created, updated, or deleted each cycle.
+
+- `pkg/simulate` — new package: `FakeKubeclient`, `Run`, `Result`, `CycleResult`, `Op`
+- Fake clientset uses `PrependReactor` so every k8s operation is recorded before the default object tracker handles it
+- CR is pre-seeded with managed labels and annotations so the reconciler's idempotency guards skip those patches every cycle
+- Deployment status is advanced to `Available` after cycle 1 to unblock state machines waiting on `AvailableReplicas`
+- Steady state detected when two consecutive cycles produce identical verb+resource sequences; `Result.SteadyAt` records the cycle number
+- `--cycles N` always runs exactly N cycles; identical consecutive cycles are collapsed in output as `(cycles X–Y: identical)`
+- `+` shown for creates, `~` for updates, `-` for deletes; if a resource is both created and patched in one cycle (e.g. `reconcile: true`), only `+` is shown
+- Zerolog global logger is redirected to `io.Discard` during simulation so reconciler JSON logs don't pollute output
+- CR YAML is converted via `sigsyaml.YAMLToJSON` before unmarshalling to ensure numeric fields are `float64` (k8s `DeepCopyJSON` requirement)
+- Progressive documentation in `pkg/simulate/docs/` (output, steady state, limitations, internals)
+
+### **Added — `ork e2e` command**
+
+New command for declarative end-to-end tests against a real kind cluster. Provisions the cluster, installs operator dependencies, applies the CRD and bundle, starts the Orkestra runtime, applies the CR, and polls expectations.
+
+- `docs/reference/cli/e2e.md` — full CLI reference page
+- Added to `docs/reference/cli/index.md` operator commands table
+
+### **Improved — `ork validate` output**
+
+- Header now reads "Validating Katalog..." or "Validating Komposer..." based on the detected document kind
+- E2E and Motif validation now use the same colour style as Katalog validation: `HealthIcon`, `ColorGray`, `Bold`, `ColorReset`
+- Errors use `ColorRed` consistently across all document kinds
+
+### **Added — CRD-driven API inference in `ork run` (dev mode)**
+
+- `crdFile:` in Katalog spec populates `apiTypes` (group, version, kind, plural) directly from the CRD YAML — no need to declare `apiTypes:` separately
+- Dev mode auto-applies CRDs before starting the runtime
+- Dev mode auto-provisions a kind cluster when no cluster is available
+
+### **Improved — `ork-action` (GitHub Action)**
+
+Replaced the complex Docker-based action with a minimal composite wrapper:
+- Installs `ork` via curl, runs `ork e2e` — no Dockerfile, no entrypoint script
+- Inputs: `e2e-file`, `ork-version`, `keep-cluster`, `cluster`
+
+---
+
 # **CHANGELOG — `onCreate.custom` / `onReconcile.custom`: Operator Composition via Custom Resources**
 
 ### **Added — Custom Resource lifecycle hooks (`onCreate.custom` / `onReconcile.custom`)**

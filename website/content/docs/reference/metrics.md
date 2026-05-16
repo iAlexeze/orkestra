@@ -1,9 +1,9 @@
 ---
 title: "**Orkestra Metrics**"
-weight: 50
-description: "**High‑signal, per‑CRD observability for declarative operators**"
+weight: 43
 ---
 
+# **Orkestra Metrics**
 **High‑signal, per‑CRD observability for declarative operators**
 
 Orkestra exposes a focused set of Prometheus metrics designed specifically for declarative operators.  
@@ -30,9 +30,10 @@ All metrics are automatically exposed at:
 
 via the built‑in health server.
 
-!!! note
-    No instrumentation is required.  
-    Every operator built with Orkestra exposes these metrics automatically.
+{{< callout type="note" >}}
+No instrumentation is required.  
+Every operator built with Orkestra exposes these metrics automatically.
+{{< /callout >}}
 
 ---
 
@@ -63,8 +64,9 @@ Use this to:
 - identify API bottlenecks  
 - tune worker counts  
 
-!!! tip
-    High latency + high queue depth usually indicates insufficient workers.
+{{< callout type="tip" >}}
+High latency + high queue depth usually indicates insufficient workers.
+{{< /callout >}}
 
 ---
 
@@ -101,9 +103,10 @@ Use this to:
 - detect worker starvation  
 - tune concurrency  
 
-!!! caution
-    If `workers_active` is consistently equal to the configured worker count,  
-    your operator is likely saturated.
+{{< callout type="caution" >}}
+If `workers_active` is consistently equal to the configured worker count,  
+your operator is likely saturated.
+{{< /callout >}}
 
 ---
 
@@ -128,8 +131,55 @@ Use this to:
 - detect CRDs that repeatedly fail to initialize  
 - validate startup reliability  
 
-!!! note
-    Activation metrics are especially useful in multi‑CRD operators with dependency ordering.
+{{< callout type="note" >}}
+Activation metrics are especially useful in multi‑CRD operators with dependency ordering.
+{{< /callout >}}
+
+---
+
+## **5. Security Metrics**
+
+### `orkestra_deletion_protection_blocked_total`
+Counter. Incremented each time a DELETE request is blocked by the deletion protection webhook.
+
+Use this to:
+- detect accidental or unauthorized deletion attempts
+- alert on deletion policy violations
+
+Suggested alert:
+```yaml
+alert: OrkestradeletionViolation
+expr: increase(orkestra_deletion_protection_blocked_total[5m]) > 0
+```
+
+---
+
+### `orkestra_namespace_protection_blocked_total{resource}`
+Counter. Incremented each time a CREATE or UPDATE request is blocked by the namespace protection webhook.
+
+- `resource`: the CRD plural name (e.g. `pipelines`) that was blocked
+
+Use this to:
+- detect CRs being created in disallowed namespaces
+- alert on namespace policy violations
+
+Suggested alert:
+```yaml
+alert: OrkestraNamespaceViolation
+expr: increase(orkestra_namespace_protection_blocked_total[5m]) > 0
+```
+
+---
+
+### `orkestra_webhook_reconciled_total{source}`
+Counter. Incremented each time the webhook controller completes one reconciliation cycle.
+
+---
+
+### `orkestra_webhook_reconciliation_failure_total{webhook}`
+Counter. Incremented when a webhook registration or cleanup call fails during a reconciliation cycle.
+
+- `webhook`: `validation`, `mutation`, `deletion-protection`, or `namespace-protection`
 
 ---
 
@@ -147,8 +197,9 @@ Orkestra’s metrics are designed to answer the questions platform teams actuall
 Traditional operator frameworks require custom instrumentation.  
 Orkestra gives you all of this **out of the box**, with zero Go code.
 
-!!! tip
-    These metrics make Orkestra operators not just easier to build — but easier to operate, debug, and scale.
+{{< callout type="tip" >}}
+These metrics make Orkestra operators not just easier to build — but easier to operate, debug, and scale.
+{{< /callout >}}
 
 ---
 
@@ -169,6 +220,6 @@ They are a core part of Orkestra’s philosophy:
 
 ## Related Documentation
 
-- **Concept:** [Runtime](../runtime-manual/concepts/runtime.md)
-- **Reference:** [Runtime Schema](../reference/runtime.md)
-- **Next Use Case:** [Registry‑Powered Operators](./registry-schema.md)
+- **Concept:** [Runtime Reference](./runtime/)
+- **Reference:** [Runtime Schema](../reference/runtime/)
+- **Next Use Case:** [Registry‑Powered Operators](./registry-schema/)

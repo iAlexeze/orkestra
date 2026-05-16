@@ -1,7 +1,7 @@
 ---
 title: "Getting Started"
 description: "Get up and running with Orkestra in under 10 minutes."
-weight: 1
+weight: 10
 ---
 
 Get up and running with Orkestra in under 10 minutes.

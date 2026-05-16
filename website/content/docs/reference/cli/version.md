@@ -1,8 +1,9 @@
 ---
 title: "ork version"
-weight: 50
-description: "Print version, commit, and build date."
+weight: 36
 ---
+
+# ork version
 
 Print version, commit, and build date.
 
@@ -14,5 +15,4 @@ ork version
 
 ## Related Documentation
 
-- [ork run](./run.md)
-- [ork status](./status.md)
+- [ork run](./run/)

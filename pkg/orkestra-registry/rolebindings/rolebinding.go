@@ -34,7 +34,7 @@ type ResolvedRoleBindingSpec struct {
 // Create creates a RoleBinding if it does not already exist.
 // Idempotent — skips if the RoleBinding already exists.
 // Owner reference ensures cleanup when the CR is deleted.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedRoleBindingSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedRoleBindingSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("rolebinding.Create: invalid spec: %w", err)
 	}
@@ -74,7 +74,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 
 // Update applies the desired subjects and roleRef to an existing RoleBinding.
 // RoleRef is immutable in Kubernetes — if it changed the binding is deleted and recreated.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedRoleBindingSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedRoleBindingSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -114,7 +114,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Delete deletes the RoleBinding if it exists.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedRoleBindingSpec) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedRoleBindingSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -142,7 +142,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the RoleBinding only if it is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().RbacV1().RoleBindings(namespace).Get(ctx, name, metav1.GetOptions{})

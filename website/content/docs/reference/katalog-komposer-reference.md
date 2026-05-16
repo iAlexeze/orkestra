@@ -1,8 +1,9 @@
 ---
 title: "Katalog and Komposer Reference"
-weight: 6
-description: "This page is the single-page reference for Orkestra's two core document"
+weight: 39
 ---
+
+# Katalog and Komposer Reference
 
 This page is the single-page reference for Orkestra's two core document
 kinds — Katalog and Komposer. Use it when you need to look up a specific
@@ -11,8 +12,8 @@ before reading their individual schema pages.
 
 For full field-by-field documentation with error references, see:
 
-- [Katalog Schema →](./katalog-schema.md)
-- [Komposer Schema →](./komposer-schema.md)
+- [Katalog Schema →](./katalog-schema/)
+- [Komposer Schema →](./komposer-schema/)
 
 ---
 
@@ -22,7 +23,7 @@ For full field-by-field documentation with error references, see:
                     ┌─────────────────────────────┐
                     │         Komposer            │
                     │                             │
-                    │  sources:                   │
+                    │  imports:                   │
                     │    files: [Katalog, ...]    │
                     │    helm:  [Chart, ...]      │
                     │    registry: [Pattern, ...] │
@@ -97,7 +98,7 @@ ork run --file komposer.yaml    # Komposer — many sources merged
 | `endpoints.enabled` | bool | no | `true` |
 | `endpoints.health` | bool | no | `true` |
 | `endpoints.info` | bool | no | `true` |
-| `queue.maxQueueDepth` | int | no | `2000` |
+| `queue.maxQueueDepth` | int | no | `100` |
 | `queue.degradeThreshold` | int | no | `10` |
 | `conversion.storageVersion` | string | when conversion used | — |
 | `conversion.paths` | `[]ConversionPath` | when conversion used | — |
@@ -197,7 +198,7 @@ metadata:
 
 spec:
   crds:
-    - name: website
+    website:
       apiTypes:
         group: demo.orkestra.io
         version: v1alpha1
@@ -230,7 +231,7 @@ spec:
     - finalizer.demo.orkestra.io/cleanup
 
   crds:
-    - name: website
+    website:
       enabled: true
       workers: 3
       resync: 30s
@@ -291,13 +292,13 @@ kind: Komposer
 metadata:
   name: platform-komposer
 
-sources:
+imports:
   files:
     - ./katalogs/website.yaml
 
 spec:
   crds:
-    - name: website
+    website:
       workers: 8
 ```
 
@@ -310,7 +311,7 @@ metadata:
   name: platform-komposer
   description: Platform-wide operator configuration
 
-sources:
+imports:
   registry:
     - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
       oci: true
@@ -338,8 +339,8 @@ sources:
 
 spec:
   crds:
-    - name: postgres
+    postgres:
       workers: 8
-    - name: website
+    website:
       resync: 15s
 ```

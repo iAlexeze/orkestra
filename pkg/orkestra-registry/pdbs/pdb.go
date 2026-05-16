@@ -23,7 +23,7 @@ import (
 
 // Create creates a PDB owned by the CR if it does not already exist.
 // Idempotent — if the PDB exists, does nothing and returns nil.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPDBSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPDBSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("pdb.Create: invalid spec: %w", err)
 	}
@@ -64,7 +64,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Update reconciles an existing PDB to match the resolved spec.
 // PDB spec is largely immutable after creation — drift is handled by
 // delete-and-recreate. If the PDB does not exist, creates it.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPDBSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPDBSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("pdb.Update: invalid spec: %w", err)
 	}
@@ -120,7 +120,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Delete deletes the PDB if it exists.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPDBSpec) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPDBSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -148,7 +148,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the PDB if it exists and is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().PolicyV1().PodDisruptionBudgets(namespace).

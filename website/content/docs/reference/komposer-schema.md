@@ -1,8 +1,9 @@
 ---
 title: "Komposer Schema"
-weight: 3
-description: "A Komposer composes multiple Katalogs from different sources — files, URLs,"
+weight: 42
 ---
+
+# Komposer Schema
 
 A Komposer composes multiple Katalogs from different sources — files, URLs,
 Helm charts, and registry entries — into a single unified operator
@@ -25,7 +26,7 @@ metadata:
   name: string        # required
   description: string # optional
 
-sources:              # required — at least one source must be declared
+imports:              # required — at least one source must be declared
   files: [...]
   helm: [...]
   registry: [...]
@@ -58,7 +59,7 @@ Human-readable description. Shown in `ork status` and `ork describe`.
 At least one source type must be declared. Multiple source types can be
 combined freely. Sources are resolved in this order:
 
-1. `sources.registry` — pulled first
+1. `imports.registry` — pulled first
 2. `sources.files` — resolved next
 3. `sources.helm` — rendered and extracted last
 4. `spec.crds` — inline overrides, applied after all sources, always win
@@ -66,10 +67,11 @@ combined freely. Sources are resolved in this order:
 CRD names must be unique across all sources combined. A duplicate CRD name
 across two non-inline sources is a fatal error.
 
-!!! note
-    `spec.crds` is the only exception to the duplicate rule. An inline
-    override with the same name as a source CRD replaces the source
-    definition silently. This is the intended override mechanism.
+{{< callout type="note" >}}
+`spec.crds` is the only exception to the duplicate rule. An inline
+override with the same name as a source CRD replaces the source
+definition silently. This is the intended override mechanism.
+{{< /callout >}}
 
 ---
 
@@ -80,7 +82,7 @@ Local files, remote URLs, or environment variable references.
 ### Simple form
 
 ```yaml
-sources:
+imports:
   files:
     - ./katalogs/website.yaml
     - https://platform.myorg.io/crds/database.yaml
@@ -90,7 +92,7 @@ sources:
 ### Authenticated form
 
 ```yaml
-sources:
+imports:
   files:
     - url: https://private.myorg.io/katalogs/internal.yaml
       auth:
@@ -114,15 +116,17 @@ sources:
 | `github` | `Authorization: Bearer <token>` | GitHub raw URLs, private repos |
 | `basic` | `Authorization: Basic <b64>` | HTTP Basic auth, Nexus |
 
-!!! warning
-    Environment variables are resolved at startup — not at build time.
-    If `$SECURITY_KATALOG_URL` is unset when `ork run` starts, it resolves
-    to an empty string and the source is skipped with a warning.
+{{< callout type="warning" >}}
+Environment variables are resolved at startup — not at build time.
+If `$SECURITY_KATALOG_URL` is unset when `ork run` starts, it resolves
+to an empty string and the source is skipped with a warning.
+{{< /callout >}}
 
-!!! warning
-    A Komposer file declared as a `sources.files` entry is a fatal error.
-    Only Katalog files are valid file sources. A Komposer cannot source
-    another Komposer through the files block.
+{{< callout type="warning" >}}
+A Komposer file declared as a `sources.files` entry is a fatal error.
+Only Katalog files are valid file sources. A Komposer cannot source
+another Komposer through the files block.
+{{< /callout >}}
 
     ```
     error: "platform.yaml" sources.files["team.yaml"]: a Komposer cannot
@@ -137,7 +141,7 @@ Renders a Helm chart and extracts any Katalog templates from the output.
 The chart must contain at least one template with `kind: Katalog`.
 
 ```yaml
-sources:
+imports:
   helm:
     - repo: https://charts.myorg.io
       chart: platform-crds
@@ -170,29 +174,31 @@ sources:
 | `https://github.com/myorg/charts.git` | Git repo — shallow cloned at `version` ref |
 | `git@github.com:myorg/charts.git` | Git SSH — cloned at `version` ref |
 
-!!! warning "Chart must produce at least one Katalog template"
-    If the rendered chart contains no documents with `kind: Katalog`, the
-    Helm source fails with:
+{{< callout type="warning" title="Chart must produce at least one Katalog template" >}}
+If the rendered chart contains no documents with `kind: Katalog`, the
+Helm source fails with:
+{{< /callout >}}
 
     ```
     error: chart "platform-crds" produced no Katalog templates — ensure at
     least one template has kind: Katalog
     ```
 
-!!! tip
-    To use a Helm chart as a Katalog source, create a `templates/katalog.yaml`
-    in the chart that renders the `Katalog` document using Helm's templating.
-    Workers, resync, and other per-CRD settings can be driven by Helm values.
+{{< callout type="tip" >}}
+To use a Helm chart as a Katalog source, create a `templates/katalog.yaml`
+in the chart that renders the `Katalog` document using Helm's templating.
+Workers, resync, and other per-CRD settings can be driven by Helm values.
+{{< /callout >}}
 
 ---
 
-## `sources.registry[]`
+## `imports.registry[]`
 
 Pulls a complete operator pattern from a registry — OCI or Git — validates
 its five-file structure, and loads either `katalog.yaml` or `komposer.yaml`.
 
 ```yaml
-sources:
+imports:
   registry:
     - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
       oci: true
@@ -245,11 +251,12 @@ Every registry source must contain all five files, each non-empty:
 | `cr.yaml` | Example custom resource |
 | `README.md` | Documentation |
 
-!!! warning "Fail fast on missing or empty files"
-    Orkestra refuses to load a pattern that is missing any of the five required
-    files, or where any file is empty. This check runs during `ork validate`.
+{{< callout type="warning" title="Fail fast on missing or empty files" >}}
+Orkestra refuses to load a pattern that is missing any of the five required
+files, or where any file is empty. This check runs during `ork validate`.
+{{< /callout >}}
 
-For full registry source documentation, see [Registry Sources](../runtime-manual/concepts/registry.md).
+For full registry source documentation, see [Registry Schema](./registry-schema/).
 
 ---
 
@@ -265,12 +272,12 @@ CRDs from scratch. New CRDs belong in a Katalog file.
 spec:
   crds:
     # Override workers for production
-    - name: postgres
+    postgres:
       workers: 8
       resync: 30s
 
     # Disable a CRD from a sourced Katalog in this environment
-    - name: debug-dashboard
+    debug-dashboard:
       enabled: false
 ```
 
@@ -278,14 +285,16 @@ All fields from the Katalog CRD entry schema are valid here. Only the
 fields you declare are overridden — unset fields inherit from the source
 definition.
 
-!!! note "Inline CRDs can also define new CRDs"
-    If the `name` in `spec.crds` does not match any source CRD, it is added
-    as a new CRD entry. This is valid — a Komposer can define CRDs inline
-    without requiring a source file.
+{{< callout type="note" title="Inline CRDs can also define new CRDs" >}}
+If the `name` in `spec.crds` does not match any source CRD, it is added
+as a new CRD entry. This is valid — a Komposer can define CRDs inline
+without requiring a source file.
+{{< /callout >}}
 
-!!! warning "Duplicate names within `spec.crds` are an error"
-    A name that appears twice in the inline block is always an error,
-    regardless of whether it matches a source CRD.
+{{< callout type="warning" title="Duplicate names within `spec.crds` are an error" >}}
+A name that appears twice in the inline block is always an error,
+regardless of whether it matches a source CRD.
+{{< /callout >}}
 
     ```
     error: "platform.yaml" spec.crds: duplicate CRD "postgres" — each CRD
@@ -329,7 +338,7 @@ cannot source another Komposer — only Katalog files are valid sources
 ```
 A file declared in `sources.files` is a Komposer, not a Katalog. Only Katalog
 files are valid file sources. If you want to compose Komposers, use
-`sources.registry` with `useKomposer: true`.
+`imports.registry` with `useKomposer: true`.
 
 ### Helm errors
 
@@ -353,7 +362,7 @@ error: registry "ghcr.io/myorg/postgres"@v14 failed structure validation:
   missing: cr.yaml
   empty:   README.md
 ```
-Pattern is incomplete. See [Publishing a Pattern](../runtime-manual/concepts/registry-sources//publishing-a-pattern.md).
+Pattern is incomplete. See [Registry Schema](./registry-schema/) for the required pattern structure.
 
 ```
 error: no registry URL configured for this source.
@@ -381,7 +390,7 @@ The same name appears twice in `spec.crds`.
 ### Dependency graph errors
 
 ```
-error: circular dependency detected across Komposer sources:
+error: circular dependency detected across Komposer imports:
   application → namespace → project → application
 ```
 `dependsOn` declarations across merged CRDs form a cycle. Remove the cycle.

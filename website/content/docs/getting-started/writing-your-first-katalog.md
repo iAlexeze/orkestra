@@ -1,98 +1,99 @@
 ---
 title: "Writing Your First Katalog"
-weight: 1
-description: "Now that you have Orkestra installed and have run the example operator, you’re ready to build your own Katalog from scra..."
+weight: 10
 ---
 
-Now that you have Orkestra installed and have run the example operator, you’re ready to build your own Katalog from scratch.
+# Writing Your First Katalog
 
-A **Katalog** is a declarative file that tells Orkestra:
-
-- Which CRDs you want to manage  
-- What resources to create for each CR  
-- How reconciliation should behave  
-
-!!! note
-    This guide assumes you have already completed the installation steps and successfully run the example operator.
+A **Katalog** is a YAML file that tells Orkestra what to do when a Custom Resource is created, updated, or deleted. This guide builds one from scratch.
 
 ---
 
-## The Simplest Katalog
+## The Minimal Katalog
 
-Create a file called `my-katalog.yaml`:
+Create `katalog.yaml`:
 
 ```yaml
 apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: my-first-katalog
+
 spec:
   crds:
-    - name: myapp
-      apiTypes:
-        group: demo.myorg.io
-        version: v1alpha1
-        kind: MyApp
-        plural: myapps
+    myapp:
+      crdFile: ./crd.yaml
       operatorBox:
         default: true
 ```
 
-This Katalog tells Orkestra:
+This tells Orkestra: read the CRD from `crd.yaml`, apply it to the cluster, and watch for `MyApp` CRs. No resources are created yet.
 
-- Watch for `MyApp` resources in the cluster  
-- Use the default reconciler  
-- Do not create any resources yet  
-
-!!! tip
-    Every CRD entry must define `apiTypes` and a `reconciler`.  
-    Everything else is optional and added only when needed.
+`crdFile` is how you declare a CRD. Orkestra reads `group`, `version`, `kind`, and `plural` directly from the file and applies it to the cluster when `ork run` starts. No separate `kubectl apply -f crd.yaml` needed.
 
 ---
 
-## Adding Resources
+## The CRD
 
-Let’s create a Deployment whenever a `MyApp` CR is applied:
+Create `crd.yaml`:
+
+```yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: myapps.demo.myorg.io
+spec:
+  group: demo.myorg.io
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                replicas:
+                  type: integer
+                  default: 1
+                port:
+                  type: integer
+                  default: 80
+  scope: Namespaced
+  names:
+    plural: myapps
+    singular: myapp
+    kind: MyApp
+```
+
+---
+
+## Adding a Deployment
 
 ```yaml
 spec:
   crds:
-    - name: myapp
-      apiTypes:
-        group: demo.myorg.io
-        version: v1alpha1
-        kind: MyApp
-        plural: myapps
+    myapp:
+      crdFile: ./crd.yaml
       operatorBox:
         default: true
         onCreate:
           deployments:
-            - name: "{{ .metadata.name }}-app"
+            - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
               replicas: "{{ .spec.replicas }}"
               port: "{{ .spec.port }}"
-              namespace: "{{ .metadata.namespace }}"
               reconcile: true
 ```
 
-!!! note
-    `reconcile: true` means the Deployment will be drift‑corrected on every reconcile, not just created once.
-
----
-
-## Understanding Templates
-
-Values inside `{{ }}` are Go templates evaluated against the live CR.
-
-| Template | Resolves To |
-|----------|-------------|
-| `{{ .metadata.name }}` | The CR's name |
-| `{{ .spec.image }}` | The value of `spec.image` |
-| `{{ .spec.replicas }}` | The value of `spec.replicas` |
-| `{{ .metadata.namespace }}` | The CR's namespace |
-
-!!! tip
-    Templates always evaluate against the **current** version of the CR, so updates to the CR automatically propagate to generated resources.
+Values inside `{{ }}` are Go templates evaluated against the live CR. `reconcile: true` means the Deployment is drift-corrected on every reconcile — if someone edits it manually, Orkestra corrects it back.
 
 ---
 
@@ -101,58 +102,15 @@ Values inside `{{ }}` are Go templates evaluated against the live CR.
 ```yaml
 onCreate:
   deployments:
-    # ... deployment config ...
+    - name: "{{ .metadata.name }}"
+      image: "{{ .spec.image }}"
+      replicas: "{{ .spec.replicas }}"
+      port: "{{ .spec.port }}"
+      reconcile: true
   services:
     - name: "{{ .metadata.name }}-svc"
-      type: "{{ .spec.serviceType }}"
       port: "80"
       targetPort: "{{ .spec.port }}"
-      namespace: "{{ .metadata.namespace }}"
-      reconcile: true
-```
-
-!!! note
-    Services support drift correction as well. If the CR changes, Orkestra updates the Service automatically.
-
----
-
-## Adding a Secret
-
-Secrets can be created from static values or copied from existing secrets:
-
-```yaml
-onCreate:
-  secrets:
-    # Static secret
-    - name: "{{ .metadata.name }}-creds"
-      data:
-        USERNAME: admin
-        PASSWORD: "{{ .spec.password }}"
-
-    # Copy from existing secret
-    - name: db-creds
-      fromSecret: master-db-creds
-      fromNamespace: platform
-      toNamespaces:
-        - "{{ .metadata.namespace }}"
-      reconcile: true
-```
-
-!!! caution
-    When copying secrets, ensure the source secret exists before the CR is reconciled.  
-    Otherwise reconciliation will fail until the secret becomes available.
-
----
-
-## Adding a ConfigMap
-
-```yaml
-onCreate:
-  configMaps:
-    - name: "{{ .metadata.name }}-config"
-      data:
-        LOG_LEVEL: "{{ .spec.logLevel }}"
-        MAX_CONNECTIONS: "{{ .spec.maxConnections }}"
       reconcile: true
 ```
 
@@ -160,12 +118,11 @@ onCreate:
 
 ## Conditional Resources
 
-Sometimes you only want to create a resource under certain conditions. Use the `when` block:
+Use `when:` to create a resource only when a condition is met:
 
 ```yaml
 services:
-  - name: "{{ .metadata.name }}-public-svc"
-    type: LoadBalancer
+  - name: "{{ .metadata.name }}-public"
     port: "80"
     targetPort: "{{ .spec.port }}"
     when:
@@ -173,88 +130,75 @@ services:
         equals: "true"
 ```
 
-!!! tip
-    Conditions allow you to express branching logic declaratively without writing Go hooks.
+---
+
+## Status Fields
+
+Write values back to the CR after every reconcile:
+
+```yaml
+operatorBox:
+  default: true
+  status:
+    fields:
+      - path: phase
+        value: "Running"
+      - path: observedReplicas
+        value: "{{ .spec.replicas }}"
+  onCreate:
+    deployments:
+      - name: "{{ .metadata.name }}"
+        image: "{{ .spec.image }}"
+        replicas: "{{ .spec.replicas }}"
+        reconcile: true
+```
+
+The CRD must declare `subresources: status: {}` for status writes to work.
 
 ---
 
 ## Dependencies Between CRDs
 
-If your operator manages multiple CRDs, you can declare dependencies:
+If your Katalog manages multiple CRDs and one must reconcile before the other:
 
 ```yaml
-crds:
-  - name: database
-    # ... config ...
-  - name: application
-    dependsOn:
-      - database
-    # ... config ...
-```
-
-Orkestra ensures:
-
-- `database` reconciles first  
-- `application` waits until `database` is healthy  
-
-!!! note
-    Dependencies apply to reconciliation order, not CR creation order.
-
----
-
-## Complete Example
-
-Here is a complete Katalog for a simple web application:
-
-```yaml
-apiVersion: orkestra.orkspace.io/v1
-kind: Katalog
-metadata:
-  name: webapp-katalog
 spec:
   crds:
-    - name: webapp
-      apiTypes:
-        group: demo.myorg.io
-        version: v1alpha1
-        kind: WebApp
-        plural: webapps
+    database:
+      crdFile: ./database-crd.yaml
       operatorBox:
         default: true
-        onCreate:
-          secrets:
-            - name: "{{ .metadata.name }}-creds"
-              data:
-                API_KEY: "{{ .spec.apiKey }}"
-          configMaps:
-            - name: "{{ .metadata.name }}-config"
-              data:
-                LOG_LEVEL: "{{ .spec.logLevel }}"
-          deployments:
-            - name: "{{ .metadata.name }}"
-              image: "{{ .spec.image }}"
-              replicas: "{{ .spec.replicas }}"
-              port: "{{ .spec.port }}"
-              reconcile: true
-          services:
-            - name: "{{ .metadata.name }}-svc"
-              type: "{{ .spec.serviceType }}"
-              port: "80"
-              targetPort: "{{ .spec.port }}"
-              reconcile: true
-              when:
-                - field: spec.exposePublicly
-                  equals: "true"
+    application:
+      crdFile: ./application-crd.yaml
+      dependsOn:
+        - database
+      operatorBox:
+        default: true
+```
+
+Orkestra starts `database` first and waits until it is healthy before starting `application`.
+
+---
+
+## Running It
+
+```bash
+ork run -f katalog.yaml
+```
+
+Apply a CR:
+
+```bash
+kubectl apply -f myapp-cr.yaml
+kubectl get deployments
 ```
 
 ---
 
-## Next Steps
+## Validate Without Running
 
-You now know how to write a Katalog that creates resources from CRs.
+```bash
+ork validate -f katalog.yaml
+```
 
-Continue with:
-
-**Writing Your First Komposer**  
-Learn how to load katalogs from files, Helm charts, and registries — and how to apply overrides.
-
+Resolves the CRD, merges all sources, and reports every error without touching the cluster.

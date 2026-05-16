@@ -132,6 +132,38 @@ In example 02 you will add `reconcile: true` and see the difference.
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies the CRD, starts the operator, applies the CR, asserts every expectation, then tears down:
+
+```bash
+ork e2e -f e2e.yaml
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Deployment created
+    after: cr-applied
+    timeout: 60s
+    resources:
+      - kind: Deployment
+        namespace: default
+        ready: true
+
+  - name: Cleanup verified
+    after: cr-deleted
+    timeout: 30s
+    resources:
+      - kind: Deployment
+        name: hello-website
+        namespace: default
+        count: 0
+```
+
+---
+
 ## Cleanup
 
 ```bash

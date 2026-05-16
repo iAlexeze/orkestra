@@ -7,20 +7,20 @@
 
 <title>Writing Your First Katalog — Orkestra</title>
 
-<meta name="description" content="Now that you have Orkestra installed and have run the example operator, you’re ready to build your own Katalog from scra...">
+<meta name="description" content="The declarative control plane for Kubernetes operators">
 <meta name="author" content="Orkestra">
 
 
 <meta property="og:type" content="article">
 <meta property="og:title" content="Writing Your First Katalog — Orkestra">
-<meta property="og:description" content="Now that you have Orkestra installed and have run the example operator, you’re ready to build your own Katalog from scra...">
+<meta property="og:description" content="The declarative control plane for Kubernetes operators">
 <meta property="og:url" content="http://localhost:8191/docs/getting-started/writing-your-first-katalog/">
 <meta property="og:site_name" content="Orkestra">
 
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Writing Your First Katalog — Orkestra">
-<meta name="twitter:description" content="Now that you have Orkestra installed and have run the example operator, you’re ready to build your own Katalog from scra...">
+<meta name="twitter:description" content="The declarative control plane for Kubernetes operators">
 
 
 <link rel="icon" type="image/png" href="/img/fav.png">
@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.e4f35e028b4e342d94b5258699fa7b53e53b1f54212c3a40fb2a70e627bba458.css">
+<link rel="stylesheet" href="/css/main.min.ed4127849a94162676f586309f939b9ad14e1a02ea340295071b0613d5493ba5.css">
 
 
 
@@ -73,17 +73,9 @@
       </li>
       
       <li>
-        <a href="/publications/" class="navbar-link"
+        <a href="/docs/reference/" class="navbar-link"
           >
-          Publications
-          
-        </a>
-      </li>
-      
-      <li>
-        <a href="/docs/use-cases/" class="navbar-link"
-          >
-          Use Cases
+          Reference
           
         </a>
       </li>
@@ -92,6 +84,14 @@
         <a href="/blog/" class="navbar-link"
           >
           Blog
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-link"
+          >
+          Publications
           
         </a>
       </li>
@@ -149,16 +149,9 @@
       </li>
       
       <li>
-        <a href="/publications/" class="navbar-mobile-link"
+        <a href="/docs/reference/" class="navbar-mobile-link"
           >
-          Publications
-        </a>
-      </li>
-      
-      <li>
-        <a href="/docs/use-cases/" class="navbar-mobile-link"
-          >
-          Use Cases
+          Reference
         </a>
       </li>
       
@@ -166,6 +159,13 @@
         <a href="/blog/" class="navbar-mobile-link"
           >
           Blog
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-mobile-link"
+          >
+          Publications
         </a>
       </li>
       
@@ -189,710 +189,258 @@
     <nav class="sidebar-nav">
       
       
+        
+          
+          
+          
+            
+            <div class="sidebar-section open">
+              <div class="sidebar-section-header active-section">
+                <a href="/docs/getting-started/" class="sidebar-section-link">Getting Started</a>
+                <button class="sidebar-section-toggle" aria-expanded="true" aria-label="Toggle Getting Started">
+                  <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+              </div>
+              <ul class="sidebar-section-pages" role="list">
+                
+                <li>
+                  <a href="/docs/getting-started/installation/" class="sidebar-link">
+                    Installation
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/getting-started/quickstart/" class="sidebar-link">
+                    Quick Start
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">
+                    Basic Reconciliation
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/getting-started/learning-to-orkestrate/" class="sidebar-link">
+                    Learning to Orkestrate
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/getting-started/writing-your-first-katalog/" class="sidebar-link active">
+                    Writing Your First Katalog
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/getting-started/writing-your-first-komposer/" class="sidebar-link">
+                    Writing Your First Komposer
+                  </a>
+                </li>
+                
+              </ul>
+            </div>
+          
+        
       
         
           
           
-          <div class="sidebar-section open">
-            <div class="sidebar-section-header active-section">
-              <a href="/docs/getting-started/" class="sidebar-section-link">Getting Started</a>
-              <button class="sidebar-section-toggle" aria-expanded="true" aria-label="Toggle Getting Started">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
+          
+            
+            <div class="sidebar-section">
+              <div class="sidebar-section-header">
+                <a href="/docs/controlcenter/" class="sidebar-section-link">Control Center</a>
+                <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Control Center">
+                  <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+              </div>
+              <ul class="sidebar-section-pages" role="list" style="display:none">
+                
+                <li>
+                  <a href="/docs/controlcenter/controlcenter/" class="sidebar-link">
+                    Orkestra Control Center
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/controlcenter/deploying/" class="sidebar-link">
+                    Deploying the Orkestra Control Center
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/controlcenter/getting-started/" class="sidebar-link">
+                    Getting Started
+                  </a>
+                </li>
+                
+              </ul>
             </div>
-            <ul class="sidebar-section-pages" role="list">
-              
-              <li>
-                <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">
-                  Basic Reconciliation
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/getting-started/installation/" class="sidebar-link">
-                  Installation
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/getting-started/quickstart/" class="sidebar-link">
-                  Quick Start
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/getting-started/writing-your-first-katalog/" class="sidebar-link active">
-                  Writing Your First Katalog
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/getting-started/writing-your-first-komposer/" class="sidebar-link">
-                  Writing Your First Komposer
-                </a>
-              </li>
-              
-            </ul>
-          </div>
+          
+        
+      
         
           
           
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/basics/" class="sidebar-section-link">Basics</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Basics">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
+          
+            
+            <div class="sidebar-section">
+              <div class="sidebar-section-header">
+                <a href="/docs/reference/" class="sidebar-section-link">Reference</a>
+                <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Reference">
+                  <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+              </div>
+              <ul class="sidebar-section-pages" role="list" style="display:none">
+                
+                <li>
+                  <a href="/docs/reference/cli/" class="sidebar-link">
+                    Cli
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/schema/" class="sidebar-link">
+                    Schema
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/katalog-api/" class="sidebar-link">
+                    Orkestra Runtime API Reference
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
+                    Katalog and Komposer Reference
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/katalog-schema/" class="sidebar-link">
+                    Katalog Schema
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/katalog-schema-status/" class="sidebar-link">
+                    Katalog Schema — Status Block
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/komposer-schema/" class="sidebar-link">
+                    Komposer Schema
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/metrics/" class="sidebar-link">
+                    **Orkestra Metrics**
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/mutation-schema/" class="sidebar-link">
+                    Mutation Schema
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/registry-schema/" class="sidebar-link">
+                    Registry Source Schema
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/runtime/" class="sidebar-link">
+                    Runtime
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/shutdown/" class="sidebar-link">
+                    Shutdown
+                  </a>
+                </li>
+                
+                <li>
+                  <a href="/docs/reference/validation-schema/" class="sidebar-link">
+                    Validation Schema
+                  </a>
+                </li>
+                
+              </ul>
             </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/basics/kubernetes-basics/" class="sidebar-link">
-                  Kubernetes Basics
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/basics/katalog-manifest/" class="sidebar-link">
-                  The Katalog Manifest
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/basics/understanding-orkestra/" class="sidebar-link">
-                  Understanding Orkestra
-                </a>
-              </li>
-              
-            </ul>
-          </div>
+          
+        
+      
         
           
           
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/concepts/" class="sidebar-section-link">Concepts</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Concepts">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/concepts/secret-rotation/" class="sidebar-link">
-                  
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/runtime/" class="sidebar-link">
-                  **Orkestra Runtime**
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/typed-crds/" class="sidebar-link">
-                  **Typed CRDs**
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/conditional-provisioning/" class="sidebar-link">
-                  Conditional Provisioning in Orkestra
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/conditional-status-fields/" class="sidebar-link">
-                  Conditional Status Fields
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/constructors/" class="sidebar-link">
-                  Constructors
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/crd-runtime-health/" class="sidebar-link">
-                  CRD Runtime Health
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/hooks/" class="sidebar-link">
-                  Hooks
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/dependency-model/" class="sidebar-link">
-                  How Dependencies Work
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/reconciler-model/" class="sidebar-link">
-                  How Reconciliation Works
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/katalog/" class="sidebar-link">
-                  Katalog
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/komposer/" class="sidebar-link">
-                  Komposer
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/mutation/" class="sidebar-link">
-                  Mutation
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/notes/" class="sidebar-link">
-                  Notes
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/observability/" class="sidebar-link">
-                  Observability
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/operator-patterns/" class="sidebar-link">
-                  Operator Patterns
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/conditional-webhooks/" class="sidebar-link">
-                  Orkestra Conversion Webhook
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/health-subsystem/" class="sidebar-link">
-                  Orkestra Health Subsystem
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/komponent/" class="sidebar-link">
-                  Orkestra Komponents
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/provider/" class="sidebar-link">
-                  Providers
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/providers/" class="sidebar-link">
-                  Providers
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/registry/" class="sidebar-link">
-                  Registry
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/registry-sources/" class="sidebar-link">
-                  Registry Sources
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/status-management/" class="sidebar-link">
-                  Status Management
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/templating/" class="sidebar-link">
-                  Templating in Orkestra
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/observability-model/" class="sidebar-link">
-                  The Observability Model
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/validation/" class="sidebar-link">
-                  Validation
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/concepts/versioning/" class="sidebar-link">
-                  Versioning in Orkestra
-                </a>
-              </li>
-              
-            </ul>
+          
+          <div class="sidebar-standalone">
+            <a href="/docs/security/" class="sidebar-standalone-link">
+              Security
+            </a>
           </div>
+        
+      
         
           
           
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/architecture/" class="sidebar-section-link">Architecture</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Architecture">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
+          
+            
+            <div class="sidebar-section">
+              <div class="sidebar-section-header">
+                <a href="/docs/faqs/" class="sidebar-section-link">FAQs</a>
+                <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle FAQs">
+                  <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+              </div>
+              <ul class="sidebar-section-pages" role="list" style="display:none">
+                
+                <li>
+                  <a href="/docs/faqs/why-not-crds/" class="sidebar-link">
+                    Why Katalog and Komposer Are Not CRDs
+                  </a>
+                </li>
+                
+              </ul>
             </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/architecture/crd-lifecycle/" class="sidebar-link">
-                  CRD Lifecycle in Orkestra
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/full-architecture-view/" class="sidebar-link">
-                  Full Architecture View
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/architecture-diagrams/" class="sidebar-link">
-                  Orkestra Architecture Diagrams
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/design-philosophy/" class="sidebar-link">
-                  Orkestra Design Philosophy
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/architecture-overview/" class="sidebar-link">
-                  Orkestra Full Architecture Overview
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/architecture/runtime-flow/" class="sidebar-link">
-                  Orkestra Runtime Flow
-                </a>
-              </li>
-              
-            </ul>
-          </div>
+          
+        
+      
         
           
           
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/cli/" class="sidebar-section-link">CLI Reference</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle CLI Reference">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/cli/describe/" class="sidebar-link">
-                  ork describe
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/events/" class="sidebar-link">
-                  ork events
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/generate-runtime/" class="sidebar-link">
-                  ork generate registry
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/get/" class="sidebar-link">
-                  ork get
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/init/" class="sidebar-link">
-                  ork init
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/reconcile/" class="sidebar-link">
-                  ork reconcile
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/run/" class="sidebar-link">
-                  ork run
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/status/" class="sidebar-link">
-                  ork status
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/template/" class="sidebar-link">
-                  ork template
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/validate/" class="sidebar-link">
-                  ork validate
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/version/" class="sidebar-link">
-                  ork version
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/cli/inspect-live-crd/" class="sidebar-link">
-                  Orkestra Inspect Commands
-                </a>
-              </li>
-              
-            </ul>
+          
+          <div class="sidebar-standalone">
+            <a href="/docs/roadmap/" class="sidebar-standalone-link">
+              Roadmap
+            </a>
           </div>
+        
+      
         
           
           
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/guides/" class="sidebar-section-link">Guides</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Guides">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/guides/best-practices/" class="sidebar-link">
-                  Best Practices for Orkestra Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/choosing-katalog-vs-komposer/" class="sidebar-link">
-                  Choosing Between Katalog and Komposer
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/deployment/" class="sidebar-link">
-                  Deploying Orkestra
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/api-conversion/" class="sidebar-link">
-                  Evolve APIs Without Webhooks or Code
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/extending-orkestra/" class="sidebar-link">
-                  Extending Orkestra
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/certificate-with-openssl/" class="sidebar-link">
-                  Generate Self-Signed Certificates
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/certificate-with-cert-manager/" class="sidebar-link">
-                  Generate TLS Certificates with CertManager
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/how-reconciliation-works/" class="sidebar-link">
-                  How Reconciliation Works
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/multi-version-crd-explained/" class="sidebar-link">
-                  Multi‑Version CRDs Explained
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/deprecated/use-cases/" class="sidebar-link">
-                  Orkestra Use Cases
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/testing-operators/" class="sidebar-link">
-                  Testing Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/kat-source-of-truth/" class="sidebar-link">
-                  The Katalog as Single Source of Truth
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/writing-custom-reconcilers/" class="sidebar-link">
-                  Writing Custom Reconcilers
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/guides/writing-hooks/" class="sidebar-link">
-                  Writing Hooks
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
           
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/use-cases/" class="sidebar-section-link">Use Cases</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Use Cases">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/use-cases/air-gapped/" class="sidebar-link">
-                  Air‑Gapped Environments
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/centralized-configuration/" class="sidebar-link">
-                  Centralised Operator Configuration (GitOps)
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/custom-constructors/" class="sidebar-link">
-                  Custom Constructors
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/disaster-recovery/" class="sidebar-link">
-                  Disaster Recovery
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/environment-overrides/" class="sidebar-link">
-                  Environment-specific Tuning
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/hooks/" class="sidebar-link">
-                  Go Hooks
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/helm-driven-operators/" class="sidebar-link">
-                  Helm‑Driven Operator Configuration
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/dependency-ordering/" class="sidebar-link">
-                  Multi‑CRD Dependency Ordering
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/multi-team-composition/" class="sidebar-link">
-                  Multi‑Team Composition
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/conversion/" class="sidebar-link">
-                  Multi‑Version CRD Conversion
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/observability/" class="sidebar-link">
-                  Observability
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/platform-namespace-provisioning/" class="sidebar-link">
-                  Platform Namespace Provisioning
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/progressive-rollout/" class="sidebar-link">
-                  Progressive Rollout of Operator Behavior
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/registry/" class="sidebar-link">
-                  Registry‑Powered Operators
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/secret-distribution/" class="sidebar-link">
-                  Secret Distribution Across Namespaces
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/use-cases/zero-code-operators/" class="sidebar-link">
-                  Zero‑Code Operators
-                </a>
-              </li>
-              
-            </ul>
-          </div>
-        
-          
-          
-          <div class="sidebar-section">
-            <div class="sidebar-section-header">
-              <a href="/docs/reference/" class="sidebar-section-link">Reference</a>
-              <button class="sidebar-section-toggle" aria-expanded="false" aria-label="Toggle Reference">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list" style="display:none">
-              
-              <li>
-                <a href="/docs/reference/metrics/" class="sidebar-link">
-                  **Orkestra Metrics**
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
-                  Katalog and Komposer Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-schema/" class="sidebar-link">
-                  Katalog Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-schema-status/" class="sidebar-link">
-                  Katalog Schema — Status Block
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/komposer-schema/" class="sidebar-link">
-                  Komposer Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/mutation-schema/" class="sidebar-link">
-                  Mutation Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/cli/" class="sidebar-link">
-                  Orkestra CLI Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/katalog-api/" class="sidebar-link">
-                  Orkestra Runtime API Reference
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/registry-schema/" class="sidebar-link">
-                  Registry Source Schema
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/runtime/" class="sidebar-link">
-                  Runtime
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/shutdown/" class="sidebar-link">
-                  Shutdown
-                </a>
-              </li>
-              
-              <li>
-                <a href="/docs/reference/validation-schema/" class="sidebar-link">
-                  Validation Schema
-                </a>
-              </li>
-              
-            </ul>
+          <div class="sidebar-standalone">
+            <a href="/docs/support/" class="sidebar-standalone-link">
+              Support
+            </a>
           </div>
         
       
@@ -940,251 +488,177 @@
       <header class="docs-header">
         <h1 class="docs-title">Writing Your First Katalog</h1>
         
-        <p class="docs-description">Now that you have Orkestra installed and have run the example operator, you’re ready to build your own Katalog from scra...</p>
-        
         <div class="docs-meta">
           
-          <time datetime="2026-04-06" class="docs-date">
-            Updated Apr 6, 2026
+          <time datetime="2026-04-25" class="docs-date">
+            Updated Apr 25, 2026
           </time>
           
 
           
-          <span class="docs-reading-time">4 min read</span>
+          <span class="docs-reading-time">3 min read</span>
           
         </div>
       </header>
 
       <div class="docs-body prose">
-        <p>Now that you have Orkestra installed and have run the example operator, you’re ready to build your own Katalog from scratch.</p>
-<p>A <strong>Katalog</strong> is a declarative file that tells Orkestra:</p>
-<ul>
-<li>Which CRDs you want to manage</li>
-<li>What resources to create for each CR</li>
-<li>How reconciliation should behave</li>
-</ul>
-<p>!!! note
-This guide assumes you have already completed the installation steps and successfully run the example operator.</p>
+        <h1 id="writing-your-first-katalog">Writing Your First Katalog</h1>
+<p>A <strong>Katalog</strong> is a YAML file that tells Orkestra what to do when a Custom Resource is created, updated, or deleted. This guide builds one from scratch.</p>
 <hr>
-<h2 id="the-simplest-katalog">The Simplest Katalog</h2>
-<p>Create a file called <code>my-katalog.yaml</code>:</p>
+<h2 id="the-minimal-katalog">The Minimal Katalog</h2>
+<p>Create <code>katalog.yaml</code>:</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: my-first-katalog
+</span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: myapp
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">apiTypes</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">group</span>: demo.myorg.io
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">version</span>: v1alpha1
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">kind</span>: MyApp
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">plural</span>: myapps
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconciler</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">myapp</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crdFile</span>: ./crd.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">operatorBox</span>:
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
-</span></span></code></pre></div><p>This Katalog tells Orkestra:</p>
-<ul>
-<li>Watch for <code>MyApp</code> resources in the cluster</li>
-<li>Use the default reconciler</li>
-<li>Do not create any resources yet</li>
-</ul>
-<p>!!! tip
-Every CRD entry must define <code>apiTypes</code> and a <code>reconciler</code>.<br>
-Everything else is optional and added only when needed.</p>
+</span></span></code></pre></div><p>This tells Orkestra: read the CRD from <code>crd.yaml</code>, apply it to the cluster, and watch for <code>MyApp</code> CRs. No resources are created yet.</p>
+<p><code>crdFile</code> is how you declare a CRD. Orkestra reads <code>group</code>, <code>version</code>, <code>kind</code>, and <code>plural</code> directly from the file and applies it to the cluster when <code>ork run</code> starts. No separate <code>kubectl apply -f crd.yaml</code> needed.</p>
 <hr>
-<h2 id="adding-resources">Adding Resources</h2>
-<p>Let’s create a Deployment whenever a <code>MyApp</code> CR is applied:</p>
+<h2 id="the-crd">The CRD</h2>
+<p>Create <code>crd.yaml</code>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: apiextensions.k8s.io/v1
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: CustomResourceDefinition
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: myapps.demo.myorg.io
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">group</span>: demo.myorg.io
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">versions</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: v1alpha1
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">served</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">storage</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">subresources</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">status</span>: {}
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">schema</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">openAPIV3Schema</span>:
+</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">type</span>: object
+</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">properties</span>:
+</span></span><span style="display:flex;"><span>            <span style="color:#ff79c6">spec</span>:
+</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">type</span>: object
+</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">required</span>: [image]
+</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">properties</span>:
+</span></span><span style="display:flex;"><span>                <span style="color:#ff79c6">image</span>:
+</span></span><span style="display:flex;"><span>                  <span style="color:#ff79c6">type</span>: string
+</span></span><span style="display:flex;"><span>                <span style="color:#ff79c6">replicas</span>:
+</span></span><span style="display:flex;"><span>                  <span style="color:#ff79c6">type</span>: integer
+</span></span><span style="display:flex;"><span>                  <span style="color:#ff79c6">default</span>: <span style="color:#bd93f9">1</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#ff79c6">port</span>:
+</span></span><span style="display:flex;"><span>                  <span style="color:#ff79c6">type</span>: integer
+</span></span><span style="display:flex;"><span>                  <span style="color:#ff79c6">default</span>: <span style="color:#bd93f9">80</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">scope</span>: Namespaced
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">names</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">plural</span>: myapps
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">singular</span>: myapp
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">kind</span>: MyApp
+</span></span></code></pre></div><hr>
+<h2 id="adding-a-deployment">Adding a Deployment</h2>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: myapp
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">apiTypes</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">group</span>: demo.myorg.io
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">version</span>: v1alpha1
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">kind</span>: MyApp
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">plural</span>: myapps
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconciler</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">myapp</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crdFile</span>: ./crd.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">operatorBox</span>:
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">onCreate</span>:
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">deployments</span>:
-</span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}-app&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">replicas</span>: <span style="color:#f1fa8c">&#34;{{ .spec.replicas }}&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">port</span>: <span style="color:#f1fa8c">&#34;{{ .spec.port }}&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">namespace</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.namespace }}&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
-</span></span></code></pre></div><p>!!! note
-<code>reconcile: true</code> means the Deployment will be drift‑corrected on every reconcile, not just created once.</p>
-<hr>
-<h2 id="understanding-templates">Understanding Templates</h2>
-<p>Values inside <code>{{ }}</code> are Go templates evaluated against the live CR.</p>
-<table>
-  <thead>
-      <tr>
-          <th>Template</th>
-          <th>Resolves To</th>
-      </tr>
-  </thead>
-  <tbody>
-      <tr>
-          <td><code>{{ .metadata.name }}</code></td>
-          <td>The CR&rsquo;s name</td>
-      </tr>
-      <tr>
-          <td><code>{{ .spec.image }}</code></td>
-          <td>The value of <code>spec.image</code></td>
-      </tr>
-      <tr>
-          <td><code>{{ .spec.replicas }}</code></td>
-          <td>The value of <code>spec.replicas</code></td>
-      </tr>
-      <tr>
-          <td><code>{{ .metadata.namespace }}</code></td>
-          <td>The CR&rsquo;s namespace</td>
-      </tr>
-  </tbody>
-</table>
-<p>!!! tip
-Templates always evaluate against the <strong>current</strong> version of the CR, so updates to the CR automatically propagate to generated resources.</p>
-<hr>
-<h2 id="adding-a-service">Adding a Service</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">onCreate</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">deployments</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># ... deployment config ...</span>
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">services</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}-svc&#34;</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">type</span>: <span style="color:#f1fa8c">&#34;{{ .spec.serviceType }}&#34;</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">port</span>: <span style="color:#f1fa8c">&#34;80&#34;</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">targetPort</span>: <span style="color:#f1fa8c">&#34;{{ .spec.port }}&#34;</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">namespace</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.namespace }}&#34;</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
-</span></span></code></pre></div><p>!!! note
-Services support drift correction as well. If the CR changes, Orkestra updates the Service automatically.</p>
-<hr>
-<h2 id="adding-a-secret">Adding a Secret</h2>
-<p>Secrets can be created from static values or copied from existing secrets:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">onCreate</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">secrets</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Static secret</span>
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}-creds&#34;</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">data</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">USERNAME</span>: admin
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">PASSWORD</span>: <span style="color:#f1fa8c">&#34;{{ .spec.password }}&#34;</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># Copy from existing secret</span>
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: db-creds
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">fromSecret</span>: master-db-creds
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">fromNamespace</span>: platform
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">toNamespaces</span>:
-</span></span><span style="display:flex;"><span>        - <span style="color:#f1fa8c">&#34;{{ .metadata.namespace }}&#34;</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
-</span></span></code></pre></div><p>!!! caution
-When copying secrets, ensure the source secret exists before the CR is reconciled.<br>
-Otherwise reconciliation will fail until the secret becomes available.</p>
-<hr>
-<h2 id="adding-a-configmap">Adding a ConfigMap</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">onCreate</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">configMaps</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}-config&#34;</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">data</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">LOG_LEVEL</span>: <span style="color:#f1fa8c">&#34;{{ .spec.logLevel }}&#34;</span>
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">MAX_CONNECTIONS</span>: <span style="color:#f1fa8c">&#34;{{ .spec.maxConnections }}&#34;</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
-</span></span></code></pre></div><hr>
-<h2 id="conditional-resources">Conditional Resources</h2>
-<p>Sometimes you only want to create a resource under certain conditions. Use the <code>when</code> block:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">services</span>:
-</span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}-public-svc&#34;</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">type</span>: LoadBalancer
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">port</span>: <span style="color:#f1fa8c">&#34;80&#34;</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">targetPort</span>: <span style="color:#f1fa8c">&#34;{{ .spec.port }}&#34;</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">when</span>:
-</span></span><span style="display:flex;"><span>      - <span style="color:#ff79c6">field</span>: spec.exposePublicly
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">equals</span>: <span style="color:#f1fa8c">&#34;true&#34;</span>
-</span></span></code></pre></div><p>!!! tip
-Conditions allow you to express branching logic declaratively without writing Go hooks.</p>
-<hr>
-<h2 id="dependencies-between-crds">Dependencies Between CRDs</h2>
-<p>If your operator manages multiple CRDs, you can declare dependencies:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">crds</span>:
-</span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: database
-</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># ... config ...</span>
-</span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: application
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">dependsOn</span>:
-</span></span><span style="display:flex;"><span>      - database
-</span></span><span style="display:flex;"><span>    <span style="color:#6272a4"># ... config ...</span>
-</span></span></code></pre></div><p>Orkestra ensures:</p>
-<ul>
-<li><code>database</code> reconciles first</li>
-<li><code>application</code> waits until <code>database</code> is healthy</li>
-</ul>
-<p>!!! note
-Dependencies apply to reconciliation order, not CR creation order.</p>
-<hr>
-<h2 id="complete-example">Complete Example</h2>
-<p>Here is a complete Katalog for a simple web application:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: webapp-katalog
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: webapp
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">apiTypes</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">group</span>: demo.myorg.io
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">version</span>: v1alpha1
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">kind</span>: WebApp
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">plural</span>: webapps
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconciler</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">onCreate</span>:
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">secrets</span>:
-</span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}-creds&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">data</span>:
-</span></span><span style="display:flex;"><span>                <span style="color:#ff79c6">API_KEY</span>: <span style="color:#f1fa8c">&#34;{{ .spec.apiKey }}&#34;</span>
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">configMaps</span>:
-</span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}-config&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">data</span>:
-</span></span><span style="display:flex;"><span>                <span style="color:#ff79c6">LOG_LEVEL</span>: <span style="color:#f1fa8c">&#34;{{ .spec.logLevel }}&#34;</span>
 </span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">deployments</span>:
 </span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}&#34;</span>
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">replicas</span>: <span style="color:#f1fa8c">&#34;{{ .spec.replicas }}&#34;</span>
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">port</span>: <span style="color:#f1fa8c">&#34;{{ .spec.port }}&#34;</span>
 </span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">services</span>:
-</span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}-svc&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">type</span>: <span style="color:#f1fa8c">&#34;{{ .spec.serviceType }}&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">port</span>: <span style="color:#f1fa8c">&#34;80&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">targetPort</span>: <span style="color:#f1fa8c">&#34;{{ .spec.port }}&#34;</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
-</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">when</span>:
-</span></span><span style="display:flex;"><span>                - <span style="color:#ff79c6">field</span>: spec.exposePublicly
-</span></span><span style="display:flex;"><span>                  <span style="color:#ff79c6">equals</span>: <span style="color:#f1fa8c">&#34;true&#34;</span>
+</span></span></code></pre></div><p>Values inside <code>{{ }}</code> are Go templates evaluated against the live CR. <code>reconcile: true</code> means the Deployment is drift-corrected on every reconcile — if someone edits it manually, Orkestra corrects it back.</p>
+<hr>
+<h2 id="adding-a-service">Adding a Service</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">onCreate</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">deployments</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}&#34;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">replicas</span>: <span style="color:#f1fa8c">&#34;{{ .spec.replicas }}&#34;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">port</span>: <span style="color:#f1fa8c">&#34;{{ .spec.port }}&#34;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">services</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}-svc&#34;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">port</span>: <span style="color:#f1fa8c">&#34;80&#34;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">targetPort</span>: <span style="color:#f1fa8c">&#34;{{ .spec.port }}&#34;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
 </span></span></code></pre></div><hr>
-<h2 id="next-steps">Next Steps</h2>
-<p>You now know how to write a Katalog that creates resources from CRs.</p>
-<p>Continue with:</p>
-<p><strong>Writing Your First Komposer</strong><br>
-Learn how to load katalogs from files, Helm charts, and registries — and how to apply overrides.</p>
+<h2 id="conditional-resources">Conditional Resources</h2>
+<p>Use <code>when:</code> to create a resource only when a condition is met:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">services</span>:
+</span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}-public&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">port</span>: <span style="color:#f1fa8c">&#34;80&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">targetPort</span>: <span style="color:#f1fa8c">&#34;{{ .spec.port }}&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">when</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#ff79c6">field</span>: spec.exposePublicly
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">equals</span>: <span style="color:#f1fa8c">&#34;true&#34;</span>
+</span></span></code></pre></div><hr>
+<h2 id="status-fields">Status Fields</h2>
+<p>Write values back to the CR after every reconcile:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">operatorBox</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">status</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">fields</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#ff79c6">path</span>: phase
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">value</span>: <span style="color:#f1fa8c">&#34;Running&#34;</span>
+</span></span><span style="display:flex;"><span>      - <span style="color:#ff79c6">path</span>: observedReplicas
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">value</span>: <span style="color:#f1fa8c">&#34;{{ .spec.replicas }}&#34;</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">onCreate</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">deployments</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}&#34;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">replicas</span>: <span style="color:#f1fa8c">&#34;{{ .spec.replicas }}&#34;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
+</span></span></code></pre></div><p>The CRD must declare <code>subresources: status: {}</code> for status writes to work.</p>
+<hr>
+<h2 id="dependencies-between-crds">Dependencies Between CRDs</h2>
+<p>If your Katalog manages multiple CRDs and one must reconcile before the other:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">database</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crdFile</span>: ./database-crd.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">operatorBox</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">application</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crdFile</span>: ./application-crd.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">dependsOn</span>:
+</span></span><span style="display:flex;"><span>        - database
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">operatorBox</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
+</span></span></code></pre></div><p>Orkestra starts <code>database</code> first and waits until it is healthy before starting <code>application</code>.</p>
+<hr>
+<h2 id="running-it">Running It</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run -f katalog.yaml
+</span></span></code></pre></div><p>Apply a CR:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl apply -f myapp-cr.yaml
+</span></span><span style="display:flex;"><span>kubectl get deployments
+</span></span></code></pre></div><hr>
+<h2 id="validate-without-running">Validate Without Running</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate -f katalog.yaml
+</span></span></code></pre></div><p>Resolves the CRD, merges all sources, and reports every error without touching the cluster.</p>
 
       </div>
 
       
       <nav class="docs-pagination" aria-label="Page navigation">
         
-        <a href="/docs/getting-started/quickstart/" class="pagination-link pagination-prev">
+        <a href="/docs/getting-started/writing-your-first-komposer/" class="pagination-link pagination-prev">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           <div>
             <span class="pagination-label">Previous</span>
-            <span class="pagination-title">Quick Start</span>
+            <span class="pagination-title">Writing Your First Komposer</span>
           </div>
         </a>
         
         
-        <a href="/docs/getting-started/installation/" class="pagination-link pagination-next">
+        <a href="/docs/getting-started/learning-to-orkestrate/" class="pagination-link pagination-next">
           <div>
             <span class="pagination-label">Next</span>
-            <span class="pagination-title">Installation</span>
+            <span class="pagination-title">Learning to Orkestrate</span>
           </div>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>
@@ -1199,16 +673,15 @@ Learn how to load katalogs from files, Helm charts, and registries — and how t
     <p class="toc-title">On this page</p>
     <nav id="TableOfContents">
   <ul>
-    <li><a href="#the-simplest-katalog">The Simplest Katalog</a></li>
-    <li><a href="#adding-resources">Adding Resources</a></li>
-    <li><a href="#understanding-templates">Understanding Templates</a></li>
+    <li><a href="#the-minimal-katalog">The Minimal Katalog</a></li>
+    <li><a href="#the-crd">The CRD</a></li>
+    <li><a href="#adding-a-deployment">Adding a Deployment</a></li>
     <li><a href="#adding-a-service">Adding a Service</a></li>
-    <li><a href="#adding-a-secret">Adding a Secret</a></li>
-    <li><a href="#adding-a-configmap">Adding a ConfigMap</a></li>
     <li><a href="#conditional-resources">Conditional Resources</a></li>
+    <li><a href="#status-fields">Status Fields</a></li>
     <li><a href="#dependencies-between-crds">Dependencies Between CRDs</a></li>
-    <li><a href="#complete-example">Complete Example</a></li>
-    <li><a href="#next-steps">Next Steps</a></li>
+    <li><a href="#running-it">Running It</a></li>
+    <li><a href="#validate-without-running">Validate Without Running</a></li>
   </ul>
 </nav>
     <div class="toc-footer">
@@ -1293,7 +766,7 @@ Learn how to load katalogs from files, Helm charts, and registries — and how t
 
   
   
-  <script src="/js/main.min.f2df583e131a595404870b2d956fe54827dcacf44666bb51201fbf1d6524fa40.js" defer></script>
+  <script src="/js/main.min.d2e794f76bf881e2b24e29e56610c51d43db4fe37e7050090ef272ef855893af.js" defer></script>
 
   
   

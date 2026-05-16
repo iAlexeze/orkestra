@@ -164,7 +164,7 @@ jobs:
           EOF
 
 
-            # Add this to release step when windows build isuse is resolved
+            # Add this to release step when windows build issue is resolved
             # dist/orkcc_windows_amd64.tar.gz
             # dist/orkcc_windows_amd64.tar.gz.asc
             # dist/orkcc_windows_amd64.zip

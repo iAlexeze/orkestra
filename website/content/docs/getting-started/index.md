@@ -1,74 +1,40 @@
 ---
 title: "Getting Started"
-weight: 3
-description: "This guide gets you from zero to a running operator in under five minutes."
+weight: 8
 ---
 
-!!! tip 
-    This guide gets you from zero to a running operator in under five minutes.
-    If you want to understand the concepts before diving in, read
-    [Why Orkestra](../blog/why-orkestra.md) first.
+# Getting Started
+
+Orkestra turns a YAML file into a working Kubernetes operator. This guide takes you from zero to a running operator — no Go, no code generation.
 
 ---
 
 ## Requirements
 
-* A running Kubernetes cluster (local or remote)
-* [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/) configured and pointing at your cluster
-* A valid `kubeconfig` (default location `~/.kube/config`)
+- A running Kubernetes cluster — [kind](https://kind.sigs.k8s.io/) recommended for local development
+- [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/) configured and pointing at your cluster
 
-!!! "kubernetes distribution"
-    Orkestra works with any Kubernetes distribution — kind, minikube, k3s,
-    EKS, GKE, AKS. No cluster-level changes are required before installing.
+No cluster yet? Use `ork run --dev` below — it creates a local kind cluster automatically.
 
 ---
 
-## Install Orkestra
+## Install
 
-### macOS (Homebrew)
+**macOS (Homebrew)**
 
 ```bash
-brew tap orkspace/tap
-brew install ork
+brew install orkspace/tap/ork orkspace/tap/orkcc
 ```
 
-### Linux / macOS (curl)
+This installs two binaries: `ork` (the operator CLI) and `orkcc` (the Control Center).
+
+**Linux / macOS (curl)**
 
 ```bash
 curl -sSL https://get.orkestra.sh | bash
 ```
 
-### Options
-
-```bash
-# Pin to a specific version
-curl -sSL https://get.orkestra.sh | ORK_VERSION=v1.0.0 bash
-
-# Install to a custom directory
-curl -sSL https://get.orkestra.sh | ORK_INSTALL_DIR=~/.local/bin bash
-```
-
-### Verify the binary (recommended)
-
-!!! note "Security first"
-    Every Orkestra release is GPG-signed. Verifying before running is good
-    practice, especially in CI or shared environments.
-
-```bash
-# Import the Orkestra public key (once)
-curl -sSL https://github.com/orkspace/orkestra/releases/download/v1.0.0/orkestra-public-key.asc \
-  | gpg --import
-
-# Download binary and signature
-curl -sSLO https://github.com/orkspace/orkestra/releases/download/v1.0.0/ork_linux_amd64.tar.gz
-curl -sSLO https://github.com/orkspace/orkestra/releases/download/v1.0.0/ork_linux_amd64.tar.gz.asc
-
-# Verify
-gpg --verify ork_linux_amd64.tar.gz.asc ork_linux_amd64.tar.gz
-# gpg: Good signature from "Orkestra Releases <releases@orkestra.io>"
-```
-
-### Confirm installation
+**Verify**
 
 ```bash
 ork version
@@ -76,109 +42,108 @@ ork version
 
 ---
 
-## The Mental Model
-
-Before building your first operator, it helps to understand what Orkestra
-actually does.
-
-```
-CRD → Katalog → Orkestra → Kubernetes
-```
-
-* **CRD** — defines what your resource is (the schema). Kubernetes handles storage and validation.
-* **Katalog** — defines how it should behave (the logic). This is your operator, in YAML.
-* **Orkestra** — reconciles it. Watches CRs, resolves templates, calls the registry.
-* **Kubernetes** — stores it and notifies Orkestra when things change.
-
-!!! note
-    Orkestra operates on unstructured CRDs — the same `map[string]interface{}`
-    representation Kubernetes uses internally. You do not need Go types, code
-    generation, or scheme registration for the common case.
-
----
-
 ## Your First Operator
 
-We will build an operator for a `Website` CRD. When a `Website` CR is
-applied, Orkestra will create a Deployment and a Service for it — and keep
-them in sync whenever the CR changes.
-
-### Step 1 — Scaffold the project
+**Step 1 — Scaffold a project**
 
 ```bash
 ork init my-operator
 cd my-operator
 ```
 
-!!! tip "ork init" 
-    `ork init` creates a workspace with the Website example pre-configured.
-    Open `examples/website/website-katalog.yaml` to see what you are about
-    to run.
+`ork init` creates a workspace with ready-to-run examples. The first example is a `Website` operator at `examples/beginner/01-hello-website/`.
 
-### Step 2 — Apply the CRD
+**Step 2 — Start the operator**
 
-```bash
-kubectl apply -f examples/website/website-crd.yaml
-```
-
-This installs the `Website` CRD into your cluster. Orkestra does not
-install CRDs — it manages the resources that CRs create.
-
-!!! note
-    The CRD only needs to be applied once. After that, `kubectl get websites`
-    will work in any namespace.
-
----
-### Step 3 — Start Orkestra
+If you have a running cluster:
 
 ```bash
-ork run --file examples/website/website-katalog.yaml
+ork run -f examples/beginner/01-hello-website/katalog.yaml
 ```
 
-Orkestra starts, registers its informer for `Website` CRs, and waits. You
-will see the health server come up and the leader election complete.
-
-!!! tip 
-    Open a second terminal and run `ork status` to see the live state of the
-    operator. You can also visit `localhost:8080/katalog/website` in a browser.
-
-### Step 4 — Apply a CR
-
-In a new terminal:
+If you have no cluster yet, add `--dev` — Orkestra creates a kind cluster automatically:
 
 ```bash
-kubectl apply -f examples/website/website-cr.yaml
+ork run --dev -f examples/beginner/01-hello-website/katalog.yaml
 ```
 
-Watch Orkestra's output in the first terminal. You will see the reconcile
-event arrive, templates resolve, and child resources created.
+You will see:
 
-### Step 5 — Verify the results
+```
+INFO  CRD applied                crd=websites.demo.orkestra.io
+INFO  Informer synced            crd=website
+INFO  Workers started            crd=website  workers=3
+INFO  Health server ready        addr=:8080
+```
+
+**Step 3 — Apply a Custom Resource**
+
+In a second terminal:
+
+```bash
+kubectl apply -f examples/beginner/01-hello-website/cr.yaml
+```
+
+Watch Orkestra's output in the first terminal. You'll see the reconcile event arrive and the Deployment get created.
+
+**Step 4 — Verify**
 
 ```bash
 kubectl get deployments
-kubectl get services
+kubectl get pods
 ```
 
-A Deployment and Service named after your `Website` CR should appear.
-Orkestra set owner references on both — deleting the `Website` CR will
-cascade-delete them automatically.
+A Deployment named `hello-website-deployment` appears. Orkestra set owner references — deleting the `Website` CR will cascade-delete it.
 
-!!! warning
-    Do not delete the child Deployment or Service manually to test drift
-    correction until you have run at least one successful reconcile.
-    Orkestra detects drift on the next reconcile cycle (configured via
-    `resync`) — not immediately.
+**Step 5 — Open the Control Center**
 
-### Step 6 — Explore the built-in endpoints
-
-Orkestra exposes a health and observability API with no configuration:
+In a third terminal:
 
 ```bash
-# Is this CRD healthy?
+ork control start
+```
+
+Open [http://localhost:8081](http://localhost:8081) to see the live operator — CRD health, worker state, reconcile metrics, queue depth.
+
+---
+
+## What the Katalog Looks Like
+
+The katalog at `examples/beginner/01-hello-website/katalog.yaml`:
+
+```yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: hello-website
+
+spec:
+  crds:
+    website:
+      crdFile: ./crd.yaml
+
+      operatorBox:
+        default: true
+        onCreate:
+          deployments:
+            - image: "{{ .spec.image }}"
+```
+
+`crdFile` points to the CRD definition. Orkestra reads it, infers the API types, and applies it to the cluster automatically when `ork run` starts. No separate `kubectl apply -f crd.yaml` step.
+
+When the CR is applied, Orkestra resolves `{{ .spec.image }}` from the live CR and creates the Deployment.
+
+---
+
+## Built-in Health Endpoints
+
+While the operator is running:
+
+```bash
+# Health check for the website CRD
 curl localhost:8080/katalog/website/health | jq
 
-# Full CRD info — workers, queue, reconcile stats
+# Full detail — workers, queue, reconcile stats
 curl localhost:8080/katalog/website | jq
 
 # All managed CRDs
@@ -190,48 +155,15 @@ curl localhost:8080/metrics
 
 ---
 
-## What Just Happened?
-
-When you applied the `Website` CR, Orkestra executed this sequence:
-
-1. The API server notified Orkestra's informer of a new object
-2. The object was enqueued in the `Website` workqueue
-3. A worker picked it up and read the CR from the informer cache (zero API cost)
-4. Finalizers were added to protect the CR from dirty deletion
-5. Template expressions were resolved — `{{ .spec.image }}` became the actual image value
-6. The Deployment and Service were created with owner references pointing to the CR
-7. Both resources were marked `reconcile: true` — drift will be corrected on every cycle
-8. A `Reconciled` Kubernetes event was emitted on the CR
-9. Metrics were incremented: `controller_reconcile_total{result="success"}`
-
-All of that from a Katalog entry and a CR. No code written.
-
-You can see the events Orkestra emits by running:
-
-```bash
-kubectl describe website <name>
-```
-
-Look for the Events section at the bottom.
-
----
-
 ## Cleanup
 
 ```bash
-# Delete the CR — cascades to Deployment and Service
-kubectl delete -f examples/website/website-cr.yaml
+# Delete the CR — cascades to the Deployment
+kubectl delete -f examples/beginner/01-hello-website/cr.yaml
 
-# Stop Orkestra (Ctrl+C in the terminal running ork run)
-
-# Remove the CRD if you no longer need it
-kubectl delete -f examples/website/website-crd.yaml
+# Stop the operator
+Ctrl+C
 ```
-
-!!! warning "safe cleanup"
-    Deleting the `Website` CRD while CRs still exist will force-delete all
-    `Website` objects without running finalizers. Always delete CRs before
-    deleting their CRD in production.
 
 ---
 
@@ -240,59 +172,17 @@ kubectl delete -f examples/website/website-crd.yaml
 | Command | Description |
 |---------|-------------|
 | `ork init <name>` | Scaffold a new operator project |
-| `ork validate --file <path>` | Validate a Katalog or Komposer |
-| `ork template --file <path>` | Preview merged, validated state |
-| `ork template --file <path> --graph` | Show dependency graph |
-| `ork run --file <path>` | Start the operator runtime |
-| `ork status` | Show live health of all managed CRDs |
-| `ork get <crd>` | List CRs of a given type |
-| `ork describe <crd> <name>` | Describe a specific CR |
-| `ork events <crd>` | Show Kubernetes events for a CRD |
-| `ork version` | Print version information |
-
----
-
-## Troubleshooting
-
-**The informer is not seeing my CR**
-
-Check that the CRD is installed and the `apiTypes` block in the Katalog
-matches the group, version, kind, and plural exactly. Run:
-
-```bash
-ork validate --file <path>
-```
-
-**Orkestra starts but no resources are created**
-
-Confirm the CR was applied and the informer has synced. Check
-`localhost:8080/katalog/website` — `resourceCount` should be non-zero.
-Also check `kubectl describe website <name>` for events.
-
-**`ork status` cannot connect**
-
-`ork status` expects the operator at `localhost:8080`. If Orkestra is
-deployed in a cluster, port-forward first:
-
-```bash
-kubectl port-forward svc/orkestra 8080:8080 -n orkestra-system
-ork status
-```
-
-!!! tip "katalog validation"
-    Run `ork validate --file <path>` before `ork run` to catch
-    configuration errors before they surface at runtime. It checks
-    apiTypes, enriches built-in Kinds, and validates the dependency graph.
+| `ork run -f <path>` | Start the operator runtime |
+| `ork run --dev -f <path>` | Start the operator, create kind cluster if needed |
+| `ork validate -f <path>` | Validate a Katalog without starting |
+| `ork template -f <path>` | Preview the merged, resolved Katalog |
+| `ork control start` | Start the Control Center at localhost:8081 |
+| `ork version` | Print version |
 
 ---
 
 ## Next Steps
 
-You have a working operator. Here is where to go next:
-
-* **[Writing Your First Katalog](./writing-your-first-katalog.md)** — define your own CRDs and templates
-* **[Komposer](../runtime-manual/concepts/komposer.md)** — compose Katalogs from files, Helm charts, and registries
-* **[Deployment Guide](../guides/user-guide/deployment.md)** — run Orkestra in a cluster with Helm
-* **[CLI Reference](../reference/cli/index.md)** — full documentation for every command
-* **[Use Cases](../use-cases/index.md)** — real-world operator patterns
-
+- **[Writing Your First Katalog](./writing-your-first-katalog/)** — build your own operator from scratch
+- **[Basic Reconciliation](./basic-reconciliation/)** — understand the full reconcile lifecycle
+- **[Learning to Orkestrate](./learning-to-orkestrate/)** — progression through the example packs

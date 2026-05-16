@@ -3,7 +3,7 @@
 // KubeReader adapter — bridges kubeclient.Kubeclient to the orktypes.KubeReader
 // interface used by provider libraries.
 //
-// Providers receive KubeReader not *kubeclient.Kubeclient because:
+// Providers receive KubeReader not kubeclient.KubeClient because:
 //   - The interface is narrow: GetSecret and GetConfigMap only — no write access
 //   - Providers must not write Kubernetes resources (Orkestra owns cluster state)
 //   - A narrow interface is easier to mock in provider tests
@@ -20,7 +20,7 @@ import (
 
 // kubeReaderAdapter implements orktypes.KubeReader by delegating to kubeclient.
 type kubeReaderAdapter struct {
-	kube *kubeclient.Kubeclient
+	kube kubeclient.KubeClient
 }
 
 // GetSecret reads a Secret's data by name and namespace.

@@ -1,8 +1,9 @@
 ---
 title: "Katalog Schema"
-weight: 1
-description: "A Katalog declares one or more CRDs and defines how Orkestra should manage"
+weight: 40
 ---
+
+# Katalog Schema
 
 A Katalog declares one or more CRDs and defines how Orkestra should manage
 them: what resources to create, how to reconcile, how to convert between
@@ -75,10 +76,11 @@ spec:
     - finalizer.demo.orkestra.io/cleanup
 ```
 
-!!! note
-    Orkestra always adds its own internal finalizer (`orkestra.orkspace.io/cleanup`)
-    to every CR it manages, regardless of this field. Declared finalizers are
-    additional, domain-specific finalizers that you control.
+{{< callout type="note" >}}
+Orkestra always adds its own internal finalizer (`orkestra.orkspace.io/cleanup`)
+to every CR it manages, regardless of this field. Declared finalizers are
+additional, domain-specific finalizers that you control.
+{{< /callout >}}
 
 ---
 
@@ -130,9 +132,10 @@ apiTypes:
   kind: Deployment   # Orkestra enriches group, version, plural automatically
 ```
 
-!!! tip "Built-in kind enrichment"
-    Run `ork validate --file katalog.yaml` to see what Orkestra resolves
-    for a kind-only declaration:
+{{< callout type="tip" title="Built-in kind enrichment" >}}
+Run `ork validate --file katalog.yaml` to see what Orkestra resolves
+for a kind-only declaration:
+{{< /callout >}}
 
 Response:
 ```txt
@@ -164,19 +167,21 @@ and starts CRDs in that order.
     - namespace
 ```
 
-!!! warning "Circular dependencies"
-    Circular `dependsOn` declarations are detected during `ork validate` and
-    are a fatal startup error. A CRD that depends on itself, directly or
-    transitively, will produce:
+{{< callout type="warning" title="Circular dependencies" >}}
+Circular `dependsOn` declarations are detected during `ork validate` and
+are a fatal startup error. A CRD that depends on itself, directly or
+transitively, will produce:
+{{< /callout >}}
 
     ```
     error: circular dependency detected: application → namespace → application
     ```
 
-!!! note
-    A CRD declared in `dependsOn` that is not present in the Katalog is
-    retried in the background — it does not block healthy CRDs from starting.
-    This allows partial deployments where some CRDs are installed later.
+{{< callout type="note" >}}
+A CRD declared in `dependsOn` that is not present in the Katalog is
+retried in the background — it does not block healthy CRDs from starting.
+This allows partial deployments where some CRDs are installed later.
+{{< /callout >}}
 
 ### `restrictedNamespaces`
 
@@ -195,11 +200,12 @@ restrictedNamespaces:
   - "*-system"    # all namespaces ending in -system
 ```
 
-!!! warning "Additive across composition levels"
-    Restrictions declared at the Komposer level cannot be removed by a
-    CRD-level declaration. More specific levels add restrictions — they
-    never remove them. A namespace restricted at the Komposer level is
-    restricted for all CRDs, permanently.
+{{< callout type="warning" title="Additive across composition levels" >}}
+Restrictions declared at the Komposer level cannot be removed by a
+CRD-level declaration. More specific levels add restrictions — they
+never remove them. A namespace restricted at the Komposer level is
+restricted for all CRDs, permanently.
+{{< /callout >}}
 
 ### `endpoints`
 
@@ -216,7 +222,7 @@ settings for this specific CRD.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `maxQueueDepth` | int | `2000` | Maximum items in the workqueue before new items are dropped |
+| `maxQueueDepth` | int | `100` | Maximum items in the workqueue before new items are dropped |
 | `degradeThreshold` | int | `10` | Consecutive reconcile failures before this CRD is marked degraded |
 
 ---
@@ -256,10 +262,11 @@ conversion:
 | `paths[].to` | string | yes | Target version — bare string, e.g. `v1` |
 | `paths[].spec` | object | yes | The output spec in the target version's format. Values support Go template expressions. |
 
-!!! note "From and to are bare version strings"
-    Kubernetes sends `desiredAPIVersion` as a full string
-    (`demo.orkestra.io/v1alpha1`). Orkestra extracts the bare version before
-    path lookup. Declare `from` and `to` without the group prefix:
+{{< callout type="note" title="From and to are bare version strings" >}}
+Kubernetes sends `desiredAPIVersion` as a full string
+(`demo.orkestra.io/v1alpha1`). Orkestra extracts the bare version before
+path lookup. Declare `from` and `to` without the group prefix:
+{{< /callout >}}
 
 ```yaml
 # Correct
@@ -271,10 +278,11 @@ conversion:
   to: demo.orkestra.io/v1
 ```
 
-!!! tip "Each version is its own operator entry"
-    Multi-version CRDs in Orkestra have one Katalog entry per version. Each
-    version gets its own informer, worker pool, and reconciler. Conversion
-    rules live in the storage version's entry. See [Versioning](../runtime-manual/concepts/versioning.md).
+{{< callout type="tip" title="Each version is its own operator entry" >}}
+Multi-version CRDs in Orkestra have one Katalog entry per version. Each
+version gets its own informer, worker pool, and reconciler. Conversion
+rules live in the storage version's entry.
+{{< /callout >}}
 
 ---
 
@@ -315,10 +323,11 @@ hooks:
   function: WebsiteHooks
 ```
 
-!!! note
-    Hooks and declarative templates are not mutually exclusive. A CRD can
-    declare both `hooks` and `onCreate` templates. Hooks run first; templates
-    run for resources not covered by hooks.
+{{< callout type="note" >}}
+Hooks and declarative templates are not mutually exclusive. A CRD can
+declare both `hooks` and `onCreate` templates. Hooks run first; templates
+run for resources not covered by hooks.
+{{< /callout >}}
 
 ### `reconciler.constructor`
 
@@ -331,10 +340,11 @@ Use when you need complete control over the reconcile loop.
 | `function` | string | yes | Exported constructor function |
 | `alias` | string | no | Alias for identification |
 
-!!! warning
-    When `constructor` is declared, `onCreate`, `onReconcile`, and `onDelete`
-    template blocks are ignored. The custom reconciler is responsible for all
-    reconcile logic.
+{{< callout type="warning" >}}
+When `constructor` is declared, `onCreate`, `onReconcile`, and `onDelete`
+template blocks are ignored. The custom reconciler is responsible for all
+reconcile logic.
+{{< /callout >}}
 
 ### `reconciler.onCreate` / `onReconcile` / `onDelete`
 
@@ -459,10 +469,11 @@ All conditions in a `when` block are AND'd. An empty `when` block always passes.
 | `labels` | `[]{ key, value }` | `[]` | Applied to Service metadata |
 | `when` | `[]Condition` | `[]` | Creation conditions |
 
-!!! note
-    The Service selector is always `orkestra-owner: <cr-name>` — it routes
-    automatically to pods created by the Deployment registry for the same CR.
-    Do not declare a custom selector.
+{{< callout type="note" >}}
+The Service selector is always `orkestra-owner: <cr-name>` — it routes
+automatically to pods created by the Deployment registry for the same CR.
+Do not declare a custom selector.
+{{< /callout >}}
 
 ### ConfigMapTemplate
 
@@ -504,11 +515,12 @@ All conditions in a `when` block are AND'd. An empty `when` block always passes.
 | `labels` | `[]{ key, value }` | `[]` | Applied to Job metadata |
 | `when` | `[]Condition` | `[]` | Creation conditions |
 
-!!! tip "Jobs under `onDelete`"
-    Jobs declared in `onDelete` block CR deletion until they complete, via
-    owner reference `blockOwnerDeletion: true`. This is how Orkestra ensures
-    cleanup runs before the CR is removed. Set `backoffLimit` to a value
-    appropriate for the cleanup task.
+{{< callout type="tip" title="Jobs under `onDelete`" >}}
+Jobs declared in `onDelete` block CR deletion until they complete, via
+owner reference `blockOwnerDeletion: true`. This is how Orkestra ensures
+cleanup runs before the CR is removed. Set `backoffLimit` to a value
+appropriate for the cleanup task.
+{{< /callout >}}
 
 ### CronJobTemplate
 
@@ -523,6 +535,98 @@ All conditions in a `when` block are AND'd. An empty `when` block always passes.
 | `reconcile` | bool | `false` | Correct schedule and image drift |
 | `labels` | `[]{ key, value }` | `[]` | Applied to CronJob metadata |
 | `when` | `[]Condition` | `[]` | Creation conditions |
+
+---
+
+## `spec.security`
+
+Global security policy. All sub-blocks are optional and inactive when not declared.
+
+### `spec.security.deletionProtection`
+
+Protects CRDs and Orkestra's own resources from accidental deletion via a `ValidatingWebhookConfiguration` (`orkestra-deletion-protection`).
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | bool | `true` (when block is present) | Enables deletion protection |
+| `serviceName` | string | `orkestra` | Kubernetes Service name for webhook clientConfig |
+| `failurePolicy` | `Fail` \| `Ignore` | `Fail` | API server behaviour when Orkestra is unreachable |
+| `cleanupOnShutdown` | bool | `false` | Remove the webhook configuration on operator shutdown |
+
+```yaml
+security:
+  deletionProtection:
+    enabled: true
+    failurePolicy: Fail
+    cleanupOnShutdown: false
+```
+
+When `enabled: true`, Orkestra registers a `ValidatingWebhookConfiguration` that blocks `DELETE` on managed CRDs, the Orkestra deployment, service, ingress, and its own admission webhook configurations.
+
+### `spec.security.namespaceProtection`
+
+Enforces per-CRD namespace allow/restrict rules via a `ValidatingWebhookConfiguration` (`orkestra-namespace-protection`). Only active when at least one CRD in the Katalog declares `allowedNamespaces` or `restrictedNamespaces`.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `enabled` | bool | `true` (when block is present) | Enables namespace protection |
+| `serviceName` | string | `orkestra` | Kubernetes Service name for webhook clientConfig |
+| `failurePolicy` | `Fail` \| `Ignore` | `Fail` | API server behaviour when Orkestra is unreachable |
+
+```yaml
+security:
+  namespaceProtection:
+    enabled: true
+    failurePolicy: Fail
+```
+
+The webhook intercepts `CREATE` and `UPDATE` on CRDs that declare namespace rules. Rules are evaluated at admission time:
+- `allowedNamespaces` set → namespace must be in the list
+- `restrictedNamespaces` set → namespace must not be in the list
+- Neither → allow
+
+### `spec.crds[].allowedNamespaces`
+
+**Type:** `[]string` | **Required:** no | **Default:** `[]`
+
+Namespaces in which CRs of this type may be created or updated. Any CREATE or UPDATE request targeting a namespace not in this list is rejected by the namespace protection webhook (HTTP 403).
+
+```yaml
+crds:
+  - kind: Pipeline
+    allowedNamespaces:
+      - staging
+      - production
+```
+
+Mutually exclusive with `restrictedNamespaces`. When both are declared, `allowedNamespaces` takes precedence.
+
+### `spec.crds[].restrictedNamespaces`
+
+**Type:** `[]string` | **Required:** no | **Default:** `[]`
+
+Namespaces where CRs of this type may **not** be created or updated. Any CREATE or UPDATE request in a listed namespace is rejected.
+
+```yaml
+crds:
+  - kind: Pipeline
+    restrictedNamespaces:
+      - kube-system
+      - cert-manager
+```
+
+### `spec.security.webhooks`
+
+Controls the admission webhook surface (validation + mutation).
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `admission.enabled` | bool | — | Enables `/validate` and `/mutate` endpoints and registers `ValidatingWebhookConfiguration` + `MutatingWebhookConfiguration` |
+| `failurePolicy` | `Fail` \| `Ignore` | `Ignore` | API server behaviour when Orkestra is unreachable |
+| `serviceName` | string | `orkestra` | Kubernetes Service name for webhook clientConfig |
+| `cleanupOnShutdown` | bool | `false` | Remove webhook configurations on shutdown |
+| `controller.enabled` | bool | — | Enables the webhook controller that continuously reconciles webhook configurations |
+| `controller.syncInterval` | duration | `30s` | How often the controller reconciles |
 
 ---
 

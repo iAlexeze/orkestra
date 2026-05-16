@@ -118,6 +118,50 @@ operator handles sync, cleanup, and drift correction automatically.
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies setup fixtures, starts the operator, applies the CR, asserts every expectation, then tears down:
+
+```bash
+ork e2e -f e2e.yaml
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Secret distributed to team-alpha
+    after: cr-applied
+    timeout: 60s
+    resources:
+      - kind: Secret
+        name: database-credentials
+        namespace: team-alpha
+
+  - name: Secret distributed to team-beta
+    after: cr-applied
+    timeout: 60s
+    resources:
+      - kind: Secret
+        name: database-credentials
+        namespace: team-beta
+
+  - name: Secrets removed on delete
+    after: cr-deleted
+    timeout: 30s
+    resources:
+      - kind: Secret
+        name: database-credentials
+        namespace: team-alpha
+        count: 0
+      - kind: Secret
+        name: database-credentials
+        namespace: team-beta
+        count: 0
+```
+
+---
+
 ## Cleanup
 
 ```bash

@@ -11,30 +11,41 @@
 
     <nav class="sidebar-nav">
       {{ $currentPage := . }}
-      {{ $docsSection := .Site.GetPage "section" "docs" }}
-      {{ if $docsSection }}
-        {{ range $docsSection.Sections.ByWeight }}
-          {{ $section := . }}
-          {{ $isActiveSection := or ($currentPage.IsDescendant $section) (eq $currentPage $section) }}
-          <div class="sidebar-section{{ if $isActiveSection }} open{{ end }}">
-            <div class="sidebar-section-header{{ if $isActiveSection }} active-section{{ end }}">
-              <a href="{{ $section.RelPermalink }}" class="sidebar-section-link">{{ $section.Title }}</a>
-              <button class="sidebar-section-toggle" aria-expanded="{{ if $isActiveSection }}true{{ else }}false{{ end }}" aria-label="Toggle {{ $section.Title }}">
-                <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M19 9l-7 7-7-7"/>
-                </svg>
-              </button>
-            </div>
-            <ul class="sidebar-section-pages" role="list"{{ if not $isActiveSection }} style="display:none"{{ end }}>
-              {{ range $section.Pages.ByTitle }}
-              <li>
-                <a href="{{ .RelPermalink }}" class="sidebar-link{{ if eq $currentPage . }} active{{ end }}">
-                  {{ .Title }}
-                </a>
-              </li>
-              {{ end }}
-            </ul>
+      {{ range .Site.Data.sidebar.nav }}
+        {{ if .page }}
+          {{/* Standalone page link */}}
+          {{ $page := $currentPage.Site.GetPage (printf "docs/%s" (strings.TrimSuffix "/" (path.Base .url))) }}
+          {{ $isActive := eq $currentPage $page }}
+          <div class="sidebar-standalone">
+            <a href="{{ .url }}" class="sidebar-standalone-link{{ if $isActive }} active{{ end }}">
+              {{ .title }}
+            </a>
           </div>
+        {{ else }}
+          {{/* Collapsible section */}}
+          {{ $section := $currentPage.Site.GetPage "section" (printf "docs/%s" .section) }}
+          {{ if $section }}
+            {{ $isActiveSection := or ($currentPage.IsDescendant $section) (eq $currentPage $section) }}
+            <div class="sidebar-section{{ if $isActiveSection }} open{{ end }}">
+              <div class="sidebar-section-header{{ if $isActiveSection }} active-section{{ end }}">
+                <a href="{{ .url }}" class="sidebar-section-link">{{ .title }}</a>
+                <button class="sidebar-section-toggle" aria-expanded="{{ if $isActiveSection }}true{{ else }}false{{ end }}" aria-label="Toggle {{ .title }}">
+                  <svg class="chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+              </div>
+              <ul class="sidebar-section-pages" role="list"{{ if not $isActiveSection }} style="display:none"{{ end }}>
+                {{ range $section.Pages.ByWeight }}
+                <li>
+                  <a href="{{ .RelPermalink }}" class="sidebar-link{{ if eq $currentPage . }} active{{ end }}">
+                    {{ .Title }}
+                  </a>
+                </li>
+                {{ end }}
+              </ul>
+            </div>
+          {{ end }}
         {{ end }}
       {{ end }}
     </nav>

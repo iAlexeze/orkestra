@@ -119,7 +119,7 @@ func executeGitOperation(ctx context.Context, repo, branch, path, lastCommit str
 // file (which is lost on pod restart).
 func patchLastCommitAnnotation(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	obj domain.Object,
 	gvr schema.GroupVersionResource,
 	commit string,

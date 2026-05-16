@@ -1,0 +1,22 @@
+nav:
+  - title: Getting Started
+    section: getting-started
+    url: /docs/getting-started/
+  - title: Control Center
+    section: controlcenter
+    url: /docs/controlcenter/
+  - title: Reference
+    section: reference
+    url: /docs/reference/
+  - title: Security
+    url: /docs/security/
+    page: true
+  - title: FAQs
+    section: faqs
+    url: /docs/faqs/
+  - title: Roadmap
+    url: /docs/roadmap/
+    page: true
+  - title: Support
+    url: /docs/support/
+    page: true

@@ -73,7 +73,7 @@ type ResolvedCustomResourceSpec struct {
 
 // Create creates the custom resource described by spec if it does not already exist.
 // Idempotent — skips if resource exists. Owner reference set for cascade deletion.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedCustomResourceSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCustomResourceSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("custom.Create: %w", err)
 	}
@@ -139,7 +139,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 
 // Update reconciles an existing custom resource to match the resolved spec.
 // If the resource does not exist, it will be created.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedCustomResourceSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCustomResourceSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("custom.Update: %w", err)
 	}
@@ -263,7 +263,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 
 // DeleteIfOwned deletes the custom resource if it exists and is owned by the given owner.
 // Skips deletion if the resource was created by orkdoctor or if Orkestra is not the owner.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, name, namespace, apiVersion, kind string) error {
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, name, namespace, apiVersion, kind string) error {
 	// Build GVK and resolve GVR
 	gvk, err := buildGVK(apiVersion, kind)
 	if err != nil {

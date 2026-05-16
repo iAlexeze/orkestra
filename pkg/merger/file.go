@@ -14,22 +14,22 @@ import (
 //
 // Katalog  (kind: Katalog)
 //   Declares CRDs directly in spec.crds.
-//   Must NOT declare sources — sources are a Komposer concern.
-//   Error if sources block is present.
+//   Must NOT declare imports — imports are a Komposer concern.
+//   Error if imports block is present.
 //
 // Komposer (kind: Komposer)
-//   Composes Katalogs from multiple sources (files, helm).
+//   Composes Katalogs from multiple imports (files, registry, helm).
 //   May declare inline spec.crds as overrides — merged last, win on conflict.
-//   Sources are resolved recursively. Each source must be a Katalog.
-//   A Komposer cannot reference another Komposer as a source.
+//   Imports are resolved recursively. Each import must be a Katalog.
+//   A Komposer cannot import another Komposer.
 //
-// Within one file's source tree:
-//   localSeen catches duplicates across sources and within inline block.
+// Within one file's import tree:
+//   localSeen catches duplicates across imports and within inline block.
 //
 // Across entry point files:
 //   seen in Merge() catches duplicates.
 //
-// Inline overrides source:
+// Inline overrides import:
 //   valid — map key collision triggers mergeCRDEntry.
 //
 // Inline duplicates inline:
@@ -125,12 +125,12 @@ func (m *Merger) loadKatalog(path string, doc *orktypes.KatalogFile) (map[string
 	return result, nil
 }
 
-// loadKomposer resolves sources from a Komposer file and merges all CRDs.
+// loadKomposer resolves imports from a Komposer file and merges all CRDs.
 func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[string]orktypes.CRDEntry, error) {
 	if doc.Imports == nil && len(doc.Spec.CRDs) == 0 {
 		logger.Warn().
 			Str("path", path).
-			Msg("merger: Komposer has no sources and no inline CRDs — nothing to load")
+			Msg("merger: Komposer has no imports and no inline CRDs — nothing to load")
 		return nil, nil
 	}
 
@@ -138,14 +138,14 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 	allCRDs := make(map[string]orktypes.CRDEntry)
 
 	// accSecurity, accNotification, and accProviders accumulate top-level settings
-	// from all source Katalogs. Each source load that calls loadKatalog sets these
+	// from all imported Katalogs. Each import that calls loadKatalog sets these
 	// as side-effects on m; we capture and merge here so they are not discarded
 	// when the Komposer's own (possibly empty) block is applied at the end.
 	var accSecurity orktypes.KatalogSecurity
 	var accNotification *orktypes.KatalogNotification
 	var accProviders []orktypes.KatalogProviderRequirement
 
-	// ── Step 1: registry sources ─────────────────────────────────────────────
+	// ── Step 1: registry imports ─────────────────────────────────────────────
 	if doc.Imports != nil {
 		for i, regSrc := range doc.Imports.Registry {
 			crds, err := m.loadRegistrySource(regSrc)
@@ -170,12 +170,12 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 			accNotification = mergeKatalogNotification(accNotification, m.notification)
 			accProviders = append(accProviders, m.providers...)
 			logger.Debug().
-				Str("source", fmt.Sprintf("registry:%d", i)).
-				Msg("merger: accumulated security, notification, and providers from registry source")
+				Str("import", fmt.Sprintf("registry:%d", i)).
+				Msg("merger: accumulated security, notification, and providers from registry import")
 		}
 	}
 
-	// ── Step 2: file sources ──────────────────────────────────────────────────
+	// ── Step 2: file imports ──────────────────────────────────────────────────
 	if doc.Imports != nil {
 		for _, fileSrc := range doc.Imports.Files {
 
@@ -192,7 +192,7 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 			}
 
 			// Load the file — must be a Katalog, not another Komposer
-			crds, err := m.loadSourceFileWithAuth(path, resolved, auth)
+			crds, err := m.loadImportFileWithAuth(path, resolved, auth)
 			if err != nil {
 				return nil, fmt.Errorf("%q imports.files[%q]: %w", path, resolved, err)
 			}
@@ -205,15 +205,15 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 				allCRDs[name] = crd
 			}
 
-			// Accumulate security, notification, and providers from this Katalog file source.
+			// Accumulate security, notification, and providers from this Katalog file import.
 			accSecurity = mergeKatalogSecurity(accSecurity, m.security)
 			accNotification = mergeKatalogNotification(accNotification, m.notification)
 			accProviders = append(accProviders, m.providers...)
 			logger.Debug().
-				Str("source", "file:"+resolved).
-				Msg("merger: accumulated security, notification, and providers from file source")
+				Str("import", "file:"+resolved).
+				Msg("merger: accumulated security, notification, and providers from file import")
 		}
-		// ── Step 3: helm sources ──────────────────────────────────────────────
+		// ── Step 3: helm imports ──────────────────────────────────────────────
 		for i, helmSrc := range doc.Imports.Helm {
 			crds, err := m.loadHelmSource(helmSrc)
 			if err != nil {
@@ -229,13 +229,13 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 				allCRDs[name] = crd
 			}
 
-			// Accumulate security, notification, and providers from this Helm source Katalog.
+			// Accumulate security, notification, and providers from this Helm import.
 			accSecurity = mergeKatalogSecurity(accSecurity, m.security)
 			accNotification = mergeKatalogNotification(accNotification, m.notification)
 			accProviders = append(accProviders, m.providers...)
 			logger.Debug().
-				Str("source", srcName).
-				Msg("merger: accumulated security, notification, and providers from helm source")
+				Str("import", srcName).
+				Msg("merger: accumulated security, notification, and providers from helm import")
 		}
 	}
 
@@ -315,7 +315,7 @@ func (m *Merger) loadKomposer(path string, doc *orktypes.KatalogFile) (map[strin
 
 	logger.Debug().
 		Str("path", path).
-		Msg("merger: Komposer security, notification, and providers merged from sources and inline")
+		Msg("merger: Komposer security, notification, and providers merged from imports and inline")
 
 	return allCRDs, nil
 }

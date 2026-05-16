@@ -40,7 +40,7 @@ pkg/orkestra-registry/
 Creates the resource if it does not already exist. Idempotent — a second call is a no-op and returns nil.
 
 ```go
-func Create(ctx context.Context, kube *kubeclient.Kubeclient,
+func Create(ctx context.Context, kube kubeclient.KubeClient,
     owner domain.Object, spec ResolvedXxxSpec) error
 ```
 
@@ -63,7 +63,7 @@ if !errors.IsNotFound(err) {
 Reconciles an existing resource to match the spec. If the resource does not exist, creates it. Checks each reconcilable field for drift before patching.
 
 ```go
-func Update(ctx context.Context, kube *kubeclient.Kubeclient,
+func Update(ctx context.Context, kube kubeclient.KubeClient,
     owner domain.Object, spec ResolvedXxxSpec) error
 ```
 
@@ -74,7 +74,7 @@ Only patch when drift is detected. A no-drift path logs at `Debug` and returns n
 Deletes the resource only if the Orkestra owner label matches. This prevents cascading deletion of resources created by a different CR or operator.
 
 ```go
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
     owner domain.Object, name, namespace string) error
 ```
 

@@ -41,7 +41,7 @@ func Docs(c []orktypes.CRDEntry, dryRun bool) error {
 		}
 
 		m.Queue.MaxQueueDepth = crd.Queue.MaxQueueDepth
-		m.Queue.Default = crd.DefaultQueue()
+		m.Queue.Shared = crd.SharedQueue()
 
 		m.API.Object = crd.APITypes.Object
 		m.API.List = crd.APITypes.List

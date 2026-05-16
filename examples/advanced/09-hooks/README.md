@@ -232,6 +232,37 @@ Katalog handles it without a line of Go.
 
 ---
 
+## E2E
+
+Run the full typed operator lifecycle in one command — spins up a kind cluster, builds and deploys the operator, applies the CR, asserts that your Go hooks fired and the expected resources exist, then tears down:
+
+```bash
+ork e2e -f e2e.yaml
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Database deployment created
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        namespace: default
+        ready: true
+
+  - name: Deployment removed on delete
+    after: cr-deleted
+    timeout: 30s
+    resources:
+      - kind: Deployment
+        namespace: default
+        count: 0
+```
+
+---
+
 ## Cleanup
 
 Stop the local operator with `Ctrl+C`, then:

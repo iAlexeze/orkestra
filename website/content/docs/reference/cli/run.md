@@ -1,8 +1,9 @@
 ---
 title: "ork run"
-weight: 50
-description: "Start the Orkestra operator runtime."
+weight: 31
 ---
+
+# ork run
 
 Start the Orkestra operator runtime.
 
@@ -20,6 +21,8 @@ Endpoints exposed:
 /metrics
 /katalog
 /katalog/{crd}
+/katalog/{crd}/cr
+/katalog/{crd}/cr/<ns>/<name>
 /katalog/{crd}/health
 ```
 
@@ -27,6 +30,5 @@ Endpoints exposed:
 
 ## Related Documentation
 
-- [Runtime](../../runtime-manual/concepts/runtime.md)
-- [Metrics](../metrics.md)
-- [ork status](./status.md)
+- [Runtime Reference](../runtime/)
+- [Metrics](../metrics/)
