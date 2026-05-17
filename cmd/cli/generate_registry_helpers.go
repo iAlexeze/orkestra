@@ -66,6 +66,11 @@ func collectModulesToGet(k *katalog.Katalog) (*katalog.Katalog, []string) {
 			c := crd.OperatorBox.ConstructorDecl
 			loc, locVer := splitLocationVersion(c.Location)
 			version := c.Version
+			
+			if version != "" && version != locVer {
+				fmt.Fprintf(os.Stderr, "[Warning] declared version %q differs from version in location %q; using declared version %q\n", version, locVer, version)
+			}
+
 			if version == "" {
 				version = locVer
 				c.Version = locVer
@@ -122,9 +127,9 @@ func goGetModules(mods []string, timeoutPerModule time.Duration, dryRun bool) er
 		if err := cmd.Run(); err != nil {
 
 			msg := fmt.Sprintf(
-				"\nfailed to 'go get %s': %w\n"+
+				"\nfailed to 'go get %q': %q\n"+
 					"Hint: if this is a private module, ensure GOPRIVATE is set and credentials are available.\n"+
-					"You can also run 'go get %s' manually", mod, err, mod,
+					"You can also run 'go get %q' manually", mod, err, mod,
 			)
 			return fmt.Errorf("%s", msg)
 		}
