@@ -24,24 +24,10 @@ because of the owner reference. No `onDelete` logic needed.
 
 ---
 
-## Step 1 — Install the CRD
+## Step 1 — Validate the Katalog
 
 ```bash
-kubectl apply -f crd.yaml
-```
-
-Verify:
-
-```bash
-kubectl get crd websites.demo.orkestra.io
-```
-
----
-
-## Step 2 — Validate the Katalog
-
-```bash
-ork validate --file katalog.yaml
+ork validate -f katalog.yaml
 ```
 
 Expected output:
@@ -53,15 +39,17 @@ Expected output:
     mode: dynamic / workers: 3 / resync: 15s
 ```
 
+`ork validate` resolves `crdFile`, reads the CRD, and reports what Orkestra found — without touching the cluster.
+
 ---
 
-## Step 3 — Start the operator
+## Step 2 — Start the operator
 
 ```bash
-ork run --file katalog.yaml
+ork run -f katalog.yaml
 ```
 
-You will see the health server start and the informer sync:
+Orkestra reads `crdFile: ./crd.yaml`, applies the CRD to the cluster, and starts the operator. You will see the health server start and the informer sync:
 
 ```
 {"level":"info","message":"health server listening on :8080"}
@@ -72,7 +60,7 @@ You will see the health server start and the informer sync:
 
 ---
 
-## Step 4 — Apply the CR
+## Step 3 — Apply the CR
 
 Open a second terminal:
 
@@ -82,6 +70,20 @@ kubectl apply -f cr.yaml
 
 Watch the operator terminal. You will see the reconcile event arrive and the
 Deployment being created.
+
+---
+
+## Step 4 — Open the Control Center
+
+In a third terminal:
+
+```bash
+ork control start
+# username:password → orkestra
+# username:password → orkestra
+```
+
+Open [http://localhost:8081](http://localhost:8081) to see the live operator — CRD health, worker state, reconcile metrics, and the `Website` CR you just created.
 
 ---
 
@@ -105,30 +107,30 @@ Expected deployment name: `hello-deployment`
 
 ---
 
-## Step 6 — Check the health API
+## Step 6 — Understand onCreate
+
+**Deletion is always recovered.** Delete the Deployment manually — owner references mean Kubernetes garbage-collects it, and Orkestra recreates it on the next reconcile:
 
 ```bash
-curl localhost:8080/katalog/website/health | jq '{
-  healthy: .healthy,
-  resourceCount: .resourceCount,
-  totalReconciles: .totalReconciles
-}'
+kubectl delete deployment hello-deployment
+kubectl get deployments
+# hello-deployment reappears
 ```
 
-Expected output:
-```json
-{
-  "healthy": true,
-  "resourceCount": 1,
-  "totalReconciles": 1
-}
+**Updating the CR does not update the Deployment.** Edit [cr.yaml](cr.yaml), change the image to `nginx:1.26`, and reapply:
+
+```bash
+kubectl apply -f cr.yaml
 ```
 
-> [!NOTE]
-> Notice how there are no reconciles yet, — because `reconcile: true` is not set.
-> This is intentional: this example shows `onCreate` only.
+Check the Deployment image:
 
-In example 02 you will add `reconcile: true` and see the difference.
+```bash
+kubectl get deployment hello-website-deployment -o jsonpath='{.spec.template.spec.containers[0].image}' && echo
+# nginx:1.25  — unchanged
+```
+
+This is intentional. `onCreate` only fires when the CR is first created. To make Orkestra update existing resources when the CR changes, add `reconcile: true` — which is what example 02 introduces.
 
 ---
 

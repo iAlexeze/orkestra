@@ -39,23 +39,31 @@ Verify:
 kubectl get configmap app-config -n platform
 ```
 
-### 2. Install the CRD
+### 2. Start the operator
 
 ```bash
-kubectl apply -f crd.yaml
+ork run -f katalog.yaml
 ```
 
-### 3. Start the operator
+Orkestra reads `crdFile: ./crd.yaml`, applies the CRD to the cluster, and starts the operator.
 
-```bash
-ork run --file katalog.yaml
-```
-
-### 4. Apply the CR
+### 3. Apply the CR
 
 ```bash
 kubectl apply -f cr.yaml
 ```
+
+### 4. Open the Control Center
+
+In a third terminal:
+
+```bash
+ork control start
+# username:password → orkestra
+# username:password → orkestra
+```
+
+Open [http://localhost:8081](http://localhost:8081) to see the live operator.
 
 ### 5. Verify copies exist
 

@@ -15,7 +15,6 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/buildx"
 	"github.com/orkspace/orkestra/pkg/doctor"
-	"github.com/orkspace/orkestra/pkg/spinner"
 	"github.com/orkspace/orkestra/pkg/tunnel"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
@@ -876,7 +875,7 @@ func watchUntilReady(crName, ns, appName string, state *doctor.DeployState) erro
 	const deploymentAppearTimeout = 2 * time.Minute
 	const rolloutTimeout = 5 * time.Minute
 
-	spin := spinner.Start("  → Waiting for rollout...")
+	spin := StartSpinner("  → Waiting for rollout...")
 
 	// Phase 1: poll until the Deployment exists. kubectl rollout status exits
 	// immediately with a non-zero code when the object is missing, so we must

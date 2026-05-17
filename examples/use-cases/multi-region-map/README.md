@@ -146,7 +146,9 @@ Open the Control Center in a second terminal:
 
 ```bash
 ork control start             # serves on http://localhost:8081 by default
+# username:password → orkestra
 ork control start --port 9090 # or on a custom port
+# username:password → orkestra
 ```
 
 Open **http://localhost:8081** (or whichever port you passed to `ork control start`).

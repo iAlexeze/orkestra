@@ -60,6 +60,7 @@ Start the Control Center:
 
 ```bash
 ork control start -u localhost:8080,localhost:8090
+# username:password → orkestra
 ```
 
 This registers **both runtimes** at startup.

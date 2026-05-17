@@ -15,21 +15,34 @@ spec:
     reuse: false
 
   expect:
+    - name: CR created
+      after: cr-applied
+      timeout: 60s
+      resources:
+        - kind: Website
+          name: my-site
+          namespace: default
+    
     - name: Deployment and Service created
       after: cr-applied
       timeout: 60s
       resources:
         - kind: Deployment
+          name: my-site
           namespace: default
           ready: true
         - kind: Service
-          name: my-site
+          name: my-site-svc
           namespace: default
 
     - name: Cleanup verified
       after: cr-deleted
       timeout: 30s
       resources:
+        - kind: Website
+          name: my-site
+          namespace: default
+          count: 0
         - kind: Deployment
           name: my-site
           namespace: default

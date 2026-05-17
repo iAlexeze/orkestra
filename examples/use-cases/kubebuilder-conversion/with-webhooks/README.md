@@ -225,6 +225,7 @@ Or launch the Control Center for live visualisation:
 
 ```bash
 ork control start
+# username:password → orkestra
 ```
 
 ---

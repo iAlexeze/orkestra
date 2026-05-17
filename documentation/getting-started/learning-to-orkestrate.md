@@ -115,11 +115,9 @@ Every example follows the same pattern:
 ork init my-operator --pack beginner
 cd my-operator
 
-# Apply the CRD to your cluster
-kubectl apply -f examples/beginner/01-hello-website/crd.yaml
-
 # Start the operator locally
-ork run --file examples/beginner/01-hello-website/katalog.yaml
+# Orkestra reads crdFile from the Katalog, applies the CRD to the cluster, and starts the operator
+ork run -f examples/beginner/01-hello-website/katalog.yaml
 
 # In another terminal — apply a CR
 kubectl apply -f examples/beginner/01-hello-website/cr.yaml

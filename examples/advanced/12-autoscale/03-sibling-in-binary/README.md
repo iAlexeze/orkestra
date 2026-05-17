@@ -88,6 +88,7 @@ Start the Control Center:
 
 ```bash
 ork control start
+# username:password → orkestra
 ```
 
 Visit: **http://localhost:8081**

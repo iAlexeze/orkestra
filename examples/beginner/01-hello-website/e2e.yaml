@@ -15,6 +15,14 @@ spec:
     reuse: false
 
   expect:
+    - name: CR created
+      after: cr-applied
+      timeout: 60s
+      resources:
+        - kind: Website
+          name: hello-website
+          namespace: default
+
     - name: Deployment created
       after: cr-applied
       timeout: 60s
@@ -28,6 +36,10 @@ spec:
       timeout: 30s
       resources:
         - kind: Deployment
+          name: hello-website
+          namespace: default
+          count: 0
+        - kind: Website
           name: hello-website
           namespace: default
           count: 0

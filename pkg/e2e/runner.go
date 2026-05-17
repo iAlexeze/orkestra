@@ -1,6 +1,7 @@
 // Package e2e implements the orchestration loop for `ork e2e`.
-// It composes existing Orkestra building blocks in the order described
-// in docs/design-documents/declarative-e2e-test.md.
+// It runs a declarative end-to-end test defined in an E2E spec file:
+// cluster creation → CRD apply → bundle generate+apply → Orkestra install →
+// CR apply → expectation checking → cleanup → context restore.
 package e2e
 
 import (
@@ -105,6 +106,18 @@ func (r *Runner) Run(ctx context.Context) error {
 		fmt.Printf("\nRunning E2E: %s — %s\n\n", name, desc)
 	} else {
 		fmt.Printf("\nRunning E2E: %s\n\n", name)
+	}
+
+	// Capture the original kubectl context so we can restore it after the
+	// test completes (the cluster creation or --cluster flag switches context).
+	if origCtx, err := currentKubectlContext(); err == nil && origCtx != "" {
+		defer func() {
+			if out, err := exec.Command("kubectl", "config", "use-context", origCtx).CombinedOutput(); err != nil {
+				fmt.Printf("  ! Could not restore kubectl context to %q: %v\n%s\n", origCtx, err, out)
+			} else {
+				fmt.Printf("\n→ kubectl context restored to %q\n", origCtx)
+			}
+		}()
 	}
 
 	// ── 1. Cluster ───────────────────────────────────────────────────────
@@ -411,6 +424,11 @@ func (r *Runner) abs(path string) string {
 		return path
 	}
 	return filepath.Join(r.e2eDir, path)
+}
+
+func currentKubectlContext() (string, error) {
+	out, err := exec.Command("kubectl", "config", "current-context").Output()
+	return strings.TrimSpace(string(out)), err
 }
 
 // kubectl runs a kubectl command and returns combined output.

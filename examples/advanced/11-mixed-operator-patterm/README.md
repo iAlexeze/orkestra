@@ -163,6 +163,7 @@ Start the Control Center:
 
 ```bash
 ./ork control start
+# username:password → orkestra
 # → http://localhost:8081
 ```
 

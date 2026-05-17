@@ -18,6 +18,13 @@ spec:
     - ./setup.yaml   # creates platform/team-alpha/team-beta namespaces + source secret
 
   expect:
+    - name: CR created
+      after: cr-applied
+      timeout: 60s
+      resources:
+        - kind: SecretDistribution
+          name: db-creds
+
     - name: Secret distributed to team-alpha
       after: cr-applied
       timeout: 60s
@@ -34,10 +41,13 @@ spec:
           name: database-credentials
           namespace: team-beta
 
-    - name: Secrets removed on delete
+    - name: Cleanup verified
       after: cr-deleted
       timeout: 30s
       resources:
+        - kind: SecretDistribution
+          name: db-creds
+          count: 0
         - kind: Secret
           name: database-credentials
           namespace: team-alpha

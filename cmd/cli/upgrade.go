@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/orkspace/orkestra/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -101,7 +102,7 @@ func runUpgrade(requestedVersion string, runtimeOnly bool) error {
 
 	// Print version
 	fmt.Println("Current version:")
-	fmt.Println("  ork version")
+	fmt.Printf("  %s%s%s", utils.ColorGreen, version, utils.ColorReset)
 	fmt.Println()
 
 	return nil

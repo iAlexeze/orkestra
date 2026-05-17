@@ -13,9 +13,11 @@ lines of Katalog YAML.
 ## What is new
 
 **`reconcile: true`** on the Deployment and Service means Orkestra re-applies
-the desired state on every reconcile cycle, not just on creation. Delete the
-Deployment manually and it reappears within one resync interval (default 15s).
-This is drift correction.
+the desired state from the CR on every reconcile cycle. In example 01, updating
+the CR's image left the Deployment unchanged — because `onCreate` only fires at
+creation. Here, updating the CR to `nginx:1.26` and reapplying immediately
+updates the Deployment. That is drift correction: the live resource always
+converges to what the CR declares.
 
 **Status fields** declared in the Katalog are written to the CR's `/status`
 subresource after every successful reconcile. The `Ready` condition (Layer 1)
@@ -27,23 +29,30 @@ Orkestra does the rest. The `phase`, `observedReplicas`, and `endpoint` fields
 
 ## Steps
 
-### 1. Install the CRD
+### 1. Start the operator
 
 ```bash
-kubectl apply -f crd.yaml
+ork run -f katalog.yaml
 ```
 
-### 2. Start the operator
+Orkestra reads `crdFile: ./crd.yaml`, applies the CRD to the cluster, and starts the operator.
 
-```bash
-ork run --file katalog.yaml
-```
-
-### 3. Apply the CR
+### 2. Apply the CR
 
 ```bash
 kubectl apply -f cr.yaml
 ```
+
+### 3. Open the Control Center
+
+In a third terminal:
+
+```bash
+ork control start
+# username:password → orkestra
+```
+
+Open [http://localhost:8081](http://localhost:8081) to see the live operator.
 
 ### 4. Verify resources
 
@@ -62,7 +71,7 @@ NAME          TYPE        CLUSTER-IP     PORT(S)
 my-site-svc   ClusterIP   10.96.x.x      80/TCP
 ```
 
-### 5. Verify status
+### 4. Verify status
 
 ```bash
 kubectl get website my-site -o yaml | grep -A20 "status:"
@@ -85,21 +94,22 @@ status:
 
 ### 6. Test drift correction
 
-Delete the Deployment and watch it come back:
+Update [cr.yaml](cr.yaml) to change the image to `nginx:1.26` and reapply:
 
 ```bash
-kubectl delete deployment my-site
+kubectl apply -f cr.yaml
 ```
 
-Wait up to 15 seconds (the resync interval):
+Check the Deployment image — Orkestra has already corrected it:
 
 ```bash
-kubectl get deployments
-# my-site reappears
+kubectl get deployment my-site -o jsonpath='{.spec.template.spec.containers[0].image}' && echo
+# nginx:1.26
 ```
 
-The Service selector always routes to pods owned by the same CR — the
-`orkestra-owner: my-site` label is set automatically by Orkestra.
+This works because `reconcile: true` is set on the Deployment in this Katalog. Every reconcile cycle, Orkestra re-applies the desired state from the CR. If anything drifts — a manual edit, a rollback, anything — Orkestra corrects it back.
+
+This is the difference from example 01: there, updating the CR left the Deployment unchanged. Here, it updates immediately.
 
 ### 7. Update the replica count
 
@@ -117,7 +127,7 @@ kubectl get deployment my-site
 The status updates too:
 
 ```bash
-kubectl get website my-site -o jsonpath='{.status.observedReplicas}'
+kubectl get website my-site -o jsonpath='{.status.observedReplicas}' && echo
 # "3"
 ```
 
