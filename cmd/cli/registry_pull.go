@@ -35,7 +35,7 @@ var registryPullCmd = &cobra.Command{
 
 		if ref.IsCached() && !refresh {
 			cacheDir, _ := ref.CachePath()
-			fmt.Printf("  %s Already cached\n", utils.ColorGreen+"✓"+utils.ColorReset)
+			fmt.Printf("  %s Already cached\n", utils.SuccessMark())
 			fmt.Printf("  → %s\n", cacheDir)
 			printPullSuggestions(ref, cacheDir)
 			return nil
@@ -53,11 +53,11 @@ var registryPullCmd = &cobra.Command{
 			if err := copyDir(cacheDir, outDir); err != nil {
 				return fmt.Errorf("extracting to %s: %w", outDir, err)
 			}
-			fmt.Printf("  %s Extracted to %s\n", utils.ColorGreen+"✓"+utils.ColorReset, outDir)
+			fmt.Printf("  %s Extracted to %s\n", utils.SuccessMark(), outDir)
 			return nil
 		}
 
-		fmt.Printf("  %s Cached at %s\n", utils.ColorGreen+"✓"+utils.ColorReset, cacheDir)
+		fmt.Printf("  %s Cached at %s\n", utils.SuccessMark(), cacheDir)
 		printPullSuggestions(ref, cacheDir)
 		return nil
 	},

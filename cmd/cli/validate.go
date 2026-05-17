@@ -177,7 +177,7 @@ func validateE2EFile(path string) error {
 
 	if len(errs) > 0 {
 		for _, e := range errs {
-			fmt.Printf("  %s✗%s %s\n", utils.ColorRed, utils.ColorReset, e)
+			fmt.Printf("  %s %s\n", utils.FailureMark(), e)
 		}
 		fmt.Println()
 		return fmt.Errorf("%d validation error(s) in %s", len(errs), path)
@@ -186,15 +186,14 @@ func validateE2EFile(path string) error {
 	icon := utils.HealthIcon("ready")
 	fmt.Printf("%s %s\n", icon, utils.Bold(e2e.Metadata.Name))
 	if e2e.Metadata.Description != "" {
-		fmt.Printf("    %s%s%s\n", utils.ColorGray, e2e.Metadata.Description, utils.ColorReset)
+		fmt.Printf("    %s\n", utils.Gray(e2e.Metadata.Description))
 	}
-	fmt.Printf("    %skatolog : %s\n    crd     : %s\n    cr      : %s%s\n",
-		utils.ColorGray,
-		e2e.Spec.Katalog, e2e.Spec.CRD, e2e.Spec.CR,
-		utils.ColorReset,
+	fmt.Printf("    %s\n",
+		utils.Gray(fmt.Sprintf("katalog : %s\n    crd     : %s\n    cr      : %s",
+			e2e.Spec.Katalog, e2e.Spec.CRD, e2e.Spec.CR)),
 	)
 	if len(e2e.Spec.Setup) > 0 {
-		fmt.Printf("    %ssetup   : %s%s\n", utils.ColorGray, strings.Join(e2e.Spec.Setup, ", "), utils.ColorReset)
+		fmt.Printf("    %s\n", utils.Gray("setup   : "+strings.Join(e2e.Spec.Setup, ", ")))
 	}
 	fmt.Println()
 	for _, exp := range e2e.Spec.Expect {
@@ -202,8 +201,8 @@ func validateE2EFile(path string) error {
 		if to == "" {
 			to = "60s"
 		}
-		fmt.Printf("    %s%-40s after: %-12s timeout: %s%s\n",
-			utils.ColorGray, exp.Name, exp.After, to, utils.ColorReset)
+		fmt.Printf("    %s\n",
+			utils.Gray(fmt.Sprintf("%-40s after: %-12s timeout: %s", exp.Name, exp.After, to)))
 	}
 	fmt.Println()
 	fmt.Println(strings.Repeat("─", 60))
@@ -222,12 +221,12 @@ func validateMotifFile(path string) error {
 	if len(errs) == 0 {
 		icon := utils.HealthIcon("ready")
 		fmt.Printf("%s %s\n", icon, utils.Bold(path))
-		fmt.Printf("    %svalid%s\n", utils.ColorGray, utils.ColorReset)
+		fmt.Printf("    %s\n", utils.Gray("valid"))
 		return nil
 	}
 
 	for _, e := range errs {
-		fmt.Printf("  %s✗%s %s\n", utils.ColorRed, utils.ColorReset, e.Error())
+		fmt.Printf("  %s %s\n", utils.FailureMark(), e.Error())
 	}
 	fmt.Println()
 	return fmt.Errorf("%d validation error(s) in %s", len(errs), path)

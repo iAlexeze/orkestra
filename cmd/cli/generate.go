@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/orkspace/orkestra/cmd/cmdutil"
 	"github.com/orkspace/orkestra/pkg/generate"
@@ -66,7 +67,6 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 
 	m := merger.New(expanded...)
 	if err := m.Merge(); err != nil {
-		//return nil, fmt.Errorf("merge katalogs: %w", err)
 		return nil, err
 	}
 
@@ -149,7 +149,7 @@ var generateAllCmd = &cobra.Command{
 
 		log.Println("running all generators...")
 
-		if err := generate.Runtime(out.m, dryRun); err != nil {
+		if err := generate.RuntimeRegistry(out.kat.Enabled(), dryRun); err != nil {
 			return fmt.Errorf("generate runtime: %w", err)
 		}
 		if err := generate.Docs(out.crds, dryRun); err != nil {
@@ -316,6 +316,7 @@ func init() {
 	generateRbacCmd.Flags().StringSliceP("file", "f", []string{}, "Path to katalog.yaml (can be specified multiple times or as comma-separated)")
 
 	generateRegistryCmd.Flags().StringP("dirs", "d", "", "Comma-separated list of project directories to generate registries for")
+	generateRegistryCmd.Flags().Duration("fetch-timeout", 2*time.Minute, "Timeout to fetch Go hook or constructor from 'location'")
 
 	// Add shared flags
 	for _, cmd := range []*cobra.Command{

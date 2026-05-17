@@ -61,8 +61,8 @@ var initCmd = &cobra.Command{
 func initProject(name, pack string, refresh bool) error {
 
 	printBanner()
-	fmt.Printf("Initialising %s%s%s using '%s' example pack...\n\n",
-		utils.ColorBold, name, utils.ColorReset, pack)
+	fmt.Printf("Initialising %s using '%s' example pack...\n\n",
+		utils.Bold(name), pack)
 
 	ver := version.Version // ldflags
 
@@ -88,7 +88,7 @@ func initProject(name, pack string, refresh bool) error {
 		return err
 	}
 
-	fmt.Printf("\n%s✅ Project ready: %s%s\n\n", utils.ColorGreen, name, utils.ColorReset)
+	fmt.Printf("\n%s\n\n", utils.Green("✅ Project ready: "+name))
 	fmt.Printf("Your examples are in: %s/examples/%s/\n\n", name, pack)
 	fmt.Println("Each example folder contains a README with step-by-step instructions.")
 	fmt.Println()

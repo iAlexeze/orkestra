@@ -92,7 +92,7 @@ Examples:
   # Generate registries for multiple operator projects
   ork generate registry --dirs ./database,./pipeline --file komposer.yaml
 
-  # Dry‑run (print generated files without writing them)
+  # Dry-run (print generated files without writing them)
   ork generate registry --file katalog.yaml --dry-run
 
 Each project directory must contain:
@@ -102,12 +102,13 @@ Each project directory must contain:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		dirs, _ := cmd.Flags().GetString("dirs")
+		fetchTimeout, _ := cmd.Flags().GetDuration("fetch-timeout")
 
 		// Multi-directory mode
 		if dirs != "" {
 			for _, d := range strings.Split(dirs, ",") {
 				abs := filepath.Clean(d)
-				if err := generateRegistryForDir(abs, cmd, dryRun); err != nil {
+				if err := generateRegistryForDir(abs, cmd, fetchTimeout, dryRun); err != nil {
 					return fmt.Errorf("registry generation failed for %s: %w", abs, err)
 				}
 			}
@@ -116,13 +117,13 @@ Each project directory must contain:
 
 		// Single-directory mode (current working directory)
 		cwd, _ := os.Getwd()
-		return generateRegistryForDir(cwd, cmd, dryRun)
+		return generateRegistryForDir(cwd, cmd, fetchTimeout, dryRun)
 	},
 }
 
 // generateRegistryForDir performs the full registry generation pipeline
 // for a single operator project directory.
-func generateRegistryForDir(dir string, cmd *cobra.Command, dryRun bool) error {
+func generateRegistryForDir(dir string, cmd *cobra.Command, perModuleTimeout time.Duration, dryRun bool) error {
 	logger.Info().Str("dir", dir).Msg("generating registry for project")
 
 	// Save original working directory
@@ -146,9 +147,12 @@ func generateRegistryForDir(dir string, cmd *cobra.Command, dryRun bool) error {
 		return fmt.Errorf("validating project: %w", err)
 	}
 
+	// Normalize and collect modules from katalog.
+	kat, mods := collectModulesToGet(out.kat)
+
 	// Generate runtime registry
 	logger.Info().Msg("generating runtime registry...")
-	if err := generate.Runtime(out.m, dryRun); err != nil {
+	if err := generate.RuntimeRegistry(kat.Enabled(), dryRun); err != nil {
 		return fmt.Errorf("generate runtime registry: %w", err)
 	}
 
@@ -158,7 +162,14 @@ func generateRegistryForDir(dir string, cmd *cobra.Command, dryRun bool) error {
 
 	// Ensure main.go exists
 	if err := ensureMainGo(root, moduleName, dryRun); err != nil {
-		logger.Warn().Err(err).Msg("failed to ensure main.go – you may need to add import manually")
+		logger.Warn().Err(err).Msg("failed to ensure main.go - you may need to add import manually")
+	}
+
+	if len(mods) > 0 {
+		// If dryRun, we only print what we'd fetch.
+		if err := goGetModules(mods, perModuleTimeout, dryRun); err != nil {
+			return fmt.Errorf("fetching declared module versions: %w", err)
+		}
 	}
 
 	return nil

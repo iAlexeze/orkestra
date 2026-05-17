@@ -102,7 +102,7 @@ func runUpgrade(requestedVersion string, runtimeOnly bool) error {
 
 	// Print version
 	fmt.Println("Current version:")
-	fmt.Printf("  %s%s%s", utils.ColorGreen, version, utils.ColorReset)
+	fmt.Printf("  %s", utils.Green(version))
 	fmt.Println()
 
 	return nil

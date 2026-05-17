@@ -2176,6 +2176,13 @@ type HookDeclaration struct {
 	// e.g. "github.com/myorg/hooks" or "github.com/orkspace/orkestra/pkg/reconciler/hooks"
 	Location string `yaml:"location" json:"location" validate:"required"`
 
+	// Version — optional module version to pin for this hook.
+	Version string `yaml:"version" json:"version,omitempty" validate:"omitempty"`
+
+	// Fetch — when true, ork generate will run:
+	// `go get <location>@<version>` to fetch the requested version.
+	Fetch bool `yaml:"fetch" json:"fetch,omitempty"`
+
 	// Function — exported function name at Location that returns hooks.
 	// e.g. "ProjectHooks"
 	Function string `yaml:"function" json:"function" validate:"required"`
@@ -2194,6 +2201,13 @@ type HookDeclaration struct {
 type ConstructorDeclaration struct {
 	// Location — fully qualified Go import path. Local or remote module.
 	Location string `yaml:"location" json:"location" validate:"required"`
+
+	// Version — optional module version to pin for this constructor.
+	Version string `yaml:"version" json:"version,omitempty" validate:"omitempty"`
+
+	// Fetch — when true, ork generate will run:
+	// `go get <location>@<version>` to fetch the requested version.
+	Fetch bool `yaml:"fetch" json:"fetch,omitempty"`
 
 	// Function — exported constructor function name at Location.
 	// e.g. "NewManagedNamespaceReconciler"

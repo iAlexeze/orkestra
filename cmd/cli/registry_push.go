@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/orkspace/orkestra/pkg/e2e"
 	"github.com/orkspace/orkestra/pkg/katalog"
@@ -134,12 +135,12 @@ var registryPushCmd = &cobra.Command{
 			if _, err := kat.ValidateConfig(kfg); err != nil {
 				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
 			}
-			fmt.Printf("  %s %-20s valid\n", utils.ColorGreen+"✓"+utils.ColorReset, registry.FileKatalog)
+			fmt.Printf("  %s %-20s valid\n", utils.SuccessMark(), registry.FileKatalog)
 
 			if err := validateCRDFile(filepath.Join(dir, registry.FileCRD)); err != nil {
 				return fmt.Errorf("  ✗ %s: %w", registry.FileCRD, err)
 			}
-			fmt.Printf("  %s %-20s valid\n", utils.ColorGreen+"✓"+utils.ColorReset, registry.FileCRD)
+			fmt.Printf("  %s %-20s valid\n", utils.SuccessMark(), registry.FileCRD)
 		}
 
 		for _, f := range files {
@@ -147,12 +148,13 @@ var registryPushCmd = &cobra.Command{
 				continue // already printed above
 			}
 			info, _ := os.Stat(filepath.Join(dir, f))
-			fmt.Printf("  %s %-20s (%s)\n", utils.ColorGreen+"✓"+utils.ColorReset, f, formatSize(info.Size()))
+			fmt.Printf("  %s %-20s (%s)\n", utils.SuccessMark(), f, formatSize(info.Size()))
 		}
 
 		// E2E gate: run e2e.yaml before pushing if it exists (Katalog only).
 		// Skip with --force or --no-e2e.
-		if patternKind == registry.KatalogKind && !registryPushForce && !registryPushNoE2E {
+		var e2eMeta *registry.PatternE2E
+		if patternKind == registry.KatalogKind {
 			e2eFile := registryPushE2EFile
 			if e2eFile == "" {
 				e2eFile = filepath.Join(dir, registry.FileE2E)
@@ -160,15 +162,31 @@ var registryPushCmd = &cobra.Command{
 				e2eFile = filepath.Join(dir, e2eFile)
 			}
 			if _, err := os.Stat(e2eFile); err == nil {
-				fmt.Printf("\nRunning E2E gate (%s)...\n", registry.FileE2E)
-				runner, err := e2e.New(e2eFile, "", false)
-				if err != nil {
-					return fmt.Errorf("e2e gate: %w\n\nUse --force or --no-e2e to skip", err)
+				if registryPushForce || registryPushNoE2E {
+					fmt.Printf("  ~ E2E skipped\n")
+					e2eMeta = &registry.PatternE2E{
+						Status:   "skipped",
+						TestedAt: time.Now().UTC().Format(time.RFC3339),
+						Runner:   detectRunner(),
+					}
+				} else {
+					fmt.Printf("\nRunning E2E gate (%s)...\n", registry.FileE2E)
+					runner, err := e2e.New(e2eFile, "", false, false)
+					if err != nil {
+						return fmt.Errorf("e2e gate: %w\n\nUse --force or --no-e2e to skip", err)
+					}
+					result, err := runner.Run(cmd.Context())
+					if err != nil {
+						return fmt.Errorf("e2e gate failed: %w\n\nFix the test or use --force to push anyway", err)
+					}
+					fmt.Printf("  %s E2E passed (%s)\n", utils.SuccessMark(), result.Duration())
+					e2eMeta = &registry.PatternE2E{
+						Status:   "passed",
+						Duration: result.Duration(),
+						TestedAt: time.Now().UTC().Format(time.RFC3339),
+						Runner:   detectRunner(),
+					}
 				}
-				if err := runner.Run(cmd.Context()); err != nil {
-					return fmt.Errorf("e2e gate failed: %w\n\nFix the test or use --force to push anyway", err)
-				}
-				fmt.Printf("  %s E2E passed\n", utils.ColorGreen+"✓"+utils.ColorReset)
 			}
 		}
 
@@ -181,12 +199,12 @@ var registryPushCmd = &cobra.Command{
 			fmt.Printf("  → %-20s (%s)\n", file, formatSize(size))
 		}
 
-		digest, err := client.Push(cmd.Context(), ref, dir, progress)
+		digest, err := client.Push(cmd.Context(), ref, dir, e2eMeta, progress)
 		if err != nil {
 			return fmt.Errorf("push failed: %w", err)
 		}
 
-		fmt.Printf("\n%s Pushed: %s\n", utils.ColorGreen+"✓"+utils.ColorReset, ref.String())
+		fmt.Printf("\n%s Pushed: %s\n", utils.SuccessMark(), ref.String())
 		fmt.Printf("  Digest: %s\n", digest[:19]+"...")
 
 		// If a pattern directory also contains motif.yaml, push it separately
@@ -197,10 +215,10 @@ var registryPushCmd = &cobra.Command{
 				motifRef, err := registry.ResolveForKind(fmt.Sprintf("%s:%s", meta.Name, meta.Version), registry.MotifKind)
 				if err == nil {
 					fmt.Printf("\nAlso pushing %s to %s...\n", registry.FileMotif, motifRef.Registry)
-					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, progress); err != nil {
+					if mDigest, err := client.Push(cmd.Context(), motifRef, dir, nil, progress); err != nil {
 						fmt.Fprintf(os.Stderr, "warning: motif push failed: %v\n", err)
 					} else {
-						fmt.Printf("%s Pushed motif: %s\n", utils.ColorGreen+"✓"+utils.ColorReset, motifRef.String())
+						fmt.Printf("%s Pushed motif: %s\n", utils.SuccessMark(), motifRef.String())
 						fmt.Printf("  Digest: %s\n", mDigest[:19]+"...")
 					}
 				}
@@ -220,4 +238,25 @@ var registryPushCmd = &cobra.Command{
 		_ = meta
 		return nil
 	},
+}
+
+func detectRunner() string {
+	switch {
+	case os.Getenv("GITHUB_ACTIONS") == "true":
+		return "github-actions"
+	case os.Getenv("GITLAB_CI") == "true":
+		return "gitlab-ci"
+	case os.Getenv("CIRCLECI") == "true":
+		return "circleci"
+	case os.Getenv("JENKINS_URL") != "":
+		return "jenkins"
+	case os.Getenv("BUILDKITE") == "true":
+		return "buildkite"
+	case os.Getenv("DRONE") == "true":
+		return "drone"
+	case os.Getenv("CI") == "true":
+		return "ci"
+	default:
+		return "local"
+	}
 }

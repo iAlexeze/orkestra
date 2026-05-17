@@ -351,12 +351,12 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 
 			deployDir, _ := doctor.StateDir()
 			if doctor.CentralKatalogChanged(state, deployDir) {
-				fmt.Println("  Katalog changed — restarting Orkestra runtime")
-				if err := doctor.RestartOrkestra(); err != nil {
-					return fmt.Errorf("restarting Orkestra: %w", err)
+				fmt.Println("  Katalog updated — applying bundle to Orkestra...")
+				if err := doctor.SyncRuntime(); err != nil {
+					return fmt.Errorf("syncing Orkestra runtime: %w", err)
 				}
 			} else {
-				fmt.Println("  Katalog unchanged — Orkestra restart not required")
+				fmt.Printf("  %s Orkestra is up to date\n", utils.SuccessMark())
 			}
 
 			state.RecordDeploy(appName, ns, filepath.Join(deployDir, "katalog.yaml"), image)
@@ -645,9 +645,9 @@ func deployMultiApp(dc deployContext) error {
 		fmt.Printf(" %s", utils.SuccessMark())
 
 		if doctor.KatalogChanged(dc.dir) {
-			fmt.Println("  Katalog changed — restarting Orkestra runtime")
-			if err := doctor.RestartOrkestra(); err != nil {
-				return fmt.Errorf("restarting Orkestra: %w", err)
+			fmt.Println("  Katalog updated — applying bundle to Orkestra...")
+			if err := doctor.SyncRuntime(); err != nil {
+				return fmt.Errorf("syncing Orkestra runtime: %w", err)
 			}
 		}
 

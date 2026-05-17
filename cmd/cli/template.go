@@ -142,7 +142,7 @@ Examples:
 					return fmt.Errorf("writing %s: %w", outFile, err)
 				}
 			}
-			fmt.Printf("%swritten to %s%s\n", utils.ColorGreen, outFile, utils.ColorReset)
+			fmt.Printf("%s\n", utils.Green("written to "+outFile))
 			return nil
 		}
 		fmt.Println(string(out))
