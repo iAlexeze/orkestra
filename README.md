@@ -771,8 +771,8 @@ operatorBox:
 | | |
 |---|---|
 | [Getting Started](https://docs.orkestra.sh/getting-started) | First operator in under an hour |
-| [Katalog Reference](https://docs.orkestra.sh/reference/katalog-schema) | Complete field reference |
-| [Examples](./examples/) | Beginner → advanced, all verified |
+| [Katalog Reference](https://docs.orkestra.sh/docs/reference/schema/katalog) | Complete field reference |
+| [Examples](https://docs.orkestra.sh/docs/getting-started/learning-to-orkestrate/) | Beginner → advanced |
 | [Concepts](https://docs.orkestra.sh/concepts) | Architecture and mental model |
 | [Papers](https://docs.orkestra.sh/publications) | The case for declarative operators |
 
