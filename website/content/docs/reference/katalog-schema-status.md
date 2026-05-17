@@ -1,8 +1,9 @@
 ---
 title: "Katalog Schema — Status Block"
-weight: 2
-description: "---"
+weight: 39
 ---
+
+# Katalog Schema — Status Block
 
 ---
 
@@ -11,10 +12,11 @@ description: "---"
 Declares how Orkestra manages the CR's `/status` subresource after each
 reconcile cycle.
 
-!!! note "CRD prerequisite"
-    Status management requires `subresources: status: {}` in the CRD definition.
-    Without it, Orkestra's status patches are silently ignored by the API server.
-    Reconciliation is not affected — the CRD simply shows no status.
+{{< callout type="note" title="CRD prerequisite" >}}
+Status management requires `subresources: status: {}` in the CRD definition.
+Without it, Orkestra's status patches are silently ignored by the API server.
+Reconciliation is not affected — the CRD simply shows no status.
+{{< /callout >}}
 
 ```yaml
 operatorBox:
@@ -83,7 +85,7 @@ them back and makes their status available under `.children`:
 fields:
   # Singular shorthand — first/only resource of this type
   - path: readyReplicas
-    value: "{{ readyReplicas .children.deployment }}"
+    value: "{{ get .children.deployment "status" "readyReplicas" }}"
 
   # Plural — multiple resources, accessed by Kubernetes name
   - path: apiReadyReplicas
@@ -134,9 +136,9 @@ before Kubernetes has populated child resource status.
 
         # Layer 3 — from child resource status
         - path: readyReplicas
-          value: "{{ readyReplicas .children.deployment }}"
+          value: "{{ get .children.deployment "status" "readyReplicas" }}"
         - path: availableReplicas
-          value: "{{ availableReplicas .children.deployment }}"
+          value: "{{ get .children.deployment "status" "availableReplicas" }}"
 
         # Nested status — becomes status.database.host
         - path: database.host

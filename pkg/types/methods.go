@@ -208,13 +208,13 @@ func (c *CRDEntry) DefaultReconcile() bool {
 	return *c.OperatorBox.Default
 }
 
-// DefaultQueue reports whether this CRD uses the default queue configuration.
+// SharedQueue reports whether this CRD uses the shared default workqueue.
 // Defaults to false when omitted.
-func (c *CRDEntry) DefaultQueue() bool {
-	if c.Queue.Default == nil {
+func (c *CRDEntry) SharedQueue() bool {
+	if c.Queue.Shared == nil {
 		return false
 	}
-	return *c.Queue.Default
+	return *c.Queue.Shared
 }
 
 // CustomHooksEnabled reports whether the reconcile behaviour uses custom hooks.

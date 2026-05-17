@@ -141,20 +141,16 @@ type APITypes struct {
 // ── Queue ─────────────────────────────────────────────────────────────────────
 
 type Queue struct {
-	// true: — uses the shared default workqueue instead of a per-CRD queue.
-	// Suitable for low-volume CRDs where queue isolation is not required.
+	// Shared — use the shared default workqueue instead of a per-CRD queue.
+	// Default: false (each CRD gets its own isolated queue).
+	Shared *bool `yaml:"shared" json:"shared,omitempty"`
 
-	// Default: false — each CRD gets its own isolated workqueue.
-	Default *bool `yaml:"default" json:"default,omitempty"`
-
-	// MaxQueueDepth — maximum number of items in the per-CRD queue.
-	// New items are rejected when the queue is full.
-	// 0 → uses Orkestra-level default set by MAX_QUEUE_DEPTH env var.
+	// MaxQueueDepth — max items in the queue before new items are dropped.
+	// 0 → uses MAX_QUEUE_DEPTH env var (default: 2000).
 	MaxQueueDepth int `yaml:"maxQueueDepth" json:"maxQueueDepth,omitempty" validate:"omitempty,gte=0"`
 
-	// DegradeThreshold — number of consecutive reconcile failures before the
-	// CRD health state transitions from healthy to degraded.
-	// 0 → uses Orkestra-level default.
+	// DegradeThreshold — consecutive failures before CRD health degrades.
+	// 0 → uses DEGRADE_THRESHOLD env var.
 	DegradeThreshold int `yaml:"degradeThreshold" json:"degradeThreshold,omitempty" validate:"omitempty,gte=0"`
 }
 

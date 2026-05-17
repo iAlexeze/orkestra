@@ -5,40 +5,43 @@
 
 /* ── 1. CSS Custom Properties ─────────────────────────────── */
 :root {
+  /* Primary: Orkestra purple */
   --color-primary: #4C2085;
   --color-primary-light: #6B3AB5;
   --color-primary-dark: #361660;
   --color-accent: #336CE5;
   --color-accent-light: #5589EE;
-  --color-dark: #262626;
-  --color-bg: #FAFAFA;
+  --color-dark: #1E293B;
+
+  /* Light mode base — warm whites, not cold grays */
+  --color-bg: #F8F9FA;
   --color-surface: #FFFFFF;
-  --color-surface-2: #F3F4F6;
-  --color-border: #E5E7EB;
-  --color-text: #1F2937;
-  --color-text-muted: #6B7280;
-  --color-text-faint: #9CA3AF;
-  --color-code-bg: #1E1E2E;
-  --color-code-text: #CDD6F4;
+  --color-surface-2: #F1F5F9;
+  --color-border: #E2E8F0;
+  --color-text: #0F172A;
+  --color-text-muted: #475569;
+  --color-text-faint: #94A3B8;
+  --color-code-bg: #1E293B;
+  --color-code-text: #E2E8F0;
   --color-success: #059669;
   --color-warning: #D97706;
   --color-danger: #DC2626;
-  --color-info: #2563EB;
+  --color-info: #4C2085;
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
 
   --radius-sm: 4px;
-  --radius: 8px;
-  --radius-lg: 12px;
+  --radius: 6px;
+  --radius-lg: 10px;
   --radius-xl: 16px;
   --radius-full: 9999px;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 6px rgba(15, 23, 42, 0.06), 0 2px 4px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 10px 15px rgba(15, 23, 42, 0.08), 0 4px 6px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 20px 25px rgba(15, 23, 42, 0.08), 0 10px 10px rgba(15, 23, 42, 0.04);
 
   --sidebar-width: 280px;
   --toc-width: 240px;
@@ -55,31 +58,31 @@
   --transition-slow: 400ms ease;
 }
 
-/* Dark mode — default appearance */
+/* Dark mode */
 [data-theme="dark"] {
   --color-bg: #0F0F1A;
   --color-surface: #1A1A2E;
   --color-surface-2: #16213E;
   --color-border: #2D2D4A;
-  --color-text: #E5E7EB;
-  --color-text-muted: #9CA3AF;
-  --color-text-faint: #6B7280;
-  --color-code-bg: #12121F;
+  --color-text: #E2E8F0;
+  --color-text-muted: #94A3B8;
+  --color-text-faint: #64748B;
+  --color-code-bg: #0D1B2E;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
-/* Light mode explicit override */
+/* Light mode explicit (matches :root defaults — kept for JS toggle completeness) */
 [data-theme="light"] {
   --color-bg: #F7F6FF;
   --color-surface: #FFFFFF;
   --color-surface-2: #F0EEF9;
   --color-border: #E2DFF2;
-  --color-text: #1F2937;
-  --color-text-muted: #6B7280;
-  --color-text-faint: #9CA3AF;
-  --color-code-bg: #1E1E2E;
+  --color-text: #0F172A;
+  --color-text-muted: #475569;
+  --color-text-faint: #94A3B8;
+  --color-code-bg: #1E293B;
 }
 
 /* ── 2. Reset & Base ──────────────────────────────────────── */
@@ -1170,6 +1173,39 @@ code:not(pre > code) {
   border-bottom: none;
 }
 
+.sidebar-standalone {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sidebar-standalone:last-child {
+  border-bottom: none;
+}
+
+.sidebar-standalone-link {
+  display: block;
+  padding: 0.625rem 1.25rem 0.625rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  border-radius: var(--radius);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.sidebar-standalone-link:hover {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  text-decoration: none;
+}
+
+.sidebar-standalone-link.active {
+  color: var(--color-accent);
+  background: rgba(76, 32, 133, 0.08);
+  font-weight: 700;
+}
+
 .sidebar-section-header {
   display: flex;
   align-items: center;
@@ -1265,14 +1301,14 @@ code:not(pre > code) {
 }
 
 .sidebar-link.active {
-  color: var(--color-accent);
-  background: rgba(51, 108, 229, 0.08);
+  color: #4C2085;
+  background: rgba(76, 32, 133, 0.08);
   font-weight: 600;
 }
 
 [data-theme="dark"] .sidebar-link.active {
-  color: #60A5FA;
-  background: rgba(96, 165, 250, 0.08);
+  color: #A78BFA;
+  background: rgba(167, 139, 250, 0.1);
 }
 
 /* Overlay for mobile */
@@ -1861,14 +1897,14 @@ code:not(pre > code) {
 }
 
 .callout-info {
-  background: rgba(37, 99, 235, 0.05);
-  border-color: rgba(37, 99, 235, 0.3);
+  background: rgba(76,32,133, 0.05);
+  border-color: rgba(76,32,133, 0.3);
   border-left: 4px solid var(--color-info);
 }
 
 .callout-info .callout-header {
   color: var(--color-info);
-  background: rgba(37, 99, 235, 0.08);
+  background: rgba(76,32,133, 0.08);
 }
 
 .callout-warning {
@@ -2175,8 +2211,8 @@ code:not(pre > code) {
   justify-content: center;
   gap: 0.625rem;
   padding: 0.5rem 1.5rem;
-  background: linear-gradient(90deg, rgba(76,32,133,0.15) 0%, rgba(51,108,229,0.15) 100%);
-  border-bottom: 1px solid rgba(76,32,133,0.25);
+  background: linear-gradient(90deg, rgba(76,32,133,0.12) 0%, rgba(51,108,229,0.15) 100%);
+  border-bottom: 1px solid rgba(76,32,133,0.22);
   font-size: 0.8125rem;
   color: var(--color-text-muted);
   text-align: center;
@@ -2184,7 +2220,7 @@ code:not(pre > code) {
 }
 
 [data-theme="dark"] .dev-banner {
-  background: linear-gradient(90deg, rgba(76,32,133,0.25) 0%, rgba(51,108,229,0.2) 100%);
+  background: linear-gradient(90deg, rgba(76,32,133,0.22) 0%, rgba(51,108,229,0.2) 100%);
   border-bottom-color: rgba(167,139,250,0.2);
   color: #C4B5FD;
 }
@@ -2390,19 +2426,19 @@ code:not(pre > code) {
   display: none;
   position: fixed;
   bottom: 1.5rem;
-  left: 1.5rem;
-  z-index: 40;
+  right: 1.5rem;
+  z-index: 60;
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #fff;
-  background: var(--gradient-brand);
-  border-radius: var(--radius-full);
-  box-shadow: var(--shadow-lg);
-  cursor: pointer;
+  background: var(--color-accent);
+  color: white;
   border: none;
+  border-radius: 2rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(76,32,133,0.3);
   font-family: var(--font-sans);
 }
 
@@ -2433,23 +2469,11 @@ code:not(pre > code) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   CROSSPLANE-INSPIRED WARM REDESIGN ADDITIONS
+   EXTENDED THEME TOKENS
    ══════════════════════════════════════════════════════════════ */
 
-/* ── Override: Warmer light mode (Crossplane-feel) ─────────── */
 :root {
-  --color-bg: #FAFAF9;
-  --color-surface: #FFFFFF;
-  --color-surface-2: #F5F4F2;
-  --color-surface-3: #EEECEA;
-  --color-border: #E3E1DD;
-  --color-text: #1C1917;
-  --color-text-muted: #57534E;
-  --color-text-faint: #A8A29E;
-  --color-primary: #4C2085;
-  --color-primary-light: #6D3AB8;
-  --color-accent: #2563EB;
-  --color-accent-light: #3B82F6;
+  --color-surface-3: #E8EDF4;
   --color-success-bg: #F0FDF4;
   --color-success-border: #BBF7D0;
   --color-warning-bg: #FFFBEB;
@@ -2458,26 +2482,18 @@ code:not(pre > code) {
   --color-danger-border: #FECACA;
   --color-info-bg: #EFF6FF;
   --color-info-border: #BFDBFE;
-  --gradient-hero: linear-gradient(150deg, #1A0633 0%, #0F1B4D 45%, #060C1E 100%);
 }
 
 [data-theme="dark"] {
-  --color-bg: #0E0E16;
-  --color-surface: #17172A;
-  --color-surface-2: #1E1E33;
-  --color-surface-3: #252540;
-  --color-border: #2C2C4A;
-  --color-text: #F5F5F0;
-  --color-text-muted: #A8A29E;
-  --color-text-faint: #6B7280;
+  --color-surface-3: #1E2D42;
   --color-success-bg: rgba(5,150,105,0.1);
   --color-success-border: rgba(5,150,105,0.25);
   --color-warning-bg: rgba(217,119,6,0.1);
   --color-warning-border: rgba(217,119,6,0.25);
   --color-danger-bg: rgba(220,38,38,0.1);
   --color-danger-border: rgba(220,38,38,0.25);
-  --color-info-bg: rgba(37,99,235,0.1);
-  --color-info-border: rgba(37,99,235,0.25);
+  --color-info-bg: rgba(76,32,133,0.1);
+  --color-info-border: rgba(76,32,133,0.25);
 }
 
 /* ── Section labels (small uppercase eyebrow text) ─────────── */
@@ -2492,17 +2508,17 @@ code:not(pre > code) {
   background: rgba(76,32,133,0.08);
   padding: 0.25rem 0.75rem;
   border-radius: var(--radius-full);
-  border: 1px solid rgba(76,32,133,0.15);
+  border: 1px solid rgba(76,32,133,0.18);
 }
 
 [data-theme="dark"] .section-label {
   color: #C4B5FD;
-  background: rgba(196,181,253,0.08);
-  border-color: rgba(196,181,253,0.15);
+  background: rgba(147,197,253,0.08);
+  border-color: rgba(147,197,253,0.18);
 }
 
 .label-light {
-  color: rgba(196,181,253,0.9);
+  color: rgba(186,230,253,0.9);
   background: rgba(255,255,255,0.08);
   border-color: rgba(255,255,255,0.15);
 }
@@ -2683,7 +2699,7 @@ code:not(pre > code) {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(76,32,133,0.3) 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(76,32,133,0.25) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -2726,7 +2742,7 @@ code:not(pre > code) {
 .cc-screenshot-placeholder {
   border-radius: var(--radius-xl);
   overflow: hidden;
-  box-shadow: 0 0 80px rgba(76,32,133,0.5), 0 30px 60px rgba(0,0,0,0.5);
+  box-shadow: 0 0 80px rgba(76,32,133,0.45), 0 30px 60px rgba(0,0,0,0.5);
   border: 1px solid rgba(255,255,255,0.08);
 }
 
@@ -2791,7 +2807,7 @@ code:not(pre > code) {
 
 .cc-mock-nav-item.active {
   color: rgba(255,255,255,0.9);
-  background: rgba(76,32,133,0.35);
+  background: rgba(76,32,133,0.30);
 }
 
 .cc-mock-main {
@@ -3208,7 +3224,7 @@ code:not(pre > code) {
 .DocSearch-Button:hover {
   background: var(--color-bg) !important;
   border-color: var(--color-accent) !important;
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.15) !important;
+  box-shadow: 0 0 0 3px rgba(76,32,133,0.15) !important;
 }
 
 .DocSearch-Button-Placeholder {

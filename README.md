@@ -169,7 +169,7 @@ Traditional operators are binaries. One per CRD. One deployment per operator. Te
 Orkestra changes the unit of distribution. Operators are **Katalogs** — YAML **patterns** packaged as OCI artifacts. The runtime is already installed. The artifact tells it what to do.
 
 ```yaml
-sources:
+imports:
   registry:
     - url: ghcr.io/orkspace/registry/postgres:v14
       oci: true
@@ -774,7 +774,7 @@ operatorBox:
 | [Katalog Reference](https://docs.orkestra.sh/reference/katalog-schema) | Complete field reference |
 | [Examples](./examples/) | Beginner → advanced, all verified |
 | [Concepts](https://docs.orkestra.sh/concepts) | Architecture and mental model |
-| [Papers](https://docs.orkestra.sh/papers) | The case for declarative operators |
+| [Papers](https://docs.orkestra.sh/publications) | The case for declarative operators |
 
 ---
 

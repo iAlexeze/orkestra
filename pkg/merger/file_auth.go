@@ -10,40 +10,39 @@ import (
 	"github.com/orkspace/orkestra/pkg/utils"
 )
 
-// loadSourceFileWithAuth loads a Katalog source file with optional authentication.
-// The source must be a Katalog — Komposers cannot source other Komposers.
-func (m *Merger) loadSourceFileWithAuth(komposerPath, sourcePath string, auth *utils.FileAuth) (map[string]orktypes.CRDEntry, error) {
-	data, err := utils.LoadFileWithAuth(sourcePath, auth)
+// loadImportFileWithAuth loads a Katalog import file with optional authentication.
+// Imports must be Katalogs — a Komposer cannot import another Komposer.
+func (m *Merger) loadImportFileWithAuth(komposerPath, importPath string, auth *utils.FileAuth) (map[string]orktypes.CRDEntry, error) {
+	data, err := utils.LoadFileWithAuth(importPath, auth)
 	if err != nil {
-		return nil, fmt.Errorf("reading %q: %w", sourcePath, err)
+		return nil, fmt.Errorf("reading %q: %w", importPath, err)
 	}
 
-	doc, err := parseKatalogDoc(data, sourcePath)
+	doc, err := parseKatalogDoc(data, importPath)
 	if err != nil {
 		return nil, err
 	}
 	if doc == nil {
 		logger.Debug().
-			Str("path", sourcePath).
-			Msg("merger: skipping source — not a valid Katalog document")
+			Str("path", importPath).
+			Msg("merger: skipping import — not a valid Katalog document")
 		return nil, nil
 	}
 
-	// Komposer sources must be Katalogs — not other Komposers
 	if doc.Kind == konfig.KomposerKind() {
 		return nil, fmt.Errorf(
-			"%q sources.files[%q]: a Komposer cannot source another Komposer — "+
-				"only Katalog files are valid sources",
-			komposerPath, sourcePath,
+			"%q imports.files[%q]: a Komposer cannot import another Komposer — "+
+				"only Katalog files are valid imports",
+			komposerPath, importPath,
 		)
 	}
 
 	if doc.Kind != konfig.KatalogKind() {
 		return nil, fmt.Errorf(
-			"%q sources.files[%q]: expected kind %q, got %q",
-			komposerPath, sourcePath, konfig.KatalogKind(), doc.Kind,
+			"%q imports.files[%q]: expected kind %q, got %q",
+			komposerPath, importPath, konfig.KatalogKind(), doc.Kind,
 		)
 	}
 
-	return m.loadKatalog(sourcePath, doc)
+	return m.loadKatalog(importPath, doc)
 }

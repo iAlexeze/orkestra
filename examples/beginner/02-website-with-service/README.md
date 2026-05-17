@@ -123,6 +123,45 @@ kubectl get website my-site -o jsonpath='{.status.observedReplicas}'
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies the CRD, starts the operator, applies the CR, asserts every expectation, then tears down:
+
+```bash
+ork e2e -f e2e.yaml
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Deployment and Service created
+    after: cr-applied
+    timeout: 60s
+    resources:
+      - kind: Deployment
+        namespace: default
+        ready: true
+      - kind: Service
+        name: my-site
+        namespace: default
+
+  - name: Cleanup verified
+    after: cr-deleted
+    timeout: 30s
+    resources:
+      - kind: Deployment
+        name: my-site
+        namespace: default
+        count: 0
+      - kind: Service
+        name: my-site
+        namespace: default
+        count: 0
+```
+
+---
+
 ## Cleanup
 
 ```bash

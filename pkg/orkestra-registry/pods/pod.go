@@ -20,7 +20,7 @@ import (
 // Create creates a Pod owned by the CR if it does not already exist.
 // Idempotent — if the Pod exists, does nothing and returns nil.
 // Owner reference is set so the Pod is garbage collected when the CR is deleted.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPodSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPodSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("pod.Create: invalid spec: %w", err)
 	}
@@ -61,7 +61,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Update reconciles an existing Pod to match the resolved spec.
 // Pods are largely immutable — image drift triggers delete + recreate.
 // If the Pod does not exist, creates it.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPodSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPodSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("pod.Update: invalid spec: %w", err)
 	}
@@ -121,7 +121,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Delete deletes the Pod if it exists.
 // For most cases owner references handle cascade deletion automatically —
 // only use this when you need explicit cleanup control in onDelete.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPodSpec) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPodSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -149,7 +149,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the Pod if it exists and is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().CoreV1().Pods(namespace).

@@ -25,11 +25,11 @@ func TestFromContext_NotPresent_ReturnsFalse(t *testing.T) {
 	}
 }
 
-func TestFromContext_NilKubeclient_ReturnsFalse(t *testing.T) {
-	ctx := context.WithValue(context.Background(), ContextKey, (*Kubeclient)(nil))
+func TestFromContext_WrongType_ReturnsFalse(t *testing.T) {
+	ctx := context.WithValue(context.Background(), ContextKey, "not-a-kubeclient")
 	_, ok := FromContext(ctx)
 	if ok {
-		t.Error("nil Kubeclient in context must return ok=false")
+		t.Error("wrong type in context must return ok=false")
 	}
 }
 

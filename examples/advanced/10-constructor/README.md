@@ -188,6 +188,37 @@ kubectl apply -f cr.yaml
 
 ---
 
+## E2E
+
+Run the full typed operator lifecycle in one command — spins up a kind cluster, builds and deploys the operator, applies the CR, asserts the state machine ran to completion, then tears down:
+
+```bash
+ork e2e -f e2e.yaml
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Pipeline deployment created
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        namespace: default
+        ready: true
+
+  - name: Deployment removed on delete
+    after: cr-deleted
+    timeout: 30s
+    resources:
+      - kind: Deployment
+        namespace: default
+        count: 0
+```
+
+---
+
 ## Cleanup
 
 ```bash

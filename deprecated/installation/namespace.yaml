@@ -1,9 +1,0 @@
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: orkestra-system
-  labels:
-    app.kubernetes.io/name: orkestra
-    app.kubernetes.io/managed-by: orkestra
-

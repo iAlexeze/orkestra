@@ -5,53 +5,46 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-func makeValidPatternDir(t *testing.T) string {
+func makeKatalogPatternDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	for _, f := range orktypes.RequiredFiles {
-		if err := os.WriteFile(filepath.Join(dir, f), []byte("content"), 0644); err != nil {
-			t.Fatalf("writing %s: %v", f, err)
-		}
+	if err := os.WriteFile(filepath.Join(dir, "katalog.yaml"), []byte("kind: Katalog\n"), 0644); err != nil {
+		t.Fatalf("writing katalog.yaml: %v", err)
 	}
 	return dir
 }
 
-func TestValidatePatternStructure_Valid(t *testing.T) {
-	dir := makeValidPatternDir(t)
+func TestValidatePatternStructure_KatalogOnly_Valid(t *testing.T) {
+	dir := makeKatalogPatternDir(t)
 	if err := validatePatternStructure(dir, "https://example.com/registry", "v1.0"); err != nil {
-		t.Errorf("valid pattern must not error: %v", err)
+		t.Errorf("katalog.yaml alone must pass: %v", err)
 	}
 }
 
-func TestValidatePatternStructure_MissingFile(t *testing.T) {
-	dir := makeValidPatternDir(t)
-	os.Remove(filepath.Join(dir, "crd.yaml"))
-	err := validatePatternStructure(dir, "https://example.com/registry", "v1.0")
-	if err == nil {
-		t.Error("missing required file must return error")
-	}
-}
-
-func TestValidatePatternStructure_EmptyFile(t *testing.T) {
-	dir := makeValidPatternDir(t)
-	// Overwrite one file with empty content
-	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte{}, 0644); err != nil {
+func TestValidatePatternStructure_MotifOnly_Valid(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "motif.yaml"), []byte("kind: Motif\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	err := validatePatternStructure(dir, "https://example.com/registry", "v1.0")
-	if err == nil {
-		t.Error("empty required file must return error")
+	if err := validatePatternStructure(dir, "https://example.com/registry", "v1.0"); err != nil {
+		t.Errorf("motif.yaml alone must pass: %v", err)
 	}
 }
 
-func TestValidatePatternStructure_AllMissing(t *testing.T) {
-	dir := t.TempDir() // empty dir
-	err := validatePatternStructure(dir, "https://example.com/registry", "v1.0")
-	if err == nil {
-		t.Error("all files missing must return error")
+func TestValidatePatternStructure_MissingPrimaryFile(t *testing.T) {
+	dir := t.TempDir()
+	// Only a crd.yaml — no katalog.yaml or motif.yaml
+	os.WriteFile(filepath.Join(dir, "crd.yaml"), []byte("content"), 0644)
+	if err := validatePatternStructure(dir, "https://example.com/registry", "v1.0"); err == nil {
+		t.Error("missing primary file must return error")
+	}
+}
+
+func TestValidatePatternStructure_EmptyDir(t *testing.T) {
+	dir := t.TempDir()
+	if err := validatePatternStructure(dir, "https://example.com/registry", "v1.0"); err == nil {
+		t.Error("empty dir must return error")
 	}
 }

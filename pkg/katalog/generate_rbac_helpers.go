@@ -40,14 +40,23 @@ func (k *Katalog) HasConversionPaths() bool {
 	return false
 }
 
+// activeCRDs returns the processed CRD map when available, falling back to the
+// raw spec map. This allows helpers to work on bare Katalog structs (e.g. in
+// tests) before ParseFile/KomposeRuntimeKatalog has populated enabledCRDs.
+func (k *Katalog) activeCRDs() map[string]orktypes.CRDEntry {
+	if len(k.enabledCRDs) > 0 {
+		return k.enabledCRDs
+	}
+	return k.Spec.CRDs
+}
+
 // HasValidationRules returns true only if:
-//  1. Admission is enabled in konfig, AND
+//  1. Admission is enabled, AND
 //  2. At least one CRD declares validation rules.
 //
 // This ensures /validate is created ONLY when the user declares rules.
 func (k *Katalog) HasValidationRules() bool {
-	if k == nil || k.konfig == nil {
-		logger.Debug().Msg("katalog or konfig is nil")
+	if k == nil {
 		return false
 	}
 
@@ -56,12 +65,10 @@ func (k *Katalog) HasValidationRules() bool {
 		return false
 	}
 
-	for _, crd := range k.Enabled() {
+	for _, crd := range k.activeCRDs() {
 		if crd.Validation == nil {
-			logger.Debug().Str("crd", crd.Name).Msg("validation is nil")
 			continue
 		}
-
 		if len(crd.Validation.Rules) > 0 {
 			logger.Debug().Str("crd", crd.Name).Msg("validation has rules")
 			return true
@@ -71,13 +78,12 @@ func (k *Katalog) HasValidationRules() bool {
 }
 
 // HasMutationRules returns true only if:
-//  1. Admission is enabled in konfig, AND
+//  1. Admission is enabled, AND
 //  2. At least one CRD declares mutation rules.
 //
 // This ensures /mutate is created ONLY when the user declares rules.
 func (k *Katalog) HasMutationRules() bool {
-	if k == nil || k.konfig == nil {
-		logger.Debug().Msg("katalog or konfig is nil")
+	if k == nil {
 		return false
 	}
 
@@ -86,13 +92,10 @@ func (k *Katalog) HasMutationRules() bool {
 		return false
 	}
 
-	for _, crd := range k.Enabled() {
-		// Protect against nil Mutation or nil Rules
+	for _, crd := range k.activeCRDs() {
 		if crd.Mutation == nil {
-			logger.Debug().Str("crd", crd.Name).Msg("mutation is nil")
 			continue
 		}
-
 		if len(crd.Mutation.Rules) > 0 {
 			logger.Debug().Str("crd", crd.Name).Msg("mutation has rules")
 			return true
@@ -101,19 +104,13 @@ func (k *Katalog) HasMutationRules() bool {
 	return false
 }
 
-// HasValidationOrMutationRules returns true only if:
-// - There is at least one CRD that declares validation or mutation rules.
-// - Admission is enabled in konfig.
+// HasValidationOrMutationRules returns true if admission is enabled and at
+// least one CRD declares validation or mutation rules.
 func (k *Katalog) HasValidationOrMutationRules() bool {
-	if k == nil || k.konfig == nil {
-		logger.Debug().Msg("katalog or konfig is nil")
+	if k == nil {
 		return false
 	}
-
-	if k.HasValidationRules() || k.HasMutationRules() {
-		return true
-	}
-	return false
+	return k.HasValidationRules() || k.HasMutationRules()
 }
 
 // Uses returns true if ANY CRD in the katalog uses the given resource type.

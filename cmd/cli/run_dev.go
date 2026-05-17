@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/orkspace/orkestra/cmd/internal"
 	"github.com/orkspace/orkestra/pkg/doctor"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
@@ -16,13 +17,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	// Add --dev flag for development builds
-	runCmd.Flags().Bool("dev", false, "Create a local Kind cluster if none is reachable (development only)")
-
-	// Replace the command's RunE with a wrapper that handles cluster creation
-	originalRunE := runCmd.RunE
-	runCmd.RunE = func(cmd *cobra.Command, args []string) error {
+// runCmd is the full dev build version of ork run.
+// The production version lives in run.go (//go:build runtime).
+// This file owns the command registration for dev builds and layers
+// the --dev cluster-setup behaviour on top of the core production logic.
+var runCmd = &cobra.Command{
+	Use:   "run",
+	Short: "Start the Orkestra operator runtime",
+	RunE: func(cmd *cobra.Command, args []string) error {
 		dev, _ := cmd.Flags().GetBool("dev")
 
 		if dev {
@@ -36,8 +38,6 @@ func init() {
 				if err := doctor.EnsureKindCluster(doctor.KindClusterName); err != nil {
 					return fmt.Errorf("setting up kind cluster: %w", err)
 				}
-				// After cluster creation, the kubeconfig is pointed to the new cluster.
-				// The original run will now be able to connect.
 			}
 		} else if !doctor.ClusterReachable() {
 			fmt.Println("\n  Cannot reach Kubernetes cluster.")
@@ -46,22 +46,42 @@ func init() {
 			fmt.Println("    • kubectl")
 			fmt.Println("    • helm")
 			fmt.Println()
-
 			return fmt.Errorf("cluster not reachable\n")
 		}
 
-		// Apply declared crdFile paths before handing off to the runtime.
-		// In-cluster check is inside — this is a no-op in production.
 		paths, _ := cmd.Flags().GetStringSlice("file")
-		if len(paths) > 0 {
-			m := merger.New(paths...)
-			if err := m.Merge(); err == nil {
-				applyCRDFilesIfNeeded(cmd.Context(), paths[0], m)
+		if len(paths) == 0 {
+			paths = kfg.Katalog().Paths
+			if len(paths) == 0 {
+				return fmt.Errorf("--file is required or set 'KATALOG_PATH' variable")
 			}
 		}
 
-		return originalRunE(cmd, args)
-	}
+		m := merger.New(paths...)
+		if err := m.Merge(); err != nil {
+			return fmt.Errorf("merging katalogs: %w", err)
+		}
+
+		logger.Debug().
+			Strs("katalogs", paths).
+			Int("total", m.Count()).
+			Int("enabled", m.EnabledCount()).
+			Msg("katalogs merged")
+
+		// Apply declared crdFile paths before handing off to the runtime.
+		if len(paths) > 0 {
+			applyCRDFilesIfNeeded(cmd.Context(), paths[0], m)
+		}
+
+		internal.Konduct(kfg, m, ctx)
+		return nil
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(runCmd)
+	runCmd.Flags().StringSliceP("file", "f", nil, "Path(s) to katalog.yaml (repeatable)")
+	runCmd.Flags().Bool("dev", false, "Create a local Kind cluster if none is reachable (development only)")
 }
 
 // applyCRDFilesIfNeeded applies any crdFile declarations via kubectl before the
@@ -86,7 +106,6 @@ func applyCRDFilesIfNeeded(ctx context.Context, katalogPath string, m *merger.Me
 
 		out, err := exec.CommandContext(ctx, "kubectl", "apply", "-f", path).CombinedOutput()
 		if err != nil {
-			// Best effort — CRD may already exist at the correct version.
 			logger.Warn().
 				Str("crd", crdName).
 				Str("path", path).

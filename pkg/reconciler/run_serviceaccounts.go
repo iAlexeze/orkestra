@@ -23,7 +23,7 @@ import (
 // Owner references ensure cleanup when the CR is deleted.
 func runServiceAccounts(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.ServiceAccountTemplateSource,

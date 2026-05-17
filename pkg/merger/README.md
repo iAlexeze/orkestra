@@ -7,7 +7,7 @@ The merger package resolves and merges Katalog/Komposer YAML files into a single
 | File | Role |
 |------|------|
 | `merger.go` | `Merger` struct, `New`, `Merge`, `Enabled`, `All`, `Get`, `ToSpec`, `ToSecurity`, `ToNotification`, `ToProviders`, `ToUI` |
-| `file.go` | `loadKatalogFile` dispatcher; `loadKatalog` (Katalog kind); `loadKomposer` (Komposer kind — sources + inline merge + accumulation) |
+| `file.go` | `loadKatalogFile` dispatcher; `loadKatalog` (Katalog kind); `loadKomposer` (Komposer kind — imports + inline merge + accumulation) |
 | `parse.go` | `parseKatalogDoc` — YAML decode + kind validation |
 | `file_auth.go` | `loadSourceFileWithAuth` — HTTP/S fetch with bearer/basic auth; local file read |
 | `helm.go` | `loadHelmSource` — Helm chart render → Katalog template extraction |
@@ -19,13 +19,13 @@ The merger package resolves and merges Katalog/Komposer YAML files into a single
 ```
 Katalog  (kind: Katalog)
   Declares CRDs directly in spec.crds.
-  Must NOT declare sources — sources are a Komposer concern.
+  Must NOT declare imports — imports are a Komposer concern.
 
 Komposer (kind: Komposer)
-  Resolves sources (registry → files → helm) in that order.
+  Resolves imports (registry → files → helm) in that order.
   Inline spec.crds are merged last and win on name conflict.
   Top-level fields (security, notification, providers) are
-  accumulated across all sources; the Komposer's own block
+  accumulated across all imports; the Komposer's own block
   wins on conflict.
 ```
 
@@ -70,6 +70,6 @@ Full step-by-step documentation is in [docs/](docs/README.md).
 |-----------|-------|
 | Understand the full merge pipeline | [01 — Architecture](docs/01-architecture.md) |
 | Understand Katalog vs Komposer rules | [02 — Kinds](docs/02-kinds.md) |
-| Add or understand a source type | [03 — Sources](docs/03-sources.md) |
+| Add or understand a source type | [03 — Imports](docs/03-imports.md) |
 | Debug duplicate CRD name errors | [04 — Deduplication](docs/04-deduplication.md) |
 | Understand security/notification/providers inheritance | [05 — Top-Level Accumulation](docs/05-top-level-accumulation.md) |

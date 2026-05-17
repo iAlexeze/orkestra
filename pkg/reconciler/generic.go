@@ -66,8 +66,8 @@ type GenericReconciler[PTR domain.Object] struct {
 	providerRegistry  orktypes.ProviderRegistry
 	providerStats     providerStatsRecorder
 	informer          cache.SharedIndexInformer
-	event             *event.Event
-	kube              *kubeclient.Kubeclient
+	event             event.Recorder
+	kube              kubeclient.KubeClient
 	// hooks holds type-erased, domain.Object-parameterized callbacks built at
 	// construction time from the user's ReconcileHooks[PTR]. Stored as
 	// ObjectHooks rather than ReconcileHooks[PTR] so the reconciler remains
@@ -130,8 +130,8 @@ type GenericReconciler[PTR domain.Object] struct {
 func NewGenericReconciler[PTR domain.Object](
 	crd orktypes.CRDEntry,
 	informer cache.SharedIndexInformer,
-	ev *event.Event,
-	kube *kubeclient.Kubeclient,
+	ev event.Recorder,
+	kube kubeclient.KubeClient,
 	anyHooks domain.AnyReconcileHooks,
 	newObj func() PTR,
 	katalogRegistry *kordinator.ResourceKatalog,

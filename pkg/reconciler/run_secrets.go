@@ -34,7 +34,7 @@ import (
 
 func runSecrets(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.SecretTemplateSource,
@@ -229,7 +229,7 @@ func runSecrets(
 // certificate and creates/updates a kubernetes.io/tls Secret.
 func runTLSSecret(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	src orktypes.SecretTemplateSource,

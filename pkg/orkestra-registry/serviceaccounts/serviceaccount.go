@@ -41,7 +41,7 @@ type ResolvedServiceAccountSpec struct {
 // ServiceAccounts have no meaningful spec fields that can drift after creation.
 // There is no Update function — Create is called from both onCreate and
 // onReconcile paths. If it exists, it stays. If it was deleted, it is recreated.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedServiceAccountSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedServiceAccountSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("serviceaccount.Create: invalid spec: %w", err)
 	}
@@ -82,7 +82,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Delete deletes the ServiceAccount if it exists.
 // For most cases owner references handle cleanup automatically —
 // only use this when explicit cleanup control is needed.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedServiceAccountSpec) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedServiceAccountSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -110,7 +110,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the ServiceAccount if it exists and is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().CoreV1().ServiceAccounts(namespace).

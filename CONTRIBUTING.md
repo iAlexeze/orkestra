@@ -62,12 +62,12 @@ Steps:
 1. Create a file with:
    apiVersion: orkestra.orkspace.io/v1
    kind: Komposer
-   sources: {}
+   imports: {}
    
 2. Run: ork validate --file ./test.yaml
 
 Expected: Validation fails with clear error
-Actual: Panics with "sources: unbound variable"
+Actual: Panics with "imports: unbound variable"
 ```
 
 ### Suggesting Enhancements
@@ -94,7 +94,7 @@ Solution: Add a new `sources.s3` field that accepts:
    - optional credentials via env vars
 
 Example:
-   sources:
+   imports:
      s3:
        - bucket: my-org-katalogs
          key: platform/crds.yaml
@@ -317,7 +317,7 @@ Closes #123
 ```
 fix(validate): handle empty sources block without crashing
 
-Previously, an empty sources: {} block would cause a panic.
+Previously, an empty imports: {} block would cause a panic.
 Now it returns a validation error.
 
 Fixes #456

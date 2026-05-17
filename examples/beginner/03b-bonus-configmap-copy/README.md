@@ -109,12 +109,52 @@ A platform primitive that solves a real problem — distributing shared configur
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies setup fixtures, starts the operator, applies the CR, asserts every expectation, then tears down:
+
+```bash
+ork e2e -f e2e.yaml
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: ConfigMap distributed to team-alpha
+    after: cr-applied
+    timeout: 60s
+    resources:
+      - kind: ConfigMap
+        name: app-config
+        namespace: team-alpha
+
+  - name: ConfigMap distributed to team-beta
+    after: cr-applied
+    timeout: 60s
+    resources:
+      - kind: ConfigMap
+        name: app-config
+        namespace: team-beta
+
+  - name: ConfigMaps removed on delete
+    after: cr-deleted
+    timeout: 30s
+    resources:
+      - kind: ConfigMap
+        name: app-config
+        namespace: team-alpha
+        count: 0
+      - kind: ConfigMap
+        name: app-config
+        namespace: team-beta
+        count: 0
+```
+
+---
+
 ## Cleanup
 
 ```bash
 chmod +x cleanup.sh && ./cleanup.sh
 ```
-
----
-
-If you want, I can also generate the matching `katalog.yaml` entry for ConfigMapDistribution or the reconciler template for copying ConfigMaps.

@@ -292,7 +292,7 @@ configuration is a Komposer override, not a fork.
 
 ```yaml
 kind: Komposer
-sources:
+imports:
   files:
     - https://platform.myorg.io/crds/base.yaml
   registry:

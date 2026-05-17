@@ -21,7 +21,7 @@ import (
 // are not honoured by the garbage collector. Explicit deletion is required.
 func deleteOwnedNamespaces(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	obj domain.Object,
 	box orktypes.OperatorBoxConfig,
@@ -60,7 +60,7 @@ func deleteOwnedNamespaces(
 // Owner references ensure cleanup when the CR is deleted.
 func runNamespaces(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.NamespaceTemplateSource,

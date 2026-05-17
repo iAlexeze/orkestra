@@ -159,7 +159,7 @@ spec:
     sourced-crd:
       enabled: true
 `)
-	komposerContent := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: test-komposer\nsources:\n  files:\n    - url: " + katalogPath + "\nspec:\n  crds: {}\n"
+	komposerContent := "apiVersion: orkestra.orkspace.io/v1\nkind: Komposer\nmetadata:\n  name: test-komposer\nimports:\n  files:\n    - url: " + katalogPath + "\nspec:\n  crds: {}\n"
 	komposerPath := writeTemp(t, komposerContent)
 
 	m := merger.New(komposerPath)

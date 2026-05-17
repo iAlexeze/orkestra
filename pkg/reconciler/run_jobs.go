@@ -31,7 +31,7 @@ import (
 // being deleted — the Job must complete independently after the CR is gone.
 func runJobs(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.JobTemplateSource,

@@ -24,8 +24,8 @@ var patternSpecs = map[PatternKind]*PatternSpec{
 		Kind:          KatalogKind,
 		MediaType:     "application/vnd.orkestra.pattern.v1+tar+gzip",
 		PrimaryFile:   FileKatalog,
-		RequiredFiles: []string{FileKatalog, FileCRD},
-		OptionalFiles: []string{FileReadme, FileCR},
+		RequiredFiles: []string{FileKatalog},
+		OptionalFiles: []string{FileCRD, FileReadme, FileCR, FileE2E},
 	},
 	MotifKind: {
 		Kind:          MotifKind,
@@ -165,6 +165,8 @@ func mediaTypeForPatternFile(name string, k PatternKind) string {
 		return "text/markdown"
 	case FileMotif:
 		return "application/vnd.orkestra.motif.v1+yaml"
+	case FileE2E:
+		return "application/vnd.orkestra.e2e.v1+yaml"
 	default:
 		return "application/octet-stream"
 	}

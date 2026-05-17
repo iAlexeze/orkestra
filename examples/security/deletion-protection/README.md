@@ -263,6 +263,54 @@ A safety poll (`WEBHOOK_CONTROLLER_SYNC_INTERVAL`, default 30 s) continues in pa
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, deploys the operator, applies CRs, asserts protection behaviour, then tears down:
+
+```bash
+ork e2e -f e2e.yaml
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: App deployment created
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        name: my-app-app
+        namespace: default
+        ready: true
+
+  - name: Protected CRD deletion blocked by webhook
+    after: cr-applied
+    timeout: 30s
+    commands:
+      - run: kubectl delete crd apps.security.orkestra.io
+        exitCode: 1
+        outputContains: "denied the request"
+
+  - name: Unprotected CRD can be deleted freely
+    after: cr-applied
+    timeout: 30s
+    commands:
+      - run: kubectl delete crd logstreams.security.orkestra.io --ignore-not-found
+        exitCode: 0
+
+  - name: App deployment removed on delete
+    after: cr-deleted
+    timeout: 30s
+    resources:
+      - kind: Deployment
+        name: my-app-app
+        namespace: default
+        count: 0
+```
+
+---
+
 ## Cleanup
 To be able to delete this Orkestra deployment, we need to disable deletion protection from the katalog
 

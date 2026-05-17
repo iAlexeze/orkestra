@@ -1,0 +1,199 @@
+# Writing Your First Katalog
+
+A **Katalog** is a YAML file that tells Orkestra what to do when a Custom Resource is created, updated, or deleted. This guide builds one from scratch.
+
+---
+
+## The Minimal Katalog
+
+Create `katalog.yaml`:
+
+```yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: my-first-katalog
+
+spec:
+  crds:
+    myapp:
+      crdFile: ./crd.yaml
+      operatorBox:
+        default: true
+```
+
+This tells Orkestra: read the CRD from `crd.yaml`, apply it to the cluster, and watch for `MyApp` CRs. No resources are created yet.
+
+`crdFile` is how you declare a CRD. Orkestra reads `group`, `version`, `kind`, and `plural` directly from the file and applies it to the cluster when `ork run` starts. No separate `kubectl apply -f crd.yaml` needed.
+
+---
+
+## The CRD
+
+Create `crd.yaml`:
+
+```yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: myapps.demo.myorg.io
+spec:
+  group: demo.myorg.io
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                replicas:
+                  type: integer
+                  default: 1
+                port:
+                  type: integer
+                  default: 80
+  scope: Namespaced
+  names:
+    plural: myapps
+    singular: myapp
+    kind: MyApp
+```
+
+---
+
+## Adding a Deployment
+
+```yaml
+spec:
+  crds:
+    myapp:
+      crdFile: ./crd.yaml
+      operatorBox:
+        default: true
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+```
+
+Values inside `{{ }}` are Go templates evaluated against the live CR. `reconcile: true` means the Deployment is drift-corrected on every reconcile — if someone edits it manually, Orkestra corrects it back.
+
+---
+
+## Adding a Service
+
+```yaml
+onCreate:
+  deployments:
+    - name: "{{ .metadata.name }}"
+      image: "{{ .spec.image }}"
+      replicas: "{{ .spec.replicas }}"
+      port: "{{ .spec.port }}"
+      reconcile: true
+  services:
+    - name: "{{ .metadata.name }}-svc"
+      port: "80"
+      targetPort: "{{ .spec.port }}"
+      reconcile: true
+```
+
+---
+
+## Conditional Resources
+
+Use `when:` to create a resource only when a condition is met:
+
+```yaml
+services:
+  - name: "{{ .metadata.name }}-public"
+    port: "80"
+    targetPort: "{{ .spec.port }}"
+    when:
+      - field: spec.exposePublicly
+        equals: "true"
+```
+
+---
+
+## Status Fields
+
+Write values back to the CR after every reconcile:
+
+```yaml
+operatorBox:
+  default: true
+  status:
+    fields:
+      - path: phase
+        value: "Running"
+      - path: observedReplicas
+        value: "{{ .spec.replicas }}"
+  onCreate:
+    deployments:
+      - name: "{{ .metadata.name }}"
+        image: "{{ .spec.image }}"
+        replicas: "{{ .spec.replicas }}"
+        reconcile: true
+```
+
+The CRD must declare `subresources: status: {}` for status writes to work.
+
+---
+
+## Dependencies Between CRDs
+
+If your Katalog manages multiple CRDs and one must reconcile before the other:
+
+```yaml
+spec:
+  crds:
+    database:
+      crdFile: ./database-crd.yaml
+      operatorBox:
+        default: true
+    application:
+      crdFile: ./application-crd.yaml
+      dependsOn:
+        - database
+      operatorBox:
+        default: true
+```
+
+Orkestra starts `database` first and waits until it is healthy before starting `application`.
+
+---
+
+## Running It
+
+```bash
+ork run -f katalog.yaml
+```
+
+Apply a CR:
+
+```bash
+kubectl apply -f myapp-cr.yaml
+kubectl get deployments
+```
+
+---
+
+## Validate Without Running
+
+```bash
+ork validate -f katalog.yaml
+```
+
+Resolves the CRD, merges all sources, and reports every error without touching the cluster.

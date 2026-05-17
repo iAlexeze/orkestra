@@ -1,3 +1,5 @@
+//go:build runtime
+
 // run.go — Production runtime entrypoint.
 //
 // This command has one responsibility: run Orkestra.

@@ -285,6 +285,47 @@ A safety poll (`WEBHOOK_CONTROLLER_SYNC_INTERVAL`, default 30 s) continues in pa
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, deploys the operator, applies the valid CR, asserts admission behaviour, then tears down:
+
+```bash
+ork e2e -f e2e.yaml
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Valid CR accepted — deployment created
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        name: my-platform-platform
+        namespace: default
+        ready: true
+
+  - name: Invalid CR rejected by webhook
+    after: cr-applied
+    timeout: 30s
+    commands:
+      - run: kubectl apply -f ./cr-bad.yaml
+        exitCode: 1
+        outputContains: "denied the request"
+
+  - name: Deployment removed on delete
+    after: cr-deleted
+    timeout: 30s
+    resources:
+      - kind: Deployment
+        name: my-platform-platform
+        namespace: default
+        count: 0
+```
+
+---
+
 ## Cleanup
 
 `cleanupOnShutdown: true` removes both webhook configurations, the TLS Secret, and all other security resources automatically when Orkestra stops:

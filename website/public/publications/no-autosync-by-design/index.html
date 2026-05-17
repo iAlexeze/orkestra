@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Orkestra Does Not Auto-Sync — And That&#39;s the Point — Orkestra">
 <meta property="og:description" content="*Orkestra Project — March 2026*">
-<meta property="og:url" content="http://localhost:8191/publications/no-autosync-by-design/">
+<meta property="og:url" content="http://localhost:8090/publications/no-autosync-by-design/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.e4f35e028b4e342d94b5258699fa7b53e53b1f54212c3a40fb2a70e627bba458.css">
+<link rel="stylesheet" href="/css/main.min.ed4127849a94162676f586309f939b9ad14e1a02ea340295071b0613d5493ba5.css">
 
 
 
@@ -65,7 +65,7 @@
     <ul class="navbar-links" role="list">
       
       <li>
-        <a href="/docs/" class="navbar-link"
+        <a href="/docs/getting-started/" class="navbar-link"
           >
           Docs
           
@@ -73,17 +73,9 @@
       </li>
       
       <li>
-        <a href="/publications/" class="navbar-link"
+        <a href="/docs/reference/" class="navbar-link"
           >
-          Publications
-          
-        </a>
-      </li>
-      
-      <li>
-        <a href="/docs/use-cases/" class="navbar-link"
-          >
-          Use Cases
+          Reference
           
         </a>
       </li>
@@ -92,6 +84,14 @@
         <a href="/blog/" class="navbar-link"
           >
           Blog
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-link"
+          >
+          Publications
           
         </a>
       </li>
@@ -142,23 +142,16 @@
     <ul role="list">
       
       <li>
-        <a href="/docs/" class="navbar-mobile-link"
+        <a href="/docs/getting-started/" class="navbar-mobile-link"
           >
           Docs
         </a>
       </li>
       
       <li>
-        <a href="/publications/" class="navbar-mobile-link"
+        <a href="/docs/reference/" class="navbar-mobile-link"
           >
-          Publications
-        </a>
-      </li>
-      
-      <li>
-        <a href="/docs/use-cases/" class="navbar-mobile-link"
-          >
-          Use Cases
+          Reference
         </a>
       </li>
       
@@ -166,6 +159,13 @@
         <a href="/blog/" class="navbar-mobile-link"
           >
           Blog
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-mobile-link"
+          >
+          Publications
         </a>
       </li>
       
@@ -217,7 +217,8 @@
 <h2 id="1-the-industry-default-continuous-sync">1. The Industry Default: Continuous Sync</h2>
 <p>Tools like GitOps controllers, CI/CD pipelines, and deployment managers are built around a simple loop:</p>
 <blockquote>
-<p>Source changes → system detects → system applies</p></blockquote>
+<p>Source changes → system detects → system applies</p>
+</blockquote>
 <p>This works because the unit being deployed is typically:</p>
 <ul>
 <li>A stateless service</li>
@@ -227,7 +228,8 @@
 <p>Frequent updates are expected. Drift is undesirable. Automation is the goal.</p>
 <p>But this model assumes something critical:</p>
 <blockquote>
-<p>That the source of truth is always safe to apply immediately.</p></blockquote>
+<p>That the source of truth is always safe to apply immediately.</p>
+</blockquote>
 <p>For CRDs, this assumption breaks.</p>
 <hr>
 <h2 id="2-crds-are-not-deployments--they-are-apis">2. CRDs Are Not Deployments — They Are APIs</h2>
@@ -250,7 +252,8 @@
 </ul>
 <p>In other words:</p>
 <blockquote>
-<p>Auto-syncing CRDs is equivalent to auto-deploying breaking API changes.</p></blockquote>
+<p>Auto-syncing CRDs is equivalent to auto-deploying breaking API changes.</p>
+</blockquote>
 <p>Orkestra refuses to do this.</p>
 <hr>
 <h2 id="3-orkestras-model-stability-over-reactivity">3. Orkestra&rsquo;s Model: Stability Over Reactivity</h2>
@@ -266,7 +269,8 @@
 <p>Then it stops listening.</p>
 <p>From that point forward:</p>
 <blockquote>
-<p>The runtime is fixed. Only the cluster state changes.</p></blockquote>
+<p>The runtime is fixed. Only the cluster state changes.</p>
+</blockquote>
 <p>This creates a clear separation:</p>
 <table>
   <thead>
@@ -296,8 +300,8 @@ It does not auto-reload.</p>
 <p>Because none of those things are the problem it is trying to solve.</p>
 <hr>
 <h2 id="4-purity-of-input">4. Purity of Input</h2>
-<p>A single Orkestra instance can compose multiple sources:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+<p>A single Orkestra instance can compose multiple imports:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
 </span></span><span style="display:flex;"><span>    - https://raw.github.com/myorg/public-baseline/main/katalog.yaml
 </span></span><span style="display:flex;"><span>
@@ -331,7 +335,8 @@ It is a <em>composition of truths</em>.</p>
 </ul>
 <p>In a system managing multiple CRDs simultaneously:</p>
 <blockquote>
-<p>The correctness of the whole depends on the integrity of every input.</p></blockquote>
+<p>The correctness of the whole depends on the integrity of every input.</p>
+</blockquote>
 <p>This is why Orkestra treats input as immutable during execution.</p>
 <hr>
 <h2 id="5-production-is-the-default-not-the-mode">5. Production Is the Default, Not the Mode</h2>
@@ -361,7 +366,8 @@ It is a <em>composition of truths</em>.</p>
 <h2 id="6-human-controlled-evolution">6. Human-Controlled Evolution</h2>
 <p>Orkestra places the responsibility where it belongs:</p>
 <blockquote>
-<p>On the operator of the system.</p></blockquote>
+<p>On the operator of the system.</p>
+</blockquote>
 <p>If you want to update:</p>
 <ul>
 <li>You change a version</li>
@@ -378,7 +384,7 @@ It is a <em>composition of truths</em>.</p>
 <p>Not triggered by a Git push.</p>
 <hr>
 <h2 id="7-what-would-auto-sync-break">7. What Would Auto-Sync Break?</h2>
-<p>If Orkestra auto-synced sources:</p>
+<p>If Orkestra auto-synced imports:</p>
 <h3 id="71-non-deterministic-runtime">7.1 Non-deterministic runtime</h3>
 <p>Two identical deployments could behave differently depending on:</p>
 <ul>
@@ -399,13 +405,15 @@ It is a <em>composition of truths</em>.</p>
 <h3 id="74-loss-of-auditability">7.4 Loss of auditability</h3>
 <p>You lose a clear answer to:</p>
 <blockquote>
-<p>&ldquo;What version of the system is running right now?&rdquo;</p></blockquote>
+<p>&ldquo;What version of the system is running right now?&rdquo;</p>
+</blockquote>
 <hr>
 <h2 id="8-the-principle">8. The Principle</h2>
 <p>Orkestra is built on a simple principle:</p>
 <blockquote>
 <p>Reconciliation should be continuous.
-Configuration should be intentional.</p></blockquote>
+Configuration should be intentional.</p>
+</blockquote>
 <p>Everything else follows from this.</p>
 <hr>
 <h2 id="9-conclusion">9. Conclusion</h2>
@@ -507,7 +515,7 @@ Its responsibility is to reconcile declared state reliably, predictably, and con
 
 
   
-  <script src="/js/main.min.f2df583e131a595404870b2d956fe54827dcacf44666bb51201fbf1d6524fa40.js" defer></script>
+  <script src="/js/main.min.d2e794f76bf881e2b24e29e56610c51d43db4fe37e7050090ef272ef855893af.js" defer></script>
 
   <style>
      

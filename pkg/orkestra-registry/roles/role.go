@@ -33,7 +33,7 @@ type ResolvedRoleSpec struct {
 // Create creates a Role if it does not already exist.
 // Idempotent — skips if the Role already exists.
 // Owner reference ensures cleanup when the CR is deleted.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedRoleSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedRoleSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("role.Create: invalid spec: %w", err)
 	}
@@ -72,7 +72,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Update applies the desired rules to an existing Role.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedRoleSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedRoleSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -104,7 +104,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Delete deletes the Role if it exists.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedRoleSpec) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedRoleSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -132,7 +132,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the Role only if it is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().RbacV1().Roles(namespace).Get(ctx, name, metav1.GetOptions{})

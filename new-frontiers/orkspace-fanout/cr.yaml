@@ -1,8 +1,0 @@
-apiVersion: orkspace.io/v1alpha1
-kind: OrkspaceFanOut
-metadata:
-  name: demo-fanout
-spec:
-  image: nginx:1.25
-  replicas: 3
-  port: 8080

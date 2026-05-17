@@ -50,7 +50,7 @@ type ResolvedConfigMapSpec struct {
 // Create creates a ConfigMap if it does not already exist.
 // Idempotent — skips if ConfigMap exists.
 // Owner reference set for cascade deletion.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedConfigMapSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedConfigMapSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("configmap.Create: %w", err)
 	}
@@ -96,7 +96,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Update reconciles an existing ConfigMap to match the resolved spec.
 // Re-syncs data from FromConfigMap on every reconcile if set.
 // If ConfigMap does not exist, creates it.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedConfigMapSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedConfigMapSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("configmap.Update: %w", err)
 	}
@@ -148,7 +148,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Delete deletes the ConfigMap if it exists.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedConfigMapSpec) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedConfigMapSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -192,7 +192,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 //	        - production
 func CopyToNamespaces(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	owner domain.Object,
 	spec ResolvedConfigMapSpec,
 	toNamespaces []string,
@@ -240,7 +240,7 @@ func CopyToNamespaces(
 }
 
 // DeleteIfOwned ConfigMaps the Job if it exists and is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().CoreV1().ConfigMaps(namespace).
@@ -298,7 +298,7 @@ func Resolve(src orktypes.ConfigMapTemplateSource, ownerName string) ResolvedCon
 // Declared Data keys win over source keys — allows targeted overrides.
 func resolveData(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	spec ResolvedConfigMapSpec,
 	owner domain.Object,
 ) (map[string]string, error) {

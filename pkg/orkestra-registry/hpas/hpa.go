@@ -22,7 +22,7 @@ import (
 
 // Create creates an HPA owned by the CR if it does not already exist.
 // Idempotent — if the HPA exists, does nothing and returns nil.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedHPASpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedHPASpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("hpa.Create: invalid spec: %w", err)
 	}
@@ -63,7 +63,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Update reconciles an existing HPA to match the resolved spec.
 // Patches min/max replicas and CPU target when drift is detected.
 // If the HPA does not exist, creates it.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedHPASpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedHPASpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("hpa.Update: invalid spec: %w", err)
 	}
@@ -120,7 +120,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Delete deletes the HPA if it exists.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedHPASpec) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedHPASpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -148,7 +148,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the HPA if it exists and is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().AutoscalingV2().HorizontalPodAutoscalers(namespace).

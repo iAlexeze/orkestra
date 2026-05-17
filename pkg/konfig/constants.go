@@ -24,6 +24,7 @@ const (
 	kindKonductor = "Konductor"
 	kindKomposer  = "Komposer"
 	kindMotif     = "Motif"
+	kindE2E       = "E2E"
 
 	// HTTPS Port
 	httpsPort      = ":8443"

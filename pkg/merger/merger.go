@@ -21,7 +21,7 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// Merger loads one or more Katalog files, resolves their sources
+// Merger loads one or more Katalog files, resolves their imports
 // (files, URLs, Helm charts), merges all CRD entries, and exposes
 // the result through Enabled(), All(), and Get().
 //
@@ -85,7 +85,7 @@ func (m *Merger) Add(paths ...string) *Merger {
 	return m
 }
 
-// Merge loads all entry points and their declared sources,
+// Merge loads all entry points and their declared imports,
 // resolves Helm charts, and produces a single deduplicated CRD map.
 // Safe to call multiple times — re-merges on each call.
 func (m *Merger) Merge() error {
@@ -246,7 +246,7 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 	// ── Validation and mutation — override replaces if declared ───────────
 	// Platform teams may want to add stricter rules in production via the
 	// Komposer. Replacing rather than merging is the safe behaviour —
-	// merging rules from two sources could produce unexpected combinations.
+	// merging rules from two imports could produce unexpected combinations.
 	if override.Validation != nil {
 		result.Validation = override.Validation
 	}
@@ -294,7 +294,7 @@ func (m *Merger) Get(name string) (orktypes.CRDEntry, bool) {
 	return crd, ok
 }
 
-// Count returns total CRD count across all sources.
+// Count returns total CRD count across all imports.
 func (m *Merger) Count() int {
 	m.mustBeMerged()
 	return len(m.result)
@@ -327,7 +327,7 @@ func (m *Merger) ToProviders() []orktypes.KatalogProviderRequirement {
 }
 
 // ToNotification returns the merged notification configuration of the merged result.
-// When a Komposer references multiple source Katalogs, teams from all sources are
+// When a Komposer references multiple imported Katalogs, teams from all imports are
 // merged — source teams are inherited and the Komposer's own teams win on conflict.
 // Used by KomposeRuntimeKatalog to populate Katalog.Notification.
 func (m *Merger) ToNotification() *orktypes.KatalogNotification {
