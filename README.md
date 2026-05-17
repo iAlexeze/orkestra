@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./docs/assets/logo.png" alt="Orkestra" height="96" />
+  <img src="./documentation/assets/logo.png" alt="Orkestra" height="96" />
 
   <h1>Orkestra</h1>
   <p><strong>A runtime for Kubernetes operators.</strong></p>
