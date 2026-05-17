@@ -38,7 +38,7 @@ That is a fully working operator. Orkestra reads the CRD from `crdFile`, applies
 
 ## What Orkestra Does
 
-When you run `ork run --file katalog.yaml`:
+When you run `ork run -f katalog.yaml`:
 
 1. Reads your Katalog and finds `crdFile: ./crd.yaml`
 2. Applies the CRD to the cluster automatically
@@ -65,7 +65,15 @@ All of this from a YAML file.
 curl -sSL https://get.orkestra.sh | bash
 ork init my-operator
 cd my-operator
-ork run --file examples/beginner/01-hello-website/katalog.yaml
+ork run -f examples/beginner/01-hello-website/katalog.yaml
 ```
 
 → [Getting Started](./getting-started/index.md)
+
+---
+
+## Further Reading
+
+- [Your CRD Is Enough](./blog/your-crd-is-enough.md) — the idea behind Orkestra
+- [Why Orkestra](./blog/why-orkestra.md) — a deeper look at the problem
+- [FAQs](./faqs/index.md) — common questions, including comparisons with Kubebuilder and Helm

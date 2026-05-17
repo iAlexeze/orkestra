@@ -1,53 +1,33 @@
 # Writing Your First Komposer
 
-A **Komposer** tells Orkestra *where* to load katalogs from.  
-While a Katalog defines **what** your operator does, the Komposer defines **where those katalogs come from**.
+A **Komposer** defines where Orkestra loads Katalogs from. A Katalog defines what your operator does — a Komposer defines where those Katalogs come from.
 
-Komposers support multiple source types:
-
-- Local files  
-- Remote URLs  
-- Helm charts  
-- Git registries (public or private)  
-- Multiple sources merged together  
-- Inline overrides  
-
-!!! note
-    Komposers do not perform reconciliation.  
-    They only load katalogs and merge them into a final, resolved state.
+You do not need a Komposer to use Orkestra. `ork run -f katalog.yaml` works without one. Komposers become useful when you want to compose Katalogs from multiple sources or apply overrides.
 
 ---
 
 ## The Simplest Komposer
 
-Create a file called `komposer.yaml`:
-
 ```yaml
 apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
-  name: my-first-komposer
+  name: my-komposer
 
 imports:
   files:
-    - ./my-katalog.yaml
+    - ./katalog.yaml
 ```
 
-This Komposer tells Orkestra:
+Run it the same way:
 
-- Load a katalog from a local file  
-- Use it exactly as written  
-- No overrides, no merging, no registry lookups  
-
-!!! tip
-    This is the recommended starting point.  
-    Always begin with a single-file Komposer to validate your katalog.
+```bash
+ork run -f komposer.yaml
+```
 
 ---
 
-## Loading Multiple Files
-
-You can load multiple katalogs from multiple files:
+## Loading Multiple Katalogs
 
 ```yaml
 imports:
@@ -57,191 +37,58 @@ imports:
     - ./katalogs/cache.yaml
 ```
 
-!!! note
-    When multiple katalogs define the same CRD, Orkestra merges them in order.  
-    Later entries override earlier ones.
+Orkestra merges them. If two Katalogs define the same CRD name, the later one wins — or you can use the `spec.crds` block in the Komposer itself to override specific fields.
 
 ---
 
-## Loading from a Remote URL
-
-You can load katalogs directly from a URL:
+## Loading From a Registry
 
 ```yaml
 imports:
-  files:
-    - https://example.com/katalogs/webapp.yaml
+  registry:
+    - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
+      oci: true
 ```
 
-!!! caution
-    Remote URLs must return raw YAML.  
-    HTML pages, redirects, or GitHub “blob” URLs will fail.
+Pulls the Postgres operator pattern from the OCI registry and merges it with any other sources.
 
 ---
 
-## Loading from a Helm Chart
-
-Komposers can load katalogs packaged inside Helm charts:
+## Loading From a Helm Chart
 
 ```yaml
 imports:
   helm:
     - repo: https://charts.myorg.io
-      chart: platform-katalogs
-      version: 1.2.0
+      chart: platform-crds
+      version: 2.1.0
 ```
-
-!!! note
-    Orkestra extracts only katalog files from the chart.  
-    Other chart templates are ignored.
 
 ---
 
-## Loading from a Git Registry
+## Overriding Fields
 
-Komposers can pull katalogs from Git repositories.  
-This is the most powerful and common source type.
+The `spec.crds` block in a Komposer always wins over imported Katalogs. Use it to tune imported patterns:
 
 ```yaml
 imports:
   registry:
-    - url: https://github.com/myorg/orkestra-registry
-      katalog:
-        webapp:
-          branch: main
-        database:
-          version: v1.0.3
-```
-
-This tells Orkestra:
-
-- Clone the repository  
-- Load the katalog named `webapp` from the `main` branch  
-- Load the katalog named `database` from tag `v1.0.3`  
-
-!!! tip
-    If you omit `url`, Orkestra uses the `ORK_REGISTRY` environment variable as the default registry.
-
----
-
-## Private Registries
-
-Private GitHub or GitLab registries require authentication:
-
-```yaml
-imports:
-  registry:
-    - url: https://github.com/myorg/private-registry
-      auth:
-        type: github
-        fromEnv: GITHUB_TOKEN
-      katalog:
-        internal-app:
-          branch: main
-```
-
-!!! warning
-    Never hardcode tokens in your Komposer.  
-    Always load them from environment variables.
-
----
-
-## Mixing Multiple Source Types
-
-Komposers can combine any number of imports:
-
-```yaml
-imports:
-  files:
-    - ./local/base.yaml
-
-  helm:
-    - repo: https://charts.myorg.io
-      chart: platform-katalogs
-      version: 3.0.0
-
-  registry:
-    - url: https://github.com/myorg/orkestra-registry
-      katalog:
-        webapp:
-          branch: main
-```
-
-!!! note
-    Sources are merged in the order they appear.  
-    Later sources override earlier ones.
-
----
-
-## Inline Overrides
-
-You can override katalog fields directly inside the Komposer:
-
-```yaml
-spec:
-  crds:
-    webapp:
-      workers: 4
-      operatorBox:
-        default: true
-```
-
-Inline overrides apply **after** all sources are merged.
-
-!!! tip
-    Use inline overrides for environment‑specific settings such as worker counts, namespaces, or resource limits.
-
----
-
-## Complete Example
-
-Here is a Komposer that loads katalogs from multiple sources and applies overrides:
-
-```yaml
-apiVersion: orkestra.orkspace.io/v1
-kind: Komposer
-metadata:
-  name: platform-komposer
-
-imports:
-  files:
-    - ./local/base.yaml
-
-  helm:
-    - repo: https://charts.myorg.io
-      chart: platform-katalogs
-      version: 3.0.0
-
-  registry:
-    - url: https://github.com/myorg/orkestra-registry
-      katalog:
-        webapp:
-          branch: main
-        database:
-          version: v1.2.0
+    - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
+      oci: true
 
 spec:
   crds:
-    webapp:
-      workers: 6
-      operatorBox:
-        default: true
+    postgres:
+      workers: 8
+      resync: 30s
 ```
-
-This Komposer:
-
-- Loads a local katalog  
-- Loads a Helm chart  
-- Loads two katalogs from a Git registry  
-- Overrides the `webapp` CRD to use 6 workers  
 
 ---
 
-## Next Steps
+## Validating Without Running
 
-You now know how to load katalogs from files, URLs, Helm charts, and registries — and how to override them.
+```bash
+ork validate -f komposer.yaml
+```
 
-Continue with:
-
-**Basic Reconciliation**  
-Learn how Orkestra watches CRDs, processes CRs, and applies your katalog to the cluster.
+Resolves all sources, merges everything, and reports errors — without touching the cluster.

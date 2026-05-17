@@ -3,8 +3,6 @@ title: "ork run"
 weight: 31
 ---
 
-# ork run
-
 Start the Orkestra operator runtime.
 
 ```bash
@@ -25,10 +23,3 @@ Endpoints exposed:
 /katalog/{crd}/cr/<ns>/<name>
 /katalog/{crd}/health
 ```
-
----
-
-## Related Documentation
-
-- [Runtime Reference](../runtime/)
-- [Metrics](../metrics/)

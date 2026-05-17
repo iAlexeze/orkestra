@@ -31,7 +31,7 @@ enableGitInfo = true
 [menu]
   [[menu.main]]
     name = "Docs"
-    url = "/docs/"
+    url = "/docs/getting-started/"
     weight = 1
   [[menu.main]]
     name = "Reference"

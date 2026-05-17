@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Release — Orkestra">
 <meta property="og:description" content="The declarative control plane for Kubernetes operators">
-<meta property="og:url" content="http://localhost:8191/tags/release/">
+<meta property="og:url" content="http://localhost:8090/tags/release/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -65,7 +65,7 @@
     <ul class="navbar-links" role="list">
       
       <li>
-        <a href="/docs/" class="navbar-link"
+        <a href="/docs/getting-started/" class="navbar-link"
           >
           Docs
           
@@ -142,7 +142,7 @@
     <ul role="list">
       
       <li>
-        <a href="/docs/" class="navbar-mobile-link"
+        <a href="/docs/getting-started/" class="navbar-mobile-link"
           >
           Docs
         </a>
@@ -206,18 +206,6 @@
               <ul class="sidebar-section-pages" role="list" style="display:none">
                 
                 <li>
-                  <a href="/docs/getting-started/installation/" class="sidebar-link">
-                    Installation
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/getting-started/quickstart/" class="sidebar-link">
-                    Quick Start
-                  </a>
-                </li>
-                
-                <li>
                   <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">
                     Basic Reconciliation
                   </a>
@@ -263,20 +251,14 @@
               <ul class="sidebar-section-pages" role="list" style="display:none">
                 
                 <li>
-                  <a href="/docs/controlcenter/controlcenter/" class="sidebar-link">
-                    Orkestra Control Center
+                  <a href="/docs/controlcenter/crd-detail/" class="sidebar-link">
+                    CRD Detail View
                   </a>
                 </li>
                 
                 <li>
-                  <a href="/docs/controlcenter/deploying/" class="sidebar-link">
-                    Deploying the Orkestra Control Center
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/controlcenter/getting-started/" class="sidebar-link">
-                    Getting Started
+                  <a href="/docs/controlcenter/health-states/" class="sidebar-link">
+                    Health States
                   </a>
                 </li>
                 
@@ -303,7 +285,7 @@
                 
                 <li>
                   <a href="/docs/reference/cli/" class="sidebar-link">
-                    Cli
+                    Orkestra CLI Reference
                   </a>
                 </li>
                 
@@ -320,14 +302,8 @@
                 </li>
                 
                 <li>
-                  <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
-                    Katalog and Komposer Reference
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/katalog-schema/" class="sidebar-link">
-                    Katalog Schema
+                  <a href="/docs/reference/runtime/" class="sidebar-link">
+                    Runtime
                   </a>
                 </li>
                 
@@ -338,14 +314,8 @@
                 </li>
                 
                 <li>
-                  <a href="/docs/reference/komposer-schema/" class="sidebar-link">
-                    Komposer Schema
-                  </a>
-                </li>
-                
-                <li>
                   <a href="/docs/reference/metrics/" class="sidebar-link">
-                    **Orkestra Metrics**
+                    Orkestra Metrics
                   </a>
                 </li>
                 
@@ -357,13 +327,7 @@
                 
                 <li>
                   <a href="/docs/reference/registry-schema/" class="sidebar-link">
-                    Registry Source Schema
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/runtime/" class="sidebar-link">
-                    Runtime
+                    Registry Import Schema
                   </a>
                 </li>
                 
@@ -382,6 +346,17 @@
               </ul>
             </div>
           
+        
+      
+        
+          
+          
+          
+          <div class="sidebar-standalone">
+            <a href="/docs/deploying/" class="sidebar-standalone-link">
+              Deploying
+            </a>
+          </div>
         
       
         
@@ -486,7 +461,10 @@
       
 
       
+      
       <nav class="docs-index-nav" aria-label="Section pages">
+        
+        
         
         <a href="/blog/introducing-orkestra/" class="docs-index-item">
           <div class="docs-index-item-main">

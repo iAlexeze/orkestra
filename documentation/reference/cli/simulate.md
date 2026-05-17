@@ -57,9 +57,3 @@ Simulating website/my-site
 - Detects steady state when two consecutive cycles produce identical operations
 
 `ork simulate` does not require a real cluster and does not read from or write to `~/.kube/config`.
-
-## Related Documentation
-
-- [ork validate](./validate.md)
-- [ork plan](./plan.md)
-- [ork run](./run.md)

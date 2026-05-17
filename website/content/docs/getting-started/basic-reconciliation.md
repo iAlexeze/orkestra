@@ -3,8 +3,6 @@ title: "Basic Reconciliation"
 weight: 7
 ---
 
-# Basic Reconciliation
-
 This guide walks through exactly what happens when Orkestra reconciles a CR — from the moment you apply it to the moment it's deleted.
 
 ---

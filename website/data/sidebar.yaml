@@ -8,6 +8,9 @@ nav:
   - title: Reference
     section: reference
     url: /docs/reference/
+  - title: Deploying
+    url: /docs/deploying/
+    page: true
   - title: Security
     url: /docs/security/
     page: true

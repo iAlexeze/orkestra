@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Conditional Provisioning: When Conditions and the Two Enforcement Boundaries — Orkestra">
 <meta property="og:description" content="*Orkestra Project — March 2026*">
-<meta property="og:url" content="http://localhost:8191/publications/when-conditions-paper/">
+<meta property="og:url" content="http://localhost:8090/publications/when-conditions-paper/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -65,7 +65,7 @@
     <ul class="navbar-links" role="list">
       
       <li>
-        <a href="/docs/" class="navbar-link"
+        <a href="/docs/getting-started/" class="navbar-link"
           >
           Docs
           
@@ -142,7 +142,7 @@
     <ul role="list">
       
       <li>
-        <a href="/docs/" class="navbar-mobile-link"
+        <a href="/docs/getting-started/" class="navbar-mobile-link"
           >
           Docs
         </a>
@@ -227,7 +227,7 @@ answer: the LoadBalancer Service and the PodDisruptionBudget should not exist.</
 <h2 id="2-admission-enforcement-at-the-boundary">2. Admission: enforcement at the boundary</h2>
 <p>Admission runs at the Kubernetes API server boundary.</p>
 <p><strong>Deny at admission:</strong></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">validation</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">validation</span>:
 </span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">field</span>: spec.image
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">prefix</span>: <span style="color:#f1fa8c">&#34;myorg/&#34;</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">message</span>: <span style="color:#f1fa8c">&#34;images must come from the internal registry&#34;</span>
@@ -239,7 +239,7 @@ is stored. The CR does not exist in the cluster.</p>
 <hr>
 <h2 id="3-when-conditions-enforcement-at-the-resource-level">3. When conditions: enforcement at the resource level</h2>
 <p><code>when:</code> conditions run inside the reconcile loop, evaluated per-resource, per-cycle.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">onCreate</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">onCreate</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">services</span>:
 </span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}-lb&#34;</span>
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">type</span>: LoadBalancer
@@ -257,7 +257,7 @@ No rejection. The reconcile succeeds. The CR is healthy.</p>
 conditions enable: an operator whose behavior changes continuously with the state
 of the CR, without any operator-side logic to manage that change.</p>
 <p>Consider a <code>Website</code> CR that supports multiple deployment tiers:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">onCreate</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">onCreate</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">deployments</span>:
 </span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}&#34;</span>
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>

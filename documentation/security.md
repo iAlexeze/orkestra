@@ -6,24 +6,6 @@ This document covers Orkestra's full security posture: how it is built, how it c
 
 ---
 
-## Table of contents
-
-- [Minimal production binary](#minimal-production-binary)
-- [Explicit, derived RBAC](#explicit-derived-rbac)
-- [Admission webhooks — validation and mutation](#admission-webhooks--validation-and-mutation)
-- [Deletion protection](#deletion-protection)
-- [Namespace protection](#namespace-protection)
-- [Two enforcement points](#two-enforcement-points)
-- [Webhook self-healing](#webhook-self-healing)
-- [TLS](#tls)
-- [Credentials in sources](#credentials-in-sources)
-- [Supply chain security](#supply-chain-security)
-- [Template safety](#template-safety)
-- [Logging and audit](#logging-and-audit)
-- [Reporting vulnerabilities](#reporting-vulnerabilities)
-
----
-
 ## Minimal production binary
 
 The Orkestra CLI ships in two distinct forms: a **full developer CLI** and a **runtime binary**.

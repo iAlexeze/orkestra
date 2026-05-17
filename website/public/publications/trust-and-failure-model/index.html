@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Trust and Failure Model — Orkestra">
 <meta property="og:description" content="This document describes exactly what happens when Orkestra fails, degrades, or is deliberately stopped. It covers every ...">
-<meta property="og:url" content="http://localhost:8191/publications/trust-and-failure-model/">
+<meta property="og:url" content="http://localhost:8090/publications/trust-and-failure-model/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -65,7 +65,7 @@
     <ul class="navbar-links" role="list">
       
       <li>
-        <a href="/docs/" class="navbar-link"
+        <a href="/docs/getting-started/" class="navbar-link"
           >
           Docs
           
@@ -142,7 +142,7 @@
     <ul role="list">
       
       <li>
-        <a href="/docs/" class="navbar-mobile-link"
+        <a href="/docs/getting-started/" class="navbar-mobile-link"
           >
           Docs
         </a>
@@ -231,7 +231,7 @@ t=16: First reconcile completes in the new leader
 <hr>
 <h2 id="panic-recovery-safereconcile">Panic recovery (safeReconcile)</h2>
 <p>Every reconcile call is wrapped in <code>safeReconcile</code>:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">func</span> <span style="color:#50fa7b">safeReconcile</span>(ctx context.Context, fn <span style="color:#8be9fd;font-style:italic">func</span>(ctx context.Context, key <span style="color:#8be9fd">string</span>) <span style="color:#8be9fd">error</span>, key <span style="color:#8be9fd">string</span>) (err <span style="color:#8be9fd">error</span>) {
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">func</span> <span style="color:#50fa7b">safeReconcile</span>(ctx context.Context, fn <span style="color:#8be9fd;font-style:italic">func</span>(ctx context.Context, key <span style="color:#8be9fd">string</span>) <span style="color:#8be9fd">error</span>, key <span style="color:#8be9fd">string</span>) (err <span style="color:#8be9fd">error</span>) {
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">defer</span> <span style="color:#8be9fd;font-style:italic">func</span>() {
 </span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">if</span> r <span style="color:#ff79c6">:=</span> <span style="color:#8be9fd;font-style:italic">recover</span>(); r <span style="color:#ff79c6">!=</span> <span style="color:#ff79c6">nil</span> {
 </span></span><span style="display:flex;"><span>            err = fmt.<span style="color:#50fa7b">Errorf</span>(<span style="color:#f1fa8c">&#34;reconciler panic recovered: %v\n%s&#34;</span>, r, debug.<span style="color:#50fa7b">Stack</span>())

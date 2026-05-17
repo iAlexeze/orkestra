@@ -3,8 +3,6 @@ title: "Writing Your First Katalog"
 weight: 10
 ---
 
-# Writing Your First Katalog
-
 A **Katalog** is a YAML file that tells Orkestra what to do when a Custom Resource is created, updated, or deleted. This guide builds one from scratch.
 
 ---

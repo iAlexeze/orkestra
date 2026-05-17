@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="From Programs To Data — Orkestra">
 <meta property="og:description" content="*Orkestra Project — March 2026*">
-<meta property="og:url" content="http://localhost:8191/publications/from-programs-to-data/">
+<meta property="og:url" content="http://localhost:8090/publications/from-programs-to-data/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -65,7 +65,7 @@
     <ul class="navbar-links" role="list">
       
       <li>
-        <a href="/docs/" class="navbar-link"
+        <a href="/docs/getting-started/" class="navbar-link"
           >
           Docs
           
@@ -142,7 +142,7 @@
     <ul role="list">
       
       <li>
-        <a href="/docs/" class="navbar-mobile-link"
+        <a href="/docs/getting-started/" class="navbar-mobile-link"
           >
           Docs
         </a>
@@ -234,7 +234,8 @@ write a program — typically in Go — that performs this reconciliation.</p>
 Core controllers are programs. Custom controllers followed the same pattern.</p>
 <p>The assumption was implicit but powerful:</p>
 <blockquote>
-<p>Operators are programs.</p></blockquote>
+<p>Operators are programs.</p>
+</blockquote>
 <hr>
 <h2 id="2-the-mismatch"><strong>2. The mismatch</strong></h2>
 <p>At small scale, the assumption holds. At ecosystem scale, it begins to fracture.</p>
@@ -279,7 +280,8 @@ a problem that is largely declarative.</p>
 A Deployment is not a program. It is a declaration interpreted by a controller.</p>
 <p>Extending this idea:</p>
 <blockquote>
-<p>An operator is a higher-order declaration — a declaration that produces declarations.</p></blockquote>
+<p>An operator is a higher-order declaration — a declaration that produces declarations.</p>
+</blockquote>
 <p>Under this model, the operator is no longer the runtime.
 It is the input to a runtime.</p>
 <hr>

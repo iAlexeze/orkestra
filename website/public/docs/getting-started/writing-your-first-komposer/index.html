@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Writing Your First Komposer — Orkestra">
 <meta property="og:description" content="The declarative control plane for Kubernetes operators">
-<meta property="og:url" content="http://localhost:8191/docs/getting-started/writing-your-first-komposer/">
+<meta property="og:url" content="http://localhost:8090/docs/getting-started/writing-your-first-komposer/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -65,7 +65,7 @@
     <ul class="navbar-links" role="list">
       
       <li>
-        <a href="/docs/" class="navbar-link"
+        <a href="/docs/getting-started/" class="navbar-link"
           >
           Docs
           
@@ -142,7 +142,7 @@
     <ul role="list">
       
       <li>
-        <a href="/docs/" class="navbar-mobile-link"
+        <a href="/docs/getting-started/" class="navbar-mobile-link"
           >
           Docs
         </a>
@@ -206,18 +206,6 @@
               <ul class="sidebar-section-pages" role="list">
                 
                 <li>
-                  <a href="/docs/getting-started/installation/" class="sidebar-link">
-                    Installation
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/getting-started/quickstart/" class="sidebar-link">
-                    Quick Start
-                  </a>
-                </li>
-                
-                <li>
                   <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">
                     Basic Reconciliation
                   </a>
@@ -263,20 +251,14 @@
               <ul class="sidebar-section-pages" role="list" style="display:none">
                 
                 <li>
-                  <a href="/docs/controlcenter/controlcenter/" class="sidebar-link">
-                    Orkestra Control Center
+                  <a href="/docs/controlcenter/crd-detail/" class="sidebar-link">
+                    CRD Detail View
                   </a>
                 </li>
                 
                 <li>
-                  <a href="/docs/controlcenter/deploying/" class="sidebar-link">
-                    Deploying the Orkestra Control Center
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/controlcenter/getting-started/" class="sidebar-link">
-                    Getting Started
+                  <a href="/docs/controlcenter/health-states/" class="sidebar-link">
+                    Health States
                   </a>
                 </li>
                 
@@ -303,7 +285,7 @@
                 
                 <li>
                   <a href="/docs/reference/cli/" class="sidebar-link">
-                    Cli
+                    Orkestra CLI Reference
                   </a>
                 </li>
                 
@@ -320,14 +302,8 @@
                 </li>
                 
                 <li>
-                  <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
-                    Katalog and Komposer Reference
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/katalog-schema/" class="sidebar-link">
-                    Katalog Schema
+                  <a href="/docs/reference/runtime/" class="sidebar-link">
+                    Runtime
                   </a>
                 </li>
                 
@@ -338,14 +314,8 @@
                 </li>
                 
                 <li>
-                  <a href="/docs/reference/komposer-schema/" class="sidebar-link">
-                    Komposer Schema
-                  </a>
-                </li>
-                
-                <li>
                   <a href="/docs/reference/metrics/" class="sidebar-link">
-                    **Orkestra Metrics**
+                    Orkestra Metrics
                   </a>
                 </li>
                 
@@ -357,13 +327,7 @@
                 
                 <li>
                   <a href="/docs/reference/registry-schema/" class="sidebar-link">
-                    Registry Source Schema
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/runtime/" class="sidebar-link">
-                    Runtime
+                    Registry Import Schema
                   </a>
                 </li>
                 
@@ -382,6 +346,17 @@
               </ul>
             </div>
           
+        
+      
+        
+          
+          
+          
+          <div class="sidebar-standalone">
+            <a href="/docs/deploying/" class="sidebar-standalone-link">
+              Deploying
+            </a>
+          </div>
         
       
         
@@ -466,7 +441,7 @@
     
     <div class="breadcrumb-item">
       <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-      <a href="/docs/">Documentation</a>
+      <a href="/docs/">Why Orkestra</a>
     </div>
     
   
@@ -490,371 +465,85 @@
         
         <div class="docs-meta">
           
-          <time datetime="2026-04-25" class="docs-date">
-            Updated Apr 25, 2026
+          <time datetime="2026-05-16" class="docs-date">
+            Updated May 16, 2026
           </time>
           
 
           
-          <span class="docs-reading-time">3 min read</span>
+          <span class="docs-reading-time">2 min read</span>
           
         </div>
       </header>
 
       <div class="docs-body prose">
-        <h1 id="writing-your-first-komposer">Writing Your First Komposer</h1>
-<p>A <strong>Komposer</strong> tells Orkestra <em>where</em> to load katalogs from.<br>
-While a Katalog defines <strong>what</strong> your operator does, the Komposer defines <strong>where those katalogs come from</strong>.</p>
-<p>Komposers support multiple source types:</p>
-<ul>
-<li>Local files</li>
-<li>Remote URLs</li>
-<li>Helm charts</li>
-<li>Git registries (public or private)</li>
-<li>Multiple sources merged together</li>
-<li>Inline overrides</li>
-</ul>
-
-
-
-
-
-
-
-
-
-
-<div class="callout callout-note" role="note">
-  <div class="callout-header">
-    <span class="callout-icon"></span>
-    <span class="callout-title"></span>
-  </div>
-  <div class="callout-body">
-    Komposers do not perform reconciliation.<br>
-They only load katalogs and merge them into a final, resolved state.
-  </div>
-</div>
-
+        <p>A <strong>Komposer</strong> defines where Orkestra loads Katalogs from. A Katalog defines what your operator does — a Komposer defines where those Katalogs come from.</p>
+<p>You do not need a Komposer to use Orkestra. <code>ork run -f katalog.yaml</code> works without one. Komposers become useful when you want to compose Katalogs from multiple sources or apply overrides.</p>
 <hr>
 <h2 id="the-simplest-komposer">The Simplest Komposer</h2>
-<p>Create a file called <code>komposer.yaml</code>:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: my-first-komposer
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: my-komposer
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
-</span></span><span style="display:flex;"><span>    - ./my-katalog.yaml
-</span></span></code></pre></div><p>This Komposer tells Orkestra:</p>
-<ul>
-<li>Load a katalog from a local file</li>
-<li>Use it exactly as written</li>
-<li>No overrides, no merging, no registry lookups</li>
-</ul>
-
-
-
-
-
-
-
-
-
-
-<div class="callout callout-tip" role="note">
-  <div class="callout-header">
-    <span class="callout-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
-    <span class="callout-title">Tip</span>
-  </div>
-  <div class="callout-body">
-    This is the recommended starting point.<br>
-Always begin with a single-file Komposer to validate your katalog.
-  </div>
-</div>
-
-<hr>
-<h2 id="loading-multiple-files">Loading Multiple Files</h2>
-<p>You can load multiple katalogs from multiple files:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
+</span></span><span style="display:flex;"><span>    - ./katalog.yaml
+</span></span></code></pre></div><p>Run it the same way:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run -f komposer.yaml
+</span></span></code></pre></div><hr>
+<h2 id="loading-multiple-katalogs">Loading Multiple Katalogs</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
 </span></span><span style="display:flex;"><span>    - ./katalogs/app.yaml
 </span></span><span style="display:flex;"><span>    - ./katalogs/database.yaml
 </span></span><span style="display:flex;"><span>    - ./katalogs/cache.yaml
-</span></span></code></pre></div>
-
-
-
-
-
-
-
-
-
-<div class="callout callout-note" role="note">
-  <div class="callout-header">
-    <span class="callout-icon"></span>
-    <span class="callout-title"></span>
-  </div>
-  <div class="callout-body">
-    When multiple katalogs define the same CRD, Orkestra merges them in order.<br>
-Later entries override earlier ones.
-  </div>
-</div>
-
+</span></span></code></pre></div><p>Orkestra merges them. If two Katalogs define the same CRD name, the later one wins — or you can use the <code>spec.crds</code> block in the Komposer itself to override specific fields.</p>
 <hr>
-<h2 id="loading-from-a-remote-url">Loading from a Remote URL</h2>
-<p>You can load katalogs directly from a URL:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
-</span></span><span style="display:flex;"><span>    - https://example.com/katalogs/webapp.yaml
-</span></span></code></pre></div>
-
-
-
-
-
-
-
-
-
-<div class="callout callout-caution" role="note">
-  <div class="callout-header">
-    <span class="callout-icon"></span>
-    <span class="callout-title"></span>
-  </div>
-  <div class="callout-body">
-    Remote URLs must return raw YAML.<br>
-HTML pages, redirects, or GitHub “blob” URLs will fail.
-  </div>
-</div>
-
+<h2 id="loading-from-a-registry">Loading From a Registry</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">registry</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: ghcr.io/orkspace/orkestra-registry/postgres@v14
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">oci</span>: <span style="color:#ff79c6">true</span>
+</span></span></code></pre></div><p>Pulls the Postgres operator pattern from the OCI registry and merges it with any other sources.</p>
 <hr>
-<h2 id="loading-from-a-helm-chart">Loading from a Helm Chart</h2>
-<p>Komposers can load katalogs packaged inside Helm charts:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
+<h2 id="loading-from-a-helm-chart">Loading From a Helm Chart</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">helm</span>:
 </span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">repo</span>: https://charts.myorg.io
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">chart</span>: platform-katalogs
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: <span style="color:#bd93f9">1.2.0</span>
-</span></span></code></pre></div>
-
-
-
-
-
-
-
-
-
-<div class="callout callout-note" role="note">
-  <div class="callout-header">
-    <span class="callout-icon"></span>
-    <span class="callout-title"></span>
-  </div>
-  <div class="callout-body">
-    Orkestra extracts only katalog files from the chart.<br>
-Other chart templates are ignored.
-  </div>
-</div>
-
-<hr>
-<h2 id="loading-from-a-git-registry">Loading from a Git Registry</h2>
-<p>Komposers can pull katalogs from Git repositories.<br>
-This is the most powerful and common source type.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">chart</span>: platform-crds
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: <span style="color:#bd93f9">2.1.0</span>
+</span></span></code></pre></div><hr>
+<h2 id="overriding-fields">Overriding Fields</h2>
+<p>The <code>spec.crds</code> block in a Komposer always wins over imported Katalogs. Use it to tune imported patterns:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">registry</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://github.com/myorg/orkestra-registry
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">katalog</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">webapp</span>:
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">branch</span>: main
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">database</span>:
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">version</span>: v1.0.3
-</span></span></code></pre></div><p>This tells Orkestra:</p>
-<ul>
-<li>Clone the repository</li>
-<li>Load the katalog named <code>webapp</code> from the <code>main</code> branch</li>
-<li>Load the katalog named <code>database</code> from tag <code>v1.0.3</code></li>
-</ul>
-
-
-
-
-
-
-
-
-
-
-<div class="callout callout-tip" role="note">
-  <div class="callout-header">
-    <span class="callout-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
-    <span class="callout-title">Tip</span>
-  </div>
-  <div class="callout-body">
-    If you omit <code>url</code>, Orkestra uses the <code>ORK_REGISTRY</code> environment variable as the default registry.
-  </div>
-</div>
-
-<hr>
-<h2 id="private-registries">Private Registries</h2>
-<p>Private GitHub or GitLab registries require authentication:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">registry</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://github.com/myorg/private-registry
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">auth</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">type</span>: github
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">fromEnv</span>: GITHUB_TOKEN
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">katalog</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">internal-app</span>:
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">branch</span>: main
-</span></span></code></pre></div>
-
-
-
-
-
-
-
-
-
-<div class="callout callout-warning" role="note">
-  <div class="callout-header">
-    <span class="callout-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-    <span class="callout-title">Warning</span>
-  </div>
-  <div class="callout-body">
-    Never hardcode tokens in your Komposer.<br>
-Always load them from environment variables.
-  </div>
-</div>
-
-<hr>
-<h2 id="mixing-multiple-source-types">Mixing Multiple Source Types</h2>
-<p>Komposers can combine any number of imports:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
-</span></span><span style="display:flex;"><span>    - ./local/base.yaml
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">helm</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">repo</span>: https://charts.myorg.io
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">chart</span>: platform-katalogs
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: <span style="color:#bd93f9">3.0.0</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">registry</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://github.com/myorg/orkestra-registry
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">katalog</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">webapp</span>:
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">branch</span>: main
-</span></span></code></pre></div>
-
-
-
-
-
-
-
-
-
-<div class="callout callout-note" role="note">
-  <div class="callout-header">
-    <span class="callout-icon"></span>
-    <span class="callout-title"></span>
-  </div>
-  <div class="callout-body">
-    Sources are merged in the order they appear.<br>
-Later sources override earlier ones.
-  </div>
-</div>
-
-<hr>
-<h2 id="inline-overrides">Inline Overrides</h2>
-<p>You can override katalog fields directly inside the Komposer:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">webapp</span>:
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">4</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">operatorBox</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
-</span></span></code></pre></div><p>Inline overrides apply <strong>after</strong> all sources are merged.</p>
-
-
-
-
-
-
-
-
-
-
-<div class="callout callout-tip" role="note">
-  <div class="callout-header">
-    <span class="callout-icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
-    <span class="callout-title">Tip</span>
-  </div>
-  <div class="callout-body">
-    Use inline overrides for environment‑specific settings such as worker counts, namespaces, or resource limits.
-  </div>
-</div>
-
-<hr>
-<h2 id="complete-example">Complete Example</h2>
-<p>Here is a Komposer that loads katalogs from multiple sources and applies overrides:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: platform-komposer
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
-</span></span><span style="display:flex;"><span>    - ./local/base.yaml
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">helm</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">repo</span>: https://charts.myorg.io
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">chart</span>: platform-katalogs
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: <span style="color:#bd93f9">3.0.0</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">registry</span>:
-</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: https://github.com/myorg/orkestra-registry
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">katalog</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">webapp</span>:
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">branch</span>: main
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">database</span>:
-</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">version</span>: v1.2.0
+</span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">url</span>: ghcr.io/orkspace/orkestra-registry/postgres@v14
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">oci</span>: <span style="color:#ff79c6">true</span>
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">webapp</span>:
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">6</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">operatorBox</span>:
-</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
-</span></span></code></pre></div><p>This Komposer:</p>
-<ul>
-<li>Loads a local katalog</li>
-<li>Loads a Helm chart</li>
-<li>Loads two katalogs from a Git registry</li>
-<li>Overrides the <code>webapp</code> CRD to use 6 workers</li>
-</ul>
-<hr>
-<h2 id="next-steps">Next Steps</h2>
-<p>You now know how to load katalogs from files, URLs, Helm charts, and registries — and how to override them.</p>
-<p>Continue with:</p>
-<p><strong>Basic Reconciliation</strong><br>
-Learn how Orkestra watches CRDs, processes CRs, and applies your katalog to the cluster.</p>
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">postgres</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">workers</span>: <span style="color:#bd93f9">8</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">resync</span>: 30s
+</span></span></code></pre></div><hr>
+<h2 id="validating-without-running">Validating Without Running</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork validate -f komposer.yaml
+</span></span></code></pre></div><p>Resolves all sources, merges everything, and reports errors — without touching the cluster.</p>
 
       </div>
 
       
       <nav class="docs-pagination" aria-label="Page navigation">
         
-        
-        <a href="/docs/getting-started/writing-your-first-katalog/" class="pagination-link pagination-next">
+        <a href="/docs/getting-started/writing-your-first-katalog/" class="pagination-link pagination-prev">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           <div>
-            <span class="pagination-label">Next</span>
+            <span class="pagination-label">Previous</span>
             <span class="pagination-title">Writing Your First Katalog</span>
           </div>
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>
+        
         
       </nav>
     </div>
@@ -867,15 +556,11 @@ Learn how Orkestra watches CRDs, processes CRs, and applies your katalog to the 
     <nav id="TableOfContents">
   <ul>
     <li><a href="#the-simplest-komposer">The Simplest Komposer</a></li>
-    <li><a href="#loading-multiple-files">Loading Multiple Files</a></li>
-    <li><a href="#loading-from-a-remote-url">Loading from a Remote URL</a></li>
-    <li><a href="#loading-from-a-helm-chart">Loading from a Helm Chart</a></li>
-    <li><a href="#loading-from-a-git-registry">Loading from a Git Registry</a></li>
-    <li><a href="#private-registries">Private Registries</a></li>
-    <li><a href="#mixing-multiple-source-types">Mixing Multiple Source Types</a></li>
-    <li><a href="#inline-overrides">Inline Overrides</a></li>
-    <li><a href="#complete-example">Complete Example</a></li>
-    <li><a href="#next-steps">Next Steps</a></li>
+    <li><a href="#loading-multiple-katalogs">Loading Multiple Katalogs</a></li>
+    <li><a href="#loading-from-a-registry">Loading From a Registry</a></li>
+    <li><a href="#loading-from-a-helm-chart">Loading From a Helm Chart</a></li>
+    <li><a href="#overriding-fields">Overriding Fields</a></li>
+    <li><a href="#validating-without-running">Validating Without Running</a></li>
   </ul>
 </nav>
     <div class="toc-footer">

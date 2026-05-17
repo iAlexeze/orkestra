@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Introducing Orkestra Notes — Orkestra">
 <meta property="og:description" content="**Pure transformation functions for the declarative operator runtime.**">
-<meta property="og:url" content="http://localhost:8191/publications/introducing-orkestra-notes/">
+<meta property="og:url" content="http://localhost:8090/publications/introducing-orkestra-notes/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -65,7 +65,7 @@
     <ul class="navbar-links" role="list">
       
       <li>
-        <a href="/docs/" class="navbar-link"
+        <a href="/docs/getting-started/" class="navbar-link"
           >
           Docs
           
@@ -142,7 +142,7 @@
     <ul role="list">
       
       <li>
-        <a href="/docs/" class="navbar-mobile-link"
+        <a href="/docs/getting-started/" class="navbar-mobile-link"
           >
           Docs
         </a>
@@ -249,7 +249,7 @@ one value into another. The boundary is precise and permanent.</p>
 <p>The Kubebuilder CronJob tutorial changes <code>schedule</code> from a cron string to a
 structured object between v1 and v2. The tutorial implements this with
 handwritten conversion functions in Go. Here is the ConvertTo function:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">func</span> (src <span style="color:#ff79c6">*</span>CronJob) <span style="color:#50fa7b">ConvertTo</span>(dstRaw conversion.Hub) <span style="color:#8be9fd">error</span> {
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">func</span> (src <span style="color:#ff79c6">*</span>CronJob) <span style="color:#50fa7b">ConvertTo</span>(dstRaw conversion.Hub) <span style="color:#8be9fd">error</span> {
 </span></span><span style="display:flex;"><span>    dst <span style="color:#ff79c6">:=</span> dstRaw.(<span style="color:#ff79c6">*</span>v2.CronJob)
 </span></span><span style="display:flex;"><span>    
 </span></span><span style="display:flex;"><span>    schedParts <span style="color:#ff79c6">:=</span> strings.<span style="color:#50fa7b">Split</span>(src.Spec.Schedule, <span style="color:#f1fa8c">&#34; &#34;</span>)
@@ -272,7 +272,7 @@ handwritten conversion functions in Go. Here is the ConvertTo function:</p>
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">return</span> <span style="color:#ff79c6">nil</span>
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><p>With notes, the same conversion is declared in the Katalog:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>- <span style="color:#ff79c6">from</span>: v1
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>- <span style="color:#ff79c6">from</span>: v1
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">to</span>: v2
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">spec</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">schedule</span>:
@@ -293,12 +293,12 @@ panicking or returning an error that breaks a conversion.</p>
 <li>A Go hook that reads the field and writes it if missing</li>
 </ul>
 <p>With the <code>default</code> note:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">mutation</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">mutation</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">rules</span>:
 </span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">field</span>: spec.replicas
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">default</span>: <span style="color:#f1fa8c">&#34;{{ default .spec.replicas 2 }}&#34;</span>
 </span></span></code></pre></div><p>Or in a status field:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">status</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">status</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">fields</span>:
 </span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">path</span>: phase
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">value</span>: <span style="color:#f1fa8c">&#34;{{ default .status.phase \&#34;Pending\&#34; }}&#34;</span>
@@ -308,7 +308,7 @@ value is empty or nil, the fallback is returned. One note, zero Go.</p>
 <h2 id="the-conditional-problem">The conditional problem</h2>
 <p>Go templates provide <code>{{ if }}...{{ else }}...{{ end }}</code> for conditional values.
 This is verbose for inline expressions. The <code>ternary</code> note makes it a single expression:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># Before notes</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># Before notes</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">status</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">fields</span>:
 </span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">path</span>: phase
@@ -335,7 +335,7 @@ patch pipeline.</p>
 <code>clamp</code> notes return <code>int64</code> when the result is a whole number, <code>float64</code>
 otherwise. The patch pipeline receives a native Go type. JSON marshal
 produces <code>2</code>, not <code>&quot;2&quot;</code>. The API server accepts it.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># Cap replicas at 10, floor at 2</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># Cap replicas at 10, floor at 2</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">status</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">fields</span>:
 </span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">path</span>: observedReplicas
@@ -343,7 +343,7 @@ produces <code>2</code>, not <code>&quot;2&quot;</code>. The API server accepts 
 </span></span></code></pre></div><hr>
 <h2 id="integration">Integration</h2>
 <p>Notes are integrated into the resolver in one line:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>tmpl, err <span style="color:#ff79c6">:=</span> template.<span style="color:#50fa7b">New</span>(<span style="color:#f1fa8c">&#34;f&#34;</span>).
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>tmpl, err <span style="color:#ff79c6">:=</span> template.<span style="color:#50fa7b">New</span>(<span style="color:#f1fa8c">&#34;f&#34;</span>).
 </span></span><span style="display:flex;"><span>    <span style="color:#50fa7b">Option</span>(<span style="color:#f1fa8c">&#34;missingkey=zero&#34;</span>).
 </span></span><span style="display:flex;"><span>    <span style="color:#50fa7b">Funcs</span>(note.<span style="color:#50fa7b">Map</span>()).   <span style="color:#6272a4">// ← all notes available everywhere</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#50fa7b">Parse</span>(value)
@@ -379,7 +379,7 @@ all of which run inside the reconcile loop where side effects are dangerous.</p>
 <li>Handle empty input — return a safe zero value, not a panic</li>
 <li>Be pure — same input always produces same output</li>
 </ol>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6272a4">// Example: slugify a string for Kubernetes resource naming</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#6272a4">// Example: slugify a string for Kubernetes resource naming</span>
 </span></span><span style="display:flex;"><span><span style="color:#6272a4">// camelToKebab already exists; this is an extension</span>
 </span></span><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">func</span> <span style="color:#50fa7b">slugify</span>(s <span style="color:#8be9fd">string</span>) <span style="color:#8be9fd">string</span> {
 </span></span><span style="display:flex;"><span>    s = strings.<span style="color:#50fa7b">ToLower</span>(s)

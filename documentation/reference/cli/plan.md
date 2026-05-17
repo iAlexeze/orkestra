@@ -42,8 +42,3 @@ Changes to apply:
 ```
 
 `ork plan` exits `0` when there are no changes and there is no error.
-
-## Related Documentation
-
-- [ork validate](./validate.md)
-- [ork simulate](./simulate.md)

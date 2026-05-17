@@ -20,10 +20,3 @@ Endpoints exposed:
 /katalog/{crd}/cr/<ns>/<name>
 /katalog/{crd}/health
 ```
-
----
-
-## Related Documentation
-
-- [Runtime Reference](../runtime.md)
-- [Metrics](../metrics.md)

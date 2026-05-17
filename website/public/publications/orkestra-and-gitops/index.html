@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Orkestra and GitOps: The Complete Integration Story — Orkestra">
 <meta property="og:description" content="*Orkestra Project — March 2026*">
-<meta property="og:url" content="http://localhost:8191/publications/orkestra-and-gitops/">
+<meta property="og:url" content="http://localhost:8090/publications/orkestra-and-gitops/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -65,7 +65,7 @@
     <ul class="navbar-links" role="list">
       
       <li>
-        <a href="/docs/" class="navbar-link"
+        <a href="/docs/getting-started/" class="navbar-link"
           >
           Docs
           
@@ -142,7 +142,7 @@
     <ul role="list">
       
       <li>
-        <a href="/docs/" class="navbar-mobile-link"
+        <a href="/docs/getting-started/" class="navbar-mobile-link"
           >
           Docs
         </a>
@@ -230,15 +230,15 @@ to manage.</p>
 <h2 id="2-wave-ordering-in-argocd">2. Wave ordering in ArgoCD</h2>
 <p>The most important GitOps detail: Orkestra must be running before CRs are applied.</p>
 <p>ArgoCD sync waves handle this:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># infrastructure/orkestra/helmrelease.yaml</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># infrastructure/orkestra/helmrelease.yaml</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">annotations</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">argocd.argoproj.io/sync-wave</span>: <span style="color:#f1fa8c">&#34;0&#34;</span>    <span style="color:#6272a4"># Orkestra runtime: first</span>
-</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># operator-definitions/katalog-configmap.yaml</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># operator-definitions/katalog-configmap.yaml</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">annotations</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">argocd.argoproj.io/sync-wave</span>: <span style="color:#f1fa8c">&#34;1&#34;</span>    <span style="color:#6272a4"># Katalog: after runtime is up</span>
-</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># applications/team-platform/website.yaml</span>
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># applications/team-platform/website.yaml</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">annotations</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">argocd.argoproj.io/sync-wave</span>: <span style="color:#f1fa8c">&#34;2&#34;</span>    <span style="color:#6272a4"># CRs: after CRD and operator ready</span>
@@ -248,7 +248,7 @@ to manage.</p>
 <p>Every pull request that touches operator definitions should run <code>ork validate</code>.
 This catches configuration errors — circular dependencies, unknown kinds, invalid
 template expressions — before they reach the cluster.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># .github/workflows/validate.yaml</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># .github/workflows/validate.yaml</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">name</span>: Validate Katalog
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">on</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">pull_request</span>:
@@ -267,7 +267,7 @@ template expressions — before they reach the cluster.</p>
 <h2 id="4-argocd-health-checks">4. ArgoCD health checks</h2>
 <p>Since Orkestra writes a standard <code>Ready</code> condition to every managed CR after
 every successful reconcile, ArgoCD can be configured to check it:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-lua" data-lang="lua"><span style="display:flex;"><span><span style="color:#6272a4">-- argocd-cm.yaml — resource.customizations.health</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-lua" data-lang="lua"><span style="display:flex;"><span><span style="color:#6272a4">-- argocd-cm.yaml — resource.customizations.health</span>
 </span></span><span style="display:flex;"><span>health.lua: <span style="color:#ff79c6">|</span>
 </span></span><span style="display:flex;"><span>  hs <span style="color:#ff79c6">=</span> {}
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">if</span> obj.status <span style="color:#ff79c6">~=</span> <span style="color:#ff79c6">nil</span> <span style="color:#ff79c6">then</span>

@@ -49,7 +49,7 @@
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M1.811 10.231c-.047 0-.058-.023-.035-.059l.246-.315c.023-.035.081-.058.127-.058h4.172c.046 0 .058.035.035.07l-.199.303c-.023.036-.082.07-.117.07zM.047 11.306c-.047 0-.059-.023-.035-.058l.245-.316c.023-.035.082-.058.128-.058h5.328c.047 0 .07.035.058.07l-.093.28c-.012.047-.058.07-.105.07zm2.828 1.075c-.047 0-.059-.035-.035-.07l.163-.292c.023-.035.07-.07.117-.07h2.337c.047 0 .07.035.07.082l-.023.28c0 .047-.047.082-.082.082z"/></svg>
             Kubebuilder (Go)
           </button>
-          <div class="code-tab-badge badge-green">15 lines vs 400+</div>
+          <div class="code-tab-badge badge-green">10 lines vs 400+</div>
         </div>
 
         <div class="code-panel active" id="panel-yaml">
@@ -322,20 +322,13 @@
 <span class="token-key">metadata:</span>
   <span class="token-key">name:</span> <span class="token-string">platform-operator</span>
   <span class="token-key">version:</span> <span class="token-string">1.0.0</span>
-
 <span class="token-key">spec:</span>
   <span class="token-key">crds:</span>
-
     <span class="token-comment"># ── CRD 1: no dependencies, starts first ──</span>
     <span class="token-key">database:</span>
-      <span class="token-key">apiTypes:</span>
-        <span class="token-key">group:</span> <span class="token-string">platform.io</span>
-        <span class="token-key">version:</span> <span class="token-string">v1alpha1</span>
-        <span class="token-key">kind:</span> <span class="token-string">Database</span>
-        <span class="token-key">plural:</span> <span class="token-string">databases</span>
+      <span class="token-key">crdFile: my-database.yaml</span>
       <span class="token-key">resync:</span> <span class="token-string">30s</span>
       <span class="token-key">operatorBox:</span>
-        <span class="token-key">default:</span> <span class="token-bool">true</span>
         <span class="token-key">onCreate:</span>
           <span class="token-key">deployments:</span>
             <span class="token-key">- image:</span> <span class="token-string">"postgres:{{ "{{" }} .spec.version {{ "}}" }}"</span>
@@ -346,21 +339,16 @@
             <pre class="code-block code-block-expand"><code class="language-yaml">
     <span class="token-comment"># ── CRD 2: waits for database ─────────────</span>
     <span class="token-key">application:</span>
-      <span class="token-key">apiTypes:</span>
-        <span class="token-key">group:</span> <span class="token-string">platform.io</span>
-        <span class="token-key">version:</span> <span class="token-string">v1alpha1</span>
-        <span class="token-key">kind:</span> <span class="token-string">Application</span>
-        <span class="token-key">plural:</span> <span class="token-string">applications</span>
+      <span class="token-key">crdFile: my-app.yaml</span>
       <span class="token-key">dependsOn:</span>
         <span class="token-key">- database</span>
       <span class="token-key">operatorBox:</span>
-        <span class="token-key">default:</span> <span class="token-bool">true</span>
         <span class="token-key">status:</span>
           <span class="token-key">fields:</span>
             <span class="token-key">- path:</span> <span class="token-string">phase</span>
               <span class="token-key">value:</span> <span class="token-string">"Running"</span>
             <span class="token-key">- path:</span> <span class="token-string">endpoint</span>
-              <span class="token-key">value:</span> <span class="token-string">"{{ "{{" }} .metadata.name {{ "}}" }}.svc"</span>
+              <span class="token-key">value:</span> <span class="token-string">"{{ "{{" }} .metadata.name {{ "}}" }}-svc"</span>
         <span class="token-key">onCreate:</span>
           <span class="token-key">deployments:</span>
             <span class="token-key">- image:</span> <span class="token-string">"{{ "{{" }} .spec.image {{ "}}" }}"</span>

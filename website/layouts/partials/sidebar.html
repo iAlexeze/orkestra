@@ -11,7 +11,7 @@
 
     <nav class="sidebar-nav">
       {{ $currentPage := . }}
-      {{ range .Site.Data.sidebar.nav }}
+      {{ range hugo.Data.sidebar.nav }}
         {{ if .page }}
           {{/* Standalone page link */}}
           {{ $page := $currentPage.Site.GetPage (printf "docs/%s" (strings.TrimSuffix "/" (path.Base .url))) }}

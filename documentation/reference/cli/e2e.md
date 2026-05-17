@@ -66,8 +66,3 @@ ork e2e -f e2e.yaml --cluster my-dev-context
 # Validate the e2e spec before running
 ork validate -f e2e.yaml
 ```
-
-## Related
-
-- [ork simulate](./simulate.md) — in-memory simulation, no cluster required
-- [ork validate](./validate.md) — validate the e2e.yaml spec before running

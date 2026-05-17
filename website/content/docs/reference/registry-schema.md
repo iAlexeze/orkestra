@@ -1,15 +1,15 @@
 ---
-title: "Registry Source Schema"
-weight: 45
+title: "Registry Import Schema"
+weight: 42
 ---
 
-# Registry Source Schema
+# Registry Import Schema
 
 Complete schema reference for `imports.registry` entries in a Komposer.
 
 ---
 
-## RegistrySource
+## RegistryImport
 
 One entry in `imports.registry`. Pulls a single pattern from a registry,
 validates its structure, and loads either `katalog.yaml` or `komposer.yaml`.

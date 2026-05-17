@@ -79,8 +79,3 @@ ork generate registry --file katalog.yaml --dry-run
 - Writes to `pkg/runtime/zz_generated_runtime_registry.go` (idempotent).
 
 ---
-
-## Related Documentation
-
-- [Katalog Schema](../../katalog-schema.md)
-- [ork run](../run.md)

@@ -286,10 +286,10 @@ test-fixture-reconciler:
 # The Hugo site lives in website/ and renders the docs/ directory.
 # Requires the hugo binary — install with: brew install hugo  or  snap install hugo
 
-DOCS_PORT ?= 8191
+DOCS_PORT ?= 8090
 
 docs-sync:
-	@echo "Syncing docs/ → website/content/docs/ ..."
+	@echo "Syncing documentation/ → website/content/docs/ ..."
 	@bash website/scripts/sync-docs.sh
 	@echo "✅ Docs synced"
 

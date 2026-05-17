@@ -1,10 +1,10 @@
 ---
-title: "**Orkestra Metrics**"
-weight: 43
+title: "Orkestra Metrics"
+weight: 40
 ---
 
-# **Orkestra Metrics**
-**High‑signal, per‑CRD observability for declarative operators**
+# Orkestra Metrics
+_High‑signal, per‑CRD observability for declarative operators_
 
 Orkestra exposes a focused set of Prometheus metrics designed specifically for declarative operators.  
 Unlike generic Kubernetes metrics, Orkestra metrics are:

@@ -3,8 +3,6 @@ title: "ork validate"
 weight: 35
 ---
 
-# ork validate
-
 Validate a Katalog or Komposer. Resolves sources, merges, and runs the full validation pipeline.
 
 ```bash
@@ -26,11 +24,3 @@ ork validate --file https://raw.github.com/.../katalog.yaml
 ```
 
 Validation errors are specific and actionable.
-
----
-
-## Related Documentation
-
-- [ork template](./template/)
-- [Komposer Schema](../komposer-schema/)
-- [Katalog Schema](../katalog-schema/)

@@ -118,9 +118,3 @@ ork control start
 - Initialization works offline if the pack is already cached.
 
 ---
-
-## Related Documentation
-
-- [Katalog Schema](../katalog-schema.md)
-- [Komposer Schema](../komposer-schema.md)
-- [ork validate](./validate.md)

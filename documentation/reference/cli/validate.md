@@ -21,11 +21,3 @@ ork validate --file https://raw.github.com/.../katalog.yaml
 ```
 
 Validation errors are specific and actionable.
-
----
-
-## Related Documentation
-
-- [ork template](./template.md)
-- [Komposer Schema](../komposer-schema.md)
-- [Katalog Schema](../katalog-schema.md)

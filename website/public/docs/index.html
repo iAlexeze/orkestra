@@ -1,26 +1,26 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
-<title>Documentation — Orkestra</title>
+<title>Why Orkestra — Orkestra</title>
 
-<meta name="description" content="Everything you need to build production-grade Kubernetes operators with Orkestra.">
+<meta name="description" content="The declarative control plane for Kubernetes operators">
 <meta name="author" content="Orkestra">
 
 
 <meta property="og:type" content="article">
-<meta property="og:title" content="Documentation — Orkestra">
-<meta property="og:description" content="Everything you need to build production-grade Kubernetes operators with Orkestra.">
-<meta property="og:url" content="http://localhost:8191/docs/">
+<meta property="og:title" content="Why Orkestra — Orkestra">
+<meta property="og:description" content="The declarative control plane for Kubernetes operators">
+<meta property="og:url" content="http://localhost:8090/docs/">
 <meta property="og:site_name" content="Orkestra">
 
 
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Documentation — Orkestra">
-<meta name="twitter:description" content="Everything you need to build production-grade Kubernetes operators with Orkestra.">
+<meta name="twitter:title" content="Why Orkestra — Orkestra">
+<meta name="twitter:description" content="The declarative control plane for Kubernetes operators">
 
 
 <link rel="icon" type="image/png" href="/img/fav.png">
@@ -65,7 +65,7 @@
     <ul class="navbar-links" role="list">
       
       <li>
-        <a href="/docs/" class="navbar-link"
+        <a href="/docs/getting-started/" class="navbar-link"
           >
           Docs
           
@@ -142,7 +142,7 @@
     <ul role="list">
       
       <li>
-        <a href="/docs/" class="navbar-mobile-link"
+        <a href="/docs/getting-started/" class="navbar-mobile-link"
           >
           Docs
         </a>
@@ -206,18 +206,6 @@
               <ul class="sidebar-section-pages" role="list" style="display:none">
                 
                 <li>
-                  <a href="/docs/getting-started/installation/" class="sidebar-link">
-                    Installation
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/getting-started/quickstart/" class="sidebar-link">
-                    Quick Start
-                  </a>
-                </li>
-                
-                <li>
                   <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">
                     Basic Reconciliation
                   </a>
@@ -263,20 +251,14 @@
               <ul class="sidebar-section-pages" role="list" style="display:none">
                 
                 <li>
-                  <a href="/docs/controlcenter/controlcenter/" class="sidebar-link">
-                    Orkestra Control Center
+                  <a href="/docs/controlcenter/crd-detail/" class="sidebar-link">
+                    CRD Detail View
                   </a>
                 </li>
                 
                 <li>
-                  <a href="/docs/controlcenter/deploying/" class="sidebar-link">
-                    Deploying the Orkestra Control Center
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/controlcenter/getting-started/" class="sidebar-link">
-                    Getting Started
+                  <a href="/docs/controlcenter/health-states/" class="sidebar-link">
+                    Health States
                   </a>
                 </li>
                 
@@ -303,7 +285,7 @@
                 
                 <li>
                   <a href="/docs/reference/cli/" class="sidebar-link">
-                    Cli
+                    Orkestra CLI Reference
                   </a>
                 </li>
                 
@@ -320,14 +302,8 @@
                 </li>
                 
                 <li>
-                  <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
-                    Katalog and Komposer Reference
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/katalog-schema/" class="sidebar-link">
-                    Katalog Schema
+                  <a href="/docs/reference/runtime/" class="sidebar-link">
+                    Runtime
                   </a>
                 </li>
                 
@@ -338,14 +314,8 @@
                 </li>
                 
                 <li>
-                  <a href="/docs/reference/komposer-schema/" class="sidebar-link">
-                    Komposer Schema
-                  </a>
-                </li>
-                
-                <li>
                   <a href="/docs/reference/metrics/" class="sidebar-link">
-                    **Orkestra Metrics**
+                    Orkestra Metrics
                   </a>
                 </li>
                 
@@ -357,13 +327,7 @@
                 
                 <li>
                   <a href="/docs/reference/registry-schema/" class="sidebar-link">
-                    Registry Source Schema
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/runtime/" class="sidebar-link">
-                    Runtime
+                    Registry Import Schema
                   </a>
                 </li>
                 
@@ -382,6 +346,17 @@
               </ul>
             </div>
           
+        
+      
+        
+          
+          
+          
+          <div class="sidebar-standalone">
+            <a href="/docs/deploying/" class="sidebar-standalone-link">
+              Deploying
+            </a>
+          </div>
         
       
         
@@ -465,35 +440,103 @@
   
   <div class="breadcrumb-item active">
     <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-    Documentation
+    Why Orkestra
   </div>
 </nav>
 
 
 
       <header class="docs-header">
-        <h1 class="docs-title">Documentation</h1>
-        
-        <p class="docs-description">Everything you need to build production-grade Kubernetes operators with Orkestra.</p>
+        <h1 class="docs-title">Why Orkestra</h1>
         
       </header>
 
       
       <div class="docs-body prose">
-        <p>Welcome to the Orkestra documentation. Orkestra lets you build Kubernetes operators declaratively — no Go required.</p>
-<p>Browse the sections below to get started.</p>
+        <p>Building a Kubernetes operator means writing Go: controllers, informers, reconcilers, finalizers, events, metrics. Every team does this. Every team builds the same infrastructure. The only part that differs is the business logic — and it is usually just 10 lines of YAML describing what you want.</p>
+<p>Orkestra inverts this. You write a <strong>Katalog</strong> — a declarative YAML file that describes your CRDs and what should happen when a Custom Resource is created, updated, or deleted. Orkestra provides the runtime: informers, worker pools, drift correction, finalizers, events, metrics, health endpoints.</p>
+<p><strong>No Go. No code generation. No controller boilerplate.</strong></p>
+<hr>
+<h2 id="what-you-write">What You Write</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: orkestra.orkspace.io/v1
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Katalog
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: webapp-operator
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">webapp</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">crdFile</span>: ./crd.yaml
+</span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">operatorBox</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#ff79c6">onCreate</span>:
+</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">deployments</span>:
+</span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
+</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">replicas</span>: <span style="color:#f1fa8c">&#34;{{ .spec.replicas }}&#34;</span>
+</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#ff79c6">services</span>:
+</span></span><span style="display:flex;"><span>            - <span style="color:#ff79c6">port</span>: <span style="color:#f1fa8c">&#34;80&#34;</span>
+</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">targetPort</span>: <span style="color:#f1fa8c">&#34;{{ .spec.port }}&#34;</span>
+</span></span><span style="display:flex;"><span>              <span style="color:#ff79c6">reconcile</span>: <span style="color:#ff79c6">true</span>
+</span></span></code></pre></div><p>That is a fully working operator. Orkestra reads the CRD from <code>crdFile</code>, applies it to the cluster, starts informers, and reconciles every <code>WebApp</code> CR into a Deployment and Service. Drift correction included.</p>
+<hr>
+<h2 id="what-orkestra-does">What Orkestra Does</h2>
+<p>When you run <code>ork run -f katalog.yaml</code>:</p>
+<ol>
+<li>Reads your Katalog and finds <code>crdFile: ./crd.yaml</code></li>
+<li>Applies the CRD to the cluster automatically</li>
+<li>Starts informers watching for CRs of that type</li>
+<li>For each CR: resolves templates, creates resources, adds finalizers</li>
+<li>On every reconcile: corrects drift on resources marked <code>reconcile: true</code></li>
+<li>On CR delete: cleans up all child resources</li>
+</ol>
+<p>All of this from a YAML file.</p>
+<hr>
+<h2 id="who-it-is-for">Who It Is For</h2>
+<ul>
+<li><strong>Platform engineers</strong> building internal developer platforms without writing operators</li>
+<li><strong>SREs</strong> who want declarative infrastructure, not Go code</li>
+<li><strong>Application teams</strong> defining their own CRDs without learning controller patterns</li>
+</ul>
+<hr>
+<h2 id="get-started">Get Started</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl -sSL https://get.orkestra.sh | bash
+</span></span><span style="display:flex;"><span>ork init my-operator
+</span></span><span style="display:flex;"><span><span style="color:#8be9fd;font-style:italic">cd</span> my-operator
+</span></span><span style="display:flex;"><span>ork run -f examples/beginner/01-hello-website/katalog.yaml
+</span></span></code></pre></div><p>→ <a href="./getting-started/">Getting Started</a></p>
+<hr>
+<h2 id="further-reading">Further Reading</h2>
+<ul>
+<li><a href="./blog/your-crd-is-enough/">Your CRD Is Enough</a> — the idea behind Orkestra</li>
+<li><a href="./blog/why-orkestra/">Why Orkestra</a> — a deeper look at the problem</li>
+<li><a href="./faqs/">FAQs</a> — common questions, including comparisons with Kubebuilder and Helm</li>
+</ul>
 
       </div>
       
 
       
+      
       <nav class="docs-index-nav" aria-label="Section pages">
+        
         
         <a href="/docs/controlcenter/" class="docs-index-item">
           <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Orkestra Control Center</span>
+            <span class="docs-index-item-title">Control Center</span>
             
-            <span class="docs-index-item-desc">Orkestra Control Center The Orkestra Control Center provides a unified observability layer for one or more Orkestra …</span>
+            <span class="docs-index-item-desc">The Orkestra Control Center is a web UI for monitoring one or more Orkestra runtime instances. It derives all its data …</span>
+            
+          </div>
+          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+        
+        <a href="/docs/faqs/" class="docs-index-item">
+          <div class="docs-index-item-main">
+            <span class="docs-index-item-title">Frequently Asked Questions</span>
+            
+            <span class="docs-index-item-desc"> Core Concepts What is Orkestra? Orkestra is a declarative operator runtime for Kubernetes. It turns CRDs into fully …</span>
             
           </div>
           <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -505,7 +548,7 @@
           <div class="docs-index-item-main">
             <span class="docs-index-item-title">Getting Started</span>
             
-            <span class="docs-index-item-desc">Get up and running with Orkestra in under 10 minutes.</span>
+            <span class="docs-index-item-desc">Orkestra turns a YAML file into a working Kubernetes operator. This guide takes you from zero to a running operator — no …</span>
             
           </div>
           <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -517,7 +560,71 @@
           <div class="docs-index-item-main">
             <span class="docs-index-item-title">Reference</span>
             
-            <span class="docs-index-item-desc">Complete API reference for the Katalog specification.</span>
+            <span class="docs-index-item-desc">Technical reference for the Orkestra runtime, schemas, and CLI.
+Schema Complete field reference for every Orkestra …</span>
+            
+          </div>
+          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+        
+        
+        <a href="/docs/controlcenter/" class="docs-index-item">
+          <div class="docs-index-item-main">
+            <span class="docs-index-item-title">Control Center</span>
+            
+            <span class="docs-index-item-desc">The Orkestra Control Center is a web UI for monitoring one or more Orkestra runtime instances. It derives all its data …</span>
+            
+          </div>
+          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+        
+        <a href="/docs/faqs/" class="docs-index-item">
+          <div class="docs-index-item-main">
+            <span class="docs-index-item-title">Frequently Asked Questions</span>
+            
+            <span class="docs-index-item-desc"> Core Concepts What is Orkestra? Orkestra is a declarative operator runtime for Kubernetes. It turns CRDs into fully …</span>
+            
+          </div>
+          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+        
+        <a href="/docs/getting-started/" class="docs-index-item">
+          <div class="docs-index-item-main">
+            <span class="docs-index-item-title">Getting Started</span>
+            
+            <span class="docs-index-item-desc">Orkestra turns a YAML file into a working Kubernetes operator. This guide takes you from zero to a running operator — no …</span>
+            
+          </div>
+          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+        
+        <a href="/docs/reference/" class="docs-index-item">
+          <div class="docs-index-item-main">
+            <span class="docs-index-item-title">Reference</span>
+            
+            <span class="docs-index-item-desc">Technical reference for the Orkestra runtime, schemas, and CLI.
+Schema Complete field reference for every Orkestra …</span>
+            
+          </div>
+          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+        
+        <a href="/docs/deploying/" class="docs-index-item">
+          <div class="docs-index-item-main">
+            <span class="docs-index-item-title">Deploying Orkestra</span>
+            
+            <span class="docs-index-item-desc">Run Orkestra in a Kubernetes cluster using the official Helm chart.
+helm repo add orkestra …</span>
             
           </div>
           <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -529,8 +636,8 @@
           <div class="docs-index-item-main">
             <span class="docs-index-item-title">Roadmap</span>
             
-            <span class="docs-index-item-desc">Roadmap Last updated: March 2026
-Where we are Orkestra v1.0 is the first complete declarative operator runtime for …</span>
+            <span class="docs-index-item-desc">Last updated: March 2026
+Where we are Orkestra v1.0 is the first complete declarative operator runtime for Kubernetes. …</span>
             
           </div>
           <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -542,7 +649,7 @@ Where we are Orkestra v1.0 is the first complete declarative operator runtime fo
           <div class="docs-index-item-main">
             <span class="docs-index-item-title">Security</span>
             
-            <span class="docs-index-item-desc">Security Orkestra is designed for production from the start. Security is not layered on later — it is part of the …</span>
+            <span class="docs-index-item-desc">Orkestra is designed for production from the start. Security is not layered on later — it is part of the execution …</span>
             
           </div>
           <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -554,17 +661,7 @@ Where we are Orkestra v1.0 is the first complete declarative operator runtime fo
           <div class="docs-index-item-main">
             <span class="docs-index-item-title">Support</span>
             
-            <span class="docs-index-item-desc">Support Orkestra is an open-source project. This page explains how to get help, report issues, and engage with the …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/faqs/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Faqs</span>
+            <span class="docs-index-item-desc">Orkestra is an open-source project. This page explains how to get help, report issues, and engage with the community. …</span>
             
           </div>
           <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -581,7 +678,15 @@ Where we are Orkestra v1.0 is the first complete declarative operator runtime fo
 <aside class="docs-toc" id="docs-toc" aria-label="Table of contents">
   <div class="toc-inner">
     <p class="toc-title">On this page</p>
-    <nav id="TableOfContents"></nav>
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#what-you-write">What You Write</a></li>
+    <li><a href="#what-orkestra-does">What Orkestra Does</a></li>
+    <li><a href="#who-it-is-for">Who It Is For</a></li>
+    <li><a href="#get-started">Get Started</a></li>
+    <li><a href="#further-reading">Further Reading</a></li>
+  </ul>
+</nav>
     <div class="toc-footer">
       <a href="https://github.com/orkspace/orkestra/edit/main/docs/docs/_index.md" target="_blank" rel="noopener noreferrer" class="edit-on-github">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">

@@ -3,8 +3,6 @@ title: "ork template"
 weight: 33
 ---
 
-# ork template
-
 Render the merged, validated Katalog exactly as Orkestra will see it at runtime.
 
 ```bash
@@ -31,9 +29,3 @@ ork template --file ./komposer.yaml --graph
 ```
 
 ---
-
-## Related Documentation
-
-- [ork validate](./validate/)
-- [ork run](./run/)
-- [Katalog Schema](../katalog-schema/)

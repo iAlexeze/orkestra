@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Declarative State Machines in Orkestra — Orkestra">
 <meta property="og:description" content="How Orkestra models operator lifecycle as explicit state machines defined in YAML — and why that makes operators dramatically more reliable.">
-<meta property="og:url" content="http://localhost:8191/blog/declarative-state-machines/">
+<meta property="og:url" content="http://localhost:8090/blog/declarative-state-machines/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -65,7 +65,7 @@
     <ul class="navbar-links" role="list">
       
       <li>
-        <a href="/docs/" class="navbar-link"
+        <a href="/docs/getting-started/" class="navbar-link"
           >
           Docs
           
@@ -142,7 +142,7 @@
     <ul role="list">
       
       <li>
-        <a href="/docs/" class="navbar-mobile-link"
+        <a href="/docs/getting-started/" class="navbar-mobile-link"
           >
           Docs
         </a>
@@ -211,7 +211,7 @@
       <p>One of Orkestra&rsquo;s core design principles is that every CRD lifecycle should be an <strong>explicit state machine</strong> — not implicit logic buried in Go code.</p>
 <p>In traditional operators, state transitions are encoded in the <code>Reconcile</code> function. You have to read the code to understand what states exist, what triggers transitions, and what happens on failure. Orkestra makes all of this visible in the Katalog.</p>
 <h2 id="state-machines-in-yaml">State machines in YAML</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">crds</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">database</span>:
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">operatorBox</span>:

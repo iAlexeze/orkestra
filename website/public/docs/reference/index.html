@@ -1,26 +1,26 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
 <title>Reference — Orkestra</title>
 
-<meta name="description" content="Complete API reference for the Katalog specification.">
+<meta name="description" content="The declarative control plane for Kubernetes operators">
 <meta name="author" content="Orkestra">
 
 
 <meta property="og:type" content="article">
 <meta property="og:title" content="Reference — Orkestra">
-<meta property="og:description" content="Complete API reference for the Katalog specification.">
-<meta property="og:url" content="http://localhost:8191/docs/reference/">
+<meta property="og:description" content="The declarative control plane for Kubernetes operators">
+<meta property="og:url" content="http://localhost:8090/docs/reference/">
 <meta property="og:site_name" content="Orkestra">
 
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Reference — Orkestra">
-<meta name="twitter:description" content="Complete API reference for the Katalog specification.">
+<meta name="twitter:description" content="The declarative control plane for Kubernetes operators">
 
 
 <link rel="icon" type="image/png" href="/img/fav.png">
@@ -65,7 +65,7 @@
     <ul class="navbar-links" role="list">
       
       <li>
-        <a href="/docs/" class="navbar-link"
+        <a href="/docs/getting-started/" class="navbar-link"
           >
           Docs
           
@@ -142,7 +142,7 @@
     <ul role="list">
       
       <li>
-        <a href="/docs/" class="navbar-mobile-link"
+        <a href="/docs/getting-started/" class="navbar-mobile-link"
           >
           Docs
         </a>
@@ -206,18 +206,6 @@
               <ul class="sidebar-section-pages" role="list" style="display:none">
                 
                 <li>
-                  <a href="/docs/getting-started/installation/" class="sidebar-link">
-                    Installation
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/getting-started/quickstart/" class="sidebar-link">
-                    Quick Start
-                  </a>
-                </li>
-                
-                <li>
                   <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link">
                     Basic Reconciliation
                   </a>
@@ -263,20 +251,14 @@
               <ul class="sidebar-section-pages" role="list" style="display:none">
                 
                 <li>
-                  <a href="/docs/controlcenter/controlcenter/" class="sidebar-link">
-                    Orkestra Control Center
+                  <a href="/docs/controlcenter/crd-detail/" class="sidebar-link">
+                    CRD Detail View
                   </a>
                 </li>
                 
                 <li>
-                  <a href="/docs/controlcenter/deploying/" class="sidebar-link">
-                    Deploying the Orkestra Control Center
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/controlcenter/getting-started/" class="sidebar-link">
-                    Getting Started
+                  <a href="/docs/controlcenter/health-states/" class="sidebar-link">
+                    Health States
                   </a>
                 </li>
                 
@@ -303,7 +285,7 @@
                 
                 <li>
                   <a href="/docs/reference/cli/" class="sidebar-link">
-                    Cli
+                    Orkestra CLI Reference
                   </a>
                 </li>
                 
@@ -320,14 +302,8 @@
                 </li>
                 
                 <li>
-                  <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
-                    Katalog and Komposer Reference
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/katalog-schema/" class="sidebar-link">
-                    Katalog Schema
+                  <a href="/docs/reference/runtime/" class="sidebar-link">
+                    Runtime
                   </a>
                 </li>
                 
@@ -338,14 +314,8 @@
                 </li>
                 
                 <li>
-                  <a href="/docs/reference/komposer-schema/" class="sidebar-link">
-                    Komposer Schema
-                  </a>
-                </li>
-                
-                <li>
                   <a href="/docs/reference/metrics/" class="sidebar-link">
-                    **Orkestra Metrics**
+                    Orkestra Metrics
                   </a>
                 </li>
                 
@@ -357,13 +327,7 @@
                 
                 <li>
                   <a href="/docs/reference/registry-schema/" class="sidebar-link">
-                    Registry Source Schema
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/runtime/" class="sidebar-link">
-                    Runtime
+                    Registry Import Schema
                   </a>
                 </li>
                 
@@ -382,6 +346,17 @@
               </ul>
             </div>
           
+        
+      
+        
+          
+          
+          
+          <div class="sidebar-standalone">
+            <a href="/docs/deploying/" class="sidebar-standalone-link">
+              Deploying
+            </a>
+          </div>
         
       
         
@@ -466,7 +441,7 @@
     
     <div class="breadcrumb-item">
       <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-      <a href="/docs/">Documentation</a>
+      <a href="/docs/">Why Orkestra</a>
     </div>
     
   
@@ -481,23 +456,137 @@
       <header class="docs-header">
         <h1 class="docs-title">Reference</h1>
         
-        <p class="docs-description">Complete API reference for the Katalog specification.</p>
-        
       </header>
 
       
       <div class="docs-body prose">
-        <p>Complete reference documentation for the Katalog YAML specification, CLI commands, and configuration options.</p>
+        <p>Technical reference for the Orkestra runtime, schemas, and CLI.</p>
+<hr>
+<h2 id="schema">Schema</h2>
+<p>Complete field reference for every Orkestra document type.</p>
+<table>
+  <thead>
+      <tr>
+          <th>Document</th>
+          <th>Description</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><a href="./schema/katalog/">Katalog</a></td>
+          <td>Top-level operator definition</td>
+      </tr>
+      <tr>
+          <td><a href="./schema/komposer/">Komposer</a></td>
+          <td>Multi-source composition</td>
+      </tr>
+      <tr>
+          <td><a href="./schema/crd-entry/">CRD Entry</a></td>
+          <td>Per-CRD configuration</td>
+      </tr>
+      <tr>
+          <td><a href="./schema/operatorbox/">OperatorBox</a></td>
+          <td>Reconciler and resource declarations</td>
+      </tr>
+      <tr>
+          <td><a href="./schema/status/">Status</a></td>
+          <td>Status field writes</td>
+      </tr>
+      <tr>
+          <td><a href="./schema/validation/">Validation</a></td>
+          <td>Admission and reconcile-time validation rules</td>
+      </tr>
+      <tr>
+          <td><a href="./schema/mutation/">Mutation</a></td>
+          <td>Admission and reconcile-time mutation rules</td>
+      </tr>
+      <tr>
+          <td><a href="./schema/when-conditions/">When Conditions</a></td>
+          <td>Conditional resource creation</td>
+      </tr>
+      <tr>
+          <td><a href="./schema/apitypes/">API Types</a></td>
+          <td><code>apiTypes</code> field reference</td>
+      </tr>
+      <tr>
+          <td><a href="./schema/conversion/">Conversion</a></td>
+          <td>Multi-version CRD conversion</td>
+      </tr>
+      <tr>
+          <td><a href="./schema/motif/">Motif</a></td>
+          <td>Reusable operator patterns</td>
+      </tr>
+  </tbody>
+</table>
+<hr>
+<h2 id="cli">CLI</h2>
+<table>
+  <thead>
+      <tr>
+          <th>Command</th>
+          <th>Description</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><a href="./cli/run/">ork run</a></td>
+          <td>Start the operator runtime</td>
+      </tr>
+      <tr>
+          <td><a href="./cli/validate/">ork validate</a></td>
+          <td>Validate a Katalog or Komposer</td>
+      </tr>
+      <tr>
+          <td><a href="./cli/template/">ork template</a></td>
+          <td>Render the merged, resolved Katalog</td>
+      </tr>
+      <tr>
+          <td><a href="./cli/simulate/">ork simulate</a></td>
+          <td>Simulate reconciliation in memory</td>
+      </tr>
+      <tr>
+          <td><a href="./cli/init/">ork init</a></td>
+          <td>Scaffold a new operator project</td>
+      </tr>
+  </tbody>
+</table>
 
       </div>
       
 
       
+      
       <nav class="docs-index-nav" aria-label="Section pages">
+        
         
         <a href="/docs/reference/cli/" class="docs-index-item">
           <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Cli</span>
+            <span class="docs-index-item-title">Orkestra CLI Reference</span>
+            
+            <span class="docs-index-item-desc">The ork CLI manages the full lifecycle of an Orkestra operator — scaffolding, validation, templating, code generation, …</span>
+            
+          </div>
+          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+        
+        <a href="/docs/reference/schema/" class="docs-index-item">
+          <div class="docs-index-item-main">
+            <span class="docs-index-item-title">Schema</span>
+            
+          </div>
+          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+        
+        
+        <a href="/docs/reference/cli/" class="docs-index-item">
+          <div class="docs-index-item-main">
+            <span class="docs-index-item-title">Orkestra CLI Reference</span>
+            
+            <span class="docs-index-item-desc">The ork CLI manages the full lifecycle of an Orkestra operator — scaffolding, validation, templating, code generation, …</span>
             
           </div>
           <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -527,23 +616,12 @@
           </svg>
         </a>
         
-        <a href="/docs/reference/katalog-komposer-reference/" class="docs-index-item">
+        <a href="/docs/reference/runtime/" class="docs-index-item">
           <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Katalog and Komposer Reference</span>
+            <span class="docs-index-item-title">Runtime</span>
             
-            <span class="docs-index-item-desc">Katalog and Komposer Reference This page is the single-page reference for Orkestra&rsquo;s two core document kinds — …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/katalog-schema/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Katalog Schema</span>
-            
-            <span class="docs-index-item-desc">Katalog Schema A Katalog declares one or more CRDs and defines how Orkestra should manage them: what resources to …</span>
+            <span class="docs-index-item-desc">Runtime The Orkestra Runtime is the engine that executes Katalogs and Komposers.
+It handles CRD activation, dependency …</span>
             
           </div>
           <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -563,21 +641,9 @@
           </svg>
         </a>
         
-        <a href="/docs/reference/komposer-schema/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Komposer Schema</span>
-            
-            <span class="docs-index-item-desc">Komposer Schema A Komposer composes multiple Katalogs from different sources — files, URLs, Helm charts, and registry …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
         <a href="/docs/reference/metrics/" class="docs-index-item">
           <div class="docs-index-item-main">
-            <span class="docs-index-item-title">**Orkestra Metrics**</span>
+            <span class="docs-index-item-title">Orkestra Metrics</span>
             
             <span class="docs-index-item-desc">Orkestra Metrics High‑signal, per‑CRD observability for declarative operators
 Orkestra exposes a focused set of …</span>
@@ -603,23 +669,10 @@ reconciler.mutation …</span>
         
         <a href="/docs/reference/registry-schema/" class="docs-index-item">
           <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Registry Source Schema</span>
+            <span class="docs-index-item-title">Registry Import Schema</span>
             
-            <span class="docs-index-item-desc">Registry Source Schema Complete schema reference for imports.registry entries in a Komposer.
-RegistrySource One entry in …</span>
-            
-          </div>
-          <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        
-        <a href="/docs/reference/runtime/" class="docs-index-item">
-          <div class="docs-index-item-main">
-            <span class="docs-index-item-title">Runtime</span>
-            
-            <span class="docs-index-item-desc">Runtime The Orkestra Runtime is the engine that executes Katalogs and Komposers.
-It handles CRD activation, dependency …</span>
+            <span class="docs-index-item-desc">Registry Import Schema Complete schema reference for imports.registry entries in a Komposer.
+RegistryImport One entry in …</span>
             
           </div>
           <svg class="docs-index-item-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -659,7 +712,12 @@ reconciler.validation …</span>
 <aside class="docs-toc" id="docs-toc" aria-label="Table of contents">
   <div class="toc-inner">
     <p class="toc-title">On this page</p>
-    <nav id="TableOfContents"></nav>
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#schema">Schema</a></li>
+    <li><a href="#cli">CLI</a></li>
+  </ul>
+</nav>
     <div class="toc-footer">
       <a href="https://github.com/orkspace/orkestra/edit/main/docs/docs/reference/_index.md" target="_blank" rel="noopener noreferrer" class="edit-on-github">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">

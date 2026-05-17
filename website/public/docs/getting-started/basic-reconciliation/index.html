@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Basic Reconciliation — Orkestra">
 <meta property="og:description" content="The declarative control plane for Kubernetes operators">
-<meta property="og:url" content="http://localhost:8191/docs/getting-started/basic-reconciliation/">
+<meta property="og:url" content="http://localhost:8090/docs/getting-started/basic-reconciliation/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -65,7 +65,7 @@
     <ul class="navbar-links" role="list">
       
       <li>
-        <a href="/docs/" class="navbar-link"
+        <a href="/docs/getting-started/" class="navbar-link"
           >
           Docs
           
@@ -142,7 +142,7 @@
     <ul role="list">
       
       <li>
-        <a href="/docs/" class="navbar-mobile-link"
+        <a href="/docs/getting-started/" class="navbar-mobile-link"
           >
           Docs
         </a>
@@ -206,18 +206,6 @@
               <ul class="sidebar-section-pages" role="list">
                 
                 <li>
-                  <a href="/docs/getting-started/installation/" class="sidebar-link">
-                    Installation
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/getting-started/quickstart/" class="sidebar-link">
-                    Quick Start
-                  </a>
-                </li>
-                
-                <li>
                   <a href="/docs/getting-started/basic-reconciliation/" class="sidebar-link active">
                     Basic Reconciliation
                   </a>
@@ -263,20 +251,14 @@
               <ul class="sidebar-section-pages" role="list" style="display:none">
                 
                 <li>
-                  <a href="/docs/controlcenter/controlcenter/" class="sidebar-link">
-                    Orkestra Control Center
+                  <a href="/docs/controlcenter/crd-detail/" class="sidebar-link">
+                    CRD Detail View
                   </a>
                 </li>
                 
                 <li>
-                  <a href="/docs/controlcenter/deploying/" class="sidebar-link">
-                    Deploying the Orkestra Control Center
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/controlcenter/getting-started/" class="sidebar-link">
-                    Getting Started
+                  <a href="/docs/controlcenter/health-states/" class="sidebar-link">
+                    Health States
                   </a>
                 </li>
                 
@@ -303,7 +285,7 @@
                 
                 <li>
                   <a href="/docs/reference/cli/" class="sidebar-link">
-                    Cli
+                    Orkestra CLI Reference
                   </a>
                 </li>
                 
@@ -320,14 +302,8 @@
                 </li>
                 
                 <li>
-                  <a href="/docs/reference/katalog-komposer-reference/" class="sidebar-link">
-                    Katalog and Komposer Reference
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/katalog-schema/" class="sidebar-link">
-                    Katalog Schema
+                  <a href="/docs/reference/runtime/" class="sidebar-link">
+                    Runtime
                   </a>
                 </li>
                 
@@ -338,14 +314,8 @@
                 </li>
                 
                 <li>
-                  <a href="/docs/reference/komposer-schema/" class="sidebar-link">
-                    Komposer Schema
-                  </a>
-                </li>
-                
-                <li>
                   <a href="/docs/reference/metrics/" class="sidebar-link">
-                    **Orkestra Metrics**
+                    Orkestra Metrics
                   </a>
                 </li>
                 
@@ -357,13 +327,7 @@
                 
                 <li>
                   <a href="/docs/reference/registry-schema/" class="sidebar-link">
-                    Registry Source Schema
-                  </a>
-                </li>
-                
-                <li>
-                  <a href="/docs/reference/runtime/" class="sidebar-link">
-                    Runtime
+                    Registry Import Schema
                   </a>
                 </li>
                 
@@ -382,6 +346,17 @@
               </ul>
             </div>
           
+        
+      
+        
+          
+          
+          
+          <div class="sidebar-standalone">
+            <a href="/docs/deploying/" class="sidebar-standalone-link">
+              Deploying
+            </a>
+          </div>
         
       
         
@@ -466,7 +441,7 @@
     
     <div class="breadcrumb-item">
       <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-      <a href="/docs/">Documentation</a>
+      <a href="/docs/">Why Orkestra</a>
     </div>
     
   
@@ -490,8 +465,8 @@
         
         <div class="docs-meta">
           
-          <time datetime="2026-05-07" class="docs-date">
-            Updated May 7, 2026
+          <time datetime="2026-05-16" class="docs-date">
+            Updated May 16, 2026
           </time>
           
 
@@ -502,8 +477,7 @@
       </header>
 
       <div class="docs-body prose">
-        <h1 id="basic-reconciliation">Basic Reconciliation</h1>
-<p>This guide walks through exactly what happens when Orkestra reconciles a CR — from the moment you apply it to the moment it&rsquo;s deleted.</p>
+        <p>This guide walks through exactly what happens when Orkestra reconciles a CR — from the moment you apply it to the moment it&rsquo;s deleted.</p>
 <hr>
 <h2 id="the-setup">The Setup</h2>
 <p>We&rsquo;ll use the <code>hello-website</code> example from <code>ork init</code>. It has:</p>
@@ -513,7 +487,7 @@
 <li><code>cr.yaml</code> — a sample <code>Website</code> CR</li>
 </ul>
 <p>Start the operator:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run -f examples/beginner/01-hello-website/katalog.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork run -f examples/beginner/01-hello-website/katalog.yaml
 </span></span></code></pre></div><hr>
 <h2 id="step-1--orkestra-starts">Step 1 — Orkestra starts</h2>
 <p>When <code>ork run</code> starts:</p>
@@ -531,9 +505,9 @@ INFO  Workers started            crd=website  workers=3
 INFO  Health server ready        addr=:8080
 </code></pre><hr>
 <h2 id="step-2--apply-a-cr">Step 2 — Apply a CR</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl apply -f examples/beginner/01-hello-website/cr.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl apply -f examples/beginner/01-hello-website/cr.yaml
 </span></span></code></pre></div><p>The CR:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: demo.orkestra.io/v1alpha1
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">apiVersion</span>: demo.orkestra.io/v1alpha1
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Website
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">metadata</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">name</span>: hello-website
@@ -553,16 +527,16 @@ INFO  Health server ready        addr=:8080
 <li>Prometheus counter increments: <code>controller_reconcile_total{result=&quot;success&quot;}</code></li>
 </ol>
 <p>Check the result:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl get deployments
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl get deployments
 </span></span><span style="display:flex;"><span>kubectl describe website hello-website
 </span></span></code></pre></div><hr>
 <h2 id="step-4--update-the-cr">Step 4 — Update the CR</h2>
 <p>Edit the image:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl patch website hello-website --type<span style="color:#ff79c6">=</span>merge -p <span style="color:#f1fa8c">&#39;{&#34;spec&#34;:{&#34;image&#34;:&#34;nginx:1.27&#34;}}&#39;</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl patch website hello-website --type<span style="color:#ff79c6">=</span>merge -p <span style="color:#f1fa8c">&#39;{&#34;spec&#34;:{&#34;image&#34;:&#34;nginx:1.27&#34;}}&#39;</span>
 </span></span></code></pre></div><p>Orkestra detects the change, re-reconciles, and updates the Deployment image. Because <code>reconcile: true</code> is set, if the Deployment is edited manually between reconciles, Orkestra corrects it back.</p>
 <hr>
 <h2 id="step-5--delete-the-cr">Step 5 — Delete the CR</h2>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl delete -f examples/beginner/01-hello-website/cr.yaml
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>kubectl delete -f examples/beginner/01-hello-website/cr.yaml
 </span></span></code></pre></div><p>Orkestra:</p>
 <ol>
 <li>Receives the delete event</li>
@@ -573,8 +547,8 @@ INFO  Health server ready        addr=:8080
 <hr>
 <h2 id="observing-reconciliation">Observing Reconciliation</h2>
 <p>The health endpoint shows everything:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl localhost:8080/katalog/website/health | jq
-</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl localhost:8080/katalog/website/health | jq
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;status&#34;</span>: <span style="color:#f1fa8c">&#34;healthy&#34;</span>,
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;lastReconcile&#34;</span>: <span style="color:#f1fa8c">&#34;2026-05-16T18:00:01Z&#34;</span>,
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;reconcileCount&#34;</span>: <span style="color:#bd93f9">3</span>,
@@ -582,9 +556,9 @@ INFO  Health server ready        addr=:8080
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;workerCount&#34;</span>: <span style="color:#bd93f9">3</span>
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><p>Full detail including queue depth and active workers:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl localhost:8080/katalog/website | jq
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl localhost:8080/katalog/website | jq
 </span></span></code></pre></div><p>Or open the Control Center for a visual view:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork control start
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>ork control start
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># → localhost:8081</span>
 </span></span></code></pre></div><hr>
 <h2 id="reconcile-lifecycle-summary">Reconcile Lifecycle Summary</h2>
@@ -620,19 +594,11 @@ INFO  Health server ready        addr=:8080
       
       <nav class="docs-pagination" aria-label="Page navigation">
         
-        <a href="/docs/getting-started/learning-to-orkestrate/" class="pagination-link pagination-prev">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          <div>
-            <span class="pagination-label">Previous</span>
-            <span class="pagination-title">Learning to Orkestrate</span>
-          </div>
-        </a>
         
-        
-        <a href="/docs/getting-started/quickstart/" class="pagination-link pagination-next">
+        <a href="/docs/getting-started/learning-to-orkestrate/" class="pagination-link pagination-next">
           <div>
             <span class="pagination-label">Next</span>
-            <span class="pagination-title">Quick Start</span>
+            <span class="pagination-title">Learning to Orkestrate</span>
           </div>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>

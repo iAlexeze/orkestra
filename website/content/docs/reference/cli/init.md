@@ -3,8 +3,6 @@ title: "ork init"
 weight: 28
 ---
 
-# ork init
-
 Initialize a new Orkestra operator project using a versioned example pack.
 
 ```
@@ -123,9 +121,3 @@ ork control start
 - Initialization works offline if the pack is already cached.
 
 ---
-
-## Related Documentation
-
-- [Katalog Schema](../katalog-schema/)
-- [Komposer Schema](../komposer-schema/)
-- [ork validate](./validate/)

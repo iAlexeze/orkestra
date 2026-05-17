@@ -26,9 +26,3 @@ ork template --file ./komposer.yaml --graph
 ```
 
 ---
-
-## Related Documentation
-
-- [ork validate](./validate.md)
-- [ork run](./run.md)
-- [Katalog Schema](../katalog-schema.md)

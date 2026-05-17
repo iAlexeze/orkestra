@@ -1,78 +1,35 @@
 # Reference
 
-This section provides detailed technical reference for the Orkestra runtime, its API, configuration schemas, and metrics.
+Technical reference for the Orkestra runtime, schemas, and CLI.
 
 ---
 
-## Runtime API
+## Schema
 
-The Orkestra operator exposes a small, stable HTTP API for inspecting CRDs, their reconcilers, and their health status.
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /katalog` | List all CRDs with basic health and configuration |
-| `GET /katalog/{crd}` | Detailed config and runtime state for a single CRD |
-| `GET /katalog/{crd}/health` | Health status (200 healthy / 503 degraded) |
-| `GET /health` | Liveness probe |
-| `GET /ready` | Readiness probe (200 when all reconcilers started) |
-| `GET /metrics` | Prometheus metrics endpoint |
-
-See the [Katalog API Reference](./katalog-api.md) for full details.
-
----
-
-## Runtime Behavior
-
-The Orkestra Runtime is the engine that executes Katalogs and Komposers.
-
-| Phase | Behavior |
-|-------|----------|
-| **Startup** | Load Katalog, build dependency graph, start CRDs in topological order. Missing CRDs do not block startup. |
-| **Reconciliation** | Fetch CR, convert to original version, run templates/hooks/constructors, apply registry operations, update status. |
-| **Drift Correction** | Resources with `reconcile: true` are corrected on every reconcile. |
-| **Shutdown** | Stop workers, stop informers, shut down CRDs in reverse dependency order. |
-
-See the [Runtime Reference](./runtime.md) for full details.
-
----
-
-## Metrics
-
-Orkestra exposes Prometheus metrics for every CRD and the conversion webhook.
-
-| Metric | Type | Description |
-|--------|------|-------------|
-| `controller_reconcile_total` | Counter | Reconcile count by result |
-| `controller_reconcile_duration_seconds` | Histogram | Reconcile latency |
-| `controller_queue_depth` | Gauge | Workqueue depth |
-| `controller_workers_active` | Gauge | Active worker count |
-| `controller_resource_count` | Gauge | Live CR count from cache |
-| `controller_crd_activation_total` | Counter | CRD activation attempts |
-| `controller_crd_activation_latency_seconds` | Histogram | Time from startup to activation |
-| `orkestra_conversion_requests_total` | Counter | Conversion requests by direction |
-| `orkestra_conversion_duration_seconds` | Histogram | Conversion latency |
-
-All metrics include a `crd` label for per‑CRD granularity. See the [Metrics Reference](./metrics.md) for full details.
-
----
-
-## Schemas
+Complete field reference for every Orkestra document type.
 
 | Document | Description |
 |----------|-------------|
-| [Katalog Schema](./katalog-schema.md) | Complete field reference for Katalog YAML |
-| [Komposer Schema](./komposer-schema.md) | Complete field reference for Komposer YAML |
-| [Registry Schema](./registry-schema.md) | Artifact format for OCI‑published patterns |
+| [Katalog](./schema/katalog.md) | Top-level operator definition |
+| [Komposer](./schema/komposer.md) | Multi-source composition |
+| [CRD Entry](./schema/crd-entry.md) | Per-CRD configuration |
+| [OperatorBox](./schema/operatorbox.md) | Reconciler and resource declarations |
+| [Status](./schema/status.md) | Status field writes |
+| [Validation](./schema/validation.md) | Admission and reconcile-time validation rules |
+| [Mutation](./schema/mutation.md) | Admission and reconcile-time mutation rules |
+| [When Conditions](./schema/when-conditions.md) | Conditional resource creation |
+| [API Types](./schema/apitypes.md) | `apiTypes` field reference |
+| [Conversion](./schema/conversion.md) | Multi-version CRD conversion |
+| [Motif](./schema/motif.md) | Reusable operator patterns |
 
 ---
 
-## Related Documents
+## CLI
 
-- [Katalog API Reference](./katalog-api.md) — detailed endpoint documentation
-- [Metrics Reference](./metrics.md) — all metrics with labels and examples
-- [Runtime Reference](./runtime.md) — startup, reconciliation, and shutdown flow
-- [Katalog and Komposer Reference](./katalog-komposer-reference.md) — complete schema reference for both
-
----
-
-**All reference documents assume familiarity with the core concepts. If you are new to Orkestra, start with the [Getting Started](../getting-started/index.md) guide.** 🎼
+| Command | Description |
+|---------|-------------|
+| [ork run](./cli/run.md) | Start the operator runtime |
+| [ork validate](./cli/validate.md) | Validate a Katalog or Komposer |
+| [ork template](./cli/template.md) | Render the merged, resolved Katalog |
+| [ork simulate](./cli/simulate.md) | Simulate reconciliation in memory |
+| [ork init](./cli/init.md) | Scaffold a new operator project |

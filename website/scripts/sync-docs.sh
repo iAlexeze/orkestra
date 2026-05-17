@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# sync-docs.sh — Copy ../docs/ into content/docs/, injecting Hugo front matter
+# sync-docs.sh — Copy ../documentation/ into content/docs/, injecting Hugo front matter
 # and converting MkDocs admonitions (!!!  note/warning/etc.) to callout shortcodes.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC_DIR="$(realpath "$SCRIPT_DIR/../../docs")"
+SRC_DIR="$(realpath "$SCRIPT_DIR/../../documentation")"
 DST_DIR="$SCRIPT_DIR/../content/docs"
 
 if [[ ! -d "$SRC_DIR" ]]; then
@@ -27,11 +27,17 @@ inject_frontmatter() {
     return
   fi
 
-  # Derive title from first H1 heading if present
+  # Derive title from first H1 heading if present, then strip it from content.
+  # The Hugo template renders the title as its own <h1> — keeping the markdown
+  # H1 produces a duplicate heading on every page.
   local h1
   h1="$(grep -m1 '^# ' "$file" | sed 's/^# //' || true)"
   if [[ -n "$h1" ]]; then
     title="$h1"
+    # Remove the first H1 line (and the blank line immediately after it, if any)
+    sed -i '0,/^# /{/^# /d}' "$file"
+    # Remove leading blank lines left behind
+    sed -i '/./,$!d' "$file"
   fi
 
   local tmp
@@ -98,6 +104,18 @@ find "$SRC_DIR" -name '*.md' | sort | while read -r src_file; do
 
   dst_file="$DST_DIR/$rel_path"
 
+  # Hugo requires _index.md (not index.md) for section branch bundles.
+  # Any source index.md becomes _index.md so sub-pages render correctly.
+  if [[ "$(basename "$dst_file")" == "index.md" ]]; then
+    dst_file="${dst_file%index.md}_index.md"
+  fi
+
+  # If destination _index.md already exists with a custom weight, preserve it.
+  existing_weight=""
+  if [[ -f "$dst_file" ]] && head -1 "$dst_file" | grep -q '^---'; then
+    existing_weight="$(grep '^weight:' "$dst_file" | head -1 | awk '{print $2}')"
+  fi
+
   mkdir -p "$(dirname "$dst_file")"
   cp "$src_file" "$dst_file"
 
@@ -113,7 +131,8 @@ find "$SRC_DIR" -name '*.md' | sort | while read -r src_file; do
   convert_admonitions "$dst_file"
 
   title="$(slugify_title "$src_file")"
-  inject_frontmatter "$dst_file" "$title" "$weight"
+  effective_weight="${existing_weight:-$weight}"
+  inject_frontmatter "$dst_file" "$title" "$effective_weight"
 
   ((weight++)) || true
   echo "  synced: $rel_path"

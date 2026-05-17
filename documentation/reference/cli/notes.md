@@ -143,12 +143,3 @@ make generate-notes
 ```
 
 This re-parses every `### \`noteName\`` heading in the doc files and emits `pkg/note/catalog_generated.go`. The catalog stays in sync with the docs automatically — add a doc entry, run the target, and `ork notes` reflects the change on the next build.
-
----
-
-## Related Documentation
-
-- [Note library overview](../../orkestra-notes/__index.md)
-- [Kubernetes notes](../../orkestra-notes/kubernetes.md)
-- [Replica notes](../../orkestra-notes/replicas.md)
-- [ork validate](./validate.md)
