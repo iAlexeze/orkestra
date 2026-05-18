@@ -18,6 +18,11 @@ func MotifKind() string {
 	return kindMotif
 }
 
+// E2EKind returns the kind string for an E2E document.
+func E2EKind() string {
+	return kindE2E
+}
+
 // KonduktorKind returns the kind string for a Konduktor document.
 func KonduktorKind() string {
 	return kindKonductor

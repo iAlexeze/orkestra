@@ -2,32 +2,45 @@
 //
 // Exported pull helpers — shared with pkg/motif and any other package
 // that needs to fetch a registry artifact without loading a full Katalog.
+//
+// Both PullToDir and PullMotifToDir follow a cache-first strategy for OCI
+// artifacts: ~/.orkestra/registry/<host>/<repo>/<version>/ is checked for a
+// sentinel file (katalog.yaml or motif.yaml) before any network call is made.
+// This avoids redundant pulls and removes the need for Docker credential
+// forwarding inside the process — callers should use `ork registry pull`
+// to populate the cache, then rely on these helpers to read from it.
 package merger
 
 import (
 	"fmt"
 	"os"
 
+	"github.com/orkspace/orkestra/pkg/registry"
 	"github.com/orkspace/orkestra/pkg/utils"
 )
 
-// PullToDir fetches a registry pattern artifact (OCI or Git) to a fresh temp directory.
-// It follows the same URL@version shorthand and OCI/Git dispatch as RegistrySource.
+// noop cleanup used when serving from cache — nothing to remove.
+var noopCleanup = func() {}
+
+// PullToDir returns the directory for a registry pattern artifact (OCI or Git).
+// For OCI artifacts it checks the local cache (~/.orkestra/registry/) first and
+// returns the cached directory without a network call when available.
 //
-// Unlike loadRegistrySource, this function does NOT validate artifact structure —
-// the caller decides which files to read after the pull succeeds.
-//
-// Patterns may include an optional motif.yaml when they expose a reusable Motif.
-// Use PullMotifToDir for standalone Motif repos (no pattern files required).
-//
-// Returns (dir, cleanup, err). Always call cleanup() when done.
+// Returns (dir, cleanup, err). Always call cleanup() when done —
+// for cached hits cleanup is a no-op; for fresh pulls it removes the temp dir.
 func PullToDir(url, version string, oci bool, auth *utils.FileAuth) (dir string, cleanup func(), err error) {
+	if oci {
+		if cached, ok := registry.CachedDir(url, version); ok {
+			return cached, noopCleanup, nil
+		}
+	}
 	m := &Merger{}
 	return m.pullPattern(url, version, oci, auth)
 }
 
-// PullMotifToDir fetches only motif.yaml from a registry to a temp directory.
-// Use this for standalone Motif repos (not full patterns).
+// PullMotifToDir returns the directory for a motif artifact (OCI or Git).
+// For OCI artifacts it checks the local cache (~/.orkestra/registry/) first and
+// returns the cached directory without a network call when available.
 //
 // For OCI: the entire OCI artifact is pulled — motif.yaml must be at the root.
 // For Git (GitHub/GitLab): only motif.yaml is fetched via raw URL.
@@ -35,6 +48,12 @@ func PullToDir(url, version string, oci bool, auth *utils.FileAuth) (dir string,
 //
 // Returns (dir, cleanup, err). Always call cleanup() when done.
 func PullMotifToDir(url, version string, oci bool, auth *utils.FileAuth) (dir string, cleanup func(), err error) {
+	if oci {
+		if cached, ok := registry.CachedDir(url, version); ok {
+			return cached, noopCleanup, nil
+		}
+	}
+
 	tmpDir, err := os.MkdirTemp("", "orkestra-motif-*")
 	if err != nil {
 		return "", nil, fmt.Errorf("creating temp dir: %w", err)

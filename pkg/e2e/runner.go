@@ -1,7 +1,23 @@
 // Package e2e implements the orchestration loop for `ork e2e`.
-// It runs a declarative end-to-end test defined in an E2E spec file:
-// cluster creation → CRD apply → bundle generate+apply → Orkestra install →
-// CR apply → expectation checking → cleanup → context restore.
+//
+// A Runner executes a declarative E2E spec through its full lifecycle:
+//
+//  1. Cluster provisioning (kind) — skipped when --use-current or --cluster is set
+//  2. CRD apply
+//  3. Optional setup manifests
+//  4. Bundle generate + apply
+//  5. Orkestra helm install
+//  6. CR apply
+//  7. Expectation polling
+//  8. Teardown — always runs for non-owned clusters (--use-current, --cluster);
+//     for owned clusters only when --keep-cluster is absent
+//
+// Teardown reverses every applied resource in the correct order:
+// CR delete → helm uninstall → bundle delete → setup (reverse) → CRDs.
+// This keeps borrowed clusters clean regardless of pass/fail.
+//
+// Run returns a *Result with per-case timings that callers (e.g. registry push)
+// embed as OCI annotations.
 package e2e
 
 import (
@@ -27,18 +43,18 @@ const (
 
 // Runner executes a single E2E spec end-to-end.
 type Runner struct {
-	e2e         orktypes.E2E
-	e2eDir      string // directory of the e2e.yaml file — resolves relative paths
-	keepCluster bool
-	currentCtx  bool   // Default (false) - means whether to use the current context, skip cluster creation
-	clusterCtx  string // non-empty means use this context, skip cluster creation
+	e2e           orktypes.E2E
+	e2eDir        string // directory of the e2e.yaml file — resolves relative paths
+	keepCluster   bool
+	useCurrentCtx bool   // Default (false) - means whether to use the current context, skip cluster creation
+	clusterCtx    string // non-empty means use this context, skip cluster creation
 
 	katalogFile string
 	crFile      string
 }
 
 // New loads an E2E spec from a YAML file and constructs a Runner.
-func New(e2eFile, clusterCtx string, currentCtx, keepCluster bool) (*Runner, error) {
+func New(e2eFile, clusterCtx string, useCurrentCtx, keepCluster bool) (*Runner, error) {
 	data, err := os.ReadFile(e2eFile)
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", e2eFile, err)
@@ -53,11 +69,11 @@ func New(e2eFile, clusterCtx string, currentCtx, keepCluster bool) (*Runner, err
 	}
 
 	r := &Runner{
-		e2e:         e2e,
-		e2eDir:      filepath.Dir(e2eFile),
-		keepCluster: keepCluster,
-		clusterCtx:  clusterCtx,
-		currentCtx:  currentCtx,
+		e2e:           e2e,
+		e2eDir:        filepath.Dir(e2eFile),
+		keepCluster:   keepCluster,
+		clusterCtx:    clusterCtx,
+		useCurrentCtx: useCurrentCtx,
 	}
 
 	if err := r.resolveSource(); err != nil {
@@ -129,7 +145,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	//
 	// When e2e creates and deletes its own ephemeral cluster, teardown is handled
 	// by the cluster deletion — no per-resource cleanup is needed.
-	ownsCluster := r.clusterCtx == "" && !r.keepCluster && !r.currentCtx
+	ownsCluster := r.clusterCtx == "" && !r.keepCluster && !r.useCurrentCtx
 	var (
 		appliedCRDPaths   []string
 		appliedBundlePath string
@@ -291,7 +307,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	}
 
 	// ── 10. Cleanup ──────────────────────────────────────────────────────
-	if !r.currentCtx && !r.keepCluster && r.clusterCtx == "" {
+	if !r.useCurrentCtx && !r.keepCluster && r.clusterCtx == "" {
 		fmt.Printf("\n→ Deleting cluster '%s'...\n", r.clusterName())
 		if err := r.deleteCluster(ctx); err != nil {
 			fmt.Printf("  ! Could not delete cluster: %v\n", err)
@@ -308,7 +324,7 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 
 // ensureCluster sets up the cluster according to the spec.
 func (r *Runner) ensureCluster(ctx context.Context) error {
-	if r.currentCtx {
+	if r.useCurrentCtx {
 		fmt.Printf("→ Using current cluster context...\n")
 		return nil
 	}

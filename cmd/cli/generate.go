@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/cmd/cmdutil"
 	"github.com/orkspace/orkestra/pkg/generate"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -201,7 +200,7 @@ Example:
 			return fmt.Errorf("generate rbac: %w", err)
 		}
 
-		return cmdutil.WriteOutput(outputFile, "rbac.yaml", []byte(output))
+		return writeOutput(outputFile, "rbac.yaml", []byte(output))
 	},
 }
 
@@ -232,7 +231,7 @@ Example:
 			return fmt.Errorf("generate configmap: %w", err)
 		}
 
-		return cmdutil.WriteOutput(outputFile, "config.yaml", []byte(out))
+		return writeOutput(outputFile, "config.yaml", []byte(out))
 	},
 }
 
@@ -289,7 +288,7 @@ Examples:
 			return fmt.Errorf("generate bundle: %w", err)
 		}
 
-		return cmdutil.WriteOutput(outputFile, "bundle.yaml", []byte(bundle))
+		return writeOutput(outputFile, "bundle.yaml", []byte(bundle))
 
 	},
 }

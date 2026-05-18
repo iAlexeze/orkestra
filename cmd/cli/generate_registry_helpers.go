@@ -66,7 +66,7 @@ func collectModulesToGet(k *katalog.Katalog) (*katalog.Katalog, []string) {
 			c := crd.OperatorBox.ConstructorDecl
 			loc, locVer := splitLocationVersion(c.Location)
 			version := c.Version
-			
+
 			if version != "" && version != locVer {
 				fmt.Fprintf(os.Stderr, "[Warning] declared version %q differs from version in location %q; using declared version %q\n", version, locVer, version)
 			}

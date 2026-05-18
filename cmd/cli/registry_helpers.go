@@ -9,21 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/registry"
 	"gopkg.in/yaml.v3"
 )
 
 // ── helpers ───────────────────────────────────────────────────────────────────
-
-func printPullSuggestions(ref *registry.Ref, cacheDir string) {
-	fmt.Printf("\nTo use this pattern:\n")
-	fmt.Printf("  ork run -f %s\n", filepath.Join(cacheDir, registry.FileKatalog))
-	fmt.Printf("\nOr reference in a Komposer:\n")
-	fmt.Printf("  imports:\n")
-	fmt.Printf("    registry:\n")
-	fmt.Printf("      - url: %s\n", ref.String())
-}
-
 func formatSize(b int64) string {
 	const unit = 1024
 	if b < unit {
