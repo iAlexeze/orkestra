@@ -8,7 +8,7 @@
 // and conversion webhooks:
 //
 //   - TLS HTTPS server that handles /validate, /mutate, /convert,
-//     /deletion-protection, and /namespace-protection
+//     /deletion-protection, /namespace-protection, and /strict-mode-protection
 //   - Webhook configuration registration and reconciliation with the API server
 //   - All HTTP handlers for admission review processing
 //   - Periodic controller that keeps webhook configurations in sync with the Katalog
@@ -100,6 +100,7 @@ type WebhookServer struct {
 	// Runtime protection state — set in Start() based on Katalog.
 	deletionProtection  atomic.Bool
 	namespaceProtection atomic.Bool
+	strictMode          atomic.Bool
 
 	// Kubernetes client for webhook configuration registration.
 	kubeClient kubernetes.Interface
@@ -118,6 +119,7 @@ type WebhookServer struct {
 	protectionStats *health.DeletionProtectionStats
 	webhookStats    *health.WebhookStats
 	namespaceStats  *health.NamespaceProtectionStats
+	strictModeStats *health.DeletionProtectionStats
 
 	// Deletion protection — set of CRD full names (plural.group) that are protected.
 	protectedCRDNames map[string]struct{}
@@ -169,6 +171,7 @@ func NewWebhookServer(kubeClient kubernetes.Interface, kat *katalog.Katalog, kfg
 		admissionStats:     health.NewAdmissionStats(convWindow),
 		protectionStats:    health.NewDeletionProtectionStats(),
 		webhookStats:       health.NewWebhookStats(),
+		strictModeStats:    health.NewDeletionProtectionStats(),
 	}
 
 	// Precompute deletion-protection CRD name set.
@@ -227,6 +230,9 @@ func (ws *WebhookServer) Start(ctx context.Context) error {
 	if kat.IsNamespaceProtectionEnabled() && len(kat.NamespaceProtectionGVRs()) > 0 {
 		ws.namespaceProtection.Store(true)
 	}
+	if kat.IsStrictModeEnabled() && utils.IsRunningInCluster() {
+		ws.strictMode.Store(true)
+	}
 
 	logger.Debug().
 		Bool("deletionProtection", ws.deletionProtection.Load()).
@@ -253,6 +259,11 @@ func (ws *WebhookServer) Start(ctx context.Context) error {
 		ws.mux.HandleFunc("/namespace-protection", ws.namespaceProtectionHandler)
 		startHTTPS = true
 		logger.Info().Str("endpoint", "/namespace-protection").Msg("namespace protection endpoint registered")
+	}
+	if ws.strictMode.Load() {
+		ws.mux.HandleFunc("/strict-mode-protection", ws.strictModeProtectionHandler)
+		startHTTPS = true
+		logger.Info().Str("endpoint", "/strict-mode-protection").Msg("strict mode protection endpoint registered")
 	}
 	if kat.HasConversionPaths() {
 		ws.mux.HandleFunc("/convert", ws.conversionHandler)
@@ -377,6 +388,28 @@ func (ws *WebhookServer) Start(ctx context.Context) error {
 		}()
 	}
 
+	// Strict mode webhook registration.
+	if ws.strictMode.Load() && ws.kubeClient != nil {
+		go func() {
+			wctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			caBundle, err := readCABundle(ws.hookReg.TLSCertFile)
+			if err != nil {
+				logger.Error().Err(err).Msg("strict mode webhook: cannot read CA bundle")
+				return
+			}
+
+			if err := registerStrictModeProtectionWebhook(wctx, ws.kubeClient, caBundle, ws.hookReg); err != nil {
+				logger.Error().Err(err).Msg("strict mode protection webhook registration failed")
+			} else {
+				logger.Info().
+					Str("config", strictModeProtectionWebhookConfigName).
+					Msg("strict mode protection webhook registered")
+			}
+		}()
+	}
+
 	// Start the housekeeper to keep webhook configurations in sync.
 	if kat.IsWebhookControllerEnabled() {
 		if err := ws.housekeeper(ws.ctx); err != nil {
@@ -434,6 +467,18 @@ func (ws *WebhookServer) Shutdown(ctx context.Context) {
 		}
 	}
 
+	// Cleanup strict-mode-protection webhook.
+	// Strict mode cleanup mirrors deletion protection: only clean up when the
+	// parent deletionProtection.cleanupOnShutdown is set, since strict mode is
+	// a sub-feature of deletion protection.
+	if kat.IsStrictModeEnabled() && kat.DeletionProtectionCleanupOnShutdown() && ws.kubeClient != nil {
+		if err := cleanupValidatingWebhook(ctx, ws.kubeClient, strictModeProtectionWebhookConfigName); err != nil {
+			logger.Error().Err(err).Msg("strict mode protection webhook cleanup error")
+		} else {
+			logger.Info().Str("config", strictModeProtectionWebhookConfigName).Msg("strict mode protection webhook removed")
+		}
+	}
+
 	// Cleanup the TLS secret when auto-generated certs and cleanup is enabled.
 	shouldCleanupTLS :=
 		kat.WebhookCleanupOnShutdown() ||
@@ -475,4 +520,9 @@ func (ws *WebhookServer) GetWebhookStats() *health.WebhookStats { return ws.webh
 // GetNamespaceStats returns the namespace-protection statistics instance.
 func (ws *WebhookServer) GetNamespaceStats() *health.NamespaceProtectionStats {
 	return ws.namespaceStats
+}
+
+// GetStrictModeStats returns the strict-mode-protection statistics instance.
+func (ws *WebhookServer) GetStrictModeStats() *health.DeletionProtectionStats {
+	return ws.strictModeStats
 }

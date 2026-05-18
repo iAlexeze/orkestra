@@ -294,15 +294,15 @@ func runSteps(steps []initStep) error {
 	for _, step := range steps {
 		fmt.Printf("  %-50s", step.name+"...")
 		if err := step.fn(); err != nil {
-			fmt.Printf("%s✗%s\n", utils.ColorRed, utils.ColorReset)
+			fmt.Printf("%s\n", utils.FailureMark())
 			return fmt.Errorf("%s: %w", step.name, err)
 		}
-		fmt.Printf("%s✓%s\n", utils.ColorGreen, utils.ColorReset)
+		fmt.Printf("%s\n", utils.SuccessMark())
 	}
 	return nil
 }
 
 // printBanner prints the Orkestra CLI logo.
 func printBanner() {
-	fmt.Printf("\n%s%s%s\n\n", utils.ColorGreen, utils.OrkestraLogoCLI, utils.ColorReset)
+	fmt.Printf("\n%s\n\n", utils.Green(utils.OrkestraLogoCLI))
 }

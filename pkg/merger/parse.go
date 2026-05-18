@@ -91,5 +91,19 @@ func containsValidKind(doc []byte) bool {
 		strings.Contains(s, fmt.Sprintf("kind: %s", konfig.KomposerKind()))
 }
 
+// sniffDocumentKind does a fast string scan for known Orkestra kinds that are
+// NOT valid merger inputs (Motif, E2E). Used to produce a clear error instead
+// of silently treating the file as an empty Katalog.
+// Returns the detected kind string, or "" if none recognized.
+func sniffDocumentKind(doc []byte) string {
+	s := string(doc)
+	for _, kind := range []string{konfig.MotifKind(), konfig.E2EKind()} {
+		if strings.Contains(s, fmt.Sprintf("kind: %s", kind)) {
+			return kind
+		}
+	}
+	return ""
+}
+
 // Export
 var ParseKatalogDoc = parseKatalogDoc

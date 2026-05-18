@@ -79,8 +79,9 @@ func (ws *WebhookServer) housekeeper(ctx context.Context) error {
 	hasAdmission := kat.HasValidationRules() || kat.HasMutationRules()
 	hasDeletionProtection := kat.IsDeletionProtectionEnabled() && kat.DeletionProtectionGVRs() != nil
 	hasNamespaceProtection := kat.IsNamespaceProtectionEnabled() && len(kat.NamespaceProtectionGVRs()) > 0
+	hasStrictMode := kat.IsStrictModeEnabled()
 
-	if !hasAdmission && !hasDeletionProtection && !hasNamespaceProtection {
+	if !hasAdmission && !hasDeletionProtection && !hasNamespaceProtection && !hasStrictMode {
 		logger.Debug().Msg("housekeeper disabled: no admission or protection declared")
 		return nil
 	}
@@ -89,10 +90,10 @@ func (ws *WebhookServer) housekeeper(ctx context.Context) error {
 	trigger := make(chan struct{}, 1)
 
 	// Start housekeepers only for the features that require them.
-	// Validation, deletion‑protection, and namespace‑protection all use
+	// Validation, deletion‑protection, namespace‑protection, and strict‑mode all use
 	// ValidatingWebhookConfiguration, so they share the same watcher.
 	// Mutation rules use a separate MutatingWebhookConfiguration watcher.
-	if kat.HasValidationRules() || hasDeletionProtection || hasNamespaceProtection {
+	if kat.HasValidationRules() || hasDeletionProtection || hasNamespaceProtection || hasStrictMode {
 		go ws.watchValidatingWebhooks(ctx, trigger)
 	}
 
@@ -125,7 +126,7 @@ func (ws *WebhookServer) housekeeper(ctx context.Context) error {
 	return nil
 }
 
-// reconcileAll records metrics and drives all three reconcile functions.
+// reconcileAll records metrics and drives all reconcile functions.
 func (ws *WebhookServer) reconcileAll() {
 	if ws.webhookStats != nil {
 		ws.webhookStats.RecordReconciled()
@@ -135,6 +136,7 @@ func (ws *WebhookServer) reconcileAll() {
 	ws.reconcileAdmissionWebhooks()
 	ws.reconcileDeletionProtectionWebhook()
 	ws.reconcileNamespaceProtectionWebhook()
+	ws.reconcileStrictModeWebhook()
 }
 
 // watchValidatingWebhooks watches ValidatingWebhookConfiguration objects owned
@@ -379,5 +381,49 @@ func (ws *WebhookServer) reconcileNamespaceProtectionWebhook() {
 			ws.webhookStats.RecordFailure()
 		}
 		metrics.RecordWebhookReconciliationFailure("namespace-protection")
+	}
+}
+
+func (ws *WebhookServer) reconcileStrictModeWebhook() {
+	kat := ws.katalog
+
+	if !kat.IsStrictModeEnabled() {
+		if ws.kubeClient != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), lowTimeout)
+			defer cancel()
+			if err := cleanupValidatingWebhook(ctx, ws.kubeClient, strictModeProtectionWebhookConfigName); err != nil {
+				logger.Debug().Err(err).Msg("housekeeper: strict mode cleanup skipped or failed")
+				if ws.webhookStats != nil {
+					ws.webhookStats.RecordFailure()
+				}
+				metrics.RecordWebhookReconciliationFailure("strict-mode-protection")
+			}
+		}
+		return
+	}
+
+	if ws.kubeClient == nil {
+		return
+	}
+
+	caBundle, err := readCABundle(ws.hookReg.TLSCertFile)
+	if err != nil {
+		logger.Error().Err(err).Msg("housekeeper: cannot read CA bundle for strict mode protection")
+		if ws.webhookStats != nil {
+			ws.webhookStats.RecordFailure()
+		}
+		metrics.RecordWebhookReconciliationFailure("strict-mode-protection")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), highTimeout)
+	defer cancel()
+
+	if err := registerStrictModeProtectionWebhook(ctx, ws.kubeClient, caBundle, ws.hookReg); err != nil {
+		logger.Error().Err(err).Msg("housekeeper: strict mode protection registration failed")
+		if ws.webhookStats != nil {
+			ws.webhookStats.RecordFailure()
+		}
+		metrics.RecordWebhookReconciliationFailure("strict-mode-protection")
 	}
 }

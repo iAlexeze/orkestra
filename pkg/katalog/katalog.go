@@ -102,26 +102,9 @@ func (k *Katalog) updateResourceMapAndReturn() (*Katalog, error) {
 		// Map the type of the object
 		logger.Debug().Msgf("updating resource map for %s", c.GroupVersionKind.String())
 		resourceTypeMap[reflect.TypeOf(c.DynamicModeObject)] = c.GroupVersionKind.String()
-
-		// Deprecated
-		// resourceTypeMap[reflect.TypeOf(c.TypedModeObject)] = c.GroupVersionKind.String()
 	}
 
 	return k, nil
-}
-
-// Deprecated: Every use case now is dynamic. Scheme registration is handled by `ork generate`
-func (k *Katalog) registerGoScheme(scheme *runtime.Scheme) (*runtime.Scheme, error) {
-	for _, c := range k.enabledCRDs {
-		if len(k.enabledCRDs) == 0 {
-			return nil, fmt.Errorf("no enabled CRDs found")
-		}
-
-		if err := c.Scheme(scheme); err != nil {
-			return nil, fmt.Errorf("failed to register %s: %w", c.GroupVersionKind, err)
-		}
-	}
-	return scheme, nil
 }
 
 // Register dynamic CRDs — tells the watch stream to decode

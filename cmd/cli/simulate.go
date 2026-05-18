@@ -12,6 +12,7 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/simulate"
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	sigsyaml "sigs.k8s.io/yaml"
@@ -89,7 +90,7 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 	var repeatStart int
 	flush := func(upTo int) {
 		if repeatStart > 0 && upTo > repeatStart {
-			fmt.Printf("  \033[90m(cycles %d–%d: identical)\033[0m\n", repeatStart, upTo)
+			fmt.Printf("  %s\n", utils.Gray(fmt.Sprintf("(cycles %d–%d: identical)", repeatStart, upTo)))
 			repeatStart = 0
 		}
 	}
@@ -113,13 +114,13 @@ func simulateOne(ctx context.Context, kat *katalog.Katalog, crdName string, cr *
 		fmt.Printf("  Cycle %d:\n", cycle.Cycle)
 		printCycleOps(meaningful)
 		if cycle.Error != nil {
-			fmt.Printf("    \033[31m✗\033[0m %v\n", cycle.Error)
+			fmt.Printf("    %s %v\n", utils.FailureMark(), cycle.Error)
 		}
 	}
 	flush(result.Cycles[len(result.Cycles)-1].Cycle)
 
 	if result.Steady {
-		fmt.Printf("\n  \033[32m✓\033[0m Steady state at cycle %d in %s\n\n", result.SteadyAt, elapsed.Round(time.Millisecond))
+		fmt.Printf("\n  %s Steady state at cycle %d in %s\n\n", utils.SuccessMark(), result.SteadyAt, elapsed.Round(time.Millisecond))
 	} else {
 		fmt.Printf("\n  ~ Max cycles reached (%d) in %s\n\n", maxCycles, elapsed.Round(time.Millisecond))
 	}
@@ -157,11 +158,11 @@ func printCycleOps(ops []simulate.Op) {
 		var icon string
 		switch {
 		case e.hasCreate:
-			icon = "\033[32m+\033[0m"
+			icon = iconAdded()
 		case e.hasDelete:
-			icon = "\033[31m-\033[0m"
+			icon = iconRemoved()
 		default:
-			icon = "\033[33m~\033[0m"
+			icon = iconChanged()
 		}
 		fmt.Printf("    %s %s/%s\n", icon, e.resource, e.name)
 	}

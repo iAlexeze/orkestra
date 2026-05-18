@@ -56,6 +56,25 @@ var registryInfoCmd = &cobra.Command{
 		if m.License != "" {
 			fmt.Printf("  License:     %s\n", m.License)
 		}
+		if m.E2E != nil {
+			switch m.E2E.Status {
+			case "passed":
+				suffix := m.E2E.Duration
+				if m.E2E.TestedAt != "" {
+					if t, err := time.Parse(time.RFC3339, m.E2E.TestedAt); err == nil {
+						if suffix != "" {
+							suffix += " · "
+						}
+						suffix += "tested " + humanDuration(time.Since(t)) + " ago"
+					}
+				}
+				fmt.Printf("  E2E:         %s\n", e2eVerified(suffix))
+			case "skipped":
+				fmt.Printf("  E2E:         %s\n", e2eSkipped())
+			}
+		} else {
+			fmt.Printf("  E2E:         %s\n", e2eNotVerified())
+		}
 		fmt.Printf("\nTo pull:\n")
 		fmt.Printf("  ork registry pull %s:%s\n", m.Name, m.Version)
 		fmt.Println()

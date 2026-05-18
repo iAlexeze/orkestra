@@ -87,7 +87,7 @@ var registryListCmd = &cobra.Command{
 		fmt.Printf("%s\n", strings.Repeat("─", 57))
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "NAME\tLATEST\tKIND\tTAGS\tDESCRIPTION")
+		fmt.Fprintln(w, "NAME\tLATEST\tKIND\tE2E\tTAGS\tDESCRIPTION")
 
 		count := 0
 		for _, e := range entries {
@@ -109,7 +109,14 @@ var registryListCmd = &cobra.Command{
 			if len(desc) > 30 {
 				desc = desc[:27] + "..."
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", e.Name, e.LatestVersion, k, tags, desc)
+			e2eBadge := "-"
+			switch e.E2EStatus {
+			case "passed":
+				e2eBadge = "✓"
+			case "skipped":
+				e2eBadge = "~"
+			}
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", e.Name, e.LatestVersion, k, e2eBadge, tags, desc)
 			count++
 		}
 		w.Flush()

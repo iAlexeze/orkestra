@@ -144,13 +144,18 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 	}
 
 	// ───────────────────────────────────────────────
-	// Table‑driven Kubernetes resource RBAC
+	// Built-in resource RBAC — driven by builtInRegistry.
+	// Any entry with a Detect function is a candidate; emit a rule when
+	// at least one enabled CRD actually uses that resource.
 	// ───────────────────────────────────────────────
-	for key, rule := range rbacRules {
-		if k.Uses(key) {
+	for _, b := range builtInRegistry {
+		if b.Detect == nil {
+			continue
+		}
+		if k.anyDetects(b.Detect) {
 			rules = append(rules, rbacv1.PolicyRule{
-				APIGroups: []string{rule.APIGroup},
-				Resources: []string{rule.Resource},
+				APIGroups: []string{b.Group},
+				Resources: []string{b.Plural},
 				Verbs:     defaultVerbs,
 			})
 		}

@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
-	"github.com/orkspace/orkestra/cmd/cmdutil"
 	"github.com/orkspace/orkestra/pkg/generate"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/logger"
@@ -66,7 +66,6 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 
 	m := merger.New(expanded...)
 	if err := m.Merge(); err != nil {
-		//return nil, fmt.Errorf("merge katalogs: %w", err)
 		return nil, err
 	}
 
@@ -149,7 +148,7 @@ var generateAllCmd = &cobra.Command{
 
 		log.Println("running all generators...")
 
-		if err := generate.Runtime(out.m, dryRun); err != nil {
+		if err := generate.RuntimeRegistry(out.kat.Enabled(), dryRun); err != nil {
 			return fmt.Errorf("generate runtime: %w", err)
 		}
 		if err := generate.Docs(out.crds, dryRun); err != nil {
@@ -186,12 +185,9 @@ Example:
 
 		log.Println("generating rbac...")
 
-		var k katalog.Katalog
-		if _, err = k.KomposeRuntimeKatalog(kfg, out.m); err != nil {
+		k, err := katalog.BuildExpanded(kfg, out.m)
+		if err != nil {
 			return fmt.Errorf("build katalog: %w", err)
-		}
-		if _, err = k.ValidateConfig(kfg); err != nil {
-			return fmt.Errorf("validate katalog: %w", err)
 		}
 
 		rules := k.GenerateRBACRules()
@@ -201,7 +197,7 @@ Example:
 			return fmt.Errorf("generate rbac: %w", err)
 		}
 
-		return cmdutil.WriteOutput(outputFile, "rbac.yaml", []byte(output))
+		return writeOutput(outputFile, "rbac.yaml", []byte(output))
 	},
 }
 
@@ -216,10 +212,9 @@ Example:
   ork generate configmap -f katalog.yaml
   ork generate configmap -f komposer.yaml -n orkestra-system -o out.yaml`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Get the katalog file path directly, don't validate
-		katalogPath, _ := cmd.Flags().GetString("katalog")
-		if katalogPath == "" {
-			return fmt.Errorf("--file is required")
+		out, err := generateKatalog(cmd)
+		if err != nil {
+			return err
 		}
 
 		namespace, _ := cmd.Flags().GetString("namespace")
@@ -227,12 +222,21 @@ Example:
 
 		log.Println("generating configmap...")
 
-		out, err := generate.ConfigMap(katalogPath, namespace, outputFile)
+		k, err := katalog.BuildExpanded(kfg, out.m)
+		if err != nil {
+			return fmt.Errorf("build katalog: %w", err)
+		}
+		expanded, err := k.SerializeExpanded()
+		if err != nil {
+			return fmt.Errorf("serialize katalog: %w", err)
+		}
+
+		cm, err := generate.ConfigMap(expanded, namespace)
 		if err != nil {
 			return fmt.Errorf("generate configmap: %w", err)
 		}
 
-		return cmdutil.WriteOutput(outputFile, "config.yaml", []byte(out))
+		return writeOutput(outputFile, "config.yaml", cm)
 	},
 }
 
@@ -260,9 +264,6 @@ Examples:
 			return fmt.Errorf("--file is required")
 		}
 
-		// Use the first path for ConfigMap
-		katalogPath := katalogPaths[0]
-
 		// Generate RBAC from merged Katalog
 		out, err := generateKatalog(cmd)
 		if err != nil {
@@ -274,22 +275,24 @@ Examples:
 
 		log.Println("generating bundle...")
 
-		var k katalog.Katalog
-		if _, err = k.KomposeRuntimeKatalog(kfg, out.m); err != nil {
+		k, err := katalog.BuildExpanded(kfg, out.m)
+		if err != nil {
 			return fmt.Errorf("build katalog: %w", err)
-		}
-		if _, err = k.ValidateConfig(kfg); err != nil {
-			return fmt.Errorf("validate katalog: %w", err)
 		}
 
 		rules := k.GenerateRBACRules()
 
-		bundle, err := generate.RenderBundle(rules, katalogPath, namespace, workloadNamespace)
+		expanded, err := k.SerializeExpanded()
+		if err != nil {
+			return fmt.Errorf("serialize katalog: %w", err)
+		}
+
+		bundle, err := generate.RenderBundle(rules, expanded, namespace, workloadNamespace)
 		if err != nil {
 			return fmt.Errorf("generate bundle: %w", err)
 		}
 
-		return cmdutil.WriteOutput(outputFile, "bundle.yaml", []byte(bundle))
+		return writeOutput(outputFile, "bundle.yaml", []byte(bundle))
 
 	},
 }
@@ -307,39 +310,31 @@ func init() {
 	generateCmd.AddCommand(generateConfigMapCmd)
 	generateCmd.AddCommand(generateBundleCmd)
 
-	// Register --file flag for commands that need it
-	generateConfigMapCmd.Flags().StringP("file", "f", "", "Path to katalog.yaml or komposer.yaml")
-
-	// For bundle, use StringSliceP to be compatible with generateKatalog
-	generateBundleCmd.Flags().StringSliceP("file", "f", []string{}, "Path to katalog.yaml")
-
-	generateRbacCmd.Flags().StringSliceP("file", "f", []string{}, "Path to katalog.yaml (can be specified multiple times or as comma-separated)")
+	// All three commands use StringSliceP so generateKatalog can read them uniformly.
+	for _, cmd := range []*cobra.Command{generateConfigMapCmd, generateBundleCmd, generateRbacCmd} {
+		cmd.Flags().StringSliceP("file", "f", []string{}, "Path to katalog.yaml or komposer.yaml (repeatable or comma-separated)")
+	}
 
 	generateRegistryCmd.Flags().StringP("dirs", "d", "", "Comma-separated list of project directories to generate registries for")
+	generateRegistryCmd.Flags().Duration("fetch-timeout", 2*time.Minute, "Timeout to fetch Go hook or constructor from 'location'")
 
-	// Add shared flags
+	// Shared flags for all file-consuming generate commands.
 	for _, cmd := range []*cobra.Command{
 		generateRegistryCmd,
 		generateDocsCmd,
 		generateDashboardsCmd,
 		generateAllCmd,
 		generateRbacCmd,
-	} {
-		cmd.Flags().Bool("dry-run", false, "Print generated output to stdout without writing files")
-		cmd.Flags().StringP("output", "o", "", "Write generated output to file")
-		cmd.Flags().StringP("namespace", "n", defaultNamespace(), "Namespace for the ServiceAccount")
-	}
-
-	// Add shared flags for configmap and bundle (without StringSlice)
-	for _, cmd := range []*cobra.Command{
 		generateConfigMapCmd,
 		generateBundleCmd,
 	} {
 		cmd.Flags().Bool("dry-run", false, "Print generated output to stdout without writing files")
 		cmd.Flags().StringP("output", "o", "", "Write generated output to file")
 		cmd.Flags().StringP("namespace", "n", defaultNamespace(), "Namespace for the ServiceAccount")
-		cmd.Flags().StringP("workload-namespace", "w", "", "Namespace for the Deployment Workloads. Used by 'ork doctor deploy'")
 	}
+
+	// bundle-only flags
+	generateBundleCmd.Flags().StringP("workload-namespace", "w", "", "Namespace for Deployment workloads (used by ork doctor deploy)")
 
 	// Shadow global flags so they don't appear under `ork generate`
 	generateCmd.Flags().Bool("debug", false, "")

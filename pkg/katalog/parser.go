@@ -14,6 +14,24 @@ import (
 //	YAML Builder
 //
 // -----------------------------------------------------------------------------
+
+// BuildExpanded is the canonical pipeline for CLI commands that need a fully
+// ready Katalog: merge → expand motifs → validate.
+//
+// Use this instead of calling KomposeRuntimeKatalog + ValidateConfig separately.
+// For the rare case where validation must be skipped (e.g. ork template --no-validate),
+// call KomposeRuntimeKatalog directly.
+func BuildExpanded(kfg *konfig.Konfig, m *merger.Merger) (*Katalog, error) {
+	var k Katalog
+	if _, err := k.KomposeRuntimeKatalog(kfg, m); err != nil {
+		return nil, err
+	}
+	if _, err := k.ValidateConfig(kfg); err != nil {
+		return nil, err
+	}
+	return &k, nil
+}
+
 func (k *Katalog) KomposeRuntimeKatalog(kfg *konfig.Konfig, m *merger.Merger, paths ...string) (map[string]orktypes.CRDEntry, error) {
 	k.Spec = m.ToSpec()
 	k.Security = m.ToSecurity()

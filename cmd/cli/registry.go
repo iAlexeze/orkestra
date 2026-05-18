@@ -39,6 +39,7 @@ func init() {
 
 	registryPullCmd.Flags().Bool("refresh", false, "Bypass local cache and re-pull from registry")
 	registryPullCmd.Flags().StringP("out", "o", "", "Extract pulled pattern to this directory")
+	registryPullCmd.Flags().StringP("file", "f", "", "Pull all OCI imports from a katalog or komposer file")
 
 	registryListCmd.Flags().StringP("tag", "t", "", "Filter by tag (e.g. database, stateful, security)")
 	registryListCmd.Flags().BoolP("katalogs", "k", false, "Show only katalogs (kind: Katalog)")

@@ -1,4 +1,6 @@
-package cmdutil
+//go:build !runtime
+
+package cli
 
 import (
 	"fmt"
@@ -7,11 +9,11 @@ import (
 	"path/filepath"
 )
 
-// WriteOutput writes data to either a file or a directory.
+// writeOutput writes data to either a file or a directory.
 // If path is empty → prints to stdout.
 // If path is a directory → writes <path>/<filename>.
 // If path is a file → writes directly to that file.
-func WriteOutput(path, filename string, data []byte) error {
+func writeOutput(path, filename string, data []byte) error {
 	// No output flag → print to stdout
 	if path == "" {
 		fmt.Println(string(data))

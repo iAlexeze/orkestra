@@ -60,19 +60,22 @@ Examples:
 			return err
 		}
 
-		var k katalog.Katalog
-		if _, err = k.KomposeRuntimeKatalog(kfg, merged.m); err != nil {
-			return err
-		}
-
-		if !noValidate {
-			if _, err = k.ValidateConfig(kfg); err != nil {
+		var k *katalog.Katalog
+		if noValidate {
+			var raw katalog.Katalog
+			if _, err = raw.KomposeRuntimeKatalog(kfg, merged.m); err != nil {
+				return err
+			}
+			k = &raw
+		} else {
+			k, err = katalog.BuildExpanded(kfg, merged.m)
+			if err != nil {
 				return fmt.Errorf("validation: %w", err)
 			}
 		}
 
 		crds := k.Enabled()
-		depGraph := katalog.NewDependencyGraph(&k)
+		depGraph := katalog.NewDependencyGraph(k)
 		startupOrder := depGraph.StartupOrder()
 
 		// ── Route to output mode ────────────────────────────────────────────────
@@ -107,7 +110,7 @@ Examples:
 
 		// ── --yaml / --json: full runtime Katalog ───────────────────────────────
 		case yamlOut || jsonOut:
-			view := buildRuntimeView(&k)
+			view := buildRuntimeView(k)
 			if jsonOut {
 				out, err = json.MarshalIndent(view, "", "  ")
 			} else {
@@ -124,7 +127,7 @@ Examples:
 
 		// ── default: human-readable summary ────────────────────────────────────
 		default:
-			printTemplateSummary(&k, crds, startupOrder)
+			printTemplateSummary(k, crds, startupOrder)
 			return nil
 		}
 
@@ -142,7 +145,7 @@ Examples:
 					return fmt.Errorf("writing %s: %w", outFile, err)
 				}
 			}
-			fmt.Printf("%swritten to %s%s\n", utils.ColorGreen, outFile, utils.ColorReset)
+			fmt.Printf("%s\n", utils.Green("written to "+outFile))
 			return nil
 		}
 		fmt.Println(string(out))

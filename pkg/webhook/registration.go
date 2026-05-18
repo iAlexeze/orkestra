@@ -29,10 +29,11 @@ import (
 )
 
 const (
-	validatingWebhookConfigName          = "orkestra-admission-validation"
-	mutatingWebhookConfigName            = "orkestra-admission-mutation"
-	deletionProtectionWebhookConfigName  = "orkestra-deletion-protection"
-	namespaceProtectionWebhookConfigName = "orkestra-namespace-protection"
+	validatingWebhookConfigName           = "orkestra-admission-validation"
+	mutatingWebhookConfigName             = "orkestra-admission-mutation"
+	deletionProtectionWebhookConfigName   = "orkestra-deletion-protection"
+	namespaceProtectionWebhookConfigName  = "orkestra-namespace-protection"
+	strictModeProtectionWebhookConfigName = "orkestra-strict-mode-protection"
 
 	maxAttempts          = 5
 	delayBetweenAttempts = 5 * time.Second
@@ -357,6 +358,63 @@ func registerNamespaceProtectionWebhook(
 				Rules:                   buildAdmissionRules(gvrs),
 				FailurePolicy:           &fp,
 				MatchPolicy:             matchPolicyPtr(admissionv1.Exact),
+				AdmissionReviewVersions: []string{"v1"},
+				SideEffects:             &sideEffects,
+				TimeoutSeconds:          int32Ptr(5),
+			},
+		},
+	}
+
+	return applyWebhookConfig(ctx, client, config)
+}
+
+// registerStrictModeProtectionWebhook creates or updates the ValidatingWebhookConfiguration
+// for strict-mode protection. Intercepts UPDATE operations on any resource that carries
+// the deletion-protection label. Fires when either the old or new object matches the
+// ObjectSelector — covering the moment the label is removed.
+func registerStrictModeProtectionWebhook(
+	ctx context.Context,
+	client kubernetes.Interface,
+	caBundle []byte,
+	opts WebhookRegistrationOptions,
+) error {
+	sideEffects := admissionv1.SideEffectClassNone
+	path := "/strict-mode-protection"
+	port := opts.Port
+	fp := admissionv1.FailurePolicyType(admissionv1.Fail)
+
+	// Wildcard rule: fire for UPDATE on any resource. ObjectSelector narrows the
+	// blast radius to only resources that carry the deletion-protection label.
+	updateRule := admissionv1.RuleWithOperations{
+		Operations: []admissionv1.OperationType{admissionv1.Update},
+		Rule: admissionv1.Rule{
+			APIGroups:   []string{"*"},
+			APIVersions: []string{"*"},
+			Resources:   []string{"*"},
+		},
+	}
+
+	config := &admissionv1.ValidatingWebhookConfiguration{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   strictModeProtectionWebhookConfigName,
+			Labels: opts.OrkestraResourceLabels,
+		},
+		Webhooks: []admissionv1.ValidatingWebhook{
+			{
+				Name: "strict-mode.orkestra.orkspace.io",
+				ClientConfig: admissionv1.WebhookClientConfig{
+					Service: &admissionv1.ServiceReference{
+						Name:      opts.ServiceName,
+						Namespace: opts.ServiceNamespace,
+						Path:      &path,
+						Port:      &port,
+					},
+					CABundle: caBundle,
+				},
+				ObjectSelector:          labels.DeletionProtectionSelector(),
+				Rules:                   []admissionv1.RuleWithOperations{updateRule},
+				FailurePolicy:           &fp,
+				MatchPolicy:             matchPolicyPtr(admissionv1.Equivalent),
 				AdmissionReviewVersions: []string{"v1"},
 				SideEffects:             &sideEffects,
 				TimeoutSeconds:          int32Ptr(5),

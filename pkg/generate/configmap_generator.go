@@ -2,7 +2,6 @@ package generate
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/labels"
@@ -16,39 +15,33 @@ const (
 	defaultConfigMapKey  = "katalog.yaml"
 )
 
-func ConfigMap(inputFile, namespace, outputFile string) ([]byte, error) {
+// ConfigMap renders a Namespace + ConfigMap from pre-expanded katalog bytes.
+// expandedYAML must be the output of katalog.Katalog.SerializeExpanded() —
+// fully resolved, no OCI imports remaining.
+func ConfigMap(expandedYAML []byte, namespace string) ([]byte, error) {
 	if namespace == "" {
 		namespace = konfig.GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system")
 	}
-	out, err := renderNamespaceAndConfigMap(inputFile, namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	return out, nil
+	return renderNamespaceAndConfigMap(expandedYAML, namespace)
 }
 
 // renderNamespaceAndConfigMap is the full standalone output: Namespace + ConfigMap.
-func renderNamespaceAndConfigMap(inputFile, namespace string) ([]byte, error) {
+func renderNamespaceAndConfigMap(expandedYAML []byte, namespace string) ([]byte, error) {
 	nsBytes, err := renderNamespace(namespace)
 	if err != nil {
 		return nil, err
 	}
-	cmBytes, err := renderConfigMapBytes(inputFile, namespace)
+	cmBytes, err := renderConfigMapBytes(expandedYAML, namespace)
 	if err != nil {
 		return nil, err
 	}
 	return []byte("---\n" + string(nsBytes) + "\n---\n" + string(cmBytes)), nil
 }
 
-// renderConfigMapBytes marshals a ConfigMap from the given file.
+// renderConfigMapBytes marshals a ConfigMap embedding the given expanded katalog YAML.
 // The Namespace is intentionally excluded — callers prepend it so that
 // bundle assembly can include it exactly once.
-func renderConfigMapBytes(inputFile, namespace string) ([]byte, error) {
-	raw, err := os.ReadFile(inputFile)
-	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", inputFile, err)
-	}
+func renderConfigMapBytes(expandedYAML []byte, namespace string) ([]byte, error) {
 	cm := corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -60,7 +53,7 @@ func renderConfigMapBytes(inputFile, namespace string) ([]byte, error) {
 			Labels:    labels.OrkestraBaseLabels(),
 		},
 		Data: map[string]string{
-			defaultConfigMapKey: string(raw),
+			defaultConfigMapKey: string(expandedYAML),
 		},
 	}
 	out, err := yaml.Marshal(cm)

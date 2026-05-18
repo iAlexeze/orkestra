@@ -48,6 +48,9 @@ func (m *Merger) loadKatalogFile(path string) (map[string]orktypes.CRDEntry, err
 		return nil, err
 	}
 	if doc == nil {
+		if kind := sniffDocumentKind(data); kind != "" {
+			return nil, fmt.Errorf("%q: kind %q cannot be used here — expected kind: Katalog or Komposer", path, kind)
+		}
 		logger.Debug().
 			Str("path", path).
 			Msg("merger: skipping — not a valid Katalog or Komposer document")
