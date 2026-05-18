@@ -5,33 +5,22 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// Methods to maintain the zero footprint promise of orkestra
-//
-// HasConversionPaths returns true only if:
-//  1. Conversion is enabled in konfig, AND
-//  2. At least one CRD declares conversion paths.
-//
-// This protects the zero‑footprint promise:
-// Orkestra exposes /convert ONLY when the user explicitly declares conversion.
+// HasConversionPaths returns true only if conversion is enabled and at least
+// one CRD declares conversion paths.
 func (k *Katalog) HasConversionPaths() bool {
-	// Katalog or konfig may be nil in edge cases (e.g., NewEmptyKatalog)
 	if k == nil || k.konfig == nil {
 		logger.Debug().Msg("katalog or konfig is nil")
 		return false
 	}
-
 	if !k.IsConversionEnabled() {
 		logger.Debug().Msg("conversion is disabled")
 		return false
 	}
-
 	for _, crd := range k.Enabled() {
-		// Protect against nil Conversion or nil Paths
 		if crd.Conversion == nil {
 			logger.Debug().Str("crd", crd.Name).Msg("conversion is nil")
 			continue
 		}
-		// Protect against empty Paths
 		if len(crd.Conversion.Paths) > 0 {
 			logger.Debug().Str("crd", crd.Name).Msg("conversion has paths")
 			return true
@@ -41,8 +30,7 @@ func (k *Katalog) HasConversionPaths() bool {
 }
 
 // activeCRDs returns the processed CRD map when available, falling back to the
-// raw spec map. This allows helpers to work on bare Katalog structs (e.g. in
-// tests) before ParseFile/KomposeRuntimeKatalog has populated enabledCRDs.
+// raw spec map.
 func (k *Katalog) activeCRDs() map[string]orktypes.CRDEntry {
 	if len(k.enabledCRDs) > 0 {
 		return k.enabledCRDs
@@ -50,21 +38,16 @@ func (k *Katalog) activeCRDs() map[string]orktypes.CRDEntry {
 	return k.Spec.CRDs
 }
 
-// HasValidationRules returns true only if:
-//  1. Admission is enabled, AND
-//  2. At least one CRD declares validation rules.
-//
-// This ensures /validate is created ONLY when the user declares rules.
+// HasValidationRules returns true if admission is enabled and at least one CRD
+// declares validation rules.
 func (k *Katalog) HasValidationRules() bool {
 	if k == nil {
 		return false
 	}
-
 	if !k.IsAdmissionEnabled() {
 		logger.Debug().Msg("admission is disabled")
 		return false
 	}
-
 	for _, crd := range k.activeCRDs() {
 		if crd.Validation == nil {
 			continue
@@ -77,21 +60,16 @@ func (k *Katalog) HasValidationRules() bool {
 	return false
 }
 
-// HasMutationRules returns true only if:
-//  1. Admission is enabled, AND
-//  2. At least one CRD declares mutation rules.
-//
-// This ensures /mutate is created ONLY when the user declares rules.
+// HasMutationRules returns true if admission is enabled and at least one CRD
+// declares mutation rules.
 func (k *Katalog) HasMutationRules() bool {
 	if k == nil {
 		return false
 	}
-
 	if !k.IsAdmissionEnabled() {
 		logger.Debug().Msg("admission is disabled")
 		return false
 	}
-
 	for _, crd := range k.activeCRDs() {
 		if crd.Mutation == nil {
 			continue
@@ -104,8 +82,7 @@ func (k *Katalog) HasMutationRules() bool {
 	return false
 }
 
-// HasValidationOrMutationRules returns true if admission is enabled and at
-// least one CRD declares validation or mutation rules.
+// HasValidationOrMutationRules returns true if any CRD has validation or mutation rules.
 func (k *Katalog) HasValidationOrMutationRules() bool {
 	if k == nil {
 		return false
@@ -113,47 +90,37 @@ func (k *Katalog) HasValidationOrMutationRules() bool {
 	return k.HasValidationRules() || k.HasMutationRules()
 }
 
-// Uses returns true if ANY CRD in the katalog uses the given resource type.
+// Uses reports whether any enabled CRD uses the given resource in a hook
+// template block. Accepts both singular ("deployment") and plural ("deployments")
+// keys, as well as shorthands ("hpa"). Drives off builtInRegistry — no separate
+// table to maintain.
 func (k *Katalog) Uses(resource string) bool {
-	check, ok := orktypes.ResourceChecks[resource]
-	if !ok {
-		return false
+	key := resource
+	// Try singular direct lookup
+	if b, ok := builtInRegistry[key]; ok && b.Detect != nil {
+		return k.anyDetects(b.Detect)
 	}
-	for _, crd := range k.Enabled() {
-		if check.Get(crd) {
-			return true
+	// Try shorthand expansion
+	if expanded, ok := shorthandIndex[key]; ok {
+		if b, ok := builtInRegistry[expanded]; ok && b.Detect != nil {
+			return k.anyDetects(b.Detect)
+		}
+	}
+	// Try plural reverse lookup (e.g. "deployments" → "deployment")
+	for _, b := range builtInRegistry {
+		if b.Plural == key && b.Detect != nil {
+			return k.anyDetects(b.Detect)
 		}
 	}
 	return false
 }
 
-// RBACRule describes how to generate RBAC for a Kubernetes resource.
-type RBACRule struct {
-	APIGroup string
-	Resource string
-	Verbs    []string
-}
-
-// Table‑driven RBAC rules for all supported Kubernetes resources.
-var rbacRules = map[string]RBACRule{
-	"services":                 {APIGroup: "", Resource: "services"},
-	"configmaps":               {APIGroup: "", Resource: "configmaps"},
-	"secrets":                  {APIGroup: "", Resource: "secrets"},
-	"persistentvolumeclaims":   {APIGroup: "", Resource: "persistentvolumeclaims"},
-	"serviceaccounts":          {APIGroup: "", Resource: "serviceaccounts"},
-	"podtemplates":             {APIGroup: "", Resource: "podtemplates"},
-	"volumes":                  {APIGroup: "", Resource: "volumes"},
-	"volumemounts":             {APIGroup: "", Resource: "volumemounts"},
-	"deployments":              {APIGroup: "apps", Resource: "deployments"},
-	"statefulsets":             {APIGroup: "apps", Resource: "statefulsets"},
-	"daemonsets":               {APIGroup: "apps", Resource: "daemonsets"},
-	"jobs":                     {APIGroup: "batch", Resource: "jobs"},
-	"cronjobs":                 {APIGroup: "batch", Resource: "cronjobs"},
-	"ingresses":                {APIGroup: "networking.k8s.io", Resource: "ingresses"},
-	"roles":                    {APIGroup: "rbac.authorization.k8s.io", Resource: "roles"},
-	"rolebindings":             {APIGroup: "rbac.authorization.k8s.io", Resource: "rolebindings"},
-	"horizontalpodautoscalers": {APIGroup: "autoscaling", Resource: "horizontalpodautoscalers"},
-	"poddisruptionbudgets":     {APIGroup: "policy", Resource: "poddisruptionbudgets"},
-	"networkpolicies":          {APIGroup: "networking.k8s.io", Resource: "networkpolicies"},
-	"namespaces":               {APIGroup: "", Resource: "namespaces"},
+// anyDetects returns true if detect returns true for any enabled CRD.
+func (k *Katalog) anyDetects(detect func(orktypes.CRDEntry) bool) bool {
+	for _, crd := range k.Enabled() {
+		if detect(crd) {
+			return true
+		}
+	}
+	return false
 }
