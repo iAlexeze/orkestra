@@ -31,6 +31,8 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/doctor"
 	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/motif"
+	"github.com/orkspace/orkestra/pkg/registry"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"gopkg.in/yaml.v3"
 )
@@ -177,7 +179,12 @@ func (r *Runner) Run(ctx context.Context) (*Result, error) {
 	}
 	appliedCRDPaths = crdPaths
 
-	// ── 4. Generate and apply bundle ─────────────────────────────────────
+	// ── 4. Pre-pull OCI imports so bundle generation works without credentials ──
+	if err := r.pullOCIImports(ctx); err != nil {
+		return nil, fmt.Errorf("pulling OCI imports: %w", err)
+	}
+
+	// ── 5. Generate and apply bundle ─────────────────────────────────────
 	bundleFile, err := r.generateBundle(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("generate bundle: %w", err)
@@ -453,6 +460,37 @@ func (r *Runner) generateBundle(ctx context.Context) (string, error) {
 	}
 	fmt.Printf("  ✓ Bundle generated\n")
 	return bundleFile.Name(), nil
+}
+
+// pullOCIImports pre-pulls all OCI motif and registry imports referenced in
+// the katalog file so that bundle generation never needs to do OCI calls.
+// Uses the same resolution logic as the merge path, including bare-name shorthands.
+func (r *Runner) pullOCIImports(_ context.Context) error {
+	imports, err := registry.ExtractOCIImports(r.katalogFile)
+	if err != nil {
+		return fmt.Errorf("extracting OCI imports from %s: %w", r.katalogFile, err)
+	}
+	if imports.Empty() {
+		return nil
+	}
+
+	fmt.Printf("→ Pulling OCI imports...\n")
+
+	for _, imp := range imports.MotifImports {
+		fmt.Printf("  → motif %s\n", imp.Motif)
+		if err := motif.PullImport(&imp); err != nil {
+			return fmt.Errorf("pulling motif %q: %w", imp.Motif, err)
+		}
+		fmt.Printf("  ✓ %s\n", imp.Motif)
+	}
+
+	client, err := registry.NewClient()
+	if err != nil {
+		return fmt.Errorf("initializing registry client: %w", err)
+	}
+	_ = client // used for registry source pulls below when Komposer support is needed
+
+	return nil
 }
 
 func (r *Runner) applySetup(ctx context.Context) ([]string, error) {

@@ -128,11 +128,7 @@ var registryPushCmd = &cobra.Command{
 			if err := m.Merge(); err != nil {
 				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
 			}
-			var kat katalog.Katalog
-			if _, err := kat.KomposeRuntimeKatalog(kfg, m); err != nil {
-				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
-			}
-			if _, err := kat.ValidateConfig(kfg); err != nil {
+			if _, err := katalog.BuildExpanded(kfg, m); err != nil {
 				return fmt.Errorf("  ✗ %s: %w", registry.FileKatalog, err)
 			}
 			fmt.Printf("  %s %-20s valid\n", utils.SuccessMark(), registry.FileKatalog)

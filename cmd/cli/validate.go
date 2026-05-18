@@ -72,11 +72,11 @@ Examples:
 			return err
 		}
 
-		var k katalog.Katalog
-		entries, err := k.KomposeRuntimeKatalog(kfg, m.m)
+		k, err := katalog.BuildExpanded(kfg, m.m)
 		if err != nil {
 			return err
 		}
+		entries := k.EnabledCRDs()
 
 		kindLabel := "Katalog"
 		if konfig.IsKomposerKind(docKind) {
@@ -86,11 +86,6 @@ Examples:
 		fmt.Println()
 		fmt.Println(utils.Bold("Validating " + kindLabel + "..."))
 		fmt.Println()
-
-		_, err = k.ValidateConfig(kfg)
-		if err != nil {
-			return err
-		}
 
 		builtIn := 0
 		custom := 0

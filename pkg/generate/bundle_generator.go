@@ -9,11 +9,13 @@ import (
 
 // RenderBundle assembles a complete installation bundle:
 // Namespace (once) → ServiceAccounts → ClusterRole → ClusterRoleBinding → ConfigMap.
-// The Namespace appears exactly once at the top regardless of how many components
-// are combined, so the output is safe to pipe directly into kubectl apply.
+// expandedYAML must be the output of katalog.Katalog.SerializeExpanded() —
+// fully resolved, no OCI imports remaining. The ConfigMap embeds this content
+// so the runtime never needs to do OCI pulls at startup.
 func RenderBundle(
 	rules []rbacv1.PolicyRule,
-	inputFile, namespace, workloadNamespace string,
+	expandedYAML []byte,
+	namespace, workloadNamespace string,
 ) (string, error) {
 
 	nsBytes, err := renderNamespace(namespace)
@@ -31,7 +33,7 @@ func RenderBundle(
 		return "", fmt.Errorf("render rbac: %w", err)
 	}
 
-	cmBytes, err := renderConfigMapBytes(inputFile, namespace)
+	cmBytes, err := renderConfigMapBytes(expandedYAML, namespace)
 	if err != nil {
 		return "", fmt.Errorf("render configmap: %w", err)
 	}
