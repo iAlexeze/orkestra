@@ -155,4 +155,5 @@ var rbacRules = map[string]RBACRule{
 	"horizontalpodautoscalers": {APIGroup: "autoscaling", Resource: "horizontalpodautoscalers"},
 	"poddisruptionbudgets":     {APIGroup: "policy", Resource: "poddisruptionbudgets"},
 	"networkpolicies":          {APIGroup: "networking.k8s.io", Resource: "networkpolicies"},
+	"namespaces":               {APIGroup: "", Resource: "namespaces"},
 }
