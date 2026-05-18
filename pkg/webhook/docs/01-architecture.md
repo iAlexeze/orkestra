@@ -19,7 +19,7 @@ konstructor.go
       • precomputes protection data (CRD names, namespace rules)
   → ws.SetCertManager(certMgr)       ← if auto-generated certs
   → ws.Start(ctx)
-      • sets deletionProtection / namespaceProtection atomic flags
+      • sets deletionProtection / namespaceProtection / strictMode atomic flags
       • (skips if !IsRunningInCluster())
       • registers HTTPS endpoints based on Katalog capabilities
       • starts HTTPS server in goroutine
@@ -31,7 +31,7 @@ konstructor.go
 
 ## Concurrency model
 
-- All atomic booleans (`deletionProtection`, `namespaceProtection`) are written once in `Start()` and read by handlers concurrently.
+- All atomic booleans (`deletionProtection`, `namespaceProtection`, `strictMode`) are written once in `Start()` and read by handlers concurrently.
 - Registration and controller goroutines run independently — they share only `kubeClient` (thread-safe) and `katalog` (read-only after construction).
 - The controller receives a context derived from `Start(ctx)`. When `Shutdown()` calls `cancel()`, the controller goroutine exits on the next `select`.
 
@@ -50,6 +50,7 @@ conversion_logic.go    — applyConversion + field resolution helpers
 conversion.go          — /convert HTTP handler
 deletion_protection.go — /deletion-protection HTTP handler
 namespace_protection.go — /namespace-protection HTTP handler + NamespaceRules type
+strict_mode_protection.go — /strict-mode-protection HTTP handler (strict mode only)
 ```
 
 → Next: [02-handlers.md](02-handlers.md)

@@ -195,6 +195,16 @@ func (k *Katalog) DeletionProtectionFailurePolicy() string {
 	return k.securityEnvDefaults().DeletionProtectionPolicy()
 }
 
+// IsStrictModeEnabled reports whether strict mode is active for deletion protection.
+// Strict mode treats removal of the deletion-protection label as a deletion attempt.
+// Only valid when deletion protection is also enabled.
+func (k *Katalog) IsStrictModeEnabled() bool {
+	if k.Security.DeletionProtection == nil {
+		return false
+	}
+	return k.Security.DeletionProtection.StrictMode
+}
+
 // ── Namespace protection ───────────────────────────────────────────────────────
 
 // IsNamespaceProtectionEnabled reports whether namespace protection is active.

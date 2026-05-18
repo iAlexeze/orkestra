@@ -93,4 +93,24 @@ POST /namespace-protection
 
 Stats updated: `namespaceStats.RecordBlocked/Allowed()`.
 
+## /strict-mode-protection — Strict mode handler
+
+Registered when `kat.IsStrictModeEnabled()` is true (requires `security.deletionProtection.strictMode: true` in the Katalog).
+
+```
+POST /strict-mode-protection
+  → allow all non-UPDATE operations immediately
+  → extractLabels(oldObject) + extractLabels(newObject)
+  → hadLabel = old["orkestra.io/deletion-protection"] == "true"
+  → hasLabel = new["orkestra.io/deletion-protection"] == "true"
+  → hadLabel && !hasLabel → DENY (label removal blocked)
+  → otherwise → ALLOW
+```
+
+Enforcement is stateless — each decision is made purely from the labels present in the admission request. No in-process register is maintained.
+
+The `ObjectSelector` on the webhook configuration is set to `orkestra.io/deletion-protection=true`. Kubernetes evaluates this against both the old and new object on UPDATE, so the handler fires exactly when a protected resource is being updated — including the moment the label is removed.
+
+Stats updated: `strictModeStats.RecordBlocked/Allowed()`.
+
 → Next: [03-registration.md](03-registration.md)

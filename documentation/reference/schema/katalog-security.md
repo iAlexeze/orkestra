@@ -10,6 +10,7 @@ security:
     enabled: true
     failurePolicy: Fail
     cleanupOnShutdown: false
+    strictMode: false        # set true to block label removal too
 
   namespaceProtection:
     enabled: true
@@ -43,6 +44,7 @@ Registers a `ValidatingWebhookConfiguration` that blocks deletion of CRs managed
 | `enabled` | `true` (when block declared) | Activate the deletion protection webhook. |
 | `failurePolicy` | `Fail` | `Fail` — block deletion on webhook error; `Ignore` — allow deletion on error. |
 | `cleanupOnShutdown` | `false` | Delete the `ValidatingWebhookConfiguration` on graceful shutdown. |
+| `strictMode` | `false` | When `true`, removing the `orkestra.io/deletion-protection` label from a resource is treated as a deletion attempt and blocked. To disable, set `strictMode: false` in the Katalog and restart Orkestra. |
 
 ## `namespaceProtection`
 

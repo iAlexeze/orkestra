@@ -20,6 +20,7 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote"
 	orasauth "oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/credentials"
 )
 
 const orasPullTimeout = 2 * time.Minute
@@ -208,6 +209,17 @@ func orasPull(ref, dst string, auth *utils.FileAuth) error {
 				}
 				return orasauth.EmptyCredential, nil
 			},
+		}
+	} else {
+		// No explicit auth — fall back to Docker credential store (~/.docker/config.json).
+		// This mirrors pkg/registry.Client.remoteRepo so `ork registry pull -f`
+		// and `ork registry pull <url>` use the same credential source.
+		if store, err := credentials.NewStoreFromDocker(credentials.StoreOptions{}); err == nil {
+			repo.Client = &orasauth.Client{
+				ClientID:   "orkestra",
+				Cache:      orasauth.DefaultCache,
+				Credential: credentials.Credential(store),
+			}
 		}
 	}
 

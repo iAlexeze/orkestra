@@ -88,6 +88,7 @@ Every CRD declared in a Katalog becomes a complete, isolated operator:
 | **Safe reconcile** | Failures in one operatroBox is contained, logged and does not affect the runtime or other CRDs. |
 | **Owner references** | Child resources deleted when the CR is deleted. |
 | **Finalizers** | CRs protected from dirty deletion automatically. |
+| **Deletion protection** | Every resource Orkestra runs — including itself — cannot be accidentally deleted. Zero configuration. |
 | **Events** | Every reconcile is a traceable Kubernetes event. |
 | **Leader election** | One active instance. Followers hold warm caches. Failover < 15s. |
 | **Status** | `Ready` condition + declarative status fields after every reconcile. |

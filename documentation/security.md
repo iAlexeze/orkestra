@@ -155,6 +155,29 @@ kubectl delete deployment orkestra -n orkestra-system
 
 Optional components (HPA, PDB, NetworkPolicy, Ingress) carry the same label and are protected automatically when deployed.
 
+### Strict mode
+
+By default, deletion protection blocks `DELETE` operations but the protection label itself can be removed via `kubectl patch`. Removing the label silently unprotects the resource.
+
+Enable strict mode to close this gap:
+
+```yaml
+security:
+  deletionProtection:
+    enabled: true
+    strictMode: true
+```
+
+With strict mode on, Orkestra registers a second webhook (`orkestra-strict-mode-protection`) that intercepts `UPDATE` operations on any labeled resource and blocks any request that removes the `orkestra.io/deletion-protection` label. The error is explicit:
+
+```
+Error from server: admission webhook "strict-mode.orkestra.orkspace.io" denied the request:
+[Orkestra Security] The Deployment "orkestra" in namespace "orkestra-system" carries the deletion-protection label.
+Removing this label is blocked because strictMode is enabled.
+```
+
+**To unprotect a resource under strict mode**, you must disable strict mode at the operator level: set `strictMode: false` in the Katalog, update the ConfigMap, and restart Orkestra. This requires the same access as operating Orkestra itself — there is no label-level escape hatch.
+
 ### cleanupOnShutdown
 
 `cleanupOnShutdown: true` instructs Orkestra to remove all webhook configurations and TLS Secrets it created during graceful shutdown. This lets you decommission the operator cleanly without manual cleanup:
