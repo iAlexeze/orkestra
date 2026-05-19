@@ -38,9 +38,9 @@ func podNotes() template.FuncMap {
 		"hasCrashingPod": noteHasCrashingPod,
 		"podByOrdinal":   notePodByOrdinal,
 		// Container status notes — navigate containers[] within each pod summary.
-		"podCrashLoopDetected":  notePodCrashLoopDetected,
-		"podContainerReasons":   notePodContainerReasons,
-		"podContainerState":     notePodContainerState,
+		"podCrashLoopDetected": notePodCrashLoopDetected,
+		"podContainerReasons":  notePodContainerReasons,
+		"podContainerState":    notePodContainerState,
 	}
 }
 

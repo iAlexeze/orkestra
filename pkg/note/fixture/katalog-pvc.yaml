@@ -8,6 +8,7 @@ metadata:
     PVCProbe — integration test for PVC notes and enriched PV notes.
     Creates a PVC with enrich: [pvc] so that _pv is embedded once bound.
     Apply the CR and inspect: kubectl get pvcprobe <name> -o yaml
+    Reuses the NoteProbe CRD.
 
 spec:
   crds:
@@ -15,8 +16,8 @@ spec:
       apiTypes:
         group: note.orkestra.io
         version: v1alpha1
-        kind: PVCProbe
-        plural: pvcprobes
+        kind: NoteProbe
+        plural: noteprobes
       workers: 1
       resync: 30s
 
@@ -24,8 +25,6 @@ spec:
         - pvc
 
       operatorBox:
-        default: true
-
         onCreate:
           persistentVolumeClaims:
             - name: "{{ .metadata.name }}-data"

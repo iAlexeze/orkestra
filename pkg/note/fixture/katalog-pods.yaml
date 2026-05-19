@@ -9,6 +9,7 @@ metadata:
     Creates a Deployment with enrich: [pods] so that _pods is embedded in
     the resolver context. Status fields exercise every pod note function.
     Apply the CR and inspect: kubectl get podprobe <name> -o yaml
+    Reuses the NoteProbe CRD.
 
 spec:
   crds:
@@ -16,15 +17,13 @@ spec:
       apiTypes:
         group: note.orkestra.io
         version: v1alpha1
-        kind: PodProbe
-        plural: podprobes
+        kind: NoteProbe
+        plural: noteprobes
       workers: 1
       resync: 30s
       enrich: [pods]
 
       operatorBox:
-        default: true
-
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-app"
@@ -46,7 +45,7 @@ spec:
               value: "Ready"
               when:
                 - field: "{{ allReplicasReady .children.deployment }}"
-                  equals: "true"
+                  equals: true
 
             # ── pod notes ───────────────────────────────────────────────────
             - path: podNames

@@ -981,7 +981,7 @@ func (r *Resolver) ResolveIngressTemplate(src orktypes.IngressTemplateSource) (o
 
 	if src.TLS != nil {
 		resolvedTLS := &orktypes.IngressTLSSpec{
-			Enabled:  src.TLS.Enabled,
+			Create:   src.TLS.Create,
 			ValidFor: src.TLS.ValidFor,
 		}
 		if resolvedTLS.SecretName, err = r.Resolve(src.TLS.SecretName); err != nil {

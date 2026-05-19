@@ -8,6 +8,7 @@ metadata:
     HPAProbe — living integration test for HPA notes.
     Creates a Deployment + HPA.
     Apply the CR and inspect: kubectl get hpaprobe <name> -o yaml
+    Reuses the NoteProbe CRD.
 
 spec:
   crds:
@@ -15,20 +16,20 @@ spec:
       apiTypes:
         group: note.orkestra.io
         version: v1alpha1
-        kind: HPAProbe
-        plural: hpaprobes
+        kind: NoteProbe
+        plural: noteprobes
       workers: 1
       resync: 30s
 
       operatorBox:
-        default: true
-
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-app"
               image: "{{ .spec.image }}"
               replicas: "{{ .spec.replicas }}"
               port: "{{ .spec.port }}"
+              resources:
+                profile: '{{ .spec.resourceProfile | default "burst" }}'
               reconcile: true
 
           hpa:

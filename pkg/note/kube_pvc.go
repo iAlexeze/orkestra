@@ -63,11 +63,7 @@ func notePVCPhase(obj interface{}) string {
 //
 //	{{ pvcCapacity .children.pvc }}  → "10Gi"
 func notePVCCapacity(obj interface{}) string {
-	m, ok := obj.(map[string]interface{})
-	if !ok {
-		return ""
-	}
-	spec, _ := m["spec"].(map[string]interface{})
+	spec := noteSpec(obj)
 	if spec == nil {
 		return ""
 	}
@@ -88,11 +84,7 @@ func notePVCCapacity(obj interface{}) string {
 //
 //	{{ pvcStorageClass .children.pvc }}  → "standard"
 func notePVCStorageClass(obj interface{}) string {
-	m, ok := obj.(map[string]interface{})
-	if !ok {
-		return ""
-	}
-	spec, _ := m["spec"].(map[string]interface{})
+	spec := noteSpec(obj)
 	if spec == nil {
 		return ""
 	}
@@ -104,11 +96,7 @@ func notePVCStorageClass(obj interface{}) string {
 //
 //	{{ pvcAccessModes .children.pvc }}  → "ReadWriteOnce"
 func notePVCAccessModes(obj interface{}) string {
-	m, ok := obj.(map[string]interface{})
-	if !ok {
-		return ""
-	}
-	spec, _ := m["spec"].(map[string]interface{})
+	spec := noteSpec(obj)
 	if spec == nil {
 		return ""
 	}
@@ -126,14 +114,14 @@ func notePVCAccessModes(obj interface{}) string {
 
 // notePVCProvisioner returns the provisioner that created the bound PV.
 // Read from the PV's metadata.annotations["pv.kubernetes.io/provisioned-by"].
-// Returns "" when the PVC is unbound or enrichment is not enabled.
+// Returns "Unbound" when the PVC is unbound and "" when enrichment is not enabled.
 // Requires enrich: [pvc] on the CRD.
 //
 //	{{ pvcProvisioner .children.pvc }}  → "ebs.csi.aws.com"
 func notePVCProvisioner(obj interface{}) string {
 	pv := getBoundPV(obj)
 	if pv == nil {
-		return ""
+		return "Unbound"
 	}
 	meta, _ := pv["metadata"].(map[string]interface{})
 	if meta == nil {
@@ -148,14 +136,14 @@ func notePVCProvisioner(obj interface{}) string {
 }
 
 // notePVCVolumeMode returns the volumeMode of the bound PV ("Filesystem" or "Block").
-// Returns "" when the PVC is unbound or enrichment is not enabled.
+// Returns "Unbound" when the PVC is unbound and "" when enrichment is not enabled.
 // Requires enrich: [pvc] on the CRD.
 //
 //	{{ pvcVolumeMode .children.pvc }}  → "Filesystem"
 func notePVCVolumeMode(obj interface{}) string {
 	pv := getBoundPV(obj)
 	if pv == nil {
-		return ""
+		return "Unbound"
 	}
 	spec, _ := pv["spec"].(map[string]interface{})
 	if spec == nil {

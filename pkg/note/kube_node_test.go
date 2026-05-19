@@ -90,10 +90,10 @@ func TestNoteNodeAllocatableMemory(t *testing.T) {
 
 func TestNoteNodeCondition(t *testing.T) {
 	tests := []struct {
-		name      string
-		obj       interface{}
-		condType  string
-		want      string
+		name     string
+		obj      interface{}
+		condType string
+		want     string
 	}{
 		{"nil", nil, "Ready", ""},
 		{"condition not found", makeNode(map[string]string{"Ready": "True"}, nil, nil), "MemoryPressure", ""},

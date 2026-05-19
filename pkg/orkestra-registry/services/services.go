@@ -91,14 +91,24 @@ func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object
 	drifted := false
 	updated := existing.DeepCopy()
 
+	// port
 	if len(existing.Spec.Ports) > 0 && existing.Spec.Ports[0].Port != spec.Port {
 		updated.Spec.Ports[0].Port = spec.Port
-		updated.Spec.Ports[0].TargetPort = intstr.FromInt(int(spec.TargetPort))
 		drifted = true
 		logger.Info().
 			Str("service", spec.Name).
 			Int32("desired", spec.Port).
 			Msg("service port drifted")
+	}
+
+	// target port
+	if len(existing.Spec.Ports) > 0 && existing.Spec.Ports[0].TargetPort.IntVal != spec.TargetPort {
+		updated.Spec.Ports[0].TargetPort = intstr.FromInt(int(spec.TargetPort))
+		drifted = true
+		logger.Info().
+			Str("service", spec.Name).
+			Int32("desired", spec.TargetPort).
+			Msg("service target port drifted")
 	}
 
 	if !drifted {

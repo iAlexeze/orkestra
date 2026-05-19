@@ -8,6 +8,7 @@ metadata:
     ServiceProbe — integration test for enriched endpoint notes.
     Creates a Deployment + Service with enrich: [endpoints].
     Apply the CR and inspect: kubectl get serviceprobe <name> -o yaml
+    Reuses the NoteProbe CRD.
 
 spec:
   crds:
@@ -15,8 +16,8 @@ spec:
       apiTypes:
         group: note.orkestra.io
         version: v1alpha1
-        kind: ServiceProbe
-        plural: serviceprobes
+        kind: NoteProbe
+        plural: noteprobes
       workers: 1
       resync: 30s
 
@@ -24,8 +25,6 @@ spec:
         - endpoints
 
       operatorBox:
-        default: true
-
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-app"
@@ -38,6 +37,7 @@ spec:
             - name: "{{ .metadata.name }}-svc"
               port: "80"
               targetPort: "{{ .spec.port }}"
+              type: LoadBalancer
               reconcile: true
 
         status:

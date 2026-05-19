@@ -16,17 +16,19 @@ import (
 //	{{ ingressReady .children.ingress }}
 //	{{ ingressHost .children.ingress }}
 //	{{ ingressIP .children.ingress }}
+//	{{ ingressClassName .children.ingress }}
 //	{{ ingressRules .children.ingress }}
 //	{{ ingressTLSHosts .children.ingress }}
 //
 // No enrichment required — all notes navigate the Ingress object directly.
 func ingressNotes() template.FuncMap {
 	return template.FuncMap{
-		"ingressReady":    noteIngressReady,
-		"ingressHost":     noteIngressHost,
-		"ingressIP":       noteIngressIP,
-		"ingressRules":    noteIngressRules,
-		"ingressTLSHosts": noteIngressTLSHosts,
+		"ingressReady":     noteIngressReady,
+		"ingressHost":      noteIngressHost,
+		"ingressIP":        noteIngressIP,
+		"ingressClassName": noteIngressClassName,
+		"ingressRules":     noteIngressRules,
+		"ingressTLSHosts":  noteIngressTLSHosts,
 	}
 }
 
@@ -73,16 +75,25 @@ func noteIngressIP(obj interface{}) string {
 	return v
 }
 
+// notIngressClassName returns the ingress class name (spec.ingressClassName).
+// Empty when not set.
+//
+//	{{ ingressClassName .children.ingress }}  → "nginx"
+func noteIngressClassName(obj interface{}) string {
+	spec := noteSpec(obj)
+	if spec == nil {
+		return ""
+	}
+	v, _ := spec["ingressClassName"].(string)
+	return v
+}
+
 // noteIngressRules returns a comma-separated list of hostnames from spec.rules.
 // Empty hosts (catch-all rules) are omitted.
 //
 //	{{ ingressRules .children.ingress }}  → "api.example.com, www.example.com"
 func noteIngressRules(obj interface{}) string {
-	m, ok := obj.(map[string]interface{})
-	if !ok {
-		return ""
-	}
-	spec, _ := m["spec"].(map[string]interface{})
+	spec := noteSpec(obj)
 	if spec == nil {
 		return ""
 	}
@@ -104,11 +115,7 @@ func noteIngressRules(obj interface{}) string {
 //
 //	{{ ingressTLSHosts .children.ingress }}  → "api.example.com, www.example.com"
 func noteIngressTLSHosts(obj interface{}) string {
-	m, ok := obj.(map[string]interface{})
-	if !ok {
-		return ""
-	}
-	spec, _ := m["spec"].(map[string]interface{})
+	spec := noteSpec(obj)
 	if spec == nil {
 		return ""
 	}
@@ -131,6 +138,7 @@ func noteIngressTLSHosts(obj interface{}) string {
 	return strings.Join(hosts, ", ")
 }
 
+// Helpers
 func ingressLBEntry(obj interface{}) map[string]interface{} {
 	status := noteStatus(obj)
 	lb, _ := status["loadBalancer"].(map[string]interface{})

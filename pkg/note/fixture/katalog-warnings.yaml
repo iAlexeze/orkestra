@@ -9,6 +9,7 @@ metadata:
     Creates a Deployment that will generate warning events (deliberately
     misconfigured image) with enrich: [events].
     Apply the CR and inspect: kubectl get warningsprobe <name> -o yaml
+    Reuses the NoteProbe CRD.
 
 spec:
   crds:
@@ -16,8 +17,8 @@ spec:
       apiTypes:
         group: note.orkestra.io
         version: v1alpha1
-        kind: WarningsProbe
-        plural: warningsprobes
+        kind: NoteProbe
+        plural: noteprobes
       workers: 1
       resync: 30s
 
@@ -25,8 +26,6 @@ spec:
         - events
 
       operatorBox:
-        default: true
-
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-app"

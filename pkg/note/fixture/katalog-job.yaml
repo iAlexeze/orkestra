@@ -8,6 +8,7 @@ metadata:
     JobProbe — integration test for job notes and enriched job pod notes.
     Creates a Job with enrich: [pods].
     Apply the CR and inspect: kubectl get jobprobe <name> -o yaml
+    Reuses the NoteProbe CRD.
 
 spec:
   crds:
@@ -15,8 +16,8 @@ spec:
       apiTypes:
         group: note.orkestra.io
         version: v1alpha1
-        kind: JobProbe
-        plural: jobprobes
+        kind: NoteProbe
+        plural: noteprobes
       workers: 1
       resync: 30s
 
@@ -24,8 +25,6 @@ spec:
         - pods
 
       operatorBox:
-        default: true
-
         onCreate:
           jobs:
             - name: "{{ .metadata.name }}-probe"

@@ -226,13 +226,13 @@ func Resolve(src orktypes.IngressTemplateSource, ownerName string) ResolvedIngre
 	spec.Labels[labels.Managed] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
-	if src.TLS != nil && src.TLS.Enabled {
+	if src.TLS != nil && src.TLS.Create {
 		secretName := src.TLS.SecretName
 		if secretName == "" {
 			secretName = ownerName + "-tls"
 		}
 		spec.TLS = &ResolvedIngressTLS{
-			Enabled:    true,
+			Create:     true,
 			SecretName: secretName,
 			Hosts:      src.TLS.Hosts,
 			ValidFor:   src.TLS.ValidFor,
@@ -312,7 +312,7 @@ func buildIngress(owner domain.Object, spec ResolvedIngressSpec, namespace strin
 		ing.Spec.IngressClassName = &spec.IngressClass
 	}
 
-	if spec.TLS != nil && spec.TLS.Enabled {
+	if spec.TLS != nil && spec.TLS.Create {
 		hosts := spec.TLS.Hosts
 		if len(hosts) == 0 && spec.Host != "" {
 			hosts = []string{spec.Host}

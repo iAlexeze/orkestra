@@ -29,12 +29,12 @@ func jobNotes() template.FuncMap {
 		"jobFailed":    noteJobFailed,
 		"jobActive":    noteJobActive,
 		// Enriched pod notes — require enrich: [pods] on the CRD.
-		"jobFirstExitCode":    noteJobFirstExitCode,
-		"jobActivePodNames":   noteJobActivePodNames,
+		"jobFirstExitCode":     noteJobFirstExitCode,
+		"jobActivePodNames":    noteJobActivePodNames,
 		"jobSucceededPodNames": noteJobSucceededPodNames,
-		"jobFailedPodNames":   noteJobFailedPodNames,
+		"jobFailedPodNames":    noteJobFailedPodNames,
 		// CronJob notes.
-		"cronJobActiveCount":    noteCronJobActiveCount,
+		"cronJobActiveCount":      noteCronJobActiveCount,
 		"cronJobLastScheduleTime": noteCronJobLastScheduleTime,
 		"cronJobLastSuccessTime":  noteCronJobLastSuccessTime,
 	}

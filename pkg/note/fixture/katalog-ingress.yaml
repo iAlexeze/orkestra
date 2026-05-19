@@ -8,6 +8,7 @@ metadata:
     IngressProbe — living integration test for Ingress notes.
     Creates a Deployment + Service + Ingress.
     Apply the CR and inspect: kubectl get ingressprobe <name> -o yaml
+    Reuses the NoteProbe CRD.
 
 spec:
   crds:
@@ -15,14 +16,12 @@ spec:
       apiTypes:
         group: note.orkestra.io
         version: v1alpha1
-        kind: IngressProbe
-        plural: ingressprobes
+        kind: NoteProbe
+        plural: noteprobes
       workers: 1
       resync: 30s
 
       operatorBox:
-        default: true
-
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}-app"
@@ -42,6 +41,10 @@ spec:
               host: "{{ .spec.host }}"
               serviceName: "{{ .metadata.name }}-svc"
               servicePort: "80"
+              className: nginx
+              tls:
+                create: true
+                secretName: "{{ .metadata.name }}-tls"
               reconcile: true
 
         status:
@@ -84,6 +87,9 @@ spec:
 
             - path: ingressIP
               value: "{{ ingressIP .children.ingress }}"
+            
+            - path: ingressClassName
+              value: "{{ ingressClassName .children.ingress }}"
 
             - path: ingressRules
               value: "{{ ingressRules .children.ingress }}"

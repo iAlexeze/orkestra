@@ -1497,7 +1497,7 @@ type IngressTemplateSource struct {
 	PathType string `yaml:"pathType,omitempty" json:"pathType,omitempty"`
 
 	// IngressClass — Ingress class name (nginx, traefik, etc.). Optional.
-	IngressClass string `yaml:"ingressClass,omitempty" json:"ingressClass,omitempty"`
+	IngressClass string `yaml:"className,omitempty" json:"className,omitempty"`
 
 	// Labels applied to Ingress metadata. Values support template expressions.
 	Labels []ResourceLabel `yaml:"labels,omitempty" json:"labels,omitempty"`
@@ -1521,11 +1521,11 @@ type IngressTemplateSource struct {
 }
 
 // IngressTLSSpec configures TLS for an Ingress resource.
-// When Enabled is true, Orkestra generates a kubernetes.io/tls Secret before
+// When Create is true, Orkestra generates a kubernetes.io/tls Secret before
 // the Ingress is applied so the Ingress can reference it immediately.
 type IngressTLSSpec struct {
-	// Enabled — when true, create a TLS secret and populate ingress.spec.tls.
-	Enabled bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	// Create — when true, create a TLS secret and populate ingress.spec.tls.
+	Create bool `yaml:"create,omitempty" json:"create,omitempty"`
 
 	// SecretName — name of the TLS secret. Supports template expressions.
 	// Default: "{{ .metadata.name }}-tls"

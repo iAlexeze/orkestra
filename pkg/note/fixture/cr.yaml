@@ -4,6 +4,11 @@ metadata:
   name: my-probe
   namespace: default
 spec:
-  image: nginx:1.25
+  image: nginx:1.25x
   replicas: 1
+  minReplicas: 1
+  maxReplicas: 3
+  host: my-probe.example.com
+  storageClassName: standard
+  storage: 10Gi
   port: 8080
