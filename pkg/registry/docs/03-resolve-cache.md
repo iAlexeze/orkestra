@@ -5,7 +5,7 @@
 `Resolve(input string) (*Ref, error)` converts any user-supplied reference to a fully-qualified OCI `*Ref`. Resolution order:
 
 1. **Full OCI reference** — starts with `oci://` or contains a `.` before the first `/` (e.g. `ghcr.io/myorg/redis:v7`). Used as-is after stripping `oci://`.
-2. **`ORKESTRA_REGISTRY` env var** — `ORKESTRA_REGISTRY=oci://myregistry.io/patterns` + `/name:tag`
+2. **`ORK_REGISTRY` env var** — `ORK_REGISTRY=oci://myregistry.io/patterns` + `/name:tag`
 3. **Default registry** — `ghcr.io/orkspace/orkestra-registry/patterns/name:tag`
 
 ```go
@@ -14,7 +14,7 @@ registry.Resolve("postgres:v14")
 registry.Resolve("oci://ghcr.io/orkspace/orkestra-registry/patterns/postgres:v14")
 
 // With env override:
-os.Setenv("ORKESTRA_REGISTRY", "oci://myregistry.io/patterns")
+os.Setenv("ORK_REGISTRY", "oci://myregistry.io/patterns")
 registry.Resolve("postgres:v14")  // → myregistry.io/patterns/postgres:v14
 ```
 

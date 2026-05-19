@@ -20,7 +20,7 @@ const (
 // fully resolved, no OCI imports remaining.
 func ConfigMap(expandedYAML []byte, namespace string) ([]byte, error) {
 	if namespace == "" {
-		namespace = konfig.GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system")
+		namespace = konfig.GetStrEnv("ORK_NAMESPACE", "orkestra-system")
 	}
 	return renderNamespaceAndConfigMap(expandedYAML, namespace)
 }

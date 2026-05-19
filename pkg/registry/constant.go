@@ -42,10 +42,10 @@ const (
 	DefaultRegistry = DefaultKatalogRegistry
 
 	// EnvPatternRegistry overrides the default katalog registry path.
-	EnvPatternRegistry = "ORKESTRA_REGISTRY"
+	EnvPatternRegistry = "ORK_REGISTRY"
 
 	// EnvMotifRegistry overrides the default motif registry path.
-	EnvMotifRegistry = "ORKESTRA_MOTIFS_REGISTRY"
+	EnvMotifRegistry = "ORK_MOTIFS_REGISTRY"
 
 	// EnvRegistry is an alias for EnvPatternRegistry.
 	EnvRegistry = EnvPatternRegistry

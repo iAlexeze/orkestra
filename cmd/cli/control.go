@@ -20,13 +20,12 @@ var (
 )
 
 func init() {
-	controlStartCmd.Flags().StringVarP(&ccPort, "port", "p", "8081", "Port to run the Control Center on")
-	controlStartCmd.Flags().BoolVarP(&ccIgnoreDefault, "ignore-default", "i", false, "Do not add the default localhost:8080 URL; start with no instances")
-	controlStartCmd.Flags().StringVarP(&ccURLs, "urls", "u", "http://localhost:8080", "Comma-separated list of Orkestra runtime URLs")
-	controlStartCmd.Flags().StringVar(&ccRefresh, "refresh", "10s", "Refresh interval for fetching Katalogs")
-	controlStartCmd.Flags().StringVar(&ccLogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
+	controlCmd.Flags().StringVarP(&ccPort, "port", "p", "8081", "Port to run the Control Center on")
+	controlCmd.Flags().BoolVarP(&ccIgnoreDefault, "ignore-default", "i", false, "Do not add the default localhost:8080 URL; start with no instances")
+	controlCmd.Flags().StringVarP(&ccURLs, "urls", "u", "http://localhost:8080", "Comma-separated list of Orkestra runtime URLs")
+	controlCmd.Flags().StringVar(&ccRefresh, "refresh", "10s", "Refresh interval for fetching Katalogs")
+	controlCmd.Flags().StringVar(&ccLogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
 
-	controlCmd.AddCommand(controlStartCmd)
 	controlCmd.AddCommand(controlVersionCmd)
 	rootCmd.AddCommand(controlCmd)
 
@@ -45,17 +44,11 @@ func init() {
 
 var controlCmd = &cobra.Command{
 	Use:   "control",
-	Short: "Manage the Orkestra Control Center",
-	Long: `Start and manage the Orkestra Control Center UI.
-	
-The Control Center provides a web-based interface for monitoring
-multiple Orkestra runtime instances.`,
-}
-
-var controlStartCmd = &cobra.Command{
-	Use:   "start",
 	Short: "Start the Orkestra Control Center",
 	Long: `Start the Orkestra Control Center web UI.
+
+The Control Center provides a web-based interface for monitoring
+multiple Orkestra runtime and gateway instances.
 
 Examples:
   # Start with default settings (port 8081, localhost:8080)

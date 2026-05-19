@@ -27,7 +27,7 @@ func handleEnvVars() *ControlCenterKonfig {
 	runtimeManager := getBoolEnv("ENABLE_RUNTIME_MANAGER", true)
 	loglevel := getStrEnv("LOG_LEVEL", "info")
 	refreshInterval := getDurEnv("REFRESH_INTERVAL", 15)
-	urls := splitEnv("ORKESTRA_URLS", []string{})
+	urls := splitEnv("ORK_URLS", []string{})
 
 	return &ControlCenterKonfig{
 		Port:                 port,

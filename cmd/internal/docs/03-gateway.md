@@ -38,8 +38,8 @@ For local development, use `ork run` instead.
 ## Komponent start order
 
 ```
-1. HealthServer   — /ready and /livez, available from first second of startup
-2. WebhookServer  — HTTPS on :8443, /validate, /mutate, /convert
+1. HealthServer   — /ready, /livez, /katalog routes (HTTP :8080)
+2. WebhookServer  — /validate, /mutate, /convert, /deletion-protection (HTTPS :8443)
 3. Kubeclient     — already started during wiring, managed for Stop()
 ```
 
@@ -47,6 +47,23 @@ For local development, use `ork run` instead.
 certificates and writes the cert and key paths into `kfg` so the webhook server
 picks them up when it binds its HTTPS listener. See [04-security.md](04-security.md)
 for the full security wiring sequence.
+
+## /katalog API
+
+The gateway serves its own `/katalog` endpoint on the HTTP health server. Unlike
+the runtime's `/katalog`, it contains only the stats the gateway owns:
+
+| Endpoint | Content |
+|----------|---------|
+| `/katalog` | Top-level: feature flags, per-CRD webhook stats, infra protection stats |
+| `/katalog/{crd}` | Per-CRD: admission, conversion, deletion protection, namespace protection |
+
+The control center discovers the gateway URL via the `"gatewayEndpoint"` field
+in the runtime's `/katalog` response (set by `ORK_GATEWAY_ENDPOINT` on the
+runtime). Stats are merged per CRD by GVR key.
+
+See [pkg/kordinator/docs/07-gateway-stats.md](../../../pkg/kordinator/docs/07-gateway-stats.md)
+for the full design.
 
 → Back: [02-runtime.md](02-runtime.md)
 → Next: [04-security.md](04-security.md)

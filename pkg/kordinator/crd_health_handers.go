@@ -488,6 +488,11 @@ type KatalogResponse struct {
 	License            string                          `json:"license,omitempty"`
 	RuntimeVersion     string                          `json:"runtimeVersion,omitempty"`
 	Projects           map[string]orktypes.ProjectInfo `json:"projects,omitempty"`
+	// GatewayEndpoint is the HTTP base URL of the companion gateway process.
+	// Set via ORK_GATEWAY_ENDPOINT on the runtime. The control center reads
+	// this field and fetches gateway:/katalog to merge per-CRD webhook stats.
+	// Empty when no gateway is paired with this runtime.
+	GatewayEndpoint    string                          `json:"gatewayEndpoint,omitempty"`
 }
 
 type CRDSummaryResponse struct {
@@ -685,6 +690,7 @@ func BuildKatalogHandler(
 			Description:        kat.Meta().Description,
 			Projects:           kat.Projects(),
 			RuntimeVersion:     version.Short(),
+			GatewayEndpoint:    kfg.GatewayEndpoint(),
 		})
 	}
 }

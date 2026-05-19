@@ -16,7 +16,7 @@ The Control Center is a single Go binary that runs an HTTP server. It holds one 
 
 ```
 main.go
-  → NewControlCenterKonfig()         read env vars (PORT, ORKESTRA_URLS, …)
+  → NewControlCenterKonfig()         read env vars (PORT, ORK_URLS, …)
   → LoadRuntimeStorage()             merge persisted URLs from ~/.orkestra/instances.json
   → cc.New(urls, Config{…})          create ControlCenter, one Instance per URL
       → go backgroundFetchLoop()     start background goroutine immediately

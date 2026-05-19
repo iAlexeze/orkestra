@@ -10,12 +10,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/orkspace/orkestra/domain"
 	"github.com/orkspace/orkestra/pkg/certmanager"
 	"github.com/orkspace/orkestra/pkg/health"
 	"github.com/orkspace/orkestra/pkg/katalog"
 	"github.com/orkspace/orkestra/pkg/konfig"
+	"github.com/orkspace/orkestra/pkg/kordinator"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
@@ -76,7 +78,7 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 		kfg.Security().Webhooks.TLSKey = tlsKey
 	}
 
-	// ── 5. HealthServer — minimal (probes + metrics only, no katalog routes) ─
+	// ── 5. HealthServer — HTTP (probes + metrics + /katalog API) ────────────────
 	hs := health.NewHealthServer(kfg)
 
 	// ── 6. WebhookServer ──────────────────────────────────────────────────────
@@ -85,7 +87,25 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 		ws.SetCertManager(certMgr)
 	}
 
-	// ── 7. Komponent list ─────────────────────────────────────────────────────
+	// ── 7. /katalog routes — gateway serves its own stats surface ────────────
+	// The control center discovers this endpoint via the "gatewayEndpoint" field
+	// in the runtime /katalog response and merges per-CRD stats by GVR key.
+	hs.Register("/katalog", kordinator.BuildGatewayKatalogHandler(kat, ws))
+	for _, crd := range kat.Enabled() {
+		if crd.IsBuiltIn {
+			continue
+		}
+		crdName := strings.ToLower(crd.Name)
+		gvr := crd.GVR()
+		gvrKey := webhook.GVRKey(gvr.Group, gvr.Version, gvr.Resource)
+		hs.Register(
+			"/katalog/"+crdName,
+			kordinator.BuildGatewayCRDHandler(crd.Name, crd.GVK().String(), gvr.String(), gvrKey, ws, kat),
+		)
+	}
+	logger.Debug().Msg("gateway /katalog routes registered")
+
+	// ── 8. Komponent list ─────────────────────────────────────────────────────
 	komponents := []domain.Komponent{
 		hs,   // 1. HTTP server — /ready, /livez probes
 		ws,   // 2. HTTPS webhook server — /validate, /mutate, /convert

@@ -272,7 +272,7 @@ mounts the resulting Secret automatically.
 
 | Variable | Default | Description |
 |---|---|---|
-| `ORKESTRA_PORT` | `8080` | HTTP server port |
+| `ORK_PORT` | `8080` | HTTP server port |
 | `ENABLE_CONVERSION` | `false` | Enable the `/convert` HTTPS endpoint |
 | `ENABLE_ADMISSION_WEBHOOK` | `false` | Enable `/validate` and `/mutate` (requires `ENABLE_CONVERSION`) |
 | `TLS_CERT` | — | Path to TLS certificate |
@@ -283,7 +283,7 @@ mounts the resulting Secret automatically.
 | `MAX_QUEUE_DEPTH` | `100` | Max queue depth when not set in Katalog |
 | `LOG_LEVEL` | `info` | Log verbosity: `debug`, `info`, `warn`, `error` |
 | `NAMESPACE` | — | Namespace where Orkestra runs — used in webhook configurations |
-| `ORKESTRA_SERVICE_NAME` | `orkestra` | Service name for webhook clientConfig |
+| `ORK_SERVICE_NAME` | `orkestra` | Service name for webhook clientConfig |
 | `CONVERSION_WINDOW` | `1000` | Rolling window size for conversion and admission latency percentiles |
 
 ---

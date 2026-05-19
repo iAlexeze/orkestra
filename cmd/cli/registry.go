@@ -24,8 +24,8 @@ var registryCmd = &cobra.Command{
 Authentication uses ~/.docker/config.json — run 'docker login' first.
 Override the default registries with environment variables:
 
-  export ORKESTRA_REGISTRY=oci://myregistry.internal/patterns
-  export ORKESTRA_MOTIFS_REGISTRY=oci://myregistry.internal/motifs`,
+  export ORK_REGISTRY=oci://myregistry.internal/patterns
+  export ORK_MOTIFS_REGISTRY=oci://myregistry.internal/motifs`,
 }
 
 // ── registration ──────────────────────────────────────────────────────────────

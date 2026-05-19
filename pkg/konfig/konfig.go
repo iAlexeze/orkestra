@@ -16,9 +16,10 @@ func Init(filenames ...string) (*Konfig, error) {
 
 	kfg := &Konfig{
 		ork: orkKonfig{
-			Name:        Orkestra,
-			ShortName:   Ork,
-			Environment: GetStrEnv("ORKESTRA_ENV", "development"),
+			Name:            Orkestra,
+			ShortName:       Ork,
+			Environment:     GetStrEnv("ORK_ENV", "development"),
+			GatewayEndpoint: GetStrEnv("ORK_GATEWAY_ENDPOINT", ""),
 		},
 		cluster: clusterKonfig{
 			// KubekonfigPath:   GetStrEnv("KUBEKONFIG", ""),
@@ -36,7 +37,7 @@ func Init(filenames ...string) (*Konfig, error) {
 		//   ENABLE_ADMISSION_WEBHOOK    → security.Webhooks.Admission.Enabled
 		//   ENABLE_CONVERSION           → security.Conversion.Enabled
 		//   WEBHOOK_FAILURE_POLICY      → security.Webhooks.FailurePolicy
-		//   ORKESTRA_SERVICE_NAME       → security.Webhooks.ServiceName
+		//   ORK_SERVICE_NAME       → security.Webhooks.ServiceName
 		//                               → security.DeletionProtection.ServiceName
 		//   CONVERSION_WINDOW           → security.Conversion.ConversionWindow
 		//   TLS_CERT / TLS_KEY          → security.Webhooks.TLSCert / TLSKey (initial
@@ -44,7 +45,7 @@ func Init(filenames ...string) (*Konfig, error) {
 		//                                 Orkestra generates its own certificates)
 		security: func() SecurityConfig {
 			var s SecurityConfig
-			s.ServiceName = GetStrEnv("ORKESTRA_SERVICE_NAME", "orkestra-runtime")
+			s.ServiceName = GetStrEnv("ORK_SERVICE_NAME", "orkestra-runtime")
 			s.DeletionProtection.Enabled = GetBoolEnv("ENABLE_DELETION_PROTECTION", false)
 			s.DeletionProtection.FailurePolicy = GetStrEnv("DELETION_PROTECTION_POLICY", "Fail")
 			s.DeletionProtection.ServiceName = s.ServiceName
@@ -106,7 +107,7 @@ func Init(filenames ...string) (*Konfig, error) {
 			RegistryURL: GetStrEnv("ORK_REGISTRY", ""),
 		},
 		healthServer: healthServer{
-			Port:         GetStrEnv("ORKESTRA_PORT", "8080"),
+			Port:         GetStrEnv("ORK_PORT", "8080"),
 			ReadTimeout:  GetDurEnvSeconds("SRV_READ_TIMEOUT", 5),
 			WriteTimeout: GetDurEnvSeconds("SRV_WRITE_TIMEOUT", 20),
 		},
@@ -186,7 +187,7 @@ func GetIntEnv(key string, def int) int {
 // resolveNamespace resolves the namespace for use by all internal orkestra resources
 func resolveNamespace() string {
 	// Resolve namespace
-	if os.Getenv("ORKESTRA_NAMESPACE") == "" {
+	if os.Getenv("ORK_NAMESPACE") == "" {
 		// Set namespace to default if running outside a pod
 		// This is helpful for quick testing using an 'always available' namespace
 		if !utils.IsRunningInCluster() {
@@ -194,5 +195,5 @@ func resolveNamespace() string {
 		}
 	}
 
-	return GetStrEnv("ORKESTRA_NAMESPACE", "orkestra-system")
+	return GetStrEnv("ORK_NAMESPACE", "orkestra-system")
 }

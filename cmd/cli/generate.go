@@ -65,10 +65,10 @@ func bundleOptsFromFor(cmd *cobra.Command) (generate.BundleOptions, error) {
 }
 
 // defaultNamespace returns the namespace to use when --namespace is not supplied.
-// Reads ORKESTRA_NAMESPACE from the environment so that CLI invocations inside
+// Reads ORK_NAMESPACE from the environment so that CLI invocations inside
 // an already-configured cluster automatically target the right namespace.
 func defaultNamespace() string {
-	if ns := os.Getenv("ORKESTRA_NAMESPACE"); ns != "" {
+	if ns := os.Getenv("ORK_NAMESPACE"); ns != "" {
 		return ns
 	}
 	return "orkestra-system"

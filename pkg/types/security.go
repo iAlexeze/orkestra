@@ -13,14 +13,14 @@
 //	security:
 //	  deletionProtection:
 //	    enabled: true            # default: true when block is present
-//	    serviceName: orkestra    # default: ORKESTRA_SERVICE_NAME env / "orkestra"
+//	    serviceName: orkestra    # default: ORK_SERVICE_NAME env / "orkestra"
 //	    failurePolicy: Fail      # default: Fail
 //
 //	  webhooks:
 //	    admission:
 //	      enabled: true          # default: ENABLE_ADMISSION_WEBHOOK env / false
 //	    failurePolicy: Ignore    # default: WEBHOOKS_FAILURE_POLICY env / "Ignore"
-//	    serviceName: orkestra    # default: ORKESTRA_SERVICE_NAME env / "orkestra"
+//	    serviceName: orkestra    # default: ORK_SERVICE_NAME env / "orkestra"
 //
 //	  conversion:
 //	    enabled: true            # default: ENABLE_CONVERSION env / false
@@ -91,7 +91,7 @@ type DeletionProtectionConfig struct {
 
 	// ServiceName is the Kubernetes Service fronting Orkestra's HTTPS server.
 	// The API server sends webhook requests to this Service.
-	// Default: ORKESTRA_SERVICE_NAME env / "orkestra".
+	// Default: ORK_SERVICE_NAME env / "orkestra".
 	ServiceName string `yaml:"serviceName,omitempty" json:"serviceName,omitempty"`
 
 	// FailurePolicy controls what the API server does when Orkestra is unreachable.
@@ -120,7 +120,7 @@ type NamespaceProtectionConfig struct {
 
 	// ServiceName is the Kubernetes Service fronting Orkestra's HTTPS server.
 	// The API server sends webhook requests to this Service.
-	// Default: ORKESTRA_SERVICE_NAME env / "orkestra".
+	// Default: ORK_SERVICE_NAME env / "orkestra".
 	ServiceName string `yaml:"serviceName,omitempty" json:"serviceName,omitempty"`
 
 	// FailurePolicy controls what the API server does when Orkestra is unreachable.
@@ -156,7 +156,7 @@ type WebhooksConfig struct {
 
 	// ServiceName is the Kubernetes Service fronting Orkestra's HTTPS server.
 	// Shared with deletion protection when both are enabled.
-	// Default: ORKESTRA_SERVICE_NAME env / "orkestra".
+	// Default: ORK_SERVICE_NAME env / "orkestra".
 	ServiceName string `yaml:"serviceName,omitempty" json:"serviceName,omitempty"`
 
 	// CleanupOnShutdown controls whether Admission webhook is deleted on graceful shutdown.

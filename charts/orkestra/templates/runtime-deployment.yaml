@@ -50,7 +50,7 @@ spec:
           env:
             - name: LOG_LEVEL
               value: {{ .Values.runtime.config.logLevel | quote }}
-            - name: ORKESTRA_PORT
+            - name: ORK_PORT
               value: {{ .Values.runtime.server.httpPort | quote }}
             - name: DEFAULT_WORKERS
               value: {{ .Values.runtime.config.defaultWorkers | quote }}
@@ -58,15 +58,15 @@ spec:
               value: {{ .Values.runtime.config.defaultResync | quote }}
             - name: MAX_QUEUE_DEPTH
               value: {{ .Values.runtime.config.maxQueueDepth | quote }}
-            - name: ORKESTRA_NAMESPACE
+            - name: ORK_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-            - name: ORKESTRA_ENV
+            - name: ORK_ENV
               value: {{ .Values.runtime.config.environment | quote }}
             - name: DEGRADE_THRESHOLD
               value: {{ .Values.runtime.config.degradeThreshold | quote }}
-            - name: ORKESTRA_REGISTRY
+            - name: ORK_REGISTRY
               value: {{ .Values.runtime.registry.url | quote }}
             {{- if .Values.runtime.leaderElection.enabled }}
             - name: LEADER_ELECTION

@@ -86,8 +86,9 @@ func (ws *WebhookServer) validationHandler(w http.ResponseWriter, r *http.Reques
 	duration := time.Since(start)
 	crdName := req.Kind.Kind
 
+	admStats := ws.admissionStatsFor(gvrKey)
 	if len(denials) > 0 {
-		ws.admissionStats.RecordValidationDenied(duration)
+		admStats.RecordValidationDenied(duration)
 		metrics.RecordValidationOutcome(crdName, "denied", metrics.MetricSourceAdmission)
 		for _, d := range denials {
 			metrics.RecordValidationViolation(crdName, d.Field, d.RuleType, "deny", metrics.MetricSourceAdmission)
@@ -96,13 +97,13 @@ func (ws *WebhookServer) validationHandler(w http.ResponseWriter, r *http.Reques
 			metrics.RecordValidationViolation(crdName, w.Field, w.RuleType, "warn", metrics.MetricSourceAdmission)
 		}
 	} else if len(warnings) > 0 {
-		ws.admissionStats.RecordValidationWarned(duration)
+		admStats.RecordValidationWarned(duration)
 		metrics.RecordValidationOutcome(crdName, "warned", metrics.MetricSourceAdmission)
 		for _, w := range warnings {
 			metrics.RecordValidationViolation(crdName, w.Field, w.RuleType, "warn", metrics.MetricSourceAdmission)
 		}
 	} else {
-		ws.admissionStats.RecordValidationAllowed(duration)
+		admStats.RecordValidationAllowed(duration)
 		metrics.RecordValidationOutcome(crdName, "allowed", metrics.MetricSourceAdmission)
 	}
 	metrics.RecordValidationDurationSeconds(crdName, duration.Seconds())
@@ -206,9 +207,10 @@ func (ws *WebhookServer) mutationHandler(w http.ResponseWriter, r *http.Request)
 
 	crdName := req.Kind.Kind
 
+	mutStats := ws.admissionStatsFor(gvrKey)
 	if len(changes) == 0 {
 		duration := time.Since(start)
-		ws.admissionStats.RecordMutationSkipped(duration)
+		mutStats.RecordMutationSkipped(duration)
 		metrics.RecordMutationOutcome(crdName, "skipped", metrics.MetricSourceAdmission)
 		metrics.RecordMutationDurationSeconds(crdName, duration.Seconds())
 		logger.Debug().
@@ -233,7 +235,7 @@ func (ws *WebhookServer) mutationHandler(w http.ResponseWriter, r *http.Request)
 	resp.PatchType = ptrString(jsonPatchType)
 
 	duration := time.Since(start)
-	ws.admissionStats.RecordMutationApplied(duration)
+	mutStats.RecordMutationApplied(duration)
 	metrics.RecordMutationOutcome(crdName, "applied", metrics.MetricSourceAdmission)
 	for _, c := range changes {
 		metrics.RecordMutationFieldApplied(crdName, c.Field, c.ChangeType, metrics.MetricSourceAdmission)

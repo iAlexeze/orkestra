@@ -1,4 +1,4 @@
-.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet certs docs docs-sync docs-build docs-serve hugo-install generate-notes test-fixture-note test-fixture-reconciler
+.PHONY: build orkcc clean test test-unit test-race test-integration test-all test-coverage test-coverage-text vet certs docs docs-sync docs-build docs-serve hugo-install generate-notes test-fixture-note test-fixture-reconciler ork-gateway-linux docker-gateway gateway-reload runtime-reload controlcenter-reload reload
 
 # ── Configuration ────────────────────────────────────────────────────────────
 ORKESTRA_DIR := .
@@ -78,12 +78,14 @@ endif
 
 ORK_IMAGE ?= ghcr.io/orkspace/orkestra:$(GIT_COMMIT)
 ORK_CC_IMAGE ?= ghcr.io/orkspace/orkestra-cc:$(GIT_COMMIT)
+ORK_GATEWAY_IMAGE ?= ghcr.io/orkspace/orkestra-gateway:$(GIT_COMMIT)
 
 # Target architectures
 ORK_AMD64_TARGET="ork-amd64"
 ORK_ARM64_TARGET="ork-arm64"
 ORK_CC_AMD64_TARGET="orkcc-amd64"
 ORK_CC_ARM64_TARGET="orkcc-arm64"
+ORK_GATEWAY_AMD64_TARGET="ork-gateway-amd64"
 
 
 
@@ -107,6 +109,15 @@ orkcc-linux:
 	cd $(CONTROL_CENTER_DIR) && gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $(OUTPUT_DIR)/orkcc .
 	@echo "✅ Linux Control Center binary built: $(OUTPUT_DIR)/orkcc"
 
+ork-gateway-linux: generate-notes
+	@echo "Building Orkestra Gateway (Linux amd64)..."
+	@mkdir -p $(OUTPUT_DIR)
+	gofmt -w . && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build \
+		-tags "gateway" \
+		-ldflags "$(ORK_LDFLAGS)" \
+		-o $(OUTPUT_DIR)/ork-gateway ./cmd/orkestra
+	@echo "✅ Linux Gateway binary built: $(OUTPUT_DIR)/ork-gateway"
+
 # ── Docker Build ──────────────────────────────────────────────────────────────
 
 docker:
@@ -123,6 +134,13 @@ docker-cc: orkcc-linux
 	cd $(CONTROL_CENTER_DIR) && cp $(OUTPUT_DIR)/orkcc ./$(ORK_CC_AMD64_TARGET)
 	cd $(CONTROL_CENTER_DIR) && docker build -t $(ORK_CC_IMAGE) . && rm -rf ./$(ORK_CC_AMD64_TARGET)
 	@echo "✔ Docker image built: $(ORK_CC_IMAGE)"
+
+docker-gateway: ork-gateway-linux
+	@echo "Building Docker image: $(ORK_GATEWAY_IMAGE)"
+	@cp $(OUTPUT_DIR)/ork-gateway ./$(ORK_GATEWAY_AMD64_TARGET)
+	docker build -f Dockerfile.gateway -t $(ORK_GATEWAY_IMAGE) .
+	@rm -f ./$(ORK_GATEWAY_AMD64_TARGET)
+	@echo "✔ Docker image built: $(ORK_GATEWAY_IMAGE)"
 
 # ── Docker Push ───────────────────────────────────────────────────────────────
 

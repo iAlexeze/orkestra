@@ -39,7 +39,7 @@ curl get.orkestra.sh | bash
 Create a Kind cluster and run the first runtime:
 
 ```bash
-ORKESTRA_NAMESPACE=loader-system ork run -f katalog-loader.yml --dev
+ORK_NAMESPACE=loader-system ork run -f katalog-loader.yml --dev
 ```
 
 This:
@@ -51,7 +51,7 @@ This:
 Run the second runtime:
 
 ```bash
-ORKESTRA_NAMESPACE=processor-system ORKESTRA_PORT=8090 ork run -f katalog-processor.yaml
+ORK_NAMESPACE=processor-system ORK_PORT=8090 ork run -f katalog-processor.yaml
 ```
 
 This runs a second Orkestra instance in `processor-system` on port `8090`.

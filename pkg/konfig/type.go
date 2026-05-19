@@ -18,10 +18,14 @@ type Konfig struct {
 }
 
 type orkKonfig struct {
-	Name        string `validate:"required"`
-	ShortName   string
-	Environment string
-	LogLevel    string
+	Name             string `validate:"required"`
+	ShortName        string
+	Environment      string
+	LogLevel         string
+	// GatewayEndpoint is advertised in the runtime /katalog response so the
+	// control center can locate the companion gateway and merge stats.
+	// Populated from ORK_GATEWAY_ENDPOINT; empty when no gateway is configured.
+	GatewayEndpoint  string
 }
 
 type healthServer struct {
@@ -256,6 +260,12 @@ func (k *Konfig) ConversionEnabled() bool {
 // Reads from SecurityConfig (populated from ENV at Init).
 func (k *Konfig) AdmissionEnabled() bool {
 	return k.security.Webhooks.Admission.Enabled
+}
+
+// GatewayEndpoint returns the companion gateway URL advertised to the control center.
+// Empty string when no gateway is configured (e.g. runtime-only deployment).
+func (k *Konfig) GatewayEndpoint() string {
+	return k.ork.GatewayEndpoint
 }
 
 // HTTPSPort returns the HTTPS port string (e.g. ":8443") used by the webhook server.
