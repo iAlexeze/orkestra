@@ -45,6 +45,30 @@ Return a comma-separated string of pod IP addresses. Returns `""` while pods are
 
 ---
 
+### `podPhases`
+
+Return a comma-separated string of pod phases in order. Useful for surfacing the phase distribution of a multi-replica Deployment or StatefulSet.
+
+```yaml
+- path: podPhases
+  value: "{{ podPhases .children.statefulset }}"
+# → "Running, Running, Pending"
+```
+
+---
+
+### `podNodes`
+
+Return a comma-separated list of node names the pods are scheduled on. Returns `""` while pods are Pending (not yet assigned to a node).
+
+```yaml
+- path: podNodes
+  value: "{{ podNodes .children.deployment }}"
+# → "node-1, node-2"
+```
+
+---
+
 ### `podCount`
 
 Return the total number of pods as `int`.
@@ -69,6 +93,18 @@ Return the number of pods whose `Ready` condition is `True`.
 
 ---
 
+### `podMaxRestarts`
+
+Return the highest restart count across all pods as `int64`. Zero when no pods are present or none have restarted. Pairs with `hasCrashingPod` for full crash-loop visibility.
+
+```yaml
+- path: maxRestarts
+  value: "{{ podMaxRestarts .children.deployment }}"
+# → 3
+```
+
+---
+
 ### `hasCrashingPod`
 
 Return `true` when any pod has restarted more than twice — the first declarative signal of a crash loop.
@@ -82,6 +118,25 @@ status:
   fields:
     - path: crashDetected
       value: "{{ hasCrashingPod .children.deployment }}"
+    - path: maxRestarts
+      value: "{{ podMaxRestarts .children.deployment }}"
+```
+
+---
+
+### `podByOrdinal`
+
+Return the pod summary map at the given ordinal index. Designed for StatefulSets whose pods are named `<name>-0`, `<name>-1`, etc. Returns `nil` when no pod with that ordinal exists.
+
+```yaml
+# Surface the primary StatefulSet member:
+- path: primaryPod
+  value: "{{ (podByOrdinal .children.statefulset 0).name }}"
+- path: primaryIP
+  value: "{{ (podByOrdinal .children.statefulset 0).ip }}"
+
+# All fields available on the returned map:
+# .name, .ip, .phase, .ready, .node, .restartCount, .ordinal
 ```
 
 ---
@@ -123,11 +178,17 @@ spec:
 |------|-----------|---------|
 | `podNames` | `(obj any)` | `string` |
 | `podIPs` | `(obj any)` | `string` |
+| `podPhases` | `(obj any)` | `string` |
+| `podNodes` | `(obj any)` | `string` |
 | `podCount` | `(obj any)` | `int` |
 | `readyPodCount` | `(obj any)` | `int` |
+| `podMaxRestarts` | `(obj any)` | `int64` |
 | `hasCrashingPod` | `(obj any)` | `bool` |
+| `podByOrdinal` | `(obj any, ordinal int64)` | `any` |
 
 Requires `enrich: [pods]` or `enrichAll: true` on the CRD.
+
+Each pod in `_pods` carries: `name`, `ip`, `phase`, `ready`, `node`, `restartCount`, `ordinal` (-1 for non-StatefulSet pods).
 
 ---
 

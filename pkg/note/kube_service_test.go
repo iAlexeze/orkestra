@@ -276,3 +276,134 @@ func TestNoteEndpointsReady(t *testing.T) {
 		})
 	}
 }
+
+func TestNoteHasEndpoints(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want bool
+	}{
+		{"nil", nil, false},
+		{"no _endpoints", map[string]interface{}{}, false},
+		{"empty _endpoints", map[string]interface{}{"_endpoints": []interface{}{}}, false},
+		{"one ready endpoint", map[string]interface{}{
+			"_endpoints": []interface{}{
+				map[string]interface{}{"ip": "10.0.0.1", "port": int64(8080), "ready": true},
+			},
+		}, true},
+		{"one not-ready endpoint", map[string]interface{}{
+			"_endpoints": []interface{}{
+				map[string]interface{}{"ip": "10.0.0.1", "port": int64(8080), "ready": false},
+			},
+		}, false},
+		{"mixed, one ready", map[string]interface{}{
+			"_endpoints": []interface{}{
+				map[string]interface{}{"ip": "10.0.0.1", "port": int64(8080), "ready": false},
+				map[string]interface{}{"ip": "10.0.0.2", "port": int64(8080), "ready": true},
+			},
+		}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteHasEndpoints(tt.obj); got != tt.want {
+				t.Errorf("noteHasEndpoints() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNoteServiceEndpoints(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want string
+	}{
+		{"nil", nil, ""},
+		{"no _endpoints", map[string]interface{}{}, ""},
+		{"empty _endpoints", map[string]interface{}{"_endpoints": []interface{}{}}, ""},
+		{"single endpoint", map[string]interface{}{
+			"_endpoints": []interface{}{
+				map[string]interface{}{"ip": "10.0.0.1", "port": int64(8080), "ready": true},
+			},
+		}, "10.0.0.1:8080"},
+		{"two endpoints", map[string]interface{}{
+			"_endpoints": []interface{}{
+				map[string]interface{}{"ip": "10.0.0.1", "port": int64(8080), "ready": true},
+				map[string]interface{}{"ip": "10.0.0.2", "port": int64(8080), "ready": true},
+			},
+		}, "10.0.0.1:8080, 10.0.0.2:8080"},
+		{"endpoint with empty ip skipped", map[string]interface{}{
+			"_endpoints": []interface{}{
+				map[string]interface{}{"ip": "", "port": int64(8080), "ready": true},
+				map[string]interface{}{"ip": "10.0.0.2", "port": int64(9090), "ready": true},
+			},
+		}, "10.0.0.2:9090"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteServiceEndpoints(tt.obj); got != tt.want {
+				t.Errorf("noteServiceEndpoints() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNoteServiceEndpointCount(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want int
+	}{
+		{"nil", nil, 0},
+		{"no _endpoints", map[string]interface{}{}, 0},
+		{"empty _endpoints", map[string]interface{}{"_endpoints": []interface{}{}}, 0},
+		{"two endpoints", map[string]interface{}{
+			"_endpoints": []interface{}{
+				map[string]interface{}{"ip": "10.0.0.1", "port": int64(8080), "ready": true},
+				map[string]interface{}{"ip": "10.0.0.2", "port": int64(8080), "ready": false},
+			},
+		}, 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteServiceEndpointCount(tt.obj); got != tt.want {
+				t.Errorf("noteServiceEndpointCount() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNoteServiceFirstEndpoint(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want string
+	}{
+		{"nil", nil, ""},
+		{"no _endpoints", map[string]interface{}{}, ""},
+		{"empty _endpoints", map[string]interface{}{"_endpoints": []interface{}{}}, ""},
+		{"single endpoint", map[string]interface{}{
+			"_endpoints": []interface{}{
+				map[string]interface{}{"ip": "10.0.0.1", "port": int64(8080), "ready": true},
+			},
+		}, "10.0.0.1:8080"},
+		{"returns first of two", map[string]interface{}{
+			"_endpoints": []interface{}{
+				map[string]interface{}{"ip": "10.0.0.1", "port": int64(8080), "ready": true},
+				map[string]interface{}{"ip": "10.0.0.2", "port": int64(8080), "ready": true},
+			},
+		}, "10.0.0.1:8080"},
+		{"empty ip returns empty", map[string]interface{}{
+			"_endpoints": []interface{}{
+				map[string]interface{}{"ip": "", "port": int64(8080), "ready": true},
+			},
+		}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteServiceFirstEndpoint(tt.obj); got != tt.want {
+				t.Errorf("noteServiceFirstEndpoint() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -2,7 +2,7 @@ package note
 
 import "text/template"
 
-// jobNotes registers helpers for inspecting Job status fields.
+// jobNotes registers helpers for inspecting Job and CronJob status fields.
 //
 // Usage:
 //
@@ -13,15 +13,30 @@ import "text/template"
 //	{{ jobSucceeded .children.job }}
 //	{{ jobFailed .children.job }}
 //	{{ jobActive .children.job }}
+//	{{ jobFirstExitCode .children.job }}
+//	{{ jobActivePodNames .children.job }}
+//	{{ jobSucceededPodNames .children.job }}
+//	{{ jobFailedPodNames .children.job }}
+//	{{ cronJobActiveCount .children.cronjob }}
+//	{{ cronJobLastScheduleTime .children.cronjob }}
+//	{{ cronJobLastSuccessTime .children.cronjob }}
 //
-// These helpers allow gating dependent resources on Job lifecycle
-// conditions—useful for cleanup tasks, chained workflows, or ensuring
-// that follow‑up resources only apply after a Job has completed.
+// Pod note functions (jobFirstExitCode, jobActivePodNames, etc.) require
+// enrich: [pods] on the CRD.
 func jobNotes() template.FuncMap {
 	return template.FuncMap{
 		"jobSucceeded": noteJobSucceeded,
 		"jobFailed":    noteJobFailed,
 		"jobActive":    noteJobActive,
+		// Enriched pod notes — require enrich: [pods] on the CRD.
+		"jobFirstExitCode":    noteJobFirstExitCode,
+		"jobActivePodNames":   noteJobActivePodNames,
+		"jobSucceededPodNames": noteJobSucceededPodNames,
+		"jobFailedPodNames":   noteJobFailedPodNames,
+		// CronJob notes.
+		"cronJobActiveCount":    noteCronJobActiveCount,
+		"cronJobLastScheduleTime": noteCronJobLastScheduleTime,
+		"cronJobLastSuccessTime":  noteCronJobLastSuccessTime,
 	}
 }
 
@@ -54,4 +69,112 @@ func noteJobFailed(obj interface{}) bool {
 func noteJobActive(obj interface{}) bool {
 	status := noteStatus(obj)
 	return toInt64(status["active"]) > 0
+}
+
+// ── Enriched job pod notes ────────────────────────────────────────────────────
+
+// noteJobFirstExitCode returns the exit code of the first terminated pod in _pods.
+// Returns -1 when no pod has terminated yet.
+// Requires enrich: [pods] on the CRD.
+//
+//	{{ jobFirstExitCode .children.job }}  → 0
+func noteJobFirstExitCode(obj interface{}) int64 {
+	for _, p := range getPods(obj) {
+		pm, ok := p.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		code := toInt64(pm["exitCode"])
+		if code >= 0 {
+			return code
+		}
+	}
+	return -1
+}
+
+// noteJobActivePodNames returns comma-separated names of pods that are not yet done.
+// Requires enrich: [pods] on the CRD.
+//
+//	{{ jobActivePodNames .children.job }}  → "my-job-abc, my-job-def"
+func noteJobActivePodNames(obj interface{}) string {
+	return filterJobPodNames(obj, func(phase string) bool {
+		return phase != "Succeeded" && phase != "Failed"
+	})
+}
+
+// noteJobSucceededPodNames returns comma-separated names of pods that succeeded.
+// Requires enrich: [pods] on the CRD.
+//
+//	{{ jobSucceededPodNames .children.job }}  → "my-job-abc"
+func noteJobSucceededPodNames(obj interface{}) string {
+	return filterJobPodNames(obj, func(phase string) bool {
+		return phase == "Succeeded"
+	})
+}
+
+// noteJobFailedPodNames returns comma-separated names of pods that failed.
+// Requires enrich: [pods] on the CRD.
+//
+//	{{ jobFailedPodNames .children.job }}  → "my-job-xyz"
+func noteJobFailedPodNames(obj interface{}) string {
+	return filterJobPodNames(obj, func(phase string) bool {
+		return phase == "Failed"
+	})
+}
+
+func filterJobPodNames(obj interface{}, match func(string) bool) string {
+	var names []string
+	for _, p := range getPods(obj) {
+		pm, ok := p.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		phase, _ := pm["phase"].(string)
+		if match(phase) {
+			name, _ := pm["name"].(string)
+			if name != "" {
+				names = append(names, name)
+			}
+		}
+	}
+	// reuse strings.Join via the strings package — already imported via note.go helpers
+	result := ""
+	for i, n := range names {
+		if i > 0 {
+			result += ", "
+		}
+		result += n
+	}
+	return result
+}
+
+// ── CronJob notes ─────────────────────────────────────────────────────────────
+
+// noteCronJobActiveCount returns the number of currently active Job runs.
+//
+//	{{ cronJobActiveCount .children.cronjob }}  → 1
+func noteCronJobActiveCount(obj interface{}) int {
+	status := noteStatus(obj)
+	active, _ := status["active"].([]interface{})
+	return len(active)
+}
+
+// noteCronJobLastScheduleTime returns the last time the CronJob was scheduled.
+// Returns "" when not yet scheduled.
+//
+//	{{ cronJobLastScheduleTime .children.cronjob }}  → "2026-05-19T10:00:00Z"
+func noteCronJobLastScheduleTime(obj interface{}) string {
+	status := noteStatus(obj)
+	v, _ := status["lastScheduleTime"].(string)
+	return v
+}
+
+// noteCronJobLastSuccessTime returns the last time the CronJob completed successfully.
+// Returns "" when it has never succeeded.
+//
+//	{{ cronJobLastSuccessTime .children.cronjob }}  → "2026-05-19T10:00:00Z"
+func noteCronJobLastSuccessTime(obj interface{}) string {
+	status := noteStatus(obj)
+	v, _ := status["lastSuccessfulTime"].(string)
+	return v
 }

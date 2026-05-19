@@ -1,6 +1,10 @@
 package note
 
-import "text/template"
+import (
+	"fmt"
+	"strings"
+	"text/template"
+)
 
 // serviceNotes registers helpers for inspecting Service networking fields and
 // endpoint readiness.
@@ -28,7 +32,91 @@ func serviceNotes() template.FuncMap {
 		"serviceLoadBalancerIP":   noteServiceLoadBalancerIP,
 		"serviceLoadBalancerHost": noteServiceLoadBalancerHost,
 		"endpointsReady":          noteEndpointsReady,
+		// Enriched endpoint notes — require enrich: [endpoints] on the CRD.
+		"hasEndpoints":         noteHasEndpoints,
+		"serviceEndpoints":     noteServiceEndpoints,
+		"serviceEndpointCount": noteServiceEndpointCount,
+		"serviceFirstEndpoint": noteServiceFirstEndpoint,
 	}
+}
+
+// ── Enriched endpoint notes ───────────────────────────────────────────────────
+
+// noteHasEndpoints returns true when at least one ready endpoint exists in _endpoints.
+// Requires enrich: [endpoints] on the CRD.
+//
+//	{{ hasEndpoints .children.service }}
+func noteHasEndpoints(obj interface{}) bool {
+	for _, e := range getEndpoints(obj) {
+		ep, ok := e.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if ready, _ := ep["ready"].(bool); ready {
+			return true
+		}
+	}
+	return false
+}
+
+// noteServiceEndpoints returns all ready endpoints as a comma-separated "ip:port" list.
+// Requires enrich: [endpoints] on the CRD.
+//
+//	{{ serviceEndpoints .children.service }}  → "10.0.0.1:8080, 10.0.0.2:8080"
+func noteServiceEndpoints(obj interface{}) string {
+	var parts []string
+	for _, e := range getEndpoints(obj) {
+		ep, ok := e.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		ip, _ := ep["ip"].(string)
+		port := toInt64(ep["port"])
+		if ip == "" {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s:%d", ip, port))
+	}
+	return strings.Join(parts, ", ")
+}
+
+// noteServiceEndpointCount returns the total number of endpoints in _endpoints.
+// Requires enrich: [endpoints] on the CRD.
+//
+//	{{ serviceEndpointCount .children.service }}  → 3
+func noteServiceEndpointCount(obj interface{}) int {
+	return len(getEndpoints(obj))
+}
+
+// noteServiceFirstEndpoint returns the first endpoint as "ip:port".
+// Returns "" when no endpoints exist.
+// Requires enrich: [endpoints] on the CRD.
+//
+//	{{ serviceFirstEndpoint .children.service }}  → "10.0.0.1:8080"
+func noteServiceFirstEndpoint(obj interface{}) string {
+	eps := getEndpoints(obj)
+	if len(eps) == 0 {
+		return ""
+	}
+	ep, ok := eps[0].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	ip, _ := ep["ip"].(string)
+	port := toInt64(ep["port"])
+	if ip == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s:%d", ip, port)
+}
+
+func getEndpoints(obj interface{}) []interface{} {
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	eps, _ := m["_endpoints"].([]interface{})
+	return eps
 }
 
 // ── Service notes ─────────────────────────────────────────────────────────────

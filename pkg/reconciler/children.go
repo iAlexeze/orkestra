@@ -4,6 +4,7 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/orkspace/orkestra/domain"
@@ -62,6 +63,7 @@ func ReadChildren(
 		// Filtering by ownerKind=ReplicaSet excludes Job pods that share the
 		// same orkestra-owner label but have a different immediate controller.
 		enrichGroupWithPods(ctx, kube, m, crd, "ReplicaSet")
+		enrichGroupWithWarnings(ctx, kube, m, crd, "Deployment")
 		children["deployments"] = m
 		children["deployment"] = firstValue(m)
 	}
@@ -71,6 +73,7 @@ func ReadChildren(
 		dNames := statefulSetNames(resolver, templates.StatefulSets)
 		m := readResourceGroup(ctx, kube, obj, resolver, statefulSetGVR, dNames)
 		enrichGroupWithPods(ctx, kube, m, crd, "StatefulSet")
+		enrichGroupWithWarnings(ctx, kube, m, crd, "StatefulSet")
 		children["statefulsets"] = m
 		children["statefulset"] = firstValue(m)
 	}
@@ -80,6 +83,7 @@ func ReadChildren(
 		dNames := replicaSetNames(resolver, templates.ReplicaSets)
 		m := readResourceGroup(ctx, kube, obj, resolver, replicaSetGVR, dNames)
 		enrichGroupWithPods(ctx, kube, m, crd, "ReplicaSet")
+		enrichGroupWithWarnings(ctx, kube, m, crd, "ReplicaSet")
 		children["replicasets"] = m
 		children["replicaset"] = firstValue(m)
 	}
@@ -89,6 +93,7 @@ func ReadChildren(
 	// RESTMapper rather than using a single shared GVR.
 	if len(templates.CustomResource) > 0 {
 		m := readCustomResourceGroup(ctx, kube, obj, resolver, templates.CustomResource)
+		enrichGroupWithWarnings(ctx, kube, m, crd, "")
 		children["customs"] = m
 		children["custom"] = firstValue(m)
 	}
@@ -97,6 +102,9 @@ func ReadChildren(
 	if len(templates.Services) > 0 {
 		svcNames := serviceNames(resolver, templates.Services)
 		m := readResourceGroup(ctx, kube, obj, resolver, serviceGVR, svcNames)
+		// Embed _endpoints into each service map when endpoint enrichment is enabled.
+		enrichGroupWithEndpoints(ctx, kube, m, crd)
+		enrichGroupWithWarnings(ctx, kube, m, crd, "Service")
 		children["services"] = m
 		children["service"] = firstValue(m)
 
@@ -114,6 +122,7 @@ func ReadChildren(
 	if len(templates.Secrets) > 0 {
 		m := readResourceGroup(ctx, kube, obj, resolver, secretGVR,
 			secretNames(resolver, templates.Secrets))
+		enrichGroupWithWarnings(ctx, kube, m, crd, "Secret")
 		children["secrets"] = m
 		children["secret"] = firstValue(m)
 	}
@@ -122,6 +131,7 @@ func ReadChildren(
 	if len(templates.ConfigMaps) > 0 {
 		m := readResourceGroup(ctx, kube, obj, resolver, configMapGVR,
 			configMapNames(resolver, templates.ConfigMaps))
+		enrichGroupWithWarnings(ctx, kube, m, crd, "ConfigMap")
 		children["configmaps"] = m
 		children["configmap"] = firstValue(m)
 	}
@@ -130,6 +140,9 @@ func ReadChildren(
 	if len(templates.Jobs) > 0 {
 		m := readResourceGroup(ctx, kube, obj, resolver, jobGVR,
 			jobNames(resolver, templates.Jobs))
+		// Job pods are owned directly by the Job controller.
+		enrichGroupWithPods(ctx, kube, m, crd, "Job")
+		enrichGroupWithWarnings(ctx, kube, m, crd, "Job")
 		children["jobs"] = m
 		children["job"] = firstValue(m)
 	}
@@ -138,6 +151,7 @@ func ReadChildren(
 	if len(templates.CronJobs) > 0 {
 		m := readResourceGroup(ctx, kube, obj, resolver, cronJobGVR,
 			cronJobNames(resolver, templates.CronJobs))
+		enrichGroupWithWarnings(ctx, kube, m, crd, "CronJob")
 		children["cronjobs"] = m
 		children["cronjob"] = firstValue(m)
 	}
@@ -146,6 +160,7 @@ func ReadChildren(
 	if len(templates.Pods) > 0 {
 		m := readResourceGroup(ctx, kube, obj, resolver, podGVR,
 			podNames(resolver, templates.Pods))
+		enrichGroupWithWarnings(ctx, kube, m, crd, "Pod")
 		children["pods"] = m
 		children["pod"] = firstValue(m)
 	}
@@ -154,6 +169,7 @@ func ReadChildren(
 	if len(templates.ServiceAccounts) > 0 {
 		m := readResourceGroup(ctx, kube, obj, resolver, serviceAccountGVR,
 			serviceAccountNames(resolver, templates.ServiceAccounts))
+		enrichGroupWithWarnings(ctx, kube, m, crd, "ServiceAccount")
 		children["serviceaccounts"] = m
 		children["serviceaccount"] = firstValue(m)
 	}
@@ -162,8 +178,47 @@ func ReadChildren(
 	if len(templates.Namespaces) > 0 {
 		m := readResourceGroup(ctx, kube, obj, resolver, namespaceGVR,
 			namespaceNames(resolver, templates.Namespaces))
+		enrichGroupWithWarnings(ctx, kube, m, crd, "Namespace")
 		children["namespaces"] = m
 		children["namespace"] = firstValue(m)
+	}
+
+	// ── Ingresses ────────────────────────────────────────────────────────
+	if len(templates.Ingresses) > 0 {
+		m := readResourceGroup(ctx, kube, obj, resolver, ingressGVR,
+			ingressNames(resolver, templates.Ingresses))
+		enrichGroupWithWarnings(ctx, kube, m, crd, "Ingress")
+		children["ingresses"] = m
+		children["ingress"] = firstValue(m)
+	}
+
+	// ── HorizontalPodAutoscalers ─────────────────────────────────────────
+	if len(templates.HorizontalPodAutoscalers) > 0 {
+		m := readResourceGroup(ctx, kube, obj, resolver, hpaGVR,
+			hpaNames(resolver, templates.HorizontalPodAutoscalers))
+		enrichGroupWithWarnings(ctx, kube, m, crd, "HorizontalPodAutoscaler")
+		children["hpas"] = m
+		children["hpa"] = firstValue(m)
+	}
+
+	// ── PersistentVolumeClaims ────────────────────────────────────────────
+	if len(templates.PersistentVolumeClaims) > 0 {
+		pvcNms := pvcNames(resolver, templates.PersistentVolumeClaims)
+		m := readResourceGroup(ctx, kube, obj, resolver, pvcGVR, pvcNms)
+		enrichGroupWithPV(ctx, kube, m, crd)
+		enrichGroupWithWarnings(ctx, kube, m, crd, "PersistentVolumeClaim")
+		children["persistentvolumeclaims"] = m
+		children["pvc"] = firstValue(m)
+	}
+
+	// ── PersistentVolumes ─────────────────────────────────────────────────
+	// PVs are cluster-scoped — readResourceGroup skips namespace when empty.
+	if len(templates.PersistentVolumes) > 0 {
+		pvNms := pvNames(resolver, templates.PersistentVolumes)
+		m := readResourceGroup(ctx, kube, obj, resolver, pvGVR, pvNms)
+		enrichGroupWithWarnings(ctx, kube, m, crd, "PersistentVolume")
+		children["persistentvolumes"] = m
+		children["pv"] = firstValue(m)
 	}
 
 	return children
@@ -384,6 +439,7 @@ func mergeTemplates(operatorBox orktypes.OperatorBoxConfig) orktypes.HookTemplat
 		t.PersistentVolumes = append(t.PersistentVolumes, operatorBox.OnCreate.PersistentVolumes...)
 		t.PersistentVolumeClaims = append(t.PersistentVolumeClaims, operatorBox.OnCreate.PersistentVolumeClaims...)
 		t.Ingresses = append(t.Ingresses, operatorBox.OnCreate.Ingresses...)
+		t.HorizontalPodAutoscalers = append(t.HorizontalPodAutoscalers, operatorBox.OnCreate.HorizontalPodAutoscalers...)
 
 		// Future when added
 		t.StorageClasses = append(t.StorageClasses, operatorBox.OnCreate.StorageClasses...)
@@ -411,6 +467,7 @@ func mergeTemplates(operatorBox orktypes.OperatorBoxConfig) orktypes.HookTemplat
 		t.PersistentVolumes = append(t.PersistentVolumes, operatorBox.OnReconcile.PersistentVolumes...)
 		t.PersistentVolumeClaims = append(t.PersistentVolumeClaims, operatorBox.OnReconcile.PersistentVolumeClaims...)
 		t.Ingresses = append(t.Ingresses, operatorBox.OnReconcile.Ingresses...)
+		t.HorizontalPodAutoscalers = append(t.HorizontalPodAutoscalers, operatorBox.OnReconcile.HorizontalPodAutoscalers...)
 
 		// Future when added
 		t.StorageClasses = append(t.StorageClasses, operatorBox.OnReconcile.StorageClasses...)
@@ -579,6 +636,51 @@ func namespaceNames(resolver *orktmpl.Resolver, srcs []orktypes.NamespaceTemplat
 	return names
 }
 
+func ingressNames(resolver *orktmpl.Resolver, srcs []orktypes.IngressTemplateSource) []resolvedChildName {
+	expanded := expandForEachIngresses(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
+		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+func hpaNames(resolver *orktmpl.Resolver, srcs []orktypes.HPATemplateSource) []resolvedChildName {
+	expanded := expandForEachHPAs(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
+		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+func pvcNames(resolver *orktmpl.Resolver, srcs []orktypes.PVCTemplateSource) []resolvedChildName {
+	expanded := expandForEachPVCs(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
+		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+func pvNames(resolver *orktmpl.Resolver, srcs []orktypes.PVTemplateSource) []resolvedChildName {
+	expanded := expandForEachPVs(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
+		// PVs are cluster-scoped — namespace is always empty.
+		if n, ok := resolveName(resolver, s.Name, ""); ok {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
 func replicaSetNames(resolver *orktmpl.Resolver, srcs []orktypes.ReplicaSetTemplateSource) []resolvedChildName {
 	expanded := expandForEachReplicaSets(resolver, srcs)
 	names := make([]resolvedChildName, 0, len(expanded))
@@ -711,7 +813,120 @@ func buildPodSummary(obj map[string]interface{}) map[string]interface{} {
 		"ready":        isPodReady(status),
 		"node":         nodeName,
 		"restartCount": podTotalRestarts(status),
+		"ordinal":      podOrdinal(name),
+		"exitCode":     podExitCode(status),
+		"containers":   buildContainerSummaries(status),
 	}
+}
+
+// buildContainerSummaries extracts per-container state from pod status.containerStatuses.
+// Each entry: {name, image, state, reason, ready, restartCount}
+//
+// state is one of: "Running", "Waiting", "Terminated", ""
+// reason is state.waiting.reason or state.terminated.reason — e.g. "CrashLoopBackOff"
+func buildContainerSummaries(status map[string]interface{}) []interface{} {
+	if status == nil {
+		return nil
+	}
+	containerStatuses, _ := status["containerStatuses"].([]interface{})
+	if len(containerStatuses) == 0 {
+		return nil
+	}
+	result := make([]interface{}, 0, len(containerStatuses))
+	for _, cs := range containerStatuses {
+		csMap, _ := cs.(map[string]interface{})
+		if csMap == nil {
+			continue
+		}
+		name, _ := csMap["name"].(string)
+		image, _ := csMap["image"].(string)
+		ready, _ := csMap["ready"].(bool)
+		restartCount := int64(0)
+		switch v := csMap["restartCount"].(type) {
+		case int64:
+			restartCount = v
+		case float64:
+			restartCount = int64(v)
+		case int:
+			restartCount = int64(v)
+		}
+		state, reason := containerStateAndReason(csMap)
+		result = append(result, map[string]interface{}{
+			"name":         name,
+			"image":        image,
+			"state":        state,
+			"reason":       reason,
+			"ready":        ready,
+			"restartCount": restartCount,
+		})
+	}
+	return result
+}
+
+// containerStateAndReason extracts the state name and reason from a containerStatus map.
+func containerStateAndReason(csMap map[string]interface{}) (state, reason string) {
+	stateMap, _ := csMap["state"].(map[string]interface{})
+	if stateMap == nil {
+		return "", ""
+	}
+	if _, ok := stateMap["running"]; ok {
+		return "Running", ""
+	}
+	if w, ok := stateMap["waiting"].(map[string]interface{}); ok {
+		r, _ := w["reason"].(string)
+		return "Waiting", r
+	}
+	if t, ok := stateMap["terminated"].(map[string]interface{}); ok {
+		r, _ := t["reason"].(string)
+		return "Terminated", r
+	}
+	return "", ""
+}
+
+// podExitCode returns the exit code from the first terminated container.
+// Returns -1 when no container has terminated.
+func podExitCode(status map[string]interface{}) int64 {
+	if status == nil {
+		return -1
+	}
+	containerStatuses, _ := status["containerStatuses"].([]interface{})
+	for _, cs := range containerStatuses {
+		csMap, _ := cs.(map[string]interface{})
+		if csMap == nil {
+			continue
+		}
+		state, _ := csMap["state"].(map[string]interface{})
+		if state == nil {
+			continue
+		}
+		terminated, _ := state["terminated"].(map[string]interface{})
+		if terminated == nil {
+			continue
+		}
+		switch v := terminated["exitCode"].(type) {
+		case int64:
+			return v
+		case float64:
+			return int64(v)
+		case int:
+			return int64(v)
+		}
+	}
+	return -1
+}
+
+// podOrdinal extracts the ordinal from a StatefulSet pod name (<name>-<ordinal>).
+// Returns -1 for non-ordinal pods (Deployment, Job, etc.).
+func podOrdinal(name string) int64 {
+	parts := strings.Split(name, "-")
+	if len(parts) < 2 {
+		return -1
+	}
+	n, err := strconv.ParseInt(parts[len(parts)-1], 10, 64)
+	if err != nil {
+		return -1
+	}
+	return n
 }
 
 func isPodReady(status map[string]interface{}) bool {
@@ -753,4 +968,220 @@ func podTotalRestarts(status map[string]interface{}) int64 {
 		}
 	}
 	return total
+}
+
+// ── Endpoint enrichment ───────────────────────────────────────────────────
+// enrichGroupWithEndpoints embeds _endpoints into each service map.
+// Reads the EndpointSlice for each service and embeds IP:port pairs.
+// A no-op when endpoint enrichment is not enabled on the CRD.
+func enrichGroupWithEndpoints(ctx context.Context, kube kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry) {
+	if !crd.ShouldEnrich("endpoints") {
+		return
+	}
+	for _, v := range m {
+		obj, ok := v.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		meta, _ := obj["metadata"].(map[string]interface{})
+		ns, svcName := "", ""
+		if meta != nil {
+			ns, _ = meta["namespace"].(string)
+			svcName, _ = meta["name"].(string)
+		}
+		if svcName == "" {
+			continue
+		}
+		enrichServiceWithEndpoints(ctx, kube, ns, svcName, obj)
+	}
+}
+
+// enrichServiceWithEndpoints fetches the EndpointSlice for the named service
+// and embeds a list of {ip, port, ready} maps under _endpoints.
+func enrichServiceWithEndpoints(ctx context.Context, kube kubeclient.KubeClient, ns, svcName string, obj map[string]interface{}) {
+	list, err := kube.DynamicClient().
+		Resource(endpointSliceGVR).
+		Namespace(ns).
+		List(ctx, metav1.ListOptions{
+			LabelSelector:   fmt.Sprintf("kubernetes.io/service-name=%s", svcName),
+			Limit:           1,
+			ResourceVersion: "0",
+		})
+	if err != nil || list == nil || len(list.Items) == 0 {
+		return
+	}
+	endpoints := extractEndpointEntries(list.Items[0].Object)
+	if len(endpoints) > 0 {
+		obj["_endpoints"] = endpoints
+	}
+}
+
+// extractEndpointEntries builds the flat _endpoints list from an EndpointSlice object.
+func extractEndpointEntries(esObj map[string]interface{}) []interface{} {
+	ports := extractSlicePorts(esObj)
+	eps, _ := esObj["endpoints"].([]interface{})
+
+	var result []interface{}
+	for _, e := range eps {
+		em, _ := e.(map[string]interface{})
+		if em == nil {
+			continue
+		}
+		cond, _ := em["conditions"].(map[string]interface{})
+		ready, _ := cond["ready"].(bool)
+
+		addrs, _ := em["addresses"].([]interface{})
+		for _, addr := range addrs {
+			ip, _ := addr.(string)
+			if ip == "" {
+				continue
+			}
+			for _, port := range ports {
+				result = append(result, map[string]interface{}{
+					"ip":    ip,
+					"port":  port,
+					"ready": ready,
+				})
+			}
+		}
+	}
+	return result
+}
+
+// extractSlicePorts returns the port numbers from an EndpointSlice's ports array.
+func extractSlicePorts(esObj map[string]interface{}) []int64 {
+	portObjs, _ := esObj["ports"].([]interface{})
+	ports := make([]int64, 0, len(portObjs))
+	for _, p := range portObjs {
+		pm, _ := p.(map[string]interface{})
+		if pm == nil {
+			continue
+		}
+		switch v := pm["port"].(type) {
+		case int64:
+			ports = append(ports, v)
+		case float64:
+			ports = append(ports, int64(v))
+		case int:
+			ports = append(ports, int64(v))
+		}
+	}
+	return ports
+}
+
+// ── Warning event enrichment ──────────────────────────────────────────────────
+// enrichGroupWithWarnings embeds warning events under "_warnings" for every
+// resource in the group. A no-op when events enrichment is not enabled on the CRD.
+//
+// kind is the Kubernetes Kind used to scope the event field selector
+// (involvedObject.kind). Pass "" to skip the kind filter — used for custom
+// resources whose exact kind is not known statically.
+func enrichGroupWithWarnings(ctx context.Context, kube kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry, kind string) {
+	if !crd.ShouldEnrich("events") {
+		return
+	}
+	for _, v := range m {
+		obj, ok := v.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		meta, _ := obj["metadata"].(map[string]interface{})
+		ns, name := "", ""
+		if meta != nil {
+			ns, _ = meta["namespace"].(string)
+			name, _ = meta["name"].(string)
+		}
+		if name == "" {
+			continue
+		}
+		enrichWithWarnings(ctx, kube, ns, name, kind, obj)
+	}
+}
+
+// enrichWithWarnings fetches Warning events scoped to the named resource and
+// embeds a list of {reason, message, count, lastTimestamp} maps under _warnings.
+//
+// Field selector: involvedObject.name=<name>,type=Warning
+// When kind is non-empty: involvedObject.kind=<kind> is appended.
+// ResourceVersion "0" serves from the informer cache — no quorum read.
+func enrichWithWarnings(ctx context.Context, kube kubeclient.KubeClient, ns, name, kind string, obj map[string]interface{}) {
+	selector := fmt.Sprintf("involvedObject.name=%s,type=Warning", name)
+	if kind != "" {
+		selector += fmt.Sprintf(",involvedObject.kind=%s", kind)
+	}
+	if ns == "" {
+		return
+	}
+	list, err := kube.DynamicClient().
+		Resource(eventGVR).
+		Namespace(ns).
+		List(ctx, metav1.ListOptions{
+			FieldSelector:   selector,
+			ResourceVersion: "0",
+		})
+	if err != nil || list == nil || len(list.Items) == 0 {
+		return
+	}
+	warnings := make([]interface{}, 0, len(list.Items))
+	for i := range list.Items {
+		warnings = append(warnings, buildWarningSummary(list.Items[i].Object))
+	}
+	obj["_warnings"] = warnings
+}
+
+// buildWarningSummary extracts the fields note functions navigate from _warnings.
+func buildWarningSummary(obj map[string]interface{}) map[string]interface{} {
+	reason, _ := obj["reason"].(string)
+	message, _ := obj["message"].(string)
+	lastTimestamp, _ := obj["lastTimestamp"].(string)
+	count := int64(0)
+	switch v := obj["count"].(type) {
+	case int64:
+		count = v
+	case float64:
+		count = int64(v)
+	case int:
+		count = int64(v)
+	}
+	return map[string]interface{}{
+		"reason":        reason,
+		"message":       message,
+		"count":         count,
+		"lastTimestamp": lastTimestamp,
+	}
+}
+
+// ── PVC enrichment ────────────────────────────────────────────────────────────
+// enrichGroupWithPV embeds the bound PV object under "_pv" for each PVC in
+// the group. A no-op when pvc enrichment is not enabled on the CRD.
+// The PV name comes from spec.volumeName on the PVC, set by Kubernetes once bound.
+func enrichGroupWithPV(ctx context.Context, kube kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry) {
+	if !crd.ShouldEnrich("pvc") {
+		return
+	}
+	for _, v := range m {
+		obj, ok := v.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		spec, _ := obj["spec"].(map[string]interface{})
+		if spec == nil {
+			continue
+		}
+		volName, _ := spec["volumeName"].(string)
+		if volName == "" {
+			continue
+		}
+		u, err := kube.DynamicClient().
+			Resource(pvGVR).
+			Get(ctx, volName, metav1.GetOptions{})
+		if err != nil {
+			continue
+		}
+		pvObj := u.Object
+		if s, ok := pvObj["status"]; !ok || s == nil {
+			pvObj["status"] = map[string]interface{}{}
+		}
+		obj["_pv"] = pvObj
+	}
 }

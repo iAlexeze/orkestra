@@ -4,7 +4,10 @@ import "fmt"
 
 // validEnrichTargets is the set of currently supported enrichment targets.
 var validEnrichTargets = map[string]bool{
-	"pods": true,
+	"pods":      true,
+	"endpoints": true,
+	"events":    true,
+	"pvc":       true,
 }
 
 // validateEnrich fails fast when:
@@ -21,7 +24,7 @@ func (k *Katalog) validateEnrich() error {
 		for _, target := range crd.Enrich {
 			if !validEnrichTargets[target] {
 				return fmt.Errorf(
-					"crd %q: unknown enrich target %q — supported targets: pods",
+					"crd %q: unknown enrich target %q — supported targets: pods, endpoints, events, pvc",
 					name, target,
 				)
 			}

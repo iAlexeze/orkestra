@@ -5,11 +5,10 @@ metadata:
   author: orkspace
   version: 0.1.0
   description: >
-    NoteProbe — living integration test for all note functions.
-    Creates a Deployment, Service, and Job. Status fields exercise every
-    kubernetes, replica, container, job, and service note so each
-    note's output is visible via kubectl get noteprobe -o yaml 
-    and on the Control Center.
+    NoteProbe — living integration test for kubernetes, replica, container,
+    and service notes. Creates a Deployment and Service.
+    For job notes see katalog-job.yaml; for pod notes see katalog-pods.yaml.
+    Apply the CR and inspect: kubectl get noteprobe <name> -o yaml
 
 spec:
   crds:
@@ -21,7 +20,6 @@ spec:
         plural: noteprobes
       workers: 1
       resync: 30s
-      enrich: [pods]
 
       operatorBox:
         default: true
@@ -40,14 +38,6 @@ spec:
               targetPort: "{{ .spec.port }}"
               reconcile: true
 
-          jobs:
-            - name: "{{ .metadata.name }}-probe"
-              image: alpine:3.19
-              command: ["/bin/sh", "-c", "echo 'note probe complete'"]
-
-        # ── Status ─────────────────────────────────────────────────────────────
-        # Each field exercises a specific note function.
-        # Apply the CR and inspect: kubectl get noteprobe <name> -o yaml
         status:
           fields:
             # ── Phase state machine ─────────────────────────────────────────
@@ -66,19 +56,9 @@ spec:
                   equals: "false"
 
             - path: phase
-              value: "WaitingForJob"
-              when:
-                - field: "{{ allReplicasReady .children.deployment }}"
-                  equals: "true"
-                - field: "{{ jobSucceeded .children.job }}"
-                  equals: "false"
-
-            - path: phase
               value: "Ready"
               when:
                 - field: "{{ allReplicasReady .children.deployment }}"
-                  equals: "true"
-                - field: "{{ jobSucceeded .children.job }}"
                   equals: "true"
 
             # ── kubernetes notes ────────────────────────────────────────────
@@ -118,12 +98,10 @@ spec:
             - path: conditionProgressingMessage
               value: "{{ conditionMessage .children.deployment \"Progressing\" }}"
 
-            # ── replica notes ───────────────────────────────────────────────            
-            # Status: are all desired replicas ready? (no rolling update in progress)
+            # ── replica notes ───────────────────────────────────────────────
             - path: allReady
               value: "{{ allReplicasReady .children.deployment }}"
 
-            # Status: has the rollout reached the desired version?
             - path: rolloutDone
               value: "{{ rolloutComplete .children.deployment }}"
 
@@ -148,19 +126,9 @@ spec:
 
             - path: containerPort
               value: "{{ containerPort .children.deployment }}"
-            
+
             - path: hasContainerPort8080
               value: "{{ hasContainerPort .children.deployment 0 8080 }}"
-
-            # ── job notes ───────────────────────────────────────────────────
-            - path: jobSucceeded
-              value: "{{ jobSucceeded .children.job }}"
-
-            - path: jobFailed
-              value: "{{ jobFailed .children.job }}"
-
-            - path: jobActive
-              value: "{{ jobActive .children.job }}"
 
             # ── service notes ───────────────────────────────────────────────
             - path: serviceClusterIP
@@ -168,19 +136,3 @@ spec:
 
             - path: endpointsReady
               value: "{{ endpointsReady .children.endpointslice }}"
-
-            # ── pod notes ───────────────────────────────────────────────────
-            - path: podNames
-              value: "{{ podNames .children.deployment }}"
-
-            - path: podIPs
-              value: "{{ podIPs .children.deployment }}"
-
-            - path: podCount
-              value: "{{ podCount .children.deployment }}"
-
-            - path: readyPodCount
-              value: "{{ readyPodCount .children.deployment }}"
-
-            - path: hasCrashingPod
-              value: "{{ hasCrashingPod .children.deployment }}"

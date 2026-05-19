@@ -1,0 +1,90 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: hpa-probe
+  author: orkspace
+  version: 0.1.0
+  description: >
+    HPAProbe — living integration test for HPA notes.
+    Creates a Deployment + HPA.
+    Apply the CR and inspect: kubectl get hpaprobe <name> -o yaml
+
+spec:
+  crds:
+    hpa-probe:
+      apiTypes:
+        group: note.orkestra.io
+        version: v1alpha1
+        kind: HPAProbe
+        plural: hpaprobes
+      workers: 1
+      resync: 30s
+
+      operatorBox:
+        default: true
+
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-app"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+
+          hpa:
+            - name: "{{ .metadata.name }}-hpa"
+              scaleTargetRef:
+                apiVersion: apps/v1
+                kind: Deployment
+                name: "{{ .metadata.name }}-app"
+              minReplicas: "{{ .spec.minReplicas }}"
+              maxReplicas: "{{ .spec.maxReplicas }}"
+              reconcile: true
+
+        status:
+          fields:
+            # ── Phase state machine ─────────────────────────────────────────
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+
+            - path: phase
+              value: "Scaling"
+              when:
+                - field: "{{ hpaScaling .children.hpa }}"
+                  equals: "true"
+
+            - path: phase
+              value: "AtCapacity"
+              when:
+                - field: "{{ hpaAtMax .children.hpa }}"
+                  equals: "true"
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ allReplicasReady .children.deployment }}"
+                  equals: "true"
+                - field: "{{ hpaScaling .children.hpa }}"
+                  equals: "false"
+
+            # ── HPA notes ────────────────────────────────────────────────────
+            - path: hpaCurrentReplicas
+              value: "{{ hpaCurrentReplicas .children.hpa }}"
+
+            - path: hpaDesiredReplicas
+              value: "{{ hpaDesiredReplicas .children.hpa }}"
+
+            - path: hpaMinReplicas
+              value: "{{ hpaMinReplicas .children.hpa }}"
+
+            - path: hpaMaxReplicas
+              value: "{{ hpaMaxReplicas .children.hpa }}"
+
+            - path: hpaScaling
+              value: "{{ hpaScaling .children.hpa }}"
+
+            - path: hpaAtMax
+              value: "{{ hpaAtMax .children.hpa }}"

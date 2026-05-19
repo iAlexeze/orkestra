@@ -1,0 +1,80 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: statefulset-probe
+  author: orkspace
+  version: 0.1.0
+  description: >
+    StatefulSetProbe — living integration test for StatefulSet pod notes.
+    Creates a StatefulSet with enrich: [pods] so pod ordinals and ordered
+    membership are available in status. Apply the CR and inspect:
+    kubectl get statefulsetprobe <name> -o yaml
+
+spec:
+  crds:
+    statefulset-probe:
+      apiTypes:
+        group: note.orkestra.io
+        version: v1alpha1
+        kind: StatefulSetProbe
+        plural: statefulsetprobes
+      workers: 1
+      resync: 30s
+      enrich: [pods]
+
+      operatorBox:
+        default: true
+
+        onCreate:
+          statefulSets:
+            - name: "{{ .metadata.name }}"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              reconcile: true
+
+        status:
+          fields:
+            # ── Phase ───────────────────────────────────────────────────────
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ allReplicasReady .children.statefulset }}"
+                  equals: "true"
+
+            # ── pod notes ───────────────────────────────────────────────────
+            - path: members
+              value: "{{ podNames .children.statefulset }}"
+
+            - path: memberIPs
+              value: "{{ podIPs .children.statefulset }}"
+
+            - path: memberPhases
+              value: "{{ podPhases .children.statefulset }}"
+
+            - path: memberNodes
+              value: "{{ podNodes .children.statefulset }}"
+
+            - path: memberCount
+              value: "{{ podCount .children.statefulset }}"
+
+            - path: readyMembers
+              value: "{{ readyPodCount .children.statefulset }}"
+
+            - path: maxRestarts
+              value: "{{ podMaxRestarts .children.statefulset }}"
+
+            # ── ordinal notes ────────────────────────────────────────────────
+            - path: primaryName
+              value: "{{ (podByOrdinal .children.statefulset 0).name }}"
+
+            - path: primaryIP
+              value: "{{ (podByOrdinal .children.statefulset 0).ip }}"
+
+            - path: primaryReady
+              value: "{{ (podByOrdinal .children.statefulset 0).ready }}"

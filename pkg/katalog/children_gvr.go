@@ -35,6 +35,7 @@ var (
 	NamespaceGVR               = gvrOrPanic("namespace")
 	NodeGVR                    = gvrOrPanic("node")
 	EndpointSliceGVR           = gvrOrPanic("endpointslice")
+	EventGVR                   = gvrOrPanic("event")
 )
 
 // gvrOrPanic is a small helper for static initialization.
