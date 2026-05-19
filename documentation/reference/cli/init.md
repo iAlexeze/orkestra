@@ -106,7 +106,7 @@ kubectl apply -f examples/<pack>/01-hello-website/cr.yaml
 Open Control Center:
 
 ```
-ork control start
+ork control
 ```
 
 ---

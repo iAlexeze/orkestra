@@ -66,7 +66,7 @@ Orkestra creates the Deployment and Service, sets owner references, writes statu
 
 **See Control Center:**
 ```bash
-ork control start
+ork control
 
 # → localhost:8081
 ```
@@ -128,7 +128,7 @@ kubectl apply -f examples/beginner/01-hello-website/cr.yaml
 In another terminal, run:
 
 ```bash
-ork control start
+ork control
 
 # → localhost:8081
 # username:password → orkestra

@@ -30,7 +30,7 @@ func init() {
 	controlCmd.AddCommand(controlVersionCmd)
 	rootCmd.AddCommand(controlCmd)
 
-	// Shadow global flags so they don't appear under `ork control start`
+	// Shadow global flags so they don't appear under `ork control`
 	controlCmd.Flags().Bool("debug", false, "")
 	controlCmd.Flags().String("kubeconfig", "", "")
 	controlCmd.Flags().StringSlice("katalog", nil, "")
@@ -59,16 +59,16 @@ var controlStartCmd = &cobra.Command{
 
 Examples:
   # Start with default settings (port 8081, localhost:8080)
-  ork control start
+  ork control
 
   # Start on custom port with multiple instances
-  ork control start --port 9090 --urls "http://localhost:8080,http://localhost:8082"
+  ork control --port 9090 --urls "http://localhost:8080,http://localhost:8082"
 
   # Start with debug logging
-  ork control start --log-level debug --refresh 5s
+  ork control --log-level debug --refresh 5s
 
   # Monitor remote instances
-  ork control start --urls "https://orkestra.prod.internal:8080,https://orkestra.staging:8080"`,
+  ork control --urls "https://orkestra.prod.internal:8080,https://orkestra.staging:8080"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return startControlCenter()
 	},

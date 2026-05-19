@@ -78,7 +78,7 @@ Deployment being created.
 In a third terminal:
 
 ```bash
-ork control start
+ork control
 # username:password → orkestra
 # username:password → orkestra
 ```

@@ -234,7 +234,7 @@ The production runtime is built with a **build tag** (`-tags runtime`) that excl
 - `ork template` – rendering resource templates  
 - `ork diff` – comparing Katalogs  
 - `ork upgrade` – self‑upgrade logic  
-- `ork control startcenter` – local development UI  
+- `ork controlcenter` – local development UI  
 
 The resulting binary contains **only** `ork run`, `ork version`, and the shared runtime packages (reconciler, informers, webhook server, metrics, health endpoints).
 

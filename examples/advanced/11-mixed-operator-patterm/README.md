@@ -162,7 +162,7 @@ This:
 Start the Control Center:
 
 ```bash
-./ork control start
+./ork control
 # username:password → orkestra
 # → http://localhost:8081
 ```

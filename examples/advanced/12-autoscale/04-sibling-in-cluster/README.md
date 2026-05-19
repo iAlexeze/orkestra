@@ -59,7 +59,7 @@ This runs a second Orkestra instance in `processor-system` on port `8090`.
 Start the Control Center:
 
 ```bash
-ork control start -u localhost:8080,localhost:8090
+ork control -u localhost:8080,localhost:8090
 # username:password → orkestra
 ```
 

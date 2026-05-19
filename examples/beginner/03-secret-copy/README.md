@@ -63,7 +63,7 @@ kubectl apply -f cr.yaml
 In a third terminal:
 
 ```bash
-ork control start
+ork control
 # username:password → orkestra
 # username:password → orkestra
 ```

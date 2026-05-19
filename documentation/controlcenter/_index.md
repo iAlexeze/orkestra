@@ -5,7 +5,7 @@ The Orkestra Control Center is a web UI for monitoring one or more Orkestra runt
 Start it with one command:
 
 ```bash
-ork control start
+ork control
 ```
 
 Open [http://localhost:8081](http://localhost:8081).
@@ -24,16 +24,16 @@ Open [http://localhost:8081](http://localhost:8081).
 
 ```bash
 # Default: port 8081, points at localhost:8080
-ork control start
+ork control
 
 # Custom port
-ork control start --port 9090
+ork control --port 9090
 
 # Multiple Orkestra runtimes
-ork control start --urls "http://cluster1:8080,http://cluster2:8080"
+ork control --urls "http://cluster1:8080,http://cluster2:8080"
 
 # Start with no preconfigured runtimes (add them from the UI)
-ork control start --ignore-default
+ork control --ignore-default
 ```
 
 ### Flags

@@ -95,7 +95,7 @@ A Deployment named `hello-website-deployment` appears. Orkestra set owner refere
 In a third terminal:
 
 ```bash
-ork control start
+ork control
 ```
 
 Open [http://localhost:8081](http://localhost:8081) to see the live operator — CRD health, worker state, reconcile metrics, queue depth.
@@ -171,7 +171,7 @@ Ctrl+C
 | `ork run --dev -f <path>` | Start the operator, create kind cluster if needed |
 | `ork validate -f <path>` | Validate a Katalog without starting |
 | `ork template -f <path>` | Preview the merged, resolved Katalog |
-| `ork control start` | Start the Control Center at localhost:8081 |
+| `ork control` | Start the Control Center at localhost:8081 |
 | `ork version` | Print version |
 
 ---

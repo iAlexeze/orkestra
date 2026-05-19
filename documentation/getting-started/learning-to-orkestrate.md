@@ -127,7 +127,7 @@ kubectl get websites
 kubectl get deployments
 
 # Open the Control Center
-ork control start
+ork control
 # → localhost:8081
 ```
 
