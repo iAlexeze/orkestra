@@ -9,21 +9,33 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// NotificationState tracks last-send timestamps per condition+team.
+// NotificationState tracks per condition+team last-send timestamps for throttling.
 type NotificationState struct {
 	// key: operatorName + "|" + conditionKey + "|" + teamName
 	LastSent map[string]time.Time
 }
 
+// NotificationStack combines Katalog context, throttle state, and the active
+// Notifier. One instance per GenericReconciler when notification is enabled.
 type NotificationStack struct {
-	Katalog      *katalog.Katalog
-	State        *NotificationState
-	ResolverData map[string]interface{}
+	Katalog  *katalog.Katalog
+	State    *NotificationState
+	Notifier Notifier
 }
 
 func NewNotificationState() *NotificationState {
 	return &NotificationState{
 		LastSent: make(map[string]time.Time),
+	}
+}
+
+// NewNotificationStack creates a ready-to-use stack.
+// notifier is either a DirectNotifier (standalone) or GatewayNotifier (gateway path).
+func NewNotificationStack(kat *katalog.Katalog, notifier Notifier) *NotificationStack {
+	return &NotificationStack{
+		Katalog:  kat,
+		State:    NewNotificationState(),
+		Notifier: notifier,
 	}
 }
 
@@ -33,13 +45,12 @@ func conditionKey(cond orktypes.Condition) string {
 	return fmt.Sprintf("%s|%s|%s", cond.Field, op, val)
 }
 
-// ProcessConditionNotifications evaluates notify: for a single condition,
-// tracking transitions and enforcing per-team intervals.
+// ProcessConditionNotifications enforces per-team throttle and fires an Event
+// via s.Notifier for every team whose interval has elapsed.
 //
-// Called after we've already decided the condition is "passed" (true).
-func (s *NotificationState) ProcessConditionNotifications(
+// Call this after a condition has already been evaluated as true.
+func (s *NotificationStack) ProcessConditionNotifications(
 	ctx context.Context,
-	k *katalog.Katalog,
 	data map[string]interface{},
 	cond orktypes.Condition,
 	now time.Time,
@@ -47,6 +58,7 @@ func (s *NotificationState) ProcessConditionNotifications(
 	if cond.Notify == nil || len(cond.Notify.Teams) == 0 {
 		return
 	}
+	k := s.Katalog
 	if !k.HasTeams() {
 		return
 	}
@@ -60,34 +72,47 @@ func (s *NotificationState) ProcessConditionNotifications(
 		}
 
 		key := fmt.Sprintf("%s|%s|%s", k.Meta().Name, ck, teamName)
-		last := s.LastSent[key]
+		last := s.State.LastSent[key]
 		interval := k.NotificationInterval(teamName)
 
 		if !last.IsZero() && now.Sub(last) < interval.Duration {
 			continue
 		}
 
-		// Message: condition-level override > team default
 		message := cond.Notify.Message
 		if message == "" {
 			message = k.Notification.EffectiveMessage(teamName)
 		}
 
-		s.dispatchTeamNotifications(ctx, k, teamName, team, cond, message, data)
-		s.LastSent[key] = now
+		ev := Event{
+			KatalogName: k.Meta().Name,
+			CondKey:     ck,
+			TeamName:    teamName,
+			Subject:     fmt.Sprintf("%s condition triggered", cond.Field),
+			Message:     message,
+			Timestamp:   now,
+			Data:        data,
+		}
+
+		if err := s.Notifier.Dispatch(ctx, ev); err != nil {
+			continue
+		}
+		s.State.LastSent[key] = now
 	}
 }
 
-// dispatchTeamNotifications fans out to email/slack/etc for a single team.
-func (s *NotificationState) dispatchTeamNotifications(
+// dispatchTeam fans out to email/slack for a single team.
+// Called by DirectNotifier (standalone path) and the gateway /notify handler.
+func dispatchTeam(
 	ctx context.Context,
 	k *katalog.Katalog,
 	teamName string,
 	team *orktypes.NotificationTeam,
-	cond orktypes.Condition,
-	message string,
+	subject, message string,
 	data map[string]interface{},
 ) {
+
+	// Emails
 	if len(team.Email) > 0 && k.IsEmailNotificationEnabled() {
 		host, port, user, pass, from := k.SMTPConfig()
 		if host != "" && user != "" && pass != "" {
@@ -98,11 +123,11 @@ func (s *NotificationState) dispatchTeamNotifications(
 				Pass: pass,
 				From: from,
 			}
-			subject := fmt.Sprintf("%s condition triggered", cond.Field)
 			_ = sendEmailNotification(ctx, cfg, team.Email, k.Meta().Name, teamName, subject, message)
 		}
 	}
 
+	// Slack
 	if len(team.Slack) > 0 && k.IsSlackNotificationEnabled() {
 		webhook := k.Notification.EffectiveSlackWebhook(teamName)
 		if webhook == "" {

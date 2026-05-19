@@ -1,6 +1,6 @@
 # pkg/notification
 
-The notification package dispatches alerts when a Katalog condition evaluates to true. It supports email (SMTP) and Slack channels, with per-team interval enforcement to prevent alert floods.
+The notification package dispatches alerts when a Katalog condition evaluates to true. It supports email (SMTP) and Slack channels, with per-team interval enforcement to prevent alert floods. Dispatch is handled by a `Notifier` interface with two implementations: `DirectNotifier` sends directly to SMTP/Slack (standalone mode or local dev), and `GatewayNotifier` POSTs an `Event` payload to the Orkestra gateway's `/notify` endpoint (in-cluster default).
 
 Notifications are condition-driven: a condition that is true triggers its `notify:` block. Each team listed in the block receives a message through every channel configured for that team. A per-condition, per-team timestamp gate suppresses re-delivery until the declared interval has elapsed.
 
@@ -8,7 +8,9 @@ Notifications are condition-driven: a condition that is true triggers its `notif
 
 | File | Role |
 |------|------|
-| `notification.go` | `NotificationState` — per-team timestamp tracking; `ProcessConditionNotifications` entry point; `dispatchTeamNotifications` fan-out |
+| `notification.go` | `NotificationStack` — holds `Katalog`, `LastSent` map, and `Notifier`; `ProcessConditionNotifications` entry point; `dispatchTeam` fan-out |
+| `notifier.go` | `Notifier` interface and `Event` type — `{KatalogName, CRName, CRNamespace, GVK, CondKey, TeamName, Subject, Message, Timestamp, Data}` |
+| `direct_notifier.go` | `DirectNotifier` — dispatches directly to SMTP/Slack; used in standalone mode or outside a cluster |
 | `email.go` | `sendEmailNotification` — SMTP dispatch; `SMTPConfig`; STARTTLS upgrade |
 | `slack.go` | `sendSlackNotification` — Incoming Webhook POST; `SlackPayload` JSON builder |
 

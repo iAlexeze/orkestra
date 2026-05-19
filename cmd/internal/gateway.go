@@ -91,6 +91,11 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	// The control center discovers this endpoint via the "gatewayEndpoint" field
 	// in the runtime /katalog response and merges per-CRD stats by GVR key.
 	hs.Register("/katalog", kordinator.BuildGatewayKatalogHandler(kat, ws))
+
+	// ── /notify — receives pre-throttled notification events from the runtime ─
+	// The runtime builds and throttle-checks events; the gateway owns dispatch
+	// (SMTP, Slack). Registering here keeps all external I/O off the runtime path.
+	hs.Register("/notify", kordinator.BuildNotifyHandler(kat))
 	for _, crd := range kat.Enabled() {
 		if crd.IsBuiltIn {
 			continue

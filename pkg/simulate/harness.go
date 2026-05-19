@@ -80,6 +80,7 @@ func Run(ctx context.Context, kat *katalog.Katalog, crdName string, cr *unstruct
 		nil, // no Go hooks
 		func() domain.Object { return &unstructured.Unstructured{} },
 		nil, nil, nil, nil,
+		kat, // Katalog for notification wiring
 	)
 
 	key, err := cache.MetaNamespaceKeyFunc(cr)

@@ -362,11 +362,11 @@ func (k *Katalog) GatewayEndpoint() string {
 // A gateway is required when any of the following are configured:
 //   - Security features that run on the gateway's HTTPS server
 //     (deletion protection, admission webhooks, conversion, namespace protection)
-//   - Notifications — dispatch will flow through the gateway endpoint
+//   - Notifications — unless standalone: true is declared (or implied by local dev)
 //
 // Used by ValidateConfig to fail fast when gatewayEndpoint is not set.
 func (k *Katalog) NeedsGateway() bool {
-	return k.NeedsCertificates() || k.HasNotification()
+	return k.NeedsCertificates() || (k.HasNotification() && !k.IsNotificationStandalone())
 }
 
 // ── Certificates ──────────────────────────────────────────────────────────────

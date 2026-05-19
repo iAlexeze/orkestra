@@ -86,7 +86,7 @@ ork generate registry -f komposer.yaml
 
 This produces:
 
-- `pkg/runtime/zz_generated_runtime_registry.go`
+- `pkg/typeregistry/zz_generated_typeregistry.go`
 - `cmd/orkestra/main.go`
 
 Both are regenerated whenever the Komposer changes.

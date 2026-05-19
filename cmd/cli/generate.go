@@ -195,7 +195,7 @@ var generateAllCmd = &cobra.Command{
 
 		log.Println("running all generators...")
 
-		if err := generate.RuntimeRegistry(out.kat.Enabled(), dryRun); err != nil {
+		if err := generate.TypeRegistry(out.kat.Enabled(), dryRun); err != nil {
 			return fmt.Errorf("generate runtime: %w", err)
 		}
 		if err := generate.Docs(out.crds, dryRun); err != nil {

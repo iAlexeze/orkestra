@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/orkspace/orkestra/domain"
-	orkerror "github.com/orkspace/orkestra/pkg/error"
+	"errors"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/utils"
@@ -67,7 +67,7 @@ var _ domain.Komponent = (*Kubeclient)(nil)
 // NewKubeclient returns a new Kubeclient with the correct scheme
 func NewKubeclient(kfg *konfig.Konfig, scheme *runtime.Scheme) *Kubeclient {
 	if scheme == nil {
-		utils.Exit(orkerror.ErrSchemeNill)
+		utils.Exit(errors.New("scheme cannot be nil"))
 	}
 
 	return &Kubeclient{
@@ -130,7 +130,7 @@ func (k *Kubeclient) buildConfig() (*rest.Config, error) {
 	}
 
 	if k.scheme == nil {
-		return nil, orkerror.ErrSchemeNill
+		return nil, errors.New("scheme cannot be nil")
 	}
 
 	var restCfg *rest.Config

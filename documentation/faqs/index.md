@@ -103,7 +103,7 @@ spec:
     for the full reasoning. The short version: your CRD should be the focus,
     not Orkestra's management infrastructure.
 
-See the [Katalog Schema](../reference/katalog-schema.md) for all available fields.
+See the [Katalog Schema](../reference/schema/katalog.md) for all available fields.
 
 ---
 
@@ -138,7 +138,7 @@ spec:
 The `spec.crds` inline block always wins on name conflict — it is the override
 mechanism. Platform teams publish Katalogs; application teams compose and override.
 
-See the [Komposer Schema](../reference/komposer-schema.md) for all options.
+See the [Komposer Schema](../reference/schema/komposer.md) for all options.
 
 ---
 

@@ -7,7 +7,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
-	ork_runtime "github.com/orkspace/orkestra/pkg/runtime"
+	ork_runtime "github.com/orkspace/orkestra/pkg/typeregistry"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

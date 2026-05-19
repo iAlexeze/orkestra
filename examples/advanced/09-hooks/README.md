@@ -49,7 +49,7 @@ ork generate registry --file katalog.yaml
 
 It creates (or updates) two files:
 
-- `pkg/runtime/zz_generated_runtime_registry.go` – registers your Go types and hooks.
+- `pkg/typeregistry/zz_generated_typeregistry.go` – registers your Go types and hooks.
 - `cmd/orkestra/main.go` – the entrypoint that imports the generated registry.
 
 Both files are marked `DO NOT EDIT` – they are regenerated whenever you change the Katalog.

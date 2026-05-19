@@ -217,7 +217,7 @@ Orkestra runtime        ← where intent becomes running operator
 /katalog endpoint       ← where you observe the live operational truth
     │
     ▼
-ork status / dashboards ← where operators see it, rendered
+ork control / Control Center ← where operators see it, rendered
 ```
 
 Each step has the right interface. The file has the interfaces of files — Git,

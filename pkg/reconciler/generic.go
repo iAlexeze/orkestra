@@ -138,6 +138,7 @@ func NewGenericReconciler[PTR domain.Object](
 	crdHealthRegistry map[string]*kordinator.CRDHealth,
 	providerRegistry orktypes.ProviderRegistry,
 	providerStats providerStatsRecorder,
+	kat *katalog.Katalog,
 ) *GenericReconciler[PTR] {
 
 	// Adapt the user's strongly-typed ReconcileHooks[PTR] to the type-erased
@@ -180,6 +181,7 @@ func NewGenericReconciler[PTR domain.Object](
 		workerSem:         sem,
 		autoMetrics:       autoMet,
 		rollbackHistory:   make(map[string]*rollbackFailureHistory),
+		kat:               kat,
 	}
 
 	if crd.AutoscaleEnabled() {
@@ -197,13 +199,16 @@ func NewGenericReconciler[PTR domain.Object](
 		)
 	}
 
-	// TODO
-	if crd.IsNotificationEnabled() {
-		r.notifStack = &notification.NotificationStack{
-			Katalog:      r.kat,
-			State:        notification.NewNotificationState(),
-			ResolverData: make(map[string]interface{}),
+	// Wire notification: GatewayNotifier when a gateway endpoint is configured;
+	// DirectNotifier otherwise (standalone SMTP/Slack dispatch on the runtime).
+	if kat != nil && crd.IsNotificationEnabled() {
+		var notifier notification.Notifier
+		if ep := kat.GatewayEndpoint(); ep != "" {
+			notifier = notification.NewGatewayNotifier(ep)
+		} else {
+			notifier = notification.NewDirectNotifier(kat)
 		}
+		r.notifStack = notification.NewNotificationStack(kat, notifier)
 	}
 
 	return r

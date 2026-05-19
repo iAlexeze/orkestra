@@ -5,7 +5,8 @@ import (
 	"sync"
 
 	"github.com/orkspace/orkestra/domain"
-	orkerror "github.com/orkspace/orkestra/pkg/error"
+	"errors"
+
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/utils"
@@ -32,7 +33,7 @@ var _ domain.Komponent = (*Event)(nil)
 
 func NewEvent(kube *kubeclient.Kubeclient) *Event {
 	if kube.Scheme() == nil {
-		utils.Exit(orkerror.ErrSchemeNill)
+		utils.Exit(errors.New("scheme cannot be nil"))
 	}
 
 	return &Event{

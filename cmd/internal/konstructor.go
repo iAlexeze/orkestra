@@ -386,6 +386,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 					crdHealthMap,     // cross-CRD health map via HealthProvider
 					providerRegistry, // aws:, mongodb:, etc. block dispatch
 					pStats,           // per-CRD provider error rate tracking
+					kat,              // Katalog for notification wiring
 				)
 			}
 		} else {

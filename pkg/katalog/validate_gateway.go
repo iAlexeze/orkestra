@@ -29,7 +29,7 @@ func (k *Katalog) validateGateway() error {
 	if k.IsNamespaceProtectionEnabled() {
 		reasons = append(reasons, "  • security.namespaceProtection")
 	}
-	if k.HasNotification() {
+	if k.HasNotification() && !k.IsNotificationStandalone() {
 		reasons = append(reasons, "  • notification")
 	}
 

@@ -69,7 +69,7 @@ ork generate all --file katalog.yaml --dry-run
 
 - This is ideal for CI pipelines and release automation.
 - Output locations depend on each generator:
-  - registry → `pkg/runtime/zz_generated_runtime_registry.go`
+  - registry → `pkg/typeregistry/zz_generated_typeregistry.go`
   - docs → `./dash/`
   - dashboards → `./dash/`
   - rbac → stdout or `--output` if provided
