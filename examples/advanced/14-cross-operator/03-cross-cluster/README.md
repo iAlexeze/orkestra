@@ -50,7 +50,7 @@ kubectl apply -f crd.yaml
 kubectl config use-context kind-orkestra-a
 
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --set service.type=NodePort \
   --set service.nodePort=30080 \
@@ -86,7 +86,7 @@ my-producer   nginx:stable-alpine  10.96.45.12:8080   Running
 ```bash
 kubectl config use-context kind-orkestra-b
 
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --wait --timeout 120s
 ```

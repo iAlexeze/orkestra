@@ -30,7 +30,7 @@ func init() {
 	controlCmd.AddCommand(controlVersionCmd)
 	rootCmd.AddCommand(controlCmd)
 
-	// Shadow global flags so they don't appear under `ork control`
+	// Shadow global flags so they don't appear under `ork control start`
 	controlCmd.Flags().Bool("debug", false, "")
 	controlCmd.Flags().String("kubeconfig", "", "")
 	controlCmd.Flags().StringSlice("katalog", nil, "")

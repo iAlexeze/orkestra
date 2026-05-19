@@ -23,9 +23,4 @@ spec:
       targetPort: http
       protocol: TCP
 
-    - name: https
-      port: {{ .Values.runtime.server.httpsPort }}
-      targetPort: https
-      protocol: TCP
-
 {{- end }}

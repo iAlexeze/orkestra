@@ -1,0 +1,17 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: platform-security
+spec:
+  crds: {}
+
+  security:
+    deletionProtection:
+      enabled: true
+      strictMode: true
+      cleanupOnShutdown: false
+    namespaceProtection:
+      enabled: true
+      namespaces:
+        - production
+        - staging

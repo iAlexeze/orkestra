@@ -1,12 +1,5 @@
 {{- if .Values.runtime.enabled }}
 
-{{- $webhooks := .Values.runtime.webhooks }}
-{{- $tlsEnabled := and $webhooks.enabled (or $webhooks.admission $webhooks.conversion) }}
-
-{{- if and $tlsEnabled (not $webhooks.existingSecret) }}
-{{- fail "runtime.webhooks.existingSecret required when webhooks.enabled=true and admission or conversion is true" }}
-{{- end }}
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -89,20 +82,6 @@ spec:
             - name: SRV_WRITE_TIMEOUT
               value: {{ .Values.runtime.server.writeTimeout | quote }}
             {{- end }}
-            {{- if $webhooks.admission }}
-            - name: ENABLE_ADMISSION_WEBHOOK
-              value: "true"
-            {{- end }}
-            {{- if $webhooks.conversion }}
-            - name: ENABLE_CONVERSION
-              value: "true"
-            {{- end }}
-            {{- if $tlsEnabled }}
-            - name: TLS_CERT_FILE
-              value: /tls/{{ $webhooks.certKey }}
-            - name: TLS_KEY_FILE
-              value: /tls/{{ $webhooks.keyKey }}
-            {{- end }}
             {{- with .Values.runtime.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -115,9 +94,6 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.runtime.server.httpPort }}
-              protocol: TCP
-            - name: https
-              containerPort: {{ .Values.runtime.server.httpsPort }}
               protocol: TCP
 
           startupProbe:
@@ -151,11 +127,6 @@ spec:
             {{- toYaml .Values.runtime.resources | nindent 12 }}
 
           volumeMounts:
-            {{- if $tlsEnabled }}
-            - name: orkestra-tls
-              mountPath: /tls
-              readOnly: true
-            {{- end }}
             - name: katalog
               mountPath: {{ .Values.runtime.katalog.mountPath }}
               readOnly: true
@@ -166,11 +137,6 @@ spec:
             {{- end }}
 
       volumes:
-        {{- if $tlsEnabled }}
-        - name: orkestra-tls
-          secret:
-            secretName: {{ $webhooks.existingSecret }}
-        {{- end }}
         - name: katalog
           configMap:
             name: {{ include "orkestra.katalogConfigMapName" . }}

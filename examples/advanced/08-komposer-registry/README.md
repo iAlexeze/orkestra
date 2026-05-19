@@ -179,7 +179,7 @@ kubectl apply -f rbac.yaml
 
 # Deploy Orkestra
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --wait --timeout 120s
 ```

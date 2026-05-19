@@ -46,16 +46,6 @@ if !doctor.KubectlAvailable() {
 }
 ```
 
-### GoInstalled
-
-```go
-if !doctor.GoInstalled() {
-    return fmt.Errorf("Go required to install kind")
-}
-```
-
-Required before attempting to install kind via `go install`.
-
 ## kind cluster (--dev)
 
 `kind.go` manages a local development cluster named `orkestra-playground`.
@@ -161,7 +151,7 @@ names := komposer.DeployedProjects()  // ["my-app", "my-api"]
  1. Build image           → doctor.Build(dir, image, w)
  2. Push image            → doctor.Push(image, w)
  3. Generate env bundle   → doctor.GenerateBundle(name, ns, secrets, config, bundleDir)
- 4. Generate Katalog bundle → ork generate bundle -k katalog.yaml -w <ns> -o bundle/
+ 4. Generate Katalog bundle → ork generate bundle -f katalog.yaml -w <ns> -o bundle/
  5. Apply bundle          → kubectl apply -f bundle/bundle.yaml
  6. Apply env files       → kubectl apply -f bundle/app-config.yaml, app-secrets.yaml
  7. Apply app.yaml        → kubectl apply -f .orkestra/app.yaml

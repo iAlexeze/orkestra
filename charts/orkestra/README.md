@@ -11,7 +11,7 @@ Orkestra is a **declarative operator runtime**: a platform for building Kubernet
 helm repo add orkestra https://orkspace.github.io/orkestra
 helm repo update
 
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --create-namespace
 ```
@@ -74,7 +74,7 @@ controlCenter:
 Install the chart normally:
 
 ```bash
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --create-namespace \
   --values values.yaml
@@ -262,3 +262,77 @@ The webhook controller watches its own `ValidatingWebhookConfiguration` and `Mut
 ### TLS — automatic rotation
 
 Orkestra generates its own TLS certificate for webhook traffic and rotates it automatically. To supply your own certificate authority: `--set tls.certFile=/path/to/tls.crt --set tls.keyFile=/path/to/tls.key`.
+
+---
+
+## The Gateway — Declarative Security Without an Operator
+
+The Orkestra gateway is a standalone process that manages TLS and serves admission webhooks. It does not require the reconcile loop. You do not need to build an operator to use it.
+
+This means you can protect any existing Kubernetes resources — Deployments, Namespaces, Secrets, CRDs — using a single Katalog file with no custom resource types defined.
+
+### Deletion protection in three steps
+
+**1. Write a minimal Katalog:**
+
+```yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: platform-security
+spec:
+  crds: {}
+
+  security:
+    deletionProtection:
+      enabled: true
+      strictMode: true
+      cleanupOnShutdown: false
+    namespaceProtection:
+      enabled: true
+      namespaces:
+        - production
+        - staging
+```
+
+`strictMode: true` — the webhook configuration is recreated immediately if deleted. The only way to remove protection is to set `enabled: false`, regenerate, apply, and restart the gateway.
+
+`spec.crds: {}` — no operator, no reconcile loop, no CRDs required.
+
+**2. Generate and apply the bundle:**
+
+```bash
+ork generate bundle -f platform-security.yaml | kubectl apply -f -
+```
+
+**3. Install the gateway:**
+
+```bash
+helm upgrade --install orkestra orkestra/orkestra \
+  --namespace orkestra-system \
+  --create-namespace \
+  --set gateway.enabled=true \
+  --wait --timeout 120s
+```
+
+Label any resource `orkestra.io/deletion-protection: "true"` and the gateway intercepts every DELETE request for it. The Katalog determines which CRDs are protected by default; the label extends that to any resource in the cluster.
+
+### Disabling protection
+
+Set `enabled: false` in the Katalog, regenerate the bundle, apply it, and restart the gateway:
+
+```bash
+kubectl rollout restart deployment orkestra-gateway -n orkestra-system
+```
+
+The webhook configuration and TLS secret are removed on shutdown when `cleanupOnShutdown: true`.
+
+### Runtime is optional
+
+The `runtime` Deployment (reconcilers, informers, leader election) is independent of the gateway. You can run either or both:
+
+| Topology | runtime | gateway | Use case |
+|----------|---------|---------|----------|
+| Runtime only | `enabled: true` | `enabled: false` | Operators without admission control |
+| Gateway only | `enabled: false` | `enabled: true` | Deletion protection, namespace protection, no operators |
+| Full split | `enabled: true` | `enabled: true` | Operators with admission control and webhooks |

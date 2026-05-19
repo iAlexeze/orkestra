@@ -50,7 +50,7 @@ kubectl apply -f crd.yaml
 kubectl create namespace db-system
 
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra-db orkestra/orkestra \
+helm upgrade --install orkestra-db orkestra/orkestra \
   --namespace db-system \
   --set katalog.configMapNamespace=db-system \
   --wait --timeout 120s
@@ -63,7 +63,7 @@ helm install orkestra-db orkestra/orkestra \
 ```bash
 kubectl create namespace app-system
 
-helm install orkestra-app orkestra/orkestra \
+helm upgrade --install orkestra-app orkestra/orkestra \
   --namespace app-system \
   --set katalog.configMapNamespace=app-system \
   --wait --timeout 120s

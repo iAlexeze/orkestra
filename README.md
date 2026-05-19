@@ -137,7 +137,7 @@ ork control start
 For production, deploy with Helm:
 
 ```bash
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --set runtime.katalog.existingConfigMap=my-platform-katalog \
   --namespace orkestra-system \
   --create-namespace

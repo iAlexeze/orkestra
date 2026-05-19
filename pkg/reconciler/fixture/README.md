@@ -57,12 +57,12 @@ That target:
 To iterate manually without tearing down the cluster:
 
 ```bash
-scripts/setup-kind.sh orkestra-reconciler-fixture
+ork create cluster --name orkestra-reconciler-fixture
 
 kubectl apply -f pkg/reconciler/fixture/crd.yaml
-ork bundle --file pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
+ork generate bundle --file pkg/reconciler/fixture/katalog.yaml | kubectl apply -f -
 
-helm install orkestra charts/orkestra --namespace default
+helm upgrade --install orkestra charts/orkestra
 
 kubectl apply -f pkg/reconciler/fixture/cr.yaml
 kubectl get reconcilerprobe probe -o yaml -w
@@ -72,7 +72,8 @@ Clean up:
 
 ```bash
 cd pkg/reconciler/fixture && bash cleanup.sh
-scripts/setup-kind.sh delete orkestra-reconciler-fixture
+
+kind delete orkestra-reconciler-fixture
 ```
 
 ## Adding a new `run_*`

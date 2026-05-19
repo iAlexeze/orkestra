@@ -204,7 +204,7 @@ In a cluster, via Helm:
 
 ```bash
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --create-namespace \
   --set runtime.katalog.existingConfigMap=my-katalog-configmap

@@ -75,7 +75,7 @@ kubectl apply -f crd-unprotected.yaml
 The bundle contains the ConfigMap (your Katalog), ServiceAccount, ClusterRole, and ClusterRoleBinding:
 
 ```bash
-ork generate bundle -k katalog.yaml -o bundle.yaml
+ork generate bundle -f katalog.yaml -o bundle.yaml
 kubectl apply -f bundle.yaml
 ```
 
@@ -85,12 +85,12 @@ kubectl apply -f bundle.yaml
 
 ```bash
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
+  --create-namespace \
+  --set gateway.enabled=true \
   --wait --timeout 120s
 ```
-
-**TLS certificates:** Orkestra generates and rotates its own TLS certificate automatically. If you want to supply your own, pass `--set tls.certFile=/path/to/tls.crt --set tls.keyFile=/path/to/tls.key` to Helm.
 
 At startup you will see:
 

@@ -180,7 +180,7 @@ kubectl apply -f bundle.yaml
 
 ```bash
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --set runtime.image.repository=yourregistry/your-operator \
   --set runtime.image.tag=v1.0.0 \
   --namespace orkestra-system \

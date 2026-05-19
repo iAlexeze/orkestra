@@ -11,26 +11,36 @@ import (
 )
 
 const (
-	ork   = "orkestra"
-	orkcc = "orkestra-cc"
+	ork        = "orkestra"
+	orkcc      = "orkestra-cc"
+	orkGateway = "orkestra-gateway"
 )
 
+// RBAC generates a Namespace + ServiceAccounts + ClusterRole + ClusterRoleBinding
+// for backwards compatibility. runtimeRules are bound to the orkestra ClusterRole.
+// Deprecated callers may pass all rules as runtimeRules and nil as gatewayRules.
 func RBAC(rules []rbacv1.PolicyRule, namespace, outputFile string) ([]byte, error) {
-	out, err := renderNamespaceAndRBAC(rules, namespace)
+	return RBACWithOptions(rules, nil, DefaultBundleOptions(), namespace, outputFile)
+}
+
+// RBACWithOptions generates RBAC resources with fine-grained control over which
+// components are included. runtimeRules are bound to the orkestra ClusterRole;
+// gatewayRules are bound to the orkestra-gateway ClusterRole.
+func RBACWithOptions(runtimeRules, gatewayRules []rbacv1.PolicyRule, opts BundleOptions, namespace, outputFile string) ([]byte, error) {
+	out, err := renderNamespaceAndRBAC(runtimeRules, gatewayRules, namespace, opts)
 	if err != nil {
 		return nil, err
 	}
-
 	return out, nil
 }
 
 // renderNamespaceAndRBAC is the full standalone output: Namespace + ServiceAccounts + ClusterRole + ClusterRoleBinding.
-func renderNamespaceAndRBAC(rules []rbacv1.PolicyRule, namespace string) ([]byte, error) {
+func renderNamespaceAndRBAC(runtimeRules, gatewayRules []rbacv1.PolicyRule, namespace string, opts BundleOptions) ([]byte, error) {
 	nsBytes, err := renderNamespace(namespace)
 	if err != nil {
 		return nil, err
 	}
-	rbacBytes, err := renderRBAC(rules, namespace)
+	rbacBytes, err := renderRBAC(runtimeRules, gatewayRules, namespace, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -53,66 +63,69 @@ func renderNamespace(namespace string) ([]byte, error) {
 	return yaml.Marshal(ns)
 }
 
-// renderRBAC marshals ServiceAccounts, ClusterRole, and ClusterRoleBinding only.
+// renderRBAC marshals ServiceAccounts, ClusterRoles, and ClusterRoleBindings only.
 // The Namespace is intentionally excluded — callers prepend it via renderNamespace
 // so that bundle assembly can include it exactly once.
-func renderRBAC(rules []rbacv1.PolicyRule, namespace string) ([]byte, error) {
-	var serviceAccounts []corev1.ServiceAccount
-	for _, name := range []string{ork, orkcc} {
-		sa := corev1.ServiceAccount{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "v1",
-				Kind:       "ServiceAccount",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-				Labels:    labels.OrkestraResourceLabels(),
-			},
-		}
-		serviceAccounts = append(serviceAccounts, sa)
+//
+// runtimeRules are bound to the "orkestra" ClusterRole (runtime reconciler SA).
+// gatewayRules are bound to the "orkestra-gateway" ClusterRole (gateway SA).
+// opts controls which components are emitted.
+func renderRBAC(runtimeRules, gatewayRules []rbacv1.PolicyRule, namespace string, opts BundleOptions) ([]byte, error) {
+	var objs []interface{}
+
+	// ── ServiceAccounts ────────────────────────────────────────────────────────
+	if opts.IncludeRuntime {
+		objs = append(objs, corev1.ServiceAccount{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "ServiceAccount"},
+			ObjectMeta: metav1.ObjectMeta{Name: ork, Namespace: namespace, Labels: labels.OrkestraResourceLabels()},
+		})
+	}
+	if opts.IncludeGateway {
+		objs = append(objs, corev1.ServiceAccount{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "ServiceAccount"},
+			ObjectMeta: metav1.ObjectMeta{Name: orkGateway, Namespace: namespace, Labels: labels.OrkestraResourceLabels()},
+		})
+	}
+	if opts.IncludeControlCenter {
+		objs = append(objs, corev1.ServiceAccount{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "ServiceAccount"},
+			ObjectMeta: metav1.ObjectMeta{Name: orkcc, Namespace: namespace, Labels: labels.OrkestraResourceLabels()},
+		})
 	}
 
-	cr := rbacv1.ClusterRole{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "rbac.authorization.k8s.io/v1",
-			Kind:       "ClusterRole",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   ork,
-			Labels: labels.OrkestraResourceLabels(),
-		},
-		Rules: rules,
-	}
-
-	crb := rbacv1.ClusterRoleBinding{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "rbac.authorization.k8s.io/v1",
-			Kind:       "ClusterRoleBinding",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:   ork,
-			Labels: labels.OrkestraResourceLabels(),
-		},
-		RoleRef: rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "ClusterRole",
-			Name:     ork,
-		},
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:      "ServiceAccount",
-				Name:      ork,
-				Namespace: namespace,
+	// ── Runtime ClusterRole + ClusterRoleBinding ───────────────────────────────
+	if opts.IncludeRuntime && len(runtimeRules) > 0 {
+		objs = append(objs,
+			rbacv1.ClusterRole{
+				TypeMeta:   metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "ClusterRole"},
+				ObjectMeta: metav1.ObjectMeta{Name: ork, Labels: labels.OrkestraResourceLabels()},
+				Rules:      runtimeRules,
 			},
-		},
+			rbacv1.ClusterRoleBinding{
+				TypeMeta:   metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "ClusterRoleBinding"},
+				ObjectMeta: metav1.ObjectMeta{Name: ork, Labels: labels.OrkestraResourceLabels()},
+				RoleRef:    rbacv1.RoleRef{APIGroup: "rbac.authorization.k8s.io", Kind: "ClusterRole", Name: ork},
+				Subjects:   []rbacv1.Subject{{Kind: "ServiceAccount", Name: ork, Namespace: namespace}},
+			},
+		)
 	}
 
-	objs := []interface{}{}
-	for _, sa := range serviceAccounts {
-		objs = append(objs, sa)
+	// ── Gateway ClusterRole + ClusterRoleBinding ───────────────────────────────
+	if opts.IncludeGateway && len(gatewayRules) > 0 {
+		objs = append(objs,
+			rbacv1.ClusterRole{
+				TypeMeta:   metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "ClusterRole"},
+				ObjectMeta: metav1.ObjectMeta{Name: orkGateway, Labels: labels.OrkestraResourceLabels()},
+				Rules:      gatewayRules,
+			},
+			rbacv1.ClusterRoleBinding{
+				TypeMeta:   metav1.TypeMeta{APIVersion: "rbac.authorization.k8s.io/v1", Kind: "ClusterRoleBinding"},
+				ObjectMeta: metav1.ObjectMeta{Name: orkGateway, Labels: labels.OrkestraResourceLabels()},
+				RoleRef:    rbacv1.RoleRef{APIGroup: "rbac.authorization.k8s.io", Kind: "ClusterRole", Name: orkGateway},
+				Subjects:   []rbacv1.Subject{{Kind: "ServiceAccount", Name: orkGateway, Namespace: namespace}},
+			},
+		)
 	}
-	objs = append(objs, cr, crb)
 
 	out := ""
 	for i, obj := range objs {

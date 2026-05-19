@@ -1,9 +1,9 @@
-# ork control
+# ork control start
 
 Manage the Orkestra Control Center (CC).
 
 ```bash
-ork control [command]
+ork control start [command]
 ```
 
 The Control Center provides a web‑based UI for monitoring multiple Orkestra runtime instances.
@@ -63,7 +63,7 @@ ork control start --urls "https://prod.orkestra:8080,https://staging.orkestra:80
 Show the installed Control Center version.
 
 ```bash
-ork control version
+ork control start version
 ```
 
 ---
@@ -81,6 +81,6 @@ ork control version
 
 ## Notes
 
-- `ork control` does not interact with Kubernetes directly.
+- `ork control start` does not interact with Kubernetes directly.
 - It only manages the local Control Center binary.
 - Runtime URLs must point to running Orkestra runtime instances (`ork run` or deployed operators).

@@ -175,7 +175,7 @@ kubectl apply -f bundle.yaml
 
 # Deploy orkestra
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --set runtime.image.repository=yourregistry/pipeline-operator \
   --set runtime.image.tag=v1 \
   --namespace orkestra-system \
