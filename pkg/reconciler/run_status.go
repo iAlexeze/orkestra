@@ -54,7 +54,7 @@ func (r *GenericReconciler[PTR]) patchStatusWithChildren(
 	// status field expressions can reference child status:
 	//   {{ .children.cronjob.status.lastScheduleTime }}
 	if reconcileErr == nil && (r.operatorBox.OnCreate != nil || r.operatorBox.OnReconcile != nil) {
-		children := ReadChildren(ctx, r.kube, obj, resolver, r.operatorBox)
+		children := ReadChildren(ctx, r.kube, obj, resolver, r.operatorBox, r.crd)
 		resolver = resolver.WithChildren(children) // ← reassign — WithChildren returns new resolver
 	}
 

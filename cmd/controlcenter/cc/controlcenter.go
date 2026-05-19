@@ -95,8 +95,8 @@ func New(urls []string, config Config) *ControlCenter {
 	return cc
 }
 
-func (cc *ControlCenter) IsReady() bool  { return cc.ready.Load() }
-func (cc *ControlCenter) NoLogin() bool  { return cc.config.NoLogin }
+func (cc *ControlCenter) IsReady() bool { return cc.ready.Load() }
+func (cc *ControlCenter) NoLogin() bool { return cc.config.NoLogin }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Background fetch

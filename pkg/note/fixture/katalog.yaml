@@ -21,6 +21,7 @@ spec:
         plural: noteprobes
       workers: 1
       resync: 30s
+      enrich: [pods]
 
       operatorBox:
         default: true
@@ -167,3 +168,19 @@ spec:
 
             - path: endpointsReady
               value: "{{ endpointsReady .children.endpointslice }}"
+
+            # ── pod notes ───────────────────────────────────────────────────
+            - path: podNames
+              value: "{{ podNames .children.deployment }}"
+
+            - path: podIPs
+              value: "{{ podIPs .children.deployment }}"
+
+            - path: podCount
+              value: "{{ podCount .children.deployment }}"
+
+            - path: readyPodCount
+              value: "{{ readyPodCount .children.deployment }}"
+
+            - path: hasCrashingPod
+              value: "{{ hasCrashingPod .children.deployment }}"

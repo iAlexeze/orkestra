@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/orkspace/orkestra/domain"
 	"errors"
+	"github.com/orkspace/orkestra/domain"
 
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"

@@ -6,8 +6,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/orkspace/orkestra/domain"
 	"errors"
+	"github.com/orkspace/orkestra/domain"
 
 	"github.com/orkspace/orkestra/pkg/event"
 	orktypes "github.com/orkspace/orkestra/pkg/types"

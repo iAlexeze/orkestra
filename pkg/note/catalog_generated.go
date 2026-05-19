@@ -430,6 +430,36 @@ var BuiltinNotes = []NoteInfo{
 		Keywords:    []string{"network", "ip", "address", "validate", "valid", "ipv4", "ipv6"},
 	},
 	{
+		Name:        "hasCrashingPod",
+		Domain:      "pods",
+		Description: "Return `true` when any pod has restarted more than twice — the first declarative signal of a crash loop.",
+		Example:     "when:\n  - field: \"{{ hasCrashingPod .children.deployment }}\"\n    equals: \"false\"\n\nstatus:\n  fields:\n    - path: crashDetected\n      value: \"{{ hasCrashingPod .children.deployment }}\"\nspec:\n  crds:\n    memcached:\n      enrich: [pods]\n      operatorBox:\n        default: true\n        onCreate:\n          deployments:\n            - name: \"{{ .metadata.name }}\"\n              image: \"memcache:{{ .spec.version }}\"\n              replicas: \"{{ .spec.size }}\"\n\n        status:\n          fields:\n            - path: pods\n              value: \"{{ podNames .children.deployment }}\"\n            - path: podIPs\n              value: \"{{ podIPs .children.deployment }}\"\n            - path: size\n              value: \"{{ podCount .children.deployment }}\"\n            - path: ready\n              value: \"{{ readyPodCount .children.deployment }}\"",
+	},
+	{
+		Name:        "podCount",
+		Domain:      "pods",
+		Description: "Return the total number of pods as `int`.",
+		Example:     "- path: podCount\n  value: \"{{ podCount .children.deployment }}\"\n# → 3",
+	},
+	{
+		Name:        "podIPs",
+		Domain:      "pods",
+		Description: "Return a comma-separated string of pod IP addresses. Returns `\"\"` while pods are pending (IPs not yet assigned).",
+		Example:     "- path: podIPs\n  value: \"{{ podIPs .children.statefulset }}\"\n# → \"10.0.0.1, 10.0.0.2, 10.0.0.3\"",
+	},
+	{
+		Name:        "podNames",
+		Domain:      "pods",
+		Description: "Return a comma-separated string of pod names owned by the enriched resource.",
+		Example:     "status:\n  fields:\n    - path: pods\n      value: \"{{ podNames .children.deployment }}\"\n# → \"web-abc, web-def\"",
+	},
+	{
+		Name:        "readyPodCount",
+		Domain:      "pods",
+		Description: "Return the number of pods whose `Ready` condition is `True`.",
+		Example:     "- path: readyPods\n  value: \"{{ readyPodCount .children.deployment }}\"\n# → 2",
+	},
+	{
 		Name:        "formatQuantity",
 		Domain:      "quantity",
 		Description: "Convert a `float64` back to a canonical Kubernetes quantity string. Sub-unit CPU fractions are expressed in milli-cores.",

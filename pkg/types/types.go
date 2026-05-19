@@ -2477,6 +2477,19 @@ type CRDEntry struct {
 	// Supports three YAML formats (list, key-value, full map) — see DependsOnMap.
 	DependsOn DependsOnMap `yaml:"dependsOn,omitempty" json:"dependsOn,omitempty"`
 
+	// ── Enrichment ─────────────────────────────────────────────────────────────
+	// Controls which secondary data is fetched and embedded into child resource
+	// maps before they are available in template context.
+	//
+	// Only one of EnrichAll or Enrich may be set — setting both is a validation error.
+	//
+	//	enrichAll: true    — enrich all supported resource types (currently: pods)
+	//	enrich: [pods]     — enrich only the listed targets
+	//
+	// Supported targets: "pods"
+	EnrichAll bool     `yaml:"enrichAll,omitempty" json:"enrichAll,omitempty"`
+	Enrich    []string `yaml:"enrich,omitempty"    json:"enrich,omitempty"`
+
 	// ── OperatorBox ────────────────────────────────────────────────────
 	OperatorBox OperatorBoxConfig `yaml:"operatorBox,omitempty" json:"operatorBox,omitempty"`
 

@@ -46,6 +46,7 @@ func ReadChildren(
 	obj domain.Object,
 	resolver *orktmpl.Resolver,
 	operatorBox orktypes.OperatorBoxConfig,
+	crd orktypes.CRDEntry,
 ) map[string]interface{} {
 	children := map[string]interface{}{}
 
@@ -53,12 +54,34 @@ func ReadChildren(
 	// We only read resources that are declared — not all resources in the namespace.
 	templates := mergeTemplates(operatorBox)
 
+	// ── Deployments ───────────────────────────────────────────────────────
+	if len(templates.Deployments) > 0 {
+		dNames := deploymentNames(resolver, templates.Deployments)
+		m := readResourceGroup(ctx, kube, obj, resolver, deploymentGVR, dNames)
+		// Deployments do not directly own pods — their ReplicaSets do.
+		// Filtering by ownerKind=ReplicaSet excludes Job pods that share the
+		// same orkestra-owner label but have a different immediate controller.
+		enrichGroupWithPods(ctx, kube, m, crd, "ReplicaSet")
+		children["deployments"] = m
+		children["deployment"] = firstValue(m)
+	}
+
 	// ── StatefulSets ───────────────────────────────────────────────────────
 	if len(templates.StatefulSets) > 0 {
 		dNames := statefulSetNames(resolver, templates.StatefulSets)
 		m := readResourceGroup(ctx, kube, obj, resolver, statefulSetGVR, dNames)
+		enrichGroupWithPods(ctx, kube, m, crd, "StatefulSet")
 		children["statefulsets"] = m
 		children["statefulset"] = firstValue(m)
+	}
+
+	// ── ReplicaSets ───────────────────────────────────────────────────────
+	if len(templates.ReplicaSets) > 0 {
+		dNames := replicaSetNames(resolver, templates.ReplicaSets)
+		m := readResourceGroup(ctx, kube, obj, resolver, replicaSetGVR, dNames)
+		enrichGroupWithPods(ctx, kube, m, crd, "ReplicaSet")
+		children["replicasets"] = m
+		children["replicaset"] = firstValue(m)
 	}
 
 	// ── CustomResources ───────────────────────────────────────────────────────
@@ -554,4 +577,180 @@ func namespaceNames(resolver *orktmpl.Resolver, srcs []orktypes.NamespaceTemplat
 		}
 	}
 	return names
+}
+
+func replicaSetNames(resolver *orktmpl.Resolver, srcs []orktypes.ReplicaSetTemplateSource) []resolvedChildName {
+	expanded := expandForEachReplicaSets(resolver, srcs)
+	names := make([]resolvedChildName, 0, len(expanded))
+	for _, s := range expanded {
+		if n, ok := resolveName(resolver, s.Name, s.Namespace); ok {
+			names = append(names, n)
+		}
+	}
+	return names
+}
+
+// ── Pod enrichment ────────────────────────────────────────────────────────
+// enrichGroupWithPods embeds pod summaries under "_pods" for every resource
+// in the group. A no-op when pods enrichment is not enabled on the CRD.
+//
+// ownerKind filters pods to only those whose immediate ownerReference matches
+// the expected controller kind — e.g. "ReplicaSet" for Deployments, "StatefulSet"
+// for StatefulSets. This prevents job pods from appearing in a Deployment's
+// pod list when both share the same orkestra-owner label selector.
+func enrichGroupWithPods(ctx context.Context, kube kubeclient.KubeClient, m map[string]interface{}, crd orktypes.CRDEntry, ownerKind string) {
+	if !crd.ShouldEnrich("pods") {
+		return
+	}
+	for _, v := range m {
+		obj, ok := v.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		meta, _ := obj["metadata"].(map[string]interface{})
+		ns := ""
+		if meta != nil {
+			ns, _ = meta["namespace"].(string)
+		}
+		enrichWithPods(ctx, kube, ns, obj, ownerKind)
+	}
+}
+
+// enrichWithPods lists pods matching the resource's spec.selector.matchLabels,
+// filters to those owned by a controller of ownerKind, and embeds summaries
+// as _pods in the resource map.
+func enrichWithPods(ctx context.Context, kube kubeclient.KubeClient, ns string, obj map[string]interface{}, ownerKind string) {
+	selector := podLabelSelector(obj)
+	if selector == "" {
+		return
+	}
+	list, err := kube.DynamicClient().
+		Resource(podGVR).
+		Namespace(ns).
+		List(ctx, metav1.ListOptions{
+			LabelSelector:   selector,
+			ResourceVersion: "0",
+		})
+	if err != nil || list == nil {
+		return
+	}
+	pods := make([]interface{}, 0, len(list.Items))
+	for i := range list.Items {
+		if !podOwnedBy(list.Items[i].Object, ownerKind) {
+			continue
+		}
+		pods = append(pods, buildPodSummary(list.Items[i].Object))
+	}
+	obj["_pods"] = pods
+}
+
+// podOwnedBy returns true when any ownerReference on the pod has the given kind.
+func podOwnedBy(obj map[string]interface{}, kind string) bool {
+	meta, _ := obj["metadata"].(map[string]interface{})
+	if meta == nil {
+		return false
+	}
+	ownerRefs, _ := meta["ownerReferences"].([]interface{})
+	for _, ref := range ownerRefs {
+		r, _ := ref.(map[string]interface{})
+		if r == nil {
+			continue
+		}
+		if k, _ := r["kind"].(string); k == kind {
+			return true
+		}
+	}
+	return false
+}
+
+// podLabelSelector builds a comma-separated label selector from spec.selector.matchLabels.
+// Returns "" when the field is absent or empty — no selector means no list.
+func podLabelSelector(obj map[string]interface{}) string {
+	spec, _ := obj["spec"].(map[string]interface{})
+	if spec == nil {
+		return ""
+	}
+	sel, _ := spec["selector"].(map[string]interface{})
+	if sel == nil {
+		return ""
+	}
+	matchLabels, _ := sel["matchLabels"].(map[string]interface{})
+	if len(matchLabels) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(matchLabels))
+	for k, v := range matchLabels {
+		parts = append(parts, fmt.Sprintf("%s=%v", k, v))
+	}
+	return strings.Join(parts, ",")
+}
+
+// buildPodSummary extracts the fields note functions navigate from _pods.
+func buildPodSummary(obj map[string]interface{}) map[string]interface{} {
+	meta, _ := obj["metadata"].(map[string]interface{})
+	spec, _ := obj["spec"].(map[string]interface{})
+	status, _ := obj["status"].(map[string]interface{})
+
+	name := ""
+	if meta != nil {
+		name, _ = meta["name"].(string)
+	}
+	nodeName := ""
+	if spec != nil {
+		nodeName, _ = spec["nodeName"].(string)
+	}
+	podIP, phase := "", ""
+	if status != nil {
+		podIP, _ = status["podIP"].(string)
+		phase, _ = status["phase"].(string)
+	}
+	return map[string]interface{}{
+		"name":         name,
+		"ip":           podIP,
+		"phase":        phase,
+		"ready":        isPodReady(status),
+		"node":         nodeName,
+		"restartCount": podTotalRestarts(status),
+	}
+}
+
+func isPodReady(status map[string]interface{}) bool {
+	if status == nil {
+		return false
+	}
+	conditions, _ := status["conditions"].([]interface{})
+	for _, c := range conditions {
+		cond, _ := c.(map[string]interface{})
+		if cond == nil {
+			continue
+		}
+		if t, _ := cond["type"].(string); t == "Ready" {
+			s, _ := cond["status"].(string)
+			return s == "True"
+		}
+	}
+	return false
+}
+
+func podTotalRestarts(status map[string]interface{}) int64 {
+	if status == nil {
+		return 0
+	}
+	containerStatuses, _ := status["containerStatuses"].([]interface{})
+	var total int64
+	for _, cs := range containerStatuses {
+		csMap, _ := cs.(map[string]interface{})
+		if csMap == nil {
+			continue
+		}
+		switch v := csMap["restartCount"].(type) {
+		case int64:
+			total += v
+		case float64:
+			total += int64(v)
+		case int:
+			total += int64(v)
+		}
+	}
+	return total
 }

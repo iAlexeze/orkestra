@@ -156,5 +156,12 @@ func (k *Katalog) ValidateConfig(kfg *konfig.Konfig) (*Katalog, error) {
 		return nil, err
 	}
 
+	// -------------------------------------------------------------------------
+	// 22. Validate Enrich config
+	// -------------------------------------------------------------------------
+	if err := k.validateEnrich(); err != nil {
+		return nil, err
+	}
+
 	return k, nil
 }

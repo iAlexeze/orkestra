@@ -111,26 +111,26 @@ type KatalogResponse struct {
 // gateway process. Used by the control center to merge per-CRD webhook stats
 // with the runtime's reconciler stats by GVR key.
 type GatewayKatalogResponse struct {
-	Source                     string                `json:"source"`
-	Name                       string                `json:"name"`
-	Version                    string                `json:"version,omitempty"`
-	AdmissionEnabled           bool                  `json:"admissionEnabled"`
-	ConversionEnabled          bool                  `json:"conversionEnabled"`
-	DeletionProtectionEnabled  bool                  `json:"deletionProtectionEnabled"`
-	NamespaceProtectionEnabled bool                  `json:"namespaceProtectionEnabled"`
-	CRDs                       []GatewayCRDStats     `json:"crds"`
-	GatewayVersion             string                `json:"gatewayVersion,omitempty"`
+	Source                     string            `json:"source"`
+	Name                       string            `json:"name"`
+	Version                    string            `json:"version,omitempty"`
+	AdmissionEnabled           bool              `json:"admissionEnabled"`
+	ConversionEnabled          bool              `json:"conversionEnabled"`
+	DeletionProtectionEnabled  bool              `json:"deletionProtectionEnabled"`
+	NamespaceProtectionEnabled bool              `json:"namespaceProtectionEnabled"`
+	CRDs                       []GatewayCRDStats `json:"crds"`
+	GatewayVersion             string            `json:"gatewayVersion,omitempty"`
 }
 
 // GatewayCRDStats holds the gateway-owned stats for one CRD.
 // GVR is the merge key: "group/version/resource".
 type GatewayCRDStats struct {
-	Name                string                   `json:"name"`
-	GVK                 string                   `json:"gvk"`
-	GVR                 string                   `json:"gvr"`
-	Admission           *AdmissionStats          `json:"admission,omitempty"`
-	Conversion          *ConversionStats         `json:"conversion,omitempty"`
-	DeletionProtection  *DeletionProtectionStats `json:"deletionProtection,omitempty"`
+	Name                string                    `json:"name"`
+	GVK                 string                    `json:"gvk"`
+	GVR                 string                    `json:"gvr"`
+	Admission           *AdmissionStats           `json:"admission,omitempty"`
+	Conversion          *ConversionStats          `json:"conversion,omitempty"`
+	DeletionProtection  *DeletionProtectionStats  `json:"deletionProtection,omitempty"`
 	NamespaceProtection *NamespaceProtectionStats `json:"namespaceProtection,omitempty"`
 }
 
