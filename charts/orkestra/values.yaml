@@ -102,6 +102,12 @@ runtime:
     configMapKey: katalog.yaml
     mountPath: /etc/orkestra/katalog
 
+  # Gateway endpoint advertised in the runtime /katalog response.
+  # Set to the HTTP base URL of the companion gateway deployment so the
+  # control center can discover and merge gateway stats.
+  # Overrides ORK_GATEWAY_ENDPOINT env. Empty = no gateway configured.
+  gatewayEndpoint: ""   # e.g. "http://orkestra-gateway.orkestra-system.svc:8080"
+
   # Registry (runtime only)
   registry:
     enabled: false

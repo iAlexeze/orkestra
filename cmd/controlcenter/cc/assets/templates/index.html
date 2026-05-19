@@ -125,27 +125,21 @@
                   <div class="cc-stat-sub">via ork doctor</div>
                </div>
                {{ end }}
-               {{ if gt .TotalCRDs 0 }}
                <div class="cc-stat-card">
                   <div class="cc-stat-label">CRDs</div>
                   <div class="cc-stat-value" data-live="totalCRDs">{{ .TotalCRDs }}</div>
                   <div class="cc-stat-sub">Operator resources</div>
                </div>
-               {{ end }}
-               {{ if gt .TotalWorkers 0 }}
                <div class="cc-stat-card">
                   <div class="cc-stat-label">Workers</div>
                   <div class="cc-stat-value" data-live="totalWorkers">{{ .TotalWorkers }}</div>
                   <div class="cc-stat-sub">Reconcilers running</div>
                </div>
-               {{ end }}
-               {{ if gt .TotalResources 0 }}
                <div class="cc-stat-card">
                   <div class="cc-stat-label">Live Resources</div>
                   <div class="cc-stat-value" data-live="totalResources">{{ .TotalResources }}</div>
                   <div class="cc-stat-sub">CRs in cache</div>
                </div>
-               {{ end }}
             </div>
             <!-- Katalog cards -->
             {{ if gt (len .Katalogs) 0 }}

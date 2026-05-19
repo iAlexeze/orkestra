@@ -45,7 +45,7 @@ type GatewayStatsProvider interface {
 // It mirrors the top-level shape of KatalogResponse so control-center clients
 // can pattern-match on the "source" field and merge stats by GVR key.
 type GatewayKatalogResponse struct {
-	Source  string `json:"source"`  // always "gateway"
+	Source  string `json:"source"` // always "gateway"
 	Name    string `json:"name"`
 	Version string `json:"version,omitempty"`
 
@@ -61,9 +61,9 @@ type GatewayKatalogResponse struct {
 
 	// Process-level stats for events not attributable to a single CRD:
 	// the webhook configuration itself and Orkestra infra resources.
-	InfraProtection    *DeletionProtectionStatsResponse `json:"infraProtection,omitempty"`
-	WebhookController  *WebhookControllerStats          `json:"webhookController,omitempty"`
-	GatewayVersion     string                           `json:"gatewayVersion"`
+	InfraProtection   *DeletionProtectionStatsResponse `json:"infraProtection,omitempty"`
+	WebhookController *WebhookControllerStats          `json:"webhookController,omitempty"`
+	GatewayVersion    string                           `json:"gatewayVersion"`
 }
 
 // GatewayCRDStatsResponse holds the gateway-owned stats for one CRD.
@@ -242,4 +242,3 @@ func gvrKey(group, version, resource string) string {
 	}
 	return group + "/" + version + "/" + resource
 }
-

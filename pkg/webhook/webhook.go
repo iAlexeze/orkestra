@@ -116,13 +116,13 @@ type WebhookServer struct {
 	// Pre-populated from the Katalog in NewWebhookServer so each CRD gets its
 	// own counters. infraProtectionStats covers self-protection and Orkestra
 	// infra resources (Deployment, Service, etc.) that have no CRD GVR.
-	admissionStats     map[string]*health.AdmissionStats
-	conversionStats    map[string]*health.ConversionStats
-	protectionStats    map[string]*health.DeletionProtectionStats
-	namespaceStats     map[string]*health.NamespaceProtectionStats
-	infraProtStats     *health.DeletionProtectionStats // webhook self + Orkestra infra
-	strictModeStats    *health.DeletionProtectionStats // process-global; strict mode is not per-CRD
-	webhookStats       *health.WebhookStats
+	admissionStats  map[string]*health.AdmissionStats
+	conversionStats map[string]*health.ConversionStats
+	protectionStats map[string]*health.DeletionProtectionStats
+	namespaceStats  map[string]*health.NamespaceProtectionStats
+	infraProtStats  *health.DeletionProtectionStats // webhook self + Orkestra infra
+	strictModeStats *health.DeletionProtectionStats // process-global; strict mode is not per-CRD
+	webhookStats    *health.WebhookStats
 
 	// Reverse-lookup tables built from the Katalog for handlers that identify
 	// the target CRD by name/kind rather than GVR.

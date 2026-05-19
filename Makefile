@@ -151,11 +151,14 @@ docker-push:
 	@echo "Pushing Docker image: $(ORK_CC_IMAGE)"
 	docker push $(ORK_CC_IMAGE)
 	@echo "✔ Docker image pushed: $(ORK_CC_IMAGE)"
+	@echo "Pushing Docker image: $(ORK_GATEWAY_IMAGE)"
+	docker push $(ORK_GATEWAY_IMAGE)
+	@echo "✔ Docker image pushed: $(ORK_GATEWAY_IMAGE)"
 
 # ── Docker Release (build + push) ─────────────────────────────────────────────
 
-docker-release: docker docker-cc docker-push
-	@echo "✔ Docker release complete: $(ORK_IMAGE)"
+docker-release: docker docker-cc docker-gateway docker-push
+	@echo "✔ Docker release complete"
 
 # ── Runtime Reload (local dev) ────────────────────────────────────────────────
 
@@ -204,8 +207,30 @@ controlcenter-reload: docker-cc
 
 	@echo "✔ Control Center updated to image: $(ORK_CC_IMAGE)-$(CC_TAG)"
 
-orkestra-reload: runtime-reload controlcenter-reload
-	@echo "✔ Orkestra runtime and Control Center reloaded successfully"
+GATEWAY_DEPLOYMENT ?= orkestra-gateway
+GATEWAY_CONTAINER_NAME ?= gateway
+GATEWAY_NAMESPACE ?= orkestra-system
+
+gateway-reload: docker-gateway
+	@echo "Generating unique tag..."
+	$(eval GATEWAY_TAG := $(shell date +%s))
+	@echo "Tag: $(GATEWAY_TAG)"
+
+	@echo "Retagging image..."
+	docker tag $(ORK_GATEWAY_IMAGE) $(ORK_GATEWAY_IMAGE)-$(GATEWAY_TAG)
+
+	@echo "Loading image into kind cluster: $(KIND_CLUSTER)"
+	kind load docker-image $(ORK_GATEWAY_IMAGE)-$(GATEWAY_TAG) --name $(KIND_CLUSTER)
+	@echo "✔ Image loaded"
+
+	@echo "Updating deployment $(GATEWAY_DEPLOYMENT) in namespace $(GATEWAY_NAMESPACE)..."
+	kubectl -n $(GATEWAY_NAMESPACE) set image deploy/$(GATEWAY_DEPLOYMENT) \
+        $(GATEWAY_CONTAINER_NAME)=$(ORK_GATEWAY_IMAGE)-$(GATEWAY_TAG)
+
+	@echo "✔ Gateway updated to image: $(ORK_GATEWAY_IMAGE)-$(GATEWAY_TAG)"
+
+reload: runtime-reload gateway-reload controlcenter-reload
+	@echo "✔ Runtime, Gateway, and Control Center reloaded successfully"
 
 # ── Primary targets ───────────────────────────────────────────────────────────
 

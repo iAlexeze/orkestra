@@ -68,6 +68,10 @@ spec:
               value: {{ .Values.runtime.config.degradeThreshold | quote }}
             - name: ORK_REGISTRY
               value: {{ .Values.runtime.registry.url | quote }}
+            {{- if .Values.runtime.gatewayEndpoint }}
+            - name: ORK_GATEWAY_ENDPOINT
+              value: {{ .Values.runtime.gatewayEndpoint | quote }}
+            {{- end }}
             {{- if .Values.runtime.leaderElection.enabled }}
             - name: LEADER_ELECTION
               value: "true"

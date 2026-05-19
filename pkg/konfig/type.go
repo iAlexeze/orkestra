@@ -18,14 +18,14 @@ type Konfig struct {
 }
 
 type orkKonfig struct {
-	Name             string `validate:"required"`
-	ShortName        string
-	Environment      string
-	LogLevel         string
+	Name        string `validate:"required"`
+	ShortName   string
+	Environment string
+	LogLevel    string
 	// GatewayEndpoint is advertised in the runtime /katalog response so the
 	// control center can locate the companion gateway and merge stats.
 	// Populated from ORK_GATEWAY_ENDPOINT; empty when no gateway is configured.
-	GatewayEndpoint  string
+	GatewayEndpoint string
 }
 
 type healthServer struct {

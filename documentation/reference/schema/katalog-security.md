@@ -1,10 +1,11 @@
 # security
 
-Controls deletion protection, namespace protection, and admission webhooks for the Katalog.
+Controls deletion protection, namespace protection, admission webhooks, and gateway topology for the Katalog.
 
 ```yaml
 security:
   serviceName: orkestra-svc    # Kubernetes Service where Orkestra is deployed
+  gatewayEndpoint: "http://orkestra-gateway.orkestra-system.svc:8080"
 
   deletionProtection:
     enabled: true
@@ -34,6 +35,13 @@ security:
     enabled: true
     conversionWindow: 100
 ```
+
+## Top-level fields
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `serviceName` | `ORK_SERVICE_NAME` env / `"orkestra"` | Kubernetes Service where Orkestra is deployed. Shared across deletion protection, namespace protection, and admission webhooks. |
+| `gatewayEndpoint` | `ORK_GATEWAY_ENDPOINT` env / `""` | HTTP base URL of the companion gateway process. The runtime advertises this in its `/katalog` response so the control center can discover and merge gateway stats. Empty = no gateway configured. |
 
 ## `deletionProtection`
 

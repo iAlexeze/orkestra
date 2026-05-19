@@ -36,6 +36,7 @@ func (k *Katalog) securityEnvDefaults() interface {
 	NamespaceProtectionSvcName() string
 	NamespaceProtectionPolicy() string
 	NamespaceProtectionCleanup() bool
+	GatewayEndpointEnv() string
 } {
 	return &envSecurityReader{k: k}
 }
@@ -152,6 +153,13 @@ func (r *envSecurityReader) NamespaceProtectionSvcName() string {
 		return ork
 	}
 	return r.k.konfig.Security().NamespaceProtection.ServiceName
+}
+
+func (r *envSecurityReader) GatewayEndpointEnv() string {
+	if r.k.konfig == nil {
+		return ""
+	}
+	return r.k.konfig.GatewayEndpoint()
 }
 
 //
@@ -333,6 +341,32 @@ func (k *Katalog) ConversionWindow() int {
 		return k.Security.Conversion.ConversionWindow
 	}
 	return k.securityEnvDefaults().ConversionWindowVal()
+}
+
+// ── Gateway endpoint ──────────────────────────────────────────────────────────
+
+// GatewayEndpoint returns the effective gateway endpoint URL.
+//
+// Precedence:
+//
+//	YAML security.gatewayEndpoint non-empty → use YAML value
+//	YAML absent or empty                    → fall back to ORK_GATEWAY_ENDPOINT env
+func (k *Katalog) GatewayEndpoint() string {
+	return k.Security.GatewayEndpointVal(k.securityEnvDefaults().GatewayEndpointEnv())
+}
+
+// ── Gateway requirement ───────────────────────────────────────────────────────
+
+// NeedsGateway reports whether this Katalog requires a companion gateway process.
+//
+// A gateway is required when any of the following are configured:
+//   - Security features that run on the gateway's HTTPS server
+//     (deletion protection, admission webhooks, conversion, namespace protection)
+//   - Notifications — dispatch will flow through the gateway endpoint
+//
+// Used by ValidateConfig to fail fast when gatewayEndpoint is not set.
+func (k *Katalog) NeedsGateway() bool {
+	return k.NeedsCertificates() || k.HasNotification()
 }
 
 // ── Certificates ──────────────────────────────────────────────────────────────

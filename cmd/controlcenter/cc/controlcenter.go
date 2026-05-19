@@ -31,19 +31,21 @@ type Config struct {
 	LogLevel             string
 	Version              string
 	EnableRuntimeManager bool
+	NoLogin              bool
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Instance — one connected Orkestra runtime
 // ─────────────────────────────────────────────────────────────────────────────
 type Instance struct {
-	URL       string
-	Client    *Client
-	Katalog   *KatalogResponse
-	Healthy   bool
-	LastError string
-	LastCheck time.Time
-	Status    string // "online", "starting" or "degraded"
+	URL             string
+	Client          *Client
+	Katalog         *KatalogResponse
+	Healthy         bool
+	LastError       string
+	LastCheck       time.Time
+	Status          string // "online", "starting" or "degraded"
+	GatewayEndpoint string // from runtime /katalog; empty when no gateway
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -93,7 +95,8 @@ func New(urls []string, config Config) *ControlCenter {
 	return cc
 }
 
-func (cc *ControlCenter) IsReady() bool { return cc.ready.Load() }
+func (cc *ControlCenter) IsReady() bool  { return cc.ready.Load() }
+func (cc *ControlCenter) NoLogin() bool  { return cc.config.NoLogin }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Background fetch
@@ -145,6 +148,7 @@ func (cc *ControlCenter) fetchAllKatalogs() {
 				log.Printf("WARN: fetch katalog from %s: %v", u, err)
 			} else {
 				inst.Katalog = kat
+				inst.GatewayEndpoint = kat.GatewayEndpoint
 				if kat.OrkReady {
 					inst.Status = "online"
 					inst.Healthy = true
@@ -154,8 +158,8 @@ func (cc *ControlCenter) fetchAllKatalogs() {
 					inst.Healthy = false
 					inst.LastError = ""
 				}
-				log.Printf("INFO: fetched katalog %q from %s (%d CRDs)",
-					kat.Name, u, len(kat.CRDs))
+				log.Printf("INFO: fetched katalog %q from %s (%d CRDs, gateway=%q)",
+					kat.Name, u, len(kat.CRDs), kat.GatewayEndpoint)
 			}
 		}
 		cc.mu.Unlock()
@@ -720,6 +724,26 @@ func (cc *ControlCenter) handleCRDDetail(w http.ResponseWriter, r *http.Request,
 			Description: "Unable to connect to Orkestra runtime",
 			GVK:         "unknown",
 			LastError:   err.Error(),
+		}
+	}
+
+	// Merge gateway-owned webhook stats when the runtime advertises a gateway.
+	if inst.GatewayEndpoint != "" && crd.State != "offline" {
+		if gwStats, err := FetchGatewayCRDStats(inst.GatewayEndpoint, crdName); err != nil {
+			log.Printf("WARN: gateway stats for %s: %v", crdName, err)
+		} else if gwStats != nil {
+			if gwStats.Admission != nil {
+				crd.Admission = gwStats.Admission
+			}
+			if gwStats.Conversion != nil {
+				crd.Conversion = gwStats.Conversion
+			}
+			if gwStats.DeletionProtection != nil {
+				crd.DeletionProtection = gwStats.DeletionProtection
+			}
+			if gwStats.NamespaceProtection != nil {
+				crd.NamespaceProtection = gwStats.NamespaceProtection
+			}
 		}
 	}
 

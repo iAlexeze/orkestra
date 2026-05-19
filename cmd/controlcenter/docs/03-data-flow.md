@@ -1,6 +1,6 @@
 # 03 — Data Flow
 
-Data travels in one direction: Orkestra runtime → `Client` → `ControlCenter` in-memory state → view-model struct → Go HTML template → browser.
+Data travels in one direction: Orkestra runtime (+ optional gateway) → `Client` → `ControlCenter` in-memory state → view-model struct → Go HTML template → browser.
 
 ## Orkestra runtime API endpoints
 
@@ -19,32 +19,45 @@ The Control Center calls these endpoints on each connected Orkestra runtime:
 
 All calls go through `cc/client.go`. The generic helper `getJSON[T]` handles JSON decoding and error wrapping.
 
+## Gateway API endpoints
+
+When a runtime advertises a companion gateway via `"gatewayEndpoint"` in its `/katalog` response, the Control Center also queries the gateway for webhook stats:
+
+| Endpoint | Go type | Used by |
+|----------|---------|---------|
+| `GET /katalog/{crd}` | `GatewayCRDStats` | `handleCRDDetail` — merges admission, conversion, deletion/namespace protection stats |
+
+The gateway URL is stored on `Instance.GatewayEndpoint` when the runtime katalog is fetched. It is queried on-demand at CRD detail page load, not in the background loop. Gateway fetch failures are logged as warnings and do not degrade the CRD view.
+
 ## Periodic fetch
 
-`FetchKatalog` is called for every instance on every tick. The result is stored directly on `inst.Katalog` (`*KatalogResponse`) under the write lock. This is the only field the background loop ever writes.
+`FetchKatalog` is called for every instance on every tick. The result is stored directly on `inst.Katalog` (`*KatalogResponse`) and `inst.GatewayEndpoint` under the write lock.
 
 ```
 KatalogResponse
   .Name, .Description, .Version, .Author, .License
   .Healthy, .OrkReady, .DegradedReason
-  .CRDs          []CRDSummary   ← high-level health per CRD
-  .StatusCounts                 ← healthy/started/pending/degraded counts
-  .RuntimeVersion               ← version string from the runtime
+  .CRDs            []CRDSummary   ← high-level health per CRD
+  .StatusCounts                   ← healthy/started/pending/degraded counts
+  .RuntimeVersion                 ← version string from the runtime
+  .GatewayEndpoint                ← base URL of companion gateway, empty if none
 ```
 
 The `CRDSummary` slice is what drives the Katalog panel and the index. It does not include deep detail — for that, the user navigates to a CRD page, which triggers a fresh `FetchCRDDetail` call at request time.
 
 ## On-demand fetch
 
-`FetchCRDDetail` merges two runtime calls — `GET /katalog/{crd}/health` and `GET /katalog/{crd}` — into a single `*CRDDetail`. This merged struct is the view-model for both the CRD dashboard (`crd.html`) and the CRD docs page (`crd_docs.html`).
+`FetchCRDDetail` merges two runtime calls — `GET /katalog/{crd}/health` and `GET /katalog/{crd}` — into a single `*CRDDetail`. When a gateway endpoint is configured, `handleCRDDetail` additionally calls `FetchGatewayCRDStats` and merges the webhook stats fields:
 
 ```
 CRDDetail
-  ← CRDHealth:  state, workers, queue depth, error counts, dependencies
-  ← CRDInfo:    GVK, GVR, scope, mode, workers config, RBAC, webhooks, providers
+  ← CRDHealth:        state, workers, queue depth, error counts, dependencies
+  ← CRDInfo:          GVK, GVR, scope, mode, workers config, RBAC, providers
+  ← GatewayCRDStats:  Admission, Conversion, DeletionProtection, NamespaceProtection
+                      (only when GatewayEndpoint is set; runtime fields take lower precedence)
 ```
 
-If the runtime is unreachable, `handleCRDDetail` renders a degraded view with `State: "offline"` rather than returning an error page. `handleCRDDocs` similarly falls back gracefully.
+If the runtime is unreachable, `handleCRDDetail` renders a degraded view with `State: "offline"` rather than returning an error page. Gateway fetch failures are soft — the page renders with whatever runtime data is available.
 
 ## View models
 

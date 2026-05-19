@@ -14,6 +14,7 @@ type ControlCenterKonfig struct {
 	LogLevel             string        `json:"logLevel"`
 	URLs                 []string      `json:"urls"`
 	EnableRuntimeManager bool          `json:"enableRuntimeManager"`
+	NoLogin              bool          `json:"noLogin"`
 }
 
 func NewControlCenterKonfig() *ControlCenterKonfig {
@@ -25,9 +26,17 @@ func handleEnvVars() *ControlCenterKonfig {
 	port := getStrEnv("PORT", "8081")
 	ignoreDefault := getBoolEnv("IGNORE_DEFAULT", false)
 	runtimeManager := getBoolEnv("ENABLE_RUNTIME_MANAGER", true)
+	noLogin := getBoolEnv("NO_LOGIN", false)
 	loglevel := getStrEnv("LOG_LEVEL", "info")
 	refreshInterval := getDurEnv("REFRESH_INTERVAL", 15)
 	urls := splitEnv("ORK_URLS", []string{})
+
+	// PUBLIC_DEPLOYMENT=true is a shorthand that implies NO_LOGIN=true and
+	// ENABLE_RUNTIME_MANAGER=false. Individual vars can still override it.
+	if getBoolEnv("PUBLIC_DEPLOYMENT", false) {
+		noLogin = true
+		runtimeManager = false
+	}
 
 	return &ControlCenterKonfig{
 		Port:                 port,
@@ -36,6 +45,7 @@ func handleEnvVars() *ControlCenterKonfig {
 		LogLevel:             loglevel,
 		URLs:                 urls,
 		EnableRuntimeManager: runtimeManager,
+		NoLogin:              noLogin,
 	}
 }
 

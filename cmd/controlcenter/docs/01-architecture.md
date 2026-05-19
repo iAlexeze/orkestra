@@ -7,16 +7,34 @@ The Control Center is a single Go binary that runs an HTTP server. It holds one 
 | Type | File | Role |
 |------|------|------|
 | `ControlCenter` | `cc/controlcenter.go` | Central coordinator — holds instances, runs fetch loop, dispatches HTTP |
-| `Instance` | `cc/controlcenter.go` | One connected Orkestra runtime: URL, Client, last-fetched Katalog, health |
+| `Instance` | `cc/controlcenter.go` | One connected Orkestra runtime: URL, Client, last-fetched Katalog, health, optional gateway endpoint |
 | `Client` | `cc/client.go` | HTTP client for one runtime — all Orkestra API calls go through here |
 | `Config` | `cc/controlcenter.go` | Startup config passed from `main.go` (refresh interval, log level, flags) |
 | `ControlCenterKonfig` | `cc/konfig.go` | Environment-variable configuration read at process start |
+
+## Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `8081` | HTTP port the control center listens on |
+| `ORK_URLS` | — | Comma-separated base URLs of Orkestra runtime instances |
+| `REFRESH_INTERVAL` | `15` | Background fetch interval in seconds |
+| `LOG_LEVEL` | `info` | Log verbosity |
+| `ENABLE_RUNTIME_MANAGER` | `true` | Show the runtime manager UI panel |
+| `NO_LOGIN` | `false` | Disable the login page and allow unauthenticated access. |
+| `PUBLIC_DEPLOYMENT` | `false` | Shorthand for public read-only mode: implies `NO_LOGIN=true` and `ENABLE_RUNTIME_MANAGER=false`. Individual vars override if set explicitly. |
+| `ADMIN_USERNAME` | `orkestra` | Login username (unused when `NO_LOGIN=true`) |
+| `ADMIN_PASSWORD` | `orkestra` | Login password (unused when `NO_LOGIN=true`) |
+| `SESSION_SECRET` | `dev-secret` | HMAC secret for session tokens (unused when `NO_LOGIN=true`) |
+| `GITHUB_CLIENT_ID` | — | Enable GitHub OAuth login |
+| `GITHUB_CLIENT_SECRET` | — | GitHub OAuth secret |
+| `IGNORE_DEFAULT` | `false` | Do not add `localhost:8080` when no URLs are provided |
 
 ## Boot sequence
 
 ```
 main.go
-  → NewControlCenterKonfig()         read env vars (PORT, ORK_URLS, …)
+  → NewControlCenterKonfig()         read env vars (PORT, ORK_URLS, NO_LOGIN, …)
   → LoadRuntimeStorage()             merge persisted URLs from ~/.orkestra/instances.json
   → cc.New(urls, Config{…})          create ControlCenter, one Instance per URL
       → go backgroundFetchLoop()     start background goroutine immediately
