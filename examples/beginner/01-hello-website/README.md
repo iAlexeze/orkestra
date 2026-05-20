@@ -49,7 +49,7 @@ Expected output:
 ork run
 ```
 
-Orkestra reads `crdFile: ./crd.yaml`, applies the CRD to the cluster, and starts the operator. You will see the health server start and the informer sync:
+Orkestra reads `crdFile: ./crd.yaml`, applies the CRD and `cr.yaml` to the cluster, and starts the operator. You will see the health server start and the informer sync:
 
 ```
 {"level":"info","message":"health server listening on :8080"}
@@ -60,15 +60,10 @@ Orkestra reads `crdFile: ./crd.yaml`, applies the CRD to the cluster, and starts
 
 ---
 
-## Step 3 — Apply the CR
+## Step 3 — Watch the CR reconcile
 
-Open a second terminal:
-
-```bash
-kubectl apply -f cr.yaml
-```
-
-Watch the operator terminal. You will see the reconcile event arrive and the
+`cr.yaml` is applied automatically by `ork run` before the runtime starts.
+Watch the operator terminal — you will see the reconcile event arrive and the
 Deployment being created.
 
 ---

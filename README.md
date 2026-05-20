@@ -40,6 +40,7 @@ spec:
   crds:
     website:
       crdFile: website-crd.yaml
+      crFiles: [website-cr.yaml]
       operatorBox:               # isolated environment for this operator in the runtime
         onCreate:
           deployments:
@@ -59,8 +60,6 @@ That's the whole operator.
 ```bash
 # Run
 ork run
-
-kubectl apply -f website-cr.yaml
 ```
 
 Orkestra creates the Deployment and Service, sets owner references, writes status, emits events, corrects drift, exposes metrics and a control center — without a single line of Go.
@@ -113,14 +112,8 @@ curl -sSL https://get.orkestra.sh | bash
 ork init my-operator
 cd my-operator/examples/beginner/01-hello-website
 
-# Apply the CRD
-kubectl apply -f crd.yaml
-
-# Run the operator runtime
+# Run
 ork run
-
-# Apply a CustomResource
-kubectl apply -f cr.yaml
 ```
 
 ---

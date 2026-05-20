@@ -44,16 +44,11 @@ Visit: **http://localhost:8081**
 
 ## Run the Example
 
-### 1. Apply the CRD
+### 1. Start the operator
 
 ```bash
-kubectl apply -f crd.yaml
-```
-
-### 2. Apply the CR
-
-```bash
-kubectl apply -f cr.yaml
+ork run
+# Orkestra reads katalog.yaml, applies the CRD and cr.yaml, and starts the operator.
 ```
 
 Watch the Control Center as resources are created:

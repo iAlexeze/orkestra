@@ -12,6 +12,8 @@ spec:
   crds:
     website:
       crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
       resync: 5s
 
       operatorBox:

@@ -2423,6 +2423,11 @@ type CRDEntry struct {
 	// against apiTypes to catch mismatches before deployment.
 	CRDFile string `yaml:"crdFile,omitempty" json:"crdFile,omitempty"`
 
+	// CRFiles is an ordered list of CR YAML files to apply before the runtime
+	// starts. Applied in declaration order after the CRD is registered.
+	// Same path resolution as CRDFile. Dev mode only.
+	CRFiles []string `yaml:"crFiles,omitempty" json:"crFiles,omitempty"`
+
 	// ── Runtime objects ───────────────────────────────────────────────────────
 	// Set by addRuntimeObjects() during Katalog validation. Never set from YAML.
 	//

@@ -35,15 +35,9 @@ Orkestra does the rest. The `phase`, `observedReplicas`, and `endpoint` fields
 ork run
 ```
 
-Orkestra reads `crdFile: ./crd.yaml`, applies the CRD to the cluster, and starts the operator.
+Orkestra reads `crdFile: ./crd.yaml`, applies the CRD and `cr.yaml` to the cluster, and starts the operator.
 
-### 2. Apply the CR
-
-```bash
-kubectl apply -f cr.yaml
-```
-
-### 3. Open the Control Center
+### 2. Open the Control Center
 
 In a third terminal:
 
