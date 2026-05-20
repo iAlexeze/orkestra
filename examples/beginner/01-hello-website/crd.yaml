@@ -22,7 +22,10 @@ spec:
                   type: string
                 replicas:
                   type: integer
-                  default: 2
+                  default: 1
+                port:
+                  type: integer
+                  default: 80
             status:
               type: object
               x-kubernetes-preserve-unknown-fields: true

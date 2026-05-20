@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "Cleaning up 02-website-with-service..."
+echo "Cleaning up 02-with-serviceaccount..."
 
 kubectl delete -f cr.yaml --ignore-not-found
 kubectl delete -f crd.yaml --ignore-not-found

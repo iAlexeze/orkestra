@@ -21,13 +21,16 @@ No reading required to get your first operator running.
 curl -sSL https://get.orkestra.sh | sh
 
 # Step 2: Initialize your first operator project
-ork init my-first-operator
+mkdir my-first-operator && cd my-first-operator
+ork init
 ```
 
-Orkestra downloads the beginner example pack, scaffolds a project directory, and
-prints exactly what to run next. The first operator — a Website CRD that creates
-a Deployment and Service — takes about five minutes from installation to a
-reconciling CR.
+`ork init` with no arguments initializes in the current directory — like `terraform init`.
+Pass a name to create a new folder: `ork init my-operator`.
+
+Orkestra scaffolds the project and prints exactly what to run next. The first operator —
+a Website CRD that creates a Deployment and Service — takes about five minutes from
+installation to a reconciling CR.
 
 ---
 
@@ -42,13 +45,14 @@ experience. The patterns build on each other.
 The foundation. Every concept here is used in every more advanced example.
 
 ```bash
-ork init my-operator --pack beginner
+ork init --pack beginner
+# or: ork init my-operator --pack beginner
 ```
 
 | Example | What it demonstrates |
 |---|---|
-| `01-hello-website` | Your first operator. Deployment, Service, owner references, status. |
-| `02-website-with-service` | Multi-resource operators. LoadBalancer configuration. |
+| `01-hello-website` | Your first operator. Deployment, Service, owner references, status, `reconcile: true`. |
+| `02-with-serviceaccount` | Adding a ServiceAccount. Wiring pod identity at creation time. |
 | `03-secret-copy` | Secret distribution across namespaces. `once:` and idempotency. |
 | `03b-configmap-copy` | ConfigMap distribution. Statusless resource patterns. |
 | `04-multi-resource` | Creating many resource types from one CR. |
@@ -60,7 +64,7 @@ ork init my-operator --pack beginner
 Deeper patterns for operators that handle real production requirements.
 
 ```bash
-ork init my-operator --pack intermediate
+ork init --pack intermediate
 ```
 
 | Example | What it demonstrates |
@@ -76,7 +80,7 @@ Patterns that solve the hard problems. These are the capabilities that
 traditionally require expert-level operator engineering.
 
 ```bash
-ork init my-operator --pack advanced
+ork init --pack advanced
 ```
 
 | Example | What it demonstrates |
@@ -94,7 +98,7 @@ ork init my-operator --pack advanced
 Full-stack, end-to-end operator scenarios that mirror real platform engineering problems.
 
 ```bash
-ork init my-operator --pack use-cases
+ork init --pack use-cases
 ```
 
 | Example | What it demonstrates |
@@ -111,20 +115,19 @@ ork init my-operator --pack use-cases
 Every example follows the same pattern:
 
 ```bash
-# Initialize — downloads the pack for your current Orkestra version
-ork init my-operator --pack beginner
-cd my-operator
+# Initialize the pack
+ork init --pack beginner
 
-# Start the operator locally
-# Orkestra reads crdFile from the Katalog, applies the CRD to the cluster, and starts the operator
-ork run -f examples/beginner/01-hello-website/katalog.yaml
+# Navigate to an example
+cd beginner/01-hello-website
 
-# In another terminal — apply a CR
-kubectl apply -f examples/beginner/01-hello-website/cr.yaml
+# Start the operator — Orkestra applies the CRD, applies cr.yaml, and starts the operator
+ork run
 
 # Watch it reconcile
 kubectl get websites
 kubectl get deployments
+kubectl get services
 
 # Open the Control Center
 ork control
@@ -154,6 +157,7 @@ ork upgrade
 
 # Pull fresh examples for the new version
 ork init my-operator-v2 --pack beginner
+cd my-operator-v2
 ```
 
 The upgrade command downloads the correct binary for your platform, replaces

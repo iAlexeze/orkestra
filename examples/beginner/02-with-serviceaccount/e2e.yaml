@@ -1,8 +1,8 @@
 apiVersion: orkestra.orkspace.io/v1
 kind: E2E
 metadata:
-  name: website-with-service-e2e
-  description: Deploy a website with a LoadBalancer Service and verify both resources are created and removed together
+  name: with-serviceaccount-e2e
+  description: Deploy a website operator with a ServiceAccount and verify the Deployment, Service, and ServiceAccount come up and are cleaned up on delete
 
 spec:
   katalog: ./katalog.yaml
@@ -22,32 +22,37 @@ spec:
         - kind: Website
           name: my-site
           namespace: default
-    
-    - name: Deployment and Service created
+
+    - name: Resources created
       after: cr-applied
       timeout: 60s
       resources:
         - kind: Deployment
-          name: my-site
           namespace: default
           ready: true
         - kind: Service
-          name: my-site-svc
+          namespace: default
+        - kind: ServiceAccount
+          name: my-site-sa
           namespace: default
 
     - name: Cleanup verified
       after: cr-deleted
       timeout: 30s
       resources:
-        - kind: Website
-          name: my-site
-          namespace: default
-          count: 0
         - kind: Deployment
           name: my-site
           namespace: default
           count: 0
         - kind: Service
+          name: my-site-svc
+          namespace: default
+          count: 0
+        - kind: ServiceAccount
+          name: my-site-sa
+          namespace: default
+          count: 0
+        - kind: Website
           name: my-site
           namespace: default
           count: 0

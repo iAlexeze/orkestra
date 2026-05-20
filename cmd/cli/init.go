@@ -13,21 +13,18 @@ import (
 )
 
 var initCmd = &cobra.Command{
-	Use:   "init <project-name>",
+	Use:   "init [project-name]",
 	Short: "Initialize a new Orkestra operator project",
 	Args: func(cmd *cobra.Command, args []string) error {
 		list, _ := cmd.Flags().GetBool("list-packs")
 		clear, _ := cmd.Flags().GetBool("clear-cache")
-		refresh, _ := cmd.Flags().GetBool("refresh-cache")
 
-		// Utility flags do NOT require a project name
-		if list || clear || refresh {
+		if list || clear {
 			return nil
 		}
 
-		// Normal init requires exactly 1 argument
-		if len(args) != 1 {
-			return fmt.Errorf("project name is required. Example: ork init my-operator")
+		if len(args) > 1 {
+			return fmt.Errorf("too many arguments — usage: ork init [project-name]")
 		}
 
 		return nil
@@ -45,17 +42,59 @@ var initCmd = &cobra.Command{
 			return clearCache()
 		}
 
-		// Normal init flow
-		name := args[0]
-		pack, _ := cmd.Flags().GetString("pack")
-		if pack == "" {
-			pack = "beginner"
+		// No name → init in current directory, like terraform init
+		name := "."
+		if len(args) == 1 {
+			name = args[0]
 		}
 
+		pack, _ := cmd.Flags().GetString("pack")
 		refresh, _ := cmd.Flags().GetBool("refresh-cache")
 
+		if pack == "" {
+			return initCanonical(name)
+		}
 		return initProject(name, pack, refresh)
 	},
+}
+
+func initCanonical(name string) error {
+	printBanner()
+	label := nameLabel(name)
+	fmt.Printf("Initialising %s...\n\n", utils.Bold(label))
+
+	steps := []initStep{}
+	if name != "." {
+		steps = append(steps, initStep{"Creating project folder", func() error { return os.MkdirAll(name, 0755) }})
+	}
+	steps = append(steps, initStep{"Writing katalog.yaml", func() error { return extractCanonical(name) }})
+
+	if err := runSteps(steps); err != nil {
+		return err
+	}
+
+	fmt.Printf("\n%s\n\n", utils.Green("✅ Project ready: "+label))
+	if name != "." {
+		fmt.Printf("  cd %s\n", name)
+	}
+	fmt.Printf("  ork run\n\n")
+	fmt.Println("To explore example packs:")
+	fmt.Printf("  ork init %s --pack beginner\n", label)
+
+	return nil
+}
+
+// nameLabel returns the display name for a project path.
+// When initialising in the current directory, it uses the directory's base name.
+func nameLabel(name string) string {
+	if name != "." {
+		return name
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
+	return filepath.Base(cwd)
 }
 
 func initProject(name, pack string, refresh bool) error {
@@ -64,21 +103,20 @@ func initProject(name, pack string, refresh bool) error {
 	fmt.Printf("Initialising %s using '%s' example pack...\n\n",
 		utils.Bold(name), pack)
 
+	label := nameLabel(name)
 	ver := version.Version // ldflags
 
-	steps := []initStep{
-		{"Creating project folder", func() error { return os.MkdirAll(name, 0755) }},
-		{"Creating examples folder", func() error { return os.MkdirAll(filepath.Join(name, "examples"), 0755) }},
+	steps := []initStep{}
+	if name != "." {
+		steps = append(steps, initStep{"Creating project folder", func() error { return os.MkdirAll(name, 0755) }})
 	}
 
 	if refresh {
-		// Fetch from GitHub Releases and cache locally.
 		steps = append(steps,
 			initStep{"Downloading example pack", func() error { return downloadExamplePack(name, pack, ver, refresh) }},
 			initStep{"Extracting example pack", func() error { return extractExamplePack(name, pack, ver) }},
 		)
 	} else {
-		// Use the copy baked into the CLI at build time — instant, no network required.
 		steps = append(steps,
 			initStep{"Extracting example pack", func() error { return extractEmbeddedPack(name, pack) }},
 		)
@@ -88,16 +126,18 @@ func initProject(name, pack string, refresh bool) error {
 		return err
 	}
 
-	fmt.Printf("\n%s\n\n", utils.Green("✅ Project ready: "+name))
-	fmt.Printf("Your examples are in: %s/examples/%s/\n\n", name, pack)
-	fmt.Println("Each example folder contains a README with step-by-step instructions.")
-	fmt.Println()
-	fmt.Printf("  cd %s\n", name)
-	fmt.Printf("  ls examples/%s/\n", pack)
-	fmt.Println()
-	fmt.Println("To run any example:")
-	fmt.Printf("  ork run --file examples/%s/<example>/katalog.yaml\n", pack)
-	fmt.Println()
+	fmt.Printf("\n%s\n\n", utils.Green("✅ Project ready: "+label))
+	if name != "." {
+		fmt.Printf("  cd %s\n", name)
+	}
+	fmt.Printf("  ls %s/\n\n", pack)
+	fmt.Println("To run an example:")
+	if name != "." {
+		fmt.Printf("  cd %s/%s/01-hello-website\n", name, pack)
+	} else {
+		fmt.Printf("  cd %s/01-hello-website\n", pack)
+	}
+	fmt.Printf("  ork run\n\n")
 	fmt.Println("Control Center:")
 	fmt.Printf("  ork control    # opens localhost:8081\n\n")
 
@@ -113,17 +153,19 @@ func listPacks() error {
 		fmt.Printf("  %-13s → %s\n", p.Name, p.Description)
 	}
 
-	fmt.Printf("\nUse:")
-	fmt.Printf("  ork init <project-name> --pack <name>\n")
-	fmt.Println("Default:")
-	fmt.Printf("  ork init <project-name>        # uses beginner\n")
+	fmt.Printf("\nNo pack — canonical hello-website operator:\n")
+	fmt.Printf("  ork init              # init in current directory\n")
+	fmt.Printf("  ork init my-operator  # init in new folder\n\n")
+	fmt.Printf("With a pack:\n")
+	fmt.Printf("  ork init --pack <name>\n")
+	fmt.Printf("  ork init my-operator --pack <name>\n")
 
 	return nil
 }
 
 func init() {
 	rootCmd.AddCommand(initCmd)
-	initCmd.Flags().StringP("pack", "p", "", "Example pack to initialize (default: beginner)")
+	initCmd.Flags().StringP("pack", "p", "", "Example pack to copy into the project (beginner, intermediate, advanced, …)")
 	initCmd.Flags().BoolP("list-packs", "l", false, "List available example packs")
 	initCmd.Flags().Bool("clear-cache", false, "Clear cached example packs")
 	initCmd.Flags().Bool("refresh-cache", false, "Fetch pack from GitHub Releases instead of using the built-in copy")

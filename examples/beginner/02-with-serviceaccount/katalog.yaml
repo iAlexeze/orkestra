@@ -1,14 +1,16 @@
 apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
-  name: hello-website
+  name: website-with-serviceaccount
   author: orkspace
   version: 0.1.0
-  description: The canonical Orkestra operator. One CRD, one Deployment, one Service.
+  description: >
+    Adds a ServiceAccount to the website operator.
+    The Deployment uses it immediately via serviceAccountName.
   tags:
-    - hello
     - beginner
     - web
+    - rbac
 
 spec:
   crds:
@@ -28,13 +30,19 @@ spec:
               value: "Running"
             - path: endpoint
               value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+            - path: allReplicasReady
+              value: "{{ allReplicasReady .children.deployment }}"
 
         onCreate:
+          serviceAccounts:
+            - name: "{{ .metadata.name }}-sa"
+
           deployments:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
               replicas: "{{ .spec.replicas }}"
               port: "{{ .spec.port }}"
+              serviceAccountName: "{{ .metadata.name }}-sa"
               reconcile: true
 
           services:

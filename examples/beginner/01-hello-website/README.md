@@ -4,7 +4,7 @@ Your first Orkestra operator. You will declare a `Website` CRD, write a
 twelve-line Katalog, and watch Orkestra create a Deployment from a CR — with
 no Go code written.
 
-**What you learn:** CRD declaration, apiTypes, the minimal Katalog, template expressions.
+**What you learn:** CRD declaration, apiTypes, Katalog template expressions, `reconcile: true`, status fields.
 
 ---
 
@@ -14,13 +14,15 @@ When you apply a `Website` CR with `spec.image: nginx:1.25`, Orkestra:
 
 1. Receives the watch event from the informer
 2. Reads the CR from the informer cache
-3. Resolves `{{ .spec.image }}` → `"nginx:1.25"`
-4. Creates a Deployment named `hello-deployment` in the `default` namespace
-5. Sets an owner reference on the Deployment pointing to the `Website` CR
-6. Emits a `Reconciled` Kubernetes event on the CR
+3. Resolves template expressions — `{{ .spec.image }}` → `"nginx:1.25"`, `{{ .metadata.name }}` → `"hello-website"`, etc.
+4. Creates a Deployment named `hello-website` in the `default` namespace
+5. Creates a Service named `hello-website-svc` exposing port 80
+6. Writes `phase: Running` and `endpoint: hello-website.default.svc.cluster.local` to the CR's status
+7. Sets owner references on the Deployment and Service pointing to the `Website` CR
+8. Emits a `WebsiteReconciled` Kubernetes event on the CR
 
-Delete the `Website` CR and Kubernetes automatically deletes the Deployment —
-because of the owner reference. No `onDelete` logic needed.
+Delete the `Website` CR and Kubernetes automatically deletes both the Deployment and
+Service — because of the owner references. No `onDelete` logic needed.
 
 ---
 
@@ -64,7 +66,7 @@ Orkestra reads `crdFile: ./crd.yaml`, applies the CRD and `cr.yaml` to the clust
 
 `cr.yaml` is applied automatically by `ork run` before the runtime starts.
 Watch the operator terminal — you will see the reconcile event arrive and the
-Deployment being created.
+Deployment and Service being created.
 
 ---
 
@@ -88,44 +90,73 @@ Open [http://localhost:8081](http://localhost:8081) to see the live operator —
 # The CR exists
 kubectl get websites
 
-# The Deployment was created
+# The Deployment and Service were created
 kubectl get deployments
+kubectl get services
 
-# The owner reference is set
-kubectl get deployment hello-deployment -o yaml | grep -A5 ownerReferences
+# Status was written
+kubectl get website hello-website -o yaml | grep -A10 "status:"
+
+# Owner references are set
+kubectl get deployment hello-website -o yaml | grep -A5 ownerReferences
 
 # The reconcile event was emitted
-kubectl describe website hello | tail -10
+kubectl describe website hello-website | tail -10
 ```
 
-Expected deployment name: `hello-deployment`
+Expected:
+
+```
+NAME           READY   UP-TO-DATE   AVAILABLE
+hello-website  1/1     1            1
+
+NAME               TYPE        CLUSTER-IP     PORT(S)
+hello-website-svc  ClusterIP   10.96.x.x      80/TCP
+```
+
+Status:
+
+```yaml
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+      reason: ReconcileSucceeded
+  phase: Running
+  endpoint: hello-website.default.svc.cluster.local
+```
 
 ---
 
-## Step 6 — Understand onCreate
+## Step 6 — Drift correction and reconcile
 
-**Deletion is always recovered.** Delete the Deployment manually — owner references mean Kubernetes garbage-collects it, and Orkestra recreates it on the next reconcile:
+**`reconcile: true`** is set on both the Deployment and Service. This means Orkestra
+re-applies the desired state from the CR on every reconcile cycle — not just at
+creation. If anything drifts, Orkestra corrects it back.
+
+**Delete the Deployment manually** — Orkestra recreates it on the next reconcile:
 
 ```bash
-kubectl delete deployment hello-deployment
+kubectl delete deployment hello-website
 kubectl get deployments
-# hello-deployment reappears
+# hello-website reappears
 ```
 
-**Updating the CR does not update the Deployment.** Edit [cr.yaml](cr.yaml), change the image to `nginx:1.26`, and reapply:
+**Update the image** — edit [cr.yaml](cr.yaml), change to `nginx:1.26`, and reapply:
 
 ```bash
 kubectl apply -f cr.yaml
+kubectl get deployment hello-website -o jsonpath='{.spec.template.spec.containers[0].image}' && echo
+# nginx:1.26
 ```
 
-Check the Deployment image:
+**Scale the replicas:**
 
 ```bash
-kubectl get deployment hello-website-deployment -o jsonpath='{.spec.template.spec.containers[0].image}' && echo
-# nginx:1.25  — unchanged
+kubectl patch website hello-website --type=merge -p '{"spec":{"replicas":2}}'
+kubectl get deployment hello-website
+# READY: 2/2
 ```
-
-This is intentional. `onCreate` only fires when the CR is first created. To make Orkestra update existing resources when the CR changes, add `reconcile: true` — which is what example 02 introduces.
 
 ---
 
@@ -148,6 +179,8 @@ expect:
       - kind: Deployment
         namespace: default
         ready: true
+      - kind: Service
+        namespace: default
 
   - name: Cleanup verified
     after: cr-deleted
@@ -155,6 +188,10 @@ expect:
     resources:
       - kind: Deployment
         name: hello-website
+        namespace: default
+        count: 0
+      - kind: Service
+        name: hello-website-svc
         namespace: default
         count: 0
 ```
