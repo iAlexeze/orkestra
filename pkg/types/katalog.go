@@ -1,6 +1,26 @@
 // pkg/types/katalog.go
 package types
 
+// GatewayConfig declares how the Orkestra gateway is deployed for this Katalog.
+//
+// YAML shape:
+//
+//	gateway:
+//	  standalone: true   # gateway runs without a companion runtime operator
+//	  endpoint: ""       # leave empty when standalone; runtime sets this when paired
+type GatewayConfig struct {
+	// Standalone declares that this Katalog is deployed as a gateway-only installation
+	// with no companion runtime operator. When true:
+	//   - gatewayEndpoint validation is skipped (the gateway is self-contained)
+	//   - spec: may be empty (no CRDs required)
+	// Default: false.
+	Standalone bool `yaml:"standalone,omitempty" json:"standalone,omitempty"`
+
+	// Endpoint is the HTTP base URL of the gateway, used by the runtime to locate it.
+	// Leave empty in standalone deployments.
+	Endpoint string `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
+}
+
 // KatalogFile is the top-level structure of a crd-katalog.yaml file.
 // It contains optional sources (files and helm charts) plus inline CRDs.
 // Orkestra's in-built merger resolves all sources and merges everything into one KatalogSpec.
@@ -11,6 +31,11 @@ type KatalogFile struct {
 	Imports    *KatalogSources `yaml:"imports,omitempty"`
 	Spec       KatalogSpec     `yaml:"spec"`
 	Security   KatalogSecurity `yaml:"security"`
+
+	// Gateway declares how the gateway is deployed for this Katalog.
+	// When gateway.standalone: true, the gateway runs without a runtime operator
+	// and spec: may be empty.
+	Gateway *GatewayConfig `yaml:"gateway,omitempty" json:"gateway,omitempty"`
 
 	// Notification holds the top-level alerting configuration for this Katalog.
 	// Defines channels (email, Slack) and per-team routing rules that fire when

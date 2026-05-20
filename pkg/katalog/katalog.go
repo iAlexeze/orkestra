@@ -38,7 +38,7 @@ func NewKatalog(kfg *konfig.Konfig, m *merger.Merger) *Katalog {
 		utils.Exit(err)
 	}
 
-	if len(entries) == 0 {
+	if len(entries) == 0 && !katalog.IsStandaloneGateway() {
 		utils.Exit(fmt.Errorf("validation error: katalog empty"))
 	}
 

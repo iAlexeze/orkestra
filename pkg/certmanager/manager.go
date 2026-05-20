@@ -60,7 +60,6 @@ const (
 	DefaultCertValidFor = "1y"
 )
 
-
 // DefaultTLSSecretName is the Secret name used for Orkestra's auto-generated TLS bundle.
 var DefaultTLSSecretName = konfig.DefaultInternalTLSName()
 

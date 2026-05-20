@@ -58,7 +58,7 @@ func main() {
 	var entries []noteEntry
 	for _, f := range files {
 		domain := domainFromFilename(filepath.Base(f))
-		if domain == "" || domain == "readme" {
+		if domain == "" || domain == "readme" || domain == "_template" {
 			continue
 		}
 		parsed, err := parseDoc(f, domain)

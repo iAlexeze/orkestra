@@ -41,7 +41,6 @@ func (k *Katalog) securityEnvDefaults() interface {
 	NamespaceProtectionSvcName() string
 	NamespaceProtectionPolicy() string
 	NamespaceProtectionCleanup() bool
-	GatewayEndpointEnv() string
 	CertAutoRotate() bool
 	CertValidForStr() string
 	CertRotationThresholdStr() string
@@ -170,13 +169,6 @@ func (r *envSecurityReader) NamespaceProtectionSvcName() string {
 	return r.k.konfig.Security().NamespaceProtection.ServiceName
 }
 
-func (r *envSecurityReader) GatewayEndpointEnv() string {
-	if r.k.konfig == nil {
-		return ""
-	}
-	return r.k.konfig.GatewayEndpoint()
-}
-
 func (r *envSecurityReader) CertAutoRotate() bool {
 	if r.k.konfig == nil {
 		return true
@@ -197,7 +189,6 @@ func (r *envSecurityReader) CertValidForStr() string {
 	}
 	return r.k.konfig.Security().CertManager.ValidFor
 }
-
 
 //
 
@@ -387,16 +378,32 @@ func (k *Katalog) ConversionWindow() int {
 	return k.securityEnvDefaults().ConversionWindowVal()
 }
 
-// ── Gateway endpoint ──────────────────────────────────────────────────────────
+// ── Gateway config ────────────────────────────────────────────────────────────
+
+// IsStandaloneGateway reports whether this Katalog is deployed as a standalone
+// gateway with no companion runtime operator.
+//
+// When true:
+//   - gatewayEndpoint validation is skipped
+//   - spec: may be empty (no CRDs required)
+func (k *Katalog) IsStandaloneGateway() bool {
+	return k.Gateway != nil && k.Gateway.Standalone
+}
 
 // GatewayEndpoint returns the effective gateway endpoint URL.
 //
 // Precedence:
 //
-//	YAML security.gatewayEndpoint non-empty → use YAML value
-//	YAML absent or empty                    → fall back to ORK_GATEWAY_ENDPOINT env
+//	YAML gateway.endpoint non-empty          → use gateway block value
+//	If not set          	                 → fall back to ORK_GATEWAY_ENDPOINT env
 func (k *Katalog) GatewayEndpoint() string {
-	return k.Security.GatewayEndpointVal(k.securityEnvDefaults().GatewayEndpointEnv())
+	if k.Gateway != nil && k.Gateway.Endpoint != "" {
+		return k.Gateway.Endpoint
+	}
+	if k.konfig != nil {
+		return k.konfig.GatewayEndpoint()
+	}
+	return ""
 }
 
 // ── Gateway requirement ───────────────────────────────────────────────────────
@@ -480,5 +487,10 @@ func (k *Katalog) CertValidFor() time.Duration {
 		return d
 	}
 	return 365 * 24 * time.Hour
+}
 
+// CertValidForStr returns the raw validity string for use in CertificateSpec.ValidFor.
+// Falls back to "1y" when not configured.
+func (k *Katalog) CertValidForStr() string {
+	return k.Security.ValidForVal(k.securityEnvDefaults().CertValidForStr())
 }

@@ -157,6 +157,18 @@ func (k *Konfig) SetInstance(instance Instance) {
 	k.ork.Instance = instance
 }
 
+// IsRuntimeInstance reports whether the active instance is the internal
+// Orkestra runtime service.
+func (k *Konfig) IsRuntimeInstance() bool {
+	return k.ork.Instance == InstanceRuntime
+}
+
+// IsGatewayInstance reports whether the active instance is the external
+// Orkestra gateway service.
+func (k *Konfig) IsGatewayInstance() bool {
+	return k.ork.Instance == InstanceGateway
+}
+
 // GetStrEnv returns the string value of an env
 func GetStrEnv(key, def string) string {
 	if val, ok := os.LookupEnv(key); ok {

@@ -101,6 +101,7 @@ func ensureSecurity(
 		ServiceName: serviceName,
 		Namespace:   namespace,
 		SecretName:  certmanager.DefaultTLSSecretName,
+		ValidFor:    kat.CertValidForStr(),
 		BaseLabels:  labels.OrkestraResourceLabels(),
 	})
 	if bundleErr != nil {

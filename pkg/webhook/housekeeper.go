@@ -261,7 +261,7 @@ func (ws *WebhookServer) maybeRotateCert(ctx context.Context, existing *corev1.S
 	svcName := ws.konfig.GatewayServiceName()
 	ns := ws.certSecretNamespace
 
-	newBundle, err := certmanager.GenerateClusterBundle(svcName, ns, certmanager.BundleOpts{})
+	newBundle, err := certmanager.GenerateClusterBundle(svcName, ns, certmanager.BundleOpts{ValidFor: ws.katalog.CertValidForStr()})
 	if err != nil {
 		logger.Error().Err(err).Msg("housekeeper: cert rotation — failed to generate new bundle")
 		metrics.RecordWebhookReconciliationFailure("tls-secret-rotation")

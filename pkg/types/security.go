@@ -11,9 +11,6 @@
 // YAML shape:
 //
 //	security:
-//	  gatewayEndpoint: "http://orkestra-gateway.orkestra-system.svc:8080"
-//	                              # default: ORK_GATEWAY_ENDPOINT env / ""
-//
 //	  deletionProtection:
 //	    enabled: true            # default: true when block is present
 //	    serviceName: orkestra    # default: ORK_SERVICE_NAME env / "orkestra"
@@ -62,12 +59,6 @@ type CertManagerConfig struct {
 type KatalogSecurity struct {
 	// ServiceName defines the runtime and gateway service names for the Orkestra deployment.
 	ServiceName *ServiceName `yaml:"serviceName,omitempty" json:"serviceName,omitempty"`
-
-	// GatewayEndpoint is the HTTP base URL of the companion gateway process.
-	// The runtime advertises this URL in its /katalog response so the control
-	// center can fetch gateway stats and merge them per CRD.
-	// Default: ORK_GATEWAY_ENDPOINT env / "" (no gateway).
-	GatewayEndpoint string `yaml:"gatewayEndpoint,omitempty" json:"gatewayEndpoint,omitempty"`
 
 	// DeletionProtection controls whether Orkestra registers a webhook that
 	// blocks deletion of its managed CRDs, deployment, service, etc.
@@ -355,15 +346,6 @@ func (s *KatalogSecurity) WebhooksFailurePolicy(envDefault string) string {
 		return envDefault
 	}
 	return "Ignore"
-}
-
-// GatewayEndpointVal returns the effective gateway endpoint URL.
-// Falls back to the provided ENV default (empty string = no gateway).
-func (s *KatalogSecurity) GatewayEndpointVal(envDefault string) string {
-	if s != nil && s.GatewayEndpoint != "" {
-		return s.GatewayEndpoint
-	}
-	return envDefault
 }
 
 // IsCertAutoRotateEnabled returns the effective auto-rotate setting.

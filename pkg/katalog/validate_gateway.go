@@ -12,6 +12,9 @@ func (k *Katalog) validateGateway() error {
 	if !k.NeedsGateway() {
 		return nil
 	}
+	if k.IsStandaloneGateway() {
+		return nil
+	}
 	if k.GatewayEndpoint() != "" {
 		return nil
 	}
@@ -40,9 +43,12 @@ func (k *Katalog) validateGateway() error {
 			"The gateway process owns webhook serving (TLS, /validate, /mutate,\n"+
 			"/convert, /deletion-protection) and notification dispatch.\n"+
 			"Without it these features will silently do nothing.\n\n"+
-			"Fix — set gatewayEndpoint in your Katalog security block:\n\n"+
-			"  security:\n"+
-			"    gatewayEndpoint: \"http://orkestra-gateway.<namespace>.svc:8080\"\n\n"+
+			"Fix — set the endpoint in your Katalog gateway block:\n\n"+
+			"  gateway:\n"+
+			"    endpoint: \"http://orkestra-gateway.<namespace>.svc:8080\"\n\n"+
+			"Or declare a standalone gateway (no companion runtime):\n\n"+
+			"  gateway:\n"+
+			"    standalone: true\n\n"+
 			"Or set the environment variable on the runtime deployment:\n\n"+
 			"  ORK_GATEWAY_ENDPOINT=http://orkestra-gateway.<namespace>.svc:8080\n\n"+
 			"To generate gateway manifests run:\n\n"+

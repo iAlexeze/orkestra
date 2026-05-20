@@ -167,6 +167,7 @@ security:
   certManager:
     autoRotate: true           # default: true — set false to opt out
     rotationThreshold: "30d"   # default: 30 days
+    validFor: "2y"             # default: 1 year
 ```
 
 ENV overrides (take precedence when `certManager` block is absent):
@@ -175,6 +176,8 @@ ENV overrides (take precedence when `certManager` block is absent):
 |---------|---------|--------|
 | `TLS_AUTO_ROTATE` | `true` | Set `false` to disable rotation entirely |
 | `TLS_ROTATION_THRESHOLD` | `30d` | Override the pre-rotation window (e.g. `60d`) |
+| `TLS_VALID_FOR` | `1y` |  Overrie the certificate validity period (e.g. `2y`) |
+  
 
 Precedence: Katalog YAML > ENV > hard default.
 

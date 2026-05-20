@@ -6,27 +6,6 @@ package note
 // Generated from pkg/note/docs/ — run `make generate-notes` to refresh.
 var BuiltinNotes = []NoteInfo{
 	{
-		Name:        "noteA",
-		Domain:      "_template",
-		Description: "Use this form when two notes share the same description and example. The generator will register both names with the same metadata.",
-		Example:     "# Example demonstrating both noteA and noteB\n# value: \"{{ noteA .spec.field }}\"\n# value: \"{{ noteB .spec.field }}\"\nKeywords: hpa, autoscaler, replicas, scaling, boolean, active\nKeywords: pods, crash, loop, enriched, health, boolean\nKeywords: service, loadbalancer, ip, external, cloud, string",
-		Keywords:    []string{"keyworda", "keywordb", "shared", "multi-note"},
-	},
-	{
-		Name:        "noteB",
-		Domain:      "_template",
-		Description: "Use this form when two notes share the same description and example. The generator will register both names with the same metadata.",
-		Example:     "# Example demonstrating both noteA and noteB\n# value: \"{{ noteA .spec.field }}\"\n# value: \"{{ noteB .spec.field }}\"\nKeywords: hpa, autoscaler, replicas, scaling, boolean, active\nKeywords: pods, crash, loop, enriched, health, boolean\nKeywords: service, loadbalancer, ip, external, cloud, string",
-		Keywords:    []string{"keyworda", "keywordb", "shared", "multi-note"},
-	},
-	{
-		Name:        "noteName",
-		Domain:      "_template",
-		Description: "A concise paragraph describing what the note does. This must be the first non-empty paragraph after the heading — the generator uses it as the description.",
-		Example:     "# Example usage of the note\n# value: \"{{ noteName .spec.field }}\"",
-		Keywords:    []string{"keyword1", "keyword2", "keyword3"},
-	},
-	{
 		Name:        "asList",
 		Domain:      "collections",
 		Description: "Convert input to `[]interface{}`. Accepts native slice, YAML list string, or JSON array string.",
