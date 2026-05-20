@@ -93,6 +93,16 @@ spec:
             - path: hpaAtMax
               value: "{{ hpaAtMax .children.hpa }}"
 
+            # ── HPA condition notes ─────────────────────────────────────────
+            - path: hpaScalingActive
+              value: "{{ hpaScalingActive .children.hpa }}"
+
+            - path: hpaAbleToScale
+              value: "{{ hpaAbleToScale .children.hpa }}"
+
+            - path: hpaScalingLimited
+              value: "{{ hpaScalingLimited .children.hpa }}"
+
             # ── enriched HPA notes (require enrich: [hpa]) ──────────────────
             - path: hpaScaleTargetName
               value: "{{ hpaScaleTargetName .children.hpa }}"

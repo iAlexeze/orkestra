@@ -831,6 +831,48 @@ func ExpandForEachRoleBindings(
 	return result
 }
 
+func ExpandForEachPods(
+	resolver *orktmpl.Resolver,
+	srcs []orktypes.PodTemplateSource,
+) []orktypes.PodTemplateSource {
+	if !anyHasForEach(len(srcs), func(i int) *orktypes.ForEachSpec { return srcs[i].ForEach }) {
+		return srcs
+	}
+	var result []orktypes.PodTemplateSource
+	for _, src := range srcs {
+		if src.ForEach == nil {
+			result = append(result, src)
+			continue
+		}
+		for i, fi := range resolveForEachItems(resolver.Data(), src.ForEach.Field) {
+			ir := itemResolver(resolver, fi, src.ForEach.As, i)
+			expanded := src
+			expanded.ForEach = nil
+			expanded.Name, _ = ir.Resolve(src.Name)
+			expanded.Image, _ = ir.Resolve(src.Image)
+			expanded.Port, _ = ir.Resolve(src.Port)
+			expanded.Namespace, _ = ir.Resolve(src.Namespace)
+
+			if len(src.Labels) > 0 {
+				expanded.Labels = make([]orktypes.ResourceLabel, 0, len(src.Labels))
+				for _, l := range src.Labels {
+					resolvedVal, _ := ir.Resolve(l.Value)
+					expanded.Labels = append(expanded.Labels, orktypes.ResourceLabel{Key: l.Key, Value: resolvedVal})
+				}
+			}
+			if len(src.Annotations) > 0 {
+				expanded.Annotations = make([]orktypes.ResourceLabel, 0, len(src.Annotations))
+				for _, a := range src.Annotations {
+					resolvedVal, _ := ir.Resolve(a.Value)
+					expanded.Annotations = append(expanded.Annotations, orktypes.ResourceLabel{Key: a.Key, Value: resolvedVal})
+				}
+			}
+			result = append(result, expanded)
+		}
+	}
+	return result
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal helpers
 // ─────────────────────────────────────────────────────────────────────────────

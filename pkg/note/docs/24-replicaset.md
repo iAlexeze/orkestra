@@ -10,6 +10,8 @@ ReplicaSet notes navigate owner relationships and the ReplicaSet inventory embed
 
 Returns `_owner.name` — the name of the controller that owns this ReplicaSet (typically a Deployment). Requires `enrich: [owner]`.
 
+Keywords: replicaset, owner, deployment, name, enriched, string, controller
+
 ```yaml
 - path: ownerName
   value: "{{ replicaSetOwnerName .children.replicaset }}"
@@ -21,6 +23,8 @@ Returns `_owner.name` — the name of the controller that owns this ReplicaSet (
 ### `replicaSetOwnerKind`
 
 Returns `_owner.kind` — the kind of the controlling resource. Requires `enrich: [owner]`.
+
+Keywords: replicaset, owner, deployment, kind, enriched, string, controller
 
 ```yaml
 - path: ownerKind
@@ -34,6 +38,8 @@ Returns `_owner.kind` — the kind of the controlling resource. Requires `enrich
 
 Returns the number of ReplicaSets owned by the Deployment, including scaled-to-zero ones kept for rollback. Requires `enrich: [replicasets]`.
 
+Keywords: deployment, replicaset, count, rollback, enriched, int, history
+
 ```yaml
 - path: replicaSetCount
   value: "{{ deploymentReplicaSetCount .children.deployment }}"
@@ -46,22 +52,26 @@ Returns the number of ReplicaSets owned by the Deployment, including scaled-to-z
 
 Returns a list of the names of all ReplicaSets owned by the Deployment, including inactive (scaled‑to‑zero) ones kept for rollback. Requires `enrich: [replicasets]`.
 
+Keywords: deployment, replicaset, names, rollback, enriched, list, history, all
+
 ```yaml
 - path: replicaSetNames
   value: "{{ deploymentReplicaSets .children.deployment }}"
-# → ["my-app-7cb76d588c", "my-app-d9c74fd9b"]
+# → "my-app-7cb76d588c", "my-app-d9c74fd9b"
 ```
 
 ---
 
 ### `oldDeploymentReplicaSets`
 
-Returns a list of the names of “old” ReplicaSets owned by the Deployment — i.e., those whose `pod-template-hash` does **not** match the Deployment’s current template hash. Requires `enrich: [replicasets]`.
+Returns a list of the names of "old" ReplicaSets owned by the Deployment — i.e., those whose `pod-template-hash` does **not** match the Deployment's current template hash. Requires `enrich: [replicasets]`.
+
+Keywords: deployment, replicaset, old, rollback, enriched, list, inactive, stale
 
 ```yaml
 - path: oldReplicaSetNames
   value: "{{ oldDeploymentReplicaSets .children.deployment }}"
-# → ["my-app-7cb76d588c"]
+# → "my-app-7cb76d588c"
 ```
 
 ---

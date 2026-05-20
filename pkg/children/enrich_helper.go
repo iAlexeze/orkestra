@@ -16,17 +16,28 @@ func resolveEnrichmentTarget(s string) string {
 }
 
 // enrichmentEnabled reports whether the CRD has enabled enrichment for the
-// given identifier. The identifier may be a canonical name, plural,
-// shorthand, or alias; it is resolved to the canonical built‑in target
-// before checking CRDEntry.ShouldEnrich.
+// given identifier. Exact match is checked first — this is the common case
+// and handles synthetic keys (owner, backingpods, pvcs, storageclass, etc.)
+// that have no Kubernetes built-in registration.
 //
-// This allows enrichers to call enrichmentEnabled("cronjob") while users may
-// specify any equivalent identifier in spec.enrich (e.g. "cronjobs", "cj",
-// or an alias). All identifiers normalize to the same canonical target.
+// If no exact match, the identifier is resolved to its canonical built-in name
+// and all equivalent identifiers (plural, shorthands, aliases) are checked.
+// This allows users to write "cj" instead of "cronjob" or "hpas" instead of
+// "horizontalpodautoscaler" and still match enrichers that check by canonical.
 func enrichmentEnabled(s string, crd orktypes.CRDEntry) bool {
-	resolved := resolveEnrichmentTarget(s)
-	if resolved == "" || !crd.ShouldEnrich(resolved) {
+	// Fast path — user wrote exactly what the enricher checks (most common case).
+	if crd.ShouldEnrich(s) {
+		return true
+	}
+	// Normalise and check all equivalent identifiers for the canonical target.
+	canonical := resolveEnrichmentTarget(s)
+	if canonical == "" {
 		return false
 	}
-	return true
+	for _, alias := range buildEnrichmentGroups()[canonical] {
+		if crd.ShouldEnrich(alias) {
+			return true
+		}
+	}
+	return false
 }

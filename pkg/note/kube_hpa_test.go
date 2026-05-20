@@ -18,6 +18,18 @@ func makeHPA(current, desired, min, max int64) map[string]interface{} {
 	}
 }
 
+func makeHPAScaling(current, desired, min, max int64) map[string]interface{} {
+	hpa := makeHPA(current, desired, min, max)
+	status := hpa["status"].(map[string]interface{})
+	status["conditions"] = []interface{}{
+		map[string]interface{}{
+			"type":   "ScalingActive",
+			"status": "True",
+		},
+	}
+	return hpa
+}
+
 func TestNoteHPACurrentReplicas(t *testing.T) {
 	tests := []struct {
 		name string
@@ -102,9 +114,10 @@ func TestNoteHPAScaling(t *testing.T) {
 		want bool
 	}{
 		{"nil", nil, false},
-		{"stable current==desired", makeHPA(3, 3, 2, 10), false},
-		{"scaling up current<desired", makeHPA(3, 5, 2, 10), true},
-		{"scaling down current>desired", makeHPA(5, 3, 2, 10), true},
+		{"stable current==desired", makeHPAScaling(3, 3, 2, 10), false},
+		{"scaling up current<desired", makeHPAScaling(3, 5, 2, 10), true},
+		{"scaling down current>desired", makeHPAScaling(5, 3, 2, 10), true},
+		{"metric unknown desiredReplicas=0", makeHPA(1, 0, 1, 10), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

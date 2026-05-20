@@ -86,11 +86,11 @@ func noteDeploymentReplicaSetCount(obj interface{}) int {
 // Deployment. Includes inactive (scaled-to-zero) ReplicaSets kept for rollback.
 // Requires enrich: [replicasets] on the CRD.
 //
-//	{{ deploymentReplicaSets .children.deployment }} → [ "rs-a", "rs-b" ]
-func noteDeploymentReplicaSetNames(obj interface{}) []string {
+//	{{ deploymentReplicaSets .children.deployment }} → "rs-a", "rs-b"
+func noteDeploymentReplicaSetNames(obj interface{}) string {
 	rsList := noteDeploymentReplicaSets(obj)
 	if rsList == nil {
-		return nil
+		return ""
 	}
 
 	out := make([]string, 0, len(rsList))
@@ -103,18 +103,18 @@ func noteDeploymentReplicaSetNames(obj interface{}) []string {
 		}
 	}
 
-	return out
+	return join(out, ", ")
 }
 
 // noteDeploymentOldReplicaSetNames returns the names of old ReplicaSets owned
 // by the Deployment. Requires enrich: [replicasets].
 // Requires enrich: [replicasets] on the CRD.
 //
-//	{{ oldDeploymentReplicaSets .children.deployment }}  → → [ "rs-a", "rs-b" ]
-func noteDeploymentOldReplicaSetNames(obj interface{}) []string {
+//	{{ oldDeploymentReplicaSets .children.deployment }}  → "rs-a", "rs-b"
+func noteDeploymentOldReplicaSetNames(obj interface{}) string {
 	old := noteDeploymentOldReplicaSets(obj)
 	if old == nil {
-		return nil
+		return ""
 	}
 
 	out := make([]string, 0, len(old))
@@ -127,7 +127,7 @@ func noteDeploymentOldReplicaSetNames(obj interface{}) []string {
 		}
 	}
 
-	return out
+	return join(out, ", ")
 }
 
 // noteDeploymentReplicaSets returns the list of ReplicaSets owned by the

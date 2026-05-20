@@ -211,6 +211,10 @@ func (r *GenericReconciler[PTR]) runResourceGroup(
 		children.ExpandForEachPDBs(resolver, t.PodDisruptionBudgets), update, guard); err != nil {
 		return err
 	}
+	if err := runPods(ctx, kube, resolver, obj,
+		children.ExpandForEachPods(resolver, t.Pods), update, guard); err != nil {
+		return err
+	}
 	return nil
 }
 

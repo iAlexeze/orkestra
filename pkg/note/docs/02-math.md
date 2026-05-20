@@ -18,6 +18,8 @@ spec:
 
 Add two numbers. Returns `int64` when the result is whole, `float64` otherwise.
 
+Keywords: math, arithmetic, add, sum, number, plus
+
 ```yaml
 # value: "{{ add .spec.basePort 1000 }}"
 # basePort=8080 → 9080
@@ -28,6 +30,8 @@ Add two numbers. Returns `int64` when the result is whole, `float64` otherwise.
 ### `sub`
 
 Subtract the second number from the first.
+
+Keywords: math, arithmetic, subtract, difference, minus, number
 
 ```yaml
 # value: "{{ sub .spec.replicas 1 }}"
@@ -40,6 +44,8 @@ Subtract the second number from the first.
 
 Multiply two numbers.
 
+Keywords: math, arithmetic, multiply, product, times, number
+
 ```yaml
 # value: "{{ mul .spec.replicas 2 }}"
 # replicas=3 → 6
@@ -50,6 +56,8 @@ Multiply two numbers.
 ### `div`
 
 Divide the first number by the second. Returns an error on division by zero.
+
+Keywords: math, arithmetic, divide, quotient, number, ratio
 
 ```yaml
 # value: "{{ div .spec.totalWorkers 4 }}"
@@ -62,6 +70,8 @@ Divide the first number by the second. Returns an error on division by zero.
 
 Integer modulo. Returns `int64`.
 
+Keywords: math, arithmetic, modulo, remainder, integer, modulus
+
 ```yaml
 # value: "{{ mod .spec.port 100 }}"
 # port=8080 → 80
@@ -72,6 +82,8 @@ Integer modulo. Returns `int64`.
 ### `min`
 
 Return the smaller of two numbers. Use to cap a value at an upper bound.
+
+Keywords: math, minimum, clamp, cap, bound, number
 
 ```yaml
 # Cap replicas at 10
@@ -86,6 +98,8 @@ Return the smaller of two numbers. Use to cap a value at an upper bound.
 
 Return the larger of two numbers. Use to enforce a minimum floor.
 
+Keywords: math, maximum, clamp, floor, bound, number
+
 ```yaml
 # Ensure at least 2 replicas
 # value: "{{ max .spec.replicas 2 }}"
@@ -98,6 +112,8 @@ Return the larger of two numbers. Use to enforce a minimum floor.
 ### `clamp`
 
 Constrain a value to the range `[lo, hi]`. Equivalent to `max(lo, min(hi, val))`.
+
+Keywords: math, clamp, range, bounds, constrain, number, limit
 
 ```yaml
 # value: "{{ clamp .spec.replicas 1 20 }}"
@@ -113,6 +129,8 @@ Useful in mutation rules to enforce business limits without a deny action.
 ### `abs`
 
 Return the absolute value of a number.
+
+Keywords: math, absolute, positive, number
 
 ```yaml
 # value: "{{ abs .spec.offsetSeconds }}"

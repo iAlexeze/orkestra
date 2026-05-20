@@ -4,7 +4,7 @@ metadata:
   name: my-probe
   namespace: default
 spec:
-  image: nginx:latest
+  image: nginx:1.25xx
   replicas: 1
   minReplicas: 1
   maxReplicas: 3

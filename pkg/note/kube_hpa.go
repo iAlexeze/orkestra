@@ -26,6 +26,10 @@ func hpaNotes() template.FuncMap {
 		"hpaMaxReplicas":     noteHPAMaxReplicas,
 		"hpaScaling":         noteHPAScaling,
 		"hpaAtMax":           noteHPAAtMax,
+		// HPA condition notes — read from status.conditions.
+		"hpaScalingActive":  noteHPAScalingActive,
+		"hpaAbleToScale":    noteHPAAbleToScale,
+		"hpaScalingLimited": noteHPAScalingLimited,
 		// Enriched scale-target notes — require enrich: [hpa] on the CRD.
 		"hpaScaleTargetName": noteHPAScaleTargetName,
 		"hpaScaleTargetKind": noteHPAScaleTargetKind,
@@ -86,11 +90,16 @@ func noteHPAMaxReplicas(obj interface{}) int64 {
 	return toInt64(spec["maxReplicas"])
 }
 
-// noteHPAScaling returns true when the HPA is actively scaling
-// (currentReplicas != desiredReplicas).
+// noteHPAScaling returns true when the HPA has a valid metric target and
+// currentReplicas differs from desiredReplicas — a real scale-out or scale-in
+// is in progress. Returns false when the metric is unknown (ScalingActive=False),
+// which would otherwise produce a misleading true due to desiredReplicas=0.
 //
 //	{{ hpaScaling .children.hpa }}
 func noteHPAScaling(obj interface{}) bool {
+	if !noteHPAScalingActive(obj) {
+		return false
+	}
 	return noteHPACurrentReplicas(obj) != noteHPADesiredReplicas(obj)
 }
 
@@ -104,6 +113,33 @@ func noteHPAAtMax(obj interface{}) bool {
 		return false
 	}
 	return noteHPACurrentReplicas(obj) >= max
+}
+
+// ── HPA condition notes ───────────────────────────────────────────────────────
+
+// noteHPAScalingActive returns true when the ScalingActive condition is True —
+// meaning the HPA can read its metric and is allowed to scale.
+// False when the metric source is unknown or the HPA is disabled.
+//
+//	{{ hpaScalingActive .children.hpa }}
+func noteHPAScalingActive(obj interface{}) bool {
+	return noteHasCondition(obj, "ScalingActive")
+}
+
+// noteHPAAbleToScale returns true when the AbleToScale condition is True —
+// meaning the scale target exists and is reachable.
+//
+//	{{ hpaAbleToScale .children.hpa }}
+func noteHPAAbleToScale(obj interface{}) bool {
+	return noteHasCondition(obj, "AbleToScale")
+}
+
+// noteHPAScalingLimited returns true when the ScalingLimited condition is True —
+// meaning the desired replica count was clamped by min or max bounds.
+//
+//	{{ hpaScalingLimited .children.hpa }}
+func noteHPAScalingLimited(obj interface{}) bool {
+	return noteHasCondition(obj, "ScalingLimited")
 }
 
 // ── Enriched HPA notes ────────────────────────────────────────────────────────

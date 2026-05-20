@@ -17,6 +17,7 @@ The reconciliation engine. Watches Kubernetes resources, runs operatorBox logic,
 | `pkg/katalog` | Loads, merges, and validates the Katalog. The link between YAML config and every runtime decision. |
 | `pkg/reconciler` | `GenericReconciler` — the reconcile loop, rollback gate, snapshot logic, notification dispatch. |
 | `pkg/kordinator` | Orchestrates reconcilers per CRD; manages CRD health, degradation, and dependency ordering. |
+| `pkg/children` | Fetches and enriches child resources (`_pods`, `_replicaSets`, `_owner`, etc.) and builds the `.children` map available in status templates. |
 | `pkg/informer` | Shared index informers and factory lifecycle. |
 | `pkg/kubeclient` | Core, dynamic, and apiextensions clients; REST mapper. |
 | `pkg/orkestra-registry` | Built-in resource handlers: deployments, services, configMaps, jobs, etc. |
@@ -65,7 +66,7 @@ These are imported by more than one binary.
 | `pkg/plan` | Plan/diff logic for operatorBox reconciliation. |
 | `pkg/registry` | Runtime-level type and hook registries. |
 | `pkg/simulate` | Test harness for reconciler unit tests. |
-| `pkg/note` | Operator annotations and condition helpers. |
+| `pkg/note` | Template note functions — Go helpers exposed as template variables so operators can surface replica counts, pod health, scaling state, and more in status fields without writing code. Every new note makes Orkestra more declarative. |
 | `pkg/notification` | Notification stack, throttle state, `DirectNotifier`, `GatewayNotifier`. |
 
 ---

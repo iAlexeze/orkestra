@@ -10,6 +10,8 @@ Service notes surface networking details from Service and Endpoints objects — 
 
 Return `spec.clusterIP`. Returns `""` before the IP is assigned or when the Service is absent.
 
+Keywords: service, networking, cluster, ip, address, internal
+
 ```yaml
 # value: "{{ serviceClusterIP .children.service }}"  → "10.96.0.1"
 
@@ -24,6 +26,8 @@ Return `spec.clusterIP`. Returns `""` before the IP is assigned or when the Serv
 
 Return the `nodePort` of the first Service port. Returns `0` before the port is assigned.
 
+Keywords: service, networking, nodeport, port, int, external
+
 ```yaml
 # value: "{{ serviceNodePort .children.service }}"  → 31234
 ```
@@ -33,6 +37,8 @@ Return the `nodePort` of the first Service port. Returns `0` before the port is 
 ### `serviceLoadBalancerIP`
 
 Return the external IP assigned by the load balancer (`status.loadBalancer.ingress[0].ip`). Returns `""` while provisioning — cloud LB provisioning typically takes 30–90 seconds.
+
+Keywords: service, networking, loadbalancer, ip, external, cloud, provisioning
 
 ```yaml
 # value: "{{ serviceLoadBalancerIP .children.service }}"  → "34.123.45.67"
@@ -49,6 +55,8 @@ when:
 
 Return the hostname assigned by the load balancer (`status.loadBalancer.ingress[0].hostname`). Cloud providers (AWS, GCP) typically assign a hostname rather than an IP.
 
+Keywords: service, networking, loadbalancer, hostname, external, cloud, aws, gcp
+
 ```yaml
 # value: "{{ serviceLoadBalancerHost .children.service }}"
 # → "abc123.us-east-1.elb.amazonaws.com"
@@ -63,6 +71,8 @@ Return the hostname assigned by the load balancer (`status.loadBalancer.ingress[
 ### `endpointsReady`
 
 Return `true` when the Endpoints resource for a Service has at least one ready address. Reads from the Endpoints object, not the Service itself.
+
+Keywords: service, endpoints, ready, boolean, networking, traffic
 
 ```yaml
 # Gate Ingress creation on actual backend availability:
@@ -83,6 +93,8 @@ Require `enrich: [endpoints]` on the CRD.
 
 Return `true` when at least one ready endpoint exists in `_endpoints`.
 
+Keywords: service, endpoints, ready, boolean, enriched, traffic, networking
+
 ```yaml
 when:
   - field: "{{ hasEndpoints .children.service }}"
@@ -94,6 +106,8 @@ when:
 ### `serviceEndpoints`
 
 Return all endpoints as a comma-separated `ip:port` list.
+
+Keywords: service, endpoints, list, ip, port, enriched, networking, addresses
 
 ```yaml
 - path: endpoints
@@ -107,6 +121,8 @@ Return all endpoints as a comma-separated `ip:port` list.
 
 Return the total number of endpoints as `int`.
 
+Keywords: service, endpoints, count, int, enriched, networking
+
 ```yaml
 - path: endpointCount
   value: "{{ serviceEndpointCount .children.service }}"
@@ -118,6 +134,8 @@ Return the total number of endpoints as `int`.
 ### `serviceFirstEndpoint`
 
 Return the first endpoint as `ip:port`. Returns `""` when no endpoints exist.
+
+Keywords: service, endpoints, first, ip, port, enriched, networking, primary
 
 ```yaml
 - path: primaryEndpoint
@@ -135,6 +153,8 @@ Require `enrich: [backingpods]` on the CRD. The enrichment layer selects pods ma
 
 Return the number of pods selected by the Service's label selector.
 
+Keywords: service, pods, selector, count, enriched, networking, backing
+
 ```yaml
 - path: backingPods
   value: "{{ backingPodCount .children.service }}"
@@ -146,6 +166,8 @@ Return the number of pods selected by the Service's label selector.
 ### `backingPodNames`
 
 Return a comma-separated list of pod names selected by the Service.
+
+Keywords: service, pods, selector, names, enriched, networking, backing
 
 ```yaml
 - path: backingPodNames

@@ -54,7 +54,7 @@ type BuiltInKind struct {
 
 	// ── Context Enrichment for the Resolver ────────────────────────────────────
 	ContextEnrichmentTarget bool     // ContextEnrichmentTarget marks resources that support context enrichment
-	Aliases                 []string // alternative names usable as enrichment targets
+	EnrichKeys              []string // enrichment keys this resource responds to as a data provider
 
 }
 
@@ -89,7 +89,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Namespaced: true, APIPath: "/api",
 		ContextEnrichmentTarget: true,
 		Shorthands:              []string{"svc"},
-		Aliases:                 []string{"backingpods"},
+		EnrichKeys:              []string{"backingpods"},
 		SkipObservedGeneration:  true, IsChild: true, OrkestraInternal: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.ServiceTemplateSource { return t.Services })
@@ -139,7 +139,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Kind: "PersistentVolumeClaim", Group: "", Version: "v1", Plural: "persistentvolumeclaims",
 		Namespaced: true, APIPath: "/api",
 		SkipObservedGeneration:  true,
-		Shorthands:              []string{"pvc"},
+		Shorthands:              []string{"pvc", "pvcs", "pvclaim"},
 		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.PVCTemplateSource { return t.PersistentVolumeClaims })
@@ -150,7 +150,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Kind: "PersistentVolume", Group: "", Version: "v1", Plural: "persistentvolumes",
 		Namespaced: false, APIPath: "/api",
 		SkipObservedGeneration:  true,
-		Shorthands:              []string{"pv"},
+		Shorthands:              []string{"pv", "pvs"},
 		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.PVTemplateSource { return t.PersistentVolumes })
@@ -162,7 +162,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Namespaced: true, APIPath: "/api",
 		Shorthands:              []string{"ev"},
 		ContextEnrichmentTarget: true,
-		Aliases:                 []string{"warnings"},
+		EnrichKeys:              []string{"warnings"},
 		Statusless:              true, SkipStatusSubresource: true,
 	},
 
@@ -207,6 +207,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Namespaced: true, APIPath: "/apis",
 		IsChild: true, OrkestraInternal: true,
 		Shorthands:              []string{"deploy", "dep"},
+		EnrichKeys:              []string{"replicasets"},
 		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.DeploymentTemplateSource { return t.Deployments })
@@ -217,6 +218,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Kind: "StatefulSet", Group: "apps", Version: "v1", Plural: "statefulsets",
 		Namespaced: true, APIPath: "/apis",
 		Shorthands:              []string{"sts"},
+		EnrichKeys:              []string{"pvcs"},
 		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.StatefulSetTemplateSource { return t.StatefulSets })
@@ -236,6 +238,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Kind: "ReplicaSet", Group: "apps", Version: "v1", Plural: "replicasets",
 		Namespaced: true, APIPath: "/apis",
 		Shorthands:              []string{"rs"},
+		EnrichKeys:              []string{"owner"},
 		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.ReplicaSetTemplateSource { return t.ReplicaSets })
@@ -431,7 +434,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		SkipObservedGeneration:  true,
 		Shorthands:              []string{"ep"},
 		ContextEnrichmentTarget: true,
-		Aliases:                 []string{"endpoints"},
+		EnrichKeys:              []string{"endpoints"},
 	},
 
 	// ── coordination.k8s.io/v1 ───────────────────────────────────────────────

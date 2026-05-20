@@ -148,7 +148,7 @@ func buildEnrichmentGroups() map[string][]string {
 		}
 
 		// aliases (synthetic enrichers)
-		for _, a := range b.Aliases {
+		for _, a := range b.EnrichKeys {
 			list = append(list, a)
 		}
 
@@ -186,11 +186,6 @@ func IsValidEnrichmentTarget(name string) bool {
 	name = strings.ToLower(name)
 	if name == "" {
 		return false
-	}
-
-	// Special case
-	if name == "owner" {
-		return true
 	}
 
 	for _, list := range buildEnrichmentGroups() {

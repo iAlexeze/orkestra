@@ -85,3 +85,11 @@ func strTruncate(s string, n int) string {
 	}
 	return s[:n-3] + "..."
 }
+
+// helper
+// join concatenates the elements of a slice into a single string,
+// separated by the provided separator.
+// placed here to be reused across all notes
+func join(slice []string, sep string) string {
+	return strings.Join(slice, sep)
+}

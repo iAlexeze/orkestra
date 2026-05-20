@@ -10,6 +10,8 @@ PVC notes read PersistentVolumeClaim phase, capacity, storage class, and access 
 
 Returns `true` when `status.phase == "Bound"`.
 
+Keywords: pvc, storage, bound, phase, boolean, ready, volume
+
 ```yaml
 when:
   - field: "{{ pvcBound .children.pvc }}"
@@ -21,6 +23,8 @@ when:
 ### `pvcPhase`
 
 Returns `status.phase` — `"Bound"`, `"Pending"`, `"Released"`, or `"Lost"`.
+
+Keywords: pvc, storage, phase, status, string, lifecycle, volume
 
 ```yaml
 - path: pvcPhase
@@ -34,6 +38,8 @@ Returns `status.phase` — `"Bound"`, `"Pending"`, `"Released"`, or `"Lost"`.
 
 Returns `spec.resources.requests.storage`.
 
+Keywords: pvc, storage, capacity, size, string, volume, request
+
 ```yaml
 - path: capacity
   value: "{{ pvcCapacity .children.pvc }}"
@@ -45,6 +51,8 @@ Returns `spec.resources.requests.storage`.
 ### `pvcStorageClass`
 
 Returns `spec.storageClassName`, or `""` when not set (cluster default applies).
+
+Keywords: pvc, storage, class, string, provisioner, volume
 
 ```yaml
 - path: storageClass
@@ -58,6 +66,8 @@ Returns `spec.storageClassName`, or `""` when not set (cluster default applies).
 
 Returns a comma-separated list of `spec.accessModes`.
 
+Keywords: pvc, storage, access, modes, list, string, readwriteonce, readonlymany
+
 ```yaml
 - path: accessModes
   value: "{{ pvcAccessModes .children.pvc }}"
@@ -69,6 +79,8 @@ Returns a comma-separated list of `spec.accessModes`.
 ### `pvcProvisioner`
 
 Returns the provisioner annotation from the bound PV (`pv.kubernetes.io/provisioned-by`). Requires `enrich: [pvc]`.
+
+Keywords: pvc, storage, pv, provisioner, enriched, string, csi, ebs
 
 ```yaml
 - path: provisioner
@@ -82,6 +94,8 @@ Returns the provisioner annotation from the bound PV (`pv.kubernetes.io/provisio
 
 Returns the `volumeMode` of the bound PV — `"Filesystem"` or `"Block"`. Requires `enrich: [pvc]`.
 
+Keywords: pvc, storage, pv, volume, mode, enriched, string, filesystem, block
+
 ```yaml
 - path: volumeMode
   value: "{{ pvcVolumeMode .children.pvc }}"
@@ -94,6 +108,8 @@ Returns the `volumeMode` of the bound PV — `"Filesystem"` or `"Block"`. Requir
 
 Returns `_storageClass.provisioner` — the provisioner declared on the StorageClass itself. Requires `enrich: [storageclass]`.
 
+Keywords: pvc, storage, class, provisioner, enriched, string, csi
+
 ```yaml
 - path: scProvisioner
   value: "{{ pvcStorageClassProvisioner .children.pvc }}"
@@ -105,6 +121,8 @@ Returns `_storageClass.provisioner` — the provisioner declared on the StorageC
 ### `pvcStorageClassReclaimPolicy`
 
 Returns `_storageClass.spec.reclaimPolicy` — `"Delete"` or `"Retain"`. Requires `enrich: [storageclass]`.
+
+Keywords: pvc, storage, class, reclaim, policy, enriched, string, delete, retain
 
 ```yaml
 - path: reclaimPolicy

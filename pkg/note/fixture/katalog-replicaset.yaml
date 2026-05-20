@@ -26,6 +26,7 @@ spec:
       enrich:
         - owner
         - replicasets
+        - events
 
       operatorBox:
         onCreate:
@@ -54,12 +55,26 @@ spec:
             # ── enriched deployment replicasets notes ───────────────────────
             - path: replicaSetCount
               value: "{{ deploymentReplicaSetCount .children.deployment }}"
-            - path: replicaSetOwnerName
-              value: "{{ replicaSetOwnerName .children.deployment }}"
-            - path: replicaSetOwnerKind
-              value: "{{ replicaSetOwnerKind .children.deployment }}"
             - path: deploymentReplicaSets
               value: "{{ deploymentReplicaSets .children.deployment }}"
             - path: oldDeploymentReplicaSets
               value: "{{ oldDeploymentReplicaSets .children.deployment }}"
+
+            # ── enriched replicaset owner notes (via synthesized .children.replicaset)
+            - path: replicaSetOwnerName
+              value: "{{ replicaSetOwnerName .children.replicaset }}"
+            - path: replicaSetOwnerKind
+              value: "{{ replicaSetOwnerKind .children.replicaset }}"
+
+            # ── warning notes (require enrich: [events]) ────────────────────
+            - path: hasWarnings
+              value: "{{ hasWarnings .children.deployment }}"
+            - path: warningCount
+              value: "{{ warningCount .children.deployment }}"
+            - path: firstWarning
+              value: "{{ firstWarning .children.deployment }}"
+            - path: warningMessages
+              value: "{{ warningMessages .children.deployment }}"
+            - path: warningReasons
+              value: "{{ warningReasons .children.deployment }}"
             

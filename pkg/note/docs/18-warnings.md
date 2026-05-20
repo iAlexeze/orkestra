@@ -10,6 +10,8 @@ Warning event notes navigate the `_warnings` enrichment embedded by the enrichme
 
 Returns `true` when `_warnings` contains at least one event.
 
+Keywords: events, warnings, kubernetes, boolean, enriched, alert, health
+
 ```yaml
 when:
   - field: "{{ hasWarnings .children.deployment }}"
@@ -21,6 +23,8 @@ when:
 ### `warningCount`
 
 Returns the number of warning events as `int`.
+
+Keywords: events, warnings, count, int, enriched, total
 
 ```yaml
 - path: warningCount
@@ -34,6 +38,8 @@ Returns the number of warning events as `int`.
 
 Returns the message of the first warning event, or `""` when there are no warnings.
 
+Keywords: events, warnings, message, string, enriched, first, alert
+
 ```yaml
 - path: lastWarning
   value: "{{ firstWarning .children.deployment }}"
@@ -46,6 +52,8 @@ Returns the message of the first warning event, or `""` when there are no warnin
 
 Returns a comma-separated list of all warning messages.
 
+Keywords: events, warnings, messages, list, enriched, string, all
+
 ```yaml
 - path: warningMessages
   value: "{{ warningMessages .children.deployment }}"
@@ -57,6 +65,8 @@ Returns a comma-separated list of all warning messages.
 ### `warningReasons`
 
 Returns a comma-separated list of all warning reasons (de-duplicated).
+
+Keywords: events, warnings, reasons, list, enriched, string, deduplicated
 
 ```yaml
 - path: warningReasons

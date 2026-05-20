@@ -10,6 +10,8 @@ Ingress notes surface routing rules, TLS configuration, and load-balancer assign
 
 Returns `true` when at least one load-balancer entry has been assigned — either an IP or hostname.
 
+Keywords: ingress, networking, loadbalancer, ready, boolean, provisioned, assigned
+
 ```yaml
 when:
   - field: "{{ ingressReady .children.ingress }}"
@@ -21,6 +23,8 @@ when:
 ### `ingressIP`
 
 Returns `status.loadBalancer.ingress[0].ip`, or `""` while the LB is provisioning.
+
+Keywords: ingress, networking, loadbalancer, ip, address, external, string
 
 ```yaml
 - path: externalIP
@@ -34,6 +38,8 @@ Returns `status.loadBalancer.ingress[0].ip`, or `""` while the LB is provisionin
 
 Returns `status.loadBalancer.ingress[0].hostname` — cloud providers such as AWS ALB and GCP assign a hostname rather than an IP.
 
+Keywords: ingress, networking, loadbalancer, hostname, external, cloud, aws, gcp, string
+
 ```yaml
 - path: externalHost
   value: "{{ ingressHost .children.ingress }}"
@@ -45,6 +51,8 @@ Returns `status.loadBalancer.ingress[0].hostname` — cloud providers such as AW
 ### `ingressClassName`
 
 Returns `spec.ingressClassName`, or `""` when not set.
+
+Keywords: ingress, networking, class, string, controller, nginx, traefik
 
 ```yaml
 - path: ingressClass
@@ -58,6 +66,8 @@ Returns `spec.ingressClassName`, or `""` when not set.
 
 Returns a comma-separated list of hostnames from `spec.rules`; empty-host catch-all rules are omitted.
 
+Keywords: ingress, networking, rules, hosts, routing, string, list
+
 ```yaml
 - path: hosts
   value: "{{ ingressRules .children.ingress }}"
@@ -69,6 +79,8 @@ Returns a comma-separated list of hostnames from `spec.rules`; empty-host catch-
 ### `ingressTLSHosts`
 
 Returns a comma-separated list of TLS hostnames from `spec.tls`.
+
+Keywords: ingress, networking, tls, hosts, ssl, string, list, https
 
 ```yaml
 - path: tlsHosts
@@ -82,6 +94,8 @@ Returns a comma-separated list of TLS hostnames from `spec.tls`.
 
 Returns a comma-joined list of all IPs and hostnames from `_loadBalancerIPs`. Requires `enrich: [ingress]`.
 
+Keywords: ingress, networking, loadbalancer, addresses, enriched, string, list
+
 ```yaml
 - path: lbAddresses
   value: "{{ ingressLoadBalancerIPs .children.ingress }}"
@@ -93,6 +107,8 @@ Returns a comma-joined list of all IPs and hostnames from `_loadBalancerIPs`. Re
 ### `ingressTLSSecretCount`
 
 Returns the number of TLS secrets fetched into `_tlsSecrets`. Requires `enrich: [ingress]`.
+
+Keywords: ingress, networking, tls, secrets, count, enriched, int, ssl
 
 ```yaml
 - path: tlsSecretCount

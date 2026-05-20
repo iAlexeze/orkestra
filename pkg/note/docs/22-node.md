@@ -10,6 +10,8 @@ Node notes read Node resource state directly (for operators that manage Nodes as
 
 Returns `true` when the Node's Ready condition status is `"True"`.
 
+Keywords: node, kubernetes, ready, condition, boolean, health, cluster
+
 ```yaml
 when:
   - field: "{{ nodeReady .children.node }}"
@@ -21,6 +23,8 @@ when:
 ### `nodeAllocatableCPU`
 
 Returns `status.allocatable.cpu`.
+
+Keywords: node, kubernetes, cpu, allocatable, resource, capacity, string
 
 ```yaml
 - path: allocatableCPU
@@ -34,6 +38,8 @@ Returns `status.allocatable.cpu`.
 
 Returns `status.allocatable.memory`.
 
+Keywords: node, kubernetes, memory, allocatable, resource, capacity, string
+
 ```yaml
 - path: allocatableMemory
   value: "{{ nodeAllocatableMemory .children.node }}"
@@ -45,6 +51,8 @@ Returns `status.allocatable.memory`.
 ### `nodeCondition`
 
 Returns the `status` string of the named node condition, or `""` when absent — common types are `Ready`, `MemoryPressure`, and `DiskPressure`.
+
+Keywords: node, kubernetes, condition, status, string, pressure, health
 
 ```yaml
 - path: memoryPressure
@@ -58,6 +66,8 @@ Returns the `status` string of the named node condition, or `""` when absent —
 
 Returns a comma-separated list of taint keys on the node, or `""` when no taints are present.
 
+Keywords: node, kubernetes, taints, scheduling, string, toleration, placement
+
 ```yaml
 - path: taints
   value: "{{ nodeTaints .children.node }}"
@@ -69,6 +79,8 @@ Returns a comma-separated list of taint keys on the node, or `""` when no taints
 ### `podNodeName`
 
 Returns `_node.name` — the name of the node the Pod is scheduled on. Requires `enrich: [node]` on Pod children.
+
+Keywords: node, pod, topology, name, enriched, string, scheduled, placement
 
 ```yaml
 - path: nodeName
@@ -82,6 +94,8 @@ Returns `_node.name` — the name of the node the Pod is scheduled on. Requires 
 
 Returns `_node.zone` derived from the `topology.kubernetes.io/zone` label. Requires `enrich: [node]`.
 
+Keywords: node, pod, topology, zone, enriched, string, availability, region
+
 ```yaml
 - path: zone
   value: "{{ podNodeZone .children.pod }}"
@@ -94,6 +108,8 @@ Returns `_node.zone` derived from the `topology.kubernetes.io/zone` label. Requi
 
 Returns `_node.region` derived from the `topology.kubernetes.io/region` label. Requires `enrich: [node]`.
 
+Keywords: node, pod, topology, region, enriched, string, cloud, geo
+
 ```yaml
 - path: region
   value: "{{ podNodeRegion .children.pod }}"
@@ -105,6 +121,8 @@ Returns `_node.region` derived from the `topology.kubernetes.io/region` label. R
 ### `podNodeInstanceType`
 
 Returns `_node.instanceType` derived from the `node.kubernetes.io/instance-type` label. Requires `enrich: [node]`.
+
+Keywords: node, pod, topology, instance, enriched, string, cloud, type, ec2
 
 ```yaml
 - path: instanceType

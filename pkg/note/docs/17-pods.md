@@ -23,6 +23,8 @@ Without enrichment, `_pods` is absent and all pod notes return their zero values
 
 Return a comma-separated string of pod names owned by the enriched resource.
 
+Keywords: pods, names, list, enriched, deployment, statefulset, string
+
 ```yaml
 status:
   fields:
@@ -37,6 +39,8 @@ status:
 
 Return a comma-separated string of pod IP addresses. Returns `""` while pods are pending (IPs not yet assigned).
 
+Keywords: pods, ip, list, enriched, address, network, string
+
 ```yaml
 - path: podIPs
   value: "{{ podIPs .children.statefulset }}"
@@ -48,6 +52,8 @@ Return a comma-separated string of pod IP addresses. Returns `""` while pods are
 ### `podPhases`
 
 Return a comma-separated string of pod phases in order. Useful for surfacing the phase distribution of a multi-replica Deployment or StatefulSet.
+
+Keywords: pods, phase, list, enriched, status, lifecycle, string
 
 ```yaml
 - path: podPhases
@@ -61,6 +67,8 @@ Return a comma-separated string of pod phases in order. Useful for surfacing the
 
 Return a comma-separated list of node names the pods are scheduled on. Returns `""` while pods are Pending (not yet assigned to a node).
 
+Keywords: pods, node, list, enriched, scheduled, placement, string
+
 ```yaml
 - path: podNodes
   value: "{{ podNodes .children.deployment }}"
@@ -72,6 +80,8 @@ Return a comma-separated list of node names the pods are scheduled on. Returns `
 ### `podCount`
 
 Return the total number of pods as `int`.
+
+Keywords: pods, count, int, enriched, total, size
 
 ```yaml
 - path: podCount
@@ -85,6 +95,8 @@ Return the total number of pods as `int`.
 
 Return the number of pods whose `Ready` condition is `True`.
 
+Keywords: pods, ready, count, int, enriched, health
+
 ```yaml
 - path: readyPods
   value: "{{ readyPodCount .children.deployment }}"
@@ -97,6 +109,8 @@ Return the number of pods whose `Ready` condition is `True`.
 
 Return the highest restart count across all pods as `int64`. Zero when no pods are present or none have restarted. Pairs with `hasCrashingPod` for full crash-loop visibility.
 
+Keywords: pods, restart, count, crash, enriched, int, max
+
 ```yaml
 - path: maxRestarts
   value: "{{ podMaxRestarts .children.deployment }}"
@@ -108,6 +122,8 @@ Return the highest restart count across all pods as `int64`. Zero when no pods a
 ### `hasCrashingPod`
 
 Return `true` when any pod has restarted more than twice — the first declarative signal of a crash loop.
+
+Keywords: pods, crash, restart, boolean, enriched, loop, health
 
 ```yaml
 when:
@@ -128,6 +144,8 @@ status:
 
 Return the pod summary map at the given ordinal index. Designed for StatefulSets whose pods are named `<name>-0`, `<name>-1`, etc. Returns `nil` when no pod with that ordinal exists.
 
+Keywords: pods, statefulset, ordinal, index, enriched, primary, member
+
 ```yaml
 # Surface the primary StatefulSet member:
 - path: primaryPod
@@ -145,6 +163,8 @@ Return the pod summary map at the given ordinal index. Designed for StatefulSets
 
 Return `true` when any container across any pod is in `CrashLoopBackOff`. More precise than `hasCrashingPod`, which only checks restart count.
 
+Keywords: pods, crash, loop, boolean, enriched, crashloopbackoff, health, container
+
 ```yaml
 - path: crashLoop
   value: "{{ podCrashLoopDetected .children.deployment }}"
@@ -152,9 +172,128 @@ Return `true` when any container across any pod is in `CrashLoopBackOff`. More p
 
 ---
 
+### `podImagePullBackOffDetected`
+
+Return `true` when any container across any pod has reason `ImagePullBackOff` (image could not be pulled due to authentication, network, or missing image).
+
+Keywords: pods, image, pull, error, boolean, enriched, imagepullbackoff, registry
+
+```yaml
+- path: imagePullBackOff
+  value: "{{ podImagePullBackOffDetected .children.deployment }}"
+```
+
+---
+
+### `podErrImagePullDetected`
+
+Return `true` when any container has reason `ErrImagePull` (a transient image pull failure, usually preceding `ImagePullBackOff`).
+
+Keywords: pods, image, pull, error, boolean, enriched, errimagepull, transient
+
+```yaml
+- path: errImagePull
+  value: "{{ podErrImagePullDetected .children.deployment }}"
+```
+
+---
+
+### `podErrorDetected`
+
+Return `true` when any container has reason `Error` (the container process exited with a non‑zero code or was terminated by the system).
+
+Keywords: pods, error, exit, boolean, enriched, container, failed
+
+```yaml
+- path: containerError
+  value: "{{ podErrorDetected .children.deployment }}"
+```
+
+---
+
+### `podOOMKilledDetected`
+
+Return `true` when any container has reason `OOMKilled` (the container was terminated because it exhausted its memory limit).
+
+Keywords: pods, oom, memory, killed, boolean, enriched, oomkilled, limit
+
+```yaml
+- path: oomKilled
+  value: "{{ podOOMKilledDetected .children.deployment }}"
+```
+
+---
+
+### `podRunContainerErrorDetected`
+
+Return `true` when any container across any pod has reason `RunContainerError` (container failed to start, e.g., misconfigured command or missing binary).
+
+Keywords: pods, container, error, start, enriched, runcontainererror, boolean
+
+```yaml
+- path: runContainerError
+  value: "{{ podRunContainerErrorDetected .children.deployment }}"
+```
+
+---
+
+### `podCreateContainerErrorDetected`
+
+Return `true` when any container has reason `CreateContainerError` (container creation failed, typically due to volume mount issues or resource constraints).
+
+Keywords: pods, container, error, create, enriched, createcontainererror, volume, boolean
+
+```yaml
+- path: createContainerError
+  value: "{{ podCreateContainerErrorDetected .children.deployment }}"
+```
+
+---
+
+### `podInvalidImageNameDetected`
+
+Return `true` when any container has reason `InvalidImageName` (the image name could not be parsed by the container runtime).
+
+Keywords: pods, image, name, invalid, enriched, invalidimagename, boolean, registry
+
+```yaml
+- path: invalidImageName
+  value: "{{ podInvalidImageNameDetected .children.deployment }}"
+```
+
+---
+
+### `podPreStartHookErrorDetected`
+
+Return `true` when any container has reason `PreStartHookError` (the pre‑start lifecycle hook failed).
+
+Keywords: pods, hook, lifecycle, error, enriched, prestarthookerror, boolean
+
+```yaml
+- path: preStartHookError
+  value: "{{ podPreStartHookErrorDetected .children.deployment }}"
+```
+
+---
+
+### `podPostStartHookErrorDetected`
+
+Return `true` when any container has reason `PostStartHookError` (the post‑start lifecycle hook failed).
+
+Keywords: pods, hook, lifecycle, error, enriched, poststarthookerror, boolean
+
+```yaml
+- path: postStartHookError
+  value: "{{ podPostStartHookErrorDetected .children.deployment }}"
+```
+
+---
+
 ### `podContainerReasons`
 
 Return a comma-separated list of unique waiting or terminated reasons across all containers in all pods. Empty reasons are omitted. Useful for surfacing `ImagePullBackOff`, `CrashLoopBackOff`, `OOMKilled`, etc.
+
+Keywords: pods, container, reasons, error, list, enriched, string, status
 
 ```yaml
 - path: containerReasons
@@ -167,6 +306,8 @@ Return a comma-separated list of unique waiting or terminated reasons across all
 ### `podContainerState`
 
 Return the state of a named container within the pod at the given ordinal. Returns `""` when the pod or container is not found.
+
+Keywords: pods, container, state, statefulset, ordinal, enriched, string, running, waiting
 
 ```yaml
 - path: appContainerState
@@ -221,6 +362,18 @@ spec:
 | `podMaxRestarts` | `(obj any)` | `int64` |
 | `hasCrashingPod` | `(obj any)` | `bool` |
 | `podByOrdinal` | `(obj any, ordinal int64)` | `any` |
+| `podCrashLoopDetected` | `(obj any)` | `bool` |
+| `podImagePullBackOffDetected` | `(obj any)` | `bool` |
+| `podErrImagePullDetected` | `(obj any)` | `bool` |
+| `podErrorDetected` | `(obj any)` | `bool` |
+| `podOOMKilledDetected` | `(obj any)` | `bool` |
+| `podRunContainerErrorDetected` | `(obj any)` | `bool` |
+| `podCreateContainerErrorDetected` | `(obj any)` | `bool` |
+| `podInvalidImageNameDetected` | `(obj any)` | `bool` |
+| `podPreStartHookErrorDetected` | `(obj any)` | `bool` |
+| `podPostStartHookErrorDetected` | `(obj any)` | `bool` |
+| `podContainerReasons` | `(obj any)` | `string` |
+| `podContainerState` | `(obj any, ordinal int64, name string)` | `string` |
 
 Requires `enrich: [pods]` or `enrichAll: true` on the CRD.
 

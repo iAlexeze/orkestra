@@ -10,6 +10,8 @@ StatefulSet notes read rollout revision state and the PVC inventory embedded by 
 
 Returns `status.currentRevision` — the pod template hash of currently running pods, or `""` before the first rollout.
 
+Keywords: statefulset, revision, rollout, hash, string, current, template
+
 ```yaml
 - path: currentRevision
   value: "{{ statefulSetCurrentRevision .children.statefulset }}"
@@ -22,6 +24,8 @@ Returns `status.currentRevision` — the pod template hash of currently running 
 
 Returns `status.updateRevision` — the hash of the pending update; equal to `currentRevision` when the rollout is complete.
 
+Keywords: statefulset, revision, rollout, update, string, hash, pending
+
 ```yaml
 - path: updateRevision
   value: "{{ statefulSetUpdateRevision .children.statefulset }}"
@@ -33,6 +37,8 @@ Returns `status.updateRevision` — the hash of the pending update; equal to `cu
 ### `statefulSetPVCCount`
 
 Returns the number of PVCs embedded in `_pvcs`. Requires `enrich: [pvcs]`.
+
+Keywords: statefulset, pvc, storage, count, enriched, int, volumes
 
 ```yaml
 - path: pvcCount

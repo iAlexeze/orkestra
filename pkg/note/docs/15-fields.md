@@ -10,6 +10,8 @@ Field notes are direct accessors for the common Kubernetes metadata fields that 
 
 Return `metadata.name`. Returns `""` when absent.
 
+Keywords: kubernetes, metadata, name, field, identity, resource
+
 ```yaml
 # value: "{{ resourceName .children.deployment }}"  → "my-app"
 
@@ -23,6 +25,8 @@ Return `metadata.name`. Returns `""` when absent.
 ### `resourceNamespace`
 
 Return `metadata.namespace`. Returns `""` for cluster-scoped resources.
+
+Keywords: kubernetes, metadata, namespace, field, scope, resource
 
 ```yaml
 # value: "{{ resourceNamespace .children.deployment }}"  → "production"
@@ -38,6 +42,8 @@ Return `metadata.namespace`. Returns `""` for cluster-scoped resources.
 
 Return `metadata.uid` — the unique identifier assigned by the API server. Stable across renames; changes on delete-and-recreate.
 
+Keywords: kubernetes, metadata, uid, identifier, unique, resource
+
 ```yaml
 # value: "{{ resourceUID .children.deployment }}"
 # → "4b3f8d21-8e3a-4f8c-b9d2-1a2b3c4d5e6f"
@@ -49,6 +55,8 @@ Return `metadata.uid` — the unique identifier assigned by the API server. Stab
 
 Return `metadata.resourceVersion` — the etcd revision string. Increments on every write. Useful for detecting whether an object has changed since last observation.
 
+Keywords: kubernetes, metadata, version, revision, etcd, change
+
 ```yaml
 # value: "{{ resourceVersion .children.deployment }}"  → "14872"
 ```
@@ -58,6 +66,8 @@ Return `metadata.resourceVersion` — the etcd revision string. Increments on ev
 ### `creationTimestamp`
 
 Return `metadata.creationTimestamp` as an RFC3339 string.
+
+Keywords: kubernetes, metadata, timestamp, created, time, age, rfc3339
 
 ```yaml
 # value: "{{ creationTimestamp .children.deployment }}"  → "2024-01-15T10:30:00Z"

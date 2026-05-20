@@ -29,6 +29,11 @@ spec:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
               replicas: "{{ .spec.replicas }}"
+              volumeClaimTemplates:
+                - name: data
+                  storageClass: "{{ .spec.storageClassName }}"
+                  storageSize: "{{ .spec.storage }}"
+                  mountPath: /var/lib/noteprobe/data
               reconcile: true
 
         status:

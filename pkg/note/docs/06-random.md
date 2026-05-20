@@ -29,6 +29,8 @@ The `once: true` flag makes the reconciler skip Secret creation if the Secret al
 
 Generate a cryptographically random alphanumeric string of exactly `n` characters. Characters are drawn from `[a-zA-Z0-9]`.
 
+Keywords: random, secret, password, alphanumeric, generate, crypto, credentials
+
 ```yaml
 # value: "{{ randomAlphanumeric 32 }}"
 # → "k7Xm3pQs9vR2nTwY8cL1jF6bH0dE4gA5"
@@ -43,6 +45,8 @@ Generate a cryptographically random alphanumeric string of exactly `n` character
 ### `randomHex`
 
 Generate `n` random bytes and return them as a hex-encoded string. The output is `2n` characters long.
+
+Keywords: random, secret, token, hex, generate, crypto, api-key, session
 
 ```yaml
 # value: "{{ randomHex 16 }}"
@@ -59,6 +63,8 @@ The hex encoding uses lowercase characters (`0-9a-f`).
 ### `randomBase64`
 
 Generate `n` random bytes and return them as a URL-safe base64 string. The output length is approximately `ceil(n * 4/3)` characters.
+
+Keywords: random, secret, jwt, base64, generate, crypto, signing, hmac, oauth
 
 ```yaml
 # value: "{{ randomBase64 32 }}"

@@ -10,6 +10,8 @@ Job notes read batch Job lifecycle state. They gate dependent resources on Job c
 
 Return `true` when `status.succeeded > 0` — at least one pod has completed successfully.
 
+Keywords: job, batch, succeeded, complete, boolean, migration, init
+
 ```yaml
 # Gate the main deployment on a migration job:
 when:
@@ -22,6 +24,8 @@ when:
 ### `jobFailed`
 
 Return `true` when `status.failed > 0` — at least one pod has failed (and not been retried to success).
+
+Keywords: job, batch, failed, error, boolean, retry, fault
 
 ```yaml
 # Require both: not failed AND succeeded before proceeding:
@@ -38,6 +42,8 @@ when:
 
 Return `true` when `status.active > 0` — at least one pod is currently running.
 
+Keywords: job, batch, active, running, boolean, in-progress
+
 ```yaml
 # Block cleanup until the job is no longer running:
 when:
@@ -47,13 +53,13 @@ when:
 
 ---
 
----
-
 ### `jobFirstExitCode`
 
 Return the exit code of the first terminated pod in `_pods`. Returns `-1` when no pod has terminated yet.
 
 Requires `enrich: [pods]` on the CRD.
+
+Keywords: job, batch, exit, code, pod, enriched, terminated
 
 ```yaml
 - path: exitCode
@@ -69,6 +75,8 @@ Return a comma-separated list of pod names that are not yet done (phase is not S
 
 Requires `enrich: [pods]` on the CRD.
 
+Keywords: job, batch, active, pods, names, enriched, running
+
 ```yaml
 - path: runningPods
   value: "{{ jobActivePodNames .children.migrationjob }}"
@@ -82,6 +90,8 @@ Requires `enrich: [pods]` on the CRD.
 Return a comma-separated list of pod names that completed successfully.
 
 Requires `enrich: [pods]` on the CRD.
+
+Keywords: job, batch, succeeded, pods, names, enriched, complete
 
 ```yaml
 - path: succeededPods
@@ -97,6 +107,8 @@ Return a comma-separated list of pod names that failed.
 
 Requires `enrich: [pods]` on the CRD.
 
+Keywords: job, batch, failed, pods, names, enriched, error
+
 ```yaml
 - path: failedPods
   value: "{{ jobFailedPodNames .children.migrationjob }}"
@@ -111,6 +123,8 @@ Requires `enrich: [pods]` on the CRD.
 
 Return the number of currently active Job runs (length of `status.active`).
 
+Keywords: cronjob, cron, active, count, int, scheduled
+
 ```yaml
 - path: activeRuns
   value: "{{ cronJobActiveCount .children.cronjob }}"
@@ -123,6 +137,8 @@ Return the number of currently active Job runs (length of `status.active`).
 
 Return the last time the CronJob was scheduled (`status.lastScheduleTime`). Returns `""` when not yet scheduled.
 
+Keywords: cronjob, cron, schedule, time, last, timestamp
+
 ```yaml
 - path: lastScheduled
   value: "{{ cronJobLastScheduleTime .children.cronjob }}"
@@ -134,6 +150,8 @@ Return the last time the CronJob was scheduled (`status.lastScheduleTime`). Retu
 ### `cronJobLastSuccessTime`
 
 Return the last time the CronJob completed successfully (`status.lastSuccessfulTime`). Returns `""` when it has never succeeded.
+
+Keywords: cronjob, cron, success, time, last, timestamp
 
 ```yaml
 - path: lastSuccess
@@ -149,6 +167,8 @@ Return the name of the most recently created Job (`_lastJob.metadata.name`).
 
 Requires `enrich: [cronjob]` on the CRD.
 
+Keywords: cronjob, cron, job, name, enriched, last, recent
+
 ```yaml
 - path: lastJobName
   value: "{{ cronJobLastJobName .children.cronjob }}"
@@ -163,6 +183,8 @@ Return `true` when the most recently created Job has at least one succeeded pod.
 
 Requires `enrich: [cronjob]` on the CRD.
 
+Keywords: cronjob, cron, job, succeeded, boolean, enriched, last
+
 ```yaml
 when:
   - field: "{{ cronJobLastJobSucceeded .children.cronjob }}"
@@ -176,6 +198,8 @@ when:
 Return the name of the most recently successful Job (`_lastSuccessfulJob.metadata.name`). Different from `cronJobLastJobName` when the latest run is still in progress or has failed.
 
 Requires `enrich: [cronjob]` on the CRD.
+
+Keywords: cronjob, cron, job, name, successful, enriched, last
 
 ```yaml
 - path: lastSuccessfulJob

@@ -38,9 +38,18 @@ func podNotes() template.FuncMap {
 		"hasCrashingPod": noteHasCrashingPod,
 		"podByOrdinal":   notePodByOrdinal,
 		// Container status notes — navigate containers[] within each pod summary.
-		"podCrashLoopDetected": notePodCrashLoopDetected,
-		"podContainerReasons":  notePodContainerReasons,
-		"podContainerState":    notePodContainerState,
+		"podContainerReasons":             notePodContainerReasons,
+		"podContainerState":               notePodContainerState,
+		"podCrashLoopDetected":            notePodCrashLoopDetected,
+		"podImagePullBackOffDetected":     notePodImagePullBackOffDetected,
+		"podErrImagePullDetected":         notePodErrImagePullDetected,
+		"podErrorDetected":                notePodErrorDetected,
+		"podOOMKilledDetected":            notePodOOMKilledDetected,
+		"podRunContainerErrorDetected":    notePodRunContainerErrorDetected,
+		"podCreateContainerErrorDetected": notePodCreateContainerErrorDetected,
+		"podInvalidImageNameDetected":     notePodInvalidImageNameDetected,
+		"podPreStartHookErrorDetected":    notePodPreStartHookErrorDetected,
+		"podPostStartHookErrorDetected":   notePodPostStartHookErrorDetected,
 	}
 }
 
@@ -186,30 +195,83 @@ func notePodByOrdinal(obj interface{}, ordinal int64) interface{} {
 
 // ── Container status notes ────────────────────────────────────────────────
 
-// notePodCrashLoopDetected returns true when any container across any pod is
-// in the CrashLoopBackOff waiting state. More precise than hasCrashingPod,
-// which only checks restart count.
-// Requires enrich: [pods] on the CRD.
+// notePodCrashLoopDetected returns true when any container is in CrashLoopBackOff.
 //
 //	{{ podCrashLoopDetected .children.deployment }}
 func notePodCrashLoopDetected(obj interface{}) bool {
-	for _, p := range getPods(obj) {
-		pod, ok := p.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		containers, _ := pod["containers"].([]interface{})
-		for _, c := range containers {
-			cm, ok := c.(map[string]interface{})
-			if !ok {
-				continue
-			}
-			if r, _ := cm["reason"].(string); r == "CrashLoopBackOff" {
-				return true
-			}
-		}
-	}
-	return false
+	return hasContainerReason(getPods(obj), "CrashLoopBackOff")
+}
+
+// notePodImagePullBackOffDetected returns true when any container has reason ImagePullBackOff.
+//
+//	{{ podImagePullBackOffDetected .children.deployment }}
+//	→ false
+func notePodImagePullBackOffDetected(obj interface{}) bool {
+	return hasContainerReason(getPods(obj), "ImagePullBackOff")
+}
+
+// notePodErrImagePullDetected returns true when any container has reason ErrImagePull.
+//
+//	{{ podErrImagePullDetected .children.deployment }}
+//	→ false
+func notePodErrImagePullDetected(obj interface{}) bool {
+	return hasContainerReason(getPods(obj), "ErrImagePull")
+}
+
+// notePodErrorDetected returns true when any container has reason Error.
+//
+//	{{ podErrorDetected .children.deployment }}
+//	→ false
+func notePodErrorDetected(obj interface{}) bool {
+	return hasContainerReason(getPods(obj), "Error")
+}
+
+// notePodOOMKilledDetected returns true when any container has reason OOMKilled.
+//
+//	{{ podOOMKilledDetected .children.deployment }}
+//	→ true
+func notePodOOMKilledDetected(obj interface{}) bool {
+	return hasContainerReason(getPods(obj), "OOMKilled")
+}
+
+// notePodRunContainerErrorDetected returns true when any container has reason RunContainerError.
+//
+//	{{ podRunContainerErrorDetected .children.deployment }}
+//	→ false
+func notePodRunContainerErrorDetected(obj interface{}) bool {
+	return hasContainerReason(getPods(obj), "RunContainerError")
+}
+
+// notePodCreateContainerErrorDetected returns true when any container has reason CreateContainerError.
+//
+//	{{ podCreateContainerErrorDetected .children.deployment }}
+//	→ false
+func notePodCreateContainerErrorDetected(obj interface{}) bool {
+	return hasContainerReason(getPods(obj), "CreateContainerError")
+}
+
+// notePodInvalidImageNameDetected returns true when any container has reason InvalidImageName.
+//
+//	{{ podInvalidImageNameDetected .children.deployment }}
+//	→ false
+func notePodInvalidImageNameDetected(obj interface{}) bool {
+	return hasContainerReason(getPods(obj), "InvalidImageName")
+}
+
+// notePodPreStartHookErrorDetected returns true when any container has reason PreStartHookError.
+//
+//	{{ podPreStartHookErrorDetected .children.deployment }}
+//	→ false
+func notePodPreStartHookErrorDetected(obj interface{}) bool {
+	return hasContainerReason(getPods(obj), "PreStartHookError")
+}
+
+// notePodPostStartHookErrorDetected returns true when any container has reason PostStartHookError.
+//
+//	{{ podPostStartHookErrorDetected .children.deployment }}
+//	→ false
+func notePodPostStartHookErrorDetected(obj interface{}) bool {
+	return hasContainerReason(getPods(obj), "PostStartHookError")
 }
 
 // notePodContainerReasons returns a comma-separated list of unique waiting or
@@ -302,4 +364,25 @@ func joinPodField(obj interface{}, field string) string {
 		}
 	}
 	return strings.Join(parts, ", ")
+}
+
+// hasContainerReason returns true if any container across any pod has the given reason.
+func hasContainerReason(pods []interface{}, targetReason string) bool {
+	for _, p := range pods {
+		pod, ok := p.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		containers, _ := pod["containers"].([]interface{})
+		for _, c := range containers {
+			cm, ok := c.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if r, _ := cm["reason"].(string); r == targetReason {
+				return true
+			}
+		}
+	}
+	return false
 }

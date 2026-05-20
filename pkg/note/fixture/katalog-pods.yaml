@@ -75,6 +75,23 @@ spec:
             # ── container status notes ──────────────────────────────────────
             - path: podCrashLoopDetected
               value: "{{ podCrashLoopDetected .children.deployment }}"
-
+            - path: podImagePullBackOffDetected
+              value: "{{ podImagePullBackOffDetected .children.deployment }}"
+            - path: podErrImagePullDetected
+              value: "{{ podErrImagePullDetected .children.deployment }}"
+            - path: podErrorDetected
+              value: "{{ podErrorDetected .children.deployment }}"
+            - path: podOOMKilledDetected
+              value: "{{ podOOMKilledDetected .children.deployment }}"
+            - path: podRunContainerErrorDetected
+              value: "{{ podRunContainerErrorDetected .children.deployment }}"
+            - path: podCreateContainerErrorDetected
+              value: "{{ podCreateContainerErrorDetected .children.deployment }}"
+            - path: podInvalidImageNameDetected
+              value: "{{ podInvalidImageNameDetected .children.deployment }}"
+            - path: podPreStartHookErrorDetected
+              value: "{{ podPreStartHookErrorDetected .children.deployment }}"
+            - path: podPostStartHookErrorDetected
+              value: "{{ podPostStartHookErrorDetected .children.deployment }}"
             - path: podContainerReasons
               value: "{{ podContainerReasons .children.deployment }}"

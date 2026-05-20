@@ -403,6 +403,186 @@ func TestNotePodCrashLoopDetected(t *testing.T) {
 	}
 }
 
+func TestNotePodImagePullBackOffDetected(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want bool
+	}{
+		{"nil", nil, false},
+		{"no _pods", map[string]interface{}{}, false},
+		{"pod with no containers", map[string]interface{}{
+			"_pods": []interface{}{makePodWithContainers("p-0", "Pending", nil)},
+		}, false},
+		{"container Running", map[string]interface{}{
+			"_pods": []interface{}{
+				makePodWithContainers("p-0", "Running", []interface{}{
+					makeContainer("app", "Running", ""),
+				}),
+			},
+		}, false},
+		{"container ImagePullBackOff", map[string]interface{}{
+			"_pods": []interface{}{
+				makePodWithContainers("p-0", "Pending", []interface{}{
+					makeContainer("app", "Waiting", "ImagePullBackOff"),
+				}),
+			},
+		}, true},
+		{"one healthy one ImagePullBackOff", map[string]interface{}{
+			"_pods": []interface{}{
+				makePodWithContainers("p-0", "Running", []interface{}{
+					makeContainer("app", "Running", ""),
+				}),
+				makePodWithContainers("p-1", "Pending", []interface{}{
+					makeContainer("app", "Waiting", "ImagePullBackOff"),
+				}),
+			},
+		}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := notePodImagePullBackOffDetected(tt.obj); got != tt.want {
+				t.Errorf("notePodImagePullBackOffDetected() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNotePodErrImagePullDetected(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want bool
+	}{
+		{"nil", nil, false},
+		{"no _pods", map[string]interface{}{}, false},
+		{"pod with no containers", map[string]interface{}{
+			"_pods": []interface{}{makePodWithContainers("p-0", "Pending", nil)},
+		}, false},
+		{"container Running", map[string]interface{}{
+			"_pods": []interface{}{
+				makePodWithContainers("p-0", "Running", []interface{}{
+					makeContainer("app", "Running", ""),
+				}),
+			},
+		}, false},
+		{"container ErrImagePull", map[string]interface{}{
+			"_pods": []interface{}{
+				makePodWithContainers("p-0", "Pending", []interface{}{
+					makeContainer("app", "Waiting", "ErrImagePull"),
+				}),
+			},
+		}, true},
+		{"one healthy one ErrImagePull", map[string]interface{}{
+			"_pods": []interface{}{
+				makePodWithContainers("p-0", "Running", []interface{}{
+					makeContainer("app", "Running", ""),
+				}),
+				makePodWithContainers("p-1", "Pending", []interface{}{
+					makeContainer("app", "Waiting", "ErrImagePull"),
+				}),
+			},
+		}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := notePodErrImagePullDetected(tt.obj); got != tt.want {
+				t.Errorf("notePodErrImagePullDetected() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNotePodErrorDetected(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want bool
+	}{
+		{"nil", nil, false},
+		{"no _pods", map[string]interface{}{}, false},
+		{"pod with no containers", map[string]interface{}{
+			"_pods": []interface{}{makePodWithContainers("p-0", "Running", nil)},
+		}, false},
+		{"container Running", map[string]interface{}{
+			"_pods": []interface{}{
+				makePodWithContainers("p-0", "Running", []interface{}{
+					makeContainer("app", "Running", ""),
+				}),
+			},
+		}, false},
+		{"container Error (terminated)", map[string]interface{}{
+			"_pods": []interface{}{
+				makePodWithContainers("p-0", "Failed", []interface{}{
+					makeContainer("app", "Terminated", "Error"),
+				}),
+			},
+		}, true},
+		{"one healthy one Error", map[string]interface{}{
+			"_pods": []interface{}{
+				makePodWithContainers("p-0", "Running", []interface{}{
+					makeContainer("app", "Running", ""),
+				}),
+				makePodWithContainers("p-1", "Failed", []interface{}{
+					makeContainer("app", "Terminated", "Error"),
+				}),
+			},
+		}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := notePodErrorDetected(tt.obj); got != tt.want {
+				t.Errorf("notePodErrorDetected() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNotePodOOMKilledDetected(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want bool
+	}{
+		{"nil", nil, false},
+		{"no _pods", map[string]interface{}{}, false},
+		{"pod with no containers", map[string]interface{}{
+			"_pods": []interface{}{makePodWithContainers("p-0", "Running", nil)},
+		}, false},
+		{"container Running", map[string]interface{}{
+			"_pods": []interface{}{
+				makePodWithContainers("p-0", "Running", []interface{}{
+					makeContainer("app", "Running", ""),
+				}),
+			},
+		}, false},
+		{"container OOMKilled", map[string]interface{}{
+			"_pods": []interface{}{
+				makePodWithContainers("p-0", "Failed", []interface{}{
+					makeContainer("app", "Terminated", "OOMKilled"),
+				}),
+			},
+		}, true},
+		{"one healthy one OOMKilled", map[string]interface{}{
+			"_pods": []interface{}{
+				makePodWithContainers("p-0", "Running", []interface{}{
+					makeContainer("app", "Running", ""),
+				}),
+				makePodWithContainers("p-1", "Failed", []interface{}{
+					makeContainer("app", "Terminated", "OOMKilled"),
+				}),
+			},
+		}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := notePodOOMKilledDetected(tt.obj); got != tt.want {
+				t.Errorf("notePodOOMKilledDetected() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestNotePodContainerReasons(t *testing.T) {
 	tests := []struct {
 		name string

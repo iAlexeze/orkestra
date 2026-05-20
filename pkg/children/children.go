@@ -90,6 +90,16 @@ func ReadChildren(
 		enrichGroupWithWarnings(ctx, kube, m, crd, "Deployment")
 		children["deployments"] = m
 		children["deployment"] = firstValue(m)
+
+		// When replicasets enrichment is active but no RSes are declared in onCreate,
+		// synthesize .children.replicaset from the active RS embedded in _replicaSets.
+		// This makes replicaSetOwnerName and replicaSetOwnerKind work on .children.replicaset.
+		if crd.ShouldEnrich("replicasets") && len(templates.ReplicaSets) == 0 {
+			if rsGroup := activeReplicaSetGroup(m); len(rsGroup) > 0 {
+				children["replicasets"] = rsGroup
+				children["replicaset"] = firstValue(rsGroup)
+			}
+		}
 	}
 
 	// ── StatefulSets ───────────────────────────────────────────────────────

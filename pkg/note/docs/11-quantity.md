@@ -19,6 +19,8 @@ Kubernetes quantities use standard SI suffixes (m, K, M, G, T, P, E) and binary 
 
 Convert a Kubernetes quantity string to `float64`. Useful as input to math notes for arithmetic.
 
+Keywords: quantity, resource, cpu, memory, parse, float, kubernetes, budget
+
 ```yaml
 # value: "{{ parseQuantity \"100m\" }}"       → 0.1
 # value: "{{ parseQuantity \"500m\" }}"       → 0.5
@@ -34,6 +36,8 @@ Returns an error when the string is not a valid Kubernetes quantity.
 
 Convert a `float64` back to a canonical Kubernetes quantity string. Sub-unit CPU fractions are expressed in milli-cores.
 
+Keywords: quantity, resource, cpu, memory, format, string, kubernetes, canonical
+
 ```yaml
 # value: "{{ formatQuantity 0.1 }}"        → "100m"
 # value: "{{ formatQuantity 0.5 }}"        → "500m"
@@ -47,6 +51,8 @@ Convert a `float64` back to a canonical Kubernetes quantity string. Sub-unit CPU
 
 Add two Kubernetes quantity strings and return the canonical string sum. Both operands must be the same dimension (CPU or memory).
 
+Keywords: quantity, resource, cpu, memory, add, arithmetic, sum, budget
+
 ```yaml
 # value: "{{ sumQuantity \"100m\" \"200m\" }}"  → "300m"
 # value: "{{ sumQuantity \"500m\" \"500m\" }}"  → "1"
@@ -59,10 +65,13 @@ Add two Kubernetes quantity strings and return the canonical string sum. Both op
 
 Subtract the second Kubernetes quantity from the first and return the canonical string representation of the difference. Both operands must be the same dimension (CPU or memory).
 
+Keywords: quantity, resource, cpu, memory, subtract, arithmetic, difference, budget
+
 ```yaml
-# value: "{{ subtractQuantity "100m" "200m" }}"  → "-100m"
-# value: "{{ subtractQuantity "500m" "500m" }}"  → "0"
-# value: "{{ subtractQuantity "1Gi" "512Mi" }}"  → "512Mi"
+# value: "{{ subtractQuantity \"1Gi\" \"512Mi\" }}"  → "512Mi"
+# value: "{{ subtractQuantity \"500m\" \"500m\" }}"  → "0"
+# value: "{{ subtractQuantity \"100m\" \"200m\" }}"  → "-100m"
+```
 
 Use `parseQuantity` and `formatQuantity` to do arithmetic with math notes:
 
@@ -87,6 +96,7 @@ Use `parseQuantity` and `formatQuantity` to do arithmetic with math notes:
 | `parseQuantity` | `(q string)` | `(float64, error)` |
 | `formatQuantity` | `(f float64)` | `(string, error)` |
 | `sumQuantity` | `(a, b string)` | `(string, error)` |
+| `subtractQuantity` | `(a, b string)` | `(string, error)` |
 
 ---
 
