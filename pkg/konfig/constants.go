@@ -35,6 +35,15 @@ const (
 	defaultWorkloadSecretName    = "orkestra-tls"
 )
 
+// Instance identifiers used by Orkestra to distinguish between the internal
+// runtime service and gateway service.
+type Instance string
+
+const (
+	InstanceRuntime Instance = "runtime"
+	InstanceGateway Instance = "gateway"
+)
+
 var (
 	apiVersions = []string{
 		"orkestra.orkspace.io/v1",

@@ -142,7 +142,10 @@ type orkestraKfg struct {
 // and make it harder to reason about startup order.
 func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) *orkestraKfg {
 
-	// ── 1. Katalog ────────────────────────────────────────────────────────────
+	// ── 1a. Instance ────────────────────────────────────────────────────────────
+	kfg.SetInstance(konfig.Runtime())
+
+	// ── 1b. Katalog ────────────────────────────────────────────────────────────
 	// Loads and validates the YAML Katalog. After this point, kat.Enabled()
 	// returns only CRDs that passed schema validation and are not disabled.
 	// Invalid CRDs are logged and excluded — they do not block the operator.
@@ -547,6 +550,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// On OS signal (SIGTERM/SIGINT) or fatal error, calls Stop() in reverse.
 	// Graceful shutdown: drains queues before stopping workers.
 	o := ork.NewOrkestra(
+		kfg.RunningInstance(),
 		kfg.Katalog().ShutdownGracePeriod,
 		kfg.Ork().LogLevel,
 	)

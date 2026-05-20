@@ -30,7 +30,7 @@ func mergeKatalogSecurity(base, override orktypes.KatalogSecurity) orktypes.Kata
 	if override.NamespaceProtection != nil {
 		result.NamespaceProtection = override.NamespaceProtection
 	}
-	if override.ServiceName != "" {
+	if override.ServiceName != nil {
 		result.ServiceName = override.ServiceName
 	}
 	return result

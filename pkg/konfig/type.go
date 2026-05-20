@@ -18,7 +18,8 @@ type Konfig struct {
 }
 
 type orkKonfig struct {
-	Name        string `validate:"required"`
+	Name        string   `validate:"required"`
+	Instance    Instance // runtime or gateway
 	ShortName   string
 	Environment string
 	LogLevel    string
@@ -51,8 +52,10 @@ type registryConfig struct {
 //
 // Precedence: Katalog YAML > SecurityConfig (ENV) > hard default.
 type SecurityConfig struct {
-	// One service name per orkestra instance
-	ServiceName string
+	ServiceName struct {
+		Runtime string
+		Gateway string
+	}
 
 	DeletionProtection struct {
 		Enabled           bool
@@ -102,6 +105,22 @@ type SecurityConfig struct {
 		FailurePolicy     string
 		ServiceName       string
 		CleanupOnShutdown bool
+	}
+
+	// CertManager controls the lifecycle of Orkestra’s auto-generated TLS certificate.
+	// Only applies when certificates are auto-generated (TLS_CERT/TLS_KEY not set).
+	//
+	// Precedence: Katalog YAML > SecurityConfig (ENV) > hard default.
+	CertManager struct {
+		// AutoRotate enables pre-emptive certificate rotation before expiry.
+		// Default: true. Set TLS_AUTO_ROTATE=false to opt out.
+		AutoRotate bool
+		// RotationThreshold is how far before expiry Orkestra rotates.
+		// Parsed from TLS_ROTATION_THRESHOLD env (e.g. "30d"). Default: "30d".
+		RotationThreshold string
+		// ValidFor is the default certificate validity duration.
+		// Parsed from TLS_ROTATE_AFTER env (e.g. "30d"). Default: "1y".
+		ValidFor string
 	}
 }
 
@@ -208,9 +227,19 @@ func (k *Konfig) Ork() *orkKonfig {
 	return &k.ork
 }
 
-// Orkestra service name
-func (k *Konfig) OrkestraServiceName() string {
-	return k.security.ServiceName
+// Runtime service name
+func (k *Konfig) RuntimeServiceName() string {
+	return k.security.ServiceName.Runtime
+}
+
+// Gateway service name
+func (k *Konfig) GatewayServiceName() string {
+	return k.security.ServiceName.Gateway
+}
+
+// Running instance returns the current running orkestra instance
+func (k *Konfig) RunningInstance() string {
+	return k.ork.Instance.String()
 }
 
 // Cluster returns cluster Konfigurations

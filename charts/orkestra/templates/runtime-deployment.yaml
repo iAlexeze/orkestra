@@ -36,7 +36,7 @@ spec:
         {{- toYaml .Values.runtime.podSecurityContext | nindent 8 }}
 
       containers:
-        - name: orkestra
+        - name: runtime
           image: {{ include "orkestra.runtimeImage" . }}
           imagePullPolicy: {{ .Values.runtime.image.pullPolicy }}
           securityContext:

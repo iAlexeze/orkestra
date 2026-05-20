@@ -45,14 +45,21 @@ func Init(filenames ...string) (*Konfig, error) {
 		//                                 Orkestra generates its own certificates)
 		security: func() SecurityConfig {
 			var s SecurityConfig
-			s.ServiceName = GetStrEnv("ORK_SERVICE_NAME", "orkestra-runtime")
+			runtimeSvc := GetStrEnv("ORK_SERVICE_NAME", "orkestra-runtime")
+			gatewaySvc := GetStrEnv("ORK_GATEWAY_SERVICE_NAME", "orkestra-gateway")
+			s.ServiceName.Runtime = runtimeSvc
+			s.ServiceName.Gateway = gatewaySvc
+
 			s.DeletionProtection.Enabled = GetBoolEnv("ENABLE_DELETION_PROTECTION", false)
 			s.DeletionProtection.FailurePolicy = GetStrEnv("DELETION_PROTECTION_POLICY", "Fail")
-			s.DeletionProtection.ServiceName = s.ServiceName
 			s.Webhooks.Admission.Enabled = GetBoolEnv("ENABLE_ADMISSION_WEBHOOK", false)
 			s.Conversion.Enabled = GetBoolEnv("ENABLE_CONVERSION", false)
 			s.Webhooks.FailurePolicy = GetStrEnv("WEBHOOK_FAILURE_POLICY", "Ignore")
-			s.Webhooks.ServiceName = s.ServiceName
+
+			s.DeletionProtection.ServiceName = gatewaySvc
+			s.Webhooks.ServiceName = gatewaySvc
+			s.NamespaceProtection.ServiceName = gatewaySvc
+
 			s.Conversion.ConversionWindow = GetIntEnv("CONVERSION_WINDOW", 100)
 			s.Webhooks.TLSCert = GetStrEnv("TLS_CERT", "")
 			s.Webhooks.TLSKey = GetStrEnv("TLS_KEY", "")
@@ -61,7 +68,9 @@ func Init(filenames ...string) (*Konfig, error) {
 			s.NamespaceProtection.Enabled = GetBoolEnv("ENABLE_NAMESPACE_PROTECTION", false)
 			s.NamespaceProtection.FailurePolicy = GetStrEnv("NAMESPACE_PROTECTION_FAILURE_POLICY", "Fail")
 			s.NamespaceProtection.CleanupOnShutdown = GetBoolEnv("NAMESPACE_PROTECTION_CLEANUP_ON_SHUTDOWN", false)
-			s.NamespaceProtection.ServiceName = s.ServiceName
+			s.CertManager.AutoRotate = GetBoolEnv("TLS_AUTO_ROTATE", true)
+			s.CertManager.RotationThreshold = GetStrEnv("TLS_ROTATION_THRESHOLD", "30d")
+			s.CertManager.ValidFor = GetStrEnv("TLS_VALID_FOR", "1y")
 			return s
 		}(),
 
@@ -140,6 +149,13 @@ func Init(filenames ...string) (*Konfig, error) {
 }
 
 // -----------------------------------------------------------------------------
+
+// SetInstance sets the active Orkestra instance name (runtime or gateway)
+// on the Konfig. This controls which service name is used when resolving
+// endpoints and wiring.
+func (k *Konfig) SetInstance(instance Instance) {
+	k.ork.Instance = instance
+}
 
 // GetStrEnv returns the string value of an env
 func GetStrEnv(key, def string) string {

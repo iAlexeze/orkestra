@@ -35,7 +35,10 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 		os.Exit(1)
 	}
 
-	// ── 1. Katalog ────────────────────────────────────────────────────────────
+	// ── 1a. Instance ────────────────────────────────────────────────────────────
+	kfg.SetInstance(konfig.Gateway())
+
+	// ── 1b. Katalog ────────────────────────────────────────────────────────────
 	// Needed to know which CRDs require webhooks.
 	kat := katalog.NewKatalog(kfg, m)
 
@@ -64,7 +67,8 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	var certMgr certmanager.Manager
 	var tlsCert, tlsKey string
 	var secErr error
-	tlsCert, tlsKey, certMgr, secErr = ensureSecurity(ctx, kfg, kat, kube)
+	var tlsBundle *certmanager.TLSBundle
+	tlsCert, tlsKey, certMgr, tlsBundle, secErr = ensureSecurity(ctx, kfg, kat, kube)
 	if secErr != nil {
 		logger.Fatal().Err(secErr).Msg("security setup failed")
 	}
@@ -85,6 +89,10 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	ws := webhook.NewWebhookServer(kube.Clientset(), kat, kfg)
 	if certMgr != nil {
 		ws.SetCertManager(certMgr)
+	}
+	if tlsBundle != nil {
+		ws.SetCertBundle(tlsBundle.CertPEM, tlsBundle.KeyPEM, tlsBundle.CACertPEM,
+			certmanager.DefaultTLSSecretName, kfg.Cluster().Namespace)
 	}
 
 	// ── 7. /katalog routes — gateway serves its own stats surface ────────────
@@ -119,6 +127,7 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 
 	// ── 8. Orkestra ───────────────────────────────────────────────────────────
 	o := ork.NewOrkestra(
+		kfg.RunningInstance(),
 		kfg.Katalog().ShutdownGracePeriod,
 		kfg.Ork().LogLevel,
 	)

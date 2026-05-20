@@ -43,7 +43,7 @@ spec:
         {{- toYaml .Values.gateway.podSecurityContext | nindent 8 }}
 
       containers:
-        - name: orkestra
+        - name: gateway
           image: {{ include "orkestra.runtimeImage" . }}
           imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
           securityContext:

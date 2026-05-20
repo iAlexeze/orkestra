@@ -34,11 +34,34 @@
 // Katalog values are merged on top in KomposeRuntimeKatalog.
 package types
 
+// CertManagerConfig controls Orkestra's built-in TLS certificate lifecycle.
+// Only applies when certificates are auto-generated (no TLS_CERT/TLS_KEY env vars).
+//
+// YAML shape:
+//
+//	security:
+//	  certManager:
+//	    autoRotate: true           # default: true — rotate cert before expiry
+//	    rotationThreshold: "30d"   # default: 30 days before expiry
+type CertManagerConfig struct {
+	// AutoRotate controls whether Orkestra pre-emptively rotates the TLS certificate
+	// before it expires. The new certificate takes effect on the next gateway restart.
+	// Default: true. Set to false or TLS_AUTO_ROTATE=false to opt out.
+	AutoRotate *bool `yaml:"autoRotate,omitempty" json:"autoRotate,omitempty"`
+
+	// RotationThreshold is how far before expiry Orkestra rotates the certificate.
+	// Accepts duration strings: "30d", "7d", "2w". Default: "30d".
+	RotationThreshold string `yaml:"rotationThreshold,omitempty" json:"rotationThreshold,omitempty"`
+
+	// ValidFor is the validity period of the certificate.
+	// Accepts duration strings: "30d", "7d", "2w". Default: "1y".
+	ValidFor string `yaml:"validFor,omitempty" json:"validFor,omitempty"`
+}
+
 // KatalogSecurity holds the full security configuration for a Katalog.
 type KatalogSecurity struct {
-	// ServiceName is the name of the kubernetes service where orkestra
-	// is deployed
-	ServiceName string `yaml:"serviceName,omitempty" json:"serviceName,omitempty"`
+	// ServiceName defines the runtime and gateway service names for the Orkestra deployment.
+	ServiceName *ServiceName `yaml:"serviceName,omitempty" json:"serviceName,omitempty"`
 
 	// GatewayEndpoint is the HTTP base URL of the companion gateway process.
 	// The runtime advertises this URL in its /katalog response so the control
@@ -90,6 +113,26 @@ type KatalogSecurity struct {
 	//
 	// nil pointer: namespace protection not configured; ENV vars drive behavior.
 	NamespaceProtection *NamespaceProtectionConfig `yaml:"namespaceProtection,omitempty" json:"namespaceProtection,omitempty"`
+
+	// CertManager controls the lifecycle of Orkestra's auto-generated TLS certificate.
+	// Only applies when certificates are auto-generated (TLS_CERT/TLS_KEY not set).
+	//
+	// nil pointer: use ENV defaults (TLS_AUTO_ROTATE, TLS_ROTATION_THRESHOLD).
+	CertManager *CertManagerConfig `yaml:"certManager,omitempty" json:"certManager,omitempty"`
+}
+
+// ServiceName defines the canonical names used to reference a service within
+// Orkestra. Runtime is the internal name used inside the operator, while
+// Gateway is the externally exposed name used by ingress or gateway layers.
+// Both fields are optional and omitted when empty.
+type ServiceName struct {
+	// Runtime is the internal service name used by the operator and runtime
+	// components. This is typically the name used for wiring and enrichment.
+	Runtime string `json:"runtime,omitempty" yaml:"runtime,omitempty"`
+
+	// Gateway is the externally visible service name used by ingress, gateway,
+	// or routing layers. This may differ from the runtime name.
+	Gateway string `json:"gateway,omitempty" yaml:"gateway,omitempty"`
 }
 
 // DeletionProtectionConfig controls deletion protection behaviour.
@@ -237,11 +280,20 @@ func (s *KatalogSecurity) DeletionProtectionServiceName(envDefault string) strin
 	return envDefault
 }
 
-// OrkestraServiceName returns the effective service name for orkestra.
+// RuntimeServiceName returns the effective service name for orkestra runtime.
 // Falls back to the provided ENV default.
-func (s *KatalogSecurity) OrkestraServiceName(envDefault string) string {
-	if s != nil && s.ServiceName != "" {
-		return s.ServiceName
+func (s *KatalogSecurity) RuntimeServiceName(envDefault string) string {
+	if s != nil && s.ServiceName != nil {
+		return s.ServiceName.Runtime
+	}
+	return envDefault
+}
+
+// GatewayServiceName returns the effective service name for orkestra gateway.
+// Falls back to the provided ENV default.
+func (s *KatalogSecurity) GatewayServiceName(envDefault string) string {
+	if s != nil && s.ServiceName != nil {
+		return s.ServiceName.Gateway
 	}
 	return envDefault
 }
@@ -310,6 +362,33 @@ func (s *KatalogSecurity) WebhooksFailurePolicy(envDefault string) string {
 func (s *KatalogSecurity) GatewayEndpointVal(envDefault string) string {
 	if s != nil && s.GatewayEndpoint != "" {
 		return s.GatewayEndpoint
+	}
+	return envDefault
+}
+
+// IsCertAutoRotateEnabled returns the effective auto-rotate setting.
+// Default: true — rotation is on unless explicitly disabled.
+func (s *KatalogSecurity) IsCertAutoRotateEnabled() bool {
+	if s == nil || s.CertManager == nil || s.CertManager.AutoRotate == nil {
+		return true
+	}
+	return *s.CertManager.AutoRotate
+}
+
+// CertRotationThresholdVal returns the effective rotation threshold string.
+// Falls back to the provided ENV default.
+func (s *KatalogSecurity) CertRotationThresholdVal(envDefault string) string {
+	if s != nil && s.CertManager != nil && s.CertManager.RotationThreshold != "" {
+		return s.CertManager.RotationThreshold
+	}
+	return envDefault
+}
+
+// ValidForVal returns the effective validity string.
+// Falls back to the provided ENV default.
+func (s *KatalogSecurity) ValidForVal(envDefault string) string {
+	if s != nil && s.CertManager != nil && s.CertManager.ValidFor != "" {
+		return s.CertManager.RotationThreshold
 	}
 	return envDefault
 }

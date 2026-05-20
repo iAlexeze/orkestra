@@ -139,8 +139,22 @@ type WebhookServer struct {
 	// Nil when the user provided explicit TLS_CERT/TLS_KEY env vars.
 	certMgr certManagerIface
 
+	// certSecretData holds the TLS bundle used at startup so the housekeeper can
+	// restore the Secret if it is deleted (e.g. by a concurrent pod during rollout).
+	// Nil when the user provided explicit TLS_CERT/TLS_KEY env vars.
+	certSecretData      *certSecretBundle
+	certSecretName      string
+	certSecretNamespace string
+
 	// Full konfig for namespace access during shutdown cleanup.
 	konfig *konfig.Konfig
+}
+
+// certSecretBundle carries the raw PEM bytes needed to restore the TLS Secret.
+type certSecretBundle struct {
+	certPEM []byte
+	keyPEM  []byte
+	caPEM   []byte
 }
 
 // NewWebhookServer constructs a WebhookServer and resolves all declarative
@@ -285,6 +299,19 @@ func (ws *WebhookServer) namespaceStatsFor(gvrKey string) *health.NamespaceProte
 // user provided explicit TLS_CERT/TLS_KEY).
 func (ws *WebhookServer) SetCertManager(m certManagerIface) {
 	ws.certMgr = m
+}
+
+// SetCertBundle stores the TLS bundle and Secret coordinates so the housekeeper can
+// restore the Secret if it is deleted during a rollout. Only called when Orkestra
+// generated the certificates (not when the user provides TLS_CERT/TLS_KEY).
+func (ws *WebhookServer) SetCertBundle(certPEM, keyPEM, caPEM []byte, secretName, namespace string) {
+	ws.certSecretData = &certSecretBundle{
+		certPEM: certPEM,
+		keyPEM:  keyPEM,
+		caPEM:   caPEM,
+	}
+	ws.certSecretName = secretName
+	ws.certSecretNamespace = namespace
 }
 
 // Start activates the WebhookServer. It registers all declared webhook endpoints,

@@ -164,7 +164,7 @@ docker-release: docker docker-cc docker-gateway docker-push
 
 KIND_CLUSTER ?= orkestra-playground
 RUNTIME_DEPLOYMENT ?= orkestra-runtime
-RUNTIME_CONTAINER_NAME ?= orkestra
+RUNTIME_CONTAINER_NAME ?= runtime
 RUNTIME_NAMESPACE  ?= orkestra-system
 
 runtime-reload: docker

@@ -67,7 +67,7 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 					"\n\n[Orkestra Security] The deletion-protection webhook \"%s\" is itself protected.\n\n"+
 						"To disable deletion protection entirely:\n"+
 						"- Set security.deletionProtection.enabled: false in the Katalog\n"+
-						"- Redeploy Orkestra, then delete the webhook.\n\n",
+						"- Redeploy Orkestra Gateway, then delete the webhook.\n\n",
 					deletionProtectionWebhookConfigName,
 				),
 				Code: 403,
@@ -101,7 +101,7 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 						"\n\n[Orkestra Security] CRD %q is protected from deletion.\n\n"+
 							"To delete it:\n"+
 							"- Set security.deletionProtection.enabled: false in the Katalog\n"+
-							"- Redeploy Orkestra, then delete the CRD.\n\n",
+							"- Redeploy Orkestra Gateway, then delete the CRD.\n\n",
 						req.Name,
 					),
 					Code: 403,
@@ -134,7 +134,7 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 
 	footer := "\n\nTo remove protection:\n" +
 		"- Set security.deletionProtection.enabled: false in the Katalog.\n" +
-		"- Redeploy Orkestra.\n" +
+		"- Redeploy Orkestra Gateway.\n" +
 		"- Retry the deletion."
 
 	var header string

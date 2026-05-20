@@ -147,7 +147,7 @@ Error from server: admission webhook "protect.crds.orkestra.orkspace.io" denied 
 
 To delete it:
 - Set security.deletionProtection.enabled: false in the Katalog
-- Redeploy Orkestra, then delete the CRD.
+- Redeploy Orkestra Gateway, then delete the CRD.
 ```
 
 The same applies to `databases.security.orkestra.io` and `caches.security.orkestra.io`. Every CRD in the Katalog is protected.
@@ -189,7 +189,7 @@ Error from server: admission webhook "protect.resources.orkestra.orkspace.io" de
 
 To disable:
 - Set security.deletionProtection.enabled: false in the Katalog first.
-- Redeploy Orkestra, then delete the resource.
+- Redeploy Orkestra Gateway, then delete the resource.
 ```
 
 If you installed Orkestra with optional components, those are protected too:

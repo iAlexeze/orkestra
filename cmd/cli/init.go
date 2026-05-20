@@ -73,7 +73,7 @@ func initCanonical(name string) error {
 		return err
 	}
 
-	fmt.Printf("\n%s\n\n", utils.Green("✅ Project ready: "+label))
+	fmt.Printf("\n%s\n\n", utils.Green("✓ Project ready: "+label))
 	if name != "." {
 		fmt.Printf("  cd %s\n", name)
 	}
@@ -126,7 +126,8 @@ func initProject(name, pack string, refresh bool) error {
 		return err
 	}
 
-	fmt.Printf("\n%s\n\n", utils.Green("✅ Project ready: "+label))
+	fmt.Printf("\n%s\n\n", utils.Green("✓ Project ready: "+label))
+	fmt.Printf("\n%s\n\n", utils.Green("✓ Project ready: "+label))
 	if name != "." {
 		fmt.Printf("  cd %s\n", name)
 	}

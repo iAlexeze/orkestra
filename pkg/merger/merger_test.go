@@ -64,8 +64,8 @@ func TestKomposer_InheritsUpstreamSecurity(t *testing.T) {
 	}
 
 	sec := m.ToSecurity()
-	if sec.ServiceName != "upstream-svc" {
-		t.Errorf("expected security.serviceName=upstream-svc, got %q", sec.ServiceName)
+	if sec.ServiceName == nil || sec.ServiceName.Runtime != "upstream-svc" {
+		t.Errorf("expected security.serviceName.runtime=upstream-svc, got %v", sec.ServiceName)
 	}
 }
 
@@ -124,8 +124,8 @@ func TestKomposer_OwnSecurityWinsOverUpstream(t *testing.T) {
 	}
 
 	sec := m.ToSecurity()
-	if sec.ServiceName != "komposer-svc" {
-		t.Errorf("expected komposer serviceName to win, got %q", sec.ServiceName)
+	if sec.ServiceName == nil || sec.ServiceName.Runtime != "komposer-svc" {
+		t.Errorf("expected komposer serviceName.runtime to win, got %v", sec.ServiceName)
 	}
 }
 

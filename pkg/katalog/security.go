@@ -14,12 +14,17 @@
 // is present but deletionProtection is not declared.
 package katalog
 
-import "time"
+import (
+	"time"
+
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+)
 
 // securityEnvDefaults returns the SecurityConfig from konfig, or a zero
 // value when konfig is not wired (e.g. NewEmptyKatalog in tests).
 func (k *Katalog) securityEnvDefaults() interface {
-	OrkestraServiceName() string
+	RuntimeServiceName() string
+	GatewayServiceName() string
 	DeletionProtectionEnabled() bool
 	DeletionProtectionSvcName() string
 	DeletionProtectionPolicy() string
@@ -37,6 +42,9 @@ func (k *Katalog) securityEnvDefaults() interface {
 	NamespaceProtectionPolicy() string
 	NamespaceProtectionCleanup() bool
 	GatewayEndpointEnv() string
+	CertAutoRotate() bool
+	CertValidForStr() string
+	CertRotationThresholdStr() string
 } {
 	return &envSecurityReader{k: k}
 }
@@ -49,11 +57,18 @@ const (
 // so that security.go does not import konfig directly.
 type envSecurityReader struct{ k *Katalog }
 
-func (r *envSecurityReader) OrkestraServiceName() string {
+func (r *envSecurityReader) RuntimeServiceName() string {
 	if r.k.konfig == nil {
 		return "orkestra-runtime"
 	}
-	return r.k.konfig.Security().ServiceName
+	return r.k.konfig.Security().ServiceName.Runtime
+}
+
+func (r *envSecurityReader) GatewayServiceName() string {
+	if r.k.konfig == nil {
+		return "orkestra-gateway"
+	}
+	return r.k.konfig.Security().ServiceName.Gateway
 }
 
 func (r *envSecurityReader) DeletionProtectionEnabled() bool {
@@ -162,6 +177,28 @@ func (r *envSecurityReader) GatewayEndpointEnv() string {
 	return r.k.konfig.GatewayEndpoint()
 }
 
+func (r *envSecurityReader) CertAutoRotate() bool {
+	if r.k.konfig == nil {
+		return true
+	}
+	return r.k.konfig.Security().CertManager.AutoRotate
+}
+
+func (r *envSecurityReader) CertRotationThresholdStr() string {
+	if r.k.konfig == nil {
+		return "30d"
+	}
+	return r.k.konfig.Security().CertManager.RotationThreshold
+}
+
+func (r *envSecurityReader) CertValidForStr() string {
+	if r.k.konfig == nil {
+		return "1y"
+	}
+	return r.k.konfig.Security().CertManager.ValidFor
+}
+
+
 //
 
 // ── Deletion protection ───────────────────────────────────────────────────────
@@ -187,11 +224,18 @@ func (k *Katalog) DeletionProtectionServiceName() string {
 	return k.Security.DeletionProtectionServiceName(env.DeletionProtectionSvcName())
 }
 
-// Orkestra Service Name returns the effective service name for orkestra.
+// Runtime Service Name returns the effective service name for orkestra runtime.
 // YAML value takes precedence over ENV.
-func (k *Katalog) OrkestraServiceName() string {
+func (k *Katalog) RuntimeServiceName() string {
 	env := k.securityEnvDefaults()
-	return k.Security.OrkestraServiceName(env.OrkestraServiceName())
+	return k.Security.RuntimeServiceName(env.RuntimeServiceName())
+}
+
+// Gateway Service Name returns the effective service name for orkestra gateway.
+// YAML value takes precedence over ENV.
+func (k *Katalog) GatewayServiceName() string {
+	env := k.securityEnvDefaults()
+	return k.Security.GatewayServiceName(env.GatewayServiceName())
 }
 
 // DeletionProtectionFailurePolicy returns the effective failure policy string.
@@ -391,4 +435,50 @@ func (k *Katalog) IsWebhookControllerEnabled() bool {
 // WebhookControllerSyncInterval returns the webhook controller sync interval.
 func (k *Katalog) WebhookControllerSyncInterval() time.Duration {
 	return k.securityEnvDefaults().WebhookControllerSyncInterval()
+}
+
+// ── Certificate manager ───────────────────────────────────────────────────────
+
+// CertAutoRotate reports whether pre-emptive TLS certificate rotation is enabled.
+//
+// Precedence:
+//
+//	YAML security.certManager.autoRotate declared → use YAML value
+//	YAML absent                                   → fall back to TLS_AUTO_ROTATE env (default: true)
+func (k *Katalog) CertAutoRotate() bool {
+	if k.Security.CertManager != nil {
+		return k.Security.IsCertAutoRotateEnabled()
+	}
+	return k.securityEnvDefaults().CertAutoRotate()
+}
+
+// CertRotationThreshold returns the pre-rotation window as a parsed duration.
+// Returns 30 days when the configured value cannot be parsed.
+//
+// Precedence:
+//
+//	YAML security.certManager.rotationThreshold non-empty → use YAML value
+//	YAML absent or empty                                  → fall back to TLS_ROTATION_THRESHOLD env (default: "30d")
+func (k *Katalog) CertRotationThreshold() time.Duration {
+	raw := k.Security.CertRotationThresholdVal(k.securityEnvDefaults().CertRotationThresholdStr())
+	if d, err := orktypes.ParseTimeDuration(raw); err == nil {
+		return d
+	}
+	return 30 * 24 * time.Hour
+}
+
+// CertValidFor returns the certificate validity duration as a parsed duration.
+// Returns 1 year when the configured value cannot be parsed.
+//
+// Precedence:
+//
+//	YAML security.certManager.rotateAfter non-empty → use YAML value
+//	YAML absent or empty                                  → fall back to TLS_ROTATE_AFTER env (default: "1y")
+func (k *Katalog) CertValidFor() time.Duration {
+	raw := k.Security.ValidForVal(k.securityEnvDefaults().CertValidForStr())
+	if d, err := orktypes.ParseTimeDuration(raw); err == nil {
+		return d
+	}
+	return 365 * 24 * time.Hour
+
 }

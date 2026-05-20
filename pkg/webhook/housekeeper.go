@@ -45,13 +45,21 @@ package webhook
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
+	"fmt"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 
+	"github.com/orkspace/orkestra/pkg/certmanager"
+	orklabels "github.com/orkspace/orkestra/pkg/labels"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/metrics"
+	"github.com/orkspace/orkestra/pkg/notification"
 )
 
 const (
@@ -89,7 +97,13 @@ func (ws *WebhookServer) housekeeper(ctx context.Context) error {
 	// Buffered capacity 1: bursts of Watch events collapse into one reconcile.
 	trigger := make(chan struct{}, 1)
 
-	// Start housekeepers only for the features that require them.
+	// The TLS Secret is the dependency for everything else — watch it first.
+	// If it is deleted (e.g. by a concurrent pod with cleanupOnShutdown during rollout),
+	// restore it immediately from the in-memory bundle before webhook configs break.
+	if ws.certSecretData != nil {
+		go ws.watchCertSecret(ctx, trigger)
+	}
+
 	// Validation, deletion‑protection, namespace‑protection, and strict‑mode all use
 	// ValidatingWebhookConfiguration, so they share the same watcher.
 	// Mutation rules use a separate MutatingWebhookConfiguration watcher.
@@ -127,16 +141,240 @@ func (ws *WebhookServer) housekeeper(ctx context.Context) error {
 }
 
 // reconcileAll records metrics and drives all reconcile functions.
+// The TLS Secret is reconciled first — all webhook registrations depend on it.
 func (ws *WebhookServer) reconcileAll() {
 	if ws.webhookStats != nil {
 		ws.webhookStats.RecordReconciled()
 	}
 	metrics.RecordWebhookReconciled("housekeeper")
 
+	ws.reconcileCertSecret()
 	ws.reconcileAdmissionWebhooks()
 	ws.reconcileDeletionProtectionWebhook()
 	ws.reconcileNamespaceProtectionWebhook()
 	ws.reconcileStrictModeWebhook()
+}
+
+// reconcileCertSecret ensures the TLS Secret exists in the cluster and,
+// when auto-rotation is enabled, pre-emptively rotates the certificate before expiry.
+func (ws *WebhookServer) reconcileCertSecret() {
+	if ws.certSecretData == nil || ws.kubeClient == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), highTimeout)
+	defer cancel()
+
+	existing, err := ws.kubeClient.CoreV1().Secrets(ws.certSecretNamespace).
+		Get(ctx, ws.certSecretName, metav1.GetOptions{})
+	if err != nil {
+		if !k8serrors.IsNotFound(err) {
+			logger.Error().Err(err).Str("secret", ws.certSecretName).
+				Msg("housekeeper: failed to check TLS secret")
+			metrics.RecordWebhookReconciliationFailure("tls-secret")
+			return
+		}
+		ws.restoreCertSecret(ctx)
+		return
+	}
+
+	// Secret exists — check if pre-emptive rotation is needed.
+	if ws.katalog != nil && ws.katalog.CertAutoRotate() {
+		ws.maybeRotateCert(ctx, existing)
+	}
+}
+
+// restoreCertSecret re-creates the TLS Secret from the in-memory bundle.
+// Called when the Secret has been deleted (e.g. by a concurrent pod with
+// cleanupOnShutdown during a rolling restart).
+func (ws *WebhookServer) restoreCertSecret(ctx context.Context) {
+	logger.Warn().
+		Str("secret", ws.certSecretName).
+		Str("namespace", ws.certSecretNamespace).
+		Msg("housekeeper: TLS secret missing — restoring from in-memory bundle")
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ws.certSecretName,
+			Namespace: ws.certSecretNamespace,
+			Labels:    orklabels.WithDeletionProtection(orklabels.OrkestraResourceLabels()),
+		},
+		Type: corev1.SecretTypeTLS,
+		Data: map[string][]byte{
+			"tls.crt": ws.certSecretData.certPEM,
+			"tls.key": ws.certSecretData.keyPEM,
+			"ca.crt":  ws.certSecretData.caPEM,
+		},
+	}
+
+	if _, err := ws.kubeClient.CoreV1().Secrets(ws.certSecretNamespace).
+		Create(ctx, secret, metav1.CreateOptions{}); err != nil {
+		if !k8serrors.IsAlreadyExists(err) {
+			logger.Error().Err(err).Str("secret", ws.certSecretName).
+				Msg("housekeeper: failed to restore TLS secret")
+			metrics.RecordWebhookReconciliationFailure("tls-secret")
+		}
+		return
+	}
+
+	logger.Info().Str("secret", ws.certSecretName).
+		Msg("housekeeper: TLS secret restored")
+	metrics.RecordWebhookReconciled("tls-secret")
+}
+
+// maybeRotateCert checks whether the stored TLS certificate is within the
+// rotation threshold and, if so, generates a new bundle and updates the Secret.
+// The running HTTPS server continues serving the old certificate (still valid
+// for the full threshold window). The new certificate takes effect on the next
+// gateway restart — this is pre-emptive, not live rotation.
+func (ws *WebhookServer) maybeRotateCert(ctx context.Context, existing *corev1.Secret) {
+	if ws.konfig == nil {
+		return
+	}
+
+	threshold := ws.katalog.CertRotationThreshold()
+
+	// Parse expiry from the cert stored in the Secret (ground truth for next restart).
+	certData := existing.Data["tls.crt"]
+	if len(certData) == 0 {
+		return
+	}
+	block, _ := pem.Decode(certData)
+	if block == nil {
+		return
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return
+	}
+
+	if time.Now().Add(threshold).Before(cert.NotAfter) {
+		return // cert is fine, not yet within rotation window
+	}
+
+	daysLeft := time.Until(cert.NotAfter).Hours() / 24
+	logger.Warn().
+		Str("secret", ws.certSecretName).
+		Float64("days_until_expiry", daysLeft).
+		Msg("housekeeper: TLS cert within rotation window — pre-emptive rotation")
+
+	svcName := ws.konfig.GatewayServiceName()
+	ns := ws.certSecretNamespace
+
+	newBundle, err := certmanager.GenerateClusterBundle(svcName, ns, certmanager.BundleOpts{})
+	if err != nil {
+		logger.Error().Err(err).Msg("housekeeper: cert rotation — failed to generate new bundle")
+		metrics.RecordWebhookReconciliationFailure("tls-secret-rotation")
+		return
+	}
+
+	existing.Data["tls.crt"] = newBundle.CertPEM
+	existing.Data["tls.key"] = newBundle.KeyPEM
+	existing.Data["ca.crt"] = newBundle.CACertPEM
+	if existing.Annotations == nil {
+		existing.Annotations = map[string]string{}
+	}
+	existing.Annotations["orkestra.orkspace.io/rotated-at"] = time.Now().UTC().Format(time.RFC3339)
+
+	if _, err := ws.kubeClient.CoreV1().Secrets(ws.certSecretNamespace).
+		Update(ctx, existing, metav1.UpdateOptions{}); err != nil {
+		logger.Error().Err(err).Msg("housekeeper: cert rotation — failed to update secret")
+		metrics.RecordWebhookReconciliationFailure("tls-secret-rotation")
+		return
+	}
+
+	// Keep in-memory bundle in sync — so if the Secret is deleted after rotation,
+	// the housekeeper restores the rotated cert, not the original one.
+	ws.certSecretData = &certSecretBundle{
+		certPEM: newBundle.CertPEM,
+		keyPEM:  newBundle.KeyPEM,
+		caPEM:   newBundle.CACertPEM,
+	}
+
+	logger.Info().
+		Str("secret", ws.certSecretName).
+		Msg("housekeeper: TLS cert rotated — new cert takes effect on next gateway restart")
+	metrics.RecordWebhookReconciled("tls-secret-rotation")
+
+	go ws.notifyCertRotated(daysLeft)
+}
+
+// notifyCertRotated fires a best-effort notification to an operator team when
+// the TLS certificate has been pre-emptively rotated. No-op when notification
+// is not configured or no teams are declared. Prefers Slack over email.
+func (ws *WebhookServer) notifyCertRotated(daysLeft float64) {
+	if ws.katalog == nil || !ws.katalog.HasTeams() {
+		return
+	}
+	teamName := pickCertNotifyTeam(ws)
+	if teamName == "" {
+		return
+	}
+
+	msg := fmt.Sprintf(
+		"The Orkestra gateway TLS certificate has been rotated (%.0f days remaining on the previous cert). "+
+			"Restart the gateway at your convenience to load the new certificate.",
+		daysLeft,
+	)
+
+	n := notification.NewDirectNotifier(ws.katalog)
+	ev := notification.Event{
+		KatalogName: ws.katalog.Meta().Name,
+		TeamName:    teamName,
+		Subject:     "Gateway TLS certificate rotated",
+		Message:     msg,
+		Timestamp:   time.Now(),
+	}
+	_ = n.Dispatch(context.Background(), ev)
+}
+
+// pickCertNotifyTeam returns a team name to notify about certificate events.
+// Prefers a team with Slack channels; falls back to a team with email.
+func pickCertNotifyTeam(ws *WebhookServer) string {
+	kat := ws.katalog
+	slackOK := kat.IsSlackNotificationEnabled()
+	emailOK := kat.IsEmailNotificationEnabled()
+
+	var emailFallback string
+	for name, team := range kat.Notification.Teams {
+		if slackOK && len(team.Slack) > 0 {
+			return name
+		}
+		if emailOK && len(team.Email) > 0 && emailFallback == "" {
+			emailFallback = name
+		}
+	}
+	return emailFallback
+}
+
+// watchCertSecret watches the TLS Secret for DELETED events and triggers
+// an immediate reconcile so the Secret is restored before the next pod
+// restart picks up a mismatched certificate.
+func (ws *WebhookServer) watchCertSecret(ctx context.Context, trigger chan<- struct{}) {
+	for {
+		watcher, err := ws.kubeClient.CoreV1().Secrets(ws.certSecretNamespace).
+			Watch(ctx, metav1.ListOptions{
+				FieldSelector: "metadata.name=" + ws.certSecretName,
+			})
+		if err != nil {
+			logger.Warn().Err(err).Msg("housekeeper watch (tls-secret): failed to start, retrying")
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(watchRetryDelay):
+				continue
+			}
+		}
+
+		ws.drainWatchEvents(ctx, watcher, trigger, "tls-secret")
+		watcher.Stop()
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Second):
+		}
+	}
 }
 
 // watchValidatingWebhooks watches ValidatingWebhookConfiguration objects owned
