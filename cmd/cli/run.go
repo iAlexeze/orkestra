@@ -1,5 +1,3 @@
-//go:build runtime
-
 // run.go — Production runtime entrypoint.
 //
 // This command has one responsibility: run Orkestra.
@@ -11,6 +9,9 @@
 // All development‑only behavior (cluster checks, dependency setup,
 // Kind provisioning, extra flags) lives in run_dev.go and is excluded
 // from production builds via build tags.
+
+//go:build runtime
+
 package cli
 
 import (

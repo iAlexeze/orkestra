@@ -15,7 +15,7 @@
 //	--add-notification      — notification / alerting block
 //	--add-provider <cloud>  — providers block for aws | azure | gcp
 
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 

@@ -1,11 +1,9 @@
-// cmd/cli/registry.go
-//
 // ork registry — push, pull, info, list
 //
 // All four commands follow the same pattern as ork notes and ork init:
 // minimal flags, clear output, no hidden state.
 
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 

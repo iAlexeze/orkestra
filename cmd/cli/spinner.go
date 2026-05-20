@@ -1,3 +1,5 @@
+//go:build !runtime && !gateway
+
 package cli
 
 import "github.com/orkspace/orkestra/pkg/spinner"
