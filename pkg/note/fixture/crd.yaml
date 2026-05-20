@@ -83,6 +83,16 @@ spec:
                   default: burst
                   description: Resource profile to use for HPA
 
+                schedule:
+                  type: string
+                  description: |
+                    Standard cron expression. Examples:
+                      "*/5 * * * *"   — every 5 minutes
+                      "0 2 * * *"     — daily at 2am
+                      "0 0 * * 1"     — every Monday at midnight
+                      "@hourly"       — once an hour
+                      "@daily"        — once a day
+                  default: "@hourly"
             status:
               type: object
               x-kubernetes-preserve-unknown-fields: true

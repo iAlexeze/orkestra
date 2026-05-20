@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
@@ -60,7 +61,7 @@ func EnrichCRDEntry(entry *orktypes.CRDEntry) (orktypes.EnrichmentOutcome, error
 		)
 	}
 
-	result := LookupBuiltIn(apiTypes.Kind)
+	result := children.LookupBuiltIn(apiTypes.Kind)
 	if !result.Found {
 		return orktypes.EnrichmentFailed, fmt.Errorf(
 			"CRD %q: kind %q is not a known Kubernetes built-in and apiTypes "+
@@ -79,7 +80,7 @@ func EnrichCRDEntry(entry *orktypes.CRDEntry) (orktypes.EnrichmentOutcome, error
 			apiTypes.Kind,
 			apiTypes.Kind,
 			strings.ToLower(apiTypes.Kind),
-			strings.Join(AllBuiltInKinds(), ", "),
+			strings.Join(children.AllBuiltInKinds(), ", "),
 		)
 	}
 

@@ -339,3 +339,81 @@ func TestNoteCronJobLastSuccessTime(t *testing.T) {
 		})
 	}
 }
+
+func makeCronJobWithEnrichment(lastJobName string, lastJobSucceeded bool, lastSuccessfulJobName string) map[string]interface{} {
+	lastJob := map[string]interface{}{
+		"metadata": map[string]interface{}{"name": lastJobName},
+		"status":   map[string]interface{}{"succeeded": int64(0)},
+	}
+	if lastJobSucceeded {
+		lastJob["status"] = map[string]interface{}{"succeeded": int64(1)}
+	}
+	obj := map[string]interface{}{
+		"_lastJob": lastJob,
+	}
+	if lastSuccessfulJobName != "" {
+		obj["_lastSuccessfulJob"] = map[string]interface{}{
+			"metadata": map[string]interface{}{"name": lastSuccessfulJobName},
+			"status":   map[string]interface{}{"succeeded": int64(1)},
+		}
+	}
+	return obj
+}
+
+func TestNoteCronJobLastJobName(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want string
+	}{
+		{"nil", nil, ""},
+		{"no enrichment", map[string]interface{}{}, ""},
+		{"has last job", makeCronJobWithEnrichment("my-job-123", false, ""), "my-job-123"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteCronJobLastJobName(tt.obj); got != tt.want {
+				t.Errorf("noteCronJobLastJobName() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNoteCronJobLastJobSucceeded(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want bool
+	}{
+		{"nil", nil, false},
+		{"no enrichment", map[string]interface{}{}, false},
+		{"last job failed", makeCronJobWithEnrichment("my-job-123", false, ""), false},
+		{"last job succeeded", makeCronJobWithEnrichment("my-job-123", true, ""), true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteCronJobLastJobSucceeded(tt.obj); got != tt.want {
+				t.Errorf("noteCronJobLastJobSucceeded() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNoteCronJobLastSuccessfulJobName(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want string
+	}{
+		{"nil", nil, ""},
+		{"no enrichment", map[string]interface{}{}, ""},
+		{"has successful job", makeCronJobWithEnrichment("my-job-200", false, "my-job-100"), "my-job-100"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteCronJobLastSuccessfulJobName(tt.obj); got != tt.want {
+				t.Errorf("noteCronJobLastSuccessfulJobName() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

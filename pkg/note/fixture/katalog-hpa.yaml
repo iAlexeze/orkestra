@@ -21,6 +21,9 @@ spec:
       workers: 1
       resync: 30s
 
+      enrich:
+        - hpa
+
       operatorBox:
         onCreate:
           deployments:
@@ -89,3 +92,13 @@ spec:
 
             - path: hpaAtMax
               value: "{{ hpaAtMax .children.hpa }}"
+
+            # ── enriched HPA notes (require enrich: [hpa]) ──────────────────
+            - path: hpaScaleTargetName
+              value: "{{ hpaScaleTargetName .children.hpa }}"
+
+            - path: hpaScaleTargetKind
+              value: "{{ hpaScaleTargetKind .children.hpa }}"
+
+            - path: hpaMetricTypes
+              value: "{{ hpaMetricTypes .children.hpa }}"

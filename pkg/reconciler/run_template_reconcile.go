@@ -16,6 +16,7 @@ import (
 	"fmt"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
@@ -138,76 +139,76 @@ func (r *GenericReconciler[PTR]) runResourceGroup(
 
 	// Create namespaces first
 	if err := runNamespaces(ctx, kube, resolver, obj,
-		expandForEachNamespaces(resolver, t.Namespaces), update); err != nil {
+		children.ExpandForEachNamespaces(resolver, t.Namespaces), update); err != nil {
 		return err
 	}
 
 	if err := runSecrets(ctx, kube, resolver, obj,
-		expandForEachSecrets(resolver, t.Secrets), update, guard); err != nil {
+		children.ExpandForEachSecrets(resolver, t.Secrets), update, guard); err != nil {
 		return err
 	}
 	if err := runConfigMaps(ctx, kube, resolver, obj,
-		expandForEachConfigMaps(resolver, t.ConfigMaps), update, guard); err != nil {
+		children.ExpandForEachConfigMaps(resolver, t.ConfigMaps), update, guard); err != nil {
 		return err
 	}
 	if err := runServiceAccounts(ctx, kube, resolver, obj,
-		expandForEachServiceAccounts(resolver, t.ServiceAccounts), update, guard); err != nil {
+		children.ExpandForEachServiceAccounts(resolver, t.ServiceAccounts), update, guard); err != nil {
 		return err
 	}
 	if err := runRoles(ctx, kube, resolver, obj,
-		expandForEachRoles(resolver, t.Roles), update, guard); err != nil {
+		children.ExpandForEachRoles(resolver, t.Roles), update, guard); err != nil {
 		return err
 	}
 	if err := runRoleBindings(ctx, kube, resolver, obj,
-		expandForEachRoleBindings(resolver, t.RoleBindings), update, guard); err != nil {
+		children.ExpandForEachRoleBindings(resolver, t.RoleBindings), update, guard); err != nil {
 		return err
 	}
 	if err := runCustomResources(ctx, kube, resolver, obj,
-		expandForEachCustomResources(resolver, t.CustomResource), update, guard); err != nil {
+		children.ExpandForEachCustomResources(resolver, t.CustomResource), update, guard); err != nil {
 		return err
 	}
 	if err := runReplicaSets(ctx, kube, resolver, obj,
-		expandForEachReplicaSets(resolver, t.ReplicaSets), update, guard); err != nil {
+		children.ExpandForEachReplicaSets(resolver, t.ReplicaSets), update, guard); err != nil {
 		return err
 	}
 	if err := runDeployments(ctx, kube, resolver, obj,
-		expandForEachDeployments(resolver, t.Deployments), update, guard); err != nil {
+		children.ExpandForEachDeployments(resolver, t.Deployments), update, guard); err != nil {
 		return err
 	}
 	if err := runServices(ctx, kube, resolver, obj,
-		expandForEachServices(resolver, t.Services), update, guard); err != nil {
+		children.ExpandForEachServices(resolver, t.Services), update, guard); err != nil {
 		return err
 	}
 	if err := runJobs(ctx, kube, resolver, obj,
-		expandForEachJobs(resolver, t.Jobs), guard); err != nil {
+		children.ExpandForEachJobs(resolver, t.Jobs), guard); err != nil {
 		return err
 	}
 	if err := runCronJobs(ctx, kube, resolver, obj,
-		expandForEachCronJobs(resolver, t.CronJobs), update, guard); err != nil {
+		children.ExpandForEachCronJobs(resolver, t.CronJobs), update, guard); err != nil {
 		return err
 	}
 	if err := runStatefulSets(ctx, kube, resolver, obj,
-		expandForEachStatefulSets(resolver, t.StatefulSets), update, guard); err != nil {
+		children.ExpandForEachStatefulSets(resolver, t.StatefulSets), update, guard); err != nil {
 		return err
 	}
 	if err := runPVs(ctx, kube, resolver, obj,
-		expandForEachPVs(resolver, t.PersistentVolumes), update); err != nil {
+		children.ExpandForEachPVs(resolver, t.PersistentVolumes), update); err != nil {
 		return err
 	}
 	if err := runPVCs(ctx, kube, resolver, obj,
-		expandForEachPVCs(resolver, t.PersistentVolumeClaims), update, guard); err != nil {
+		children.ExpandForEachPVCs(resolver, t.PersistentVolumeClaims), update, guard); err != nil {
 		return err
 	}
 	if err := runIngresses(ctx, kube, resolver, obj,
-		expandForEachIngresses(resolver, t.Ingresses), update, guard); err != nil {
+		children.ExpandForEachIngresses(resolver, t.Ingresses), update, guard); err != nil {
 		return err
 	}
 	if err := runHPAs(ctx, kube, resolver, obj,
-		expandForEachHPAs(resolver, t.HorizontalPodAutoscalers), update, guard); err != nil {
+		children.ExpandForEachHPAs(resolver, t.HorizontalPodAutoscalers), update, guard); err != nil {
 		return err
 	}
 	if err := runPDBs(ctx, kube, resolver, obj,
-		expandForEachPDBs(resolver, t.PodDisruptionBudgets), update, guard); err != nil {
+		children.ExpandForEachPDBs(resolver, t.PodDisruptionBudgets), update, guard); err != nil {
 		return err
 	}
 	return nil
@@ -229,7 +230,7 @@ func (r *GenericReconciler[PTR]) runTemplateOnDelete(ctx context.Context, resolv
 			}
 		} else {
 			if err := runJobs(ctx, kube, resolver, obj,
-				expandForEachJobs(resolver, t.Jobs), guard); err != nil {
+				children.ExpandForEachJobs(resolver, t.Jobs), guard); err != nil {
 				return err
 			}
 		}

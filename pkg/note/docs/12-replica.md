@@ -6,15 +6,27 @@ Replica notes read rollout state from Deployment, ReplicaSet, and StatefulSet ob
 
 ## Reference
 
-### `replicasReady`
+### `allReplicasReady`
 
-Return `true` when `status.readyReplicas >= spec.replicas`. The canonical rollout-complete gate.
+Return `true` when `status.readyReplicas == spec.replicas`. The canonical rollout-complete gate. Returns `true` when scaled to zero (desired=0 and ready=0).
 
 ```yaml
 # Gate dependent resources on a stable rollout:
 when:
-  - field: "{{ allReplicasReady.children.deployment }}"
+  - field: "{{ allReplicasReady .children.deployment }}"
     equals: "true"
+```
+
+---
+
+### `rolloutComplete`
+
+Return `true` when `status.updatedReplicas == spec.replicas` — all pods are running the latest pod template. Pods may not yet be ready.
+
+```yaml
+# Check rollout progress without waiting for readiness:
+- path: rolloutComplete
+  value: "{{ rolloutComplete .children.deployment }}"
 ```
 
 ---
@@ -80,10 +92,10 @@ status:
 
     # True only when all pods are both updated and ready
     - path: fullyRolledOut
-      value: "{{ and (replicasReady .children.deployment) (eq (updatedReplicas .children.deployment) (desiredReplicas .children.deployment)) }}"
+      value: "{{ and (allReplicasReady .children.deployment) (rolloutComplete .children.deployment) }}"
 
 when:
-  - field: "{{ allReplicasReady.children.deployment }}"
+  - field: "{{ allReplicasReady .children.deployment }}"
     equals: "true"
 ```
 
@@ -93,7 +105,8 @@ when:
 
 | Note | Signature | Returns |
 |------|-----------|---------|
-| `replicasReady` | `(obj any)` | `bool` |
+| `allReplicasReady` | `(obj any)` | `bool` |
+| `rolloutComplete` | `(obj any)` | `bool` |
 | `readyReplicas` | `(obj any)` | `int` |
 | `availableReplicas` | `(obj any)` | `int` |
 | `updatedReplicas` | `(obj any)` | `int` |

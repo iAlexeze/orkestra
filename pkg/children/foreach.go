@@ -1,4 +1,4 @@
-// pkg/reconciler/run_foreach.go
+// pkg/children/foreach.go
 //
 // forEach expansion — expands template sources with a forEach declaration
 // into N resolved sources, one per element in the list field.
@@ -9,7 +9,7 @@
 //
 // Expansion sequence in runTemplateReconcile:
 //
-//	deployments := expandForEachDeployments(resolver, t.Deployments)
+//	deployments := ExpandForEachDeployments(resolver, t.Deployments)
 //	runDeployments(ctx, kube, resolver, obj, deployments, update)
 //
 // YAML:
@@ -34,7 +34,7 @@
 //
 // when: and anyOf: on forEach sources are evaluated per-item — each
 // expanded source may pass or fail conditions independently.
-package reconciler
+package children
 
 import (
 	"sort"
@@ -47,7 +47,7 @@ import (
 // Namespace expansion
 // ─────────────────────────────────────────────────────────────────────────────
 
-func expandForEachNamespaces(
+func ExpandForEachNamespaces(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.NamespaceTemplateSource,
 ) []orktypes.NamespaceTemplateSource {
@@ -95,9 +95,9 @@ func expandForEachNamespaces(
 // Deployment expansion
 // ─────────────────────────────────────────────────────────────────────────────
 
-// expandForEachDeployments expands deployments with forEach declarations.
+// ExpandForEachDeployments expands deployments with forEach declarations.
 // Sources without forEach are passed through unchanged.
-func expandForEachDeployments(
+func ExpandForEachDeployments(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.DeploymentTemplateSource,
 ) []orktypes.DeploymentTemplateSource {
@@ -165,9 +165,9 @@ func expandForEachDeployments(
 // ReplicaSet expansion
 // ─────────────────────────────────────────────────────────────────────────────
 
-// expandForEachReplicaSets expands replicasets with forEach declarations.
+// ExpandForEachReplicaSets expands replicasets with forEach declarations.
 // Sources without forEach are passed through unchanged.
-func expandForEachReplicaSets(
+func ExpandForEachReplicaSets(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.ReplicaSetTemplateSource,
 ) []orktypes.ReplicaSetTemplateSource {
@@ -242,7 +242,7 @@ func expandForEachReplicaSets(
 // Service expansion
 // ─────────────────────────────────────────────────────────────────────────────
 
-func expandForEachServices(
+func ExpandForEachServices(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.ServiceTemplateSource,
 ) []orktypes.ServiceTemplateSource {
@@ -294,7 +294,7 @@ func expandForEachServices(
 // Secret expansion
 // ─────────────────────────────────────────────────────────────────────────────
 
-func expandForEachSecrets(
+func ExpandForEachSecrets(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.SecretTemplateSource,
 ) []orktypes.SecretTemplateSource {
@@ -335,7 +335,7 @@ func expandForEachSecrets(
 // ConfigMap expansion
 // ─────────────────────────────────────────────────────────────────────────────
 
-func expandForEachConfigMaps(
+func ExpandForEachConfigMaps(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.ConfigMapTemplateSource,
 ) []orktypes.ConfigMapTemplateSource {
@@ -376,7 +376,7 @@ func expandForEachConfigMaps(
 // Job expansion
 // ─────────────────────────────────────────────────────────────────────────────
 
-func expandForEachJobs(
+func ExpandForEachJobs(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.JobTemplateSource,
 ) []orktypes.JobTemplateSource {
@@ -418,7 +418,7 @@ func expandForEachJobs(
 // CronJob expansion
 // ─────────────────────────────────────────────────────────────────────────────
 
-func expandForEachCronJobs(
+func ExpandForEachCronJobs(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.CronJobTemplateSource,
 ) []orktypes.CronJobTemplateSource {
@@ -460,7 +460,7 @@ func expandForEachCronJobs(
 // Ingress expansion
 // ─────────────────────────────────────────────────────────────────────────────
 
-func expandForEachIngresses(
+func ExpandForEachIngresses(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.IngressTemplateSource,
 ) []orktypes.IngressTemplateSource {
@@ -523,7 +523,7 @@ func expandForEachIngresses(
 // HPA expansion
 // ─────────────────────────────────────────────────────────────────────────────
 
-func expandForEachHPAs(
+func ExpandForEachHPAs(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.HPATemplateSource,
 ) []orktypes.HPATemplateSource {
@@ -566,7 +566,7 @@ func expandForEachHPAs(
 // PDB expansion
 // ─────────────────────────────────────────────────────────────────────────────
 
-func expandForEachPDBs(
+func ExpandForEachPDBs(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.PDBTemplateSource,
 ) []orktypes.PDBTemplateSource {
@@ -614,7 +614,7 @@ func expandForEachPDBs(
 // ServiceAccount expansion
 // ─────────────────────────────────────────────────────────────────────────────
 
-func expandForEachServiceAccounts(
+func ExpandForEachServiceAccounts(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.ServiceAccountTemplateSource,
 ) []orktypes.ServiceAccountTemplateSource {
@@ -651,7 +651,7 @@ func expandForEachServiceAccounts(
 	return result
 }
 
-func expandForEachStatefulSets(
+func ExpandForEachStatefulSets(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.StatefulSetTemplateSource,
 ) []orktypes.StatefulSetTemplateSource {
@@ -705,7 +705,7 @@ func expandForEachStatefulSets(
 	return result
 }
 
-func expandForEachPVCs(
+func ExpandForEachPVCs(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.PVCTemplateSource,
 ) []orktypes.PVCTemplateSource {
@@ -742,7 +742,7 @@ func expandForEachPVCs(
 	return result
 }
 
-func expandForEachPVs(
+func ExpandForEachPVs(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.PVTemplateSource,
 ) []orktypes.PVTemplateSource {
@@ -781,7 +781,7 @@ func expandForEachPVs(
 	return result
 }
 
-func expandForEachRoles(
+func ExpandForEachRoles(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.RoleTemplateSource,
 ) []orktypes.RoleTemplateSource {
@@ -806,7 +806,7 @@ func expandForEachRoles(
 	return result
 }
 
-func expandForEachRoleBindings(
+func ExpandForEachRoleBindings(
 	resolver *orktmpl.Resolver,
 	srcs []orktypes.RoleBindingTemplateSource,
 ) []orktypes.RoleBindingTemplateSource {

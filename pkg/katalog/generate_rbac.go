@@ -3,6 +3,7 @@ package katalog
 import (
 	"strings"
 
+	"github.com/orkspace/orkestra/pkg/children"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -148,7 +149,7 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 	// Any entry with a Detect function is a candidate; emit a rule when
 	// at least one enabled CRD actually uses that resource.
 	// ───────────────────────────────────────────────
-	for _, b := range builtInRegistry {
+	for _, b := range children.AllBuiltInKindDefs() {
 		if b.Detect == nil {
 			continue
 		}
@@ -277,7 +278,7 @@ func (k *Katalog) GenerateRuntimeRBACRules() []rbacv1.PolicyRule {
 	// ───────────────────────────────────────────────
 	// Built-in resource RBAC
 	// ───────────────────────────────────────────────
-	for _, b := range builtInRegistry {
+	for _, b := range children.AllBuiltInKindDefs() {
 		if b.Detect == nil {
 			continue
 		}
@@ -371,7 +372,7 @@ func (k *Katalog) GenerateGatewayRBACRules() []rbacv1.PolicyRule {
 //
 //  5. Built‑in Kubernetes resource:
 //     - kind matches Orkestra's built‑in registry
-//     → use GVRForBuiltIn(kind).
+//     → use children.GVRForBuiltIn(kind).
 //
 //  6. Otherwise:
 //     → resolution fails and (GVR{}, false) is returned.
@@ -437,7 +438,7 @@ func (k *Katalog) ResolveGVR(r orktypes.ManagedResource) (schema.GroupVersionRes
 	// ───────────────────────────────────────────────
 	// 5. Built‑in resource
 	// ───────────────────────────────────────────────
-	if gvr, ok := GVRForBuiltIn(r.Kind); ok {
+	if gvr, ok := children.GVRForBuiltIn(r.Kind); ok {
 		return gvr, true
 	}
 

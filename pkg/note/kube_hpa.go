@@ -26,6 +26,10 @@ func hpaNotes() template.FuncMap {
 		"hpaMaxReplicas":     noteHPAMaxReplicas,
 		"hpaScaling":         noteHPAScaling,
 		"hpaAtMax":           noteHPAAtMax,
+		// Enriched scale-target notes — require enrich: [hpa] on the CRD.
+		"hpaScaleTargetName": noteHPAScaleTargetName,
+		"hpaScaleTargetKind": noteHPAScaleTargetKind,
+		"hpaMetricTypes":     noteHPAMetricTypes,
 	}
 }
 
@@ -100,4 +104,70 @@ func noteHPAAtMax(obj interface{}) bool {
 		return false
 	}
 	return noteHPACurrentReplicas(obj) >= max
+}
+
+// ── Enriched HPA notes ────────────────────────────────────────────────────────
+
+// noteHPAScaleTargetName reads _scaleTarget.name.
+// Requires enrich: [hpa] on the CRD.
+//
+//	{{ hpaScaleTargetName .children.hpa }}  → "my-app"
+func noteHPAScaleTargetName(obj interface{}) string {
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	target, _ := m["_scaleTarget"].(map[string]interface{})
+	if target == nil {
+		return ""
+	}
+	v, _ := target["name"].(string)
+	return v
+}
+
+// noteHPAScaleTargetKind reads _scaleTarget.kind.
+// Requires enrich: [hpa] on the CRD.
+//
+//	{{ hpaScaleTargetKind .children.hpa }}  → "Deployment"
+func noteHPAScaleTargetKind(obj interface{}) string {
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	target, _ := m["_scaleTarget"].(map[string]interface{})
+	if target == nil {
+		return ""
+	}
+	v, _ := target["kind"].(string)
+	return v
+}
+
+// noteHPAMetricTypes reads _currentMetrics and returns a comma-separated list of type values.
+// Requires enrich: [hpa] on the CRD.
+//
+//	{{ hpaMetricTypes .children.hpa }}  → "Resource, External"
+func noteHPAMetricTypes(obj interface{}) string {
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	metrics, _ := m["_currentMetrics"].([]interface{})
+	var types []string
+	for _, entry := range metrics {
+		em, _ := entry.(map[string]interface{})
+		if em == nil {
+			continue
+		}
+		if t, _ := em["type"].(string); t != "" {
+			types = append(types, t)
+		}
+	}
+	result := ""
+	for i, t := range types {
+		if i > 0 {
+			result += ", "
+		}
+		result += t
+	}
+	return result
 }

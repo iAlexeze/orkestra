@@ -1,6 +1,6 @@
 # ork run
 
-Start the Orkestra operator runtime.
+Start the Orkestra Runtime.
 
 ```bash
 ork run --file <path>

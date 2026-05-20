@@ -23,6 +23,7 @@ spec:
 
       enrich:
         - pvc
+        - storageclass
 
       operatorBox:
         onCreate:
@@ -75,3 +76,10 @@ spec:
 
             - path: pvcVolumeMode
               value: "{{ pvcVolumeMode .children.pvc }}"
+
+            # ── enriched StorageClass notes (require enrich: [storageclass]) ─
+            - path: storageClassProvisioner
+              value: "{{ pvcStorageClassProvisioner .children.pvc }}"
+
+            - path: storageClassReclaimPolicy
+              value: "{{ pvcStorageClassReclaimPolicy .children.pvc }}"

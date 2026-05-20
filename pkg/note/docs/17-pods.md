@@ -141,6 +141,42 @@ Return the pod summary map at the given ordinal index. Designed for StatefulSets
 
 ---
 
+### `podCrashLoopDetected`
+
+Return `true` when any container across any pod is in `CrashLoopBackOff`. More precise than `hasCrashingPod`, which only checks restart count.
+
+```yaml
+- path: crashLoop
+  value: "{{ podCrashLoopDetected .children.deployment }}"
+```
+
+---
+
+### `podContainerReasons`
+
+Return a comma-separated list of unique waiting or terminated reasons across all containers in all pods. Empty reasons are omitted. Useful for surfacing `ImagePullBackOff`, `CrashLoopBackOff`, `OOMKilled`, etc.
+
+```yaml
+- path: containerReasons
+  value: "{{ podContainerReasons .children.deployment }}"
+# → "CrashLoopBackOff, ImagePullBackOff"
+```
+
+---
+
+### `podContainerState`
+
+Return the state of a named container within the pod at the given ordinal. Returns `""` when the pod or container is not found.
+
+```yaml
+- path: appContainerState
+  value: "{{ podContainerState .children.statefulset 0 \"app\" }}"
+# → "Running"
+# → "Waiting"
+```
+
+---
+
 ## Zero-code memcached operator
 
 ```yaml

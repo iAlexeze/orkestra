@@ -47,6 +47,144 @@ when:
 
 ---
 
+---
+
+### `jobFirstExitCode`
+
+Return the exit code of the first terminated pod in `_pods`. Returns `-1` when no pod has terminated yet.
+
+Requires `enrich: [pods]` on the CRD.
+
+```yaml
+- path: exitCode
+  value: "{{ jobFirstExitCode .children.migrationjob }}"
+# → 0
+```
+
+---
+
+### `jobActivePodNames`
+
+Return a comma-separated list of pod names that are not yet done (phase is not Succeeded or Failed).
+
+Requires `enrich: [pods]` on the CRD.
+
+```yaml
+- path: runningPods
+  value: "{{ jobActivePodNames .children.migrationjob }}"
+# → "my-job-abc, my-job-def"
+```
+
+---
+
+### `jobSucceededPodNames`
+
+Return a comma-separated list of pod names that completed successfully.
+
+Requires `enrich: [pods]` on the CRD.
+
+```yaml
+- path: succeededPods
+  value: "{{ jobSucceededPodNames .children.migrationjob }}"
+# → "my-job-abc"
+```
+
+---
+
+### `jobFailedPodNames`
+
+Return a comma-separated list of pod names that failed.
+
+Requires `enrich: [pods]` on the CRD.
+
+```yaml
+- path: failedPods
+  value: "{{ jobFailedPodNames .children.migrationjob }}"
+# → "my-job-xyz"
+```
+
+---
+
+## CronJob notes
+
+### `cronJobActiveCount`
+
+Return the number of currently active Job runs (length of `status.active`).
+
+```yaml
+- path: activeRuns
+  value: "{{ cronJobActiveCount .children.cronjob }}"
+# → 1
+```
+
+---
+
+### `cronJobLastScheduleTime`
+
+Return the last time the CronJob was scheduled (`status.lastScheduleTime`). Returns `""` when not yet scheduled.
+
+```yaml
+- path: lastScheduled
+  value: "{{ cronJobLastScheduleTime .children.cronjob }}"
+# → "2026-05-19T10:00:00Z"
+```
+
+---
+
+### `cronJobLastSuccessTime`
+
+Return the last time the CronJob completed successfully (`status.lastSuccessfulTime`). Returns `""` when it has never succeeded.
+
+```yaml
+- path: lastSuccess
+  value: "{{ cronJobLastSuccessTime .children.cronjob }}"
+# → "2026-05-19T10:00:00Z"
+```
+
+---
+
+### `cronJobLastJobName`
+
+Return the name of the most recently created Job (`_lastJob.metadata.name`).
+
+Requires `enrich: [cronjob]` on the CRD.
+
+```yaml
+- path: lastJobName
+  value: "{{ cronJobLastJobName .children.cronjob }}"
+# → "my-job-28600000"
+```
+
+---
+
+### `cronJobLastJobSucceeded`
+
+Return `true` when the most recently created Job has at least one succeeded pod.
+
+Requires `enrich: [cronjob]` on the CRD.
+
+```yaml
+when:
+  - field: "{{ cronJobLastJobSucceeded .children.cronjob }}"
+    equals: "true"
+```
+
+---
+
+### `cronJobLastSuccessfulJobName`
+
+Return the name of the most recently successful Job (`_lastSuccessfulJob.metadata.name`). Different from `cronJobLastJobName` when the latest run is still in progress or has failed.
+
+Requires `enrich: [cronjob]` on the CRD.
+
+```yaml
+- path: lastSuccessfulJob
+  value: "{{ cronJobLastSuccessfulJobName .children.cronjob }}"
+# → "my-job-28599900"
+```
+
+---
+
 ## Complete workflow pattern
 
 ```yaml
@@ -73,11 +211,21 @@ resources:
 
 ## Quick reference
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `jobSucceeded` | `(obj any)` | `bool` |
-| `jobFailed` | `(obj any)` | `bool` |
-| `jobActive` | `(obj any)` | `bool` |
+| Note | Signature | Returns | Requires |
+|------|-----------|---------|----------|
+| `jobSucceeded` | `(obj any)` | `bool` | — |
+| `jobFailed` | `(obj any)` | `bool` | — |
+| `jobActive` | `(obj any)` | `bool` | — |
+| `jobFirstExitCode` | `(obj any)` | `int64` | `enrich: [pods]` |
+| `jobActivePodNames` | `(obj any)` | `string` | `enrich: [pods]` |
+| `jobSucceededPodNames` | `(obj any)` | `string` | `enrich: [pods]` |
+| `jobFailedPodNames` | `(obj any)` | `string` | `enrich: [pods]` |
+| `cronJobActiveCount` | `(obj any)` | `int` | — |
+| `cronJobLastScheduleTime` | `(obj any)` | `string` | — |
+| `cronJobLastSuccessTime` | `(obj any)` | `string` | — |
+| `cronJobLastJobName` | `(obj any)` | `string` | `enrich: [cronjob]` |
+| `cronJobLastJobSucceeded` | `(obj any)` | `bool` | `enrich: [cronjob]` |
+| `cronJobLastSuccessfulJobName` | `(obj any)` | `string` | `enrich: [cronjob]` |
 
 ---
 

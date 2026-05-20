@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
@@ -367,8 +368,8 @@ func (k *Katalog) addHooks() error {
 func (k *Katalog) validateStatus() {
 	for name, crd := range k.enabledCRDs {
 		// Look up by Kind directly — avoids GVK string format mismatch.
-		// BuiltInMeta returns zero value for unknown kinds (safe).
-		meta := BuiltInMeta(crd.APITypes.Kind)
+		// children.BuiltInMeta returns zero value for unknown kinds (safe).
+		meta := children.BuiltInMeta(crd.APITypes.Kind)
 
 		if meta.SkipStatusSubresource {
 			// ConfigMap, Secret, ServiceAccount, Role, ClusterRole, etc.

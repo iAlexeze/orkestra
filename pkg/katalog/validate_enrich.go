@@ -1,14 +1,11 @@
 package katalog
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
 
-// validEnrichTargets is the set of currently supported enrichment targets.
-var validEnrichTargets = map[string]bool{
-	"pods":      true,
-	"endpoints": true,
-	"events":    true,
-	"pvc":       true,
-}
+	"github.com/orkspace/orkestra/pkg/children"
+)
 
 // validateEnrich fails fast when:
 //   - both enrichAll and enrich are set on the same CRD (mutually exclusive)
@@ -21,14 +18,34 @@ func (k *Katalog) validateEnrich() error {
 				name,
 			)
 		}
+
+		supportedGroups := children.SupportedEnrichmentGroups()
+
 		for _, target := range crd.Enrich {
-			if !validEnrichTargets[target] {
+			if !children.IsValidEnrichmentTarget(target) {
 				return fmt.Errorf(
-					"crd %q: unknown enrich target %q — supported targets: pods, endpoints, events, pvc",
-					name, target,
+					"crd %q: unknown enrich target %q — supported targets:%s",
+					name,
+					target,
+					formatEnrichmentGroups(supportedGroups),
 				)
 			}
 		}
+
 	}
 	return nil
+}
+
+// helper
+func formatEnrichmentGroups(groups map[string][]string) string {
+	var b strings.Builder
+
+	for kind, list := range groups {
+		b.WriteString("\n  ")
+		b.WriteString(kind)
+		b.WriteString(":\n    ")
+		b.WriteString(strings.Join(list, ", "))
+	}
+
+	return b.String()
 }

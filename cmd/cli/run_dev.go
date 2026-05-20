@@ -23,7 +23,7 @@ import (
 // the --dev cluster-setup behaviour on top of the core production logic.
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Start the Orkestra operator runtime",
+	Short: "Start the Orkestra Runtime",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dev, _ := cmd.Flags().GetBool("dev")
 

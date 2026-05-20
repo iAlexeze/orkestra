@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/katalog"
+	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/kubeclient"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,11 +42,11 @@ type childGVREntry struct {
 // knownChildGVRs is built once at startup from builtInRegistry.
 // Statusless is per-child-kind, independent of the parent CRD's statusless flag.
 var knownChildGVRs = func() []childGVREntry {
-	defs := katalog.ChildGVRs()
+	defs := children.ChildGVRs()
 
 	out := make([]childGVREntry, len(defs))
 	for i, d := range defs {
-		m := katalog.BuiltInMeta(d.Key)
+		m := children.BuiltInMeta(d.Key)
 		out[i] = childGVREntry{
 			GVR:        d.GVR,
 			Key:        d.Key,
@@ -114,7 +114,7 @@ func readChildrenForEndpoint(
 		}()
 	}
 
-	children := make(map[string]interface{}, len(gvrs))
+	childMap := make(map[string]interface{}, len(gvrs))
 	for range gvrs {
 		select {
 		case r := <-ch:
@@ -122,13 +122,13 @@ func readChildrenForEndpoint(
 			case 0:
 				// nothing — omit key
 			case 1:
-				children[r.key] = r.items[0] // flat object — backward compatible
+				childMap[r.key] = r.items[0] // flat object — backward compatible
 			default:
-				children[r.key] = r.items // array when multiple of same kind
+				childMap[r.key] = r.items // array when multiple of same kind
 			}
 		case <-fetchCtx.Done():
-			endpointChildrenCache.Store(cacheKey, cachedChildren{data: children, at: time.Now()})
-			return children
+			endpointChildrenCache.Store(cacheKey, cachedChildren{data: childMap, at: time.Now()})
+			return childMap
 		}
 	}
 
@@ -138,16 +138,16 @@ func readChildrenForEndpoint(
 		customs := fetchCustomChildren(fetchCtx, kube, ns, labelSelector, customSrcs)
 		switch len(customs) {
 		case 1:
-			children["custom"] = customs[0]
+			childMap["custom"] = customs[0]
 		default:
 			if len(customs) > 1 {
-				children["custom"] = customs
+				childMap["custom"] = customs
 			}
 		}
 	}
 
-	endpointChildrenCache.Store(cacheKey, cachedChildren{data: children, at: time.Now()})
-	return children
+	endpointChildrenCache.Store(cacheKey, cachedChildren{data: childMap, at: time.Now()})
+	return childMap
 }
 
 // InvalidateChildrenCache removes the cached children for a CR.

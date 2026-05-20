@@ -407,3 +407,49 @@ func TestNoteServiceFirstEndpoint(t *testing.T) {
 		})
 	}
 }
+
+func makeServiceWithBackingPods(podNames []string) map[string]interface{} {
+	pods := make([]interface{}, len(podNames))
+	for i, n := range podNames {
+		pods[i] = map[string]interface{}{"name": n, "phase": "Running"}
+	}
+	return map[string]interface{}{"_backingPods": pods}
+}
+
+func TestNoteBackingPodCount(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want int
+	}{
+		{"nil", nil, 0},
+		{"no enrichment", map[string]interface{}{}, 0},
+		{"two pods", makeServiceWithBackingPods([]string{"pod-a", "pod-b"}), 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteBackingPodCount(tt.obj); got != tt.want {
+				t.Errorf("noteBackingPodCount() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNoteBackingPodNames(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want string
+	}{
+		{"nil", nil, ""},
+		{"no enrichment", map[string]interface{}{}, ""},
+		{"two pods", makeServiceWithBackingPods([]string{"pod-a", "pod-b"}), "pod-a, pod-b"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteBackingPodNames(tt.obj); got != tt.want {
+				t.Errorf("noteBackingPodNames() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

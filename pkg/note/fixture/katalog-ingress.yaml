@@ -21,6 +21,9 @@ spec:
       workers: 1
       resync: 30s
 
+      enrich:
+        - ingress
+
       operatorBox:
         onCreate:
           deployments:
@@ -96,3 +99,10 @@ spec:
 
             - path: ingressTLSHosts
               value: "{{ ingressTLSHosts .children.ingress }}"
+
+            # ── enriched ingress notes (require enrich: [ingress]) ──────────
+            - path: ingressLoadBalancerIPs
+              value: "{{ ingressLoadBalancerIPs .children.ingress }}"
+
+            - path: ingressTLSSecretCount
+              value: "{{ ingressTLSSecretCount .children.ingress }}"

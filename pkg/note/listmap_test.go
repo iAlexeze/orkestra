@@ -3,6 +3,7 @@ package note
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -122,11 +123,29 @@ func TestNoteMapValues(t *testing.T) {
 		{"not a map", "string", []interface{}{}},
 		{"nil", nil, []interface{}{}},
 	}
+	toInts := func(vs []interface{}) []int {
+		out := make([]int, len(vs))
+		for i, v := range vs {
+			out[i] = v.(int)
+		}
+		return out
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := noteMapValues(tt.m)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("noteMapValues(%v) = %v, want %v", tt.m, got, tt.want)
+			if len(got) != len(tt.want) {
+				t.Errorf("noteMapValues(%v) len = %d, want %d", tt.m, len(got), len(tt.want))
+				return
+			}
+			if len(got) == 0 {
+				return
+			}
+			// Map iteration order is non-deterministic; sort numerically before comparing.
+			gotInts, wantInts := toInts(got), toInts(tt.want)
+			sort.Ints(gotInts)
+			sort.Ints(wantInts)
+			if !reflect.DeepEqual(gotInts, wantInts) {
+				t.Errorf("noteMapValues(%v) = %v, want %v", tt.m, gotInts, wantInts)
 			}
 		})
 	}

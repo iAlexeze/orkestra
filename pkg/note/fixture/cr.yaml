@@ -4,7 +4,7 @@ metadata:
   name: my-probe
   namespace: default
 spec:
-  image: nginx:1.25x
+  image: nginx:latest
   replicas: 1
   minReplicas: 1
   maxReplicas: 3
@@ -12,3 +12,4 @@ spec:
   storageClassName: standard
   storage: 10Gi
   port: 8080
+  schedule: "*/1 * * * *"

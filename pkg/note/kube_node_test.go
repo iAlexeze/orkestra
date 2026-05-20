@@ -128,3 +128,54 @@ func TestNoteNodeTaints(t *testing.T) {
 		})
 	}
 }
+
+func makePodWithNode(nodeName, zone, region, instanceType string) map[string]interface{} {
+	return map[string]interface{}{
+		"_node": map[string]interface{}{
+			"name":         nodeName,
+			"zone":         zone,
+			"region":       region,
+			"instanceType": instanceType,
+		},
+	}
+}
+
+func TestNotePodNodeName(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want string
+	}{
+		{"nil", nil, ""},
+		{"no enrichment", map[string]interface{}{}, ""},
+		{"has node", makePodWithNode("ip-10-0-1-5", "us-east-2a", "us-east-2", "t3.medium"), "ip-10-0-1-5"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := notePodNodeName(tt.obj); got != tt.want {
+				t.Errorf("notePodNodeName() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNotePodNodeZone(t *testing.T) {
+	obj := makePodWithNode("node", "us-east-2a", "us-east-2", "t3.medium")
+	if got := notePodNodeZone(obj); got != "us-east-2a" {
+		t.Errorf("notePodNodeZone() = %q, want %q", got, "us-east-2a")
+	}
+}
+
+func TestNotePodNodeRegion(t *testing.T) {
+	obj := makePodWithNode("node", "us-east-2a", "us-east-2", "t3.medium")
+	if got := notePodNodeRegion(obj); got != "us-east-2" {
+		t.Errorf("notePodNodeRegion() = %q, want %q", got, "us-east-2")
+	}
+}
+
+func TestNotePodNodeInstanceType(t *testing.T) {
+	obj := makePodWithNode("node", "us-east-2a", "us-east-2", "t3.medium")
+	if got := notePodNodeInstanceType(obj); got != "t3.medium" {
+		t.Errorf("notePodNodeInstanceType() = %q, want %q", got, "t3.medium")
+	}
+}

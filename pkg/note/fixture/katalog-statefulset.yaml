@@ -21,7 +21,7 @@ spec:
         plural: noteprobes
       workers: 1
       resync: 30s
-      enrich: [pods]
+      enrich: [pods, pvcs]
 
       operatorBox:
         onCreate:
@@ -77,3 +77,7 @@ spec:
 
             - path: primaryReady
               value: "{{ (podByOrdinal .children.statefulset 0).ready }}"
+
+            # ── enriched StatefulSet PVC notes (require enrich: [pvcs]) ─────
+            - path: pvcCount
+              value: "{{ statefulSetPVCCount .children.statefulset }}"

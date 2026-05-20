@@ -1,4 +1,4 @@
-// pkg/katalog/builtins.go
+// pkg/children/builtins.go
 //
 // Single authoritative registry for every Kubernetes built-in resource kind
 // Orkestra knows about. Adding one entry here is the only change required to:
@@ -11,14 +11,11 @@
 //   - Drive readiness and deletion-protection logic
 //
 // Keys are lowercase singular Kind names (e.g. "deployment", "namespace").
-package katalog
+// Accessor functions live in builtins_accessors.go.
+package children
 
 import (
-	"fmt"
-	"strings"
-
 	orktypes "github.com/orkspace/orkestra/pkg/types"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // BuiltInKind holds the fully-qualified API metadata for a Kubernetes
@@ -54,6 +51,11 @@ type BuiltInKind struct {
 	SkipObservedGeneration bool // Has status but no observedGeneration; skip generation check
 	IsChild                bool // Orkestra may create this as a child resource
 	OrkestraInternal       bool // Part of Orkestra's own control-plane installation
+
+	// ── Context Enrichment for the Resolver ────────────────────────────────────
+	ContextEnrichmentTarget bool     // ContextEnrichmentTarget marks resources that support context enrichment
+	Aliases                 []string // alternative names usable as enrichment targets
+
 }
 
 // detectAny returns true if any hook template block in the CRD uses the
@@ -74,7 +76,9 @@ var builtInRegistry = map[string]BuiltInKind{
 	"pod": {
 		Kind: "Pod", Group: "", Version: "v1", Plural: "pods",
 		Namespaced: true, APIPath: "/api",
-		SkipObservedGeneration: true,
+		SkipObservedGeneration:  true,
+		Shorthands:              []string{"po"},
+		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.PodTemplateSource { return t.Pods })
 		},
@@ -83,7 +87,10 @@ var builtInRegistry = map[string]BuiltInKind{
 	"service": {
 		Kind: "Service", Group: "", Version: "v1", Plural: "services",
 		Namespaced: true, APIPath: "/api",
-		SkipObservedGeneration: true, IsChild: true, OrkestraInternal: true,
+		ContextEnrichmentTarget: true,
+		Shorthands:              []string{"svc"},
+		Aliases:                 []string{"backingpods"},
+		SkipObservedGeneration:  true, IsChild: true, OrkestraInternal: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.ServiceTemplateSource { return t.Services })
 		},
@@ -131,8 +138,9 @@ var builtInRegistry = map[string]BuiltInKind{
 	"persistentvolumeclaim": {
 		Kind: "PersistentVolumeClaim", Group: "", Version: "v1", Plural: "persistentvolumeclaims",
 		Namespaced: true, APIPath: "/api",
-		SkipObservedGeneration: true,
-		Shorthands:             []string{"pvc"},
+		SkipObservedGeneration:  true,
+		Shorthands:              []string{"pvc"},
+		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.PVCTemplateSource { return t.PersistentVolumeClaims })
 		},
@@ -141,8 +149,9 @@ var builtInRegistry = map[string]BuiltInKind{
 	"persistentvolume": {
 		Kind: "PersistentVolume", Group: "", Version: "v1", Plural: "persistentvolumes",
 		Namespaced: false, APIPath: "/api",
-		SkipObservedGeneration: true,
-		Shorthands:             []string{"pv"},
+		SkipObservedGeneration:  true,
+		Shorthands:              []string{"pv"},
+		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.PVTemplateSource { return t.PersistentVolumes })
 		},
@@ -151,13 +160,17 @@ var builtInRegistry = map[string]BuiltInKind{
 	"event": {
 		Kind: "Event", Group: "", Version: "v1", Plural: "events",
 		Namespaced: true, APIPath: "/api",
-		Statusless: true, SkipStatusSubresource: true,
+		Shorthands:              []string{"ev"},
+		ContextEnrichmentTarget: true,
+		Aliases:                 []string{"warnings"},
+		Statusless:              true, SkipStatusSubresource: true,
 	},
 
 	"node": {
 		Kind: "Node", Group: "", Version: "v1", Plural: "nodes",
 		Namespaced: false, APIPath: "/api",
-		SkipObservedGeneration: true,
+		ContextEnrichmentTarget: true,
+		SkipObservedGeneration:  true,
 	},
 
 	"resourcequota": {
@@ -193,7 +206,8 @@ var builtInRegistry = map[string]BuiltInKind{
 		Kind: "Deployment", Group: "apps", Version: "v1", Plural: "deployments",
 		Namespaced: true, APIPath: "/apis",
 		IsChild: true, OrkestraInternal: true,
-		Shorthands: []string{"deploy", "dep"},
+		Shorthands:              []string{"deploy", "dep"},
+		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.DeploymentTemplateSource { return t.Deployments })
 		},
@@ -202,7 +216,8 @@ var builtInRegistry = map[string]BuiltInKind{
 	"statefulset": {
 		Kind: "StatefulSet", Group: "apps", Version: "v1", Plural: "statefulsets",
 		Namespaced: true, APIPath: "/apis",
-		Shorthands: []string{"sts"},
+		Shorthands:              []string{"sts"},
+		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.StatefulSetTemplateSource { return t.StatefulSets })
 		},
@@ -220,7 +235,8 @@ var builtInRegistry = map[string]BuiltInKind{
 	"replicaset": {
 		Kind: "ReplicaSet", Group: "apps", Version: "v1", Plural: "replicasets",
 		Namespaced: true, APIPath: "/apis",
-		Shorthands: []string{"rs"},
+		Shorthands:              []string{"rs"},
+		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.ReplicaSetTemplateSource { return t.ReplicaSets })
 		},
@@ -232,6 +248,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Kind: "Job", Group: "batch", Version: "v1", Plural: "jobs",
 		Namespaced: true, APIPath: "/apis",
 		SkipStatusSubresource: true, IsChild: true,
+		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.JobTemplateSource { return t.Jobs })
 		},
@@ -241,7 +258,8 @@ var builtInRegistry = map[string]BuiltInKind{
 		Kind: "CronJob", Group: "batch", Version: "v1", Plural: "cronjobs",
 		Namespaced: true, APIPath: "/apis",
 		SkipStatusSubresource: true, IsChild: true,
-		Shorthands: []string{"cj"},
+		Shorthands:              []string{"cj"},
+		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.CronJobTemplateSource { return t.CronJobs })
 		},
@@ -252,8 +270,9 @@ var builtInRegistry = map[string]BuiltInKind{
 	"ingress": {
 		Kind: "Ingress", Group: "networking.k8s.io", Version: "v1", Plural: "ingresses",
 		Namespaced: true, APIPath: "/apis",
-		OrkestraInternal: true,
-		Shorthands:       []string{"ing"},
+		OrkestraInternal:        true,
+		Shorthands:              []string{"ing"},
+		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.IngressTemplateSource { return t.Ingresses })
 		},
@@ -263,7 +282,8 @@ var builtInRegistry = map[string]BuiltInKind{
 		Kind: "NetworkPolicy", Group: "networking.k8s.io", Version: "v1", Plural: "networkpolicies",
 		Namespaced: true, APIPath: "/apis",
 		Statusless: true, SkipStatusSubresource: true, OrkestraInternal: true,
-		Shorthands: []string{"np"},
+		Shorthands:              []string{"np"},
+		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.PlaceholderSource { return t.NetworkPolicies })
 		},
@@ -279,8 +299,9 @@ var builtInRegistry = map[string]BuiltInKind{
 	"horizontalpodautoscaler": {
 		Kind: "HorizontalPodAutoscaler", Group: "autoscaling", Version: "v2", Plural: "horizontalpodautoscalers",
 		Namespaced: true, APIPath: "/apis",
-		OrkestraInternal: true,
-		Shorthands:       []string{"hpa"},
+		OrkestraInternal:        true,
+		Shorthands:              []string{"hpa"},
+		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.HPATemplateSource { return t.HorizontalPodAutoscalers })
 		},
@@ -344,7 +365,8 @@ var builtInRegistry = map[string]BuiltInKind{
 	"storageclass": {
 		Kind: "StorageClass", Group: "storage.k8s.io", Version: "v1", Plural: "storageclasses",
 		Namespaced: false, APIPath: "/apis",
-		Shorthands: []string{"sc"},
+		Shorthands:              []string{"sc"},
+		ContextEnrichmentTarget: true,
 	},
 
 	"volumeattachment": {
@@ -406,8 +428,10 @@ var builtInRegistry = map[string]BuiltInKind{
 	"endpointslice": {
 		Kind: "EndpointSlice", Group: "discovery.k8s.io", Version: "v1", Plural: "endpointslices",
 		Namespaced: true, APIPath: "/apis",
-		SkipObservedGeneration: true,
-		Shorthands:             []string{"ep"},
+		SkipObservedGeneration:  true,
+		Shorthands:              []string{"ep"},
+		ContextEnrichmentTarget: true,
+		Aliases:                 []string{"endpoints"},
 	},
 
 	// ── coordination.k8s.io/v1 ───────────────────────────────────────────────
@@ -430,131 +454,4 @@ func init() {
 			shorthandIndex[sh] = key
 		}
 	}
-}
-
-// ── Lookup API ────────────────────────────────────────────────────────────────
-
-// EnrichmentResult holds the result of a built-in lookup.
-type EnrichmentResult struct {
-	Found        bool
-	Kind         string
-	BuiltIn      BuiltInKind
-	DisplayGroup string
-}
-
-// LookupBuiltIn looks up a Kind in the built-in registry.
-// Case-insensitive. Expands shorthands (e.g. "hpa" → "horizontalpodautoscaler").
-func LookupBuiltIn(kind string) EnrichmentResult {
-	key := strings.ToLower(strings.TrimSpace(kind))
-	if key == "" {
-		return EnrichmentResult{}
-	}
-	if expanded, ok := shorthandIndex[key]; ok {
-		key = expanded
-	}
-	b, ok := builtInRegistry[key]
-	if !ok {
-		return EnrichmentResult{}
-	}
-	displayGroup := b.Group
-	if displayGroup == "" {
-		displayGroup = "core"
-	}
-	return EnrichmentResult{
-		Found:        true,
-		Kind:         b.Kind,
-		BuiltIn:      b,
-		DisplayGroup: displayGroup,
-	}
-}
-
-// GVRForBuiltIn returns the GroupVersionResource for a built-in kind.
-func GVRForBuiltIn(kind string) (schema.GroupVersionResource, bool) {
-	res := LookupBuiltIn(kind)
-	if !res.Found {
-		return schema.GroupVersionResource{}, false
-	}
-	b := res.BuiltIn
-	return schema.GroupVersionResource{Group: b.Group, Version: b.Version, Resource: b.Plural}, true
-}
-
-// BuiltInMeta returns metadata for a built-in kind. Zero value when unknown.
-func BuiltInMeta(kind string) BuiltInKind {
-	res := LookupBuiltIn(kind)
-	if !res.Found {
-		return BuiltInKind{}
-	}
-	return res.BuiltIn
-}
-
-// IsBuiltIn reports whether kind is a known Kubernetes built-in (case-insensitive).
-func IsBuiltIn(kind string) bool {
-	return LookupBuiltIn(kind).Found
-}
-
-// AllBuiltInKinds returns all canonical Kind names, sorted alphabetically.
-func AllBuiltInKinds() []string {
-	kinds := make([]string, 0, len(builtInRegistry))
-	for k, b := range builtInRegistry {
-		if strings.Contains(k, "_") {
-			continue // skip internal alias keys like "event_events"
-		}
-		kinds = append(kinds, b.Kind)
-	}
-	for i := 0; i < len(kinds); i++ {
-		for j := i + 1; j < len(kinds); j++ {
-			if kinds[i] > kinds[j] {
-				kinds[i], kinds[j] = kinds[j], kinds[i]
-			}
-		}
-	}
-	return kinds
-}
-
-// ── Readiness / deletion-protection queries ───────────────────────────────────
-
-func SkipObservedGenerationGVKs() []string {
-	return gvksByFlag(func(b BuiltInKind) bool { return b.SkipObservedGeneration })
-}
-func SkipStatusSubresourceGVKs() []string {
-	return gvksByFlag(func(b BuiltInKind) bool { return b.SkipStatusSubresource })
-}
-func StatuslessGVKs() []string { return gvksByFlag(func(b BuiltInKind) bool { return b.Statusless }) }
-
-func gvksByFlag(predicate func(BuiltInKind) bool) []string {
-	var out []string
-	for key, b := range builtInRegistry {
-		if !predicate(b) {
-			continue
-		}
-		kind := b.Kind
-		if kind == "" {
-			kind = strings.ToUpper(key[:1]) + key[1:]
-		}
-		if b.Group == "" {
-			out = append(out, b.Version+"/"+kind)
-		} else {
-			out = append(out, b.Group+"/"+b.Version+"/"+kind)
-		}
-	}
-	return out
-}
-
-// OrkestraInternalGVRs returns GVRs for Orkestra's own control-plane resources.
-// Used by the deletion-protection webhook.
-func OrkestraInternalGVRs() []GVREntry {
-	var out []GVREntry
-	for _, b := range builtInRegistry {
-		if !b.OrkestraInternal {
-			continue
-		}
-		out = append(out, GVREntry{
-			Key:        fmt.Sprintf("%s/%s/%s", b.Group, b.Version, b.Plural),
-			Group:      b.Group,
-			Version:    b.Version,
-			Resource:   b.Plural,
-			Operations: []string{"DELETE"},
-		})
-	}
-	return out
 }

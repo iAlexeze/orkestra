@@ -79,6 +79,8 @@ func buildNotes() template.FuncMap {
 	register(m, ingressNotes())
 	register(m, hpaNotes())
 	register(m, nodeNotes())
+	register(m, replicaSetNotes())
+	register(m, statefulSetNotes())
 	register(m, fieldNotes())
 	register(m, semverNotes())
 	register(m, netNotes())

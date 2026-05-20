@@ -37,6 +37,10 @@ func jobNotes() template.FuncMap {
 		"cronJobActiveCount":      noteCronJobActiveCount,
 		"cronJobLastScheduleTime": noteCronJobLastScheduleTime,
 		"cronJobLastSuccessTime":  noteCronJobLastSuccessTime,
+		// Enriched CronJob last-job notes — require enrich: [cronjob] on the CRD.
+		"cronJobLastJobName":           noteCronJobLastJobName,
+		"cronJobLastJobSucceeded":      noteCronJobLastJobSucceeded,
+		"cronJobLastSuccessfulJobName": noteCronJobLastSuccessfulJobName,
 	}
 }
 
@@ -176,5 +180,57 @@ func noteCronJobLastScheduleTime(obj interface{}) string {
 func noteCronJobLastSuccessTime(obj interface{}) string {
 	status := noteStatus(obj)
 	v, _ := status["lastSuccessfulTime"].(string)
+	return v
+}
+
+// ── Enriched CronJob last-job notes ──────────────────────────────────────────
+
+// noteCronJobLastJobName reads _lastJob.metadata.name.
+// Requires enrich: [cronjob] on the CRD.
+//
+//	{{ cronJobLastJobName .children.cronjob }}  → "my-job-28600000"
+func noteCronJobLastJobName(obj interface{}) string {
+	return cronJobLastJobMetaName(obj, "_lastJob")
+}
+
+// noteCronJobLastJobSucceeded returns true when _lastJob.status.succeeded > 0.
+// Requires enrich: [cronjob] on the CRD.
+//
+//	{{ cronJobLastJobSucceeded .children.cronjob }}
+func noteCronJobLastJobSucceeded(obj interface{}) bool {
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return false
+	}
+	job, _ := m["_lastJob"].(map[string]interface{})
+	if job == nil {
+		return false
+	}
+	status, _ := job["status"].(map[string]interface{})
+	return toInt64(status["succeeded"]) > 0
+}
+
+// noteCronJobLastSuccessfulJobName reads _lastSuccessfulJob.metadata.name.
+// Requires enrich: [cronjob] on the CRD.
+//
+//	{{ cronJobLastSuccessfulJobName .children.cronjob }}  → "my-job-28599900"
+func noteCronJobLastSuccessfulJobName(obj interface{}) string {
+	return cronJobLastJobMetaName(obj, "_lastSuccessfulJob")
+}
+
+func cronJobLastJobMetaName(obj interface{}, key string) string {
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	job, _ := m[key].(map[string]interface{})
+	if job == nil {
+		return ""
+	}
+	meta, _ := job["metadata"].(map[string]interface{})
+	if meta == nil {
+		return ""
+	}
+	v, _ := meta["name"].(string)
 	return v
 }

@@ -37,6 +37,9 @@ func pvcNotes() template.FuncMap {
 		// Enriched PV notes — require enrich: [pvc] on the CRD.
 		"pvcProvisioner": notePVCProvisioner,
 		"pvcVolumeMode":  notePVCVolumeMode,
+		// Enriched StorageClass notes — require enrich: [storageclass] on the CRD.
+		"pvcStorageClassProvisioner":   notePVCStorageClassProvisioner,
+		"pvcStorageClassReclaimPolicy": notePVCStorageClassReclaimPolicy,
 	}
 }
 
@@ -121,7 +124,7 @@ func notePVCAccessModes(obj interface{}) string {
 func notePVCProvisioner(obj interface{}) string {
 	pv := getBoundPV(obj)
 	if pv == nil {
-		return "Unbound"
+		return ""
 	}
 	meta, _ := pv["metadata"].(map[string]interface{})
 	if meta == nil {
@@ -136,14 +139,14 @@ func notePVCProvisioner(obj interface{}) string {
 }
 
 // notePVCVolumeMode returns the volumeMode of the bound PV ("Filesystem" or "Block").
-// Returns "Unbound" when the PVC is unbound and "" when enrichment is not enabled.
+// Returns "" when no PV is present (unbound or enrichment not enabled).
 // Requires enrich: [pvc] on the CRD.
 //
 //	{{ pvcVolumeMode .children.pvc }}  → "Filesystem"
 func notePVCVolumeMode(obj interface{}) string {
 	pv := getBoundPV(obj)
 	if pv == nil {
-		return "Unbound"
+		return ""
 	}
 	spec, _ := pv["spec"].(map[string]interface{})
 	if spec == nil {
@@ -160,4 +163,45 @@ func getBoundPV(obj interface{}) map[string]interface{} {
 	}
 	pv, _ := m["_pv"].(map[string]interface{})
 	return pv
+}
+
+// ── Enriched StorageClass notes ───────────────────────────────────────────────
+
+// notePVCStorageClassProvisioner reads _storageClass.provisioner.
+// Requires enrich: [storageclass] on the CRD.
+//
+//	{{ pvcStorageClassProvisioner .children.pvc }}  → "ebs.csi.aws.com"
+func notePVCStorageClassProvisioner(obj interface{}) string {
+	sc := getStorageClass(obj)
+	if sc == nil {
+		return ""
+	}
+	v, _ := sc["provisioner"].(string)
+	return v
+}
+
+// notePVCStorageClassReclaimPolicy reads _storageClass.spec.reclaimPolicy.
+// Requires enrich: [storageclass] on the CRD.
+//
+//	{{ pvcStorageClassReclaimPolicy .children.pvc }}  → "Delete"
+func notePVCStorageClassReclaimPolicy(obj interface{}) string {
+	sc := getStorageClass(obj)
+	if sc == nil {
+		return ""
+	}
+	spec, _ := sc["spec"].(map[string]interface{})
+	if spec == nil {
+		return ""
+	}
+	v, _ := spec["reclaimPolicy"].(string)
+	return v
+}
+
+func getStorageClass(obj interface{}) map[string]interface{} {
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	sc, _ := m["_storageClass"].(map[string]interface{})
+	return sc
 }

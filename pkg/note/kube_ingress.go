@@ -29,6 +29,9 @@ func ingressNotes() template.FuncMap {
 		"ingressClassName": noteIngressClassName,
 		"ingressRules":     noteIngressRules,
 		"ingressTLSHosts":  noteIngressTLSHosts,
+		// Enriched ingress notes — require enrich: [ingress] on the CRD.
+		"ingressLoadBalancerIPs": noteIngressLoadBalancerIPs,
+		"ingressTLSSecretCount":  noteIngressTLSSecretCount,
 	}
 }
 
@@ -136,6 +139,40 @@ func noteIngressTLSHosts(obj interface{}) string {
 		}
 	}
 	return strings.Join(hosts, ", ")
+}
+
+// ── Enriched Ingress notes ────────────────────────────────────────────────────
+
+// noteIngressLoadBalancerIPs reads _loadBalancerIPs and returns a comma-joined list of IPs or hostnames.
+// Requires enrich: [ingress] on the CRD.
+//
+//	{{ ingressLoadBalancerIPs .children.ingress }}  → "1.2.3.4, example.com"
+func noteIngressLoadBalancerIPs(obj interface{}) string {
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	ips, _ := m["_loadBalancerIPs"].([]interface{})
+	var parts []string
+	for _, entry := range ips {
+		if s, _ := entry.(string); s != "" {
+			parts = append(parts, s)
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// noteIngressTLSSecretCount reads _tlsSecrets and returns the count.
+// Requires enrich: [ingress] on the CRD.
+//
+//	{{ ingressTLSSecretCount .children.ingress }}  → 1
+func noteIngressTLSSecretCount(obj interface{}) int {
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return 0
+	}
+	secrets, _ := m["_tlsSecrets"].([]interface{})
+	return len(secrets)
 }
 
 // Helpers

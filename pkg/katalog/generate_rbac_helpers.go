@@ -1,6 +1,7 @@
 package katalog
 
 import (
+	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
@@ -95,24 +96,11 @@ func (k *Katalog) HasValidationOrMutationRules() bool {
 // keys, as well as shorthands ("hpa"). Drives off builtInRegistry — no separate
 // table to maintain.
 func (k *Katalog) Uses(resource string) bool {
-	key := resource
-	// Try singular direct lookup
-	if b, ok := builtInRegistry[key]; ok && b.Detect != nil {
-		return k.anyDetects(b.Detect)
+	b, ok := children.LookupBuiltInByResource(resource)
+	if !ok {
+		return false
 	}
-	// Try shorthand expansion
-	if expanded, ok := shorthandIndex[key]; ok {
-		if b, ok := builtInRegistry[expanded]; ok && b.Detect != nil {
-			return k.anyDetects(b.Detect)
-		}
-	}
-	// Try plural reverse lookup (e.g. "deployments" → "deployment")
-	for _, b := range builtInRegistry {
-		if b.Plural == key && b.Detect != nil {
-			return k.anyDetects(b.Detect)
-		}
-	}
-	return false
+	return k.anyDetects(b.Detect)
 }
 
 // anyDetects returns true if detect returns true for any enabled CRD.

@@ -1,4 +1,4 @@
-package reconciler
+package children
 
 import (
 	"reflect"
@@ -7,9 +7,9 @@ import (
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// expandForEachCustomResources expands any CustomResource entries that declare a ForEach.
+// ExpandForEachCustomResources expands any CustomResource entries that declare a ForEach.
 // It returns a new slice with expanded items. Items without ForEach are copied verbatim.
-func expandForEachCustomResources(resolver *orktmpl.Resolver, srcs []orktypes.CustomResourceTemplateSource) []orktypes.CustomResourceTemplateSource {
+func ExpandForEachCustomResources(resolver *orktmpl.Resolver, srcs []orktypes.CustomResourceTemplateSource) []orktypes.CustomResourceTemplateSource {
 	// Fast path: nothing to do
 	if !anyHasForEach(len(srcs), func(i int) *orktypes.ForEachSpec { return srcs[i].ForEach }) {
 		return srcs

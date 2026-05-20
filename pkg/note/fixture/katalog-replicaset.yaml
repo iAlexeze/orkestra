@@ -1,0 +1,65 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: replicaset-probe
+  author: orkspace
+  version: 0.1.0
+  description: >
+    ReplicaSetProbe — living integration test for ReplicaSet owner enrichment
+    and Deployment replicaSets enrichment.
+    enrich: [owner] embeds _owner on each ReplicaSet.
+    enrich: [replicasets] embeds _replicaSets on the Deployment.
+    Apply the CR and inspect: kubectl get replicasetprobe <name> -o yaml
+    Reuses the NoteProbe CRD.
+
+spec:
+  crds:
+    replicaset-probe:
+      apiTypes:
+        group: note.orkestra.io
+        version: v1alpha1
+        kind: NoteProbe
+        plural: noteprobes
+      workers: 1
+      resync: 30s
+
+      enrich:
+        - owner
+        - replicasets
+
+      operatorBox:
+        onCreate:
+          deployments:
+            - name: "{{ .metadata.name }}-app"
+              image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: "{{ .spec.port }}"
+              reconcile: true
+
+        status:
+          fields:
+            # ── Phase ───────────────────────────────────────────────────────
+            - path: phase
+              value: "Pending"
+              when:
+                - field: status.phase
+                  operator: notExists
+
+            - path: phase
+              value: "Ready"
+              when:
+                - field: "{{ allReplicasReady .children.deployment }}"
+                  equals: "true"
+
+            # ── enriched deployment replicasets notes ───────────────────────
+            - path: replicaSetCount
+              value: "{{ deploymentReplicaSetCount .children.deployment }}"
+            - path: replicaSetOwnerName
+              value: "{{ replicaSetOwnerName .children.deployment }}"
+            - path: replicaSetOwnerKind
+              value: "{{ replicaSetOwnerKind .children.deployment }}"
+            - path: deploymentReplicaSets
+              value: "{{ deploymentReplicaSets .children.deployment }}"
+            - path: oldDeploymentReplicaSets
+              value: "{{ oldDeploymentReplicaSets .children.deployment }}"
+            

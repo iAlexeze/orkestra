@@ -134,3 +134,58 @@ func TestNoteIngressTLSHosts(t *testing.T) {
 		})
 	}
 }
+
+func makeIngressWithEnrichment(lbIPs []string, tlsSecretCount int) map[string]interface{} {
+	ips := make([]interface{}, len(lbIPs))
+	for i, ip := range lbIPs {
+		ips[i] = ip
+	}
+	secrets := make([]interface{}, tlsSecretCount)
+	for i := range secrets {
+		secrets[i] = map[string]interface{}{"metadata": map[string]interface{}{"name": "secret"}}
+	}
+	return map[string]interface{}{
+		"_loadBalancerIPs": ips,
+		"_tlsSecrets":      secrets,
+	}
+}
+
+func TestNoteIngressLoadBalancerIPs(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want string
+	}{
+		{"nil", nil, ""},
+		{"no enrichment", map[string]interface{}{}, ""},
+		{"one IP", makeIngressWithEnrichment([]string{"1.2.3.4"}, 0), "1.2.3.4"},
+		{"IP and hostname", makeIngressWithEnrichment([]string{"1.2.3.4", "example.com"}, 0), "1.2.3.4, example.com"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteIngressLoadBalancerIPs(tt.obj); got != tt.want {
+				t.Errorf("noteIngressLoadBalancerIPs() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNoteIngressTLSSecretCount(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want int
+	}{
+		{"nil", nil, 0},
+		{"no enrichment", map[string]interface{}{}, 0},
+		{"one secret", makeIngressWithEnrichment(nil, 1), 1},
+		{"two secrets", makeIngressWithEnrichment(nil, 2), 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteIngressTLSSecretCount(tt.obj); got != tt.want {
+				t.Errorf("noteIngressTLSSecretCount() = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}

@@ -75,6 +75,86 @@ Note: access via a `cross:` declaration pointing to the Endpoints resource — t
 
 ---
 
+## Enriched endpoint notes
+
+Require `enrich: [endpoints]` on the CRD.
+
+### `hasEndpoints`
+
+Return `true` when at least one ready endpoint exists in `_endpoints`.
+
+```yaml
+when:
+  - field: "{{ hasEndpoints .children.service }}"
+    equals: "true"
+```
+
+---
+
+### `serviceEndpoints`
+
+Return all endpoints as a comma-separated `ip:port` list.
+
+```yaml
+- path: endpoints
+  value: "{{ serviceEndpoints .children.service }}"
+# → "10.0.0.1:8080, 10.0.0.2:8080"
+```
+
+---
+
+### `serviceEndpointCount`
+
+Return the total number of endpoints as `int`.
+
+```yaml
+- path: endpointCount
+  value: "{{ serviceEndpointCount .children.service }}"
+# → 3
+```
+
+---
+
+### `serviceFirstEndpoint`
+
+Return the first endpoint as `ip:port`. Returns `""` when no endpoints exist.
+
+```yaml
+- path: primaryEndpoint
+  value: "{{ serviceFirstEndpoint .children.service }}"
+# → "10.0.0.1:8080"
+```
+
+---
+
+## Enriched backing-pod notes
+
+Require `enrich: [backingpods]` on the CRD. The enrichment layer selects pods matching the Service's `spec.selector` and embeds them under `_backingPods`.
+
+### `backingPodCount`
+
+Return the number of pods selected by the Service's label selector.
+
+```yaml
+- path: backingPods
+  value: "{{ backingPodCount .children.service }}"
+# → 3
+```
+
+---
+
+### `backingPodNames`
+
+Return a comma-separated list of pod names selected by the Service.
+
+```yaml
+- path: backingPodNames
+  value: "{{ backingPodNames .children.service }}"
+# → "app-abc, app-def, app-ghi"
+```
+
+---
+
 ## Complete pattern: surface and gate on load balancer
 
 ```yaml
@@ -99,13 +179,19 @@ resources:
 
 ## Quick reference
 
-| Note | Signature | Returns |
-|------|-----------|---------|
-| `serviceClusterIP` | `(obj any)` | `string` |
-| `serviceNodePort` | `(obj any)` | `int` |
-| `serviceLoadBalancerIP` | `(obj any)` | `string` |
-| `serviceLoadBalancerHost` | `(obj any)` | `string` |
-| `endpointsReady` | `(obj any)` | `bool` |
+| Note | Signature | Returns | Requires |
+|------|-----------|---------|----------|
+| `serviceClusterIP` | `(obj any)` | `string` | — |
+| `serviceNodePort` | `(obj any)` | `int` | — |
+| `serviceLoadBalancerIP` | `(obj any)` | `string` | — |
+| `serviceLoadBalancerHost` | `(obj any)` | `string` | — |
+| `endpointsReady` | `(obj any)` | `bool` | — |
+| `hasEndpoints` | `(obj any)` | `bool` | `enrich: [endpoints]` |
+| `serviceEndpoints` | `(obj any)` | `string` | `enrich: [endpoints]` |
+| `serviceEndpointCount` | `(obj any)` | `int` | `enrich: [endpoints]` |
+| `serviceFirstEndpoint` | `(obj any)` | `string` | `enrich: [endpoints]` |
+| `backingPodCount` | `(obj any)` | `int` | `enrich: [backingpods]` |
+| `backingPodNames` | `(obj any)` | `string` | `enrich: [backingpods]` |
 
 ---
 

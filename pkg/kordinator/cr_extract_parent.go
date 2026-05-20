@@ -2,7 +2,8 @@ package kordinator
 
 import (
 	"fmt"
-	"github.com/orkspace/orkestra/pkg/katalog"
+
+	"github.com/orkspace/orkestra/pkg/children"
 )
 
 // extractParentReady determines whether a parent object should be considered "ready".
@@ -60,7 +61,7 @@ func extractParentReady(objMap map[string]interface{}, parentKind string) (ready
 	}
 
 	// 1) Statusless types: use annotation-based phase if present
-	m := katalog.BuiltInMeta(parentKind)
+	m := children.BuiltInMeta(parentKind)
 	statusless := m.Statusless || m.SkipStatusSubresource
 
 	if statusless {

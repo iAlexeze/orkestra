@@ -1,5 +1,5 @@
-// pkg/katalog/children_gvr.go
-package katalog
+// pkg/children/gvr.go
+package children
 
 import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -36,6 +36,7 @@ var (
 	NodeGVR                    = gvrOrPanic("node")
 	EndpointSliceGVR           = gvrOrPanic("endpointslice")
 	EventGVR                   = gvrOrPanic("event")
+	StorageClassGVR            = gvrOrPanic("storageclass")
 )
 
 // gvrOrPanic is a small helper for static initialization.

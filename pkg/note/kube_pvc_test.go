@@ -191,3 +191,53 @@ func TestNotePVCVolumeMode(t *testing.T) {
 		})
 	}
 }
+
+func makePVCWithStorageClass(provisioner, reclaimPolicy string) map[string]interface{} {
+	return map[string]interface{}{
+		"_storageClass": map[string]interface{}{
+			"provisioner": provisioner,
+			"spec": map[string]interface{}{
+				"reclaimPolicy": reclaimPolicy,
+			},
+		},
+	}
+}
+
+func TestNotePVCStorageClassProvisioner(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want string
+	}{
+		{"nil", nil, ""},
+		{"no enrichment", map[string]interface{}{}, ""},
+		{"has storageclass", makePVCWithStorageClass("ebs.csi.aws.com", "Delete"), "ebs.csi.aws.com"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := notePVCStorageClassProvisioner(tt.obj); got != tt.want {
+				t.Errorf("notePVCStorageClassProvisioner() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNotePVCStorageClassReclaimPolicy(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want string
+	}{
+		{"nil", nil, ""},
+		{"no enrichment", map[string]interface{}{}, ""},
+		{"Delete policy", makePVCWithStorageClass("ebs.csi.aws.com", "Delete"), "Delete"},
+		{"Retain policy", makePVCWithStorageClass("ebs.csi.aws.com", "Retain"), "Retain"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := notePVCStorageClassReclaimPolicy(tt.obj); got != tt.want {
+				t.Errorf("notePVCStorageClassReclaimPolicy() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

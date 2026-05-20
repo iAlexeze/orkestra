@@ -26,6 +26,11 @@ func nodeNotes() template.FuncMap {
 		"nodeAllocatableMemory": noteNodeAllocatableMemory,
 		"nodeCondition":         noteNodeCondition,
 		"nodeTaints":            noteNodeTaints,
+		// Enriched pod-node notes — require enrich: [node] on the CRD.
+		"podNodeName":         notePodNodeName,
+		"podNodeZone":         notePodNodeZone,
+		"podNodeRegion":       notePodNodeRegion,
+		"podNodeInstanceType": notePodNodeInstanceType,
 	}
 }
 
@@ -117,5 +122,52 @@ func nodeAllocatable(obj interface{}, resource string) string {
 		return ""
 	}
 	v, _ := allocatable[resource].(string)
+	return v
+}
+
+// ── Enriched pod-node notes ───────────────────────────────────────────────────
+
+// notePodNodeName reads _node.name from a Pod object.
+// Requires enrich: [node] on the CRD.
+//
+//	{{ podNodeName .children.pod }}  → "ip-10-0-1-5.us-east-2.compute.internal"
+func notePodNodeName(obj interface{}) string {
+	return podNodeField(obj, "name")
+}
+
+// notePodNodeZone reads _node.zone from a Pod object.
+// Requires enrich: [node] on the CRD.
+//
+//	{{ podNodeZone .children.pod }}  → "us-east-2a"
+func notePodNodeZone(obj interface{}) string {
+	return podNodeField(obj, "zone")
+}
+
+// notePodNodeRegion reads _node.region from a Pod object.
+// Requires enrich: [node] on the CRD.
+//
+//	{{ podNodeRegion .children.pod }}  → "us-east-2"
+func notePodNodeRegion(obj interface{}) string {
+	return podNodeField(obj, "region")
+}
+
+// notePodNodeInstanceType reads _node.instanceType from a Pod object.
+// Requires enrich: [node] on the CRD.
+//
+//	{{ podNodeInstanceType .children.pod }}  → "t3.medium"
+func notePodNodeInstanceType(obj interface{}) string {
+	return podNodeField(obj, "instanceType")
+}
+
+func podNodeField(obj interface{}, field string) string {
+	m, ok := obj.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	node, _ := m["_node"].(map[string]interface{})
+	if node == nil {
+		return ""
+	}
+	v, _ := node[field].(string)
 	return v
 }

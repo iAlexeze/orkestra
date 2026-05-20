@@ -16,72 +16,72 @@ output is visible directly on the object — no log-diving required.
 
 ## Katalogs
 
-Each katalog is a self-contained probe for a specific resource family.
+All katalogs use the same `NoteProbe` CRD. A single CRD with a flexible spec
+is enough to probe every note family without registering separate CRD types per
+resource family.
 
-| File | Kind | Notes covered |
+| File | Notes covered | Enrichment required |
 |---|---|---|
-| `katalog.yaml` | `NoteProbe` | kubernetes, replica, container, service |
-| `katalog-pods.yaml` | `PodProbe` | pod enrichment on Deployment (`enrich: [pods]`) |
-| `katalog-statefulset.yaml` | `StatefulSetProbe` | pod enrichment on StatefulSet, `podByOrdinal` |
-| `katalog-service.yaml` | `ServiceProbe` | endpoint enrichment on Service (`enrich: [endpoints]`) |
-| `katalog-job.yaml` | `JobProbe` | job lifecycle + pod enrichment on Job (`enrich: [pods]`) |
-| `katalog-warnings.yaml` | `WarningsProbe` | warning event enrichment on any resource (`enrich: [events]`) |
-| `katalog-pvc.yaml` | `PVCProbe` | PVC lifecycle notes + enriched PV notes (`enrich: [pvc]`) |
-| `katalog-ingress.yaml` | `IngressProbe` | Ingress notes — host, IP, rules, TLS |
-| `katalog-hpa.yaml` | `HPAProbe` | HPA replica scaling notes |
+| `katalog.yaml` | kubernetes, replica, container, service | none |
+| `katalog-pods.yaml` | pod enrichment on Deployment | `enrich: [pods]` |
+| `katalog-statefulset.yaml` | StatefulSet pod enrichment, `podByOrdinal` | `enrich: [pods]` |
+| `katalog-service.yaml` | endpoint enrichment on Service | `enrich: [endpoints]` |
+| `katalog-job.yaml` | job lifecycle + pod enrichment on Job | `enrich: [pods]` |
+| `katalog-warnings.yaml` | warning event enrichment on any resource | `enrich: [events]` |
+| `katalog-pvc.yaml` | PVC lifecycle notes + enriched PV notes | `enrich: [pvc]` |
+| `katalog-ingress.yaml` | Ingress notes — host, IP, rules, TLS | none |
+| `katalog-hpa.yaml` | HPA replica scaling notes | none |
 
-### `katalog.yaml` — NoteProbe
+### `katalog.yaml`
 
 Covers the general kubernetes-family notes that work on any child resource:
 `resourceExists`, `allReplicasReady`, `containerImage`, `serviceClusterIP`,
 `endpointsReady`, and the full replica + kubernetes note set.
 
-Does **not** require `enrich: [pods]` or `enrich: [endpoints]`.
-
-### `katalog-pods.yaml` — PodProbe
+### `katalog-pods.yaml`
 
 Covers the pod note family: `podNames`, `podIPs`, `podPhases`, `podNodes`,
 `podCount`, `readyPodCount`, `podMaxRestarts`, `hasCrashingPod`.
 
-Requires `enrich: [pods]` — only notes that depend on `_pods` enrichment live here.
-
-### `katalog-statefulset.yaml` — StatefulSetProbe
+### `katalog-statefulset.yaml`
 
 Covers StatefulSet-specific patterns: ordered membership (`podNames`, `podIPs`),
 and `podByOrdinal` for surfacing the primary member's name and IP.
 
-### `katalog-service.yaml` — ServiceProbe
+### `katalog-service.yaml`
 
 Covers enriched endpoint notes: `hasEndpoints`, `serviceEndpoints`,
 `serviceEndpointCount`, `serviceFirstEndpoint`.
 
-Requires `enrich: [endpoints]`.
-
-### `katalog-job.yaml` — JobProbe
+### `katalog-job.yaml`
 
 Covers job lifecycle notes (`jobSucceeded`, `jobFailed`, `jobActive`) and
 enriched pod notes on jobs: `jobFirstExitCode`, `jobActivePodNames`,
 `jobSucceededPodNames`, `jobFailedPodNames`.
 
-Requires `enrich: [pods]`.
+### `katalog-warnings.yaml`
+
+Covers warning event notes: `hasWarnings`, `warningCount`, `firstWarningReason`,
+`firstWarningMessage`. Events recorded on pods owned by a workload are also
+aggregated — container failures (ImagePullBackOff, OOMKilled) show up here.
 
 ---
 
 ## Running a probe
 
 ```bash
-# Apply CRD and start Orkestra (once per cluster):
+# Apply CRD and install Orkestra (once per cluster):
 kubectl apply -f pkg/note/fixture/crd.yaml
-ork bundle --file pkg/note/fixture/katalog.yaml | kubectl apply -f -
 helm upgrade --install orkestra ./charts/orkestra --namespace default --wait
 
-# Apply the CR for whichever probe you want to run:
-kubectl apply -f pkg/note/fixture/cr.yaml          # NoteProbe
+# Install the katalog for the probe family you want to test:
+ork bundle --file pkg/note/fixture/katalog.yaml | kubectl apply -f -
+
+# Apply the CR:
+kubectl apply -f pkg/note/fixture/cr.yaml
 
 # Watch status populate:
 kubectl get noteprobe my-probe -o yaml -w
-kubectl get podprobe my-probe -o yaml -w
-kubectl get statefulsetprobe my-probe -o yaml -w
 
 # Clean up:
 cd pkg/note/fixture && bash cleanup.sh

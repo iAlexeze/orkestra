@@ -36,12 +36,12 @@ Each `CRDEntry` goes through several enrichment phases before it is considered r
 
 1. **Parse** — decoded from YAML via the merger.
 2. **crdFile population** — if `crdFile:` is declared, `populateAPITypesFromCRDFile` reads the CRD YAML and fills `APITypes` (group, version, kind, plural) from it. `crdFile` is the source of truth and overwrites any inline `apiTypes:` block. Typed-mode fields (Object, List, Alias, Location) are preserved from the inline declaration if present.
-3. **Enrich** — `EnrichCRDEntry` fills in computed fields (API path, plural, GVK). For built-in Kubernetes kinds (Deployment, ConfigMap, etc.), group/version/plural are looked up from `builtins.go`.
+3. **Enrich** — `EnrichCRDEntry` fills in computed fields (API path, plural, GVK). For built-in Kubernetes kinds (Deployment, ConfigMap, etc.), group/version/plural are looked up from [`pkg/children`](../children/README.md).
 4. **Validate** — uniqueness, dependency graph (existence + cycle), reconciler mode.
 5. **Defaults** — workers, resync interval, namespace handling, finalizers, description.
 6. **Runtime objects** — dynamic mode → `*unstructured.Unstructured` factory; typed mode → `ObjectRegistry` lookup.
 7. **Reconcilers** — hooks from `HookRegistry`, constructors from `ReconcilerRegistry`.
-8. **Status flags** — `IgnoreStatusPatch` and `IgnoreObservedGeneration` set from `builtins.go`.
+8. **Status flags** — `IgnoreStatusPatch` and `IgnoreObservedGeneration` set from the built-in registry in [`pkg/children`](../children/README.md).
 
 After this pipeline, `k.enabledCRDs` contains fully-prepared entries. All runtime code reads from this map — it is never mutated after boot.
 

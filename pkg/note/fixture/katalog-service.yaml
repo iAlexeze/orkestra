@@ -23,6 +23,7 @@ spec:
 
       enrich:
         - endpoints
+        - backingpods
 
       operatorBox:
         onCreate:
@@ -84,3 +85,10 @@ spec:
 
             - path: firstEndpoint
               value: "{{ serviceFirstEndpoint .children.service }}"
+
+            # ── enriched backing-pod notes (require enrich: [backingpods]) ──
+            - path: backingPodCount
+              value: "{{ backingPodCount .children.service }}"
+
+            - path: backingPodNames
+              value: "{{ backingPodNames .children.service }}"

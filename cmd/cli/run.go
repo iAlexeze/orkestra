@@ -39,7 +39,7 @@ import (
 
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Start the Orkestra operator runtime",
+	Short: "Start the Orkestra Runtime",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		paths, _ := cmd.Flags().GetStringSlice("file")
 		if len(paths) == 0 {

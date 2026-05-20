@@ -135,3 +135,63 @@ func TestNoteHPAAtMax(t *testing.T) {
 		})
 	}
 }
+
+func makeHPAWithEnrichment(scaleTargetName, scaleTargetKind string, metricTypes []string) map[string]interface{} {
+	metrics := make([]interface{}, len(metricTypes))
+	for i, t := range metricTypes {
+		metrics[i] = map[string]interface{}{"type": t, "name": "cpu"}
+	}
+	return map[string]interface{}{
+		"_scaleTarget": map[string]interface{}{
+			"name": scaleTargetName,
+			"kind": scaleTargetKind,
+		},
+		"_currentMetrics": metrics,
+	}
+}
+
+func TestNoteHPAScaleTargetName(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want string
+	}{
+		{"nil", nil, ""},
+		{"no enrichment", map[string]interface{}{}, ""},
+		{"has target", makeHPAWithEnrichment("my-app", "Deployment", nil), "my-app"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteHPAScaleTargetName(tt.obj); got != tt.want {
+				t.Errorf("noteHPAScaleTargetName() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNoteHPAScaleTargetKind(t *testing.T) {
+	obj := makeHPAWithEnrichment("my-app", "Deployment", nil)
+	if got := noteHPAScaleTargetKind(obj); got != "Deployment" {
+		t.Errorf("noteHPAScaleTargetKind() = %q, want %q", got, "Deployment")
+	}
+}
+
+func TestNoteHPAMetricTypes(t *testing.T) {
+	tests := []struct {
+		name string
+		obj  interface{}
+		want string
+	}{
+		{"nil", nil, ""},
+		{"no enrichment", map[string]interface{}{}, ""},
+		{"one metric", makeHPAWithEnrichment("", "", []string{"Resource"}), "Resource"},
+		{"two metrics", makeHPAWithEnrichment("", "", []string{"Resource", "External"}), "Resource, External"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := noteHPAMetricTypes(tt.obj); got != tt.want {
+				t.Errorf("noteHPAMetricTypes() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
