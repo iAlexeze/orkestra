@@ -34,23 +34,60 @@ Any file in this package (or importing this package) that needs a GVR uses these
 
 ## BuiltInKind struct
 
+`BuiltInKind` carries Kubernetes API identity and Orkestra readiness policy — it does not carry enrichment configuration.
+
 ```go
 type BuiltInKind struct {
-    Kind                  string
-    Group                 string
-    Version               string
-    Plural                string
-    APIPath               string
-    Namespaced            bool
-    Statusless            bool
-    SkipStatusSubresource bool
+    // Kubernetes API identity
+    Kind       string
+    Group      string
+    Version    string
+    Plural     string
+    APIPath    string
+    Namespaced bool
+    Shorthands []string
+
+    // Usage detection (RBAC generation)
+    Detect func(crd orktypes.CRDEntry) bool
+
+    // Orkestra readiness policy
+    Statusless             bool
+    SkipStatusSubresource  bool
     SkipObservedGeneration bool
-    OrkestraInternal      bool // Orkestra's own control-plane resources
-    Detect                func(crd orktypes.CRDEntry) bool
+    IsChild                bool
+    OrkestraInternal       bool
 }
 ```
 
 `Detect` is used by RBAC generation: `katalog.Uses("deployment")` returns true if any enabled CRD declares a Deployment template. This keeps RBAC rules declarative — adding a new resource type to the registry automatically makes it available for RBAC detection.
+
+## enrichmentMeta map
+
+Enrichment configuration lives in a parallel map — separate from `BuiltInKind` so Kubernetes API identity and enrichment concerns can evolve independently.
+
+```go
+type enrichmentEntry struct {
+    Target     bool     // marks this kind as a valid enrich: target
+    EnrichKeys []string // synthetic keys this kind provides (e.g. "owner", "replicasets")
+}
+
+var enrichmentMeta = map[string]enrichmentEntry{
+    "deployment":  {Target: true, EnrichKeys: []string{"replicasets"}},
+    "statefulset": {Target: true, EnrichKeys: []string{"pvcs"}},
+    "replicaset":  {Target: true, EnrichKeys: []string{"owner"}},
+    "service":     {Target: true, EnrichKeys: []string{"backingpods"}},
+    // ...
+}
+```
+
+`enrichmentMeta` is read once at package init to build two cached indexes:
+
+- `enrichmentGroups` — `canonical name → all valid identifiers` (name, plural, shorthands, synthetic keys)
+- `enrichmentIndex` — `any identifier → canonical name` (reverse lookup, O(1))
+
+`enrichmentEnabled`, `IsValidEnrichmentTarget`, and `SupportedEnrichmentGroups` all read from these indexes — `buildEnrichmentGroups` is called exactly once at init.
+
+When adding a new resource kind that supports context enrichment, update **both** `builtInRegistry` and `enrichmentMeta` in `builtins.go`.
 
 ## Enrichment result
 

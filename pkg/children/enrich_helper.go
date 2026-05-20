@@ -5,14 +5,7 @@ import orktypes "github.com/orkspace/orkestra/pkg/types"
 // resolveEnrichmentTarget returns the canonical built-in name for a given
 // enrichment identifier (name, plural, shorthand, alias). Returns "" if unknown.
 func resolveEnrichmentTarget(s string) string {
-	for canonical, list := range buildEnrichmentGroups() {
-		for _, v := range list {
-			if v == s {
-				return canonical
-			}
-		}
-	}
-	return ""
+	return enrichmentIndex[s]
 }
 
 // enrichmentEnabled reports whether the CRD has enabled enrichment for the
@@ -30,11 +23,11 @@ func enrichmentEnabled(s string, crd orktypes.CRDEntry) bool {
 		return true
 	}
 	// Normalise and check all equivalent identifiers for the canonical target.
-	canonical := resolveEnrichmentTarget(s)
-	if canonical == "" {
+	canonical, ok := enrichmentIndex[s]
+	if !ok {
 		return false
 	}
-	for _, alias := range buildEnrichmentGroups()[canonical] {
+	for _, alias := range enrichmentGroups[canonical] {
 		if crd.ShouldEnrich(alias) {
 			return true
 		}

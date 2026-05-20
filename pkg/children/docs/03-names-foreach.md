@@ -29,6 +29,29 @@ deployments:
 
 The `forEach` expansion functions are exported so that `pkg/reconciler` can call them during the template application phase (before any resources are created). The same expansion logic runs in both the reconcile phase (to know what to create) and the read phase (to know what to read back).
 
+### Implementation
+
+All public `ExpandForEach*` functions are thin wrappers over a single private generic:
+
+```go
+func expandForEach[T any](
+    resolver *orktmpl.Resolver,
+    srcs []T,
+    getForEach func(T) *orktypes.ForEachSpec,
+    resolve func(ir *orktmpl.Resolver, src T) T,
+) []T
+```
+
+`getForEach` extracts the `ForEach` field from the type-specific source struct. `resolve` contains the per-type field resolution logic (name, image, labels, env vars, etc.). The outer loop — fast-path check, nil guard, `itemResolver` call — is shared across all resource types.
+
+Three helpers are extracted for reuse across the per-type `resolve` closures:
+
+- `resolveLabels(ir, ls)` — resolves template expressions in a `[]ResourceLabel` slice
+- `resolveEnvVars(ir, vars)` — resolves template expressions in an `EnvVarList`
+- `resolveSelectorMap(ir, sel)` — resolves template expressions in a `SelectorMap`
+
+Adding a new resource type requires only writing the `resolve` closure — the shared loop is not touched.
+
 ## Custom resource forEach
 
 Custom resources use `ExpandForEachCustomResources` which follows the same pattern but handles the additional `APIVersion` and `Kind` fields required to resolve the GVR dynamically.

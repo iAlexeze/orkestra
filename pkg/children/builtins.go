@@ -12,6 +12,10 @@
 //
 // Keys are lowercase singular Kind names (e.g. "deployment", "namespace").
 // Accessor functions live in builtins_accessors.go.
+//
+// NOTE: If a new kind supports context enrichment, also add an entry to
+// enrichmentMeta (in this same file) — it is intentionally a parallel map so
+// enrichment concerns stay separate from Kubernetes API identity.
 package children
 
 import (
@@ -51,11 +55,37 @@ type BuiltInKind struct {
 	SkipObservedGeneration bool // Has status but no observedGeneration; skip generation check
 	IsChild                bool // Orkestra may create this as a child resource
 	OrkestraInternal       bool // Part of Orkestra's own control-plane installation
+}
 
-	// ── Context Enrichment for the Resolver ────────────────────────────────────
-	ContextEnrichmentTarget bool     // ContextEnrichmentTarget marks resources that support context enrichment
-	EnrichKeys              []string // enrichment keys this resource responds to as a data provider
+// enrichmentEntry defines how a resource kind participates in context enrichment.
+// Target marks the kind as a valid enrich: target. EnrichKeys lists any synthetic
+// enrichment identifiers the resource provides beyond its own name/plural/shorthands
+// (e.g. "replicasets" on a Deployment, "owner" on a ReplicaSet).
+type enrichmentEntry struct {
+	Target     bool
+	EnrichKeys []string
+}
 
+// enrichmentMeta maps each canonical kind name to its enrichment configuration.
+// This is a sibling of builtInRegistry — update both when adding a resource kind
+// that should be reachable via enrich: in a katalog spec.
+var enrichmentMeta = map[string]enrichmentEntry{
+	"pod":                     {Target: true},
+	"service":                 {Target: true, EnrichKeys: []string{"backingpods"}},
+	"persistentvolumeclaim":   {Target: true},
+	"persistentvolume":        {Target: true},
+	"event":                   {Target: true, EnrichKeys: []string{"warnings"}},
+	"node":                    {Target: true},
+	"deployment":              {Target: true, EnrichKeys: []string{"replicasets"}},
+	"statefulset":             {Target: true, EnrichKeys: []string{"pvcs"}},
+	"replicaset":              {Target: true, EnrichKeys: []string{"owner"}},
+	"job":                     {Target: true},
+	"cronjob":                 {Target: true},
+	"ingress":                 {Target: true},
+	"networkpolicy":           {Target: true},
+	"horizontalpodautoscaler": {Target: true},
+	"storageclass":            {Target: true},
+	"endpointslice":           {Target: true, EnrichKeys: []string{"endpoints"}},
 }
 
 // detectAny returns true if any hook template block in the CRD uses the
@@ -76,9 +106,8 @@ var builtInRegistry = map[string]BuiltInKind{
 	"pod": {
 		Kind: "Pod", Group: "", Version: "v1", Plural: "pods",
 		Namespaced: true, APIPath: "/api",
-		SkipObservedGeneration:  true,
-		Shorthands:              []string{"po"},
-		ContextEnrichmentTarget: true,
+		SkipObservedGeneration: true,
+		Shorthands:             []string{"po"},
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.PodTemplateSource { return t.Pods })
 		},
@@ -87,10 +116,8 @@ var builtInRegistry = map[string]BuiltInKind{
 	"service": {
 		Kind: "Service", Group: "", Version: "v1", Plural: "services",
 		Namespaced: true, APIPath: "/api",
-		ContextEnrichmentTarget: true,
-		Shorthands:              []string{"svc"},
-		EnrichKeys:              []string{"backingpods"},
-		SkipObservedGeneration:  true, IsChild: true, OrkestraInternal: true,
+		Shorthands:             []string{"svc"},
+		SkipObservedGeneration: true, IsChild: true, OrkestraInternal: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.ServiceTemplateSource { return t.Services })
 		},
@@ -138,9 +165,8 @@ var builtInRegistry = map[string]BuiltInKind{
 	"persistentvolumeclaim": {
 		Kind: "PersistentVolumeClaim", Group: "", Version: "v1", Plural: "persistentvolumeclaims",
 		Namespaced: true, APIPath: "/api",
-		SkipObservedGeneration:  true,
-		Shorthands:              []string{"pvc", "pvcs", "pvclaim"},
-		ContextEnrichmentTarget: true,
+		SkipObservedGeneration: true,
+		Shorthands:             []string{"pvc", "pvcs", "pvclaim"},
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.PVCTemplateSource { return t.PersistentVolumeClaims })
 		},
@@ -149,9 +175,8 @@ var builtInRegistry = map[string]BuiltInKind{
 	"persistentvolume": {
 		Kind: "PersistentVolume", Group: "", Version: "v1", Plural: "persistentvolumes",
 		Namespaced: false, APIPath: "/api",
-		SkipObservedGeneration:  true,
-		Shorthands:              []string{"pv", "pvs"},
-		ContextEnrichmentTarget: true,
+		SkipObservedGeneration: true,
+		Shorthands:             []string{"pv", "pvs"},
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.PVTemplateSource { return t.PersistentVolumes })
 		},
@@ -160,17 +185,14 @@ var builtInRegistry = map[string]BuiltInKind{
 	"event": {
 		Kind: "Event", Group: "", Version: "v1", Plural: "events",
 		Namespaced: true, APIPath: "/api",
-		Shorthands:              []string{"ev"},
-		ContextEnrichmentTarget: true,
-		EnrichKeys:              []string{"warnings"},
-		Statusless:              true, SkipStatusSubresource: true,
+		Shorthands: []string{"ev"},
+		Statusless: true, SkipStatusSubresource: true,
 	},
 
 	"node": {
 		Kind: "Node", Group: "", Version: "v1", Plural: "nodes",
 		Namespaced: false, APIPath: "/api",
-		ContextEnrichmentTarget: true,
-		SkipObservedGeneration:  true,
+		SkipObservedGeneration: true,
 	},
 
 	"resourcequota": {
@@ -206,9 +228,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Kind: "Deployment", Group: "apps", Version: "v1", Plural: "deployments",
 		Namespaced: true, APIPath: "/apis",
 		IsChild: true, OrkestraInternal: true,
-		Shorthands:              []string{"deploy", "dep"},
-		EnrichKeys:              []string{"replicasets"},
-		ContextEnrichmentTarget: true,
+		Shorthands: []string{"deploy", "dep"},
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.DeploymentTemplateSource { return t.Deployments })
 		},
@@ -217,9 +237,7 @@ var builtInRegistry = map[string]BuiltInKind{
 	"statefulset": {
 		Kind: "StatefulSet", Group: "apps", Version: "v1", Plural: "statefulsets",
 		Namespaced: true, APIPath: "/apis",
-		Shorthands:              []string{"sts"},
-		EnrichKeys:              []string{"pvcs"},
-		ContextEnrichmentTarget: true,
+		Shorthands: []string{"sts"},
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.StatefulSetTemplateSource { return t.StatefulSets })
 		},
@@ -237,9 +255,7 @@ var builtInRegistry = map[string]BuiltInKind{
 	"replicaset": {
 		Kind: "ReplicaSet", Group: "apps", Version: "v1", Plural: "replicasets",
 		Namespaced: true, APIPath: "/apis",
-		Shorthands:              []string{"rs"},
-		EnrichKeys:              []string{"owner"},
-		ContextEnrichmentTarget: true,
+		Shorthands: []string{"rs"},
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.ReplicaSetTemplateSource { return t.ReplicaSets })
 		},
@@ -251,7 +267,6 @@ var builtInRegistry = map[string]BuiltInKind{
 		Kind: "Job", Group: "batch", Version: "v1", Plural: "jobs",
 		Namespaced: true, APIPath: "/apis",
 		SkipStatusSubresource: true, IsChild: true,
-		ContextEnrichmentTarget: true,
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.JobTemplateSource { return t.Jobs })
 		},
@@ -261,8 +276,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Kind: "CronJob", Group: "batch", Version: "v1", Plural: "cronjobs",
 		Namespaced: true, APIPath: "/apis",
 		SkipStatusSubresource: true, IsChild: true,
-		Shorthands:              []string{"cj"},
-		ContextEnrichmentTarget: true,
+		Shorthands: []string{"cj"},
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.CronJobTemplateSource { return t.CronJobs })
 		},
@@ -273,9 +287,8 @@ var builtInRegistry = map[string]BuiltInKind{
 	"ingress": {
 		Kind: "Ingress", Group: "networking.k8s.io", Version: "v1", Plural: "ingresses",
 		Namespaced: true, APIPath: "/apis",
-		OrkestraInternal:        true,
-		Shorthands:              []string{"ing"},
-		ContextEnrichmentTarget: true,
+		OrkestraInternal: true,
+		Shorthands:       []string{"ing"},
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.IngressTemplateSource { return t.Ingresses })
 		},
@@ -285,8 +298,7 @@ var builtInRegistry = map[string]BuiltInKind{
 		Kind: "NetworkPolicy", Group: "networking.k8s.io", Version: "v1", Plural: "networkpolicies",
 		Namespaced: true, APIPath: "/apis",
 		Statusless: true, SkipStatusSubresource: true, OrkestraInternal: true,
-		Shorthands:              []string{"np"},
-		ContextEnrichmentTarget: true,
+		Shorthands: []string{"np"},
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.PlaceholderSource { return t.NetworkPolicies })
 		},
@@ -302,9 +314,8 @@ var builtInRegistry = map[string]BuiltInKind{
 	"horizontalpodautoscaler": {
 		Kind: "HorizontalPodAutoscaler", Group: "autoscaling", Version: "v2", Plural: "horizontalpodautoscalers",
 		Namespaced: true, APIPath: "/apis",
-		OrkestraInternal:        true,
-		Shorthands:              []string{"hpa"},
-		ContextEnrichmentTarget: true,
+		OrkestraInternal: true,
+		Shorthands:       []string{"hpa"},
 		Detect: func(crd orktypes.CRDEntry) bool {
 			return detectAny(crd, func(t *orktypes.HookTemplates) []orktypes.HPATemplateSource { return t.HorizontalPodAutoscalers })
 		},
@@ -368,8 +379,7 @@ var builtInRegistry = map[string]BuiltInKind{
 	"storageclass": {
 		Kind: "StorageClass", Group: "storage.k8s.io", Version: "v1", Plural: "storageclasses",
 		Namespaced: false, APIPath: "/apis",
-		Shorthands:              []string{"sc"},
-		ContextEnrichmentTarget: true,
+		Shorthands: []string{"sc"},
 	},
 
 	"volumeattachment": {
@@ -431,10 +441,8 @@ var builtInRegistry = map[string]BuiltInKind{
 	"endpointslice": {
 		Kind: "EndpointSlice", Group: "discovery.k8s.io", Version: "v1", Plural: "endpointslices",
 		Namespaced: true, APIPath: "/apis",
-		SkipObservedGeneration:  true,
-		Shorthands:              []string{"ep"},
-		ContextEnrichmentTarget: true,
-		EnrichKeys:              []string{"endpoints"},
+		SkipObservedGeneration: true,
+		Shorthands:             []string{"ep"},
 	},
 
 	// ── coordination.k8s.io/v1 ───────────────────────────────────────────────

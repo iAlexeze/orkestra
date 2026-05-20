@@ -122,39 +122,55 @@ func AllBuiltInKindDefs() []BuiltInKind {
 	return result
 }
 
+// enrichmentGroups maps each canonical built-in name to its full list of valid
+// enrichment identifiers (name, plural, shorthands, synthetic aliases).
+// Computed once at init from the immutable builtInRegistry.
+var enrichmentGroups map[string][]string
+
+// enrichmentIndex is the reverse: any valid identifier → canonical name.
+// Used for O(1) lookups in enrichmentEnabled and IsValidEnrichmentTarget.
+var enrichmentIndex map[string]string
+
+func init() {
+	enrichmentGroups = buildEnrichmentGroups()
+	idx := make(map[string]string)
+	for canonical, aliases := range enrichmentGroups {
+		for _, a := range aliases {
+			idx[a] = canonical
+		}
+	}
+	enrichmentIndex = idx
+}
+
 // buildEnrichmentGroups constructs a map where each canonical built-in name
 // maps to the list of all valid enrichment identifiers for that resource.
+// Reads from enrichmentMeta (in builtins.go) for target/key config, and from
+// builtInRegistry for plural and shorthand aliases.
 func buildEnrichmentGroups() map[string][]string {
 	groups := make(map[string][]string)
 
-	for name, b := range builtInRegistry {
-		if !b.ContextEnrichmentTarget {
+	for name, em := range enrichmentMeta {
+		if !em.Target {
 			continue
 		}
 
 		var list []string
-
-		// canonical name
 		list = append(list, name)
 
-		// plural
-		if b.Plural != "" {
-			list = append(list, b.Plural)
+		if b, ok := builtInRegistry[name]; ok {
+			if b.Plural != "" {
+				list = append(list, b.Plural)
+			}
+			for _, s := range b.Shorthands {
+				list = append(list, strings.ToLower(s))
+			}
 		}
 
-		// shorthands
-		for _, s := range b.Shorthands {
-			list = append(list, strings.ToLower(s))
-		}
-
-		// aliases (synthetic enrichers)
-		for _, a := range b.EnrichKeys {
+		for _, a := range em.EnrichKeys {
 			list = append(list, a)
 		}
 
-		// sort for stable output
 		sort.Strings(list)
-
 		groups[name] = list
 	}
 
@@ -164,20 +180,7 @@ func buildEnrichmentGroups() map[string][]string {
 // SupportedEnrichmentGroups returns all supported enrichment targets, including
 // built-in Kubernetes resources and synthetic Orkestra-only targets.
 func SupportedEnrichmentGroups() map[string][]string {
-	return buildEnrichmentGroups()
-}
-
-// SupportedEnrichmentTargets returns all supported enrichment targets, including
-// built-in Kubernetes resources and synthetic Orkestra-only targets.
-func SupportedEnrichmentTargets() []string {
-	out := []string{}
-
-	for _, list := range buildEnrichmentGroups() {
-		out = append(out, list...)
-	}
-
-	sort.Strings(out)
-	return out
+	return enrichmentGroups
 }
 
 // IsValidEnrichmentTarget reports whether the given name is a supported
@@ -187,15 +190,8 @@ func IsValidEnrichmentTarget(name string) bool {
 	if name == "" {
 		return false
 	}
-
-	for _, list := range buildEnrichmentGroups() {
-		for _, v := range list {
-			if v == name {
-				return true
-			}
-		}
-	}
-	return false
+	_, ok := enrichmentIndex[name]
+	return ok
 }
 
 // ── Readiness / deletion-protection queries ───────────────────────────────────
