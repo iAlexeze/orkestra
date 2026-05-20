@@ -23,7 +23,7 @@ Because there is no runtime, no reconciler runs and no ConfigMap is needed for C
 ### Step 1 — Validate
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
 ```
 
 ### Step 2 — Generate and apply the bundle

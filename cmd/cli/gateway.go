@@ -18,10 +18,13 @@ var gatewayCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		paths, _ := cmd.Flags().GetStringSlice("file")
 		if len(paths) == 0 {
+			paths = defaultFilePaths()
+		}
+		if len(paths) == 0 {
 			paths = kfg.Katalog().Paths
-			if len(paths) == 0 {
-				return fmt.Errorf("--file is required or set 'KATALOG_PATH' variable")
-			}
+		}
+		if len(paths) == 0 {
+			return fmt.Errorf(errNoKatalog)
 		}
 
 		m := merger.New(paths...)

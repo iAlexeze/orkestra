@@ -58,7 +58,8 @@ That's the whole operator.
 
 ```bash
 # Run
-ork run -f katalog.yaml
+ork run
+
 kubectl apply -f website-cr.yaml
 ```
 
@@ -110,16 +111,16 @@ curl -sSL https://get.orkestra.sh | bash
 
 # Initialize an operator
 ork init my-operator
-cd my-operator
+cd my-operator/examples/beginner/01-hello-website
 
 # Apply the CRD
-kubectl apply -f examples/beginner/01-hello-website/crd.yaml
+kubectl apply -f crd.yaml
 
 # Run the operator runtime
-ork run -f examples/beginner/01-hello-website/katalog.yaml
+ork run
 
 # Apply a CustomResource
-kubectl apply -f examples/beginner/01-hello-website/cr.yaml
+kubectl apply -f cr.yaml
 ```
 
 ---

@@ -96,7 +96,8 @@ One sentence: what this example demonstrates.
 
 \`\`\`bash
 kubectl apply -f crd.yaml
-ork run --file katalog.yaml
+ork run
+# Orkestra reads katalog.yaml from the current directory and starts the runtime.
 kubectl apply -f cr.yaml
 \`\`\`
 

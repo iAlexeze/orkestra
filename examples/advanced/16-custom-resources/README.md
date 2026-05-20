@@ -32,7 +32,7 @@ kubectl apply -f crd-workspace.yaml
 kubectl apply -f crd-secretvault.yaml
 
 # Start the operator
-ork run -f katalog.yaml
+ork run
 
 # use (--dev) to create a kind cluster and run orkestra
 

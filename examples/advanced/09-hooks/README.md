@@ -62,7 +62,7 @@ The standard `ork` CLI does not know about your Go types. Validate it to see the
 expected error:
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
 ```
 
 Output:
@@ -108,7 +108,7 @@ Now you have a custom `./ork` binary that knows your CRD type.
 ## Step 5 — Validate with your own binary
 
 ```bash
-./ork validate -f katalog.yaml
+./ork validate
 ```
 
 It should pass without errors. The debug output (from the generated registry)
@@ -125,7 +125,7 @@ will confirm that `ObjectRegistry` is populated.
 Run your custom operator:
 
 ```bash
-./ork run -f katalog.yaml --dev
+./ork run --dev
 ```
 
 In another terminal, apply the custom resource:

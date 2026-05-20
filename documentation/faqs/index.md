@@ -197,7 +197,8 @@ health server, leader election — is paid once.
 Locally, for development:
 
 ```bash
-ork run --file katalog.yaml
+ork run
+# Orkestra reads katalog.yaml from the current directory and starts the runtime.
 ```
 
 In a cluster, via Helm:
@@ -222,7 +223,8 @@ It surfaces every configuration error — bad YAML, unknown kinds, circular depe
 missing registry files, empty pattern files — before any cluster changes are made.
 
 ```bash
-ork validate --file katalog.yaml
+ork validate
+# Orkestra reads katalog.yaml from the current directory and reports every error without touching the cluster.
 
 ✓ website
     kind: Website
@@ -239,7 +241,7 @@ ork validate --file katalog.yaml
     pipeline to catch Katalog errors before they reach the cluster:
     ```yaml
     - name: Validate Katalog
-      run: ork validate --file katalog.yaml
+      run: ork validate
     ```
     It requires no cluster connection — safe to run in any CI environment.
 
@@ -338,7 +340,7 @@ Orkestra enriches them automatically from its internal registry:
     validates it at reconcile time, and optionally intercepts at admission time
     when `ENABLE_ADMISSION_WEBHOOK=true`.
 
-Run `ork validate --file katalog.yaml` to see exactly what Orkestra resolves
+Run `ork validate` to see exactly what Orkestra resolves
 for a kind-only declaration.
 
 ---

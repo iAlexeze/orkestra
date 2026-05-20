@@ -121,7 +121,7 @@ Both files are marked `DO NOT EDIT` – they are regenerated whenever you change
 First, see the expected error with the standard `ork` CLI:
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
 # error: no reconciler constructor registered for Kind=Pipeline
 ```
 
@@ -136,7 +136,7 @@ cp ~/.orkestra/bin/ork ./ork
 Validate with your binary:
 
 ```bash
-./ork validate -f katalog.yaml   # passes
+./ork validate   # passes
 ```
 
 ---
@@ -144,7 +144,7 @@ Validate with your binary:
 ## Step 3 – Run locally
 
 ```bash
-./ork run -f katalog.yaml --dev     # creates a local kind cluster
+./ork run --dev     # creates a local kind cluster
 
 kubectl apply -f crd.yaml
 ```

@@ -99,8 +99,9 @@ spec:
 ```
 
 ```bash
-ork validate --file komposer.yaml
-ork run --file komposer.yaml
+ork validate
+ork run
+# Orkestra reads komposer.yaml from the current directory and starts the runtime.
 ```
 
 ---

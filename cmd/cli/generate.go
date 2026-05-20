@@ -104,11 +104,13 @@ type mergerOut struct {
 func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 	katalogPaths, _ := cmd.Flags().GetStringSlice("file")
 
-	if len(katalogPaths) == 0 {
-		return nil, fmt.Errorf("--file is required (can be specified multiple times or as comma-separated values)")
-	}
-
 	expanded := parseFilePaths(katalogPaths)
+	if len(expanded) == 0 {
+		expanded = defaultFilePaths()
+	}
+	if len(expanded) == 0 {
+		return nil, fmt.Errorf(errNoKatalog)
+	}
 
 	m := merger.New(expanded...)
 	if err := m.Merge(); err != nil {
@@ -286,13 +288,6 @@ Examples:
   ork generate bundle -f katalog.yaml --for runtime,cc
   ork generate bundle -f katalog.yaml -o bundle.yaml -n orkestra-system`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Get the katalog paths as a slice
-		katalogPaths, _ := cmd.Flags().GetStringSlice("file")
-		if len(katalogPaths) == 0 {
-			return fmt.Errorf("--file is required")
-		}
-
-		// Generate RBAC from merged Katalog
 		out, err := generateKatalog(cmd)
 		if err != nil {
 			return err

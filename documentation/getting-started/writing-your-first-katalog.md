@@ -178,7 +178,8 @@ Orkestra starts `database` first and waits until it is healthy before starting `
 ## Running It
 
 ```bash
-ork run -f katalog.yaml
+ork run
+# Orkestra reads katalog.yaml from the current directory and starts the runtime.
 ```
 
 Apply a CR:
@@ -193,7 +194,6 @@ kubectl get deployments
 ## Validate Without Running
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
+# Orkestra reads katalog.yaml from the current directory and reports every error without touching the cluster.
 ```
-
-Resolves the CRD, merges all sources, and reports every error without touching the cluster.

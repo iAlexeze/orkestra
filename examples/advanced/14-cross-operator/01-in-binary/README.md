@@ -39,7 +39,7 @@ Both CRDs live in the same Katalog, the same binary, the same process.
 ## Step 1 — Validate the Katalog
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
 ```
 
 Expected:

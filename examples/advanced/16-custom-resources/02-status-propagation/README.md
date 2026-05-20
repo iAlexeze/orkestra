@@ -82,7 +82,7 @@ kubectl apply -f crd-connector.yaml
 ### 2. Start the operator
 
 ```bash
-ork run -f katalog.yaml
+ork run
 ```
 
 ### 3. Apply the DataPipeline CR

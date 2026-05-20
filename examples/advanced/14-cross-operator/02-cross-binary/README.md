@@ -31,7 +31,7 @@ Orkestra calls that URL at most once every 15 s, regardless of resync frequency.
 ## Step 1 — Validate the Katalog
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
 ```
 
 ---

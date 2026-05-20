@@ -76,7 +76,7 @@ kubectl apply -f crd-backuppolicy.yaml
 ### 2. Start the operator
 
 ```bash
-ork run -f katalog.yaml 
+ork run 
 ```
 
 ### 3. Apply the Database CR

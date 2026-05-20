@@ -32,7 +32,7 @@ Orkestra does the rest. The `phase`, `observedReplicas`, and `endpoint` fields
 ### 1. Start the operator
 
 ```bash
-ork run -f katalog.yaml
+ork run
 ```
 
 Orkestra reads `crdFile: ./crd.yaml`, applies the CRD to the cluster, and starts the operator.

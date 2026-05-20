@@ -69,7 +69,7 @@ ork version
 ## Step 2 — Validate the Katalog
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
 ```
 
 Expected output:

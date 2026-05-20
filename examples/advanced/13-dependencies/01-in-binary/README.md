@@ -46,7 +46,7 @@ dependsOn:
 ## Step 1 — Validate the Katalog
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
 ```
 
 Expected:
@@ -71,7 +71,7 @@ kubectl apply -f crd.yaml
 ## Step 3 — Run Orkestra and Control Center
 
 ```bash
-ork run -f katalog.yaml
+ork run
 
 # Another terminal
 ork contro start

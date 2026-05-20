@@ -27,7 +27,7 @@ because of the owner reference. No `onDelete` logic needed.
 ## Step 1 — Validate the Katalog
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
 ```
 
 Expected output:
@@ -46,7 +46,7 @@ Expected output:
 ## Step 2 — Start the operator
 
 ```bash
-ork run -f katalog.yaml
+ork run
 ```
 
 Orkestra reads `crdFile: ./crd.yaml`, applies the CRD to the cluster, and starts the operator. You will see the health server start and the informer sync:
