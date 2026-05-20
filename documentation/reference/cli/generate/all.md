@@ -9,10 +9,7 @@ ork generate all --file <file> [flags]
 This command executes, in order:
 
 1. **registry** – generate the runtime registry  
-2. **docs** – generate Markdown documentation  
-3. **dashboards** – generate Grafana dashboards  
-4. **rbac** – generate minimal RBAC rules  
-5. *(examples/tests removed in the new standard)*
+2. **dashboards** – generate Grafana dashboards
 
 It is the fastest way to regenerate all derived artifacts after modifying your Katalog.
 
@@ -55,11 +52,7 @@ ork generate all --file katalog.yaml --dry-run
 
 - Merges one or more Katalog files.
 - Validates the merged Katalog.
-- Sequentially runs:
-  - `generate registry`
-  - `generate docs`
-  - `generate dashboards`
-  - `generate rbac`
+- Sequentially runs `generate registry` then `generate dashboards`.
 - Stops immediately if any generator fails.
 - Produces the same output as running each command individually.
 
@@ -68,8 +61,6 @@ ork generate all --file katalog.yaml --dry-run
 ## Notes
 
 - This is ideal for CI pipelines and release automation.
-- Output locations depend on each generator:
+- Output locations:
   - registry → `pkg/typeregistry/zz_generated_typeregistry.go`
-  - docs → `./dash/`
-  - dashboards → `./dash/`
-  - rbac → stdout or `--output` if provided
+  - dashboards → `_generated/dashboards/`

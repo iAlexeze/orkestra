@@ -11,7 +11,6 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/generate"
 	"github.com/orkspace/orkestra/pkg/katalog"
-	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/merger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/spf13/cobra"
@@ -134,30 +133,6 @@ func generateKatalog(cmd *cobra.Command) (*mergerOut, error) {
 	}, nil
 }
 
-var generateDocsCmd = &cobra.Command{
-	Use:   "docs",
-	Short: "Generate Markdown documentation for all CRDs",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		out, err := generateKatalog(cmd)
-		if err != nil {
-			return err
-		}
-
-		dryRun, _ := cmd.Flags().GetBool("dry-run")
-
-		log.Printf("generating docs...\n")
-		log.Printf("dry-run: %t\n", dryRun)
-
-		if err := generate.Docs(out.crds, dryRun); err != nil {
-			return fmt.Errorf("generate docs: %w", err)
-		}
-
-		logger.Info().Msg("docs generated successfully")
-		log.Printf("out: %s\n", generate.DashDir)
-		return nil
-	},
-}
-
 var generateDashboardsCmd = &cobra.Command{
 	Use:   "dashboards",
 	Short: "Generate Grafana dashboards for all CRDs",
@@ -197,9 +172,6 @@ var generateAllCmd = &cobra.Command{
 
 		if err := generate.TypeRegistry(out.kat.Enabled(), dryRun); err != nil {
 			return fmt.Errorf("generate runtime: %w", err)
-		}
-		if err := generate.Docs(out.crds, dryRun); err != nil {
-			return fmt.Errorf("generate docs: %w", err)
 		}
 		if err := generate.Dashboards(out.crds, dryRun); err != nil {
 			return fmt.Errorf("generate dashboards: %w", err)
@@ -365,7 +337,6 @@ func init() {
 	generateCmd.AddCommand(generateKatalogCmd)
 	generateCmd.AddCommand(generateCRDCmd)
 	generateCmd.AddCommand(generateRegistryCmd)
-	generateCmd.AddCommand(generateDocsCmd)
 	generateCmd.AddCommand(generateDashboardsCmd)
 	generateCmd.AddCommand(generateAllCmd)
 	generateCmd.AddCommand(generateRbacCmd)
@@ -383,7 +354,6 @@ func init() {
 	// Shared flags for all file-consuming generate commands.
 	for _, cmd := range []*cobra.Command{
 		generateRegistryCmd,
-		generateDocsCmd,
 		generateDashboardsCmd,
 		generateAllCmd,
 		generateRbacCmd,

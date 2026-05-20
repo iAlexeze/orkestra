@@ -96,12 +96,6 @@ type CRDMeta struct {
 	}
 }
 
-type DocsTemplateData struct {
-	Timestamp time.Time
-	CRDs      []CRDMeta
-	CRD       CRDMeta // for per‑CRD templates
-}
-
 type DashboardTemplateData struct {
 	Timestamp time.Time
 	CRD       CRDMeta

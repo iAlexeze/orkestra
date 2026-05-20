@@ -23,7 +23,6 @@ func init() {
 		validateCmd,
 		templateCmd,
 		generateRegistryCmd,
-		generateDocsCmd,
 		generateDashboardsCmd,
 		generateAllCmd,
 	} {

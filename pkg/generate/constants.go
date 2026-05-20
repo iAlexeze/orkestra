@@ -16,10 +16,6 @@ const (
 	// It is regenerated on every `ork generate registry` invocation.
 	RegistryFile = "zz_generated_typeregistry.go"
 
-	// DocsDir is the output directory for generated Markdown documentation.
-	// Includes per-CRD docs, an index, and dependency graph documentation.
-	DocsDir = "_generated/docs"
-
 	// DashDir is the output directory for generated Grafana dashboards.
 	// Each CRD receives a dashboard JSON file with metrics panels.
 	DashDir = "_generated/dashboards"

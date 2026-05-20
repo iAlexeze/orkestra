@@ -27,6 +27,10 @@ spec:
         maxQueueDepth: 100
         degradeThreshold: 5
 
+      enrich:                      # optional → enrich.md
+        - pods
+        - events
+
       labelSelector:
         app: my-operator
       fieldSelector:
@@ -125,6 +129,12 @@ dependsOn:
 | `maxQueueDepth` | int | `100` (`MAX_QUEUE_DEPTH` env) | Max items in the queue before new items are dropped. |
 | `degradeThreshold` | int | `5` (`DEGRADE_THRESHOLD` env) | Consecutive reconcile failures before health transitions to degraded. |
 
+## `enrich`
+
+→ [enrich.md](enrich.md)
+
+---
+
 ## `webhooks`
 
 Per-CRD admission webhook override. Overrides `security.webhooks` for this CRD only.
@@ -179,6 +189,7 @@ imports:
 | Field | Reference |
 |-------|-----------|
 | `apiTypes` | [apitypes.md](apitypes.md) |
+| `enrich` | [enrich.md](enrich.md) |
 | `operatorBox` | [operatorbox.md](operatorbox.md) |
 | `conversion` | [conversion.md](conversion.md) |
 | `validation` | [validation.md](validation.md) |
