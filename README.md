@@ -8,6 +8,7 @@
   <p>
     <a href="https://goreportcard.com/report/github.com/orkspace/orkestra"><img src="https://goreportcard.com/badge/github.com/orkspace/orkestra" alt="Go Report Card" /></a>
     <a href="https://github.com/orkspace/orkestra/releases"><img src="https://img.shields.io/github/v/release/orkspace/orkestra" alt="Release" /></a>
+    <a href="https://artifacthub.io/packages/search?repo=orkestra"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/orkestra" alt="Artifact Hub" /></a>
     <img src="https://img.shields.io/badge/Go-1.22+-00ADD8.svg" alt="Go" />
     <img src="https://img.shields.io/badge/Kubernetes-1.28+-326CE5.svg" alt="Kubernetes" />
     <img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License" />
@@ -22,11 +23,11 @@
 
 ---
 
-You have a CRD. Kubernetes stores it, validates it, and serves it.
+You have a **CRD**. Kubernetes stores it, validates it, and serves it.
 
-The only missing piece is something that watches it and acts on it.
+The only missing piece is something that **watches** it and **acts** on it.
 
-Traditionally that means Go: informers, workqueues, reconcile loops, code generation, Dockerfiles, Helm charts — a software project per operator. Most engineers never start. Teams that do spend weeks before the first CR reconciles.
+Traditionally that means **Go**: informers, workqueues, reconcile loops, code generation, Dockerfiles, Helm charts — a software project per operator. Most engineers never start. Teams that do spend weeks before the first CR reconciles.
 
 Orkestra removes that entirely.
 
@@ -91,7 +92,7 @@ Every CRD declared in a Katalog becomes a complete, isolated operator. Nothing t
 | **Status** | `Ready` condition + your own status fields written after every reconcile. |
 | **Health API** | `/katalog/{crd}/health`, `/katalog/{crd}/cr`, `/metrics` — per CRD. |
 | **Prometheus metrics** | Reconcile totals, queue depth, error rate — labeled by GVK. |
-| **Deletion protection** | Orkestra and everything it manages cannot be accidentally `kubectl delete`-d. |
+| **Deletion protection** | Orkestra and everything it manages cannot be accidentally `kubectl delete`. |
 | **Control Center** | Realtime visibility per CRD, per Katalog, across instances. |
 
 The model is not new. `kube-controller-manager` runs Deployment, StatefulSet, Job, ReplicaSet, and a dozen others in one process with full per-controller isolation. Orkestra brings the same model to your custom resources.
@@ -227,7 +228,7 @@ operatorBox:
         value: "{{ allReplicasReady .children.deployment }}"
 ```
 
-`{{ allReplicasReady .children.deployment }}` is a **note** — one of 115+ built-in functions that read live cluster state. The result is written to the CR's `/status` subresource after every reconcile. No `updateStatus` calls. No diff logic.
+`allReplicasReady` is a [Note](https://docs.orkestra.sh/docs/reference/orkestra-notes) — one of 200+ built-in functions that read live cluster state. The result is written to the CR's `/status` subresource after every reconcile. No `updateStatus` calls. No diff logic.
 
 ```bash
 ork notes              # browse all built-in functions
@@ -319,9 +320,9 @@ mutation:
       default: "8080"
 ```
 
-Each rule enforces at two points: **admission time** (webhook intercepts `kubectl apply`) and **reconcile time** (re-evaluated on every cycle). One declaration. Two enforcement points.
+Each rule enforces at two points: **admission time** (`Gateway` intercepts `kubectl apply`) and **reconcile time** (`Runtime` re-evaluates on every cycle). One declaration. Two enforcement points.
 
-Webhooks are opt-in via `security.webhooks.admission.enabled: true`. Without them, rules still run on every reconcile.
+Webhooks are opt-in via `security.webhooks.admission.enabled: true` and enable `gateway` in helm [values](https://github.com/orkspace/orkestra/blob/main/charts/orkestra/values.yaml#L159). Without them, rules still run on every reconcile.
 
 ---
 
@@ -343,7 +344,7 @@ conversion:
         schedule: "{{ cronFromMap .spec.schedule }}"
 ```
 
-The same process that runs your operators serves the `/convert` endpoint. Kubernetes calls it during version mismatches. Measured average conversion latency: **0.5ms**. Zero failures in production.
+Orkestra gateway serves the `/convert` endpoint. Kubernetes calls it during version mismatches. Measured average conversion latency: **0.5ms**. [Zero failures](https://cc.orkestra.sh) in production.
 
 ---
 
@@ -461,7 +462,7 @@ operatorBox:
             equals: "200"
 ```
 
-`continueOnError: false` blocks the entire reconcile if the call fails. `continueOnError: true` lets the rest of the pipeline proceed and makes the error available in `.external.policy.error`.
+`continueOnError: false` (default) blocks the entire reconcile if the call fails. `continueOnError: true` lets the rest of the pipeline proceed and makes the error available in `.external.policy.error`.
 
 ---
 
@@ -471,7 +472,7 @@ Orkestra covers the common case declaratively. For everything else, two escape h
 
 ### Hooks — typed Go functions
 
-Call Go code from within the GenericReconciler. You write a function; Orkestra calls it at the right point in the reconcile cycle. The runtime still handles informers, workqueue, workers, health, metrics, and events.
+Call Go code from within the GenericReconciler. You write a function; Orkestra calls it at the right point in the reconcile cycle. The runtime still handles informers, workqueue, workers, health, metrics, events and the full orkestra capability set.
 
 ```yaml
 operatorBox:
@@ -480,16 +481,26 @@ operatorBox:
     location: github.com/myorg/operator/reconciler
     function: DatabaseHooks
     version: v1.0.2
+    fetch: true
     resources:
       - statefulsets
       - services
 ```
 
-Your function receives type-safe access to the CR and can call external APIs, run migrations, orchestrate anything complex. Hookable at `OnCreate`, `OnUpdate`, `OnDelete`.
+Your function receives type-safe access to the CR and can call external APIs, run migrations, orchestrate anything complex. Hookable at `OnReconcile`, and `OnDelete`.
+
+Full example:
+
+```console
+ork init hooks-operator --pack advanced
+cd hooks-operator/09-hooks
+```
+
+---
 
 ### Constructors — full custom reconciler
 
-Replace the GenericReconciler entirely. You own the reconcile loop. Orkestra still manages informers, workqueue, workers, health, and metrics.
+Replace the GenericReconciler entirely. You own the reconcile loop. Orkestra still manages informers, workqueue, workers, health, events and the full orkestra capability set.
 
 ```yaml
 operatorBox:
@@ -510,6 +521,13 @@ func NewPipelineReconciler(
 ```
 
 You get the infrastructure. You write the logic.
+
+Full example:
+
+```console
+ork init constructor-operator --pack advanced`
+cd constructor-operator/10-constructor
+```
 
 ---
 

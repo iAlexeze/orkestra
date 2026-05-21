@@ -89,6 +89,9 @@ jobs:
           # Copy values.yaml so users can inspect defaults from the gh-pages site
           cp "charts/${ORK}/values.yaml" /tmp/gh-pages/values.yaml
 
+          # Copy crdsExamples source — kept in the chart dir, not Chart.yaml (too large)
+          cp "charts/${ORK}/artifacthub-crds-examples.yaml" /tmp/gh-pages/crds-examples.yaml
+
           cd /tmp/gh-pages
           if [[ -f index.yaml ]]; then
             helm repo index . --url "https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}" --merge index.yaml
@@ -96,9 +99,17 @@ jobs:
             helm repo index . --url "https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
           fi
 
+          # Inject crdsExamples into the newly published version entry.
+          # strenv() reads the env var as a raw string — safe with newlines and Go templates.
+          export CRDS_EXAMPLES
+          CRDS_EXAMPLES=$(cat crds-examples.yaml)
+          yq eval \
+            '(.entries.'"${ORK}"'[] | select(.version == "'"${VERSION}"'")).annotations["artifacthub.io/crdsExamples"] = strenv(CRDS_EXAMPLES)' \
+            -i index.yaml
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "*.tgz" index.yaml README.md values.yaml
+          git add "*.tgz" index.yaml README.md values.yaml crds-examples.yaml
           git commit -m "Release ${ORK}-${VERSION}"
           git push origin gh-pages
 
