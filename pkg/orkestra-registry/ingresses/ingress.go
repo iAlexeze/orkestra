@@ -21,7 +21,7 @@ import (
 
 // Create creates an Ingress owned by the CR if it does not already exist.
 // Idempotent — if the Ingress exists, does nothing and returns nil.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedIngressSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedIngressSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("ingress.Create: invalid spec: %w", err)
 	}
@@ -62,7 +62,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Update reconciles an existing Ingress to match the resolved spec.
 // Patches host, backend service, port, and TLS when drift is detected.
 // If the Ingress does not exist, creates it.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedIngressSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedIngressSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("ingress.Update: invalid spec: %w", err)
 	}
@@ -137,7 +137,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Delete deletes the Ingress if it exists.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedIngressSpec) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedIngressSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -165,7 +165,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the Ingress if it exists and is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().NetworkingV1().Ingresses(namespace).
@@ -226,13 +226,13 @@ func Resolve(src orktypes.IngressTemplateSource, ownerName string) ResolvedIngre
 	spec.Labels[labels.Managed] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
 
-	if src.TLS != nil && src.TLS.Enabled {
+	if src.TLS != nil && src.TLS.Create {
 		secretName := src.TLS.SecretName
 		if secretName == "" {
 			secretName = ownerName + "-tls"
 		}
 		spec.TLS = &ResolvedIngressTLS{
-			Enabled:    true,
+			Create:     true,
 			SecretName: secretName,
 			Hosts:      src.TLS.Hosts,
 			ValidFor:   src.TLS.ValidFor,
@@ -312,7 +312,7 @@ func buildIngress(owner domain.Object, spec ResolvedIngressSpec, namespace strin
 		ing.Spec.IngressClassName = &spec.IngressClass
 	}
 
-	if spec.TLS != nil && spec.TLS.Enabled {
+	if spec.TLS != nil && spec.TLS.Create {
 		hosts := spec.TLS.Hosts
 		if len(hosts) == 0 && spec.Host != "" {
 			hosts = []string{spec.Host}

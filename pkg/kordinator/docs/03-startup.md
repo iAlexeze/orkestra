@@ -4,7 +4,7 @@
 
 ## The dependency graph
 
-Before `Kordinate()` runs, `konstructOrkestra` builds a `DependencyGraph` from the `dependsOn` fields in the Katalog. Kahn's algorithm produces a topological order — alphabetical tie-breaking within the same depth tier makes the order deterministic across restarts.
+Before `Kordinate()` runs, `konstructRuntime` builds a `DependencyGraph` from the `dependsOn` fields in the Katalog. Kahn's algorithm produces a topological order — alphabetical tie-breaking within the same depth tier makes the order deterministic across restarts.
 
 ```yaml
 spec:

@@ -2,16 +2,15 @@
 
 ## Overview
 
-`dispatchTeamNotifications` fans out to every channel configured for the team. Currently supported: **email** (SMTP) and **Slack** (incoming webhooks). Both are optional — a team can declare only one or both.
+`dispatchTeam` fans out to every channel configured for the team. Currently supported: **email** (SMTP) and **Slack** (incoming webhooks). Both are optional — a team can declare only one or both.
 
 ```go
-func (s *NotificationState) dispatchTeamNotifications(
+func dispatchTeam(
     ctx context.Context,
     k *katalog.Katalog,
     teamName string,
     team *orktypes.NotificationTeam,
-    cond orktypes.Condition,
-    message string,
+    subject, message string,
     data map[string]interface{},
 )
 ```
@@ -47,7 +46,7 @@ notification:
 
 ### Delivery model
 
-- One SMTP connection per `dispatchTeamNotifications` call.
+- One SMTP connection per `dispatchTeam` call.
 - Each recipient gets a separate `MAIL FROM / RCPT TO / DATA` transaction within the same connection — avoids exposing the recipient list.
 - STARTTLS is attempted; if the server does not support it, the connection continues unencrypted with a warning log.
 - Failed deliveries per recipient are logged as warnings. Other recipients in the same call are still attempted.
@@ -114,5 +113,5 @@ Severity colours: `"good"` (info), `"warning"` (warning — default for conditio
 
 1. Create `<channel>.go` in `pkg/notification/` with a `send<Channel>Notification(ctx, ...)` function.
 2. Add the team config field to `orktypes.NotificationTeam` in `pkg/types/notification.go`.
-3. Add a guard (`k.Is<Channel>NotificationEnabled()`) and call in `dispatchTeamNotifications`.
+3. Add a guard (`k.Is<Channel>NotificationEnabled()`) and call in `dispatchTeam`.
 4. Add the new channel to this document.

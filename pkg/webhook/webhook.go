@@ -8,7 +8,7 @@
 // and conversion webhooks:
 //
 //   - TLS HTTPS server that handles /validate, /mutate, /convert,
-//     /deletion-protection, and /namespace-protection
+//     /deletion-protection, /namespace-protection, and /strict-mode-protection
 //   - Webhook configuration registration and reconciliation with the API server
 //   - All HTTP handlers for admission review processing
 //   - Periodic controller that keeps webhook configurations in sync with the Katalog
@@ -68,7 +68,7 @@ type certManagerIface interface {
 // webhook controller that reconciles configurations with the API server.
 //
 // Created via NewWebhookServer and registered as a domain.Komponent in
-// cmd/internal/konstructor.go. It starts after the HealthServer so that
+// cmd/internal/runtime_konstructor.go. It starts after the HealthServer so that
 // /ready is live before webhook registration runs.
 type WebhookServer struct {
 	name string
@@ -100,6 +100,7 @@ type WebhookServer struct {
 	// Runtime protection state — set in Start() based on Katalog.
 	deletionProtection  atomic.Bool
 	namespaceProtection atomic.Bool
+	strictMode          atomic.Bool
 
 	// Kubernetes client for webhook configuration registration.
 	kubeClient kubernetes.Interface
@@ -111,13 +112,22 @@ type WebhookServer struct {
 	conversionRegistry katalog.ConversionRegistry
 	admissionRegistry  katalog.AdmissionRegistry
 
-	// Stats — types live in pkg/health for compatibility with kordinator.
-	// Always initialized so callers never receive nil even when webhooks are disabled.
-	conversionStats *health.ConversionStats
-	admissionStats  *health.AdmissionStats
-	protectionStats *health.DeletionProtectionStats
+	// Stats — per-CRD maps keyed by GVR string ("group/version/resource").
+	// Pre-populated from the Katalog in NewWebhookServer so each CRD gets its
+	// own counters. infraProtectionStats covers self-protection and Orkestra
+	// infra resources (Deployment, Service, etc.) that have no CRD GVR.
+	admissionStats  map[string]*health.AdmissionStats
+	conversionStats map[string]*health.ConversionStats
+	protectionStats map[string]*health.DeletionProtectionStats
+	namespaceStats  map[string]*health.NamespaceProtectionStats
+	infraProtStats  *health.DeletionProtectionStats // webhook self + Orkestra infra
+	strictModeStats *health.DeletionProtectionStats // process-global; strict mode is not per-CRD
 	webhookStats    *health.WebhookStats
-	namespaceStats  *health.NamespaceProtectionStats
+
+	// Reverse-lookup tables built from the Katalog for handlers that identify
+	// the target CRD by name/kind rather than GVR.
+	crdNameToGVRKey map[string]string // "plural.group" → "group/version/resource"
+	kindToGVRKey    map[string]string // "Kind" → "group/version/resource"
 
 	// Deletion protection — set of CRD full names (plural.group) that are protected.
 	protectedCRDNames map[string]struct{}
@@ -129,8 +139,22 @@ type WebhookServer struct {
 	// Nil when the user provided explicit TLS_CERT/TLS_KEY env vars.
 	certMgr certManagerIface
 
+	// certSecretData holds the TLS bundle used at startup so the housekeeper can
+	// restore the Secret if it is deleted (e.g. by a concurrent pod during rollout).
+	// Nil when the user provided explicit TLS_CERT/TLS_KEY env vars.
+	certSecretData      *certSecretBundle
+	certSecretName      string
+	certSecretNamespace string
+
 	// Full konfig for namespace access during shutdown cleanup.
 	konfig *konfig.Konfig
+}
+
+// certSecretBundle carries the raw PEM bytes needed to restore the TLS Secret.
+type certSecretBundle struct {
+	certPEM []byte
+	keyPEM  []byte
+	caPEM   []byte
 }
 
 // NewWebhookServer constructs a WebhookServer and resolves all declarative
@@ -143,7 +167,7 @@ func NewWebhookServer(kubeClient kubernetes.Interface, kat *katalog.Katalog, kfg
 		FailurePolicy:          admissionFailurePolicy,
 		Port:                   kfg.HTTPSPortInt32(),
 		ServiceName:            kat.WebhooksServiceName(),
-		ServiceNamespace:       kfg.Cluster().Namespace,
+		ServiceNamespace:       kfg.Cluster().Namespace(),
 		TLSCertFile:            kfg.Security().Webhooks.TLSCert,
 		OrkestraResourceLabels: labels.OrkestraResourceLabels(),
 	}
@@ -165,10 +189,30 @@ func NewWebhookServer(kubeClient kubernetes.Interface, kat *katalog.Katalog, kfg
 		mux:                http.NewServeMux(),
 		conversionRegistry: kat.ConversionRegistry(),
 		admissionRegistry:  kat.AdmissionRegistry(),
-		conversionStats:    health.NewConversionStats(convWindow),
-		admissionStats:     health.NewAdmissionStats(convWindow),
-		protectionStats:    health.NewDeletionProtectionStats(),
+		admissionStats:     make(map[string]*health.AdmissionStats),
+		conversionStats:    make(map[string]*health.ConversionStats),
+		protectionStats:    make(map[string]*health.DeletionProtectionStats),
+		namespaceStats:     make(map[string]*health.NamespaceProtectionStats),
+		infraProtStats:     health.NewDeletionProtectionStats(),
 		webhookStats:       health.NewWebhookStats(),
+		strictModeStats:    health.NewDeletionProtectionStats(),
+		crdNameToGVRKey:    make(map[string]string),
+		kindToGVRKey:       make(map[string]string),
+	}
+
+	// Pre-populate per-CRD stat instances and reverse-lookup tables from the Katalog.
+	// Every CRD gets its own counters so the gateway /katalog can return accurate
+	// per-CRD breakdowns without mixing traffic across resources.
+	for _, crd := range kat.All() {
+		gvr := crd.GVR()
+		gvrKey := crdGVRKey(gvr.Group, gvr.Version, gvr.Resource)
+		ws.admissionStats[gvrKey] = health.NewAdmissionStats(convWindow)
+		ws.conversionStats[gvrKey] = health.NewConversionStats(convWindow)
+		ws.protectionStats[gvrKey] = health.NewDeletionProtectionStats()
+		ws.namespaceStats[gvrKey] = health.NewNamespaceProtectionStats()
+		crdFullName := crd.APITypes.Plural + "." + crd.APITypes.Group
+		ws.crdNameToGVRKey[crdFullName] = gvrKey
+		ws.kindToGVRKey[crd.APITypes.Kind] = gvrKey
 	}
 
 	// Precompute deletion-protection CRD name set.
@@ -195,10 +239,59 @@ func NewWebhookServer(kubeClient kubernetes.Interface, kat *katalog.Katalog, kfg
 				ws.namespaceRuleMap[key] = rules
 			}
 		}
-		ws.namespaceStats = health.NewNamespaceProtectionStats()
 	}
 
 	return ws
+}
+
+// crdGVRKey formats a GVR triple into a canonical string key used throughout
+// the webhook stats maps: "group/version/resource" (or "version/resource" for core group).
+func crdGVRKey(group, version, resource string) string {
+	if group == "" {
+		return version + "/" + resource
+	}
+	return group + "/" + version + "/" + resource
+}
+
+// ── Per-CRD stat accessors ────────────────────────────────────────────────────
+// These helpers return the per-CRD stats instance for a given GVR key.
+// A nil-safe fallback is created on first miss (defensive; should not occur for
+// CRDs declared in the Katalog).
+
+func (ws *WebhookServer) admissionStatsFor(gvrKey string) *health.AdmissionStats {
+	if s, ok := ws.admissionStats[gvrKey]; ok {
+		return s
+	}
+	s := health.NewAdmissionStats(ws.conversionWindow)
+	ws.admissionStats[gvrKey] = s
+	return s
+}
+
+func (ws *WebhookServer) conversionStatsFor(gvrKey string) *health.ConversionStats {
+	if s, ok := ws.conversionStats[gvrKey]; ok {
+		return s
+	}
+	s := health.NewConversionStats(ws.conversionWindow)
+	ws.conversionStats[gvrKey] = s
+	return s
+}
+
+func (ws *WebhookServer) protectionStatsFor(gvrKey string) *health.DeletionProtectionStats {
+	if s, ok := ws.protectionStats[gvrKey]; ok {
+		return s
+	}
+	s := health.NewDeletionProtectionStats()
+	ws.protectionStats[gvrKey] = s
+	return s
+}
+
+func (ws *WebhookServer) namespaceStatsFor(gvrKey string) *health.NamespaceProtectionStats {
+	if s, ok := ws.namespaceStats[gvrKey]; ok {
+		return s
+	}
+	s := health.NewNamespaceProtectionStats()
+	ws.namespaceStats[gvrKey] = s
+	return s
 }
 
 // SetCertManager provides the cert manager for TLS secret cleanup on graceful shutdown.
@@ -206,6 +299,19 @@ func NewWebhookServer(kubeClient kubernetes.Interface, kat *katalog.Katalog, kfg
 // user provided explicit TLS_CERT/TLS_KEY).
 func (ws *WebhookServer) SetCertManager(m certManagerIface) {
 	ws.certMgr = m
+}
+
+// SetCertBundle stores the TLS bundle and Secret coordinates so the housekeeper can
+// restore the Secret if it is deleted during a rollout. Only called when Orkestra
+// generated the certificates (not when the user provides TLS_CERT/TLS_KEY).
+func (ws *WebhookServer) SetCertBundle(certPEM, keyPEM, caPEM []byte, secretName, namespace string) {
+	ws.certSecretData = &certSecretBundle{
+		certPEM: certPEM,
+		keyPEM:  keyPEM,
+		caPEM:   caPEM,
+	}
+	ws.certSecretName = secretName
+	ws.certSecretNamespace = namespace
 }
 
 // Start activates the WebhookServer. It registers all declared webhook endpoints,
@@ -226,6 +332,9 @@ func (ws *WebhookServer) Start(ctx context.Context) error {
 	}
 	if kat.IsNamespaceProtectionEnabled() && len(kat.NamespaceProtectionGVRs()) > 0 {
 		ws.namespaceProtection.Store(true)
+	}
+	if kat.IsStrictModeEnabled() && utils.IsRunningInCluster() {
+		ws.strictMode.Store(true)
 	}
 
 	logger.Debug().
@@ -253,6 +362,11 @@ func (ws *WebhookServer) Start(ctx context.Context) error {
 		ws.mux.HandleFunc("/namespace-protection", ws.namespaceProtectionHandler)
 		startHTTPS = true
 		logger.Info().Str("endpoint", "/namespace-protection").Msg("namespace protection endpoint registered")
+	}
+	if ws.strictMode.Load() {
+		ws.mux.HandleFunc("/strict-mode-protection", ws.strictModeProtectionHandler)
+		startHTTPS = true
+		logger.Info().Str("endpoint", "/strict-mode-protection").Msg("strict mode protection endpoint registered")
 	}
 	if kat.HasConversionPaths() {
 		ws.mux.HandleFunc("/convert", ws.conversionHandler)
@@ -377,6 +491,28 @@ func (ws *WebhookServer) Start(ctx context.Context) error {
 		}()
 	}
 
+	// Strict mode webhook registration.
+	if ws.strictMode.Load() && ws.kubeClient != nil {
+		go func() {
+			wctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			caBundle, err := readCABundle(ws.hookReg.TLSCertFile)
+			if err != nil {
+				logger.Error().Err(err).Msg("strict mode webhook: cannot read CA bundle")
+				return
+			}
+
+			if err := registerStrictModeProtectionWebhook(wctx, ws.kubeClient, caBundle, ws.hookReg); err != nil {
+				logger.Error().Err(err).Msg("strict mode protection webhook registration failed")
+			} else {
+				logger.Info().
+					Str("config", strictModeProtectionWebhookConfigName).
+					Msg("strict mode protection webhook registered")
+			}
+		}()
+	}
+
 	// Start the housekeeper to keep webhook configurations in sync.
 	if kat.IsWebhookControllerEnabled() {
 		if err := ws.housekeeper(ws.ctx); err != nil {
@@ -434,6 +570,18 @@ func (ws *WebhookServer) Shutdown(ctx context.Context) {
 		}
 	}
 
+	// Cleanup strict-mode-protection webhook.
+	// Strict mode cleanup mirrors deletion protection: only clean up when the
+	// parent deletionProtection.cleanupOnShutdown is set, since strict mode is
+	// a sub-feature of deletion protection.
+	if kat.IsStrictModeEnabled() && kat.DeletionProtectionCleanupOnShutdown() && ws.kubeClient != nil {
+		if err := cleanupValidatingWebhook(ctx, ws.kubeClient, strictModeProtectionWebhookConfigName); err != nil {
+			logger.Error().Err(err).Msg("strict mode protection webhook cleanup error")
+		} else {
+			logger.Info().Str("config", strictModeProtectionWebhookConfigName).Msg("strict mode protection webhook removed")
+		}
+	}
+
 	// Cleanup the TLS secret when auto-generated certs and cleanup is enabled.
 	shouldCleanupTLS :=
 		kat.WebhookCleanupOnShutdown() ||
@@ -441,7 +589,7 @@ func (ws *WebhookServer) Shutdown(ctx context.Context) {
 			kat.DeletionProtectionCleanupOnShutdown()
 
 	if ws.certMgr != nil && shouldCleanupTLS && ws.konfig != nil {
-		ns := ws.konfig.Cluster().Namespace
+		ns := ws.konfig.Cluster().Namespace()
 		if err := ws.certMgr.DeleteCertificateAndSecret(ctx, ns, konfig.DefaultInternalTLSName()); err != nil {
 			logger.Error().Err(err).Msg("tls secret cleanup error")
 		} else {
@@ -456,23 +604,49 @@ func (ws *WebhookServer) Name() string { return ws.name }
 // Started reports whether Start() has been called.
 func (ws *WebhookServer) Started() bool { return ws.started.Load() }
 
-// ── Stats getters — called from konstructor.go to wire into BuildCRDInfoHandler ─
+// ── Stats getters — used by BuildGatewayKatalogHandler ───────────────────────
+// All stat getters are keyed by GVR string ("group/version/resource") so the
+// gateway /katalog handler can serve accurate per-CRD breakdowns.
 
-// GetConversionStats returns the conversion statistics instance.
-func (ws *WebhookServer) GetConversionStats() *health.ConversionStats { return ws.conversionStats }
-
-// GetAdmissionStats returns the admission statistics instance.
-func (ws *WebhookServer) GetAdmissionStats() *health.AdmissionStats { return ws.admissionStats }
-
-// GetProtectionStats returns the deletion-protection statistics instance.
-func (ws *WebhookServer) GetProtectionStats() *health.DeletionProtectionStats {
-	return ws.protectionStats
+// AdmissionStatsFor returns the admission stats for the CRD identified by gvrKey.
+// Returns nil when no stats exist for that key (CRD has no admission webhooks).
+func (ws *WebhookServer) AdmissionStatsFor(gvrKey string) *health.AdmissionStats {
+	return ws.admissionStats[gvrKey]
 }
 
-// GetWebhookStats returns the webhook reconciliation statistics instance.
-func (ws *WebhookServer) GetWebhookStats() *health.WebhookStats { return ws.webhookStats }
+// ConversionStatsFor returns the conversion stats for the CRD identified by gvrKey.
+func (ws *WebhookServer) ConversionStatsFor(gvrKey string) *health.ConversionStats {
+	return ws.conversionStats[gvrKey]
+}
 
-// GetNamespaceStats returns the namespace-protection statistics instance.
-func (ws *WebhookServer) GetNamespaceStats() *health.NamespaceProtectionStats {
-	return ws.namespaceStats
+// ProtectionStatsFor returns the deletion-protection stats for the CRD identified by gvrKey.
+func (ws *WebhookServer) ProtectionStatsFor(gvrKey string) *health.DeletionProtectionStats {
+	return ws.protectionStats[gvrKey]
+}
+
+// NamespaceStatsFor returns the namespace-protection stats for the CRD identified by gvrKey.
+func (ws *WebhookServer) NamespaceStatsFor(gvrKey string) *health.NamespaceProtectionStats {
+	return ws.namespaceStats[gvrKey]
+}
+
+// InfraProtectionStats returns the process-level deletion-protection stats that
+// cover the webhook configuration itself and Orkestra infra resources (Deployment,
+// Service, etc.) — events not attributable to a specific CRD GVR.
+func (ws *WebhookServer) InfraProtectionStats() *health.DeletionProtectionStats {
+	return ws.infraProtStats
+}
+
+// WebhookControllerStats returns the webhook reconciliation statistics.
+func (ws *WebhookServer) WebhookControllerStats() *health.WebhookStats { return ws.webhookStats }
+
+// StrictModeStats returns the strict-mode-protection statistics (process-global).
+func (ws *WebhookServer) StrictModeStats() *health.DeletionProtectionStats {
+	return ws.strictModeStats
+}
+
+// GVRKey formats group/version/resource into the canonical stats key.
+// Exported so the gateway handler can build keys from crd.GVR() without
+// duplicating the formatting logic.
+func GVRKey(group, version, resource string) string {
+	return crdGVRKey(group, version, resource)
 }

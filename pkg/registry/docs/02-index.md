@@ -78,7 +78,7 @@ index, err := client.List(ctx, "oci://myregistry.internal/patterns")
 Any OCI-compliant registry works. The index artifact lives at `<base>/index:latest` where `<base>` is the registry URL without `oci://` and without a trailing slash.
 
 ```bash
-export ORKESTRA_REGISTRY=oci://myregistry.internal/patterns
+export ORK_REGISTRY=oci://myregistry.internal/patterns
 ork registry push my-operator:v1.0.0 ./my-operator/
 ork registry list   # reads myregistry.internal/patterns/index:latest
 ```

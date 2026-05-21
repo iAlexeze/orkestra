@@ -87,7 +87,8 @@ ork run -f katalog --dev
 Start the Control Center:
 
 ```bash
-ork control start
+ork control
+# username:password → orkestra
 ```
 
 Visit: **http://localhost:8081**

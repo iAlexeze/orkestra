@@ -1,4 +1,4 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -10,8 +10,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 
+	"github.com/orkspace/orkestra/pkg/utils"
 	"github.com/orkspace/orkestra/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -100,7 +102,7 @@ func runUpgrade(requestedVersion string, runtimeOnly bool) error {
 
 	// Print version
 	fmt.Println("Current version:")
-	fmt.Println("  ork version")
+	fmt.Printf("  %s", utils.Green(version))
 	fmt.Println()
 
 	return nil
@@ -206,17 +208,20 @@ func runUpgradeCheck(requested string) error {
 // ──────────────────────────────────────────────────────────────────────────────
 //
 
-func installBinary(binary, platform, version string) error {
+func installBinary(binary, platform, ver string) error {
+	// Install alongside the currently running binary so os.Rename stays on the
+	// same filesystem (avoids "invalid cross-device link" on Linux).
+	selfPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("could not determine install location: %w", err)
+	}
+	installDir := filepath.Dir(selfPath)
+	installPath := filepath.Join(installDir, binary)
+
 	archive := fmt.Sprintf("%s_%s.tar.gz", binary, platform)
-	url := fmt.Sprintf("https://github.com/orkspace/orkestra/releases/download/%s/%s", version, archive)
+	url := fmt.Sprintf("https://github.com/orkspace/orkestra/releases/download/%s/%s", ver, archive)
 
 	fmt.Printf("→ Downloading %s...\n", archive)
-
-	tmp, err := os.CreateTemp("", archive)
-	if err != nil {
-		return err
-	}
-	defer os.Remove(tmp.Name())
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -224,52 +229,43 @@ func installBinary(binary, platform, version string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		fmt.Printf("  ⚠ %s not available for this version — skipping\n", binary)
 		return nil
 	}
 
-	if _, err := io.Copy(tmp, resp.Body); err != nil {
+	// Extract directly into a temp file in the install directory so
+	// the final os.Rename is atomic and stays on the same filesystem.
+	tmp, err := os.CreateTemp(installDir, "."+binary+".tmp.*")
+	if err != nil {
+		return fmt.Errorf("could not create temp file in %s: %w", installDir, err)
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	fmt.Printf("→ Extracting %s to %s...\n", archive, installPath)
+
+	if err := extractBinaryFromTarGz(resp.Body, binary, tmp); err != nil {
+		tmp.Close()
+		return err
+	}
+	tmp.Close()
+
+	if err := os.Chmod(tmpPath, 0755); err != nil {
 		return err
 	}
 
-	fmt.Printf("→ Extracting %s...\n", archive)
-
-	if err := extractTarGz(tmp.Name(), binary); err != nil {
-		return err
-	}
-
-	installPath := "/usr/local/bin/" + binary
-
-	fmt.Printf("→ Installing %s to %s...\n", binary, installPath)
-
-	if err := os.Chmod(binary, 0755); err != nil {
-		return err
-	}
-
-	// Move binary into place (sudo if needed)
-	if err := os.Rename(binary, installPath); err != nil {
+	if err := os.Rename(tmpPath, installPath); err != nil {
 		return fmt.Errorf("failed to install %s: %w", binary, err)
 	}
 
-	fmt.Printf("✔ Installed %s %s\n", binary, version)
+	fmt.Printf("✔ Installed %s %s → %s\n", binary, ver, installPath)
 	return nil
 }
 
-//
-// ──────────────────────────────────────────────────────────────────────────────
-//  Extract tar.gz containing a single binary
-// ──────────────────────────────────────────────────────────────────────────────
-//
-
-func extractTarGz(path, binary string) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	gzr, err := gzip.NewReader(f)
+// extractBinaryFromTarGz streams r (a .tar.gz) and writes the named binary entry to dst.
+func extractBinaryFromTarGz(r io.Reader, binary string, dst io.Writer) error {
+	gzr, err := gzip.NewReader(r)
 	if err != nil {
 		return err
 	}
@@ -286,19 +282,14 @@ func extractTarGz(path, binary string) error {
 			return err
 		}
 
-		if header.Typeflag == tar.TypeReg && header.Name == binary {
-			out, err := os.Create(binary)
-			if err != nil {
+		// Match by base name so archives like "ork/ork" and flat "ork" both work.
+		if header.Typeflag == tar.TypeReg && filepath.Base(header.Name) == binary {
+			if _, err := io.Copy(dst, tr); err != nil {
 				return err
 			}
-			if _, err := io.Copy(out, tr); err != nil {
-				out.Close()
-				return err
-			}
-			out.Close()
 			return nil
 		}
 	}
 
-	return fmt.Errorf("binary %s not found in archive", binary)
+	return fmt.Errorf("binary %q not found in archive", binary)
 }

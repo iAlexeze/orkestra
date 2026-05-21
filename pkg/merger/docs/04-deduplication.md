@@ -9,14 +9,14 @@ CRD names must be unique. A duplicate is always an error — the merger never si
 `loadKomposer` maintains a `localSeen map[string]string` (name → source label).
 
 ```
-registry sources  ──┐
-file sources       ──┼──► localSeen
-helm sources       ──┘
+registry imports  ──┐
+file imports       ──┼──► localSeen
+helm imports       ──┘
 
 inline spec.crds  (may override a source — valid; triggers mergeCRDEntry)
 ```
 
-If the same name appears in two different sources (e.g., `file:a.yaml` and `file:b.yaml`), `checkDuplicate` returns an error with both source labels so the user can identify the conflict.
+If the same name appears in two different imports (e.g., `file:a.yaml` and `file:b.yaml`), `checkDuplicate` returns an error with both source labels so the user can identify the conflict.
 
 Inline `spec.crds` can override a source CRD with the same name — this is the intended mechanism for local overrides. The inline value is merged onto the source value via `mergeCRDEntry` (not a simple replacement).
 
@@ -29,7 +29,7 @@ Inline over inline is impossible — Go map keys are unique, so the same name ca
 ## Error messages
 
 ```
-duplicate CRD "myresource": defined in "file:a.yaml" and "file:b.yaml" — names must be unique across all sources
+duplicate CRD "myresource": defined in "file:a.yaml" and "file:b.yaml" — names must be unique across all imports
 ```
 
 The source labels follow a consistent `<type>:<identifier>` pattern:

@@ -1,4 +1,4 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -58,8 +58,8 @@ func unifiedDiff(nameA, nameB string, a, b []byte, verbose bool) string {
 	blines := strings.Split(string(b), "\n")
 
 	var out []string
-	out = append(out, fmt.Sprintf("%s--- %s%s", utils.ColorGray, nameA, utils.ColorReset))
-	out = append(out, fmt.Sprintf("%s+++ %s%s", utils.ColorGray, nameB, utils.ColorReset))
+	out = append(out, utils.Gray("--- "+nameA))
+	out = append(out, utils.Gray("+++ "+nameB))
 
 	max := len(alines)
 	if len(blines) > max {
@@ -81,12 +81,12 @@ func unifiedDiff(nameA, nameB string, a, b []byte, verbose bool) string {
 				out = append(out, " "+A)
 			}
 		case A == "":
-			out = append(out, utils.ColorGreen+"+"+B+utils.ColorReset)
+			out = append(out, utils.Green("+"+B))
 		case B == "":
-			out = append(out, utils.ColorRed+"-"+A+utils.ColorReset)
+			out = append(out, utils.Red("-"+A))
 		default:
-			out = append(out, utils.ColorRed+"-"+A+utils.ColorReset)
-			out = append(out, utils.ColorGreen+"+"+B+utils.ColorReset)
+			out = append(out, utils.Red("-"+A))
+			out = append(out, utils.Green("+"+B))
 		}
 	}
 

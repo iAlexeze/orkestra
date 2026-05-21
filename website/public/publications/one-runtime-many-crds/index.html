@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="One Runtime, Many CRDs: Fulfilling the Operator Pattern — Orkestra">
 <meta property="og:description" content="*Orkestra Project — March 2026*">
-<meta property="og:url" content="http://localhost:8191/publications/one-runtime-many-crds/">
+<meta property="og:url" content="http://localhost:8090/publications/one-runtime-many-crds/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.e4f35e028b4e342d94b5258699fa7b53e53b1f54212c3a40fb2a70e627bba458.css">
+<link rel="stylesheet" href="/css/main.min.ed4127849a94162676f586309f939b9ad14e1a02ea340295071b0613d5493ba5.css">
 
 
 
@@ -65,7 +65,7 @@
     <ul class="navbar-links" role="list">
       
       <li>
-        <a href="/docs/" class="navbar-link"
+        <a href="/docs/getting-started/" class="navbar-link"
           >
           Docs
           
@@ -73,17 +73,9 @@
       </li>
       
       <li>
-        <a href="/publications/" class="navbar-link"
+        <a href="/docs/reference/" class="navbar-link"
           >
-          Publications
-          
-        </a>
-      </li>
-      
-      <li>
-        <a href="/docs/use-cases/" class="navbar-link"
-          >
-          Use Cases
+          Reference
           
         </a>
       </li>
@@ -92,6 +84,14 @@
         <a href="/blog/" class="navbar-link"
           >
           Blog
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-link"
+          >
+          Publications
           
         </a>
       </li>
@@ -142,23 +142,16 @@
     <ul role="list">
       
       <li>
-        <a href="/docs/" class="navbar-mobile-link"
+        <a href="/docs/getting-started/" class="navbar-mobile-link"
           >
           Docs
         </a>
       </li>
       
       <li>
-        <a href="/publications/" class="navbar-mobile-link"
+        <a href="/docs/reference/" class="navbar-mobile-link"
           >
-          Publications
-        </a>
-      </li>
-      
-      <li>
-        <a href="/docs/use-cases/" class="navbar-mobile-link"
-          >
-          Use Cases
+          Reference
         </a>
       </li>
       
@@ -166,6 +159,13 @@
         <a href="/blog/" class="navbar-mobile-link"
           >
           Blog
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-mobile-link"
+          >
+          Publications
         </a>
       </li>
       
@@ -377,7 +377,7 @@ GET /katalog/{crd}/health      200 or 503, per-CRD
 GET /metrics                   All CRD metrics, labeled by GVK
 </code></pre><p>This is impossible with separate operators. Orkestra provides it automatically.</p>
 <h3 id="42-declared-dependency-ordering">4.2 Declared Dependency Ordering</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">crds</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">crds</span>:
 </span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: project
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">dependsOn</span>: []
 </span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: namespace
@@ -394,7 +394,7 @@ chooses and fail unpredictably when dependencies are unavailable.</p>
 a CRD is a separate Katalog entry with its own operator stack. Conversion
 rules are declared alongside reconcile templates in the same Katalog entry,
 evaluated by the same template resolver.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>- <span style="color:#ff79c6">name</span>: website-v1
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>- <span style="color:#ff79c6">name</span>: website-v1
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">apiTypes</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">version</span>: v1
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">kind</span>: Website
@@ -415,8 +415,8 @@ Conversion for Kubernetes CRDs</em>, provides a full treatment.</p>
 URLs, and private registries. Platform teams publish CRD operator definitions.
 Application teams consume and selectively override. Environment-specific
 configuration is a Komposer override, not a fork.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
-</span></span><span style="display:flex;"><span><span style="color:#ff79c6">sources</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">kind</span>: Komposer
+</span></span><span style="display:flex;"><span><span style="color:#ff79c6">imports</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">files</span>:
 </span></span><span style="display:flex;"><span>    - https://platform.myorg.io/crds/base.yaml
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">registry</span>:
@@ -555,7 +555,7 @@ infrastructure, not logic.</p>
 
 
   
-  <script src="/js/main.min.f2df583e131a595404870b2d956fe54827dcacf44666bb51201fbf1d6524fa40.js" defer></script>
+  <script src="/js/main.min.d2e794f76bf881e2b24e29e56610c51d43db4fe37e7050090ef272ef855893af.js" defer></script>
 
   <style>
      

@@ -16,11 +16,11 @@ type Spinner struct {
 	message   string
 	stop      chan struct{}
 	mu        sync.Mutex
-	running   bool // animation active
-	finalized bool // ✓ or ✗ already printed
+	running   bool
+	finalized bool
 }
 
-// Start begins the spinner; on non‑TTY it prints once and finalizes.
+// Start begins the spinner; on non-TTY it prints once and finalizes.
 func Start(msg string) *Spinner {
 	if !isTerminal() {
 		fmt.Println(msg)
@@ -32,12 +32,10 @@ func Start(msg string) *Spinner {
 		stop:    make(chan struct{}),
 		running: true,
 	}
-
 	go s.run()
 	return s
 }
 
-// run updates the spinner frame until stopped.
 func (s *Spinner) run() {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -53,7 +51,6 @@ func (s *Spinner) run() {
 			}
 			msg := s.message
 			s.mu.Unlock()
-
 			fmt.Printf("\r\x1b[K%s %s", frames[i], msg)
 			i = (i + 1) % len(frames)
 
@@ -67,11 +64,9 @@ func (s *Spinner) run() {
 func (s *Spinner) Stop() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
 	if !s.running {
 		return
 	}
-
 	s.running = false
 	close(s.stop)
 	fmt.Print("\r\x1b[K")
@@ -87,7 +82,6 @@ func (s *Spinner) Success() {
 	s.finalized = true
 	msg := s.message
 	s.mu.Unlock()
-
 	s.Stop()
 	fmt.Printf("  %s %s\n", utils.SuccessMark(), msg)
 }
@@ -102,7 +96,6 @@ func (s *Spinner) Failure() {
 	s.finalized = true
 	msg := s.message
 	s.mu.Unlock()
-
 	s.Stop()
 	fmt.Printf("  %s %s\n", utils.FailureMark(), msg)
 }
@@ -114,7 +107,6 @@ func (s *Spinner) Update(msg string) {
 	s.message = msg
 }
 
-// isTerminal reports whether stdout is a TTY.
 func isTerminal() bool {
 	info, err := os.Stdout.Stat()
 	if err != nil {

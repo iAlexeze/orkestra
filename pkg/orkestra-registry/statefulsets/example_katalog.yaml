@@ -41,16 +41,18 @@ spec:
                   storageSize: '{{ .spec.walSize | default "5Gi" }}'
                   mountPath: /var/lib/postgresql/wal
               env:
-                POSTGRES_DB:
+                - name: POSTGRES_DB
                   value: '{{ .spec.database | default "app" }}'
-                POSTGRES_USER:
-                  secretKeyRef:
-                    name: "{{ .metadata.name }}-creds"
-                    key: username
-                POSTGRES_PASSWORD:
-                  secretKeyRef:
-                    name: "{{ .metadata.name }}-creds"
-                    key: password
+                - name: POSTGRES_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .metadata.name }}-creds"
+                      key: username
+                - name: POSTGRES_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: "{{ .metadata.name }}-creds"
+                      key: password
 
           # Headless service required by StatefulSet for pod DNS
           services:

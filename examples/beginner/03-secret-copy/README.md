@@ -44,23 +44,25 @@ Verify:
 kubectl get secret database-credentials -n platform
 ```
 
-### 2. Install the CRD
+### 2. Start the operator
 
 ```bash
-kubectl apply -f crd.yaml
+ork run
 ```
 
-### 3. Start the operator
+Orkestra reads `crdFile: ./crd.yaml`, applies the CRD and `cr.yaml` to the cluster, and starts the operator.
+
+### 3. Open the Control Center
+
+In a third terminal:
 
 ```bash
-ork run --file katalog.yaml
+ork control
+# username:password → orkestra
+# username:password → orkestra
 ```
 
-### 4. Apply the CR
-
-```bash
-kubectl apply -f cr.yaml
-```
+Open [http://localhost:8081](http://localhost:8081) to see the live operator.
 
 ### 5. Verify copies exist
 
@@ -115,6 +117,50 @@ kubectl get secret database-credentials -n platform     # still exists — sourc
 A platform primitive that solves a real problem — distributing credentials to
 namespaces — in a Katalog that any team member can read and understand. The
 operator handles sync, cleanup, and drift correction automatically.
+
+---
+
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies setup fixtures, starts the operator, applies the CR, asserts every expectation, then tears down:
+
+```bash
+ork e2e -f e2e.yaml
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Secret distributed to team-alpha
+    after: cr-applied
+    timeout: 60s
+    resources:
+      - kind: Secret
+        name: database-credentials
+        namespace: team-alpha
+
+  - name: Secret distributed to team-beta
+    after: cr-applied
+    timeout: 60s
+    resources:
+      - kind: Secret
+        name: database-credentials
+        namespace: team-beta
+
+  - name: Secrets removed on delete
+    after: cr-deleted
+    timeout: 30s
+    resources:
+      - kind: Secret
+        name: database-credentials
+        namespace: team-alpha
+        count: 0
+      - kind: Secret
+        name: database-credentials
+        namespace: team-beta
+        count: 0
+```
 
 ---
 

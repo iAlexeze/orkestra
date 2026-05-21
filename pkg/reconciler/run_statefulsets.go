@@ -16,7 +16,7 @@ import (
 // runStatefulSets resolves and applies StatefulSet template declarations.
 func runStatefulSets(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.StatefulSetTemplateSource,

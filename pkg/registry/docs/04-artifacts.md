@@ -64,7 +64,7 @@ To push to a custom registry:
 ```bash
 ork registry push oci://ghcr.io/myorg/patterns/my-operator:v1.0.0 ./my-operator/
 # or via env var
-ORKESTRA_REGISTRY=ghcr.io/myorg/patterns ork registry push my-operator:v1.0.0 ./my-operator/
+ORK_REGISTRY=ghcr.io/myorg/patterns ork registry push my-operator:v1.0.0 ./my-operator/
 ```
 
 For the official `ghcr.io/orkspace/orkestra-registry` registry, patterns are published by opening a PR against `github.com/orkspace/orkestra-registry`. CI validates the pattern against a live kind cluster and pushes on merge.
@@ -126,7 +126,7 @@ To push to a custom motif registry:
 ```bash
 ork registry push oci://ghcr.io/myorg/motifs/redis:v7.2.0 ./redis/
 # or via env var
-ORKESTRA_MOTIFS_REGISTRY=ghcr.io/myorg/motifs ork registry push redis:v7.2.0 ./redis/
+ORK_MOTIFS_REGISTRY=ghcr.io/myorg/motifs ork registry push redis:v7.2.0 ./redis/
 ```
 
 ---

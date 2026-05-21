@@ -1,4 +1,4 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -69,7 +69,7 @@ Suggested starter Dockerfile:
 %s
 ------------------------------------------------------------
 
-Docs: https://orkestra.dev/docs/build
+Docs: https://get.orkestra.sh/docs/build
 ──────────────────────────────────────────────`, info.Name, info.Language, info.LangMarker, tmpl)
 				}
 			}

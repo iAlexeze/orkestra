@@ -16,11 +16,9 @@ metadata:
 spec:
   crds:
     secret-distribution:
-      apiTypes:
-        group: demo.orkestra.io
-        version: v1alpha1
-        kind: SecretDistribution
-        plural: secretdistributions
+      crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
       namespaced: false             # Default: (true)
 
       operatorBox:

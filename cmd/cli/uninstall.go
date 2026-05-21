@@ -1,4 +1,4 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -43,19 +43,21 @@ func runUninstall(yes, dryRun bool) error {
 	usr, _ := user.Current()
 	home := usr.HomeDir
 
-	// Resolve install directory (default or overridden)
-	installDir := "/usr/local/bin"
+	// Resolve install directory — matches what install.sh uses by default.
+	installDir := filepath.Join(home, ".orkestra", "bin")
 	if v := os.Getenv("ORK_INSTALL_DIR"); v != "" {
 		installDir = v
 	}
 
 	// All paths that may be removed
 	paths := []string{
+		// ~/.orkestra covers the binaries, config, cache, and plugins.
+		// Listed explicitly so dry-run shows what will go.
 		filepath.Join(installDir, "ork"),
 		filepath.Join(installDir, "orkcc"),
 
 		filepath.Join(home, ".bash_completion.d/ork"),
-		filepath.Join(home, ".oh-my-zsh/completions/_ork"),
+		filepath.Join(home, ".zsh/completions/_ork"),
 		filepath.Join(home, ".config/fish/completions/ork.fish"),
 
 		filepath.Join(home, ".orkestra"),

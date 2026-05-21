@@ -1,4 +1,4 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Generate 'pkg/runtime/zz_generated_runtime_registry.go' for one or more operator projects.
+// Generate 'pkg/typeregistry/zz_generated_typeregistry.go' for one or more operator projects.
 //
 // This command scans a Katalog, resolves all CRDs, typed extensions, and
 // managed‑resource contracts, and produces a complete runtime registry:
@@ -27,7 +27,7 @@ import (
 //
 // The registry is written to:
 //
-//	pkg/runtime/zz_generated_runtime_registry.go
+//	pkg/typeregistry/zz_generated_typeregistry.go
 //
 // A matching cmd/orkestra/main.go file is also ensured, containing the required
 // blank import for the runtime package.
@@ -55,13 +55,13 @@ import (
 // Each project directory must contain:
 //   - go.mod
 //   - a katalog.yaml (or --file pointing to one)
-//   - pkg/runtime/ (created automatically if missing)
+//   - pkg/typeregistry/ (created automatically if missing)
 //
 // The generated registry is deterministic and reflects the exact typed‑mode
 // contracts declared in the Katalog (hooks, constructors, operatorBox).
 var generateRegistryCmd = &cobra.Command{
 	Use:   "registry",
-	Short: "Generate 'pkg/runtime/zz_generated_runtime_registry.go' from a Katalog",
+	Short: "Generate 'pkg/typeregistry/zz_generated_typeregistry.go' from a Katalog",
 	Long: `Generate the Orkestra runtime registry for one or multiple operator projects.
 
 This command scans a Katalog, resolves all CRDs, typed extensions, and
@@ -74,7 +74,7 @@ operator process. The registry includes:
   • Runtime object wiring
 
 The registry is written to:
-  pkg/runtime/zz_generated_runtime_registry.go
+  pkg/typeregistry/zz_generated_typeregistry.go
 
 A matching cmd/orkestra/main.go file is also ensured, containing the required
 blank import for the runtime package.
@@ -92,22 +92,23 @@ Examples:
   # Generate registries for multiple operator projects
   ork generate registry --dirs ./database,./pipeline --file komposer.yaml
 
-  # Dry‑run (print generated files without writing them)
+  # Dry-run (print generated files without writing them)
   ork generate registry --file katalog.yaml --dry-run
 
 Each project directory must contain:
   • go.mod
   • a katalog.yaml
-  • pkg/runtime/ (created automatically if missing)`,
+  • pkg/typeregistry/ (created automatically if missing)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		dirs, _ := cmd.Flags().GetString("dirs")
+		fetchTimeout, _ := cmd.Flags().GetDuration("fetch-timeout")
 
 		// Multi-directory mode
 		if dirs != "" {
 			for _, d := range strings.Split(dirs, ",") {
 				abs := filepath.Clean(d)
-				if err := generateRegistryForDir(abs, cmd, dryRun); err != nil {
+				if err := generateRegistryForDir(abs, cmd, fetchTimeout, dryRun); err != nil {
 					return fmt.Errorf("registry generation failed for %s: %w", abs, err)
 				}
 			}
@@ -116,13 +117,13 @@ Each project directory must contain:
 
 		// Single-directory mode (current working directory)
 		cwd, _ := os.Getwd()
-		return generateRegistryForDir(cwd, cmd, dryRun)
+		return generateRegistryForDir(cwd, cmd, fetchTimeout, dryRun)
 	},
 }
 
 // generateRegistryForDir performs the full registry generation pipeline
 // for a single operator project directory.
-func generateRegistryForDir(dir string, cmd *cobra.Command, dryRun bool) error {
+func generateRegistryForDir(dir string, cmd *cobra.Command, perModuleTimeout time.Duration, dryRun bool) error {
 	logger.Info().Str("dir", dir).Msg("generating registry for project")
 
 	// Save original working directory
@@ -146,19 +147,29 @@ func generateRegistryForDir(dir string, cmd *cobra.Command, dryRun bool) error {
 		return fmt.Errorf("validating project: %w", err)
 	}
 
+	// Normalize and collect modules from katalog.
+	kat, mods := collectModulesToGet(out.kat)
+
 	// Generate runtime registry
 	logger.Info().Msg("generating runtime registry...")
-	if err := generate.Runtime(out.m, dryRun); err != nil {
+	if err := generate.TypeRegistry(kat.Enabled(), dryRun); err != nil {
 		return fmt.Errorf("generate runtime registry: %w", err)
 	}
 
 	logger.Info().
-		Str("registry", filepath.Join(generate.RuntimePackage, generate.RegistryFile)).
+		Str("registry", filepath.Join(generate.TypeRegistryPackage, generate.RegistryFile)).
 		Msg("runtime registry generated successfully")
 
 	// Ensure main.go exists
 	if err := ensureMainGo(root, moduleName, dryRun); err != nil {
-		logger.Warn().Err(err).Msg("failed to ensure main.go – you may need to add import manually")
+		logger.Warn().Err(err).Msg("failed to ensure main.go - you may need to add import manually")
+	}
+
+	if len(mods) > 0 {
+		// If dryRun, we only print what we'd fetch.
+		if err := goGetModules(mods, perModuleTimeout, dryRun); err != nil {
+			return fmt.Errorf("fetching declared module versions: %w", err)
+		}
 	}
 
 	return nil
@@ -193,7 +204,7 @@ func ensureMainGo(root, moduleName string, dryRun bool) error {
 	mainPath := filepath.Join(targetDir, "main.go")
 
 	timestamp := time.Now().UTC().Format(time.RFC3339)
-	importLine := fmt.Sprintf(`_ "%s/pkg/runtime"`, moduleName)
+	importLine := fmt.Sprintf(`_ "%s/pkg/typeregistry"`, moduleName)
 
 	content := fmt.Sprintf(`// Code generated by "ork generate registry" on %s. DO NOT EDIT.
 // Re-generate by running: ork generate registry --file <path-or-url>

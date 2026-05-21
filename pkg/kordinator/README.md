@@ -16,7 +16,7 @@ Everything upstream of kordinator — informers, queues, the provider registry, 
 
 ## Where kordinator fits
 
-Kordinator is the last component started in `konstructOrkestra`. The startup sequence is:
+Kordinator is the last component started in `konstructRuntime`. The startup sequence is:
 
 ```
 loadProviders        — provider registry built

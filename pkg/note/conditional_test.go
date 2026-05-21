@@ -57,27 +57,29 @@ func TestNoteCoalesce(t *testing.T) {
 }
 
 func TestNoteDefault(t *testing.T) {
+	// noteDefault(dflt, val): returns val if non-empty, else dflt.
+	// In pipeline: {{ val | default dflt }} → noteDefault(dflt, val)
 	tests := []struct {
 		name string
+		dflt interface{}
 		val  interface{}
-		def  interface{}
 		want interface{}
 	}{
-		{"non-empty string", "foo", "default", "foo"},
-		{"empty string", "", "default", "default"},
-		{"nil", nil, "default", "default"},
-		{"zero int", 0, 100, 100},
-		{"non-zero int", 42, 100, 42},
-		{"false bool", false, true, true},
-		{"true bool", true, false, true},
-		{"empty slice", []interface{}{}, "default", "default"},
-		{"non-empty slice", []interface{}{1}, "default", []interface{}{1}},
+		{"non-empty string", "default", "foo", "foo"},
+		{"empty string", "default", "", "default"},
+		{"nil", "default", nil, "default"},
+		{"zero int", 100, 0, 100},
+		{"non-zero int", 100, 42, 42},
+		{"false bool", true, false, true},
+		{"true bool", false, true, true},
+		{"empty slice", "default", []interface{}{}, "default"},
+		{"non-empty slice", "default", []interface{}{1}, []interface{}{1}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := noteDefault(tt.val, tt.def)
+			got := noteDefault(tt.dflt, tt.val)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("noteDefault(%v, %v) = %v, want %v", tt.val, tt.def, got, tt.want)
+				t.Errorf("noteDefault(%v, %v) = %v, want %v", tt.dflt, tt.val, got, tt.want)
 			}
 		})
 	}

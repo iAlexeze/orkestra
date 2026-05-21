@@ -48,8 +48,6 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 	}
 
 	// Self-protection: block deletion of the deletion-protection webhook itself.
-	// First test towards sel-protection, didn't work.
-	// Now uses the housekeeper
 	if req.Kind.Kind == "ValidatingWebhookConfiguration" &&
 		req.Name == deletionProtectionWebhookConfigName {
 
@@ -59,7 +57,7 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 			Msg("deletion-protection: blocking deletion of the deletion-protection webhook")
 
 		metrics.RecordDeletionProtectionBlocked(deletionProtectionWebhookConfigName)
-		ws.protectionStats.RecordBlocked()
+		ws.infraProtStats.RecordBlocked() // infra event — not attributable to a specific CRD
 
 		ws.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
 			UID:     req.UID,
@@ -69,7 +67,7 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 					"\n\n[Orkestra Security] The deletion-protection webhook \"%s\" is itself protected.\n\n"+
 						"To disable deletion protection entirely:\n"+
 						"- Set security.deletionProtection.enabled: false in the Katalog\n"+
-						"- Redeploy Orkestra, then delete the webhook.\n\n",
+						"- Redeploy Orkestra Gateway, then delete the webhook.\n\n",
 					deletionProtectionWebhookConfigName,
 				),
 				Code: 403,
@@ -82,6 +80,9 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 		req.Resource.Resource == "customresourcedefinitions"
 
 	if isCRD {
+		// req.Name is the full CRD name ("plural.group", e.g. "websites.demo.io").
+		// Look up the per-CRD stats instance via the reverse-lookup table.
+		crdStats := ws.protectionStatsFor(ws.crdNameToGVRKey[req.Name])
 		if ws.isProtectedCRD(req.Name) {
 			logger.Info().
 				Str("crd", req.Name).
@@ -89,7 +90,7 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 				Msg("deletion-protection: blocking CRD deletion")
 
 			metrics.RecordDeletionProtectionBlocked(req.Name)
-			ws.protectionStats.RecordBlocked()
+			crdStats.RecordBlocked()
 			_ = time.Since(start)
 
 			ws.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
@@ -97,10 +98,10 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 				Allowed: false,
 				Status: &AdmissionStatus{
 					Message: fmt.Sprintf(
-						"\n\n[orkestra Security] CRD %q is protected from deletion.\n\n"+
+						"\n\n[Orkestra Security] CRD %q is protected from deletion.\n\n"+
 							"To delete it:\n"+
 							"- Set security.deletionProtection.enabled: false in the Katalog\n"+
-							"- Redeploy Orkestra, then delete the CRD.\n\n",
+							"- Redeploy Orkestra Gateway, then delete the CRD.\n\n",
 						req.Name,
 					),
 					Code: 403,
@@ -108,14 +109,15 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 			})
 			return
 		}
-		ws.protectionStats.RecordAllowed()
+		crdStats.RecordAllowed()
 		ws.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
 			UID: req.UID, Allowed: true,
 		})
 		return
 	}
 
-	// Non-CRD Orkestra resource — always block (ObjectSelector already filtered).
+	// Non-CRD Orkestra resource (Deployment, Service, etc.) — always block.
+	// Counted against infraProtStats because these have no CRD GVR.
 	logger.Info().
 		Str("resource", req.Resource.Resource).
 		Str("name", req.Name).
@@ -124,7 +126,7 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 		Msg("deletion-protection: blocking Orkestra resource deletion")
 
 	metrics.RecordDeletionProtectionBlocked("orkestra-" + req.Resource.Resource)
-	ws.protectionStats.RecordBlocked()
+	ws.infraProtStats.RecordBlocked()
 
 	kind := req.Kind.Kind
 	name := req.Name
@@ -132,7 +134,7 @@ func (ws *WebhookServer) deletionProtectionHandler(w http.ResponseWriter, r *htt
 
 	footer := "\n\nTo remove protection:\n" +
 		"- Set security.deletionProtection.enabled: false in the Katalog.\n" +
-		"- Redeploy Orkestra.\n" +
+		"- Redeploy Orkestra Gateway.\n" +
 		"- Retry the deletion."
 
 	var header string

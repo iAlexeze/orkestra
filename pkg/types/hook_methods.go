@@ -21,12 +21,13 @@ func (h HookTemplates) IsEmpty() bool {
 		len(h.Roles) == 0 &&
 		len(h.RoleBindings) == 0 &&
 		len(h.External) == 0 &&
+		len(h.CustomResource) == 0 &&
 		h.Git == nil &&
 		h.Docker == nil
 }
 
 // HasAnyHooks reports whether this CRD declares any onCreate, onReconcile, or onDelete hooks.
-func (c *CRDEntry) HasAnyHooks() bool {
+func (c *CRDEntry) HasAnyHookTemplates() bool {
 	return c.HasOnCreate() || c.HasOnReconcile() || c.HasOnDelete()
 }
 
@@ -487,6 +488,26 @@ func (c *CRDEntry) HasAnyStorageVolumes() bool {
 	if c.HasOnReconcile() {
 		return len(c.OperatorBox.OnReconcile.StorageVolumes) > 0
 	}
+	return false
+}
+
+// HasAnyCustomResources reports whether this CRD entry declares any Custom
+// resources in either the OnCreate or OnReconcile phases.
+func (c *CRDEntry) HasAnyCustomResources() bool {
+	// Check OnCreate first (common fast path)
+	if c.HasOnCreate() {
+		if len(c.OperatorBox.OnCreate.CustomResource) > 0 {
+			return true
+		}
+	}
+
+	// Then check OnReconcile
+	if c.HasOnReconcile() {
+		if len(c.OperatorBox.OnReconcile.CustomResource) > 0 {
+			return true
+		}
+	}
+
 	return false
 }
 

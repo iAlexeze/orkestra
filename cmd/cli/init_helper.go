@@ -1,4 +1,4 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -28,7 +28,7 @@ func extractEmbeddedPack(root, pack string) error {
 	}
 	srcPath := p.Path
 
-	targetDir := filepath.Join(root, "examples", pack)
+	targetDir := filepath.Join(root, pack)
 
 	if err := fs.WalkDir(examples.FS, srcPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -76,6 +76,27 @@ func extractEmbeddedPack(root, pack string) error {
 	}
 
 	return nil
+}
+
+// extractCanonical writes the canonical hello-website operator (katalog.yaml,
+// crd.yaml, cr.yaml) directly into the project root — no subdirectory.
+func extractCanonical(root string) error {
+	srcPath := "beginner/01-hello-website"
+	keep := map[string]bool{"katalog.yaml": true, "crd.yaml": true, "cr.yaml": true}
+
+	return fs.WalkDir(examples.FS, srcPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		if !keep[d.Name()] {
+			return nil
+		}
+		data, err := examples.FS.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(root, d.Name()), data, 0644)
+	})
 }
 
 //
@@ -176,7 +197,7 @@ func extractExamplePack(root, pack, version string) error {
 	// Read tar entries
 	tr := tar.NewReader(gzr)
 
-	targetDir := filepath.Join(root, "examples", pack)
+	targetDir := filepath.Join(root, pack)
 
 	for {
 		header, err := tr.Next()
@@ -294,15 +315,15 @@ func runSteps(steps []initStep) error {
 	for _, step := range steps {
 		fmt.Printf("  %-50s", step.name+"...")
 		if err := step.fn(); err != nil {
-			fmt.Printf("%s✗%s\n", utils.ColorRed, utils.ColorReset)
+			fmt.Printf("%s\n", utils.FailureMark())
 			return fmt.Errorf("%s: %w", step.name, err)
 		}
-		fmt.Printf("%s✓%s\n", utils.ColorGreen, utils.ColorReset)
+		fmt.Printf("%s\n", utils.SuccessMark())
 	}
 	return nil
 }
 
 // printBanner prints the Orkestra CLI logo.
 func printBanner() {
-	fmt.Printf("\n%s%s%s\n\n", utils.ColorGreen, utils.OrkestraLogoCLI, utils.ColorReset)
+	fmt.Printf("\n%s\n\n", utils.Green(utils.OrkestraLogoCLI))
 }

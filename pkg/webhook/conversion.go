@@ -52,13 +52,13 @@ func (ws *WebhookServer) conversionHandler(w http.ResponseWriter, r *http.Reques
 
 	var review ConversionReview
 	if err := json.NewDecoder(r.Body).Decode(&review); err != nil {
-		ws.conversionStats.RecordFailure()
+		ws.conversionStatsFor("").RecordFailure() // kind unknown at decode time
 		metrics.RecordConversionError("unknown", "invalid_request")
 		http.Error(w, "invalid ConversionReview", http.StatusBadRequest)
 		return
 	}
 	if review.Request == nil {
-		ws.conversionStats.RecordFailure()
+		ws.conversionStatsFor("").RecordFailure()
 		metrics.RecordConversionError("unknown", "missing_request")
 		http.Error(w, "missing request", http.StatusBadRequest)
 		return
@@ -99,7 +99,7 @@ func (ws *WebhookServer) conversionHandler(w http.ResponseWriter, r *http.Reques
 			resp.Result = &Status{Status: "Failure", Message: "invalid object payload"}
 			metrics.RecordConversionError(kind, "invalid_payload")
 			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
-			ws.conversionStats.RecordFailure()
+			ws.conversionStatsFor(ws.kindToGVRKey[kind]).RecordFailure()
 			break
 		}
 
@@ -108,7 +108,7 @@ func (ws *WebhookServer) conversionHandler(w http.ResponseWriter, r *http.Reques
 			resp.Result = &Status{Status: "Failure", Message: "object missing kind"}
 			metrics.RecordConversionError(kind, "missing_kind")
 			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
-			ws.conversionStats.RecordFailure()
+			ws.conversionStatsFor(ws.kindToGVRKey[kind]).RecordFailure()
 			break
 		}
 
@@ -117,7 +117,7 @@ func (ws *WebhookServer) conversionHandler(w http.ResponseWriter, r *http.Reques
 			resp.Result = &Status{Status: "Failure", Message: "no conversion rules for kind"}
 			metrics.RecordConversionError(kind, "no_rules")
 			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
-			ws.conversionStats.RecordFailure()
+			ws.conversionStatsFor(ws.kindToGVRKey[kind]).RecordFailure()
 			break
 		}
 
@@ -126,14 +126,14 @@ func (ws *WebhookServer) conversionHandler(w http.ResponseWriter, r *http.Reques
 			resp.Result = &Status{Status: "Failure", Message: err.Error()}
 			metrics.RecordConversionError(kind, "apply_failed")
 			metrics.RecordConversion(kind, sourceVersion, targetVersion, "failure")
-			ws.conversionStats.RecordFailure()
+			ws.conversionStatsFor(ws.kindToGVRKey[kind]).RecordFailure()
 			break
 		}
 
 		objDuration := time.Since(objStart).Seconds()
 		metrics.ObserveConversionDuration(kind, sourceVersion, targetVersion, objDuration)
 		metrics.RecordConversion(kind, sourceVersion, targetVersion, "success")
-		ws.conversionStats.RecordSuccess(time.Duration(objDuration * float64(time.Second)))
+		ws.conversionStatsFor(ws.kindToGVRKey[kind]).RecordSuccess(time.Duration(objDuration * float64(time.Second)))
 
 		out, _ := json.Marshal(converted)
 		resp.ConvertedObjects[i] = out

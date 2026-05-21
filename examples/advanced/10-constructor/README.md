@@ -84,7 +84,7 @@ This example demonstrates a constructor that runs a series of Jobs (build → te
 ├── reconciler/            ← custom reconciler implementation
 │   └── reconciler.go      ← NewPipelineReconciler + Reconcile logic
 ├── cmd/orkestra/          ← main.go (imports generated registry)
-├── pkg/runtime/           ← generated registry (after `make registry`)
+├── pkg/typeregistry/           ← generated registry (after `make registry`)
 ├── katalog.yaml
 ├── Makefile
 ├── Dockerfile
@@ -109,7 +109,7 @@ ork generate registry --file katalog.yaml
 
 It creates (or updates) two files:
 
-- `pkg/runtime/zz_generated_runtime_registry.go` – registers your Go types and hooks.
+- `pkg/typeregistry/zz_generated_typeregistry.go` – registers your Go types and hooks.
 - `cmd/orkestra/main.go` – the entrypoint that imports the generated registry.
 
 Both files are marked `DO NOT EDIT` – they are regenerated whenever you change the Katalog.
@@ -121,7 +121,7 @@ Both files are marked `DO NOT EDIT` – they are regenerated whenever you change
 First, see the expected error with the standard `ork` CLI:
 
 ```bash
-ork validate -f katalog.yaml
+ork validate
 # error: no reconciler constructor registered for Kind=Pipeline
 ```
 
@@ -136,7 +136,7 @@ cp ~/.orkestra/bin/ork ./ork
 Validate with your binary:
 
 ```bash
-./ork validate -f katalog.yaml   # passes
+./ork validate   # passes
 ```
 
 ---
@@ -144,7 +144,7 @@ Validate with your binary:
 ## Step 3 – Run locally
 
 ```bash
-./ork run -f katalog.yaml --dev     # creates a local kind cluster
+./ork run --dev     # creates a local kind cluster
 
 kubectl apply -f crd.yaml
 ```
@@ -175,7 +175,7 @@ kubectl apply -f bundle.yaml
 
 # Deploy orkestra
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --set runtime.image.repository=yourregistry/pipeline-operator \
   --set runtime.image.tag=v1 \
   --namespace orkestra-system \
@@ -184,6 +184,37 @@ helm install orkestra orkestra/orkestra \
 # Apply if not done already
 kubectl apply -f crd.yaml
 kubectl apply -f cr.yaml
+```
+
+---
+
+## E2E
+
+Run the full typed operator lifecycle in one command — spins up a kind cluster, builds and deploys the operator, applies the CR, asserts the state machine ran to completion, then tears down:
+
+```bash
+ork e2e -f e2e.yaml
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Pipeline deployment created
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        namespace: default
+        ready: true
+
+  - name: Deployment removed on delete
+    after: cr-deleted
+    timeout: 30s
+    resources:
+      - kind: Deployment
+        namespace: default
+        count: 0
 ```
 
 ---

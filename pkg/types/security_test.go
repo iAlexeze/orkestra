@@ -153,12 +153,22 @@ func TestDeletionProtectionServiceName_Custom(t *testing.T) {
 	assert.Equal(t, "my-webhook", s.DeletionProtectionServiceName("default"))
 }
 
-func TestOrkestraServiceName_FallsBackToEnvDefault(t *testing.T) {
+func TestRuntimeServiceName_FallsBackToEnvDefault(t *testing.T) {
 	var s *orktypes.KatalogSecurity
-	assert.Equal(t, "orkestra", s.OrkestraServiceName("orkestra"))
+	assert.Equal(t, "orkestra-runtime", s.RuntimeServiceName("orkestra-runtime"))
 }
 
-func TestOrkestraServiceName_Custom(t *testing.T) {
-	s := &orktypes.KatalogSecurity{ServiceName: "my-orkestra"}
-	assert.Equal(t, "my-orkestra", s.OrkestraServiceName("orkestra"))
+func TestRuntimeServiceName_Custom(t *testing.T) {
+	s := &orktypes.KatalogSecurity{ServiceName: &orktypes.ServiceName{Runtime: "my-runtime"}}
+	assert.Equal(t, "my-runtime", s.RuntimeServiceName("default"))
+}
+
+func TestGatewayServiceName_FallsBackToEnvDefault(t *testing.T) {
+	var s *orktypes.KatalogSecurity
+	assert.Equal(t, "orkestra-gateway", s.GatewayServiceName("orkestra-gateway"))
+}
+
+func TestGatewayServiceName_Custom(t *testing.T) {
+	s := &orktypes.KatalogSecurity{ServiceName: &orktypes.ServiceName{Gateway: "my-gateway"}}
+	assert.Equal(t, "my-gateway", s.GatewayServiceName("default"))
 }

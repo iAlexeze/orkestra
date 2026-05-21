@@ -24,6 +24,37 @@ type TLSBundle struct {
 	CACertPEM []byte // ca.crt  — CA certificate, PEM (for caBundle in webhooks)
 }
 
+// BundleOpts configures optional parameters for GenerateClusterBundle.
+// Zero value uses all defaults.
+type BundleOpts struct {
+	// ValidFor is the certificate validity duration ("1y", "90d", etc.).
+	// Default: "1y".
+	ValidFor string
+}
+
+// GenerateClusterBundle generates a TLS bundle with the standard in-cluster SAN
+// pattern for a Kubernetes Service. The CN and all DNS SANs are derived from
+// svcName and namespace — no manual SAN list required.
+//
+// Use this for all Orkestra-managed in-cluster certs. Use GenerateTLSBundle
+// directly when custom SANs are needed (e.g. ingress, workload secrets).
+func GenerateClusterBundle(svcName, namespace string, opts BundleOpts) (*TLSBundle, error) {
+	validFor := opts.ValidFor
+	if validFor == "" {
+		validFor = DefaultCertValidFor
+	}
+	return GenerateTLSBundle(
+		svcName+"."+namespace+".svc",
+		[]string{
+			svcName,
+			svcName + "." + namespace,
+			svcName + "." + namespace + ".svc",
+			svcName + "." + namespace + ".svc.cluster.local",
+		},
+		validFor,
+	)
+}
+
 // GenerateTLSBundle generates a self-signed CA and a server certificate signed by it.
 // The server certificate has the given common name and DNS SANs.
 // validFor is the certificate validity duration ("1y", "90d", etc.).

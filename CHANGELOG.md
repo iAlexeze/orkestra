@@ -1,145 +1,138 @@
-## Changelog – Orkestra v0.3.8
+# **CHANGELOG — simulate, validate, e2e, ork-action, CRD-driven inference**
 
-### ork doctor + ork doctor deploy — Local to production in minutes
+### **Added — `ork simulate` (in-memory operator simulation)**
 
-Developers can now deploy any project to Kubernetes with three commands, no operator knowledge required.
+New command that runs the full operator reconcile loop against a fake in-memory cluster — no Kubernetes required. Give it a Katalog and a CR and it shows exactly which resources are created, updated, or deleted each cycle.
 
-#### ork doctor
+- `pkg/simulate` — new package: `FakeKubeclient`, `Run`, `Result`, `CycleResult`, `Op`
+- Fake clientset uses `PrependReactor` so every k8s operation is recorded before the default object tracker handles it
+- CR is pre-seeded with managed labels and annotations so the reconciler's idempotency guards skip those patches every cycle
+- Deployment status is advanced to `Available` after cycle 1 to unblock state machines waiting on `AvailableReplicas`
+- Steady state detected when two consecutive cycles produce identical verb+resource sequences; `Result.SteadyAt` records the cycle number
+- `--cycles N` always runs exactly N cycles; identical consecutive cycles are collapsed in output as `(cycles X–Y: identical)`
+- `+` shown for creates, `~` for updates, `-` for deletes; if a resource is both created and patched in one cycle (e.g. `reconcile: true`), only `+` is shown
+- Zerolog global logger is redirected to `io.Discard` during simulation so reconciler JSON logs don't pollute output
+- CR YAML is converted via `sigsyaml.YAMLToJSON` before unmarshalling to ensure numeric fields are `float64` (k8s `DeepCopyJSON` requirement)
+- Progressive documentation in `pkg/simulate/docs/` (output, steady state, limitations, internals)
 
-Examines the current directory and reports what Orkestra found: Dockerfile, Git commit, language (Go, Node.js, Java, Python, Ruby, Rust), port, `.env` variables split into Secrets and ConfigMaps, frontend detection, SMTP/Slack presence, and missing CLI tools. If SMTP or Slack credentials are present but `--notify-me` was not set, it surfaces a hint.
+### **Added — `ork e2e` command**
 
-```bash
-ork doctor
-ork doctor init --name my-api
-ork doctor init --name my-api --notify-me --add-ingress
-```
+New command for declarative end-to-end tests against a real kind cluster. Provisions the cluster, installs operator dependencies, applies the CRD and bundle, starts the Orkestra runtime, applies the CR, and polls expectations.
 
-`ork doctor init` generates three files:
-- `.orkestra/katalog.yaml` — all Kubernetes resources Orkestra manages; edit freely
-- `.orkestra/app.yaml` — the ConfigMap CR the developer owns
-- `.orkestra/values.yaml` — Helm values for the Orkestra operator
+- `docs/reference/cli/e2e.md` — full CLI reference page
+- Added to `docs/reference/cli/index.md` operator commands table
 
-#### ork doctor deploy
+### **Improved — `ork validate` output**
 
-Builds the Docker image, pushes it, runs `ork kompose` to merge all registered katalogs, generates the cluster bundle, installs or verifies the Orkestra operator via Helm, patches the image in the CR, and watches the rollout.
+- Header now reads "Validating Katalog..." or "Validating Komposer..." based on the detected document kind
+- E2E and Motif validation now use the same colour style as Katalog validation: `HealthIcon`, `ColorGray`, `Bold`, `ColorReset`
+- Errors use `ColorRed` consistently across all document kinds
 
-```bash
-ork doctor deploy --registry ghcr.io/myorg
-ork doctor deploy --registry ghcr.io/myorg --dev      # spins up a local kind cluster
-ork doctor deploy --registry ghcr.io/myorg --dry-run
-```
+### **Added — CRD-driven API inference in `ork run` (dev mode)**
 
-Key behaviours:
-- **Auto-installs `kubectl` and `helm`** if missing — developers need only Docker and the `ork` CLI
-- **Auto-installs ingress controller** (nginx) when the project has a frontend
-- **Multi-project kompose**: all deployed projects are registered in `~/.orkestra/deploy/komposer.yaml` by absolute local path; `ork kompose` merges them into `__runtime_katalog_do_not_edit.yml` before bundle generation — no git commit or GitHub access needed
-- **Kompose errors surface first**: any malformed or unreadable katalog fails before touching the cluster
-- **Deploy state** written to `~/.orkestra/deploy/state.json` before every image patch; previous image always available for instant rollback
-- **Internal service URL checklist** printed after every deploy so developers can wire projects together (`export MY_API_URL=...`)
-- **Control Center fallback**: when `controlCenterHost` is empty, prints the `kubectl port-forward` command for local access
+- `crdFile:` in Katalog spec populates `apiTypes` (group, version, kind, plural) directly from the CRD YAML — no need to declare `apiTypes:` separately
+- Dev mode auto-applies CRDs before starting the runtime
+- Dev mode auto-provisions a kind cluster when no cluster is available
 
-#### ork doctor deploy rollback
+### **Improved — `ork-action` (GitHub Action)**
 
-Restores the previous image by reading `~/.orkestra/deploy/state.json` (annotation fallback for backward compatibility). Swaps current and previous before patching so every rollback is reversible.
-
-```bash
-ork doctor deploy rollback
-ork doctor deploy rollback --image ghcr.io/myorg/my-api:v1.2.0
-```
-
-#### Out-of-the-box developer notifications
-
-Every katalog generated by `ork doctor init` ships with a `notify:` block on the deployment readiness condition. When replicas are not ready within the notification interval (default 15 minutes), Orkestra sends the `developer` team the exact `kubectl logs` command and a `ork doctor deploy rollback` hint.
-
-Wire the `developer` team with `ork doctor init --notify-me`:
-- Reads the developer's Git author email from `git log -1`
-- Reads SMTP and Slack credentials from `.env`
-- Generates a `notification:` block in `katalog.yaml` with `defaults.interval: 15m` and a `developer` team
-- Creates an `orkestra-notification` Secret in `orkestra-system` during deploy — credentials never touch the Katalog YAML
-- Adds `runtime.extraEnvFrom` to `values.yaml` so `pkg/konfig` reads the credentials as env vars
-
-#### Developer example pack
-
-New pack at `examples/developer/` with five progressive examples:
-
-| Example | What it teaches |
-|---------|----------------|
-| 01 — One project | First deploy, Control Center walkthrough |
-| 02 — Frontend + backend | Multi-project deploy, internal service URL wiring |
-| 03 — Rollback and Ingress | Breaking a deploy and restoring it, public URL |
-| 04 — Notifications | SMTP/Slack wiring, triggering and observing a notification |
-| 05 — Deletion protection | Default protection, correct decommission sequence |
-
-Registered in `embed.go`, `init_packs.go`, CI packaging, and release workflows.
+Replaced the complex Docker-based action with a minimal composite wrapper:
+- Installs `ork` via curl, runs `ork e2e` — no Dockerfile, no entrypoint script
+- Inputs: `e2e-file`, `ork-version`, `keep-cluster`, `cluster`
 
 ---
 
-## Changelog – Orkestra v0.2.9
+# **CHANGELOG — `onCreate.custom` / `onReconcile.custom`: Operator Composition via Custom Resources**
 
-### ✨ New `ork generate katalog` – scaffold a Katalog in seconds
+### **Added — Custom Resource lifecycle hooks (`onCreate.custom` / `onReconcile.custom`)**
+Introduced first-class support for composing operators by creating and managing arbitrary Kubernetes Custom Resources from within Orkestra hook declarations. An operator can now declare a `custom` block under `onCreate` or `onReconcile` to create, update, and conditionally clean up any CRD-backed resource — enabling true operator-to-operator composition without bespoke integrations.
 
-Scaffold a production‑ready `katalog.yaml` with sensible defaults, optional typed‑mode placeholders, and built‑in security, notification, and provider blocks. No more memorising the schema.
+Key components:
 
-**Flags:**
-- `--add-hook` – typed mode with a `hooks` declaration (comment)
-- `--add-constructor` – typed mode with a `constructor` declaration (`default: false`)
-- `--typed` – both hook and constructor sections commented; you choose one
-- `--add-security` – add namespace & deletion protection stubs
-- `--add-notification` – add Slack/email notification example
-- `--add-provider <aws|azure|gcp>` – add cloud provider configuration
+- **New types (`pkg/types/custom_resource.go`)**
+  Added `CustomResourceTemplateSource`, `CustomResourceMetadata`, and `CustomResourceCondition`.
+  `HasStatus *bool` controls whether child status is read back into the parent resolver context.
+  `BuildGVK()` and `ResolveGVR()` methods provide GVK/GVR resolution from the declarative spec.
 
-**Example:**
-```bash
-ork generate katalog --add-hook --add-security --add-provider aws -o my-katalog.yaml
-```
+- **Custom resource registry package (`pkg/orkestra-registry/customresources/`)**
+  New package exposing `Create`, `Update`, `DeleteIfOwned`, `Resolve`, and `ResolvedCustomResourceSpec`.
+  Owner references are set automatically — deleting the parent cascades to all child custom resources without requiring any `onDelete` hook.
 
-[Read the full command reference](https://docs.orkestra.io/reference/cli/generate-katalog)
+- **Template resolution (`pkg/orkestra-registry/template/resolve_customresources.go`)**
+  Added `ResolveCustomResourceTemplate` on the Resolver to expand motif templates and inject resolved values into the custom resource spec before apply.
 
----
+- **Katalog validation (`pkg/katalog/validate_custom_resource.go`)**
+  Validation rules for custom resource declarations are enforced at startup in the Katalog layer, matching the validation model used for deployments, statefulsets, and jobs.
 
-### 🚀 Complete CI/CD for typed operators (hooks & constructors)
+- **Reconciler — run (`pkg/reconciler/run_customresource.go`)**
+  `runCustomResources` evaluates conditions, checks GVK existence at runtime, and applies or cleans up child resources.
+  If the target CRD is not installed at startup, `runCustomResources` skips gracefully and logs a warning; the kordinator's `retryMissingCRDs` loop refreshes the REST mapper when the CRD later appears.
 
-Two new E2E workflows now run in GitHub Actions for the **advanced pack**:
+- **Reconciler — forEach fan-out (`pkg/reconciler/expand_customresources.go`)**
+  `forEach` support for custom resources mirrors the fan-out behaviour already available for deployments and statefulsets.
 
-- **09-hooks** – typed hooks for a `Database` CRD (StatefulSet + Service + optional CronJob)
-- **10-constructors** – custom constructor for a `Pipeline` CRD (state machine with Jobs)
+- **Reconciler — child status (`pkg/reconciler/children.go`)**
+  `readCustomResourceGroup` reads child CR status into the parent resolver context.
+  `hasStatus: false` skips the API call entirely (useful for fire-and-forget resources); `true` or `nil` (auto-detect) reads status back.
 
-Both workflows:
-- Generate the typed registry (`ork generate registry`)
-- Show the expected validation failure with the standard `ork` binary
-- Build a custom `ork` binary that includes the user’s Go code
-- Build, tag (with `hooks-` or `constructor-` prefix), and push a container image to `ghcr.io/orkspace/orkestra-typed-extensions`
-- Deploy the image via Helm, apply the CR, and verify resource creation
-- Test cleanup via owner reference garbage collection
+- **Drift correction**
+  `Update` always corrects spec and metadata drift. `spec.Reconcile` no longer gates drift detection — it only controls whether `Update` is called on every reconcile cycle or only on `onCreate`.
 
-These workflows prove that typed operators are **fully automatable** – from `git push` to a running cluster – using the same Orkestra GitHub Action that works for dynamic operators.
+- **`hasStatus` pointer semantics**
+  `hasStatus` is a `*bool` pointer: `nil` = auto-detect, `true` = read child status into parent resolver context, `false` = skip.
+  Orkestra does NOT write status to child CRs — Layer 1 (Ready) is only written to the owner CRD by the generic reconciler.
 
----
+- **Unified replica parsing (`pkg/orkestra-registry/common/parse.go`)**
+  Added `ParseReplicas(s string) int32` to unify replica string-to-int32 parsing across deployments, statefulsets, replicasets, pods, jobs, and cronjobs.
 
-### 🔧 Action improvements
+- **Motif input quoting fix (`pkg/motif/expander.go`)**
+  `renderInputs` now strips YAML quotes for inputs declared as `type: integer` or `type: bool`, preventing the `Invalid value: "string"` class of errors when Orkestra-rendered values are applied to strictly-typed CRD fields.
 
-- New input `generate-registry` – runs `ork generate registry` after `init`
-- New output `registry_file` – path to the generated registry (for inspection)
-- `namespace` input now defaults to `orkestra-system` and is passed to `generate configmap` and `generate bundle`
-- Support for custom `image_repo` and `image_tag` in typed E2E workflows
-
----
-
-### 🐛 Fixes
-
-- `mode:` is now automatically inferred when `apiTypes.location` is set (no need to write `mode: typed` manually)
-- Registry generation no longer requires `init=true` – works with any existing Katalog
-- The stub `pkg/runtime/zz_generated_runtime_registry.go` now includes structured debug logging (`logger.Debug()`) to help diagnose registration issues
+### **Impact**
+Custom resource hooks enable Orkestra operators to compose other operators declaratively.
+Any CRD-backed resource can be created, updated, and garbage-collected as a first-class child of an Orkestra-managed CR.
+Missing CRDs are handled gracefully at runtime, and owner-reference-based cascading deletion removes the need for explicit cleanup hooks.
 
 ---
 
-### 📖 Documentation
+# **CHANGELOG — ONCOP Integration (Orkestra Native Cross‑Operator Protocol)**
 
-- New command reference for `ork generate katalog`
-- Updated typed extensions guide (`09-hooks` and `10-constructors`) with step‑by‑step instructions and the full E2E workflow
+### **Added — ONCOP v1 (Orkestra Native Cross‑Operator Protocol)**  
+Introduced ONCOP as the unified, typed, cross‑operator observation protocol for Orkestra. ONCOP replaces ad‑hoc HTTP integrations and hard‑coded URLs with a declarative, URL‑inferable, cache‑aware protocol used across autoscaling, status fields, and template resolution.
 
----
+Key components:
 
-### Upgrading
+- **Typed observation surfaces**  
+  Added first‑class ONCOP types:  
+  `metrics`, `health`, `cr`, `info`, `events`  
+  Each type maps to a deterministic URL shape under `/katalog/<crd>`.
 
-No upgrade required if you’re using `ork generate bundle` or `ork run`. For typed operators, simply regenerate your registry file with the new `ork generate registry` (the output format has not changed).
+- **URL inference engine**  
+  Implemented `BuildONCOPURL` to construct ONCOP URLs from `CrossCRDDeclaration` using:  
+  `source.host`, `source.type`, `crd`, `selector.namespace`, `selector.name`.
+
+- **Cross‑operator resolver integration**  
+  Updated `readCross()` to support ONCOP host‑based reads as Path 2, after informer registry and before raw endpoint fallback.  
+  Responses injected into `.cross.<as>` for templates, autoscale conditions, and status fields.
+
+- **New ONCOP type: `cr`**  
+  Added `type: cr` for CR‑specific detail (`status`, `spec`, `children`, `metrics`).  
+  Distinguishes CR detail from CRD‑level `info`.
+
+- **Autoscaler ONCOP support**  
+  Autoscale conditions now resolve `cross.<crd>.metrics.*` via ONCOP metrics endpoint with optional caching (`cacheFor:`).
+
+- **Resolver enhancements**  
+  Added `ParseCrossField` and extraction helpers (`ExtractCrossCRD`, `ExtractCrossCategory`, `ExtractCrossFieldName`, `ExtractCrossNamespace`) to unify cross‑field parsing.
+
+- **Fallback semantics**  
+  Resolution priority formalised as:  
+  `informer registry → ONCOP host → raw endpoint → empty result`.
+
+- **Cross‑binary caching**  
+  Added per‑source caching for ONCOP responses to avoid repeated remote calls.
+
+### **Impact**  
+ONCOP enables consistent, declarative, cross‑operator observation across Orkestra.  
+Autoscalers, status fields, and templates now consume cross‑operator data without bespoke integrations or hard‑coded URLs.  
+Operators implementing ONCOP become first‑class participants in the Orkestra ecosystem.

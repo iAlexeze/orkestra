@@ -1,0 +1,272 @@
+package simulate
+
+import (
+	"context"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/kubeclient"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	fakedynamic "k8s.io/client-go/dynamic/fake"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
+)
+
+// Op is one recorded cluster operation.
+type Op struct {
+	Cycle     int
+	Verb      string // "create", "update", "delete", "get", "patch"
+	Resource  string // "deployments", "services", etc.
+	Namespace string
+	Name      string
+	At        time.Time
+}
+
+// FakeKubeclient implements kubeclient.KubeClient using k8s fakes.
+// All operations are recorded in Ops() for simulation output.
+type FakeKubeclient struct {
+	clientset kubernetes.Interface
+	dynamic   dynamic.Interface
+	mapper    meta.RESTMapper
+
+	mu           sync.Mutex
+	ops          []Op
+	currentCycle int
+}
+
+func NewFakeKubeclient(scheme *runtime.Scheme) *FakeKubeclient {
+	f := &FakeKubeclient{}
+
+	cs := fake.NewClientset()
+	// PrependReactor intercepts every operation and records it before the
+	// default object-tracker reactor handles it. AddReactor appends to the
+	// chain AFTER the tracker, so it is never reached — PrependReactor is
+	// required here.
+	cs.Fake.PrependReactor("*", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+		f.mu.Lock()
+		f.ops = append(f.ops, Op{
+			Cycle:     f.currentCycle,
+			Verb:      action.GetVerb(),
+			Resource:  action.GetResource().Resource,
+			Namespace: action.GetNamespace(),
+			Name:      nameFromAction(action),
+			At:        time.Now(),
+		})
+		f.mu.Unlock()
+		return false, nil, nil
+	})
+
+	f.clientset = cs
+	f.dynamic = fakedynamic.NewSimpleDynamicClient(scheme)
+	f.mapper = &fakeMapper{}
+
+	return f
+}
+
+func (f *FakeKubeclient) Clientset() kubernetes.Interface  { return f.clientset }
+func (f *FakeKubeclient) DynamicClient() dynamic.Interface { return f.dynamic }
+func (f *FakeKubeclient) Mapper() meta.RESTMapper          { return f.mapper }
+
+// AdvanceCycle increments the cycle counter. Call between simulated reconciles.
+func (f *FakeKubeclient) AdvanceCycle() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.currentCycle++
+}
+
+// Ops returns all recorded operations in order.
+func (f *FakeKubeclient) Ops() []Op {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	result := make([]Op, len(f.ops))
+	copy(result, f.ops)
+	return result
+}
+
+// OpsForCycle returns operations from one reconcile cycle.
+func (f *FakeKubeclient) OpsForCycle(cycle int) []Op {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var result []Op
+	for _, op := range f.ops {
+		if op.Cycle == cycle {
+			result = append(result, op)
+		}
+	}
+	return result
+}
+
+// MarkDeploymentReady advances simulated state — marks a Deployment as Available.
+// Call after the first reconcile cycle to allow the reconciler to progress
+// through "Deploying" → "Ready" state transitions.
+func (f *FakeKubeclient) MarkDeploymentReady(namespace, name string) {
+	// The fake clientset stores objects in an object tracker.
+	// We patch the Deployment's status directly.
+	dep, err := f.clientset.AppsV1().Deployments(namespace).Get(
+		context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return
+	}
+	if dep.Spec.Replicas != nil {
+		dep.Status.AvailableReplicas = *dep.Spec.Replicas
+		dep.Status.ReadyReplicas = *dep.Spec.Replicas
+		dep.Status.Replicas = *dep.Spec.Replicas
+	}
+	f.clientset.AppsV1().Deployments(namespace).UpdateStatus(
+		context.Background(), dep, metav1.UpdateOptions{})
+}
+
+// nameFromAction extracts the resource name from a test action.
+func nameFromAction(action k8stesting.Action) string {
+	switch a := action.(type) {
+	case k8stesting.GetAction:
+		return a.GetName()
+	case k8stesting.CreateAction:
+		obj := a.GetObject()
+		if acc, ok := obj.(metav1.Object); ok {
+			return acc.GetName()
+		}
+	case k8stesting.UpdateAction:
+		obj := a.GetObject()
+		if acc, ok := obj.(metav1.Object); ok {
+			return acc.GetName()
+		}
+	case k8stesting.DeleteAction:
+		return a.GetName()
+	}
+	return ""
+}
+
+// fakeMapper satisfies meta.RESTMapper for the simulation context.
+// Returns a fixed mapping for standard resource types.
+type fakeMapper struct{}
+
+func (m *fakeMapper) RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error) {
+	version := "v1"
+	if len(versions) > 0 && versions[0] != "" {
+		version = versions[0]
+	}
+	scope := meta.RESTScopeNameNamespace
+	if gk.Kind == "Namespace" || gk.Kind == "ClusterRole" || gk.Kind == "ClusterRoleBinding" {
+		scope = meta.RESTScopeNameRoot
+	}
+	return &meta.RESTMapping{
+		Resource: schema.GroupVersionResource{
+			Group:    gk.Group,
+			Version:  version,
+			Resource: strings.ToLower(gk.Kind) + "s",
+		},
+		GroupVersionKind: gk.WithVersion(version),
+		Scope:            fakescope(scope),
+	}, nil
+}
+
+func (m *fakeMapper) KindFor(resource schema.GroupVersionResource) (schema.GroupVersionKind, error) {
+	return schema.GroupVersionKind{}, nil
+}
+func (m *fakeMapper) KindsFor(resource schema.GroupVersionResource) ([]schema.GroupVersionKind, error) {
+	return nil, nil
+}
+func (m *fakeMapper) ResourceFor(input schema.GroupVersionResource) (schema.GroupVersionResource, error) {
+	return input, nil
+}
+func (m *fakeMapper) ResourcesFor(input schema.GroupVersionResource) ([]schema.GroupVersionResource, error) {
+	return []schema.GroupVersionResource{input}, nil
+}
+func (m *fakeMapper) RESTMappings(gk schema.GroupKind, versions ...string) ([]*meta.RESTMapping, error) {
+	mapping, err := m.RESTMapping(gk, versions...)
+	if err != nil {
+		return nil, err
+	}
+	return []*meta.RESTMapping{mapping}, nil
+}
+func (m *fakeMapper) ResourceSingularizer(resource string) (string, error) {
+	return strings.TrimSuffix(resource, "s"), nil
+}
+
+type fakescope string
+
+func (f fakescope) Name() meta.RESTScopeName { return meta.RESTScopeName(f) }
+func (f fakescope) String() string           { return string(f) }
+
+// Compile check — *FakeKubeclient must satisfy kubeclient.KubeClient.
+var _ kubeclient.KubeClient = (*FakeKubeclient)(nil)
+
+// Patch stubs — record operations but perform no real mutations.
+// The fake dynamic client handles the underlying object storage.
+
+func (f *FakeKubeclient) PatchFinalizers(_ context.Context, obj runtime.Object, _ schema.GroupVersionResource, finalizers []string) error {
+	f.mu.Lock()
+	f.ops = append(f.ops, Op{
+		Cycle:    f.currentCycle,
+		Verb:     "patch",
+		Resource: "finalizers",
+		Name:     nameFromRuntimeObject(obj),
+		At:       time.Now(),
+	})
+	f.mu.Unlock()
+	return nil
+}
+
+func (f *FakeKubeclient) PatchLabels(_ context.Context, obj runtime.Object, _ schema.GroupVersionResource, labels map[string]string) error {
+	f.mu.Lock()
+	f.ops = append(f.ops, Op{
+		Cycle:    f.currentCycle,
+		Verb:     "patch",
+		Resource: "labels",
+		Name:     nameFromRuntimeObject(obj),
+		At:       time.Now(),
+	})
+	f.mu.Unlock()
+	// Persist to the in-memory object so subsequent cycles see the update
+	// and the idempotency guard in ensureManagedLabel skips the patch.
+	if mo, ok := obj.(metav1.Object); ok {
+		mo.SetLabels(labels)
+	}
+	return nil
+}
+
+func (f *FakeKubeclient) PatchAnnotations(_ context.Context, obj runtime.Object, _ schema.GroupVersionResource, annotations map[string]string) error {
+	f.mu.Lock()
+	f.ops = append(f.ops, Op{
+		Cycle:    f.currentCycle,
+		Verb:     "patch",
+		Resource: "annotations",
+		Name:     nameFromRuntimeObject(obj),
+		At:       time.Now(),
+	})
+	f.mu.Unlock()
+	// Persist to the in-memory object so subsequent cycles see the update
+	// and the idempotency guard in ensureManagedAnnotations skips the patch.
+	if mo, ok := obj.(metav1.Object); ok {
+		mo.SetAnnotations(annotations)
+	}
+	return nil
+}
+
+func (f *FakeKubeclient) PatchStatus(_ context.Context, obj domain.Object, _ schema.GroupVersionResource, _ map[string]interface{}) error {
+	f.mu.Lock()
+	f.ops = append(f.ops, Op{
+		Cycle:    f.currentCycle,
+		Verb:     "patch",
+		Resource: "status",
+		Name:     obj.GetName(),
+		At:       time.Now(),
+	})
+	f.mu.Unlock()
+	return nil
+}
+
+func nameFromRuntimeObject(obj runtime.Object) string {
+	if acc, ok := obj.(interface{ GetName() string }); ok {
+		return acc.GetName()
+	}
+	return ""
+}

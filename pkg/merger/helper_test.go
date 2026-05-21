@@ -13,20 +13,20 @@ func boolPtr(b bool) *bool { return &b }
 // ── mergeKatalogSecurity ──────────────────────────────────────────────────────
 
 func TestMergeKatalogSecurity_BaseWinsWhenOverrideEmpty(t *testing.T) {
-	base := orktypes.KatalogSecurity{ServiceName: "base-svc"}
+	base := orktypes.KatalogSecurity{ServiceName: &orktypes.ServiceName{Runtime: "base-svc"}}
 	override := orktypes.KatalogSecurity{}
 	result := mergeKatalogSecurity(base, override)
-	if result.ServiceName != "base-svc" {
-		t.Errorf("expected base ServiceName to win, got %q", result.ServiceName)
+	if result.ServiceName == nil || result.ServiceName.Runtime != "base-svc" {
+		t.Errorf("expected base ServiceName to win, got %v", result.ServiceName)
 	}
 }
 
 func TestMergeKatalogSecurity_OverrideWinsServiceName(t *testing.T) {
-	base := orktypes.KatalogSecurity{ServiceName: "base"}
-	override := orktypes.KatalogSecurity{ServiceName: "override"}
+	base := orktypes.KatalogSecurity{ServiceName: &orktypes.ServiceName{Runtime: "base"}}
+	override := orktypes.KatalogSecurity{ServiceName: &orktypes.ServiceName{Runtime: "override"}}
 	result := mergeKatalogSecurity(base, override)
-	if result.ServiceName != "override" {
-		t.Errorf("expected override ServiceName, got %q", result.ServiceName)
+	if result.ServiceName == nil || result.ServiceName.Runtime != "override" {
+		t.Errorf("expected override ServiceName, got %v", result.ServiceName)
 	}
 }
 
@@ -51,11 +51,11 @@ func TestMergeKatalogSecurity_NilOverrideDeletionProtection_KeepsBase(t *testing
 }
 
 func TestMergeKatalogSecurity_ServiceNameEmptyOverride_KeepsBase(t *testing.T) {
-	base := orktypes.KatalogSecurity{ServiceName: "my-svc"}
-	override := orktypes.KatalogSecurity{ServiceName: ""}
+	base := orktypes.KatalogSecurity{ServiceName: &orktypes.ServiceName{Runtime: "my-svc"}}
+	override := orktypes.KatalogSecurity{ServiceName: nil}
 	result := mergeKatalogSecurity(base, override)
-	if result.ServiceName != "my-svc" {
-		t.Errorf("empty override ServiceName must keep base, got %q", result.ServiceName)
+	if result.ServiceName == nil || result.ServiceName.Runtime != "my-svc" {
+		t.Errorf("empty override ServiceName must keep base, got %v", result.ServiceName)
 	}
 }
 

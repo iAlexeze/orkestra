@@ -1,297 +1,155 @@
 ---
 title: "Basic Reconciliation"
-weight: 3
-description: "Now that you’ve written your first Katalog and Komposer, it’s time to see how Orkestra actually **reconciles** a Custom ..."
+weight: 7
 ---
 
-Now that you’ve written your first Katalog and Komposer, it’s time to see how Orkestra actually **reconciles** a Custom Resource (CR).  
-This guide walks through the simplest possible reconciliation flow:
-
-- A CRD  
-- A CR  
-- A minimal Katalog  
-- A Komposer that loads it  
-- Orkestra reconciling the CR into real Kubernetes resources  
-
-!!! note
-    This is the *first* time we introduce reconciliation.  
-    Everything here is intentionally simple and fully declarative.
+This guide walks through exactly what happens when Orkestra reconciles a CR — from the moment you apply it to the moment it's deleted.
 
 ---
 
-## Step 1 — Define a Simple CRD
+## The Setup
 
-Create a file called `myapp-crd.yaml`:
+We'll use the `hello-website` example from `ork init`. It has:
+
+- `crd.yaml` — the `Website` CRD
+- `katalog.yaml` — the Orkestra operator definition
+- `cr.yaml` — a sample `Website` CR
+
+Start the operator:
+
+```bash
+ork run -f examples/beginner/01-hello-website/katalog.yaml
+```
+
+---
+
+## Step 1 — Orkestra starts
+
+When `ork run` starts:
+
+1. Reads the Katalog, finds `crdFile: ./crd.yaml`
+2. Applies the CRD to the cluster
+3. Creates an informer watching for `Website` CRs
+4. Starts a worker pool (3 workers by default)
+5. Opens health server at `localhost:8080`
+
+You will see:
+
+```
+INFO  CRD applied                crd=websites.demo.orkestra.io
+INFO  Informer synced            crd=website
+INFO  Workers started            crd=website  workers=3
+INFO  Health server ready        addr=:8080
+```
+
+---
+
+## Step 2 — Apply a CR
+
+```bash
+kubectl apply -f examples/beginner/01-hello-website/cr.yaml
+```
+
+The CR:
 
 ```yaml
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
+apiVersion: demo.orkestra.io/v1alpha1
+kind: Website
 metadata:
-  name: myapps.demo.myorg.io
+  name: hello-website
+  namespace: default
 spec:
-  group: demo.myorg.io
-  versions:
-    - name: v1alpha1
-      served: true
-      storage: true
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            spec:
-              type: object
-              properties:
-                image:
-                  type: string
-                replicas:
-                  type: integer
-                port:
-                  type: integer
-  scope: Namespaced
-  names:
-    plural: myapps
-    singular: myapp
-    kind: MyApp
+  image: nginx:1.25
 ```
-
-Apply it:
-
-```
-kubectl apply -f myapp-crd.yaml
-```
-
-!!! tip
-    CRDs define the *shape* of your API.  
-    Katalogs define the *behavior* of your API.
 
 ---
 
-## Step 2 — Create a Simple CR
+## Step 3 — Reconcile happens
 
-Create a file called `myapp.yaml`:
+The moment you apply the CR:
 
-```yaml
-apiVersion: demo.myorg.io/v1alpha1
-kind: MyApp
-metadata:
-  name: demo
-spec:
-  image: nginx:1.27
-  replicas: 2
-  port: 80
-```
+1. The Kubernetes API server notifies Orkestra's informer
+2. The CR is enqueued in the `website` workqueue
+3. A worker picks it up and begins reconciling
+4. `{{ .spec.image }}` resolves to `nginx:1.25`
+5. The Deployment is created with owner references pointing to the CR
+6. Status is updated, a `Reconciled` event is emitted on the CR
+7. Prometheus counter increments: `controller_reconcile_total{result="success"}`
 
-Apply it:
+Check the result:
 
-```
-kubectl apply -f myapp.yaml
-```
-
-At this point, nothing happens yet — Orkestra hasn’t been started.
-
-!!! note
-    Orkestra only reconciles CRs when the runtime is running and a Komposer has loaded your Katalog.
-
----
-
-## Step 3 — Write a Minimal Katalog
-
-Create `katalog.yaml`:
-
-```yaml
-apiVersion: orkestra.orkspace.io/v1
-kind: Katalog
-metadata:
-  name: myapp-katalog
-spec:
-  crds:
-    - name: myapp
-      apiTypes:
-        group: demo.myorg.io
-        version: v1alpha1
-        kind: MyApp
-        plural: myapps
-      operatorBox:
-        default: true
-        onCreate:
-          deployments:
-            - name: "{{ .metadata.name }}"
-              image: "{{ .spec.image }}"
-              replicas: "{{ .spec.replicas }}"
-              port: "{{ .spec.port }}"
-              namespace: "{{ .metadata.namespace }}"
-              reconcile: true
-```
-
-This tells Orkestra:
-
-- Watch for `MyApp` CRs  
-- Create a Deployment using values from the CR  
-- Keep the Deployment in sync with the CR  
-
-!!! tip
-    This is the smallest meaningful operator you can build with Orkestra.
-
----
-
-## Step 4 — Write a Komposer That Loads the Katalog
-
-Create `komposer.yaml`:
-
-```yaml
-apiVersion: orkestra.orkspace.io/v1
-kind: Komposer
-metadata:
-  name: myapp-komposer
-
-sources:
-  files:
-    - ./katalog.yaml
-```
-
-!!! note
-    Komposers load katalogs.  
-    Katalogs define reconciliation behavior.
-
----
-
-## Step 5 — Start Orkestra
-
-Run:
-
-```
-ork run --file katalog.yaml
-```
-
-Or, if using the Komposer:
-
-```
-ork run --file komposer.yaml
-```
-
-!!! note
-    Both katalogs and komposers are passed using the `--file` flag.  
-    This is by design, as a Komposer is simply a declarative bundle of katalogs.
-
-
-Orkestra will:
-
-1. Load your Katalog  
-2. Register the CRD  
-3. Start informers  
-4. Watch for `MyApp` CRs  
-5. Reconcile them into Deployments  
-
-!!! caution
-    If Orkestra cannot find your CRD, it will not start reconciliation.  
-    Always apply the CRD before running the runtime.
-
----
-
-## Step 6 — Observe Reconciliation
-
-Check the Deployment:
-
-```
+```bash
 kubectl get deployments
+kubectl describe website hello-website
 ```
-
-You should see:
-
-```
-NAME    READY   UP-TO-DATE   AVAILABLE   AGE
-demo    2/2     2            2           5s
-```
-
-Check the health endpoint:
-
-```
-curl localhost:8080/katalog/myapp/health | jq
-```
-
-You’ll see:
-
-- last reconcile time  
-- number of reconciles  
-- any errors  
-- worker activity  
-
-!!! tip
-    The health endpoint is your best friend during development.  
-    It shows exactly what Orkestra is doing.
 
 ---
 
-## Step 7 — Update the CR
+## Step 4 — Update the CR
 
-Edit the CR:
+Edit the image:
 
-```yaml
-spec:
-  replicas: 4
+```bash
+kubectl patch website hello-website --type=merge -p '{"spec":{"image":"nginx:1.27"}}'
 ```
 
-Apply it:
-
-```
-kubectl apply -f myapp.yaml
-```
-
-Orkestra will:
-
-- Detect the change  
-- Reconcile the CR  
-- Update the Deployment to 4 replicas  
-
-Check:
-
-```
-kubectl get deploy demo
-```
-
-!!! note
-    You did not write any code.  
-    Orkestra handled the entire reconciliation loop for you.
+Orkestra detects the change, re-reconciles, and updates the Deployment image. Because `reconcile: true` is set, if the Deployment is edited manually between reconciles, Orkestra corrects it back.
 
 ---
 
-## Step 8 — Delete the CR
+## Step 5 — Delete the CR
 
+```bash
+kubectl delete -f examples/beginner/01-hello-website/cr.yaml
 ```
-kubectl delete -f myapp.yaml
-```
 
-Orkestra will:
+Orkestra:
 
-- Remove the Deployment  
-- Clean up resources  
-- Finalize the CR  
-
-!!! tip
-    Deletion behavior can be customized later using `onDelete` blocks.
+1. Receives the delete event
+2. Removes the Deployment (via owner references)
+3. Removes its finalizer from the CR
+4. The CR is fully deleted
 
 ---
 
-## Summary
+## Observing Reconciliation
 
-You have now seen the full reconciliation lifecycle:
+The health endpoint shows everything:
 
-1. Define a CRD  
-2. Create a CR  
-3. Write a Katalog  
-4. Load it with a Komposer  
-5. Run Orkestra  
-6. Watch reconciliation happen  
-7. Update the CR and see drift correction  
-8. Delete the CR and watch cleanup  
+```bash
+curl localhost:8080/katalog/website/health | jq
+```
 
-This is the foundation for everything else you will build with Orkestra.
+```json
+{
+  "status": "healthy",
+  "lastReconcile": "2026-05-16T18:00:01Z",
+  "reconcileCount": 3,
+  "errorCount": 0,
+  "workerCount": 3
+}
+```
+
+Full detail including queue depth and active workers:
+
+```bash
+curl localhost:8080/katalog/website | jq
+```
+
+Or open the Control Center for a visual view:
+
+```bash
+ork control start
+# → localhost:8081
+```
 
 ---
 
-## Next Steps
+## Reconcile Lifecycle Summary
 
-Continue with:
-
-**Example Workflows ([Beginner](../examples/index.md))**  
-Learn how to build multi‑resource operators, add drift correction, use dependencies, and structure real‑world katalogs.
+| Event | Orkestra Action |
+|-------|----------------|
+| CR created | Templates resolved, resources created, finalizer added |
+| CR updated | Resources updated to match new CR spec |
+| Resource drifts (if `reconcile: true`) | Resource corrected on next reconcile cycle |
+| CR deleted | Resources removed, finalizer released |

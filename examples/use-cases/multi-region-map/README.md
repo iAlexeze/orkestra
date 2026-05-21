@@ -60,9 +60,9 @@ deployments:
     replicas: "{{ or .value.replicas .spec.defaultReplicas }}"
     port: "{{ or .value.port .spec.defaultPort }}"
     env:
-      REGION:
+      - name: REGION
         value: "{{ .item }}"
-      PORT:
+      - name: PORT
         value: "{{ or .value.port .spec.defaultPort }}"
     forEach:
       field: spec.regions
@@ -145,11 +145,13 @@ reconciles have run.
 Open the Control Center in a second terminal:
 
 ```bash
-ork control start             # serves on http://localhost:8081 by default
-ork control start --port 9090 # or on a custom port
+ork control             # serves on http://localhost:8081 by default
+# username:password → orkestra
+ork control --port 9090 # or on a custom port
+# username:password → orkestra
 ```
 
-Open **http://localhost:8081** (or whichever port you passed to `ork control start`).
+Open **http://localhost:8081** (or whichever port you passed to `ork control`).
 Select **multi-region-demo**. You will see
 the `multi-region-app` operatorBox in `started` state — no CRs yet, so no
 reconciles have run.

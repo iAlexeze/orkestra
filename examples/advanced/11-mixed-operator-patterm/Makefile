@@ -17,7 +17,7 @@ ORK_LDFLAGS := -X github.com/orkspace/orkestra/pkg/version.Version=$(GIT_VERSION
                -X github.com/orkspace/orkestra/pkg/version.Date=$(GIT_DATE)
 
 # ── registry ──────────────────────────────────────────────────────────────────
-# Generates pkg/runtime/zz_generated_runtime_registry.go.
+# Generates pkg/typeregistry/zz_generated_typeregistry.go.
 # Re-run whenever you change apiTypes fields in katalog.yaml.
 .PHONY: registry
 registry:
@@ -37,7 +37,7 @@ build:
 # ── validate ──────────────────────────────────────────────────────────────────
 .PHONY: validate
 validate:
-	$(OUTPUT_DIR)/$(BINARY_NAME) validate -k $(KATALOG)
+	$(OUTPUT_DIR)/$(BINARY_NAME) validate -f $(KATALOG)
 
 # ── docker / push / release ───────────────────────────────────────────────────
 .PHONY: docker
@@ -65,7 +65,7 @@ clean:
 # ── help ──────────────────────────────────────────────────────────────────────
 .PHONY: help
 help:
-	@echo "  registry   generate pkg/runtime/zz_generated_runtime_registry.go"
+	@echo "  registry   generate pkg/typeregistry/zz_generated_typeregistry.go"
 	@echo "  build      compile the typed operator binary"
 	@echo "  validate   run katalog validation with your binary"
 	@echo "  release    build + push  IMAGE=repo/name:tag"

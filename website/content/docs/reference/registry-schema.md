@@ -1,20 +1,21 @@
 ---
-title: "Registry Source Schema"
-weight: 50
-description: "Complete schema reference for `sources.registry` entries in a Komposer."
+title: "Registry Import Schema"
+weight: 42
 ---
 
-Complete schema reference for `sources.registry` entries in a Komposer.
+# Registry Import Schema
+
+Complete schema reference for `imports.registry` entries in a Komposer.
 
 ---
 
-## RegistrySource
+## RegistryImport
 
-One entry in `sources.registry`. Pulls a single pattern from a registry,
+One entry in `imports.registry`. Pulls a single pattern from a registry,
 validates its structure, and loads either `katalog.yaml` or `komposer.yaml`.
 
 ```yaml
-sources:
+imports:
   registry:
     - url: <string>              # required
       version: <string>          # optional — ignored when @ present in url
@@ -39,7 +40,7 @@ The URL of the registry source. Supports two forms:
 **Shorthand — version embedded with `@`:**
 
 ```yaml
-url: ghcr.io/orkestra-sh/orkestra-registry/postgres@v14
+url: ghcr.io/orkspace/orkestra-registry/postgres@v14
 url: https://github.com/myorg/registry@main
 url: https://github.com/myorg/registry@abc123def456
 ```
@@ -51,16 +52,17 @@ is ignored.
 **Explicit — version as a separate field:**
 
 ```yaml
-url: ghcr.io/orkestra-sh/orkestra-registry/postgres
+url: ghcr.io/orkspace/orkestra-registry/postgres
 version: v14.2.0
 ```
 
-!!! note
-    Do not include scheme prefixes (`oci://`, `https://` for OCI refs).
-    Orkestra constructs the correct protocol from the `oci` field and the
-    URL format.
+{{< callout type="note" >}}
+Do not include scheme prefixes (`oci://`, `https://` for OCI refs).
+Orkestra constructs the correct protocol from the `oci` field and the
+URL format.
+{{< /callout >}}
 
-    HTTP/HTTPS prefixes are valid for Git sources:
+    HTTP/HTTPS prefixes are valid for Git imports:
     `https://github.com/myorg/registry` is a Git source.
 
     For OCI sources, use the registry hostname directly:
@@ -82,9 +84,10 @@ The version, tag, branch, or SHA to pull.
 | Git (GitHub/GitLab) | Branch, tag, or SHA: `main`, `v1.0.0`, `abc123` |
 | Git (generic) | Branch, tag, or SHA passed to `git clone --branch` |
 
-!!! note "Precedence"
-    Ignored when `@` is present in the `url` field. The `@` shorthand always
-    takes priority.
+{{< callout type="note" title="Precedence" >}}
+Ignored when `@` is present in the `url` field. The `@` shorthand always
+takes priority.
+{{< /callout >}}
 
 ---
 
@@ -101,10 +104,11 @@ Controls the pull mechanism.
 | `false` | Pull via Git or raw HTTP. GitHub and GitLab use raw file HTTP (one request per file). Other URLs use `git clone`. |
 | `true` | Pull as an OCI artifact using the ORAS protocol. Artifact ref is `url:version`. |
 
-!!! warning "ORAS dependency for `oci: true`"
-    OCI pulls require the `oras` CLI to be installed and available on `PATH`.
-    Install from [oras.land](https://oras.land/docs/installation). Native
-    Go library integration will remove this requirement in a future release.
+{{< callout type="warning" title="ORAS dependency for `oci: true`" >}}
+OCI pulls require the `oras` CLI to be installed and available on `PATH`.
+Install from [oras.land](https://oras.land/docs/installation). Native
+Go library integration will remove this requirement in a future release.
+{{< /callout >}}
 
 ---
 
@@ -121,9 +125,10 @@ Controls which source file is loaded from the pattern.
 | `false` | `katalog.yaml` — CRD definitions and reconcile templates |
 | `true` | `komposer.yaml` — full upstream operator source tree |
 
-!!! warning "Exactly one file is loaded"
-    You cannot load both `katalog.yaml` and `komposer.yaml` from a single
-    registry entry. The field makes the choice explicit and enforced.
+{{< callout type="warning" title="Exactly one file is loaded" >}}
+You cannot load both `katalog.yaml` and `komposer.yaml` from a single
+registry entry. The field makes the choice explicit and enforced.
+{{< /callout >}}
 
     If the loaded file's kind does not match the expected kind
     (`useKomposer: false` expects `kind: Katalog`, `useKomposer: true`
@@ -197,25 +202,26 @@ The five files every valid registry pattern must contain, each non-empty:
 | `cr.yaml` | Example custom resource — the minimal CR to test the operator |
 | `README.md` | Documentation — field reference, recommended overrides, examples |
 
-!!! note
-    These files are validated after every pull, including during `ork validate`.
-    Missing or empty files cause an immediate error with a message listing all
-    violations.
+{{< callout type="note" >}}
+These files are validated after every pull, including during `ork validate`.
+Missing or empty files cause an immediate error with a message listing all
+violations.
+{{< /callout >}}
 
 ---
 
 ## Full example
 
 ```yaml
-sources:
+imports:
   registry:
 
     # ── Minimal — OCI shorthand, all defaults ─────────────────────────────────
-    - url: ghcr.io/orkestra-sh/orkestra-registry/postgres@v14
+    - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
       oci: true
 
     # ── Explicit OCI — url and version separate ───────────────────────────────
-    - url: ghcr.io/orkestra-sh/orkestra-registry/redis
+    - url: ghcr.io/orkspace/orkestra-registry/redis
       version: v7.2.0
       oci: true
 

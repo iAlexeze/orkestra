@@ -56,7 +56,7 @@ import (
 // PTR must be a pointer to the concrete CR struct (e.g. *Database).
 // This matches Kubernetes informer semantics: the informer stores pointer values
 // so the type assertion raw.(PTR) in reconcileCore succeeds only for pointer types.
-// When used through the dynamic registry path in konstructor.go, PTR is inferred
+// When used through the dynamic registry path in runtime_konstructor.go, PTR is inferred
 // as domain.Object (the interface), which also satisfies the constraint and is safe
 // because the informer cache always holds the correct underlying concrete type.
 // See pkg/reconciler/ptr_hooks.go for the full design rationale.
@@ -66,8 +66,8 @@ type GenericReconciler[PTR domain.Object] struct {
 	providerRegistry  orktypes.ProviderRegistry
 	providerStats     providerStatsRecorder
 	informer          cache.SharedIndexInformer
-	event             *event.Event
-	kube              *kubeclient.Kubeclient
+	event             event.Recorder
+	kube              kubeclient.KubeClient
 	// hooks holds type-erased, domain.Object-parameterized callbacks built at
 	// construction time from the user's ReconcileHooks[PTR]. Stored as
 	// ObjectHooks rather than ReconcileHooks[PTR] so the reconciler remains
@@ -120,7 +120,7 @@ type GenericReconciler[PTR domain.Object] struct {
 // NewGenericReconciler constructs a GenericReconciler for the given CRD.
 //
 // PTR must be a pointer to the concrete CR type (e.g. *Database). When called
-// from the runtime registry path in konstructor.go, PTR is inferred as
+// from the runtime registry path in runtime_konstructor.go, PTR is inferred as
 // domain.Object (the interface) — this is also valid because the constraint
 // domain.Object is satisfied and the informer stores the correct concrete type.
 //
@@ -130,14 +130,15 @@ type GenericReconciler[PTR domain.Object] struct {
 func NewGenericReconciler[PTR domain.Object](
 	crd orktypes.CRDEntry,
 	informer cache.SharedIndexInformer,
-	ev *event.Event,
-	kube *kubeclient.Kubeclient,
+	ev event.Recorder,
+	kube kubeclient.KubeClient,
 	anyHooks domain.AnyReconcileHooks,
 	newObj func() PTR,
 	katalogRegistry *kordinator.ResourceKatalog,
 	crdHealthRegistry map[string]*kordinator.CRDHealth,
 	providerRegistry orktypes.ProviderRegistry,
 	providerStats providerStatsRecorder,
+	kat *katalog.Katalog,
 ) *GenericReconciler[PTR] {
 
 	// Adapt the user's strongly-typed ReconcileHooks[PTR] to the type-erased
@@ -180,6 +181,7 @@ func NewGenericReconciler[PTR domain.Object](
 		workerSem:         sem,
 		autoMetrics:       autoMet,
 		rollbackHistory:   make(map[string]*rollbackFailureHistory),
+		kat:               kat,
 	}
 
 	if crd.AutoscaleEnabled() {
@@ -197,13 +199,16 @@ func NewGenericReconciler[PTR domain.Object](
 		)
 	}
 
-	// TODO
-	if crd.IsNotificationEnabled() {
-		r.notifStack = &notification.NotificationStack{
-			Katalog:      r.kat,
-			State:        notification.NewNotificationState(),
-			ResolverData: make(map[string]interface{}),
+	// Wire notification: GatewayNotifier when a gateway endpoint is configured;
+	// DirectNotifier otherwise (standalone SMTP/Slack dispatch on the runtime).
+	if kat != nil && crd.IsNotificationEnabled() {
+		var notifier notification.Notifier
+		if ep := kat.GatewayEndpoint(); ep != "" {
+			notifier = notification.NewGatewayNotifier(ep)
+		} else {
+			notifier = notification.NewDirectNotifier(kat)
 		}
+		r.notifStack = notification.NewNotificationStack(kat, notifier)
 	}
 
 	return r
@@ -506,7 +511,7 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 	// This surfaces the operatorbox health endpoint directly into templates,
 	// enabling CR status fields to show live reconcile health, uptime,
 	// dependency health, and error information without any API calls.
-	if h, ok := r.crdHealthRegistry[r.crd.GVK().String()]; ok {
+	if h, ok := r.crdHealthRegistry[r.crd.GVKString()]; ok {
 		resolver = resolver.WithHealth(h.HealthAsMap())
 	}
 

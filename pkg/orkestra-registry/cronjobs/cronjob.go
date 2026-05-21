@@ -82,7 +82,7 @@ type ResolvedCronJobSpec struct {
 // Create creates a CronJob if it does not already exist.
 // Idempotent — skips creation if the CronJob already exists.
 // Sets owner reference so the CronJob is garbage collected when the CR is deleted.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedCronJobSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCronJobSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("cronjob.Create: %w", err)
 	}
@@ -123,7 +123,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Update reconciles an existing CronJob to match the resolved spec.
 // Detects drift across schedule, image, suspend, concurrencyPolicy,
 // and history limits. Creates the CronJob if it does not exist.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedCronJobSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCronJobSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("cronjob.Update: %w", err)
 	}
@@ -240,7 +240,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Delete deletes the CronJob if it exists.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedCronJobSpec) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedCronJobSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -268,7 +268,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the CronJob only if it is labelled as owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().BatchV1().CronJobs(namespace).

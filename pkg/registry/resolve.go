@@ -6,11 +6,15 @@
 // using the following priority:
 //
 //  1. Full OCI reference (starts with "oci://") — used as-is
-//  2. ORKESTRA_REGISTRY env var + "/name:version"
+//  2. ORK_REGISTRY env var + "/name:version"
 //  3. Default: ghcr.io/orkspace/orkestra-registry/patterns/katalogs/name:version
 //
 // The "oci://" prefix is stripped before passing to ORAS — it is a user-facing
 // convention to signal "this is an OCI reference", not part of the actual URL.
+//
+// CachedDir provides the local cache lookup used by pkg/merger pull helpers.
+// Cache layout: ~/.orkestra/registry/<host>/<repo>/<version>/
+// A hit is declared when katalog.yaml or motif.yaml exists in that directory.
 package registry
 
 import (
@@ -37,7 +41,7 @@ type Ref struct {
 //
 //	"postgres:v14"                                           → ghcr.io/orkspace/orkestra-registry/patterns/katalogs/postgres:v14
 //	"oci://ghcr.io/myorg/patterns/katalogs/redis:v7"        → ghcr.io/myorg/patterns/katalogs/redis:v7
-//	"myorg/redis:v7" (with ORKESTRA_REGISTRY set)           → resolved against env
+//	"myorg/redis:v7" (with ORK_REGISTRY set)           → resolved against env
 func Resolve(input string) (*Ref, error) {
 	input = strings.TrimSpace(input)
 	if input == "" {
@@ -52,7 +56,7 @@ func Resolve(input string) (*Ref, error) {
 		return parseRef(raw)
 	}
 
-	// Use ORKESTRA_REGISTRY env var or default
+	// Use ORK_REGISTRY env var or default
 	base := os.Getenv(EnvRegistry)
 	if base == "" {
 		base = DefaultRegistry
@@ -114,13 +118,47 @@ func (r *Ref) CachePath() (string, error) {
 }
 
 // IsCached returns true when the pattern is already in the local cache.
+// Checks for either katalog.yaml (pattern) or motif.yaml (motif).
 func (r *Ref) IsCached() bool {
 	path, err := r.CachePath()
 	if err != nil {
 		return false
 	}
-	_, err = os.Stat(filepath.Join(path, FileKatalog))
-	return err == nil
+	for _, sentinel := range []string{FileKatalog, FileMotif} {
+		if _, err := os.Stat(filepath.Join(path, sentinel)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// CachedDir returns the local cache directory for an OCI artifact if it has
+// been pulled previously. A hit requires katalog.yaml or motif.yaml to be
+// present — whichever sentinel file is found first counts as a complete pull.
+//
+// ociURL must be the bare host+path without the oci:// prefix or tag,
+// e.g. "ghcr.io/orkspace/orkestra-registry/patterns/motifs/postgres".
+// Returns ("", false) when not cached or on any error.
+func CachedDir(ociURL, version string) (string, bool) {
+	// Parse into registry + repository components.
+	slashIdx := strings.Index(ociURL, "/")
+	if slashIdx < 0 {
+		return "", false
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", false
+	}
+	reg := strings.ReplaceAll(ociURL[:slashIdx], ":", "_")
+	repo := filepath.FromSlash(ociURL[slashIdx+1:])
+	dir := filepath.Join(home, CacheDir, reg, repo, version)
+
+	for _, sentinel := range []string{FileKatalog, FileMotif} {
+		if _, err := os.Stat(filepath.Join(dir, sentinel)); err == nil {
+			return dir, true
+		}
+	}
+	return "", false
 }
 
 // String returns the full reference with oci:// prefix for display.

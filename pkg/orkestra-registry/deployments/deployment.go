@@ -22,7 +22,7 @@ import (
 // Create creates a Deployment owned by the CR if it does not already exist.
 // Idempotent — if the Deployment exists, does nothing and returns nil.
 // Sets owner reference so the Deployment is garbage collected when the CR is deleted.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedDeploymentSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedDeploymentSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("deployment.Create: invalid spec: %w", err)
 	}
@@ -63,7 +63,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Update reconciles an existing Deployment to match the resolved spec.
 // Handles drift — if replicas or image have changed, patches the Deployment.
 // If the Deployment does not exist, creates it.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedDeploymentSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedDeploymentSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("deployment.Update: invalid spec: %w", err)
 	}
@@ -150,7 +150,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Delete deletes the Deployment if it exists.
 // For most cases owner references handle cascade deletion — use this only
 // for explicit cleanup declared in onDelete templates.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedDeploymentSpec) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedDeploymentSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -178,7 +178,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the Deployment if it exists and is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().AppsV1().Deployments(namespace).
@@ -202,7 +202,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 // Use pkg/orkestra-registry/template.Resolver to evaluate expressions first.
 //
 // The resolver already evaluated template expressions — here we just merge.
-func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerName string) ResolvedDeploymentSpec {
+func Resolve(src orktypes.DeploymentTemplateSource, ownerName string) ResolvedDeploymentSpec {
 	spec := ResolvedDeploymentSpec{
 		Name:        src.Name,
 		Image:       src.Image,
@@ -210,29 +210,16 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 		Resources:   common.ResolveResources(src.Resources),
 		Labels:      make(map[string]string),
 		Annotations: make(map[string]string),
-		Env:         make(map[string]orktypes.EnvVarSource),
 		EnvFrom:     src.EnvFrom,
 		Probes:      src.Probes,
 		Sleep:       src.Sleep,
 	}
 
-	// Default name
 	if spec.Name == "" {
 		spec.Name = ownerName + "-deployment"
 	}
 
-	// Replicas — prefer dynamic resolved string, fall back to static int
-	if src.Replicas != "" {
-		if r, err := strconv.ParseInt(src.Replicas, 10, 32); err == nil {
-			spec.Replicas = int32(r)
-		}
-	}
-	if spec.Replicas == 0 && staticReplicas > 0 {
-		spec.Replicas = int32(staticReplicas)
-	}
-	if spec.Replicas == 0 {
-		spec.Replicas = 1 // default
-	}
+	spec.Replicas = common.ParseReplicas(src.Replicas)
 
 	// Port — prefer dynamic resolved string, fall back to static int
 	if src.Port != "" {
@@ -248,10 +235,7 @@ func Resolve(src orktypes.DeploymentTemplateSource, staticReplicas int, ownerNam
 		spec.Annotations[a.Key] = a.Value
 	}
 
-	// Copy Env map
-	for k, v := range src.Env {
-		spec.Env[k] = v
-	}
+	spec.Env = []orktypes.EnvVar(src.Env)
 
 	// Orkestra system labels — always added
 	spec.Labels[labels.Managed] = labels.ManagedValue
@@ -331,68 +315,49 @@ func buildDeployment(owner domain.Object, spec ResolvedDeploymentSpec, namespace
 
 	// Env
 	if len(spec.Env) > 0 {
-		d.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{}
-		for k, src := range spec.Env {
-			ev := corev1.EnvVar{Name: k}
-
-			switch {
-			case src.SecretKeyRef != nil:
-				ev.ValueFrom = &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: src.SecretKeyRef.Name,
-						},
-						Key: src.SecretKeyRef.Key,
-					},
+		d.Spec.Template.Spec.Containers[0].Env = make([]corev1.EnvVar, 0, len(spec.Env))
+		for _, ev := range spec.Env {
+			kev := corev1.EnvVar{Name: ev.Name}
+			if ev.ValueFrom != nil {
+				kev.ValueFrom = &corev1.EnvVarSource{}
+				if ev.ValueFrom.SecretKeyRef != nil {
+					kev.ValueFrom.SecretKeyRef = &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: ev.ValueFrom.SecretKeyRef.Name},
+						Key:                  ev.ValueFrom.SecretKeyRef.Key,
+					}
 				}
-
-			case src.ConfigMapKeyRef != nil:
-				ev.ValueFrom = &corev1.EnvVarSource{
-					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: src.ConfigMapKeyRef.Name,
-						},
-						Key: src.ConfigMapKeyRef.Key,
-					},
+				if ev.ValueFrom.ConfigMapKeyRef != nil {
+					kev.ValueFrom.ConfigMapKeyRef = &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: ev.ValueFrom.ConfigMapKeyRef.Name},
+						Key:                  ev.ValueFrom.ConfigMapKeyRef.Key,
+					}
 				}
-
-			default:
-				ev.Value = src.Value
+			} else {
+				kev.Value = ev.Value
 			}
-
-			d.Spec.Template.Spec.Containers[0].Env = append(
-				d.Spec.Template.Spec.Containers[0].Env, ev)
+			d.Spec.Template.Spec.Containers[0].Env = append(d.Spec.Template.Spec.Containers[0].Env, kev)
 		}
 	}
 
 	// EnvFrom
-	if len(spec.EnvFrom) > 0 {
-		d.Spec.Template.Spec.Containers[0].EnvFrom = []corev1.EnvFromSource{}
-		for _, src := range spec.EnvFrom {
-			if src.ConfigMapRef != "" {
-				d.Spec.Template.Spec.Containers[0].EnvFrom = append(
-					d.Spec.Template.Spec.Containers[0].EnvFrom,
-					corev1.EnvFromSource{
-						ConfigMapRef: &corev1.ConfigMapEnvSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: src.ConfigMapRef,
-							},
-						},
+	if spec.EnvFrom != nil {
+		for _, name := range spec.EnvFrom.SecretRef {
+			d.Spec.Template.Spec.Containers[0].EnvFrom = append(
+				d.Spec.Template.Spec.Containers[0].EnvFrom,
+				corev1.EnvFromSource{
+					SecretRef: &corev1.SecretEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{Name: name},
 					},
-				)
-			}
-			if src.SecretRef != "" {
-				d.Spec.Template.Spec.Containers[0].EnvFrom = append(
-					d.Spec.Template.Spec.Containers[0].EnvFrom,
-					corev1.EnvFromSource{
-						SecretRef: &corev1.SecretEnvSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: src.SecretRef,
-							},
-						},
+				})
+		}
+		for _, name := range spec.EnvFrom.ConfigMapRef {
+			d.Spec.Template.Spec.Containers[0].EnvFrom = append(
+				d.Spec.Template.Spec.Containers[0].EnvFrom,
+				corev1.EnvFromSource{
+					ConfigMapRef: &corev1.ConfigMapEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{Name: name},
 					},
-				)
-			}
+				})
 		}
 	}
 
@@ -406,12 +371,6 @@ func validateSpec(spec ResolvedDeploymentSpec) error {
 	}
 	if spec.Image == "" {
 		missing = append(missing, "image")
-	}
-	if spec.Env == nil {
-		spec.Env = map[string]orktypes.EnvVarSource{}
-	}
-	if spec.EnvFrom == nil {
-		spec.EnvFrom = []orktypes.EnvFromSource{}
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("missing required fields: %v", missing)

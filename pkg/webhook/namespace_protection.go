@@ -64,9 +64,7 @@ func (ws *WebhookServer) namespaceProtectionHandler(w http.ResponseWriter, r *ht
 			Msg("namespace-protection: blocking CR creation/update in forbidden namespace")
 
 		metrics.RecordNamespaceProtectionBlocked(req.Resource.Resource)
-		if ws.namespaceStats != nil {
-			ws.namespaceStats.RecordBlocked()
-		}
+		ws.namespaceStatsFor(gvrToKey(req.Resource)).RecordBlocked()
 
 		ws.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{
 			UID:     req.UID,
@@ -83,9 +81,7 @@ func (ws *WebhookServer) namespaceProtectionHandler(w http.ResponseWriter, r *ht
 		return
 	}
 
-	if ws.namespaceStats != nil {
-		ws.namespaceStats.RecordAllowed()
-	}
+	ws.namespaceStatsFor(gvrToKey(req.Resource)).RecordAllowed()
 	_ = time.Since(start)
 
 	ws.writeAdmissionResponse(w, review.APIVersion, review.Kind, &AdmissionResponse{

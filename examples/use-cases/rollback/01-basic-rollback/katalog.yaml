@@ -12,11 +12,7 @@ metadata:
 spec:
   crds:
     webapp:
-      apiTypes:
-        group: rollback.orkestra.io
-        version: v1alpha1
-        kind: WebApp
-        plural: webapps
+      crdFile: ./crd.yaml
       workers: 2
       resync: 15s
 

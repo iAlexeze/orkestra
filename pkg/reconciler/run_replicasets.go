@@ -23,7 +23,7 @@ import (
 // without a separate onReconcile declaration.
 func runReplicaSets(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.ReplicaSetTemplateSource,
@@ -89,14 +89,7 @@ func runReplicaSets(
 			return fmt.Errorf("replicasets[%d]: %w", i, err)
 		}
 
-		// Parse static replicas
-		staticReplicas := 1
-		if resolved.Replicas != "" {
-			fmt.Sscanf(resolved.Replicas, "%d", &staticReplicas)
-		}
-
-		// 3. Build registry spec and apply
-		spec := orkreplicaset.Resolve(resolved, staticReplicas, resolver.OwnerName())
+		spec := orkreplicaset.Resolve(resolved, resolver.OwnerName())
 
 		if update {
 			if err := orkreplicaset.Update(ctx, kube, owner, spec); err != nil {

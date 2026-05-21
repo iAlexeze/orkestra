@@ -26,6 +26,9 @@ const (
 	// FileCR is the example CR file.
 	FileCR = "cr.yaml"
 
+	// FileE2E is the E2E test definition file for a Katalog pattern.
+	FileE2E = "e2e.yaml"
+
 	// DefaultKatalogRegistry is the official OCI path for Katalog patterns.
 	DefaultKatalogRegistry = "ghcr.io/orkspace/orkestra-registry/patterns/katalogs"
 
@@ -39,10 +42,10 @@ const (
 	DefaultRegistry = DefaultKatalogRegistry
 
 	// EnvPatternRegistry overrides the default katalog registry path.
-	EnvPatternRegistry = "ORKESTRA_REGISTRY"
+	EnvPatternRegistry = "ORK_REGISTRY"
 
 	// EnvMotifRegistry overrides the default motif registry path.
-	EnvMotifRegistry = "ORKESTRA_MOTIFS_REGISTRY"
+	EnvMotifRegistry = "ORK_MOTIFS_REGISTRY"
 
 	// EnvRegistry is an alias for EnvPatternRegistry.
 	EnvRegistry = EnvPatternRegistry

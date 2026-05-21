@@ -22,7 +22,7 @@ type RegistryEntry struct {
 
 ## When it is written
 
-`ResourceKatalog` is written exactly once during `konstructOrkestra`, before `DependencyKordinator` starts. The factory loop calls `Register` once per enabled CRD:
+`ResourceKatalog` is written exactly once during `konstructRuntime`, before `DependencyKordinator` starts. The factory loop calls `Register` once per enabled CRD:
 
 ```go
 resourceKatalog.Register(gvk, crd, informer, func() domain.Reconciler {
@@ -32,7 +32,7 @@ resourceKatalog.Register(gvk, crd, informer, func() domain.Reconciler {
 })
 ```
 
-After `konstructOrkestra` returns, the registry is never written again. All subsequent access is reads.
+After `konstructRuntime` returns, the registry is never written again. All subsequent access is reads.
 
 ## How it is read
 

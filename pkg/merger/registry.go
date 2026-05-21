@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/logger"
+	pkgregistry "github.com/orkspace/orkestra/pkg/registry"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
 
@@ -20,21 +20,22 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote"
 	orasauth "oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/credentials"
 )
 
-// registryKatalogPath is the root directory inside the registry repo where katalogs live.
-// registry/katalogs/<name>/katalog.yaml
-const (
-	registryKatalogPath = "registry/katalogs"
-	registryFileName    = "katalog.yaml"
-	orasPullTimeout     = 2 * time.Minute
-)
+const orasPullTimeout = 2 * time.Minute
 
-// optionalPatternFiles lists files fetched when present but not required.
-// motif.yaml may be bundled with a pattern when the pattern exposes a reusable Motif.
-var optionalPatternFiles = []string{"motif.yaml"}
-
-// ── Current registry loading (v2 protocol) ───────────────────────────────────
+// knownPatternFiles is the complete set of files a pattern may contain.
+// All are attempted during Git pulls; presence is validated after pull
+// by validatePatternStructure using the kind-specific required/optional rules.
+var knownPatternFiles = []string{
+	pkgregistry.FileKatalog,
+	pkgregistry.FileMotif,
+	pkgregistry.FileCRD,
+	pkgregistry.FileReadme,
+	pkgregistry.FileCR,
+	pkgregistry.FileE2E,
+}
 
 // loadRegistrySource loads a single registry pattern entry.
 //
@@ -42,7 +43,7 @@ var optionalPatternFiles = []string{"motif.yaml"}
 //  1. Parse url@version shorthand or url + version fields
 //  2. Determine pull method: OCI or Git
 //  3. Pull pattern to a temp directory
-//  4. Validate all 5 required files exist and are non-empty (fail fast)
+//  4. Validate pattern structure based on detected kind
 //  5. Load katalog.yaml or komposer.yaml based on UseKomposer
 //  6. Parse and return the CRD entries
 func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]orktypes.CRDEntry, error) {
@@ -55,25 +56,21 @@ func (m *Merger) loadRegistrySource(src orktypes.RegistrySource) (map[string]ork
 		Str("loads", src.SourceFile()).
 		Msg("merger: pulling registry source")
 
-	// Resolve auth credentials from environment variables
 	auth, err := resolveRegistryAuth(src.Auth)
 	if err != nil {
 		return nil, fmt.Errorf("registry %q: auth: %w", cleanURL, err)
 	}
 
-	// Pull the pattern to a temp directory
 	tmpDir, cleanup, err := m.pullPattern(cleanURL, version, src.OCI, auth)
 	if err != nil {
 		return nil, fmt.Errorf("registry %q@%s: pull failed: %w", cleanURL, version, err)
 	}
 	defer cleanup()
 
-	// Validate the five required files — fail fast on any violation
 	if err := validatePatternStructure(tmpDir, cleanURL, version); err != nil {
 		return nil, err
 	}
 
-	// Load the source file: katalog.yaml or komposer.yaml
 	sourceFile := filepath.Join(tmpDir, src.SourceFile())
 	sourcePath := fmt.Sprintf("registry:%s@%s/%s", cleanURL, version, src.SourceFile())
 
@@ -155,7 +152,6 @@ func (m *Merger) pullPattern(
 
 // ── OCI pull ──────────────────────────────────────────────────────────────────
 
-// pullOCIPattern fetches an OCI artifact and extracts it to tmpDir using ORAS Go library.
 func (m *Merger) pullOCIPattern(url, version, tmpDir string, auth *utils.FileAuth) error {
 	ref := strings.TrimPrefix(strings.TrimPrefix(url, "https://"), "http://")
 	ref = strings.TrimSuffix(ref, "/")
@@ -178,7 +174,6 @@ func (m *Merger) pullOCIPattern(url, version, tmpDir string, auth *utils.FileAut
 	return nil
 }
 
-// orasPull pulls an OCI artifact using the ORAS Go library into dst.
 func orasPull(ref, dst string, auth *utils.FileAuth) error {
 	ctx, cancel := context.WithTimeout(context.Background(), orasPullTimeout)
 	defer cancel()
@@ -215,6 +210,17 @@ func orasPull(ref, dst string, auth *utils.FileAuth) error {
 				return orasauth.EmptyCredential, nil
 			},
 		}
+	} else {
+		// No explicit auth — fall back to Docker credential store (~/.docker/config.json).
+		// This mirrors pkg/registry.Client.remoteRepo so `ork registry pull -f`
+		// and `ork registry pull <url>` use the same credential source.
+		if store, err := credentials.NewStoreFromDocker(credentials.StoreOptions{}); err == nil {
+			repo.Client = &orasauth.Client{
+				ClientID:   "orkestra",
+				Cache:      orasauth.DefaultCache,
+				Credential: credentials.Credential(store),
+			}
+		}
 	}
 
 	store, err := file.New(dst)
@@ -235,39 +241,6 @@ func orasPull(ref, dst string, auth *utils.FileAuth) error {
 	return nil
 }
 
-// shellOutOrasPull shells out to the oras CLI. Kept for fallback use.
-// DEPRECATED: prefer orasPull (Go library).
-func shellOutOrasPull(ref, dst string, auth *utils.FileAuth) error {
-	args := []string{"pull", "--output", dst}
-
-	if auth != nil {
-		switch strings.ToLower(auth.Type) {
-		case "basic":
-			if auth.Username != "" {
-				args = append(args, "--username", auth.Username)
-			}
-			if auth.Password != "" {
-				args = append(args, "--password", auth.Password)
-			}
-		case "bearer", "github":
-			if auth.BearerToken != "" {
-				args = append(args, "--password", auth.BearerToken)
-			}
-		}
-	}
-
-	args = append(args, ref)
-
-	cmd := exec.Command("oras", args...)
-	cmd.Dir = dst
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
-	}
-
-	return nil
-}
-
 // ── Git pull ──────────────────────────────────────────────────────────────────
 
 func (m *Merger) pullGitPattern(url, version, tmpDir string, auth *utils.FileAuth) error {
@@ -281,51 +254,39 @@ func (m *Merger) pullGitPattern(url, version, tmpDir string, auth *utils.FileAut
 	}
 }
 
-// pullGitHubPattern fetches each required file individually via GitHub raw URLs.
-// Optional files (motif.yaml) are fetched silently when present.
+// pullGitHubPattern fetches all known pattern files from a GitHub repository.
+// Files that don't exist are silently skipped; validatePatternStructure enforces
+// the kind-specific required set after the pull.
 func (m *Merger) pullGitHubPattern(url, version, tmpDir string, auth *utils.FileAuth) error {
-	for _, filename := range orktypes.RequiredFiles {
+	for _, filename := range knownPatternFiles {
 		rawURL := githubRawURL(url, version, filename)
 		data, err := utils.LoadFileWithAuth(rawURL, auth)
 		if err != nil {
-			return fmt.Errorf("fetching %q from GitHub at ref %q: %w", filename, version, err)
+			continue // file not present in this pattern — validated after pull
 		}
 		if err := os.WriteFile(filepath.Join(tmpDir, filename), data, 0644); err != nil {
 			return fmt.Errorf("writing %q: %w", filename, err)
 		}
 	}
-	for _, filename := range optionalPatternFiles {
-		rawURL := githubRawURL(url, version, filename)
-		if data, err := utils.LoadFileWithAuth(rawURL, auth); err == nil {
-			_ = os.WriteFile(filepath.Join(tmpDir, filename), data, 0644)
-		}
-	}
 	return nil
 }
 
-// pullGitLabPattern fetches each required file individually via GitLab raw URLs.
-// Optional files (motif.yaml) are fetched silently when present.
+// pullGitLabPattern fetches all known pattern files from a GitLab repository.
 func (m *Merger) pullGitLabPattern(url, version, tmpDir string, auth *utils.FileAuth) error {
-	for _, filename := range orktypes.RequiredFiles {
+	for _, filename := range knownPatternFiles {
 		rawURL := gitlabRawURL(url, version, filename)
 		data, err := utils.LoadFileWithAuth(rawURL, auth)
 		if err != nil {
-			return fmt.Errorf("fetching %q from GitLab at ref %q: %w", filename, version, err)
+			continue
 		}
 		if err := os.WriteFile(filepath.Join(tmpDir, filename), data, 0644); err != nil {
 			return fmt.Errorf("writing %q: %w", filename, err)
 		}
 	}
-	for _, filename := range optionalPatternFiles {
-		rawURL := gitlabRawURL(url, version, filename)
-		if data, err := utils.LoadFileWithAuth(rawURL, auth); err == nil {
-			_ = os.WriteFile(filepath.Join(tmpDir, filename), data, 0644)
-		}
-	}
 	return nil
 }
 
-// pullGenericGitPattern clones the repository and copies the required + optional files.
+// pullGenericGitPattern clones the repository and copies all known pattern files.
 func pullGenericGitPattern(url, version, tmpDir string, auth *utils.FileAuth) error {
 	cloneDir, err := os.MkdirTemp("", "orkestra-clone-*")
 	if err != nil {
@@ -338,10 +299,8 @@ func pullGenericGitPattern(url, version, tmpDir string, auth *utils.FileAuth) er
 		return err
 	}
 
-	allFiles := append(orktypes.RequiredFiles, optionalPatternFiles...)
-	for _, filename := range allFiles {
-		src := filepath.Join(cloneDir, filename)
-		data, err := os.ReadFile(src)
+	for _, filename := range knownPatternFiles {
+		data, err := os.ReadFile(filepath.Join(cloneDir, filename))
 		if err != nil {
 			continue
 		}
@@ -373,7 +332,6 @@ func (m *Merger) pullMotifFromGit(url, version, tmpDir string, auth *utils.FileA
 	return os.WriteFile(filepath.Join(tmpDir, "motif.yaml"), data, 0644)
 }
 
-// fetchMotifFromGenericGit clones a repo and copies motif.yaml.
 func (m *Merger) fetchMotifFromGenericGit(url, version, tmpDir string, auth *utils.FileAuth) error {
 	cloneDir, err := os.MkdirTemp("", "orkestra-motif-clone-*")
 	if err != nil {
@@ -395,174 +353,17 @@ func (m *Merger) fetchMotifFromGenericGit(url, version, tmpDir string, auth *uti
 
 // ── Pattern validation ────────────────────────────────────────────────────────
 
+// validatePatternStructure validates that dir contains a well-formed pattern.
+// Kind is auto-detected; required files are determined by the pattern kind.
+//
+// Katalog patterns require only katalog.yaml (crd.yaml, README.md, cr.yaml are optional).
+// Motif patterns require only motif.yaml.
 func validatePatternStructure(dir, url, version string) error {
-	var violations []string
-
-	for _, filename := range orktypes.RequiredFiles {
-		path := filepath.Join(dir, filename)
-
-		info, err := os.Stat(path)
-		if os.IsNotExist(err) {
-			violations = append(violations, fmt.Sprintf("  missing: %s", filename))
-			continue
-		}
-		if err != nil {
-			violations = append(violations, fmt.Sprintf("  error checking %s: %v", filename, err))
-			continue
-		}
-		if info.Size() == 0 {
-			violations = append(violations, fmt.Sprintf("  empty:   %s", filename))
-		}
-	}
-
-	if len(violations) == 0 {
-		return nil
-	}
-
-	return fmt.Errorf(
-		"registry pattern %q@%s failed structure validation:\n%s\n\n"+
-			"Every Orkestra registry pattern must contain these five files,\n"+
-			"each non-empty:\n"+
-			"  crd.yaml        the CRD definition\n"+
-			"  katalog.yaml    operator behavior and reconcile templates\n"+
-			"  komposer.yaml   example import showing how to consume this pattern\n"+
-			"  cr.yaml         example custom resource to test with\n"+
-			"  README.md       documentation — fields, overrides, examples\n\n"+
-			"See: https://docs.orkestra.io/registry/contributing",
-		url, version,
-		strings.Join(violations, "\n"),
-	)
-}
-
-// ── Deprecated registry protocol (catalog-map based) ─────────────────────────
-// The functions below implement the older registry.katalog map-based protocol.
-// New code should use loadRegistrySource (the v2 OCI/Git pull protocol).
-
-// loadRegistrySourceDeprecated loads all Katalog entries declared in one RegistrySource block
-// using the older catalog-map protocol.
-func (m *Merger) loadRegistrySourceDeprecated(src orktypes.RegistrySource) (map[string]orktypes.CRDEntry, error) {
-	registryURL, err := m.resolveRegistryURL(src.URL)
+	_, _, _, err := pkgregistry.ValidatePatternDirectory(dir)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("registry pattern %q@%s failed structure validation: %w", url, version, err)
 	}
-
-	if len(src.Katalog) == 0 {
-		logger.Warn().
-			Str("registry", registryURL).
-			Msg("merger: registry source has no katalog entries — nothing to load")
-		return nil, nil
-	}
-
-	auth, err := resolveRegistryAuth(src.Auth)
-	if err != nil {
-		return nil, fmt.Errorf("registry %q: auth: %w", registryURL, err)
-	}
-
-	allCRDs := make(map[string]orktypes.CRDEntry)
-
-	for name, ref := range src.Katalog {
-		crds, err := m.loadRegistryKatalog(registryURL, name, ref, auth)
-		if err != nil {
-			return nil, fmt.Errorf("registry %q: katalog %q: %w", registryURL, name, err)
-		}
-		for k, v := range crds {
-			allCRDs[k] = v
-		}
-
-		logger.Info().
-			Str("registry", registryURL).
-			Str("katalog", name).
-			Str("ref", ref.Ref()).
-			Int("crds", len(crds)).
-			Msg("merger: registry katalog loaded")
-	}
-
-	return allCRDs, nil
-}
-
-func (m *Merger) loadRegistryKatalog(
-	registryURL, name string,
-	ref orktypes.RegistryRef,
-	auth *utils.FileAuth,
-) (map[string]orktypes.CRDEntry, error) {
-	filePath := filepath.Join(registryKatalogPath, name, registryFileName)
-	gitRef := ref.Ref()
-
-	var data []byte
-	var err error
-
-	switch {
-	case isGitHubURL(registryURL):
-		rawURL := githubRawURL(registryURL, gitRef, filePath)
-		data, err = utils.LoadFileWithAuth(rawURL, auth)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"fetching %q at ref %q from GitHub registry: %w\n  URL tried: %s",
-				name, gitRef, err, rawURL,
-			)
-		}
-
-	case isGitLabURL(registryURL):
-		rawURL := gitlabRawURL(registryURL, gitRef, filePath)
-		data, err = utils.LoadFileWithAuth(rawURL, auth)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"fetching %q at ref %q from GitLab registry: %w\n  URL tried: %s",
-				name, gitRef, err, rawURL,
-			)
-		}
-
-	default:
-		data, err = m.fetchFromGitRegistry(registryURL, gitRef, filePath, auth)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"fetching %q at ref %q from git registry %q: %w",
-				name, gitRef, registryURL, err,
-			)
-		}
-	}
-
-	sourcePath := fmt.Sprintf("registry:%s/%s@%s", registryURL, name, gitRef)
-	doc, err := parseKatalogDoc(data, sourcePath)
-	if err != nil {
-		return nil, fmt.Errorf("parsing katalog %q: %w", name, err)
-	}
-	if doc == nil {
-		return nil, fmt.Errorf(
-			"katalog %q at ref %q is not a valid Katalog document — expected kind: Katalog at %s",
-			name, gitRef, filePath,
-		)
-	}
-
-	return m.loadKatalog(sourcePath, doc)
-}
-
-func (m *Merger) fetchFromGitRegistry(
-	registryURL, ref, filePath string,
-	auth *utils.FileAuth,
-) ([]byte, error) {
-	cloneURL := injectAuthIntoURL(registryURL, auth)
-
-	tmpDir, err := os.MkdirTemp("", "orkestra-registry-*")
-	if err != nil {
-		return nil, fmt.Errorf("creating temp dir: %w", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	if err := gitClone(cloneURL, tmpDir, ref); err != nil {
-		return nil, err
-	}
-
-	fullPath := filepath.Join(tmpDir, filePath)
-	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf(
-			"file %q not found in registry at ref %q — "+
-				"check that the katalog name and registry structure are correct",
-			filePath, ref,
-		)
-	}
-
-	return os.ReadFile(fullPath)
+	return nil
 }
 
 // ── Registry URL resolution ───────────────────────────────────────────────────
@@ -587,7 +388,7 @@ func (m *Merger) resolveRegistryURL(srcURL string) (string, error) {
 			"  1. ORK_REGISTRY environment variable:\n" +
 			"       export ORK_REGISTRY=https://github.com/myorg/orkestra-registry\n\n" +
 			"  2. Explicit url in the source block:\n" +
-			"       sources:\n" +
+			"       imports:\n" +
 			"         registry:\n" +
 			"           - url: https://github.com/myorg/orkestra-registry\n" +
 			"             katalog:\n" +

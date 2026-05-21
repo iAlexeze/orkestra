@@ -45,7 +45,7 @@ func Load(path string) (*orktypes.Motif, error) {
 //  1. File path (starts with ./, ../, /, or ends with .yaml/.yml)
 //  2. oci:// prefix → OCI pull (auto-detected, oci: field not required)
 //  3. Bare name (no scheme, no dots in registry host) → resolved against the
-//     default motif registry (ORKESTRA_MOTIFS_REGISTRY or ghcr.io/orkspace/orkestra-motifs)
+//     default motif registry (ORK_MOTIFS_REGISTRY or ghcr.io/orkspace/orkestra-motifs)
 //  4. Full OCI ref + oci: true → OCI pull (komposer-compatible form)
 //  5. Git URL (https://, http://, git@) → git pull
 func LoadImport(imp *orktypes.MotifImport) (*orktypes.Motif, error) {

@@ -17,7 +17,7 @@ data:
 
     # ── Sources ────────────────────────────────────────────────────────────────
 
-    sources:
+    imports:
       # OCI registry pattern — versioned, immutable
       # Pull a published operator pattern from the Orkestra registry
       registry:

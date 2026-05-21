@@ -38,7 +38,7 @@ clean:
 	@./setup-kind.sh delete $(CLUSTER_B) 2>/dev/null || true
 
 validate test:
-	ork validate -k $(KATALOG)
+	ork validate -f $(KATALOG)
 
 e2e:
 	@if [ -f $(E2E_FILE) ]; then \

@@ -11,7 +11,7 @@ Each notification is scoped to a **team**: a named group defined in the Katalog'
 ```
 condition evaluates true
         │
-        └── NotificationState.ProcessConditionNotifications(ctx, katalog, data, cond, now)
+        └── NotificationStack.ProcessConditionNotifications(ctx, data, cond, now)
                 │
                 ├── cond.Notify == nil or no Teams → return (no-op)
                 │
@@ -19,25 +19,27 @@ condition evaluates true
                         │
                         ├── look up team in katalog.Notification.Teams
                         ├── check interval gate (LastSent[key] + interval > now → skip)
+                        ├── build Event{KatalogName, CondKey, TeamName, Subject, Message, ...}
                         │
-                        └── dispatchTeamNotifications(ctx, katalog, teamName, team, cond, message, data)
+                        └── Notifier.Dispatch(ctx, event)
                                 │
-                                ├── email → sendEmailNotification   (email.go)
-                                └── slack → sendSlackNotification   (slack.go)
+                                ├── DirectNotifier → dispatchTeam → email/slack (standalone path)
+                                └── GatewayNotifier → POST <gatewayEndpoint>/notify (gateway path)
 ```
 
-## NotificationState
+## NotificationStack
 
-`NotificationState` holds a `LastSent` map keyed by `"<katalogName>|<conditionKey>|<teamName>"`. This prevents re-delivery while the condition remains true.
+`NotificationStack` is the entry point for all notification dispatch. It holds the `Katalog`, a `LastSent` map keyed by `"<katalogName>|<conditionKey>|<teamName>"`, and a `Notifier` that determines the dispatch path. `ProcessConditionNotifications` is defined on `*NotificationStack` and uses `s.Katalog` directly — the caller no longer passes a `*katalog.Katalog` parameter.
 
 - `conditionKey` encodes `field|operator|value` — it is stable across reconcile loops.
 - `LastSent` is in-process only. On restart, the clock resets and the next true evaluation will deliver.
+- The `Notifier` is either a `DirectNotifier` (standalone or outside cluster) or a `GatewayNotifier` (in-cluster with a gateway endpoint configured).
 
 ```go
-state := notification.NewNotificationState()
+stack := notification.NewNotificationStack(k, notifier)
 
 // called by reconciler condition loop:
-state.ProcessConditionNotifications(ctx, k, resolverData, cond, time.Now())
+s.ProcessConditionNotifications(ctx, data, cond, time.Now())
 ```
 
 ## Interval enforcement

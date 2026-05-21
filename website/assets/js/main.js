@@ -16,8 +16,10 @@
   var html = document.documentElement;
 
   function getTheme() {
-    // Default to dark mode
-    return localStorage.getItem(THEME_KEY) || 'dark';
+    // Respect saved preference; otherwise follow system preference; fallback to light
+    var saved = localStorage.getItem(THEME_KEY);
+    if (saved) return saved;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
 
   function applyTheme(theme) {
@@ -224,6 +226,20 @@
         if (pagesList) {
           pagesList.style.display = willOpen ? 'flex' : 'none';
         }
+      });
+    });
+
+    // Also toggle section when clicking the section title link
+    var sectionLinks = document.querySelectorAll('.sidebar-section-link');
+    sectionLinks.forEach(function(link) {
+      link.addEventListener('click', function() {
+        var section = link.closest('.sidebar-section');
+        if (!section) return;
+        var toggle = section.querySelector('.sidebar-section-toggle');
+        var pagesList = section.querySelector('.sidebar-section-pages');
+        section.classList.add('open');
+        if (toggle) toggle.setAttribute('aria-expanded', 'true');
+        if (pagesList) pagesList.style.display = 'flex';
       });
     });
   }

@@ -47,7 +47,7 @@ kubectl config use-context kind-orkestra-b && kubectl apply -f crd.yaml
 kubectl config use-context kind-orkestra-a
 
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --set service.type=NodePort \
   --set service.nodePort=30080 \
@@ -79,7 +79,7 @@ my-database   postgres:16-alpine  my-database.default.svc:5432     Running
 ```bash
 kubectl config use-context kind-orkestra-b
 
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
   --wait --timeout 120s
 

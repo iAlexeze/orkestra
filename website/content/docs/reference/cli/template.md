@@ -1,7 +1,6 @@
 ---
 title: "ork template"
-weight: 50
-description: "Render the merged, validated Katalog exactly as Orkestra will see it at runtime."
+weight: 33
 ---
 
 Render the merged, validated Katalog exactly as Orkestra will see it at runtime.
@@ -30,9 +29,3 @@ ork template --file ./komposer.yaml --graph
 ```
 
 ---
-
-## Related Documentation
-
-- [ork validate](./validate.md)
-- [ork run](./run.md)
-- [Katalog Schema](../katalog-schema.md)

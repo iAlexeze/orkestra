@@ -19,7 +19,10 @@
 
 package katalog
 
-import orktypes "github.com/orkspace/orkestra/pkg/types"
+import (
+	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
+)
 
 // notificationEnvDefaults returns the NotificationConfig from konfig,
 // or a zero-value reader when konfig is not wired (e.g. tests).
@@ -191,6 +194,23 @@ func (k *Katalog) SlackWebhook() string {
 // HasNotification returns whether a katalog has notification configured or not
 func (k *Katalog) HasNotification() bool {
 	return k.Notification != nil
+}
+
+// IsNotificationStandalone reports whether notification dispatch runs directly
+// on the runtime without a gateway.
+//
+// Precedence:
+//
+//	YAML notification.standalone declared → use YAML value
+//	Not in a Kubernetes cluster (local dev / CLI) → implicit true
+//	In-cluster, no explicit declaration → false (gateway required)
+func (k *Katalog) IsNotificationStandalone() bool {
+	if k.Notification != nil && k.Notification.Standalone != nil {
+		return *k.Notification.Standalone
+	}
+	// Outside a cluster there is no gateway infrastructure.
+	// Fall back to standalone so local dev and CLI usage work without one.
+	return !utils.IsRunningInCluster()
 }
 
 // HasTeams returns whether a katalog has teams configured or not

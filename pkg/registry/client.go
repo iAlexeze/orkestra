@@ -50,7 +50,9 @@ func NewClient() (*Client, error) {
 
 // Push validates the directory, auto-detects the pattern kind, and pushes all
 // files to the registry. Returns the manifest digest on success.
-func (c *Client) Push(ctx context.Context, ref *Ref, dir string, progress func(file string, size int64)) (string, error) {
+// e2eMeta is optional; when non-nil its fields are embedded as io.orkestra.e2e.*
+// OCI annotations on the published artifact.
+func (c *Client) Push(ctx context.Context, ref *Ref, dir string, e2eMeta *PatternE2E, progress func(file string, size int64)) (string, error) {
 	patternKind, spec, files, err := ValidatePatternDirectory(dir)
 	if err != nil {
 		return "", fmt.Errorf("validation failed: %w", err)
@@ -59,6 +61,10 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, progress func(f
 	meta, err := LoadPatternMeta(dir, spec)
 	if err != nil {
 		return "", fmt.Errorf("reading metadata: %w", err)
+	}
+
+	if e2eMeta != nil {
+		meta.E2E = e2eMeta
 	}
 
 	store := memory.New()
@@ -112,6 +118,9 @@ func (c *Client) Push(ctx context.Context, ref *Ref, dir string, progress func(f
 		Tags:          meta.Tags,
 		Author:        meta.Author,
 		Kind:          string(patternKind),
+	}
+	if meta.E2E != nil {
+		entry.E2EStatus = meta.E2E.Status
 	}
 	if err := c.updateIndex(ctx, ref, entry); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: index update failed: %v\n", err)
@@ -358,6 +367,18 @@ func artifactMetaToAnnotations(meta *PatternMeta, ref *Ref) map[string]string {
 	if meta.Author != "" {
 		ann["org.opencontainers.image.authors"] = meta.Author
 	}
+	if meta.E2E != nil {
+		ann["io.orkestra.e2e.status"] = meta.E2E.Status
+		if meta.E2E.Duration != "" {
+			ann["io.orkestra.e2e.duration"] = meta.E2E.Duration
+		}
+		if meta.E2E.TestedAt != "" {
+			ann["io.orkestra.e2e.tested_at"] = meta.E2E.TestedAt
+		}
+		if meta.E2E.Runner != "" {
+			ann["io.orkestra.e2e.runner"] = meta.E2E.Runner
+		}
+	}
 	return ann
 }
 
@@ -387,7 +408,7 @@ func annotationsToMeta(ann map[string]string) *PatternMeta {
 	} else if t := ann["io.orkestra.pattern.tags"]; t != "" {
 		tags = strings.Split(t, ",")
 	}
-	return &PatternMeta{
+	meta := &PatternMeta{
 		Kind:        PatternKind(kindStr),
 		Name:        name,
 		Version:     version,
@@ -396,4 +417,13 @@ func annotationsToMeta(ann map[string]string) *PatternMeta {
 		License:     license,
 		Tags:        tags,
 	}
+	if status := ann["io.orkestra.e2e.status"]; status != "" {
+		meta.E2E = &PatternE2E{
+			Status:   status,
+			Duration: ann["io.orkestra.e2e.duration"],
+			TestedAt: ann["io.orkestra.e2e.tested_at"],
+			Runner:   ann["io.orkestra.e2e.runner"],
+		}
+	}
+	return meta
 }

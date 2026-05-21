@@ -39,23 +39,25 @@ Verify:
 kubectl get configmap app-config -n platform
 ```
 
-### 2. Install the CRD
+### 2. Start the operator
 
 ```bash
-kubectl apply -f crd.yaml
+ork run
 ```
 
-### 3. Start the operator
+Orkestra reads `crdFile: ./crd.yaml`, applies the CRD and `cr.yaml` to the cluster, and starts the operator.
+
+### 3. Open the Control Center
+
+In a third terminal:
 
 ```bash
-ork run --file katalog.yaml
+ork control
+# username:password → orkestra
+# username:password → orkestra
 ```
 
-### 4. Apply the CR
-
-```bash
-kubectl apply -f cr.yaml
-```
+Open [http://localhost:8081](http://localhost:8081) to see the live operator.
 
 ### 5. Verify copies exist
 
@@ -109,12 +111,52 @@ A platform primitive that solves a real problem — distributing shared configur
 
 ---
 
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, applies setup fixtures, starts the operator, applies the CR, asserts every expectation, then tears down:
+
+```bash
+ork e2e -f e2e.yaml
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: ConfigMap distributed to team-alpha
+    after: cr-applied
+    timeout: 60s
+    resources:
+      - kind: ConfigMap
+        name: app-config
+        namespace: team-alpha
+
+  - name: ConfigMap distributed to team-beta
+    after: cr-applied
+    timeout: 60s
+    resources:
+      - kind: ConfigMap
+        name: app-config
+        namespace: team-beta
+
+  - name: ConfigMaps removed on delete
+    after: cr-deleted
+    timeout: 30s
+    resources:
+      - kind: ConfigMap
+        name: app-config
+        namespace: team-alpha
+        count: 0
+      - kind: ConfigMap
+        name: app-config
+        namespace: team-beta
+        count: 0
+```
+
+---
+
 ## Cleanup
 
 ```bash
 chmod +x cleanup.sh && ./cleanup.sh
 ```
-
----
-
-If you want, I can also generate the matching `katalog.yaml` entry for ConfigMapDistribution or the reconciler template for copying ConfigMaps.

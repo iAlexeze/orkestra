@@ -16,7 +16,7 @@ Katalog YAML
   └── providers:
         └── aws: [...]           ← block name + declarations
 
-konstructOrkestra (internal/construct.go)
+konstructRuntime (internal/construct.go)
   └── loadProviders(ctx)         ← builds the ProviderRegistry
   └── factory closure            ← captures providerRegistry
         └── NewGenericReconciler(..., providerRegistry)
@@ -40,7 +40,7 @@ On CR deletion (finalizer):
 ```
 
 **Key insight:** The `ProviderRegistry` is captured in the factory closure in
-`konstructOrkestra`. It is declared before the factory loop so all CRD factories
+`konstructRuntime`. It is declared before the factory loop so all CRD factories
 capture the same fully-initialised registry. The registry never passes through
 `DependencyKordinator` or `ReconcilerFactory` — the closure handles it.
 

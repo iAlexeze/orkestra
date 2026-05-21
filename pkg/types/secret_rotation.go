@@ -147,6 +147,10 @@ func ParseTimeDuration(s string) (time.Duration, error) {
 		return 0, fmt.Errorf("empty duration")
 	}
 
+	if s == "never" {
+		return 0, nil
+	}
+
 	s = strings.TrimSpace(s)
 
 	// Years (365 days)

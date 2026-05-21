@@ -1,8 +1,9 @@
 ---
 title: "Orkestra Runtime API Reference"
-weight: 50
-description: "The Orkestra operator exposes a small, stable HTTP API for inspecting CRDs,"
+weight: 38
 ---
+
+# Orkestra Runtime API Reference
 
 The Orkestra operator exposes a small, stable HTTP API for inspecting CRDs,
 their reconcilers, and their health status.

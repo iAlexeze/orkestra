@@ -12,17 +12,7 @@ metadata:
 spec:
   crds:
     pipeline:
-      apiTypes:
-        group: demo.orkestra.io
-        version: v1alpha1
-        kind: Pipeline
-        plural: pipelines
-        object: Pipeline
-        objectList: PipelineList
-        # location enables typed mode — the informer delivers *apiv1.Pipeline
-        # instead of *unstructured.Unstructured.
-        location: github.com/orkspace/orkestra-mixed-operator-pattern/10-constructor/api/v1alpha1
-
+      crdFile: ./crd.yaml
       workers: 5       # pipelines can be IO-bound — more workers tolerated
       resync: 10s      # short resync to check Job completion quickly
 

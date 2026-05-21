@@ -24,7 +24,7 @@ import (
 // Create creates a Service owned by the CR if it does not already exist.
 // Idempotent — if the Service exists, does nothing and returns nil.
 // Owner reference is set so the Service is garbage collected when the CR is deleted.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedServiceSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedServiceSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("service.Create: invalid spec: %w", err)
 	}
@@ -65,7 +65,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 // Update reconciles an existing Service to match the resolved spec.
 // Services are largely immutable on type/selector — only port changes are patched.
 // If the Service does not exist, creates it.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedServiceSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedServiceSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("service.Update: invalid spec: %w", err)
 	}
@@ -91,14 +91,24 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 	drifted := false
 	updated := existing.DeepCopy()
 
+	// port
 	if len(existing.Spec.Ports) > 0 && existing.Spec.Ports[0].Port != spec.Port {
 		updated.Spec.Ports[0].Port = spec.Port
-		updated.Spec.Ports[0].TargetPort = intstr.FromInt(int(spec.TargetPort))
 		drifted = true
 		logger.Info().
 			Str("service", spec.Name).
 			Int32("desired", spec.Port).
 			Msg("service port drifted")
+	}
+
+	// target port
+	if len(existing.Spec.Ports) > 0 && existing.Spec.Ports[0].TargetPort.IntVal != spec.TargetPort {
+		updated.Spec.Ports[0].TargetPort = intstr.FromInt(int(spec.TargetPort))
+		drifted = true
+		logger.Info().
+			Str("service", spec.Name).
+			Int32("desired", spec.TargetPort).
+			Msg("service target port drifted")
 	}
 
 	if !drifted {
@@ -122,7 +132,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Delete deletes the Service if it exists.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedServiceSpec) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedServiceSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -150,7 +160,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the Service if it exists and is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().CoreV1().Services(namespace).

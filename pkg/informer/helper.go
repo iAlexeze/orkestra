@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"errors"
 	"github.com/orkspace/orkestra/domain"
-	orkerror "github.com/orkspace/orkestra/pkg/error"
+
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -118,7 +119,7 @@ func (f *Factory) Start(ctx context.Context) error {
 	defer f.mu.Unlock()
 
 	if f.started.Load() {
-		return orkerror.ErrFactoryAlreadyStarted
+		return errors.New("factory already started")
 	}
 
 	// Signal readiness first — unblocks any List/Watch already waiting

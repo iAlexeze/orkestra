@@ -508,10 +508,10 @@
               <div><div style="color:var(--text-muted);font-size:11px">P95 Latency</div><div style="font-size:20px;font-weight:700">{{ printf "%.2f" .CRD.Conversion.P95LatencyMs }}ms</div></div>
             </div>
             {{ else }}
-            <div style="font-size:13px;color:var(--text-muted)">Conversion webhook not enabled. Set <span class="cc-code">ENABLE_CONVERSION=true</span> and configure TLS certificates.</div>
+            <div style="font-size:13px;color:var(--text-muted)">Conversion webhook not enabled. Set <span class="cc-code">security.conversion.enabled: true</span> in the Katalog to enable.</div>
             {{ end }}
           {{ else }}
-          <div style="font-size:13px;color:var(--text-muted)">Conversion webhook not enabled. Set <span class="cc-code">ENABLE_CONVERSION=true</span> to enable version conversion.</div>
+          <div style="font-size:13px;color:var(--text-muted)">Conversion webhook not enabled. Set <span class="cc-code">security.conversion.enabled: true</span> in the Katalog to enable.</div>
           {{ end }}
         </div>
       </div>
@@ -543,10 +543,10 @@
               </div>
             </div>
             {{ else }}
-            <div style="font-size:13px;color:var(--text-muted)">Admission webhooks not enabled. Set <span class="cc-code">ENABLE_ADMISSION_WEBHOOK=true</span> and configure TLS certificates.</div>
+            <div style="font-size:13px;color:var(--text-muted)">Admission webhooks not enabled. Set <span class="cc-code">security.webhooks.admission.enabled: true</span> in the Katalog to enable.</div>
             {{ end }}
           {{ else }}
-          <div style="font-size:13px;color:var(--text-muted)">Admission webhooks not enabled. Set <span class="cc-code">ENABLE_ADMISSION_WEBHOOK=true</span> to enable admission webhooks.</div>
+          <div style="font-size:13px;color:var(--text-muted)">Admission webhooks not enabled. Set <span class="cc-code">security.webhooks.admission.enabled: true</span> in the Katalog to enable.</div>
           {{ end }}
         </div>
       </div>

@@ -9,6 +9,7 @@ A single `WebhookServer` binds one HTTPS listener and handles all webhook traffi
 - `/convert` — CRD version conversion
 - `/deletion-protection` — block deletion of managed CRDs and Orkestra resources
 - `/namespace-protection` — enforce allowed/restricted namespace rules
+- `/strict-mode-protection` — block removal of the deletion-protection label (strict mode only)
 
 The HTTPS server starts only when the Katalog declares at least one webhook capability. When no capabilities are declared, `Start()` is a no-op.
 
@@ -26,6 +27,7 @@ The HTTPS server starts only when the Katalog declares at least one webhook capa
 | `/convert` handler | `conversion.go` |
 | `/deletion-protection` handler | `deletion_protection.go` |
 | `/namespace-protection` handler | `namespace_protection.go` |
+| `/strict-mode-protection` handler | `strict_mode_protection.go` |
 
 ## Separation from pkg/health
 
@@ -41,7 +43,7 @@ NewWebhookServer(kubeClient, katalog, konfig)
 ws.SetCertManager(certMgr)   ← optional, only when certs were auto-generated
     ↓
 ws.Start(ctx)
-    • resolves deletion/namespace protection state from Katalog
+    • resolves deletion/namespace/strict-mode protection state from Katalog
     • registers HTTPS endpoints based on declared capabilities
     • starts HTTPS server (skipped if no capabilities declared)
     • registers ValidatingWebhookConfiguration / MutatingWebhookConfiguration (in-cluster only)

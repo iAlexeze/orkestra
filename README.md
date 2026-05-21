@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./docs/assets/logo.png" alt="Orkestra" height="96" />
+  <img src="./documentation/assets/logo.png" alt="Orkestra" height="96" />
 
   <h1>Orkestra</h1>
   <p><strong>A runtime for Kubernetes operators.</strong></p>
@@ -8,30 +8,34 @@
   <p>
     <a href="https://goreportcard.com/report/github.com/orkspace/orkestra"><img src="https://goreportcard.com/badge/github.com/orkspace/orkestra" alt="Go Report Card" /></a>
     <a href="https://github.com/orkspace/orkestra/releases"><img src="https://img.shields.io/github/v/release/orkspace/orkestra" alt="Release" /></a>
+    <a href="https://artifacthub.io/packages/search?repo=orkestra"><img src="https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/orkestra" alt="Artifact Hub" /></a>
     <img src="https://img.shields.io/badge/Go-1.22+-00ADD8.svg" alt="Go" />
     <img src="https://img.shields.io/badge/Kubernetes-1.28+-326CE5.svg" alt="Kubernetes" />
     <img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License" />
   </p>
 
   <p>
-    <a href="https://orkestra.readthedocs.io">Docs</a> ·
     <a href="https://docs.orkestra.sh/getting-started">Quick Start</a> ·
+    <a href="https://docs.orkestra.sh">Docs</a> ·
     <a href="https://github.com/orkspace/orkestra/discussions">Discussions</a>
   </p>
 </div>
 
 ---
 
-You have a CRD. Kubernetes stores it, validates it, and serves it.
+You have a **CRD**. Kubernetes stores it, validates it, and serves it.
 
-The only missing piece is something that watches it and acts on it.
+The only missing piece is something that **watches** it and **acts** on it.
 
-Traditionally, that means Go. Informers, workqueues, reconcile loops, code generation, Dockerfiles, Helm charts. A software project per operator. Most engineers never start.
+Traditionally that means **Go**: informers, workqueues, reconcile loops, code generation, Dockerfiles, Helm charts — a software project per operator. Most engineers never start. Teams that do spend weeks before the first CR reconciles.
 
 Orkestra removes that entirely.
 
+---
+
+## Declare
+
 ```yaml
-# Declare
 apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
@@ -39,12 +43,9 @@ metadata:
 spec:
   crds:
     website:
-      apiTypes:
-        group: demo.orkestra.io
-        version: v1alpha1
-        kind: Website
-        plural: websites
-      operatorBox:               # isolated environment for this operator in the runtime
+      crdFile: ./crd.yaml
+      crFiles: [./cr.yaml]
+      operatorBox:
         onCreate:
           deployments:
             - name: "{{ .metadata.name }}"
@@ -52,54 +53,52 @@ spec:
               replicas: "{{ .spec.replicas }}"
               reconcile: true
           services:
-            - name: "{{ .metadata.name }}"
+            - name: "{{ .metadata.name }}-svc"
               port: 80
               targetPort: "{{ .spec.port }}"
               reconcile: true
 ```
 
+That is the whole operator.
+
+## Run
+
 ```bash
-# Run
-ork run -f katalog.yaml
-kubectl apply -f website.yaml
+ork run
 ```
 
-Orkestra creates the Deployment and Service, sets owner references, writes status, emits events, corrects drift, exposes metrics and a control center — without a single line of Go.
+Orkestra reads the Katalog, applies the CRD and CR, starts the operator, creates the Deployment and Service, sets owner references on both, writes status, emits Kubernetes events, corrects drift, and exposes health, metrics, and a control center.
 
-**See Control Center:**
-```bash
-ork control start
+Not a single line of Go.
 
-# → localhost:8081
-```
-
-**Your CRD is enough. The rest is just a Katalog.**
+*Your CRD is enough. The rest is just a Katalog.*
 
 ---
 
 ## What every CRD gets
 
-Every CRD declared in a Katalog becomes a complete, isolated operator:
+Every CRD declared in a Katalog becomes a complete, isolated operator. Nothing to configure.
 
 | | |
 |---|---|
 | **Informer** | Watches your exact GVK. In-memory cache. Zero API calls on read. |
 | **Workqueue** | Per-CRD. Rate-limited. Deduplicated. Isolated from every other CRD. |
-| **Worker pool** | Configurable. A panic in one CRD does not affect any other. |
+| **Worker pool** | Configurable concurrency. A panic in one CRD does not affect any other. |
 | **Drift correction** | `reconcile: true` — desired state is enforced on every cycle. |
-| **Safe reconcile** | Failures in one operatroBox is contained, logged and does not affect the runtime or other CRDs. |
-| **Owner references** | Child resources deleted when the CR is deleted. |
+| **Owner references** | Child resources deleted when the CR is deleted. No `onDelete` logic needed. |
 | **Finalizers** | CRs protected from dirty deletion automatically. |
 | **Events** | Every reconcile is a traceable Kubernetes event. |
-| **Leader election** | One active instance. Followers hold warm caches. Failover < 15s. |
-| **Status** | `Ready` condition + declarative status fields after every reconcile. |
-| **Health API** | `/katalog/{crd}/health`, `/katalog/{crd}/cr`, `/metrics`. |
-| **Prometheus metrics** | Reconcile totals, queue depth, error rate — all per CRD. |
-| **Control Center** | Realtime visibility per CRD. |
+| **Leader election** | One active instance. Followers hold warm caches. Failover in under 15s. |
+| **Status** | `Ready` condition + your own status fields written after every reconcile. |
+| **Health API** | `/katalog/{crd}/health`, `/katalog/{crd}/cr`, `/metrics` — per CRD. |
+| **Prometheus metrics** | Reconcile totals, queue depth, error rate — labeled by GVK. |
+| **Deletion protection** | Orkestra and everything it manages cannot be accidentally `kubectl delete`. |
+| **Control Center** | Realtime visibility per CRD, per Katalog, across instances. |
 
-<!-- Fifteen CRDs. One process. [~47 MB](https://cc.orkestra.sh). -->
+The model is not new. `kube-controller-manager` runs Deployment, StatefulSet, Job, ReplicaSet, and a dozen others in one process with full per-controller isolation. Orkestra brings the same model to your custom resources.
 
 ---
+
 ## Getting started
 
 ```bash
@@ -109,127 +108,195 @@ brew install orkspace/tap/ork orkspace/tap/orkcc
 # Install (Linux)
 curl -sSL https://get.orkestra.sh | bash
 
-# Initialize an operator
-ork init my-operator
-cd my-operator
+# Initialize in the current directory (like terraform init)
+ork init
 
-# Apply the CRD
-kubectl apply -f examples/beginner/01-hello-website/crd.yaml
+# Or create a new folder
+ork init my-operator && cd my-operator
 
-# Run the operator runtime
-ork run -f examples/beginner/01-hello-website/katalog.yaml
+# Run
+ork run
+```
 
-# Apply a CustomResource
-kubectl apply -f examples/beginner/01-hello-website/cr.yaml
+`ork init` writes a `katalog.yaml`, `crd.yaml`, and `cr.yaml` — a complete, runnable website operator. Edit the CRD to match your domain and you have your first operator.
+
+For working examples across beginner → advanced patterns:
+
+```bash
+ork init --pack beginner
+cd beginner/01-hello-website
+ork run
 ```
 
 ---
 
-### Watch live on Control Center
-In another terminal, run:
+## Visualize in Control Center
+
+In another terminal:
 
 ```bash
-ork control start
-
+ork control
 # → localhost:8081
+# username:password → orkestra
 ```
 
-For production, deploy with Helm:
+![Control Center — multi-Katalog view](./documentation/assets/controlcenter/control-center-landing.png)
+
+![Control Center — per-Katalog panel](./documentation/assets/controlcenter/control-panel-website.png)
+
+Three Katalogs. 15 CRDs. 94 workers. 2,761 live resources. One process.
+
+Multi-instance aggregation: one dashboard for multiple Orkestra runtimes across clusters.
+
+---
+
+## Declarative E2E
+
+Testing operators end-to-end is notoriously hard. A test has to spin up a cluster, apply the CRD, start the operator, apply a CR, assert that child resources appeared in the right state, and verify cleanup when the CR is deleted. Most teams skip it entirely or write brittle shell scripts.
+
+Orkestra makes it declarative:
+
+```yaml
+# e2e.yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: E2E
+metadata:
+  name: admission-webhooks-e2e
+  description: Verify webhooks accept valid CRs and reject invalid ones at apply time
+
+spec:
+  katalog: ./katalog.yaml
+  crd: ./crd.yaml
+  cr: ./cr-valid.yaml
+
+  cluster:
+    provider: kind
+    name: ork-e2e
+    reuse: false
+
+  expect:
+    - name: Valid CR accepted — Deployment created
+      after: cr-applied
+      timeout: 90s
+      resources:
+        - kind: Deployment
+          name: my-platform
+          namespace: default
+          ready: true
+
+    - name: Invalid CR rejected by webhook
+      after: cr-applied
+      timeout: 30s
+      commands:
+        - run: kubectl apply -f ./cr-bad.yaml
+          exitCode: 1
+          outputContains: "denied the request"
+
+    - name: Deployment removed on delete
+      after: cr-deleted
+      timeout: 30s
+      resources:
+        - kind: Deployment
+          name: my-platform
+          namespace: default
+          count: 0
+```
 
 ```bash
-helm install orkestra orkestra/orkestra \
-  --set runtime.katalog.existingConfigMap=my-platform-katalog \
-  --namespace orkestra-system \
-  --create-namespace
+ork e2e
 ```
 
-The same Katalog you ran locally is what runs in production.
-> See [four steps to production](https://orkspace.github.io/orkestra).
+`commands:` lets you assert on `kubectl` exit codes and output — including that a bad CR was rejected, that a protected CRD cannot be deleted, or that a namespace-protected apply fails with the expected message. Not just "resource exists" — full behavior assertions.
 
 ---
 
-## By the numbers
+## Features
 
-| | Traditional | Orkestra |
-|---|---|---|
-| First operator | Days to weeks | Under 1 hour |
-| Lines of Go | 400+ per operator | 0 |
-| Memory (15 operators) | 750 MB – 3 GB | ~47 MB |
-| Conversion webhook | Separate deployment | Built-in |
-| Admission webhook | Separate deployment | Built-in |
-| Deployments to manage | One per operator | One |
+### Status
 
----
-
-## Orkestra Registry
-
-The registry is the package manager operators never had.
-
-Traditional operators are binaries. One per CRD. One deployment per operator. Ten operators, ten processes, gigabytes of memory, ten release cycles to maintain. The ecosystem grew this way because the pattern demanded it.
-
-Orkestra changes the unit of distribution. Operators are **Katalogs** — YAML **patterns** packaged as OCI artifacts. The runtime is already installed. The artifact tells it what to do.
-
-```yaml
-sources:
-  registry:
-    - url: ghcr.io/orkspace/registry/postgres:v14
-      oci: true
-    - url: ghcr.io/orkspace/registry/redis:v7
-      oci: true
-```
-
-That is two complete operators. No binaries. No deployments. One Orkestra process runs both.
-
-Operators are now **assembled** from the registry, **composed** with local overrides, **upgraded** by changing a version tag, and **shared** by pushing a Katalog to any OCI-compatible registry.
-
-```yaml
-spec:
-  crds:
-    postgres:
-      workers: 8   # production override — everything else from the registry
-```
-
-Full documentation: [Orkestra Registry](https://docs.orkestra.sh/orkestra-registry/)
-
----
-## Operator Autoscaler
-
-Every CRD in Orkestra runs inside an isolated **operatorBox:** with its own workers, queue, and metrics. The **Operator Autoscaler** lets you scale these dynamically — no Go code, no external controller.
+Orkestra writes the `Ready` condition automatically. Add your own fields with template expressions that resolve against the live CR and its children:
 
 ```yaml
 operatorBox:
-  autoscale:
-    interval: 30s   # how often to evaluate conditions
-    cooldown: 2m    # how long conditions must be false before reverting
-
-    conditions:
-      when:
-        # Scale based on this operator's own metrics
-        - field: metrics.queueDepth
-          greaterThan: "300"
-
-        # Or scale based on another operator's metrics (Cross IPC)
-        - field: cross.db.metrics.queueDepth
-          greaterThan: "500"
-        - field: cross.db.metrics.workersBusyPercent
-          greaterThan: "70"
-
-    do:
-      workers: 12
-      queueDepth: 1000
+  status:
+    fields:
+      - path: phase
+        value: "Running"
+      - path: endpoint
+        value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
+      - path: allReplicasReady
+        value: "{{ allReplicasReady .children.deployment }}"
 ```
 
-When conditions are true, Orkestra applies the overrides immediately.  
-When they’re false — and the cooldown has elapsed — it restores the CRD’s baseline.
+`allReplicasReady` is a [Note](https://docs.orkestra.sh/docs/reference/orkestra-notes) — one of 200+ built-in functions that read live cluster state. The result is written to the CR's `/status` subresource after every reconcile. No `updateStatus` calls. No diff logic.
 
-Autoscaling is **declarative, safe, and fully reversible**.
+```bash
+ork notes              # browse all built-in functions
+ork notes search replica
+ork notes show allReplicasReady
+```
 
 ---
 
+### Conditional provisioning
 
-## Validation and mutation
+Resources are created only when conditions are met. No if/else in Go. No custom controllers.
 
-Rules live in the Katalog. No separate webhook server. No TLS configuration.
+```yaml
+operatorBox:
+  onCreate:
+    services:
+      - name: "{{ .metadata.name }}-lb"
+        type: LoadBalancer
+        when:
+          - field: spec.tier
+            notEquals: free
+
+    configMaps:
+      - name: "{{ .metadata.name }}-debug"
+        when:
+          - field: spec.environment
+            notEquals: production
+```
+
+Condition operators: `equals`, `notEquals`, `greaterThan`, `lessThan`, `prefix`, `suffix`, `contains`, `exists`, `notExists`.
+
+The LoadBalancer Service exists only when `spec.tier != free`. The debug ConfigMap exists everywhere else. The operator responds to spec changes without redeployment.
+
+---
+
+### Cross-operator IPC
+
+One operator reads another's state explicitly. No shared caches. No hidden coupling. Data comes from the informer cache — zero API calls.
+
+```yaml
+operatorBox:
+  cross:
+    - crd: database
+      selector:
+        name: "{{ .metadata.name }}-db"
+        namespace: "{{ .metadata.namespace }}"
+      as: db
+
+  onCreate:
+    deployments:
+      - name: "{{ .metadata.name }}"
+        image: "{{ .spec.image }}"
+        env:
+          - name: DB_HOST
+            value: "{{ .cross.db.status.endpoint }}"
+        when:
+          - field: "{{ phase .cross.db }}"
+            equals: Ready
+```
+
+The Deployment is not created until the database CR is `Ready`. The endpoint is injected at reconcile time. No polling. No coordination code.
+
+---
+
+### Validation and mutation
+
+Rules declared in the Katalog. No separate webhook server. No TLS configuration.
 
 ```yaml
 validation:
@@ -238,6 +305,11 @@ validation:
       prefix: "myorg/"
       message: "images must come from the internal registry"
       action: deny
+
+    - field: spec.environment
+      operator: exists
+      message: "declare environment for observability"
+      action: warn
 
 mutation:
   mutateFirst: true
@@ -248,61 +320,15 @@ mutation:
       default: "8080"
 ```
 
-With `ENABLE_ADMISSION_WEBHOOK=true`, or `security.webhooks.admission.enabled=true` these intercept `kubectl apply` synchronously at the API server. Without it, they run on every reconcile. One declaration. Two enforcement points.
+Each rule enforces at two points: **admission time** (`Gateway` intercepts `kubectl apply`) and **reconcile time** (`Runtime` re-evaluates on every cycle). One declaration. Two enforcement points.
+
+Webhooks are opt-in via `security.webhooks.admission.enabled: true` and enable `gateway` in helm [values](https://github.com/orkspace/orkestra/blob/main/charts/orkestra/values.yaml#L159). Without them, rules still run on every reconcile.
 
 ---
 
-## Conditional provisioning
+### Multi-version CRD conversion
 
-Resources are created only when conditions are met. No if/else in Go. No custom controllers.
-
-```yaml
-operatorBox:
-  default: true
-  onReconcile:
-    services:
-      - name: "{{ .metadata.name }}-lb"
-        type: LoadBalancer
-        when:
-          - field: spec.environment
-            equals: production
-    configMaps:
-      - name: "{{ .metadata.name }}-debug"
-        when:
-          - field: spec.environment
-            notEquals: production
-```
-
-The `LoadBalancer` Service exists only in production. The debug `ConfigMap` exists everywhere else. The operator responds to spec changes without redeployment.
-
----
-
-## Status
-
-```yaml
-operatorBox:
-  default: true
-  status:
-    fields:
-      - path: phase
-        value: "{{ ternary .spec.suspend \"Suspended\" \"Active\" }}"
-      - path: endpoint
-        value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc.cluster.local"
-      - path: readyReplicas
-        value: "{{ get .children.deployment "status" "readyReplicas" }}"
-```
-
-Status fields are resolved from the live CR and its children after every reconcile. No `updateStatus` calls. No diff logic. Declare what the status should contain. Orkestra writes it.
-
----
-
-## Multi-version CRD conversion
-
-When your schema evolves, Orkestra gives you two declarative options.
-
-**Option 1 — Kubernetes conversion webhook (built-in)**
-
-The same process that runs your operators serves the `/convert` endpoint. No separate webhook deployment. No additional TLS.
+Schema evolves without a separate webhook deployment. No additional TLS.
 
 ```yaml
 conversion:
@@ -312,74 +338,31 @@ conversion:
       to: v2
       spec:
         schedule: "{{ cronToMap .spec.schedule }}"
-
     - from: v2
       to: v1
       spec:
         schedule: "{{ cronFromMap .spec.schedule }}"
 ```
 
-<!-- **In production:** [100,000+ conversions](https://cc.orkestra.sh). 0 failures. ~ 2ms average latency. -->
-
-**Option 2 — Internal normalization (no webhook)**
-
-For simple or single-direction schema evolution, `normalize:` canonicalizes field values inside the operatorBox: pipeline — no webhook deployment, no TLS, no `admissionregistration` API call. Ideal when you want a single storage representation without wiring up the Kubernetes conversion machinery.
-
-```yaml
-normalize:
-  spec:
-    chedule: "{{ cronFromAny .spec.schedule }}"  # orkestra note 'cronFromAny'
-```
-
-Runs before `onCreate`/`onReconcile`. The CR is patched with the normalized value before any resources are created.
+Orkestra gateway serves the `/convert` endpoint. Kubernetes calls it during version mismatches. Measured average conversion latency: **0.5ms**. [Zero failures](https://cc.orkestra.sh) in production.
 
 ---
 
-## Cross-operator IPC
+### State machine
 
-Operators observe each other's state explicitly. No shared caches. No hidden coupling.
-
-```yaml
-operatorBox:
-  default: true
-  cross:
-    - crd: managed-database
-      selector:
-        name: "{{ .metadata.name }}-db"
-      as: db
-  onReconcile:
-    deployments:
-      - name: "{{ .metadata.name }}"
-        image: "{{ .spec.image }}"
-        env:
-          DB_HOST:
-            value: "{{ get .cross.db "status" "endpoint" }}"
-        when:
-          - field: "{{ phase .cross.db }}"
-            equals: Ready
-```
-
-The `Deployment` is not created until the database CR is Ready. When it is, the endpoint is injected automatically. No polling. No coordination code.
-
----
-
-## State machine
-
-Declarative phase progressions without a single line of Go. `when:` conditions gate each step; the resync loop is the clock.
+Declarative phase progressions without a single line of Go. `when:` conditions gate each step.
 
 ```yaml
 operatorBox:
   onCreate:
     jobs:
-      # Step 1 — start build when no phase yet
       - name: "{{ .metadata.name }}-build"
-        image: "{{ .spec.image }}"
+        image: "{{ .spec.builder }}"
         when:
           - field: status.phase
             operator: notExists
-        reconcile: false     # Job is terminal — create once
+        reconcile: false
 
-      # Step 2 — run tests after build succeeds
       - name: "{{ .metadata.name }}-test"
         image: "{{ .spec.image }}"
         when:
@@ -388,293 +371,395 @@ operatorBox:
           - field: "{{ jobSucceeded .children.job }}"
             equals: "true"
 
-      # Step 3 — notify after tests pass
-      - name: "{{ .metadata.name }}-notify"
-        image: "{{ .spec.image }}"
-        when:
-          - field: status.phase
-            equals: "Running/test"
-          - field: "{{ jobSucceeded .children.job }}"
-            equals: "true"
-
   status:
     fields:
       - path: phase
         value: "Running/build"
         when:
-          - field: "{{ name children.job }}"
+          - field: "{{ name .children.job }}"
             hasSuffix: "-build"
       - path: phase
         value: "Succeeded"
         when:
           - field: status.phase
-            equals: "Running/notify"
+            equals: "Running/test"
           - field: "{{ jobSucceeded .children.job }}"
             equals: "true"
 ```
 
-Each reconcile advances one step and writes one state. The queue fires again on the next resync. This is level-triggered reconciliation — idempotent by design.
+Each reconcile advances one step. The queue fires again on the next resync. Level-triggered reconciliation — idempotent by design.
 
 ---
 
-## Environment variables
+### Secrets and environment injection
 
-Inject environment variables into Deployments from **literals**, **Secrets**, **ConfigMaps**, or **any mix of sources**.  
-All values are template expressions resolved against the **live CR** at reconcile time.
-
-Orkestra also lets you **create** the Secret/ConfigMap in the same `operatorBox:` before consuming them — no extra manifests, no extra controllers.
+Create Secrets and ConfigMaps from the CR in the same `operatorBox:` and consume them in Deployments — no extra manifests, no extra controllers.
 
 ```yaml
 operatorBox:
   onCreate:
-    # Secret derived from the CR
     secrets:
       - name: "{{ .metadata.name }}-creds"
-        once: true                   # Create once - prevents creation on every resync 
-        rotateAfter: 30d             # Automatic rotation (no manual rotation needed)
+        once: true
+        rotateAfter: 30d
         data:
-          username: "{{ .spec.username }}"
-          password: "{{ randomAlphanumeric 16 }}"     # Use orkestra note
+          password: "{{ randomAlphanumeric 16 }}"
 
-    # ConfigMap derived from the CR
-    configMaps:
-      - name: "{{ .metadata.name }}-cfg"
-        data:
-          region: "{{ .spec.region }}"
-          image: "{{ .spec.image }}"
-
-    # Deployment consuming both
     deployments:
       - name: "{{ .metadata.name }}"
         image: "{{ .spec.image }}"
         env:
-          USERNAME:
-            secretKeyRef:
-              name: "{{ .metadata.name }}-creds"
-              key: username
-          PASSWORD:
-            secretKeyRef:
-              name: "{{ .metadata.name }}-creds"
-              key: password
-          REGION:
-            configMapKeyRef:
-              name: "{{ .metadata.name }}-cfg"
-              key: region
-
-        # Or make all envs available to deployment
-        envFrom:
-          - configMapRef: "{{ .metadata.name }}-cfg"
-          - secretRef: "{{ .metadata.name }}-creds"
+          - name: PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "{{ .metadata.name }}-creds"
+                key: password
 ```
 
-- All values are evaluated at reconcile time, so updates to the CR flow naturally into the Deployment.
+`once: true` creates the Secret on first reconcile and never overwrites it. `rotateAfter: 30d` triggers automatic rotation.
 
 ---
 
-## External gating
+### forEach — fan-out to N resources
 
-Gate resource creation on an HTTP call. The response status, body, and error are available as `.external.<name>.*` in all `when:` conditions and template expressions.
+Create one resource per element in a list or map:
+
+```yaml
+operatorBox:
+  onCreate:
+    deployments:
+      - name: "{{ .metadata.name }}-{{ .item }}"
+        image: "{{ .spec.image }}"
+        forEach:
+          field: spec.regions
+          as: item
+```
+
+For `spec.regions: [us-east-1, eu-west-1, ap-southeast-1]`, three Deployments are created. Each bound to the region via `.item`.
+
+---
+
+### External gating
+
+Gate resource creation on an HTTP response. The result is available as `.external.<name>.*` in all templates and conditions.
 
 ```yaml
 operatorBox:
   onCreate:
     external:
-      - name: healthCheck
-        url: "{{ .spec.serviceUrl }}/health"
+      - name: policy
+        url: "{{ .spec.policyUrl }}/allow"
         method: GET
         expectedStatus: 200
         continueOnError: false
         timeout: 5s
 
-      - name: featureFlags
-        url: "{{ .spec.serviceUrl }}/flags/{{ .metadata.name }}"
-        method: GET
-        continueOnError: true
-        timeout: 3s
-
     deployments:
       - name: "{{ .metadata.name }}"
         image: "{{ .spec.image }}"
         when:
-          - field: external.healthCheck.status
+          - field: external.policy.status
             equals: "200"
-        reconcile: true
-
-    configMaps:
-      - name: "{{ .metadata.name }}-flags"
-        data:
-          flags: "{{ .external.featureFlags.body }}"
-        when:
-          - field: external.featureFlags.called
-            equals: "true"
-          - field: external.featureFlags.error
-            operator: notExists
-        reconcile: true
 ```
 
-`continueOnError: false` blocks the entire reconcile if the call fails. `continueOnError: true` lets the rest of the pipeline proceed — the error is available in `.external.<name>.error`.
+`continueOnError: false` (default) blocks the entire reconcile if the call fails. `continueOnError: true` lets the rest of the pipeline proceed and makes the error available in `.external.policy.error`.
+
+---
+
+## When declarative isn't enough
+
+Orkestra covers the common case declaratively. For everything else, two escape hatches exist — both are first-class, documented, and production-ready.
+
+### Hooks — typed Go functions
+
+Call Go code from within the GenericReconciler. You write a function; Orkestra calls it at the right point in the reconcile cycle. The runtime still handles informers, workqueue, workers, health, metrics, events and the full orkestra capability set.
+
+```yaml
+operatorBox:
+  default: true
+  hooks:
+    location: github.com/myorg/operator/reconciler
+    function: DatabaseHooks
+    version: v1.0.2
+    fetch: true
+    resources:
+      - statefulsets
+      - services
+```
+
+Your function receives type-safe access to the CR and can call external APIs, run migrations, orchestrate anything complex. Hookable at `OnReconcile`, and `OnDelete`.
+
+Full example:
+
+```console
+ork init hooks-operator --pack advanced
+cd hooks-operator/09-hooks
+```
+
+---
+
+### Constructors — full custom reconciler
+
+Replace the GenericReconciler entirely. You own the reconcile loop. Orkestra still manages informers, workqueue, workers, health, events and the full orkestra capability set.
+
+```yaml
+operatorBox:
+  default: false
+  constructor:
+    location: github.com/myorg/operator/reconciler@v1.0.0
+    function: NewPipelineReconciler
+    resources:
+      - kind: Job
+```
+
+```go
+func NewPipelineReconciler(
+    kube *kubeclient.Kubeclient,
+    informer cache.SharedIndexInformer,
+    ev *event.Event,
+) domain.Reconciler
+```
+
+You get the infrastructure. You write the logic.
+
+Full example:
+
+```console
+ork init constructor-operator --pack advanced`
+cd constructor-operator/10-constructor
+```
 
 ---
 
 ## Composition
 
-Pull Katalogs from files, Helm, Git, or OCI registries:
+### Motif — reusable blueprint
+
+A parameterized set of resource declarations. Write once, import from any Katalog.
+
+```yaml
+# postgres-motif.yaml
+apiVersion: orkestra.orkspace.io/v1
+kind: Motif
+metadata:
+  name: postgres
+  version: v0.1.0
+
+inputs:
+  - name: image
+    default: "postgres:16"
+  - name: storage
+    default: "10Gi"
+
+resources:
+  onCreate:
+    secrets:
+      - name: "{{ .metadata.name }}-creds"
+        once: true
+        data:
+          password: "{{ randomAlphanumeric 24 }}"
+    statefulSets:
+      - image: "{{ .inputs.image }}"
+        storage: "{{ .inputs.storage }}"
+```
+
+### Katalog — imports Motifs
+
+```yaml
+spec:
+  crds:
+    app:
+      crdFile: ./crd.yaml
+      operatorBox:
+        onCreate:
+          deployments:
+            - image: "{{ .spec.image }}"
+              reconcile: true
+
+    database:
+      imports:
+        - motif: ./postgres-motif.yaml
+          with:
+            image: "postgres:16"
+            storage: "{{ .spec.dbStorage }}"
+```
+
+### Komposer — runs multiple Katalogs as one platform
+
+Pull Katalogs from files, Helm, or OCI registries and run them in a single Orkestra instance. Override any field without touching the source.
 
 ```yaml
 apiVersion: orkestra.orkspace.io/v1
 kind: Komposer
 metadata:
   name: platform
-sources:
-  registry:
-    - url: ghcr.io/orkspace/orkestra-registry/postgres@v14
-      oci: true
+
+imports:
   files:
-    - ./katalogs/website.yaml
-    - ./katalogs/pipeline.yaml
+    - ./app-katalog.yaml
+    - ./pipeline-katalog.yaml
+  registry:
+    - ref: oci://ghcr.io/orkspace/registry/postgres:v14
+    - ref: oci://ghcr.io/orkspace/registry/redis:v7
   helm:
-    - repo: ghcr.io/orkspace/registry/platform
-      chart: platform-example
-      version: 0.1.0
-      valueFiles:
-        - values/overrides.yaml
+    - repo: https://charts.example.com
+      chart: platform-crds
+      version: 1.0.0
+
+spec:
+  crds:
+    app:
+      workers: 8   # override — everything else inherited from app-katalog.yaml
+```
+
+One `ork run` brings up the full platform.
+
+---
+
+## Orkestra Registry
+
+Operators have traditionally been binaries: one per CRD, one deployment per operator, one release cycle to maintain each. The ecosystem grew this way because programs were the only available unit of distribution.
+
+Orkestra changes the unit. Operators are **Katalogs** — YAML patterns packaged as OCI artifacts and distributed through any OCI-compatible registry.
+
+```yaml
+imports:
+  registry:
+    - ref: oci://ghcr.io/orkspace/registry/postgres:v14
+    - ref: oci://ghcr.io/orkspace/registry/redis:v7
+    - ref: oci://ghcr.io/orkspace/registry/kafka:v3
+```
+
+Three complete operators. No binaries. No deployments. One Orkestra process runs all three.
+
+Operators are now assembled from the registry, composed with local overrides, upgraded by changing a version tag, and shared by pushing a Katalog to any OCI registry.
+
+```yaml
 spec:
   crds:
     postgres:
-      workers: 8
+      crdFile: ./internal/platform-database-crd.yaml   # your API, not the registry's
 ```
 
-One command starts the entire platform.
+The registry provides the reconciliation pattern. Your team owns the API contract.
+Your users create `PlatformDatabase` CRs, not `Postgres` CRs. The operator behavior
+comes from the registry; the schema, naming, and field conventions are yours.
+
+Full documentation: [Orkestra Registry](https://docs.orkestra.sh/orkestra-registry/)
 
 ---
 
 ## Security
 
-Deletion protection, namespace protection, admission webhooks, and conversion webhooks all share one certificate. One block. No separate TLS setup.
+All security features share one certificate. One block. No separate TLS setup.
 
 ```yaml
 security:
   deletionProtection:
-    enabled: true             # protects your CRDs and Orkestra deployment from kubectl delete
-    cleanupOnShutdown: true   # Tells orkestra to cleanup deletionProtection webhooks and certs on shutdown
-  
+    enabled: true
+    cleanupOnShutdown: true
+
   namespaceProtection:
-    enabled: true             # Orkestra blocks creation of custom resources in restrictedNamespaces at apply time and creation of child resources at reconcile time. One declaration. Two enforcement points.
+    enabled: true
+    restrictedNamespaces:
+      - kube-system
+      - kube-public
 
   webhooks:
     admission:
-      enabled: true        # intercepts kubectl apply at the API server
+      enabled: true
     failurePolicy: Fail
-
-  conversion:
-    enabled: true          # serves /convert for multi-version CRDs
+    conversion:
+      enabled: true
 ```
 
-With `deletionProtection` enabled, Orkestra registers a validating webhook that rejects `DELETE` requests to delete protected CRDs as well as Orkestra deployment, service or ingress. No separate webhook server. The same process that runs your operators handles it.
+**Deletion protection** — a validating webhook rejects `DELETE` on any CRD Orkestra manages, and on the Orkestra deployment itself. Zero configuration.
 
----
-> [!important]
-> Features in development
+**Namespace protection** — blocks CRs from being created in restricted namespaces at admission time and at reconcile time. One declaration. Two enforcement points.
 
-### Automatic rollbacks
+**Derived RBAC** — generate minimal permissions from the Katalog. No wildcards.
 
-Orkestra provides two rollback models: zero‑config recovery and custom rollback templates. Both approaches restore the last known good spec after repeated reconcile failures. Rollback is declarative and idempotent; no additional controllers or resource types are introduced.
-
-#### Zero‑config rollback
-
-A single field enables automatic recovery. When the operator encounters consecutive reconcile failures, Orkestra enters a rollback phase and reapplies the previous desired state. The rollback templates are derived from the existing reconcile declarations; no onRollback block is required.
-
-```yaml
-operatorBox:
-  default: true
-
-  rollBackOnError: true
+```bash
+ork generate bundle -f katalog.yaml -o bundle.yaml
+kubectl apply -f bundle.yaml
 ```
 
-When enabled, Orkestra:
+The output contains only the permissions your Katalog actually uses: specific groups, resources, and verbs derived from what you declared.
 
-- captures the previous spec before applying a new one  
-- tracks consecutive failures  
-- rolls back automatically after the threshold is reached  _`(3 consecutive failures in 10 minutes)`_
-- blocks normal reconciliation until the spec is corrected  
+**Runtime** — build tag `runtime`. Knows how to run operators. Cannot scaffold, enumerate CRDs, or generate RBAC. If it runs in your cluster, that is all it does.
 
-This is the simplest and safest rollback path.
-
-#### Custom rollback
-
-For operators that require explicit rollback behavior, a custom rollback block can be declared. This allows full control over which resources are restored and how the previous spec is applied.
-
-```yaml
-operatorBox:
-  rollback:
-    trigger:
-      consecutiveFailures: 3
-      withinDuration: 5m
-
-    onRollback:
-      deployments:
-        - name: "{{ .metadata.name }}"
-          image: myorg/stable-deployment:v1
-          replicas: "{{ .previous.spec.replicas }}"
-          reconcile: true
-```
-
-Custom rollback provides:
-
-- explicit control over rollback templates  
-- conditional triggers  
-- access to `.previous.spec.*` for restoring prior values  
-- full integration with the existing reconcile pipeline  
-
-Rollback is not transactional undo. It is re‑declaration of the last known good state. Existing Update functions handle idempotent re‑application.
+**Gateway** — build tag `gateway`. Knows how to gate the way. Admission webhooks, deletion protection, namespace protection, and TLS cert management. No operator logic. Runs standalone or alongside the runtime.
 
 ---
 
-### Providers
-Declare infrastructure dependencies at the Katalog level. Orkestra registers only the providers listed here — per-CRD blocks for anything else are silently skipped.
+## Numbers
 
-```yaml
-providers:
-  - name: aws
-    required: true
-    auth:
-      accessKeyId: "$AWS_ACCESS_KEY_ID"
-      secretAccessKey: "$AWS_SECRET_ACCESS_KEY"
-      region: "$AWS_REGION"
-  - name: mongodb
-    required: true
-    auth:
-      mongoUri: "$MONGODB_URL"
-```
+These numbers come from a running instance visible in the Control Center screenshots above.
 
-Then reference them inside any `operatorBox:`:
+| | Traditional (15 operators) | Orkestra |
+|---|---|---|
+| **Processes** | 15 | 1 |
+| **Memory** | 750 MB – 3 GB | ~47 MB |
+| **CRDs under management** | 15 | 15 |
+| **Deployments to manage** | 15 | 1 |
+| **First operator** | 3–6 weeks | Under 1 hour |
+| **Lines of Go** | 400+ per operator | 0 (hooks and constructors for complex cases) |
+| **Conversion webhook** | Separate deployment | Built-in, 0.5ms avg latency |
+| **Adding a new CRD** | Days to weeks | Minutes |
+
+**How the process-level memory reduction works:** each traditional operator binary includes the full Kubernetes client-go library, leader election, health server, and metrics server. Orkestra pays that cost once. The per-CRD marginal cost is a goroutine pool and an in-memory cache, not a new binary.
+
+**How per-CRD isolation works without process boundaries:** the same way `kube-controller-manager` isolates Deployment, StatefulSet, Job, and ReplicaSet controllers — each CRD has a dedicated informer, a dedicated workqueue, and a dedicated worker pool. A panic in one is caught by `safeReconcile` and logged; the others keep processing. This is runtime architecture, not convention.
+
+---
+
+## Autoscaler
+
+Scale workers and resync interval dynamically based on metrics. No Go code. No external controller.
 
 ```yaml
 operatorBox:
-  providers:
-    aws:
-      - s3:
-          bucket: "{{ .metadata.name }}-assets"
-          region: "{{ .spec.region }}"
-    mongodb:
-      - database:
-          name: "{{ .metadata.name }}"
-      - user:
-          name: "{{ .spec.dbUser }}"
-          database: "{{ .metadata.name }}"
+  autoscale:
+    interval: 15s
+    cooldown: 2m
+
+    conditions:
+      when:
+        - field: metrics.queueDepth
+          greaterThan: "80"
+        - field: metrics.workersBusyPercent
+          greaterThan: "70"
+
+    do:
+      workers: 8
+      resync: 5s
 ```
 
-<!-- ---
+When conditions are true for the cooldown duration, overrides apply. When false again, the CRD's baseline is restored. Reversible. Declarative. No side effects.
 
-## In production
+Cross-CRD scaling is also supported — scale one operator based on another operator's metrics via `cross.<crd>.metrics.*`.
 
-| | |
-|---|---|
-| Live resources under management | 13,220 |
-| Active operatorBox:es | 3 Katalogs, 113 workers |
-| Reconcile error rate | **0.0%** |
-| Conversion failures | **0** |
-| Memory (15 CRDs) | ~47 MB | -->
+---
+
+## Production
+
+The same Katalog you ran locally is what runs in production. No build pipeline per operator. No environment-specific configurations. No new binaries to maintain.
+
+Full deployment guide → [orkspace.github.io/orkestra](https://orkspace.github.io/orkestra)
+
+---
+
+## What Orkestra is not
+
+**CRD generation is a starting point, not the source of truth.** `ork generate crd` scaffolds a base CRD from your Katalog to get you started. You own the final schema — add validation rules, printer columns, subresource configuration, and version history to it. `crdFile` just points to whatever CRD file you maintain.
+
+**It does not replace Go for complex logic.** Hooks and constructors exist for exactly this reason. ~90% of operators are declarative structure; ~10% need code. Orkestra handles the 90% and gives the 10% a clean interface.
+
+**External infrastructure providers are in development.** Declaring AWS S3 buckets, MongoDB databases, or cloud DNS directly in a Katalog — alongside the Kubernetes resources that consume them — is on the roadmap. For now, use Crossplane for external infrastructure and Orkestra for the application layer. The two complement each other.
+
+**It does not auto-sync from Git.** Configuration is resolved at startup and locked in. Only cluster state evolves. This is intentional: Katalogs define long-lived API contracts; silently reloading them is dangerous. Use a deployment pipeline like any other runtime change.
+
+**It does not replace cluster-wide policy engines.** Kyverno and OPA Gatekeeper govern all cluster resources. Orkestra's validation governs resources it manages. Use both.
 
 ---
 
@@ -682,11 +767,11 @@ operatorBox:
 
 | | |
 |---|---|
-| [Getting Started](https://docs.orkestra.sh/getting-started) | First operator in under an hour |
-| [Katalog Reference](https://docs.orkestra.sh/reference/katalog-schema) | Complete field reference |
-| [Examples](./examples/) | Beginner → advanced, all verified |
+| [Getting Started](https://docs.orkestra.sh/docs/getting-started) | First operator in under an hour |
+| [Learning to Orkestrate](https://docs.orkestra.sh/docs/getting-started/learning-to-orkestrate) | Guided examples: beginner → advanced |
+| [Katalog Reference](https://docs.orkestra.sh/docs/reference/schema/katalog/) | Complete field reference |
 | [Concepts](https://docs.orkestra.sh/concepts) | Architecture and mental model |
-| [Papers](https://docs.orkestra.sh/papers) | The case for declarative operators |
+| [Registry](https://docs.orkestra.sh/docs/reference/orkestra-registry) | OCI distribution for operators |
 
 ---
 

@@ -186,9 +186,11 @@ func KatalogChanged(dir string) bool {
 	return false
 }
 
-// RestartOrkestra issues a rollout restart of the runtime deployment and
-// waits up to 3 minutes for it to become available again.
-func RestartOrkestra() error {
+// SyncRuntime applies the updated bundle to the running Orkestra deployment
+// by issuing a rollout restart and waiting up to 3 minutes for it to become
+// available. Use this after applying a new bundle so the runtime picks up
+// the updated orkestra-katalog ConfigMap.
+func SyncRuntime() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
@@ -197,7 +199,7 @@ func RestartOrkestra() error {
 	restart.Stdout = os.Stdout
 	restart.Stderr = os.Stderr
 	if err := restart.Run(); err != nil {
-		return fmt.Errorf("rollout restart: %w", err)
+		return fmt.Errorf("syncing runtime: %w", err)
 	}
 
 	wait := exec.CommandContext(ctx, "kubectl", "rollout", "status",
@@ -205,4 +207,14 @@ func RestartOrkestra() error {
 	wait.Stdout = os.Stdout
 	wait.Stderr = os.Stderr
 	return wait.Run()
+}
+
+// RuntimeDeployed returns true when the orkestra-runtime Deployment exists
+// in orkestra-system, regardless of whether it is healthy.
+func RuntimeDeployed() bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "kubectl", "get", "deploy", OrkestraRuntime,
+		"-n", OrkestraNamespace, "--ignore-not-found", "-o", "name").Output()
+	return err == nil && len(bytes.TrimSpace(out)) > 0
 }

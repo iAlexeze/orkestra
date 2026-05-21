@@ -56,30 +56,27 @@ func buildBaseKatalog() *katalog.Katalog {
 	}
 }
 
-// cloneKatalog makes a shallow copy of katalog suitable for tests.
-// It ensures the CRDs map is copied so tests don't mutate the shared map.
+// cloneKatalog builds a new Katalog from src, copying the CRD and Security
+// fields that tests mutate. Direct struct copy is avoided because Katalog
+// embeds sync/atomic.Bool (noCopy guard).
 func cloneKatalog(src *katalog.Katalog) *katalog.Katalog {
 	if src == nil {
 		return &katalog.Katalog{}
 	}
 
-	// shallow copy top-level struct
-	dst := *src
+	dst := &katalog.Katalog{
+		Security: src.Security,
+	}
 
-	// deep copy Spec.CRDs map (copy entries)
 	if src.Spec.CRDs != nil {
 		dst.Spec.CRDs = make(map[string]types.CRDEntry, len(src.Spec.CRDs))
 		for k, v := range src.Spec.CRDs {
-			// copy the CRDEntry value to avoid shared references
 			entryCopy := v
 			dst.Spec.CRDs[k] = entryCopy
 		}
 	}
 
-	// copy Security struct if present (value copy is fine for current types)
-	dst.Security = src.Security
-
-	return &dst
+	return dst
 }
 
 // contains helper

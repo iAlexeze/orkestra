@@ -17,7 +17,7 @@
 //     GenericReconciler stores ObjectHooks, not ReconcileHooks[T], so that
 //     a single reconciler type can serve both the typed user-hooks path
 //     (T = *Database) and the dynamic template path (T = domain.Object)
-//     that goes through the runtime registry in konstructor.go.
+//     that goes through the runtime registry in runtime_konstructor.go.
 //     See pkg/reconciler/ptr_hooks.go for the full design rationale.
 package domain
 

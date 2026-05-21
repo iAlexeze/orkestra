@@ -14,17 +14,18 @@ package merger
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// Merger loads one or more Katalog files, resolves their sources
+// Merger loads one or more Katalog files, resolves their imports
 // (files, URLs, Helm charts), merges all CRD entries, and exposes
 // the result through Enabled(), All(), and Get().
 //
-// Entry point: one or more file paths from the CLI or konstructOrkestra.
+// Entry point: one or more file paths from the CLI or konstructRuntime.
 // Everything else — source resolution, Helm rendering, deduplication —
 // is internal to the merger.
 //
@@ -48,6 +49,9 @@ type Merger struct {
 
 	// providers holds the top-level provider requirements of the final katalog
 	providers []orktypes.KatalogProviderRequirement
+
+	// gateway holds the gateway deployment config of the final katalog
+	gateway *orktypes.GatewayConfig
 
 	// projects holds the merged projectInfo configuration of the final katalog
 	projects map[string]orktypes.ProjectInfo
@@ -84,7 +88,7 @@ func (m *Merger) Add(paths ...string) *Merger {
 	return m
 }
 
-// Merge loads all entry points and their declared sources,
+// Merge loads all entry points and their declared imports,
 // resolves Helm charts, and produces a single deduplicated CRD map.
 // Safe to call multiple times — re-merges on each call.
 func (m *Merger) Merge() error {
@@ -137,6 +141,9 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 	if override.APITypes.Kind != "" {
 		result.APITypes = override.APITypes
 	}
+	if override.CRDFile != "" {
+		result.CRDFile = override.CRDFile
+	}
 
 	// ── Enabled ───────────────────────────────────────────────────────────
 	// Only override if explicitly set to false — zero value (true) means
@@ -164,11 +171,6 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 	if override.Namespace != "" {
 		result.Namespace = override.Namespace
 	}
-
-	// ── Critical ──────────────────────────────────────────────────────────
-	// if override.IsCritical() {
-	// 	result.Critical = override.Critical
-	// }
 
 	// ── Dependencies ──────────────────────────────────────────────────────
 	// Override replaces entirely if declared — partial dependency override
@@ -247,7 +249,7 @@ func mergeCRDEntry(base, override orktypes.CRDEntry) orktypes.CRDEntry {
 	// ── Validation and mutation — override replaces if declared ───────────
 	// Platform teams may want to add stricter rules in production via the
 	// Komposer. Replacing rather than merging is the safe behaviour —
-	// merging rules from two sources could produce unexpected combinations.
+	// merging rules from two imports could produce unexpected combinations.
 	if override.Validation != nil {
 		result.Validation = override.Validation
 	}
@@ -295,7 +297,7 @@ func (m *Merger) Get(name string) (orktypes.CRDEntry, bool) {
 	return crd, ok
 }
 
-// Count returns total CRD count across all sources.
+// Count returns total CRD count across all imports.
 func (m *Merger) Count() int {
 	m.mustBeMerged()
 	return len(m.result)
@@ -328,12 +330,19 @@ func (m *Merger) ToProviders() []orktypes.KatalogProviderRequirement {
 }
 
 // ToNotification returns the merged notification configuration of the merged result.
-// When a Komposer references multiple source Katalogs, teams from all sources are
+// When a Komposer references multiple imported Katalogs, teams from all imports are
 // merged — source teams are inherited and the Komposer's own teams win on conflict.
 // Used by KomposeRuntimeKatalog to populate Katalog.Notification.
 func (m *Merger) ToNotification() *orktypes.KatalogNotification {
 	m.mustBeMerged()
 	return m.notification
+}
+
+// ToGateway returns the gateway deployment config of the merged result.
+// Used by KomposeRuntimeKatalog to populate Katalog.Gateway.
+func (m *Merger) ToGateway() *orktypes.GatewayConfig {
+	m.mustBeMerged()
+	return m.gateway
 }
 
 // ToProjectInfo returns merged project information of the merged result
@@ -347,6 +356,15 @@ func (m *Merger) ToProjectInfo() *orktypes.ProjectInfo {
 func (m *Merger) APIMetadata() apiMetadata {
 	m.mustBeMerged()
 	return m.apiMetadata
+}
+
+// FirstEntryDir returns the directory of the first entry point path.
+// Used by the Katalog parser to resolve relative crdFile paths.
+func (m *Merger) FirstEntryDir() string {
+	if len(m.entryPoints) == 0 {
+		return ""
+	}
+	return filepath.Dir(m.entryPoints[0])
 }
 
 func (m *Merger) SetRegistryURL(url string) {

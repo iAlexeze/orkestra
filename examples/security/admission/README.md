@@ -80,7 +80,7 @@ ork version
 ## Step 2 — Validate the Katalog
 
 ```bash
-ork validate -k katalog.yaml
+ork validate
 ```
 
 Expected output:
@@ -106,7 +106,7 @@ kubectl apply -f crd.yaml
 ## Step 4 — Generate and apply the operator bundle
 
 ```bash
-ork generate bundle -k katalog.yaml -o bundle.yaml
+ork generate bundle -f katalog.yaml -o bundle.yaml
 kubectl apply -f bundle.yaml
 ```
 
@@ -116,12 +116,12 @@ kubectl apply -f bundle.yaml
 
 ```bash
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
+  --create-namespace \
+  --set gateway.enabled=true \
   --wait --timeout 120s
 ```
-
-**TLS certificates:** Orkestra generates and rotates its own TLS certificate automatically. To supply your own: `--set tls.certFile=/path/to/tls.crt --set tls.keyFile=/path/to/tls.key`.
 
 At startup you will see:
 
@@ -282,6 +282,47 @@ Watch the operator logs:
 Both webhooks are back within milliseconds. Validation and mutation are restored without restarting the operator.
 
 A safety poll (`WEBHOOK_CONTROLLER_SYNC_INTERVAL`, default 30 s) continues in parallel as a backstop — it catches any drift the Watch stream might silently miss on some managed cluster distributions.
+
+---
+
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, deploys the operator, applies the valid CR, asserts admission behaviour, then tears down:
+
+```bash
+ork e2e -f e2e.yaml
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: Valid CR accepted — deployment created
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        name: my-platform-platform
+        namespace: default
+        ready: true
+
+  - name: Invalid CR rejected by webhook
+    after: cr-applied
+    timeout: 30s
+    commands:
+      - run: kubectl apply -f ./cr-bad.yaml
+        exitCode: 1
+        outputContains: "denied the request"
+
+  - name: Deployment removed on delete
+    after: cr-deleted
+    timeout: 30s
+    resources:
+      - kind: Deployment
+        name: my-platform-platform
+        namespace: default
+        count: 0
+```
 
 ---
 

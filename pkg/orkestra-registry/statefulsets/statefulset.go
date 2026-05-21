@@ -22,7 +22,7 @@ import (
 )
 
 // Create creates a StatefulSet owned by the CR if it does not already exist.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -56,7 +56,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 
 // Update reconciles an existing StatefulSet to match the resolved spec.
 // Patches replicas and image when drift is detected.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -112,7 +112,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Delete deletes the StatefulSet if it exists.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedStatefulSetSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -130,7 +130,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the StatefulSet only if it is owned by the given CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, name, namespace string) error {
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, name, namespace string) error {
 	existing, err := kube.Clientset().AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -151,7 +151,7 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 		Namespace:   src.Namespace,
 		Image:       src.Image,
 		ServiceName: src.ServiceName,
-		Replicas:    1,
+		Replicas:    common.ParseReplicas(src.Replicas),
 		Labels:      make(map[string]string),
 		Annotations: make(map[string]string),
 		Env:         src.Env,
@@ -187,9 +187,6 @@ func Resolve(src orktypes.StatefulSetTemplateSource, ownerName string) ResolvedS
 
 	if src.Tag != "" {
 		spec.Image = src.Image + ":" + src.Tag
-	}
-	if r, err := strconv.ParseInt(src.Replicas, 10, 32); err == nil && r > 0 {
-		spec.Replicas = int32(r)
 	}
 	if p, err := strconv.ParseInt(src.Port, 10, 32); err == nil {
 		spec.Port = int32(p)
@@ -258,41 +255,43 @@ func buildStatefulSet(owner domain.Object, spec ResolvedStatefulSetSpec, ns stri
 
 	common.ApplyProbes(&container, spec.Probes, spec.Port)
 
-	for k, v := range spec.Env {
-		ev := corev1.EnvVar{Name: k}
-		if v.Value != "" {
-			ev.Value = v.Value
-		} else if v.SecretKeyRef != nil {
-			ev.ValueFrom = &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: v.SecretKeyRef.Name},
-					Key:                  v.SecretKeyRef.Key,
-				},
+	for _, ev := range spec.Env {
+		kev := corev1.EnvVar{Name: ev.Name}
+		if ev.ValueFrom != nil {
+			kev.ValueFrom = &corev1.EnvVarSource{}
+			if ev.ValueFrom.SecretKeyRef != nil {
+				kev.ValueFrom.SecretKeyRef = &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: ev.ValueFrom.SecretKeyRef.Name},
+					Key:                  ev.ValueFrom.SecretKeyRef.Key,
+				}
 			}
-		} else if v.ConfigMapKeyRef != nil {
-			ev.ValueFrom = &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: v.ConfigMapKeyRef.Name},
-					Key:                  v.ConfigMapKeyRef.Key,
-				},
+			if ev.ValueFrom.ConfigMapKeyRef != nil {
+				kev.ValueFrom.ConfigMapKeyRef = &corev1.ConfigMapKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: ev.ValueFrom.ConfigMapKeyRef.Name},
+					Key:                  ev.ValueFrom.ConfigMapKeyRef.Key,
+				}
 			}
+		} else {
+			kev.Value = ev.Value
 		}
-		container.Env = append(container.Env, ev)
+		container.Env = append(container.Env, kev)
 	}
 
-	for _, ef := range spec.EnvFrom {
-		var src corev1.EnvFromSource
-		if ef.SecretRef != "" {
-			src.SecretRef = &corev1.SecretEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: ef.SecretRef},
-			}
+	if spec.EnvFrom != nil {
+		for _, name := range spec.EnvFrom.SecretRef {
+			container.EnvFrom = append(container.EnvFrom, corev1.EnvFromSource{
+				SecretRef: &corev1.SecretEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: name},
+				},
+			})
 		}
-		if ef.ConfigMapRef != "" {
-			src.ConfigMapRef = &corev1.ConfigMapEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: ef.ConfigMapRef},
-			}
+		for _, name := range spec.EnvFrom.ConfigMapRef {
+			container.EnvFrom = append(container.EnvFrom, corev1.EnvFromSource{
+				ConfigMapRef: &corev1.ConfigMapEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: name},
+				},
+			})
 		}
-		container.EnvFrom = append(container.EnvFrom, src)
 	}
 
 	sts := &appsv1.StatefulSet{

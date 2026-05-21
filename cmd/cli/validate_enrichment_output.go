@@ -1,4 +1,4 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -40,17 +40,12 @@ func printCRDValidationLine(entry orktypes.CRDEntry) {
 			scope = "ClusterScoped"
 		}
 
-		fmt.Printf("    %s kind: %s %s built-in registry\n",
-			utils.ColorGray,
-			utils.Bold(entry.APITypes.Kind),
-			"→ enriched from",
+		fmt.Printf("    %s\n",
+			utils.Gray(fmt.Sprintf("kind: %s → enriched from built-in registry", utils.Bold(entry.APITypes.Kind))),
 		)
-		fmt.Printf("    group: %s / version: %s / plural: %s / scope: %s%s\n",
-			entry.BuiltInGroup,
-			entry.APITypes.Version,
-			entry.APITypes.Plural,
-			scope,
-			utils.ColorReset,
+		fmt.Printf("    %s\n",
+			utils.Gray(fmt.Sprintf("group: %s / version: %s / plural: %s / scope: %s",
+				entry.BuiltInGroup, entry.APITypes.Version, entry.APITypes.Plural, scope)),
 		)
 	} else {
 		// Custom CRD — show the declared values
@@ -58,23 +53,14 @@ func printCRDValidationLine(entry orktypes.CRDEntry) {
 		if !entry.IsNamespaced() {
 			scope = "ClusterScoped"
 		}
-		fmt.Printf("    %skind: %s / group: %s / version: %s / plural: %s / scope: %s%s\n",
-			utils.ColorGray,
-			entry.APITypes.Kind,
-			entry.APITypes.Group,
-			entry.APITypes.Version,
-			entry.APITypes.Plural,
-			scope,
-			utils.ColorReset,
+		fmt.Printf("    %s\n",
+			utils.Gray(fmt.Sprintf("kind: %s / group: %s / version: %s / plural: %s / scope: %s",
+				entry.APITypes.Kind, entry.APITypes.Group, entry.APITypes.Version, entry.APITypes.Plural, scope)),
 		)
 	}
 
 	// Add mode / workers / resync
-	fmt.Printf("    %smode: %s / workers: %v / resync: %v%s\n",
-		utils.ColorGray,
-		entry.Mode,
-		entry.Workers,
-		entry.Resync,
-		utils.ColorReset,
+	fmt.Printf("    %s\n",
+		utils.Gray(fmt.Sprintf("mode: %s / workers: %v / resync: %v", entry.Mode, entry.Workers, entry.Resync)),
 	)
 }

@@ -164,11 +164,11 @@ spec:
             - name: "{{ .metadata.name }}-postgres"
               image: "postgres:17"
               env:
-                POSTGRES_PASSWORD:
-                  value: "postrgres"
-                POSTGRES_USER:
+                - name: POSTGRES_PASSWORD
                   value: "postgres"
-                POSTGRES_DB:
+                - name: POSTGRES_USER
+                  value: "postgres"
+                - name: POSTGRES_DB
                   value: "postgres"
 
           services:
@@ -297,15 +297,18 @@ spec:
             - name: "{{ .metadata.name }}"
               image: "{{ .spec.image }}"
               env:
-                PASSWORD:
+                - name: PASSWORD
+                  valueFrom:
                     secretKeyRef:
                       name: "{{ .metadata.name }}-credentials"
                       key: password
-                API_KEY:
+                - name: API_KEY
+                  valueFrom:
                     secretKeyRef:
                       name: "{{ .metadata.name }}-credentials"
                       key: apiKey
-                JWT_SECRET:
+                - name: JWT_SECRET
+                  valueFrom:
                     secretKeyRef:
                       name: "{{ .metadata.name }}-credentials"
                       key: jwtSecret

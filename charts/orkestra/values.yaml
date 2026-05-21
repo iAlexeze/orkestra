@@ -35,7 +35,6 @@ runtime:
     readTimeout: 30
     writeTimeout: 60
     httpPort: 8080
-    httpsPort: 8443
 
   # Runtime-specific config
   config:
@@ -90,15 +89,6 @@ runtime:
     renewDeadline: 10
     retryPeriod: 5
 
-  # Webhooks for admission control and CRD conversion (runtime only)
-  webhooks:
-    enabled: false                 # master switch - if false, nothing is enabled
-    admission: false               # ENABLE_ADMISSION_WEBHOOK
-    conversion: false              # ENABLE_CONVERSION
-    existingSecret: ""             # TLS secret name (required if enabled)
-    certSecretKey: tls.crt         # key in secret for certificate
-    keySecretKey: tls.key          # key in secret for private key
-
   # Katalog (runtime only)
   katalog:
     inline: |
@@ -112,10 +102,16 @@ runtime:
     configMapKey: katalog.yaml
     mountPath: /etc/orkestra/katalog
 
+  # Gateway endpoint advertised in the runtime /katalog response.
+  # Set to the HTTP base URL of the companion gateway deployment so the
+  # control center can discover and merge gateway stats.
+  # Overrides ORK_GATEWAY_ENDPOINT env. Empty = no gateway configured.
+  gatewayEndpoint: ""   # e.g. "http://orkestra-gateway.orkestra-system.svc:8080"
+
   # Registry (runtime only)
   registry:
     enabled: false
-    url: ""     # ORKESTRA_REGISTRY
+    url: ""     # ORK_REGISTRY
 
   # HPA
   hpa:
@@ -148,6 +144,133 @@ runtime:
     enabled: true
     minAvailable: 1
     # maxUnavailable: 5
+
+  # Scheduling
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
+
+# ── Gateway ───────────────────────────────────────────────────────────────────
+# The gateway handles TLS/cert management and serves admission/conversion
+# webhooks. It is stateless and supports multiple replicas (no leader election).
+# Set enabled: true alongside runtime: enabled to run the full split topology.
+gateway:
+  enabled: false
+
+  imagePullSecrets: []
+
+  image:
+    repository: ghcr.io/orkspace/orkestra-gateway
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  # Use 'ork generate rbac' to create the ServiceAccount
+  serviceAccount: "orkestra-gateway"
+
+  service:
+    type: ClusterIP
+    annotations: {}
+
+  # HPA
+  hpa:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  # Health server + HTTPS webhook server
+  server:
+    readTimeout: 30
+    writeTimeout: 60
+    httpPort: 8080
+    httpsPort: 8443
+
+  # Gateway config (minimal — no reconciler knobs)
+  config:
+    logLevel: info
+    environment: production
+
+  # Probes
+  startupProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 30
+    timeoutSeconds: 5
+
+  livenessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 30
+    timeoutSeconds: 5
+
+  readinessProbe:
+    initialDelaySeconds: 3
+    periodSeconds: 5
+    failureThreshold: 30
+    timeoutSeconds: 5
+
+  # ── Security ───────────────────────────────────────────────────────────────────
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+    capabilities:
+      drop:
+        - ALL
+
+  # Webhooks for admission control and CRD conversion
+  webhooks:
+    enabled: false                 # master switch
+    admission: false               # ENABLE_ADMISSION_WEBHOOK
+    conversion: false              # ENABLE_CONVERSION
+    existingSecret: ""             # TLS secret name (required if enabled)
+    certKey: tls.crt              # key in secret for certificate
+    keyKey: tls.key               # key in secret for private key
+
+  # Katalog (needed to know which CRDs have webhooks)
+  katalog:
+    inline: |
+      apiVersion: orkestra.konductor.io/v1Alpha
+      kind: Katalog
+      metadata:
+        name: default-katalog
+      spec:
+        crds: []
+    existingConfigMap: ""
+    configMapKey: katalog.yaml
+    mountPath: /etc/orkestra/katalog
+
+  # Registry
+  registry:
+    enabled: false
+    url: ""
+
+  extraEnv: []
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  podAnnotations: {}
+  podLabels: {}
 
   # Scheduling
   nodeSelector: {}

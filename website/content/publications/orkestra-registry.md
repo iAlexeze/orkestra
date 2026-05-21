@@ -68,7 +68,7 @@ access control, replication, scanning, retention policies — is mature.
 A Komposer references OCI patterns in its `sources.oci` block:
 
 ```yaml
-sources:
+imports:
   registry:
     - url: ghcr.io/orkestra-sh/registry/postgres:v14
       oci: true

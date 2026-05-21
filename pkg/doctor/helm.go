@@ -33,29 +33,19 @@ func BuildControlCenterValues(host string) (string, error) {
 }
 
 func InstallOrUpgradeOrkestra(version string, valueFiles []string, upgrade bool) error {
-	// Always add repo (idempotent)
+	// Always add and update repo — add is idempotent, update ensures fresh index.
 	repoAdd := exec.Command("helm", "repo", "add", Orkestra, OrkestraChartRepo)
 	repoAdd.Stdout = os.Stdout
 	repoAdd.Stderr = os.Stderr
 	_ = repoAdd.Run() // ignore "already exists"
 
-	// Update repo only if requested
-	if upgrade {
-		update := exec.Command("helm", "repo", "update", Orkestra)
-		update.Stdout = os.Stdout
-		update.Stderr = os.Stderr
-		if err := update.Run(); err != nil {
-			return fmt.Errorf("updating Orkestra repo: %w", err)
-		}
-	}
+	update := exec.Command("helm", "repo", "update", Orkestra)
+	update.Stdout = os.Stdout
+	update.Stderr = os.Stderr
+	_ = update.Run() // non-fatal if offline or repo not yet populated
 
-	// Build Helm args
-	var args []string
-	if upgrade {
-		args = []string{"upgrade", "--install"}
-	} else {
-		args = []string{"install"}
-	}
+	// Build Helm args — always use upgrade --install (idempotent)
+	args := []string{"upgrade", "--install"}
 
 	args = append(args,
 		Orkestra,

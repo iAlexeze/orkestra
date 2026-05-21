@@ -63,6 +63,7 @@ func main() {
 		LogLevel:             *logLevel,
 		Version:              version,
 		EnableRuntimeManager: kfg.EnableRuntimeManager,
+		NoLogin:              kfg.NoLogin,
 	})
 
 	// Setup routes

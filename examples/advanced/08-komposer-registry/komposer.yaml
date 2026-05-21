@@ -18,7 +18,7 @@ imports:
       oci: true
       # auth:
       #   type: bearer
-      #   fromEnv: ORKESTRA_REGISTRY_TOKEN
+      #   fromEnv: ORK_REGISTRY_TOKEN
       # version is pinned via @v1.0.0 — immutable, safe for production
 
   # Local Katalog — your team's custom CRD

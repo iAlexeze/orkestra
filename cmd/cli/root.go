@@ -63,7 +63,7 @@ func initConfig() {
 
 	// Persist resolved values into global Konfig
 	if kfg != nil {
-		kfg.Cluster().KubekonfigPath = kubeconfig
+		kfg.Cluster().SetKubekonfigPath(kubeconfig)
 	}
 }
 
@@ -73,7 +73,8 @@ func resolveKubeconfig(cmd *cobra.Command) string {
 	if flagVal, _ := cmd.Flags().GetString("kubeconfig"); flagVal != "" {
 		return flagVal
 	}
-	if envVal := os.Getenv("KUBECONFIG"); envVal != "" {
+
+	if envVal := kfg.Cluster().KubekonfigPath(); envVal != "" {
 		return envVal
 	}
 	if home, err := os.UserHomeDir(); err == nil {
@@ -92,8 +93,10 @@ func resolveLogLevel(cmd *cobra.Command) string {
 	if debug {
 		return "debug"
 	}
-	if env := os.Getenv("LOG_LEVEL"); env != "" {
-		return env
+
+	if envVal := kfg.Ork().LogLevel(); envVal != "" {
+		return envVal
 	}
+
 	return "info"
 }

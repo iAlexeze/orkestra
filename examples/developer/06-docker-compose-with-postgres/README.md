@@ -154,5 +154,5 @@ In production it will be fetched from the Orkestra Motif registry automatically.
 The file here lets you validate it locally:
 
 ```bash
-ork validate -k motifs/postgres/motif.yaml
+ork validate -f motifs/postgres/motif.yaml
 ```

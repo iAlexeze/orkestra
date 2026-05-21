@@ -41,13 +41,21 @@ func noteCoalesce(vals ...interface{}) interface{} {
 	return nil
 }
 
-// noteDefault returns val if non-empty, otherwise returns def.
+// func noteDefault(dflt, val interface{}) interface{} {
+// 	if noteEmpty(val) {
+// 		return dflt
+// 	}
+// 	return val
+// }
+
+// noteDefault returns val if non-empty, otherwise returns dflt.
+// In template pipelines: {{ val | default dflt }} calls noteDefault(dflt, val).
 //
 //	{{ default .spec.replicas 2 }}     →  2 if spec.replicas is absent or zero
 //	{{ default .spec.port "8080" }}    →  "8080" if spec.port is absent
-func noteDefault(val, def interface{}) interface{} {
+func noteDefault(dflt, val interface{}) interface{} {
 	if noteEmpty(val) {
-		return def
+		return dflt
 	}
 	return val
 }

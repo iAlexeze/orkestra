@@ -80,16 +80,16 @@ Once the `ork` CLI is installed, start the control center with:
 
 ```bash
 # Single Orkestra runtime (default)
-ork control start
+ork control
 
 # Multiple runtimes
-ork control start -u "http://localhost:8080,http://localhost:8082,http://orkestra-prod:8080"
+ork control -u "http://localhost:8080,http://localhost:8082,http://orkestra-prod:8080"
 
 # Custom port
-ork control start -p 8081 -u "http://localhost:8080,http://localhost:8082"
+ork control -p 8081 -u "http://localhost:8080,http://localhost:8082"
 
 # With debug logging
-ork control start --log-level debug
+ork control --log-level debug
 ```
 
 The control center will be available at `http://localhost:8081/controlcenter`
@@ -195,7 +195,7 @@ Drill into any CRD to see:
 Monitor Orkestra runtimes running in different Kubernetes clusters:
 
 ```bash
-ork control start -u "https://cluster1.example.com:8080,https://cluster2.example.com:8080,https://cluster3.example.com:8080"
+ork control -u "https://cluster1.example.com:8080,https://cluster2.example.com:8080,https://cluster3.example.com:8080"
 ```
 
 ### Development vs Production
@@ -203,7 +203,7 @@ ork control start -u "https://cluster1.example.com:8080,https://cluster2.example
 Track both development and production instances simultaneously:
 
 ```bash
-ork control start -u "http://localhost:8080,http://orkestra-prod.internal:8080"
+ork control -u "http://localhost:8080,http://orkestra-prod.internal:8080"
 ```
 
 ### Staging Canary
@@ -211,7 +211,7 @@ ork control start -u "http://localhost:8080,http://orkestra-prod.internal:8080"
 Monitor staging and canary deployments side-by-side:
 
 ```bash
-ork control start -u "http://orkestra-stable:8080,http://orkestra-canary:8080"
+ork control -u "http://orkestra-stable:8080,http://orkestra-canary:8080"
 ```
 
 ## Configuration
@@ -254,7 +254,7 @@ cd orkestra
 go build -o ork ./cmd/orkestra/
 
 # Start the control center
-./ork control start -u "http://localhost:8080" -p 8081
+./ork control -u "http://localhost:8080" -p 8081
 ```
 
 <!-- ### Running with Hot Reload (using Air)

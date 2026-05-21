@@ -24,11 +24,11 @@ Each resource subdirectory follows a consistent pattern:
 - `xxx.go` – exports four functions:
 
 ```go
-  - Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedXxxSpec) error
+  - Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedXxxSpec) error
 
-  - Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedXxxSpec) error
+  - Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedXxxSpec) error
   
-  - Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedXxxSpec) error
+  - Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedXxxSpec) error
   
   - Resolve(src orktypes.XxxTemplateSource, ownerName string) ResolvedXxxSpec
 ```

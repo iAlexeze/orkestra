@@ -32,7 +32,7 @@ my-operator/
 
 Manifest media type: `application/vnd.orkestra.pattern.v1+tar+gzip`  
 Default registry: `ghcr.io/orkspace/orkestra-registry/patterns`  
-Override: `ORKESTRA_REGISTRY`
+Override: `ORK_REGISTRY`
 
 ### Motif (kind: Motif)
 
@@ -47,7 +47,7 @@ my-motif/
 
 Manifest media type: `application/vnd.orkestra.motif.v1+tar+gzip`  
 Default registry: `ghcr.io/orkspace/orkestra-motifs`  
-Override: `ORKESTRA_MOTIFS_REGISTRY`
+Override: `ORK_MOTIFS_REGISTRY`
 
 ## Push flow
 

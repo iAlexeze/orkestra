@@ -8,12 +8,19 @@ import (
 )
 
 // RenderBundle assembles a complete installation bundle:
-// Namespace (once) → ServiceAccounts → ClusterRole → ClusterRoleBinding → ConfigMap.
-// The Namespace appears exactly once at the top regardless of how many components
-// are combined, so the output is safe to pipe directly into kubectl apply.
+// Namespace (once) → ServiceAccounts → ClusterRoles → ClusterRoleBindings → ConfigMap.
+// expandedYAML must be the output of katalog.Katalog.SerializeExpanded() —
+// fully resolved, no OCI imports remaining. The ConfigMap embeds this content
+// so the runtime never needs to do OCI pulls at startup.
+//
+// runtimeRules are bound to the orkestra ClusterRole.
+// gatewayRules are bound to the orkestra-gateway ClusterRole.
+// opts controls which components are included in the output.
 func RenderBundle(
-	rules []rbacv1.PolicyRule,
-	inputFile, namespace, workloadNamespace string,
+	runtimeRules, gatewayRules []rbacv1.PolicyRule,
+	expandedYAML []byte,
+	namespace, workloadNamespace string,
+	opts BundleOptions,
 ) (string, error) {
 
 	nsBytes, err := renderNamespace(namespace)
@@ -26,14 +33,9 @@ func RenderBundle(
 		return "", fmt.Errorf("render task namespace: %w", err)
 	}
 
-	rbacBytes, err := renderRBAC(rules, namespace)
+	rbacBytes, err := renderRBAC(runtimeRules, gatewayRules, namespace, opts)
 	if err != nil {
 		return "", fmt.Errorf("render rbac: %w", err)
-	}
-
-	cmBytes, err := renderConfigMapBytes(inputFile, namespace)
-	if err != nil {
-		return "", fmt.Errorf("render configmap: %w", err)
 	}
 
 	// Build YAML docs with proper separators
@@ -48,7 +50,15 @@ func RenderBundle(
 	// renderRBAC prefixes each object with its own ---; strip the leading one
 	// so the assembler loop below adds it uniformly alongside the other docs.
 	docs = append(docs, strings.TrimPrefix(string(rbacBytes), "---\n"))
-	docs = append(docs, string(cmBytes))
+
+	// Include ConfigMap only when at least one process component is included.
+	if opts.IncludeRuntime || opts.IncludeGateway {
+		cmBytes, err := renderConfigMapBytes(expandedYAML, namespace)
+		if err != nil {
+			return "", fmt.Errorf("render configmap: %w", err)
+		}
+		docs = append(docs, string(cmBytes))
+	}
 
 	// Join all docs: each gets a leading --- from here.
 	out := ""

@@ -42,7 +42,7 @@ ork version
 Always validate before applying:
 
 ```bash
-ork validate -k katalog.yaml
+ork validate
 ```
 
 Expected output:
@@ -75,7 +75,7 @@ kubectl apply -f crd-unprotected.yaml
 The bundle contains the ConfigMap (your Katalog), ServiceAccount, ClusterRole, and ClusterRoleBinding:
 
 ```bash
-ork generate bundle -k katalog.yaml -o bundle.yaml
+ork generate bundle -f katalog.yaml -o bundle.yaml
 kubectl apply -f bundle.yaml
 ```
 
@@ -85,12 +85,12 @@ kubectl apply -f bundle.yaml
 
 ```bash
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install orkestra orkestra/orkestra \
+helm upgrade --install orkestra orkestra/orkestra \
   --namespace orkestra-system \
+  --create-namespace \
+  --set gateway.enabled=true \
   --wait --timeout 120s
 ```
-
-**TLS certificates:** Orkestra generates and rotates its own TLS certificate automatically. If you want to supply your own, pass `--set tls.certFile=/path/to/tls.crt --set tls.keyFile=/path/to/tls.key` to Helm.
 
 At startup you will see:
 
@@ -147,7 +147,7 @@ Error from server: admission webhook "protect.crds.orkestra.orkspace.io" denied 
 
 To delete it:
 - Set security.deletionProtection.enabled: false in the Katalog
-- Redeploy Orkestra, then delete the CRD.
+- Redeploy Orkestra Gateway, then delete the CRD.
 ```
 
 The same applies to `databases.security.orkestra.io` and `caches.security.orkestra.io`. Every CRD in the Katalog is protected.
@@ -189,7 +189,7 @@ Error from server: admission webhook "protect.resources.orkestra.orkspace.io" de
 
 To disable:
 - Set security.deletionProtection.enabled: false in the Katalog first.
-- Redeploy Orkestra, then delete the resource.
+- Redeploy Orkestra Gateway, then delete the resource.
 ```
 
 If you installed Orkestra with optional components, those are protected too:
@@ -260,6 +260,54 @@ Watch the operator logs:
 The webhook is back within milliseconds. Protection is restored automatically without restarting the operator.
 
 A safety poll (`WEBHOOK_CONTROLLER_SYNC_INTERVAL`, default 30 s) continues in parallel as a backstop — it catches any drift the Watch stream might silently miss on some managed cluster distributions.
+
+---
+
+## E2E
+
+Run the full lifecycle in one command — spins up a kind cluster, deploys the operator, applies CRs, asserts protection behaviour, then tears down:
+
+```bash
+ork e2e -f e2e.yaml
+```
+
+This runs everything defined in [e2e.yaml](./e2e.yaml):
+
+```yaml
+expect:
+  - name: App deployment created
+    after: cr-applied
+    timeout: 90s
+    resources:
+      - kind: Deployment
+        name: my-app-app
+        namespace: default
+        ready: true
+
+  - name: Protected CRD deletion blocked by webhook
+    after: cr-applied
+    timeout: 30s
+    commands:
+      - run: kubectl delete crd apps.security.orkestra.io
+        exitCode: 1
+        outputContains: "denied the request"
+
+  - name: Unprotected CRD can be deleted freely
+    after: cr-applied
+    timeout: 30s
+    commands:
+      - run: kubectl delete crd logstreams.security.orkestra.io --ignore-not-found
+        exitCode: 0
+
+  - name: App deployment removed on delete
+    after: cr-deleted
+    timeout: 30s
+    resources:
+      - kind: Deployment
+        name: my-app-app
+        namespace: default
+        count: 0
+```
 
 ---
 

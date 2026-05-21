@@ -30,7 +30,7 @@ func mergeKatalogSecurity(base, override orktypes.KatalogSecurity) orktypes.Kata
 	if override.NamespaceProtection != nil {
 		result.NamespaceProtection = override.NamespaceProtection
 	}
-	if override.ServiceName != "" {
+	if override.ServiceName != nil {
 		result.ServiceName = override.ServiceName
 	}
 	return result
@@ -74,7 +74,7 @@ func (m *Merger) mustBeMerged() {
 func checkDuplicate(seen map[string]string, name, source string) error {
 	if existing, ok := seen[name]; ok && existing != source {
 		return fmt.Errorf(
-			"duplicate CRD %q: defined in %q and %q — names must be unique across all sources",
+			"duplicate CRD %q: defined in %q and %q — names must be unique across all imports",
 			name, existing, source,
 		)
 	}

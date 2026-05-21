@@ -63,8 +63,8 @@ func FormatYAMLError(err error, data []byte) string {
 						strings.TrimSpace(contextLine),
 						fieldName))
 			}
-		} else if strings.Contains(line, "line ") && strings.Contains(line, "cannot unmarshal") {
-			// Handle type mismatches
+		} else if strings.Contains(line, "line ") {
+			// Generic line-prefixed errors (type mismatches, custom UnmarshalYAML errors, etc.)
 			parts := strings.SplitN(line, ":", 2)
 			if len(parts) < 2 {
 				continue
@@ -77,11 +77,12 @@ func FormatYAMLError(err error, data []byte) string {
 			fmt.Sscanf(lineInfo, "line %d", &lineNum)
 
 			contextLine := getLineFromData(data, lineNum)
+			humanMsg := translateYAMLErrorMsg(errorMsg)
 
 			errorLines = append(errorLines,
 				fmt.Sprintf("• %s: %s",
 					strings.TrimSpace(contextLine),
-					errorMsg))
+					humanMsg))
 		}
 	}
 
@@ -90,6 +91,88 @@ func FormatYAMLError(err error, data []byte) string {
 	}
 
 	return "Validation failed:\n" + strings.Join(errorLines, "\n")
+}
+
+// translateYAMLErrorMsg converts raw yaml.v3 error messages into user-friendly text.
+// It handles type mismatches (cannot unmarshal) and passes custom UnmarshalYAML
+// error messages through unchanged.
+func translateYAMLErrorMsg(msg string) string {
+	if !strings.HasPrefix(msg, "cannot unmarshal") {
+		// Custom error from an UnmarshalYAML implementation — show as-is.
+		return msg
+	}
+
+	// yaml.v3 format: "cannot unmarshal !!TAG [VALUE ]into GOTYPE"
+	// The VALUE (e.g. `secretName`) may or may not be present between TAG and "into".
+	// Find the word after " into " to get the Go type.
+	intoIdx := strings.Index(msg, " into ")
+	if intoIdx < 0 {
+		return msg
+	}
+	goType := strings.TrimSpace(msg[intoIdx+6:])
+
+	// Extract YAML tag (first !!WORD after "cannot unmarshal ")
+	tagIdx := strings.Index(msg, "!!")
+	yamlTag := ""
+	if tagIdx >= 0 {
+		rest := msg[tagIdx:]
+		if sp := strings.IndexByte(rest, ' '); sp > 0 {
+			yamlTag = rest[:sp]
+		} else {
+			yamlTag = rest
+		}
+	}
+
+	got := yamlTagFriendly(yamlTag)
+	want := goTypeFriendly(goType)
+
+	return fmt.Sprintf("expected %s, got %s", want, got)
+}
+
+func yamlTagFriendly(tag string) string {
+	switch tag {
+	case "!!map":
+		return "an object (key: value pairs)"
+	case "!!seq":
+		return "a list (items starting with -)"
+	case "!!str":
+		return "a string"
+	case "!!int":
+		return "a number"
+	case "!!float":
+		return "a decimal number"
+	case "!!bool":
+		return "true or false"
+	case "!!null":
+		return "null"
+	default:
+		return tag
+	}
+}
+
+func goTypeFriendly(goType string) string {
+	// Strip pointer prefix
+	goType = strings.TrimPrefix(goType, "*")
+
+	// Slice types → "a list"
+	if strings.HasPrefix(goType, "[]") {
+		return "a list"
+	}
+
+	// Primitive types
+	switch goType {
+	case "string":
+		return "a string"
+	case "int", "int32", "int64", "uint", "uint32", "uint64":
+		return "a number"
+	case "float32", "float64":
+		return "a decimal number"
+	case "bool":
+		return "true or false"
+	}
+
+	// Anything else (struct / map type from a package) → "an object"
+	return "an object"
 }
 
 func getLineFromData(data []byte, lineNum int) string {

@@ -94,7 +94,7 @@ spec:
               replicas: "{{ .spec.replicas }}"
               port: 9090
               env:
-                PRODUCER_HOST:
+                - name: PRODUCER_HOST
                   value: "{{ .cross.producer.status.endpoint }}"
               reconcile: true
           services:

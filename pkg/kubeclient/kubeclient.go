@@ -6,17 +6,21 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"errors"
 	"github.com/orkspace/orkestra/domain"
-	orkerror "github.com/orkspace/orkestra/pkg/error"
 	"github.com/orkspace/orkestra/pkg/konfig"
 	"github.com/orkspace/orkestra/pkg/logger"
 	"github.com/orkspace/orkestra/pkg/utils"
 	apiextclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -29,6 +33,7 @@ type Kubeclient struct {
 	apiext     apiextclientset.Interface
 	Info       *CRDInfo
 	started    atomic.Bool
+	mapper     meta.RESTMapper
 
 	// Starter konfig
 	konfig *konfig.Konfig
@@ -36,6 +41,21 @@ type Kubeclient struct {
 
 	// Testing
 	FakeClientset kubernetes.Interface
+}
+
+func (k *Kubeclient) Mapper() meta.RESTMapper {
+	return k.mapper
+}
+
+// RefreshMapper forces the deferred mapper to refresh its discovery cache.
+// Call this after creating or updating CRDs so RESTMapping will pick them up.
+func (k *Kubeclient) RefreshMapper() {
+	if k.mapper == nil {
+		return
+	}
+	if dm, ok := k.mapper.(*restmapper.DeferredDiscoveryRESTMapper); ok {
+		dm.Reset()
+	}
 }
 
 // Implementing yhe Komponent interface
@@ -47,7 +67,7 @@ var _ domain.Komponent = (*Kubeclient)(nil)
 // NewKubeclient returns a new Kubeclient with the correct scheme
 func NewKubeclient(kfg *konfig.Konfig, scheme *runtime.Scheme) *Kubeclient {
 	if scheme == nil {
-		utils.Exit(orkerror.ErrSchemeNill)
+		utils.Exit(errors.New("scheme cannot be nil"))
 	}
 
 	return &Kubeclient{
@@ -88,6 +108,17 @@ func (k *Kubeclient) Start(ctx context.Context) error {
 		return fmt.Errorf("kubeclient -- failed to create apiextensions clientset: %w", err)
 	}
 
+	// Build a cached discovery client and deferred RESTMapper
+	logger.Debug().Msg("creating discovery client and RESTMapper")
+	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
+	if err != nil {
+		return fmt.Errorf("kubeclient -- failed to create discovery client: %w", err)
+	}
+	// memory cache for discovery
+	cached := memory.NewMemCacheClient(dc)
+	// deferred mapper that lazily queries discovery and caches mappings
+	k.mapper = restmapper.NewDeferredDiscoveryRESTMapper(cached)
+
 	k.started.Store(true)
 	return nil
 }
@@ -99,15 +130,15 @@ func (k *Kubeclient) buildConfig() (*rest.Config, error) {
 	}
 
 	if k.scheme == nil {
-		return nil, orkerror.ErrSchemeNill
+		return nil, errors.New("scheme cannot be nil")
 	}
 
 	var restCfg *rest.Config
 	var err error
 
-	if k.konfig.Cluster().KubekonfigPath != "" {
+	if k.konfig.Cluster().KubekonfigPath() != "" {
 		logger.Debug().Msg("using kubeconfig")
-		restCfg, err = clientcmd.BuildConfigFromFlags(k.konfig.Cluster().MasterURL, k.konfig.Cluster().KubekonfigPath)
+		restCfg, err = clientcmd.BuildConfigFromFlags(k.konfig.Cluster().MasterURL(), k.konfig.Cluster().KubekonfigPath())
 	} else {
 		logger.Debug().Msg("using incluster configuration")
 		restCfg, err = rest.InClusterConfig()

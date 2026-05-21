@@ -12,7 +12,7 @@ All webhook logic — admission, conversion, deletion protection, and namespace 
 | Liveness probe (`/health`) | `handler.go` |
 | Readiness probe (`/ready`) | `handler.go` |
 | Prometheus metrics (`/metrics`) | `health.go` (via `promhttp.Handler`) |
-| Katalog API routes (`/katalog/…`) | Registered externally by `cmd/internal/konstructor.go` |
+| Katalog API routes (`/katalog/…`) | Registered externally by `cmd/internal/runtime_konstructor.go` |
 | Conversion / admission stats types | `conversion_stats.go`, `admission_stats.go`, etc. |
 
 ## Server lifecycle
@@ -20,7 +20,7 @@ All webhook logic — admission, conversion, deletion protection, and namespace 
 ```
 NewHealthServer(konfig)
     ↓
-hs.Register(path, handler)   ← called by konstructor.go for all /katalog routes
+hs.Register(path, handler)   ← called by runtime_konstructor.go for all /katalog routes
     ↓
 hs.Start(ctx)
     • binds HTTP port  → /startup /health /ready /metrics + /katalog routes

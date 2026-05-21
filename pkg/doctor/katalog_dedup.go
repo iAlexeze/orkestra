@@ -10,7 +10,7 @@ import (
 // DeduplicateKatalogGVKs reads the merged katalog at path, collapses all CRDs
 // that share the same GVK into one, and writes the result back.
 //
-// When ork kompose merges multiple single-app katalogs, each produces a CRD
+// When ork template merges multiple single-app katalogs, each produces a CRD
 // with apiTypes.kind: ConfigMap. Orkestra forbids duplicate GVKs at runtime,
 // so this must be called before ork generate bundle in the multi-app flow.
 //
@@ -99,7 +99,7 @@ func katalogMergeHooks(dst, src map[string]interface{}) {
 		dst["operatorBox"] = srcBox
 		return
 	}
-	for _, hook := range []string{"onCreate", "onReconcile", "onDelete", "onUpdate"} {
+	for _, hook := range []string{"onCreate", "onReconcile", "onDelete"} {
 		srcHook, _ := srcBox[hook].(map[string]interface{})
 		if srcHook == nil {
 			continue

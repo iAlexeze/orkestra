@@ -34,7 +34,7 @@ func (t PodTemplateSource) GetProbes() *ProbesConfig         { return t.Probes }
 // Only entries with a non-empty Profile string are returned — omitted profiles
 // (which fall back to "standard") are not surfaced for validation.
 func (c *CRDEntry) CollectProbeProfileEntries() []ProbeProfileEntry {
-	if !c.HasAnyHooks() {
+	if !c.HasAnyHookTemplates() {
 		return nil
 	}
 

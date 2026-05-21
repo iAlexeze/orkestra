@@ -30,7 +30,7 @@ spec:
               value: "{{ .metadata.name }}.{{ .metadata.namespace }}.svc"
 ```
 
-The `onCreate`, `onUpdate`, and `onDelete` hooks define the state transitions. The `status.fields` declarations define what gets written after each successful transition.
+The `onCreate`, `onReconcile`, and `onDelete` hooks define the state transitions. The `status.fields` declarations define what gets written after each successful transition.
 
 ## Why it matters
 

@@ -1,11 +1,9 @@
-// cmd/cli/registry.go
-//
 // ork registry — push, pull, info, list
 //
 // All four commands follow the same pattern as ork notes and ork init:
 // minimal flags, clear output, no hidden state.
 
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -24,8 +22,8 @@ var registryCmd = &cobra.Command{
 Authentication uses ~/.docker/config.json — run 'docker login' first.
 Override the default registries with environment variables:
 
-  export ORKESTRA_REGISTRY=oci://myregistry.internal/patterns
-  export ORKESTRA_MOTIFS_REGISTRY=oci://myregistry.internal/motifs`,
+  export ORK_REGISTRY=oci://myregistry.internal/patterns
+  export ORK_MOTIFS_REGISTRY=oci://myregistry.internal/motifs`,
 }
 
 // ── registration ──────────────────────────────────────────────────────────────
@@ -39,12 +37,15 @@ func init() {
 
 	registryPullCmd.Flags().Bool("refresh", false, "Bypass local cache and re-pull from registry")
 	registryPullCmd.Flags().StringP("out", "o", "", "Extract pulled pattern to this directory")
+	registryPullCmd.Flags().StringP("file", "f", "", "Pull all OCI imports from a katalog or komposer file")
 
 	registryListCmd.Flags().StringP("tag", "t", "", "Filter by tag (e.g. database, stateful, security)")
 	registryListCmd.Flags().BoolP("katalogs", "k", false, "Show only katalogs (kind: Katalog)")
 	registryListCmd.Flags().BoolP("motifs", "m", false, "Show only motifs (kind: Motif)")
-	registryPushCmd.Flags().BoolVar(&registryPushForce, "force", false, "force push even if metadata.version differs from tag")
+	registryPushCmd.Flags().BoolVar(&registryPushForce, "force", false, "force push even if metadata.version differs from tag or e2e fails")
 	registryPushCmd.Flags().BoolVar(&registryPushUpdateMeta, "update-meta", false, "persist overridden metadata.version back to the primary file")
+	registryPushCmd.Flags().StringVar(&registryPushE2EFile, "e2e", "", "path to e2e spec file (default: e2e.yaml in pattern dir)")
+	registryPushCmd.Flags().BoolVar(&registryPushNoE2E, "no-e2e", false, "skip the e2e gate even if e2e.yaml is present")
 
 	// Shadow global flags
 	for _, cmd := range []*cobra.Command{registryCmd, registryPushCmd, registryPullCmd, registryInfoCmd, registryListCmd} {

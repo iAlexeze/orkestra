@@ -224,7 +224,8 @@ curl localhost:8080/katalog/cronjob-v2 | jq '.conversion'
 Or launch the Control Center for live visualisation:
 
 ```bash
-ork control start
+ork control
+# username:password → orkestra
 ```
 
 ---

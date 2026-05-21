@@ -25,6 +25,17 @@ func ParsePort(s string) int {
 	return p
 }
 
+// ParseReplicas parses a replica count string, defaulting to 1 when empty or unparseable.
+func ParseReplicas(s string) int32 {
+	if s != "" {
+		var r int
+		if n, _ := fmt.Sscanf(s, "%d", &r); n == 1 && r > 0 {
+			return int32(r)
+		}
+	}
+	return 1
+}
+
 // ExpandResourceProfile converts a named resource profile into a
 // ResourceRequirements struct. Returns an error for unknown profile names.
 // Profiles: tiny, small, medium, large, burst, steady, compute-heavy, memory-heavy.

@@ -30,25 +30,14 @@ tells you what Kubernetes has actually achieved.
 
 ## Steps
 
-### 1. Install the CRD
+### 1. Start the operator
 
 ```bash
-kubectl apply -f crd.yaml
+ork run
+# Orkestra reads katalog.yaml, applies the CRD and cr.yaml, and starts the operator.
 ```
 
-### 2. Start the operator
-
-```bash
-ork run --file katalog.yaml
-```
-
-### 3. Apply the CR
-
-```bash
-kubectl apply -f cr.yaml
-```
-
-### 4. Verify all three resources
+### 2. Verify all three resources
 
 ```bash
 kubectl get deployments,services,configmaps | grep my-app

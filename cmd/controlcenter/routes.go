@@ -42,25 +42,34 @@ func setupRoutes(cc *controlcenter.ControlCenter, version, commit, buildDate str
 	   Authentication UI (public)
 	   ----------------------------------------------------------- */
 
-	// Login page (GET)
-	mux.HandleFunc("/", auth.LoginPage)
+	if cc.NoLogin() {
+		// NO_LOGIN mode: skip the login page, send root straight to the CC.
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/controlcenter", http.StatusFound)
+		})
+	} else {
+		// Login page (GET)
+		mux.HandleFunc("/", auth.LoginPage)
 
-	// Login form submit (POST)
-	mux.HandleFunc("/login", auth.LoginPost)
+		// Login form submit (POST)
+		mux.HandleFunc("/login", auth.LoginPost)
 
-	// Logout clears session cookie
-	mux.HandleFunc("/logout", auth.Logout)
+		// Logout clears session cookie
+		mux.HandleFunc("/logout", auth.Logout)
 
-	// GitHub OAuth (only active when GITHUB_CLIENT_ID is set)
-	mux.HandleFunc("/auth/github", auth.GitHubBegin)
-	mux.HandleFunc("/auth/github/callback", auth.GitHubCallback)
+		// GitHub OAuth (only active when GITHUB_CLIENT_ID is set)
+		mux.HandleFunc("/auth/github", auth.GitHubBegin)
+		mux.HandleFunc("/auth/github/callback", auth.GitHubCallback)
+	}
 
 	/* -----------------------------------------------------------
 	   Protected Control Center routes
 	   ----------------------------------------------------------- */
 
 	protected := http.StripPrefix("/controlcenter", cc)
-	protected = auth.SessionAuth(protected)
+	if !cc.NoLogin() {
+		protected = auth.SessionAuth(protected)
+	}
 	mux.Handle("/controlcenter/", protected)
 
 	return mux

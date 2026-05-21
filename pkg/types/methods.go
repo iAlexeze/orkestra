@@ -29,6 +29,20 @@ func (c *CRDEntry) SkipStatusSubresource() bool {
 	return c.IgnoreStatusPatch
 }
 
+// ShouldEnrich returns true when the given enrichment target is enabled —
+// either via EnrichAll: true or an explicit entry in Enrich.
+func (c *CRDEntry) ShouldEnrich(target string) bool {
+	if c.EnrichAll {
+		return true
+	}
+	for _, t := range c.Enrich {
+		if t == target {
+			return true
+		}
+	}
+	return false
+}
+
 // SkipObservedGeneration reports whether this CRD belongs to a list to be ignored during status patches.
 // This is applied mainly to builtins or if specifically required by the crd through crd.IgnoreStatusPatch
 func (c *CRDEntry) SkipObservedGeneration() bool {
@@ -181,15 +195,6 @@ func (c *CRDEntry) IsEnabled() bool {
 	return *c.Enabled
 }
 
-// IsCritical reports whether this CRD is marked as critical. Critical CRDs may
-// influence startup ordering or health evaluation. Defaults to false.
-// func (c *CRDEntry) IsCritical() bool {
-// 	if c.Critical == nil {
-// 		return false
-// 	}
-// 	return *c.Critical
-// }
-
 // IsNamespaced reports whether this CRD is namespaced. Defaults to true unless
 // explicitly overridden or determined by enrichment.
 func (c *CRDEntry) IsNamespaced() bool {
@@ -208,13 +213,13 @@ func (c *CRDEntry) DefaultReconcile() bool {
 	return *c.OperatorBox.Default
 }
 
-// DefaultQueue reports whether this CRD uses the default queue configuration.
+// SharedQueue reports whether this CRD uses the shared default workqueue.
 // Defaults to false when omitted.
-func (c *CRDEntry) DefaultQueue() bool {
-	if c.Queue.Default == nil {
+func (c *CRDEntry) SharedQueue() bool {
+	if c.Queue.Shared == nil {
 		return false
 	}
-	return *c.Queue.Default
+	return *c.Queue.Shared
 }
 
 // CustomHooksEnabled reports whether the reconcile behaviour uses custom hooks.
@@ -297,6 +302,12 @@ func (c *CRDEntry) AutoscaleEnabled() bool {
 // either via an explicit rollback: block or the rollBackOnError: true shorthand.
 func (c *CRDEntry) HasRollbackRules() bool {
 	return c.OperatorBox.Rollback != nil || c.OperatorBox.RollBackOnError
+}
+
+// HasCRDFile reports whether this CRDEntry declares a CRD file
+// to be auto-applied before the operator starts.
+func (c *CRDEntry) HasCRDFile() bool {
+	return c != nil && c.CRDFile != ""
 }
 
 // NotificationEnabled reports whether this CRD declares the notification block

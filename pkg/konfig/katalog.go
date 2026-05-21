@@ -1,73 +1,72 @@
-// pkg/konfig/katalog.go
 package konfig
 
-// KatalogKind returns the kind string for a Katalog document.
-// Katalogs declare CRDs in spec.crds. No sources block.
-func KatalogKind() string {
-	return kindKatalog
+import "time"
+
+// katalog.go provides accessor methods for the unexported katalogKonfig
+// fields. Callers should use these methods to read and mutate katalog
+// configuration without exposing the underlying struct fields.
+//
+// Example usage:
+//   kfg.Katalog().DefaultWorkers()
+//   kfg.Katalog().ShutdownTimeout()
+//
+// The underlying katalogKonfig struct is expected to use unexported field
+// names (paths, defaultMaxQueueDepth, defaultDegradeThreshold, defaultResync,
+// defaultWorkers, shutdownTimeout, shutdownGracePeriod).
+//
+// This file intentionally contains only simple, side-effect-free accessors
+// and a small set of helpers for common operations.
+
+// Paths returns the configured katalog file paths.
+func (k *katalogKonfig) Paths() []string {
+	return k.paths
 }
 
-// KomposerKind returns the kind string for a Komposer document.
-// Komposers compose Katalogs from sources (files, helm).
-func KomposerKind() string {
-	return kindKomposer
+// HasPaths reports whether any katalog paths have been configured.
+func (k *katalogKonfig) HasPaths() bool {
+	return len(k.paths) > 0
 }
 
-// MotifKind returns the kind string for a Motif document.
-func MotifKind() string {
-	return kindMotif
-}
-
-// KonduktorKind returns the kind string for a Konduktor document.
-func KonduktorKind() string {
-	return kindKonductor
-}
-
-// IsKatalogKind returns true if the given kind is a Katalog.
-func IsKatalogKind(kind string) bool {
-	return kind == kindKatalog
-}
-
-// IsKonduktorKind returns true if the given kind is a Konduktor.
-func IsKonduktorKind(kind string) bool {
-	return kind == kindKonductor
-}
-
-// IsMotifKind returns true if the given kind is a Motif.
-func IsMotifKind(kind string) bool {
-	return kind == kindMotif
-}
-
-// IsKomposerKind returns true if the given kind is a Komposer.
-func IsKomposerKind(kind string) bool {
-	return kind == kindKomposer
-}
-
-// IsValidDocumentKind reports whether the given kind is one of the supported
-// Orkestra document kinds.
-func IsValidDocumentKind(kind string) bool {
-	return kind == kindKatalog ||
-		kind == kindKomposer ||
-		kind == kindMotif
-}
-
-// ValidKindsString returns a comma‑separated list of all supported document kinds.
-// Useful for error messages and CLI diagnostics.
-func ValidKindsString() string {
-	return "Katalog, Komposer, Motif"
-}
-
-// IsValidApiVersion returns true if the given apiVersion is a supported version.
-func IsValidApiVersion(apiVersion string) bool {
-	for _, v := range apiVersions {
-		if v == apiVersion {
-			return true
-		}
+// AddPath appends a katalog path to the configuration.
+func (k *katalogKonfig) AddPath(path string) {
+	if path == "" {
+		return
 	}
-	return false
+	k.paths = append(k.paths, path)
 }
 
-// ApiVersions returns the list of supported apiVersions.
-func ApiVersions() []string {
-	return apiVersions
+// DefaultMaxQueueDepth returns the defaultmaximum  queue depth for CRD workers.
+func (k *katalogKonfig) DefaultMaxQueueDepth() int {
+	return k.defaultMaxQueueDepth
+}
+
+// DefaultDegradeThreshold returns the default degrade threshold.
+func (k *katalogKonfig) DefaultDegradeThreshold() int {
+	return k.defaultDegradeThreshold
+}
+
+// DefaultResync returns the default informer resync period.
+func (k *katalogKonfig) DefaultResync() time.Duration {
+	return k.defaultResync
+}
+
+// DefaultWorkers returns the default number of reconcile workers per CRD.
+func (k *katalogKonfig) DefaultWorkers() int {
+	return k.defaultWorkers
+}
+
+// ShutdownTimeout returns the hard timeout used during shutdown.
+func (k *katalogKonfig) ShutdownTimeout() time.Duration {
+	return k.shutdownTimeout
+}
+
+// ShutdownGracePeriod returns the grace period before forced shutdown.
+func (k *katalogKonfig) ShutdownGracePeriod() time.Duration {
+	return k.shutdownGracePeriod
+}
+
+// GatewayEndpoint returns the advertised gateway endpoint; it may be empty
+// when no gateway is configured.
+func (k *katalogKonfig) GatewayEndpoint() string {
+	return k.gatewayEndpoint
 }

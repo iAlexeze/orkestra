@@ -8,6 +8,8 @@ Conditional notes express branching logic inside a single template expression, r
 
 Return `trueVal` when `condition` is truthy, `falseVal` otherwise. Condition truthiness follows Go rules: non-empty string, non-zero number, non-empty slice/map, `true` bool.
 
+Keywords: conditional, branch, ternary, if-else, logic, truthy
+
 ```yaml
 # value: "{{ ternary .spec.debug \"debug\" \"info\" }}"
 # spec.debug=true  → "debug"
@@ -24,6 +26,8 @@ Return `trueVal` when `condition` is truthy, `falseVal` otherwise. Condition tru
 
 Like `ternary` but requires a strict `bool` argument. Use this when the field is declared as a boolean in the CRD schema — it avoids the truthiness ambiguity of `ternary` for values like `0`, `""`, or `[]`.
 
+Keywords: conditional, branch, boolean, ternary, if-else, strict
+
 ```yaml
 # value: "{{ boolTernary .spec.suspend \"Suspended\" \"Active\" }}"
 # spec.suspend=true  → "Suspended"
@@ -38,6 +42,8 @@ Like `ternary` but requires a strict `bool` argument. Use this when the field is
 
 Return the field's boolean value if it is a `bool`, otherwise return `def`. Useful when a boolean field may be absent (nil) in the CR.
 
+Keywords: conditional, boolean, default, fallback, absent, nil
+
 ```yaml
 # value: "{{ boolTernary (boolDefault .spec.suspend false) \"Suspended\" \"Active\" }}"
 # spec.suspend absent → boolDefault returns false → "Active"
@@ -49,6 +55,8 @@ Return the field's boolean value if it is a `bool`, otherwise return `def`. Usef
 ### `default`
 
 Return `val` if non-empty, otherwise return `def`. "Empty" means nil, `""`, `0`, `false`, empty slice, or empty map.
+
+Keywords: conditional, default, fallback, absent, empty, nil
 
 ```yaml
 # value: "{{ default .spec.replicas 2 }}"
@@ -67,6 +75,8 @@ Return `val` if non-empty, otherwise return `def`. "Empty" means nil, `""`, `0`,
 
 Return the first non-empty value from a variadic list. Useful when a field can come from multiple sources with a final fallback.
 
+Keywords: conditional, coalesce, fallback, first, multiple, chain
+
 ```yaml
 # value: "{{ coalesce .spec.image .spec.defaultImage \"nginx:latest\" }}"
 # spec.image set        → spec.image
@@ -80,6 +90,8 @@ Return the first non-empty value from a variadic list. Useful when a field can c
 
 Return `true` when the value is empty (nil, `""`, `0`, `false`, empty slice, empty map, or `"<no value>"`).
 
+Keywords: conditional, empty, check, boolean, nil, absent
+
 ```yaml
 # Use in a conditional:
 # value: "{{ if empty .spec.image }}nginx:latest{{ else }}{{ .spec.image }}{{ end }}"
@@ -92,6 +104,8 @@ Equivalent to `not notEmpty`.
 ### `notEmpty`
 
 Return `true` when the value is non-empty. The inverse of `empty`.
+
+Keywords: conditional, empty, check, boolean, present, exists
 
 ```yaml
 # Use in when: conditions via template expression:

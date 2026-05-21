@@ -77,7 +77,7 @@ before the validating webhook. This means:
 
 - Install Orkestra  
   ```bash
-  helm install orkestra orkestra/orkestra --namespace orkestra-system --create-namespace
+  helm upgrade --install orkestra orkestra/orkestra --namespace orkestra-system --create-namespace
   ```
 
 - Wait for Orkestra to be ready  

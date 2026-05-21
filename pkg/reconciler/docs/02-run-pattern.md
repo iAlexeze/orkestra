@@ -7,7 +7,7 @@ Every `run_<resource>.go` file follows the same structure. This document describ
 ```go
 func runWidgets(
     ctx    context.Context,
-    kube   *kubeclient.Kubeclient,
+    kube   kubeclient.KubeClient,
     resolver *orktmpl.Resolver,
     owner  domain.Object,
     srcs   []orktypes.WidgetTemplateSource,

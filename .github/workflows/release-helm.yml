@@ -80,15 +80,17 @@ jobs:
 
           cp ".cr-release-packages/${ORK}-${VERSION}.tgz" /tmp/gh-pages/
 
-          # 1. Remove any existing version line(s)
-          sed -i '/^> \*\*Chart version:\*\*/d' /tmp/gh-pages/README.md
-          
-          # 2. Insert the new version line after line 2
-          awk 'NR==2{print; print "> **Chart version:** '"${VERSION}"' | **App version:** '"${IMAGE_TAG}"'"; print ""; next}1' \
+          # Sync README from chart source — single source of truth.
+          # Insert the version badge after the first heading line.
+          cp "${CHART_DIR}/README.md" /tmp/gh-pages/README.md
+          awk 'NR==1{print; print ""; print "> **Chart version:** '"${VERSION}"' | **App version:** '"${IMAGE_TAG}"'"; print ""; next}1' \
           /tmp/gh-pages/README.md > /tmp/README.tmp && mv /tmp/README.tmp /tmp/gh-pages/README.md
 
           # Copy values.yaml so users can inspect defaults from the gh-pages site
           cp "charts/${ORK}/values.yaml" /tmp/gh-pages/values.yaml
+
+          # Copy crdsExamples source — kept in the chart dir, not Chart.yaml (too large)
+          cp "charts/${ORK}/artifacthub-crds-examples.yaml" /tmp/gh-pages/crds-examples.yaml
 
           cd /tmp/gh-pages
           if [[ -f index.yaml ]]; then
@@ -97,9 +99,17 @@ jobs:
             helm repo index . --url "https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
           fi
 
+          # Inject crdsExamples into the newly published version entry.
+          # strenv() reads the env var as a raw string — safe with newlines and Go templates.
+          export CRDS_EXAMPLES
+          CRDS_EXAMPLES=$(cat crds-examples.yaml)
+          yq eval \
+            '(.entries.'"${ORK}"'[] | select(.version == "'"${VERSION}"'")).annotations["artifacthub.io/crdsExamples"] = strenv(CRDS_EXAMPLES)' \
+            -i index.yaml
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "*.tgz" index.yaml README.md values.yaml
+          git add "*.tgz" index.yaml README.md values.yaml crds-examples.yaml
           git commit -m "Release ${ORK}-${VERSION}"
           git push origin gh-pages
 
@@ -110,6 +120,6 @@ jobs:
           echo '```bash' >> "$GITHUB_STEP_SUMMARY"
           echo "helm repo add ${{ inputs.ork }} ${{ inputs.helm_repo_url }}" >> "$GITHUB_STEP_SUMMARY"
           echo "helm repo update" >> "$GITHUB_STEP_SUMMARY"
-          echo "helm install ${{ inputs.ork }} ${{ inputs.helm_chart }} --namespace ${{ inputs.ork }}-system --create-namespace" >> "$GITHUB_STEP_SUMMARY"
+          echo "helm upgrade --install ${{ inputs.ork }} ${{ inputs.helm_chart }} --namespace ${{ inputs.ork }}-system --create-namespace" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"

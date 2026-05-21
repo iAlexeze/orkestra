@@ -21,7 +21,7 @@ import (
 
 // Create creates a ReplicaSet owned by the CR if it does not already exist.
 // Idempotent — if the ReplicaSet exists, does nothing and returns nil.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedReplicaSetSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedReplicaSetSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("replicaset.Create: invalid spec: %w", err)
 	}
@@ -61,7 +61,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 
 // Update reconciles an existing ReplicaSet to match the resolved spec.
 // Handles drift — if replicas or image have changed, patches the ReplicaSet.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedReplicaSetSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedReplicaSetSpec) error {
 	if err := validateSpec(spec); err != nil {
 		return fmt.Errorf("replicaset.Update: invalid spec: %w", err)
 	}
@@ -143,7 +143,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Delete deletes the ReplicaSet if it exists.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedReplicaSetSpec) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedReplicaSetSpec) error {
 	namespace := common.ResolveNamespace(owner, spec.Namespace)
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
@@ -171,7 +171,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // DeleteIfOwned deletes the ReplicaSet only if it is owned by the CR.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient,
 	owner domain.Object, name, namespace string) error {
 
 	existing, err := kube.Clientset().AppsV1().ReplicaSets(namespace).
@@ -192,7 +192,7 @@ func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient,
 }
 
 // Resolve builds a ResolvedReplicaSetSpec from a ReplicaSetTemplateSource.
-func Resolve(src orktypes.ReplicaSetTemplateSource, staticReplicas int, ownerName string) ResolvedReplicaSetSpec {
+func Resolve(src orktypes.ReplicaSetTemplateSource, ownerName string) ResolvedReplicaSetSpec {
 	spec := ResolvedReplicaSetSpec{
 		Name:        src.Name,
 		Image:       src.Image,
@@ -200,7 +200,6 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, staticReplicas int, ownerNam
 		Resources:   common.ResolveResources(src.Resources),
 		Labels:      make(map[string]string),
 		Annotations: make(map[string]string),
-		Env:         make(map[string]orktypes.EnvVarSource),
 		EnvFrom:     src.EnvFrom,
 		Probes:      src.Probes,
 		Sleep:       src.Sleep,
@@ -210,17 +209,7 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, staticReplicas int, ownerNam
 		spec.Name = ownerName + "-replicaset"
 	}
 
-	if src.Replicas != "" {
-		if r, err := strconv.ParseInt(src.Replicas, 10, 32); err == nil {
-			spec.Replicas = int32(r)
-		}
-	}
-	if spec.Replicas == 0 && staticReplicas > 0 {
-		spec.Replicas = int32(staticReplicas)
-	}
-	if spec.Replicas == 0 {
-		spec.Replicas = 1
-	}
+	spec.Replicas = common.ParseReplicas(src.Replicas)
 
 	if src.Port != "" {
 		if p, err := strconv.ParseInt(src.Port, 10, 32); err == nil {
@@ -238,9 +227,7 @@ func Resolve(src orktypes.ReplicaSetTemplateSource, staticReplicas int, ownerNam
 		spec.NodeSelector[a] = a
 	}
 
-	for k, v := range src.Env {
-		spec.Env[k] = v
-	}
+	spec.Env = []orktypes.EnvVar(src.Env)
 
 	spec.Labels[labels.Managed] = labels.ManagedValue
 	spec.Labels[labels.OrkestraOwner] = ownerName
@@ -320,67 +307,48 @@ func buildReplicaSet(owner domain.Object, spec ResolvedReplicaSetSpec, namespace
 	common.ApplyProbes(&rs.Spec.Template.Spec.Containers[0], spec.Probes, spec.Port)
 
 	if len(spec.Env) > 0 {
-		rs.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{}
-		for k, src := range spec.Env {
-			ev := corev1.EnvVar{Name: k}
-
-			switch {
-			case src.SecretKeyRef != nil:
-				ev.ValueFrom = &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: src.SecretKeyRef.Name,
-						},
-						Key: src.SecretKeyRef.Key,
-					},
+		rs.Spec.Template.Spec.Containers[0].Env = make([]corev1.EnvVar, 0, len(spec.Env))
+		for _, ev := range spec.Env {
+			kev := corev1.EnvVar{Name: ev.Name}
+			if ev.ValueFrom != nil {
+				kev.ValueFrom = &corev1.EnvVarSource{}
+				if ev.ValueFrom.SecretKeyRef != nil {
+					kev.ValueFrom.SecretKeyRef = &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: ev.ValueFrom.SecretKeyRef.Name},
+						Key:                  ev.ValueFrom.SecretKeyRef.Key,
+					}
 				}
-
-			case src.ConfigMapKeyRef != nil:
-				ev.ValueFrom = &corev1.EnvVarSource{
-					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: src.ConfigMapKeyRef.Name,
-						},
-						Key: src.ConfigMapKeyRef.Key,
-					},
+				if ev.ValueFrom.ConfigMapKeyRef != nil {
+					kev.ValueFrom.ConfigMapKeyRef = &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: ev.ValueFrom.ConfigMapKeyRef.Name},
+						Key:                  ev.ValueFrom.ConfigMapKeyRef.Key,
+					}
 				}
-
-			default:
-				ev.Value = src.Value
+			} else {
+				kev.Value = ev.Value
 			}
-
-			rs.Spec.Template.Spec.Containers[0].Env =
-				append(rs.Spec.Template.Spec.Containers[0].Env, ev)
+			rs.Spec.Template.Spec.Containers[0].Env = append(rs.Spec.Template.Spec.Containers[0].Env, kev)
 		}
 	}
 
-	if len(spec.EnvFrom) > 0 {
-		rs.Spec.Template.Spec.Containers[0].EnvFrom = []corev1.EnvFromSource{}
-		for _, src := range spec.EnvFrom {
-			if src.ConfigMapRef != "" {
-				rs.Spec.Template.Spec.Containers[0].EnvFrom = append(
-					rs.Spec.Template.Spec.Containers[0].EnvFrom,
-					corev1.EnvFromSource{
-						ConfigMapRef: &corev1.ConfigMapEnvSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: src.ConfigMapRef,
-							},
-						},
+	if spec.EnvFrom != nil {
+		for _, name := range spec.EnvFrom.SecretRef {
+			rs.Spec.Template.Spec.Containers[0].EnvFrom = append(
+				rs.Spec.Template.Spec.Containers[0].EnvFrom,
+				corev1.EnvFromSource{
+					SecretRef: &corev1.SecretEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{Name: name},
 					},
-				)
-			}
-			if src.SecretRef != "" {
-				rs.Spec.Template.Spec.Containers[0].EnvFrom = append(
-					rs.Spec.Template.Spec.Containers[0].EnvFrom,
-					corev1.EnvFromSource{
-						SecretRef: &corev1.SecretEnvSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: src.SecretRef,
-							},
-						},
+				})
+		}
+		for _, name := range spec.EnvFrom.ConfigMapRef {
+			rs.Spec.Template.Spec.Containers[0].EnvFrom = append(
+				rs.Spec.Template.Spec.Containers[0].EnvFrom,
+				corev1.EnvFromSource{
+					ConfigMapRef: &corev1.ConfigMapEnvSource{
+						LocalObjectReference: corev1.LocalObjectReference{Name: name},
 					},
-				)
-			}
+				})
 		}
 	}
 
@@ -394,12 +362,6 @@ func validateSpec(spec ResolvedReplicaSetSpec) error {
 	}
 	if spec.Image == "" {
 		missing = append(missing, "image")
-	}
-	if spec.Env == nil {
-		spec.Env = map[string]orktypes.EnvVarSource{}
-	}
-	if spec.EnvFrom == nil {
-		spec.EnvFrom = []orktypes.EnvFromSource{}
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("missing required fields: %v", missing)

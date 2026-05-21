@@ -21,6 +21,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/orkspace/orkestra/pkg/note"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"gopkg.in/yaml.v3"
 )
@@ -75,7 +76,7 @@ func Expand(m *orktypes.Motif, bindings map[string]string) (*ExpandedMotif, erro
 		if err != nil {
 			return nil, fmt.Errorf("marshaling motif resources: %w", err)
 		}
-		rendered, err := renderInputs(string(resourceYAML), resolved)
+		rendered, err := renderInputs(string(resourceYAML), resolved, m.Inputs)
 		if err != nil {
 			return nil, fmt.Errorf("rendering motif %q resources: %w", m.Metadata.Name, err)
 		}
@@ -84,8 +85,10 @@ func Expand(m *orktypes.Motif, bindings map[string]string) (*ExpandedMotif, erro
 			return nil, fmt.Errorf("parsing expanded motif %q resources: %w", m.Metadata.Name, err)
 		}
 		if mr.OnCreate != nil {
+			filterExpandedResources(mr.OnCreate)
 			onCreate = mr.OnCreate
 		}
+		filterExpandedResources(&mr.HookTemplates)
 		inline := mr.HookTemplates
 		if !inline.IsEmpty() {
 			onReconcile = &inline
@@ -99,7 +102,7 @@ func Expand(m *orktypes.Motif, bindings map[string]string) (*ExpandedMotif, erro
 		if err != nil {
 			return nil, fmt.Errorf("marshaling motif status: %w", err)
 		}
-		rendered, err := renderInputs(string(statusYAML), resolved)
+		rendered, err := renderInputs(string(statusYAML), resolved, m.Inputs)
 		if err != nil {
 			return nil, fmt.Errorf("rendering motif %q status: %w", m.Metadata.Name, err)
 		}
@@ -117,7 +120,7 @@ func Expand(m *orktypes.Motif, bindings map[string]string) (*ExpandedMotif, erro
 		if err != nil {
 			return nil, fmt.Errorf("marshaling motif admission: %w", err)
 		}
-		rendered, err := renderInputs(string(admissionYAML), resolved)
+		rendered, err := renderInputs(string(admissionYAML), resolved, m.Inputs)
 		if err != nil {
 			return nil, fmt.Errorf("rendering motif %q admission: %w", m.Metadata.Name, err)
 		}
@@ -172,54 +175,103 @@ func validateBindings(m *orktypes.Motif, bindings map[string]string) error {
 	return nil
 }
 
-// resolveDefaults returns the full input map with defaults filled in for
-// optional inputs not present in bindings.
+// resolveDefaults returns the full input map with all declared inputs present.
+// Optional inputs not in bindings use their declared default (which may be "").
+// All inputs are always included so the preprocessor has a complete context for
+// complex expressions like {{ .inputs.loaderImage | default .inputs.image }}.
 func resolveDefaults(m *orktypes.Motif, bindings map[string]string) map[string]string {
 	resolved := make(map[string]string, len(m.Inputs))
 	for _, input := range m.Inputs {
 		if val, ok := bindings[input.Name]; ok {
 			resolved[input.Name] = val
-		} else if input.Default != "" {
-			resolved[input.Name] = input.Default
+		} else {
+			resolved[input.Name] = input.Default // "" for inputs with no default
 		}
 	}
 	return resolved
 }
 
-// renderInputs replaces `{{ .inputs.KEY }}` and `{{ inputs.KEY }}` with
-// the corresponding resolved value from the map. It does NOT evaluate any
-// other template expressions, leaving them for runtime evaluation.
-func renderInputs(resourceYAML string, resolved map[string]string) (string, error) {
+// inputsExprRe matches any {{ ... }} block that references the inputs map.
+// Used in the second pass of renderInputs to catch complex piped expressions
+// like {{ .inputs.loaderImage | default .inputs.image }} that simple string
+// replacement cannot handle.
+var inputsExprRe = regexp.MustCompile(`\{\{-?\s*[^}]*\binputs\b[^}]*-?\}\}`)
+
+// This is a safe optimisation — note.Map() is a pure function that always
+// returns the same map. The template engine does not modify the FuncMap
+// after registration.
+var orkNotes = note.Map()
+
+// renderInputs is the motif preprocessor: it fully resolves all {{ .inputs.* }}
+// expressions so that only runtime expressions ({{ .metadata.* }}, {{ .spec.* }},
+// {{ .children.* }}, etc.) remain in the output YAML.
+//
+// Two passes:
+//  1. Fast exact-match replacement for the simple {{ .inputs.KEY }} pattern.
+//  2. Go template evaluation (using the orkNotes FuncMap) for any remaining
+//     expressions that reference inputs — e.g. {{ .inputs.key | default .inputs.fallback }}.
+//     Only blocks containing "inputs" are evaluated; all other template expressions
+//     are left untouched for the runtime resolver.
+func renderInputs(resourceYAML string, resolved map[string]string, inputs []orktypes.MotifInput) (string, error) {
+	// Build a type index for post-substitution unquoting.
+	inputTypes := make(map[string]string, len(inputs))
+	for _, inp := range inputs {
+		inputTypes[inp.Name] = strings.ToLower(inp.Type)
+	}
+
+	// Pass 1: exact-match simple patterns
 	result := resourceYAML
 	for key, val := range resolved {
-		patterns := []string{
+		for _, pat := range []string{
 			fmt.Sprintf("{{ .inputs.%s }}", key),
 			fmt.Sprintf("{{ inputs.%s }}", key),
-		}
-		for _, pat := range patterns {
+		} {
 			result = strings.ReplaceAll(result, pat, val)
 		}
 	}
-	return result, nil
-}
 
-// renderInputs replaces {{ inputs.Name }} expressions in the YAML string
-// with resolved values using Go's text/template.
-func oldRenderInputs(resourceYAML string, resolved map[string]string) (string, error) {
-	data := map[string]interface{}{
-		"inputs": resolved,
-	}
-	tmpl, err := template.New("motif").Option("missingkey=error").Parse(resourceYAML)
-	if err != nil {
-		return "", err
-	}
-
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
-		return "", err
+	// Pass 1b: strip YAML quotes around substituted scalar values for typed inputs.
+	// YAML marshal quotes template expressions (e.g. '{{ .inputs.replicas }}'); after
+	// pass 1 that becomes '1' — a YAML string — which Kubernetes rejects for integer fields.
+	for key, val := range resolved {
+		typ := inputTypes[key]
+		if typ != "integer" && typ != "number" && typ != "bool" && typ != "boolean" {
+			continue
+		}
+		for _, q := range []string{"'", `"`} {
+			result = strings.ReplaceAll(result, q+val+q, val)
+		}
 	}
 
-	return buf.String(), nil
+	// Pass 2: evaluate remaining complex input expressions with Go template.
+	// Build an interface{} inputs map so | default and other pipeline funcs work.
+	inputsData := make(map[string]interface{}, len(resolved))
+	for k, v := range resolved {
+		inputsData[k] = v
+	}
+	data := map[string]interface{}{"inputs": inputsData}
+
+	var evalErr error
+	result = inputsExprRe.ReplaceAllStringFunc(result, func(expr string) string {
+		if evalErr != nil {
+			return expr
+		}
+		tmpl, err := template.New("").
+			Option("missingkey=zero").
+			Funcs(orkNotes).Parse(expr)
+
+		if err != nil {
+			return expr // malformed — leave as-is
+		}
+		var buf bytes.Buffer
+		if err := tmpl.Execute(&buf, data); err != nil {
+			return expr // leave failed expressions as-is for runtime
+		}
+		out := strings.TrimSpace(buf.String())
+		return strings.ReplaceAll(out, "<no value>", "")
+	})
+
+	return result, evalErr
 }
 
 // ValidateMotifTemplates checks that all inputs.X references in the resource
@@ -253,6 +305,330 @@ func ValidateMotifTemplates(m *orktypes.Motif) []string {
 	return errs
 }
 
+// evalMotifCondition evaluates a single motif condition against already-resolved values.
+// The field is treated as a literal value (not a dot-notation path to look up),
+// because inputs have already been substituted by renderInputs.
+func evalMotifCondition(cond orktypes.Condition) bool {
+	field := cond.Field
+
+	// exists / notExists shorthands
+	if cond.Exists != nil {
+		return *cond.Exists == (field != "")
+	}
+	if cond.NotExists != nil {
+		return *cond.NotExists == (field == "")
+	}
+
+	// operator or shorthand comparisons
+	op, val := orktypes.ResolveConditionOp(cond)
+	switch op {
+	case orktypes.ConditionEquals:
+		return field == val
+	case orktypes.ConditionNotEquals:
+		return field != val
+	case orktypes.ConditionContains:
+		return strings.Contains(field, val)
+	case orktypes.ConditionPrefix:
+		return strings.HasPrefix(field, val)
+	case orktypes.ConditionSuffix:
+		return strings.HasSuffix(field, val)
+	}
+	// Unknown or empty operator — treat as pass (don't silently drop resources)
+	return true
+}
+
+// passesMotifConditions reports whether all conditions pass.
+// Empty condition slice → unconditional (true).
+func passesMotifConditions(conditions []orktypes.Condition, anyOf []orktypes.Condition) bool {
+	// AND conditions
+	for _, c := range conditions {
+		if !evalMotifCondition(c) {
+			return false
+		}
+	}
+	// anyOf (OR) — if any pass, the block passes
+	if len(anyOf) > 0 {
+		for _, c := range anyOf {
+			if evalMotifCondition(c) {
+				return true
+			}
+		}
+		return false
+	}
+	return true
+}
+
+func filterDeployments(srcs []orktypes.DeploymentTemplateSource) []orktypes.DeploymentTemplateSource {
+	var out []orktypes.DeploymentTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterReplicaSets(srcs []orktypes.ReplicaSetTemplateSource) []orktypes.ReplicaSetTemplateSource {
+	var out []orktypes.ReplicaSetTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterServices(srcs []orktypes.ServiceTemplateSource) []orktypes.ServiceTemplateSource {
+	var out []orktypes.ServiceTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterPods(srcs []orktypes.PodTemplateSource) []orktypes.PodTemplateSource {
+	var out []orktypes.PodTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterJobs(srcs []orktypes.JobTemplateSource) []orktypes.JobTemplateSource {
+	var out []orktypes.JobTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterCronJobs(srcs []orktypes.CronJobTemplateSource) []orktypes.CronJobTemplateSource {
+	var out []orktypes.CronJobTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterSecrets(srcs []orktypes.SecretTemplateSource) []orktypes.SecretTemplateSource {
+	var out []orktypes.SecretTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterConfigMaps(srcs []orktypes.ConfigMapTemplateSource) []orktypes.ConfigMapTemplateSource {
+	var out []orktypes.ConfigMapTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterServiceAccounts(srcs []orktypes.ServiceAccountTemplateSource) []orktypes.ServiceAccountTemplateSource {
+	var out []orktypes.ServiceAccountTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterStatefulSets(srcs []orktypes.StatefulSetTemplateSource) []orktypes.StatefulSetTemplateSource {
+	var out []orktypes.StatefulSetTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterIngresses(srcs []orktypes.IngressTemplateSource) []orktypes.IngressTemplateSource {
+	var out []orktypes.IngressTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterPersistentVolumes(srcs []orktypes.PVTemplateSource) []orktypes.PVTemplateSource {
+	var out []orktypes.PVTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterPersistentVolumeClaims(srcs []orktypes.PVCTemplateSource) []orktypes.PVCTemplateSource {
+	var out []orktypes.PVCTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterHPAs(srcs []orktypes.HPATemplateSource) []orktypes.HPATemplateSource {
+	var out []orktypes.HPATemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterPDBs(srcs []orktypes.PDBTemplateSource) []orktypes.PDBTemplateSource {
+	var out []orktypes.PDBTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterNamespaces(srcs []orktypes.NamespaceTemplateSource) []orktypes.NamespaceTemplateSource {
+	var out []orktypes.NamespaceTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterRoles(srcs []orktypes.RoleTemplateSource) []orktypes.RoleTemplateSource {
+	var out []orktypes.RoleTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterRoleBindings(srcs []orktypes.RoleBindingTemplateSource) []orktypes.RoleBindingTemplateSource {
+	var out []orktypes.RoleBindingTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+func filterCustomResources(srcs []orktypes.CustomResourceTemplateSource) []orktypes.CustomResourceTemplateSource {
+	var out []orktypes.CustomResourceTemplateSource
+	for _, s := range srcs {
+		if !passesMotifConditions(s.Conditions, s.AnyOf) {
+			continue
+		}
+		s.Conditions = nil
+		s.AnyOf = nil
+		out = append(out, s)
+	}
+	return out
+}
+
+// filterExpandedResources filters each resource list in ht by motif conditions
+// and strips Conditions/AnyOf from kept resources (they are motif-only, not runtime).
+func filterExpandedResources(ht *orktypes.HookTemplates) {
+	ht.Deployments = filterDeployments(ht.Deployments)
+	ht.ReplicaSets = filterReplicaSets(ht.ReplicaSets)
+	ht.Services = filterServices(ht.Services)
+	ht.Pods = filterPods(ht.Pods)
+	ht.Jobs = filterJobs(ht.Jobs)
+	ht.CronJobs = filterCronJobs(ht.CronJobs)
+	ht.Secrets = filterSecrets(ht.Secrets)
+	ht.ConfigMaps = filterConfigMaps(ht.ConfigMaps)
+	ht.ServiceAccounts = filterServiceAccounts(ht.ServiceAccounts)
+	ht.StatefulSets = filterStatefulSets(ht.StatefulSets)
+	ht.Ingresses = filterIngresses(ht.Ingresses)
+	ht.PersistentVolumes = filterPersistentVolumes(ht.PersistentVolumes)
+	ht.PersistentVolumeClaims = filterPersistentVolumeClaims(ht.PersistentVolumeClaims)
+	ht.HorizontalPodAutoscalers = filterHPAs(ht.HorizontalPodAutoscalers)
+	ht.PodDisruptionBudgets = filterPDBs(ht.PodDisruptionBudgets)
+	ht.Namespaces = filterNamespaces(ht.Namespaces)
+	ht.Roles = filterRoles(ht.Roles)
+	ht.RoleBindings = filterRoleBindings(ht.RoleBindings)
+	ht.CustomResource = filterCustomResources(ht.CustomResource)
+}
+
 // MergeHookTemplates appends resources from src into dst.
 func MergeHookTemplates(dst, src *orktypes.HookTemplates) {
 	if dst == nil || src == nil {
@@ -278,6 +654,7 @@ func MergeHookTemplates(dst, src *orktypes.HookTemplates) {
 	dst.RoleBindings = append(dst.RoleBindings, src.RoleBindings...)
 	dst.ClusterRoles = append(dst.ClusterRoles, src.ClusterRoles...)
 	dst.ClusterRoleBindings = append(dst.ClusterRoleBindings, src.ClusterRoleBindings...)
+	dst.CustomResource = append(dst.CustomResource, src.CustomResource...)
 }
 
 func inputNames(inputs []orktypes.MotifInput) []string {

@@ -12,12 +12,7 @@ metadata:
 spec:
   crds:
     platform:
-      apiTypes:
-        group: demo.orkestra.io
-        version: v1alpha1
-        kind: Platform
-        plural: platforms
-
+      crdFile: ./crd.yaml
       operatorBox:
         default: true
 

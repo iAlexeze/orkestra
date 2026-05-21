@@ -1,4 +1,4 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
@@ -15,7 +15,6 @@ import (
 
 	"github.com/orkspace/orkestra/pkg/buildx"
 	"github.com/orkspace/orkestra/pkg/doctor"
-	"github.com/orkspace/orkestra/pkg/spinner"
 	"github.com/orkspace/orkestra/pkg/tunnel"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	"github.com/orkspace/orkestra/pkg/utils"
@@ -352,12 +351,12 @@ to the cluster, and patch the CR to trigger a rolling deploy.
 
 			deployDir, _ := doctor.StateDir()
 			if doctor.CentralKatalogChanged(state, deployDir) {
-				fmt.Println("  Katalog changed — restarting Orkestra runtime")
-				if err := doctor.RestartOrkestra(); err != nil {
-					return fmt.Errorf("restarting Orkestra: %w", err)
+				fmt.Println("  Katalog updated — applying bundle to Orkestra...")
+				if err := doctor.SyncRuntime(); err != nil {
+					return fmt.Errorf("syncing Orkestra runtime: %w", err)
 				}
 			} else {
-				fmt.Println("  Katalog unchanged — Orkestra restart not required")
+				fmt.Printf("  %s Orkestra is up to date\n", utils.SuccessMark())
 			}
 
 			state.RecordDeploy(appName, ns, filepath.Join(deployDir, "katalog.yaml"), image)
@@ -541,7 +540,7 @@ func deployMultiApp(dc deployContext) error {
 			return fmt.Errorf("saving komposer: %w", saveErr)
 		}
 
-		mergedPath, mergeErr := runKompose()
+		mergedPath, mergeErr := runTemplate()
 		if mergeErr != nil {
 			return fmt.Errorf("merging katalogs: %w", mergeErr)
 		}
@@ -646,9 +645,9 @@ func deployMultiApp(dc deployContext) error {
 		fmt.Printf(" %s", utils.SuccessMark())
 
 		if doctor.KatalogChanged(dc.dir) {
-			fmt.Println("  Katalog changed — restarting Orkestra runtime")
-			if err := doctor.RestartOrkestra(); err != nil {
-				return fmt.Errorf("restarting Orkestra: %w", err)
+			fmt.Println("  Katalog updated — applying bundle to Orkestra...")
+			if err := doctor.SyncRuntime(); err != nil {
+				return fmt.Errorf("syncing Orkestra runtime: %w", err)
 			}
 		}
 
@@ -876,7 +875,7 @@ func watchUntilReady(crName, ns, appName string, state *doctor.DeployState) erro
 	const deploymentAppearTimeout = 2 * time.Minute
 	const rolloutTimeout = 5 * time.Minute
 
-	spin := spinner.Start("  → Waiting for rollout...")
+	spin := StartSpinner("  → Waiting for rollout...")
 
 	// Phase 1: poll until the Deployment exists. kubectl rollout status exits
 	// immediately with a non-zero code when the object is missing, so we must
@@ -1005,16 +1004,16 @@ func printReadySummary(crName, ns string, state *doctor.DeployState) {
 	}
 }
 
-// runKompose runs ork kompose to produce ~/.orkestra/deploy/merged-katalog.yaml
+// runTemplate runs ork template to produce ~/.orkestra/deploy/merged-katalog.yaml
 // from all registered Katalogs. Returns the path to the merged file.
-func runKompose() (string, error) {
+func runTemplate() (string, error) {
 	komposerPath, err := doctor.GlobalKomposerPath()
 	if err != nil {
 		return "", err
 	}
 	mergedPath := filepath.Join(filepath.Dir(komposerPath), doctor.RuntimeKatalogPath)
-	if err := exec.Command("ork", "kompose", "-f", komposerPath, "-o", mergedPath).Run(); err != nil {
-		return "", fmt.Errorf("ork kompose: %w", err)
+	if err := exec.Command("ork", "template", "-f", komposerPath, "-o", mergedPath).Run(); err != nil {
+		return "", fmt.Errorf("ork template: %w", err)
 	}
 	return mergedPath, nil
 }
@@ -1069,8 +1068,8 @@ type devPathArgs struct {
 	port      string
 	language  string
 	bundleDir string
-	secrets   []orktypes.EnvVar
-	config    []orktypes.EnvVar
+	secrets   []orktypes.DotEnvVar
+	config    []orktypes.DotEnvVar
 	dryRun    bool
 	opts      doctor.GenerateOptions
 }

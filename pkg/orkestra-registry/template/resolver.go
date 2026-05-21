@@ -61,6 +61,12 @@ func NewResolver(ctx context.Context, obj domain.Object) (*Resolver, error) {
 		"error":          "",
 	}
 
+	// Inject empty inputs map so any unexpanded {{ .inputs.* }} motif expressions
+	// that survive motif expansion return "" instead of nil-pointer-panicking.
+	if _, ok := data["inputs"]; !ok {
+		data["inputs"] = map[string]interface{}{}
+	}
+
 	return &Resolver{
 		data:           data,
 		ownerName:      obj.GetName(),
@@ -129,6 +135,20 @@ func (r *Resolver) Resolve(value string) (string, error) {
 	return out, nil
 }
 
+// resolveResourceRequirements resolves template expressions in resources.profile.
+// All other ResourceRequirements fields (Requests, Limits) are static k8s quantity strings — not templates.
+func (r *Resolver) resolveResourceRequirements(src *orktypes.ResourceRequirements) (*orktypes.ResourceRequirements, error) {
+	if src == nil {
+		return nil, nil
+	}
+	out := *src
+	var err error
+	if out.Profile, err = r.Resolve(src.Profile); err != nil {
+		return nil, fmt.Errorf("resources.profile: %w", err)
+	}
+	return &out, nil
+}
+
 // ResolvePodTemplate resolves all template expressions in a PodTemplateSource.
 // Returns a new PodTemplateSource with all expressions evaluated — safe to pass
 // directly to pods.Resolve().
@@ -139,13 +159,15 @@ func (r *Resolver) Resolve(value string) (string, error) {
 //	Namespace → ownerNamespace          (applied here so downstream has it)
 func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.PodTemplateSource, error) {
 	resolved := orktypes.PodTemplateSource{
-		Version:   src.Version,
-		Resources: src.Resources, // static — not resolved
-		Probes:    src.Probes,    // static — passed through
+		Version: src.Version,
+		Probes:  src.Probes, // static — passed through
 	}
 
 	var err error
 
+	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
+		return resolved, fmt.Errorf("pod.resources: %w", err)
+	}
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
 		return resolved, fmt.Errorf("pod.name: %w", err)
 	}
@@ -186,13 +208,15 @@ func (r *Resolver) ResolvePodTemplate(src orktypes.PodTemplateSource) (orktypes.
 // directly to deployments.Resolve().
 func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSource) (orktypes.DeploymentTemplateSource, error) {
 	resolved := orktypes.DeploymentTemplateSource{
-		Version:   src.Version,
-		Resources: src.Resources, // static — not resolved
-		Probes:    src.Probes,    // static — passed through
+		Version: src.Version,
+		Probes:  src.Probes, // static — passed through
 	}
 
 	var err error
 
+	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
+		return resolved, fmt.Errorf("deployment.resources: %w", err)
+	}
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
 		return resolved, fmt.Errorf("deployment.name: %w", err)
 	}
@@ -233,54 +257,51 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 
 	// Env resolution
 	if len(src.Env) > 0 {
-		resolved.Env = make(map[string]orktypes.EnvVarSource, len(src.Env))
-		for k, v := range src.Env {
-			ev := orktypes.EnvVarSource{}
+		resolved.Env = make([]orktypes.EnvVar, 0, len(src.Env))
+		for _, v := range src.Env {
+			ev := orktypes.EnvVar{Name: v.Name}
 			if v.Value != "" {
 				if ev.Value, err = r.Resolve(v.Value); err != nil {
-					return resolved, fmt.Errorf("deployment.env[%s].value: %w", k, err)
+					return resolved, fmt.Errorf("env[%s].value: %w", v.Name, err)
 				}
 			}
-			if v.SecretKeyRef != nil {
-				name, err := r.Resolve(v.SecretKeyRef.Name)
-				if err != nil {
-					return resolved, fmt.Errorf("deployment.env[%s].secretKeyRef.name: %w", k, err)
+			if v.ValueFrom != nil {
+				ev.ValueFrom = &orktypes.ValueFrom{}
+				if v.ValueFrom.SecretKeyRef != nil {
+					name, nerr := r.Resolve(v.ValueFrom.SecretKeyRef.Name)
+					if nerr != nil {
+						return resolved, fmt.Errorf("env[%s].valueFrom.secretKeyRef.name: %w", v.Name, nerr)
+					}
+					ev.ValueFrom.SecretKeyRef = &orktypes.SecretKeyRef{Name: name, Key: v.ValueFrom.SecretKeyRef.Key}
 				}
-				ev.SecretKeyRef = &orktypes.SecretKeyRef{
-					Name: name,
-					Key:  v.SecretKeyRef.Key, // Key is usually static
-				}
-			}
-			if v.ConfigMapKeyRef != nil {
-				name, err := r.Resolve(v.ConfigMapKeyRef.Name)
-				if err != nil {
-					return resolved, fmt.Errorf("deployment.env[%s].configMapKeyRef.name: %w", k, err)
-				}
-				ev.ConfigMapKeyRef = &orktypes.ConfigMapKeyRef{
-					Name: name,
-					Key:  v.ConfigMapKeyRef.Key,
+				if v.ValueFrom.ConfigMapKeyRef != nil {
+					name, nerr := r.Resolve(v.ValueFrom.ConfigMapKeyRef.Name)
+					if nerr != nil {
+						return resolved, fmt.Errorf("env[%s].valueFrom.configMapKeyRef.name: %w", v.Name, nerr)
+					}
+					ev.ValueFrom.ConfigMapKeyRef = &orktypes.ConfigMapKeyRef{Name: name, Key: v.ValueFrom.ConfigMapKeyRef.Key}
 				}
 			}
-			resolved.Env[k] = ev
+			resolved.Env = append(resolved.Env, ev)
 		}
 	}
 
 	// EnvFrom resolution
-	if len(src.EnvFrom) > 0 {
-		resolved.EnvFrom = make([]orktypes.EnvFromSource, len(src.EnvFrom))
-		for i, ef := range src.EnvFrom {
-			var resolvedEF orktypes.EnvFromSource
-			if ef.ConfigMapRef != "" {
-				if resolvedEF.ConfigMapRef, err = r.Resolve(ef.ConfigMapRef); err != nil {
-					return resolved, fmt.Errorf("deployment.envFrom[%d].configMapRef: %w", i, err)
-				}
+	if src.EnvFrom != nil {
+		resolved.EnvFrom = &orktypes.EnvFrom{}
+		for _, name := range src.EnvFrom.SecretRef {
+			rn, rerr := r.Resolve(name)
+			if rerr != nil {
+				return resolved, fmt.Errorf("envFrom.secretRef: %w", rerr)
 			}
-			if ef.SecretRef != "" {
-				if resolvedEF.SecretRef, err = r.Resolve(ef.SecretRef); err != nil {
-					return resolved, fmt.Errorf("deployment.envFrom[%d].secretRef: %w", i, err)
-				}
+			resolved.EnvFrom.SecretRef = append(resolved.EnvFrom.SecretRef, rn)
+		}
+		for _, name := range src.EnvFrom.ConfigMapRef {
+			rn, rerr := r.Resolve(name)
+			if rerr != nil {
+				return resolved, fmt.Errorf("envFrom.configMapRef: %w", rerr)
 			}
-			resolved.EnvFrom[i] = resolvedEF
+			resolved.EnvFrom.ConfigMapRef = append(resolved.EnvFrom.ConfigMapRef, rn)
 		}
 	}
 
@@ -292,12 +313,15 @@ func (r *Resolver) ResolveDeploymentTemplate(src orktypes.DeploymentTemplateSour
 // directly to replicasets.Resolve().
 func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSource) (orktypes.ReplicaSetTemplateSource, error) {
 	resolved := orktypes.ReplicaSetTemplateSource{
-		Version:   src.Version,
-		Resources: src.Resources, // static — not resolved
-		Probes:    src.Probes,    // static — passed through
+		Version: src.Version,
+		Probes:  src.Probes, // static — passed through
 	}
 
 	var err error
+
+	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
+		return resolved, fmt.Errorf("replicaset.resources: %w", err)
+	}
 
 	// Name
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
@@ -354,61 +378,51 @@ func (r *Resolver) ResolveReplicaSetTemplate(src orktypes.ReplicaSetTemplateSour
 
 	// Env
 	if len(src.Env) > 0 {
-		resolved.Env = make(map[string]orktypes.EnvVarSource, len(src.Env))
-		for k, v := range src.Env {
-			ev := orktypes.EnvVarSource{}
-
+		resolved.Env = make([]orktypes.EnvVar, 0, len(src.Env))
+		for _, v := range src.Env {
+			ev := orktypes.EnvVar{Name: v.Name}
 			if v.Value != "" {
 				if ev.Value, err = r.Resolve(v.Value); err != nil {
-					return resolved, fmt.Errorf("replicaset.env[%s].value: %w", k, err)
+					return resolved, fmt.Errorf("env[%s].value: %w", v.Name, err)
 				}
 			}
-
-			if v.SecretKeyRef != nil {
-				name, err := r.Resolve(v.SecretKeyRef.Name)
-				if err != nil {
-					return resolved, fmt.Errorf("replicaset.env[%s].secretKeyRef.name: %w", k, err)
+			if v.ValueFrom != nil {
+				ev.ValueFrom = &orktypes.ValueFrom{}
+				if v.ValueFrom.SecretKeyRef != nil {
+					name, nerr := r.Resolve(v.ValueFrom.SecretKeyRef.Name)
+					if nerr != nil {
+						return resolved, fmt.Errorf("env[%s].valueFrom.secretKeyRef.name: %w", v.Name, nerr)
+					}
+					ev.ValueFrom.SecretKeyRef = &orktypes.SecretKeyRef{Name: name, Key: v.ValueFrom.SecretKeyRef.Key}
 				}
-				ev.SecretKeyRef = &orktypes.SecretKeyRef{
-					Name: name,
-					Key:  v.SecretKeyRef.Key,
-				}
-			}
-
-			if v.ConfigMapKeyRef != nil {
-				name, err := r.Resolve(v.ConfigMapKeyRef.Name)
-				if err != nil {
-					return resolved, fmt.Errorf("replicaset.env[%s].configMapKeyRef.name: %w", k, err)
-				}
-				ev.ConfigMapKeyRef = &orktypes.ConfigMapKeyRef{
-					Name: name,
-					Key:  v.ConfigMapKeyRef.Key,
+				if v.ValueFrom.ConfigMapKeyRef != nil {
+					name, nerr := r.Resolve(v.ValueFrom.ConfigMapKeyRef.Name)
+					if nerr != nil {
+						return resolved, fmt.Errorf("env[%s].valueFrom.configMapKeyRef.name: %w", v.Name, nerr)
+					}
+					ev.ValueFrom.ConfigMapKeyRef = &orktypes.ConfigMapKeyRef{Name: name, Key: v.ValueFrom.ConfigMapKeyRef.Key}
 				}
 			}
-
-			resolved.Env[k] = ev
+			resolved.Env = append(resolved.Env, ev)
 		}
 	}
 
 	// EnvFrom
-	if len(src.EnvFrom) > 0 {
-		resolved.EnvFrom = make([]orktypes.EnvFromSource, len(src.EnvFrom))
-		for i, ef := range src.EnvFrom {
-			var resolvedEF orktypes.EnvFromSource
-
-			if ef.ConfigMapRef != "" {
-				if resolvedEF.ConfigMapRef, err = r.Resolve(ef.ConfigMapRef); err != nil {
-					return resolved, fmt.Errorf("replicaset.envFrom[%d].configMapRef: %w", i, err)
-				}
+	if src.EnvFrom != nil {
+		resolved.EnvFrom = &orktypes.EnvFrom{}
+		for _, name := range src.EnvFrom.SecretRef {
+			rn, rerr := r.Resolve(name)
+			if rerr != nil {
+				return resolved, fmt.Errorf("envFrom.secretRef: %w", rerr)
 			}
-
-			if ef.SecretRef != "" {
-				if resolvedEF.SecretRef, err = r.Resolve(ef.SecretRef); err != nil {
-					return resolved, fmt.Errorf("replicaset.envFrom[%d].secretRef: %w", i, err)
-				}
+			resolved.EnvFrom.SecretRef = append(resolved.EnvFrom.SecretRef, rn)
+		}
+		for _, name := range src.EnvFrom.ConfigMapRef {
+			rn, rerr := r.Resolve(name)
+			if rerr != nil {
+				return resolved, fmt.Errorf("envFrom.configMapRef: %w", rerr)
 			}
-
-			resolved.EnvFrom[i] = resolvedEF
+			resolved.EnvFrom.ConfigMapRef = append(resolved.EnvFrom.ConfigMapRef, rn)
 		}
 	}
 
@@ -497,11 +511,13 @@ func (r *Resolver) ResolveJobTemplate(src orktypes.JobTemplateSource) (orktypes.
 	resolved := orktypes.JobTemplateSource{
 		Version:      src.Version,
 		BackoffLimit: src.BackoffLimit,
-		Resources:    src.Resources,
 	}
 
 	var err error
 
+	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
+		return resolved, fmt.Errorf("job.resources: %w", err)
+	}
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
 		return resolved, fmt.Errorf("job.name: %w", err)
 	}
@@ -732,12 +748,14 @@ func (r *Resolver) ResolveConfigMapTemplate(src orktypes.ConfigMapTemplateSource
 // ResolveCronJobTemplate resolves all template expressions in a CronJobTemplateSource.
 func (r *Resolver) ResolveCronJobTemplate(src orktypes.CronJobTemplateSource) (orktypes.CronJobTemplateSource, error) {
 	resolved := orktypes.CronJobTemplateSource{
-		Version:   src.Version,
-		Resources: src.Resources,
+		Version: src.Version,
 	}
 
 	var err error
 
+	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
+		return resolved, fmt.Errorf("cronjob.resources: %w", err)
+	}
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
 		return resolved, fmt.Errorf("cronjob.name: %w", err)
 	}
@@ -963,7 +981,7 @@ func (r *Resolver) ResolveIngressTemplate(src orktypes.IngressTemplateSource) (o
 
 	if src.TLS != nil {
 		resolvedTLS := &orktypes.IngressTLSSpec{
-			Enabled:  src.TLS.Enabled,
+			Create:   src.TLS.Create,
 			ValidFor: src.TLS.ValidFor,
 		}
 		if resolvedTLS.SecretName, err = r.Resolve(src.TLS.SecretName); err != nil {
@@ -1074,13 +1092,15 @@ func (r *Resolver) ResolvePDBTemplate(src orktypes.PDBTemplateSource) (orktypes.
 // ResolveStatefulSetTemplate resolves all template expressions in a StatefulSetTemplateSource.
 func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSource) (orktypes.StatefulSetTemplateSource, error) {
 	resolved := orktypes.StatefulSetTemplateSource{
-		Version:   src.Version,
-		Resources: src.Resources,
-		Probes:    src.Probes, // static — passed through
+		Version: src.Version,
+		Probes:  src.Probes, // static — passed through
 	}
 
 	var err error
 
+	if resolved.Resources, err = r.resolveResourceRequirements(src.Resources); err != nil {
+		return resolved, fmt.Errorf("statefulset.resources: %w", err)
+	}
 	if resolved.Name, err = r.Resolve(src.Name); err != nil {
 		return resolved, fmt.Errorf("statefulset.name: %w", err)
 	}
@@ -1143,54 +1163,51 @@ func (r *Resolver) ResolveStatefulSetTemplate(src orktypes.StatefulSetTemplateSo
 
 	// Env resolution
 	if len(src.Env) > 0 {
-		resolved.Env = make(map[string]orktypes.EnvVarSource, len(src.Env))
-		for k, v := range src.Env {
-			ev := orktypes.EnvVarSource{}
+		resolved.Env = make([]orktypes.EnvVar, 0, len(src.Env))
+		for _, v := range src.Env {
+			ev := orktypes.EnvVar{Name: v.Name}
 			if v.Value != "" {
 				if ev.Value, err = r.Resolve(v.Value); err != nil {
-					return resolved, fmt.Errorf("statefulset.env[%s].value: %w", k, err)
+					return resolved, fmt.Errorf("env[%s].value: %w", v.Name, err)
 				}
 			}
-			if v.SecretKeyRef != nil {
-				name, err := r.Resolve(v.SecretKeyRef.Name)
-				if err != nil {
-					return resolved, fmt.Errorf("statefulset.env[%s].secretKeyRef.name: %w", k, err)
+			if v.ValueFrom != nil {
+				ev.ValueFrom = &orktypes.ValueFrom{}
+				if v.ValueFrom.SecretKeyRef != nil {
+					name, nerr := r.Resolve(v.ValueFrom.SecretKeyRef.Name)
+					if nerr != nil {
+						return resolved, fmt.Errorf("env[%s].valueFrom.secretKeyRef.name: %w", v.Name, nerr)
+					}
+					ev.ValueFrom.SecretKeyRef = &orktypes.SecretKeyRef{Name: name, Key: v.ValueFrom.SecretKeyRef.Key}
 				}
-				ev.SecretKeyRef = &orktypes.SecretKeyRef{
-					Name: name,
-					Key:  v.SecretKeyRef.Key, // Key is usually static
-				}
-			}
-			if v.ConfigMapKeyRef != nil {
-				name, err := r.Resolve(v.ConfigMapKeyRef.Name)
-				if err != nil {
-					return resolved, fmt.Errorf("statefulset.env[%s].configMapKeyRef.name: %w", k, err)
-				}
-				ev.ConfigMapKeyRef = &orktypes.ConfigMapKeyRef{
-					Name: name,
-					Key:  v.ConfigMapKeyRef.Key,
+				if v.ValueFrom.ConfigMapKeyRef != nil {
+					name, nerr := r.Resolve(v.ValueFrom.ConfigMapKeyRef.Name)
+					if nerr != nil {
+						return resolved, fmt.Errorf("env[%s].valueFrom.configMapKeyRef.name: %w", v.Name, nerr)
+					}
+					ev.ValueFrom.ConfigMapKeyRef = &orktypes.ConfigMapKeyRef{Name: name, Key: v.ValueFrom.ConfigMapKeyRef.Key}
 				}
 			}
-			resolved.Env[k] = ev
+			resolved.Env = append(resolved.Env, ev)
 		}
 	}
 
 	// EnvFrom resolution
-	if len(src.EnvFrom) > 0 {
-		resolved.EnvFrom = make([]orktypes.EnvFromSource, len(src.EnvFrom))
-		for i, ef := range src.EnvFrom {
-			var resolvedEF orktypes.EnvFromSource
-			if ef.ConfigMapRef != "" {
-				if resolvedEF.ConfigMapRef, err = r.Resolve(ef.ConfigMapRef); err != nil {
-					return resolved, fmt.Errorf("statefulset.envFrom[%d].configMapRef: %w", i, err)
-				}
+	if src.EnvFrom != nil {
+		resolved.EnvFrom = &orktypes.EnvFrom{}
+		for _, name := range src.EnvFrom.SecretRef {
+			rn, rerr := r.Resolve(name)
+			if rerr != nil {
+				return resolved, fmt.Errorf("envFrom.secretRef: %w", rerr)
 			}
-			if ef.SecretRef != "" {
-				if resolvedEF.SecretRef, err = r.Resolve(ef.SecretRef); err != nil {
-					return resolved, fmt.Errorf("statefulset.envFrom[%d].secretRef: %w", i, err)
-				}
+			resolved.EnvFrom.SecretRef = append(resolved.EnvFrom.SecretRef, rn)
+		}
+		for _, name := range src.EnvFrom.ConfigMapRef {
+			rn, rerr := r.Resolve(name)
+			if rerr != nil {
+				return resolved, fmt.Errorf("envFrom.configMapRef: %w", rerr)
 			}
-			resolved.EnvFrom[i] = resolvedEF
+			resolved.EnvFrom.ConfigMapRef = append(resolved.EnvFrom.ConfigMapRef, rn)
 		}
 	}
 

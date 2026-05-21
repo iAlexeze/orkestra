@@ -132,7 +132,7 @@ No webhook configuration. No certificate generation. No extra steps.
 kubectl apply -f crd-single.yaml
 
 # 2. Run the operator locally (for development)
-ork run -k katalog-no-webhook.yaml
+ork run -f katalog-no-webhook.yaml
 
 # That is all. Apply CRs in either format:
 kubectl apply -f cr-string-schedule.yaml    # cron string format
@@ -144,7 +144,7 @@ For production, deploy using Helm with the same Katalog:
 ```bash
 # Install Orkestra with this Katalog
 helm repo add orkestra https://orkspace.github.io/orkestra
-helm install cronjob-operator orkestra/orkestra \
+helm upgrade --install cronjob-operator orkestra/orkestra \
   --set katalog.configMap=cronjob-katalog \
   --namespace cronjob-system \
   --create-namespace \

@@ -34,7 +34,7 @@ m.notification = mergeKatalogNotification(accNotification, doc.Notification)
 if len(doc.Providers) > 0 {
     m.providers = doc.Providers  // Komposer's own list replaces entirely
 } else {
-    m.providers = accProviders   // use accumulated list from sources
+    m.providers = accProviders   // use accumulated list from imports
 }
 ```
 
@@ -58,4 +58,4 @@ if len(doc.Providers) > 0 {
 
 - All source providers are appended into `accProviders`.
 - If the Komposer declares its own `providers:` list (non-empty), that list replaces `accProviders` entirely.
-- Rationale: a Komposer that declares providers explicitly knows exactly what it needs; one that doesn't should inherit whatever its sources require.
+- Rationale: a Komposer that declares providers explicitly knows exactly what it needs; one that doesn't should inherit whatever its imports require.

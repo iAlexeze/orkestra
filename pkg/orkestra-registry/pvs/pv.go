@@ -19,7 +19,7 @@ import (
 
 // Create creates a PersistentVolume if it does not already exist.
 // PVs are cluster-scoped — owner references are set as labels only.
-func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPVSpec) error {
+func Create(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPVSpec) error {
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
@@ -43,7 +43,7 @@ func Create(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Update reconciles an existing PV. Capacity and reclaim policy are patched on drift.
-func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, spec ResolvedPVSpec) error {
+func Update(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, spec ResolvedPVSpec) error {
 	if err := common.SleepIfNeeded(spec.Sleep); err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func Update(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Objec
 }
 
 // Delete deletes the PV if it exists.
-func Delete(ctx context.Context, kube *kubeclient.Kubeclient, name string) error {
+func Delete(ctx context.Context, kube kubeclient.KubeClient, name string) error {
 	err := kube.Clientset().CoreV1().PersistentVolumes().Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -101,7 +101,7 @@ func Delete(ctx context.Context, kube *kubeclient.Kubeclient, name string) error
 }
 
 // DeleteIfOwned deletes the PV only if the owner label matches.
-func DeleteIfOwned(ctx context.Context, kube *kubeclient.Kubeclient, owner domain.Object, name string) error {
+func DeleteIfOwned(ctx context.Context, kube kubeclient.KubeClient, owner domain.Object, name string) error {
 	existing, err := kube.Clientset().CoreV1().PersistentVolumes().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {

@@ -29,10 +29,10 @@ package reconciler
 
 import (
 	"context"
-	//	"fmt"
 	"time"
 
 	"github.com/orkspace/orkestra/domain"
+	"github.com/orkspace/orkestra/pkg/children"
 	"github.com/orkspace/orkestra/pkg/logger"
 	orktmpl "github.com/orkspace/orkestra/pkg/orkestra-registry/template"
 )
@@ -54,7 +54,7 @@ func (r *GenericReconciler[PTR]) patchStatusWithChildren(
 	// status field expressions can reference child status:
 	//   {{ .children.cronjob.status.lastScheduleTime }}
 	if reconcileErr == nil && (r.operatorBox.OnCreate != nil || r.operatorBox.OnReconcile != nil) {
-		children := ReadChildren(ctx, r.kube, obj, resolver, r.operatorBox)
+		children := children.ReadChildren(ctx, r.kube, obj, resolver, r.crd)
 		resolver = resolver.WithChildren(children) // ← reassign — WithChildren returns new resolver
 	}
 
@@ -163,12 +163,3 @@ func buildReadyCondition(reconcileErr error, generation int64) map[string]interf
 		"observedGeneration": generation,
 	}
 }
-
-// parseNumeric parses a string as float64 for numeric comparisons.
-// Used by the gt and lt operators on child status fields like
-// .children.job.status.succeeded which arrive as "1", "0", etc.
-// func parseNumeric(s string) (float64, error) {
-// 	var f float64
-// 	_, err := fmt.Sscanf(s, "%f", &f)
-// 	return f, err
-// }

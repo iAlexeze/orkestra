@@ -17,12 +17,13 @@ import (
 const eventHandler = "event handler"
 
 type Orkestra struct {
-	komponents    []domain.Komponent
-	postStart     []postStart
-	shutdownHooks []func(context.Context) // called after all komponents stop
-	timeout       time.Duration
-	logLevel      string
-	done          chan struct{}
+	komponents      []domain.Komponent
+	postStart       []postStart
+	shutdownHooks   []func(context.Context) // called after all komponents stop
+	timeout         time.Duration
+	logLevel        string
+	done            chan struct{}
+	runningInstance string // Which instance (runtime or gateway) is running
 }
 
 type postStart struct {
@@ -30,11 +31,12 @@ type postStart struct {
 	comp domain.Komponent
 }
 
-func NewOrkestra(timeout time.Duration, logLevel string) *Orkestra {
+func NewOrkestra(instance string, timeout time.Duration, logLevel string) *Orkestra {
 	return &Orkestra{
-		timeout:  timeout,
-		logLevel: logLevel,
-		done:     make(chan struct{}),
+		runningInstance: instance,
+		timeout:         timeout,
+		logLevel:        logLevel,
+		done:            make(chan struct{}),
 	}
 }
 
@@ -58,7 +60,7 @@ func (o *Orkestra) Start(ctx context.Context) error {
 	mCtx, mCancel := context.WithCancel(ctx)
 	defer mCancel()
 
-	logger.Info().Msg("Starting orkestra...")
+	logger.Info().Msgf("Starting %s komponents...", o.runningInstance)
 	for _, comp := range o.komponents {
 		name := comp.Name()
 
@@ -77,7 +79,7 @@ func (o *Orkestra) Start(ctx context.Context) error {
 		go p.hook(mCtx)
 	}
 
-	logger.Info().Msg("✅ All komponents started successfully")
+	logger.Info().Msgf("%s All komponents started successfully", utils.SuccessMarkPlain())
 
 	if strings.ToLower(o.logLevel) == "debug" {
 		// Display started komponents
@@ -97,6 +99,8 @@ func (o *Orkestra) Start(ctx context.Context) error {
 		fmt.Println("===============================")
 
 	}
+
+	logger.Info().Msgf("%s Orkestra %s is running...", utils.SuccessMarkPlain(), o.runningInstance)
 
 	o.gracefulShutdown(mCtx, mCancel)
 	return nil
@@ -170,12 +174,12 @@ func (o *Orkestra) gracefulShutdown(ctx context.Context, cancel context.CancelFu
 
 // Register all komponents
 func (o *Orkestra) Register(c []domain.Komponent) {
-	logger.Info().Msg("Registering orkestra komponents...")
+	logger.Info().Msgf("Registering orkestra %s komponents...", o.runningInstance)
 	for _, comp := range c {
 		o.komponents = append(o.komponents, comp)
 		logger.Info().Msgf("[%s] registered", comp.Name())
 	}
-	logger.Info().Msg("✅ All komponents registered successfully")
+	logger.Info().Msgf("%s All komponents registered successfully", utils.SuccessMarkPlain())
 
 	if strings.ToLower(o.logLevel) == "debug" {
 		// Display registered komponents

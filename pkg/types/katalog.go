@@ -1,6 +1,26 @@
 // pkg/types/katalog.go
 package types
 
+// GatewayConfig declares how the Orkestra gateway is deployed for this Katalog.
+//
+// YAML shape:
+//
+//	gateway:
+//	  standalone: true   # gateway runs without a companion runtime operator
+//	  endpoint: ""       # leave empty when standalone; runtime sets this when paired
+type GatewayConfig struct {
+	// Standalone declares that this Katalog is deployed as a gateway-only installation
+	// with no companion runtime operator. When true:
+	//   - gatewayEndpoint validation is skipped (the gateway is self-contained)
+	//   - spec: may be empty (no CRDs required)
+	// Default: false.
+	Standalone bool `yaml:"standalone,omitempty" json:"standalone,omitempty"`
+
+	// Endpoint is the HTTP base URL of the gateway, used by the runtime to locate it.
+	// Leave empty in standalone deployments.
+	Endpoint string `yaml:"endpoint,omitempty" json:"endpoint,omitempty"`
+}
+
 // KatalogFile is the top-level structure of a crd-katalog.yaml file.
 // It contains optional sources (files and helm charts) plus inline CRDs.
 // Orkestra's in-built merger resolves all sources and merges everything into one KatalogSpec.
@@ -8,10 +28,14 @@ type KatalogFile struct {
 	APIVersion string          `yaml:"apiVersion"`
 	Kind       string          `yaml:"kind"`
 	Metadata   KatalogMeta     `yaml:"metadata"`
-	Anchors    map[string]any  `yaml:"anchors,omitempty"`
 	Imports    *KatalogSources `yaml:"imports,omitempty"`
 	Spec       KatalogSpec     `yaml:"spec"`
 	Security   KatalogSecurity `yaml:"security"`
+
+	// Gateway declares how the gateway is deployed for this Katalog.
+	// When gateway.standalone: true, the gateway runs without a runtime operator
+	// and spec: may be empty.
+	Gateway *GatewayConfig `yaml:"gateway,omitempty" json:"gateway,omitempty"`
 
 	// Notification holds the top-level alerting configuration for this Katalog.
 	// Defines channels (email, Slack) and per-team routing rules that fire when
@@ -51,8 +75,8 @@ const (
 	LangUnknown Language = "Unknown"
 )
 
-// EnvVar is a single variable parsed from a .env file.
-type EnvVar struct {
+// DotEnvVar is a single variable parsed from a .env file.
+type DotEnvVar struct {
 	Key   string
 	Value string
 	IsCfg bool // true when line carries "# ork:cfg"
@@ -91,13 +115,13 @@ type ProjectInfo struct {
 	Port string `yaml:"port,omitempty" json:"port,omitempty"`
 
 	// EnvVars contains all parsed .env variables.
-	EnvVars []EnvVar `yaml:"-" json:"-"`
+	EnvVars []DotEnvVar `yaml:"-" json:"-"`
 
 	// Secrets contains all env vars classified as secrets (IsCfg == false).
-	Secrets []EnvVar `yaml:"-" json:"-"`
+	Secrets []DotEnvVar `yaml:"-" json:"-"`
 
 	// Config contains all env vars classified as config (IsCfg == true).
-	Config []EnvVar `yaml:"-" json:"-"`
+	Config []DotEnvVar `yaml:"-" json:"-"`
 
 	// HasFrontend indicates whether a frontend was detected in the project.
 	HasFrontend bool `yaml:"hasFrontend,omitempty" json:"hasFrontend,omitempty"`

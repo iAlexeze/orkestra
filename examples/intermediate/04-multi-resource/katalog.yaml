@@ -11,12 +11,9 @@ metadata:
 spec:
   crds:
     application:
-      apiTypes:
-        group: demo.orkestra.io
-        version: v1alpha1
-        kind: Application
-        plural: applications
-
+      crdFile: ./crd.yaml
+      crFiles:
+        - ./cr.yaml
       workers: 3
       resync: 15s
 

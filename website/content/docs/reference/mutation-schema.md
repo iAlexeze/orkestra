@@ -1,8 +1,9 @@
 ---
 title: "Mutation Schema"
-weight: 5
-description: "Complete schema reference for `reconciler.mutation` in a Katalog CRD entry."
+weight: 41
 ---
+
+# Mutation Schema
 
 Complete schema reference for `reconciler.mutation` in a Katalog CRD entry.
 
@@ -40,9 +41,10 @@ operatorBox:
 | `default` | string | one of `default` or `override` | Set only when field is absent or empty. Supports template expressions. |
 | `override` | string | one of `default` or `override` | Always set, regardless of current value. Supports template expressions. |
 
-!!! warning "Declare exactly one of `default` or `override`"
-    A rule with both `default` and `override` set will use `override` (it takes
-    priority). A rule with neither declared is a no-op — it produces no patch.
+{{< callout type="warning" title="Declare exactly one of `default` or `override`" >}}
+A rule with both `default` and `override` set will use `override` (it takes
+priority). A rule with neither declared is a no-op — it produces no patch.
+{{< /callout >}}
 
 ---
 
@@ -83,11 +85,12 @@ when `ENABLE_ADMISSION_WEBHOOK=true`.
 | `mutation` | bool | `true` | Include in `MutatingWebhookConfiguration` |
 | `operations` | `[]string` | `["CREATE", "UPDATE"]` | Which operations trigger mutation |
 
-!!! tip "Mutation on CREATE only"
-    If you only want defaults applied on first creation — not on every update —
-    declare `operations: ["CREATE"]`. This prevents Orkestra from patching the
-    object on every `kubectl apply`, which may interfere with GitOps workflows
-    that expect a clean diff.
+{{< callout type="tip" title="Mutation on CREATE only" >}}
+If you only want defaults applied on first creation — not on every update —
+declare `operations: ["CREATE"]`. This prevents Orkestra from patching the
+object on every `kubectl apply`, which may interfere with GitOps workflows
+that expect a clean diff.
+{{< /callout >}}
 
 ---
 
@@ -131,10 +134,11 @@ admission/mutate: error applying rules — allowing without mutation
   err: mutation rule override for field "spec.image": resolving template "{{ .spec.badField }}": ...
 ```
 
-!!! note "Mutation failures are non-fatal"
-    If a mutation rule fails (template error, patch error, API conflict),
-    Orkestra logs the error and allows the operation without mutation. Mutation
-    must never block an admission operation — only validation can reject.
+{{< callout type="note" title="Mutation failures are non-fatal" >}}
+If a mutation rule fails (template error, patch error, API conflict),
+Orkestra logs the error and allows the operation without mutation. Mutation
+must never block an admission operation — only validation can reject.
+{{< /callout >}}
 
 ### Reconcile-time events (kubectl describe)
 

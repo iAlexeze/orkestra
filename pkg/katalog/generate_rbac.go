@@ -3,6 +3,7 @@ package katalog
 import (
 	"strings"
 
+	"github.com/orkspace/orkestra/pkg/children"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -144,13 +145,18 @@ func (k *Katalog) GenerateRBACRules() []rbacv1.PolicyRule {
 	}
 
 	// ───────────────────────────────────────────────
-	// Table‑driven Kubernetes resource RBAC
+	// Built-in resource RBAC — driven by builtInRegistry.
+	// Any entry with a Detect function is a candidate; emit a rule when
+	// at least one enabled CRD actually uses that resource.
 	// ───────────────────────────────────────────────
-	for key, rule := range rbacRules {
-		if k.Uses(key) {
+	for _, b := range children.AllBuiltInKindDefs() {
+		if b.Detect == nil {
+			continue
+		}
+		if k.anyDetects(b.Detect) {
 			rules = append(rules, rbacv1.PolicyRule{
-				APIGroups: []string{rule.APIGroup},
-				Resources: []string{rule.Resource},
+				APIGroups: []string{b.Group},
+				Resources: []string{b.Plural},
 				Verbs:     defaultVerbs,
 			})
 		}
@@ -186,6 +192,163 @@ func (k *Katalog) WebhookResources() []string {
 	return resources
 }
 
+// GenerateRuntimeRBACRules returns the RBAC rules required by the runtime reconciler process.
+// This is GenerateRBACRules() minus the NeedsCertificates() block (webhook/secrets),
+// minus the IsDeletionProtectionEnabled() namespace block, and minus CRD CA-bundle patch rules.
+func (k *Katalog) GenerateRuntimeRBACRules() []rbacv1.PolicyRule {
+	var rules []rbacv1.PolicyRule
+
+	// ───────────────────────────────────────────────
+	// Base RBAC (always required)
+	// ───────────────────────────────────────────────
+	rules = append(rules,
+		rbacv1.PolicyRule{
+			APIGroups: []string{"coordination.k8s.io"},
+			Resources: []string{"leases"},
+			Verbs:     []string{"get", "create", "update"},
+		},
+		rbacv1.PolicyRule{
+			APIGroups: []string{""},
+			Resources: []string{"events"},
+			Verbs:     []string{"create", "patch"},
+		},
+	)
+
+	// ───────────────────────────────────────────────
+	// CRD RBAC (main + status, no CA bundle patch)
+	// ───────────────────────────────────────────────
+	for _, crd := range k.Enabled() {
+		if crd.APITypes.Group == "" || crd.APITypes.Plural == "" {
+			if !crd.IsBuiltInType() {
+				continue
+			}
+		}
+
+		// Main resource
+		rules = append(rules, rbacv1.PolicyRule{
+			APIGroups: []string{crd.APITypes.Group},
+			Resources: []string{crd.APITypes.Plural},
+			Verbs:     defaultVerbs,
+		})
+
+		// Status subresource
+		rules = append(rules, rbacv1.PolicyRule{
+			APIGroups: []string{crd.APITypes.Group},
+			Resources: []string{crd.APITypes.Plural + "/status"},
+			Verbs:     []string{"get", "update", "patch"},
+		})
+	}
+
+	// ───────────────────────────────────────────────
+	// Typed‑mode RBAC (hooks or constructor)
+	// ───────────────────────────────────────────────
+	for _, crd := range k.Enabled() {
+
+		// Hooks-managed resources
+		if crd.WithHookManagedResources() {
+			for _, r := range crd.HookManagedResources() {
+				gvr, ok := k.ResolveGVR(r)
+				if !ok {
+					continue
+				}
+				rules = append(rules, rbacv1.PolicyRule{
+					APIGroups: []string{gvr.Group},
+					Resources: []string{gvr.Resource},
+					Verbs:     defaultVerbs,
+				})
+			}
+		}
+
+		// Constructor-managed resources
+		if crd.WithConstructorManagedResources() {
+			for _, r := range crd.ConstructorManagedResources() {
+				gvr, ok := k.ResolveGVR(r)
+				if !ok {
+					continue
+				}
+				rules = append(rules, rbacv1.PolicyRule{
+					APIGroups: []string{gvr.Group},
+					Resources: []string{gvr.Resource},
+					Verbs:     defaultVerbs,
+				})
+			}
+		}
+	}
+
+	// ───────────────────────────────────────────────
+	// Built-in resource RBAC
+	// ───────────────────────────────────────────────
+	for _, b := range children.AllBuiltInKindDefs() {
+		if b.Detect == nil {
+			continue
+		}
+		if k.anyDetects(b.Detect) {
+			rules = append(rules, rbacv1.PolicyRule{
+				APIGroups: []string{b.Group},
+				Resources: []string{b.Plural},
+				Verbs:     defaultVerbs,
+			})
+		}
+	}
+
+	return rules
+}
+
+// GenerateGatewayRBACRules returns the RBAC rules required by the gateway process
+// (webhook server, certificate management, namespace labeling).
+func (k *Katalog) GenerateGatewayRBACRules() []rbacv1.PolicyRule {
+	var rules []rbacv1.PolicyRule
+
+	// ───────────────────────────────────────────────
+	// Admission webhook RBAC (conditional)
+	// ───────────────────────────────────────────────
+	if k.NeedsCertificates() {
+		webhookResources := k.WebhookResources()
+
+		if len(webhookResources) > 0 {
+			rules = append(rules, rbacv1.PolicyRule{
+				APIGroups: []string{"admissionregistration.k8s.io"},
+				Resources: webhookResources,
+				Verbs:     defaultVerbs,
+			})
+		}
+
+		// Needs permission to create and manage secret
+		rules = append(rules, rbacv1.PolicyRule{
+			APIGroups: []string{""},
+			Resources: []string{"secrets"},
+			Verbs:     defaultVerbs,
+		})
+	}
+
+	// ───────────────────────────────────────────────
+	// Deletion protection — namespace labeling
+	// ───────────────────────────────────────────────
+	if k.IsDeletionProtectionEnabled() {
+		rules = append(rules, rbacv1.PolicyRule{
+			APIGroups: []string{""},
+			Resources: []string{"namespaces"},
+			Verbs:     []string{"get", "patch"},
+		})
+	}
+
+	// ───────────────────────────────────────────────
+	// CRD CA bundle patching (conversion webhooks)
+	// ───────────────────────────────────────────────
+	for _, crd := range k.Enabled() {
+		if crd.Conversion != nil && crd.UpdateCRDCaBundle() {
+			rules = append(rules, rbacv1.PolicyRule{
+				APIGroups:     []string{"apiextensions.k8s.io"},
+				Resources:     []string{"customresourcedefinitions"},
+				Verbs:         []string{"patch"},
+				ResourceNames: []string{crd.APITypes.Plural + "." + crd.APITypes.Group},
+			})
+		}
+	}
+
+	return rules
+}
+
 // ResolveGVR resolves a ManagedResource into a concrete GroupVersionResource.
 //
 // Resolution priority (explicit always wins):
@@ -209,7 +372,7 @@ func (k *Katalog) WebhookResources() []string {
 //
 //  5. Built‑in Kubernetes resource:
 //     - kind matches Orkestra's built‑in registry
-//     → use GVRForBuiltIn(kind).
+//     → use children.GVRForBuiltIn(kind).
 //
 //  6. Otherwise:
 //     → resolution fails and (GVR{}, false) is returned.
@@ -275,7 +438,7 @@ func (k *Katalog) ResolveGVR(r orktypes.ManagedResource) (schema.GroupVersionRes
 	// ───────────────────────────────────────────────
 	// 5. Built‑in resource
 	// ───────────────────────────────────────────────
-	if gvr, ok := GVRForBuiltIn(r.Kind); ok {
+	if gvr, ok := children.GVRForBuiltIn(r.Kind); ok {
 		return gvr, true
 	}
 

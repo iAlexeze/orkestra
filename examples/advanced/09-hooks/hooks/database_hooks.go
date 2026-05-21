@@ -72,13 +72,9 @@ func onDatabaseReconcile(ctx context.Context, obj *apiv1.Database) error {
 			Image:     image,
 			Replicas:  defaultReplicas,
 			Port:      dbPort(engine),
-			Env: map[string]orktypes.EnvVarSource{
-				"POSTGRES_USER": {
-					Value: postgresUser,
-				},
-				"POSTGRES_PASSWORD": {
-					Value: postgresPassword,
-				},
+			Env: []orktypes.EnvVar{
+				{Name: "POSTGRES_USER", Value: postgresUser},
+				{Name: "POSTGRES_PASSWORD", Value: postgresPassword},
 			},
 			Labels: []orktypes.ResourceLabel{
 				{Key: "db-engine", Value: engine},

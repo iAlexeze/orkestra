@@ -20,7 +20,7 @@ import (
 // before the Ingress so the Ingress can reference it immediately.
 func runIngresses(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	resolver *orktmpl.Resolver,
 	owner domain.Object,
 	srcs []orktypes.IngressTemplateSource,
@@ -76,7 +76,7 @@ func runIngresses(
 		spec := orkingress.Resolve(resolved, resolver.OwnerName())
 
 		// Ensure TLS secret exists before applying the Ingress.
-		if spec.TLS != nil && spec.TLS.Enabled {
+		if spec.TLS != nil && spec.TLS.Create {
 			if err := ensureIngressTLSSecret(ctx, kube, owner, spec, ns); err != nil {
 				return fmt.Errorf("ingresses[%d]: tls secret: %w", i, err)
 			}
@@ -107,7 +107,7 @@ func runIngresses(
 // SANs = all declared hosts.
 func ensureIngressTLSSecret(
 	ctx context.Context,
-	kube *kubeclient.Kubeclient,
+	kube kubeclient.KubeClient,
 	owner domain.Object,
 	spec orkingress.ResolvedIngressSpec,
 	namespace string,

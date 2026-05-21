@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en-us" data-theme="">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8191&amp;path=livereload" data-no-instant defer></script>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8090&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -14,7 +14,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Declarative Version Conversion for Kubernetes CRDs — Orkestra">
 <meta property="og:description" content="*Orkestra Project — March 2026*">
-<meta property="og:url" content="http://localhost:8191/publications/declarative-conversion/">
+<meta property="og:url" content="http://localhost:8090/publications/declarative-conversion/">
 <meta property="og:site_name" content="Orkestra">
 
 
@@ -32,7 +32,7 @@
 
 
 
-<link rel="stylesheet" href="/css/main.min.e4f35e028b4e342d94b5258699fa7b53e53b1f54212c3a40fb2a70e627bba458.css">
+<link rel="stylesheet" href="/css/main.min.ed4127849a94162676f586309f939b9ad14e1a02ea340295071b0613d5493ba5.css">
 
 
 
@@ -65,7 +65,7 @@
     <ul class="navbar-links" role="list">
       
       <li>
-        <a href="/docs/" class="navbar-link"
+        <a href="/docs/getting-started/" class="navbar-link"
           >
           Docs
           
@@ -73,17 +73,9 @@
       </li>
       
       <li>
-        <a href="/publications/" class="navbar-link"
+        <a href="/docs/reference/" class="navbar-link"
           >
-          Publications
-          
-        </a>
-      </li>
-      
-      <li>
-        <a href="/docs/use-cases/" class="navbar-link"
-          >
-          Use Cases
+          Reference
           
         </a>
       </li>
@@ -92,6 +84,14 @@
         <a href="/blog/" class="navbar-link"
           >
           Blog
+          
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-link"
+          >
+          Publications
           
         </a>
       </li>
@@ -142,23 +142,16 @@
     <ul role="list">
       
       <li>
-        <a href="/docs/" class="navbar-mobile-link"
+        <a href="/docs/getting-started/" class="navbar-mobile-link"
           >
           Docs
         </a>
       </li>
       
       <li>
-        <a href="/publications/" class="navbar-mobile-link"
+        <a href="/docs/reference/" class="navbar-mobile-link"
           >
-          Publications
-        </a>
-      </li>
-      
-      <li>
-        <a href="/docs/use-cases/" class="navbar-mobile-link"
-          >
-          Use Cases
+          Reference
         </a>
       </li>
       
@@ -166,6 +159,13 @@
         <a href="/blog/" class="navbar-mobile-link"
           >
           Blog
+        </a>
+      </li>
+      
+      <li>
+        <a href="/publications/" class="navbar-mobile-link"
+          >
+          Publications
         </a>
       </li>
       
@@ -272,13 +272,13 @@ model: each CRD gets everything a traditional operator provides, hosted by
 a shared runtime that contributes the orchestration infrastructure.</p>
 <p>Multi-version CRDs extend this naturally: each version of a CRD is a
 separate Katalog entry with its own operator stack.</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">crds</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">crds</span>:
 </span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">name</span>: website-v1alpha1
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">apiTypes</span>:
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">group</span>: demo.orkestra.io
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: v1alpha1
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">kind</span>: Website
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">reconciler</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">operatorBox</span>:
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
 </span></span><span style="display:flex;"><span>      <span style="color:#6272a4"># ... v1alpha1 reconcile templates</span>
 </span></span><span style="display:flex;"><span>
@@ -287,7 +287,7 @@ separate Katalog entry with its own operator stack.</p>
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">group</span>: demo.orkestra.io
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">version</span>: v1
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">kind</span>: Website
-</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">reconciler</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">operatorBox</span>:
 </span></span><span style="display:flex;"><span>      <span style="color:#ff79c6">default</span>: <span style="color:#ff79c6">true</span>
 </span></span><span style="display:flex;"><span>      <span style="color:#6272a4"># ... v1 reconcile templates</span>
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">conversion</span>:
@@ -305,10 +305,10 @@ object representation.</p>
 <p>Orkestra&rsquo;s template resolver evaluates Go <code>text/template</code> expressions against
 the raw <code>map[string]interface{}</code> of a Kubernetes object. It is the same
 resolver used for reconcile templates:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>- <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}&#34;</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span>- <span style="color:#ff79c6">name</span>: <span style="color:#f1fa8c">&#34;{{ .metadata.name }}&#34;</span>
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
 </span></span></code></pre></div><p>Conversion rules use the same syntax:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">image</span>: <span style="color:#f1fa8c">&#34;{{ .spec.image }}&#34;</span>
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">seo</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">enabled</span>: <span style="color:#ff79c6">false</span>   <span style="color:#6272a4"># static default — not a template expression</span>
@@ -321,7 +321,7 @@ the path spec.</p>
 <h3 id="31-path-structure">3.1 Path Structure</h3>
 <p>Each conversion path declares an explicit <code>from</code> version, an explicit <code>to</code>
 version, and the output spec in the target version&rsquo;s format:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">conversion</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">conversion</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">storageVersion</span>: v1
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">paths</span>:
 </span></span><span style="display:flex;"><span>    - <span style="color:#ff79c6">from</span>: v1alpha1
@@ -352,14 +352,14 @@ already at the new version retain their declared value.</p>
 It is not present in the output.</p>
 <p><strong>Restructuring a field:</strong> Use a template expression to extract the value
 from its old location and a nested map to place it at its new location:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># v1alpha1 had spec.schedule as a cron string</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#6272a4"># v1alpha1 had spec.schedule as a cron string</span>
 </span></span><span style="display:flex;"><span><span style="color:#6272a4"># v1 has spec.schedule.cron</span>
 </span></span><span style="display:flex;"><span><span style="color:#ff79c6">spec</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">schedule</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">cron</span>: <span style="color:#f1fa8c">&#34;{{ .spec.schedule }}&#34;</span>
 </span></span></code></pre></div><p><strong>Multiple versions:</strong> Add a path for each (from, to) pair. No additional
 code, no redeployment:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">paths</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">paths</span>:
 </span></span><span style="display:flex;"><span>  - <span style="color:#ff79c6">from</span>: v1alpha1
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">to</span>: v1
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">spec</span>: { ... }
@@ -409,7 +409,7 @@ clusters with cert-manager, a <code>Certificate</code> resource pointed at the O
 service is the standard approach. The TLS infrastructure is shared with any
 other HTTPS serving the operator requires — it is not webhook-specific.</p>
 <p>The CRD&rsquo;s conversion block points to Orkestra&rsquo;s service:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">conversion</span>:
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#ff79c6">conversion</span>:
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">strategy</span>: Webhook
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">webhook</span>:
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">clientConfig</span>:
@@ -432,7 +432,7 @@ without custom instrumentation: how often is each conversion path invoked,
 what is the conversion latency distribution, which conversions are failing.</p>
 <h3 id="52-health-api">5.2 Health API</h3>
 <p>The <code>/katalog/{crd}</code> endpoint includes conversion statistics:</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;name&#34;</span>: <span style="color:#f1fa8c">&#34;website-v1&#34;</span>,
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;conversion&#34;</span>: {
 </span></span><span style="display:flex;"><span>    <span style="color:#ff79c6">&#34;enabled&#34;</span>: <span style="color:#ff79c6">true</span>,
@@ -448,8 +448,8 @@ what is the conversion latency distribution, which conversions are failing.</p>
 <p>The following data is from a live deployment of the Website CRD with two
 active versions: <code>demo.orkestra.io/v1alpha1</code> and <code>demo.orkestra.io/v1</code>.</p>
 <h3 id="61-health-api">6.1 Health API</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span><span style="color:#6272a4">// /katalog/website-v1alpha1
-</span></span></span><span style="display:flex;"><span><span style="color:#6272a4"></span>{
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#282a36;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-json" data-lang="json"><span style="display:flex;"><span><span style="color:#6272a4">// /katalog/website-v1alpha1
+</span></span></span><span style="display:flex;"><span>{
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;name&#34;</span>: <span style="color:#f1fa8c">&#34;website-v1alpha1&#34;</span>,
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;gvk&#34;</span>: <span style="color:#f1fa8c">&#34;demo.orkestra.io/v1alpha1, Kind=Website&#34;</span>,
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;mode&#34;</span>: <span style="color:#f1fa8c">&#34;dynamic&#34;</span>,
@@ -468,7 +468,7 @@ active versions: <code>demo.orkestra.io/v1alpha1</code> and <code>demo.orkestra.
 </span></span><span style="display:flex;"><span>}
 </span></span><span style="display:flex;"><span>
 </span></span><span style="display:flex;"><span><span style="color:#6272a4">// /katalog/website-v1
-</span></span></span><span style="display:flex;"><span><span style="color:#6272a4"></span>{
+</span></span></span><span style="display:flex;"><span>{
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;name&#34;</span>: <span style="color:#f1fa8c">&#34;website-v1&#34;</span>,
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;gvk&#34;</span>: <span style="color:#f1fa8c">&#34;demo.orkestra.io/v1, Kind=Website&#34;</span>,
 </span></span><span style="display:flex;"><span>  <span style="color:#ff79c6">&#34;mode&#34;</span>: <span style="color:#f1fa8c">&#34;dynamic&#34;</span>,
@@ -631,7 +631,7 @@ makes that possible.</p>
 
 
   
-  <script src="/js/main.min.f2df583e131a595404870b2d956fe54827dcacf44666bb51201fbf1d6524fa40.js" defer></script>
+  <script src="/js/main.min.d2e794f76bf881e2b24e29e56610c51d43db4fe37e7050090ef272ef855893af.js" defer></script>
 
   <style>
      

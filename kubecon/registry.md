@@ -1,3 +1,0 @@
-KubeCon One-Paragraph Pitch
-
-Kubernetes has a package manager for images and a package manager for manifests — but operators are still shipped as full-blown binaries. That’s why every cluster ends up running 20 controllers that all do the same thing: watch resources and reconcile state. Orkestra flips that model. Instead of distributing operators as processes, it distributes their behavior as declarative OCI artifacts — patterns you can pull, compose, and override in a single runtime. The result is fewer processes, lower overhead, and a fundamentally different ecosystem where operators behave like dependencies, not infrastructure. This isn’t about writing operators faster — it’s about making most of them disappear.

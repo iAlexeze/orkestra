@@ -9,6 +9,9 @@
 // All development‑only behavior (cluster checks, dependency setup,
 // Kind provisioning, extra flags) lives in run_dev.go and is excluded
 // from production builds via build tags.
+
+//go:build runtime
+
 package cli
 
 import (
@@ -21,31 +24,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// The --file flag accepts one or more paths.
-// Each path points to a Katalog file that may itself declare sources.
-// The merger handles everything from there.
-
-// Flag definition — same flag, now accepts multiple values:
-//   cmd.Flags().StringSlice("katalog", nil,
-//       "Path(s) or URL(s) to crd-katalog.yaml (repeatable)")
-
-// Usage examples — all of these work identically:
-//   ork run --file ./katalog.yaml
-//   ork run --file ./project.yaml --file ./namespace.yaml
-//   ork run --file https://remote/katalog.yaml
-//   ork run --file ./local.yaml --file https://remote/extra.yaml
+// If -f is not provided, Orkestra reads katalog.yaml (or komposer.yaml) from
+// the current directory — the same convention as Docker and Compose.
+// Pass -f explicitly only when using a non-standard filename or multiple files.
 
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Start the Orkestra operator runtime",
+	Short: "Start the Orkestra Runtime",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		paths, _ := cmd.Flags().GetStringSlice("file")
 		if len(paths) == 0 {
-			// fallback to env
+			paths = defaultFilePaths()
+		}
+		if len(paths) == 0 {
 			paths = kfg.Katalog().Paths
-			if len(paths) == 0 {
-				return fmt.Errorf("--file is required or set 'KATALOG_PATH' variable")
-			}
+		}
+		if len(paths) == 0 {
+			return fmt.Errorf(errNoKatalog)
 		}
 
 		m := merger.New(paths...)
@@ -61,7 +56,7 @@ var runCmd = &cobra.Command{
 
 		// This is where the actual operator starts.
 		// The --dev logic will be injected via a wrapper in run_dev.go.
-		internal.Konduct(kfg, m, ctx)
+		internal.KonductRuntime(kfg, m, ctx)
 		return nil
 	},
 }

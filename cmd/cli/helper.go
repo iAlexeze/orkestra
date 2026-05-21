@@ -1,94 +1,608 @@
-//go:build !runtime
+//go:build !runtime && !gateway
 
 package cli
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
+	"github.com/orkspace/orkestra/pkg/katalog"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
+	"github.com/orkspace/orkestra/pkg/utils"
 )
 
-type CRDEntryDTO struct {
-	Name       string           `json:"name" yaml:"name"`
-	Enabled    bool             `json:"enabled" yaml:"enabled"`
-	Group      string           `json:"group" yaml:"group"`
-	Version    string           `json:"version" yaml:"version"`
-	Kind       string           `json:"kind" yaml:"kind"`
-	Plural     string           `json:"plural" yaml:"plural"`
-	Namespaced bool             `json:"namespaced" yaml:"namespaced"`
-	Namespace  string           `json:"namespace,omitempty" yaml:"namespace,omitempty"`
-	Workers    int              `json:"workers" yaml:"workers"`
-	Resync     string           `json:"resync" yaml:"resync"`
-	DependsOn  []string         `json:"dependsOn,omitempty" yaml:"dependsOn,omitempty"`
-	Finalizers []string         `json:"finalizers,omitempty" yaml:"finalizers,omitempty"`
-	Mode       orktypes.CRDMode `json:"mode" yaml:"mode"`
+// ── printTemplateSummary ──────────────────────────────────────────────────────
+
+// printTemplateSummary prints the human-readable default output of `ork template`.
+// CRDs are listed in startup order so the user sees the dependency sequence.
+func printTemplateSummary(k *katalog.Katalog, crds map[string]orktypes.CRDEntry, startupOrder []string) {
+	meta := k.Metadata()
+
+	fmt.Printf("\n%s", utils.Cyan(utils.Bold("Katalog")))
+	if meta.Name != "" {
+		fmt.Printf(": %s", utils.Bold(meta.Name))
+	}
+	if meta.Version != "" {
+		fmt.Printf(" %s", utils.Dim("("+meta.Version+")"))
+	}
+	if k.APIVersion != "" {
+		fmt.Printf("  %s", utils.Dim(k.APIVersion))
+	}
+	fmt.Println()
+
+	fmt.Printf("  %d CRD(s) — startup order: %s\n\n",
+		len(crds),
+		utils.Yellow(strings.Join(startupOrder, " → ")),
+	)
+
+	for i, name := range startupOrder {
+		crd, ok := crds[name]
+		if !ok {
+			continue
+		}
+		isLast := i == len(startupOrder)-1
+		connector := "├─"
+		if isLast {
+			connector = "└─"
+		}
+
+		gvk := fmt.Sprintf("%s/%s, Kind=%s", crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind)
+		fmt.Printf("  %s %s  %s\n",
+			connector,
+			utils.Bold(name),
+			utils.Dim(gvk),
+		)
+
+		indent := "  │   "
+		if isLast {
+			indent = "      "
+		}
+
+		// Workers / resync
+		fmt.Printf("%sworkers:%s  resync:%s",
+			indent,
+			utils.Green(fmt.Sprintf("%d", crd.Workers)),
+			utils.Green(crd.Resync.String()),
+		)
+		if crd.Queue.MaxQueueDepth > 0 {
+			fmt.Printf("  queue:%s", utils.Green(fmt.Sprintf("%d", crd.Queue.MaxQueueDepth)))
+		}
+		fmt.Println()
+
+		// DependsOn
+		if len(crd.DependsOn) > 0 {
+			deps := make([]string, 0, len(crd.DependsOn))
+			for depName, d := range crd.DependsOn {
+				if d.Condition != "" && d.Condition != "started" {
+					deps = append(deps, fmt.Sprintf("%s(%s)", depName, d.Condition))
+				} else {
+					deps = append(deps, depName)
+				}
+			}
+			fmt.Printf("%s%s %s\n",
+				indent,
+				utils.Yellow("dependsOn:"),
+				strings.Join(deps, ", "),
+			)
+		}
+
+		// Mode / reconciler
+		mode := "default"
+		if crd.Mode != "" {
+			mode = string(crd.Mode)
+		}
+		if !crd.DefaultReconcile() {
+			if crd.CustomHooksEnabled() {
+				mode = "hooks"
+			} else if crd.ConstructorEnabled() {
+				mode = "constructor"
+			}
+		}
+		fmt.Printf("%smode: %s\n", indent, mode)
+
+		// onCreate resources
+		if crd.OperatorBox.OnCreate != nil && !crd.OperatorBox.OnCreate.IsEmpty() {
+			fmt.Printf("%s%s  %s\n", indent, utils.Cyan("onCreate:"),
+				summarizeHookTemplates(crd.OperatorBox.OnCreate))
+		}
+
+		// onReconcile resources
+		if crd.OperatorBox.OnReconcile != nil && !crd.OperatorBox.OnReconcile.IsEmpty() {
+			fmt.Printf("%s%s  %s\n", indent, utils.Cyan("onReconcile:"),
+				summarizeHookTemplates(crd.OperatorBox.OnReconcile))
+		}
+
+		// Status fields
+		if crd.OperatorBox.Status != nil && len(crd.OperatorBox.Status.Fields) > 0 {
+			fieldNames := make([]string, 0, len(crd.OperatorBox.Status.Fields))
+			for _, f := range crd.OperatorBox.Status.Fields {
+				fieldNames = append(fieldNames, f.Path)
+			}
+			fmt.Printf("%s%s  %s\n", indent, utils.Cyan("status:"),
+				strings.Join(fieldNames, ", "))
+		}
+
+		// Autoscale
+		if crd.AutoscaleEnabled() && crd.OperatorBox.Autoscale != nil {
+			a := crd.OperatorBox.Autoscale
+			if a.Profile != "" {
+				fmt.Printf("%s%s  profile=%s\n", indent, utils.Magenta("autoscale:"), a.Profile)
+			} else {
+				parts := []string{}
+				if len(a.Conditions.When) > 0 {
+					triggers := make([]string, 0, len(a.Conditions.When))
+					for _, c := range a.Conditions.When {
+						triggers = append(triggers, c.Field)
+					}
+					parts = append(parts, "when("+strings.Join(triggers, ", ")+")")
+				}
+				if a.Do.Workers != nil {
+					parts = append(parts, fmt.Sprintf("workers→%d", *a.Do.Workers))
+				}
+				if a.Do.Resync != nil {
+					parts = append(parts, fmt.Sprintf("resync→%s", a.Do.Resync.String()))
+				}
+				fmt.Printf("%s%s  %s  interval:%s  cooldown:%s\n",
+					indent, utils.Magenta("autoscale:"),
+					strings.Join(parts, "  "),
+					a.EffectiveInterval(), a.EffectiveCooldown(),
+				)
+			}
+		}
+
+		fmt.Println()
+	}
+
+	fmt.Printf("  %s\n\n", utils.Green("✓ Katalog is valid"))
 }
 
-func toDTO(crd orktypes.CRDEntry) CRDEntryDTO {
-	return CRDEntryDTO{
-		Name:       crd.Name,
-		Enabled:    crd.IsEnabled(),
-		Group:      crd.APITypes.Group,
-		Version:    crd.APITypes.Version,
-		Kind:       crd.APITypes.Kind,
-		Plural:     crd.APITypes.Plural,
-		Namespaced: crd.IsNamespaced(),
-		Namespace:  crd.Namespace,
-		Workers:    crd.Workers,
-		Resync:     crd.Resync.String(),
-		DependsOn:  crd.DependsOn.Names(),
-		Finalizers: crd.OperatorBox.Finalizers,
-		Mode:       crd.Mode,
-	}
-}
+// ── printDependencyGraph ──────────────────────────────────────────────────────
 
-func printPrettyCRD(crd orktypes.CRDEntry) {
-	fmt.Printf("CRD: %s\n", crd.Name)
-	fmt.Printf("  Group: %s\n", crd.APITypes.Group)
-	fmt.Printf("  Version: %s\n", crd.APITypes.Version)
-	fmt.Printf("  Kind: %s\n", crd.APITypes.Kind)
-	fmt.Printf("  Plural: %s\n", crd.APITypes.Plural)
-	fmt.Printf("  Enabled: %v\n", crd.IsEnabled())
-	fmt.Printf("  Mode: %s\n", crd.Mode)
-	fmt.Printf("  Namespaced: %v\n", crd.IsNamespaced())
-	if crd.Namespace != "" {
-		fmt.Printf("  Namespace: %s\n", crd.Namespace)
-	}
-	fmt.Printf("  Workers: %d\n", crd.Workers)
-	fmt.Printf("  Resync: %s\n", crd.Resync)
+// printDependencyGraph prints a two-part dependency view:
+// 1. Ordered startup list (flat)
+// 2. Tree view showing the dependency hierarchy
+func printDependencyGraph(crds map[string]orktypes.CRDEntry, g *katalog.DependencyGraph, startupOrder []string) {
+	fmt.Printf("\n%s\n\n", utils.Cyan(utils.Bold("Dependency Graph")))
 
-	if len(crd.DependsOn) > 0 {
-		fmt.Println("  DependsOn:")
-		for _, dep := range crd.DependsOn.Names() {
-			fmt.Printf("    - %s\n", dep)
+	// ── Part 1: startup order list ────────────────────────────────────────────
+	fmt.Printf("  %s\n", utils.Bold("Startup order:"))
+	for i, name := range startupOrder {
+		crd, ok := crds[name]
+		if !ok {
+			continue
 		}
-	}
-
-	fmt.Println("  Reconciler:")
-	if crd.DefaultReconcile() {
-		fmt.Println("    Default: true")
-	} else if crd.CustomHooksEnabled() {
-		fmt.Printf("    Hooks: %v\n", crd.OperatorBox.Hooks.Function)
-	} else if crd.ConstructorEnabled() {
-		fmt.Printf("    Constructor: %v\n", crd.OperatorBox.ConstructorDecl.Function)
-	}
-
-	if len(crd.OperatorBox.Finalizers) > 0 {
-		fmt.Println("    Finalizers:")
-		for _, f := range crd.OperatorBox.Finalizers {
-			fmt.Printf("      - %s\n", f)
+		deps := crd.DependsOn.Names()
+		depStr := ""
+		if len(deps) > 0 {
+			formatted := make([]string, 0, len(deps))
+			for depName, d := range crd.DependsOn {
+				if d.Condition != "" && d.Condition != "started" {
+					formatted = append(formatted, fmt.Sprintf("%s(%s)",
+						utils.Yellow(depName),
+						utils.Dim(d.Condition)))
+				} else {
+					formatted = append(formatted, utils.Yellow(depName))
+				}
+			}
+			depStr = fmt.Sprintf("  %s %s", utils.Dim("←"), strings.Join(formatted, ", "))
 		}
+		gvk := fmt.Sprintf("%s/%s, Kind=%s", crd.APITypes.Group, crd.APITypes.Version, crd.APITypes.Kind)
+		fmt.Printf("    %s %-20s %s%s\n",
+			utils.Bold(fmt.Sprintf("%d.", i+1)),
+			name,
+			utils.Dim(gvk),
+			depStr,
+		)
 	}
 
 	fmt.Println()
-}
 
-func printGraph(crds map[string]orktypes.CRDEntry) {
-	fmt.Println("Dependency Graph:")
-	for name, crd := range crds {
-		fmt.Printf("%s\n", name)
-		for _, dep := range crd.DependsOn.Names() {
-			fmt.Printf("  └─ %s\n", dep)
+	// ── Part 2: tree view ─────────────────────────────────────────────────────
+	fmt.Printf("  %s\n", utils.Bold("Tree view:"))
+
+	// Find roots (CRDs with no dependencies)
+	roots := []string{}
+	for _, name := range startupOrder {
+		crd, ok := crds[name]
+		if !ok {
+			continue
+		}
+		if len(crd.DependsOn) == 0 {
+			roots = append(roots, name)
 		}
 	}
+
+	printed := map[string]bool{}
+	for _, root := range roots {
+		printGraphNode(crds, g, root, "    ", "", printed)
+	}
+	fmt.Println()
+}
+
+// printGraphNode recursively prints one CRD node and its dependents in tree form.
+func printGraphNode(crds map[string]orktypes.CRDEntry, g *katalog.DependencyGraph, name, indent, connector string, printed map[string]bool) {
+	crd, ok := crds[name]
+	if !ok {
+		return
+	}
+
+	gvk := fmt.Sprintf("%s/%s", crd.APITypes.Group, crd.APITypes.Version)
+	fmt.Printf("%s%s%s  %s\n",
+		indent, connector,
+		utils.Bold(name),
+		utils.Dim(gvk),
+	)
+
+	if printed[name] {
+		return
+	}
+	printed[name] = true
+
+	dependents := g.GetDependents(name)
+	sort.Strings(dependents)
+
+	for i, dep := range dependents {
+		isLast := i == len(dependents)-1
+		childConnector := "├── "
+		childIndent := indent + "│   "
+		if isLast {
+			childConnector = "└── "
+			childIndent = indent + "    "
+		}
+
+		// Show the condition for this edge
+		depCrd, ok := crds[dep]
+		if ok {
+			if d, exists := depCrd.DependsOn[name]; exists && d.Condition != "" && d.Condition != "started" {
+				childConnector += utils.Dim("("+d.Condition+")") + " "
+			}
+		}
+		printGraphNode(crds, g, dep, childIndent, childConnector, printed)
+	}
+}
+
+// ── printCRDDetail ────────────────────────────────────────────────────────────
+
+// printCRDDetail prints the full expanded state of a single CRD as a
+// human-readable document — what the runtime will use for this CRD.
+func printCRDDetail(crd orktypes.CRDEntry, g *katalog.DependencyGraph) {
+	fmt.Printf("\n%s\n", utils.Bold(crd.Name))
+	fmt.Printf("  %s %s/%s\n", utils.Cyan("APIVersion:"), crd.APITypes.Group, crd.APITypes.Version)
+	fmt.Printf("  %s %s  (plural: %s)\n", utils.Cyan("Kind:     "), crd.APITypes.Kind, crd.APITypes.Plural)
+	fmt.Printf("  %s %v", utils.Cyan("Namespaced:"), crd.IsNamespaced())
+	if crd.Namespace != "" {
+		fmt.Printf("  (namespace: %s)", crd.Namespace)
+	}
+	fmt.Println()
+	fmt.Printf("  %s %v\n", utils.Cyan("Enabled:  "), crd.IsEnabled())
+	fmt.Printf("  %s %s\n", utils.Cyan("Mode:     "), crdModeLabel(crd))
+	fmt.Println()
+
+	// ── Runtime config ───────────────────────────────────────────────────────
+	fmt.Printf("  %s\n", utils.Cyan(utils.Bold("Runtime")))
+	fmt.Printf("    Workers:       %s\n", utils.Green(fmt.Sprintf("%d", crd.Workers)))
+	fmt.Printf("    Resync:        %s\n", utils.Green(crd.Resync.String()))
+	if crd.Queue.MaxQueueDepth > 0 {
+		fmt.Printf("    MaxQueueDepth: %s\n", utils.Green(fmt.Sprintf("%d", crd.Queue.MaxQueueDepth)))
+	}
+	fmt.Println()
+
+	// ── DependsOn ─────────────────────────────────────────────────────────────
+	if len(crd.DependsOn) > 0 {
+		fmt.Printf("  %s\n", utils.Yellow(utils.Bold("DependsOn")))
+		for depName, dep := range crd.DependsOn {
+			cond := dep.Condition
+			if cond == "" {
+				cond = "started"
+			}
+			fmt.Printf("    - %s  condition: %s\n", utils.Yellow(depName), cond)
+		}
+		fmt.Println()
+	}
+
+	// ── OperatorBox.OnCreate ──────────────────────────────────────────────────
+	if crd.OperatorBox.OnCreate != nil && !crd.OperatorBox.OnCreate.IsEmpty() {
+		fmt.Printf("  %s\n", utils.Cyan(utils.Bold("onCreate")))
+		printHookTemplateDetail("    ", crd.OperatorBox.OnCreate)
+		fmt.Println()
+	}
+
+	// ── OperatorBox.OnReconcile ───────────────────────────────────────────────
+	if crd.OperatorBox.OnReconcile != nil && !crd.OperatorBox.OnReconcile.IsEmpty() {
+		fmt.Printf("  %s\n", utils.Cyan(utils.Bold("onReconcile")))
+		printHookTemplateDetail("    ", crd.OperatorBox.OnReconcile)
+		fmt.Println()
+	}
+
+	// ── Status ────────────────────────────────────────────────────────────────
+	if crd.OperatorBox.Status != nil && len(crd.OperatorBox.Status.Fields) > 0 {
+		fmt.Printf("  %s\n", utils.Cyan(utils.Bold("Status Fields")))
+		for _, f := range crd.OperatorBox.Status.Fields {
+			fmt.Printf("    - %s: %s\n", utils.Green(f.Path), utils.Dim(f.Value))
+		}
+		fmt.Println()
+	}
+
+	// ── Autoscale ─────────────────────────────────────────────────────────────
+	if crd.AutoscaleEnabled() && crd.OperatorBox.Autoscale != nil {
+		a := crd.OperatorBox.Autoscale
+		fmt.Printf("  %s\n", utils.Magenta(utils.Bold("Autoscale")))
+		if a.Profile != "" {
+			fmt.Printf("    Profile:  %s\n", utils.Magenta(a.Profile))
+		} else {
+			fmt.Printf("    Interval: %s\n", a.EffectiveInterval())
+			fmt.Printf("    Cooldown: %s\n", a.EffectiveCooldown())
+			if len(a.Conditions.When) > 0 {
+				fmt.Printf("    When (AND):\n")
+				for _, cond := range a.Conditions.When {
+					printConditionLine("      ", cond)
+				}
+			}
+			if len(a.Conditions.AnyOf) > 0 {
+				fmt.Printf("    AnyOf (OR):\n")
+				for _, cond := range a.Conditions.AnyOf {
+					printConditionLine("      ", cond)
+				}
+			}
+			if a.Do.Workers != nil {
+				fmt.Printf("    Do.Workers:    %s\n", utils.Magenta(fmt.Sprintf("%d", *a.Do.Workers)))
+			}
+			if a.Do.QueueDepth != nil {
+				fmt.Printf("    Do.QueueDepth: %s\n", utils.Magenta(fmt.Sprintf("%d", *a.Do.QueueDepth)))
+			}
+			if a.Do.Resync != nil {
+				fmt.Printf("    Do.Resync:     %s\n", utils.Magenta(a.Do.Resync.String()))
+			}
+		}
+		fmt.Println()
+	}
+
+	// ── Finalizers ────────────────────────────────────────────────────────────
+	if len(crd.OperatorBox.Finalizers) > 0 {
+		fmt.Printf("  %s\n", utils.Cyan(utils.Bold("Finalizers")))
+		for _, f := range crd.OperatorBox.Finalizers {
+			fmt.Printf("    - %s\n", f)
+		}
+		fmt.Println()
+	}
+
+	// ── Dependents (what depends on this CRD) ────────────────────────────────
+	if g != nil {
+		dependents := g.GetDependents(crd.Name)
+		if len(dependents) > 0 {
+			fmt.Printf("  %s\n", utils.Yellow(utils.Bold("Required by")))
+			for _, dep := range dependents {
+				fmt.Printf("    - %s\n", utils.Yellow(dep))
+			}
+			fmt.Println()
+		}
+	}
+}
+
+// printHookTemplateDetail prints a detailed breakdown of resource declarations.
+func printHookTemplateDetail(indent string, ht *orktypes.HookTemplates) {
+	if ht == nil {
+		return
+	}
+
+	printResources := func(kind string, names []string) {
+		if len(names) == 0 {
+			return
+		}
+		fmt.Printf("%s%s\n", indent, utils.Green(fmt.Sprintf("%s(%d):", kind, len(names))))
+		for _, n := range names {
+			fmt.Printf("%s  %s\n", indent, utils.Dim("- "+n))
+		}
+	}
+
+	printResources("deployments", deploymentNameList(ht.Deployments))
+	printResources("statefulsets", statefulSetNameList(ht.StatefulSets))
+	printResources("services", serviceNameList(ht.Services))
+	printResources("configmaps", configMapNameList(ht.ConfigMaps))
+	printResources("secrets", secretNameList(ht.Secrets))
+	printResources("jobs", jobNameList(ht.Jobs))
+	printResources("cronJobs", cronJobNameList(ht.CronJobs))
+	printResources("serviceAccounts", serviceAccountNameList(ht.ServiceAccounts))
+	printResources("ingresses", ingressNameList(ht.Ingresses))
+	printResources("pvcs", pvcNameList(ht.PersistentVolumeClaims))
+	printResources("namespaces", namespaceNameList(ht.Namespaces))
+	printResources("roles", roleNameList(ht.Roles))
+	printResources("clusterRoles", clusterRoleNameList(ht.ClusterRoles))
+
+	if len(ht.CustomResource) > 0 {
+		fmt.Printf("%s%s\n", indent, utils.Green(fmt.Sprintf("custom(%d):", len(ht.CustomResource))))
+		for _, cr := range ht.CustomResource {
+			fmt.Printf("%s  %s\n", indent, utils.Dim(fmt.Sprintf("- %s/%s  name: %s", cr.APIVersion, cr.Kind, cr.Metadata.Name)))
+		}
+	}
+}
+
+// ── summarizeHookTemplates ────────────────────────────────────────────────────
+
+// summarizeHookTemplates returns a compact one-line resource summary.
+func summarizeHookTemplates(ht *orktypes.HookTemplates) string {
+	if ht == nil {
+		return ""
+	}
+	var parts []string
+	add := func(n int, label string) {
+		if n > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", n, label))
+		}
+	}
+	add(len(ht.Deployments), "deployment(s)")
+	add(len(ht.StatefulSets), "statefulset(s)")
+	add(len(ht.Services), "service(s)")
+	add(len(ht.ConfigMaps), "configmap(s)")
+	add(len(ht.Secrets), "secret(s)")
+	add(len(ht.Jobs), "job(s)")
+	add(len(ht.CronJobs), "cronjob(s)")
+	add(len(ht.Ingresses), "ingress(es)")
+	add(len(ht.PersistentVolumeClaims), "pvc(s)")
+	add(len(ht.Namespaces), "namespace(s)")
+	add(len(ht.ServiceAccounts), "serviceaccount(s)")
+	add(len(ht.Roles), "role(s)")
+	add(len(ht.ClusterRoles), "clusterrole(s)")
+	if len(ht.CustomResource) > 0 {
+		kinds := make([]string, 0, len(ht.CustomResource))
+		for _, cr := range ht.CustomResource {
+			kinds = append(kinds, cr.Kind)
+		}
+		parts = append(parts, fmt.Sprintf("custom(%s)", strings.Join(kinds, ", ")))
+	}
+	return strings.Join(parts, ", ")
+}
+
+// ── Condition printer ─────────────────────────────────────────────────────────
+
+func printConditionLine(indent string, cond orktypes.Condition) {
+	if cond.Field != "" {
+		line := fmt.Sprintf("%s- %s", indent, cond.Field)
+		if cond.GreaterThan != "" {
+			line += fmt.Sprintf(" > %s", utils.Dim(cond.GreaterThan))
+		}
+		if cond.LessThan != "" {
+			line += fmt.Sprintf(" < %s", utils.Dim(cond.LessThan))
+		}
+		if cond.Equals != "" {
+			line += fmt.Sprintf(" == %s", utils.Dim(cond.Equals))
+		}
+		fmt.Println(line)
+	}
+}
+
+// ── Name list helpers (for printHookTemplateDetail) ───────────────────────────
+
+func deploymentNameList(srcs []orktypes.DeploymentTemplateSource) []string {
+	out := make([]string, 0, len(srcs))
+	for _, s := range srcs {
+		if s.Name != "" {
+			out = append(out, s.Name)
+		} else {
+			out = append(out, fmt.Sprintf("image:%s", s.Image))
+		}
+	}
+	return out
+}
+
+func statefulSetNameList(srcs []orktypes.StatefulSetTemplateSource) []string {
+	out := make([]string, 0, len(srcs))
+	for _, s := range srcs {
+		out = append(out, nameOrFallback(s.Name, "statefulset"))
+	}
+	return out
+}
+
+func serviceNameList(srcs []orktypes.ServiceTemplateSource) []string {
+	out := make([]string, 0, len(srcs))
+	for _, s := range srcs {
+		out = append(out, nameOrFallback(s.Name, "service"))
+	}
+	return out
+}
+
+func configMapNameList(srcs []orktypes.ConfigMapTemplateSource) []string {
+	out := make([]string, 0, len(srcs))
+	for _, s := range srcs {
+		out = append(out, nameOrFallback(s.Name, "configmap"))
+	}
+	return out
+}
+
+func secretNameList(srcs []orktypes.SecretTemplateSource) []string {
+	out := make([]string, 0, len(srcs))
+	for _, s := range srcs {
+		out = append(out, nameOrFallback(s.Name, "secret"))
+	}
+	return out
+}
+
+func jobNameList(srcs []orktypes.JobTemplateSource) []string {
+	out := make([]string, 0, len(srcs))
+	for _, s := range srcs {
+		out = append(out, nameOrFallback(s.Name, "job"))
+	}
+	return out
+}
+
+func cronJobNameList(srcs []orktypes.CronJobTemplateSource) []string {
+	out := make([]string, 0, len(srcs))
+	for _, s := range srcs {
+		out = append(out, nameOrFallback(s.Name, "cronjob"))
+	}
+	return out
+}
+
+func serviceAccountNameList(srcs []orktypes.ServiceAccountTemplateSource) []string {
+	out := make([]string, 0, len(srcs))
+	for _, s := range srcs {
+		out = append(out, nameOrFallback(s.Name, "serviceaccount"))
+	}
+	return out
+}
+
+func ingressNameList(srcs []orktypes.IngressTemplateSource) []string {
+	out := make([]string, 0, len(srcs))
+	for _, s := range srcs {
+		out = append(out, nameOrFallback(s.Name, "ingress"))
+	}
+	return out
+}
+
+func pvcNameList(srcs []orktypes.PVCTemplateSource) []string {
+	out := make([]string, 0, len(srcs))
+	for _, s := range srcs {
+		out = append(out, nameOrFallback(s.Name, "pvc"))
+	}
+	return out
+}
+
+func namespaceNameList(srcs []orktypes.NamespaceTemplateSource) []string {
+	out := make([]string, 0, len(srcs))
+	for _, s := range srcs {
+		out = append(out, nameOrFallback(s.Name, "namespace"))
+	}
+	return out
+}
+
+func roleNameList(srcs []orktypes.RoleTemplateSource) []string {
+	out := make([]string, 0, len(srcs))
+	for _, s := range srcs {
+		out = append(out, nameOrFallback(s.Name, "role"))
+	}
+	return out
+}
+
+func clusterRoleNameList(srcs []orktypes.PlaceholderSource) []string {
+	out := make([]string, len(srcs))
+	for i := range srcs {
+		out[i] = fmt.Sprintf("<clusterrole-%d>", i+1)
+	}
+	return out
+}
+
+func nameOrFallback(name, fallback string) string {
+	if name != "" {
+		return name
+	}
+	return fmt.Sprintf("<%s>", fallback)
+}
+
+// ── crdModeLabel ──────────────────────────────────────────────────────────────
+
+func crdModeLabel(crd orktypes.CRDEntry) string {
+	if crd.DefaultReconcile() {
+		return "default"
+	}
+	if crd.CustomHooksEnabled() {
+		return fmt.Sprintf("hooks(%s)", crd.OperatorBox.Hooks.Function)
+	}
+	if crd.ConstructorEnabled() {
+		return fmt.Sprintf("constructor(%s)", crd.OperatorBox.ConstructorDecl.Function)
+	}
+	if crd.Mode != "" {
+		return string(crd.Mode)
+	}
+	return "default"
 }

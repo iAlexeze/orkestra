@@ -217,6 +217,10 @@ type DependencyKordinator struct {
 
 	// healthyCh[gvk] is closed after the CRD handles first reconciliation.
 	healthyCh map[string]chan struct{}
+
+	// missingChildGVKs tracks GVKs declared in onReconcile.custom / onCreate.custom
+	// blocks that are not yet available as CRDs in the cluster.
+	missingChildGVKs map[string]schema.GroupVersionKind
 }
 
 // NewDependencyKordinator constructs a dependency‑aware kordinator.
@@ -297,6 +301,19 @@ func (k *DependencyKordinator) Kordinate(ctx context.Context) {
 		gvk := node.CRD.GroupVersionKind.String()
 		k.startedCh[gvk] = make(chan struct{})
 		k.healthyCh[gvk] = make(chan struct{})
+	}
+
+	// Collect custom child CRDs and detect which are missing at startup.
+	// These are GVKs declared in onReconcile.custom / onCreate.custom blocks across all CRDs.
+	k.missingChildGVKs = collectCustomChildGVKs(k.katalog)
+	for gvkStr, gvk := range k.missingChildGVKs {
+		gvkCopy := gvk
+		ok, _ := k.crdExists(&gvkCopy)
+		if ok {
+			delete(k.missingChildGVKs, gvkStr)
+		} else {
+			logger.Warn().Str("gvk", gvkStr).Msg("custom child CRD not available at startup — will retry")
+		}
 	}
 
 	// START RETRY LOOP ONCE, BEFORE ANY BLOCKING

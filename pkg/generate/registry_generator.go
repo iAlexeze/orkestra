@@ -9,11 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orkspace/orkestra/pkg/merger"
 	orktypes "github.com/orkspace/orkestra/pkg/types"
 )
 
-// Runtime generates zz_generated_runtime_registry.go from the merged Katalog.
+// TypeRegistry generates zz_generated_typeregistry.go from the merged Katalog.
 //
 // When generation is needed (and why):
 //
@@ -35,8 +34,7 @@ import (
 //	  GenericReconciler.runTemplateReconcile() reads the Katalog's operatorBox:Config
 //	  directly at runtime and calls the OrkestraRegistry functions itself.
 //	  No generated file. No ork generate registry. Just ork run.
-func Runtime(m *merger.Merger, dryRun bool) error {
-	crds := m.All()
+func TypeRegistry(crds map[string]orktypes.CRDEntry, dryRun bool) error {
 
 	var (
 		imports     []importEntry
@@ -184,7 +182,7 @@ func Runtime(m *merger.Merger, dryRun bool) error {
 		NeedsHookImports: len(hookEntries) > 0,
 	}
 
-	outPath := filepath.Join(RuntimePackage, RegistryFile)
+	outPath := filepath.Join(TypeRegistryPackage, RegistryFile)
 	return renderTemplateToFile(registryTemplate, registryData, outPath, true, dryRun)
 }
 

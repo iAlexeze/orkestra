@@ -13,10 +13,12 @@ The reconciler package is the execution engine of every Orkestra operator. It ta
 | `run_template_reconcile.go` | Declarative pipeline: normalize → resolver → onCreate → onReconcile → providers |
 | `normalize.go` | `applyNormalize` — in-memory spec normalization before mutation/validation |
 | `run_*.go` | Per-resource-type runners (deployments, services, secrets, cronjobs, roles, rolebindings, …) |
-| `run_foreach.go` | `forEach:` expansion — expands declarations into N copies before runners see them |
+| `run_customresource.go` | Resolves, conditions-checks, and applies Custom Resource declarations; skips gracefully when target CRD is missing |
 | `conditions.go` | `EvaluateWhen` wrappers and helpers |
-| `children.go` | Reads owned child resources into the resolver's `.children.*` data |
 | `run_namespace_guard.go` | `CheckNamespace` — allowed/restricted namespace enforcement |
+| `gvr.go` | GVR aliases used by `run_delete_ordered.go`; authoritative GVR definitions live in `pkg/children` |
+
+Child resource reading, forEach expansion, enrichment, and the built-in kind registry live in [`pkg/children`](../children/README.md).
 
 ## Developer documentation
 

@@ -74,6 +74,26 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 		case <-ticker.C:
 			runtimeMissing := make(map[string]*informer.InformerEntry)
 
+			// ── Custom child CRDs ────────────────────────────────────────────
+			// Check GVKs declared in onCreate.custom / onReconcile.custom blocks.
+			// These CRDs must exist for the reconciler to create instances via the
+			// dynamic client. Failures are silent by default; this makes them visible.
+			if len(k.missingChildGVKs) > 0 {
+				stillMissingChild := make(map[string]schema.GroupVersionKind)
+				for gvkStr, gvk := range k.missingChildGVKs {
+					gvkCopy := gvk
+					ok, _ := k.crdExists(&gvkCopy)
+					if ok {
+						logger.Info().Str("gvk", gvkStr).Msg("custom child CRD now available — refreshing RESTMapper")
+						k.kube.RefreshMapper()
+					} else {
+						logger.Warn().Str("gvk", gvkStr).Msg("custom child CRD still not available — retrying")
+						stillMissingChild[gvkStr] = gvk
+					}
+				}
+				k.missingChildGVKs = stillMissingChild
+			}
+
 			// ───────────────────────────────────────────────
 			// 1. Detect CRDs that disappeared at runtime
 			// ───────────────────────────────────────────────
@@ -104,7 +124,7 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 					for _, dep := range deps {
 						crd := k.depGraph.GetNode(dep).CRD
 						if crd.DependsOn[entry.Name].Condition == string(orktypes.DependencyConditionHealthy) {
-							k.crdHealthMap[crd.GVK().String()].SetDegraded()
+							k.crdHealthMap[crd.GVKString()].SetDegraded()
 						} else {
 							logger.Info().Str("gvk", gvkStr).Msgf("dependency %s is unhealthy", entry.Name)
 						}
@@ -303,17 +323,17 @@ func (k *DependencyKordinator) activateCRD(ctx context.Context, entry *informer.
 		for _, dep := range deps {
 			crd := k.NameToCRD(dep)
 			if crd.DependsOn.ConditionHealthy(name) {
-				if ch, exists := k.healthyCh[crd.GVK().String()]; exists {
+				if ch, exists := k.healthyCh[crd.GVKString()]; exists {
 					select {
 					case <-ch:
 						// Channel already closed (should not happen, but safe)
 						logger.Debug().Msgf("activateCRD: healthy channel for %q was already closed", name)
 					default:
-						if !k.crdHealthMap[crd.GVK().String()].IsHealthy() {
+						if !k.crdHealthMap[crd.GVKString()].IsHealthy() {
 							continue
 						}
 						close(ch)
-						k.crdHealthMap[crd.GVK().String()].SetStarted()
+						k.crdHealthMap[crd.GVKString()].SetStarted()
 						logger.Info().Msgf("activateCRD: closed healthy channel for %q", name)
 					}
 				}
@@ -375,4 +395,28 @@ func (k *DependencyKordinator) crdExists(gvk *schema.GroupVersionKind) (bool, er
 		gvk.Kind,
 		gvk.Version,
 	) == nil, nil
+}
+
+// collectCustomChildGVKs scans all registered CRDs for custom resource entries declared
+// in onCreate.custom / onReconcile.custom and returns a de-duped map of GVK string → GVK.
+func collectCustomChildGVKs(katalog *ResourceKatalog) map[string]schema.GroupVersionKind {
+	result := make(map[string]schema.GroupVersionKind)
+	for _, entry := range katalog.Entries() {
+		box := entry.CRD.OperatorBox
+		var srcs []orktypes.CustomResourceTemplateSource
+		if box.OnCreate != nil {
+			srcs = append(srcs, box.OnCreate.CustomResource...)
+		}
+		if box.OnReconcile != nil {
+			srcs = append(srcs, box.OnReconcile.CustomResource...)
+		}
+		for i := range srcs {
+			gvk, err := srcs[i].BuildGVK()
+			if err != nil {
+				continue
+			}
+			result[gvk.String()] = gvk
+		}
+	}
+	return result
 }

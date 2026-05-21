@@ -1,0 +1,56 @@
+apiVersion: orkestra.orkspace.io/v1
+kind: Katalog
+metadata:
+  name: crd-file-example
+  description: >
+    Two CRDs, each declaring the path to their CRD YAML via crdFile.
+    When you run ork run --file katalog.yaml outside the cluster,
+    Orkestra automatically applies both CRD files before starting
+    the reconcile loops — no manual kubectl apply step needed.
+
+spec:
+  crds:
+    app:
+      crdFile: ./crd-app.yaml     # applied automatically by ork run (dev mode)
+
+      workers: 2
+      resync: 30s
+
+      operatorBox:
+        status:
+          fields:
+            - path: phase
+              value: "Running"
+            - path: image
+              value: "{{ .spec.image }}"
+
+        onCreate:
+          deployments:
+            - image: "{{ .spec.image }}"
+              replicas: "{{ .spec.replicas }}"
+              port: 8080
+              reconcile: true
+          services:
+            - port: "80"
+              targetPort: "8080"
+
+    database:
+      crdFile: ./crd-database.yaml
+
+      workers: 1
+      resync: 60s
+
+      operatorBox:
+        status:
+          fields:
+            - path: phase
+              value: "Running"
+            - path: engine
+              value: "{{ .spec.engine }}"
+
+        onCreate:
+          configMaps:
+            - name: "{{ .metadata.name }}-db-config"
+              data:
+                ENGINE: "{{ .spec.engine }}"
+                STORAGE: "{{ .spec.storageSize }}"
