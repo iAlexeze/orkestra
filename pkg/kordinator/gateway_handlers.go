@@ -148,7 +148,7 @@ func buildGatewayCRDStats(kat *katalog.Katalog, ws GatewayStatsProvider) []Gatew
 		gvrKey := gvrKey(gvr.Group, gvr.Version, gvr.Resource)
 		out = append(out, buildSingleGatewayCRDStats(
 			crd.Name,
-			crd.GVK().String(),
+			crd.GVKString(),
 			gvr.String(),
 			gvrKey,
 			ws,

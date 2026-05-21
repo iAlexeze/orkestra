@@ -11,7 +11,7 @@
 ## Boot sequence
 
 ```
-konstructor.go
+runtime_konstructor.go
   → webhook.NewWebhookServer(kubeClient, katalog, konfig)
       • resolves enablement flags from Katalog
       • initializes registries (admission, conversion)

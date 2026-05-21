@@ -33,7 +33,7 @@
 //
 // fails at runtime whenever the caller provides ReconcileHooks[*Database]
 // but PTR is inferred as domain.Object — which is exactly what happens in
-// the runtime registry path inside konstructor.go, where the concrete type
+// the runtime registry path inside runtime_konstructor.go, where the concrete type
 // is not known at compile time.
 //
 // WHY NOT TWO TYPE PARAMETERS
@@ -41,8 +41,8 @@
 // The constraint PTR interface{ *S; domain.Object } (with a second parameter
 // S any) enforces at compile time that PTR is a pointer to a concrete struct.
 // However, it cannot be satisfied by domain.Object (an interface), so the
-// runtime registry path in konstructor.go — which infers PTR = domain.Object —
-// would fail to compile. Updating konstructor.go to supply concrete types would
+// runtime registry path in runtime_konstructor.go — which infers PTR = domain.Object —
+// would fail to compile. Updating runtime_konstructor.go to supply concrete types would
 // require the registry to carry a separate typed factory per CRD, a much larger
 // change with no benefit for the dynamic template path where no hooks exist.
 //
@@ -81,7 +81,7 @@
 //
 //  2. Generated registry registers DatabaseHooks in HookRegistry.
 //
-//  3. konstructor.go calls HookFactory() → gets ReconcileHooks[*Database].
+//  3. runtime_konstructor.go calls HookFactory() → gets ReconcileHooks[*Database].
 //
 //  4. NewGenericReconciler receives it as domain.AnyReconcileHooks.
 //     PTR is inferred as domain.Object (from func() domain.Object newObj).

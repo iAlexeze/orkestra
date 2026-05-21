@@ -177,7 +177,7 @@ func BuildCRListHandler(
 
 		utils.WriteJSON(w, http.StatusOK, CRListResponse{
 			CRD:   crd.Name,
-			GVK:   crd.GVK().String(),
+			GVK:   crd.GVKString(),
 			Total: len(items),
 			Items: items,
 		})

@@ -56,7 +56,7 @@ import (
 // PTR must be a pointer to the concrete CR struct (e.g. *Database).
 // This matches Kubernetes informer semantics: the informer stores pointer values
 // so the type assertion raw.(PTR) in reconcileCore succeeds only for pointer types.
-// When used through the dynamic registry path in konstructor.go, PTR is inferred
+// When used through the dynamic registry path in runtime_konstructor.go, PTR is inferred
 // as domain.Object (the interface), which also satisfies the constraint and is safe
 // because the informer cache always holds the correct underlying concrete type.
 // See pkg/reconciler/ptr_hooks.go for the full design rationale.
@@ -120,7 +120,7 @@ type GenericReconciler[PTR domain.Object] struct {
 // NewGenericReconciler constructs a GenericReconciler for the given CRD.
 //
 // PTR must be a pointer to the concrete CR type (e.g. *Database). When called
-// from the runtime registry path in konstructor.go, PTR is inferred as
+// from the runtime registry path in runtime_konstructor.go, PTR is inferred as
 // domain.Object (the interface) — this is also valid because the constraint
 // domain.Object is satisfied and the informer stores the correct concrete type.
 //
@@ -511,7 +511,7 @@ func (r *GenericReconciler[PTR]) reconcileImpl(ctx context.Context, resolver *or
 	// This surfaces the operatorbox health endpoint directly into templates,
 	// enabling CR status fields to show live reconcile health, uptime,
 	// dependency health, and error information without any API calls.
-	if h, ok := r.crdHealthRegistry[r.crd.GVK().String()]; ok {
+	if h, ok := r.crdHealthRegistry[r.crd.GVKString()]; ok {
 		resolver = resolver.WithHealth(h.HealthAsMap())
 	}
 

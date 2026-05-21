@@ -1,6 +1,6 @@
-// cmd/internal/konstruct.go
+// cmd/internal/runtime_konstructor.go
 //
-// konstructOrkestra — the complete Orkestra runtime registry.
+// konstructRuntime — the complete Orkestra runtime registry.
 //
 // This file is the single place where all runtime komponents are assembled.
 // It is the equivalent of a dependency injection container — every komponent
@@ -119,9 +119,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// orkestraKfg is the assembled runtime — returned to main.go so it can call
+// runtimeKfg is the assembled runtime — returned to runtime.go so it can call
 // orkestra.Start(ctx) and block until shutdown.
-type orkestraKfg struct {
+type runtimeKfg struct {
 	konfig   *konfig.Konfig
 	katalog  *katalog.Katalog
 	komp     *[]domain.Komponent
@@ -131,7 +131,7 @@ type orkestraKfg struct {
 	orkestra *ork.Orkestra
 }
 
-// konstructOrkestra wires the entire Orkestra runtime.
+// konstructRuntime wires the entire Orkestra runtime.
 //
 // Nothing is started here. Every component is constructed and threaded together
 // as closures and pointers. orkestra.Start() calls komponent.Start() in
@@ -140,7 +140,7 @@ type orkestraKfg struct {
 // The method is intentionally long — this is the one place where all wiring
 // is visible. Splitting it would scatter the dependency graph across files
 // and make it harder to reason about startup order.
-func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) *orkestraKfg {
+func konstructRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) *runtimeKfg {
 
 	// ── 1a. Instance ────────────────────────────────────────────────────────────
 	kfg.SetInstance(konfig.Runtime())
@@ -204,7 +204,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 			continue
 		}
 		object, list := crd.GetRuntimeObjects()
-		logger.Debug().Str("gvk", crd.GVK().String()).Msg("registering CRD client provider")
+		logger.Debug().Str("gvk", crd.GVKString()).Msg("registering CRD client provider")
 
 		provider.Register(object, func(k *kubeclient.Kubeclient) (informer.GenericClient, error) {
 			return k.NewClient(list, kubeclient.CRDInfo{
@@ -246,7 +246,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	providerStatsMap := make(map[string]*health.ProviderStats)
 	for _, crd := range kat.Enabled() {
 		if crd.HasProviders() {
-			providerStatsMap[crd.GVK().String()] = health.NewProviderStats()
+			providerStatsMap[crd.GVKString()] = health.NewProviderStats()
 		}
 	}
 
@@ -262,7 +262,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// (which read it on each request). All three reference the same pointers.
 	crdHealthMap := make(map[string]*kordinator.CRDHealth)
 	for _, crd := range kat.Enabled() {
-		gvk := crd.GVK().String()
+		gvk := crd.GVKString()
 		crdHealthMap[gvk] = kordinator.NewCRDHealth(crd.Name)
 	}
 
@@ -271,12 +271,12 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	finalizers := kfg.Finalizers()
 	for _, crd := range kat.Enabled() {
 		crd := crd
-		gvk := crd.GVK().String()
-		crd.Workers = crd.SetWorkers(kfg.Katalog().DefaultWorkers)
+		gvk := crd.GVKString()
+		crd.Workers = crd.SetWorkers(kfg.Katalog().DefaultWorkers())
 
 		object, _ := crd.GetRuntimeObjects()
 
-		wq := queueRegistry.Register(gvk, crd.SetMaxQueueDepth(kfg.Katalog().DefaultMaxQueueDepth))
+		wq := queueRegistry.Register(gvk, crd.SetMaxQueueDepth(kfg.Katalog().DefaultMaxQueueDepth()))
 
 		// compute selectors
 		labelSelector := orktypes.SelectorMap(crd.LabelSelector).String()
@@ -393,7 +393,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 				)
 			}
 		} else {
-			if crd.OperatorBox.Constructor == nil {
+			if !crd.ConstructorEnabled() {
 				logger.Fatal().
 					Str("gvk", gvk).
 					Msg("reconciler.default is false but no Constructor provided")
@@ -430,7 +430,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	//   /katalog                    		→ all CRDs, dependency graph, health summary
 	deletionProtectedCRDs := kat.DeletionProtectedCRDNames()
 	for _, crd := range kat.Enabled() {
-		gvk := crd.GVK().String()
+		gvk := crd.GVKString()
 		crdHealth := crdHealthMap[gvk]
 		crdName := strings.ToLower(crd.Name)
 
@@ -507,7 +507,7 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// condition (started | healthy) before calling factory() and starting workers.
 	//
 	// Worker lifecycle:
-	//   Start() → wait for informer sync → call factory() per worker → run loop
+	//   Start()  → wait for informer sync → call factory() per worker → run loop
 	//   Shutdown → drain queue → stop workers → remove from active set
 	kord := kordinator.NewDependencyKordinator(
 		kube,
@@ -519,9 +519,9 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 		defaultWq,
 		crdHealthMap,
 		orkHealth,
-		kfg.Katalog().DefaultWorkers,
+		kfg.Katalog().DefaultWorkers(),
 		katalog.NewDependencyGraph(kat),
-		kfg.Katalog().ShutdownTimeout,
+		kfg.Katalog().ShutdownTimeout(),
 	)
 
 	// ── 7. Komponent list ─────────────────────────────────────────────────────
@@ -551,12 +551,12 @@ func konstructOrkestra(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context
 	// Graceful shutdown: drains queues before stopping workers.
 	o := ork.NewOrkestra(
 		kfg.RunningInstance(),
-		kfg.Katalog().ShutdownGracePeriod,
-		kfg.Ork().LogLevel,
+		kfg.Katalog().ShutdownGracePeriod(),
+		kfg.Ork().LogLevel(),
 	)
 	o.Register(komponents)
 
-	return &orkestraKfg{
+	return &runtimeKfg{
 		konfig:   kfg,
 		katalog:  kat,
 		komp:     &komponents,

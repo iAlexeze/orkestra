@@ -92,7 +92,7 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	}
 	if tlsBundle != nil {
 		ws.SetCertBundle(tlsBundle.CertPEM, tlsBundle.KeyPEM, tlsBundle.CACertPEM,
-			certmanager.DefaultTLSSecretName, kfg.Cluster().Namespace)
+			certmanager.DefaultTLSSecretName, kfg.Cluster().Namespace())
 	}
 
 	// ── 7. /katalog routes — gateway serves its own stats surface ────────────
@@ -105,15 +105,12 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	// (SMTP, Slack). Registering here keeps all external I/O off the runtime path.
 	hs.Register("/notify", kordinator.BuildNotifyHandler(kat))
 	for _, crd := range kat.Enabled() {
-		if crd.IsBuiltIn {
-			continue
-		}
 		crdName := strings.ToLower(crd.Name)
 		gvr := crd.GVR()
 		gvrKey := webhook.GVRKey(gvr.Group, gvr.Version, gvr.Resource)
 		hs.Register(
 			"/katalog/"+crdName,
-			kordinator.BuildGatewayCRDHandler(crd.Name, crd.GVK().String(), gvr.String(), gvrKey, ws, kat),
+			kordinator.BuildGatewayCRDHandler(crd.Name, crd.GVKString(), gvr.String(), gvrKey, ws, kat),
 		)
 	}
 	logger.Debug().Msg("gateway /katalog routes registered")
@@ -128,8 +125,8 @@ func KonductGateway(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	// ── 8. Orkestra ───────────────────────────────────────────────────────────
 	o := ork.NewOrkestra(
 		kfg.RunningInstance(),
-		kfg.Katalog().ShutdownGracePeriod,
-		kfg.Ork().LogLevel,
+		kfg.Katalog().ShutdownGracePeriod(),
+		kfg.Ork().LogLevel(),
 	)
 	o.Register(komponents)
 

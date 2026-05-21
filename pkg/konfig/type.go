@@ -18,28 +18,24 @@ type Konfig struct {
 }
 
 type orkKonfig struct {
-	Name        string   `validate:"required"`
-	Instance    Instance // runtime or gateway
-	ShortName   string
-	Environment string
-	LogLevel    string
-	// GatewayEndpoint is advertised in the runtime /katalog response so the
-	// control center can locate the companion gateway and merge stats.
-	// Populated from ORK_GATEWAY_ENDPOINT; empty when no gateway is configured.
-	GatewayEndpoint string
+	name        string   `validate:"required"`
+	instance    Instance // runtime or gateway
+	shortName   string
+	environment string
+	logLevel    string
 }
 
 type healthServer struct {
-	Port         string
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
+	port         string
+	readTimeout  time.Duration
+	writeTimeout time.Duration
 }
 
 type clusterKonfig struct {
-	KubekonfigPath string
-	MasterURL      string
-	Name           string
-	Namespace      string `validate:"required"`
+	kubekonfigPath string
+	masterURL      string
+	name           string
+	namespace      string `validate:"required"`
 }
 
 type registryConfig struct {
@@ -153,20 +149,24 @@ type NotificationConfig struct {
 }
 
 type katalogKonfig struct {
-	Paths                   []string // Comma separated Paths to CRD katalog YAML file
-	DefaultMaxQueueDepth    int
-	DefaultDegradeThreshold int `validate:"required"`
-	DefaultResync           time.Duration
-	DefaultWorkers          int
-	ShutdownTimeout         time.Duration
-	ShutdownGracePeriod     time.Duration
+	paths                   []string // Comma separated Paths to CRD katalog YAML file
+	defaultMaxQueueDepth    int
+	defaultDegradeThreshold int `validate:"required"`
+	defaultResync           time.Duration
+	defaultWorkers          int
+	shutdownTimeout         time.Duration
+	shutdownGracePeriod     time.Duration
+	// gatewayEndpoint is advertised in the runtime /katalog response so the
+	// control center can locate the companion gateway and merge stats.
+	// Populated from ORK_GATEWAY_ENDPOINT; empty when no gateway is configured.
+	gatewayEndpoint string
 }
 
 type konductorElection struct {
-	Namespace     string
-	LeaseDuration time.Duration
-	RenewDeadline time.Duration
-	RetryPeriod   time.Duration
+	namespace     string
+	leaseDuration time.Duration
+	renewDeadline time.Duration
+	retryPeriod   time.Duration
 }
 
 // Methods
@@ -174,47 +174,47 @@ type konductorElection struct {
 func NewDefaultKonfig() *Konfig {
 	return &Konfig{
 		ork: orkKonfig{
-			Name:        "orkestra",
-			ShortName:   "ork",
-			Environment: "development",
-			LogLevel:    "info",
+			name:        "orkestra",
+			shortName:   "ork",
+			environment: "development",
+			logLevel:    "info",
 		},
 		cluster: clusterKonfig{
-			KubekonfigPath: "",
-			MasterURL:      "",
-			Name:           "orkestra",
-			Namespace:      "orkestra",
+			kubekonfigPath: "",
+			masterURL:      "",
+			name:           "orkestra",
+			namespace:      "orkestra",
 		},
 		konductor: konductorElection{
-			Namespace:     "orkestra",
-			LeaseDuration: 15 * time.Second,
-			RenewDeadline: 10 * time.Second,
-			RetryPeriod:   2 * time.Second,
+			namespace:     "orkestra",
+			leaseDuration: 15 * time.Second,
+			renewDeadline: 10 * time.Second,
+			retryPeriod:   2 * time.Second,
 		},
 		healthServer: healthServer{
-			Port:         "8080",
-			ReadTimeout:  5 * time.Second,
-			WriteTimeout: 5 * time.Second,
+			port:         "8080",
+			readTimeout:  5 * time.Second,
+			writeTimeout: 5 * time.Second,
 		},
 		katalog: katalogKonfig{
-			Paths: []string{"katalog.yaml"},
+			paths: []string{"katalog.yaml"},
 		},
 	}
 }
 
 // IsDev returns true for development environment
 func (k *Konfig) IsDev() bool {
-	return k.Ork().Environment == "devlopment"
+	return k.Ork().environment == "devlopment"
 }
 
 // IsDev returns true for staging environment
 func (k *Konfig) IsStaging() bool {
-	return k.Ork().Environment == "staging"
+	return k.Ork().environment == "staging"
 }
 
 // IsDev returns true for production environment
 func (c *Konfig) IsProduction() bool {
-	return c.Ork().Environment == "production"
+	return c.Ork().environment == "production"
 }
 
 // Health returns health konfigurations
@@ -239,7 +239,7 @@ func (k *Konfig) GatewayServiceName() string {
 
 // Running instance returns the current running orkestra instance
 func (k *Konfig) RunningInstance() string {
-	return k.ork.Instance.String()
+	return k.ork.instance.String()
 }
 
 // Cluster returns cluster Konfigurations
@@ -294,7 +294,7 @@ func (k *Konfig) AdmissionEnabled() bool {
 // GatewayEndpoint returns the companion gateway URL advertised to the control center.
 // Empty string when no gateway is configured (e.g. runtime-only deployment).
 func (k *Konfig) GatewayEndpoint() string {
-	return k.ork.GatewayEndpoint
+	return k.katalog.gatewayEndpoint
 }
 
 // HTTPSPort returns the HTTPS port string (e.g. ":8443") used by the webhook server.

@@ -220,7 +220,7 @@ Helper `metaField(objMap, field)` extracts string fields from `objMap["metadata"
 
 ## Route registration
 
-All handlers are registered in `konstructOrkestra` before the health server starts:
+All handlers are registered in `konstructRuntime` before the health server starts:
 
 ```go
 hs.Handle("/katalog", kordinator.BuildKatalogHandler(kat, kfg, resourceKatalog, crdHealthMap))

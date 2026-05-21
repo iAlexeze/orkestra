@@ -1,6 +1,6 @@
-// internal/construct_security.go
+// internal/security.go
 //
-// Security wiring — called from konstructOrkestra after the HealthServer
+// Security wiring — called from konstructRuntime after the HealthServer
 // is constructed and before Orkestra starts.
 //
 // Handles:
@@ -50,7 +50,7 @@ func ensureSecurity(
 	kat *katalog.Katalog,
 	kube *kubeclient.Kubeclient,
 ) (tlsCertFile, tlsKeyFile string, certMgr certmanager.Manager, bundle *certmanager.TLSBundle, err error) {
-	namespace := kfg.Cluster().Namespace
+	namespace := kfg.Cluster().Namespace()
 
 	// ── Namespace labeling ────────────────────────────────────────────────
 	// The deletion-protection webhook uses ObjectSelector to narrow to labeled

@@ -49,7 +49,7 @@ return d.kube.dynamic.Resource(d.gvr).List(ctx, options)
 
 ### Tier 1 scoping for dynamic CRDs
 
-When the namespace filter's `IsSingleNamespace()` is true, `konstructOrkestra` sets `dynNamespace = filter.SingleNamespace()` and passes it into `CRDInfo.Namespace`. The `DynamicListerWatcher` then scopes its `List`/`Watch` to that single namespace:
+When the namespace filter's `IsSingleNamespace()` is true, `konstructRuntime` sets `dynNamespace = filter.SingleNamespace()` and passes it into `CRDInfo.Namespace`. The `DynamicListerWatcher` then scopes its `List`/`Watch` to that single namespace:
 
 ```go
 dynNamespace := crd.Namespace           // operator-level setting
@@ -124,7 +124,7 @@ type Options struct {
 }
 ```
 
-`Name` is the human-readable label stored in `InformerEntry`. `Resync` defaults to `Factory.defaultResync` when zero. `Wq` selects the per-CRD queue; nil falls back to the shared default queue. `Namespace` is set by `konstructOrkestra` when the namespace filter's `IsSingleNamespace()` is true.
+`Name` is the human-readable label stored in `InformerEntry`. `Resync` defaults to `Factory.defaultResync` when zero. `Wq` selects the per-CRD queue; nil falls back to the shared default queue. `Namespace` is set by `konstructRuntime` when the namespace filter's `IsSingleNamespace()` is true.
 
 ## For vs ForListerWatcher
 

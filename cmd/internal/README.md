@@ -4,7 +4,7 @@ Wiring layer for Orkestra. Assembles every komponent, threads dependencies, and 
 
 Two public entrypoints:
 
-- **`Konduct`** — runtime. Reconcile loop, informers, leader election. Called by `ork run`.
+- **`KonductRuntime`** — runtime. Reconcile loop, informers, leader election. Called by `ork run`.
 - **`KonductGateway`** — gateway. TLS + admission webhooks, no reconcilers, no leader election. Called by `ork gateway`. Cluster-only.
 
 ## Docs

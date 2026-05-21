@@ -15,14 +15,14 @@ func Validate() *validator.Validate {
 // Normalize environment
 func (k *Konfig) normalizeEnvironment() {
 	// Normalize ork environment
-	switch strings.ToLower(k.ork.Environment) {
+	switch strings.ToLower(k.ork.environment) {
 	case DevShort, Development:
-		k.ork.Environment = Development
+		k.ork.environment = Development
 	case StagingShort, Staging:
-		k.ork.Environment = Staging
+		k.ork.environment = Staging
 	case Live, ProdShort, Production:
-		k.ork.Environment = Production
+		k.ork.environment = Production
 	default:
-		k.ork.Environment = Development
+		k.ork.environment = Development
 	}
 }

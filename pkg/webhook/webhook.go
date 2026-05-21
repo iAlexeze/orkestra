@@ -68,7 +68,7 @@ type certManagerIface interface {
 // webhook controller that reconciles configurations with the API server.
 //
 // Created via NewWebhookServer and registered as a domain.Komponent in
-// cmd/internal/konstructor.go. It starts after the HealthServer so that
+// cmd/internal/runtime_konstructor.go. It starts after the HealthServer so that
 // /ready is live before webhook registration runs.
 type WebhookServer struct {
 	name string
@@ -167,7 +167,7 @@ func NewWebhookServer(kubeClient kubernetes.Interface, kat *katalog.Katalog, kfg
 		FailurePolicy:          admissionFailurePolicy,
 		Port:                   kfg.HTTPSPortInt32(),
 		ServiceName:            kat.WebhooksServiceName(),
-		ServiceNamespace:       kfg.Cluster().Namespace,
+		ServiceNamespace:       kfg.Cluster().Namespace(),
 		TLSCertFile:            kfg.Security().Webhooks.TLSCert,
 		OrkestraResourceLabels: labels.OrkestraResourceLabels(),
 	}
@@ -589,7 +589,7 @@ func (ws *WebhookServer) Shutdown(ctx context.Context) {
 			kat.DeletionProtectionCleanupOnShutdown()
 
 	if ws.certMgr != nil && shouldCleanupTLS && ws.konfig != nil {
-		ns := ws.konfig.Cluster().Namespace
+		ns := ws.konfig.Cluster().Namespace()
 		if err := ws.certMgr.DeleteCertificateAndSecret(ctx, ns, konfig.DefaultInternalTLSName()); err != nil {
 			logger.Error().Err(err).Msg("tls secret cleanup error")
 		} else {

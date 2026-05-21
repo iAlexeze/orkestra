@@ -16,16 +16,15 @@ func Init(filenames ...string) (*Konfig, error) {
 
 	kfg := &Konfig{
 		ork: orkKonfig{
-			Name:            Orkestra,
-			ShortName:       Ork,
-			Environment:     GetStrEnv("ORK_ENV", "development"),
-			GatewayEndpoint: GetStrEnv("ORK_GATEWAY_ENDPOINT", ""),
+			name:        Orkestra,
+			shortName:   Ork,
+			environment: GetStrEnv("ORK_ENV", "development"),
 		},
 		cluster: clusterKonfig{
-			// KubekonfigPath:   GetStrEnv("KUBEKONFIG", ""),
-			MasterURL: GetStrEnv("MASTER_URL", ""),
-			Name:      GetStrEnv("CLUSTER_NAME", "orkestra-cluster"),
-			Namespace: ns,
+			kubekonfigPath: GetStrEnv("KUBEKONFIG", ""),
+			masterURL:      GetStrEnv("MASTER_URL", ""),
+			name:           GetStrEnv("CLUSTER_NAME", "orkestra-cluster"),
+			namespace:      ns,
 		},
 		// ── Unified security configuration ───────────────────────────────────
 		// ENV vars populate SecurityConfig as defaults.
@@ -116,24 +115,25 @@ func Init(filenames ...string) (*Konfig, error) {
 			RegistryURL: GetStrEnv("ORK_REGISTRY", ""),
 		},
 		healthServer: healthServer{
-			Port:         GetStrEnv("ORK_PORT", "8080"),
-			ReadTimeout:  GetDurEnvSeconds("SRV_READ_TIMEOUT", 5),
-			WriteTimeout: GetDurEnvSeconds("SRV_WRITE_TIMEOUT", 20),
+			port:         GetStrEnv("ORK_PORT", "8080"),
+			readTimeout:  GetDurEnvSeconds("SRV_READ_TIMEOUT", 5),
+			writeTimeout: GetDurEnvSeconds("SRV_WRITE_TIMEOUT", 20),
 		},
 		konductor: konductorElection{
-			Namespace:     ns,
-			LeaseDuration: GetDurEnvSeconds("LEASE_DURATION", 60),
-			RenewDeadline: GetDurEnvSeconds("RENEW_DEADLINE", 40),
-			RetryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),
+			namespace:     ns,
+			leaseDuration: GetDurEnvSeconds("LEASE_DURATION", 60),
+			renewDeadline: GetDurEnvSeconds("RENEW_DEADLINE", 40),
+			retryPeriod:   GetDurEnvSeconds("RETRY_PERIOD", 10),
 		},
 		katalog: katalogKonfig{
-			DefaultMaxQueueDepth:    GetIntEnv("MAX_QUEUE_DEPTH", 100),
-			DefaultDegradeThreshold: GetIntEnv("DEGRADE_THRESHOLD", 5),
-			Paths:                   GetStrSliceEnv("KATALOG_PATH", []string{}),
-			DefaultResync:           GetDurEnvSeconds("DEFAULT_RESYNC", 15),
-			DefaultWorkers:          GetIntEnv("DEFAULT_WORKERS", 3),
-			ShutdownTimeout:         GetDurEnvSeconds("SHUTDOWN_TIMEOUT", 30),
-			ShutdownGracePeriod:     GetDurEnvSeconds("SHUTDOWN_GRACE_PERIOD", 60),
+			defaultMaxQueueDepth:    GetIntEnv("MAX_QUEUE_DEPTH", 100),
+			defaultDegradeThreshold: GetIntEnv("DEGRADE_THRESHOLD", 5),
+			paths:                   GetStrSliceEnv("KATALOG_PATH", []string{}),
+			defaultResync:           GetDurEnvSeconds("DEFAULT_RESYNC", 15),
+			defaultWorkers:          GetIntEnv("DEFAULT_WORKERS", 3),
+			shutdownTimeout:         GetDurEnvSeconds("SHUTDOWN_TIMEOUT", 30),
+			shutdownGracePeriod:     GetDurEnvSeconds("SHUTDOWN_GRACE_PERIOD", 60),
+			gatewayEndpoint:         GetStrEnv("ORK_GATEWAY_ENDPOINT", ""),
 		},
 	}
 
@@ -154,19 +154,19 @@ func Init(filenames ...string) (*Konfig, error) {
 // on the Konfig. This controls which service name is used when resolving
 // endpoints and wiring.
 func (k *Konfig) SetInstance(instance Instance) {
-	k.ork.Instance = instance
+	k.ork.instance = instance
 }
 
 // IsRuntimeInstance reports whether the active instance is the internal
 // Orkestra runtime service.
 func (k *Konfig) IsRuntimeInstance() bool {
-	return k.ork.Instance == InstanceRuntime
+	return k.ork.instance == InstanceRuntime
 }
 
 // IsGatewayInstance reports whether the active instance is the external
 // Orkestra gateway service.
 func (k *Konfig) IsGatewayInstance() bool {
-	return k.ork.Instance == InstanceGateway
+	return k.ork.instance == InstanceGateway
 }
 
 // GetStrEnv returns the string value of an env

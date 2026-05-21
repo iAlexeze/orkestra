@@ -92,6 +92,10 @@ Examples:
 			kindLabel = "Komposer"
 		}
 
+		if k.IsStandaloneGateway() {
+			kindLabel = "Gateway Standalone"
+		}
+
 		fmt.Println()
 		fmt.Println(utils.Bold("Validating " + kindLabel + "..."))
 		fmt.Println()

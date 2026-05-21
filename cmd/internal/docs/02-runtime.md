@@ -1,7 +1,7 @@
 # 02 — Runtime
 
 The runtime is the full Orkestra reconcile loop. It is assembled in
-`konstructOrkestra` in `konstructor.go` and started by `Konduct` in `main.go`.
+`konstructRuntime` in `runtime_konstructor.go` and started by `Konduct` in `main.go`.
 
 ## Wiring diagram
 
@@ -31,7 +31,7 @@ kubeclient.Kubeclient          REST config, dynamic client, typed clientset.
     └──► HealthServer           HTTP server — /ready, /livez, /katalog routes.
 ```
 
-`konstructOrkestra` is intentionally one long function. The full dependency graph
+`konstructRuntime` is intentionally one long function. The full dependency graph
 is visible in one place; splitting it across files would make start order harder
 to trace.
 
@@ -54,9 +54,9 @@ reverse on shutdown. The runtime registers:
 7. `DependencyKordinator` — waits for informer sync, then starts CRD workers in
    topological dependency order.
 
-## Konduct and leader election
+## KonductRuntime and leader election
 
-`Konduct` wraps `konstructOrkestra` with a `konductor.NewKonductorElection`.
+`KonductRuntime` wraps `konstructRuntime` with a `konductor.NewKonductorElection`.
 Leader election uses a Kubernetes Lease object. Only the replica holding the
 lease calls `kord.Kordinate(ctx)`, which starts the CRD workers. All other
 replicas start the health server and informers but do not start workers.

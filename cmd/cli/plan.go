@@ -208,8 +208,8 @@ func splitYAMLDocs(data []byte) [][]byte {
 
 func buildKubeClient() (kubernetes.Interface, error) {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-	if kfg != nil && kfg.Cluster().KubekonfigPath != "" {
-		loadingRules.ExplicitPath = kfg.Cluster().KubekonfigPath
+	if kfg != nil && kfg.Cluster().KubekonfigPath() != "" {
+		loadingRules.ExplicitPath = kfg.Cluster().KubekonfigPath()
 	}
 	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		loadingRules,

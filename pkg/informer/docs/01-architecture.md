@@ -9,7 +9,7 @@ Reconcilers never call the API server to read CRs. They read from the informer c
 ## Lifecycle
 
 ```
-konstructOrkestra()
+konstructRuntime()
     │
     ├── SharedInformerFactory(...)     ← constructor, nothing started yet
     │       initializes: informers map, namespaceFilters map, ready channel
@@ -67,7 +67,7 @@ InformerEntry
 └── WasNeverStarted — set when Start() skips a missing entry
 ```
 
-Missing entries are kept in `f.missing` and retried by `konstructOrkestra` via `SetMissingOnStartup` / `RemoveMissing`.
+Missing entries are kept in `f.missing` and retried by `konstructRuntime` via `SetMissingOnStartup` / `RemoveMissing`.
 
 ## handleEvent — the hot path
 

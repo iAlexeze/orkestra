@@ -8,7 +8,7 @@ import (
 	"github.com/orkspace/orkestra/pkg/version"
 )
 
-func printBanner(kfg *orkestraKfg, konductor string) {
+func printBanner(kfg *runtimeKfg, konductor string) {
 	// Logo
 	fmt.Println(utils.Cyan(utils.Center(utils.OrkestraLogo)))
 
@@ -16,10 +16,10 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 	fmt.Printf("%s Orkestra Runtime%s (%s)\n",
 		utils.Magenta(""), utils.Reset(""), version.Version)
 
-	fmt.Printf("        Namespace: %s\n", utils.Cyan(kfg.konfig.Cluster().Namespace))
-	fmt.Printf("        Environment: %s\n", utils.Blue(kfg.konfig.Ork().Environment))
+	fmt.Printf("        Namespace: %s\n", utils.Cyan(kfg.konfig.Cluster().Namespace()))
+	fmt.Printf("        Environment: %s\n", utils.Blue(kfg.konfig.Ork().Environment()))
 	fmt.Printf("        Listening on: %s:%s\n",
-		utils.Green(kfg.konfig.Health().Port), utils.Reset(""))
+		utils.Green(kfg.konfig.Health().Port()), utils.Reset(""))
 
 	if konductor != "" {
 		fmt.Printf("        Konductor: %s\n", utils.Yellow(konductor))
@@ -66,7 +66,7 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 
 		fmt.Println("Webhook Configuration:")
 		fmt.Printf("- Service Name: %s\n", utils.Cyan(kfg.katalog.WebhooksServiceName()))
-		fmt.Printf("- Service Namespace: %s\n", utils.Cyan(kfg.konfig.Cluster().Namespace))
+		fmt.Printf("- Service Namespace: %s\n", utils.Cyan(kfg.konfig.Cluster().Namespace()))
 		fmt.Printf("- General Failure Policy: %s\n",
 			utils.Cyan(kfg.katalog.WebhooksFailurePolicy()))
 		fmt.Println()
@@ -127,21 +127,21 @@ func printBanner(kfg *orkestraKfg, konductor string) {
 		if crd.Workers > 0 {
 			fmt.Printf("  Workers:       %d\n", crd.Workers)
 		} else {
-			fmt.Printf("  Workers:       %d (default)\n", kfg.konfig.Katalog().DefaultWorkers)
+			fmt.Printf("  Workers:       %d (default)\n", kfg.konfig.Katalog().DefaultWorkers())
 		}
 
 		if crd.Queue.MaxQueueDepth > 0 {
 			fmt.Printf("  MaxQueueDepth: %d\n", crd.Queue.MaxQueueDepth)
 		} else {
 			fmt.Printf("  MaxQueueDepth: %d (default)\n",
-				kfg.konfig.Katalog().DefaultMaxQueueDepth)
+				kfg.konfig.Katalog().DefaultMaxQueueDepth())
 		}
 
 		if crd.Resync != 0 {
 			fmt.Printf("  Resync:        %s\n", crd.Resync.String())
 		} else {
 			fmt.Printf("  Resync:        %s (default)\n",
-				kfg.konfig.Katalog().DefaultResync)
+				kfg.konfig.Katalog().DefaultResync().String())
 		}
 
 		if len(crd.DependsOn) > 0 {

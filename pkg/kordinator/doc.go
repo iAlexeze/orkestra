@@ -22,7 +22,7 @@
 // # ResourceKatalog
 //
 // ResourceKatalog is the in-memory registry written once during
-// konstructOrkestra and read many times thereafter. Every GVK maps to a
+// konstructRuntime and read many times thereafter. Every GVK maps to a
 // RegistryEntry that holds the informer, the reconciler factory closure, and
 // the CRD configuration. Workers are created by calling
 // entry.ReconcilerFactory() — the closure captures the provider registry,

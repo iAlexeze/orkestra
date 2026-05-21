@@ -37,7 +37,7 @@ When `d.namespace` is empty and the resource is namespaced, `metav1.NamespaceAll
 
 ## Tier 1 namespace scoping
 
-When the informer namespace filter's `IsSingleNamespace()` is true, `konstructOrkestra` resolves the namespace before calling `NewDynamicListerWatcher`:
+When the informer namespace filter's `IsSingleNamespace()` is true, `konstructRuntime` resolves the namespace before calling `NewDynamicListerWatcher`:
 
 ```go
 dynNamespace := crd.Namespace      // operator-level default

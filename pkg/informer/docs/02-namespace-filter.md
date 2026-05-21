@@ -71,7 +71,7 @@ func (f *NamespaceFilter) IsSingleNamespace() bool {
 }
 ```
 
-In `konstructOrkestra`, when this is true, `opts.Namespace` is set to `filter.SingleNamespace()`. The ListerWatcher is then built with that namespace:
+In `konstructRuntime`, when this is true, `opts.Namespace` is set to `filter.SingleNamespace()`. The ListerWatcher is then built with that namespace:
 
 - **Dynamic CRDs** (`DynamicListerWatcher`): `CRDInfo.Namespace` is set to the single allowed namespace. The dynamic client scopes `Resource(gvr).Namespace(ns).List/Watch` to that namespace.
 - **Typed CRDs** (`newListWatch`): `opts.Namespace` is forwarded into the closure. When non-empty, `client.ListInNamespace(ctx, opts.Namespace, options)` and `client.WatchInNamespace(...)` are called instead of the cluster-scoped variants.
@@ -125,7 +125,7 @@ func extractNamespace(obj interface{}) string {
 
 Cluster-scoped resources return `""`. `Allows("")` always returns `true` (no namespace restriction applies to cluster-scoped objects), so they are never dropped.
 
-## Registration — wiring in konstructOrkestra
+## Registration — wiring in konstructRuntime
 
 ```go
 // After opts is built, before the informer is created:
