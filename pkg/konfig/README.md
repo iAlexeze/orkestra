@@ -24,15 +24,15 @@ hard-coded defaults
 | `ORK_NAMESPACE` | `kfg.Cluster().Namespace` | `orkestra-system` | Namespace for Orkestra control-plane resources |
 | `ORK_GATEWAY_ENDPOINT` | `kfg.GatewayEndpoint()` | `""` | Companion gateway URL advertised to control center |
 | `ORK_SERVICE_NAME` | `kfg.Security().ServiceName` | `orkestra-runtime` | Service name used by webhook configurations |
-| `KATALOG_PATH` | `kfg.Katalog().Paths` | `[]` | Paths to Katalog YAML files |
-| `MAX_QUEUE_DEPTH` | `kfg.Katalog().DefaultMaxQueueDepth` | `100` | Default max items per CRD reconcile queue |
-| `DEGRADE_THRESHOLD` | `kfg.Katalog().DefaultDegradeThreshold` | `5` | Consecutive failures before a CRD is marked degraded |
-| `DEFAULT_RESYNC` | `kfg.Katalog().DefaultResync` | `15s` | Default resync interval when not set on the CRD |
-| `DEFAULT_WORKERS` | `kfg.Katalog().DefaultWorkers` | `3` | Default worker count per CRD |
+| `KATALOG_PATH` | `kfg.Katalog().Paths()` | `[]` | Paths to Katalog YAML files |
+| `MAX_QUEUE_DEPTH` | `kfg.Katalog().DefaultMaxQueueDepth()` | `100` | Default max items per CRD reconcile queue |
+| `DEGRADE_THRESHOLD` | `kfg.Katalog().DefaultDegradeThreshold()` | `5` | Consecutive failures before a CRD is marked degraded |
+| `DEFAULT_RESYNC` | `kfg.Katalog().DefaultResync()` | `15s` | Default resync interval when not set on the CRD |
+| `DEFAULT_WORKERS` | `kfg.Katalog().DefaultWorkers()` | `3` | Default worker count per CRD |
 | `ORK_PORT` | `kfg.Health().Port` | `8080` | Health server port |
-| `LEASE_DURATION` | `kfg.Konductor().LeaseDuration` | `60s` | Leader election lease duration |
-| `RENEW_DEADLINE` | `kfg.Konductor().RenewDeadline` | `40s` | Leader election renew deadline |
-| `RETRY_PERIOD` | `kfg.Konductor().RetryPeriod` | `10s` | Leader election retry period |
+| `LEASE_DURATION` | `kfg.Konductor().LeaseDuration()` | `60s` | Leader election lease duration |
+| `RENEW_DEADLINE` | `kfg.Konductor().RenewDeadline()` | `40s` | Leader election renew deadline |
+| `RETRY_PERIOD` | `kfg.Konductor().RetryPeriod()` | `10s` | Leader election retry period |
 | `ENABLE_DELETION_PROTECTION` | `kfg.Security().DeletionProtection.Enabled` | `false` | Enable deletion-protection admission webhook |
 | `DELETION_PROTECTION_POLICY` | `kfg.Security().DeletionProtection.FailurePolicy` | `Fail` | Webhook failure policy |
 | `ENABLE_ADMISSION_WEBHOOK` | `kfg.Security().Webhooks.Admission.Enabled` | `false` | Enable admission mutation webhook |

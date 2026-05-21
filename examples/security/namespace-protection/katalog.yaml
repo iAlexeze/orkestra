@@ -12,6 +12,9 @@ metadata:
     allowedNamespaces restricts App and Database to the "production" namespace.
     restrictedNamespaces blocks Cache from "kube-system" and "kube-public".
 
+gateway:
+  endpoint: http://orkestra-gateway:8080
+
 security:
   namespaceProtection:
     enabled: true

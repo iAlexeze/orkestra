@@ -10,6 +10,9 @@ metadata:
     by a ValidatingWebhookConfiguration and MutatingWebhookConfiguration, and
     again at every reconcile cycle by the reconciler itself.
 
+gateway:
+  endpoint: http://orkestra-gateway:8080
+
 security:
   webhooks:
     admission:
