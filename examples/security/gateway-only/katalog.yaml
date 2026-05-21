@@ -2,16 +2,27 @@ apiVersion: orkestra.orkspace.io/v1
 kind: Katalog
 metadata:
   name: platform-security
-spec:
-  crds: {}
 
-  security:
-    deletionProtection:
-      enabled: true
-      strictMode: true
-      cleanupOnShutdown: false
-    namespaceProtection:
-      enabled: true
-      namespaces:
-        - production
-        - staging
+gateway:
+  standalone: true
+
+
+security:
+  deletionProtection:
+    enabled: true
+    strictMode: true
+    cleanupOnShutdown: true
+
+spec:
+  crds:
+    platform:
+      apiTypes:
+        kind: Namespace
+      operatorBox:
+        onCreate:
+          namespaces:
+            - name: "{{ .metadata.name }}"
+              labels:
+                - key: orkestra.io/deletion-protection
+                  value: "true"
+              reconcile: true
