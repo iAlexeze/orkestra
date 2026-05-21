@@ -1,6 +1,7 @@
 # Orkestra Helm Chart
 
-> **Chart version:** 0.4.8 | **App version:** 0.4.8
+> **Chart version:** 0.4.9 | **App version:** 0.4.9
+
 
 
 
