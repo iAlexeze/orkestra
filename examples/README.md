@@ -8,8 +8,8 @@ A progressive set of examples — from a single Deployment to multi-source compo
 
 ```bash
 ork init my-operator --pack beginner
-cd my-operator
-ork run -f examples/beginner/01-hello-website/katalog.yaml --dev
+cd my-operator/examples/beginner/01-hello-website
+ork run --dev
 ```
 
 The examples are **embedded in the CLI binary** — no internet connection needed. They are extracted instantly into your project folder.
@@ -164,24 +164,19 @@ Advanced typed examples require:
 ```bash
 # 1. Pick a pack and scaffold your project
 ork init my-operator --pack beginner
-cd my-operator
+cd my-operator/examples/beginner/01-hello-website
 
-# 2. Apply the CRDs for the example you want to run
-kubectl apply -f examples/beginner/01-hello-website/crd.yaml
+# 2. Start the operator
+ork run --dev
 
-# 3. Start the operator
-ork run -f examples/beginner/01-hello-website/katalog.yaml --dev
-
-# 4. In a second terminal, apply a sample CR
-kubectl apply -f examples/beginner/01-hello-website/cr.yaml
-
-# 5. Watch the resources appear
+# 3. Watch the resources appear
 kubectl get websites -n default
 kubectl get deployments -n default
+kubectl get services -n default
 
-# 6. Cleanup
-chmod +x examples/beginner/01-hello-website/cleanup.sh
-./examples/beginner/01-hello-website/cleanup.sh
+# 4. Cleanup
+chmod +x cleanup.sh
+./cleanup.sh
 ```
 
 Each example's `README.md` has the exact commands for that example.

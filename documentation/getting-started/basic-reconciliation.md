@@ -15,7 +15,7 @@ We'll use the `hello-website` example from `ork init`. It has:
 Start the operator:
 
 ```bash
-ork run -f examples/beginner/01-hello-website/katalog.yaml
+ork run
 ```
 
 ---
@@ -34,6 +34,7 @@ You will see:
 
 ```
 INFO  CRD applied                crd=websites.demo.orkestra.io
+INFO  CR applied                 name=hello-website namespace=default
 INFO  Informer synced            crd=website
 INFO  Workers started            crd=website  workers=3
 INFO  Health server ready        addr=:8080
@@ -41,13 +42,7 @@ INFO  Health server ready        addr=:8080
 
 ---
 
-## Step 2 — Apply a CR
-
-```bash
-kubectl apply -f examples/beginner/01-hello-website/cr.yaml
-```
-
-The CR:
+## Step 2 — The CR:
 
 ```yaml
 apiVersion: demo.orkestra.io/v1alpha1
