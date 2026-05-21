@@ -161,7 +161,7 @@ spec: {}
 ### Step 2 — Generate and apply the bundle
 
 ```bash
-ork generate bundle -f gateway-katalog.yaml | kubectl apply -f -
+ork generate bundle --for gateway -f gateway-katalog.yaml | kubectl apply -f -
 ```
 
 ### Step 3 — Install gateway only
@@ -173,7 +173,6 @@ helm upgrade --install orkestra orkestra/orkestra \
   --set runtime.enabled=false \
   --set controlCenter.enabled=false \
   --set gateway.enabled=true \
-  --set gateway.katalog.existingConfigMap=platform-security
 ```
 
 Label any resource `orkestra.io/deletion-protection: "true"` — the gateway intercepts every DELETE request for it at the API server.
