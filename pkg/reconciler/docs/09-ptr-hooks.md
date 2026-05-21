@@ -53,7 +53,7 @@ type GenericReconciler[S any, PTR interface{ *S; domain.Object }] struct { ... }
 enforces at compile time that `PTR` is a pointer to a concrete struct. It cannot
 be satisfied by `domain.Object` (an interface — not `*S` for any `S`).
 
-The runtime registry path in `konstructor.go` infers `PTR = domain.Object`
+The runtime registry path in `runtime_konstructor.go` infers `PTR = domain.Object`
 because its `newObj` factory is typed `func() domain.Object`. Making it supply
 concrete types would require a typed factory per CRD in the registry — a much
 larger API change with no benefit for the dynamic template path where hooks are
@@ -116,7 +116,7 @@ If the wrong type somehow ends up in the store the assertion panics with a clear
        │
 2. Generated registry puts it in HookRegistry[GVK]
        │
-3. konstructor.go: anyHooks = crd.OperatorBox.HookFactory()
+3. runtime_konstructor.go: anyHooks = crd.OperatorBox.HookFactory()
                             = ReconcileHooks[*Database]
        │
 4. NewGenericReconciler[domain.Object](..., anyHooks, func() domain.Object{...})
@@ -174,4 +174,4 @@ func (h LoggingHooks[T]) BindToObjectHooks() domain.ObjectHooks {
 | Type param named `PTR` not `T` | Signals pointer expectation at every call site |
 | `ObjectHooks` stored, not `ReconcileHooks[PTR]` | Bridges typed user hooks and the type-erased runtime registry |
 | `HookBinder` interface, not direct assertion | Works for any `ReconcileHooks[T]` regardless of what `T` is |
-| Single type parameter kept | Keeps `konstructor.go` compatible; two-param form would break the dynamic registry path |
+| Single type parameter kept | Keeps `runtime_konstructor.go` compatible; two-param form would break the dynamic registry path |

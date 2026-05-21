@@ -3,7 +3,7 @@
 ## Pipeline overview
 
 ```
-CLI / konstructOrkestra
+CLI / konstructRuntime
     │
     │  one or more file paths (--file flags or comma-separated)
     ▼

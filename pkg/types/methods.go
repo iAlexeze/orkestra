@@ -195,15 +195,6 @@ func (c *CRDEntry) IsEnabled() bool {
 	return *c.Enabled
 }
 
-// IsCritical reports whether this CRD is marked as critical. Critical CRDs may
-// influence startup ordering or health evaluation. Defaults to false.
-// func (c *CRDEntry) IsCritical() bool {
-// 	if c.Critical == nil {
-// 		return false
-// 	}
-// 	return *c.Critical
-// }
-
 // IsNamespaced reports whether this CRD is namespaced. Defaults to true unless
 // explicitly overridden or determined by enrichment.
 func (c *CRDEntry) IsNamespaced() bool {

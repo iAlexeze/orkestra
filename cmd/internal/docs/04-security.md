@@ -1,6 +1,6 @@
 # 04 — Security
 
-`ensureSecurity` in `konstruct_security.go` applies TLS and namespace labeling
+`ensureSecurity` in `internal/security.go` applies TLS and namespace labeling
 before any komponent starts. It is called synchronously from `KonductGateway`.
 
 ## What ensureSecurity does
@@ -46,7 +46,7 @@ ensureSecurity
 
 ## Why gateway-only
 
-`ensureSecurity` is called only from `KonductGateway`, not from `konstructOrkestra`.
+`ensureSecurity` is called only from `KonductGateway`, not from `konstructRuntime`.
 
 The runtime does not serve webhooks. It has no HTTPS listener and no need for
 TLS certificates. Calling `ensureSecurity` from the runtime would generate

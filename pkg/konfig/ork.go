@@ -1,6 +1,10 @@
 // pkg/konfig/ork.go
 package konfig
 
+import "time"
+
+// ── Runtime ───────────────────────────────────────────────────────────
+
 // Runtime returns the instance identifier
 // Used by pkg/orkestra and other packages to determine what is running.
 func Runtime() Instance {
@@ -17,6 +21,80 @@ func Gateway() Instance {
 // logging, printing, and serialization.
 func (i Instance) String() string {
 	return string(i)
+}
+
+// ── Orkestra Config ─────────────────────────────────────────────────────────
+
+// SetName sets the configured name for this Orkestra instance.
+func (k *orkKonfig) SetName(v string) {
+	k.name = v
+}
+
+// Name returns the configured name for this Orkestra instance.
+func (k *orkKonfig) Name() string {
+	return k.name
+}
+
+// Instance returns the configured Instance (runtime or gateway) for this config.
+func (k *orkKonfig) Instance() Instance {
+	return k.instance
+}
+
+// ShortName returns the short name used for display or compact identifiers.
+func (k *orkKonfig) ShortName() string {
+	return k.shortName
+}
+
+// Environment returns the environment label (dev, staging, production, etc.).
+func (k *orkKonfig) Environment() string {
+	return k.environment
+}
+
+// LogLevel returns the configured logging level for the process.
+func (k *orkKonfig) LogLevel() string {
+	return k.logLevel
+}
+
+// ── Konductor Election ───────────────────────────────────────────────────────────
+
+// Namespace returns the election namespace.
+func (e *konductorElection) Namespace() string {
+	return e.namespace
+}
+
+// SetNamespace sets the election namespace.
+func (e *konductorElection) SetNamespace(v string) {
+	e.namespace = v
+}
+
+// LeaseDuration returns the configured lease duration for leader election.
+func (e *konductorElection) LeaseDuration() time.Duration {
+	return e.leaseDuration
+}
+
+// SetLeaseDuration sets the lease duration for leader election.
+func (e *konductorElection) SetLeaseDuration(v time.Duration) {
+	e.leaseDuration = v
+}
+
+// RenewDeadline returns the renew deadline used in leader election.
+func (e *konductorElection) RenewDeadline() time.Duration {
+	return e.renewDeadline
+}
+
+// SetRenewDeadline sets the renew deadline used in leader election.
+func (e *konductorElection) SetRenewDeadline(v time.Duration) {
+	e.renewDeadline = v
+}
+
+// RetryPeriod returns the retry period used in leader election.
+func (e *konductorElection) RetryPeriod() time.Duration {
+	return e.retryPeriod
+}
+
+// SetRetryPeriod sets the retry period used in leader election.
+func (e *konductorElection) SetRetryPeriod(v time.Duration) {
+	e.retryPeriod = v
 }
 
 // KatalogKind returns the kind string for a Katalog document.

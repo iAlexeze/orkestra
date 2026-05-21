@@ -136,9 +136,9 @@ func (k *Kubeclient) buildConfig() (*rest.Config, error) {
 	var restCfg *rest.Config
 	var err error
 
-	if k.konfig.Cluster().KubekonfigPath != "" {
+	if k.konfig.Cluster().KubekonfigPath() != "" {
 		logger.Debug().Msg("using kubeconfig")
-		restCfg, err = clientcmd.BuildConfigFromFlags(k.konfig.Cluster().MasterURL, k.konfig.Cluster().KubekonfigPath)
+		restCfg, err = clientcmd.BuildConfigFromFlags(k.konfig.Cluster().MasterURL(), k.konfig.Cluster().KubekonfigPath())
 	} else {
 		logger.Debug().Msg("using incluster configuration")
 		restCfg, err = rest.InClusterConfig()

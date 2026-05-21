@@ -36,7 +36,7 @@ Client
 
 `ClientProvider` in `provider.go` is a deferred constructor registry — it maps `runtime.Object` type → a `ClientFactory` function that builds a `GenericClient` when first called.
 
-Registration happens in `konstructOrkestra` before informers are created:
+Registration happens in `konstructRuntime` before informers are created:
 
 ```go
 provider.Register(object, func(k *kubeclient.Kubeclient) (informer.GenericClient, error) {

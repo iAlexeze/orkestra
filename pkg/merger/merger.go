@@ -25,7 +25,7 @@ import (
 // (files, URLs, Helm charts), merges all CRD entries, and exposes
 // the result through Enabled(), All(), and Get().
 //
-// Entry point: one or more file paths from the CLI or konstructOrkestra.
+// Entry point: one or more file paths from the CLI or konstructRuntime.
 // Everything else — source resolution, Helm rendering, deduplication —
 // is internal to the merger.
 //

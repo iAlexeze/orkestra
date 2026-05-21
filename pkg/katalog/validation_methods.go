@@ -189,7 +189,7 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 		if k.metadata.Name != "" {
 			crd.KatalogName = k.metadata.Name
 		} else {
-			crd.KatalogName = kfg.Cluster().Name
+			crd.KatalogName = kfg.Cluster().Name()
 		}
 
 		// Name is already set from map key — normalise it
@@ -230,22 +230,22 @@ func (k *Katalog) setDefaults(kfg *konfig.Konfig) error {
 
 		// Handle Resync
 		if crd.Resync == 0 {
-			crd.Resync = crd.SetResync(kfg.Katalog().DefaultResync)
+			crd.Resync = crd.SetResync(kfg.Katalog().DefaultResync())
 		}
 
 		// Handle Workers
 		if crd.Workers == 0 {
-			crd.Workers = crd.SetWorkers(kfg.Katalog().DefaultWorkers)
+			crd.Workers = crd.SetWorkers(kfg.Katalog().DefaultWorkers())
 		}
 
 		// Handle QueueDepth
 		if crd.Queue.MaxQueueDepth == 0 {
-			crd.Queue.MaxQueueDepth = crd.SetMaxQueueDepth(kfg.Katalog().DefaultMaxQueueDepth)
+			crd.Queue.MaxQueueDepth = crd.SetMaxQueueDepth(kfg.Katalog().DefaultMaxQueueDepth())
 		}
 
 		// Handle QueueDegradeThreshold
 		if crd.Queue.DegradeThreshold == 0 {
-			crd.Queue.DegradeThreshold = crd.SetMaxQueueDepth(kfg.Katalog().DefaultDegradeThreshold)
+			crd.Queue.DegradeThreshold = crd.SetMaxQueueDepth(kfg.Katalog().DefaultDegradeThreshold())
 		}
 
 		// Handle Notifications

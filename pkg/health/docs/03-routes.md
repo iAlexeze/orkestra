@@ -13,10 +13,10 @@ The `HealthServer` serves two categories of HTTP routes.
 
 ## External routes (registered via `Register()`)
 
-All `/katalog/…` routes are registered by `cmd/internal/konstructor.go` before `Start()` is called, using `hs.Register(path, handler)`. This keeps the health package decoupled from the kordinator and katalog packages.
+All `/katalog/…` routes are registered by `cmd/internal/runtime_konstructor.go` before `Start()` is called, using `hs.Register(path, handler)`. This keeps the health package decoupled from the kordinator and katalog packages.
 
 ```go
-// In konstructor.go:
+// In runtime_konstructor.go:
 hs.Register("/katalog/"+crdName+"/health", kordinator.BuildCRDHealthHandler(...))
 hs.Register("/katalog/"+crdName,           kordinator.BuildCRDInfoHandler(...))
 hs.Register("/katalog/"+crdName+"/cr",     kordinator.BuildCRListHandler(...))

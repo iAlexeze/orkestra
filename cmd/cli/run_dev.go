@@ -54,7 +54,7 @@ var runCmd = &cobra.Command{
 			paths = defaultFilePaths()
 		}
 		if len(paths) == 0 {
-			paths = kfg.Katalog().Paths
+			paths = kfg.Katalog().Paths()
 		}
 		if len(paths) == 0 {
 			return fmt.Errorf(errNoKatalog)
@@ -78,7 +78,7 @@ var runCmd = &cobra.Command{
 			applyCRFilesIfNeeded(cmd.Context(), paths[0], m)
 		}
 
-		internal.Konduct(kfg, m, ctx)
+		internal.KonductRuntime(kfg, m, ctx)
 		return nil
 	},
 }

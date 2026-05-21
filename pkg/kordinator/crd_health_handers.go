@@ -78,7 +78,7 @@ func BuildCRDHealthHandler(
 			Pending:                  h.Pending(),
 			StartedAt:                h.StartedAt(),
 			Uptime:                   h.Uptime(),
-			QueueDepth:               h.QueueDepth(crd.GVK().String()),
+			QueueDepth:               h.QueueDepth(crd.GVKString()),
 			ErrorRate:                h.ErrorRatePercent(),
 			ConsecutiveFails:         h.ConsecutiveFails(),
 			TotalReconciles:          h.TotalReconciles(),
@@ -290,7 +290,7 @@ func BuildCRDInfoHandler(
 		workersIdle := h.GetIdleWorkers()
 		workersProcessing := h.GetProcessingWorkers()
 		workersSource := v.workersSource
-		queueDepth := h.QueueDepth(crd.GVK().String())
+		queueDepth := h.QueueDepth(crd.GVKString())
 		maxQueueDepth := v.maxQueueDepth
 		maxQueueDepthSource := v.maxQueueDepthSource
 		resync := v.resync
@@ -323,7 +323,7 @@ func BuildCRDInfoHandler(
 			Name:                crd.Name,
 			Description:         crd.Description,
 			Mode:                crd.Mode.String(),
-			GVK:                 crd.GVK().String(),
+			GVK:                 crd.GVKString(),
 			GVR:                 crd.GroupVersionResource.String(),
 			Namespaced:          crd.IsNamespaced(),
 			Namespace:           crd.Namespace,
@@ -571,7 +571,7 @@ func BuildKatalogHandler(
 		deletionProtectedCRDs := kat.DeletionProtectedCRDNames()
 
 		for _, crd := range kat.Enabled() {
-			gvk := crd.GVK().String()
+			gvk := crd.GVKString()
 			h := healthMap[gvk]
 
 			entry, ok := reg.Get(gvk)
@@ -854,7 +854,7 @@ func resolveCRDDisplayValues(
 	maxQueueDepth := crd.Queue.MaxQueueDepth
 	maxQueueDepthSource := "configured"
 	if maxQueueDepth == 0 {
-		maxQueueDepth = kfg.Katalog().DefaultMaxQueueDepth
+		maxQueueDepth = kfg.Katalog().DefaultMaxQueueDepth()
 		maxQueueDepthSource = "default"
 	}
 
@@ -863,14 +863,14 @@ func resolveCRDDisplayValues(
 	resyncSource := "configured"
 	if crd.Resync == 0 {
 		resyncSource = "default"
-		resync = kfg.Katalog().DefaultResync.String()
+		resync = kfg.Katalog().DefaultResync().String()
 	}
 
 	// Workers
 	workers := crd.Workers
 	workersSource := "configured"
 	if crd.Workers == 0 {
-		workers = kfg.Katalog().DefaultWorkers
+		workers = kfg.Katalog().DefaultWorkers()
 		workersSource = "default"
 	}
 

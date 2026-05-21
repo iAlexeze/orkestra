@@ -30,7 +30,7 @@ func (qr *QueueRegistry) Register(gvk string, maxQueueDepth int) *Workqueue {
 }
 ```
 
-`Register` is called in `konstructOrkestra` during the Katalog loading step,
+`Register` is called in `konstructRuntime` during the Katalog loading step,
 one call per CRD with `queue.maxQueueDepth` from the Katalog. The returned
 `*Workqueue` is passed to the informer's event handler so informer events go
 directly into the right queue.

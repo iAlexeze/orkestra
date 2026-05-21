@@ -14,7 +14,7 @@
 //
 // Additionally, the Prometheus metrics endpoint is served at GET /metrics.
 // All Katalog API routes (/katalog/...) are registered externally via Register()
-// by cmd/internal/konstructor.go before Start() is called.
+// by cmd/internal/runtime_konstructor.go before Start() is called.
 //
 // # What this package does NOT do
 //
@@ -78,9 +78,9 @@ type HealthServer struct {
 func NewHealthServer(kfg *konfig.Konfig) *HealthServer {
 	hs := &HealthServer{
 		name:     "health server",
-		client:   kfg.Ork().Name,
-		httpPort: kfg.Health().Port,
-		logLevel: kfg.Ork().LogLevel,
+		client:   kfg.Ork().Name(),
+		httpPort: kfg.Health().Port(),
+		logLevel: kfg.Ork().LogLevel(),
 		mux:      http.NewServeMux(),
 	}
 	hs.ready.Store(false)

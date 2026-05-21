@@ -10,9 +10,9 @@ import (
 	"github.com/orkspace/orkestra/pkg/utils"
 )
 
-func Konduct(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
+func KonductRuntime(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 	// create domain komponent and build orkestra
-	startup := konstructOrkestra(kfg, m, ctx)
+	startup := konstructRuntime(kfg, m, ctx)
 
 	// ── Start ─────────────────────────────────────────────────────────────────
 	go func() {
@@ -31,10 +31,10 @@ func Konduct(kfg *konfig.Konfig, m *merger.Merger, ctx context.Context) {
 			printBanner(startup, konductor)
 		},
 		konductor.Options{
-			Namespace:     kfg.Konductor().Namespace,
-			LeaseDuration: kfg.Konductor().LeaseDuration,
-			RenewDeadline: kfg.Konductor().RenewDeadline,
-			RetryPeriod:   kfg.Konductor().RetryPeriod,
+			Namespace:     kfg.Konductor().Namespace(),
+			LeaseDuration: kfg.Konductor().LeaseDuration(),
+			RenewDeadline: kfg.Konductor().RenewDeadline(),
+			RetryPeriod:   kfg.Konductor().RetryPeriod(),
 		})
 
 	// start konductor election as postStartHook after  orkestra is ready

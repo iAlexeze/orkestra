@@ -12,9 +12,9 @@ imports know how to run.
 
 `cmd/internal` exposes exactly two public functions.
 
-`Konduct` is the runtime entrypoint. It calls `konstructOrkestra`, which assembles
+`KonductRuntime` is the runtime entrypoint. It calls `konstructRuntime`, which assembles
 the full reconcile loop — informers, queues, reconcilers, health server, and the
-dependency kordinator. `Konduct` then starts leader election via `pkg/konductor`
+dependency kordinator. `KonductRuntime` then starts leader election via `pkg/konductor`
 so only one replica runs the reconcile loop at a time. It is called by `ork run`.
 
 `KonductGateway` is the gateway entrypoint. It assembles only the parts needed to
@@ -43,7 +43,7 @@ Deployment exists by default; the gateway Deployment is opt-in
 (`gateway.enabled: true` in `values.yaml`).
 
 ```
-ork run      →  Konduct        →  konstructOrkestra  →  reconcile loop
+ork run      →  KonductRuntime →  konstructRuntime   →  reconcile loop
 ork gateway  →  KonductGateway →  gateway wiring     →  TLS + webhooks
 ```
 

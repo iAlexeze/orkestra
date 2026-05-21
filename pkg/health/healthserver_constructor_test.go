@@ -9,8 +9,8 @@ import (
 
 func TestNewHealthServer_ConstructorWiresAllFields(t *testing.T) {
 	kfg := konfig.NewDefaultKonfig()
-	kfg.Ork().Name = "test-runtime"
-	kfg.Health().Port = "8080"
+	kfg.Ork().SetName("test-runtime")
+	kfg.Health().SetPort("8080")
 
 	hs := NewHealthServer(kfg)
 

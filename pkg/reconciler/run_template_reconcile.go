@@ -300,7 +300,7 @@ func (r *GenericReconciler[PTR]) readCross(
 		key := crossKey(namespace, name)
 
 		// Path 1: informer cache — zero API calls.
-		// katalogRegistry is threaded in from konstructOrkestra via NewGenericReconciler.
+		// katalogRegistry is threaded in from konstructRuntime via NewGenericReconciler.
 		// Path 1a: label-based informer lookup
 		if len(decl.LabelSelector) > 0 && r.katalogRegistry != nil {
 			for labelKey, labelValue := range decl.LabelSelector {

@@ -124,7 +124,7 @@ func (k *DependencyKordinator) retryMissingCRDs(ctx context.Context) {
 					for _, dep := range deps {
 						crd := k.depGraph.GetNode(dep).CRD
 						if crd.DependsOn[entry.Name].Condition == string(orktypes.DependencyConditionHealthy) {
-							k.crdHealthMap[crd.GVK().String()].SetDegraded()
+							k.crdHealthMap[crd.GVKString()].SetDegraded()
 						} else {
 							logger.Info().Str("gvk", gvkStr).Msgf("dependency %s is unhealthy", entry.Name)
 						}
@@ -323,17 +323,17 @@ func (k *DependencyKordinator) activateCRD(ctx context.Context, entry *informer.
 		for _, dep := range deps {
 			crd := k.NameToCRD(dep)
 			if crd.DependsOn.ConditionHealthy(name) {
-				if ch, exists := k.healthyCh[crd.GVK().String()]; exists {
+				if ch, exists := k.healthyCh[crd.GVKString()]; exists {
 					select {
 					case <-ch:
 						// Channel already closed (should not happen, but safe)
 						logger.Debug().Msgf("activateCRD: healthy channel for %q was already closed", name)
 					default:
-						if !k.crdHealthMap[crd.GVK().String()].IsHealthy() {
+						if !k.crdHealthMap[crd.GVKString()].IsHealthy() {
 							continue
 						}
 						close(ch)
-						k.crdHealthMap[crd.GVK().String()].SetStarted()
+						k.crdHealthMap[crd.GVKString()].SetStarted()
 						logger.Info().Msgf("activateCRD: closed healthy channel for %q", name)
 					}
 				}
