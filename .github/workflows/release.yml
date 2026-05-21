@@ -87,7 +87,8 @@ jobs:
 
   cleanup:
     name: Clean up old GitHub Actions caches
-    needs: [summary]
+    needs: [build, summary]
+    if: needs.build.outputs.cache-miss == 'true'
     uses: ./.github/workflows/cleanup-caches.yml
     secrets: inherit
     with:

@@ -2,6 +2,10 @@ name: Build Matrix
 
 on:
   workflow_call:
+    outputs:
+      cache-miss:
+        description: 'True if any binary was rebuilt (cache miss)'
+        value: ${{ jobs.aggregate-cache-miss.outputs.cache-miss }}
 
 jobs:
   build:
@@ -53,6 +57,13 @@ jobs:
             dist/orkcc
             dist/orkcc.exe
           key: binaries-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('go.sum', '**/*.go', 'cmd/**/*.go') }}
+
+      # Record cache miss for this matrix entry
+      - name: Record cache miss flag
+        if: steps.cache-binaries.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p /tmp/cache-miss-flags
+          touch "/tmp/cache-miss-flags/${{ matrix.os }}-${{ matrix.arch }}"
 
       - name: Set binary names
         run: |
@@ -152,3 +163,37 @@ jobs:
             dist/ork_windows_amd64.zip
             dist/orkcc_windows_amd64.zip
           retention-days: 1
+
+      # Upload cache miss flag for this matrix entry (only if miss)
+      - name: Upload cache miss flag
+        if: steps.cache-binaries.outputs.cache-hit != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: cache-miss-flags
+          path: /tmp/cache-miss-flags/
+          retention-days: 1
+          if-no-files-found: ignore
+
+  # Aggregator job that determines overall cache miss
+  aggregate-cache-miss:
+    name: Aggregate cache miss status
+    runs-on: ubuntu-latest
+    needs: build
+    outputs:
+      cache-miss: ${{ steps.check-miss.outputs.cache-miss }}
+    steps:
+      - name: Download all cache miss flags
+        uses: actions/download-artifact@v7
+        with:
+          name: cache-miss-flags
+          path: /tmp/collected-flags
+        continue-on-error: true
+
+      - name: Determine if any cache miss occurred
+        id: check-miss
+        run: |
+          if [ -d /tmp/collected-flags ] && [ -n "$(ls -A /tmp/collected-flags)" ]; then
+            echo "cache-miss=true" >> $GITHUB_OUTPUT
+          else
+            echo "cache-miss=false" >> $GITHUB_OUTPUT
+          fi
